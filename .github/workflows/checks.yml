@@ -1,0 +1,43 @@
+name: checks
+
+on:
+  push:
+    branches: [ main ]
+
+  pull_request:
+
+jobs:
+  lint-test:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    name: Node ${{ matrix.node-version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setting up Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          registry-url: "https://npm.pkg.github.com/"
+          scope: "@dusk-network"
+
+      - name: Installing dev dependencies
+        run: npm ci
+        env:
+          REGISTRY_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Linting
+        run: npm run lint
+
+      - name: Type checks
+        run: npm run check
+
+      - name: Run the test suite
+        run: npm test

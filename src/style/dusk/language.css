@@ -1,0 +1,55 @@
+:root {
+	/* Theme colours */
+
+	--page-background-color: var(--smokey-black);
+	--background-color: var(--light-grey);
+	--background-color-alt: #fff;
+	--primary-color: var(--smokey-black);
+	--primary-color-variant-dark: #000;
+	--primary-color-variant-light: var(--jet);
+	--secondary-color: var(--cornflower);
+	--secondary-color-variant-dark: var(--cornflower-dark);
+	--secondary-color-variant-light: var(--cornflower-light);
+	--surface-color: var(--magnolia);
+
+	--on-background-color: var(--smokey-black);
+	--on-primary-color: var(--light-grey);
+	--on-secondary-color: var(--smokey-black);
+	--on-surface-color: var(--smokey-black);
+
+	/* Typography */
+
+	--main-font-family: "Soehne", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	--main-font-size: 16px;
+
+	/* Controls */
+
+	--control-border-radius-size: 1.5em;
+	--control-border-size: .0625em;
+	--control-font-size: 1em;
+	--control-icon-size: 2em;
+	--control-padding: 1em 1.125em;
+	--control-small-font-size: .875em;
+	--control-small-padding: .625em .875em;
+
+	--control-bg-color: #fff;
+	--control-bg-color-hover: var(--silver-metallic);
+	--control-border-color: transparent;
+	--control-border-color-hover: transparent;
+	--control-text-color: var(--smokey-black);
+	--control-text-color-hover: var(--smokey-black);
+
+	--control-secondary-bg-color: var(--smokey-black);
+	--control-secondary-bg-color-hover: var(--cornflower);
+	--control-secondary-border-color: transparent;
+	--control-secondary-border-color-hover: transparent;
+	--control-secondary-text-color: #fff;
+	--control-secondary-text-color-hover: var(--smokey-black);
+
+	--control-tertiary-bg-color: transparent;
+	--control-tertiary-bg-color-hover: transparent;
+	--control-tertiary-border-color: var(--smokey-black);
+	--control-tertiary-border-color-hover: var(--granite-grey);
+	--control-tertiary-text-color: var(--smokey-black);
+	--control-tertiary-text-color-hover: var(--granite-grey);
+}

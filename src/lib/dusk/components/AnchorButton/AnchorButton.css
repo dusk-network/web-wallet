@@ -1,0 +1,10 @@
+.duk-anchor-button {
+	appearance: button;
+	text-decoration: none;
+	text-align: center;
+}
+
+.duk-anchor-button.duk-anchor-button__disabled {
+	cursor: default;
+	pointer-events: none;
+}

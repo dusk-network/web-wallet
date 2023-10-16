@@ -1,0 +1,10 @@
+.duk-icon {
+	display: inline-block;
+	fill: currentColor;
+}
+
+.duk-icon rect {
+	fill: transparent;
+	width: 100%;
+	height: 100%;
+}
