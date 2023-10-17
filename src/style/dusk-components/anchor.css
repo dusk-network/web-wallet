@@ -1,0 +1,9 @@
+.duk-anchor,
+.duk-anchor:visited {
+	color: var(--secondary-color);
+}
+
+.duk-anchor:hover,
+.duk-anchor:active {
+	color: var(--secondary-color-variant-light);
+}

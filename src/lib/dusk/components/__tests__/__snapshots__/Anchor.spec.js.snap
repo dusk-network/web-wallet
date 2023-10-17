@@ -1,0 +1,37 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Anchor > should add "noopener" and "noreferrer" values to the rel attribute if a target is used 1`] = `
+<a
+  class="duk-anchor"
+  href="https://example.com"
+  rel="external noopener noreferrer"
+  target="_blank"
+>
+  <span>
+    some text
+  </span>
+</a>
+`;
+
+exports[`Anchor > should pass additional class names and attributes to the rendered element 1`] = `
+<a
+  class="duk-anchor foo bar"
+  href="https://dusk.network"
+  title="Some title"
+>
+  <span>
+    some text
+  </span>
+</a>
+`;
+
+exports[`Anchor > should render the Anchor component 1`] = `
+<a
+  class="duk-anchor"
+  href="https://example.com"
+>
+  <span>
+    some text
+  </span>
+</a>
+`;

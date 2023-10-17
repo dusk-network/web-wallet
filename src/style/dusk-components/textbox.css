@@ -1,0 +1,22 @@
+.duk-textbox {
+  	font-size: var(--control-font-size);
+	padding: var(--control-padding);
+	background-color: var(--control-bg-color);
+	border-color: var(--control-border-color);
+	border-radius: var(--control-border-radius-size);
+	border-style: solid;
+	border-width: var(--control-border-size);
+}
+
+.duk-textbox:disabled,
+.duk-textbox::placeholder {
+	opacity: .5;
+}
+
+.duk-textbox:read-only {
+	outline: 0 none;
+}
+
+.duk-textbox.duk-textbox-multiline {
+	line-height: 1.3;
+}
