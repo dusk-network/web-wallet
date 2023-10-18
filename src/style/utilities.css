@@ -1,0 +1,24 @@
+.flex {
+	display: flex;
+}
+
+.flex-col {
+	flex-direction: column;
+}
+
+.flex-row {
+	flex-direction: row;
+}
+
+.gap-1 {
+	gap: 1em;
+}
+
+.gap-2 {
+	gap: 2em;
+}
+
+/* Colours */
+.accent-text {
+	color: var(--secondary-color);
+}
