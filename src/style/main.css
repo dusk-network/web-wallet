@@ -5,6 +5,7 @@
 @import url("./dusk-components/button.css");
 @import url("./dusk-components/icon.css");
 @import url("./dusk-components/select.css");
+@import url("./dusk-components/tabs.css");
 @import url("./dusk-components/textbox.css");
 @import url("./dusk-components/throbber.css");
 @import url("./app-components/headings.css");
@@ -77,7 +78,8 @@ svg {
 	transition: all .2s linear 0s;
 }
 
-:is(.duk-anchor-button:not(.duk-anchor-button__disabled),
+:is(
+	.duk-anchor-button:not(.duk-anchor-button__disabled),
 	.duk-button:enabled,
 	.duk-checkbox:enabled,
 	.duk-select:enabled,

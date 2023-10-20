@@ -6,6 +6,16 @@ import * as matchers from "@testing-library/jest-dom/matchers";
 import { expect, vi } from "vitest";
 import { readable } from "svelte/store";
 
+// Adding missing bits in JSDOM
+
+const elementMethods = ["scrollBy", "scrollTo", "scrollIntoView"];
+
+elementMethods.forEach(method => {
+	if (!Element.prototype[method]) {
+		Object.defineProperty(Element.prototype, method, { value: () => {}, writable: true });
+	}
+});
+
 // Add custom jest matchers
 expect.extend(matchers);
 

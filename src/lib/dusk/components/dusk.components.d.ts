@@ -11,4 +11,10 @@ type SelectOption = {
   value: string
 }
 
+type TabItem = {
+	icon?: ButtonIconProp,
+	id: string,
+	label?: string
+}
+
 type TextboxTypes = "email" | "hidden" | "multiline" | "number" | "password" | "search" | "tel" | "text" | "url";

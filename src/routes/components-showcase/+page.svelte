@@ -9,6 +9,7 @@
 	import IconButtons from "./IconButtons.svelte";
 	import LabeledButtons from "./LabeledButtons.svelte";
 	import Selects from "./Selects.svelte";
+	import Tabboxes from "./Tabboxes.svelte";
 	import Textboxes from "./Textboxes.svelte";
 	import Throbbers from "./Throbbers.svelte";
 
@@ -18,6 +19,7 @@
 		"Icon buttons": IconButtons,
 		"Labeled buttons": LabeledButtons,
 		"Selects": Selects,
+		"Tabboxes": Tabboxes,
 		"Textboxes": Textboxes,
 		"Throbbers": Throbbers
 	};
