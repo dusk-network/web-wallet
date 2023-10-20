@@ -18,10 +18,10 @@
 	<div class="dusk-card__header">
 		{#if iconPath}
 			<div class="dusk-card__icon">
-				<Icon path={iconPath} />
+				<Icon path={iconPath}/>
 			</div>
 		{/if}
 		<p>{heading}</p>
 	</div>
-	<slot />
+	<slot/>
 </div>
