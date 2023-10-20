@@ -1,0 +1,16 @@
+.duk-card {
+	background-color: var(--surface-color);
+	border-radius: var(--control-border-radius-size);
+	padding: 1.3em;
+}
+
+.duk-card__icon {
+	margin-right: .4em;
+	font-size: 1.1em;
+}
+
+.duk-card__header {
+	display: flex;
+	margin-bottom: .5em;
+	align-items: center;
+}
