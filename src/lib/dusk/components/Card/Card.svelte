@@ -14,14 +14,12 @@
 	$: classes = makeClassName(["dusk-card", className]);
 </script>
 
-<div {...$$restProps} class={classes}>
-	<div class="dusk-card__header">
+<section {...$$restProps} class={classes}>
+	<header class="dusk-card__header">
 		{#if iconPath}
-			<div class="dusk-card__icon">
-				<Icon path={iconPath}/>
-			</div>
+			<Icon className="dusk-card__icon" path={iconPath}/>
 		{/if}
-		<p>{heading}</p>
-	</div>
+		<h2>{heading}</h2>
+	</header>
 	<slot/>
-</div>
+</section>
