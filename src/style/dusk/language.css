@@ -11,6 +11,10 @@
 	--secondary-color-variant-dark: var(--cornflower-dark);
 	--secondary-color-variant-light: var(--cornflower-light);
 	--surface-color: var(--magnolia);
+	--success-color: var(--success);
+	--warning-color: var(--warning);
+	--error-color: var(--error);
+	--info-color: var(--info);
 
 	--on-background-color: var(--smokey-black);
 	--on-primary-color: var(--light-grey);
@@ -52,4 +56,8 @@
 	--control-tertiary-border-color-hover: var(--granite-grey);
 	--control-tertiary-text-color: var(--smokey-black);
 	--control-tertiary-text-color-hover: var(--granite-grey);
-}
+
+	/* Progress-related components (Stepper, Progress Bar, etc */
+	--progress-bar-height: .3125em;
+	--progress-bg-color: var(--primary-color);
+	--progress-filler-color: var(--success-color)}
