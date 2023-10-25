@@ -1,15 +1,15 @@
-.dusk-card {
+.duk-card {
 	background-color: var(--surface-color);
 	border-radius: 20px;
 	padding: 1.3em;
 }
 
-.dusk-card__icon {
+.duk-card__icon {
 	margin-right: .4em;
 	font-size: 1.1em;
 }
 
-.dusk-card__header {
+.duk-card__header {
 	display: flex;
 	margin-bottom: .5em;
 	align-items: center;

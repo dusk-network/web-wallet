@@ -11,15 +11,15 @@
 	/** @type {string} */
 	export let heading;
 
-	$: classes = makeClassName(["dusk-card", className]);
+	$: classes = makeClassName(["duk-card", className]);
 </script>
 
 <section {...$$restProps} class={classes}>
-	<header class="dusk-card__header">
+	<header class="duk-card__header">
 		{#if iconPath}
-			<Icon className="dusk-card__icon" path={iconPath}/>
+			<Icon className="duk-card__icon" path={iconPath} />
 		{/if}
 		<h2>{heading}</h2>
 	</header>
-	<slot/>
+	<slot />
 </section>
