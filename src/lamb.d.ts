@@ -500,6 +500,21 @@ declare module "lamb" {
 		W extends string[]
 	> (source: S, whitelist: W): Pick<S, typeof whitelist[number]>;
 
+	function skip<
+		S extends Record<string, any>,
+		B extends string[]
+	> (blacklist: B): (source: S) => Omit<S, typeof blacklist[number]>;
+
+	function skipIf<
+		S extends Record<string, any>,
+		P extends ObjectIteratorCallback<S, boolean>
+	> (predicate: P): (source: S) => Partial<S>;
+
+	function skipIn<
+		S extends Record<string, any>,
+		B extends string[]
+	> (source: S, blacklist: B): Omit<S, typeof blacklist[number]>;
+
 	/* ------------------------- *
 	 * *****   PRIVATES    ***** *
 	 * ------------------------- */

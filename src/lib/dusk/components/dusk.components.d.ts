@@ -1,3 +1,4 @@
+
 type ButtonIconProp = {
   path: string,
   position?: "after" | "before"
@@ -20,3 +21,5 @@ type TabItem = {
 }
 
 type TextboxTypes = "email" | "hidden" | "multiline" | "number" | "password" | "search" | "tel" | "text" | "url";
+
+type TooltipType = "error" | "info" | "success" | "warning";

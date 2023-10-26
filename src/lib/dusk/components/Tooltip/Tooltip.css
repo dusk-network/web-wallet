@@ -1,0 +1,12 @@
+.duk-tooltip {
+	position: fixed;
+	display: inline-block;
+	width: max-content;
+	max-width: 40%;
+	white-space: break-spaces;
+	z-index: 1;
+}
+
+.duk-tooltip[aria-hidden="true"] {
+	visibility: hidden;
+}
