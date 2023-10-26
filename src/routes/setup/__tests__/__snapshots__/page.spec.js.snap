@@ -1,0 +1,73 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Setup > should render the setup page 1`] = `
+<div>
+  <main
+    class="flex flex-col gap-2"
+  >
+    <h1>
+      Unlocking the Future:
+      <br />
+      
+		Your 
+      <span
+        class="accent-text"
+      >
+        DUSK
+      </span>
+       native Wallet
+    </h1>
+     
+    <div
+      class="flex flex-col gap-1"
+    >
+      <button
+        class="duk-button duk-button-button duk-icon-button-labeled secondary"
+        type="button"
+      >
+        <svg
+          class="duk-icon"
+          role="graphics-symbol"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M5,3C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V16.72C21.59,16.37 22,15.74 22,15V9C22,8.26 21.59,7.63 21,7.28V5A2,2 0 0,0 19,3H5M5,5H19V7H13A2,2 0 0,0 11,9V15A2,2 0 0,0 13,17H19V19H5V5M13,9H20V15H13V9M16,10.5A1.5,1.5 0 0,0 14.5,12A1.5,1.5 0 0,0 16,13.5A1.5,1.5 0 0,0 17.5,12A1.5,1.5 0 0,0 16,10.5Z"
+          />
+        </svg>
+        
+        <!--&lt;Icon&gt;-->
+         
+        <span>
+          Create a new wallet
+        </span>
+        
+      </button>
+      <!--&lt;Button&gt;-->
+       
+      <button
+        class="duk-button duk-button-button duk-icon-button-labeled tertiary"
+        type="button"
+      >
+        <svg
+          class="duk-icon"
+          role="graphics-symbol"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M21 18H15V15H13.3C12.2 17.4 9.7 19 7 19C3.1 19 0 15.9 0 12S3.1 5 7 5C9.7 5 12.2 6.6 13.3 9H24V15H21V18M17 16H19V13H22V11H11.9L11.7 10.3C11 8.3 9.1 7 7 7C4.2 7 2 9.2 2 12S4.2 17 7 17C9.1 17 11 15.7 11.7 13.7L11.9 13H17V16M7 15C5.3 15 4 13.7 4 12S5.3 9 7 9 10 10.3 10 12 8.7 15 7 15M7 11C6.4 11 6 11.4 6 12S6.4 13 7 13 8 12.6 8 12 7.6 11 7 11Z"
+          />
+        </svg>
+        
+        <!--&lt;Icon&gt;-->
+         
+        <span>
+          Restore wallet
+        </span>
+        
+      </button>
+      <!--&lt;Button&gt;-->
+    </div>
+  </main>
+  <!--&lt;+page&gt;-->
+</div>
+`;
