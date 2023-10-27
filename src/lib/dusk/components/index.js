@@ -1,6 +1,7 @@
 export { default as Anchor } from "./Anchor/Anchor.svelte";
 export { default as AnchorButton } from "./AnchorButton/AnchorButton.svelte";
 export { default as Button } from "./Button/Button.svelte";
+export { default as Card } from "./Card/Card.svelte";
 export { default as Icon } from "./Icon/Icon.svelte";
 export { default as Select } from "./Select/Select.svelte";
 export { default as Tabs } from "./Tabs/Tabs.svelte";
