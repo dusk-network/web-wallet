@@ -9,7 +9,9 @@
 	import Cards from "./Cards.svelte";
 	import IconButtons from "./IconButtons.svelte";
 	import LabeledButtons from "./LabeledButtons.svelte";
+	import ProgressBars from "./ProgressBars.svelte";
 	import Selects from "./Selects.svelte";
+	import Steppers from "./Steppers.svelte";
 	import Tabboxes from "./Tabboxes.svelte";
 	import Textboxes from "./Textboxes.svelte";
 	import Throbbers from "./Throbbers.svelte";
@@ -20,7 +22,9 @@
 		"Cards": Cards,
 		"Icon buttons": IconButtons,
 		"Labeled buttons": LabeledButtons,
+		"Progress bars": ProgressBars,
 		"Selects": Selects,
+		"Steppers": Steppers,
 		"Tabboxes": Tabboxes,
 		"Textboxes": Textboxes,
 		"Throbbers": Throbbers

@@ -17,4 +17,10 @@
 	--cornflower: #71b1ff;
 	--cornflower-dark: #0b79ff;
 	--cornflower-light: #a4cdff;
+
+	/* Status */
+	--success: #16DB93;
+	--warning: #FFCF23;
+	--error: #ED254E;
+	--info: #71B1FF;
 }
