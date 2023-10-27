@@ -18,8 +18,9 @@
 	},
 	"scripts": {
 		"build": "vite build",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
+		"checks": "npm run lint && npm run typecheck && npm test",
+		"typecheck": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
+		"typecheck:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
 		"dev": "vite dev",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
