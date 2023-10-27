@@ -6,9 +6,11 @@ export default defineConfig({
 	css: false,
 	plugins: [sveltekit()],
 	test: {
+		/** @see https://github.com/vitest-dev/vitest/issues/2834 */
+		alias: [{ find: /^svelte$/, replacement: "svelte/internal" }],
 		coverage: {
 			all: true,
-			exclude: ["**/*.d.ts"],
+			exclude: ["**/*.d.ts", "src/routes/components-showcase/**"],
 			include: ["src/**"]
 		},
 		environment: "jsdom",

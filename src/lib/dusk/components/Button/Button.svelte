@@ -27,13 +27,14 @@
 		type === "toggle" && active ? "duk-button-toggle__active" : "",
 		className
 	]);
-
 </script>
 
 <button
 	{...$$restProps}
 	class={classes}
 	on:click
+	on:mousedown
+	on:mouseup
 	type={type === "toggle" ? "button" : type}
 >
 	{#if icon?.position === "after"}

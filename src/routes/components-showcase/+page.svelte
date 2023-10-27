@@ -1,282 +1,74 @@
 <svelte:options immutable={true}/>
 
 <script>
-	import { mdiHome } from "@mdi/js";
-	import {
-		AnchorButton,
-		Button,
-		Select,
-		Textbox,
-		Throbber
-	} from "$lib/dusk/components";
+	import { fade } from "svelte/transition";
 
-	const someOptions = ["apple", "banana", "lemon", "a really big orange", "pear"];
+	import { Select } from "$lib/dusk/components";
+
+	import AnchorButtons from "./AnchorButtons.svelte";
+	import IconButtons from "./IconButtons.svelte";
+	import LabeledButtons from "./LabeledButtons.svelte";
+	import Selects from "./Selects.svelte";
+	import Tabboxes from "./Tabboxes.svelte";
+	import Textboxes from "./Textboxes.svelte";
+	import Throbbers from "./Throbbers.svelte";
+
+	/** @type {Record<string, import("svelte").ComponentType>} */
+	const componentsMap = {
+		"Anchor buttons": AnchorButtons,
+		"Icon buttons": IconButtons,
+		"Labeled buttons": LabeledButtons,
+		"Selects": Selects,
+		"Tabboxes": Tabboxes,
+		"Textboxes": Textboxes,
+		"Throbbers": Throbbers
+	};
+
+	const componentsOptions = Object.keys(componentsMap);
+
+	let selectedSection = componentsOptions[0];
 </script>
 
 <main>
-	<h1>COMPONENTS SHOWCASE</h1>
-	<section>
-		<Button
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-		<Button
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-		<Button
-			className="secondary"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-		<Button
-			className="secondary"
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-		<Button
-			className="tertiary"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-		<Button
-			className="tertiary"
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-	</section>
-	<section>
-		<Button
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-		<Button
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-		<Button
-			className="secondary"
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-		<Button
-			className="secondary"
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-		<Button
-			className="tertiary"
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-		<Button
-			className="tertiary"
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-	</section>
-	<section>
-		<Button
-			className="small"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-		<Button
-			className="small"
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-		<Button
-			className="secondary small"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-		<Button
-			className="secondary small"
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-		<Button
-			className="tertiary small"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-		<Button
-			className="tertiary small"
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Some text"
-		/>
-	</section>
-	<section>
-		<Button
-			className="small"
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-		<Button
-			className="small"
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-		<Button
-			className="secondary small"
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-		<Button
-			className="secondary small"
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-		<Button
-			className="tertiary small"
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-		<Button
-			className="tertiary small"
-			disabled={true}
-			icon={{ path: mdiHome }}
-			tabindex=""
-		/>
-	</section>
-	<section>
-		<AnchorButton
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-		<AnchorButton
-			disabled={true}
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-		<AnchorButton
-			className="secondary"
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-		<AnchorButton
-			className="secondary"
-			disabled={true}
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-		<AnchorButton
-			className="tertiary"
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-		<AnchorButton
-			className="tertiary"
-			disabled={true}
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-	</section>
-	<section>
-		<AnchorButton
-			className="small"
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-		<AnchorButton
-			className="small"
-			disabled={true}
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-		<AnchorButton
-			className="secondary small"
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-		<AnchorButton
-			className="secondary small"
-			disabled={true}
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-		<AnchorButton
-			className="tertiary small"
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-		<AnchorButton
-			className="tertiary small"
-			disabled={true}
-			href="http://example.com"
-			icon={{ path: mdiHome }}
-			tabindex=""
-			text="Anchor text"
-		/>
-	</section>
-	<section>
-		<Select options={someOptions} tabindex=""/>
-		<Select disabled={true} options={someOptions} tabindex=""/>
-		<Textbox tabindex="" value="Some text here"/>
-		<Textbox tabindex="" placeholder="placeholder text"/>
-		<Textbox disabled={true} tabindex="" value="Some text here"/>
-		<Textbox disabled={true} tabindex="" placeholder="placeholder text"/>
-		<Throbber/>
-	</section>
+	<header>
+		<h1>COMPONENTS SHOWCASE</h1>
+		<Select options={componentsOptions} bind:value={selectedSection}/>
+	</header>
+
+	{#key selectedSection}
+		<div in:fade>
+			<svelte:component this={componentsMap[selectedSection]}/>
+		</div>
+	{/key}
 </main>
 
 <style lang="postcss">
 	main {
-		overflow-y: auto;
-	}
-
-	main > section {
+		overflow: hidden;
 		display: flex;
-		align-items: center;
-		justify-content: space-around;
-		flex-wrap: wrap;
-		gap: 1em;
-		margin: 1.5em 0;
+		flex-direction: column;
+
+		& > header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 1em;
+			padding: .5em;
+		}
+
+		& > div {
+			flex: 1;
+			margin-top: 2em;
+			overflow-y: auto;
+
+			& > :global(*) {
+				display: flex;
+				align-items: center;
+				justify-content: space-around;
+				flex-wrap: wrap;
+				gap: 1em;
+				margin: 1.5em 0;
+			}
+		}
 	}
 </style>

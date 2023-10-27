@@ -3,10 +3,10 @@
 <script>
 
 	/**
-   * When a target attribute is used the component automatically
-   * adds the "noopener" and "noreferrer" strings to the `rel` attribute.
-   * @see https://mathiasbynens.github.io/rel-noopener/
-   */
+	 * When a target attribute is used the component automatically
+	 * adds the "noopener" and "noreferrer" strings to the `rel` attribute.
+	 * @see https://mathiasbynens.github.io/rel-noopener/
+	 */
 
 	import { makeClassName } from "$lib/dusk/string";
 
@@ -27,10 +27,7 @@
 
 <a
 	{...$$restProps}
-	class={makeClassName([
-		"duk-anchor",
-		className
-	])}
+	class={makeClassName(["duk-anchor", className])}
 	{href}
 	rel={target ? makeClassName([rel, "noopener", "noreferrer"]) : rel}
 	{target}

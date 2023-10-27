@@ -60,7 +60,8 @@ module.exports = {
 					"@sveltejs/kit": "node_modules/@sveltejs/kit/src/exports/index.js",
 					"@testing-library/svelte": "node_modules/@testing-library/svelte/src/index.js",
 					"svelte/motion": "node_modules/svelte/src/runtime/motion/index.js",
-					"svelte/store": "node_modules/svelte/src/runtime/store/index.js"
+					"svelte/store": "node_modules/svelte/src/runtime/store/index.js",
+					"svelte/transition": "node_modules/svelte/src/runtime/transition/index.js"
 				},
 				"extensions": [".cjs", ".js", ".json", ".svelte"]
 			}
