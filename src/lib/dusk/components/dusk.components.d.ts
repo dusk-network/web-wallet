@@ -3,6 +3,8 @@ type ButtonIconProp = {
   position?: "after" | "before"
 }
 
+type ButtonVariant = "primary" | "secondary" | "tertiary" | "text";
+
 type GroupedSelectOptions = Record<string, SelectOption[] | string[]>;
 
 type SelectOption = {
