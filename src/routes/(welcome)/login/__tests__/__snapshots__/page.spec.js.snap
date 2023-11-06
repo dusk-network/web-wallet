@@ -3,24 +3,24 @@
 exports[`Login > should render the login page 1`] = `
 <div>
   <main
-    class="flex flex-col gap-2 s-BUJUVtHZo5xi"
+    class="flex flex-col gap-2 s-diEOsynXV9Ac"
   >
     <h1
-      class="s-BUJUVtHZo5xi"
+      class="s-diEOsynXV9Ac"
     >
       Unleash 
       <span
-        class="accent-text s-BUJUVtHZo5xi"
+        class="accent-text s-diEOsynXV9Ac"
       >
         RWA
       </span>
        and
       <br
-        class="s-BUJUVtHZo5xi"
+        class="s-diEOsynXV9Ac"
       />
        
       <span
-        class="accent-text s-BUJUVtHZo5xi"
+        class="accent-text s-diEOsynXV9Ac"
       >
         Decentralized Finance
       </span>
@@ -84,10 +84,10 @@ exports[`Login > should render the login page 1`] = `
   </main>
    
   <footer
-    class="s-BUJUVtHZo5xi"
+    class="s-diEOsynXV9Ac"
   >
     <p
-      class="s-BUJUVtHZo5xi"
+      class="s-diEOsynXV9Ac"
     >
       Need help? Contact 
       <a

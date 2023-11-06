@@ -1,7 +1,7 @@
 <svelte:options immutable={true}/>
 
 <script>
-	import { Button } from "$lib/dusk/components";
+	import { AnchorButton } from "$lib/dusk/components";
 	import { mdiKeyOutline, mdiWalletOutline } from "@mdi/js";
 </script>
 
@@ -12,15 +12,17 @@
 	</h1>
 
 	<div class="flex flex-col gap-1">
-		<Button
+		<AnchorButton
 			icon={{ path: mdiWalletOutline }}
 			className="secondary"
 			text="Create a new wallet"
+			href="/setup/create"
 		/>
-		<Button
+		<AnchorButton
 			icon={{ path: mdiKeyOutline }}
 			className="tertiary"
 			text="Restore wallet"
+			href="/setup/restore"
 		/>
 	</div>
 </main>

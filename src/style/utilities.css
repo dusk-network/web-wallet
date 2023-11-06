@@ -18,6 +18,10 @@
 	gap: 2em;
 }
 
+.flex-1 {
+	flex: 1;
+}
+
 /* Colours */
 .accent-text {
 	color: var(--secondary-color);
