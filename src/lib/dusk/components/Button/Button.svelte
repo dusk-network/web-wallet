@@ -14,6 +14,9 @@
 	/** @type {ButtonIconProp | Undefined} */
 	export let icon = undefined;
 
+	/** @type {ButtonVariant | Undefined } */
+	export let variant = undefined;
+
 	/** @type {String | Undefined} */
 	export let text = undefined;
 
@@ -25,6 +28,7 @@
 		`duk-button-${type}`,
 		icon && text ? "duk-icon-button-labeled" : icon ? "duk-icon-button" : "",
 		type === "toggle" && active ? "duk-button-toggle__active" : "",
+		variant,
 		className
 	]);
 </script>

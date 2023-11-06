@@ -98,3 +98,19 @@
 	border-color: var(--control-tertiary-border-color-hover);
 	color: var(--control-tertiary-text-color-hover);
 }
+
+.duk-button.text, .duk-anchor-button.text {
+	background-color: unset;
+	text-transform: none;
+	font-weight: 700;
+	text-align: left;
+	padding: 0;
+	line-height: 1.5;
+}
+
+.duk-button.text:enabled:hover,
+.duk-anchor-button.text:not(.duk-anchor-button__disabled):hover,
+.duk-anchor-button.text:not(.duk-anchor-button__disabled):active  {
+	background-color: inherit;
+	color: var(--secondary-color);
+}
