@@ -60,4 +60,12 @@
 	/* Progress-related components (Stepper, Progress Bar, etc */
 	--progress-bar-height: .3125em;
 	--progress-bg-color: var(--primary-color);
-	--progress-filler-color: var(--success-color)}
+	--progress-filler-color: var(--success-color);
+
+	/* Checkbox control */
+	--checkbox-control-size: 1.2em;
+	--checkbox-control-border-radius: 20%;
+	--checkbox-control-border-width: .20em;
+	--checkbox-control-border-color: var(--smokey-black);
+	--checkbox-control-checked-bg-color: var(--smokey-black);
+}
