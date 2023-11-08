@@ -15,6 +15,7 @@
 	import Tabboxes from "./Tabboxes.svelte";
 	import Textboxes from "./Textboxes.svelte";
 	import Throbbers from "./Throbbers.svelte";
+	import Tooltips from "./Tooltips.svelte";
 
 	/** @type {Record<string, import("svelte").ComponentType>} */
 	const componentsMap = {
@@ -27,7 +28,8 @@
 		"Steppers": Steppers,
 		"Tabboxes": Tabboxes,
 		"Textboxes": Textboxes,
-		"Throbbers": Throbbers
+		"Throbbers": Throbbers,
+		"Tooltips": Tooltips
 	};
 
 	const componentsOptions = Object.keys(componentsMap);
@@ -67,7 +69,7 @@
 			margin-top: 2em;
 			overflow-y: auto;
 
-			& > :global(*) {
+			& > :global(section) {
 				display: flex;
 				align-items: center;
 				justify-content: space-around;
