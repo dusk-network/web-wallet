@@ -10,7 +10,7 @@ import Setup from "../+page.svelte";
 describe("Setup", () => {
 	afterEach(cleanup);
 
-	it("should render the setup page", () => {
+	it("should render the Setup page", () => {
 		const { container } = render(Setup, {});
 
 		expect(container.firstChild).toMatchSnapshot();

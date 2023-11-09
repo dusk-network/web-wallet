@@ -1,0 +1,76 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Restore > should render the Terms of Service step of the Restore flow 1`] = `
+<div>
+  <div
+    class="onboarding_wrapper s-03q11ctojZzO"
+  >
+    <main
+      class="flex flex-col flex-1 s-c41QPMu_i3CH"
+    >
+      <section
+        class="duk-card"
+      >
+        <header
+          class="duk-card__header"
+        >
+           
+          <h2>
+            Terms & Privacy Policy
+          </h2>
+        </header>
+         
+        <div
+          class="flex flex-col gap-1 s-c41QPMu_i3CH"
+        >
+          <p
+            class="s-c41QPMu_i3CH"
+          >
+            Our 
+            <a
+              class="duk-anchor"
+              href="#"
+            >
+              Terms & Privacy Policy
+            </a>
+            <!--&lt;Anchor&gt;-->
+             govern your use of our services,
+			including data handling and user responsibilities.
+			Your privacy and security are our top priorities.
+          </p>
+           
+          <div
+            class="flex gap-1 w-100 s-c41QPMu_i3CH"
+          >
+            <a
+              class="duk-anchor duk-anchor-button tertiary flex-1"
+              href="/setup"
+            >
+              <span>
+                Cancel
+              </span>
+              
+            </a>
+            <!--&lt;Anchor&gt;-->
+            <!--&lt;AnchorButton&gt;-->
+             
+            <button
+              class="duk-button duk-button-button secondary flex-1"
+              type="button"
+            >
+              <span>
+                Accept
+              </span>
+            </button>
+            <!--&lt;Button&gt;-->
+          </div>
+        </div>
+      </section>
+      <!--&lt;Card&gt;-->
+    </main>
+    <!--&lt;TermsOfService&gt;-->
+  </div>
+  
+  <!--&lt;+page&gt;-->
+</div>
+`;

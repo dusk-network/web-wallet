@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Setup > should render the setup page 1`] = `
+exports[`Setup > should render the Setup page 1`] = `
 <div>
   <main
     class="flex flex-col gap-2"
@@ -21,9 +21,9 @@ exports[`Setup > should render the setup page 1`] = `
     <div
       class="flex flex-col gap-1"
     >
-      <button
-        class="duk-button duk-button-button duk-icon-button-labeled secondary"
-        type="button"
+      <a
+        class="duk-anchor duk-anchor-button duk-icon-button-labeled secondary"
+        href="/setup/create"
       >
         <svg
           class="duk-icon"
@@ -41,12 +41,14 @@ exports[`Setup > should render the setup page 1`] = `
           Create a new wallet
         </span>
         
-      </button>
-      <!--&lt;Button&gt;-->
+        
+      </a>
+      <!--&lt;Anchor&gt;-->
+      <!--&lt;AnchorButton&gt;-->
        
-      <button
-        class="duk-button duk-button-button duk-icon-button-labeled tertiary"
-        type="button"
+      <a
+        class="duk-anchor duk-anchor-button duk-icon-button-labeled tertiary"
+        href="/setup/restore"
       >
         <svg
           class="duk-icon"
@@ -64,8 +66,10 @@ exports[`Setup > should render the setup page 1`] = `
           Restore wallet
         </span>
         
-      </button>
-      <!--&lt;Button&gt;-->
+        
+      </a>
+      <!--&lt;Anchor&gt;-->
+      <!--&lt;AnchorButton&gt;-->
     </div>
   </main>
   <!--&lt;+page&gt;-->
