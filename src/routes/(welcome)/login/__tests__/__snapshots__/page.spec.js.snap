@@ -27,13 +27,13 @@ exports[`Login > should render the login page 1`] = `
     </h1>
      
     <section
-      class="duk-card flex flex-col gap-1"
+      class="dusk-card flex flex-col gap-1"
     >
       <header
-        class="duk-card__header"
+        class="dusk-card__header"
       >
         <svg
-          class="duk-icon duk-card__icon"
+          class="dusk-icon dusk-card__icon"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >
@@ -50,7 +50,7 @@ exports[`Login > should render the login page 1`] = `
       </header>
        
       <input
-        class="duk-textbox duk-textbox-password"
+        class="dusk-textbox dusk-textbox-password"
         placeholder="Password"
         required=""
         type="password"
@@ -59,7 +59,7 @@ exports[`Login > should render the login page 1`] = `
       <!--&lt;Textbox&gt;-->
        
       <button
-        class="duk-button duk-button-button secondary"
+        class="dusk-button dusk-button-button secondary"
         type="button"
       >
         <span>
@@ -69,7 +69,7 @@ exports[`Login > should render the login page 1`] = `
       <!--&lt;Button&gt;-->
        
       <a
-        class="duk-anchor duk-anchor-button text"
+        class="dusk-anchor dusk-anchor-button text"
         href="#"
       >
         <span>
@@ -91,7 +91,7 @@ exports[`Login > should render the login page 1`] = `
     >
       Need help? Contact 
       <a
-        class="duk-anchor"
+        class="dusk-anchor"
         href="#"
       >
         DUSK support

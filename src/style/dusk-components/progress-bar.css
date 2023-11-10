@@ -1,4 +1,4 @@
-.duk-progress-bar {
+.dusk-progress-bar {
 	width: 100%;
 	height: var(--progress-bar-height);
 	background-color: var(--progress-bg-color);
@@ -6,13 +6,13 @@
 	overflow-x: hidden;
 }
 
-.duk-progress-bar__filler {
+.dusk-progress-bar__filler {
 	height: 100%;
 	background-color: var(--progress-filler-color);
 	position: relative;
 }
 
-.duk-progress-bar__filler--undetermined {
+.dusk-progress-bar__filler--undetermined {
 	width: 20%;
 	animation: progressBarAnimation 2s infinite;
 }

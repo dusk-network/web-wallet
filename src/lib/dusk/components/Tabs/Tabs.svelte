@@ -83,7 +83,7 @@
 		const tabs = tabsList.querySelectorAll("[role='tab']");
 		const step = event
 			.currentTarget
-			.matches(".duk-tab-scroll-button:first-of-type") ? -1 : 1;
+			.matches(".dusk-tab-scroll-button:first-of-type") ? -1 : 1;
 		const isTabFullyVisible = isTabSideVisible(step === 1 ? "right" : "left");
 
 		let loops = tabs.length;
@@ -102,7 +102,7 @@
 		if (event.buttons === 1) {
 			const amount = event
 				.currentTarget
-				.matches(".duk-tab-scroll-button:first-of-type") ? -5 : 5;
+				.matches(".dusk-tab-scroll-button:first-of-type") ? -5 : 5;
 
 			keepScrollingTabsBy(amount);
 		}
@@ -188,10 +188,10 @@
 
 <div
 	{...$$restProps}
-	class={makeClassName(["duk-tabs", className])}
+	class={makeClassName(["dusk-tabs", className])}
 >
 	<Button
-		className="duk-tab-scroll-button"
+		className="dusk-tab-scroll-button"
 		disabled={!canScrollLeft}
 		hidden={!canScroll}
 		icon={{ path: mdiChevronLeft }}
@@ -202,7 +202,7 @@
 	/>
 	<ul
 		bind:this={tabsList}
-		class="duk-tabs-list"
+		class="dusk-tabs-list"
 		on:scroll={updateScrollStatus}
 		on:touchmove|preventDefault={handleTouchMove}
 		on:touchstart={handleTouchStart}
@@ -213,7 +213,7 @@
 			{@const { icon, id, label } = item}
 			<li
 				aria-selected={id === selectedTab}
-				class={`duk-tab-item${id === selectedTab ? " duk-tab-item__selected" : ""}`}
+				class={`dusk-tab-item${id === selectedTab ? " dusk-tab-item__selected" : ""}`}
 				data-tabid={id}
 				on:click={handleTabClick}
 				on:focusin={handleTabFocusin}
@@ -223,22 +223,22 @@
 			>
 				{#if icon?.position === "after"}
 					{#if label}
-						<span class="duk-tab-label">{label}</span>
+						<span class="dusk-tab-label">{label}</span>
 					{/if}
 					<Icon path={icon.path}/>
 				{:else if icon}
 					<Icon path={icon.path}/>
 					{#if label}
-						<span class="duk-tab-label">{label}</span>
+						<span class="dusk-tab-label">{label}</span>
 					{/if}
 				{:else}
-					<span class="duk-tab-label">{label ?? id}</span>
+					<span class="dusk-tab-label">{label ?? id}</span>
 				{/if}
 			</li>
 		{/each}
 	</ul>
 	<Button
-		className="duk-tab-scroll-button"
+		className="dusk-tab-scroll-button"
 		disabled={!canScrollRight}
 		hidden={!canScroll}
 		icon={{ path: mdiChevronRight }}

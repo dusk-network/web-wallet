@@ -1,4 +1,4 @@
-.duk-tooltip {
+.dusk-tooltip {
 	position: fixed;
 	display: inline-block;
 	width: max-content;
@@ -7,6 +7,6 @@
 	z-index: 1;
 }
 
-.duk-tooltip[aria-hidden="true"] {
+.dusk-tooltip[aria-hidden="true"] {
 	visibility: hidden;
 }

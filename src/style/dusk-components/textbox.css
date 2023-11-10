@@ -1,4 +1,4 @@
-.duk-textbox {
+.dusk-textbox {
   	font-size: var(--control-font-size);
 	padding: var(--control-padding);
 	background-color: var(--control-bg-color);
@@ -8,15 +8,15 @@
 	border-width: var(--control-border-size);
 }
 
-.duk-textbox:disabled,
-.duk-textbox::placeholder {
+.dusk-textbox:disabled,
+.dusk-textbox::placeholder {
 	opacity: .5;
 }
 
-.duk-textbox:read-only {
+.dusk-textbox:read-only {
 	outline: 0 none;
 }
 
-.duk-textbox.duk-textbox-multiline {
+.dusk-textbox.dusk-textbox-multiline {
 	line-height: 1.3;
 }

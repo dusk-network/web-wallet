@@ -1,34 +1,34 @@
-.duk-tabs,
-.duk-button.duk-icon-button.duk-tab-scroll-button {
+.dusk-tabs,
+.dusk-button.dusk-icon-button.dusk-tab-scroll-button {
 	color: var(--on-surface-color);
 }
 
-.duk-button.duk-icon-button.duk-tab-scroll-button {
+.dusk-button.dusk-icon-button.dusk-tab-scroll-button {
 	background-color: transparent;
 	padding: 0;
 	border: 0 !important;
 }
 
-.duk-button.duk-icon-button.duk-tab-scroll-button:enabled:focus {
+.dusk-button.dusk-icon-button.dusk-tab-scroll-button:enabled:focus {
 	box-shadow: none;
 }
 
-.duk-button.duk-icon-button.duk-tab-scroll-button > .duk-icon {
+.dusk-button.dusk-icon-button.dusk-tab-scroll-button > .dusk-icon {
 	width: var(--control-icon-size);
 	height: var(--control-icon-size);
 }
 
-.duk-button.duk-icon-button.duk-tab-scroll-button:enabled:hover {
+.dusk-button.dusk-icon-button.dusk-tab-scroll-button:enabled:hover {
 	transform: scale(1.2, 1.2);
 	color: var(--secondary-color);
 }
 
-.duk-button.duk-icon-button.duk-tab-scroll-button:first-of-type:enabled:active,
-.duk-button.duk-icon-button.duk-tab-scroll-button:last-of-type:enabled:active {
+.dusk-button.dusk-icon-button.dusk-tab-scroll-button:first-of-type:enabled:active,
+.dusk-button.dusk-icon-button.dusk-tab-scroll-button:last-of-type:enabled:active {
 	transform: scale(.9);
 }
 
-.duk-tab-item {
+.dusk-tab-item {
 	border-radius: var(--control-border-radius-size) var(--control-border-radius-size) 0 0;
 	font-size: var(--control-font-size);
 	padding: var(--control-padding);
@@ -39,28 +39,28 @@
 	transition-timing-function: ease-in-out;
 }
 
-.duk-tab-item, .duk-tab-item > * {
+.dusk-tab-item, .dusk-tab-item > * {
 	transition-delay: 0s;
 	transition-duration: .3s;
 	transition-property: background-color, border-color, color, transform;
 	transition-timing-function: ease-in-out;
 }
 
-.duk-tab-item:focus-visible {
+.dusk-tab-item:focus-visible {
 	color: var(--secondary-color);
 	outline: 0 none;
 }
 
-.duk-tab-item:hover:not(.duk-tab-item__selected), .duk-tab-item:focus-visible > * {
+.dusk-tab-item:hover:not(.dusk-tab-item__selected), .dusk-tab-item:focus-visible > * {
 	transform: translateY(-.3em);
 }
 
-.duk-tab-item__selected {
+.dusk-tab-item__selected {
 	background-color: var(--surface-color);
 	color: var(--secondary-color);
 }
 
-.duk-tab-item > .duk-icon:only-child {
+.dusk-tab-item > .dusk-icon:only-child {
 	width: var(--control-icon-size);
 	height: var(--control-icon-size);
 }

@@ -1,6 +1,6 @@
-.duk-button,
-.duk-anchor-button,
-.duk-anchor-button:visited {
+.dusk-button,
+.dusk-anchor-button,
+.dusk-anchor-button:visited {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -21,27 +21,27 @@
 	transition-timing-function: ease-in-out;
 }
 
-.duk-button:not(.duk-anchor-button) {
+.dusk-button:not(.dusk-anchor-button) {
 	cursor: default;
 }
 
-.duk-button:disabled,
-.duk-anchor-button.duk-anchor-button__disabled,
-.duk-anchor-button.duk-anchor-button__disabled:hover,
-.duk-anchor-button.duk-anchor-button__disabled:visited {
+.dusk-button:disabled,
+.dusk-anchor-button.dusk-anchor-button__disabled,
+.dusk-anchor-button.dusk-anchor-button__disabled:hover,
+.dusk-anchor-button.dusk-anchor-button__disabled:visited {
 	opacity: .5;
 }
 
-.duk-button:enabled:hover,
-.duk-anchor-button:not(.duk-anchor-button__disabled):active,
-.duk-anchor-button:not(.duk-anchor-button__disabled):hover {
+.dusk-button:enabled:hover,
+.dusk-anchor-button:not(.dusk-anchor-button__disabled):active,
+.dusk-anchor-button:not(.dusk-anchor-button__disabled):hover {
 	background-color: var(--control-bg-color-hover);
 	border-color: var(--control-border-color-hover);
 	color: var(--control-text-color-hover);
 }
 
-.duk-button > span,
-.duk-anchor-button > span {
+.dusk-button > span,
+.dusk-anchor-button > span {
 	flex: 1;
 	display: inline-block;
 	white-space: nowrap;
@@ -49,57 +49,57 @@
 	text-overflow: ellipsis;
 }
 
-.duk-button:enabled:active,
-.duk-anchor-button:not(.duk-anchor-button__disabled):active {
+.dusk-button:enabled:active,
+.dusk-anchor-button:not(.dusk-anchor-button__disabled):active {
   transform: scale(.98, .98);
 }
 
-.duk-icon-button:not(.duk-icon-button-labeled):enabled:active,
-.duk-button-toggle.duk-button-toggle__active {
+.dusk-icon-button:not(.dusk-icon-button-labeled):enabled:active,
+.dusk-button-toggle.dusk-button-toggle__active {
   transform: scale(.9, .9);
 }
 
-.duk-button.small,
-.duk-anchor-button.small,
-.duk-anchor-button.small:visited {
+.dusk-button.small,
+.dusk-anchor-button.small,
+.dusk-anchor-button.small:visited {
 	font-size: var(--control-small-font-size);
 	gap: calc(var(--control-small-font-size) / 2);
 	padding: var(--control-small-padding);
 }
 
-.duk-button.secondary,
-.duk-anchor-button.secondary,
-.duk-anchor-button.secondary:visited {
+.dusk-button.secondary,
+.dusk-anchor-button.secondary,
+.dusk-anchor-button.secondary:visited {
 	background-color: var(--control-secondary-bg-color);
 	border-color: var(--control-secondary-border-color);
 	color: var(--control-secondary-text-color);
 }
 
-.duk-button.secondary:enabled:hover,
-.duk-anchor-button.secondary:not(.duk-anchor-button__disabled):active,
-.duk-anchor-button.secondary:not(.duk-anchor-button__disabled):hover {
+.dusk-button.secondary:enabled:hover,
+.dusk-anchor-button.secondary:not(.dusk-anchor-button__disabled):active,
+.dusk-anchor-button.secondary:not(.dusk-anchor-button__disabled):hover {
 	background-color: var(--control-secondary-bg-color-hover);
 	border-color: var(--control-secondary-border-color-hover);
 	color: var(--control-secondary-text-color-hover);
 }
 
-.duk-button.tertiary,
-.duk-anchor-button.tertiary,
-.duk-anchor-button.tertiary:visited {
+.dusk-button.tertiary,
+.dusk-anchor-button.tertiary,
+.dusk-anchor-button.tertiary:visited {
 	background-color: var(--control-tertiary-bg-color);
 	border-color: var(--control-tertiary-border-color);
 	color: var(--control-tertiary-text-color);
 }
 
-.duk-button.tertiary:enabled:hover,
-.duk-anchor-button.tertiary:not(.duk-anchor-button__disabled):active,
-.duk-anchor-button.tertiary:not(.duk-anchor-button__disabled):hover {
+.dusk-button.tertiary:enabled:hover,
+.dusk-anchor-button.tertiary:not(.dusk-anchor-button__disabled):active,
+.dusk-anchor-button.tertiary:not(.dusk-anchor-button__disabled):hover {
 	background-color: var(--control-tertiary-bg-color-hover);
 	border-color: var(--control-tertiary-border-color-hover);
 	color: var(--control-tertiary-text-color-hover);
 }
 
-.duk-button.text, .duk-anchor-button.text {
+.dusk-button.text, .dusk-anchor-button.text {
 	background-color: unset;
 	text-transform: none;
 	font-weight: 700;
@@ -108,9 +108,9 @@
 	line-height: 1.5;
 }
 
-.duk-button.text:enabled:hover,
-.duk-anchor-button.text:not(.duk-anchor-button__disabled):hover,
-.duk-anchor-button.text:not(.duk-anchor-button__disabled):active  {
+.dusk-button.text:enabled:hover,
+.dusk-anchor-button.text:not(.dusk-anchor-button__disabled):hover,
+.dusk-anchor-button.text:not(.dusk-anchor-button__disabled):active  {
 	background-color: inherit;
 	color: var(--secondary-color);
 }

@@ -3,30 +3,30 @@
 exports[`Stepper > renders the Stepper component with a completed step 1`] = `
 <div>
   <div
-    class="duk-stepper"
+    class="dusk-stepper"
     role="tablist"
   >
     <div
-      class="duk-stepper__progress_bar"
+      class="dusk-stepper__progress_bar"
     >
       <div
-        class="duk-stepper__progress_filler"
+        class="dusk-stepper__progress_filler"
         style="width: 100%;"
       />
     </div>
      
     <div
-      class="duk-stepper__steps"
+      class="dusk-stepper__steps"
     >
       <div
         aria-disabled="true"
         aria-selected="false"
-        class="duk-stepper__step duk-stepper__step--processed"
+        class="dusk-stepper__step dusk-stepper__step--processed"
       />
       <div
         aria-disabled="true"
         aria-selected="true"
-        class="duk-stepper__step duk-stepper__step--processed"
+        class="dusk-stepper__step dusk-stepper__step--processed"
       />
     </div>
   </div>
@@ -37,45 +37,45 @@ exports[`Stepper > renders the Stepper component with a completed step 1`] = `
 exports[`Stepper > renders the Stepper component with five steps 1`] = `
 <div>
   <div
-    class="duk-stepper"
+    class="dusk-stepper"
     role="tablist"
   >
     <div
-      class="duk-stepper__progress_bar"
+      class="dusk-stepper__progress_bar"
     >
       <div
-        class="duk-stepper__progress_filler"
+        class="dusk-stepper__progress_filler"
         style="width: 0%;"
       />
     </div>
      
     <div
-      class="duk-stepper__steps"
+      class="dusk-stepper__steps"
     >
       <div
         aria-disabled="true"
         aria-selected="true"
-        class="duk-stepper__step duk-stepper__step--processed"
+        class="dusk-stepper__step dusk-stepper__step--processed"
       />
       <div
         aria-disabled="true"
         aria-selected="false"
-        class="duk-stepper__step"
+        class="dusk-stepper__step"
       />
       <div
         aria-disabled="true"
         aria-selected="false"
-        class="duk-stepper__step"
+        class="dusk-stepper__step"
       />
       <div
         aria-disabled="true"
         aria-selected="false"
-        class="duk-stepper__step"
+        class="dusk-stepper__step"
       />
       <div
         aria-disabled="true"
         aria-selected="false"
-        class="duk-stepper__step"
+        class="dusk-stepper__step"
       />
     </div>
   </div>
@@ -86,45 +86,45 @@ exports[`Stepper > renders the Stepper component with five steps 1`] = `
 exports[`Stepper > renders the Stepper component with five steps, with the third one being active, and the first two – completed 1`] = `
 <div>
   <div
-    class="duk-stepper"
+    class="dusk-stepper"
     role="tablist"
   >
     <div
-      class="duk-stepper__progress_bar"
+      class="dusk-stepper__progress_bar"
     >
       <div
-        class="duk-stepper__progress_filler"
+        class="dusk-stepper__progress_filler"
         style="width: 75%;"
       />
     </div>
      
     <div
-      class="duk-stepper__steps"
+      class="dusk-stepper__steps"
     >
       <div
         aria-disabled="true"
         aria-selected="false"
-        class="duk-stepper__step duk-stepper__step--processed"
+        class="dusk-stepper__step dusk-stepper__step--processed"
       />
       <div
         aria-disabled="true"
         aria-selected="false"
-        class="duk-stepper__step duk-stepper__step--processed"
+        class="dusk-stepper__step dusk-stepper__step--processed"
       />
       <div
         aria-disabled="true"
         aria-selected="false"
-        class="duk-stepper__step duk-stepper__step--processed"
+        class="dusk-stepper__step dusk-stepper__step--processed"
       />
       <div
         aria-disabled="true"
         aria-selected="true"
-        class="duk-stepper__step duk-stepper__step--processed"
+        class="dusk-stepper__step dusk-stepper__step--processed"
       />
       <div
         aria-disabled="true"
         aria-selected="false"
-        class="duk-stepper__step"
+        class="dusk-stepper__step"
       />
     </div>
   </div>
@@ -135,30 +135,30 @@ exports[`Stepper > renders the Stepper component with five steps, with the third
 exports[`Stepper > renders the Stepper component with two steps 1`] = `
 <div>
   <div
-    class="duk-stepper"
+    class="dusk-stepper"
     role="tablist"
   >
     <div
-      class="duk-stepper__progress_bar"
+      class="dusk-stepper__progress_bar"
     >
       <div
-        class="duk-stepper__progress_filler"
+        class="dusk-stepper__progress_filler"
         style="width: 0%;"
       />
     </div>
      
     <div
-      class="duk-stepper__steps"
+      class="dusk-stepper__steps"
     >
       <div
         aria-disabled="true"
         aria-selected="true"
-        class="duk-stepper__step duk-stepper__step--processed"
+        class="dusk-stepper__step dusk-stepper__step--processed"
       />
       <div
         aria-disabled="true"
         aria-selected="false"
-        class="duk-stepper__step"
+        class="dusk-stepper__step"
       />
     </div>
   </div>

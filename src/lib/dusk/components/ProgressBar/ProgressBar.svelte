@@ -4,13 +4,13 @@
 	export let currentPercentage = undefined;
 </script>
 
-<div role="progressbar" class="duk-progress-bar">
+<div role="progressbar" class="dusk-progress-bar">
 	<div
 		style={currentPercentage !== undefined
 			? `width: ${currentPercentage}%`
 			: undefined}
-		class:duk-progress-bar__filler--undetermined={currentPercentage
+		class:dusk-progress-bar__filler--undetermined={currentPercentage
 			=== undefined}
-		class="duk-progress-bar__filler"
+		class="dusk-progress-bar__filler"
 	/>
 </div>

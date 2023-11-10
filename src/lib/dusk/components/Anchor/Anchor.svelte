@@ -27,7 +27,7 @@
 
 <a
 	{...$$restProps}
-	class={makeClassName(["duk-anchor", className])}
+	class={makeClassName(["dusk-anchor", className])}
 	{href}
 	rel={target ? makeClassName([rel, "noopener", "noreferrer"]) : rel}
 	{target}

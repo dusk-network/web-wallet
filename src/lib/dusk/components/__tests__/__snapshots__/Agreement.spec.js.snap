@@ -3,10 +3,10 @@
 exports[`Agreement > renders the Agreement component 1`] = `
 <div>
   <div
-    class="duk-agreement"
+    class="dusk-agreement"
   >
     <input
-      class="duk-checkbox"
+      class="dusk-checkbox"
       id="test"
       name="test"
       tabindex="0"
@@ -15,7 +15,7 @@ exports[`Agreement > renders the Agreement component 1`] = `
     <!--&lt;Checkbox&gt;-->
      
     <label
-      class="duk-agreement__label"
+      class="dusk-agreement__label"
       for="test"
     >
       I agree

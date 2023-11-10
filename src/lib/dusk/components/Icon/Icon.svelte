@@ -20,7 +20,7 @@
 	/** @type {String} */
 	let classes;
 
-	$: classes = makeClassName(["duk-icon", className]);
+	$: classes = makeClassName(["dusk-icon", className]);
 </script>
 
 {#if isInStack}

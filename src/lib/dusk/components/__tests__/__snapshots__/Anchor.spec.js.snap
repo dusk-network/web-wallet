@@ -2,7 +2,7 @@
 
 exports[`Anchor > should add "noopener" and "noreferrer" values to the rel attribute if a target is used 1`] = `
 <a
-  class="duk-anchor"
+  class="dusk-anchor"
   href="https://example.com"
   rel="external noopener noreferrer"
   target="_blank"
@@ -15,7 +15,7 @@ exports[`Anchor > should add "noopener" and "noreferrer" values to the rel attri
 
 exports[`Anchor > should pass additional class names and attributes to the rendered element 1`] = `
 <a
-  class="duk-anchor foo bar"
+  class="dusk-anchor foo bar"
   href="https://dusk.network"
   title="Some title"
 >
@@ -27,7 +27,7 @@ exports[`Anchor > should pass additional class names and attributes to the rende
 
 exports[`Anchor > should render the Anchor component 1`] = `
 <a
-  class="duk-anchor"
+  class="dusk-anchor"
   href="https://example.com"
 >
   <span>

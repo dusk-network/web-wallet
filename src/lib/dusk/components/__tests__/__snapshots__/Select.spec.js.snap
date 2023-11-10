@@ -2,7 +2,7 @@
 
 exports[`Select > should accept a grouped object as \`options\` and create option groups 1`] = `
 <select
-  class="duk-select"
+  class="dusk-select"
 >
   <optgroup
     label="Group one"
@@ -53,7 +53,7 @@ exports[`Select > should accept a grouped object as \`options\` and create optio
 
 exports[`Select > should accept an array of objects as options 1`] = `
 <select
-  class="duk-select"
+  class="dusk-select"
 >
   <option
     value="1"
@@ -87,7 +87,7 @@ exports[`Select > should accept an array of objects as options 1`] = `
 
 exports[`Select > should accept an array of string as values of a grouped object 1`] = `
 <select
-  class="duk-select"
+  class="dusk-select"
 >
   <optgroup
     label="Group one"
@@ -149,7 +149,7 @@ exports[`Select > should accept an array of string as values of a grouped object
 
 exports[`Select > should accept an array of strings as \`options\` and use each string as both label and value 1`] = `
 <select
-  class="duk-select"
+  class="dusk-select"
 >
   <option
     value="one"
@@ -182,7 +182,7 @@ exports[`Select > should accept an array of strings as \`options\` and use each 
 
 exports[`Select > should accept an empty string as label and use it instead of falling back to the value 1`] = `
 <select
-  class="duk-select"
+  class="dusk-select"
 >
   <option
     value="1"
@@ -222,7 +222,7 @@ exports[`Select > should accept an empty string as label and use it instead of f
 
 exports[`Select > should pass additional class names and attributes to the rendered element 1`] = `
 <select
-  class="duk-select foo bar"
+  class="dusk-select foo bar"
   id="some-id"
 >
   <option
@@ -256,7 +256,7 @@ exports[`Select > should pass additional class names and attributes to the rende
 
 exports[`Select > should render the Select component 1`] = `
 <select
-  class="duk-select"
+  class="dusk-select"
 >
   <option
     value="one"
@@ -289,7 +289,7 @@ exports[`Select > should render the Select component 1`] = `
 
 exports[`Select > should use the value as label if an object is missing it 1`] = `
 <select
-  class="duk-select"
+  class="dusk-select"
 >
   <option
     value="1"

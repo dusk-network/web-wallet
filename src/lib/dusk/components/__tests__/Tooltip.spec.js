@@ -256,7 +256,7 @@ describe("Tooltip", () => {
 				await vi.advanceTimersByTimeAsync(700 - Number(baseProps.defaultDelayShow));
 
 				expect(tooltip.getAttribute("aria-hidden")).toBe("false");
-				expect(tooltip).toHaveClass("duk-tooltip-error");
+				expect(tooltip).toHaveClass("dusk-tooltip-error");
 				expect(target.getAttribute("aria-described-by")).toBe(baseProps.id);
 				expect(prevTooltipElement.getAttribute("aria-described-by")).toBeNull();
 			});

@@ -22,11 +22,11 @@ exports[`Setup > should render the Setup page 1`] = `
       class="flex flex-col gap-1"
     >
       <a
-        class="duk-anchor duk-anchor-button duk-icon-button-labeled secondary"
+        class="dusk-anchor dusk-anchor-button dusk-icon-button-labeled secondary"
         href="/setup/create"
       >
         <svg
-          class="duk-icon"
+          class="dusk-icon"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >
@@ -47,11 +47,11 @@ exports[`Setup > should render the Setup page 1`] = `
       <!--&lt;AnchorButton&gt;-->
        
       <a
-        class="duk-anchor duk-anchor-button duk-icon-button-labeled tertiary"
+        class="dusk-anchor dusk-anchor-button dusk-icon-button-labeled tertiary"
         href="/setup/restore"
       >
         <svg
-          class="duk-icon"
+          class="dusk-icon"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >

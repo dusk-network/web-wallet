@@ -27,9 +27,9 @@
 	export let text = undefined;
 
 	$: classes = makeClassName([
-		"duk-anchor-button",
-		disabled ? "duk-anchor-button__disabled" : "",
-		icon && text ? "duk-icon-button-labeled" : icon ? "duk-icon-button" : "",
+		"dusk-anchor-button",
+		disabled ? "dusk-anchor-button__disabled" : "",
+		icon && text ? "dusk-icon-button-labeled" : icon ? "dusk-icon-button" : "",
 		variant,
 		className
 	]);

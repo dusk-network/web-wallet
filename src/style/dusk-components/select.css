@@ -1,4 +1,4 @@
-.duk-select {
+.dusk-select {
 	display: inline-block;
 	appearance: none;
 	font-size: var(--control-font-size);
@@ -17,16 +17,16 @@
 		linear-gradient(135deg, var(--control-text-color) 50%, transparent 50%);
 }
 
-.duk-select,
-.duk-select option {
+.dusk-select,
+.dusk-select option {
 	color: var(--control-text-color);
 }
 
-.duk-select:disabled {
+.dusk-select:disabled {
 	opacity: .5;
 }
 
 /* stylelint-disable-next-line selector-pseudo-element-no-unknown */
-.duk-select::ms-expand {
+.dusk-select::ms-expand {
 	display: none;
 }

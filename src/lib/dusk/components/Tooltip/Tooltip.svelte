@@ -183,9 +183,9 @@
 	} = $state);
 
 	$: classes = makeClassName([
-		"duk-tooltip",
-		`duk-tooltip-${place}`,
-		`duk-tooltip-${type}`,
+		"dusk-tooltip",
+		`dusk-tooltip-${place}`,
+		`dusk-tooltip-${type}`,
 		className
 	]);
 </script>

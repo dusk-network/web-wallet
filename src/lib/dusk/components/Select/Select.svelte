@@ -20,7 +20,7 @@
 <select
 	{...$$restProps}
 	bind:value
-	class={makeClassName(["duk-select", className])}
+	class={makeClassName(["dusk-select", className])}
 	on:change
 >
 	{#if Array.isArray(options)}

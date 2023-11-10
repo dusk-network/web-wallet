@@ -13,8 +13,8 @@
 	export let value = "";
 
 	const classes = makeClassName([
-		"duk-textbox",
-		`duk-textbox-${type}`,
+		"dusk-textbox",
+		`dusk-textbox-${type}`,
 		className
 	]);
 </script>

@@ -1,11 +1,11 @@
-.duk-agreement {
+.dusk-agreement {
 	display: flex;
 	flex-direction: row;
 	align-items: flex-start;
 	gap: 0.5em;
 }
 
-.duk-agreement__label {
+.dusk-agreement__label {
 	line-height: 1.5;
 	margin-top: -.2em;
 }

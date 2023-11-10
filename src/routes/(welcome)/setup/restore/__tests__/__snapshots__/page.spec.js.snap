@@ -9,10 +9,10 @@ exports[`Restore > should render the Terms of Service step of the Restore flow 1
       class="flex flex-col flex-1 s-c41QPMu_i3CH"
     >
       <section
-        class="duk-card"
+        class="dusk-card"
       >
         <header
-          class="duk-card__header"
+          class="dusk-card__header"
         >
            
           <h2>
@@ -28,7 +28,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow 1
           >
             Our 
             <a
-              class="duk-anchor"
+              class="dusk-anchor"
               href="#"
             >
               Terms & Privacy Policy
@@ -43,7 +43,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow 1
             class="flex gap-1 w-100 s-c41QPMu_i3CH"
           >
             <a
-              class="duk-anchor duk-anchor-button tertiary flex-1"
+              class="dusk-anchor dusk-anchor-button tertiary flex-1"
               href="/setup"
             >
               <span>
@@ -55,7 +55,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow 1
             <!--&lt;AnchorButton&gt;-->
              
             <button
-              class="duk-button duk-button-button secondary flex-1"
+              class="dusk-button dusk-button-button secondary flex-1"
               type="button"
             >
               <span>

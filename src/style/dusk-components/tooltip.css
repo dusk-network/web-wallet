@@ -1,4 +1,4 @@
-.duk-tooltip {
+.dusk-tooltip {
 	--tip-size: .625em;
 	--half-tip-size: calc(var(--tip-size) / 2);
 	--tip-main-axis-offset:  -.0625em;
@@ -10,27 +10,27 @@
 	opacity: 1;
 }
 
-.duk-tooltip[aria-hidden="true"] {
+.dusk-tooltip[aria-hidden="true"] {
 	opacity: 0;
 }
 
-.duk-tooltip.duk-tooltip-error {
+.dusk-tooltip.dusk-tooltip-error {
 	background-color: var(--error-color);
 }
 
-.duk-tooltip.duk-tooltip-info {
+.dusk-tooltip.dusk-tooltip-info {
 	background-color: var(--secondary-color);
 }
 
-.duk-tooltip.duk-tooltip-success {
+.dusk-tooltip.dusk-tooltip-success {
 	background-color: var(--success-color);
 }
 
-.duk-tooltip.duk-tooltip-warning {
+.dusk-tooltip.dusk-tooltip-warning {
 	background-color: var(--warning-color);
 }
 
-.duk-tooltip::after {
+.dusk-tooltip::after {
 	background-color: inherit;
 	border: inherit;
 	pointer-events: none;
@@ -43,7 +43,7 @@
 	transform-origin: center;
 }
 
-.duk-tooltip.duk-tooltip-bottom::after {
+.dusk-tooltip.dusk-tooltip-bottom::after {
 	bottom: 100%;
 	left: 50%;
 	margin-left: calc(var(--half-tip-size) * -1);
@@ -52,7 +52,7 @@
 	border-right-color: transparent;
 }
 
-.duk-tooltip.duk-tooltip-left::after {
+.dusk-tooltip.dusk-tooltip-left::after {
 	top: 50%;
 	left: 100%;
 	margin-left: calc(var(--half-tip-size) * -1 + var(--tip-main-axis-offset));
@@ -61,7 +61,7 @@
 	border-left-color: transparent;
 }
 
-.duk-tooltip.duk-tooltip-right::after {
+.dusk-tooltip.dusk-tooltip-right::after {
 	top: 50%;
 	right: 100%;
 	margin-right: calc(var(--half-tip-size) * -1 + var(--tip-main-axis-offset));
@@ -70,7 +70,7 @@
 	border-right-color: transparent;
 }
 
-.duk-tooltip.duk-tooltip-top::after {
+.dusk-tooltip.dusk-tooltip-top::after {
 	top: 100%;
 	left: 50%;
 	margin-left: calc(var(--half-tip-size) * -1);
