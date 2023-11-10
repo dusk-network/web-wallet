@@ -4,8 +4,10 @@
 	import { mdiChevronLeft, mdiChevronRight } from "@mdi/js";
 	import { createEventDispatcher, onMount	} from "svelte";
 	import { writable } from "svelte/store";
+	import { isGTE, isLTE } from "lamb";
 
 	import { Button, Icon } from "$lib/dusk/components";
+	import { lerp } from "$lib/dusk/math";
 	import { makeClassName } from "$lib/dusk/string";
 
 	import "./Tabs.css";
@@ -25,6 +27,9 @@
 	/** @type {Number} */
 	let rafID = 0;
 
+	let scrollLeftStart = 0;
+	let touchStartX = 0;
+
 	const dispatch = createEventDispatcher();
 
 	const scrollStatus = writable({
@@ -32,6 +37,65 @@
 		canScrollLeft: false,
 		canScrollRight: false
 	});
+
+	/** @type {ScrollIntoViewOptions} */
+	const smoothScrollOptions = {
+		behavior: "smooth",
+		block: "nearest",
+		inline: "nearest"
+	};
+
+	/** @param {"left" | "right"} side */
+	function isTabSideVisible (side) {
+		const tabsListRect = tabsList.getBoundingClientRect();
+		const tolerance = 5;
+		const checkSide = side === "left"
+			? isGTE(tabsListRect.left - tolerance)
+			: isLTE(tabsListRect.right + tolerance);
+
+		/** @param {HTMLLIElement} tab */
+		return tab => checkSide(tab.getBoundingClientRect()[side]);
+	}
+
+	/** @type {import("svelte/elements").TouchEventHandler<HTMLUListElement>} */
+	function handleTouchMove (event) {
+		const scrollX = tabsList.scrollLeft;
+		const deltaX = event.targetTouches[0].clientX - touchStartX;
+		const amount = lerp(deltaX, scrollX - scrollLeftStart, .4);
+
+		tabsList.scrollBy(-amount, 0);
+	}
+
+	/** @type {import("svelte/elements").TouchEventHandler<HTMLUListElement>} */
+	function handleTouchStart (event) {
+		scrollLeftStart = tabsList.scrollLeft;
+		touchStartX = event.targetTouches[0].clientX;
+	}
+
+	/** @type {import("svelte/elements").WheelEventHandler<HTMLUListElement>} */
+	function handleWheel (event) {
+		tabsList.scrollBy(event.deltaX, 0);
+	}
+
+	// @ts-ignore
+	function handleScrollButtonClick (event) {
+		/** @type {NodeListOf<HTMLLIElement>} */
+		const tabs = tabsList.querySelectorAll("[role='tab']");
+		const step = event
+			.currentTarget
+			.matches(".duk-tab-scroll-button:first-of-type") ? -1 : 1;
+		const isTabFullyVisible = isTabSideVisible(step === 1 ? "right" : "left");
+
+		let loops = tabs.length;
+		let idx = step === 1 ? 0 : loops - 1;
+
+		for (; loops--; idx += step) {
+			if (!isTabFullyVisible(tabs[idx])) {
+				tabs[idx].scrollIntoView(smoothScrollOptions);
+				break;
+			}
+		}
+	}
 
 	// @ts-ignore
 	function handleScrollButtonMouseDown (event) {
@@ -60,11 +124,7 @@
 
 	/** @type {import("svelte/elements").UIEventHandler<HTMLLIElement>} */
 	function handleTabFocusin (event) {
-		event.currentTarget.scrollIntoView({
-			behavior: "smooth",
-			block: "nearest",
-			inline: "nearest"
-		});
+		event.currentTarget.scrollIntoView(smoothScrollOptions);
 	}
 
 	/** @type {import("svelte/elements").KeyboardEventHandler<HTMLLIElement>} */
@@ -135,6 +195,7 @@
 		disabled={!canScrollLeft}
 		hidden={!canScroll}
 		icon={{ path: mdiChevronLeft }}
+		on:click={handleScrollButtonClick}
 		on:mousedown={handleScrollButtonMouseDown}
 		on:mouseup={handleScrollButtonMouseUp}
 		tabindex="-1"
@@ -143,6 +204,9 @@
 		bind:this={tabsList}
 		class="duk-tabs-list"
 		on:scroll={updateScrollStatus}
+		on:touchmove|preventDefault={handleTouchMove}
+		on:touchstart={handleTouchStart}
+		on:wheel|preventDefault={handleWheel}
 		role="tablist"
 	>
 		{#each items as item (item.id)}
@@ -178,6 +242,7 @@
 		disabled={!canScrollRight}
 		hidden={!canScroll}
 		icon={{ path: mdiChevronRight }}
+		on:click={handleScrollButtonClick}
 		on:mousedown={handleScrollButtonMouseDown}
 		on:mouseup={handleScrollButtonMouseUp}
 		tabindex="-1"

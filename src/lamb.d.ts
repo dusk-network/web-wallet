@@ -23,6 +23,8 @@ declare module "lamb" {
 		K extends keyof S & string = any
 	> = (value: S[K], key: K, source: S) => R;
 
+	type Ord = Number | number | String | string | Boolean | boolean | Date;
+
 	/** @see https://dev.to/ecyrbe/how-to-use-advanced-typescript-to-define-a-pipe-function-381h  */
 	type PipeArgs<
 		Fns extends AnyFunction[],
@@ -469,6 +471,22 @@ declare module "lamb" {
 		FR,
 		P extends Predicate<T, U>
 	> (predicate: P, trueFn: (value: U) => TR, falseFn: (value: Exclude<T, U>) => FR): (value: T) => U extends T ? TR : FR;
+
+	function gt (a: Ord, b: Ord): boolean;
+
+	function gte (a: Ord, b: Ord): boolean;
+
+	function lt (a: Ord, b: Ord): boolean;
+
+	function lte (a: Ord, b: Ord): boolean;
+
+	function isGT (b: Ord): (a: Ord) => boolean;
+
+	function isGTE (b: Ord): (a: Ord) => boolean;
+
+	function isLT (b: Ord): (a: Ord) => boolean;
+
+	function isLTE (b: Ord): (a: Ord) => boolean;
 
 	/* ------------------------- *
 	 * *****     MATH      ***** *

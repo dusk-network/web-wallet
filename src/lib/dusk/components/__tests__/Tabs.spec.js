@@ -13,6 +13,8 @@ import {
 } from "@testing-library/svelte";
 import { mdiHome } from "@mdi/js";
 
+import { getAsHTMLElement } from "$lib/dusk/test-helpers";
+
 import { Tabs } from "..";
 
 class MockedResizeObserver {
@@ -112,18 +114,18 @@ describe("Tabs", () => {
 			selectedTab: undefined
 		};
 		const { container } = render(Tabs, { ...baseOptions, props });
-		const tabsList = container.querySelector(".duk-tabs-list");
+		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
 
-		expect(tabsList?.scrollTo).toHaveBeenCalledTimes(1);
-		expect(tabsList?.scrollTo).toHaveBeenCalledWith(0, 0);
+		expect(tabsList.scrollTo).toHaveBeenCalledTimes(1);
+		expect(tabsList.scrollTo).toHaveBeenCalledWith(0, 0);
 		expect(container.firstChild).toMatchSnapshot();
 	});
 
 	it("should scroll the selected tab into view if there's a selection", async () => {
 		const { container } = render(Tabs, baseOptions);
-		const tab = container.querySelector(`[data-tabid="${baseProps.selectedTab}"]`);
+		const tab = getAsHTMLElement(container, `[data-tabid="${baseProps.selectedTab}"]`);
 
-		expect(tab?.scrollIntoView).toHaveBeenCalledTimes(1);
+		expect(tab.scrollIntoView).toHaveBeenCalledTimes(1);
 	});
 
 	it("should be able to render tabs with icon and text", () => {
@@ -228,40 +230,32 @@ describe("Tabs", () => {
 		scrollWidthSpy.mockReturnValueOnce(0);
 
 		const { container } = render(Tabs, baseOptions);
+		const leftBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:first-of-type");
+		const rightBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:last-of-type");
 
-		/** @type {HTMLButtonElement?} */
-		const leftBtn = container.querySelector(".duk-tab-scroll-button:first-of-type");
-
-		/** @type {HTMLButtonElement?} */
-		const rightBtn = container.querySelector(".duk-tab-scroll-button:last-of-type");
-
-		expect(leftBtn?.getAttribute("hidden")).toBe("true");
-		expect(leftBtn?.disabled).toBe(true);
-		expect(rightBtn?.getAttribute("hidden")).toBe("true");
-		expect(rightBtn?.disabled).toBe(true);
+		expect(leftBtn.getAttribute("hidden")).toBe("true");
+		expect(leftBtn.getAttribute("disabled")).toBe("");
+		expect(rightBtn.getAttribute("hidden")).toBe("true");
+		expect(rightBtn.getAttribute("disabled")).toBe("");
 	});
 
 	it("should show the scroll buttons when there isn't enough horizontal space and enable the appropriate ones", async () => {
 		const { container, rerender } = render(Tabs, baseOptions);
-		const tabsList = container.querySelector(".duk-tabs-list");
+		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
 
-		/** @type {HTMLButtonElement?} */
-		let leftBtn = container.querySelector(".duk-tab-scroll-button:first-of-type");
+		let leftBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:first-of-type");
+		let rightBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:last-of-type");
 
-		/** @type {HTMLButtonElement?} */
-		let rightBtn = container.querySelector(".duk-tab-scroll-button:last-of-type");
+		expect(leftBtn.getAttribute("hidden")).toBe("false");
+		expect(leftBtn.getAttribute("disabled")).toBe("");
+		expect(rightBtn.getAttribute("hidden")).toBe("false");
+		expect(rightBtn.getAttribute("disabled")).toBeNull();
 
-		expect(leftBtn?.getAttribute("hidden")).toBe("false");
-		expect(leftBtn?.disabled).toBe(true);
-		expect(rightBtn?.getAttribute("hidden")).toBe("false");
-		expect(rightBtn?.disabled).toBe(false);
-
-		// @ts-ignore
 		await fireEvent.mouseDown(rightBtn, { buttons: 1 });
 
 		expect(rafSpy).toHaveBeenCalledTimes(1);
-		expect(tabsList?.scrollBy).toHaveBeenCalledTimes(1);
-		expect(tabsList?.scrollBy).toHaveBeenCalledWith(5, 0);
+		expect(tabsList.scrollBy).toHaveBeenCalledTimes(1);
+		expect(tabsList.scrollBy).toHaveBeenCalledWith(5, 0);
 
 		// @ts-ignore
 		tabsList.scrollBy.mockClear();
@@ -270,10 +264,9 @@ describe("Tabs", () => {
 		vi.advanceTimersToNextTimer();
 
 		expect(rafSpy).toHaveBeenCalledTimes(1);
-		expect(tabsList?.scrollBy).toHaveBeenCalledTimes(1);
-		expect(tabsList?.scrollBy).toHaveBeenCalledWith(5, 0);
+		expect(tabsList.scrollBy).toHaveBeenCalledTimes(1);
+		expect(tabsList.scrollBy).toHaveBeenCalledWith(5, 0);
 
-		// @ts-ignore
 		await fireEvent.mouseUp(rightBtn);
 
 		expect(cafSpy).toHaveBeenCalledTimes(1);
@@ -282,49 +275,101 @@ describe("Tabs", () => {
 
 		rerender(baseOptions.props);
 
-		leftBtn = container.querySelector(".duk-tab-scroll-button:first-of-type");
-		rightBtn = container.querySelector(".duk-tab-scroll-button:last-of-type");
+		leftBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:first-of-type");
+		rightBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:last-of-type");
 
-		expect(leftBtn?.getAttribute("hidden")).toBe("false");
-		expect(leftBtn?.disabled).toBe(false);
-		expect(rightBtn?.getAttribute("hidden")).toBe("false");
-		expect(rightBtn?.disabled).toBe(true);
+		expect(leftBtn.getAttribute("hidden")).toBe("false");
+		expect(leftBtn.getAttribute("disabled")).toBeNull();
+		expect(rightBtn.getAttribute("hidden")).toBe("false");
+		expect(rightBtn.getAttribute("disabled")).toBe("");
 
-		// @ts-ignore
-		tabsList?.scrollBy.mockClear();
+		scrollBySpy.mockClear();
 		rafSpy.mockClear();
 
-		// @ts-ignore
 		await fireEvent.mouseDown(leftBtn, { buttons: 1 });
 
 		expect(rafSpy).toHaveBeenCalledTimes(1);
-		expect(tabsList?.scrollBy).toHaveBeenCalledTimes(1);
-		expect(tabsList?.scrollBy).toHaveBeenCalledWith(-5, 0);
+		expect(tabsList.scrollBy).toHaveBeenCalledTimes(1);
+		expect(tabsList.scrollBy).toHaveBeenCalledWith(-5, 0);
 	});
 
 	it("should ignore mouse down events if the primary button isn't the only one pressed", async () => {
 		const { container } = render(Tabs, baseOptions);
-		const tabsList = container.querySelector(".duk-tabs-list");
+		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
+		const leftBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:first-of-type");
+		const rightBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:last-of-type");
 
-		/** @type {HTMLButtonElement?} */
-		const leftBtn = container.querySelector(".duk-tab-scroll-button:first-of-type");
-
-		/** @type {HTMLButtonElement?} */
-		const rightBtn = container.querySelector(".duk-tab-scroll-button:last-of-type");
-
-		// @ts-ignore
 		await fireEvent.mouseDown(leftBtn, { buttons: 2 });
 
-		// @ts-ignore
 		await fireEvent.mouseDown(leftBtn, { buttons: 3 });
 
-		// @ts-ignore
 		await fireEvent.mouseDown(rightBtn, { buttons: 2 });
 
-		// @ts-ignore
 		await fireEvent.mouseDown(rightBtn, { buttons: 3 });
 
 		expect(rafSpy).not.toHaveBeenCalled();
-		expect(tabsList?.scrollBy).not.toHaveBeenCalled();
+		expect(tabsList.scrollBy).not.toHaveBeenCalled();
+	});
+
+	it("should bring the nearest tab into view on mouse clicks on scroll buttons", async () => {
+		const { container } = render(Tabs, baseOptions);
+		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
+		const leftBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:first-of-type");
+		const rightBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:last-of-type");
+		const firstTab = getAsHTMLElement(container, "[role='tab']:first-of-type");
+		const lastTab = getAsHTMLElement(container, "[role='tab']:last-of-type");
+
+		const tabsListGetRectSpy = vi.spyOn(tabsList, "getBoundingClientRect")
+			.mockReturnValue(DOMRect.fromRect({ x: 0, width: tabsList.clientWidth }));
+		const firstTabeGetRectSpy = vi.spyOn(firstTab, "getBoundingClientRect")
+			.mockReturnValue(DOMRect.fromRect({ x: -100, width: 100 }));
+		const lastTabeGetRectSpy = vi.spyOn(lastTab, "getBoundingClientRect")
+			.mockReturnValue(DOMRect.fromRect({ x: tabsList.clientWidth, width: 100 }));
+
+		scrollIntoViewSpy.mockClear();
+
+		await fireEvent.click(rightBtn);
+
+		expect(lastTab.scrollIntoView).toHaveBeenCalledTimes(1);
+
+		scrollIntoViewSpy.mockClear();
+
+		await fireEvent.click(leftBtn);
+
+		expect(firstTab.scrollIntoView).toHaveBeenCalledTimes(1);
+
+		tabsListGetRectSpy.mockRestore();
+		firstTabeGetRectSpy.mockRestore();
+		lastTabeGetRectSpy.mockRestore();
+	});
+
+	it("should scroll the tabs on a wheel event if there is a deltaX", async () => {
+		const { container } = render(Tabs, baseOptions);
+		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
+		const eventInfo1 = { deltaX: 0 };
+		const eventInfo2 = { deltaX: 100 };
+
+		await fireEvent.wheel(tabsList, eventInfo1);
+		await fireEvent.wheel(tabsList, eventInfo2);
+
+		expect(scrollBySpy).toHaveBeenCalledTimes(2);
+		expect(scrollBySpy).toHaveBeenNthCalledWith(1, eventInfo1.deltaX, 0);
+		expect(scrollBySpy).toHaveBeenNthCalledWith(2, eventInfo2.deltaX, 0);
+	});
+
+	it("should scroll the tabs on a touch move", async () => {
+		const { container } = render(Tabs, baseOptions);
+		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
+		const touchStartInfo = { targetTouches: [{ clientX: 10 }] };
+		const touchMoveInfo = { targetTouches: [{ clientX: 100 }] };
+
+		// "magic number" calculated with the current algorithm
+		const expectedScrollX = -54;
+
+		await fireEvent.touchStart(tabsList, touchStartInfo);
+		await fireEvent.touchMove(tabsList, touchMoveInfo);
+
+		expect(scrollBySpy).toHaveBeenCalledTimes(1);
+		expect(scrollBySpy).toHaveBeenCalledWith(expectedScrollX, 0);
 	});
 });
