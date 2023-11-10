@@ -5,8 +5,8 @@ exports[`Restore > should render the Terms of Service step of the Restore flow 1
   <div
     class="onboarding_wrapper s-03q11ctojZzO"
   >
-    <main
-      class="flex flex-col flex-1 s-c41QPMu_i3CH"
+    <section
+      class="terms-of-service flex flex-col flex-1 s-c41QPMu_i3CH"
     >
       <section
         class="dusk-card"
@@ -67,7 +67,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow 1
         </div>
       </section>
       <!--&lt;Card&gt;-->
-    </main>
+    </section>
     <!--&lt;TermsOfService&gt;-->
   </div>
   

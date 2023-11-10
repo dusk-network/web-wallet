@@ -1,0 +1,132 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Dashboard > should render the dashboard page 1`] = `
+<div>
+  <section
+    class="content s-qpUp5WgwgSGx"
+  >
+    <h2
+      class="visible-hidden s-qpUp5WgwgSGx"
+    >
+      Dashboard
+    </h2>
+     
+    <div
+      class="dusk-tabs"
+    >
+      <button
+        class="dusk-button dusk-button-button dusk-icon-button dusk-tab-scroll-button"
+        disabled=""
+        hidden="true"
+        tabindex="-1"
+        type="button"
+      >
+        <svg
+          class="dusk-icon"
+          role="graphics-symbol"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"
+          />
+        </svg>
+        
+        <!--&lt;Icon&gt;-->
+         
+        
+      </button>
+      <!--&lt;Button&gt;-->
+       
+      <ul
+        class="dusk-tabs-list"
+        role="tablist"
+      >
+        <li
+          aria-selected="true"
+          class="dusk-tab-item dusk-tab-item__selected"
+          data-tabid="tab-transfer"
+          role="tab"
+          tabindex="0"
+        >
+          <svg
+            class="dusk-icon"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M9,3L5,7H8V14H10V7H13M16,17V10H14V17H11L15,21L19,17H16Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+           
+          
+           
+        </li>
+        <li
+          aria-selected="false"
+          class="dusk-tab-item"
+          data-tabid="tab-staking"
+          role="tab"
+          tabindex="0"
+        >
+          <svg
+            class="dusk-icon"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+           
+          
+           
+        </li>
+      </ul>
+       
+      <button
+        class="dusk-button dusk-button-button dusk-icon-button dusk-tab-scroll-button"
+        disabled=""
+        hidden="true"
+        tabindex="-1"
+        type="button"
+      >
+        <svg
+          class="dusk-icon"
+          role="graphics-symbol"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"
+          />
+        </svg>
+        
+        <!--&lt;Icon&gt;-->
+         
+        
+      </button>
+      <!--&lt;Button&gt;-->
+    </div>
+    <!--&lt;Tabs&gt;-->
+     
+    <div
+      class="tab-panel s-qpUp5WgwgSGx"
+    >
+       
+      <div
+        class="contract s-qpUp5WgwgSGx"
+      >
+        <h3
+          class="contract__heading s-qpUp5WgwgSGx"
+        >
+          Transact
+        </h3>
+      </div>
+    </div>
+  </section>
+  <!--&lt;+page&gt;-->
+</div>
+`;

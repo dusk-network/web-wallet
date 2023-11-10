@@ -2,21 +2,23 @@
 
 exports[`Setup > should render the Setup page 1`] = `
 <div>
-  <main
+  <section
     class="flex flex-col gap-2"
   >
-    <h1>
-      Unlocking the Future:
-      <br />
-      
-		Your 
-      <span
-        class="accent-text"
-      >
-        DUSK
-      </span>
-       native Wallet
-    </h1>
+    <header>
+      <h2>
+        Unlocking the Future:
+        <br />
+        
+			Your 
+        <span
+          class="accent-text"
+        >
+          DUSK
+        </span>
+         native Wallet
+      </h2>
+    </header>
      
     <div
       class="flex flex-col gap-1"
@@ -71,7 +73,7 @@ exports[`Setup > should render the Setup page 1`] = `
       <!--&lt;Anchor&gt;-->
       <!--&lt;AnchorButton&gt;-->
     </div>
-  </main>
+  </section>
   <!--&lt;+page&gt;-->
 </div>
 `;

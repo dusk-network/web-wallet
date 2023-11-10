@@ -5,8 +5,8 @@ exports[`Create > should render the Terms Of Service step of the Create flow 1`]
   <div
     class="onboarding_wrapper s-p4ikGGAJA5YG"
   >
-    <main
-      class="flex flex-col flex-1 s-c41QPMu_i3CH"
+    <section
+      class="terms-of-service flex flex-col flex-1 s-c41QPMu_i3CH"
     >
       <section
         class="dusk-card"
@@ -67,7 +67,7 @@ exports[`Create > should render the Terms Of Service step of the Create flow 1`]
         </div>
       </section>
       <!--&lt;Card&gt;-->
-    </main>
+    </section>
     <!--&lt;TermsOfService&gt;-->
   </div>
   

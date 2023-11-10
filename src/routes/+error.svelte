@@ -6,12 +6,13 @@
 	const { error, status } = $page;
 </script>
 
-<div id="error-box">
-	<h1>Error - {status} {error?.message ?? ""}</h1>
-</div>
+<section class="error-message">
+	<h1>Error - {status}</h1>
+	<p>{error?.message ?? ""}</p>
+</section>
 
 <style lang="postcss">
-	#error-box {
+	.error-message {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
