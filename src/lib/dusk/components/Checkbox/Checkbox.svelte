@@ -5,7 +5,7 @@
 	export let name;
 
 	/** @type {String} */
-	export let id = `duk-checkbox-${Math.random().toString(36)}`;
+	export let id = `dusk-checkbox-${Math.random().toString(36)}`;
 
 	/** @type {Boolean} */
 	export let disabled = false;
@@ -19,7 +19,7 @@
 	/** @type {Number|Undefined} */
 	export let tabindex = undefined;
 
-	const classes = makeClassName(["duk-checkbox", className]);
+	const classes = makeClassName(["dusk-checkbox", className]);
 </script>
 
 <input

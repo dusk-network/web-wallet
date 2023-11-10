@@ -114,7 +114,7 @@ describe("Tabs", () => {
 			selectedTab: undefined
 		};
 		const { container } = render(Tabs, { ...baseOptions, props });
-		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
+		const tabsList = getAsHTMLElement(container, ".dusk-tabs-list");
 
 		expect(tabsList.scrollTo).toHaveBeenCalledTimes(1);
 		expect(tabsList.scrollTo).toHaveBeenCalledWith(0, 0);
@@ -162,7 +162,7 @@ describe("Tabs", () => {
 		const observeSpy = vi.spyOn(ResizeObserver.prototype, "observe");
 		const disconnectSpy = vi.spyOn(ResizeObserver.prototype, "disconnect");
 		const { container, unmount } = render(Tabs, baseOptions);
-		const tabsList = container.querySelector(".duk-tabs-list");
+		const tabsList = container.querySelector(".dusk-tabs-list");
 
 		expect(observeSpy).toHaveBeenCalledTimes(1);
 		expect(observeSpy).toHaveBeenCalledWith(tabsList);
@@ -230,8 +230,8 @@ describe("Tabs", () => {
 		scrollWidthSpy.mockReturnValueOnce(0);
 
 		const { container } = render(Tabs, baseOptions);
-		const leftBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:first-of-type");
-		const rightBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:last-of-type");
+		const leftBtn = getAsHTMLElement(container, ".dusk-tab-scroll-button:first-of-type");
+		const rightBtn = getAsHTMLElement(container, ".dusk-tab-scroll-button:last-of-type");
 
 		expect(leftBtn.getAttribute("hidden")).toBe("true");
 		expect(leftBtn.getAttribute("disabled")).toBe("");
@@ -241,10 +241,10 @@ describe("Tabs", () => {
 
 	it("should show the scroll buttons when there isn't enough horizontal space and enable the appropriate ones", async () => {
 		const { container, rerender } = render(Tabs, baseOptions);
-		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
+		const tabsList = getAsHTMLElement(container, ".dusk-tabs-list");
 
-		let leftBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:first-of-type");
-		let rightBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:last-of-type");
+		let leftBtn = getAsHTMLElement(container, ".dusk-tab-scroll-button:first-of-type");
+		let rightBtn = getAsHTMLElement(container, ".dusk-tab-scroll-button:last-of-type");
 
 		expect(leftBtn.getAttribute("hidden")).toBe("false");
 		expect(leftBtn.getAttribute("disabled")).toBe("");
@@ -275,8 +275,8 @@ describe("Tabs", () => {
 
 		rerender(baseOptions.props);
 
-		leftBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:first-of-type");
-		rightBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:last-of-type");
+		leftBtn = getAsHTMLElement(container, ".dusk-tab-scroll-button:first-of-type");
+		rightBtn = getAsHTMLElement(container, ".dusk-tab-scroll-button:last-of-type");
 
 		expect(leftBtn.getAttribute("hidden")).toBe("false");
 		expect(leftBtn.getAttribute("disabled")).toBeNull();
@@ -295,9 +295,9 @@ describe("Tabs", () => {
 
 	it("should ignore mouse down events if the primary button isn't the only one pressed", async () => {
 		const { container } = render(Tabs, baseOptions);
-		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
-		const leftBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:first-of-type");
-		const rightBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:last-of-type");
+		const tabsList = getAsHTMLElement(container, ".dusk-tabs-list");
+		const leftBtn = getAsHTMLElement(container, ".dusk-tab-scroll-button:first-of-type");
+		const rightBtn = getAsHTMLElement(container, ".dusk-tab-scroll-button:last-of-type");
 
 		await fireEvent.mouseDown(leftBtn, { buttons: 2 });
 
@@ -313,9 +313,9 @@ describe("Tabs", () => {
 
 	it("should bring the nearest tab into view on mouse clicks on scroll buttons", async () => {
 		const { container } = render(Tabs, baseOptions);
-		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
-		const leftBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:first-of-type");
-		const rightBtn = getAsHTMLElement(container, ".duk-tab-scroll-button:last-of-type");
+		const tabsList = getAsHTMLElement(container, ".dusk-tabs-list");
+		const leftBtn = getAsHTMLElement(container, ".dusk-tab-scroll-button:first-of-type");
+		const rightBtn = getAsHTMLElement(container, ".dusk-tab-scroll-button:last-of-type");
 		const firstTab = getAsHTMLElement(container, "[role='tab']:first-of-type");
 		const lastTab = getAsHTMLElement(container, "[role='tab']:last-of-type");
 
@@ -345,7 +345,7 @@ describe("Tabs", () => {
 
 	it("should scroll the tabs on a wheel event if there is a deltaX", async () => {
 		const { container } = render(Tabs, baseOptions);
-		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
+		const tabsList = getAsHTMLElement(container, ".dusk-tabs-list");
 		const eventInfo1 = { deltaX: 0 };
 		const eventInfo2 = { deltaX: 100 };
 
@@ -359,7 +359,7 @@ describe("Tabs", () => {
 
 	it("should scroll the tabs on a touch move", async () => {
 		const { container } = render(Tabs, baseOptions);
-		const tabsList = getAsHTMLElement(container, ".duk-tabs-list");
+		const tabsList = getAsHTMLElement(container, ".dusk-tabs-list");
 		const touchStartInfo = { targetTouches: [{ clientX: 10 }] };
 		const touchMoveInfo = { targetTouches: [{ clientX: 100 }] };
 

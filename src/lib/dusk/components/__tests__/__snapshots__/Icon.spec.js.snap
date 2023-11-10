@@ -2,7 +2,7 @@
 
 exports[`Icon > should accept a custom role for the SVG component 1`] = `
 <svg
-  class="duk-icon"
+  class="dusk-icon"
   role="presentation"
   viewBox="0 0 24 24"
 >
@@ -14,7 +14,7 @@ exports[`Icon > should accept a custom role for the SVG component 1`] = `
 
 exports[`Icon > should pass additional class names to the rendered element 1`] = `
 <svg
-  class="duk-icon foo bar"
+  class="dusk-icon foo bar"
   role="graphics-symbol"
   viewBox="0 0 24 24"
 >
@@ -26,7 +26,7 @@ exports[`Icon > should pass additional class names to the rendered element 1`] =
 
 exports[`Icon > should render the Icon component 1`] = `
 <svg
-  class="duk-icon"
+  class="dusk-icon"
   role="graphics-symbol"
   viewBox="0 0 24 24"
 >
@@ -38,7 +38,7 @@ exports[`Icon > should render the Icon component 1`] = `
 
 exports[`Icon > should render the icon inside a \`g\` element if it's part of a stack 1`] = `
 <g
-  class="duk-icon"
+  class="dusk-icon"
 >
   <rect />
   <path

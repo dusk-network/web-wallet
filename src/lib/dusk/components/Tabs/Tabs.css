@@ -1,4 +1,4 @@
-.duk-tabs {
+.dusk-tabs {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
@@ -8,11 +8,11 @@
 	overflow: hidden;
 }
 
-.duk-button.duk-icon-button.duk-tab-scroll-button[hidden="true"] {
+.dusk-button.dusk-icon-button.dusk-tab-scroll-button[hidden="true"] {
 	display: none;
 }
 
-.duk-tabs-list {
+.dusk-tabs-list {
 	flex: 1;
 	list-style-type: none;
 	user-select: none;
@@ -21,7 +21,7 @@
 	overflow: hidden;
 }
 
-.duk-tab-item {
+.dusk-tab-item {
 	position: relative;
 	display: inline-flex;
 	align-items: center;

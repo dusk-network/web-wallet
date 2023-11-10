@@ -2,7 +2,7 @@
 
 exports[`Throbber > should accept a custom duration and size 1`] = `
 <svg
-  class="duk-throbber"
+  class="dusk-throbber"
   height="16px"
   role="progressbar"
   viewBox="0 0 128 128"
@@ -26,7 +26,7 @@ exports[`Throbber > should accept a custom duration and size 1`] = `
 
 exports[`Throbber > should pass additional class names to the rendered element 1`] = `
 <svg
-  class="duk-throbber foo bar"
+  class="dusk-throbber foo bar"
   height="64px"
   role="progressbar"
   viewBox="0 0 128 128"
@@ -50,7 +50,7 @@ exports[`Throbber > should pass additional class names to the rendered element 1
 
 exports[`Throbber > should render the Throbber component 1`] = `
 <svg
-  class="duk-throbber"
+  class="dusk-throbber"
   height="64px"
   role="progressbar"
   viewBox="0 0 128 128"

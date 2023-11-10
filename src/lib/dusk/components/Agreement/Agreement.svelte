@@ -9,7 +9,7 @@
 	export let label;
 
 	/** @type {String} */
-	export let controlId = `duk-checkbox-${Math.random().toString(36)}`;
+	export let controlId = `dusk-checkbox-${Math.random().toString(36)}`;
 
 	/** @type {Boolean} */
 	export let disabled = false;
@@ -20,7 +20,7 @@
 	/** @type {String|Undefined} */
 	export let className = undefined;
 
-	const classes = makeClassName(["duk-agreement", className]);
+	const classes = makeClassName(["dusk-agreement", className]);
 </script>
 
 <div {...$$restProps} class={classes}>
@@ -33,7 +33,7 @@
 		on:change/>
 	<label
 		for={controlId}
-		class="duk-agreement__label"
+		class="dusk-agreement__label"
 	>
 		{label}
 	</label>

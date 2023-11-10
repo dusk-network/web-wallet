@@ -75,21 +75,21 @@ svg {
 	transition: all .2s ease-in-out 0s;
 }
 
-.duk-anchor-button:not(.duk-anchor-button__disabled),
-.duk-button:enabled,
-.duk-checkbox:enabled,
-.duk-select:enabled,
-.duk-textbox:enabled,
+.dusk-anchor-button:not(.dusk-anchor-button__disabled),
+.dusk-button:enabled,
+.dusk-checkbox:enabled,
+.dusk-select:enabled,
+.dusk-textbox:enabled,
 *[role="menuitem"] {
 	transition: all .2s linear 0s;
 }
 
 :is(
-	.duk-anchor-button:not(.duk-anchor-button__disabled),
-	.duk-button:enabled,
-	.duk-checkbox:enabled,
-	.duk-select:enabled,
-	.duk-textbox:read-write:enabled,
+	.dusk-anchor-button:not(.dusk-anchor-button__disabled),
+	.dusk-button:enabled,
+	.dusk-checkbox:enabled,
+	.dusk-select:enabled,
+	.dusk-textbox:read-write:enabled,
 	*[role="menuitem"]):focus {
 	border-color: color-mix(in srgb, var(--secondary-color-variant-dark) 80%, transparent);
 	box-shadow: 0 0 .5em color-mix(in srgb, var(--secondary-color-variant-dark) 60%, transparent);

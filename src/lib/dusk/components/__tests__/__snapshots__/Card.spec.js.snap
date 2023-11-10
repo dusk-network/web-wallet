@@ -3,10 +3,10 @@
 exports[`Card > renders the Card component with a heading 1`] = `
 <div>
   <section
-    class="duk-card"
+    class="dusk-card"
   >
     <header
-      class="duk-card__header"
+      class="dusk-card__header"
     >
        
       <h2>
@@ -22,13 +22,13 @@ exports[`Card > renders the Card component with a heading 1`] = `
 exports[`Card > renders the the Card component with an icon when iconPath is provided 1`] = `
 <div>
   <section
-    class="duk-card"
+    class="dusk-card"
   >
     <header
-      class="duk-card__header"
+      class="dusk-card__header"
     >
       <svg
-        class="duk-icon duk-card__icon"
+        class="dusk-icon dusk-card__icon"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >

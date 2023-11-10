@@ -32,7 +32,7 @@
 </script>
 
 <svg
-	class={makeClassName(["duk-throbber", className])}
+	class={makeClassName(["dusk-throbber", className])}
 	height={`${size}px`}
 	role="progressbar"
 	viewBox="0 0 128 128"
