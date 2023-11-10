@@ -19,15 +19,16 @@
 	"scripts": {
 		"build": "vite build",
 		"checks": "npm run lint && npm run typecheck && npm test",
-		"typecheck": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
-		"typecheck:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
 		"dev": "vite dev",
+		"dev:host": "vite dev --host",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
 		"preview": "vite preview",
 		"test": "vitest --run",
 		"test:coverage": "vitest --run --coverage.enabled",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"typecheck": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
+		"typecheck:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch"
 	},
 	"type": "module",
 	"version": "0.0.1",
