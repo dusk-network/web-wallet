@@ -8,6 +8,7 @@ export { default as Icon } from "./Icon/Icon.svelte";
 export { default as ProgressBar } from "./ProgressBar/ProgressBar.svelte";
 export { default as Select } from "./Select/Select.svelte";
 export { default as Stepper } from "./Stepper/Stepper.svelte";
+export { default as Switch } from "./Switch/Switch.svelte";
 export { default as Tabs } from "./Tabs/Tabs.svelte";
 export { default as Textbox } from "./Textbox/Textbox.svelte";
 export { default as Tooltip } from "./Tooltip/Tooltip.svelte";

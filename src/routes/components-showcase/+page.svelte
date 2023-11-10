@@ -13,6 +13,7 @@
 	import ProgressBars from "./ProgressBars.svelte";
 	import Selects from "./Selects.svelte";
 	import Steppers from "./Steppers.svelte";
+	import Switches from "./Switches.svelte";
 	import Tabboxes from "./Tabboxes.svelte";
 	import Textboxes from "./Textboxes.svelte";
 	import Throbbers from "./Throbbers.svelte";
@@ -28,6 +29,7 @@
 		"Progress bars": ProgressBars,
 		"Selects": Selects,
 		"Steppers": Steppers,
+		"Switches": Switches,
 		"Tabboxes": Tabboxes,
 		"Textboxes": Textboxes,
 		"Throbbers": Throbbers,

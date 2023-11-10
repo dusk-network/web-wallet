@@ -10,6 +10,7 @@
 @import url("./dusk-components/progress-bar.css");
 @import url("./dusk-components/select.css");
 @import url("./dusk-components/stepper.css");
+@import url("./dusk-components/switch.css");
 @import url("./dusk-components/tabs.css");
 @import url("./dusk-components/textbox.css");
 @import url("./dusk-components/throbber.css");
@@ -79,6 +80,7 @@ svg {
 .dusk-button:enabled,
 .dusk-checkbox:enabled,
 .dusk-select:enabled,
+.dusk-switch[aria-disabled="false"][aria-readonly="false"],
 .dusk-textbox:enabled,
 *[role="menuitem"] {
 	transition: all .2s linear 0s;
@@ -89,6 +91,7 @@ svg {
 	.dusk-button:enabled,
 	.dusk-checkbox:enabled,
 	.dusk-select:enabled,
+	.dusk-switch[aria-disabled="false"][aria-readonly="false"],
 	.dusk-textbox:read-write:enabled,
 	*[role="menuitem"]):focus {
 	border-color: color-mix(in srgb, var(--secondary-color-variant-dark) 80%, transparent);
