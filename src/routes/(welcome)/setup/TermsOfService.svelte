@@ -4,7 +4,7 @@
 	} from "$lib/dusk/components";
 </script>
 
-<main class="flex flex-col flex-1">
+<section class="terms-of-service flex flex-col flex-1">
 	<Card heading="Terms &amp; Privacy Policy">
 		<div class="flex flex-col gap-1">
 			<p>Our <Anchor href="#">Terms &amp; Privacy Policy</Anchor> govern your use of our services,
@@ -23,10 +23,10 @@
 			</div>
 		</div>
 	</Card>
-</main>
+</section>
 
 <style>
-	main {
+	.terms-of-service {
 		height: 100%;
 		justify-content: center;
 	}

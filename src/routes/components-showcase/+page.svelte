@@ -41,7 +41,7 @@
 	let selectedSection = componentsOptions[0];
 </script>
 
-<main>
+<section>
 	<header>
 		<h1>COMPONENTS SHOWCASE</h1>
 		<Select options={componentsOptions} bind:value={selectedSection}/>
@@ -52,10 +52,10 @@
 			<svelte:component this={componentsMap[selectedSection]}/>
 		</div>
 	{/key}
-</main>
+</section>
 
 <style lang="postcss">
-	main {
+	section {
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;

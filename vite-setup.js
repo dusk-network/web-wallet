@@ -5,6 +5,7 @@
 import * as matchers from "@testing-library/jest-dom/matchers";
 import { expect, vi } from "vitest";
 import { readable } from "svelte/store";
+import { ResizeObserver } from "./src/lib/dusk/mocks";
 
 // Adding missing bits in JSDOM
 
@@ -86,3 +87,5 @@ vi.mock("$app/stores", () => {
 		updated
 	};
 });
+
+global.ResizeObserver = ResizeObserver;

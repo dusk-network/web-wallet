@@ -2,7 +2,7 @@
 
 exports[`Login > should render the login page 1`] = `
 <div>
-  <main
+  <section
     class="flex flex-col gap-2 s-diEOsynXV9Ac"
   >
     <h1
@@ -81,7 +81,7 @@ exports[`Login > should render the login page 1`] = `
       <!--&lt;AnchorButton&gt;-->
     </section>
     <!--&lt;Card&gt;-->
-  </main>
+  </section>
    
   <footer
     class="s-diEOsynXV9Ac"
