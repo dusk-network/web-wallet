@@ -1,9 +1,11 @@
 @import url("utilities.css");
 @import url("./dusk/colors.css");
 @import url("./dusk/language.css");
+@import url("./dusk-components/agreement.css");
 @import url("./dusk-components/anchor.css");
 @import url("./dusk-components/button.css");
 @import url("./dusk-components/card.css");
+@import url("./dusk-components/checkbox.css");
 @import url("./dusk-components/icon.css");
 @import url("./dusk-components/progress-bar.css");
 @import url("./dusk-components/select.css");

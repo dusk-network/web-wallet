@@ -7,6 +7,7 @@
 
 	import AnchorButtons from "./AnchorButtons.svelte";
 	import Cards from "./Cards.svelte";
+	import Checkboxes from "./Checkboxes.svelte";
 	import IconButtons from "./IconButtons.svelte";
 	import LabeledButtons from "./LabeledButtons.svelte";
 	import ProgressBars from "./ProgressBars.svelte";
@@ -21,6 +22,7 @@
 	const componentsMap = {
 		"Anchor buttons": AnchorButtons,
 		"Cards": Cards,
+		"Checkboxes": Checkboxes,
 		"Icon buttons": IconButtons,
 		"Labeled buttons": LabeledButtons,
 		"Progress bars": ProgressBars,
