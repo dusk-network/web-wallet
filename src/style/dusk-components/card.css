@@ -1,7 +1,7 @@
 .dusk-card {
 	background-color: var(--surface-color);
 	border-radius: var(--control-border-radius-size);
-	padding: 1.3em;
+	padding: 1.3em 2em;
 }
 
 .dusk-card__icon {

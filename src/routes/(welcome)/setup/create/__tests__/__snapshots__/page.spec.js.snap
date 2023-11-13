@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Create > should render the Terms Of Service step of the Create flow 1`] = `
+exports[`Create > should render the Terms of Service step of the Create flow 1`] = `
 <div>
   <div
     class="onboarding_wrapper s-p4ikGGAJA5YG"

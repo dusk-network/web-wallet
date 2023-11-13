@@ -23,11 +23,6 @@
 	flex: 1;
 }
 
-/* Colours */
-.accent-text {
-	color: var(--secondary-color);
-}
-
 /* Width */
 .w-100 {
 	width: 100%;

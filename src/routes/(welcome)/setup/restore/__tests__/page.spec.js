@@ -11,7 +11,7 @@ describe("Restore", () => {
 	afterEach(cleanup);
 
 	it("should render the Terms of Service step of the Restore flow", () => {
-		const { container } = render(Restore, { props: { step: "TermsOfService" } });
+		const { container } = render(Restore);
 
 		expect(container.firstChild).toMatchSnapshot();
 	});

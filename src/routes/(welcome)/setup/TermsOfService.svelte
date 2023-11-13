@@ -1,7 +1,17 @@
 <script>
+	import { page } from "$app/stores";
 	import {
 		Anchor, AnchorButton, Button, Card
 	} from "$lib/dusk/components";
+	import ONBOARDING_STEPS from "$lib/onboarding/onboardingSteps";
+	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+
+	function beginOnboarding () {
+		const totalSteps = $page.url.pathname.includes("create")
+			? ONBOARDING_STEPS.CREATE : ONBOARDING_STEPS.RESTORE;
+
+		onboardingWizardStore.initializeStore(totalSteps);
+	}
 </script>
 
 <section class="terms-of-service flex flex-col flex-1">
@@ -19,6 +29,7 @@
 				<Button
 					className="secondary flex-1"
 					text="Accept"
+					on:click={beginOnboarding}
 				/>
 			</div>
 		</div>
