@@ -84,3 +84,18 @@
 		text="Anchor text"
 	/>
 </section>
+<section>
+	<AnchorButton
+		variant="text"
+		href="http://example.com"
+		icon={{ path: mdiHome }}
+		text="Anchor text"
+	/>
+	<AnchorButton
+		variant="text"
+		disabled={true}
+		href="http://example.com"
+		icon={{ path: mdiHome }}
+		text="Anchor text"
+	/>
+</section>
