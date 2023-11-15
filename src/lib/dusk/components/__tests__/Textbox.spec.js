@@ -2,9 +2,10 @@ import {
 	afterEach,
 	describe,
 	expect,
-	it
+	it,
+	vi
 } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { Textbox } from "..";
 
@@ -57,5 +58,35 @@ describe("Textbox", () => {
 		const { container } = render(Textbox, { ...baseOptions, props });
 
 		expect(container.firstChild).toMatchSnapshot();
+	});
+
+	it("should change value before forwarding the event", async () => {
+		const initialValue = "some textbox text";
+		const newValue = "new value";
+		const props = {
+			...baseProps,
+			className: "foo bar",
+			id: "some-id",
+			value: initialValue
+		};
+
+		const changeHandler = vi.fn();
+
+		const { component, getByRole } = render(Textbox, { ...baseOptions, props });
+
+		const input = getByRole("textbox");
+
+		expect(input).toHaveValue(initialValue);
+
+		component.$on("input", changeHandler);
+
+		await fireEvent.input(input, { target: { value: newValue } });
+
+		expect(input).toHaveValue(newValue);
+
+		expect(changeHandler).toHaveBeenCalledTimes(1);
+		expect(changeHandler).toHaveBeenCalledWith(expect.objectContaining({
+			target: expect.objectContaining({ value: newValue })
+		}));
 	});
 });

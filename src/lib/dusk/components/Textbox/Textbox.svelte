@@ -9,24 +9,39 @@
 	/** @type {TextboxTypes} */
 	export let type = "text";
 
-	/** @type {String} */
-	export let value = "";
+	/** @type {String | Number} */
+	export let value = type === "number" ? 0 : "";
 
 	const classes = makeClassName([
 		"dusk-textbox",
 		`dusk-textbox-${type}`,
 		className
 	]);
+
+	/**
+	 * Needed, as the value cannot be bound to the input element
+	 * when the type is set dynamically
+	 * @param {Event & {currentTarget: EventTarget & HTMLInputElement}} event */
+	function handleInput (event) {
+		const target = event.currentTarget;
+
+		value = target.type === "number" ? target.valueAsNumber : target.value;
+	}
 </script>
 
 {#if type === "multiline"}
-	<textarea {...$$restProps} class={classes} on:input>{value}</textarea>
+	<textarea
+		{...$$restProps}
+		class={classes}
+		bind:value
+		on:input/>
 {:else}
 	<input
 		{...$$restProps}
 		class={classes}
 		{type}
-		on:input
 		{value}
+		on:input={handleInput}
+		on:input
 	/>
 {/if}
