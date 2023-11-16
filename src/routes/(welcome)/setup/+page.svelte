@@ -8,7 +8,7 @@
 <main class="flex flex-col gap-2">
 	<h1>
 		Unlocking the Future:<br/>
-		Your <span class="accent-text">DUSK</span> native Wallet
+		Your <mark>DUSK</mark> native Wallet
 	</h1>
 
 	<div class="flex flex-col gap-1">

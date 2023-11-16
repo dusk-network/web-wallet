@@ -9,21 +9,21 @@ exports[`Login > should render the login page 1`] = `
       class="s-diEOsynXV9Ac"
     >
       Unleash 
-      <span
-        class="accent-text s-diEOsynXV9Ac"
+      <mark
+        class="s-diEOsynXV9Ac"
       >
         RWA
-      </span>
+      </mark>
        and
       <br
         class="s-diEOsynXV9Ac"
       />
        
-      <span
-        class="accent-text s-diEOsynXV9Ac"
+      <mark
+        class="s-diEOsynXV9Ac"
       >
         Decentralized Finance
-      </span>
+      </mark>
     </h1>
      
     <section

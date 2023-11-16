@@ -9,8 +9,8 @@
 
 <main class="flex flex-col gap-2">
 	<h1>
-		Unleash <span class="accent-text">RWA</span> and<br/>
-		<span class="accent-text">Decentralized Finance</span>
+		Unleash <mark>RWA</mark> and<br/>
+		<mark>Decentralized Finance</mark>
 	</h1>
 
 	<Card className="flex flex-col gap-1" iconPath={mdiKeyOutline} heading="Password">
