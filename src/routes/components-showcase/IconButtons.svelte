@@ -58,3 +58,15 @@
 		icon={{ path: mdiHome }}
 	/>
 </section>
+<section>
+	<Button
+		variant="text"
+		className="small"
+		icon={{ path: mdiHome }}
+	/>
+	<Button
+		variant="text"
+		disabled={true}
+		icon={{ path: mdiHome }}
+	/>
+</section>

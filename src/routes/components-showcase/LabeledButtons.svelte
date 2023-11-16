@@ -78,3 +78,17 @@
 		text="Some text"
 	/>
 </section>
+
+<section>
+	<Button
+		variant="text"
+		icon={{ path: mdiHome }}
+		text="Some text"
+	/>
+	<Button
+		variant="text"
+		disabled={true}
+		icon={{ path: mdiHome }}
+		text="Some text"
+	/>
+</section>
