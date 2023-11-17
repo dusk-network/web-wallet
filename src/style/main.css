@@ -68,12 +68,8 @@ svg {
 	max-width: 40rem;
 	max-height: 60rem;
 	height: 80%;
-	padding: 2rem;
 	border-radius: 2rem;
-	display: flex;
-	flex-direction: column;
-	gap: 2rem;
-	transition: all .2s ease-in-out 0s;
+	transition: all 0.2s ease-in-out 0s;
 }
 
 .dusk-anchor-button:not(.dusk-anchor-button__disabled),
@@ -83,7 +79,7 @@ svg {
 .dusk-switch[aria-disabled="false"][aria-readonly="false"],
 .dusk-textbox:enabled,
 *[role="menuitem"] {
-	transition: all .2s linear 0s;
+	transition: all 0.2s linear 0s;
 }
 
 :is(
@@ -99,15 +95,7 @@ svg {
 	outline: 0 none;
 }
 
-@media (max-width: 500px),
-(max-height: 1000px) {
-	html {
-		font-size: calc(var(--main-font-size) - 3px);
-	}
-}
-
-@media (max-width: 500px),
-(max-height: 500px) {
+@media (max-width: 500px), (max-height: 500px) {
 	body {
 		padding: 1rem;
 	}
@@ -126,12 +114,7 @@ svg {
 }
 
 @media (max-height: 800px) {
-	html {
-		font-size: calc(var(--main-font-size) - 4px);
-	}
-
 	#outer-container {
-		padding: 1rem;
 		gap: 1rem;
 		border-radius: 1.5rem;
 	}

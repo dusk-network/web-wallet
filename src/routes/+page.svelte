@@ -1,5 +1,5 @@
 <svelte:options immutable={true}/>
 
-<main>
+<section>
 	<h1>HOME</h1>
-</main>
+</section>
