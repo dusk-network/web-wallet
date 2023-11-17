@@ -11,11 +11,9 @@ exports[`Setup > should render the Setup page 1`] = `
         <br />
         
 			Your 
-        <span
-          class="accent-text"
-        >
+        <mark>
           DUSK
-        </span>
+        </mark>
          native Wallet
       </h2>
     </header>

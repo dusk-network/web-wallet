@@ -9,7 +9,7 @@
 	<header>
 		<h2>
 			Unlocking the Future:<br/>
-			Your <span class="accent-text">DUSK</span> native Wallet
+			Your <mark>DUSK</mark> native Wallet
 		</h2>
 	</header>
 
