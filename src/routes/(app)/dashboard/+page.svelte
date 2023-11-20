@@ -31,6 +31,7 @@
 	.content {
 		width: 100%;
 	}
+
 	.contract {
 		display: flex;
 		padding: 1rem 1.375rem;
@@ -39,13 +40,6 @@
 		align-items: flex-start;
 		gap: 1rem;
 		align-self: stretch;
-
-		&__heading {
-			color: var(--primary-color);
-			font-size: 1.125rem;
-			line-height: 150%;
-			letter-spacing: -0.01125rem;
-		}
 	}
 
 	.tab-panel {

@@ -27,8 +27,8 @@
 		"test": "vitest --run",
 		"test:coverage": "vitest --run --coverage.enabled",
 		"test:watch": "vitest",
-		"typecheck": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
-		"typecheck:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch"
+		"typecheck": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --fail-on-warnings",
+		"typecheck:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch --fail-on-warnings"
 	},
 	"type": "module",
 	"version": "0.0.1",
