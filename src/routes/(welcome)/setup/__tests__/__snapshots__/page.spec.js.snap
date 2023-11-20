@@ -22,11 +22,12 @@ exports[`Setup > should render the Setup page 1`] = `
       class="flex flex-col gap-1"
     >
       <a
-        class="dusk-anchor dusk-anchor-button dusk-icon-button-labeled secondary"
+        aria-disabled="false"
+        class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--secondary dusk-anchor-button--size--normal dusk-icon-button-labeled"
         href="/setup/create"
       >
         <svg
-          class="dusk-icon"
+          class="dusk-icon dusk-anchor-button__icon"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >
@@ -37,7 +38,9 @@ exports[`Setup > should render the Setup page 1`] = `
         
         <!--&lt;Icon&gt;-->
          
-        <span>
+        <span
+          class="dusk-anchor-button__text"
+        >
           Create a new wallet
         </span>
         
@@ -47,11 +50,12 @@ exports[`Setup > should render the Setup page 1`] = `
       <!--&lt;AnchorButton&gt;-->
        
       <a
-        class="dusk-anchor dusk-anchor-button dusk-icon-button-labeled tertiary"
+        aria-disabled="false"
+        class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--normal dusk-icon-button-labeled"
         href="/setup/restore"
       >
         <svg
-          class="dusk-icon"
+          class="dusk-icon dusk-anchor-button__icon"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >
@@ -62,7 +66,9 @@ exports[`Setup > should render the Setup page 1`] = `
         
         <!--&lt;Icon&gt;-->
          
-        <span>
+        <span
+          class="dusk-anchor-button__text"
+        >
           Restore wallet
         </span>
         

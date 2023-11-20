@@ -20,23 +20,28 @@
 	/** @type {ButtonIconProp | Undefined} */
 	export let icon = undefined;
 
-	/** @type {ButtonVariant | Undefined } */
-	export let variant = undefined;
+	/** @type {ButtonSize} */
+	export let size = "normal";
+
+	/** @type {ButtonVariant } */
+	export let variant = "primary";
 
 	/** @type {String | Undefined} */
 	export let text = undefined;
 
 	$: classes = makeClassName([
 		"dusk-anchor-button",
-		disabled ? "dusk-anchor-button__disabled" : "",
+		`dusk-anchor-button--variant--${variant}`,
+		`dusk-anchor-button--size--${size}`,
+		disabled ? "dusk-anchor-button--disabled" : "",
 		icon && text ? "dusk-icon-button-labeled" : icon ? "dusk-icon-button" : "",
-		variant,
 		className
 	]);
 </script>
 
 <Anchor
 	{...$$restProps}
+	aria-disabled={disabled}
 	className={classes}
 	{href}
 	on:click
@@ -44,15 +49,15 @@
 >
 	{#if icon?.position === "after"}
 		{#if text}
-			<span>{text}</span>
+			<span class="dusk-anchor-button__text">{text}</span>
 		{/if}
-		<Icon path={icon.path}/>
+		<Icon className="dusk-anchor-button__icon" path={icon.path}/>
 	{:else if icon}
-		<Icon path={icon.path}/>
+		<Icon className="dusk-anchor-button__icon" path={icon.path}/>
 		{#if text}
-			<span>{text}</span>
+			<span class="dusk-anchor-button__text">{text}</span>
 		{/if}
 	{:else if text}
-		<span>{text}</span>
+		<span class="dusk-anchor-button__text">{text}</span>
 	{/if}
 </Anchor>

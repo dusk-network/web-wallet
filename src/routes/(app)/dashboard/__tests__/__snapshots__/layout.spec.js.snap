@@ -34,15 +34,16 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
         </div>
          
         <a
+          aria-disabled="false"
           aria-label="Settings"
-          class="dusk-anchor dusk-anchor-button dusk-icon-button text footer__anchor-button"
+          class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal dusk-icon-button footer__anchor-button"
           data-tooltip-id="main-tooltip"
           data-tooltip-place="left"
           data-tooltip-text="Settings"
           href="/settings"
         >
           <svg
-            class="dusk-icon"
+            class="dusk-icon dusk-anchor-button__icon"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >

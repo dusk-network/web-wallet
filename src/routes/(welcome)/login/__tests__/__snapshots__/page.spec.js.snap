@@ -59,20 +59,25 @@ exports[`Login > should render the login page 1`] = `
       <!--&lt;Textbox&gt;-->
        
       <button
-        class="dusk-button dusk-button-button secondary"
+        class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal"
         type="button"
       >
-        <span>
+        <span
+          class="dusk-button__text"
+        >
           Unlock Wallet
         </span>
       </button>
       <!--&lt;Button&gt;-->
        
       <a
-        class="dusk-anchor dusk-anchor-button text"
+        aria-disabled="false"
+        class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal"
         href="#"
       >
-        <span>
+        <span
+          class="dusk-anchor-button__text"
+        >
           Forgot Password?
         </span>
         

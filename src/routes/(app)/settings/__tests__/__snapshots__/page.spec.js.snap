@@ -9,11 +9,12 @@ exports[`Settings > should render the settings page 1`] = `
       class="header s-EBshooXNO1eQ"
     >
       <a
-        class="dusk-anchor dusk-anchor-button dusk-icon-button text"
+        aria-disabled="false"
+        class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal dusk-icon-button"
         href="/dashboard"
       >
         <svg
-          class="dusk-icon"
+          class="dusk-icon dusk-anchor-button__icon"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >

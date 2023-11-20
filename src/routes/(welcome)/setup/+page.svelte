@@ -16,15 +16,15 @@
 	<div class="flex flex-col gap-1">
 		<AnchorButton
 			icon={{ path: mdiWalletOutline }}
-			className="secondary"
-			text="Create a new wallet"
 			href="/setup/create"
+			text="Create a new wallet"
+			variant="secondary"
 		/>
 		<AnchorButton
-			icon={{ path: mdiKeyOutline }}
-			className="tertiary"
-			text="Restore wallet"
 			href="/setup/restore"
+			icon={{ path: mdiKeyOutline }}
+			text="Restore wallet"
+			variant="tertiary"
 		/>
 	</div>
 </section>

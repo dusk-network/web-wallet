@@ -4,7 +4,7 @@
 	text-align: center;
 }
 
-.dusk-anchor-button.dusk-anchor-button__disabled {
+.dusk-anchor-button.dusk-anchor-button--disabled {
 	cursor: default;
 	pointer-events: none;
 }

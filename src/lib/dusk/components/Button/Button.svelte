@@ -14,8 +14,11 @@
 	/** @type {ButtonIconProp | Undefined} */
 	export let icon = undefined;
 
-	/** @type {ButtonVariant | Undefined } */
-	export let variant = undefined;
+	/** @type {ButtonSize} */
+	export let size = "normal";
+
+	/** @type {ButtonVariant} */
+	export let variant = "primary";
 
 	/** @type {String | Undefined} */
 	export let text = undefined;
@@ -25,16 +28,18 @@
 
 	$: classes = makeClassName([
 		"dusk-button",
-		`dusk-button-${type}`,
+		`dusk-button--type--${type}`,
+		`dusk-button--variant--${variant}`,
+		`dusk-button--size--${size}`,
 		icon && text ? "dusk-icon-button-labeled" : icon ? "dusk-icon-button" : "",
-		type === "toggle" && active ? "dusk-button-toggle__active" : "",
-		variant,
+		type === "toggle" && active ? "dusk-button--type--toggle--active" : "",
 		className
 	]);
 </script>
 
 <button
 	{...$$restProps}
+	aria-pressed={type === "toggle" ? active : undefined}
 	class={classes}
 	on:click
 	on:mousedown
@@ -43,15 +48,15 @@
 >
 	{#if icon?.position === "after"}
 		{#if text}
-			<span>{text}</span>
+			<span class="dusk-button__text">{text}</span>
 		{/if}
-		<Icon path={icon.path}/>
+		<Icon className="dusk-button__icon" path={icon.path}/>
 	{:else if icon}
-		<Icon path={icon.path}/>
+		<Icon className="dusk-button__icon" path={icon.path}/>
 		{#if text}
-			<span>{text}</span>
+			<span class="dusk-button__text">{text}</span>
 		{/if}
 	{:else if text}
-		<span>{text}</span>
+		<span class="dusk-button__text">{text}</span>
 	{/if}
 </button>

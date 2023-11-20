@@ -76,14 +76,14 @@ exports[`Dashboard > should render the dashboard page 1`] = `
         class="dusk-tabs"
       >
         <button
-          class="dusk-button dusk-button-button dusk-icon-button dusk-tab-scroll-button"
+          class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button dusk-tab-scroll-button"
           disabled=""
           hidden="true"
           tabindex="-1"
           type="button"
         >
           <svg
-            class="dusk-icon"
+            class="dusk-icon dusk-button__icon"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >
@@ -149,14 +149,14 @@ exports[`Dashboard > should render the dashboard page 1`] = `
         </ul>
          
         <button
-          class="dusk-button dusk-button-button dusk-icon-button dusk-tab-scroll-button"
+          class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button dusk-tab-scroll-button"
           disabled=""
           hidden="true"
           tabindex="-1"
           type="button"
         >
           <svg
-            class="dusk-icon"
+            class="dusk-icon dusk-button__icon"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >

@@ -17,85 +17,128 @@
 		text="Anchor text"
 	/>
 	<AnchorButton
-		className="secondary"
 		href="http://example.com"
 		icon={{ path: mdiHome }}
 		text="Anchor text"
+		variant="secondary"
 	/>
 	<AnchorButton
-		className="secondary"
 		disabled={true}
 		href="http://example.com"
 		icon={{ path: mdiHome }}
 		text="Anchor text"
+		variant="secondary"
 	/>
 	<AnchorButton
-		className="tertiary"
 		href="http://example.com"
 		icon={{ path: mdiHome }}
 		text="Anchor text"
+		variant="tertiary"
 	/>
 	<AnchorButton
-		className="tertiary"
 		disabled={true}
 		href="http://example.com"
 		icon={{ path: mdiHome }}
 		text="Anchor text"
+		variant="tertiary"
 	/>
 </section>
 <section>
 	<AnchorButton
-		className="small"
 		href="http://example.com"
 		icon={{ path: mdiHome }}
+		size="small"
 		text="Anchor text"
 	/>
 	<AnchorButton
-		className="small"
 		disabled={true}
 		href="http://example.com"
 		icon={{ path: mdiHome }}
+		size="small"
 		text="Anchor text"
 	/>
 	<AnchorButton
-		className="secondary small"
 		href="http://example.com"
 		icon={{ path: mdiHome }}
 		text="Anchor text"
+		size="small"
+		variant="secondary"
 	/>
 	<AnchorButton
-		className="secondary small"
 		disabled={true}
 		href="http://example.com"
 		icon={{ path: mdiHome }}
+		size="small"
 		text="Anchor text"
+		variant="secondary"
 	/>
 	<AnchorButton
-		className="tertiary small"
 		href="http://example.com"
 		icon={{ path: mdiHome }}
+		size="small"
 		text="Anchor text"
+		variant="tertiary"
 	/>
 	<AnchorButton
-		className="tertiary small"
 		disabled={true}
 		href="http://example.com"
 		icon={{ path: mdiHome }}
+		size="small"
 		text="Anchor text"
+		variant="tertiary"
 	/>
 </section>
 <section>
 	<AnchorButton
-		variant="text"
 		href="http://example.com"
 		icon={{ path: mdiHome }}
 		text="Anchor text"
+		variant="text"
 	/>
 	<AnchorButton
-		variant="text"
 		disabled={true}
 		href="http://example.com"
 		icon={{ path: mdiHome }}
 		text="Anchor text"
+		variant="text"
+	/>
+	<AnchorButton
+		href="http://example.com"
+		icon={{ path: mdiHome }}
+		size="small"
+		text="Anchor text"
+		variant="text"
+	/>
+	<AnchorButton
+		disabled={true}
+		href="http://example.com"
+		icon={{ path: mdiHome }}
+		size="small"
+		text="Anchor text"
+		variant="text"
+	/>
+	<AnchorButton
+		href="http://example.com"
+		icon={{ path: mdiHome }}
+		variant="text"
+	/>
+	<AnchorButton
+		disabled={true}
+		href="http://example.com"
+		icon={{ path: mdiHome }}
+		variant="text"
+	/>
+	<AnchorButton
+		href="http://example.com"
+		icon={{ path: mdiHome }}
+		size="small"
+		variant="text"
+	/>
+	<AnchorButton
+		disabled={true}
+		href="http://example.com"
+		icon={{ path: mdiHome }}
+		size="small"
+		variant="text"
 	/>
 </section>

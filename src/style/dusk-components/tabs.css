@@ -1,12 +1,10 @@
-.dusk-tabs,
-.dusk-button.dusk-icon-button.dusk-tab-scroll-button {
+.dusk-tabs {
 	color: var(--on-surface-color);
 }
 
 .dusk-button.dusk-icon-button.dusk-tab-scroll-button {
-	background-color: transparent;
 	padding: 0;
-	border: 0 !important;
+	border: 0;
 }
 
 .dusk-button.dusk-icon-button.dusk-tab-scroll-button:enabled:focus {
@@ -18,19 +16,8 @@
 	height: var(--control-icon-size);
 }
 
-.dusk-button.dusk-icon-button.dusk-tab-scroll-button:enabled:hover {
-	transform: scale(1.2, 1.2);
-	color: var(--secondary-color);
-}
-
-.dusk-button.dusk-icon-button.dusk-tab-scroll-button:first-of-type:enabled:active,
-.dusk-button.dusk-icon-button.dusk-tab-scroll-button:last-of-type:enabled:active {
-	transform: scale(0.9);
-}
-
 .dusk-tab-item {
-	border-radius: var(--control-border-radius-size)
-		var(--control-border-radius-size) 0 0;
+	border-radius: var(--control-border-radius-size) var(--control-border-radius-size) 0 0;
 	font-size: var(--control-font-size);
 	padding: var(--control-padding);
 	gap: calc(var(--control-font-size) / 2);
