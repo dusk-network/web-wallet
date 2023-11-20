@@ -492,6 +492,8 @@ declare module "lamb" {
 	 * *****     MATH      ***** *
 	 * ------------------------- */
 
+	function randomInt(min: number, max: number): number;
+
 	/* ------------------------- *
 	 * *****    OBJECT     ***** *
 	 * ------------------------- */

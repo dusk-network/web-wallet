@@ -32,5 +32,6 @@
 <style>
 	.onboarding_wrapper {
 		height: 100%;
+		overflow-y: auto;
 	}
 </style>
