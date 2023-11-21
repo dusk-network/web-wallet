@@ -25,16 +25,6 @@ describe("Icon", () => {
 		expect(container.firstChild).toMatchSnapshot();
 	});
 
-	it("should pass additional class names to the rendered element", () => {
-		const props = {
-			...baseProps,
-			className: "foo bar"
-		};
-		const { container } = render(Icon, { ...baseOptions, props });
-
-		expect(container.firstChild).toMatchSnapshot();
-	});
-
 	it("should accept a custom role for the SVG component", () => {
 		const props = {
 			...baseProps,
@@ -53,5 +43,27 @@ describe("Icon", () => {
 		const { container } = render(Icon, { ...baseOptions, props });
 
 		expect(container.firstChild).toMatchSnapshot();
+	});
+
+	it("should pass additional class names and attributes to the rendered element", () => {
+		const props = {
+			...baseProps,
+			"className": "foo bar",
+			"data-baz": "baz"
+		};
+		const { container, rerender } = render(Icon, { ...baseOptions, props });
+		const icon = container.firstChild;
+
+		expect(icon).toHaveClass("foo bar");
+		expect(icon).toHaveAttribute("data-baz", "baz");
+		expect(icon).toMatchSnapshot();
+
+		rerender({ ...props, isInStack: true });
+
+		const icon2 = container.firstChild;
+
+		expect(icon2).toHaveClass("foo bar");
+		expect(icon2).toHaveAttribute("data-baz", "baz");
+		expect(icon2).toMatchSnapshot();
 	});
 });
