@@ -17,20 +17,20 @@
 	/** @type {String} */
 	export let role = "graphics-symbol";
 
-	/** @type {String} */
-	let classes;
-
-	$: classes = makeClassName(["dusk-icon", className]);
+	$: commonAttributes = {
+		...$$restProps,
+		class: makeClassName(["dusk-icon", className])
+	};
 </script>
 
 {#if isInStack}
-	<g class={classes}>
+	<g {...commonAttributes}>
 		<rect/>
 		<path d={path}/>
 	</g>
 {:else}
 	<svg
-		class={classes}
+		{...commonAttributes}
 		role={role}
 		viewBox="0 0 24 24"
 	>
