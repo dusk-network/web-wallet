@@ -22,14 +22,16 @@
 			Your privacy and security are our top priorities.</p>
 			<div class="flex gap-1 w-100">
 				<AnchorButton
-					className="tertiary flex-1"
-					text="Cancel"
+					className="flex-1"
 					href="/setup"
+					text="Cancel"
+					variant="tertiary"
 				/>
 				<Button
-					className="secondary flex-1"
+					className="flex-1"
 					text="Accept"
 					on:click={beginOnboarding}
+					variant="secondary"
 				/>
 			</div>
 		</div>

@@ -17,78 +17,95 @@
 		text="Some text"
 	/>
 	<Button
-		className="secondary"
 		icon={{ path: mdiHome }}
 		tabindex=""
 		text="Some text"
+		variant="secondary"
 	/>
 	<Button
-		className="secondary"
 		disabled={true}
 		icon={{ path: mdiHome }}
 		tabindex=""
 		text="Some text"
+		variant="secondary"
 	/>
 	<Button
-		className="tertiary"
 		icon={{ path: mdiHome }}
 		tabindex=""
 		text="Some text"
+		variant="tertiary"
 	/>
 	<Button
-		className="tertiary"
 		disabled={true}
 		icon={{ path: mdiHome }}
 		tabindex=""
 		text="Some text"
+		variant="tertiary"
 	/>
 </section>
 <section>
 	<Button
-		className="small"
 		icon={{ path: mdiHome }}
+		size="small"
 		text="Some text"
 	/>
 	<Button
-		className="small"
+		disabled={true}
+		icon={{ path: mdiHome }}
+		size="small"
+		text="Some text"
+	/>
+	<Button
+		icon={{ path: mdiHome }}
+		text="Some text"
+		size="small"
+		variant="secondary"
+	/>
+	<Button
 		disabled={true}
 		icon={{ path: mdiHome }}
 		text="Some text"
+		size="small"
+		variant="secondary"
 	/>
 	<Button
-		className="secondary small"
 		icon={{ path: mdiHome }}
+		size="small"
 		text="Some text"
+		variant="tertiary"
 	/>
 	<Button
-		className="secondary small"
 		disabled={true}
 		icon={{ path: mdiHome }}
+		size="small"
 		text="Some text"
-	/>
-	<Button
-		className="tertiary small"
-		icon={{ path: mdiHome }}
-		text="Some text"
-	/>
-	<Button
-		className="tertiary small"
-		disabled={true}
-		icon={{ path: mdiHome }}
-		text="Some text"
+		variant="tertiary"
 	/>
 </section>
 
 <section>
 	<Button
-		variant="text"
 		icon={{ path: mdiHome }}
 		text="Some text"
+		variant="text"
 	/>
 	<Button
-		variant="text"
 		disabled={true}
 		icon={{ path: mdiHome }}
 		text="Some text"
+		variant="text"
+	/>
+	<Button
+		icon={{ path: mdiHome }}
+		size="small"
+		text="Some text"
+		variant="text"
+	/>
+	<Button
+		disabled={true}
+		icon={{ path: mdiHome }}
+		size="small"
+		text="Some text"
+		variant="text"
 	/>
 </section>

@@ -11,62 +11,76 @@
 		icon={{ path: mdiHome }}
 	/>
 	<Button
-		className="secondary"
 		icon={{ path: mdiHome }}
+		variant="secondary"
 	/>
 	<Button
-		className="secondary"
 		disabled={true}
 		icon={{ path: mdiHome }}
+		variant="secondary"
 	/>
 	<Button
-		className="tertiary"
 		icon={{ path: mdiHome }}
+		variant="tertiary"
 	/>
 	<Button
-		className="tertiary"
 		disabled={true}
 		icon={{ path: mdiHome }}
+		variant="tertiary"
 	/>
 </section>
 <section>
 	<Button
-		className="small"
 		icon={{ path: mdiHome }}
+		size="small"
 	/>
 	<Button
-		className="small"
 		disabled={true}
 		icon={{ path: mdiHome }}
+		size="small"
 	/>
 	<Button
-		className="secondary small"
 		icon={{ path: mdiHome }}
+		size="small"
+		variant="secondary"
 	/>
 	<Button
-		className="secondary small"
 		disabled={true}
 		icon={{ path: mdiHome }}
+		size="small"
+		variant="secondary"
 	/>
 	<Button
-		className="tertiary small"
 		icon={{ path: mdiHome }}
+		size="small"
+		variant="tertiary"
 	/>
 	<Button
-		className="tertiary small"
 		disabled={true}
 		icon={{ path: mdiHome }}
+		size="small"
+		variant="tertiary"
 	/>
 </section>
 <section>
 	<Button
-		variant="text"
-		className="small"
 		icon={{ path: mdiHome }}
+		variant="text"
 	/>
 	<Button
-		variant="text"
 		disabled={true}
 		icon={{ path: mdiHome }}
+		variant="text"
+	/>
+	<Button
+		icon={{ path: mdiHome }}
+		size="small"
+		variant="text"
+	/>
+	<Button
+		disabled={true}
+		icon={{ path: mdiHome }}
+		size="small"
+		variant="text"
 	/>
 </section>
