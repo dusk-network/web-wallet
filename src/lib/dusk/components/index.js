@@ -1,6 +1,7 @@
 export { default as Agreement } from "./Agreement/Agreement.svelte";
 export { default as Anchor } from "./Anchor/Anchor.svelte";
 export { default as AnchorButton } from "./AnchorButton/AnchorButton.svelte";
+export { default as Balance } from "./Balance/Balance.svelte";
 export { default as Checkbox } from "./Checkbox/Checkbox.svelte";
 export { default as Button } from "./Button/Button.svelte";
 export { default as Card } from "./Card/Card.svelte";

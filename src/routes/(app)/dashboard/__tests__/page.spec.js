@@ -6,7 +6,18 @@ describe("Dashboard", () => {
 	afterEach(cleanup);
 
 	it("should render the dashboard page", () => {
-		const { container } = render(Dashboard, {});
+		const { container } = render(
+			Dashboard,
+			{
+				props: {
+					data: {
+						currency: "EUR",
+						dusk: 2000000,
+						fiat: 100000
+					}
+				}
+			}
+		);
 
 		expect(container.firstChild).toMatchSnapshot();
 	});

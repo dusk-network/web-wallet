@@ -6,6 +6,7 @@
 	import { Select } from "$lib/dusk/components";
 
 	import AnchorButtons from "./AnchorButtons.svelte";
+	import Balances from "./Balances.svelte";
 	import Cards from "./Cards.svelte";
 	import Checkboxes from "./Checkboxes.svelte";
 	import IconButtons from "./IconButtons.svelte";
@@ -22,6 +23,7 @@
 	/** @type {Record<string, import("svelte").ComponentType>} */
 	const componentsMap = {
 		"Anchor buttons": AnchorButtons,
+		"Balances": Balances,
 		"Cards": Cards,
 		"Checkboxes": Checkboxes,
 		"Icon buttons": IconButtons,

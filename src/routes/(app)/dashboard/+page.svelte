@@ -3,9 +3,13 @@
 <script>
 	import { fade } from "svelte/transition";
 	import {
+		Balance,
 		Tabs
 	} from "$lib/dusk/components";
 	import { mdiDatabaseOutline, mdiSwapVertical } from "@mdi/js";
+
+	/** @type {import('./$types').PageData} */
+	export let data;
 
 	const items = [
 		{ icon: { path: mdiSwapVertical }, id: "tab-transfer" },
@@ -13,23 +17,32 @@
 	];
 
 	let selectedTab = "tab-transfer";
+
 </script>
 
-<section class="content">
+<div class="content">
 	<h2 class="visible-hidden">Dashboard</h2>
-	<Tabs bind:selectedTab={selectedTab} items={items}/>
-	<div class="tab-panel">
-		{#key selectedTab}
-			<div in:fade class="contract">
-				{selectedTab}
-			</div>
-		{/key}
+
+	<Balance dusk={data.dusk} fiat={data.fiat} currency={data.currency}/>
+
+	<div class="tabs">
+		<Tabs bind:selectedTab={selectedTab} items={items}/>
+		<div class="tabs__panel">
+			{#key selectedTab}
+				<div in:fade class="contract">
+					{selectedTab}
+				</div>
+			{/key}
+		</div>
 	</div>
-</section>
+</div>
 
 <style>
 	.content {
 		width: 100%;
+		display: flex;
+		flex-direction: column;
+		gap: 1.375rem;
 	}
 
 	.contract {
@@ -42,7 +55,7 @@
 		align-self: stretch;
 	}
 
-	.tab-panel {
+	.tabs .tabs__panel {
 		border-radius: 0rem 1.25rem 1.25rem 1.25rem;
 		background: var(--surface-color);
 	}
