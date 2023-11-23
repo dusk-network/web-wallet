@@ -14,7 +14,7 @@ exports[`Settings > should render the settings page 1`] = `
         href="/dashboard"
       >
         <svg
-          class="dusk-icon dusk-anchor-button__icon"
+          class="dusk-icon dusk-icon--size--normal dusk-anchor-button__icon"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >

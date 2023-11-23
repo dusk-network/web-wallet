@@ -1,4 +1,14 @@
 .dusk-icon {
-  height: 1.2em;
-  width: 1.2em;
+	--icon-size: 1.2em;
+	--scaler: 1.5;
+}
+
+.dusk-icon--size--normal {
+	height: var(--icon-size);
+	width: var(--icon-size);
+}
+
+.dusk-icon--size--large {
+	height: calc(var(--icon-size) * var(--scaler));
+	width: calc(var(--icon-size) * var(--scaler));
 }

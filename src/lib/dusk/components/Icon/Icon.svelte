@@ -8,6 +8,9 @@
 	/** @type {String|Undefined} */
 	export let className = undefined;
 
+	/** @type {IconSize} */
+	export let size = "normal";
+
 	/** @type {Boolean} */
 	export let isInStack = false;
 
@@ -19,7 +22,7 @@
 
 	$: commonAttributes = {
 		...$$restProps,
-		class: makeClassName(["dusk-icon", className])
+		class: makeClassName(["dusk-icon", `dusk-icon--size--${size}`, className])
 	};
 </script>
 

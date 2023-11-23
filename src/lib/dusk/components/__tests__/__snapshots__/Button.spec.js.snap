@@ -26,7 +26,7 @@ exports[`Button > should be able to render a button with an icon and text 1`] = 
   </span>
    
   <svg
-    class="dusk-icon dusk-button__icon"
+    class="dusk-icon dusk-icon--size--normal dusk-button__icon"
     role="graphics-symbol"
     viewBox="0 0 24 24"
   >
@@ -51,7 +51,7 @@ exports[`Button > should be able to render a button with an icon and text 2`] = 
   </span>
    
   <svg
-    class="dusk-icon dusk-button__icon"
+    class="dusk-icon dusk-icon--size--normal dusk-button__icon"
     role="graphics-symbol"
     viewBox="0 0 24 24"
   >
@@ -71,7 +71,7 @@ exports[`Button > should be able to render a button with an icon only 1`] = `
 >
    
   <svg
-    class="dusk-icon dusk-button__icon"
+    class="dusk-icon dusk-icon--size--normal dusk-button__icon"
     role="graphics-symbol"
     viewBox="0 0 24 24"
   >
@@ -91,7 +91,7 @@ exports[`Button > should be able to render a button with an icon only 2`] = `
 >
    
   <svg
-    class="dusk-icon dusk-button__icon"
+    class="dusk-icon dusk-icon--size--normal dusk-button__icon"
     role="graphics-symbol"
     viewBox="0 0 24 24"
   >

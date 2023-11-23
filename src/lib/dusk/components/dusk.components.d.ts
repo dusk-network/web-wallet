@@ -8,6 +8,8 @@ type ButtonSize = "normal" | "small";
 
 type ButtonVariant = "primary" | "secondary" | "tertiary" | "text";
 
+type IconSize = "normal" | "large";
+
 type GroupedSelectOptions = Record<string, SelectOption[] | string[]>;
 
 type SelectOption = {

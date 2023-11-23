@@ -30,7 +30,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
         </strong>
          
         <svg
-          class="dusk-icon dusk-balance__icon"
+          class="dusk-icon dusk-icon--size--normal dusk-balance__icon"
           data-tooltip-id="balance-tooltip"
           data-tooltip-place="right"
           data-tooltip-text="DUSK"
@@ -83,7 +83,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
           type="button"
         >
           <svg
-            class="dusk-icon dusk-button__icon"
+            class="dusk-icon dusk-icon--size--normal dusk-button__icon"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >
@@ -110,7 +110,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
             tabindex="0"
           >
             <svg
-              class="dusk-icon"
+              class="dusk-icon dusk-icon--size--normal"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -132,7 +132,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
             tabindex="0"
           >
             <svg
-              class="dusk-icon"
+              class="dusk-icon dusk-icon--size--normal"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -156,7 +156,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
           type="button"
         >
           <svg
-            class="dusk-icon dusk-button__icon"
+            class="dusk-icon dusk-icon--size--normal dusk-button__icon"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >
