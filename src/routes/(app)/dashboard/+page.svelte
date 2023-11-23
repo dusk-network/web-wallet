@@ -6,6 +6,7 @@
 		Balance,
 		Tabs
 	} from "$lib/dusk/components";
+	import { settingsStore } from "$lib/settings";
 	import { mdiDatabaseOutline, mdiSwapVertical } from "@mdi/js";
 
 	/** @type {import('./$types').PageData} */
@@ -15,6 +16,7 @@
 		{ icon: { path: mdiSwapVertical }, id: "tab-transfer" },
 		{ icon: { path: mdiDatabaseOutline }, id: "tab-staking" }
 	];
+	const { currency, language } = $settingsStore;
 
 	let selectedTab = "tab-transfer";
 
@@ -23,7 +25,11 @@
 <div class="content">
 	<h2 class="visible-hidden">Dashboard</h2>
 
-	<Balance dusk={data.dusk} fiat={data.fiat} currency={data.currency}/>
+	<Balance
+		dusk={data.dusk}
+		fiat={data.fiat}
+		currency={currency}
+		locale={language}/>
 
 	<div class="tabs">
 		<Tabs bind:selectedTab={selectedTab} items={items}/>

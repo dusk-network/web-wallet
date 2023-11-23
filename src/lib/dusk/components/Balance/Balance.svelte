@@ -18,13 +18,18 @@
 	/** @type {String} */
 	export let currency = "USD";
 
+	/** @type {String} */
+	export let locale = "en";
+
 	$: classes = makeClassName([
 		"dusk-balance",
 		className
 	]);
 
-	const duskFormatter = createCurrencyFormatter("en-US", "DUSK");
-	const fiatFormatter = createCurrencyFormatter("en-US", currency);
+	const TOKEN_CURRENCY = "DUSK";
+
+	const duskFormatter = createCurrencyFormatter(locale, TOKEN_CURRENCY);
+	const fiatFormatter = createCurrencyFormatter(locale, currency);
 </script>
 
 <article
@@ -40,7 +45,7 @@
 			className="dusk-balance__icon"
 			path={DUSK_LOGO_PATH}
 			data-tooltip-id="balance-tooltip"
-			data-tooltip-text="DUSK"
+			data-tooltip-text={TOKEN_CURRENCY}
 			data-tooltip-place="right"
 		/>
 	</p>

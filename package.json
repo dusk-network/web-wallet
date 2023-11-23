@@ -36,7 +36,8 @@
 		"@floating-ui/dom": "1.5.3",
 		"@jimber/simple-bip39": "1.0.0",
 		"@mdi/js": "7.3.67",
-		"lamb": "0.61.0"
+		"lamb": "0.61.0",
+		"svelte-persisted-store": "0.7.0"
 	},
 	"devDependencies": {
 		"@dusk-network/eslint-config": "2.0.0",
