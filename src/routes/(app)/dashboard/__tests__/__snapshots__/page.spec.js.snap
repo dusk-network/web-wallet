@@ -50,7 +50,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
       >
         <strong>
           (
-          €100,000.00
+          $100,000.00
           )
         </strong>
       </p>
