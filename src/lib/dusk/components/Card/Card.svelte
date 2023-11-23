@@ -17,7 +17,7 @@
 <section {...$$restProps} class={classes}>
 	<header class="dusk-card__header">
 		{#if iconPath}
-			<Icon className="dusk-card__icon" path={iconPath}/>
+			<Icon className="dusk-card__icon" path={iconPath} size="large"/>
 		{/if}
 		<h2>{heading}</h2>
 	</header>

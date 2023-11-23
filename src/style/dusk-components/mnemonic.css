@@ -9,7 +9,7 @@
 	background-color: var(--on-primary-color);
 	display: grid;
 	grid-template-columns: var(--mobile-grid-template-columns);
-	gap: var(--default-grid-gap);
+	gap: var(--default-gap);
 	border-radius: var(--control-border-radius-size)
 }
 
@@ -32,7 +32,7 @@
 .dusk-mnemonic-validate-buttons-wrapper,
 .dusk-mnemonic-authenticate-inputs-wrapper {
 	display: grid;
-	gap: var(--default-grid-gap);
+	gap: var(--default-gap);
 	margin-top: 1em;
 }
 

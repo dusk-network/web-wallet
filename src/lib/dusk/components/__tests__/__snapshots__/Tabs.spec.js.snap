@@ -12,7 +12,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
     type="button"
   >
     <svg
-      class="dusk-icon dusk-button__icon"
+      class="dusk-icon dusk-icon--size--normal dusk-button__icon"
       role="graphics-symbol"
       viewBox="0 0 24 24"
     >
@@ -39,7 +39,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       tabindex="0"
     >
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -72,7 +72,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       </span>
        
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -92,7 +92,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       tabindex="0"
     >
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -125,7 +125,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       </span>
        
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -145,7 +145,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       tabindex="0"
     >
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -178,7 +178,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       </span>
        
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -198,7 +198,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       tabindex="0"
     >
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -231,7 +231,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       </span>
        
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -251,7 +251,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       tabindex="0"
     >
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -284,7 +284,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       </span>
        
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -305,7 +305,7 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
     type="button"
   >
     <svg
-      class="dusk-icon dusk-button__icon"
+      class="dusk-icon dusk-icon--size--normal dusk-button__icon"
       role="graphics-symbol"
       viewBox="0 0 24 24"
     >
@@ -334,7 +334,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
     type="button"
   >
     <svg
-      class="dusk-icon dusk-button__icon"
+      class="dusk-icon dusk-icon--size--normal dusk-button__icon"
       role="graphics-symbol"
       viewBox="0 0 24 24"
     >
@@ -361,7 +361,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       tabindex="0"
     >
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -384,7 +384,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
     >
        
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -404,7 +404,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       tabindex="0"
     >
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -427,7 +427,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
     >
        
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -447,7 +447,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       tabindex="0"
     >
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -470,7 +470,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
     >
        
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -490,7 +490,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       tabindex="0"
     >
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -513,7 +513,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
     >
        
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -533,7 +533,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       tabindex="0"
     >
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -556,7 +556,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
     >
        
       <svg
-        class="dusk-icon"
+        class="dusk-icon dusk-icon--size--normal"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -577,7 +577,7 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
     type="button"
   >
     <svg
-      class="dusk-icon dusk-button__icon"
+      class="dusk-icon dusk-icon--size--normal dusk-button__icon"
       role="graphics-symbol"
       viewBox="0 0 24 24"
     >
@@ -607,7 +607,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
     type="button"
   >
     <svg
-      class="dusk-icon dusk-button__icon"
+      class="dusk-icon dusk-icon--size--normal dusk-button__icon"
       role="graphics-symbol"
       viewBox="0 0 24 24"
     >
@@ -775,7 +775,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
     type="button"
   >
     <svg
-      class="dusk-icon dusk-button__icon"
+      class="dusk-icon dusk-icon--size--normal dusk-button__icon"
       role="graphics-symbol"
       viewBox="0 0 24 24"
     >
@@ -804,7 +804,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
     type="button"
   >
     <svg
-      class="dusk-icon dusk-button__icon"
+      class="dusk-icon dusk-icon--size--normal dusk-button__icon"
       role="graphics-symbol"
       viewBox="0 0 24 24"
     >
@@ -972,7 +972,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
     type="button"
   >
     <svg
-      class="dusk-icon dusk-button__icon"
+      class="dusk-icon dusk-icon--size--normal dusk-button__icon"
       role="graphics-symbol"
       viewBox="0 0 24 24"
     >
@@ -1001,7 +1001,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
     type="button"
   >
     <svg
-      class="dusk-icon dusk-button__icon"
+      class="dusk-icon dusk-icon--size--normal dusk-button__icon"
       role="graphics-symbol"
       viewBox="0 0 24 24"
     >
@@ -1169,7 +1169,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
     type="button"
   >
     <svg
-      class="dusk-icon dusk-button__icon"
+      class="dusk-icon dusk-icon--size--normal dusk-button__icon"
       role="graphics-symbol"
       viewBox="0 0 24 24"
     >

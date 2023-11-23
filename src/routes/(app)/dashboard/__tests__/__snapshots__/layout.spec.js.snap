@@ -19,7 +19,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           class="s-Ck0voT_hIlXn"
         >
           <svg
-            class="dusk-icon footer__network-icon"
+            class="dusk-icon dusk-icon--size--normal footer__network-icon"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >
@@ -43,7 +43,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           href="/settings"
         >
           <svg
-            class="dusk-icon dusk-anchor-button__icon"
+            class="dusk-icon dusk-icon--size--normal dusk-anchor-button__icon"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >

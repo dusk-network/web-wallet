@@ -1,6 +1,8 @@
 <script>
 	import { Agreement, Card, Stepper } from "$lib/dusk/components";
+	import Icon from "$lib/dusk/components/Icon/Icon.svelte";
 	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+	import { mdiAlertOutline } from "@mdi/js";
 	let agreementOneChecked = false;
 	let agreementTwoChecked = false;
 
@@ -34,3 +36,18 @@
 			label={agreementTwoLabel}/>
 	</div>
 </Card>
+
+<div class="notice">
+	<Icon path={mdiAlertOutline} size="large"/>
+	<p>To proceed, please check all the relevant boxes.
+		Dusk will not save and cannot retrieve your passphrase.</p>
+</div>
+
+<style>
+	.notice {
+		display: flex;
+		flex-direction: row;
+		align-items: flex-start;
+		gap: var(--small-gap);
+	}
+</style>

@@ -1,7 +1,7 @@
 <script>
 
 	import { Button, Stepper } from "$lib/dusk/components";
-	import { DUSK_LOGO_PATH } from "$lib/dusk/icons/logo";
+	import { logo } from "$lib/dusk/icons";
 	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
 	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
 </script>
@@ -13,4 +13,4 @@
 
 <Stepper steps={totalSteps} activeStep={currentStep - 1}/>
 
-<Button icon={{ path: DUSK_LOGO_PATH, position: "before" }} variant="secondary" text="Swap ERC20 to NDUSK"/>
+<Button icon={{ path: logo, position: "before" }} variant="secondary" text="Swap ERC20 to NDUSK"/>

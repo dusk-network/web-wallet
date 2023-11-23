@@ -2,7 +2,7 @@
 
 <script>
 	import { Icon, Tooltip } from "$lib/dusk/components";
-	import { DUSK_LOGO_PATH } from "$lib/dusk/icons/logo";
+	import { logo } from "$lib/dusk/icons";
 	import { makeClassName } from "$lib/dusk/string";
 	import { createCurrencyFormatter } from "$lib/dusk/currency";
 
@@ -43,7 +43,7 @@
 		<strong>{duskFormatter(dusk)}</strong>
 		<Icon
 			className="dusk-balance__icon"
-			path={DUSK_LOGO_PATH}
+			path={logo}
 			data-tooltip-id="balance-tooltip"
 			data-tooltip-text={TOKEN_CURRENCY}
 			data-tooltip-place="right"

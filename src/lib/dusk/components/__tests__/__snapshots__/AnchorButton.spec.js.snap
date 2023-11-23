@@ -29,7 +29,7 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon and
   </span>
    
   <svg
-    class="dusk-icon dusk-anchor-button__icon"
+    class="dusk-icon dusk-icon--size--normal dusk-anchor-button__icon"
     role="graphics-symbol"
     viewBox="0 0 24 24"
   >
@@ -56,7 +56,7 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon and
   </span>
    
   <svg
-    class="dusk-icon dusk-anchor-button__icon"
+    class="dusk-icon dusk-icon--size--normal dusk-anchor-button__icon"
     role="graphics-symbol"
     viewBox="0 0 24 24"
   >
@@ -78,7 +78,7 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon onl
 >
    
   <svg
-    class="dusk-icon dusk-anchor-button__icon"
+    class="dusk-icon dusk-icon--size--normal dusk-anchor-button__icon"
     role="graphics-symbol"
     viewBox="0 0 24 24"
   >
@@ -100,7 +100,7 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon onl
 >
    
   <svg
-    class="dusk-icon dusk-anchor-button__icon"
+    class="dusk-icon dusk-icon--size--normal dusk-anchor-button__icon"
     role="graphics-symbol"
     viewBox="0 0 24 24"
   >
