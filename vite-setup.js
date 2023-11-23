@@ -5,7 +5,15 @@
 import * as matchers from "@testing-library/jest-dom/matchers";
 import { expect, vi } from "vitest";
 import { readable } from "svelte/store";
+
 import { ResizeObserver } from "./src/lib/dusk/mocks";
+import init from "./__mocks__/initDuskWalletCore.js";
+
+// Mocking the wallet core wasm
+vi.doMock(
+	"@dusk-network/dusk-wallet-core/dusk_wallet_core_bg.wasm?init",
+	() => ({ default: vi.fn(init) })
+);
 
 // Adding missing bits in JSDOM
 

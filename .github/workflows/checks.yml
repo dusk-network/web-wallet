@@ -31,7 +31,7 @@ jobs:
       - name: Installing dev dependencies
         run: npm ci
         env:
-          REGISTRY_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          REGISTRY_TOKEN: ${{secrets.GH_TOKEN}}
 
       - name: Linting
         run: npm run lint
