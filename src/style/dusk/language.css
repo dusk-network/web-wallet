@@ -76,4 +76,8 @@
 	--checkbox-control-border-width: .20em;
 	--checkbox-control-border-color: var(--smokey-black);
 	--checkbox-control-checked-bg-color: var(--smokey-black);
+
+	/* Dividers */
+
+	--divider-color-primary: var(--taupe-grey);
 }

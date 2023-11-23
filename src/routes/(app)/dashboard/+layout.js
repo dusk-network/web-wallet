@@ -1,8 +1,10 @@
 /** @type {import('./$types').LayoutLoad} */
-export async function load () {
+export async function load ({ fetch }) {
+	const res = await fetch("https://api.dusk.network/v1/quote");
+	const duskInfo = await res.json();
+
 	return {
-		currency: "EUR",
-		dusk: 2000000,
-		fiat: 100000
+		currentPrice: duskInfo.market_data.current_price,
+		dusk: 2000000
 	};
 }
