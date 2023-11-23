@@ -1,9 +1,15 @@
 <script>
-	import { Card, Stepper } from "$lib/dusk/components";
+	import { Card, MnemonicGenerate, Stepper } from "$lib/dusk/components";
 	import { mdiExclamationThick } from "@mdi/js";
 	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+	import { mnemonicPhrase } from "$lib/onboarding/mnemonicPhrase";
+	import { generateMnemonic } from "@jimber/simple-bip39";
 
 	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
+
+	const mnemonic = generateMnemonic().split(" ");
+	mnemonicPhrase.set(mnemonic);
+	onboardingWizardStore.updateCanGoNext(true);
 </script>
 
 <h2>
@@ -16,6 +22,6 @@
 <Card heading="Keep this SAFE" iconPath={mdiExclamationThick}>
 	<div class="flex flex-col gap-1">
 		<p>Please make sure to write your phrase down and save it in a secure location.</p>
-		<p>Placeholder</p>
+		<MnemonicGenerate/>
 	</div>
 </Card>

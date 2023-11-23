@@ -43,5 +43,6 @@
 		{value}
 		on:input={handleInput}
 		on:input
+		on:keydown
 	/>
 {/if}
