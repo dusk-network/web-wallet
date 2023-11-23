@@ -1,12 +1,16 @@
 import { writable } from "svelte/store";
 
-const { subscribe, set, update } = writable({ canGoNext: false, currentStep: 0, totalSteps: 0 });
+const { subscribe, set, update } = writable({
+	canGoNext: false, currentStep: 0, shouldShowBack: true, totalSteps: 0
+});
 
 /**
  * @param {Number} totalSteps
  */
 function initializeStore (totalSteps) {
-	set({ canGoNext: false, currentStep: 1, totalSteps });
+	set({
+		canGoNext: false, currentStep: 1, shouldShowBack: true, totalSteps
+	});
 }
 
 /**
@@ -18,7 +22,9 @@ function updateField (field, value) {
 }
 
 function reset () {
-	set({ canGoNext: false, currentStep: 0, totalSteps: 0 });
+	set({
+		canGoNext: false, currentStep: 0, shouldShowBack: true, totalSteps: 0
+	});
 }
 
 const onboardingWizardStore = {
@@ -26,7 +32,8 @@ const onboardingWizardStore = {
 	reset,
 	subscribe,
 	updateCanGoNext: (/** @type {Boolean} */ newValue) => updateField("canGoNext", newValue),
-	updateCurrentStep: (/** @type {Number} */ newValue) => updateField("currentStep", newValue)
+	updateCurrentStep: (/** @type {Number} */ newValue) => updateField("currentStep", newValue),
+	updateShouldShowBack: (/** @type {Boolean} */ newValue) => updateField("shouldShowBack", newValue)
 };
 
 export default onboardingWizardStore;

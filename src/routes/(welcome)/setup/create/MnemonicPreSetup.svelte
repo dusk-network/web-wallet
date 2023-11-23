@@ -42,12 +42,3 @@
 	<p>To proceed, please check all the relevant boxes.
 		Dusk will not save and cannot retrieve your passphrase.</p>
 </div>
-
-<style>
-	.notice {
-		display: flex;
-		flex-direction: row;
-		align-items: flex-start;
-		gap: var(--small-gap);
-	}
-</style>

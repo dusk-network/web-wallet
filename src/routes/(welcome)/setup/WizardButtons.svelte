@@ -3,7 +3,15 @@
 	import { Button } from "$lib/dusk/components";
 	import { mdiArrowLeft, mdiArrowRight } from "@mdi/js";
 	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
-	$: ({ currentStep, totalSteps, canGoNext } = $onboardingWizardStore);
+	import { defaultWordsCount, enteredMnemonicPhrase } from "$lib/onboarding/mnemonicPhrase";
+	$: ({
+		currentStep, totalSteps, shouldShowBack, canGoNext
+	} = $onboardingWizardStore);
+
+	/**
+	 * @type {"create" | "restore"}
+	 */
+	export let flow;
 
 	async function goBack () {
 		if (currentStep === 1) {
@@ -22,10 +30,17 @@
 			onboardingWizardStore.updateCurrentStep(currentStep + 1);
 		}
 	}
+
+	function resetMnemonicPhrase () {
+		enteredMnemonicPhrase.set(Array(defaultWordsCount).fill(""));
+	}
+
+	$: shouldDisplayReset = !canGoNext && ((flow === "create" && currentStep === 4)
+		|| (flow === "restore" && currentStep === 1));
 </script>
 
 <div class="wizard_navigation_buttons">
-	{#if totalSteps !== currentStep}
+	{#if shouldShowBack}
 		<Button
 			variant="tertiary"
 			on:click={goBack}
@@ -33,13 +48,23 @@
 			icon={{ path: mdiArrowLeft }}
 			text="Back"/>
 	{/if}
-	<Button
-		disabled={!canGoNext}
-		variant="tertiary"
-		on:click={goNext}
-		className="flex-1"
-		icon={{ path: mdiArrowRight, position: "after" }}
-		text="Next"/>
+
+	{#if shouldDisplayReset}
+		<Button
+			variant="secondary"
+			on:click={resetMnemonicPhrase}
+			className="flex-1"
+			text="Reset"/>
+	{:else}
+		<Button
+			disabled={!canGoNext}
+			variant="tertiary"
+			on:click={goNext}
+			className="flex-1"
+			icon={{ path: mdiArrowRight, position: "after" }}
+			text="Next"/>
+	{/if}
+
 </div>
 
 <style>

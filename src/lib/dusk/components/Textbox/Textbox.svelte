@@ -44,5 +44,6 @@
 		on:input={handleInput}
 		on:input
 		on:keydown
+		on:paste
 	/>
 {/if}
