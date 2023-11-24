@@ -11,9 +11,8 @@ describe("Dashboard", () => {
 			{
 				props: {
 					data: {
-						currency: "EUR",
-						dusk: 2000000,
-						fiat: 100000
+						currentPrice: { usd: 0.5 },
+						dusk: 2000000
 					}
 				}
 			}

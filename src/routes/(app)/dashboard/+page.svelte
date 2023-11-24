@@ -17,6 +17,7 @@
 		{ icon: { path: mdiDatabaseOutline }, id: "tab-staking" }
 	];
 	const { currency, language } = $settingsStore;
+	const { currentPrice, dusk } = data;
 
 	let selectedTab = "tab-transfer";
 
@@ -26,10 +27,11 @@
 	<h2 class="visible-hidden">Dashboard</h2>
 
 	<Balance
-		dusk={data.dusk}
-		fiat={data.fiat}
+		{dusk}
+		fiat={dusk * currentPrice[currency.toLowerCase()]}
 		currency={currency}
-		locale={language}/>
+		locale={language}
+	/>
 
 	<div class="tabs">
 		<Tabs bind:selectedTab={selectedTab} items={items}/>

@@ -245,6 +245,18 @@ declare module "lamb" {
 
 	function list<T> (...values: T[]): Array<T>;
 
+	function map<
+		T,
+		L extends ArrayLike<T>,
+		R
+	> (arrayLike: L, iteratee: ListIteratorCallback<L, R>): Array<R>;
+
+	function mapWith<
+		T,
+		L extends ArrayLike<T>,
+		R
+	> (iteratee: ListIteratorCallback<L, R>): (arrayLike: L) => Array<R>;
+
 	function partition<
 		T,
 		L extends ArrayLike<T>,
@@ -519,6 +531,12 @@ declare module "lamb" {
 		S extends Record<string, any>,
 		W extends string[]
 	> (source: S, whitelist: W): Pick<S, typeof whitelist[number]>;
+
+	function rename<
+		DK extends string,
+		KM extends Record<string, DK>,
+		S extends Record<string, any>
+	> (keyMap: KM): (source: S) => { [K in keyof S as K extends keyof KM ? KM[K] : K]: S[K] };
 
 	function skip<
 		S extends Record<string, any>,

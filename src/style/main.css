@@ -19,6 +19,7 @@
 @import url("./dusk-components/tooltip.css");
 @import url("./app-components/headings.css");
 @import url("./app-components/marks.css");
+@import url("./app-components/horizontal-rules.css");
 
 @font-face {
 	font-family: "Soehne";
