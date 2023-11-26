@@ -7,14 +7,14 @@
 	<slot/>
 	<footer class="footer">
 		<nav class="footer__navigation">
-			<div>
-				<Icon className="footer__network-icon" path={mdiLinkCircle}/>
-				Dusk Testnet
+			<div class="footer__network-status">
+				<Icon className="footer__network-icon" path={mdiLinkCircle} size="large"/>
+				<p>Dusk Testnet</p>
 			</div>
 			<AnchorButton
 				variant="text"
 				className="footer__anchor-button"
-				icon={{ path: mdiCogOutline }}
+				icon={{ path: mdiCogOutline, size: "large" }}
 				href="/settings"
 				aria-label="Settings"
 				data-tooltip-id="main-tooltip"
@@ -36,6 +36,13 @@
 
 	.footer {
 		width: 100%;
+
+		&__network-status {
+			display: flex;
+			align-items: center;
+			gap: var(--small-gap);
+			line-height: 0;
+		}
 
 		&__navigation {
 			display: flex;

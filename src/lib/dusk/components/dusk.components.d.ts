@@ -2,6 +2,7 @@
 type ButtonIconProp = {
   path: string,
   position?: "after" | "before"
+  size?: IconSize,
 }
 
 type ButtonSize = "normal" | "small";

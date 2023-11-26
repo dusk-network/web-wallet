@@ -16,10 +16,10 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
         class="footer__navigation s-Ck0voT_hIlXn"
       >
         <div
-          class="s-Ck0voT_hIlXn"
+          class="footer__network-status s-Ck0voT_hIlXn"
         >
           <svg
-            class="dusk-icon dusk-icon--size--normal footer__network-icon"
+            class="dusk-icon dusk-icon--size--large footer__network-icon"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >
@@ -29,8 +29,12 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           </svg>
           
           <!--&lt;Icon&gt;-->
-          
-				Dusk Testnet
+           
+          <p
+            class="s-Ck0voT_hIlXn"
+          >
+            Dusk Testnet
+          </p>
         </div>
          
         <a
@@ -43,7 +47,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           href="/settings"
         >
           <svg
-            class="dusk-icon dusk-icon--size--normal dusk-anchor-button__icon"
+            class="dusk-icon dusk-icon--size--large dusk-anchor-button__icon"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >

@@ -142,3 +142,21 @@
 		variant="text"
 	/>
 </section>
+<section>
+	<AnchorButton
+		href="http://example.com"
+		icon={{ path: mdiHome, size: "large" }}
+		text="Anchor text"
+	/>
+	<AnchorButton
+		href="http://example.com"
+		text="Anchor text"
+		icon={{ path: mdiHome, size: "large" }}
+		variant="text"
+	/>
+	<AnchorButton
+		href="http://example.com"
+		icon={{ path: mdiHome, size: "large" }}
+		variant="text"
+	/>
+</section>

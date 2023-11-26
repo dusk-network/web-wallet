@@ -109,3 +109,20 @@
 		variant="text"
 	/>
 </section>
+<section>
+	<Button
+		icon={{ path: mdiHome, size: "large" }}
+		tabindex=""
+		text="Some text"
+	/>
+	<Button
+		icon={{ path: mdiHome, size: "large" }}
+		size="small"
+		text="Some text"
+	/>
+	<Button
+		icon={{ path: mdiHome, size: "large" }}
+		text="Some text"
+		variant="text"
+	/>
+</section>

@@ -15,7 +15,10 @@
 
 <section class="settings">
 	<header class="settings__header">
-		<AnchorButton href="/dashboard" icon={{ path: mdiArrowLeftCircleOutline }} variant="text"/>
+		<AnchorButton
+			href="/dashboard"
+			icon={{ path: mdiArrowLeftCircleOutline, size: "large" }}
+			variant="text"/>
 		<h2>
 			Settings
 		</h2>
