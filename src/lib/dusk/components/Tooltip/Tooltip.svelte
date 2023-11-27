@@ -1,6 +1,7 @@
 <svelte:options immutable={true}/>
 
 <script>
+	import { onDestroy } from "svelte";
 	import { writable } from "svelte/store";
 	import {
 		computePosition,
@@ -9,6 +10,18 @@
 		offset as setOffset,
 		shift
 	} from "@floating-ui/dom";
+	import {
+		allOf,
+		collect,
+		compose,
+		filterWith,
+		flatten,
+		getKey,
+		getPath,
+		hasKeyValue,
+		mapWith,
+		some
+	} from "lamb";
 
 	import { makeClassName } from "$lib/dusk/string";
 
@@ -59,6 +72,23 @@
 	/** @type {HTMLDivElement} */
 	let tooltipElement;
 
+	const getTargetChildren = compose(Array.from, getPath("target.children"));
+	const getRemovedElements = compose(
+		filterWith(hasKeyValue("nodeType", Node.ELEMENT_NODE)),
+		getKey("removedNodes")
+	);
+	const getElementsToCheck = compose(
+		flatten,
+		mapWith(collect([getTargetChildren, getRemovedElements]))
+	);
+
+	/** @type {(element: Element) => boolean} */
+	const isDescribedByMe = element => element.getAttribute("aria-described-by") === id;
+	const isSomeDescribedByMeDisconnected = some(allOf([
+		isDescribedByMe,
+		hasKeyValue("isConnected", false)
+	]));
+
 	const state = writable({
 		delayHide: defaultDelayHide,
 		delayShow: defaultDelayShow,
@@ -69,6 +99,18 @@
 		visible: false,
 		x: 0,
 		y: 0
+	});
+
+	const mutationObserver = new MutationObserver((mutations, observer) => {
+		if (isSomeDescribedByMeDisconnected(getElementsToCheck(mutations))) {
+			clearTimeout(timeoutID);
+			state.set({
+				...$state,
+				text: "",
+				visible: false
+			});
+			observer.disconnect();
+		}
 	});
 
 	/** @type {import("svelte/elements").KeyboardEventHandler<HTMLElement>} */
@@ -127,6 +169,7 @@
 
 		clearTimeout(timeoutID);
 		state.set({ ...$state, text: tooltipText });
+		mutationObserver.observe(event.target.parentElement, { childList: true });
 
 		const { placement, x, y } = await computePosition(event.target, tooltipElement, {
 			middleware: [
@@ -173,6 +216,10 @@
 			?.removeAttribute("aria-described-by");
 		target.setAttribute("aria-described-by", id);
 	}
+
+	onDestroy(() => {
+		mutationObserver.disconnect();
+	});
 
 	$: ({
 		place = defaultPlace,
