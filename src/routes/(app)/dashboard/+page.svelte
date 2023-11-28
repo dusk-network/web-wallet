@@ -20,11 +20,13 @@
 	import { balanceStore, settingsStore } from "$lib/stores";
 	import { find, hasKeyValue } from "lamb";
 	import Contract from "./Contract.svelte";
+	import KeyPicker from "./KeyPicker.svelte";
 
 	/** @type {import('./$types').PageData} */
 	export let data;
 
 	const { currentPrice } = data;
+	let { currentKey, keys } = data;
 
 	let selectedTab = "transfer";
 
@@ -122,10 +124,53 @@
 	}];
 
 	$: selectedContract = find(CONTRACTS, hasKeyValue("id", selectedTab));
+
+	// ================================
+	// SECTION: Change Key functionality
+	// ================================
+	// Description: This section contains the logic for the change key functionality
+
+	let generatingKey = false;
+
+	/**
+	 * @param {Number} length
+	 * @note Helper function to generate a random key – used for testing purposes
+	 */
+	function generateRandomKey (length) {
+		let result = "";
+		const characters = "abcdefghijklmnopqrstuvwxyz0123456789";
+		const charactersLength = characters.length;
+
+		for (let i = 0; i < length; i++) {
+			result += characters.charAt(Math.floor(Math.random() * charactersLength));
+		}
+
+		return result;
+	}
+
+	async function generateKey () {
+		generatingKey = true;
+
+		try {
+			await new Promise(resolve => setTimeout(resolve, 5000));
+
+			const randomKey = generateRandomKey(32);
+
+			keys = [randomKey, ...keys];
+		} finally {
+			generatingKey = false;
+		}
+	}
 </script>
 
 <div class="dashboard-content">
 	<h2 class="visible-hidden">Dashboard</h2>
+
+	<KeyPicker
+		{generatingKey}
+		bind:keys
+		bind:currentKey
+		on:generateKey={generateKey}/>
 
 	<Balance
 		tokens={dusk}
@@ -149,6 +194,7 @@
 			{/key}
 		</div>
 	</div>
+
 </div>
 
 <style lang="postcss">
