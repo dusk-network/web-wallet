@@ -35,9 +35,20 @@
 		enteredMnemonicPhrase.set(Array(defaultWordsCount).fill(""));
 	}
 
+	/**
+	 * @param {{ key: string; }} event
+	 */
+	function onKeyDown (event) {
+		if (event.key === "Enter" && canGoNext) {
+			goNext();
+		}
+	}
+
 	$: shouldDisplayReset = !canGoNext && ((flow === "create" && currentStep === 4)
 		|| (flow === "restore" && currentStep === 1));
 </script>
+
+<svelte:window on:keydown={onKeyDown}/>
 
 <div class="wizard_navigation_buttons">
 	{#if shouldShowBack}

@@ -50,8 +50,8 @@ describe("findFirstNMatches", () => {
 	// Empty Words Array
 	test("returns empty array when words array is empty", () => {
 		/**
-	* @type {string[]}
-	*/
+		* @type {string[]}
+		*/
 		const words = [];
 		const prefix = "ap";
 		const numMatches = 3;

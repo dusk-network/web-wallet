@@ -16,6 +16,7 @@
 
 	/** @type {String | Undefined} */
 	export let className = undefined;
+	const classes = makeClassName(["dusk-mnemonic", className]);
 
 	enteredMnemonicPhrase.set(Array(defaultWordsCount).fill(""));
 
@@ -26,28 +27,37 @@
 	let currentInput = "";
 
 	/**
-	 * @param {ClipboardEvent} event
+	 * @param {string} word
 	 */
-	function handlePaste (event) {
-		event.preventDefault();
-	}
-
-	// @ts-ignore
-	function handleClick (event) {
-		const word = event.currentTarget.dataset.value;
-
+	function updateEnteredPhrase (word) {
 		$enteredMnemonicPhrase[currentIndex] = word;
 		currentInput = "";
 		currentIndex++;
 
 		if (type === "authenticate") {
 			_enDictionary = _enDictionary.filter(_word => !$enteredMnemonicPhrase.includes(_word));
+			focusWordTextboxInput();
 		}
 	}
 
-	$: predictions = currentInput && findFirstNMatches(_enDictionary, currentInput, 3);
+	/**
+	 * Adds word to the entered phrase if only one prediction is available
+	 * @param {{ key: string; }} event
+	 */
+	function handleKeyDownOnAuthenticateTextbox (event) {
+		if (event.key === "Enter" && predictions.length === 1) {
+			updateEnteredPhrase(predictions[0]);
+		}
+	}
 
-	$: classes = makeClassName(["dusk-mnemonic", className]);
+	// @ts-ignore
+	function handleWordButtonClick (event) {
+		const word = event.currentTarget.dataset.value;
+
+		updateEnteredPhrase(word);
+	}
+
+	$: predictions = currentInput && findFirstNMatches(_enDictionary, currentInput, 3);
 
 	// eslint-disable-next-line svelte/no-reactive-functions
 	$: mnemonicContains = (/** @type {string} */ word) => $enteredMnemonicPhrase.includes(word);
@@ -65,6 +75,18 @@
 		currentInput = "";
 		_enDictionary = enDictionary;
 	}
+
+	function focusWordTextboxInput () {
+		if (textboxElement) {
+			textboxElement.focusInput();
+		}
+	}
+
+	/**
+	 * @type {Textbox}
+	 */
+	let textboxElement;
+
 </script>
 
 <div {...$$restProps} class={classes}>
@@ -76,7 +98,8 @@
 			: "dusk-mnemonic__validate_actions_wrapper"}>
 		{#if type === "authenticate" && mnemonicContains("")}
 			<Textbox
-				on:paste={handlePaste}
+				bind:this={textboxElement}
+				on:keydown={handleKeyDownOnAuthenticateTextbox}
 				maxlength={8}
 				type="text"
 				bind:value={currentInput}/>
@@ -87,7 +110,7 @@
 							variant="tertiary"
 							text={prediction}
 							data-value={prediction}
-							on:click={handleClick}/>
+							on:click={handleWordButtonClick}/>
 					{/each}
 				</div>
 			{/if}
@@ -98,7 +121,7 @@
 					text={word}
 					data-value={word}
 					disabled={mnemonicContains(word)}
-					on:click={handleClick}/>
+					on:click={handleWordButtonClick}/>
 			{/each}
 		{/if}
 	</div>
