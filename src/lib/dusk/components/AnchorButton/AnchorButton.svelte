@@ -51,9 +51,9 @@
 		{#if text}
 			<span class="dusk-anchor-button__text">{text}</span>
 		{/if}
-		<Icon className="dusk-anchor-button__icon" path={icon.path}/>
+		<Icon className="dusk-anchor-button__icon" path={icon.path} size={icon.size}/>
 	{:else if icon}
-		<Icon className="dusk-anchor-button__icon" path={icon.path}/>
+		<Icon className="dusk-anchor-button__icon" path={icon.path} size={icon.size}/>
 		{#if text}
 			<span class="dusk-anchor-button__text">{text}</span>
 		{/if}

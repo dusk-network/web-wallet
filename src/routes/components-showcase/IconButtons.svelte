@@ -84,3 +84,14 @@
 		variant="text"
 	/>
 </section>
+<section>
+	<Button
+		icon={{ path: mdiHome, size: "large" }}
+		variant="text"
+	/>
+	<Button
+		disabled={true}
+		icon={{ path: mdiHome, size: "large" }}
+		variant="text"
+	/>
+</section>
