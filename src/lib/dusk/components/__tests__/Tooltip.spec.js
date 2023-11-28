@@ -164,6 +164,31 @@ describe("Tooltip", () => {
 				expect(computePosition).not.toHaveBeenCalled();
 			});
 
+			it("should ignore mouse enter and focus-in events if the target element has the `data-tooltip-disabled` attribute set to `\"true\"`", async () => {
+				const disabledTarget = createEventTarget({
+					...dataset,
+					tooltipDisabled: "true"
+				});
+				const { getByRole } = render(Tooltip, baseOptions);
+				const tooltip = getByRole("tooltip", { hidden: true });
+
+				await fireEvent.focusIn(document.body, { target: disabledTarget });
+				await vi.advanceTimersToNextTimerAsync();
+
+				expect(tooltip.getAttribute("aria-hidden")).toBe("true");
+				expect(disabledTarget.getAttribute("aria-described-by")).toBeNull();
+				expect(prevTooltipElement.getAttribute("aria-described-by")).toBe(baseProps.id);
+
+				await fireEvent.mouseEnter(disabledTarget);
+				await vi.advanceTimersToNextTimerAsync();
+
+				expect(tooltip.getAttribute("aria-hidden")).toBe("true");
+				expect(disabledTarget.getAttribute("aria-described-by")).toBeNull();
+				expect(prevTooltipElement.getAttribute("aria-described-by")).toBe(baseProps.id);
+				expect(clearTimeoutSpy).not.toHaveBeenCalled();
+				expect(computePosition).not.toHaveBeenCalled();
+			});
+
 			it("should show the tooltip on a focus-in event if the target element refers to it", async () => {
 				const { getByRole } = render(Tooltip, baseOptions);
 				const tooltip = getByRole("tooltip", { hidden: true });
