@@ -1,23 +1,32 @@
 <script>
-	import { Card, MnemonicAuthenticate, Stepper } from "$lib/dusk/components";
+	import { Card, Mnemonic, Stepper } from "$lib/dusk/components";
+	import { defaultWordsCount, enteredMnemonicPhrase } from "$lib/onboarding/mnemonicPhrase";
 	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+	import { onDestroy, onMount } from "svelte";
 
 	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
 
-	onboardingWizardStore.updateCanGoNext(false);
-	const wordsCount = 12;
-
 	/**
-	 * @param {{ detail: string[]; }} event
+	 * @param {String[]} value
 	 */
-	function updateWords (event) {
-		const filteredWords = event.detail.filter(word => word !== "");
+	function checkStatus (value) {
+		const filteredWords = value.filter(word => word !== "");
 		const set = new Set(filteredWords);
 
-		if (set.size === wordsCount) {
+		if (set.size === defaultWordsCount) {
 			onboardingWizardStore.updateCanGoNext(true);
 		}
 	}
+
+	const unsubscribe = enteredMnemonicPhrase.subscribe(checkStatus);
+
+	onDestroy(() => {
+		unsubscribe();
+	});
+
+	onMount(() => {
+		onboardingWizardStore.updateCanGoNext(false);
+	});
 </script>
 
 <h2>
@@ -29,6 +38,6 @@
 
 <Card heading="Enter your Mnemonic Phrase">
 	<div class="flex flex-col gap-1">
-		<MnemonicAuthenticate {wordsCount} on:update={updateWords}/>
+		<Mnemonic type="authenticate"/>
 	</div>
 </Card>

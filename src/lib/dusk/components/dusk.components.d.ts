@@ -28,3 +28,5 @@ type TabItem = {
 type TextboxTypes = "email" | "hidden" | "multiline" | "number" | "password" | "search" | "tel" | "text" | "url";
 
 type TooltipType = "error" | "info" | "success" | "warning";
+
+type MnemonicType = "authenticate" | "validate";

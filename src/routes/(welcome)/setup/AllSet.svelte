@@ -4,6 +4,8 @@
 	const allSetIllustration = "/images/onboarding/all_set_illustration.svg";
 
 	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
+
+	onboardingWizardStore.updateShouldShowBack(false);
 </script>
 
 <h2>

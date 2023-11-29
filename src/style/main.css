@@ -17,8 +17,10 @@
 @import url("./dusk-components/textbox.css");
 @import url("./dusk-components/throbber.css");
 @import url("./dusk-components/tooltip.css");
+@import url("./dusk-components/words.css");
 @import url("./app-components/headings.css");
 @import url("./app-components/marks.css");
+@import url("./app-components/notice.css");
 @import url("./app-components/horizontal-rules.css");
 
 @font-face {

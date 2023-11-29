@@ -12,14 +12,14 @@
 	import Password from "../Password.svelte";
 	import MnemonicPreSetup from "./MnemonicPreSetup.svelte";
 	import MnemonicPhrase from "./MnemonicPhrase.svelte";
-	import VerifyMnemonic from "./VerifyMnemonic.svelte";
+	import ValidateMnemonic from "./ValidateMnemonic.svelte";
 	import SwapNDUSK from "./SwapNDUSK.svelte";
 	import AllSet from "../AllSet.svelte";
 
 	const steps = [Password,
 		MnemonicPreSetup,
 		MnemonicPhrase,
-		VerifyMnemonic,
+		ValidateMnemonic,
 		SwapNDUSK,
 		AllSet];
 </script>
@@ -32,7 +32,7 @@
 	<div class="onboarding_wrapper flex flex-col gap-2" in:fade|global>
 		<svelte:component this={steps[currentStep - 1]}/>
 	</div>
-	<WizardButtons/>
+	<WizardButtons flow="create"/>
 {/if}
 
 <style>

@@ -1,5 +1,5 @@
 <script>
-	import { Card, MnemonicGenerate, Stepper } from "$lib/dusk/components";
+	import { Card, Stepper, Words } from "$lib/dusk/components";
 	import { mdiAlertOutline } from "@mdi/js";
 	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
 	import { mnemonicPhrase } from "$lib/onboarding/mnemonicPhrase";
@@ -7,8 +7,12 @@
 
 	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
 
-	const mnemonic = generateMnemonic().split(" ");
-	mnemonicPhrase.set(mnemonic);
+	if ($mnemonicPhrase.length === 0) {
+		const mnemonic = generateMnemonic().split(" ");
+
+		mnemonicPhrase.set(mnemonic);
+	}
+
 	onboardingWizardStore.updateCanGoNext(true);
 </script>
 
@@ -22,6 +26,6 @@
 <Card heading="Keep this SAFE" iconPath={mdiAlertOutline}>
 	<div class="flex flex-col gap-1">
 		<p>Please make sure to write your phrase down and save it in a secure location.</p>
-		<MnemonicGenerate/>
+		<Words words={$mnemonicPhrase}/>
 	</div>
 </Card>

@@ -12,6 +12,16 @@
 	/** @type {String | Number} */
 	export let value = type === "number" ? 0 : "";
 
+	/**
+	 * @type {HTMLInputElement | HTMLTextAreaElement}
+	 */
+	let inputElement;
+	export function focusInput () {
+		if (inputElement) {
+			inputElement.focus();
+		}
+	}
+
 	const classes = makeClassName([
 		"dusk-textbox",
 		`dusk-textbox-${type}`,
@@ -33,6 +43,7 @@
 	<textarea
 		{...$$restProps}
 		class={classes}
+		bind:this={inputElement}
 		bind:value
 		on:input/>
 {:else}
@@ -41,8 +52,10 @@
 		class={classes}
 		{type}
 		{value}
+		bind:this={inputElement}
 		on:input={handleInput}
 		on:input
 		on:keydown
+		on:paste
 	/>
 {/if}

@@ -26,7 +26,7 @@
 	<div class="onboarding_wrapper flex flex-col gap-2" in:fade|global>
 		<svelte:component this={steps[currentStep - 1]}/>
 	</div>
-	<WizardButtons/>
+	<WizardButtons flow="restore"/>
 {/if}
 
 <style>

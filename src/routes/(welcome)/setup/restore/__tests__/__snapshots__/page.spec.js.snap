@@ -6,7 +6,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow 1
     class="onboarding_wrapper s-03q11ctojZzO"
   >
     <section
-      class="terms-of-service flex flex-col flex-1 s-c41QPMu_i3CH"
+      class="flex flex-col flex-1"
     >
       <section
         class="dusk-card"
@@ -21,11 +21,9 @@ exports[`Restore > should render the Terms of Service step of the Restore flow 1
         </header>
          
         <div
-          class="flex flex-col gap-1 s-c41QPMu_i3CH"
+          class="flex flex-col gap-1"
         >
-          <p
-            class="s-c41QPMu_i3CH"
-          >
+          <p>
             Our 
             <a
               class="dusk-anchor"
@@ -40,7 +38,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow 1
           </p>
            
           <div
-            class="flex gap-1 w-100 s-c41QPMu_i3CH"
+            class="flex gap-1 w-100"
           >
             <a
               aria-disabled="false"
