@@ -510,6 +510,12 @@ declare module "lamb" {
 	 * *****    OBJECT     ***** *
 	 * ------------------------- */
 
+	function hasKeyValue<
+		K extends string | number | symbol,
+		T,
+		S extends Record<K, T>
+	> (key: K, value: T): (source: S) => boolean;
+
 	function keys<S extends Record<string, any>, K extends keyof S> (source: S): Array<K>;
 
 	function ownPairs<

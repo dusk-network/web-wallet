@@ -8,7 +8,7 @@ import { cleanup, render } from "@testing-library/svelte";
 import { Balance } from "..";
 
 describe("Balance", () => {
-	const baseProps = { dusk: 2000000, fiat: 100000, currency: "EUR" };
+	const baseProps = { token: 2000000, fiat: 100000, fiatCurrency: "USD", tokenCurrency: "DUSK" };
 	const baseOptions = {
 		props: baseProps
 	};
@@ -26,7 +26,7 @@ describe("Balance", () => {
 
 		expect(container.firstChild).toMatchSnapshot();
 
-		rerender({ dusk: 4000000, fiat: 200000, currency: "USD" });
+		rerender({ token: 4000000, fiat: 200000, tokenCurrency: "DUSK", fiatCurrency: "USD" });
 
 		expect(container.firstChild).toMatchSnapshot();
 	});

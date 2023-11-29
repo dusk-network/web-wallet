@@ -1,0 +1,30 @@
+.contract {
+	width: 100%;
+}
+
+.operation {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--default-gap);
+}
+
+.operation-header {
+	display: flex;
+	align-items: center;
+	gap: var(--small-gap);
+}
+
+.operations {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: flex-start;
+	gap: var(--default-gap);
+	width: 100%;
+}
+
+.operations__operation {
+	text-align: left;
+	width: 100%
+}

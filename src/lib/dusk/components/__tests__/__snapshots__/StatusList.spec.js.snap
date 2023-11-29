@@ -1,0 +1,156 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`StatusList > should render the StatusList component 1`] = `
+<dl
+  class="dusk-status-list"
+>
+  <dt
+    class="dusk-status-list__key dusk-status"
+  >
+    <svg
+      class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+      data-tooltip-id=""
+      data-tooltip-place="top"
+      data-tooltip-text=""
+      role="graphics-symbol"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
+      />
+    </svg>
+    
+    <!--&lt;Icon&gt;-->
+     
+    <span>
+      Unlocked tokens
+    </span>
+  </dt>
+   
+  <dd
+    class="dusk-status-list__value dusk-status"
+  >
+    <span>
+      10,000,000
+    </span>
+     
+    <svg
+      class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+      data-tooltip-id="status-tooltip"
+      data-tooltip-place="top"
+      data-tooltip-text="DUSK"
+      role="graphics-symbol"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
+      />
+    </svg>
+    
+    <!--&lt;Icon&gt;-->
+  </dd>
+  <dt
+    class="dusk-status-list__key dusk-status"
+  >
+    <svg
+      class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+      data-tooltip-id=""
+      data-tooltip-place="top"
+      data-tooltip-text=""
+      role="graphics-symbol"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
+      />
+    </svg>
+    
+    <!--&lt;Icon&gt;-->
+     
+    <span>
+      Locked tokens
+    </span>
+  </dt>
+   
+  <dd
+    class="dusk-status-list__value dusk-status"
+  >
+    <span>
+      10,000,000
+    </span>
+     
+    <svg
+      class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+      data-tooltip-id="status-tooltip"
+      data-tooltip-place="top"
+      data-tooltip-text="DUSK"
+      role="graphics-symbol"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
+      />
+    </svg>
+    
+    <!--&lt;Icon&gt;-->
+  </dd>
+  <dt
+    class="dusk-status-list__key dusk-status"
+  >
+    <svg
+      class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+      data-tooltip-id=""
+      data-tooltip-place="top"
+      data-tooltip-text=""
+      role="graphics-symbol"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
+      />
+    </svg>
+    
+    <!--&lt;Icon&gt;-->
+     
+    <span>
+      Reward tokens
+    </span>
+  </dt>
+   
+  <dd
+    class="dusk-status-list__value dusk-status"
+  >
+    <span>
+      5,000,000
+    </span>
+     
+    <svg
+      class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+      data-tooltip-id="status-tooltip"
+      data-tooltip-place="top"
+      data-tooltip-text="DUSK"
+      role="graphics-symbol"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
+      />
+    </svg>
+    
+    <!--&lt;Icon&gt;-->
+  </dd>
+   
+   
+  <div
+    aria-hidden="true"
+    class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
+    id="status-tooltip"
+    role="tooltip"
+    style="left: 0px; top: 0px;"
+  >
+    
+  </div>
+  <!--&lt;Tooltip&gt;-->
+  <!--&lt;Statuses&gt;-->
+</dl>
+`;

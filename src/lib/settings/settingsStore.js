@@ -1,8 +1,9 @@
 import { persisted } from "svelte-persisted-store";
+import { browser } from "$app/environment";
 
 const settingsStore = persisted("preferences", {
 	currency: "USD",
-	language: navigator.language
+	language: browser ? navigator.language : "en"
 });
 
 export default settingsStore;

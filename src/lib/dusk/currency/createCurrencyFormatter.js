@@ -1,5 +1,5 @@
 /**
- * Creates a locale aware currency formatter for fiat and DUSK
+ * Creates a locale aware currency formatter for fiat or DUSK
  *
  * @param {String} locale A BCP 47 language tag
  * @param {String} currency An ISO 4217 currency or "DUSK"
