@@ -11,8 +11,7 @@ describe("Dashboard", () => {
 			{
 				props: {
 					data: {
-						currentPrice: { usd: 0.5 },
-						dusk: 2000000
+						currentPrice: { usd: 0.5 }
 					}
 				}
 			}

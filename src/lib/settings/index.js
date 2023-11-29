@@ -1,1 +1,1 @@
-export { default as settingsStore } from "./store";
+export { default as settingsStore } from "./settingsStore";

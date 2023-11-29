@@ -10,13 +10,16 @@
 	export let className = undefined;
 
 	/** @type {Number} */
-	export let dusk = 0;
+	export let tokens = 0;
 
 	/** @type {Number} */
 	export let fiat = 0;
 
 	/** @type {String} */
-	export let currency = "USD";
+	export let tokenCurrency = "DUSK";
+
+	/** @type {String} */
+	export let fiatCurrency = "USD";
 
 	/** @type {String} */
 	export let locale = "en";
@@ -26,10 +29,8 @@
 		className
 	]);
 
-	const TOKEN_CURRENCY = "DUSK";
-
-	const duskFormatter = createCurrencyFormatter(locale, TOKEN_CURRENCY);
-	const fiatFormatter = createCurrencyFormatter(locale, currency);
+	const duskFormatter = createCurrencyFormatter(locale, tokenCurrency);
+	const fiatFormatter = createCurrencyFormatter(locale, fiatCurrency);
 </script>
 
 <article
@@ -40,12 +41,12 @@
 		<h2>Your Balance:</h2>
 	</header>
 	<p class="dusk-balance__dusk">
-		<strong>{duskFormatter(dusk)}</strong>
+		<strong>{duskFormatter(tokens)}</strong>
 		<Icon
 			className="dusk-balance__icon"
 			path={logo}
 			data-tooltip-id="balance-tooltip"
-			data-tooltip-text={TOKEN_CURRENCY}
+			data-tooltip-text={tokenCurrency}
 			data-tooltip-place="right"
 		/>
 	</p>

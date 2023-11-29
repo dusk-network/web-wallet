@@ -4,7 +4,6 @@ export async function load ({ fetch }) {
 	const duskInfo = await res.json();
 
 	return {
-		currentPrice: duskInfo.market_data.current_price,
-		dusk: 2000000
+		currentPrice: duskInfo.market_data.current_price
 	};
 }

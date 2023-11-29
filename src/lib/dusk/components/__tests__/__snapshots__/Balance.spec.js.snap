@@ -4,6 +4,7 @@ exports[`Balance > renders the Balance component 1`] = `
 <div>
   <article
     class="dusk-balance"
+    token="2000000"
   >
     <header
       class="dusk-balance__header"
@@ -17,7 +18,7 @@ exports[`Balance > renders the Balance component 1`] = `
       class="dusk-balance__dusk"
     >
       <strong>
-        2,000,000.00
+        0.00
       </strong>
        
       <svg
@@ -41,7 +42,7 @@ exports[`Balance > renders the Balance component 1`] = `
     >
       <strong>
         (
-        €100,000.00
+        $100,000.00
         )
       </strong>
     </p>
@@ -66,6 +67,7 @@ exports[`Balance > should update the Balance component when the props change 1`]
 <div>
   <article
     class="dusk-balance"
+    token="2000000"
   >
     <header
       class="dusk-balance__header"
@@ -79,7 +81,7 @@ exports[`Balance > should update the Balance component when the props change 1`]
       class="dusk-balance__dusk"
     >
       <strong>
-        2,000,000.00
+        0.00
       </strong>
        
       <svg
@@ -103,7 +105,7 @@ exports[`Balance > should update the Balance component when the props change 1`]
     >
       <strong>
         (
-        €100,000.00
+        $100,000.00
         )
       </strong>
     </p>
@@ -128,6 +130,7 @@ exports[`Balance > should update the Balance component when the props change 2`]
 <div>
   <article
     class="dusk-balance"
+    token="4000000"
   >
     <header
       class="dusk-balance__header"
@@ -141,7 +144,7 @@ exports[`Balance > should update the Balance component when the props change 2`]
       class="dusk-balance__dusk"
     >
       <strong>
-        4,000,000.00
+        0.00
       </strong>
        
       <svg
