@@ -11,7 +11,7 @@
 	/** @type {Boolean} */
 	export let disabled = false;
 
-	/** @type Number */
+	/** @type {Number} */
 	export let tabindex = 0;
 
 	/** @type {Boolean} */
