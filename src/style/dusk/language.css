@@ -15,6 +15,7 @@
 	--warning-color: var(--warning);
 	--error-color: var(--error);
 	--info-color: var(--info);
+	--danger-color: var(--error);
 
 	--on-background-color: var(--smokey-black);
 	--on-primary-color: var(--light-grey);
