@@ -113,6 +113,7 @@
 	async function handleTooltipShow (event) {
 		const {
 			tooltipDelayShow,
+			tooltipDisabled,
 			tooltipId,
 			tooltipOffset = defaultOffset,
 			tooltipPlace = defaultPlace,
@@ -120,7 +121,7 @@
 			tooltipType = defaultType
 		} = event.target.dataset;
 
-		if (tooltipId !== id) {
+		if (tooltipId !== id || tooltipDisabled === "true") {
 			return;
 		}
 
