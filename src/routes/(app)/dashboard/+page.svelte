@@ -31,10 +31,10 @@
 
 	let selectedTab = "transfer";
 
-	$: ({ dusk } = $balanceStore);
-	$: ({ currency, language } = $settingsStore);
-
+	const { currency, language } = $settingsStore;
 	const duskFormatter = createCurrencyFormatter(language, "DUSK");
+
+	$: ({ dusk } = $balanceStore);
 	$: CONTRACTS = [{
 		heading: "Transfer",
 		icon: { path: mdiSwapVertical },
