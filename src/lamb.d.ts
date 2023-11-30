@@ -465,6 +465,12 @@ declare module "lamb" {
 	 * *****   FUNCTION    ***** *
 	 * ------------------------- */
 
+	function collect<
+		T,
+		Args extends any[],
+		Fns extends Array<(...args: Args) => T>,
+	> (functions: Fns): (...args: Args) => T[];
+
 	function pipe (functions: []): <Args extends any[]>(...args: Args) => Args["length"] extends 0 ? undefined : typeof args[0];
 	function pipe<
 		Fns extends AnyFunction[],
@@ -475,6 +481,16 @@ declare module "lamb" {
 	/* ------------------------- *
 	 * *****     LOGIC     ***** *
 	 * ------------------------- */
+
+	function allOf<
+		T,
+		P extends (value: T) => boolean
+	> (predicates: Array<P>): P;
+
+	function anyOf<
+		T,
+		P extends (value: T) => boolean
+	> (predicates: Array<P>): P;
 
 	function condition<
 		T,
@@ -510,11 +526,31 @@ declare module "lamb" {
 	 * *****    OBJECT     ***** *
 	 * ------------------------- */
 
+	function getKey<
+		K extends PropertyKey,
+		S extends Record<K, any>
+	> (key: K): (source: S) => K extends keyof S ? S[K] : undefined;
+
+	function getPath<
+		T,
+		S extends Record<PropertyKey, any>
+	> (path: string, separator?: string): (source: S) => T | undefined;
+
+	function getPathIn<
+		T,
+		S extends Record<PropertyKey, any>
+	> (source: S, path: string, separator?: string): T | undefined;
+
 	function hasKeyValue<
-		K extends string | number | symbol,
+		K extends PropertyKey,
 		T,
 		S extends Record<K, T>
 	> (key: K, value: T): (source: S) => boolean;
+
+	function hasPathValue<
+		T,
+		S extends Record<PropertyKey, T>
+	> (path: string, value: T): (source: S) => boolean;
 
 	function keys<S extends Record<string, any>, K extends keyof S> (source: S): Array<K>;
 
