@@ -37,6 +37,7 @@
 		"@jimber/simple-bip39": "1.0.0",
 		"@mdi/js": "7.3.67",
 		"lamb": "0.61.1",
+		"qrcode": "1.5.3",
 		"svelte-persisted-store": "0.7.0"
 	},
 	"devDependencies": {
