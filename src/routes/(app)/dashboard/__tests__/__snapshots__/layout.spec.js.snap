@@ -30,11 +30,12 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           
           <!--&lt;Icon&gt;-->
            
-          <p
+          <span
             class="s-Ck0voT_hIlXn"
           >
-            Dusk Testnet
-          </p>
+            Dusk 
+            testnet
+          </span>
         </div>
          
         <a

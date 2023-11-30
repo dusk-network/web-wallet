@@ -1,6 +1,9 @@
 <script>
 	import { mdiCogOutline, mdiLinkCircle } from "@mdi/js";
 	import { AnchorButton, Icon } from "$lib/dusk/components";
+	import { settingsStore } from "$lib/settings";
+
+	const { network } = $settingsStore;
 </script>
 
 <section class="dashboard">
@@ -9,7 +12,7 @@
 		<nav class="footer__navigation">
 			<div class="footer__network-status">
 				<Icon className="footer__network-icon" path={mdiLinkCircle} size="large"/>
-				<p>Dusk Testnet</p>
+				<span>Dusk {network}</span>
 			</div>
 			<AnchorButton
 				variant="text"
@@ -42,6 +45,7 @@
 			align-items: center;
 			gap: var(--small-gap);
 			line-height: 0;
+            text-transform: capitalize;
 		}
 
 		&__navigation {
