@@ -33,8 +33,9 @@
 		display: flex;
 		align-content: space-between;
 		gap: 1.375rem;
-		height: 100%;
-		flex-wrap: wrap;
+		flex: 1;
+		flex-direction: column;
+		overflow: hidden;
 	}
 
 	.footer {
