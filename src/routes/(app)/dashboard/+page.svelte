@@ -33,9 +33,9 @@
 
 	$: ({ dusk } = $balanceStore);
 	$: CONTRACTS = [{
-		heading: "Transfer",
 		icon: { path: mdiSwapVertical },
 		id: "transfer",
+		label: "Transact",
 		operations: [{
 			icon: { path: mdiArrowDownBoldBoxOutline, position: "before" },
 			id: "receive",
@@ -61,9 +61,9 @@
 			}
 		}]
 	}, {
-		heading: "Staking",
 		icon: { path: mdiDatabaseOutline },
 		id: "staking",
+		label: "Stake",
 		operations: [{
 			icon: { path: mdiDatabaseArrowUpOutline, position: "before" },
 			id: "stake",
@@ -137,7 +137,11 @@
 
 	<div class="tabs">
 		<Tabs bind:selectedTab={selectedTab} items={CONTRACTS}/>
-		<div class="tabs__panel">
+		<div
+			class="tabs__panel"
+			class:tabs__panel--first={selectedTab === CONTRACTS[0].id}
+			class:tabs__panel--last={selectedTab === CONTRACTS[CONTRACTS.length - 1].id}
+		>
 			{#key selectedTab}
 				<div in:fade|global class="tabs__contract">
 					<Contract contract={selectedContract}/>
@@ -159,8 +163,17 @@
 
 	.tabs {
 		&__panel {
-			border-radius: 0 1.25rem 1.25rem 1.25rem;
+			border-radius: 1.25rem;
 			background: var(--surface-color);
+			transition: border-radius .4s ease-in-out;
+
+			&--first {
+				border-top-left-radius: 0;
+			}
+
+			&--last {
+				border-top-right-radius: 0;
+			}
 		}
 
 		&__contract {
