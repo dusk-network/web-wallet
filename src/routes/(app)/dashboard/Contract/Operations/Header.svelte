@@ -3,7 +3,7 @@
 	import { Button } from "$lib/dusk/components";
 	import { operationsStore } from "$lib/contracts";
 
-	/** @type string */
+	/** @type {string} */
 	export let heading;
 
 </script>

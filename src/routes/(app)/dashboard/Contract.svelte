@@ -19,31 +19,37 @@
 		$operationsStore.currentOperation = undefined;
 	});
 
+	/**
+	 * @type {Array<{ component: import("svelte").ComponentType, id: string, props?: Record<string, any> }>}
+	 */
 	const allOperations = [
 		{
 			component: Stake,
 			id: "stake",
-			props: {}
+			props: undefined
 		},
 		{
 			component: Withdraw,
 			id: "withdraw",
-			props: {}
+			props: undefined
 		},
 		{
 			component: WithdrawRewards,
 			id: "withdraw-rewards",
-			props: {}
+			props: undefined
 		},
 		{
 			component: Receive,
 			id: "receive",
-			props: {}
+			props: {
+				// eslint-disable-next-line max-len
+				publicSpendKey: "Y05MCvisx3hIhGq50gQ7rZRmQKiIO03ly8DsVqKmU5cmIO1B7CKXPH2dtSC5sk6vmXJZ27qSMPfFsW"
+			}
 		},
 		{
 			component: Send,
 			id: "send",
-			props: {}
+			props: undefined
 		}
 	];
 

@@ -2,7 +2,7 @@
 	import Icon from "../Icon/Icon.svelte";
 	import { makeClassName } from "$lib/dusk/string";
 
-	/** @type {String | Undefined} */
+	/** @type {string | Undefined} */
 	export let className = undefined;
 
 	/** @type {string | Undefined} */
