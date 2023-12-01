@@ -41,7 +41,7 @@
 		"svelte-persisted-store": "0.7.0"
 	},
 	"devDependencies": {
-		"@dusk-network/eslint-config": "2.0.0",
+		"@dusk-network/eslint-config": "2.1.0",
 		"@sveltejs/adapter-static": "2.0.3",
 		"@sveltejs/kit": "1.27.6",
 		"@testing-library/jest-dom": "6.1.4",
