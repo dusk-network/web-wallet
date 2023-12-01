@@ -38,128 +38,137 @@
 		</h2>
 	</header>
 	<hr/>
-	<article class="settings-group">
-		<header class="settings-group__header">
-			<Icon path={mdiCheckNetworkOutline}/>
-			<h3 class="h4 settings-group__heading">Network</h3>
-		</header>
-		<label class="settings-group__control" for={undefined}>
-			<Select
-				className="settings-group__select"
-				value={network}
-				on:change={(evt) => {
-					settingsStore.update(store => {
-						// eslint-disable-next-line no-extra-parens
-						const option = /** @type {HTMLInputElement} */ (evt.target);
+	<div class="settings__content">
+		<article class="settings-group">
+			<header class="settings-group__header">
+				<Icon path={mdiCheckNetworkOutline}/>
+				<h3 class="h4 settings-group__heading">Network</h3>
+			</header>
+			<label class="settings-group__control" for={undefined}>
+				<Select
+					className="settings-group__select"
+					value={network}
+					on:change={(evt) => {
+						settingsStore.update(store => {
+							// eslint-disable-next-line no-extra-parens
+							const option = /** @type {HTMLInputElement} */ (evt.target);
 
-						store.network = option.value;
+							store.network = option.value;
 
-						return store;
-					});
-				}}
-				options={networks}
+							return store;
+						});
+					}}
+					options={networks}
+				/>
+				<span class="settings__network-status">
+					ONLINE
+					<Icon className="settings__network-status-icon" path={mdiCheckCircleOutline}/>
+				</span>
+
+			</label>
+		</article>
+		<hr/>
+		<article class="settings-group">
+			<header class="settings-group__header">
+				<Icon path={mdiFileExportOutline}/>
+				<h3 class="h4 settings-group__heading">Export</h3>
+			</header>
+			<Button
+				on:click={() => { return true; }}
+				icon={{ path: mdiFileDownloadOutline }}
+				text="Wallet Recovery File"
+				variant="secondary"
 			/>
-			<span class="settings__network-status">
-				ONLINE
-				<Icon className="settings__network-status-icon" path={mdiCheckCircleOutline}/>
-			</span>
-
-		</label>
-	</article>
-	<hr/>
-	<article class="settings-group">
-		<header class="settings-group__header">
-			<Icon path={mdiFileExportOutline}/>
-			<h3 class="h4 settings-group__heading">Export</h3>
-		</header>
-		<Button
-			on:click={() => { return true; }}
-			icon={{ path: mdiFileDownloadOutline }}
-			text="Wallet Recovery File"
-			variant="secondary"
-		/>
-		<Button
-			on:click={() => { return true; }}
-			icon={{ path: mdiFileDownloadOutline }}
-			text="Key Pair File"
-			variant="secondary"
-		/>
-	</article>
-	<hr/>
-	<article class="settings-group">
-		<header class="settings-group__header">
-			<Icon path={mdiGasStationOutline}/>
-			<h3 class="h4 settings-group__heading">Gas</h3>
-		</header>
-		<label for={undefined} class="settings-group__control settings-group__control--with-label">
-			<Textbox placeholder="minimum gas value" type="number" min="0"/>
-			<span>Minimum gas</span>
-		</label>
-		<label for={undefined} class="settings-group__control settings-group__control--with-label">
-			<Textbox placeholder="maximum gas value" type="number" min="0"/>
-			<span>Maximum gas</span>
-		</label>
-	</article>
-	<hr/>
-	<article class="settings-group">
-		<header class="settings-group__header">
-			<Icon path={mdiApplicationCogOutline}/>
-			<h3 class="h4 settings-group__heading">Preferences</h3>
-		</header>
-		<label class="settings-group__control" for={undefined}>
-			<span>Dark mode:</span>
-			<Switch
-				bind:value={isDarkMode}
-				on:change={() => {
-					settingsStore.update(store => {
-						store.darkMode = isDarkMode;
-
-						return store;
-					});
-				}}
+			<Button
+				on:click={() => { return true; }}
+				icon={{ path: mdiFileDownloadOutline }}
+				text="Key Pair File"
+				variant="secondary"
 			/>
-		</label>
-		<label class="settings-group__control settings-group__control--with-label" for={undefined}>
-			<Select
-				className="settings-group__control settings-group__control--with-label"
-				value={currency}
-				on:change={(evt) => {
-					settingsStore.update(store => {
-						// eslint-disable-next-line no-extra-parens
-						const option = /** @type {HTMLInputElement} */ (evt.target);
+		</article>
+		<hr/>
+		<article class="settings-group">
+			<header class="settings-group__header">
+				<Icon path={mdiGasStationOutline}/>
+				<h3 class="h4 settings-group__heading">Gas</h3>
+			</header>
+			<label for={undefined} class="settings-group__control settings-group__control--with-label">
+				<Textbox placeholder="minimum gas value" type="number" min="0"/>
+				<span>Minimum gas</span>
+			</label>
+			<label for={undefined} class="settings-group__control settings-group__control--with-label">
+				<Textbox placeholder="maximum gas value" type="number" min="0"/>
+				<span>Maximum gas</span>
+			</label>
+		</article>
+		<hr/>
+		<article class="settings-group">
+			<header class="settings-group__header">
+				<Icon path={mdiApplicationCogOutline}/>
+				<h3 class="h4 settings-group__heading">Preferences</h3>
+			</header>
+			<label class="settings-group__control" for={undefined}>
+				<span>Dark mode:</span>
+				<Switch
+					bind:value={isDarkMode}
+					on:change={() => {
+						settingsStore.update(store => {
+							store.darkMode = isDarkMode;
 
-						store.currency = option.value;
+							return store;
+						});
+					}}
+				/>
+			</label>
+			<label class="settings-group__control settings-group__control--with-label" for={undefined}>
+				<Select
+					className="settings-group__control settings-group__control--with-label"
+					value={currency}
+					on:change={(evt) => {
+						settingsStore.update(store => {
+							// eslint-disable-next-line no-extra-parens
+							const option = /** @type {HTMLInputElement} */ (evt.target);
 
-						return store;
-					});
-				}}
-				options={currenciesToOptions(currencies)}
+							store.currency = option.value;
+
+							return store;
+						});
+					}}
+					options={currenciesToOptions(currencies)}
+				/>
+				<span>Default currency</span>
+			</label>
+		</article>
+		<hr/>
+		<article class="settings-group">
+			<header class="settings-group__header">
+				<Icon path={mdiFileExportOutline}/>
+				<h3 class="h4 settings-group__heading">Danger Zone!</h3>
+			</header>
+			<Button
+				className="settings-group__button--state--danger"
+				on:click={() => { return true; }}
+				icon={{ path: mdiRestoreAlert }}
+				text="Reset Wallet"
+				variant="secondary"
 			/>
-			<span>Default currency</span>
-		</label>
-	</article>
-	<hr/>
-	<article class="settings-group">
-		<header class="settings-group__header">
-			<Icon path={mdiFileExportOutline}/>
-			<h3 class="h4 settings-group__heading">Danger Zone!</h3>
-		</header>
-		<Button
-			className="settings-group__button--state--danger"
-			on:click={() => { return true; }}
-			icon={{ path: mdiRestoreAlert }}
-			text="Reset Wallet"
-			variant="secondary"
-		/>
-	</article>
+		</article>
+	</div>
 </section>
 
 <style lang="postcss">
 	.settings {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: var(--default-gap);
+		overflow: hidden;
+
+		&, &__content {
+			display: flex;
+			flex-direction: column;
+			gap: var(--default-gap);
+		}
+
+		&__content {
+			overflow-y: auto;
+		}
 
 		&__header {
 			display: flex;
