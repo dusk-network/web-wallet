@@ -1,7 +1,7 @@
 <script>
 	import { Agreement, Card, Stepper } from "$lib/dusk/components";
 	import Icon from "$lib/dusk/components/Icon/Icon.svelte";
-	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+	import { onboardingWizardStore } from "$lib/stores";
 	import { mdiAlertOutline } from "@mdi/js";
 	let agreementOneChecked = false;
 	let agreementTwoChecked = false;

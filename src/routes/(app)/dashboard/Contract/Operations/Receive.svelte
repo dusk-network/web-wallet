@@ -1,7 +1,7 @@
 <script>
 	import { Button, QrCode } from "$lib/dusk/components";
 	import { mdiArrowLeft, mdiContentCopy } from "@mdi/js";
-	import { operationsStore } from "$lib/contracts";
+	import { operationsStore } from "$lib/stores";
 
 	/** @type {String} */
 	export let publicSpendKey = "";

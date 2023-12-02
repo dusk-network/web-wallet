@@ -1,6 +1,6 @@
 <script>
 	import { Card, Stepper } from "$lib/dusk/components";
-	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+	import { onboardingWizardStore } from "$lib/stores";
 	const allSetIllustration = "/images/onboarding/all_set_illustration.svg";
 
 	$: ({ totalSteps, currentStep } = $onboardingWizardStore);

@@ -2,8 +2,8 @@
 	import { goto } from "$app/navigation";
 	import { Button } from "$lib/dusk/components";
 	import { mdiArrowLeft, mdiArrowRight } from "@mdi/js";
-	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
-	import { defaultWordsCount, enteredMnemonicPhrase } from "$lib/onboarding/mnemonicPhrase";
+	import { onboardingWizardStore } from "$lib/stores";
+	import { defaultWordsCount, enteredMnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
 	$: ({
 		currentStep, totalSteps, shouldShowBack, canGoNext
 	} = $onboardingWizardStore);

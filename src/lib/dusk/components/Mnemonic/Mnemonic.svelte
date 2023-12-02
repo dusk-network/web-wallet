@@ -5,9 +5,9 @@
 		defaultWordsCount,
 		enteredMnemonicPhrase,
 		shuffledMnemonicPhrase
-	} from "$lib/onboarding/mnemonicPhrase";
+	} from "./store";
 	import { findFirstNMatches } from "$lib/dusk/array";
-	import enDictionary from "$lib/onboarding/enDictionary";
+	import enDictionary from "./enDictionary";
 
 	let _enDictionary = enDictionary;
 

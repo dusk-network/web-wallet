@@ -3,8 +3,8 @@
 	import {
 		Anchor, AnchorButton, Button, Card
 	} from "$lib/dusk/components";
-	import ONBOARDING_STEPS from "$lib/onboarding/onboardingSteps";
-	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+	import ONBOARDING_STEPS from "./onboardingSteps";
+	import { onboardingWizardStore } from "$lib/stores";
 
 	function beginOnboarding () {
 		const totalSteps = $page.url.pathname.includes("create")

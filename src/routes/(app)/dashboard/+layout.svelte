@@ -1,7 +1,7 @@
 <script>
 	import { mdiCogOutline, mdiLinkCircle } from "@mdi/js";
 	import { AnchorButton, Icon } from "$lib/dusk/components";
-	import { settingsStore } from "$lib/settings";
+	import { settingsStore } from "$lib/stores";
 
 	const { network } = $settingsStore;
 </script>

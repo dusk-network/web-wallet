@@ -14,13 +14,10 @@
 	} from "@mdi/js";
 	import { logo } from "$lib/dusk/icons";
 	import { fade } from "svelte/transition";
-	import {
-		Balance,
-		Tabs
-	} from "$lib/dusk/components";
+	import { Tabs } from "$lib/dusk/components";
+	import { Balance } from "$lib/components";
 	import { createCurrencyFormatter } from "$lib/dusk/currency";
-	import { balanceStore } from "$lib/balance";
-	import { settingsStore } from "$lib/settings";
+	import { balanceStore, settingsStore } from "$lib/stores";
 	import { find, hasKeyValue } from "lamb";
 	import Contract from "./Contract.svelte";
 

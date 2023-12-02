@@ -1,7 +1,7 @@
 <script>
 	import { mdiArrowLeftCircleOutline } from "@mdi/js";
 	import { Button } from "$lib/dusk/components";
-	import { operationsStore } from "$lib/contracts";
+	import { operationsStore } from "$lib/stores";
 
 	/** @type {string} */
 	export let heading;

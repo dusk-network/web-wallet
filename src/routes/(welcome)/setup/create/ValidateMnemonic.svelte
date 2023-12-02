@@ -2,8 +2,8 @@
 	import {
 		Card, Icon, Mnemonic, Stepper
 	} from "$lib/dusk/components";
-	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
-	import { enteredMnemonicPhrase, mnemonicPhrase } from "$lib/onboarding/mnemonicPhrase";
+	import { onboardingWizardStore } from "$lib/stores";
+	import { enteredMnemonicPhrase, mnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
 	import { arraysEqual } from "$lib/dusk/array";
 	import { mdiAlertOutline } from "@mdi/js";
 

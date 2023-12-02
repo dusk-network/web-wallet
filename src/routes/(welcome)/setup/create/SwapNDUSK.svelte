@@ -2,8 +2,8 @@
 
 	import { Button, Stepper } from "$lib/dusk/components";
 	import { logo } from "$lib/dusk/icons";
-	import { mnemonicPhrase } from "$lib/onboarding/mnemonicPhrase";
-	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+	import { mnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
+	import { onboardingWizardStore } from "$lib/stores";
 	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
 
 	mnemonicPhrase.set([]);
