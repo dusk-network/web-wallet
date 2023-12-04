@@ -1,7 +1,7 @@
 <script>
 	import { Card, Stepper, Textbox } from "$lib/dusk/components";
 	import { mdiKeyOutline } from "@mdi/js";
-	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+	import { onboardingWizardStore } from "$lib/stores";
 
 	let password = "";
 	let confirmPassword = "";

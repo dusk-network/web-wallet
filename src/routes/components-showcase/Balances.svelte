@@ -1,5 +1,5 @@
 <script>
-	import { Balance } from "$lib/dusk/components";
+	import { Balance } from "$lib/components";
 </script>
 
 <section>

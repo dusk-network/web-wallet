@@ -15,7 +15,7 @@
 		AnchorButton, Button, Icon, Select, Switch, Textbox
 	} from "$lib/dusk/components";
 	import { currencies } from "$lib/dusk/currency";
-	import { settingsStore } from "$lib/settings";
+	import { settingsStore } from "$lib/stores";
 	import { mapWith, rename } from "lamb";
 
 	/** @type {(currency: { code: string, currency: string }) => SelectOption} */

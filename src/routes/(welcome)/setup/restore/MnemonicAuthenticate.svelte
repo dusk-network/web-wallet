@@ -1,7 +1,7 @@
 <script>
 	import { Card, Mnemonic, Stepper } from "$lib/dusk/components";
-	import { defaultWordsCount, enteredMnemonicPhrase } from "$lib/onboarding/mnemonicPhrase";
-	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+	import { defaultWordsCount, enteredMnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
+	import { onboardingWizardStore } from "$lib/stores";
 	import { onDestroy, onMount } from "svelte";
 
 	$: ({ totalSteps, currentStep } = $onboardingWizardStore);

@@ -9,7 +9,7 @@
 		Withdraw,
 		WithdrawRewards
 	} from "./Contract/Operations";
-	import { operationsStore } from "$lib/contracts";
+	import { operationsStore } from "$lib/stores";
 	import { onDestroy } from "svelte";
 
 	/** @type Contract */

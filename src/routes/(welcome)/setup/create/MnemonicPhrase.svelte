@@ -1,8 +1,8 @@
 <script>
 	import { Card, Stepper, Words } from "$lib/dusk/components";
 	import { mdiAlertOutline } from "@mdi/js";
-	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
-	import { mnemonicPhrase } from "$lib/onboarding/mnemonicPhrase";
+	import { onboardingWizardStore } from "$lib/stores";
+	import { mnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
 	import { generateMnemonic } from "@jimber/simple-bip39";
 
 	$: ({ totalSteps, currentStep } = $onboardingWizardStore);

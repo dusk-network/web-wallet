@@ -2,7 +2,7 @@
 
 <script>
 	import { fade } from "svelte/transition";
-	import onboardingWizardStore from "$lib/onboarding/onboardingWizardStore";
+	import { onboardingWizardStore } from "$lib/stores";
 	import WizardButtons from "../WizardButtons.svelte";
 	import TermsOfService from "../TermsOfService.svelte";
 
