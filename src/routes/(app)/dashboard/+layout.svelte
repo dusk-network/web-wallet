@@ -30,6 +30,7 @@
 
 <style lang="postcss">
 	.dashboard {
+		position: relative;
 		display: flex;
 		align-content: space-between;
 		gap: 1.375rem;

@@ -1,0 +1,91 @@
+.key-picker {
+    position: relative;
+    background-color: var(--surface-color);
+    padding: 1em;
+    border-radius: 1.25rem;
+    user-select: none;
+    z-index: 2;
+    transition: transform 0.5s;
+}
+
+.key-picker__current-key, .key-picker__key {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+}
+
+.key-picker__current-key {
+    line-height: 1;
+}
+
+.key-picker__key {
+    max-width: 100%;
+    all: unset;
+}
+
+.key-picker__key:hover, .key-picker__key--selected {
+    color: var(--secondary-color);
+}
+
+.key-picker__key:hover {
+    cursor: pointer;
+}
+
+.key-picker__key button {
+    all: unset;
+    width: 100%;
+    text-align: center;
+    padding: .5em 0;
+}
+
+.key-picker__trigger {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--default-gap);
+}
+
+.key-picker__trigger:hover {
+    cursor: pointer;
+}
+
+.key-picker__drop-down {
+    display: flex;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 2;
+
+    background-color: var(--surface-color);
+    padding: 0 1em 1em 1em;
+    border-bottom-left-radius: 1.25rem;
+    border-bottom-right-radius: 1.25rem;
+
+    flex-direction: column;
+    gap: var(--default-gap);
+    align-items: center;
+    width: 100%;
+}
+
+.key-picker__key-options {
+    overflow-y: scroll;
+    max-height: 10em;
+}
+
+.key-picker__generating-key-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-self: flex-start;
+    gap: var(--small-gap)
+}
+
+.key-picker--expanded {
+    transform: scale(1.03);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.key-picker__generate-key-button {
+    text-align: left;
+    width: 100%
+}
