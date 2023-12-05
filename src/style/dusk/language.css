@@ -22,6 +22,8 @@
 	--on-secondary-color: var(--smokey-black);
 	--on-surface-color: var(--smokey-black);
 
+	--on-error-color: var(--light-grey);
+
 	/* Typography */
 
 	--main-font-family: "Soehne", "Helvetica Neue", Helvetica, Arial, sans-serif;
