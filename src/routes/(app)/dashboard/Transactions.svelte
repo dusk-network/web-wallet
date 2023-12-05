@@ -19,7 +19,7 @@
 	<div class="transactions__lists">
 		{#each transactions as transaction (transaction.hash)}
 			<dl class="transactions-list">
-				{#each Object.getOwnPropertyNames(transaction) as [name] (name)}
+				{#each Object.getOwnPropertyNames(transaction) as name (name)}
 					<dt class="transactions-list__term">{name}</dt>
 					<dd class="transactions-list__datum">
 						{#if name === "fee"}
