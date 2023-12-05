@@ -526,6 +526,11 @@ declare module "lamb" {
 	 * *****    OBJECT     ***** *
 	 * ------------------------- */
 
+	function enumerables<
+		K extends PropertyKey,
+		S extends Record<K, any>
+	> (source: S): Array<K>;
+
 	function getKey<
 		K extends PropertyKey,
 		S extends Record<K, any>
