@@ -5,6 +5,7 @@
 import * as matchers from "@testing-library/jest-dom/matchers";
 import { expect, vi } from "vitest";
 import { readable } from "svelte/store";
+import crypto from "node:crypto";
 
 import { ResizeObserver } from "./src/lib/dusk/mocks";
 import init from "./__mocks__/initDuskWalletCore.js";
@@ -15,7 +16,23 @@ vi.doMock(
 	() => ({ default: vi.fn(init) })
 );
 
+/*
+ * Mocking deprecated `atob` and `btoa` functions in Node.
+ * Vitest get stuck otherwise.
+ */
+vi.spyOn(global, "atob").mockImplementation(data => Buffer.from(data, "base64").toString("binary"));
+vi.spyOn(global, "btoa").mockImplementation(data => Buffer.from(data, "binary").toString("base64"));
+
 // Adding missing bits in JSDOM
+
+/*
+ * Need to set it this way for Node 20, otherwise
+ * it fails saying that it can't assign to `crypto`
+ * which only has a getter.
+ */
+Object.defineProperty(global, "crypto", {
+	get () { return crypto; }
+});
 
 const elementMethods = ["scrollBy", "scrollTo", "scrollIntoView"];
 
