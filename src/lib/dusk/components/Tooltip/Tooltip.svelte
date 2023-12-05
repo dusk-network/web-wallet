@@ -200,8 +200,10 @@
 
 		if (delayShow) {
 			timeoutID = window.setTimeout(() => {
-				setAriaDescription(event.target);
-				state.set(newState);
+				if (event.target && event.target.isConnected) {
+					setAriaDescription(event.target);
+					state.set(newState);
+				}
 			}, delayShow);
 		} else {
 			setAriaDescription(event.target);

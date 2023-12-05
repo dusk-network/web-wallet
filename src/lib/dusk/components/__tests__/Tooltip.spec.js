@@ -318,6 +318,26 @@ describe("Tooltip", () => {
 				expect(target.getAttribute("aria-described-by")).toBe(baseProps.id);
 				expect(prevTooltipElement.getAttribute("aria-described-by")).toBeNull();
 			});
+
+			it("should not show the tooltip after the delay if the target element doesn't exist anymore", async () => {
+				const { getByRole } = render(Tooltip, baseOptions);
+				const tooltip = getByRole("tooltip", { hidden: true });
+
+				await fireEvent.mouseEnter(target);
+
+				expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+				expect(observeSpy).toHaveBeenCalledTimes(1);
+				expect(computePosition).toHaveBeenCalledTimes(1);
+				expect(setOffset).toHaveBeenCalledTimes(1);
+				expect(tooltip.getAttribute("aria-hidden")).toBe("true");
+
+				target.remove();
+
+				await vi.advanceTimersByTimeAsync(Number(baseProps.defaultDelayShow));
+
+				expect(tooltip.getAttribute("aria-hidden")).toBe("true");
+				expect(target.getAttribute("aria-described-by")).toBeNull();
+			});
 		});
 
 		describe("Tooltip hide events", () => {
