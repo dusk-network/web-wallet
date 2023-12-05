@@ -8,29 +8,6 @@ exports[`Settings > should render the settings page 1`] = `
     <header
       class="settings__header s-EBshooXNO1eQ"
     >
-      <a
-        aria-disabled="false"
-        class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal dusk-icon-button"
-        href="/dashboard"
-      >
-        <svg
-          class="dusk-icon dusk-icon--size--large dusk-anchor-button__icon"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M18,11V13H10L13.5,16.5L12.08,17.92L6.16,12L12.08,6.08L13.5,7.5L10,11H18M2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12M4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12Z"
-          />
-        </svg>
-        
-        <!--&lt;Icon&gt;-->
-         
-        
-        
-      </a>
-      <!--&lt;Anchor&gt;-->
-      <!--&lt;AnchorButton&gt;-->
-       
       <h2
         class="s-EBshooXNO1eQ"
       >
@@ -38,79 +15,68 @@ exports[`Settings > should render the settings page 1`] = `
       </h2>
     </header>
      
-    <hr
-      class="s-EBshooXNO1eQ"
-    />
-     
     <div
       class="settings__content s-EBshooXNO1eQ"
     >
+      <hr
+        class="s-EBshooXNO1eQ"
+      />
+       
       <article
         class="settings-group s-EBshooXNO1eQ"
       >
         <header
-          class="settings-group__header s-EBshooXNO1eQ"
+          class="settings-group__header settings-group__header--network s-EBshooXNO1eQ"
         >
-          <svg
-            class="dusk-icon dusk-icon--size--normal"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
+          <div
+            class="settings-group__header s-EBshooXNO1eQ"
           >
-            <path
-              d="M15,20A1,1 0 0,0 14,19H13V17H17A2,2 0 0,0 19,15V5A2,2 0 0,0 17,3H7A2,2 0 0,0 5,5V15A2,2 0 0,0 7,17H11V19H10A1,1 0 0,0 9,20H2V22H9A1,1 0 0,0 10,23H14A1,1 0 0,0 15,22H22V20H15M7,15V5H17V15H7M8,10.37L9.24,9.13L10.93,10.83L14.76,7L16,8.5L10.93,13.57L8,10.37Z"
-            />
-          </svg>
-          
-          <!--&lt;Icon&gt;-->
-           
-          <h3
-            class="h4 settings-group__heading s-EBshooXNO1eQ"
-          >
-            Network
-          </h3>
-        </header>
-         
-        <label
-          class="settings-group__control s-EBshooXNO1eQ"
-        >
-          <select
-            class="dusk-select settings-group__select"
-          >
-            <option
-              value="testnet"
-            >
-              testnet
-               
-            </option>
-            <option
-              value="mainnet"
-            >
-              mainnet
-               
-            </option>
-            
-            <!--&lt;Options&gt;-->
-          </select>
-          <!--&lt;Select&gt;-->
-           
-          <span
-            class="settings__network-status s-EBshooXNO1eQ"
-          >
-            ONLINE
-					
             <svg
-              class="dusk-icon dusk-icon--size--normal settings__network-status-icon"
+              class="dusk-icon dusk-icon--size--normal"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
               <path
-                d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M16.59 7.58L10 14.17L7.41 11.59L6 13L10 17L18 9L16.59 7.58Z"
+                d="M15,20A1,1 0 0,0 14,19H13V17H17A2,2 0 0,0 19,15V5A2,2 0 0,0 17,3H7A2,2 0 0,0 5,5V15A2,2 0 0,0 7,17H11V19H10A1,1 0 0,0 9,20H2V22H9A1,1 0 0,0 10,23H14A1,1 0 0,0 15,22H22V20H15M7,15V5H17V15H7M8,10.37L9.24,9.13L10.93,10.83L14.76,7L16,8.5L10.93,13.57L8,10.37Z"
               />
             </svg>
             
             <!--&lt;Icon&gt;-->
+             
+            <h3
+              class="h4 settings-group__heading s-EBshooXNO1eQ"
+            >
+              Network Status
+            </h3>
+          </div>
+           
+          <span
+            class="dusk-badge dusk-badge--variant-success"
+          >
+            Online
           </span>
-        </label>
+          <!--&lt;Badge&gt;-->
+        </header>
+         
+        <select
+          class="dusk-select settings-group__select"
+        >
+          <option
+            value="testnet"
+          >
+            testnet
+             
+          </option>
+          <option
+            value="mainnet"
+          >
+            mainnet
+             
+          </option>
+          
+          <!--&lt;Options&gt;-->
+        </select>
+        <!--&lt;Select&gt;-->
       </article>
        
       <hr
@@ -129,7 +95,7 @@ exports[`Settings > should render the settings page 1`] = `
             viewBox="0 0 24 24"
           >
             <path
-              d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2M18 20H6V4H13V9H18V20M16 11V18.1L13.9 16L11.1 18.8L8.3 16L11.1 13.2L8.9 11H16Z"
+              d="M5,3C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V16.72C21.59,16.37 22,15.74 22,15V9C22,8.26 21.59,7.63 21,7.28V5A2,2 0 0,0 19,3H5M5,5H19V7H13A2,2 0 0,0 11,9V15A2,2 0 0,0 13,17H19V19H5V5M13,9H20V15H13V9M16,10.5A1.5,1.5 0 0,0 14.5,12A1.5,1.5 0 0,0 16,13.5A1.5,1.5 0 0,0 17.5,12A1.5,1.5 0 0,0 16,10.5Z"
             />
           </svg>
           
@@ -138,59 +104,83 @@ exports[`Settings > should render the settings page 1`] = `
           <h3
             class="h4 settings-group__heading s-EBshooXNO1eQ"
           >
-            Export
+            Wallet
           </h3>
         </header>
          
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled"
-          type="button"
+        <div
+          class="settings-group__multi-control-content s-EBshooXNO1eQ"
         >
-          <svg
-            class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
+          <div
+            class="settings-group__control settings-group__control--with-label s-EBshooXNO1eQ"
           >
-            <path
-              d="M14,2L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H14M18,20V9H13V4H6V20H18M12,19L8,15H10.5V12H13.5V15H16L12,19Z"
-            />
-          </svg>
-          
-          <!--&lt;Icon&gt;-->
+            <span
+              class="s-EBshooXNO1eQ"
+            >
+              Wallet Recovery File
+            </span>
+             
+            <button
+              class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled"
+              type="button"
+            >
+              <svg
+                class="dusk-icon dusk-icon--size--normal dusk-button__icon"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M14,2L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H14M18,20V9H13V4H6V20H18M12,19L8,15H10.5V12H13.5V15H16L12,19Z"
+                />
+              </svg>
+              
+              <!--&lt;Icon&gt;-->
+               
+              <span
+                class="dusk-button__text"
+              >
+                Export
+              </span>
+              
+            </button>
+            <!--&lt;Button&gt;-->
+          </div>
            
-          <span
-            class="dusk-button__text"
+          <div
+            class="settings-group__control settings-group__control--with-label s-EBshooXNO1eQ"
           >
-            Wallet Recovery File
-          </span>
-          
-        </button>
-        <!--&lt;Button&gt;-->
-         
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled"
-          type="button"
-        >
-          <svg
-            class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M14,2L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H14M18,20V9H13V4H6V20H18M12,19L8,15H10.5V12H13.5V15H16L12,19Z"
-            />
-          </svg>
-          
-          <!--&lt;Icon&gt;-->
-           
-          <span
-            class="dusk-button__text"
-          >
-            Key Pair File
-          </span>
-          
-        </button>
-        <!--&lt;Button&gt;-->
+            <span
+              class="s-EBshooXNO1eQ"
+            >
+              Key Pair File
+            </span>
+             
+            <button
+              class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled"
+              type="button"
+            >
+              <svg
+                class="dusk-icon dusk-icon--size--normal dusk-button__icon"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M14,2L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H14M18,20V9H13V4H6V20H18M12,19L8,15H10.5V12H13.5V15H16L12,19Z"
+                />
+              </svg>
+              
+              <!--&lt;Icon&gt;-->
+               
+              <span
+                class="dusk-button__text"
+              >
+                Export
+              </span>
+              
+            </button>
+            <!--&lt;Button&gt;-->
+          </div>
+        </div>
       </article>
        
       <hr
@@ -218,47 +208,51 @@ exports[`Settings > should render the settings page 1`] = `
           <h3
             class="h4 settings-group__heading s-EBshooXNO1eQ"
           >
-            Gas
+            Gas Settings
           </h3>
         </header>
          
-        <label
-          class="settings-group__control settings-group__control--with-label s-EBshooXNO1eQ"
+        <div
+          class="settings-group__multi-control-content s-EBshooXNO1eQ"
         >
-          <input
-            class="dusk-textbox dusk-textbox-number"
-            min="0"
-            placeholder="minimum gas value"
-            type="number"
-          />
-          
-          <!--&lt;Textbox&gt;-->
-           
-          <span
-            class="s-EBshooXNO1eQ"
+          <label
+            class="settings-group__control settings-group__control--with-label s-EBshooXNO1eQ"
           >
-            Minimum gas
-          </span>
-        </label>
-         
-        <label
-          class="settings-group__control settings-group__control--with-label s-EBshooXNO1eQ"
-        >
-          <input
-            class="dusk-textbox dusk-textbox-number"
-            min="0"
-            placeholder="maximum gas value"
-            type="number"
-          />
-          
-          <!--&lt;Textbox&gt;-->
+            <span
+              class="s-EBshooXNO1eQ"
+            >
+              Minimum gas
+            </span>
+             
+            <input
+              class="dusk-textbox dusk-textbox-number"
+              min="0"
+              placeholder="minimum gas value"
+              type="number"
+            />
+            
+            <!--&lt;Textbox&gt;-->
+          </label>
            
-          <span
-            class="s-EBshooXNO1eQ"
+          <label
+            class="settings-group__control settings-group__control--with-label s-EBshooXNO1eQ"
           >
-            Maximum gas
-          </span>
-        </label>
+            <span
+              class="s-EBshooXNO1eQ"
+            >
+              Maximum gas
+            </span>
+             
+            <input
+              class="dusk-textbox dusk-textbox-number"
+              min="0"
+              placeholder="maximum gas value"
+              type="number"
+            />
+            
+            <!--&lt;Textbox&gt;-->
+          </label>
+        </div>
       </article>
        
       <hr
@@ -290,312 +284,316 @@ exports[`Settings > should render the settings page 1`] = `
           </h3>
         </header>
          
-        <label
-          class="settings-group__control s-EBshooXNO1eQ"
+        <div
+          class="settings-group__multi-control-content s-EBshooXNO1eQ"
         >
-          <span
-            class="s-EBshooXNO1eQ"
+          <label
+            class="settings-group__control settings-group__control--switch s-EBshooXNO1eQ"
           >
-            Dark mode:
-          </span>
+            <span
+              class="s-EBshooXNO1eQ"
+            >
+              Dark Mode
+            </span>
+             
+            <div
+              aria-checked="false"
+              aria-disabled="false"
+              class="dusk-switch"
+              role="switch"
+              tabindex="0"
+            />
+            <!--&lt;Switch&gt;-->
+          </label>
            
-          <div
-            aria-checked="false"
-            aria-disabled="false"
-            class="dusk-switch"
-            role="switch"
-            tabindex="0"
-          />
-          <!--&lt;Switch&gt;-->
-        </label>
-         
-        <label
-          class="settings-group__control settings-group__control--with-label s-EBshooXNO1eQ"
-        >
-          <select
-            class="dusk-select settings-group__control settings-group__control--with-label"
+          <label
+            class="settings-group__control settings-group__control--with-label s-EBshooXNO1eQ"
           >
-            <option
-              value="AED"
+            <span
+              class="s-EBshooXNO1eQ"
             >
-              United Arab Emirates Dirham
-               
-            </option>
-            <option
-              value="ARS"
+              Default currency
+            </span>
+             
+            <select
+              class="dusk-select settings-group__control settings-group__control--with-label"
             >
-              Argentine Peso
-               
-            </option>
-            <option
-              value="AUD"
-            >
-              Australian Dollar
-               
-            </option>
-            <option
-              value="BDT"
-            >
-              Bangladeshi Taka
-               
-            </option>
-            <option
-              value="BHD"
-            >
-              Bahraini Dinar
-               
-            </option>
-            <option
-              value="BMD"
-            >
-              Bermudian Dollar
-               
-            </option>
-            <option
-              value="BRL"
-            >
-              Brazilian Real
-               
-            </option>
-            <option
-              value="CAD"
-            >
-              Canadian Dollar
-               
-            </option>
-            <option
-              value="CFH"
-            >
-              Swiss Franc
-               
-            </option>
-            <option
-              value="CLP"
-            >
-              Chilean Peso
-               
-            </option>
-            <option
-              value="CNY"
-            >
-              Renminbi
-               
-            </option>
-            <option
-              value="CZK"
-            >
-              Czech Koruna
-               
-            </option>
-            <option
-              value="DKK"
-            >
-              Danish Krone
-               
-            </option>
-            <option
-              value="EUR"
-            >
-              Euro
-               
-            </option>
-            <option
-              value="GBP"
-            >
-              Pound Sterling
-               
-            </option>
-            <option
-              value="HKD"
-            >
-              Hong Kong Dollar
-               
-            </option>
-            <option
-              value="HUF"
-            >
-              Hungarian Forint
-               
-            </option>
-            <option
-              value="IDR"
-            >
-              Indonesian Rupiah
-               
-            </option>
-            <option
-              value="ILS"
-            >
-              Israeli New Shekel
-               
-            </option>
-            <option
-              value="INR"
-            >
-              Indian Rupee
-               
-            </option>
-            <option
-              value="JPY"
-            >
-              Japanese Yen
-               
-            </option>
-            <option
-              value="KRW"
-            >
-              South Korean Won
-               
-            </option>
-            <option
-              value="KWD"
-            >
-              Kuwaiti Dinar
-               
-            </option>
-            <option
-              value="LKR"
-            >
-              Sri Lankan Rupee
-               
-            </option>
-            <option
-              value="MMK"
-            >
-              Myanmar Kyat
-               
-            </option>
-            <option
-              value="MXN"
-            >
-              Mexican Peso
-               
-            </option>
-            <option
-              value="MYR"
-            >
-              Malaysian Ringgit
-               
-            </option>
-            <option
-              value="NGN"
-            >
-              Nigerian Naira
-               
-            </option>
-            <option
-              value="NOK"
-            >
-              Norwegian Krone
-               
-            </option>
-            <option
-              value="NZD"
-            >
-              New Zealand Dollar
-               
-            </option>
-            <option
-              value="PHP"
-            >
-              Philippine Peso
-               
-            </option>
-            <option
-              value="PKR"
-            >
-              Pakistani Rupee
-               
-            </option>
-            <option
-              value="PLN"
-            >
-              Polish Złoty
-               
-            </option>
-            <option
-              value="RUB"
-            >
-              Russian Ruble
-               
-            </option>
-            <option
-              value="SAR"
-            >
-              Saudi Riyal
-               
-            </option>
-            <option
-              value="SEK"
-            >
-              Swedish Krona
-               
-            </option>
-            <option
-              value="SGD"
-            >
-              Singapore Dollar
-               
-            </option>
-            <option
-              value="THB"
-            >
-              Thai Baht
-               
-            </option>
-            <option
-              value="TRY"
-            >
-              Turkish Lira
-               
-            </option>
-            <option
-              value="TWD"
-            >
-              New Taiwan Dollar
-               
-            </option>
-            <option
-              value="UAH"
-            >
-              Ukrainian Hryvnia
-               
-            </option>
-            <option
-              value="USD"
-            >
-              United States Dollar
-               
-            </option>
-            <option
-              value="VEF"
-            >
-              Venezuelan Bolívar Fuerte
-               
-            </option>
-            <option
-              value="VND"
-            >
-              Vietnamese Dồng
-               
-            </option>
-            <option
-              value="ZAR"
-            >
-              South African Rand
-               
-            </option>
-            
-            <!--&lt;Options&gt;-->
-          </select>
-          <!--&lt;Select&gt;-->
-           
-          <span
-            class="s-EBshooXNO1eQ"
-          >
-            Default currency
-          </span>
-        </label>
+              <option
+                value="AED"
+              >
+                United Arab Emirates Dirham
+                 
+              </option>
+              <option
+                value="ARS"
+              >
+                Argentine Peso
+                 
+              </option>
+              <option
+                value="AUD"
+              >
+                Australian Dollar
+                 
+              </option>
+              <option
+                value="BDT"
+              >
+                Bangladeshi Taka
+                 
+              </option>
+              <option
+                value="BHD"
+              >
+                Bahraini Dinar
+                 
+              </option>
+              <option
+                value="BMD"
+              >
+                Bermudian Dollar
+                 
+              </option>
+              <option
+                value="BRL"
+              >
+                Brazilian Real
+                 
+              </option>
+              <option
+                value="CAD"
+              >
+                Canadian Dollar
+                 
+              </option>
+              <option
+                value="CFH"
+              >
+                Swiss Franc
+                 
+              </option>
+              <option
+                value="CLP"
+              >
+                Chilean Peso
+                 
+              </option>
+              <option
+                value="CNY"
+              >
+                Renminbi
+                 
+              </option>
+              <option
+                value="CZK"
+              >
+                Czech Koruna
+                 
+              </option>
+              <option
+                value="DKK"
+              >
+                Danish Krone
+                 
+              </option>
+              <option
+                value="EUR"
+              >
+                Euro
+                 
+              </option>
+              <option
+                value="GBP"
+              >
+                Pound Sterling
+                 
+              </option>
+              <option
+                value="HKD"
+              >
+                Hong Kong Dollar
+                 
+              </option>
+              <option
+                value="HUF"
+              >
+                Hungarian Forint
+                 
+              </option>
+              <option
+                value="IDR"
+              >
+                Indonesian Rupiah
+                 
+              </option>
+              <option
+                value="ILS"
+              >
+                Israeli New Shekel
+                 
+              </option>
+              <option
+                value="INR"
+              >
+                Indian Rupee
+                 
+              </option>
+              <option
+                value="JPY"
+              >
+                Japanese Yen
+                 
+              </option>
+              <option
+                value="KRW"
+              >
+                South Korean Won
+                 
+              </option>
+              <option
+                value="KWD"
+              >
+                Kuwaiti Dinar
+                 
+              </option>
+              <option
+                value="LKR"
+              >
+                Sri Lankan Rupee
+                 
+              </option>
+              <option
+                value="MMK"
+              >
+                Myanmar Kyat
+                 
+              </option>
+              <option
+                value="MXN"
+              >
+                Mexican Peso
+                 
+              </option>
+              <option
+                value="MYR"
+              >
+                Malaysian Ringgit
+                 
+              </option>
+              <option
+                value="NGN"
+              >
+                Nigerian Naira
+                 
+              </option>
+              <option
+                value="NOK"
+              >
+                Norwegian Krone
+                 
+              </option>
+              <option
+                value="NZD"
+              >
+                New Zealand Dollar
+                 
+              </option>
+              <option
+                value="PHP"
+              >
+                Philippine Peso
+                 
+              </option>
+              <option
+                value="PKR"
+              >
+                Pakistani Rupee
+                 
+              </option>
+              <option
+                value="PLN"
+              >
+                Polish Złoty
+                 
+              </option>
+              <option
+                value="RUB"
+              >
+                Russian Ruble
+                 
+              </option>
+              <option
+                value="SAR"
+              >
+                Saudi Riyal
+                 
+              </option>
+              <option
+                value="SEK"
+              >
+                Swedish Krona
+                 
+              </option>
+              <option
+                value="SGD"
+              >
+                Singapore Dollar
+                 
+              </option>
+              <option
+                value="THB"
+              >
+                Thai Baht
+                 
+              </option>
+              <option
+                value="TRY"
+              >
+                Turkish Lira
+                 
+              </option>
+              <option
+                value="TWD"
+              >
+                New Taiwan Dollar
+                 
+              </option>
+              <option
+                value="UAH"
+              >
+                Ukrainian Hryvnia
+                 
+              </option>
+              <option
+                value="USD"
+              >
+                United States Dollar
+                 
+              </option>
+              <option
+                value="VEF"
+              >
+                Venezuelan Bolívar Fuerte
+                 
+              </option>
+              <option
+                value="VND"
+              >
+                Vietnamese Dồng
+                 
+              </option>
+              <option
+                value="ZAR"
+              >
+                South African Rand
+                 
+              </option>
+              
+              <!--&lt;Options&gt;-->
+            </select>
+            <!--&lt;Select&gt;-->
+          </label>
+        </div>
       </article>
        
       <hr
@@ -614,7 +612,7 @@ exports[`Settings > should render the settings page 1`] = `
             viewBox="0 0 24 24"
           >
             <path
-              d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2M18 20H6V4H13V9H18V20M16 11V18.1L13.9 16L11.1 18.8L8.3 16L11.1 13.2L8.9 11H16Z"
+              d="M13 3C8 3 4 7 4 12H1L4.9 15.9L5 16L9 12H6C6 8.1 9.1 5 13 5S20 8.1 20 12 16.9 19 13 19C11.1 19 9.3 18.2 8.1 16.9L6.7 18.3C8.3 20 10.5 21 13 21C18 21 22 17 22 12S18 3 13 3M12 15H14V17H12V15M12 7H14V13H12V7"
             />
           </svg>
           
@@ -623,37 +621,68 @@ exports[`Settings > should render the settings page 1`] = `
           <h3
             class="h4 settings-group__heading s-EBshooXNO1eQ"
           >
-            Danger Zone!
+            Initialize Wallet
           </h3>
         </header>
          
         <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled settings-group__button--state--danger"
+          class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal settings-group__button--state--danger"
           type="button"
         >
-          <svg
-            class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M13 3C8 3 4 7 4 12H1L4.9 15.9L5 16L9 12H6C6 8.1 9.1 5 13 5S20 8.1 20 12 16.9 19 13 19C11.1 19 9.3 18.2 8.1 16.9L6.7 18.3C8.3 20 10.5 21 13 21C18 21 22 17 22 12S18 3 13 3M12 15H14V17H12V15M12 7H14V13H12V7"
-            />
-          </svg>
-          
-          <!--&lt;Icon&gt;-->
-           
           <span
             class="dusk-button__text"
           >
             Reset Wallet
           </span>
-          
         </button>
         <!--&lt;Button&gt;-->
       </article>
     </div>
   </section>
+   
+  <div
+    class="settings-actions s-EBshooXNO1eQ"
+  >
+    <a
+      aria-disabled="false"
+      class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--normal dusk-icon-button-labeled"
+      href="/dashboard"
+    >
+      <svg
+        class="dusk-icon dusk-icon--size--normal dusk-anchor-button__icon"
+        role="graphics-symbol"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
+        />
+      </svg>
+      
+      <!--&lt;Icon&gt;-->
+       
+      <span
+        class="dusk-anchor-button__text"
+      >
+        Back
+      </span>
+      
+      
+    </a>
+    <!--&lt;Anchor&gt;-->
+    <!--&lt;AnchorButton&gt;-->
+     
+    <button
+      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
+      type="button"
+    >
+      <span
+        class="dusk-button__text"
+      >
+        Log out
+      </span>
+    </button>
+    <!--&lt;Button&gt;-->
+  </div>
   <!--&lt;+page&gt;-->
 </div>
 `;
