@@ -1,6 +1,7 @@
 <svelte:options immutable={true}/>
 
 <script>
+	import { browser } from "$app/environment";
 	import {
 		mdiApplicationCogOutline,
 		mdiArrowLeftCircleOutline,
@@ -12,7 +13,7 @@
 		mdiRestoreAlert
 	} from "@mdi/js";
 	import {
-		AnchorButton, Button, Icon, Select, Switch, Textbox
+		Button, Icon, Select, Switch, Textbox
 	} from "$lib/dusk/components";
 	import { currencies } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
@@ -29,8 +30,8 @@
 
 <section class="settings">
 	<header class="settings__header">
-		<AnchorButton
-			href="/dashboard"
+		<Button
+			on:click={ () => browser && window.history.back() }
 			icon={{ path: mdiArrowLeftCircleOutline, size: "large" }}
 			variant="text"/>
 		<h2>

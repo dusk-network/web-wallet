@@ -8,13 +8,12 @@ exports[`Settings > should render the settings page 1`] = `
     <header
       class="settings__header s-EBshooXNO1eQ"
     >
-      <a
-        aria-disabled="false"
-        class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal dusk-icon-button"
-        href="/dashboard"
+      <button
+        class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button"
+        type="button"
       >
         <svg
-          class="dusk-icon dusk-icon--size--large dusk-anchor-button__icon"
+          class="dusk-icon dusk-icon--size--large dusk-button__icon"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >
@@ -26,10 +25,8 @@ exports[`Settings > should render the settings page 1`] = `
         <!--&lt;Icon&gt;-->
          
         
-        
-      </a>
-      <!--&lt;Anchor&gt;-->
-      <!--&lt;AnchorButton&gt;-->
+      </button>
+      <!--&lt;Button&gt;-->
        
       <h2
         class="s-EBshooXNO1eQ"

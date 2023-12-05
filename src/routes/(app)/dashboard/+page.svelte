@@ -14,13 +14,15 @@
 	} from "@mdi/js";
 	import { logo } from "$lib/dusk/icons";
 	import { fade } from "svelte/transition";
-	import { Tabs } from "$lib/dusk/components";
+	import { AnchorButton, Tabs } from "$lib/dusk/components";
 	import { Balance } from "$lib/components";
 	import { createCurrencyFormatter } from "$lib/dusk/currency";
-	import { balanceStore, settingsStore } from "$lib/stores";
+	import { balanceStore, operationsStore, settingsStore } from "$lib/stores";
 	import { find, hasKeyValue } from "lamb";
 	import Contract from "./Contract.svelte";
-	import KeyPicker from "./KeyPicker.svelte";
+    import KeyPicker from "./KeyPicker.svelte";
+	import Transactions from "./Transactions.svelte";
+	import transactions from "./transactions/__tests__/mockData";
 
 	/** @type {import('./$types').PageData} */
 	export let data;
@@ -34,6 +36,7 @@
 	const duskFormatter = createCurrencyFormatter(language, "DUSK");
 
 	$: ({ dusk } = $balanceStore);
+	$: ({ currentOperation } = $operationsStore);
 	$: CONTRACTS = [{
 		icon: { path: mdiSwapVertical },
 		id: "transfer",
@@ -122,7 +125,6 @@
 			}
 		}]
 	}];
-
 	$: selectedContract = find(CONTRACTS, hasKeyValue("id", selectedTab));
 
 	// ================================
@@ -180,7 +182,7 @@
 		locale={language}
 	/>
 
-	<div class="tabs">
+	<article class="tabs">
 		<Tabs bind:selectedTab={selectedTab} items={CONTRACTS}/>
 		<div
 			class="tabs__panel"
@@ -193,8 +195,19 @@
 				</div>
 			{/key}
 		</div>
-	</div>
+	</article>
 
+	{#if currentOperation === undefined }
+		<Transactions transactions={transactions.splice(0)}>
+			<h3 class="h4" slot="heading">Transactions</h3>
+			<AnchorButton
+				slot="controls"
+				href="/dashboard/transactions"
+				text="View all transactions"
+				variant="secondary"
+			/>
+		</Transactions>
+	{/if}
 </div>
 
 <style lang="postcss">

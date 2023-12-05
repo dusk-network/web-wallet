@@ -367,6 +367,31 @@ exports[`Dashboard > should render the dashboard page 1`] = `
         </div>
       </div>
     </div>
+     
+    <div
+      class="transactions s-qpUp5WgwgSGx"
+    >
+      <p
+        class="s-qpUp5WgwgSGx"
+      >
+        Table here
+      </p>
+       
+      <a
+        aria-disabled="false"
+        class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--secondary dusk-anchor-button--size--normal"
+        href="/dashboard/transactions"
+      >
+        <span
+          class="dusk-anchor-button__text"
+        >
+          View all transactions
+        </span>
+        
+      </a>
+      <!--&lt;Anchor&gt;-->
+      <!--&lt;AnchorButton&gt;-->
+    </div>
   </div>
   <!--&lt;+page&gt;-->
 </div>
