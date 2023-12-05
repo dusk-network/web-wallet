@@ -121,6 +121,11 @@ exports[`Dashboard > should render the dashboard page 1`] = `
             
             <!--&lt;Icon&gt;-->
              
+            <span
+              class="dusk-tab-label"
+            >
+              Transact
+            </span>
             
              
           </li>
@@ -143,6 +148,11 @@ exports[`Dashboard > should render the dashboard page 1`] = `
             
             <!--&lt;Icon&gt;-->
              
+            <span
+              class="dusk-tab-label"
+            >
+              Stake
+            </span>
             
              
           </li>
@@ -174,7 +184,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
       <!--&lt;Tabs&gt;-->
        
       <div
-        class="tabs__panel s-qpUp5WgwgSGx"
+        class="tabs__panel s-qpUp5WgwgSGx tabs__panel--first"
       >
         <div
           class="tabs__contract s-qpUp5WgwgSGx"
@@ -185,12 +195,6 @@ exports[`Dashboard > should render the dashboard page 1`] = `
             <div
               class="operations"
             >
-              <h2
-                class="h4"
-              >
-                Transfer
-              </h2>
-               
               <dl
                 class="dusk-status-list"
               >

@@ -18,9 +18,9 @@
 
 .dusk-tab-item {
 	border-radius: var(--control-border-radius-size) var(--control-border-radius-size) 0 0;
-	font-size: var(--control-font-size);
+	font-size: 1.125em;
 	padding: var(--control-padding);
-	gap: calc(var(--control-font-size) / 2);
+	gap: .62em;
 }
 
 .dusk-tab-item,
@@ -46,7 +46,11 @@
 	color: var(--secondary-color);
 }
 
-.dusk-tab-item > .dusk-icon:only-child {
+.dusk-tab-item__selected > .dusk-tab-label {
+	color: var(--primary-color);
+}
+
+.dusk-tab-item > .dusk-icon {
 	width: var(--control-icon-size);
 	height: var(--control-icon-size);
 }

@@ -54,7 +54,7 @@
 	];
 
 	$: ({ currentOperation } = $operationsStore);
-	$: ({ heading, statuses } = contract);
+	$: ({ statuses } = contract);
 
 	const { operations } = contract;
 	const contractOperations = allOperations.filter((a) => {
@@ -71,7 +71,7 @@
 			{...contractOperations[currentOperation].props}
 		/>
 	{:else}
-		<ContractOperations {statuses} {heading}>
+		<ContractOperations {statuses}>
 			{#each operations as operation, index (operation.id)}
 				<Button
 					className="operations__operation"
