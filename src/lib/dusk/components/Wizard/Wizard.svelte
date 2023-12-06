@@ -10,9 +10,9 @@
 		currentStepIndex, isLastStep, isFirstStep, back, next
 	} = createWizard(stepsCount);
 
-	setContext("wizard", {
-		currentStepIndex, isLastStep, isFirstStep, back, next
-	});
+	// setContext("wizard", {
+	// 	currentStepIndex, isLastStep, isFirstStep, back, next
+	// });
 </script>
 
 <div>
