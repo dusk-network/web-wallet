@@ -43,7 +43,8 @@
 			id: "receive",
 			props: {
 				// eslint-disable-next-line max-len
-				publicSpendKey: "Y05MCvisx3hIhGq50gQ7rZRmQKiIO03ly8DsVqKmU5cmIO1B7CKXPH2dtSC5sk6vmXJZ27qSMPfFsW"
+				publicSpendKey:
+					"Y05MCvisx3hIhGq50gQ7rZRmQKiIO03ly8DsVqKmU5cmIO1B7CKXPH2dtSC5sk6vmXJZ27qSMPfFsW"
 			}
 		},
 		{
@@ -69,6 +70,7 @@
 		<svelte:component
 			this={contractOperations[currentOperation].component}
 			{...contractOperations[currentOperation].props}
+			{statuses}
 		/>
 	{:else}
 		<ContractOperations {statuses}>
@@ -76,7 +78,11 @@
 				<Button
 					className="operations__operation"
 					variant="secondary"
-					on:click={() => operationsStore.update(store => ({ ...store, currentOperation: index }))}
+					on:click={() =>
+						operationsStore.update((store) => ({
+							...store,
+							currentOperation: index
+						}))}
 					icon={operation.icon}
 					text={operation.label}
 				/>
