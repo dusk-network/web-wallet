@@ -20,6 +20,7 @@
 	import Textboxes from "./Textboxes.svelte";
 	import Throbbers from "./Throbbers.svelte";
 	import Tooltips from "./Tooltips.svelte";
+	import Wizards from "./Wizards.svelte";
 
 	/** @type {Record<string, import("svelte").ComponentType>} */
 	const componentsMap = {
@@ -37,7 +38,8 @@
 		"Tabboxes": Tabboxes,
 		"Textboxes": Textboxes,
 		"Throbbers": Throbbers,
-		"Tooltips": Tooltips
+		"Tooltips": Tooltips,
+		"Wizards": Wizards
 	};
 
 	const componentsOptions = Object.keys(componentsMap);

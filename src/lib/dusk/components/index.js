@@ -18,4 +18,6 @@ export { default as Tabs } from "./Tabs/Tabs.svelte";
 export { default as Textbox } from "./Textbox/Textbox.svelte";
 export { default as Tooltip } from "./Tooltip/Tooltip.svelte";
 export { default as Throbber } from "./Throbber/Throbber.svelte";
+export { default as Wizard } from "./Wizard/Wizard.svelte";
+export { default as WizardStep } from "./Wizard/WizardStep.svelte";
 export { default as Words } from "./Words/Words.svelte";

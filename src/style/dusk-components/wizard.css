@@ -1,0 +1,16 @@
+.dusk-wizard {
+    display: flex;
+    flex-direction: column;
+    gap: 2em;
+    width: 100%;
+}
+
+.dusk-wizard__step_navigation {
+    display: flex;
+    flex-direction: row;
+    gap: var(--default-gap)
+}
+
+.dusk-wizard__step_navigation button {
+    flex: 1;
+}
