@@ -7,7 +7,9 @@
 	} from "$lib/dusk/components";
 	import { balanceStore, settingsStore } from "$lib/stores";
 	import Transactions from "../Transactions.svelte";
-	import transactions from "./__tests__/mockData";
+
+	/** @type Transaction[] */
+	import transactions from "../__tests__/mockData";
 
 	/** @type {import('./$types').PageData} */
 	export let data;

@@ -69,30 +69,256 @@ exports[`Dashboard > should render the transactions page 1`] = `
     </article>
     <!--&lt;Balance&gt;-->
      
-    <div
-      class="transactions s-w5uHSYkypcPX"
+    <article
+      class="transactions s-ms4M-9Zd82pR"
     >
-      <p
-        class="s-w5uHSYkypcPX"
+      <header
+        class="transactions__header s-ms4M-9Zd82pR"
       >
-        Table here
-      </p>
-       
-      <a
-        aria-disabled="false"
-        class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--normal"
-        href="/dashboard"
-      >
-        <span
-          class="dusk-anchor-button__text"
+        <h3
+          class="h4 s-w5uHSYkypcPX"
+          slot="heading"
         >
-          Back
-        </span>
-        
-      </a>
-      <!--&lt;Anchor&gt;-->
-      <!--&lt;AnchorButton&gt;-->
-    </div>
+          Transactions
+        </h3>
+      </header>
+       
+      <div
+        class="transactions__lists s-ms4M-9Zd82pR"
+      >
+        <dl
+          class="transactions-list s-ms4M-9Zd82pR"
+        >
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Hash
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            <samp
+              class="s-ms4M-9Zd82pR"
+            >
+              tg874534tddsghdtst54hdfh790h
+            </samp>
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Type
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            1
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Block
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            33,455
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Age
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            <time
+              datetime="2023-12-07T10:58:42.062Z"
+              title="Dec 07, 2023"
+            >
+              a few seconds ago
+            </time>
+            <!--&lt;Time&gt;-->
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Fee
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            1,876.00
+             DUSK
+				
+          </dd>
+        </dl>
+        <dl
+          class="transactions-list s-ms4M-9Zd82pR"
+        >
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Hash
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            <samp
+              class="s-ms4M-9Zd82pR"
+            >
+              tg874534tddsghdtst54hdfh791h
+            </samp>
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Type
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            1
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Block
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            33,456
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Age
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            <time
+              datetime="2023-12-07T10:58:42.064Z"
+              title="Dec 07, 2023"
+            >
+              a few seconds ago
+            </time>
+            <!--&lt;Time&gt;-->
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Fee
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            1,876.00
+             DUSK
+				
+          </dd>
+        </dl>
+        <dl
+          class="transactions-list s-ms4M-9Zd82pR"
+        >
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Hash
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            <samp
+              class="s-ms4M-9Zd82pR"
+            >
+              tg874534tddsghdtst54hdfh792h
+            </samp>
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Type
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            1
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Block
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            33,457
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Age
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            <time
+              datetime="2023-12-07T10:58:42.064Z"
+              title="Dec 07, 2023"
+            >
+              a few seconds ago
+            </time>
+            <!--&lt;Time&gt;-->
+             
+          </dd>
+          <dt
+            class="transactions-list__term s-ms4M-9Zd82pR"
+          >
+            Fee
+          </dt>
+          <dd
+            class="transactions-list__datum s-ms4M-9Zd82pR"
+          >
+            1,876.00
+             DUSK
+				
+          </dd>
+        </dl>
+      </div>
+       
+      <footer
+        class="transactions__footer s-ms4M-9Zd82pR"
+      >
+        <a
+          aria-disabled="false"
+          class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--normal"
+          href="/dashboard"
+          slot="controls"
+        >
+          <span
+            class="dusk-anchor-button__text"
+          >
+            Back
+          </span>
+          
+        </a>
+        <!--&lt;Anchor&gt;-->
+        <!--&lt;AnchorButton&gt;-->
+      </footer>
+    </article>
+    <!--&lt;Transactions&gt;-->
   </div>
   <!--&lt;+page&gt;-->
 </div>

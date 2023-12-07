@@ -19,22 +19,26 @@
 	<div class="transactions__lists">
 		{#each transactions as transaction (transaction.hash)}
 			<dl class="transactions-list">
-				{#each Object.getOwnPropertyNames(transaction) as name (name)}
-					<dt class="transactions-list__term">{name}</dt>
-					<dd class="transactions-list__datum">
-						{#if name === "fee"}
-							{duskFormatter(transaction[name])} DUSK
-						{:else if name === "block"}
-							{new Intl.NumberFormat(language).format(transaction[name])}
-						{:else if name === "hash"}
-							<samp>{transaction[name]}</samp>
-						{:else if name === "age"}
-							<Time datetime={transaction[name].toString()} live relative/>
-						{:else}
-							{transaction[name]}
-						{/if}
-					</dd>
-				{/each}
+				<dt class="transactions-list__term">Hash</dt>
+				<dd class="transactions-list__datum">
+					<samp>{transaction.hash}</samp>
+				</dd>
+				<dt class="transactions-list__term">Type</dt>
+				<dd class="transactions-list__datum">
+					{transaction.type}
+				</dd>
+				<dt class="transactions-list__term">Block</dt>
+				<dd class="transactions-list__datum">
+					{new Intl.NumberFormat(language).format(transaction.block)}
+				</dd>
+				<dt class="transactions-list__term">Age</dt>
+				<dd class="transactions-list__datum">
+					<Time datetime={transaction.age.toString()} live relative/>
+				</dd>
+				<dt class="transactions-list__term">Fee</dt>
+				<dd class="transactions-list__datum">
+					{duskFormatter(transaction.fee)} DUSK
+				</dd>
 			</dl>
 		{/each}
 	</div>

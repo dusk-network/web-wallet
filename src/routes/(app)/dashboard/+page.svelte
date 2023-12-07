@@ -20,9 +20,11 @@
 	import { balanceStore, operationsStore, settingsStore } from "$lib/stores";
 	import { find, hasKeyValue } from "lamb";
 	import Contract from "./Contract.svelte";
-    import KeyPicker from "./KeyPicker.svelte";
+	import KeyPicker from "./KeyPicker.svelte";
 	import Transactions from "./Transactions.svelte";
-	import transactions from "./transactions/__tests__/mockData";
+
+	/** @type Transaction[] */
+	import transactions from "./__tests__/mockData";
 
 	/** @type {import('./$types').PageData} */
 	export let data;

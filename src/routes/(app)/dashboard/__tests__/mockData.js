@@ -1,5 +1,6 @@
 const now = new Date();
 
+/** @type Transaction[] */
 export default [{
 	age: new Date(now.getTime() - 10 * 1000),
 	block: 33455,
