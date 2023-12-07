@@ -1,14 +1,16 @@
 <script>
 	import { fade } from "svelte/transition";
-	import Time from "svelte-time";
-	import { createCurrencyFormatter } from "$lib/dusk/currency";
+	import { logo } from "$lib/dusk/icons";
+	import { Icon, Tooltip } from "$lib/dusk/components";
+	import { createCurrencyFormatter, createTransferFormatter } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
 
 	/** @type Transaction[] */
 	export let transactions;
 
 	const { language } = $settingsStore;
-	const duskFormatter = createCurrencyFormatter(language, "DUSK");
+	const feeFormatter = createCurrencyFormatter(language, "DUSK");
+	const transferFormatter = createTransferFormatter(language);
 </script>
 
 <article in:fade|global class="transactions">
@@ -23,21 +25,35 @@
 				<dd class="transactions-list__datum">
 					<samp>{transaction.hash}</samp>
 				</dd>
-				<dt class="transactions-list__term">Type</dt>
+				<dt class="transactions-list__term">Method</dt>
 				<dd class="transactions-list__datum">
-					{transaction.type}
+					{transaction.method}
 				</dd>
 				<dt class="transactions-list__term">Block</dt>
 				<dd class="transactions-list__datum">
 					{new Intl.NumberFormat(language).format(transaction.block)}
 				</dd>
-				<dt class="transactions-list__term">Age</dt>
+				<dt class="transactions-list__term">Amount</dt>
 				<dd class="transactions-list__datum">
-					<Time datetime={transaction.age.toString()} live relative/>
+					{transferFormatter(transaction.amount)}
+					<Icon
+						className="transactions-list__icon"
+						path={logo}
+						data-tooltip-id="transactions-tooltip"
+						data-tooltip-text="DUSK"
+						data-tooltip-place="top"
+					/>
 				</dd>
 				<dt class="transactions-list__term">Fee</dt>
 				<dd class="transactions-list__datum">
-					{duskFormatter(transaction.fee)} DUSK
+					{feeFormatter(transaction.fee)}
+					<Icon
+						className="transactions-list__icon"
+						path={logo}
+						data-tooltip-id="transactions-tooltip"
+						data-tooltip-text="DUSK"
+						data-tooltip-place="top"
+					/>
 				</dd>
 			</dl>
 		{/each}
@@ -47,6 +63,8 @@
 		<slot name="controls"/>
 	</footer>
 </article>
+
+<Tooltip id="transactions-tooltip"/>
 
 <style lang="postcss">
 .transactions {
@@ -96,6 +114,10 @@
 		line-height: 150%;
 		padding: .312rem 1.375rem;
 		overflow-x: scroll;
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		font-family: var(--mono-font-family);
 
 		& samp {
 			max-width: 100%;

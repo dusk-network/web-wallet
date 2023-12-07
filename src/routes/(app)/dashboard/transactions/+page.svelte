@@ -5,11 +5,8 @@
 	import {
 		AnchorButton
 	} from "$lib/dusk/components";
-	import { balanceStore, settingsStore } from "$lib/stores";
+	import { balanceStore, settingsStore, transactionsStore } from "$lib/stores";
 	import Transactions from "../Transactions.svelte";
-
-	/** @type Transaction[] */
-	import transactions from "../__tests__/mockData";
 
 	/** @type {import('./$types').PageData} */
 	export let data;
@@ -18,6 +15,7 @@
 	const { currency, language } = $settingsStore;
 
 	$: ({ dusk } = $balanceStore);
+	$: ({ transactions } = $transactionsStore);
 </script>
 
 <div class="dashboard-content">
@@ -31,14 +29,16 @@
 		locale={language}
 	/>
 
-	<Transactions {transactions}>
-		<h3 class="h4" slot="heading">Transactions</h3>
-		<AnchorButton
-			slot="controls"
-			href="/dashboard"
-			text="Back"
-		/>
-	</Transactions>
+	{#if transactions}
+		<Transactions {transactions}>
+			<h3 class="h4" slot="heading">Transactions</h3>
+			<AnchorButton
+				slot="controls"
+				href="/dashboard"
+				text="Back"
+			/>
+		</Transactions>
+	{/if}
 
 </div>
 

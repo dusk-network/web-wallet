@@ -17,14 +17,13 @@
 	import { AnchorButton, Tabs } from "$lib/dusk/components";
 	import { Balance } from "$lib/components";
 	import { createCurrencyFormatter } from "$lib/dusk/currency";
-	import { balanceStore, operationsStore, settingsStore } from "$lib/stores";
+	import {
+		balanceStore, operationsStore, settingsStore, transactionsStore
+	} from "$lib/stores";
 	import { find, hasKeyValue } from "lamb";
 	import Contract from "./Contract.svelte";
-	import KeyPicker from "./KeyPicker.svelte";
 	import Transactions from "./Transactions.svelte";
-
-	/** @type Transaction[] */
-	import transactions from "./__tests__/mockData";
+	import KeyPicker from "./KeyPicker.svelte";
 
 	/** @type {import('./$types').PageData} */
 	export let data;
@@ -39,6 +38,7 @@
 
 	$: ({ dusk } = $balanceStore);
 	$: ({ currentOperation } = $operationsStore);
+	$: ({ transactions } = $transactionsStore);
 	$: CONTRACTS = [{
 		icon: { path: mdiSwapVertical },
 		id: "transfer",
@@ -199,8 +199,8 @@
 		</div>
 	</article>
 
-	{#if currentOperation === undefined }
-		<Transactions transactions={transactions.splice(0)}>
+	{#if currentOperation === undefined && transactions }
+		<Transactions transactions={transactions}>
 			<h3 class="h4" slot="heading">Transactions</h3>
 			<AnchorButton
 				slot="controls"

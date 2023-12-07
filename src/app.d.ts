@@ -7,9 +7,9 @@ type Contract = {
 }
 
 type Transaction = {
-	age: Date,
+	amount: number,
 	block: number,
 	fee: number,
 	hash: string,
-	type: number
+	method: string
 }
