@@ -21,7 +21,7 @@
 	 * @param {number} steps - Total number of steps in the stepper.
 	 * @param {number} activeStep - The current active step index (starting from 0).
 	 */
-	const progress = `width: ${(100 / (steps - 1)) * activeStep}%;`;
+	$: progress = `width: ${(100 / (steps - 1)) * activeStep}%;`;
 </script>
 
 <div class="dusk-stepper" role="tablist">
