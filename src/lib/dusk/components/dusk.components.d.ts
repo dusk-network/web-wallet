@@ -11,6 +11,16 @@ type BadgeVariant = "neutral" | "success" | "warning" | "error";
 
 type ButtonVariant = "primary" | "secondary" | "tertiary" | "text";
 
+type WizardButtonProps = {
+	isAnchor?: boolean,
+	href?: string,
+	disabled?: boolean,
+	icon?: ButtonIconProp,
+	variant?: ButtonVariant,
+	label?: string,
+	action?: () => void,
+}
+
 type Contract = {
 	heading: string,
 	icon: object,

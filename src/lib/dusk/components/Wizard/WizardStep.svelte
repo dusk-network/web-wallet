@@ -1,7 +1,6 @@
 <script>
 	import { getContext } from "svelte";
-	import Button from "../Button/Button.svelte";
-	import Stepper from "../Stepper/Stepper.svelte";
+	import { AnchorButton, Button, Stepper } from "$lib/dusk/components";
 	import { mdiArrowLeft, mdiArrowRight } from "@mdi/js";
 
 	/** @type {Number} */
@@ -10,34 +9,44 @@
 
 	/** @type {Boolean} */
 	export let showStepper = false;
+	export let showNavigation = true;
 
-	/** @type {(() => void) | undefined} */
-	export let onBack = undefined;
+	/** @type {WizardButtonProps | Undefined} */
+	export let backButton = undefined;
 
-	/** @type {(() => void) | undefined} */
-	export let onNext = undefined;
-
-	export let backDisabled = false;
-	export let nextDisabled = false;
+	/** @type {WizardButtonProps | Undefined} */
+	export let nextButton = undefined;
 
 	const wizardStore = getContext(key);
 
 	$: ({ stepsCount, currentStep } = $wizardStore);
 
 	function handleBack () {
-		if (onBack) {
-			onBack();
-		}
-
+		backButton?.action?.();
 		wizardStore.decrementStep();
 	}
 
 	function handleNext () {
-		if (onNext) {
-			onNext();
-		}
-
+		nextButton?.action?.();
 		wizardStore.incrementStep();
+	}
+
+	/**
+	 * Returns the common props for the wizard buttons
+	 * @param {WizardButtonProps | Undefined} wizardButtonProps
+	 * @param {String} defaultLabel
+	 * @param {String} defaultIconPath
+	 */
+	function getButtonProps (wizardButtonProps, defaultLabel, defaultIconPath, isNextButton = false) {
+		const stepCondition = isNextButton ? currentStep + 1 === stepsCount : currentStep === 0;
+
+		return {
+			disabled: wizardButtonProps?.disabled ?? stepCondition,
+			icon: wizardButtonProps?.icon
+				?? { path: defaultIconPath, position: isNextButton ? "after" : "before" },
+			text: wizardButtonProps?.label ?? defaultLabel,
+			variant: wizardButtonProps?.variant ?? "tertiary"
+		};
 	}
 </script>
 
@@ -47,20 +56,34 @@
 		<Stepper steps={stepsCount} activeStep={currentStep}/>
 	{/if}
 	<slot></slot>
-	<slot name="navigation">
-		<div class="dusk-wizard__step_navigation">
-			<Button
-				disabled={currentStep === 0 || backDisabled}
-				text="Back"
-				variant="tertiary"
-				icon={{ path: mdiArrowLeft }}
-				on:click={handleBack}/>
-			<Button
-				disabled={currentStep + 1 === stepsCount || nextDisabled}
-				text="Next"
-				variant="tertiary"
-				icon={{ path: mdiArrowRight, position: "after" }}
-				on:click={handleNext}/>
-		</div>
-	</slot>
+
+	{#if showNavigation}
+		<slot name="navigation">
+			<div class="dusk-wizard__step_navigation">
+				{#if backButton?.isAnchor}
+					<AnchorButton
+						{...getButtonProps(backButton, "Back", mdiArrowLeft)}
+						href={backButton?.href ?? "#"}
+					/>
+				{:else}
+					<Button
+						{...getButtonProps(backButton, "Back", mdiArrowLeft)}
+						on:click={handleBack}
+					/>
+				{/if}
+
+				{#if nextButton?.isAnchor}
+					<AnchorButton
+						{...getButtonProps(nextButton, "Next", mdiArrowRight, true)}
+						href={nextButton?.href ?? "#"}
+					/>
+				{:else}
+					<Button
+						{...getButtonProps(nextButton, "Next", mdiArrowRight, true)}
+						on:click={handleNext}
+					/>
+				{/if}
+			</div>
+		</slot>
+	{/if}
 {/if}
