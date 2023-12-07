@@ -1,4 +1,4 @@
-/** @type Transaction[] */
+/** @type {Transaction[]} */
 export default [{
 	amount: 25000,
 	block: 33455,
