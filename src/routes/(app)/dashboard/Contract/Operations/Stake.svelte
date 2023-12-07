@@ -1,7 +1,86 @@
 <script>
-	import Header from "./Header.svelte";
+	import { mdiArrowLeft, mdiArrowRight } from "@mdi/js";
+	import {
+		Button, Icon, StatusList, Textbox
+	} from "$lib/dusk/components";
+	import { balanceStore } from "$lib/stores";
+
+	/** @type {Status[]} */
+	export let statuses;
+
+	/** @type {Number} */
+	let maxAmount = 0;
 </script>
 
 <div class="operation">
-	<Header heading="Stake"/>
+	<StatusList {statuses}/>
+	<div class="operation__amount operation__space-between">
+		<p>Enter amount:</p>
+		<Button
+			size="small"
+			variant="tertiary"
+			on:click={() => {
+				const { dusk } = $balanceStore;
+
+				maxAmount = dusk;
+			}}
+			text="USE MAX"
+		/>
+	</div>
+
+	<div class="operation__amount operation__input">
+		<Textbox
+			className="operation__input__field"
+			type="number"
+			bind:value={maxAmount}
+		/>
+		{#if statuses[0]?.value?.icon}
+			<Icon
+				className="dusk-status__icon"
+				path={statuses[0].value.icon.path ?? ""}
+				data-tooltip-id={statuses[0].value.icon.label
+					&& "status-tooltip"}
+				data-tooltip-text={statuses[0].value.icon.label ?? ""}
+				data-tooltip-place="top"
+			/>
+		{/if}
+	</div>
+
+	<!-- TODO -->
+	<!-- To be removed after Wizard implemantation -->
+	<div class="operation__amount operation__space-between">
+		<Button
+			variant="tertiary"
+			on:click={() => {}}
+			icon={{ path: mdiArrowLeft }}
+			text="BACK"
+		/>
+		<Button
+			variant="tertiary"
+			on:click={() => {}}
+			icon={{ path: mdiArrowRight }}
+			text="NEXT"
+		/>
+	</div>
 </div>
+
+<style lang="postcss">
+	.operation__amount {
+		display: flex;
+		align-items: center;
+		width: 100%;
+	}
+
+	.operation__space-between {
+		justify-content: space-between;
+	}
+
+	.operation__input {
+		column-gap: var(--default-gap);
+	}
+
+	:global(.operation__input .operation__input__field) {
+		width: 100%;
+		padding: 0.5em 1em;
+	}
+</style>
