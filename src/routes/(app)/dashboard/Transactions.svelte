@@ -1,7 +1,7 @@
 <script>
 	import { fade } from "svelte/transition";
 	import { logo } from "$lib/dusk/icons";
-	import { Icon, Tooltip } from "$lib/dusk/components";
+	import { Badge, Icon, Tooltip } from "$lib/dusk/components";
 	import { createCurrencyFormatter, createTransferFormatter } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
 
@@ -27,7 +27,13 @@
 				</dd>
 				<dt class="transactions-list__term">Method</dt>
 				<dd class="transactions-list__datum">
-					{transaction.method}
+					<Badge text={transaction.method.split(" ")[0]}/>
+					{#if transaction.method === "transfer" && Math.sign(transaction.amount) !== 0}
+						<Badge
+							text={Math.sign(transaction.amount) === 1 ? "Received" : "Sent"}
+							variant={Math.sign(transaction.amount) === 1 ? "success" : "error"}
+						/>
+					{/if}
 				</dd>
 				<dt class="transactions-list__term">Block</dt>
 				<dd class="transactions-list__datum">
