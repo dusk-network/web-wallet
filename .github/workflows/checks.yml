@@ -41,3 +41,6 @@ jobs:
 
       - name: Run the test suite
         run: npm test
+
+      - name: Building the app
+        run: npm run build
