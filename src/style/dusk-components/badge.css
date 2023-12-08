@@ -6,6 +6,7 @@
     font-size: .875em;
     border-style: solid;
     border-width: 2px;
+	text-align: center;
 }
 
 .dusk-badge--variant-neutral {

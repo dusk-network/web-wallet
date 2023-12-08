@@ -108,7 +108,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
     </article>
     <!--&lt;Balance&gt;-->
      
-    <div
+    <article
       class="tabs s-qpUp5WgwgSGx"
     >
       <div
@@ -354,7 +354,65 @@ exports[`Dashboard > should render the dashboard page 1`] = `
           <!--&lt;Contract&gt;-->
         </div>
       </div>
+    </article>
+     
+    <article
+      class="transactions s-ms4M-9Zd82pR"
+    >
+      <header
+        class="transactions__header s-ms4M-9Zd82pR"
+      >
+        <h3
+          class="h4 s-qpUp5WgwgSGx"
+          slot="heading"
+        >
+          Transactions
+        </h3>
+      </header>
+       
+      <div
+        class="transactions__lists s-ms4M-9Zd82pR"
+      >
+        <div
+          class="transactions-list__empty s-ms4M-9Zd82pR"
+        >
+          <svg
+            class="dusk-icon dusk-icon--size--large"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M2,3H8V5H4V19H8V21H2V3M7,17V15H9V17H7M11,17V15H13V17H11M15,17V15H17V17H15M22,3V21H16V19H20V5H16V3H22Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+           
+          <p
+            class="s-ms4M-9Zd82pR"
+          >
+            No transactions to show yet.
+          </p>
+        </div>
+      </div>
+       
+      <footer
+        class="transactions__footer s-ms4M-9Zd82pR"
+      />
+    </article>
+     
+     
+    <div
+      aria-hidden="true"
+      class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
+      id="transactions-tooltip"
+      role="tooltip"
+      style="left: 0px; top: 0px;"
+    >
+      
     </div>
+    <!--&lt;Tooltip&gt;-->
+    <!--&lt;Transactions&gt;-->
   </div>
   <!--&lt;+page&gt;-->
 </div>

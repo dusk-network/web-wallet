@@ -3,7 +3,7 @@
 	import {
 		Button, Icon, StatusList, Textbox
 	} from "$lib/dusk/components";
-	import { balanceStore } from "$lib/stores";
+	import { balanceStore, operationsStore } from "$lib/stores";
 
 	/** @type {Status[]} */
 	export let statuses;
@@ -30,7 +30,7 @@
 
 	<div class="operation__amount operation__input">
 		<Textbox
-			className="operation__input__field"
+			className="operation__field"
 			type="number"
 			bind:value={maxAmount}
 		/>
@@ -46,12 +46,11 @@
 		{/if}
 	</div>
 
-	<!-- TODO -->
 	<!-- To be removed after Wizard implemantation -->
 	<div class="operation__amount operation__space-between">
 		<Button
 			variant="tertiary"
-			on:click={() => {}}
+			on:click={() => operationsStore.update(store => ({ ...store, currentOperation: undefined }))}
 			icon={{ path: mdiArrowLeft }}
 			text="BACK"
 		/>
@@ -79,7 +78,7 @@
 		column-gap: var(--default-gap);
 	}
 
-	:global(.operation__input .operation__input__field) {
+	:global(.operation__input .operation__field) {
 		width: 100%;
 		padding: 0.5em 1em;
 	}

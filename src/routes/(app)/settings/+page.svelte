@@ -11,7 +11,8 @@
 		mdiWalletOutline
 	} from "@mdi/js";
 	import {
-		AnchorButton, Button, Icon, Select, Switch, Textbox
+		AnchorButton,
+		Button, Icon, Select, Switch, Textbox
 	} from "$lib/dusk/components";
 	import { currencies } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
