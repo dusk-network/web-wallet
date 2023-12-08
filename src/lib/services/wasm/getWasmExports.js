@@ -5,6 +5,7 @@ import init from "@dusk-network/dusk-wallet-core/dusk_wallet_core_bg.wasm?init";
 
 const imports = {
 	env: {
+		/* v8 ignore next */
 		panic: () => {}
 	}
 };
