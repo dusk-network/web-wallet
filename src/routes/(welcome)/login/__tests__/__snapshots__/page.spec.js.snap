@@ -1,6 +1,101 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Login > should render the login page 1`] = `
+exports[`Login > should render the login page and show the field to enter the mnemonic phrase, if there is no login info stored 1`] = `
+<div>
+  <section
+    class="flex flex-col gap-2 s-diEOsynXV9Ac"
+  >
+    <h1
+      class="s-diEOsynXV9Ac"
+    >
+      Unleash 
+      <mark
+        class="s-diEOsynXV9Ac"
+      >
+        RWA
+      </mark>
+       and
+      <br
+        class="s-diEOsynXV9Ac"
+      />
+       
+      <mark
+        class="s-diEOsynXV9Ac"
+      >
+        Decentralized Finance
+      </mark>
+    </h1>
+     
+    <section
+      class="dusk-card flex flex-col gap-1"
+    >
+      <header
+        class="dusk-card__header"
+      >
+        <svg
+          class="dusk-icon dusk-icon--size--large dusk-card__icon"
+          role="graphics-symbol"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M21 18H15V15H13.3C12.2 17.4 9.7 19 7 19C3.1 19 0 15.9 0 12S3.1 5 7 5C9.7 5 12.2 6.6 13.3 9H24V15H21V18M17 16H19V13H22V11H11.9L11.7 10.3C11 8.3 9.1 7 7 7C4.2 7 2 9.2 2 12S4.2 17 7 17C9.1 17 11 15.7 11.7 13.7L11.9 13H17V16M7 15C5.3 15 4 13.7 4 12S5.3 9 7 9 10 10.3 10 12 8.7 15 7 15M7 11C6.4 11 6 11.4 6 12S6.4 13 7 13 8 12.6 8 12 7.6 11 7 11Z"
+          />
+        </svg>
+        
+        <!--&lt;Icon&gt;-->
+         
+        <h2>
+          Mnemonic phrase
+        </h2>
+      </header>
+       
+      <input
+        class="dusk-textbox dusk-textbox-password"
+        placeholder="Mnemonic phrase"
+        required=""
+        type="password"
+      />
+      
+      <!--&lt;Textbox&gt;-->
+       
+      <button
+        class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal"
+        type="button"
+      >
+        <span
+          class="dusk-button__text"
+        >
+          Unlock Wallet
+        </span>
+      </button>
+      <!--&lt;Button&gt;-->
+       
+      
+    </section>
+    <!--&lt;Card&gt;-->
+  </section>
+   
+  <footer
+    class="s-diEOsynXV9Ac"
+  >
+    <p
+      class="s-diEOsynXV9Ac"
+    >
+      Need help? Contact 
+      <a
+        class="dusk-anchor"
+        href="#"
+      >
+        DUSK support
+      </a>
+      <!--&lt;Anchor&gt;-->
+    </p>
+  </footer>
+  <!--&lt;+page&gt;-->
+</div>
+`;
+
+exports[`Login > should show the password field and the link to restore the wallet if there is login info stored 1`] = `
 <div>
   <section
     class="flex flex-col gap-2 s-diEOsynXV9Ac"
@@ -73,7 +168,7 @@ exports[`Login > should render the login page 1`] = `
       <a
         aria-disabled="false"
         class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal"
-        href="#"
+        href="/setup/restore"
       >
         <span
           class="dusk-anchor-button__text"
@@ -84,6 +179,7 @@ exports[`Login > should render the login page 1`] = `
       </a>
       <!--&lt;Anchor&gt;-->
       <!--&lt;AnchorButton&gt;-->
+      
     </section>
     <!--&lt;Card&gt;-->
   </section>

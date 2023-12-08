@@ -516,6 +516,14 @@ declare module "lamb" {
 
 	function isLTE (b: Ord): (a: Ord) => boolean;
 
+	function unless<
+		R,
+		T,
+		U extends T,
+		P extends Predicate<T, U>,
+		F extends UnaryFunction<Exclude<T, U>, R>
+	> (predicate: P, fn: F): (value: T | U) => U extends T ? T : R;
+
 	/* ------------------------- *
 	 * *****     MATH      ***** *
 	 * ------------------------- */
@@ -554,10 +562,24 @@ declare module "lamb" {
 
 	function hasPathValue<
 		T,
-		S extends Record<PropertyKey, T>
+		S extends Record<PropertyKey, any>
 	> (path: string, value: T): (source: S) => boolean;
 
 	function keys<S extends Record<string, any>, K extends keyof S> (source: S): Array<K>;
+
+	function mapValues<
+		T,
+		U,
+		S extends Record<string, T>,
+		F extends ObjectIteratorCallback<S, U>
+	> (source: S, fn: F): Record<keyof S, U>;
+
+	function mapValuesWith<
+		T,
+		U,
+		S extends Record<string, T>,
+		F extends ObjectIteratorCallback<S, U>
+	> (fn: F): (source: S) => Record<keyof S, U>;
 
 	function ownPairs<
 		S extends Record<string, any>,
@@ -611,6 +633,12 @@ declare module "lamb" {
 	/* ------------------------- *
 	 * *****     TYPE      ***** *
 	 * ------------------------- */
+
+	function isNil (value: any): value is null | undefined;
+
+	function isNull (value: any): value is null;
+
+	function isUndefined (value: any): value is undefined;
 
 	function isType<T, U extends T> (typeName: string): Predicate<T, U>;
 }

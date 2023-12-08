@@ -8,6 +8,9 @@ module.exports = {
 		"@dusk-network/eslint-config/js",
 		"@dusk-network/eslint-config/svelte"
 	],
+	"globals": {
+		 "CONFIG": false
+	},
 	"overrides": [{
 		"files": ["*.svelte"],
 		"rules": {

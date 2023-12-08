@@ -1,12 +1,16 @@
 // eslint-disable-next-line import/no-unresolved
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig, loadEnv } from "vite";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd());
 
 	return {
 		define: {
+			"CONFIG": {
+				LOCAL_STORAGE_APP_KEY: process.env.npm_package_name
+			},
 			"process.env": {
 				LOCAL_NODE: env.VITE_LOCAL_NODE,
 				MAINNET_NODE: env.VITE_MAINNET_NODE,
@@ -16,7 +20,7 @@ export default defineConfig(({ mode }) => {
 				TRANSFER_CONTRACT: env.VITE_TRANSFER_CONTRACT
 			}
 		},
-		plugins: [sveltekit()],
+		plugins: mode === "development" ? [basicSsl(), sveltekit()] : [sveltekit()],
 		test: {
 			/** @see https://github.com/vitest-dev/vitest/issues/2834 */
 			alias: [{ find: /^svelte$/, replacement: "svelte/internal" }],
