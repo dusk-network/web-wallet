@@ -12,7 +12,7 @@ exports[`GasSettings > renders the GasSettings component closed 1`] = `
         class="dusk-status-list__key s-viaBXp9UetOS"
       >
         <svg
-          class="dusk-icon dusk-icon--size--normal dusk-rewards__icon"
+          class="dusk-icon dusk-icon--size--normal"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >
@@ -64,7 +64,7 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
         class="dusk-status-list__key s-viaBXp9UetOS"
       >
         <svg
-          class="dusk-icon dusk-icon--size--normal dusk-rewards__icon"
+          class="dusk-icon dusk-icon--size--normal"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >

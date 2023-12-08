@@ -312,7 +312,7 @@ exports[`Withdraw > renders the Withdraw Review step component 1`] = `
               class="dusk-status-list__key s-viaBXp9UetOS"
             >
               <svg
-                class="dusk-icon dusk-icon--size--normal dusk-rewards__icon"
+                class="dusk-icon dusk-icon--size--normal"
                 role="graphics-symbol"
                 viewBox="0 0 24 24"
               >
