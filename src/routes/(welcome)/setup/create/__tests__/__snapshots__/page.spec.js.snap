@@ -3,7 +3,7 @@
 exports[`Create > should render the Terms of Service step of the Create flow 1`] = `
 <div>
   <div
-    class="onboarding_wrapper s-p4ikGGAJA5YG"
+    class="onboarding-wrapper s-p4ikGGAJA5YG"
   >
     <section
       class="flex flex-col flex-1"

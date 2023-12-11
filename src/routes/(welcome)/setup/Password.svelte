@@ -1,5 +1,7 @@
 <script>
-	import { Card, Icon, Stepper, Textbox } from "$lib/dusk/components";
+	import {
+		Card, Icon, Stepper, Textbox
+	} from "$lib/dusk/components";
 	import { mdiAlertOutline, mdiKeyOutline } from "@mdi/js";
 	import { onboardingWizardStore } from "$lib/stores";
 
