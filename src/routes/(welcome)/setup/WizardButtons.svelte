@@ -44,7 +44,7 @@
 		}
 	}
 
-	$: shouldDisplayReset = !canGoNext && ((flow === "create" && currentStep === 4)
+	$: shouldDisplayReset = !canGoNext && ((flow === "create" && currentStep === 3)
 		|| (flow === "restore" && currentStep === 1));
 </script>
 
