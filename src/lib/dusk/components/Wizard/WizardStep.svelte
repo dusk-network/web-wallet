@@ -43,7 +43,7 @@
 		return {
 			disabled: wizardButtonProps?.disabled ?? stepCondition,
 			icon: wizardButtonProps?.icon
-				?? { path: defaultIconPath, position: isNextButton ? "after" : "before" },
+				?? { path: defaultIconPath, position: isNextButton ? "after" : "before", size: "normal" },
 			text: wizardButtonProps?.label ?? defaultLabel,
 			variant: wizardButtonProps?.variant ?? "tertiary"
 		};
@@ -59,7 +59,7 @@
 
 	{#if showNavigation}
 		<slot name="navigation">
-			<div class="dusk-wizard__step_navigation">
+			<div class="dusk-wizard__step-navigation">
 				{#if backButton?.isAnchor}
 					<AnchorButton
 						{...getButtonProps(backButton, "Back", mdiArrowLeft)}
