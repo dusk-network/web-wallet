@@ -1,6 +1,6 @@
 <script>
-	import { Card, Stepper, Textbox } from "$lib/dusk/components";
-	import { mdiKeyOutline } from "@mdi/js";
+	import { Card, Icon, Stepper, Textbox } from "$lib/dusk/components";
+	import { mdiAlertOutline, mdiKeyOutline } from "@mdi/js";
 	import { onboardingWizardStore } from "$lib/stores";
 
 	let password = "";
@@ -25,3 +25,8 @@
 		<Textbox type="password" bind:value={confirmPassword} placeholder="Confirm Password"/>
 	</div>
 </Card>
+
+<div class="notice">
+	<Icon path={mdiAlertOutline} size="large"/>
+	<p>Setting a password for your web wallet is optional, but doing so will weaken its security.</p>
+</div>
