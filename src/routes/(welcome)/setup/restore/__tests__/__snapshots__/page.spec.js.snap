@@ -3,7 +3,7 @@
 exports[`Restore > should render the Terms of Service step of the Restore flow 1`] = `
 <div>
   <div
-    class="onboarding_wrapper s-03q11ctojZzO"
+    class="onboarding-wrapper s-03q11ctojZzO"
   >
     <section
       class="flex flex-col flex-1"

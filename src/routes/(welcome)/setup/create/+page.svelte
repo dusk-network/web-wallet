@@ -16,27 +16,27 @@
 	import SwapNDUSK from "./SwapNDUSK.svelte";
 	import AllSet from "../AllSet.svelte";
 
-	const steps = [Password,
-		MnemonicPreSetup,
+	const steps = [MnemonicPreSetup,
 		MnemonicPhrase,
 		ValidateMnemonic,
+		Password,
 		SwapNDUSK,
 		AllSet];
 </script>
 
 {#if currentStep === 0}
-	<div class="onboarding_wrapper" in:fade|global>
+	<div class="onboarding-wrapper" in:fade|global>
 		<TermsOfService/>
 	</div>
 {:else}
-	<div class="onboarding_wrapper flex flex-col gap-2" in:fade|global>
+	<div class="onboarding-wrapper flex flex-col gap-2" in:fade|global>
 		<svelte:component this={steps[currentStep - 1]}/>
 	</div>
 	<WizardButtons flow="create"/>
 {/if}
 
 <style>
-	.onboarding_wrapper {
+	.onboarding-wrapper {
 		height: 100%;
 		overflow-y: auto;
 	}
