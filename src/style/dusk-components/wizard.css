@@ -5,12 +5,12 @@
     width: 100%;
 }
 
-.dusk-wizard__step_navigation {
+.dusk-wizard__step-navigation {
     display: flex;
     flex-direction: row;
     gap: var(--default-gap);
 }
 
-.dusk-wizard__step_navigation button, .dusk-wizard__step_navigation a {
+.dusk-wizard__step-navigation button, .dusk-wizard__step-navigation a {
     flex: 1;
 }
