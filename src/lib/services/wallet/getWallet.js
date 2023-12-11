@@ -10,7 +10,7 @@ import { Wallet } from "@dusk-network/dusk-wallet-js";
  * @param {Uint8Array} seed
  * @param {Number} [gasLimit=2900000000]
  * @param {Number} [gasPrice=1]
- * @returns {Promise<Object>}
+ * @returns {Promise<Wallet>}
  */
 const getWallet = (seed, gasLimit, gasPrice) => getWasmExports()
 	.then(exports => new Wallet(exports, seed, gasLimit, gasPrice));
