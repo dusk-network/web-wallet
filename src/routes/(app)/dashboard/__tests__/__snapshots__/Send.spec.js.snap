@@ -94,7 +94,7 @@ exports[`Send > renders the Send component 1`] = `
       class="operation__amount operation__input s--bvhT2XkmH9a"
     >
       <input
-        class="dusk-textbox dusk-textbox-number operation__input__field"
+        class="dusk-textbox dusk-textbox-number operation__field"
         type="number"
       />
       

@@ -21,13 +21,6 @@ type WizardButtonProps = {
 	action?: () => void,
 }
 
-type Contract = {
-	heading: string,
-	icon: object,
-	id: string,
-	operations: Array<{icon: ButtonIconProp, id: string, label: string}>, statuses: Array<Status>
-}
-
 type IconSize = "normal" | "large";
 
 type GroupedSelectOptions = Record<string, SelectOption[] | string[]>;
