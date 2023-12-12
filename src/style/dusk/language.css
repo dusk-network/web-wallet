@@ -32,6 +32,7 @@
 	/* Layout */
 	--small-gap: 0.5em;
 	--default-gap: 1em;
+	--large-gap: 2em;
 
 	/* Grid */
 	--mobile-grid-template-columns: 1fr;
