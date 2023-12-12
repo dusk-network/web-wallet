@@ -17,7 +17,7 @@
 <div class="operation__rewards__review">
 	<dl class="operation__rewards__edit-gas">
 		<dt class="dusk-status-list__key">
-			<Icon className="dusk-rewards__icon" path={mdiGasStationOutline}/>
+			<Icon path={mdiGasStationOutline}/>
 			<span>Default Gas Settings</span>
 		</dt>
 		<dd>

@@ -1,85 +1,224 @@
 <script>
-	import { mdiArrowLeft, mdiArrowRight } from "@mdi/js";
+	import { fade } from "svelte/transition";
+	import { logo, receiveWallet } from "$lib/dusk/icons";
 	import {
-		Button, Icon, StatusList, Textbox
+		Badge,
+		Button,
+		Icon,
+		StatusList,
+		Textbox,
+		Wizard,
+		WizardStep
 	} from "$lib/dusk/components";
+	import { mdiWalletOutline } from "@mdi/js";
 	import { balanceStore, operationsStore } from "$lib/stores";
+	import GasSettings from "./GasSettings/GasSettings.svelte";
+	import TransactionComplete from "./TransactionComplete/TransactionComplete.svelte";
+	import ScanQR from "./ScanQR/ScanQR.svelte";
 
 	/** @type {Status[]} */
 	export let statuses;
 
-	/** @type {Number} */
-	let maxAmount = 0;
+	/** @type {Number|undefined} */
+	let amount = 1;
 
-	function setMaxAmount () {
-		maxAmount = $balanceStore.dusk;
-	}
+	/** @type {String} */
+	let address = "";
+
+	const resetOperationStore = () => {
+		operationsStore.update((store) => ({
+			...store,
+			currentOperation: undefined
+		}));
+	};
 </script>
 
 <div class="operation">
-	<StatusList {statuses}/>
-	<div class="operation__amount operation__space-between">
-		<p>Enter amount:</p>
-		<Button
-			size="small"
-			variant="tertiary"
-			on:click={() => setMaxAmount()}
-			text="USE MAX"
-		/>
-	</div>
+	<Wizard steps={4} let:key>
+		<WizardStep
+			step={0}
+			{key}
+			backButton={{
+				action: () => resetOperationStore(),
+				disabled: false
+			}}
+			nextButton={{
+				disabled: amount === 0
+			}}
+		>
+			<div in:fade|global class="operation__send">
+				<StatusList {statuses}/>
+				<div class="operation__send-amount operation__space-between">
+					<p>Enter amount:</p>
+					<Button
+						size="small"
+						variant="tertiary"
+						on:click={() => {
+							const { dusk } = $balanceStore;
 
-	<div class="operation__amount operation__input">
-		<Textbox
-			className="operation__field"
-			type="number"
-			bind:value={maxAmount}
-		/>
-		{#if statuses[0]?.value?.icon}
-			<Icon
-				className="dusk-status__icon"
-				path={statuses[0].value.icon.path ?? ""}
-				data-tooltip-id={statuses[0].value.icon.label
-					&& "status-tooltip"}
-				data-tooltip-text={statuses[0].value.icon.label ?? ""}
-				data-tooltip-place="top"
-			/>
-		{/if}
-	</div>
+							amount = dusk;
+						}}
+						text="USE MAX"
+					/>
+				</div>
 
-	<!-- To be removed after Wizard implemantation -->
-	<div class="operation__amount operation__space-between">
-		<Button
-			variant="tertiary"
-			on:click={() => operationsStore.update(store => ({ ...store, currentOperation: undefined }))}
-			icon={{ path: mdiArrowLeft }}
-			text="BACK"
-		/>
-		<Button
-			variant="tertiary"
-			on:click={() => {}}
-			icon={{ path: mdiArrowRight }}
-			text="NEXT"
-		/>
-	</div>
+				<div class="operation__send-amount operation__input">
+					<Textbox
+						className="operation__input-field"
+						type="number"
+						bind:value={amount}
+					/>
+					{#if statuses[0]?.value?.icon}
+						<Icon
+							className="dusk-status__icon"
+							path={statuses[0].value.icon.path ?? ""}
+							data-tooltip-id={statuses[0].value.icon.label
+								&& "status-tooltip"}
+							data-tooltip-text={statuses[0].value.icon.label
+								?? ""}
+							data-tooltip-place="top"
+						/>
+					{/if}
+				</div>
+			</div>
+		</WizardStep>
+		<WizardStep
+			step={1}
+			{key}
+			nextButton={{ disabled: address.length === 0 }}
+		>
+			<div in:fade|global class="operation__send">
+				<div class="operation__send-amount operation__space-between">
+					<p>Enter/Paste address:</p>
+
+					<ScanQR
+						on:scan={(event) => {
+							address = event.detail;
+						}}
+					/>
+				</div>
+				<Textbox
+					className="operation__send-address"
+					type="multiline"
+					bind:value={address}
+				/>
+			</div>
+		</WizardStep>
+		<WizardStep
+			step={2}
+			{key}
+			nextButton={{
+				icon: { path: receiveWallet, position: "before" },
+				label: "SEND",
+				variant: "secondary"
+			}}
+		>
+			<div in:fade|global class="operation__send">
+				<Badge
+					className="operation__review-notice"
+					text="REVIEW TRANSACTION"
+					variant="warning"
+				/>
+
+				<dl class="operation__review-transaction">
+					<dt class="dusk-status-list__key">
+						<Icon
+							className="dusk-amount__icon"
+							path={receiveWallet}
+						/>
+						<span>Amount:</span>
+					</dt>
+					<dd class="dusk-status-list__value operation__review-amount"
+					>
+						<span>
+							{amount}
+						</span>
+						<Icon
+							className="dusk-amount__icon"
+							path={logo}
+							data-tooltip-id="status-tooltip"
+							data-tooltip-text="DUSK"
+							data-tooltip-place="top"
+						/>
+					</dd>
+				</dl>
+
+				<dl class="operation__review-transaction">
+					<dt class="dusk-status-list__key">
+						<Icon path={mdiWalletOutline}/>
+						<span>To:</span>
+					</dt>
+					<dd class="operation__review-address">
+						<span>{address}</span>
+					</dd>
+				</dl>
+
+				<GasSettings on:setGasSettings={() => {}}/>
+			</div>
+		</WizardStep>
+		<WizardStep step={3} {key} showNavigation={false}>
+			<TransactionComplete/>
+		</WizardStep>
+	</Wizard>
 </div>
 
 <style lang="postcss">
-	.operation__amount {
-		display: flex;
-		align-items: center;
-		width: 100%;
-	}
+	.operation {
+		&__review-address {
+			background-color: var(--background-color-alt);
+			border-radius: 1.5em;
+			padding: 0.75em 1em;
+			width: 100%;
+			line-break: anywhere;
+		}
 
-	.operation__space-between {
-		justify-content: space-between;
-	}
+		&__review-transaction {
+			display: flex;
+			flex-direction: column;
+			gap: 0.625em;
+		}
 
-	.operation__input {
-		column-gap: var(--default-gap);
-	}
+		&__review-amount {
+			justify-content: flex-start;
+		}
 
-	:global(.operation__input .operation__field) {
-		width: 100%;
-		padding: 0.5em 1em;
+		&__send {
+			display: flex;
+			flex-direction: column;
+			gap: 1.2em;
+		}
+
+		&__send-amount {
+			display: flex;
+			align-items: center;
+			width: 100%;
+		}
+
+		&__space-between {
+			justify-content: space-between;
+		}
+
+		&__input {
+			column-gap: var(--default-gap);
+		}
+
+		:global(&__input &__input-field) {
+			width: 100%;
+			padding: 0.5em 1em;
+		}
+
+		:global(&__send-address) {
+			width: 100%;
+		}
+
+		:global(&__review-notice) {
+			text-align: center;
+		}
+
+		:global(.dusk-amount__icon) {
+			width: 1em;
+			height: 1em;
+			flex-shrink: 0;
+		}
 	}
 </style>
