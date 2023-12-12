@@ -16,10 +16,13 @@
 	 * @type {HTMLInputElement | HTMLTextAreaElement}
 	 */
 	let inputElement;
-	export function focusInput () {
-		if (inputElement) {
-			inputElement.focus();
-		}
+
+	export function focus () {
+		inputElement?.focus();
+	}
+
+	export function select () {
+		inputElement?.select();
 	}
 
 	const classes = makeClassName([
@@ -31,7 +34,8 @@
 	/**
 	 * Needed, as the value cannot be bound to the input element
 	 * when the type is set dynamically
-	 * @param {Event & {currentTarget: EventTarget & HTMLInputElement}} event */
+	 * @param {Event & {currentTarget: EventTarget & HTMLInputElement}} event
+	 */
 	function handleInput (event) {
 		const target = event.currentTarget;
 

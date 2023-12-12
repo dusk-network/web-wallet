@@ -411,17 +411,13 @@ declare module "lamb" {
 	function compose<
 		A,
 		B,
-		C,
-		F extends UnaryFunction<B, C>,
-		G extends UnaryFunction<A, B>
-	> (f: F, g: G): (value: A) => C;
+		C
+	> (f: UnaryFunction<B, C>, g: UnaryFunction<A, B>): (value: A) => C;
 	function compose<
 		A extends any[],
 		B,
-		C,
-		F extends UnaryFunction<B, C>,
-		G extends (...args: A) => B
-	> (f: F, g: G): (...values: A) => C;
+		C
+	> (f: UnaryFunction<B, C>, g: (...args: A) => B): (...values: A) => C;
 
 	function partial<
 		Args extends (any | __)[],

@@ -1,9 +1,9 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Login > should render the login page and show the field to enter the mnemonic phrase, if there is no login info stored 1`] = `
+exports[`Login > Mnemonic phrase workflow > should render the login page and show the field to enter the mnemonic phrase, if there is no login info stored 1`] = `
 <div>
   <section
-    class="flex flex-col gap-2 s-diEOsynXV9Ac"
+    class="login-content s-diEOsynXV9Ac"
   >
     <h1
       class="s-diEOsynXV9Ac"
@@ -27,7 +27,7 @@ exports[`Login > should render the login page and show the field to enter the mn
     </h1>
      
     <section
-      class="dusk-card flex flex-col gap-1"
+      class="dusk-card"
     >
       <header
         class="dusk-card__header"
@@ -49,34 +49,39 @@ exports[`Login > should render the login page and show the field to enter the mn
         </h2>
       </header>
        
-      <input
-        class="dusk-textbox dusk-textbox-password"
-        placeholder="Mnemonic phrase"
-        required=""
-        type="password"
-      />
-      
-      <!--&lt;Textbox&gt;-->
-       
-      <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal"
-        type="button"
+      <form
+        class="login-content__form s-diEOsynXV9Ac"
       >
-        <span
-          class="dusk-button__text"
+        <input
+          class="dusk-textbox dusk-textbox-password"
+          name="secret"
+          placeholder="Mnemonic phrase"
+          required=""
+          type="password"
+        />
+        
+        <!--&lt;Textbox&gt;-->
+         
+         
+        <button
+          class="dusk-button dusk-button--type--submit dusk-button--variant--secondary dusk-button--size--normal"
+          type="submit"
         >
-          Unlock Wallet
-        </span>
-      </button>
-      <!--&lt;Button&gt;-->
-       
-      
+          <span
+            class="dusk-button__text"
+          >
+            Unlock Wallet
+          </span>
+        </button>
+        <!--&lt;Button&gt;-->
+         
+      </form>
     </section>
     <!--&lt;Card&gt;-->
   </section>
    
   <footer
-    class="s-diEOsynXV9Ac"
+    class="login-footer s-diEOsynXV9Ac"
   >
     <p
       class="s-diEOsynXV9Ac"
@@ -95,10 +100,10 @@ exports[`Login > should render the login page and show the field to enter the mn
 </div>
 `;
 
-exports[`Login > should show the password field and the link to restore the wallet if there is login info stored 1`] = `
+exports[`Login > Password workflow > should show the password field and the link to restore the wallet if there is login info stored 1`] = `
 <div>
   <section
-    class="flex flex-col gap-2 s-diEOsynXV9Ac"
+    class="login-content s-diEOsynXV9Ac"
   >
     <h1
       class="s-diEOsynXV9Ac"
@@ -122,7 +127,7 @@ exports[`Login > should show the password field and the link to restore the wall
     </h1>
      
     <section
-      class="dusk-card flex flex-col gap-1"
+      class="dusk-card"
     >
       <header
         class="dusk-card__header"
@@ -144,48 +149,53 @@ exports[`Login > should show the password field and the link to restore the wall
         </h2>
       </header>
        
-      <input
-        class="dusk-textbox dusk-textbox-password"
-        placeholder="Password"
-        required=""
-        type="password"
-      />
-      
-      <!--&lt;Textbox&gt;-->
-       
-      <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal"
-        type="button"
+      <form
+        class="login-content__form s-diEOsynXV9Ac"
       >
-        <span
-          class="dusk-button__text"
-        >
-          Unlock Wallet
-        </span>
-      </button>
-      <!--&lt;Button&gt;-->
-       
-      <a
-        aria-disabled="false"
-        class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal"
-        href="/setup/restore"
-      >
-        <span
-          class="dusk-anchor-button__text"
-        >
-          Forgot Password?
-        </span>
+        <input
+          class="dusk-textbox dusk-textbox-password"
+          name="secret"
+          placeholder="Password"
+          required=""
+          type="password"
+        />
         
-      </a>
-      <!--&lt;Anchor&gt;-->
-      <!--&lt;AnchorButton&gt;-->
-      
+        <!--&lt;Textbox&gt;-->
+         
+         
+        <button
+          class="dusk-button dusk-button--type--submit dusk-button--variant--secondary dusk-button--size--normal"
+          type="submit"
+        >
+          <span
+            class="dusk-button__text"
+          >
+            Unlock Wallet
+          </span>
+        </button>
+        <!--&lt;Button&gt;-->
+         
+        <a
+          aria-disabled="false"
+          class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal"
+          href="/setup/restore"
+        >
+          <span
+            class="dusk-anchor-button__text"
+          >
+            Forgot Password?
+          </span>
+          
+        </a>
+        <!--&lt;Anchor&gt;-->
+        <!--&lt;AnchorButton&gt;-->
+      </form>
     </section>
     <!--&lt;Card&gt;-->
   </section>
    
   <footer
-    class="s-diEOsynXV9Ac"
+    class="login-footer s-diEOsynXV9Ac"
   >
     <p
       class="s-diEOsynXV9Ac"

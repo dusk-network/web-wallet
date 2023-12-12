@@ -72,7 +72,12 @@
 	/** @type {HTMLDivElement} */
 	let tooltipElement;
 
-	const getTargetChildren = compose(Array.from, getPath("target.children"));
+	const getTargetChildren = compose(
+		Array.from,
+
+		/** @type {(event: Event) => ArrayLike<Element>} */
+		(getPath("target.children")) // eslint-disable-line no-extra-parens
+	);
 	const getRemovedElements = compose(
 		filterWith(hasKeyValue("nodeType", Node.ELEMENT_NODE)),
 		getKey("removedNodes")

@@ -77,9 +77,7 @@
 	}
 
 	function focusWordTextboxInput () {
-		if (textboxElement) {
-			textboxElement.focusInput();
-		}
+		textboxElement?.focus();
 	}
 
 	/**
