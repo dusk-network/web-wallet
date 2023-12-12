@@ -18,6 +18,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow 1
           <h2>
             Terms & Privacy Policy
           </h2>
+           
         </header>
          
         <div

@@ -6,7 +6,7 @@ exports[`Setup > should render the Setup page 1`] = `
     class="flex flex-col gap-2"
   >
     <header>
-      <h2>
+      <h1>
         Unlocking the Future:
         <br />
         
@@ -15,7 +15,7 @@ exports[`Setup > should render the Setup page 1`] = `
           DUSK
         </mark>
          native Wallet
-      </h2>
+      </h1>
     </header>
      
     <div

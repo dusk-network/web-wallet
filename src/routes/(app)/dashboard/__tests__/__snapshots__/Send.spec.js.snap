@@ -108,6 +108,7 @@ exports[`Send > renders the Send component Address step 1`] = `
           
         </button>
         <!--&lt;Button&gt;-->
+        
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled"
@@ -302,6 +303,7 @@ exports[`Send > renders the Send component Amount step 1`] = `
           
         </button>
         <!--&lt;Button&gt;-->
+        
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled"
@@ -536,6 +538,7 @@ exports[`Send > renders the Send component Review step 1`] = `
           
         </button>
         <!--&lt;Button&gt;-->
+        
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled"

@@ -1,27 +1,15 @@
 <script>
-	import { Card, Stepper, Words } from "$lib/dusk/components";
+	import { Card, Words } from "$lib/dusk/components";
 	import { mdiAlertOutline } from "@mdi/js";
-	import { onboardingWizardStore } from "$lib/stores";
 	import { mnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
 	import { generateMnemonic } from "bip39";
-
-	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
 
 	if ($mnemonicPhrase.length === 0) {
 		const mnemonic = generateMnemonic().split(" ");
 
 		mnemonicPhrase.set(mnemonic);
 	}
-
-	onboardingWizardStore.updateCanGoNext(true);
 </script>
-
-<h2>
-	Backup<br/>
-	<mark>Mnemonic Phrase</mark>
-</h2>
-
-<Stepper steps={totalSteps} activeStep={currentStep - 1}/>
 
 <Card heading="Keep this SAFE" iconPath={mdiAlertOutline}>
 	<div class="flex flex-col gap-1">

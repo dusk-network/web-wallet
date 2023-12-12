@@ -47,6 +47,7 @@ exports[`Login > Mnemonic phrase workflow > should render the login page and sho
         <h2>
           Mnemonic phrase
         </h2>
+         
       </header>
        
       <form
@@ -147,6 +148,7 @@ exports[`Login > Password workflow > should show the password field and the link
         <h2>
           Password
         </h2>
+         
       </header>
        
       <form

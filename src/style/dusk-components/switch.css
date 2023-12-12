@@ -12,6 +12,10 @@
 	padding: .25em;
 }
 
+.dusk-switch--on-surface {
+	background-color: var(--on-primary-color);
+}
+
 .dusk-switch::after {
 	content: "";
 	display: inline-block;

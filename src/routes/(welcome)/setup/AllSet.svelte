@@ -1,19 +1,7 @@
 <script>
-	import { Card, Stepper } from "$lib/dusk/components";
-	import { onboardingWizardStore } from "$lib/stores";
+	import { Card } from "$lib/dusk/components";
 	const allSetIllustration = "/images/onboarding/all_set_illustration.svg";
-
-	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
-
-	onboardingWizardStore.updateShouldShowBack(false);
 </script>
-
-<h2>
-	Welcome to<br/>
-	<mark>Dusk</mark>
-</h2>
-
-<Stepper steps={totalSteps} activeStep={currentStep - 1}/>
 
 <Card heading="You are all set!">
 	<img

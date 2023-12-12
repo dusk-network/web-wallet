@@ -1,6 +1,0 @@
-const ONBOARDING_STEPS = {
-	CREATE: 6,
-	RESTORE: 3
-};
-
-export default ONBOARDING_STEPS;

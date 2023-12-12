@@ -14,3 +14,11 @@
 	margin-bottom: .5em;
 	align-items: center;
 }
+
+.dusk-card__header--toggle-off {
+	margin-bottom: 0;
+}
+
+.dusk-card .dusk-switch {
+	margin-left: auto;
+}

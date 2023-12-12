@@ -1,8 +1,8 @@
 <script>
-	import { Agreement, Card, Stepper } from "$lib/dusk/components";
+	import { Agreement, Card } from "$lib/dusk/components";
 	import Icon from "$lib/dusk/components/Icon/Icon.svelte";
-	import { onboardingWizardStore } from "$lib/stores";
 	import { mdiAlertOutline } from "@mdi/js";
+
 	let agreementOneChecked = false;
 	let agreementTwoChecked = false;
 
@@ -12,17 +12,12 @@
 		`I understand that securing my recovery phrase is my own responsibility.
 		Only I have access to my recovery phrase`;
 
-	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
-	$: isValid = agreementOneChecked && agreementTwoChecked;
-	$: onboardingWizardStore.updateCanGoNext(isValid);
+	export let isValid = false;
+
+	$: if (agreementOneChecked && agreementTwoChecked) {
+		isValid = true;
+	}
 </script>
-
-<h2>
-	Backup<br/>
-	<mark>Mnemonic Phrase</mark>
-</h2>
-
-<Stepper steps={totalSteps} activeStep={currentStep - 1}/>
 
 <Card heading="Securely store your seed phrase!">
 	<div class="flex flex-col gap-1">

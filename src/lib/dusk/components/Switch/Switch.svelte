@@ -14,6 +14,8 @@
 	/** @type {Number} */
 	export let tabindex = 0;
 
+	export let onSurface = false;
+
 	/** @type {Boolean} */
 	export let value = false;
 
@@ -45,6 +47,7 @@
 	aria-checked={value}
 	aria-disabled={disabled}
 	class={makeClassName(["dusk-switch", className])}
+	class:dusk-switch--on-surface={onSurface}
 	on:click={handleClick}
 	on:keydown|preventDefault={handleKeyDown}
 	role="switch"

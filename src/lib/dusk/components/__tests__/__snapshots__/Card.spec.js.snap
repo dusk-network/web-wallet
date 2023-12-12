@@ -12,6 +12,7 @@ exports[`Card > renders the Card component with a heading 1`] = `
       <h2>
         My Card
       </h2>
+       
     </header>
      
   </section>
@@ -42,6 +43,7 @@ exports[`Card > renders the the Card component with an icon when iconPath is pro
       <h2>
         My Card
       </h2>
+       
     </header>
      
   </section>
