@@ -4,7 +4,7 @@
 	import { createEventDispatcher	} from "svelte";
 	import { makeClassName } from "$lib/dusk/string";
 	import {
-		mdiClose, mdiKeyOutline, mdiPlusBoxOutline, mdiSwapHorizontalCircle, mdiTimerSand
+		mdiKeyOutline, mdiPlusBoxOutline, mdiTimerSand
 	} from "@mdi/js";
 	import {
 		Button, CircularIcon, Icon, ProgressBar
@@ -12,12 +12,13 @@
 	import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
 
 	import "./KeyPicker/KeyPicker.css";
-
-	/** @type {String[]} */
-	export let keys;
+	import Overlay from "./Overlay.svelte";
 
 	/** @type {String} */
 	export let currentKey;
+
+	/** @type {String[]} */
+	export let keys = [currentKey];
 
 	export let generatingKey = false;
 
@@ -59,7 +60,7 @@
 </script>
 
 {#if expanded}
-	<div class="overlay"></div>
+	<Overlay/>
 {/if}
 
 <div
@@ -73,13 +74,11 @@
 		tabindex="0"
 		aria-haspopup="true"
 		aria-expanded={expanded}
-		on:keydown={handleDropDownKeyDown}
-		on:click={toggle}>
+		on:keydown={handleDropDownKeyDown}>
 		<CircularIcon>
 			<Icon path={mdiKeyOutline} size="large"/>
 		</CircularIcon>
 		<p class="key-picker__current-key">{currentKey}</p>
-		<Icon path={expanded ? mdiClose : mdiSwapHorizontalCircle} size="large"/>
 	</div>
 
 	{#if expanded}
@@ -91,6 +90,7 @@
 						class="key-picker__key"
 						class:key-picker__key--selected={key === currentKey}>
 						<button
+							class="key-picker__key-option-button"
 							tabindex="0"
 							type="button"
 							role="menuitem"
@@ -122,18 +122,4 @@
 			{/if}
 		</div>
 	{/if}
-
 </div>
-
-<style>
-	.overlay {
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		background: transparent;
-		z-index: 1;
-		backdrop-filter: blur(2px);
-	}
-</style>

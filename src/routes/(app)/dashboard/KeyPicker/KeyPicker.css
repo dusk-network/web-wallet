@@ -5,7 +5,6 @@
     border-radius: 1.25rem;
     user-select: none;
     z-index: 2;
-    transition: transform 0.5s;
 }
 
 .key-picker__current-key, .key-picker__key {
@@ -31,22 +30,11 @@
     cursor: pointer;
 }
 
-.key-picker__key button {
-    all: unset;
-    width: 100%;
-    text-align: center;
-    padding: .5em 0;
-}
-
 .key-picker__trigger {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     gap: var(--default-gap);
-}
-
-.key-picker__trigger:hover {
-    cursor: pointer;
 }
 
 .key-picker__drop-down {
@@ -68,8 +56,19 @@
 }
 
 .key-picker__key-options {
-    overflow-y: scroll;
-    max-height: 10em;
+    overflow-y: auto;
+    width: 100%;
+    max-height: 20svh;
+}
+
+.key-picker__key-option-button {
+    all: unset;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    width: 100%;
+    display: block;
+    text-align: center;
+    padding: .5em 0;
 }
 
 .key-picker__generating-key-wrapper {
@@ -80,7 +79,6 @@
 }
 
 .key-picker--expanded {
-    transform: scale(1.03);
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
