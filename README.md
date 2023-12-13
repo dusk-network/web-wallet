@@ -9,6 +9,7 @@ Web Wallet website.
     - [Build system and dev environment](#build-system-and-dev-environment)
 	- [Environment variables](#environment-variables)
     - [NPM scripts](#npm-scripts)
+	- [Running a local Rusk node](#running-a-local-rusk-node)
 
 ## Build system and dev environment
 
@@ -26,16 +27,18 @@ The `dusk-wallet-js` library uses some [environment variables](https://github.co
 
 The application defines these variables by reading a local `.env` file containing the same variables used in the `dusk-wallet-js`, with the addition of the `VITE_` prefix.
 
-N.B. the current `0.1.2` version of the library has no option to pick the network and uses the `LOCAL_NODE` only.
+N.B. the current `0.1.2` version of the library has no option to pick the network and uses the `LOCAL_NODE` only. The current testnet address is set in that variable in the example below:
 
 ```
-VITE_LOCAL_NODE="http://127.0.0.1:8080/"
+VITE_LOCAL_NODE="https://nodes.dusk.network/"
 VITE_MAINNET_NODE=""
 VITE_RKYV_TREE_LEAF_SIZE=632
 VITE_STAKE_CONTRACT="0200000000000000000000000000000000000000000000000000000000000000"
 VITE_TESTNET_NODE=""
 VITE_TRANSFER_CONTRACT="0100000000000000000000000000000000000000000000000000000000000000"
 ```
+
+To run a local node different steps are needed, so please read the [related section](#running-a-local-rusk-node).
 
 ## NPM scripts
 
@@ -51,3 +54,45 @@ VITE_TRANSFER_CONTRACT="01000000000000000000000000000000000000000000000000000000
 - `npm run test:watch` runs the test suite in watch mode
 - `npm run typecheck` runs the type checker
 - `npm run typecheck:watch` runs the type checker in watch mode
+
+## Running a local Rusk node
+
+To run a local node you should have [Docker](https://www.docker.com/) installed.
+
+In a local folder on your computer create a `genesis.toml` file with the following content:
+
+```toml
+[acl.stake]
+owners = [
+    'oCqYsUMRqpRn2kSabH52Gt6FQCwH5JXj5MtRdYVtjMSJ73AFvdbPf98p3gz98fQwNy9ZBiDem6m9BivzURKFSKLYWP3N9JahSPZs9PnZ996P18rTGAjQTNFsxtbrKx79yWu',
+]
+allowlist = [
+    'oCqYsUMRqpRn2kSabH52Gt6FQCwH5JXj5MtRdYVtjMSJ73AFvdbPf98p3gz98fQwNy9ZBiDem6m9BivzURKFSKLYWP3N9JahSPZs9PnZ996P18rTGAjQTNFsxtbrKx79yWu',
+    'ocXXBAafr7xFqQTpC1vfdSYdHMXerbPCED2apyUVpLjkuycsizDxwA6b9D7UW91kG58PFKqm9U9NmY9VSwufUFL5rVRSnFSYxbiKK658TF6XjHsHGBzavFJcxAzjjBRM4eF'
+]
+
+[[balance]]
+address = '4ZH3oyfTuMHyWD1Rp4e7QKp5yK6wLrWvxHneufAiYBAjvereFvfjtDvTbBcZN5ZCsaoMo49s1LKPTwGpowik6QJG'
+seed = 0xdead_beef
+notes = [100_000_000_000_000]
+
+[[stake]]
+address = 'oCqYsUMRqpRn2kSabH52Gt6FQCwH5JXj5MtRdYVtjMSJ73AFvdbPf98p3gz98fQwNy9ZBiDem6m9BivzURKFSKLYWP3N9JahSPZs9PnZ996P18rTGAjQTNFsxtbrKx79yWu'
+amount = 1_000_000_000_000
+```
+
+Open a terminal, go to the folder with the `genesis.toml` file and run:
+
+```bash
+docker run --name rusk -p 9000:9000/udp -p 8080:8080/tcp -v ./genesis.toml:/opt/rusk/state.toml dusknetwork/node:latest
+```
+
+This will download the image and run the node on `http://localhost:8080/`.
+
+In your `.env` file edit the `VITE_LOCAL_NODE` variable as follows:
+
+```
+VITE_LOCAL_NODE="https://localhost:5173/rusk/"
+```
+
+The Vite dev server will act as a proxy, so the node will appear to the browser as running on HTTPS and on the same origin, without requiring CORS headers.

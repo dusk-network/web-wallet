@@ -9,11 +9,18 @@ import crypto from "node:crypto";
 
 import { ResizeObserver } from "./src/lib/dusk/mocks";
 import init from "./__mocks__/initDuskWalletCore.js";
+import Wallet from "./__mocks__/Wallet.js";
 
 // Mocking the wallet core wasm
 vi.doMock(
 	"@dusk-network/dusk-wallet-core/dusk_wallet_core_bg.wasm?init",
 	() => ({ default: vi.fn(init) })
+);
+
+// Mocking the Wallet
+vi.doMock(
+	"@dusk-network/dusk-wallet-js",
+	() => ({ Wallet })
 );
 
 /*

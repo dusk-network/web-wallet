@@ -29,6 +29,14 @@ export default defineConfig(({ mode }) => {
 			}
 		},
 		plugins: mode === "development" ? [basicSsl(), ...commonPlugins] : commonPlugins,
+		server: {
+			proxy: {
+				"/rusk": {
+					rewrite: path => path.replace(/^\/rusk/, ""),
+					target: "http://localhost:8080/"
+				}
+			}
+		},
 		test: {
 			/** @see https://github.com/vitest-dev/vitest/issues/2834 */
 			alias: [{ find: /^svelte$/, replacement: "svelte/internal" }],
@@ -38,7 +46,7 @@ export default defineConfig(({ mode }) => {
 				include: ["src/**"]
 			},
 			env: {
-				LOCAL_NODE: "http://127.0.0.1:8080/",
+				LOCAL_NODE: "https://nodes.dusk.network/",
 				MAINNET_NODE: "http://127.0.0.1:8080/",
 				RKYV_TREE_LEAF_SIZE: "632",
 				STAKE_CONTRACT: "0200000000000000000000000000000000000000000000000000000000000000",
