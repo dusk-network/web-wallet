@@ -5,258 +5,275 @@ exports[`Stake > renders the Stake component 1`] = `
   <div
     class="operation s-njyclJEgUzaD"
   >
-    <dl
-      class="dusk-status-list"
+    <div
+      class="dusk-wizard"
     >
-      <dt
-        class="dusk-status-list__key dusk-status"
-      >
-        <svg
-          class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-          data-tooltip-place="top"
-          data-tooltip-text=""
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M10 13C11.1 13 12 13.89 12 15C12 16.11 11.11 17 10 17S8 16.11 8 15 8.9 13 10 13M18 1C15.24 1 13 3.24 13 6V8H4C2.9 8 2 8.9 2 10V20C2 21.1 2.9 22 4 22H16C17.1 22 18 21.1 18 20V10C18 8.9 17.1 8 16 8H15V6C15 4.34 16.34 3 18 3S21 4.34 21 6V8H23V6C23 3.24 20.76 1 18 1M16 10V20H4V10H16Z"
-          />
-        </svg>
-        
-        <!--&lt;Icon&gt;-->
-         
-        <span>
-          Unlocked tokens
-        </span>
-      </dt>
        
-      <dd
-        class="dusk-status-list__value dusk-status"
-      >
-        <span>
-          50,000.00
-        </span>
-         
-        <svg
-          class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-          data-tooltip-id="status-tooltip"
-          data-tooltip-place="top"
-          data-tooltip-text="DUSK"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-          />
-        </svg>
-        
-        <!--&lt;Icon&gt;-->
-      </dd>
-      <dt
-        class="dusk-status-list__key dusk-status"
-      >
-        <svg
-          class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-          data-tooltip-place="top"
-          data-tooltip-text=""
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M12,17C10.89,17 10,16.1 10,15C10,13.89 10.89,13 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17M18,20V10H6V20H18M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V10C4,8.89 4.89,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"
-          />
-        </svg>
-        
-        <!--&lt;Icon&gt;-->
-         
-        <span>
-          Locked tokens
-        </span>
-      </dt>
        
-      <dd
-        class="dusk-status-list__value dusk-status"
+      <dl
+        class="dusk-status-list"
       >
-        <span>
-          50,000.00
-        </span>
-         
-        <svg
-          class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-          data-tooltip-id="status-tooltip"
-          data-tooltip-place="top"
-          data-tooltip-text="DUSK"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
+        <dt
+          class="dusk-status-list__key dusk-status"
         >
-          <path
-            d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-          />
-        </svg>
-        
-        <!--&lt;Icon&gt;-->
-      </dd>
-      <dt
-        class="dusk-status-list__key dusk-status"
-      >
-        <svg
-          class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-          data-tooltip-place="top"
-          data-tooltip-text=""
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
-          />
-        </svg>
-        
-        <!--&lt;Icon&gt;-->
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+            data-tooltip-place="top"
+            data-tooltip-text=""
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M10 13C11.1 13 12 13.89 12 15C12 16.11 11.11 17 10 17S8 16.11 8 15 8.9 13 10 13M18 1C15.24 1 13 3.24 13 6V8H4C2.9 8 2 8.9 2 10V20C2 21.1 2.9 22 4 22H16C17.1 22 18 21.1 18 20V10C18 8.9 17.1 8 16 8H15V6C15 4.34 16.34 3 18 3S21 4.34 21 6V8H23V6C23 3.24 20.76 1 18 1M16 10V20H4V10H16Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+           
+          <span>
+            Unlocked tokens
+          </span>
+        </dt>
          
-        <span>
-          Reward tokens
-        </span>
-      </dt>
-       
-      <dd
-        class="dusk-status-list__value dusk-status"
-      >
-        <span>
-          50,000.00
-        </span>
-         
-        <svg
-          class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-          data-tooltip-id="status-tooltip"
-          data-tooltip-place="top"
-          data-tooltip-text="DUSK"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
+        <dd
+          class="dusk-status-list__value dusk-status"
         >
-          <path
-            d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-          />
-        </svg>
-        
-        <!--&lt;Icon&gt;-->
-      </dd>
-       
+          <span>
+            50,000.00
+          </span>
+           
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+            data-tooltip-id="status-tooltip"
+            data-tooltip-place="top"
+            data-tooltip-text="DUSK"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+        </dd>
+        <dt
+          class="dusk-status-list__key dusk-status"
+        >
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+            data-tooltip-place="top"
+            data-tooltip-text=""
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12,17C10.89,17 10,16.1 10,15C10,13.89 10.89,13 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17M18,20V10H6V20H18M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V10C4,8.89 4.89,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+           
+          <span>
+            Locked tokens
+          </span>
+        </dt>
+         
+        <dd
+          class="dusk-status-list__value dusk-status"
+        >
+          <span>
+            50,000.00
+          </span>
+           
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+            data-tooltip-id="status-tooltip"
+            data-tooltip-place="top"
+            data-tooltip-text="DUSK"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+        </dd>
+        <dt
+          class="dusk-status-list__key dusk-status"
+        >
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+            data-tooltip-place="top"
+            data-tooltip-text=""
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+           
+          <span>
+            Reward tokens
+          </span>
+        </dt>
+         
+        <dd
+          class="dusk-status-list__value dusk-status"
+        >
+          <span>
+            50,000.00
+          </span>
+           
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+            data-tooltip-id="status-tooltip"
+            data-tooltip-place="top"
+            data-tooltip-text="DUSK"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+        </dd>
+         
+         
+        <div
+          aria-hidden="true"
+          class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
+          id="status-tooltip"
+          role="tooltip"
+          style="left: 0px; top: 0px;"
+        >
+          
+        </div>
+        <!--&lt;Tooltip&gt;-->
+        <!--&lt;Statuses&gt;-->
+      </dl>
+      <!--&lt;StatusList&gt;-->
        
       <div
-        aria-hidden="true"
-        class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-        id="status-tooltip"
-        role="tooltip"
-        style="left: 0px; top: 0px;"
+        class="operation__amount operation__space-between s-njyclJEgUzaD"
       >
-        
+        <p
+          class="s-njyclJEgUzaD"
+        >
+          Enter amount:
+        </p>
+         
+        <button
+          class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
+          type="button"
+        >
+          <span
+            class="dusk-button__text"
+          >
+            USE MAX
+          </span>
+        </button>
+        <!--&lt;Button&gt;-->
       </div>
-      <!--&lt;Tooltip&gt;-->
-      <!--&lt;Statuses&gt;-->
-    </dl>
-    <!--&lt;StatusList&gt;-->
-     
-    <div
-      class="operation__amount operation__space-between s-njyclJEgUzaD"
-    >
-      <p
-        class="s-njyclJEgUzaD"
-      >
-        Enter amount:
-      </p>
        
-      <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
-        type="button"
+      <div
+        class="operation__amount operation__input s-njyclJEgUzaD"
       >
-        <span
-          class="dusk-button__text"
-        >
-          USE MAX
-        </span>
-      </button>
-      <!--&lt;Button&gt;-->
-    </div>
-     
-    <div
-      class="operation__amount operation__input s-njyclJEgUzaD"
-    >
-      <input
-        class="dusk-textbox dusk-textbox-number operation__input__field"
-        type="number"
-      />
-      
-      <!--&lt;Textbox&gt;-->
-       
-      <svg
-        class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-        data-tooltip-id="status-tooltip"
-        data-tooltip-place="top"
-        data-tooltip-text="DUSK"
-        role="graphics-symbol"
-        viewBox="0 0 24 24"
-      >
-        <path
-          d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+        <input
+          class="dusk-textbox dusk-textbox-number operation__input-field"
+          type="number"
         />
-      </svg>
-      
-      <!--&lt;Icon&gt;-->
-    </div>
-     
-    <div
-      class="operation__amount operation__space-between s-njyclJEgUzaD"
-    >
-      <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled"
-        type="button"
-      >
+        
+        <!--&lt;Textbox&gt;-->
+         
         <svg
-          class="dusk-icon dusk-icon--size--normal dusk-button__icon"
+          class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+          data-tooltip-id="status-tooltip"
+          data-tooltip-place="top"
+          data-tooltip-text="DUSK"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >
           <path
-            d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
+            d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
           />
         </svg>
         
         <!--&lt;Icon&gt;-->
-         
-        <span
-          class="dusk-button__text"
-        >
-          BACK
-        </span>
-        
-      </button>
-      <!--&lt;Button&gt;-->
+      </div>
        
-      <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled"
-        type="button"
+      <div
+        class="dusk-wizard__step-navigation"
       >
-        <svg
-          class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
+        <button
+          class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled"
+          type="button"
         >
-          <path
-            d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"
-          />
-        </svg>
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-button__icon"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+           
+          <span
+            class="dusk-button__text"
+          >
+            Back
+          </span>
+          
+        </button>
+        <!--&lt;Button&gt;-->
         
-        <!--&lt;Icon&gt;-->
          
-        <span
-          class="dusk-button__text"
+        <button
+          class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled"
+          disabled=""
+          type="button"
         >
-          NEXT
-        </span>
-        
-      </button>
-      <!--&lt;Button&gt;-->
+          <span
+            class="dusk-button__text"
+          >
+            Next
+          </span>
+           
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-button__icon"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+        </button>
+        <!--&lt;Button&gt;-->
+      </div>
+      
+      
+      <!--&lt;WizardStep&gt;-->
+       
+      
+      <!--&lt;WizardStep&gt;-->
+       
+      
+      <!--&lt;WizardStep&gt;-->
     </div>
+    <!--&lt;Wizard&gt;-->
   </div>
   <!--&lt;Stake&gt;-->
 </div>

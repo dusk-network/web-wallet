@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { logo } from "$lib/dusk/icons";
 import { mdiDatabaseOutline, mdiLockOpenVariantOutline, mdiLockOutline } from "@mdi/js";
-import Withdraw from "../Contract/Operations/Withdraw.svelte";
+import Stake from "../Contract/Operations/Stake.svelte";
 
 describe("Withdraw", () => {
 	const statuses = [
@@ -53,17 +53,15 @@ describe("Withdraw", () => {
 		}
 	];
 
-	const props = { statuses };
-
 	afterEach(cleanup);
 
 	it("renders the Withdraw step component", () => {
-		const { container } = render(Withdraw, props);
+		const { container } = render(Stake, { props: { statuses, flow: "withdraw-stake" } });
 
 		expect(container.firstChild).toMatchSnapshot();
 	});
 	it("renders the Withdraw Review step component", async () => {
-		const { container, getByRole } = render(Withdraw, props);
+		const { container, getByRole } = render(Stake, { props: { statuses, flow: "withdraw-stake" } });
 
 		const next = getByRole("button", { name: "Next" });
 
@@ -72,13 +70,13 @@ describe("Withdraw", () => {
 		expect(container.firstChild).toMatchSnapshot();
 	});
 	it("renders the Withdraw Confirmation step component", async () => {
-		const { container, getByRole } = render(Withdraw, props);
+		const { container, getByRole } = render(Stake, { props: { statuses, flow: "withdraw-stake" } });
 
 		const next = getByRole("button", { name: "Next" });
 
 		await fireEvent.click(next);
 
-		const stake = getByRole("button", { name: "STAKE" });
+		const stake = getByRole("button", { name: "WITHDRAW" });
 
 		await fireEvent.click(stake);
 
