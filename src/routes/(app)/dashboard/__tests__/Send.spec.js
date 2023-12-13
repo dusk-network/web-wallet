@@ -139,7 +139,7 @@ describe("Send", () => {
 
 		const value = getAsHTMLElement(container, ".operation__review-amount span");
 
-		expect(value.textContent).toBe("1");
+		expect(value.textContent).toBe("1.00");
 
 		const key = getAsHTMLElement(container, ".operation__review-address span");
 

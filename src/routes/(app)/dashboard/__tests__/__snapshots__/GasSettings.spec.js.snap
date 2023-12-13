@@ -3,10 +3,10 @@
 exports[`GasSettings > renders the GasSettings component closed 1`] = `
 <div>
   <div
-    class="operation__rewards__review s-viaBXp9UetOS"
+    class="operation__gas-settings s-viaBXp9UetOS"
   >
     <dl
-      class="operation__rewards__edit-gas s-viaBXp9UetOS"
+      class="operation__gas-settings-edit s-viaBXp9UetOS"
     >
       <dt
         class="dusk-status-list__key s-viaBXp9UetOS"
@@ -55,10 +55,10 @@ exports[`GasSettings > renders the GasSettings component closed 1`] = `
 exports[`GasSettings > renders the GasSettings component opened 1`] = `
 <div>
   <div
-    class="operation__rewards__review s-viaBXp9UetOS"
+    class="operation__gas-settings s-viaBXp9UetOS"
   >
     <dl
-      class="operation__rewards__edit-gas s-viaBXp9UetOS"
+      class="operation__gas-settings-edit s-viaBXp9UetOS"
     >
       <dt
         class="dusk-status-list__key s-viaBXp9UetOS"
@@ -100,11 +100,11 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
     </dl>
      
     <div
-      class="s-viaBXp9UetOS"
+      class="operation__gas-settings s-viaBXp9UetOS"
       style="animation: __svelte_276924520_0 400ms linear 0ms 1 both;"
     >
       <dl
-        class="operation__rewards__review s-viaBXp9UetOS"
+        class="operation__gas-settings s-viaBXp9UetOS"
       >
         <dt
           class="s-viaBXp9UetOS"
@@ -120,7 +120,7 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
           class="s-viaBXp9UetOS"
         >
           <input
-            class="dusk-textbox dusk-textbox-number operation__input__field"
+            class="dusk-textbox dusk-textbox-number operation__input-field"
             type="number"
           />
           
@@ -129,7 +129,7 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
       </dl>
        
       <dl
-        class="operation__rewards__review s-viaBXp9UetOS"
+        class="ooperation__gas-settings s-viaBXp9UetOS"
       >
         <dt
           class="s-viaBXp9UetOS"
@@ -145,7 +145,7 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
           class="s-viaBXp9UetOS"
         >
           <input
-            class="dusk-textbox dusk-textbox-number operation__input__field"
+            class="dusk-textbox dusk-textbox-number operation__input-field"
             type="number"
           />
           

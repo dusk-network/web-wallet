@@ -251,18 +251,18 @@ exports[`Withdraw > renders the Withdraw Review step component 1`] = `
         <!--&lt;Badge&gt;-->
          
         <dl
-          class="operation__rewards__review s-iBtdfcgpOowB"
+          class="operation__stake-rewards s-iBtdfcgpOowB"
         >
           <dt
             class="dusk-status-list__key s-iBtdfcgpOowB"
           >
             <svg
-              class="dusk-icon dusk-icon--size--normal dusk-rewards__icon"
+              class="dusk-icon dusk-icon--size--normal"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
               <path
-                d="M24,20.6v-18C24,1.2,22.8,0,21.3,0H16v2.6h5.3v18H2.7v-18H8V0H2.7C2,0,1.3,0.3,0.8,0.8S0,1.9,0,2.6v18c0,0.7,0.3,1.3,0.8,1.8s1.2,0.8,1.9,0.8h18.7C22.8,23.2,24,22,24,20.6z M7.2,9.1l-1.9,1.8l6.7,6.4l6.7-6.4l-1.9-1.8l-3.5,3.3V0h-2.7	v12.5L7.2,9.1z"
+                d="M12,17L7,12H10V8H14V12H17L12,17M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"
               />
             </svg>
             
@@ -276,7 +276,7 @@ exports[`Withdraw > renders the Withdraw Review step component 1`] = `
              
           </dt>
           <dd
-            class="dusk-status-list__value operation__rewards__value s-iBtdfcgpOowB"
+            class="dusk-status-list__value operation__stake-rewards-value s-iBtdfcgpOowB"
           >
             <span
               class="s-iBtdfcgpOowB"
@@ -303,10 +303,10 @@ exports[`Withdraw > renders the Withdraw Review step component 1`] = `
         <!--&lt;StakeRewards&gt;-->
          
         <div
-          class="operation__rewards__review s-viaBXp9UetOS"
+          class="operation__gas-settings s-viaBXp9UetOS"
         >
           <dl
-            class="operation__rewards__edit-gas s-viaBXp9UetOS"
+            class="operation__gas-settings-edit s-viaBXp9UetOS"
           >
             <dt
               class="dusk-status-list__key s-viaBXp9UetOS"
@@ -582,18 +582,18 @@ exports[`Withdraw > renders the Withdraw step component 1`] = `
         <!--&lt;StatusList&gt;-->
          
         <dl
-          class="operation__rewards__review s-iBtdfcgpOowB"
+          class="operation__stake-rewards s-iBtdfcgpOowB"
         >
           <dt
             class="dusk-status-list__key s-iBtdfcgpOowB"
           >
             <svg
-              class="dusk-icon dusk-icon--size--normal dusk-rewards__icon"
+              class="dusk-icon dusk-icon--size--normal"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
               <path
-                d="M24,20.6v-18C24,1.2,22.8,0,21.3,0H16v2.6h5.3v18H2.7v-18H8V0H2.7C2,0,1.3,0.3,0.8,0.8S0,1.9,0,2.6v18c0,0.7,0.3,1.3,0.8,1.8s1.2,0.8,1.9,0.8h18.7C22.8,23.2,24,22,24,20.6z M7.2,9.1l-1.9,1.8l6.7,6.4l6.7-6.4l-1.9-1.8l-3.5,3.3V0h-2.7	v12.5L7.2,9.1z"
+                d="M12,17L7,12H10V8H14V12H17L12,17M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"
               />
             </svg>
             
@@ -607,7 +607,7 @@ exports[`Withdraw > renders the Withdraw step component 1`] = `
              
           </dt>
           <dd
-            class="dusk-status-list__value operation__rewards__value s-iBtdfcgpOowB"
+            class="dusk-status-list__value operation__stake-rewards-value s-iBtdfcgpOowB"
           >
             <span
               class="s-iBtdfcgpOowB"
