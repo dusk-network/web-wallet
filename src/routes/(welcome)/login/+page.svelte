@@ -10,6 +10,7 @@
 
 	import { decryptMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 	import { getWallet } from "$lib/services/wallet";
+	import { walletStore } from "$lib/stores";
 	import loginInfoStorage from "$lib/services/loginInfoStorage";
 
 	/** @type {(mnemonic: string) => Promise<Uint8Array>} */
@@ -38,6 +39,9 @@
 
 		getSeed(secretText.trim())
 			.then(getWallet)
+			.then(wallet => {
+				walletStore.init(wallet);
+			})
 			.then(() => {
 				goto("/dashboard");
 			})

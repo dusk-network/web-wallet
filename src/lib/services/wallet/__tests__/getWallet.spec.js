@@ -1,7 +1,8 @@
 import {
 	describe,
 	expect,
-	it
+	it,
+	vi
 } from "vitest";
 import { enumerables } from "lamb";
 import { generateMnemonic } from "bip39";
@@ -9,6 +10,8 @@ import { generateMnemonic } from "bip39";
 import { getSeedFromMnemonic } from "$lib/wallet";
 
 import { getWallet } from "..";
+
+vi.unmock("@dusk-network/dusk-wallet-js");
 
 describe("getWallet", () => {
 	it("should get a Wallet instance using a seed", async () => {
