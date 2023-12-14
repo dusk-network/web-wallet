@@ -8,7 +8,7 @@ import {
 	vi
 } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import { generateMnemonic } from "@jimber/simple-bip39";
+import { generateMnemonic } from "bip39";
 import * as appNavigation from "$app/navigation";
 
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";

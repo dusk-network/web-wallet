@@ -1,4 +1,6 @@
 <script>
+	import { wordlists } from "bip39";
+
 	import { Button, Textbox, Words } from "$lib/dusk/components";
 	import { makeClassName } from "$lib/dusk/string";
 	import {
@@ -7,9 +9,8 @@
 		shuffledMnemonicPhrase
 	} from "./store";
 	import { findFirstNMatches } from "$lib/dusk/array";
-	import enDictionary from "./enDictionary";
 
-	let _enDictionary = enDictionary;
+	let enDictionary = wordlists.english;
 
 	/** @type {MnemonicType} */
 	export let type;
@@ -35,7 +36,7 @@
 		currentIndex++;
 
 		if (type === "authenticate") {
-			_enDictionary = _enDictionary.filter(_word => !$enteredMnemonicPhrase.includes(_word));
+			enDictionary = enDictionary.filter(_word => !$enteredMnemonicPhrase.includes(_word));
 			focusWordTextboxInput();
 		}
 	}
@@ -57,7 +58,7 @@
 		updateEnteredPhrase(word);
 	}
 
-	$: predictions = currentInput && findFirstNMatches(_enDictionary, currentInput, 3);
+	$: predictions = currentInput && findFirstNMatches(enDictionary, currentInput, 3);
 
 	// eslint-disable-next-line svelte/no-reactive-functions
 	$: mnemonicContains = (/** @type {string} */ word) => $enteredMnemonicPhrase.includes(word);
@@ -73,7 +74,7 @@
 	function resetInput () {
 		currentIndex = 0;
 		currentInput = "";
-		_enDictionary = enDictionary;
+		enDictionary = enDictionary;
 	}
 
 	function focusWordTextboxInput () {

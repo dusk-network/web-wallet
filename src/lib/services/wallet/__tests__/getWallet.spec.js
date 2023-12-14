@@ -4,7 +4,7 @@ import {
 	it
 } from "vitest";
 import { enumerables } from "lamb";
-import { generateMnemonic } from "@jimber/simple-bip39";
+import { generateMnemonic } from "bip39";
 
 import { getSeedFromMnemonic } from "$lib/wallet";
 

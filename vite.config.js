@@ -2,9 +2,17 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig, loadEnv } from "vite";
 import basicSsl from "@vitejs/plugin-basic-ssl";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd());
+	const commonPlugins = [
+		sveltekit(),
+		nodePolyfills({
+			globals: { Buffer: true },
+			include: ["buffer"]
+		})
+	];
 
 	return {
 		define: {
@@ -20,7 +28,7 @@ export default defineConfig(({ mode }) => {
 				TRANSFER_CONTRACT: env.VITE_TRANSFER_CONTRACT
 			}
 		},
-		plugins: mode === "development" ? [basicSsl(), sveltekit()] : [sveltekit()],
+		plugins: mode === "development" ? [basicSsl(), ...commonPlugins] : commonPlugins,
 		test: {
 			/** @see https://github.com/vitest-dev/vitest/issues/2834 */
 			alias: [{ find: /^svelte$/, replacement: "svelte/internal" }],

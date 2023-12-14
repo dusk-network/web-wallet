@@ -6,13 +6,18 @@
 	} from "$lib/dusk/components";
 	import { mdiKeyOutline } from "@mdi/js";
 	import { goto } from "$app/navigation";
+	import { validateMnemonic } from "bip39";
 
 	import { decryptMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 	import { getWallet } from "$lib/services/wallet";
 	import loginInfoStorage from "$lib/services/loginInfoStorage";
 
 	/** @type {(mnemonic: string) => Promise<Uint8Array>} */
-	const getSeedFromMnemonicAsync = async mnemonic => getSeedFromMnemonic(mnemonic);
+	const getSeedFromMnemonicAsync = async mnemonic => (
+		validateMnemonic(mnemonic)
+			? getSeedFromMnemonic(mnemonic)
+			: Promise.reject("Invalid mnemonic")
+	);
 
 	/** @type {(loginInfo: MnemonicEncryptInfo) => (pwd: string) => Promise<Uint8Array>} */
 	const getSeedFromInfo = loginInfo => pwd => decryptMnemonic(loginInfo, pwd).then(getSeedFromMnemonic);

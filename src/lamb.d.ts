@@ -474,6 +474,8 @@ declare module "lamb" {
 		R extends PipeArgsLastReturnType<Fns, ReturnType<Fns[0]>>
 	> (functions: PipeArgs<Fns> extends Fns ? Fns : PipeArgs<Fns>): (...args: Args) => R;
 
+	function unary<T, R> (fn: (a: T, ...args: any[]) => R): UnaryFunction<T, R>;
+
 	/* ------------------------- *
 	 * *****     LOGIC     ***** *
 	 * ------------------------- */

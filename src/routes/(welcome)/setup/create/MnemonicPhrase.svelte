@@ -3,7 +3,7 @@
 	import { mdiAlertOutline } from "@mdi/js";
 	import { onboardingWizardStore } from "$lib/stores";
 	import { mnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
-	import { generateMnemonic } from "@jimber/simple-bip39";
+	import { generateMnemonic } from "bip39";
 
 	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
 
