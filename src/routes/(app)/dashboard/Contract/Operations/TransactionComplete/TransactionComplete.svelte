@@ -18,10 +18,10 @@
 	/>
 	<p>Transaction Completed</p>
 </div>
+
 <AnchorButton
 	href="https://explorer.dusk.network"
 	variant="secondary"
-	size="small"
 	text="VIEW ON BLOCK EXPLORER"
 	on:click={() => resetOperationStore()}
 />

@@ -5,9 +5,7 @@
 	import {
 		Receive,
 		Send,
-		Stake,
-		Withdraw,
-		WithdrawRewards
+		Stake
 	} from "./Contract/Operations";
 	import { operationsStore } from "$lib/stores";
 	import { onDestroy } from "svelte";
@@ -26,16 +24,21 @@
 		{
 			component: Stake,
 			id: "stake",
-			props: undefined
+			props: { flow: "stake" }
 		},
 		{
-			component: Withdraw,
-			id: "withdraw",
-			props: undefined
+			component: Stake,
+			id: "withdraw-stake",
+			props: { flow: "withdraw-stake" }
 		},
 		{
-			component: WithdrawRewards,
+			component: Stake,
 			id: "withdraw-rewards",
+			props: { flow: "withdraw-rewards" }
+		},
+		{
+			component: Send,
+			id: "send",
 			props: undefined
 		},
 		{
@@ -46,11 +49,6 @@
 				publicSpendKey:
 					"Y05MCvisx3hIhGq50gQ7rZRmQKiIO03ly8DsVqKmU5cmIO1B7CKXPH2dtSC5sk6vmXJZ27qSMPfFsW"
 			}
-		},
-		{
-			component: Send,
-			id: "send",
-			props: undefined
 		}
 	];
 
@@ -77,7 +75,7 @@
 			{#each operations as operation, index (operation.id)}
 				<Button
 					className="operations__operation"
-					variant="secondary"
+					variant={operation.variant ?? "secondary"}
 					on:click={() =>
 						operationsStore.update((store) => ({
 							...store,

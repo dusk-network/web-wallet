@@ -6,9 +6,7 @@
 		mdiArrowUpBoldBoxOutline,
 		mdiCheckCircleOutline,
 		mdiDatabaseArrowDownOutline,
-		mdiDatabaseArrowUpOutline,
 		mdiDatabaseOutline,
-		mdiLockOpenVariantOutline,
 		mdiLockOutline,
 		mdiSwapVertical
 	} from "@mdi/js";
@@ -44,20 +42,21 @@
 		id: "transfer",
 		label: "Transact",
 		operations: [{
-			icon: { path: mdiArrowDownBoldBoxOutline, position: "before" },
-			id: "receive",
-			label: "receive"
-		}, {
 			icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
 			id: "send",
 			label: "send"
+		}, {
+			icon: { path: mdiArrowDownBoldBoxOutline, position: "before" },
+			id: "receive",
+			label: "receive",
+			variant: "tertiary"
 		}],
 		statuses: [{
 			key: {
 				icon: {
 					path: mdiCheckCircleOutline
 				},
-				label: "Spendable tokens"
+				label: "Spendable"
 
 			}, value: {
 				icon: {
@@ -72,24 +71,26 @@
 		id: "staking",
 		label: "Stake",
 		operations: [{
-			icon: { path: mdiDatabaseArrowUpOutline, position: "before" },
+			icon: { path: mdiDatabaseOutline, position: "before" },
 			id: "stake",
 			label: "stake"
 		}, {
 			icon: { path: mdiDatabaseArrowDownOutline, position: "before" },
-			id: "withdraw",
-			label: "withdraw"
+			id: "withdraw-stake",
+			label: "withdraw stake",
+			variant: "tertiary"
 		}, {
 			icon: { path: mdiDatabaseArrowDownOutline, position: "before" },
 			id: "withdraw-rewards",
-			label: "withdraw rewards"
+			label: "withdraw rewards",
+			variant: "tertiary"
 		}],
 		statuses: [{
 			key: {
 				icon: {
-					path: mdiLockOpenVariantOutline
+					path: mdiCheckCircleOutline
 				},
-				label: "Unlocked tokens"
+				label: "Spendable"
 
 			}, value: {
 				icon: {
@@ -103,7 +104,7 @@
 				icon: {
 					path: mdiLockOutline
 				},
-				label: "Locked tokens"
+				label: "Total Locked"
 			}, value: {
 				icon: {
 					label: "DUSK",
@@ -116,7 +117,7 @@
 				icon: {
 					path: mdiDatabaseOutline
 				},
-				label: "Reward tokens"
+				label: "Rewards"
 			},
 			value: {
 				icon: {
@@ -160,7 +161,7 @@
 		</div>
 	</article>
 
-	{#if currentOperation === undefined }
+	{#if currentOperation === undefined && selectedTab === "transfer" }
 		<Transactions transactions={transactions.slice(-Math.abs(TRANSACTION_LIMIT))}>
 			<h3 class="h4" slot="heading">Transactions</h3>
 			<AnchorButton

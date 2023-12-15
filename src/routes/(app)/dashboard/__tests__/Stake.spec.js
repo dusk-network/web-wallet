@@ -53,12 +53,10 @@ describe("Stake", () => {
 		}
 	];
 
-	const props = { statuses };
-
 	afterEach(cleanup);
 
 	it("renders the Stake component", () => {
-		const { container } = render(Stake, props);
+		const { container } = render(Stake, { props: { statuses, flow: "stake" } });
 
 		expect(container.firstChild).toMatchSnapshot();
 	});
@@ -66,7 +64,7 @@ describe("Stake", () => {
 	it("sets the max amount on click", async () => {
 		vi.useFakeTimers();
 
-		const { getByRole } = render(Stake, props);
+		const { getByRole } = render(Stake, { props: { statuses, flow: "stake" } });
 
 		const component = getByRole("button", { name: "USE MAX" });
 
