@@ -11,6 +11,8 @@
 	export let showStepper = false;
 	export let showNavigation = true;
 
+	export let hideBackButton = false;
+
 	/** @type {WizardButtonProps | Undefined} */
 	export let backButton = undefined;
 
@@ -60,16 +62,18 @@
 	{#if showNavigation}
 		<slot name="navigation">
 			<div class="dusk-wizard__step-navigation">
-				{#if backButton?.isAnchor}
-					<AnchorButton
-						{...getButtonProps(backButton, "Back", mdiArrowLeft)}
-						href={backButton?.href ?? "#"}
-					/>
-				{:else}
-					<Button
-						{...getButtonProps(backButton, "Back", mdiArrowLeft)}
-						on:click={handleBack}
-					/>
+				{#if !hideBackButton}
+					{#if backButton?.isAnchor}
+						<AnchorButton
+							{...getButtonProps(backButton, "Back", mdiArrowLeft)}
+							href={backButton?.href ?? "#"}
+						/>
+					{:else}
+						<Button
+							{...getButtonProps(backButton, "Back", mdiArrowLeft)}
+							on:click={handleBack}
+						/>
+					{/if}
 				{/if}
 
 				{#if nextButton?.isAnchor}

@@ -18,6 +18,7 @@ exports[`Create > should render the Terms of Service step of the Create flow 1`]
           <h2>
             Terms & Privacy Policy
           </h2>
+           
         </header>
          
         <div

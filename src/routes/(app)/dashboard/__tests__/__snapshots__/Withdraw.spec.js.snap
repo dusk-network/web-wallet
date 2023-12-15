@@ -378,6 +378,7 @@ exports[`Withdraw > renders the Withdraw Review step component 1`] = `
           
         </button>
         <!--&lt;Button&gt;-->
+        
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled"
@@ -661,6 +662,7 @@ exports[`Withdraw > renders the Withdraw step component 1`] = `
           
         </button>
         <!--&lt;Button&gt;-->
+        
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled"

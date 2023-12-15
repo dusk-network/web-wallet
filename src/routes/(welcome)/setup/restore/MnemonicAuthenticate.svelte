@@ -1,10 +1,7 @@
 <script>
-	import { Card, Mnemonic, Stepper } from "$lib/dusk/components";
+	import { Card, Mnemonic } from "$lib/dusk/components";
 	import { defaultWordsCount, enteredMnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
-	import { onboardingWizardStore } from "$lib/stores";
-	import { onDestroy, onMount } from "svelte";
-
-	$: ({ totalSteps, currentStep } = $onboardingWizardStore);
+	import { onDestroy } from "svelte";
 
 	/**
 	 * @param {String[]} value
@@ -14,7 +11,7 @@
 		const set = new Set(filteredWords);
 
 		if (set.size === defaultWordsCount) {
-			onboardingWizardStore.updateCanGoNext(true);
+			isValid = true;
 		}
 	}
 
@@ -24,17 +21,8 @@
 		unsubscribe();
 	});
 
-	onMount(() => {
-		onboardingWizardStore.updateCanGoNext(false);
-	});
+	export let isValid = false;
 </script>
-
-<h2>
-	Enter<br/>
-	<mark>Mnemonic Phrase</mark>
-</h2>
-
-<Stepper steps={totalSteps} activeStep={currentStep - 1}/>
 
 <Card heading="Enter your Mnemonic Phrase">
 	<div class="flex flex-col gap-1">

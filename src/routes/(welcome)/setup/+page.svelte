@@ -7,10 +7,10 @@
 
 <section class="flex flex-col gap-2">
 	<header>
-		<h2>
+		<h1>
 			Unlocking the Future:<br/>
 			Your <mark>DUSK</mark> native Wallet
-		</h2>
+		</h1>
 	</header>
 
 	<div class="flex flex-col gap-1">
