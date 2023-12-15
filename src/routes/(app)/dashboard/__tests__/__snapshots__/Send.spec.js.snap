@@ -23,7 +23,7 @@ exports[`Send > renders the Send component Address step 1`] = `
           <p
             class="s--bvhT2XkmH9a"
           >
-            Enter/Paste address:
+            Enter address:
           </p>
            
           <div
@@ -380,12 +380,12 @@ exports[`Send > renders the Send component Review step 1`] = `
             class="dusk-status-list__key s--bvhT2XkmH9a"
           >
             <svg
-              class="dusk-icon dusk-icon--size--normal dusk-amount__icon"
+              class="dusk-icon dusk-icon--size--normal"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
               <path
-                d="M0,2.7v18.7C0,22.8,1.2,24,2.7,24H8v-2.7H2.7V2.7h18.7v18.7H16V24h5.3c0.7,0,1.4-0.3,1.9-0.8c0.5-0.5,0.8-1.2,0.8-1.9V2.7c0-0.7-0.3-1.4-0.8-1.9C22.7,0.3,22.1,0,21.3,0H2.7C1.2,0,0,1.2,0,2.7z M16.8,14.6l1.9-1.9L12,6l-6.7,6.7l1.9,1.9l3.5-3.5V24h2.7V11.1L16.8,14.6z"
+                d="M12,7L17,12H14V16H10V12H7L12,7M19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21M19,19V5H5V19H19Z"
               />
             </svg>
             
@@ -404,7 +404,7 @@ exports[`Send > renders the Send component Review step 1`] = `
             <span
               class="s--bvhT2XkmH9a"
             >
-              1
+              1.00
             </span>
              
             <svg
@@ -461,10 +461,10 @@ exports[`Send > renders the Send component Review step 1`] = `
         </dl>
          
         <div
-          class="operation__rewards__review s-viaBXp9UetOS"
+          class="operation__gas-settings s-viaBXp9UetOS"
         >
           <dl
-            class="operation__rewards__edit-gas s-viaBXp9UetOS"
+            class="operation__gas-settings-edit s-viaBXp9UetOS"
           >
             <dt
               class="dusk-status-list__key s-viaBXp9UetOS"
@@ -547,7 +547,7 @@ exports[`Send > renders the Send component Review step 1`] = `
             viewBox="0 0 24 24"
           >
             <path
-              d="M0,2.7v18.7C0,22.8,1.2,24,2.7,24H8v-2.7H2.7V2.7h18.7v18.7H16V24h5.3c0.7,0,1.4-0.3,1.9-0.8c0.5-0.5,0.8-1.2,0.8-1.9V2.7c0-0.7-0.3-1.4-0.8-1.9C22.7,0.3,22.1,0,21.3,0H2.7C1.2,0,0,1.2,0,2.7z M16.8,14.6l1.9-1.9L12,6l-6.7,6.7l1.9,1.9l3.5-3.5V24h2.7V11.1L16.8,14.6z"
+              d="M12,7L17,12H14V16H10V12H7L12,7M19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21M19,19V5H5V19H19Z"
             />
           </svg>
           

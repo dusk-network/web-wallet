@@ -16,7 +16,7 @@
 		className="operation-confirmation__icon"
 		path={mdiCheckDecagramOutline}
 	/>
-	<p>Transaction Completed.</p>
+	<p>Transaction Completed</p>
 </div>
 <AnchorButton
 	href="https://explorer.dusk.network"

@@ -1,6 +1,6 @@
 <script>
 	import { fade } from "svelte/transition";
-	import { logo, receiveWallet } from "$lib/dusk/icons";
+	import { logo } from "$lib/dusk/icons";
 	import {
 		Badge,
 		Button,
@@ -10,7 +10,8 @@
 		Wizard,
 		WizardStep
 	} from "$lib/dusk/components";
-	import { mdiWalletOutline } from "@mdi/js";
+	import { createCurrencyFormatter } from "$lib/dusk/currency";
+	import { mdiArrowUpBoldBoxOutline, mdiWalletOutline } from "@mdi/js";
 	import { balanceStore, operationsStore } from "$lib/stores";
 	import GasSettings from "./GasSettings/GasSettings.svelte";
 	import TransactionComplete from "./TransactionComplete/TransactionComplete.svelte";
@@ -19,11 +20,13 @@
 	/** @type {Status[]} */
 	export let statuses;
 
-	/** @type {Number|undefined} */
+	/** @type {Number} */
 	let amount = 1;
 
 	/** @type {String} */
 	let address = "";
+
+	const duskFormatter = createCurrencyFormatter("en", "DUSK");
 
 	const resetOperationStore = () => {
 		operationsStore.update((store) => ({
@@ -89,7 +92,7 @@
 		>
 			<div in:fade|global class="operation__send">
 				<div class="operation__send-amount operation__space-between">
-					<p>Enter/Paste address:</p>
+					<p>Enter address:</p>
 
 					<ScanQR
 						on:scan={(event) => {
@@ -108,7 +111,7 @@
 			step={2}
 			{key}
 			nextButton={{
-				icon: { path: receiveWallet, position: "before" },
+				icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
 				label: "SEND",
 				variant: "secondary"
 			}}
@@ -122,16 +125,14 @@
 
 				<dl class="operation__review-transaction">
 					<dt class="dusk-status-list__key">
-						<Icon
-							className="dusk-amount__icon"
-							path={receiveWallet}
+						<Icon path={mdiArrowUpBoldBoxOutline}
 						/>
 						<span>Amount:</span>
 					</dt>
 					<dd class="dusk-status-list__value operation__review-amount"
 					>
 						<span>
-							{amount}
+							{duskFormatter(amount)}
 						</span>
 						<Icon
 							className="dusk-amount__icon"
@@ -165,7 +166,8 @@
 <style lang="postcss">
 	.operation {
 		&__review-address {
-			background-color: var(--background-color-alt);
+			background-color: transparent;
+			border: 1px solid var(--primary-color);
 			border-radius: 1.5em;
 			padding: 0.75em 1em;
 			width: 100%;

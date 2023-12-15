@@ -14,8 +14,8 @@
 	let gasSettings = false;
 </script>
 
-<div class="operation__rewards__review">
-	<dl class="operation__rewards__edit-gas">
+<div class="operation__gas-settings">
+	<dl class="operation__gas-settings-edit">
 		<dt class="dusk-status-list__key">
 			<Icon path={mdiGasStationOutline}/>
 			<span>Default Gas Settings</span>
@@ -36,27 +36,27 @@
 		</dd>
 	</dl>
 	{#if gasSettings}
-		<div in:slide|global out:slide|global>
-			<dl class="operation__rewards__review">
+		<div in:slide|global class="operation__gas-settings">
+			<dl class="operation__gas-settings">
 				<dt>
 					<span>Minimum gas:</span>
 				</dt>
 				<dt>
 					<Textbox
-						className="operation__input__field"
+						className="operation__input-field"
 						type="number"
 						bind:value={gas.minimum}
 					/>
 				</dt>
 			</dl>
 
-			<dl class="operation__rewards__review">
+			<dl class="ooperation__gas-settings">
 				<dt>
 					<span>Maximum gas:</span>
 				</dt>
 				<dt>
 					<Textbox
-						className="operation__input__field"
+						className="operation__input-field"
 						type="number"
 						bind:value={gas.maximum}
 					/>
@@ -67,19 +67,19 @@
 </div>
 
 <style lang="postcss">
-	.operation__rewards__review {
+	.operation__gas-settings {
 		display: flex;
 		flex-direction: column;
 		gap: 0.625em;
 	}
 
-	.operation__rewards__edit-gas {
+	.operation__gas-settings-edit {
 		display: flex;
 		flex-direction: row;
 		justify-content: space-between;
 	}
 
-	:global(.operation__rewards__review .operation__input__field) {
+	:global(.operation__gas-settings .operation__input-field) {
 		width: 100%;
 		padding: 0.5em 1em;
 	}

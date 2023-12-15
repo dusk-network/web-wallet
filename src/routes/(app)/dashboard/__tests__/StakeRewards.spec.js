@@ -67,7 +67,7 @@ describe("StakeRewards", () => {
 	it("checks the displayed rewards amount", () => {
 		const { container } = render(StakeRewards, props);
 
-		const value = getAsHTMLElement(container, ".operation__rewards__value span");
+		const value = getAsHTMLElement(container, ".operation__stake-rewards-value span");
 
 		const rewards = statuses.filter((status) => {
 			return status.key.label === "Reward tokens";

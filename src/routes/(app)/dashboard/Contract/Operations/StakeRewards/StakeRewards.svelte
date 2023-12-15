@@ -1,6 +1,7 @@
 <script>
-	import { logo, sendWallet } from "$lib/dusk/icons";
+	import { logo } from "$lib/dusk/icons";
 	import { Icon } from "$lib/dusk/components";
+	import { mdiArrowDownBoldBoxOutline } from "@mdi/js";
 
 	/** @type {Status[]} */
 	export let statuses = [];
@@ -10,12 +11,12 @@
 	});
 </script>
 
-<dl class="operation__rewards__review">
+<dl class="operation__stake-rewards">
 	<dt class="dusk-status-list__key">
-		<Icon className="dusk-rewards__icon" path={sendWallet}/>
+		<Icon path={mdiArrowDownBoldBoxOutline}/>
 		<span>Staking Rewards:</span>
 	</dt>
-	<dd class="dusk-status-list__value operation__rewards__value">
+	<dd class="dusk-status-list__value operation__stake-rewards-value">
 		<span>
 			{rewards.length !== 0 ? rewards[0].value.label : 0}
 		</span>
@@ -30,13 +31,13 @@
 </dl>
 
 <style lang="postcss">
-	.operation__rewards__review {
+	.operation__stake-rewards {
 		display: flex;
 		flex-direction: column;
 		gap: 0.625em;
 	}
 
-	.operation__rewards__value {
+	.operation__stake-rewards-value {
 		justify-content: flex-start;
 	}
 </style>
