@@ -6,6 +6,9 @@
 	/** @type {String} */
 	export let publicSpendKey = "";
 
+	/** @type {Boolean} */
+	export let hideBackButton = false;
+
 	const QR_MIN_WIDTH = 150;
 	const QR_MAX_WIDTH = 520;
 
@@ -35,12 +38,19 @@
 	</figure>
 
 	<div class="receive__buttons">
-		<Button
-			variant="tertiary"
-			on:click={() => operationsStore.update(store => ({ ...store, currentOperation: undefined }))}
-			className="flex-1"
-			icon={{ path: mdiArrowLeft }}
-			text="Back"/>
+		{#if !hideBackButton}
+			<Button
+				variant="tertiary"
+				on:click={() =>
+					operationsStore.update((store) => ({
+						...store,
+						currentOperation: undefined
+					}))}
+				className="flex-1"
+				icon={{ path: mdiArrowLeft }}
+				text="Back"
+			/>
+		{/if}
 		<Button
 			variant="tertiary"
 			on:click={() => navigator.clipboard.writeText(publicSpendKey ?? "")}

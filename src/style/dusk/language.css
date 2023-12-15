@@ -85,4 +85,8 @@
 	/* Dividers */
 
 	--divider-color-primary: var(--taupe-grey);
+
+	/* Footer icon */
+	--footer-icon-color: var(--light-grey);
+
 }
