@@ -1,9 +1,29 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	describe,
+	expect,
+	it,
+	vi
+} from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import "jsdom-worker";
+
 import { logo } from "$lib/dusk/icons";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
+
+import mockedWalletStore from "../__mocks__/mockedWalletStore";
 import Send from "../Contract/Operations/Send.svelte";
-import "jsdom-worker";
+
+vi.mock("$lib/stores", async importOriginal => {
+	/** @type {import("$lib/stores/stores").WalletStore} */
+	const original = await importOriginal();
+
+	return {
+		...original,
+		walletStore: mockedWalletStore
+	};
+});
 
 describe("Send", () => {
 	const statuses = [
@@ -30,6 +50,10 @@ describe("Send", () => {
 
 	afterEach(cleanup);
 
+	afterAll(() => {
+		vi.doUnmock("$lib/stores");
+	});
+
 	it("renders the Send component Amount step", () => {
 		const { container } = render(Send, props);
 
@@ -37,19 +61,15 @@ describe("Send", () => {
 	});
 
 	it("sets the amount to max on click and checks if next button is enabled", async () => {
-		vi.useFakeTimers();
-
 		const { getByRole } = render(Send, props);
 
 		const component = getByRole("button", { name: "USE MAX" });
-
-		vi.advanceTimersByTime(500);
 
 		await fireEvent.click(component);
 
 		const input = getByRole("spinbutton");
 
-		expect(input).toHaveValue(parseFloat(statuses[0].value.label.replace(/,/g, "")));
+		expect(input).toHaveValue(mockedWalletStore.getMockedStoreValue().balance.maximum);
 
 		const next = getByRole("button", { name: "Next" });
 

@@ -2,11 +2,11 @@
 
 <script>
 	import { mdiArrowLeft } from "@mdi/js";
+
 	import { Balance } from "$lib/components";
-	import {
-		AnchorButton
-	} from "$lib/dusk/components";
-	import { balanceStore, settingsStore, transactionsStore } from "$lib/stores";
+	import { AnchorButton } from "$lib/dusk/components";
+	import { settingsStore, transactionsStore, walletStore } from "$lib/stores";
+
 	import Transactions from "../Transactions.svelte";
 
 	/** @type {import('./$types').PageData} */
@@ -15,7 +15,7 @@
 	const { currentPrice } = data;
 	const { currency, language } = $settingsStore;
 
-	$: ({ dusk } = $balanceStore);
+	$: ({ balance } = $walletStore);
 	$: ({ transactions } = $transactionsStore);
 </script>
 
@@ -23,9 +23,9 @@
 	<h2 class="visible-hidden">Transactions</h2>
 
 	<Balance
-		tokens={dusk}
+		tokens={balance.value}
 		tokenCurrency="DUSK"
-		fiat={dusk * currentPrice[currency.toLowerCase()]}
+		fiat={balance.value * currentPrice[currency.toLowerCase()]}
 		fiatCurrency={currency}
 		locale={language}
 	/>

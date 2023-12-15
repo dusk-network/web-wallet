@@ -1,5 +1,5 @@
 type MnemonicEncryptInfo = {
-	data: Uint8Array,
-	iv: Uint8Array,
-	salt: Uint8Array
+	data: Uint8Array;
+	iv: Uint8Array;
+	salt: Uint8Array;
 };

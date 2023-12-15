@@ -1,14 +1,21 @@
 <script>
-	import {
-		Badge, Button, Icon, Textbox, Wizard, WizardStep
-	} from "$lib/dusk/components";
-	import { balanceStore, operationsStore } from "$lib/stores";
+	import { mdiDatabaseArrowDownOutline, mdiDatabaseOutline } from "@mdi/js";
 	import { fade } from "svelte/transition";
+
+	import {
+		Badge,
+		Button,
+		Icon,
+		Textbox,
+		Wizard,
+		WizardStep
+	} from "$lib/dusk/components";
+	import { operationsStore, walletStore } from "$lib/stores";
+
 	import StatusList from "$lib/dusk/components/StatusList/StatusList.svelte";
 	import GasSettings from "./GasSettings/GasSettings.svelte";
 	import StakeOverview from "./StakeOverview/StakeOverview.svelte";
 	import TransactionComplete from "./TransactionComplete/TransactionComplete.svelte";
-	import { mdiDatabaseArrowDownOutline, mdiDatabaseOutline } from "@mdi/js";
 
 	/** @type {Status[]} */
 	export let statuses;
@@ -45,9 +52,9 @@
 						size="small"
 						variant="tertiary"
 						on:click={() => {
-							const { dusk } = $balanceStore;
+							const { balance } = $walletStore;
 
-							stakeAmount = dusk;
+							stakeAmount = balance.maximum;
 						}}
 						text="USE MAX"
 					/>

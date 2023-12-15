@@ -1,8 +1,28 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	describe,
+	expect,
+	it,
+	vi
+} from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import { logo } from "$lib/dusk/icons";
 import { mdiDatabaseOutline, mdiLockOpenVariantOutline, mdiLockOutline } from "@mdi/js";
+
+import { logo } from "$lib/dusk/icons";
+
+import mockedWalletStore from "../__mocks__/mockedWalletStore";
 import Stake from "../Contract/Operations/Stake.svelte";
+
+vi.mock("$lib/stores", async importOriginal => {
+	/** @type {import("$lib/stores/stores").WalletStore} */
+	const original = await importOriginal();
+
+	return {
+		...original,
+		walletStore: mockedWalletStore
+	};
+});
 
 describe("Stake", () => {
 	const statuses = [
@@ -55,6 +75,10 @@ describe("Stake", () => {
 
 	afterEach(cleanup);
 
+	afterAll(() => {
+		vi.doUnmock("$lib/stores");
+	});
+
 	it("renders the Stake component", () => {
 		const { container } = render(Stake, { props: { statuses, flow: "stake" } });
 
@@ -62,18 +86,14 @@ describe("Stake", () => {
 	});
 
 	it("sets the max amount on click", async () => {
-		vi.useFakeTimers();
-
 		const { getByRole } = render(Stake, { props: { statuses, flow: "stake" } });
 
 		const component = getByRole("button", { name: "USE MAX" });
-
-		vi.advanceTimersByTime(500);
 
 		await fireEvent.click(component);
 
 		const input = getByRole("spinbutton");
 
-		expect(input).toHaveValue(parseFloat(statuses[0].value.label.replace(/,/g, "")));
+		expect(input).toHaveValue(mockedWalletStore.getMockedStoreValue().balance.maximum);
 	});
 });

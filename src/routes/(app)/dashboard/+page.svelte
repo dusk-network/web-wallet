@@ -10,15 +10,20 @@
 		mdiLockOutline,
 		mdiSwapVertical
 	} from "@mdi/js";
-	import { logo } from "$lib/dusk/icons";
 	import { fade } from "svelte/transition";
+	import { find, hasKeyValue } from "lamb";
+
+	import { logo } from "$lib/dusk/icons";
 	import { AnchorButton, Tabs } from "$lib/dusk/components";
 	import { Balance } from "$lib/components";
 	import { createCurrencyFormatter } from "$lib/dusk/currency";
 	import {
-		balanceStore, operationsStore, settingsStore, transactionsStore
+		operationsStore,
+		settingsStore,
+		transactionsStore,
+		walletStore
 	} from "$lib/stores";
-	import { find, hasKeyValue } from "lamb";
+
 	import Contract from "./Contract.svelte";
 	import Transactions from "./Transactions.svelte";
 	import KeyPicker from "./KeyPicker.svelte";
@@ -26,7 +31,6 @@
 	/** @type {import('./$types').PageData} */
 	export let data;
 
-	let { currentKey, keys } = data;
 	let selectedTab = "transfer";
 
 	const { currentPrice } = data;
@@ -34,7 +38,7 @@
 	const duskFormatter = createCurrencyFormatter(language, "DUSK");
 	const TRANSACTION_LIMIT = 5;
 
-	$: ({ dusk } = $balanceStore);
+	$: ({ balance, currentKey, keys } = $walletStore);
 	$: ({ currentOperation } = $operationsStore);
 	$: ({ transactions } = $transactionsStore);
 	$: CONTRACTS = [{
@@ -63,7 +67,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				label: duskFormatter(dusk)
+				label: duskFormatter(balance.maximum)
 			}
 		}]
 	}, {
@@ -97,7 +101,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				label: duskFormatter(dusk)
+				label: duskFormatter(0)
 			}
 		}, {
 			key: {
@@ -110,7 +114,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				label: duskFormatter(dusk)
+				label: duskFormatter(0)
 			}
 		}, {
 			key: {
@@ -124,7 +128,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				label: duskFormatter(dusk)
+				label: duskFormatter(0)
 			}
 		}]
 	}];
@@ -135,13 +139,14 @@
 	<h2 class="visible-hidden">Dashboard</h2>
 
 	<KeyPicker
-		bind:keys
-		bind:currentKey/>
+		{keys}
+		{currentKey}
+	/>
 
 	<Balance
-		tokens={dusk}
+		tokens={balance.value}
 		tokenCurrency="DUSK"
-		fiat={dusk * currentPrice[currency.toLowerCase()]}
+		fiat={balance.value * currentPrice[currency.toLowerCase()]}
 		fiatCurrency={currency}
 		locale={language}
 	/>

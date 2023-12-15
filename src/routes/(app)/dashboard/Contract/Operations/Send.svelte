@@ -12,7 +12,7 @@
 	} from "$lib/dusk/components";
 	import { createCurrencyFormatter } from "$lib/dusk/currency";
 	import { mdiArrowUpBoldBoxOutline, mdiWalletOutline } from "@mdi/js";
-	import { balanceStore, operationsStore } from "$lib/stores";
+	import { operationsStore, walletStore } from "$lib/stores";
 	import GasSettings from "./GasSettings/GasSettings.svelte";
 	import TransactionComplete from "./TransactionComplete/TransactionComplete.svelte";
 	import ScanQR from "./ScanQR/ScanQR.svelte";
@@ -57,9 +57,9 @@
 						size="small"
 						variant="tertiary"
 						on:click={() => {
-							const { dusk } = $balanceStore;
+							const { balance } = $walletStore;
 
-							amount = dusk;
+							amount = balance.maximum;
 						}}
 						text="USE MAX"
 					/>
