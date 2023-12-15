@@ -65,18 +65,20 @@
 		}
 
 		&__key, :global(&__qr) {
-			background-color: var(--background-color-alt);
-			border-radius: 2em;
+			border-radius: 1.5em;
 			width: 100%;
 		}
 
 		&__key {
 			line-break: anywhere;
-			padding: 0.5em 1em;
+			padding: 0.75em 1em;
+			background-color: transparent;
+			border: 1px solid var(--primary-color);
 		}
 
 		:global(&__qr) {
 			padding: 0.625em;
+			background-color: var(--background-color-alt);
 		}
 
 		&__buttons {
