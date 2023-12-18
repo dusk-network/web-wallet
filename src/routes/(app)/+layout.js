@@ -1,6 +1,8 @@
 import { redirect } from "@sveltejs/kit";
 import { get } from "svelte/store";
 
+import "$lib/dusk/polyfill/asyncIterator";
+
 import walletStore from "$lib/stores/walletStore";
 
 /** @type {import("./$types").LayoutLoad} */
