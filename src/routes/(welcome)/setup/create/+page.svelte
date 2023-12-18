@@ -57,10 +57,10 @@
 			}}
 			nextButton={{ disabled: !agreementAccepted }}
 		>
-			<h1 slot="heading">
+			<h2 class="h1" slot="heading">
 				Backup<br/>
 				<mark>Mnemonic Phrase</mark>
-			</h1>
+			</h2>
 			<MnemonicPreSetup bind:isValid={agreementAccepted}/>
 		</WizardStep>
 		<!--  BACKUP MNEMONIC -->
@@ -69,10 +69,10 @@
 			{key}
 			showStepper={true}
 		>
-			<h1 slot="heading">
+			<h2 class="h1" slot="heading">
 				Backup<br/>
 				<mark>Mnemonic Phrase</mark>
-			</h1>
+			</h2>
 			<MnemonicPhrase/>
 		</WizardStep>
 		<!--  VALIDATE MNEMONIC -->
@@ -81,10 +81,10 @@
 			{key}
 			showStepper={true}
 			nextButton={{ disabled: !validMnemonic }}>
-			<h1 slot="heading">
+			<h2 class="h1" slot="heading">
 				Backup<br/>
 				<mark>Mnemonic Phrase</mark>
-			</h1>
+			</h2>
 			<ValidateMnemonic bind:isValid={validMnemonic}/>
 		</WizardStep>
 		<!--  PASSWORD -->
@@ -99,10 +99,10 @@
 				disabled: !validPassword
 			}}
 		>
-			<h1 slot="heading">
+			<h2 class="h1" slot="heading">
 				<mark>Password</mark><br/>
 				Setup
-			</h1>
+			</h2>
 			<Password bind:password bind:isValid={validPassword}/>
 		</WizardStep>
 		<!--  SWAP DUSK -->
@@ -110,10 +110,10 @@
 			step={4}
 			{key}
 			showStepper={true}>
-			<h1 slot="heading">
+			<h2 class="h1" slot="heading">
 				Swap ERC20<br/>
 				to <mark>Native Dusk</mark>
-			</h1>
+			</h2>
 			<SwapNDUSK/>
 		</WizardStep>
 		<!--  ALL DONE -->
@@ -128,10 +128,10 @@
 					await goto("/dashboard");
 				}
 			}}>
-			<h1 slot="heading">
+			<h2 class="h1" slot="heading">
 				Welcome to<br/>
 				<mark>Dusk</mark>
-			</h1>
+			</h2>
 			<AllSet/>
 		</WizardStep>
 	</Wizard>

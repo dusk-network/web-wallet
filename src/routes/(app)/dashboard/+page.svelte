@@ -4,11 +4,9 @@
 	import {
 		mdiArrowDownBoldBoxOutline,
 		mdiArrowUpBoldBoxOutline,
-		mdiCheckCircleOutline,
 		mdiDatabaseArrowDownOutline,
 		mdiDatabaseOutline,
 		mdiEyeOffOutline,
-		mdiLockOutline,
 		mdiSwapVertical
 	} from "@mdi/js";
 	import { fade } from "svelte/transition";
@@ -59,9 +57,6 @@
 		}],
 		statuses: [{
 			key: {
-				icon: {
-					path: mdiCheckCircleOutline
-				},
 				label: "Spendable"
 
 			}, value: {
@@ -93,11 +88,7 @@
 		}],
 		statuses: [{
 			key: {
-				icon: {
-					path: mdiCheckCircleOutline
-				},
 				label: "Spendable"
-
 			}, value: {
 				icon: {
 					label: "DUSK",
@@ -107,9 +98,6 @@
 			}
 		}, {
 			key: {
-				icon: {
-					path: mdiLockOutline
-				},
 				label: "Total Locked"
 			}, value: {
 				icon: {
@@ -120,9 +108,6 @@
 			}
 		}, {
 			key: {
-				icon: {
-					path: mdiDatabaseOutline
-				},
 				label: "Rewards"
 			},
 			value: {

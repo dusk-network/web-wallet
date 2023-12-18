@@ -31,12 +31,15 @@
 	--mono-font-family: "Soehne Mono", monospace;
 
 	/* Layout */
+
 	--small-gap: 0.5em;
 	--default-gap: 1em;
 	--large-gap: 2em;
 
 	/* Grid */
+
 	--mobile-grid-template-columns: 1fr;
+	--tablet-grid-template-columns: 1fr 1fr;
 	--desktop-grid-template-columns: 1fr 1fr 1fr;
 
 	/* Controls */
@@ -71,11 +74,13 @@
 	--control-tertiary-text-color-hover: var(--granite-grey);
 
 	/* Progress-related components (Stepper, Progress Bar, etc */
+
 	--progress-bar-height: .3125em;
 	--progress-bg-color: var(--primary-color);
 	--progress-filler-color: var(--success-color);
 
 	/* Checkbox control */
+
 	--checkbox-control-size: 1.2em;
 	--checkbox-control-border-radius: 20%;
 	--checkbox-control-border-width: .20em;
@@ -85,8 +90,12 @@
 	/* Dividers */
 
 	--divider-color-primary: var(--taupe-grey);
+    
+    /* Footer icon */
+    --footer-icon-color: var(--light-grey);
 
-	/* Footer icon */
-	--footer-icon-color: var(--light-grey);
+	/* Home animation */
 
+	--home-box-color: var(--silver-metallic);
+	--home-grid-color: var(--light-gray);
 }

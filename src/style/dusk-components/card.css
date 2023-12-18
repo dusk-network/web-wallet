@@ -11,8 +11,12 @@
 
 .dusk-card__header {
 	display: flex;
-	margin-bottom: .5em;
+	margin-bottom: 1.25em;
 	align-items: center;
+
+	& > * {
+		line-height: 150%;
+	}
 }
 
 .dusk-card__header--toggle-off {

@@ -47,10 +47,10 @@
 				isAnchor: true
 			}}
 			nextButton={{ disabled: !validMnemonic }}>
-			<h1 slot="heading">
+			<h2 class="h1" slot="heading">
 				Enter<br/>
 				<mark>Mnemonic Phrase</mark>
-			</h1>
+			</h2>
 			<MnemonicAuthenticate bind:isValid={validMnemonic}/>
 		</WizardStep>
 		<WizardStep
@@ -64,10 +64,10 @@
 				disabled: !validPassword
 			}}
 		>
-			<h1 slot="heading">
+			<h2 class="h1" slot="heading">
 				<mark>Password</mark><br/>
 				Setup
-			</h1>
+			</h2>
 			<Password bind:password bind:isValid={validPassword}/>
 		</WizardStep>
 		<WizardStep
@@ -81,10 +81,10 @@
 					await goto("/dashboard");
 				}
 			}}>
-			<h1 slot="heading">
+			<h2 class="h1" slot="heading">
 				Welcome to<br/>
 				<mark>Dusk</mark>
-			</h1>
+			</h2>
 			<AllSet/>
 		</WizardStep>
 	</Wizard>

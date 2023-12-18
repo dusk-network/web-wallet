@@ -20,6 +20,16 @@
 	margin-top: 1em;
 }
 
+@media (min-width: 600px) {
+	.dusk-mnemonic__validate_actions_wrapper {
+		grid-template-columns: var(--tablet-grid-template-columns);
+	}
+
+	.dusk-mnemonic__predictions_wrapper {
+		grid-auto-flow: column;
+	}
+}
+
 @media (min-width: 800px) {
 	.dusk-mnemonic__validate_actions_wrapper {
 		grid-template-columns: var(--desktop-grid-template-columns);
