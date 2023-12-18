@@ -49,7 +49,7 @@
 
 <section>
 	<header>
-		<h1>COMPONENTS SHOWCASE</h1>
+		<h2>COMPONENTS SHOWCASE</h2>
 		<Select options={componentsOptions} bind:value={selectedSection}/>
 	</header>
 

@@ -3,6 +3,9 @@
 	import Switch from "../Switch/Switch.svelte";
 	import { makeClassName } from "$lib/dusk/string";
 
+	/** @type {string} */
+	export let tag = "div";
+
 	/** @type {string | Undefined} */
 	export let className = undefined;
 
@@ -18,14 +21,14 @@
 	$: classes = makeClassName(["dusk-card", className]);
 </script>
 
-<section {...$$restProps} class={classes}>
+<svelte:element this={tag} {...$$restProps} class={classes}>
 	<header
 		class="dusk-card__header"
 		class:dusk-card__header--toggle-off={hasToggle && !isToggled}>
 		{#if iconPath}
-			<Icon className="dusk-card__icon" path={iconPath} size="large"/>
+			<Icon className="dusk-card__icon" path={iconPath}/>
 		{/if}
-		<h2>{heading}</h2>
+		<h3 class="h4">{heading}</h3>
 		{#if hasToggle}
 			<Switch onSurface bind:value={isToggled}/>
 		{/if}
@@ -33,4 +36,4 @@
 	{#if !hasToggle || isToggled}
 		<slot/>
 	{/if}
-</section>
+</svelte:element>

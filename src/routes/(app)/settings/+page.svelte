@@ -3,9 +3,7 @@
 <script>
 	import {
 		mdiApplicationCogOutline,
-		mdiArrowLeft,
 		mdiCheckNetworkOutline,
-		mdiFileDownloadOutline,
 		mdiGasStationOutline,
 		mdiRestoreAlert,
 		mdiWalletOutline
@@ -39,7 +37,7 @@
 			<header class="settings-group__header settings-group__header--network">
 				<div class="settings-group__header">
 					<Icon path={mdiCheckNetworkOutline}/>
-					<h3 class="h4 settings-group__heading">Network Status</h3>
+					<h3 class="h4 settings-group__heading">Network</h3>
 				</div>
 				<Badge variant="success" text="Online"/>
 			</header>
@@ -68,19 +66,17 @@
 
 			<div class="settings-group__multi-control-content">
 				<div class="settings-group__control settings-group__control--with-label">
-					<span>Wallet Recovery File</span>
+					<span>Recovery file</span>
 					<Button
 						on:click={() => { return true; }}
-						icon={{ path: mdiFileDownloadOutline }}
 						text="Export"
 						variant="secondary"
 					/>
 				</div>
 				<div class="settings-group__control settings-group__control--with-label">
-					<span>Key Pair File</span>
+					<span>Key-Pair file</span>
 					<Button
 						on:click={() => { return true; }}
-						icon={{ path: mdiFileDownloadOutline }}
 						text="Export"
 						variant="secondary"
 					/>
@@ -91,15 +87,15 @@
 		<article class="settings-group">
 			<header class="settings-group__header">
 				<Icon path={mdiGasStationOutline}/>
-				<h3 class="h4 settings-group__heading">Gas Settings</h3>
+				<h3 class="h4 settings-group__heading">Gas</h3>
 			</header>
 			<div class="settings-group__multi-control-content">
 				<label for={undefined} class="settings-group__control settings-group__control--with-label">
-					<span>Minimum gas</span>
+					<span>Minimum</span>
 					<Textbox placeholder="minimum gas value" type="number" min="0"/>
 				</label>
 				<label for={undefined} class="settings-group__control settings-group__control--with-label">
-					<span>Maximum gas</span>
+					<span>Maximum</span>
 					<Textbox placeholder="maximum gas value" type="number" min="0"/>
 				</label>
 			</div>
@@ -112,8 +108,9 @@
 			</header>
 			<div class="settings-group__multi-control-content">
 				<label class="settings-group__control settings-group__control--switch" for={undefined}>
-					<span>Dark Mode</span>
+					<span>Dark mode</span>
 					<Switch
+						disabled={true}
 						bind:value={isDarkMode}
 						on:change={() => {
 							settingsStore.update(store => {
@@ -125,7 +122,7 @@
 					/>
 				</label>
 				<label class="settings-group__control settings-group__control--with-label" for={undefined}>
-					<span>Default currency</span>
+					<span>Currency</span>
 					<Select
 						className="settings-group__control settings-group__control--with-label"
 						value={currency}
@@ -148,7 +145,7 @@
 		<article class="settings-group">
 			<header class="settings-group__header">
 				<Icon path={mdiRestoreAlert}/>
-				<h3 class="h4 settings-group__heading">Initialize Wallet</h3>
+				<h3 class="h4 settings-group__heading">Dangerzone</h3>
 			</header>
 			<Button
 				className="settings-group__button--state--danger"
@@ -163,7 +160,6 @@
 <div class="settings-actions">
 	<AnchorButton
 		href="/dashboard"
-		icon={{ path: mdiArrowLeft }}
 		variant="tertiary"
 		text="Back"/>
 	<Button variant="tertiary" text="Log out"/>

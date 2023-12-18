@@ -2,34 +2,37 @@
 
 exports[`Card > renders the Card component with a heading 1`] = `
 <div>
-  <section
+  <div
     class="dusk-card"
   >
     <header
       class="dusk-card__header"
     >
        
-      <h2>
+      <h3
+        class="h4"
+      >
         My Card
-      </h2>
+      </h3>
        
     </header>
      
-  </section>
+  </div>
+  
   <!--&lt;Card&gt;-->
 </div>
 `;
 
 exports[`Card > renders the the Card component with an icon when iconPath is provided 1`] = `
 <div>
-  <section
+  <div
     class="dusk-card"
   >
     <header
       class="dusk-card__header"
     >
       <svg
-        class="dusk-icon dusk-icon--size--large dusk-card__icon"
+        class="dusk-icon dusk-icon--size--normal dusk-card__icon"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -40,13 +43,16 @@ exports[`Card > renders the the Card component with an icon when iconPath is pro
       
       <!--&lt;Icon&gt;-->
        
-      <h2>
+      <h3
+        class="h4"
+      >
         My Card
-      </h2>
+      </h3>
        
     </header>
      
-  </section>
+  </div>
+  
   <!--&lt;Card&gt;-->
 </div>
 `;

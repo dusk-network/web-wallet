@@ -97,6 +97,7 @@
 			: "dusk-mnemonic__validate_actions_wrapper"}>
 		{#if type === "authenticate" && mnemonicContains("")}
 			<Textbox
+				placeholder={`Enter word ${currentIndex + 1}`}
 				bind:this={textboxElement}
 				on:keydown={handleKeyDownOnAuthenticateTextbox}
 				maxlength={8}

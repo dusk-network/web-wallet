@@ -7,7 +7,7 @@
 </script>
 
 <section class="error-message">
-	<h1>Error - {status}</h1>
+	<h2>Error - {status}</h2>
 	<p>{error?.message ?? ""}</p>
 </section>
 

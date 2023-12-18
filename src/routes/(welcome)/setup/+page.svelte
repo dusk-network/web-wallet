@@ -1,30 +1,74 @@
 <svelte:options immutable={true}/>
 
 <script>
-	import { AnchorButton } from "$lib/dusk/components";
-	import { mdiKeyOutline, mdiWalletOutline } from "@mdi/js";
+	import "css-doodle";
+	import Animation from "./Animation.svelte";
+	import {
+		AnchorButton
+	} from "$lib/dusk/components";
+	import {
+		mdiKeyOutline, mdiRestore, mdiWalletOutline
+	} from "@mdi/js";
 </script>
 
-<section class="flex flex-col gap-2">
-	<header>
-		<h1>
-			Unlocking the Future:<br/>
-			Your <mark>DUSK</mark> native Wallet
-		</h1>
-	</header>
+<section class="setup-content">
+	<Animation/>
+	<div class="setup-content__wrapper">
+		<h2 class="h1 setup-heading">
+			Unlocking the Future: <br/>
+			Your <mark>DUSK</mark> Native Wallet
+		</h2>
 
-	<div class="flex flex-col gap-1">
-		<AnchorButton
-			icon={{ path: mdiWalletOutline }}
-			href="/setup/create"
-			text="Create a new wallet"
-			variant="secondary"
-		/>
-		<AnchorButton
-			href="/setup/restore"
-			icon={{ path: mdiKeyOutline }}
-			text="Restore wallet"
-			variant="tertiary"
-		/>
+		<div class="setup-content__options">
+			<div class="setup-content__options-group">
+				<AnchorButton
+					href="/setup/create"
+					variant="primary"
+					text="Create new wallet"
+					icon={{ path: mdiWalletOutline }}/>
+				<AnchorButton
+					href="/setup/restore/"
+					variant="tertiary"
+					text="Restore Wallet"
+					icon={{ path: mdiRestore }}/>
+			</div>
+			<AnchorButton
+				href="/login"
+				variant="secondary"
+				text="Access wallet"
+				icon={{ path: mdiKeyOutline }}/>
+		</div>
 	</div>
 </section>
+
+<style lang="postcss">
+	.setup-content {
+		position: relative;
+		height: 100vh;
+
+		&__wrapper {
+			display: flex;
+			flex-direction: column;
+			gap: var(--large-gap);
+			position: absolute;
+			height: 100%;
+		}
+
+		&__options {
+			display: flex;
+			flex-direction: column;
+			justify-content: space-between;
+			height: 100%;
+
+			&-group {
+				display: flex;
+				flex-direction: column;
+				gap: var(--default-gap);
+			}
+		}
+	}
+
+	.setup-heading {
+		position: relative;
+	}
+</style>

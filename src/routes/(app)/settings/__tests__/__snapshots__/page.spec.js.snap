@@ -46,7 +46,7 @@ exports[`Settings > should render the settings page 1`] = `
             <h3
               class="h4 settings-group__heading s-EBshooXNO1eQ"
             >
-              Network Status
+              Network
             </h3>
           </div>
            
@@ -117,31 +117,18 @@ exports[`Settings > should render the settings page 1`] = `
             <span
               class="s-EBshooXNO1eQ"
             >
-              Wallet Recovery File
+              Recovery file
             </span>
              
             <button
-              class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled"
+              class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal"
               type="button"
             >
-              <svg
-                class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-                role="graphics-symbol"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M14,2L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H14M18,20V9H13V4H6V20H18M12,19L8,15H10.5V12H13.5V15H16L12,19Z"
-                />
-              </svg>
-              
-              <!--&lt;Icon&gt;-->
-               
               <span
                 class="dusk-button__text"
               >
                 Export
               </span>
-              
             </button>
             <!--&lt;Button&gt;-->
           </div>
@@ -152,31 +139,18 @@ exports[`Settings > should render the settings page 1`] = `
             <span
               class="s-EBshooXNO1eQ"
             >
-              Key Pair File
+              Key-Pair file
             </span>
              
             <button
-              class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled"
+              class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal"
               type="button"
             >
-              <svg
-                class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-                role="graphics-symbol"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M14,2L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H14M18,20V9H13V4H6V20H18M12,19L8,15H10.5V12H13.5V15H16L12,19Z"
-                />
-              </svg>
-              
-              <!--&lt;Icon&gt;-->
-               
               <span
                 class="dusk-button__text"
               >
                 Export
               </span>
-              
             </button>
             <!--&lt;Button&gt;-->
           </div>
@@ -208,7 +182,7 @@ exports[`Settings > should render the settings page 1`] = `
           <h3
             class="h4 settings-group__heading s-EBshooXNO1eQ"
           >
-            Gas Settings
+            Gas
           </h3>
         </header>
          
@@ -221,7 +195,7 @@ exports[`Settings > should render the settings page 1`] = `
             <span
               class="s-EBshooXNO1eQ"
             >
-              Minimum gas
+              Minimum
             </span>
              
             <input
@@ -240,7 +214,7 @@ exports[`Settings > should render the settings page 1`] = `
             <span
               class="s-EBshooXNO1eQ"
             >
-              Maximum gas
+              Maximum
             </span>
              
             <input
@@ -293,15 +267,15 @@ exports[`Settings > should render the settings page 1`] = `
             <span
               class="s-EBshooXNO1eQ"
             >
-              Dark Mode
+              Dark mode
             </span>
              
             <div
               aria-checked="false"
-              aria-disabled="false"
+              aria-disabled="true"
               class="dusk-switch"
               role="switch"
-              tabindex="0"
+              tabindex="-1"
             />
             <!--&lt;Switch&gt;-->
           </label>
@@ -312,7 +286,7 @@ exports[`Settings > should render the settings page 1`] = `
             <span
               class="s-EBshooXNO1eQ"
             >
-              Default currency
+              Currency
             </span>
              
             <select
@@ -621,7 +595,7 @@ exports[`Settings > should render the settings page 1`] = `
           <h3
             class="h4 settings-group__heading s-EBshooXNO1eQ"
           >
-            Initialize Wallet
+            Dangerzone
           </h3>
         </header>
          
@@ -645,27 +619,14 @@ exports[`Settings > should render the settings page 1`] = `
   >
     <a
       aria-disabled="false"
-      class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--normal dusk-icon-button-labeled"
+      class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--normal"
       href="/dashboard"
     >
-      <svg
-        class="dusk-icon dusk-icon--size--normal dusk-anchor-button__icon"
-        role="graphics-symbol"
-        viewBox="0 0 24 24"
-      >
-        <path
-          d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
-        />
-      </svg>
-      
-      <!--&lt;Icon&gt;-->
-       
       <span
         class="dusk-anchor-button__text"
       >
         Back
       </span>
-      
       
     </a>
     <!--&lt;Anchor&gt;-->

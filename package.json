@@ -38,6 +38,7 @@
 		"@floating-ui/dom": "1.5.3",
 		"@mdi/js": "7.3.67",
 		"bip39": "3.1.0",
+		"css-doodle": "0.37.4",
 		"lamb": "0.61.1",
 		"qr-scanner": "1.4.2",
 		"qrcode": "1.5.3",

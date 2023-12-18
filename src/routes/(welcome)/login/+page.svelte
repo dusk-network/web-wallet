@@ -2,12 +2,11 @@
 
 <script>
 	import {
-		Anchor, AnchorButton, Button, Card, Textbox
+		AnchorButton, Button, Card, Textbox
 	} from "$lib/dusk/components";
-	import { mdiKeyOutline } from "@mdi/js";
+	import { mdiArrowLeft, mdiFileKeyOutline, mdiKeyOutline } from "@mdi/js";
 	import { goto } from "$app/navigation";
 	import { validateMnemonic } from "bip39";
-
 	import { decryptMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 	import { getWallet } from "$lib/services/wallet";
 	import { walletStore } from "$lib/stores";
@@ -29,9 +28,7 @@
 
 	/** @type {Textbox} */
 	let fldSecret;
-
 	let secretText = "";
-
 	let errorMessage = "";
 
 	/** @type {import("svelte/elements").FormEventHandler<HTMLFormElement>} */
@@ -54,48 +51,63 @@
 	}
 </script>
 
-<section class="login-content">
-	<h1>
+<section class="login">
+	<h2 class="h1">
 		Unleash <mark>RWA</mark> and<br/>
 		<mark>Decentralized Finance</mark>
-	</h1>
-
-	<Card iconPath={mdiKeyOutline} heading={modeLabel}>
-		<form
-			class="login-content__form"
-			on:submit|preventDefault={handleUnlockWalletSubmit}
-		>
-			<Textbox
-				bind:this={fldSecret}
-				bind:value={secretText}
-				name="secret"
-				placeholder={modeLabel}
-				required
-				type="password"
-			/>
-			{#if errorMessage}
-				<span class="login-content__error">{errorMessage}</span>
-			{/if}
-			<Button variant="secondary" text="Unlock Wallet" type="submit"/>
-			{#if modeLabel === "Password"}
-				<AnchorButton variant="text" href="/setup/restore" text="Forgot Password?"/>
-			{/if}
-		</form>
-	</Card>
+	</h2>
+	<div class="login">
+		<Card tag="article" iconPath={mdiKeyOutline} heading={modeLabel}>
+			<form
+				class="login__form"
+				on:submit|preventDefault={handleUnlockWalletSubmit}
+			>
+				<Textbox
+					bind:this={fldSecret}
+					bind:value={secretText}
+					name="secret"
+					placeholder={modeLabel}
+					required
+					type="password"
+				/>
+				{#if errorMessage}
+					<span class="login__error">{errorMessage}</span>
+				{/if}
+				<Button variant="secondary" text="Unlock Wallet" type="submit"/>
+				{#if modeLabel === "Password"}
+					<AnchorButton variant="text" href="/setup/restore" text="Forgot Password?"/>
+				{/if}
+			</form>
+		</Card>
+		<Card tag="article" heading="Upload DAT file" iconPath={mdiFileKeyOutline}>
+			<Button
+				className="alt-login"
+				variant="tertiary"
+				text="Choose file"
+				disabled={true}/>
+		</Card>
+	</div>
+	<footer class="login-footer">
+		<AnchorButton
+			href="/setup"
+			variant="tertiary"
+			icon={{ path: mdiArrowLeft }}
+			text="Back"
+		/>
+	</footer>
 </section>
 
-<footer class="login-footer">
-	<p>Need help? Contact <Anchor href="#">DUSK support</Anchor></p>
-</footer>
-
 <style lang="postcss">
-	.login-content,
-	.login-content__form {
+	.login,
+	.login-footer,
+	.login__form {
 		display: flex;
 		flex-direction: column;
 	}
 
-	.login-content {
+	.login {
+		height: 100%;
+		overflow-y: auto;
 		gap: var(--large-gap);
 
 		&__form {
@@ -108,6 +120,10 @@
 	}
 
 	.login-footer {
-		margin-top: auto;
+		gap: var(--default-gap);
+	}
+
+	:global(.alt-login) {
+		width: 100%;
 	}
 </style>

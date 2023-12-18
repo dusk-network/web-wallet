@@ -29,7 +29,7 @@ describe("App layout.js", () => {
 		await expect(load()).rejects.toThrow();
 
 		expect(redirectSpy).toHaveBeenCalledTimes(1);
-		expect(redirectSpy).toHaveBeenCalledWith(307, "/login");
+		expect(redirectSpy).toHaveBeenCalledWith(307, "/setup");
 	});
 
 	it("should do nothing otherwise", async () => {
