@@ -96,3 +96,7 @@ VITE_LOCAL_NODE="https://localhost:5173/rusk/"
 ```
 
 The Vite dev server will act as a proxy, so the node will appear to the browser as running on HTTPS and on the same origin, without requiring CORS headers.
+
+With the local node you can use the following mnemonic to test an account with some Dusk on it:
+
+`auction tribe type torch domain caution lyrics mouse alert fabric snake ticket`

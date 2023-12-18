@@ -17,11 +17,12 @@
 	const getSeedFromMnemonicAsync = async mnemonic => (
 		validateMnemonic(mnemonic)
 			? getSeedFromMnemonic(mnemonic)
-			: Promise.reject("Invalid mnemonic")
+			: Promise.reject(new Error("Invalid mnemonic"))
 	);
 
 	/** @type {(loginInfo: MnemonicEncryptInfo) => (pwd: string) => Promise<Uint8Array>} */
-	const getSeedFromInfo = loginInfo => pwd => decryptMnemonic(loginInfo, pwd).then(getSeedFromMnemonic);
+	const getSeedFromInfo = loginInfo => pwd => decryptMnemonic(loginInfo, pwd)
+		.then(getSeedFromMnemonic, () => Promise.reject(new Error("Wrong password")));
 
 	const loginInfo = loginInfoStorage.get();
 	const modeLabel = loginInfo ? "Password" : "Mnemonic phrase";
@@ -45,8 +46,8 @@
 			.then(() => {
 				goto("/dashboard");
 			})
-			.catch(() => {
-				errorMessage = `Wrong ${modeLabel.toLowerCase()}`;
+			.catch(err => {
+				errorMessage = err.message;
 				fldSecret.focus();
 				fldSecret.select();
 			});

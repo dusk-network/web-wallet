@@ -65,7 +65,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
         class="dusk-balance__dusk"
       >
         <strong>
-          0.00
+          2,345.00
         </strong>
          
         <svg
@@ -89,7 +89,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
       >
         <strong>
           (
-          $0.00
+          $1,172.50
           )
         </strong>
       </p>
@@ -263,7 +263,7 @@ exports[`Dashboard > should render the dashboard page 1`] = `
                   class="dusk-status-list__value dusk-status"
                 >
                   <span>
-                    0.00
+                    50,000.00
                   </span>
                    
                   <svg

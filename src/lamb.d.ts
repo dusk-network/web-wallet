@@ -467,6 +467,14 @@ declare module "lamb" {
 		Fns extends Array<(...args: Args) => T>,
 	> (functions: Fns): (...args: Args) => T[];
 
+	function invokeOn<
+		TG extends Object
+	> (target: TG): <M extends string>(method: M, ...args: any[]) => M extends keyof TG
+		? TG[M] extends AnyFunction
+			? ReturnType<TG[M]>
+			: never
+		: undefined;
+
 	function pipe (functions: []): <Args extends any[]>(...args: Args) => Args["length"] extends 0 ? undefined : typeof args[0];
 	function pipe<
 		Fns extends AnyFunction[],
