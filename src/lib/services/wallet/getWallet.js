@@ -13,6 +13,6 @@ import { Wallet } from "@dusk-network/dusk-wallet-js";
  * @returns {Promise<Wallet>}
  */
 const getWallet = (seed, gasLimit, gasPrice) => getWasmExports()
-	.then(exports => new Wallet(exports, seed, gasLimit, gasPrice));
+	.then(exports => new Wallet(exports, Array.from(seed), gasLimit, gasPrice));
 
 export default getWallet;
