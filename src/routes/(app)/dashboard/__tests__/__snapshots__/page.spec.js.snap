@@ -50,356 +50,360 @@ exports[`Dashboard > should render the dashboard page 1`] = `
     </div>
     <!--&lt;KeyPicker&gt;-->
      
-    <article
-      class="dusk-balance"
+    <div
+      class="attention s-qpUp5WgwgSGx"
     >
-      <header
-        class="dusk-balance__header"
+      <article
+        class="dusk-balance attention__balance"
       >
-        <h2>
-          Your Balance:
-        </h2>
-      </header>
-       
-      <p
-        class="dusk-balance__dusk"
-      >
-        <strong>
-          2,345.00
-        </strong>
-         
-        <svg
-          class="dusk-icon dusk-icon--size--normal dusk-balance__icon"
-          data-tooltip-id="balance-tooltip"
-          data-tooltip-place="right"
-          data-tooltip-text="DUSK"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
+        <header
+          class="dusk-balance__header"
         >
-          <path
-            d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-          />
-        </svg>
-        
-        <!--&lt;Icon&gt;-->
-      </p>
+          <h2>
+            Your Balance:
+          </h2>
+        </header>
+         
+        <p
+          class="dusk-balance__dusk"
+        >
+          <strong>
+            2,345.00
+          </strong>
+           
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-balance__icon"
+            data-tooltip-id="balance-tooltip"
+            data-tooltip-place="right"
+            data-tooltip-text="DUSK"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+        </p>
+         
+        <p
+          class="dusk-balance__fiat"
+        >
+          <strong>
+            (
+            $1,172.50
+            )
+          </strong>
+        </p>
+         
+         
+        <div
+          aria-hidden="true"
+          class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
+          id="balance-tooltip"
+          role="tooltip"
+          style="left: 0px; top: 0px;"
+        >
+          
+        </div>
+        <!--&lt;Tooltip&gt;-->
+      </article>
+      <!--&lt;Balance&gt;-->
        
-      <p
-        class="dusk-balance__fiat"
+      <article
+        class="tabs s-qpUp5WgwgSGx"
       >
-        <strong>
-          (
-          $1,172.50
-          )
-        </strong>
-      </p>
+        <div
+          class="dusk-tabs"
+        >
+          <button
+            class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button dusk-tab-scroll-button"
+            disabled=""
+            hidden="true"
+            tabindex="-1"
+            type="button"
+          >
+            <svg
+              class="dusk-icon dusk-icon--size--normal dusk-button__icon"
+              role="graphics-symbol"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"
+              />
+            </svg>
+            
+            <!--&lt;Icon&gt;-->
+             
+            
+          </button>
+          <!--&lt;Button&gt;-->
+           
+          <ul
+            class="dusk-tabs-list"
+            role="tablist"
+          >
+            <li
+              aria-selected="true"
+              class="dusk-tab-item dusk-tab-item__selected"
+              data-tabid="transfer"
+              role="tab"
+              tabindex="0"
+            >
+              <svg
+                class="dusk-icon dusk-icon--size--normal"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M9,3L5,7H8V14H10V7H13M16,17V10H14V17H11L15,21L19,17H16Z"
+                />
+              </svg>
+              
+              <!--&lt;Icon&gt;-->
+               
+              <span
+                class="dusk-tab-label"
+              >
+                Transact
+              </span>
+              
+               
+            </li>
+            <li
+              aria-selected="false"
+              class="dusk-tab-item"
+              data-tabid="staking"
+              role="tab"
+              tabindex="0"
+            >
+              <svg
+                class="dusk-icon dusk-icon--size--normal"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
+                />
+              </svg>
+              
+              <!--&lt;Icon&gt;-->
+               
+              <span
+                class="dusk-tab-label"
+              >
+                Stake
+              </span>
+              
+               
+            </li>
+          </ul>
+           
+          <button
+            class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button dusk-tab-scroll-button"
+            disabled=""
+            hidden="true"
+            tabindex="-1"
+            type="button"
+          >
+            <svg
+              class="dusk-icon dusk-icon--size--normal dusk-button__icon"
+              role="graphics-symbol"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"
+              />
+            </svg>
+            
+            <!--&lt;Icon&gt;-->
+             
+            
+          </button>
+          <!--&lt;Button&gt;-->
+        </div>
+        <!--&lt;Tabs&gt;-->
+         
+        <div
+          class="tabs__panel s-qpUp5WgwgSGx tabs__panel--first"
+        >
+          <div
+            class="tabs__contract s-qpUp5WgwgSGx"
+          >
+            <div
+              class="contract"
+            >
+              <div
+                class="operations"
+              >
+                <dl
+                  class="dusk-status-list"
+                >
+                  <dt
+                    class="dusk-status-list__key dusk-status"
+                  >
+                     
+                    <span>
+                      Spendable
+                    </span>
+                  </dt>
+                   
+                  <dd
+                    class="dusk-status-list__value dusk-status"
+                  >
+                    <span>
+                      50,000.00
+                    </span>
+                     
+                    <svg
+                      class="dusk-icon dusk-icon--size--normal dusk-status__icon"
+                      data-tooltip-id="status-tooltip"
+                      data-tooltip-place="top"
+                      data-tooltip-text="DUSK"
+                      role="graphics-symbol"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+                      />
+                    </svg>
+                    
+                    <!--&lt;Icon&gt;-->
+                  </dd>
+                   
+                   
+                  <div
+                    aria-hidden="true"
+                    class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
+                    id="status-tooltip"
+                    role="tooltip"
+                    style="left: 0px; top: 0px;"
+                  >
+                    
+                  </div>
+                  <!--&lt;Tooltip&gt;-->
+                  <!--&lt;Statuses&gt;-->
+                </dl>
+                <!--&lt;StatusList&gt;-->
+                 
+                
+                <button
+                  class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled operations__operation"
+                  type="button"
+                >
+                  <svg
+                    class="dusk-icon dusk-icon--size--normal dusk-button__icon"
+                    role="graphics-symbol"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M12,7L17,12H14V16H10V12H7L12,7M19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21M19,19V5H5V19H19Z"
+                    />
+                  </svg>
+                  
+                  <!--&lt;Icon&gt;-->
+                   
+                  <span
+                    class="dusk-button__text"
+                  >
+                    send
+                  </span>
+                  
+                </button>
+                <!--&lt;Button&gt;-->
+                
+                <button
+                  class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled operations__operation"
+                  type="button"
+                >
+                  <svg
+                    class="dusk-icon dusk-icon--size--normal dusk-button__icon"
+                    role="graphics-symbol"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M12,17L7,12H10V8H14V12H17L12,17M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"
+                    />
+                  </svg>
+                  
+                  <!--&lt;Icon&gt;-->
+                   
+                  <span
+                    class="dusk-button__text"
+                  >
+                    receive
+                  </span>
+                  
+                </button>
+                <!--&lt;Button&gt;-->
+                
+              </div>
+              <!--&lt;Operations&gt;-->
+            </div>
+            <!--&lt;Contract&gt;-->
+          </div>
+        </div>
+      </article>
+       
+      <article
+        class="transactions attention__transactions s-ms4M-9Zd82pR"
+      >
+        <header
+          class="transactions__header s-ms4M-9Zd82pR"
+        >
+          <h3
+            class="h4 s-qpUp5WgwgSGx"
+            slot="heading"
+          >
+            Transactions
+          </h3>
+        </header>
+         
+        <div
+          class="transactions__lists s-ms4M-9Zd82pR"
+        >
+          <div
+            class="transactions-list__empty s-ms4M-9Zd82pR"
+          >
+            <svg
+              class="dusk-icon dusk-icon--size--large"
+              role="graphics-symbol"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M2,3H8V5H4V19H8V21H2V3M7,17V15H9V17H7M11,17V15H13V17H11M15,17V15H17V17H15M22,3V21H16V19H20V5H16V3H22Z"
+              />
+            </svg>
+            
+            <!--&lt;Icon&gt;-->
+             
+            <p
+              class="s-ms4M-9Zd82pR"
+            >
+              No transactions to show yet.
+            </p>
+          </div>
+        </div>
+         
+        <footer
+          class="transactions__footer s-ms4M-9Zd82pR"
+        />
+      </article>
        
        
       <div
         aria-hidden="true"
         class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-        id="balance-tooltip"
+        id="transactions-tooltip"
         role="tooltip"
         style="left: 0px; top: 0px;"
       >
         
       </div>
       <!--&lt;Tooltip&gt;-->
-    </article>
-    <!--&lt;Balance&gt;-->
-     
-    <article
-      class="tabs s-qpUp5WgwgSGx"
-    >
-      <div
-        class="dusk-tabs"
-      >
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button dusk-tab-scroll-button"
-          disabled=""
-          hidden="true"
-          tabindex="-1"
-          type="button"
-        >
-          <svg
-            class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"
-            />
-          </svg>
-          
-          <!--&lt;Icon&gt;-->
-           
-          
-        </button>
-        <!--&lt;Button&gt;-->
-         
-        <ul
-          class="dusk-tabs-list"
-          role="tablist"
-        >
-          <li
-            aria-selected="true"
-            class="dusk-tab-item dusk-tab-item__selected"
-            data-tabid="transfer"
-            role="tab"
-            tabindex="0"
-          >
-            <svg
-              class="dusk-icon dusk-icon--size--normal"
-              role="graphics-symbol"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="M9,3L5,7H8V14H10V7H13M16,17V10H14V17H11L15,21L19,17H16Z"
-              />
-            </svg>
-            
-            <!--&lt;Icon&gt;-->
-             
-            <span
-              class="dusk-tab-label"
-            >
-              Transact
-            </span>
-            
-             
-          </li>
-          <li
-            aria-selected="false"
-            class="dusk-tab-item"
-            data-tabid="staking"
-            role="tab"
-            tabindex="0"
-          >
-            <svg
-              class="dusk-icon dusk-icon--size--normal"
-              role="graphics-symbol"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="M12 3C7.58 3 4 4.79 4 7V17C4 19.21 7.59 21 12 21S20 19.21 20 17V7C20 4.79 16.42 3 12 3M18 17C18 17.5 15.87 19 12 19S6 17.5 6 17V14.77C7.61 15.55 9.72 16 12 16S16.39 15.55 18 14.77V17M18 12.45C16.7 13.4 14.42 14 12 14C9.58 14 7.3 13.4 6 12.45V9.64C7.47 10.47 9.61 11 12 11C14.39 11 16.53 10.47 18 9.64V12.45M12 9C8.13 9 6 7.5 6 7S8.13 5 12 5C15.87 5 18 6.5 18 7S15.87 9 12 9Z"
-              />
-            </svg>
-            
-            <!--&lt;Icon&gt;-->
-             
-            <span
-              class="dusk-tab-label"
-            >
-              Stake
-            </span>
-            
-             
-          </li>
-        </ul>
-         
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button dusk-tab-scroll-button"
-          disabled=""
-          hidden="true"
-          tabindex="-1"
-          type="button"
-        >
-          <svg
-            class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"
-            />
-          </svg>
-          
-          <!--&lt;Icon&gt;-->
-           
-          
-        </button>
-        <!--&lt;Button&gt;-->
-      </div>
-      <!--&lt;Tabs&gt;-->
-       
-      <div
-        class="tabs__panel s-qpUp5WgwgSGx tabs__panel--first"
-      >
-        <div
-          class="tabs__contract s-qpUp5WgwgSGx"
-        >
-          <div
-            class="contract"
-          >
-            <div
-              class="operations"
-            >
-              <dl
-                class="dusk-status-list"
-              >
-                <dt
-                  class="dusk-status-list__key dusk-status"
-                >
-                   
-                  <span>
-                    Spendable
-                  </span>
-                </dt>
-                 
-                <dd
-                  class="dusk-status-list__value dusk-status"
-                >
-                  <span>
-                    50,000.00
-                  </span>
-                   
-                  <svg
-                    class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-                    data-tooltip-id="status-tooltip"
-                    data-tooltip-place="top"
-                    data-tooltip-text="DUSK"
-                    role="graphics-symbol"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-                    />
-                  </svg>
-                  
-                  <!--&lt;Icon&gt;-->
-                </dd>
-                 
-                 
-                <div
-                  aria-hidden="true"
-                  class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-                  id="status-tooltip"
-                  role="tooltip"
-                  style="left: 0px; top: 0px;"
-                >
-                  
-                </div>
-                <!--&lt;Tooltip&gt;-->
-                <!--&lt;Statuses&gt;-->
-              </dl>
-              <!--&lt;StatusList&gt;-->
-               
-              
-              <button
-                class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled operations__operation"
-                type="button"
-              >
-                <svg
-                  class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-                  role="graphics-symbol"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M12,7L17,12H14V16H10V12H7L12,7M19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21M19,19V5H5V19H19Z"
-                  />
-                </svg>
-                
-                <!--&lt;Icon&gt;-->
-                 
-                <span
-                  class="dusk-button__text"
-                >
-                  send
-                </span>
-                
-              </button>
-              <!--&lt;Button&gt;-->
-              
-              <button
-                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled operations__operation"
-                type="button"
-              >
-                <svg
-                  class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-                  role="graphics-symbol"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M12,17L7,12H10V8H14V12H17L12,17M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"
-                  />
-                </svg>
-                
-                <!--&lt;Icon&gt;-->
-                 
-                <span
-                  class="dusk-button__text"
-                >
-                  receive
-                </span>
-                
-              </button>
-              <!--&lt;Button&gt;-->
-              
-            </div>
-            <!--&lt;Operations&gt;-->
-          </div>
-          <!--&lt;Contract&gt;-->
-        </div>
-      </div>
-    </article>
-     
-    <article
-      class="transactions s-ms4M-9Zd82pR"
-    >
-      <header
-        class="transactions__header s-ms4M-9Zd82pR"
-      >
-        <h3
-          class="h4 s-qpUp5WgwgSGx"
-          slot="heading"
-        >
-          Transactions
-        </h3>
-      </header>
-       
-      <div
-        class="transactions__lists s-ms4M-9Zd82pR"
-      >
-        <div
-          class="transactions-list__empty s-ms4M-9Zd82pR"
-        >
-          <svg
-            class="dusk-icon dusk-icon--size--large"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M2,3H8V5H4V19H8V21H2V3M7,17V15H9V17H7M11,17V15H13V17H11M15,17V15H17V17H15M22,3V21H16V19H20V5H16V3H22Z"
-            />
-          </svg>
-          
-          <!--&lt;Icon&gt;-->
-           
-          <p
-            class="s-ms4M-9Zd82pR"
-          >
-            No transactions to show yet.
-          </p>
-        </div>
-      </div>
-       
-      <footer
-        class="transactions__footer s-ms4M-9Zd82pR"
-      />
-    </article>
-     
-     
-    <div
-      aria-hidden="true"
-      class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-      id="transactions-tooltip"
-      role="tooltip"
-      style="left: 0px; top: 0px;"
-    >
-      
+      <!--&lt;Transactions&gt;-->
     </div>
-    <!--&lt;Tooltip&gt;-->
-    <!--&lt;Transactions&gt;-->
   </div>
   <!--&lt;+page&gt;-->
 </div>
@@ -455,148 +459,152 @@ exports[`Dashboard > should render the dashboard page only with the Receive butt
     </div>
     <!--&lt;KeyPicker&gt;-->
      
-    <article
-      class="dusk-balance"
+    <div
+      class="attention s-qpUp5WgwgSGx"
     >
-      <header
-        class="dusk-balance__header"
+      <article
+        class="dusk-balance attention__balance"
       >
-        <h2>
-          Your Balance:
-        </h2>
-      </header>
-       
-      <p
-        class="dusk-balance__dusk"
-      >
-        <strong>
-          2,345.00
-        </strong>
+        <header
+          class="dusk-balance__header"
+        >
+          <h2>
+            Your Balance:
+          </h2>
+        </header>
          
+        <p
+          class="dusk-balance__dusk"
+        >
+          <strong>
+            2,345.00
+          </strong>
+           
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-balance__icon"
+            data-tooltip-id="balance-tooltip"
+            data-tooltip-place="right"
+            data-tooltip-text="DUSK"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+        </p>
+         
+        <p
+          class="dusk-balance__fiat"
+        >
+          <strong>
+            (
+            $1,172.50
+            )
+          </strong>
+        </p>
+         
+         
+        <div
+          aria-hidden="true"
+          class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
+          id="balance-tooltip"
+          role="tooltip"
+          style="left: 0px; top: 0px;"
+        >
+          
+        </div>
+        <!--&lt;Tooltip&gt;-->
+      </article>
+      <!--&lt;Balance&gt;-->
+       
+      <button
+        class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled dashboard-content__receive"
+        type="button"
+      >
         <svg
-          class="dusk-icon dusk-icon--size--normal dusk-balance__icon"
-          data-tooltip-id="balance-tooltip"
-          data-tooltip-place="right"
-          data-tooltip-text="DUSK"
+          class="dusk-icon dusk-icon--size--normal dusk-button__icon"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >
           <path
-            d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+            d="M12,17L7,12H10V8H14V12H17L12,17M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"
           />
         </svg>
         
         <!--&lt;Icon&gt;-->
-      </p>
+         
+        <span
+          class="dusk-button__text"
+        >
+          receive
+        </span>
+        
+      </button>
+      <!--&lt;Button&gt;-->
        
-      <p
-        class="dusk-balance__fiat"
+      
+       
+      <article
+        class="transactions attention__transactions s-ms4M-9Zd82pR"
       >
-        <strong>
-          (
-          $1,172.50
-          )
-        </strong>
-      </p>
+        <header
+          class="transactions__header s-ms4M-9Zd82pR"
+        >
+          <h3
+            class="h4 s-qpUp5WgwgSGx"
+            slot="heading"
+          >
+            Transactions
+          </h3>
+        </header>
+         
+        <div
+          class="transactions__lists s-ms4M-9Zd82pR"
+        >
+          <div
+            class="transactions-list__empty s-ms4M-9Zd82pR"
+          >
+            <svg
+              class="dusk-icon dusk-icon--size--large"
+              role="graphics-symbol"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M2,3H8V5H4V19H8V21H2V3M7,17V15H9V17H7M11,17V15H13V17H11M15,17V15H17V17H15M22,3V21H16V19H20V5H16V3H22Z"
+              />
+            </svg>
+            
+            <!--&lt;Icon&gt;-->
+             
+            <p
+              class="s-ms4M-9Zd82pR"
+            >
+              No transactions to show yet.
+            </p>
+          </div>
+        </div>
+         
+        <footer
+          class="transactions__footer s-ms4M-9Zd82pR"
+        />
+      </article>
        
        
       <div
         aria-hidden="true"
         class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-        id="balance-tooltip"
+        id="transactions-tooltip"
         role="tooltip"
         style="left: 0px; top: 0px;"
       >
         
       </div>
       <!--&lt;Tooltip&gt;-->
-    </article>
-    <!--&lt;Balance&gt;-->
-     
-    <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled dashboard-content__receive"
-      type="button"
-    >
-      <svg
-        class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-        role="graphics-symbol"
-        viewBox="0 0 24 24"
-      >
-        <path
-          d="M12,17L7,12H10V8H14V12H17L12,17M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"
-        />
-      </svg>
-      
-      <!--&lt;Icon&gt;-->
-       
-      <span
-        class="dusk-button__text"
-      >
-        receive
-      </span>
-      
-    </button>
-    <!--&lt;Button&gt;-->
-     
-    
-     
-    <article
-      class="transactions s-ms4M-9Zd82pR"
-    >
-      <header
-        class="transactions__header s-ms4M-9Zd82pR"
-      >
-        <h3
-          class="h4 s-qpUp5WgwgSGx"
-          slot="heading"
-        >
-          Transactions
-        </h3>
-      </header>
-       
-      <div
-        class="transactions__lists s-ms4M-9Zd82pR"
-      >
-        <div
-          class="transactions-list__empty s-ms4M-9Zd82pR"
-        >
-          <svg
-            class="dusk-icon dusk-icon--size--large"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M2,3H8V5H4V19H8V21H2V3M7,17V15H9V17H7M11,17V15H13V17H11M15,17V15H17V17H15M22,3V21H16V19H20V5H16V3H22Z"
-            />
-          </svg>
-          
-          <!--&lt;Icon&gt;-->
-           
-          <p
-            class="s-ms4M-9Zd82pR"
-          >
-            No transactions to show yet.
-          </p>
-        </div>
-      </div>
-       
-      <footer
-        class="transactions__footer s-ms4M-9Zd82pR"
-      />
-    </article>
-     
-     
-    <div
-      aria-hidden="true"
-      class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-      id="transactions-tooltip"
-      role="tooltip"
-      style="left: 0px; top: 0px;"
-    >
-      
+      <!--&lt;Transactions&gt;-->
     </div>
-    <!--&lt;Tooltip&gt;-->
-    <!--&lt;Transactions&gt;-->
   </div>
   <!--&lt;+page&gt;-->
 </div>
@@ -652,148 +660,152 @@ exports[`Dashboard > should render the dashboard page only with the Receive butt
     </div>
     <!--&lt;KeyPicker&gt;-->
      
-    <article
-      class="dusk-balance"
+    <div
+      class="attention s-qpUp5WgwgSGx"
     >
-      <header
-        class="dusk-balance__header"
+      <article
+        class="dusk-balance attention__balance"
       >
-        <h2>
-          Your Balance:
-        </h2>
-      </header>
-       
-      <p
-        class="dusk-balance__dusk"
-      >
-        <strong>
-          2,345.00
-        </strong>
+        <header
+          class="dusk-balance__header"
+        >
+          <h2>
+            Your Balance:
+          </h2>
+        </header>
          
+        <p
+          class="dusk-balance__dusk"
+        >
+          <strong>
+            2,345.00
+          </strong>
+           
+          <svg
+            class="dusk-icon dusk-icon--size--normal dusk-balance__icon"
+            data-tooltip-id="balance-tooltip"
+            data-tooltip-place="right"
+            data-tooltip-text="DUSK"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+            />
+          </svg>
+          
+          <!--&lt;Icon&gt;-->
+        </p>
+         
+        <p
+          class="dusk-balance__fiat"
+        >
+          <strong>
+            (
+            $1,172.50
+            )
+          </strong>
+        </p>
+         
+         
+        <div
+          aria-hidden="true"
+          class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
+          id="balance-tooltip"
+          role="tooltip"
+          style="left: 0px; top: 0px;"
+        >
+          
+        </div>
+        <!--&lt;Tooltip&gt;-->
+      </article>
+      <!--&lt;Balance&gt;-->
+       
+      <button
+        class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled dashboard-content__receive"
+        type="button"
+      >
         <svg
-          class="dusk-icon dusk-icon--size--normal dusk-balance__icon"
-          data-tooltip-id="balance-tooltip"
-          data-tooltip-place="right"
-          data-tooltip-text="DUSK"
+          class="dusk-icon dusk-icon--size--normal dusk-button__icon"
           role="graphics-symbol"
           viewBox="0 0 24 24"
         >
           <path
-            d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+            d="M12,17L7,12H10V8H14V12H17L12,17M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"
           />
         </svg>
         
         <!--&lt;Icon&gt;-->
-      </p>
+         
+        <span
+          class="dusk-button__text"
+        >
+          receive
+        </span>
+        
+      </button>
+      <!--&lt;Button&gt;-->
        
-      <p
-        class="dusk-balance__fiat"
+      
+       
+      <article
+        class="transactions attention__transactions s-ms4M-9Zd82pR"
       >
-        <strong>
-          (
-          $1,172.50
-          )
-        </strong>
-      </p>
+        <header
+          class="transactions__header s-ms4M-9Zd82pR"
+        >
+          <h3
+            class="h4 s-qpUp5WgwgSGx"
+            slot="heading"
+          >
+            Transactions
+          </h3>
+        </header>
+         
+        <div
+          class="transactions__lists s-ms4M-9Zd82pR"
+        >
+          <div
+            class="transactions-list__empty s-ms4M-9Zd82pR"
+          >
+            <svg
+              class="dusk-icon dusk-icon--size--large"
+              role="graphics-symbol"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M2,3H8V5H4V19H8V21H2V3M7,17V15H9V17H7M11,17V15H13V17H11M15,17V15H17V17H15M22,3V21H16V19H20V5H16V3H22Z"
+              />
+            </svg>
+            
+            <!--&lt;Icon&gt;-->
+             
+            <p
+              class="s-ms4M-9Zd82pR"
+            >
+              No transactions to show yet.
+            </p>
+          </div>
+        </div>
+         
+        <footer
+          class="transactions__footer s-ms4M-9Zd82pR"
+        />
+      </article>
        
        
       <div
         aria-hidden="true"
         class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-        id="balance-tooltip"
+        id="transactions-tooltip"
         role="tooltip"
         style="left: 0px; top: 0px;"
       >
         
       </div>
       <!--&lt;Tooltip&gt;-->
-    </article>
-    <!--&lt;Balance&gt;-->
-     
-    <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled dashboard-content__receive"
-      type="button"
-    >
-      <svg
-        class="dusk-icon dusk-icon--size--normal dusk-button__icon"
-        role="graphics-symbol"
-        viewBox="0 0 24 24"
-      >
-        <path
-          d="M12,17L7,12H10V8H14V12H17L12,17M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"
-        />
-      </svg>
-      
-      <!--&lt;Icon&gt;-->
-       
-      <span
-        class="dusk-button__text"
-      >
-        receive
-      </span>
-      
-    </button>
-    <!--&lt;Button&gt;-->
-     
-    
-     
-    <article
-      class="transactions s-ms4M-9Zd82pR"
-    >
-      <header
-        class="transactions__header s-ms4M-9Zd82pR"
-      >
-        <h3
-          class="h4 s-qpUp5WgwgSGx"
-          slot="heading"
-        >
-          Transactions
-        </h3>
-      </header>
-       
-      <div
-        class="transactions__lists s-ms4M-9Zd82pR"
-      >
-        <div
-          class="transactions-list__empty s-ms4M-9Zd82pR"
-        >
-          <svg
-            class="dusk-icon dusk-icon--size--large"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M2,3H8V5H4V19H8V21H2V3M7,17V15H9V17H7M11,17V15H13V17H11M15,17V15H17V17H15M22,3V21H16V19H20V5H16V3H22Z"
-            />
-          </svg>
-          
-          <!--&lt;Icon&gt;-->
-           
-          <p
-            class="s-ms4M-9Zd82pR"
-          >
-            No transactions to show yet.
-          </p>
-        </div>
-      </div>
-       
-      <footer
-        class="transactions__footer s-ms4M-9Zd82pR"
-      />
-    </article>
-     
-     
-    <div
-      aria-hidden="true"
-      class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-      id="transactions-tooltip"
-      role="tooltip"
-      style="left: 0px; top: 0px;"
-    >
-      
+      <!--&lt;Transactions&gt;-->
     </div>
-    <!--&lt;Tooltip&gt;-->
-    <!--&lt;Transactions&gt;-->
   </div>
   <!--&lt;+page&gt;-->
 </div>

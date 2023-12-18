@@ -35,7 +35,7 @@
 </script>
 
 <div class="operation">
-	<Wizard steps={flow === "withdraw-rewards" ? 2 : 3} let:key>
+	<Wizard fullHeight={true} steps={flow === "withdraw-rewards" ? 2 : 3} let:key>
 		{#if flow !== "withdraw-rewards"}
 			<WizardStep
 				step={0}
@@ -136,6 +136,7 @@
 
 	.operation__input {
 		column-gap: var(--default-gap);
+		padding-right: var(--default-gap);
 	}
 
 	:global(.operation__input .operation__input-field) {

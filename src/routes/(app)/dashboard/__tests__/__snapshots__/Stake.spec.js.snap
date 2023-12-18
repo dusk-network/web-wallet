@@ -6,7 +6,7 @@ exports[`Stake > renders the Stake component 1`] = `
     class="operation s-njyclJEgUzaD"
   >
     <div
-      class="dusk-wizard"
+      class="dusk-wizard dusk-wizard--full-height"
     >
        
        

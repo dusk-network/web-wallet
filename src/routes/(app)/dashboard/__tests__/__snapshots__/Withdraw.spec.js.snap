@@ -6,7 +6,7 @@ exports[`Withdraw > renders the Withdraw Confirmation step component 1`] = `
     class="operation s-njyclJEgUzaD"
   >
     <div
-      class="dusk-wizard"
+      class="dusk-wizard dusk-wizard--full-height"
     >
       
       <!--&lt;WizardStep&gt;-->
@@ -82,7 +82,7 @@ exports[`Withdraw > renders the Withdraw Review step component 1`] = `
     class="operation s-njyclJEgUzaD"
   >
     <div
-      class="dusk-wizard"
+      class="dusk-wizard dusk-wizard--full-height"
     >
       
       <!--&lt;WizardStep&gt;-->
@@ -426,7 +426,7 @@ exports[`Withdraw > renders the Withdraw step component 1`] = `
     class="operation s-njyclJEgUzaD"
   >
     <div
-      class="dusk-wizard"
+      class="dusk-wizard dusk-wizard--full-height"
     >
        
        

@@ -37,6 +37,7 @@
 	const { currency, language } = $settingsStore;
 	const TRANSACTION_LIMIT = 5;
 	const { isSyncing, error } = $walletStore;
+	const { reset } = operationsStore;
 
 	$: ({ balance, currentKey, keys } = $walletStore);
 	$: ({ currentOperation } = $operationsStore);
@@ -130,49 +131,53 @@
 		{currentKey}
 	/>
 
-	<Balance
-		tokens={balance.value}
-		tokenCurrency="DUSK"
-		fiat={balance.value * currentPrice[currency.toLowerCase()]}
-		fiatCurrency={currency}
-		locale={language}
-	/>
-
-	{#if isSyncing || error}
-		<Button
-			className="dashboard-content__receive"
-			variant="secondary"
-			on:click={() => {
-				show = !show;
-			}}
-			icon={!show
-				? { path: mdiArrowDownBoldBoxOutline }
-				: { path: mdiEyeOffOutline }}
-			text={!show ? "receive" : "hide"}
+	<div class="attention" class:attention--focus={currentOperation !== undefined}>
+		<Balance
+			className="attention__balance"
+			tokens={balance.value}
+			tokenCurrency="DUSK"
+			fiat={balance.value * currentPrice[currency.toLowerCase()]}
+			fiatCurrency={currency}
+			locale={language}
 		/>
-		{#if show}
-			<Receive publicSpendKey={currentKey} hideBackButton={true}/>
-		{/if}
-	{:else}
-		<article class="tabs">
-			<Tabs bind:selectedTab items={CONTRACTS}/>
-			<div
-				class="tabs__panel"
-				class:tabs__panel--first={selectedTab === CONTRACTS[0].id}
-				class:tabs__panel--last={selectedTab
-					=== CONTRACTS[CONTRACTS.length - 1].id}
-			>
-				{#key selectedTab}
-					<div in:fade|global class="tabs__contract">
-						<Contract contract={selectedContract}/>
-					</div>
-				{/key}
-			</div>
-		</article>
-	{/if}
 
-	{#if currentOperation === undefined && selectedTab === "transfer" }
-		<Transactions transactions={transactions.slice(-Math.abs(TRANSACTION_LIMIT))}>
+		{#if isSyncing || error}
+			<Button
+				className="dashboard-content__receive"
+				variant="secondary"
+				on:click={() => {
+					show = !show;
+				}}
+				icon={!show
+					? { path: mdiArrowDownBoldBoxOutline }
+					: { path: mdiEyeOffOutline }}
+				text={!show ? "receive" : "hide"}
+			/>
+			{#if show}
+				<Receive publicSpendKey={currentKey} hideBackButton={true}/>
+			{/if}
+		{:else}
+			<article class="tabs">
+				<Tabs bind:selectedTab items={CONTRACTS} on:change={() => { reset(); }}/>
+				<div
+					class="tabs__panel"
+					class:tabs__panel--first={selectedTab === CONTRACTS[0].id}
+					class:tabs__panel--last={selectedTab
+						=== CONTRACTS[CONTRACTS.length - 1].id}
+				>
+					{#key selectedTab}
+						<div in:fade|global class="tabs__contract">
+							<Contract contract={selectedContract}/>
+						</div>
+					{/key}
+				</div>
+			</article>
+		{/if}
+
+		<Transactions
+			className="attention__transactions"
+			transactions={transactions.slice(-Math.abs(TRANSACTION_LIMIT))}
+		>
 			<h3 class="h4" slot="heading">Transactions</h3>
 			<AnchorButton
 				className="view-transactions"
@@ -182,7 +187,7 @@
 				variant="tertiary"
 			/>
 		</Transactions>
-	{/if}
+	</div>
 </div>
 
 <style lang="postcss">
@@ -193,6 +198,7 @@
 		gap: 1.375rem;
 		overflow-y: auto;
 		flex: 1;
+		position: relative;
 
 		:global(&__receive) {
 			text-align: left;
@@ -210,11 +216,53 @@
 		}
 	}
 
+	.attention {
+		display: flex;
+		flex-direction: column;
+		position: relative;
+		gap: 1.375rem;
+		height: 100%;
+
+		&--focus {
+			:global(& .attention__balance) {
+				opacity: 0;
+				max-height: 0;
+				transition: all 1s ease-out;
+			}
+
+			:global(& .attention__transactions) {
+				display: none;
+				max-height: 0;
+			}
+		}
+
+		:global(&__balance) {
+			opacity: 1;
+			max-height: 100%;
+			transition: all 1s ease-in;
+		}
+
+		:global(&__transactions) {
+			max-height: 100%;
+			transition: max-height 1s ease-in;
+			display: block;
+		}
+	}
+
 	.tabs {
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
+
 		&__panel {
 			border-radius: 1.25rem;
 			background: var(--surface-color);
 			transition: border-radius 0.4s ease-in-out;
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			flex-grow: 1;
 
 			&--first {
 				border-top-left-radius: 0;
@@ -234,6 +282,7 @@
 			gap: 1em;
 			align-self: stretch;
 			width: 100%;
+			flex-grow: 1;
 		}
 	}
 

@@ -8,6 +8,7 @@
 	} from "@mdi/js";
 	import { fade } from "svelte/transition";
 	import { logo } from "$lib/dusk/icons";
+	import { makeClassName } from "$lib/dusk/string";
 	import { Badge, Icon, Tooltip } from "$lib/dusk/components";
 	import { createCurrencyFormatter, createTransferFormatter } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
@@ -15,12 +16,17 @@
 	/** @type Transaction[] */
 	export let transactions;
 
+	/** @type {String | Undefined} */
+	export let className = undefined;
+
+	$: classes = makeClassName(["transactions", className]);
+
 	const { language } = $settingsStore;
 	const feeFormatter = createCurrencyFormatter(language, "DUSK");
 	const transferFormatter = createTransferFormatter(language);
 </script>
 
-<article in:fade|global class="transactions">
+<article in:fade|global class={classes}>
 	<header class="transactions__header">
 		<slot name="heading"/>
 	</header>

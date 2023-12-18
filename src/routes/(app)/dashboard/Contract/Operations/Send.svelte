@@ -37,7 +37,7 @@
 </script>
 
 <div class="operation">
-	<Wizard steps={4} let:key>
+	<Wizard fullHeight={true} steps={4} let:key>
 		<WizardStep
 			step={0}
 			{key}
@@ -202,6 +202,7 @@
 
 		&__input {
 			column-gap: var(--default-gap);
+			padding-right: var(--default-gap);
 		}
 
 		:global(&__input &__input-field) {

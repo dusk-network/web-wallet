@@ -9,27 +9,21 @@
 	/** @type {Boolean} */
 	export let hideBackButton = false;
 
-	const QR_MIN_WIDTH = 150;
-	const QR_MAX_WIDTH = 520;
+	const SCALING_FACTOR = 0.31;
 
-	let offsetWidth = 0;
-
-	$: qrWidth = Math.min(
-		Math.max(
-			Math.round(offsetWidth),
-			QR_MIN_WIDTH
-		),
-		QR_MAX_WIDTH
-	);
-
+	let innerWidth = 0;
+	let innerHeight = 0;
 </script>
 
-<div class="receive" bind:offsetWidth>
+<svelte:window bind:innerHeight bind:innerWidth/>
+
+<div class="receive">
 	<figure class="receive__psk">
 		<QrCode
 			value={publicSpendKey}
 			className="receive__qr"
-			width={qrWidth}
+
+			height={innerHeight * SCALING_FACTOR}
 		/>
 
 		<figcaption class="receive__key">
@@ -72,11 +66,11 @@
 			flex-direction: column;
 			gap: var(--default-gap);
 			align-items: center;
+			flex: 1;
 		}
 
 		&__key, :global(&__qr) {
 			border-radius: 1.5em;
-			width: 100%;
 		}
 
 		&__key {
@@ -89,6 +83,7 @@
 		:global(&__qr) {
 			padding: 0.625em;
 			background-color: var(--background-color-alt);
+			min-width: auto;
 		}
 
 		&__buttons {

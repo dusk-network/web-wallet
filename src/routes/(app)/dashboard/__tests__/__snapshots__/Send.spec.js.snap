@@ -6,7 +6,7 @@ exports[`Send > renders the Send component Address step 1`] = `
     class="operation s--bvhT2XkmH9a"
   >
     <div
-      class="dusk-wizard"
+      class="dusk-wizard dusk-wizard--full-height"
     >
       
       <!--&lt;WizardStep&gt;-->
@@ -157,7 +157,7 @@ exports[`Send > renders the Send component Amount step 1`] = `
     class="operation s--bvhT2XkmH9a"
   >
     <div
-      class="dusk-wizard"
+      class="dusk-wizard dusk-wizard--full-height"
     >
        
        
@@ -354,7 +354,7 @@ exports[`Send > renders the Send component Review step 1`] = `
     class="operation s--bvhT2XkmH9a"
   >
     <div
-      class="dusk-wizard"
+      class="dusk-wizard dusk-wizard--full-height"
     >
       
       <!--&lt;WizardStep&gt;-->

@@ -14,7 +14,7 @@
 	export let contract;
 
 	onDestroy(async () => {
-		$operationsStore.currentOperation = undefined;
+		operationsStore.reset();
 	});
 
 	/**

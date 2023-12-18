@@ -1,6 +1,15 @@
 import { writable } from "svelte/store";
 
-/** @type {import("svelte/store").Writable<{ currentOperation: number | undefined }>} */
-const count = writable({ currentOperation: undefined });
+const initialState = {
+	currentOperation: undefined
+};
 
-export default count;
+/** @type {import("svelte/store").Writable<{ currentOperation: number | undefined }>} */
+const operationsStore = writable(initialState);
+const { set, subscribe, update } = operationsStore;
+
+function reset () {
+	set(initialState);
+}
+
+export default { reset, subscribe, update };
