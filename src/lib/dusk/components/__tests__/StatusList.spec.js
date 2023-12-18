@@ -26,7 +26,7 @@ const statuses = [{
 			label: "DUSK",
 			path: mdiDatabaseOutline
 		},
-		label: "10,000,000"
+		value: 10000000
 	}
 }, {
 	key: {
@@ -40,7 +40,7 @@ const statuses = [{
 			label: "DUSK",
 			path: mdiDatabaseOutline
 		},
-		label: "10,000,000"
+		value: 10000000
 	}
 }, {
 	key: {
@@ -55,7 +55,7 @@ const statuses = [{
 			label: "DUSK",
 			path: mdiDatabaseOutline
 		},
-		label: "5,000,000"
+		value: 5000000
 	}
 }];
 

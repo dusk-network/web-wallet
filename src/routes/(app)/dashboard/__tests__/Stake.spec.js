@@ -38,7 +38,7 @@ describe("Stake", () => {
 					label: "DUSK",
 					path: logo
 				},
-				label: "50,000.00"
+				value: 50000
 			}
 		},
 		{
@@ -53,7 +53,7 @@ describe("Stake", () => {
 					label: "DUSK",
 					path: logo
 				},
-				label: "50,000.00"
+				value: 50000
 			}
 		},
 		{
@@ -68,7 +68,7 @@ describe("Stake", () => {
 					label: "DUSK",
 					path: logo
 				},
-				label: "50,000.00"
+				value: 50000
 			}
 		}
 	];

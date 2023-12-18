@@ -39,7 +39,7 @@ describe("Send", () => {
 					label: "DUSK",
 					path: logo
 				},
-				label: "50,000.00"
+				value: 50000
 			}
 		}
 	];

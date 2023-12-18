@@ -16,7 +16,6 @@
 	import { logo } from "$lib/dusk/icons";
 	import { AnchorButton, Tabs } from "$lib/dusk/components";
 	import { Balance } from "$lib/components";
-	import { createCurrencyFormatter } from "$lib/dusk/currency";
 	import {
 		operationsStore,
 		settingsStore,
@@ -35,7 +34,6 @@
 
 	const { currentPrice } = data;
 	const { currency, language } = $settingsStore;
-	const duskFormatter = createCurrencyFormatter(language, "DUSK");
 	const TRANSACTION_LIMIT = 5;
 
 	$: ({ balance, currentKey, keys } = $walletStore);
@@ -67,7 +65,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				label: duskFormatter(balance.maximum)
+				value: balance.maximum
 			}
 		}]
 	}, {
@@ -101,7 +99,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				label: duskFormatter(0)
+				value: 0
 			}
 		}, {
 			key: {
@@ -114,7 +112,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				label: duskFormatter(0)
+				value: 0
 			}
 		}, {
 			key: {
@@ -128,7 +126,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				label: duskFormatter(0)
+				value: 0
 			}
 		}]
 	}];

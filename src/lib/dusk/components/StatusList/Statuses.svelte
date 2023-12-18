@@ -2,6 +2,10 @@
 
 <script>
 	import { Icon, Tooltip } from "$lib/dusk/components";
+	import { createCurrencyFormatter } from "$lib/dusk/currency";
+	import { settingsStore } from "$lib/stores";
+	const { language } = $settingsStore;
+	const duskFormatter = createCurrencyFormatter(language, "DUSK");
 
 	/** @type Status[] */
 	export let statuses;
@@ -21,7 +25,7 @@
 		<span>{status.key.label}</span>
 	</dt>
 	<dd class="dusk-status-list__value dusk-status">
-		<span>{status.value.label}</span>
+		<span>{duskFormatter(status.value.value)}</span>
 		{#if status.value.icon}
 			<Icon
 				className="dusk-status__icon"
