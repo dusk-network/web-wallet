@@ -18,8 +18,9 @@ type WalletStoreContent = {
 };
 
 type WalletStoreServices = {
-	getStakeInfo: () => Promise<ReturnType<Wallet["stakeInfo"]>>;
+	getStakeInfo: () => Promise<any> & ReturnType<Wallet["stakeInfo"]>;
 
+	// The return type apparently is not in a promise here
 	getTransactionsHistory: () => Promise<ReturnType<Wallet["history"]>>;
 
 	init: (wallet: Wallet) => Promise<void>;
@@ -28,15 +29,15 @@ type WalletStoreServices = {
 
 	setCurrentKey: (key: string) => Promise<void>;
 
-	stake: (amount: number) => Promise<ReturnType<Wallet["stake"]>>;
+	stake: (amount: number) => Promise<any> & ReturnType<Wallet["stake"]>;
 
 	sync: () => Promise<void>;
 
-	transfer: (to: string, amount: number) => Promise<ReturnType<Wallet["transfer"]>>;
+	transfer: (to: string, amount: number) => Promise<any> & ReturnType<Wallet["transfer"]>;
 
-	unstake: () => Promise<ReturnType<Wallet["unstake"]>>;
+	unstake: () => Promise<any> & ReturnType<Wallet["unstake"]>;
 
-	withdrawReward: () => Promise<ReturnType<Wallet["withdrawReward"]>>;
+	withdrawReward: () => Promise<any> & ReturnType<Wallet["withdrawReward"]>;
 };
 
 type WalletStore = Readable<WalletStoreContent> & WalletStoreServices;
