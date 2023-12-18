@@ -31,7 +31,7 @@ exports[`StatusList > should render the StatusList component 1`] = `
     class="dusk-status-list__value dusk-status"
   >
     <span>
-      10,000,000
+      10,000,000.00
     </span>
      
     <svg
@@ -76,7 +76,7 @@ exports[`StatusList > should render the StatusList component 1`] = `
     class="dusk-status-list__value dusk-status"
   >
     <span>
-      10,000,000
+      10,000,000.00
     </span>
      
     <svg
@@ -121,7 +121,7 @@ exports[`StatusList > should render the StatusList component 1`] = `
     class="dusk-status-list__value dusk-status"
   >
     <span>
-      5,000,000
+      5,000,000.00
     </span>
      
     <svg

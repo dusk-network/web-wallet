@@ -33,7 +33,7 @@ type SelectOption = {
 
 type Status = {
 	key: StatusMember,
-	value: StatusMember
+	value: StatusValue
 }
 
 type StatusIconProp = {
@@ -44,6 +44,11 @@ type StatusIconProp = {
 type StatusMember = {
 	icon?: StatusIconProp,
 	label: string
+}
+
+type StatusValue = {
+	icon?: StatusIconProp,
+	value: number
 }
 
 type TabItem = {
