@@ -29,7 +29,7 @@ const { set, subscribe } = walletStore;
 const getCurrentKey = () => get(walletStore).currentKey;
 
 /** @type {(action: (...args: any[]) => Promise<any>) => Promise<void>} */
-const syncedAction = action => sync().then(action).then(sync);
+const syncedAction = action => sync().then(action).finally(sync);
 
 /** @type {import("./stores").WalletStoreServices["getStakeInfo"]} */
 // @ts-expect-error

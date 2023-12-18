@@ -8,6 +8,7 @@ import {
 	vi
 } from "vitest";
 import { get } from "svelte/store";
+import { keys } from "lamb";
 
 import { Wallet } from "@dusk-network/dusk-wallet-js";
 
@@ -17,7 +18,7 @@ vi.useFakeTimers();
 
 describe("walletStore", async () => {
 	const balance = { maximum: 100, value: 1 };
-	const keys = [
+	const generatedKeys = [
 		"2087290d3dc213d43e493f03f5435f99",
 		"ffbee869aca5ff5ee13c2706e5d9779d",
 		"06527a34e1c91fc5785ea7764a0c34b1",
@@ -26,7 +27,7 @@ describe("walletStore", async () => {
 	const wallet = new Wallet({}, []);
 
 	const getBalanceSpy = vi.spyOn(Wallet.prototype, "getBalance").mockResolvedValue(balance);
-	const getPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockReturnValue(keys);
+	const getPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockReturnValue(generatedKeys);
 	const historySpy = vi.spyOn(Wallet.prototype, "history").mockResolvedValue([]);
 	const stakeInfoSpy = vi.spyOn(Wallet.prototype, "stakeInfo").mockResolvedValue({});
 	const stakeSpy = vi.spyOn(Wallet.prototype, "stake").mockResolvedValue(void 0);
@@ -74,9 +75,9 @@ describe("walletStore", async () => {
 		const initializedStore = {
 			...initialState,
 			balance,
-			currentKey: keys[0],
+			currentKey: generatedKeys[0],
 			initialized: true,
-			keys
+			keys: generatedKeys
 		};
 
 		it("should expose a `reset` method to bring back the store to its initial state", async () => {
@@ -95,11 +96,11 @@ describe("walletStore", async () => {
 
 			expect(get(walletStore)).toStrictEqual({
 				...initialState,
-				currentKey: keys[0],
+				currentKey: generatedKeys[0],
 				error: null,
 				initialized: true,
 				isSyncing: true,
-				keys
+				keys: generatedKeys
 			});
 			expect(getPsksSpy).toHaveBeenCalledTimes(1);
 			expect(getBalanceSpy).not.toHaveBeenCalled();
@@ -108,7 +109,7 @@ describe("walletStore", async () => {
 
 			expect(syncSpy).toHaveBeenCalledTimes(1);
 			expect(getBalanceSpy).toHaveBeenCalledTimes(1);
-			expect(getBalanceSpy).toHaveBeenCalledWith(keys[0]);
+			expect(getBalanceSpy).toHaveBeenCalledWith(generatedKeys[0]);
 			expect(get(walletStore)).toStrictEqual(initializedStore);
 		});
 
@@ -117,11 +118,11 @@ describe("walletStore", async () => {
 
 			const storewWhileLoading = {
 				...initialState,
-				currentKey: keys[0],
+				currentKey: generatedKeys[0],
 				error: null,
 				initialized: true,
 				isSyncing: true,
-				keys
+				keys: generatedKeys
 			};
 			const error = new Error("sync failed");
 
@@ -154,7 +155,7 @@ describe("walletStore", async () => {
 	});
 
 	describe("Wallet store services", () => {
-		const currentKey = keys[0];
+		const currentKey = generatedKeys[0];
 
 		afterEach(() => {
 			walletStore.reset();
@@ -190,10 +191,10 @@ describe("walletStore", async () => {
 		it("should expose a method to set the current key", async () => {
 			const setCurrentKeySpy = vi.spyOn(walletStore, "setCurrentKey");
 
-			await walletStore.setCurrentKey(keys[1]);
+			await walletStore.setCurrentKey(generatedKeys[1]);
 
 			expect(syncSpy).toHaveBeenCalledTimes(1);
-			expect(get(walletStore).currentKey).toBe(keys[1]);
+			expect(get(walletStore).currentKey).toBe(generatedKeys[1]);
 			expect(setCurrentKeySpy.mock.invocationCallOrder[0])
 				.toBeLessThan(syncSpy.mock.invocationCallOrder[0]);
 
@@ -220,11 +221,11 @@ describe("walletStore", async () => {
 		});
 
 		it("should expose a method to allow to transfer an amount of Dusk", async () => {
-			await walletStore.transfer(keys[1], 10);
+			await walletStore.transfer(generatedKeys[1], 10);
 
 			expect(syncSpy).toHaveBeenCalledTimes(2);
 			expect(transferSpy).toHaveBeenCalledTimes(1);
-			expect(transferSpy).toHaveBeenCalledWith(currentKey, keys[1], 10);
+			expect(transferSpy).toHaveBeenCalledWith(currentKey, generatedKeys[1], 10);
 			expect(syncSpy.mock.invocationCallOrder[0])
 				.toBeLessThan(transferSpy.mock.invocationCallOrder[0]);
 			expect(syncSpy.mock.invocationCallOrder[1])
@@ -253,6 +254,63 @@ describe("walletStore", async () => {
 				.toBeLessThan(withdrawRewardSpy.mock.invocationCallOrder[0]);
 			expect(syncSpy.mock.invocationCallOrder[1])
 				.toBeGreaterThan(withdrawRewardSpy.mock.invocationCallOrder[0]);
+		});
+	});
+
+	describe("State changing failures", () => {
+		/** @typedef {"stake" | "transfer" | "unstake" | "withdrawReward"} Operation */
+		/** @type {Record<Operation, import("vitest").SpyInstance<any>>} */
+		const operationsMap = {
+			stake: stakeSpy,
+			transfer: transferSpy,
+			unstake: unstakeSpy,
+			withdrawReward: withdrawRewardSpy
+		};
+		const fakeFailure = new Error("operation failure");
+		const fakeSuccess = {};
+		const fakeSyncError = new Error("bad sync");
+
+		keys(operationsMap).forEach(operation => {
+			const spy = operationsMap[operation];
+
+			it("should return a resolved promise with the operation result if an operation succeeds", async () => {
+				await walletStore.init(wallet);
+				await vi.advanceTimersToNextTimerAsync();
+
+				syncSpy
+					.mockResolvedValueOnce(void 0)
+					.mockRejectedValueOnce(fakeSyncError);
+				spy.mockResolvedValueOnce(fakeSuccess);
+
+				expect(get(walletStore).error).toBe(null);
+
+				// @ts-ignore it's a mock and we don't care to pass the correct arguments
+				expect(await walletStore[operation]()).toBe(fakeSuccess);
+				expect(get(walletStore).error).toBe(fakeSyncError);
+
+				walletStore.reset();
+			});
+
+			it("should return a rejected promise with the operation error if an operation fails and try a sync afterwards nonetheless", async () => {
+				await walletStore.init(wallet);
+				await vi.advanceTimersToNextTimerAsync();
+
+				syncSpy
+					.mockResolvedValueOnce(void 0)
+					.mockRejectedValueOnce(fakeSyncError);
+				spy.mockRejectedValueOnce(fakeFailure);
+
+				expect(get(walletStore).error).toBe(null);
+
+				// @ts-ignore it's a mock and we don't care to pass the correct arguments
+				expect(walletStore[operation]()).rejects.toThrowError(fakeFailure);
+
+				await vi.advanceTimersToNextTimerAsync();
+
+				expect(get(walletStore).error).toBe(fakeSyncError);
+
+				walletStore.reset();
+			});
 		});
 	});
 });
