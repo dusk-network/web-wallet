@@ -10,6 +10,7 @@ import { cleanup, render } from "@testing-library/svelte";
 
 import mockedWalletStore from "../../__mocks__/mockedWalletStore";
 import mockTransactions from "$lib/stores/__tests__/mockData";
+import stakeInfoMockData from "$lib/stores/__tests__/stakeInfoMockData";
 import Dashboard from "../+page.svelte";
 import { walletStore } from "$lib/stores";
 
@@ -21,7 +22,8 @@ vi.mock("$lib/stores", async importOriginal => {
 		...original,
 		walletStore: {
 			...mockedWalletStore,
-			getTransactionsHistory: () => Promise.resolve(mockTransactions)
+			getTransactionsHistory: () => Promise.resolve(mockTransactions),
+			getStakeInfo: () => Promise.resolve(stakeInfoMockData)
 		}
 	};
 });

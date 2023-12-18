@@ -3,6 +3,7 @@
 	import { fade } from "svelte/transition";
 
 	import {
+		AnchorButton,
 		Badge,
 		Button,
 		Icon,
@@ -15,16 +16,28 @@
 	import StatusList from "$lib/dusk/components/StatusList/StatusList.svelte";
 	import GasSettings from "./GasSettings/GasSettings.svelte";
 	import StakeOverview from "./StakeOverview/StakeOverview.svelte";
-	import TransactionComplete from "./TransactionComplete/TransactionComplete.svelte";
+	import OperationResult from "./OperationResult/OperationResult.svelte";
 
 	/** @type {Status[]} */
 	export let statuses;
 
 	/** @type {Number} */
-	let stakeAmount = 0;
+	let stakeAmount = 1000;
 
 	/** @type {StakeType} */
 	export let flow;
+
+	const getStatusValue = (/** @type {string} */ label) => {
+		const currentStatus = statuses.find(status => status.key.label === label);
+
+		return currentStatus?.value.value ?? 0;
+	};
+
+	if (flow === "withdraw-stake") {
+		stakeAmount = getStatusValue("Total Locked");
+	} else if (flow === "withdraw-rewards") {
+		stakeAmount = getStatusValue("Rewards");
+	}
 
 	const resetOperationStore = () => {
 		operationsStore.update((store) => ({
@@ -40,11 +53,30 @@
 		gasPrice,
 		gasPriceLower
 	} = $settingsStore);
+
+	async function stake () {
+		switch (flow) {
+			case "stake":
+				await walletStore.stake(stakeAmount);
+				break;
+
+			case "withdraw-stake":
+				await walletStore.unstake();
+				break;
+
+			case "withdraw-rewards":
+				await walletStore.withdrawReward();
+				break;
+
+			default:
+				break;
+		}
+	}
 </script>
 
 <div class="operation">
-	<Wizard steps={flow === "withdraw-rewards" ? 2 : 3} let:key>
-		{#if flow !== "withdraw-rewards"}
+	<Wizard steps={flow === "stake" ? 3 : 2} let:key>
+		{#if flow === "stake"}
 			<WizardStep
 				step={0}
 				{key}
@@ -73,6 +105,7 @@
 						className="operation__input-field"
 						type="number"
 						bind:value={stakeAmount}
+						min={1000}
 					/>
 					{#if statuses[0]?.value?.icon}
 						<Icon
@@ -89,9 +122,9 @@
 		{/if}
 
 		<WizardStep
-			step={flow === "withdraw-rewards" ? 0 : 1}
+			step={flow === "stake" ? 1 : 0}
 			{key}
-			backButton={ flow === "withdraw-rewards" ? {
+			backButton={ flow !== "stake" ? {
 				action: () => resetOperationStore(),
 				disabled: false
 			} : undefined}
@@ -131,10 +164,27 @@
 		</WizardStep>
 
 		<WizardStep
-			step={flow === "withdraw-rewards" ? 1 : 2}
+			step={flow === "stake" ? 2 : 1}
 			{key}
 			showNavigation={false}>
-			<TransactionComplete/>
+
+			<OperationResult
+				onBeforeLeave={resetOperationStore}
+				operation={stake()}
+				errorMessage="Transaction Failed"
+				pendingMessage="Processing transaction"
+				successMessage="Transaction completed"
+			>
+				<AnchorButton
+					href="https://explorer.dusk.network"
+					on:click={resetOperationStore}
+					rel="noopener noreferrer"
+					slot="success-content"
+					target="_blank"
+					text="VIEW ON BLOCK EXPLORER"
+					variant="secondary"
+				/>
+			</OperationResult>
 		</WizardStep>
 	</Wizard>
 </div>

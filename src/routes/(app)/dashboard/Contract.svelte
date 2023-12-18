@@ -73,7 +73,7 @@
 		<ContractOperations {statuses}>
 			{#each operations as operation, index (operation.id)}
 				<Button
-					disabled={operation.label !== "receive" && (isSyncing || error)}
+					disabled={operation.label !== "receive" && (isSyncing || error || operation.disabled)}
 					className="operations__operation"
 					variant={operation.variant ?? "secondary"}
 					on:click={() =>
