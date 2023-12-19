@@ -46,6 +46,8 @@
 	transform: scale(1.2, 1.2);
 }
 
+/* added the :hover:active case otherwise the rule above takes precedence */
+.dusk-icon-button:not(.dusk-icon-button-labeled):enabled:hover:active,
 .dusk-icon-button:not(.dusk-icon-button-labeled):enabled:active,
 .dusk-icon-button:not(.dusk-icon-button-labeled).dusk-anchor-button:not(.dusk-anchor-button--disabled):active,
 .dusk-button--type--toggle.dusk-button--type--toggle--active {
