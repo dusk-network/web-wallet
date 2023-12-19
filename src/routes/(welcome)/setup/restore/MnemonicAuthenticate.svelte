@@ -3,6 +3,8 @@
 	import { defaultWordsCount, enteredMnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
 	import { onDestroy } from "svelte";
 
+	export let isValid = false;
+
 	/**
 	 * @param {String[]} value
 	 */
@@ -20,8 +22,6 @@
 	onDestroy(() => {
 		unsubscribe();
 	});
-
-	export let isValid = false;
 </script>
 
 <Card heading="Enter your Mnemonic Phrase">

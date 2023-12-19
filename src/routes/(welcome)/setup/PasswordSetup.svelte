@@ -8,7 +8,7 @@
 	let confirmPassword = "";
 
 	export let isValid = false;
-	let isToggled = false;
+	export let isToggled = false;
 
 	$: isValid = !isToggled
 		|| ((password.length >= 8 && confirmPassword.length >= 8) && (password === confirmPassword));
