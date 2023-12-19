@@ -22,7 +22,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
             class="footer__icon-wrapper footer__icon-wrapper--success s-Ck0voT_hIlXn"
           >
             <svg
-              class="dusk-icon dusk-icon--size--large footer__icon"
+              class="dusk-icon dusk-icon--size--normal footer__icon"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -55,7 +55,6 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
             aria-label="Settings"
             class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal dusk-icon-button footer__anchor-button"
             data-tooltip-id="main-tooltip"
-            data-tooltip-place="left"
             data-tooltip-text="Settings"
             href="/settings"
           >
@@ -108,7 +107,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
             class="footer__icon-wrapper footer__icon-wrapper--error s-Ck0voT_hIlXn"
           >
             <svg
-              class="dusk-icon dusk-icon--size--large footer__icon"
+              class="dusk-icon dusk-icon--size--normal footer__icon"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -136,11 +135,14 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
           class="footer__actions s-Ck0voT_hIlXn"
         >
           <button
-            class="footer__actions-button s-Ck0voT_hIlXn"
+            aria-label="Retry syncronization"
+            class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button footer__actions-button"
+            data-tooltip-id="main-tooltip"
+            data-tooltip-text="Retry syncronization"
             type="button"
           >
             <svg
-              class="dusk-icon dusk-icon--size--large"
+              class="dusk-icon dusk-icon--size--large dusk-button__icon"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -150,14 +152,16 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
             </svg>
             
             <!--&lt;Icon&gt;-->
+             
+            
           </button>
+          <!--&lt;Button&gt;-->
            
           <a
             aria-disabled="false"
             aria-label="Settings"
             class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal dusk-icon-button footer__anchor-button"
             data-tooltip-id="main-tooltip"
-            data-tooltip-place="left"
             data-tooltip-text="Settings"
             href="/settings"
           >
@@ -210,7 +214,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             class="footer__icon-wrapper footer__icon-wrapper--sync s-Ck0voT_hIlXn"
           >
             <svg
-              class="dusk-icon dusk-icon--size--large footer__icon"
+              class="dusk-icon dusk-icon--size--normal footer__icon"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -252,7 +256,6 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             aria-label="Settings"
             class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--text dusk-anchor-button--size--normal dusk-icon-button footer__anchor-button"
             data-tooltip-id="main-tooltip"
-            data-tooltip-place="left"
             data-tooltip-text="Settings"
             href="/settings"
           >

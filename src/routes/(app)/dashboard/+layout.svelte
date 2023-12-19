@@ -6,7 +6,13 @@
 		mdiRestore,
 		mdiTimerSand
 	} from "@mdi/js";
-	import { AnchorButton, Icon, ProgressBar } from "$lib/dusk/components";
+
+	import {
+		AnchorButton,
+		Button,
+		Icon,
+		ProgressBar
+	} from "$lib/dusk/components";
 	import { settingsStore, walletStore } from "$lib/stores";
 
 	$: ({ network } = $settingsStore);
@@ -41,12 +47,11 @@
 	<footer class="footer">
 		<nav class="footer__navigation">
 			<div class="footer__network-status">
-				<span class={`footer__icon-wrapper footer__icon-wrapper--${iconVariant}`}
-				>
+				<span class={`footer__icon-wrapper footer__icon-wrapper--${iconVariant}`}>
 					<Icon
 						className="footer__icon"
 						path={iconPath}
-						size="large"
+						size="normal"
 					/>
 				</span>
 
@@ -59,15 +64,15 @@
 			</div>
 			<div class="footer__actions">
 				{#if error}
-					<button
-						type="button"
-						class="footer__actions-button"
-						on:click={() => {
-							walletStore.sync();
-						}}
-					>
-						<Icon path={mdiRestore} size="large"/>
-					</button>
+					<Button
+						aria-label="Retry syncronization"
+						className="footer__actions-button"
+						data-tooltip-id="main-tooltip"
+						data-tooltip-text="Retry syncronization"
+						icon={{ path: mdiRestore, size: "large" }}
+						on:click={() => { walletStore.sync(); }}
+						variant="text"
+					/>
 				{/if}
 				<AnchorButton
 					variant="text"
@@ -77,7 +82,6 @@
 					aria-label="Settings"
 					data-tooltip-id="main-tooltip"
 					data-tooltip-text="Settings"
-					data-tooltip-place="left"
 				/>
 			</div>
 		</nav>
@@ -113,23 +117,6 @@
 			align-items: center;
 		}
 
-		&__actions-button {
-			cursor: pointer;
-			border: none;
-			background-color: transparent;
-			transform-origin: center center;
-			transition-delay: 0s;
-			transition-duration: 0.2s;
-			transition-property: background-color, border-color, color,
-				transform;
-			transition-timing-function: ease-in-out;
-		}
-
-		&__actions-button:hover {
-			transform: scale(1.2, 1.2);
-			color: var(--secondary-color);
-		}
-
 		&__network-status {
 			display: flex;
 			align-items: center;
@@ -141,11 +128,6 @@
 				display: flex;
 				align-items: center;
 			}
-		}
-
-		:global(&__icon) {
-			width: 1em !important;
-			height: 1em !important;
 		}
 
 		&__icon-wrapper {
