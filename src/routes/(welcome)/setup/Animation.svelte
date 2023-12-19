@@ -35,11 +35,7 @@
 
 <style lang="postcss">
 	.animation {
-		position: absolute;
-		bottom: 5%;
-
-		@media (min-width: 448px) {
-			bottom: 10%;
-		}
+		width: 100%;
+		height: 100%;
 	}
 </style>

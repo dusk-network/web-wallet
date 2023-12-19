@@ -12,7 +12,6 @@
 </script>
 
 <section class="setup-content">
-	<Animation/>
 	<div class="setup-content__wrapper">
 		<h2 class="h1 setup-heading">
 			Unlocking the Future: <br/>
@@ -32,6 +31,7 @@
 					text="Restore Wallet"
 					icon={{ path: mdiRestore }}/>
 			</div>
+			<Animation/>
 			<AnchorButton
 				href="/login"
 				variant="secondary"
@@ -43,14 +43,12 @@
 
 <style lang="postcss">
 	.setup-content {
-		position: relative;
-		height: 100vh;
+		flex: 1;
 
 		&__wrapper {
 			display: flex;
 			flex-direction: column;
 			gap: var(--large-gap);
-			position: absolute;
 			height: 100%;
 		}
 
