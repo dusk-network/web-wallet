@@ -9,8 +9,8 @@
 	import { AnchorButton, Icon, ProgressBar } from "$lib/dusk/components";
 	import { settingsStore, walletStore } from "$lib/stores";
 
-	const { network } = $settingsStore;
-	const { isSyncing, error } = $walletStore;
+	$: ({ network } = $settingsStore);
+	$: ({ isSyncing, error } = $walletStore);
 
 	/** @type {String} */
 	let syncStatus = "";
@@ -21,7 +21,7 @@
 	/** @type {String} */
 	let iconVariant = "";
 
-	if (isSyncing) {
+	$: if (isSyncing) {
 		iconVariant = "sync";
 		iconPath = mdiTimerSand;
 		syncStatus = `Syncing with Dusk ${network}`;

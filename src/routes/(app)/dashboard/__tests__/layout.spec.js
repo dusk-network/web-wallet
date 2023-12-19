@@ -1,12 +1,14 @@
 import {
 	afterAll,
 	afterEach,
+	beforeEach,
 	describe,
 	expect,
 	it,
 	vi
 } from "vitest";
-import { cleanup } from "@testing-library/svelte";
+import { act, cleanup } from "@testing-library/svelte";
+
 import { renderWithSimpleContent } from "$lib/dusk/test-helpers";
 import mockedWalletStore from "../__mocks__/mockedWalletStore";
 import Layout from "../+layout.svelte";
@@ -22,6 +24,19 @@ vi.mock("$lib/stores", async importOriginal => {
 });
 
 describe("Dashboard Layout", () => {
+	/**
+	 * @param {Element} container
+	 * @param {"error" | "success" | "sync"} status
+	 * @returns
+	 */
+	const getStatusWrapper = (container, status) =>
+		container.querySelector(`.footer__icon-wrapper--${status}`);
+	const initialState = structuredClone(mockedWalletStore.getMockedStoreValue());
+
+	beforeEach(() => {
+		mockedWalletStore.setMockedStoreValue(initialState);
+	});
+
 	afterEach(cleanup);
 
 	afterAll(() => {
@@ -31,27 +46,56 @@ describe("Dashboard Layout", () => {
 	it("should render the dashboard layout", () => {
 		const { container } = renderWithSimpleContent(Layout, {});
 
-		expect(container.querySelector(".footer__icon-wrapper--success")).toBeTruthy();
+		expect(getStatusWrapper(container, "success")).toBeTruthy();
 		expect(container.firstChild).toMatchSnapshot();
 	});
 
-	it("should render the dashboard layout in the sync state", () => {
-		mockedWalletStore.getMockedStoreValue().isSyncing = true;
-
+	it("should render the dashboard layout in the sync state", async () => {
 		const { container } = renderWithSimpleContent(Layout, {});
 
-		expect(container.querySelector(".footer__icon-wrapper--sync")).toBeTruthy();
+		expect(getStatusWrapper(container, "sync")).toBeNull();
+
+		await act(() => {
+			mockedWalletStore.setMockedStoreValue({
+				...initialState,
+				isSyncing: true
+			});
+		});
+
+		expect(getStatusWrapper(container, "sync")).toBeTruthy();
 		expect(container.firstChild).toMatchSnapshot();
+
+		await act(() => {
+			mockedWalletStore.setMockedStoreValue({ initialState });
+		});
+
+		expect(getStatusWrapper(container, "sync")).toBeNull();
 	});
 
-	it("should render the dashboard layout in the error state", () => {
-		mockedWalletStore.getMockedStoreValue().isSyncing = false;
-		mockedWalletStore.getMockedStoreValue().error = new Error();
-
+	it("should render the dashboard layout in the error state", async () => {
 		const { container } = renderWithSimpleContent(Layout, {});
+		const getRetryButton = () => container.querySelector(".footer__actions-button");
 
-		expect(container.querySelector(".footer__icon-wrapper--error")).toBeTruthy();
-		expect(container.querySelector(".footer__actions-button")).toBeTruthy();
+		expect(getStatusWrapper(container, "error")).toBeNull();
+		expect(getRetryButton()).toBeNull();
+
+		await act(() => {
+			mockedWalletStore.setMockedStoreValue({
+				...initialState,
+				error: new Error()
+			});
+		});
+
+		expect(getStatusWrapper(container, "error")).toBeTruthy();
+		expect(getRetryButton()).toBeTruthy();
 		expect(container.firstChild).toMatchSnapshot();
+
+		await act(() => {
+			mockedWalletStore.setMockedStoreValue({ initialState });
+		});
+
+		expect(getStatusWrapper(container, "error")).toBeNull();
+		expect(getRetryButton()).toBeNull();
+		expect(getStatusWrapper(container, "success")).toBeTruthy();
 	});
 });
