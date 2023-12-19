@@ -2,6 +2,7 @@
 	import { fade } from "svelte/transition";
 	import { logo } from "$lib/dusk/icons";
 	import {
+		AnchorButton,
 		Badge,
 		Button,
 		Icon,
@@ -14,7 +15,7 @@
 	import { mdiArrowUpBoldBoxOutline, mdiWalletOutline } from "@mdi/js";
 	import { operationsStore, settingsStore, walletStore } from "$lib/stores";
 	import GasSettings from "./GasSettings/GasSettings.svelte";
-	import TransactionComplete from "./TransactionComplete/TransactionComplete.svelte";
+	import OperationResult from "./OperationResult/OperationResult.svelte";
 	import ScanQR from "./ScanQR/ScanQR.svelte";
 
 	/** @type {Status[]} */
@@ -178,7 +179,23 @@
 			</div>
 		</WizardStep>
 		<WizardStep step={3} {key} showNavigation={false}>
-			<TransactionComplete/>
+			<OperationResult
+				onBeforeLeave={resetOperationStore}
+				operation={walletStore.transfer(address, amount)}
+				errorMessage="Transaction Failed"
+				pendingMessage="Processing transaction"
+				successMessage="Transaction completed"
+			>
+				<AnchorButton
+					href="https://explorer.dusk.network"
+					on:click={resetOperationStore}
+					rel="noopener noreferrer"
+					slot="success-content"
+					target="_blank"
+					text="VIEW ON BLOCK EXPLORER"
+					variant="secondary"
+				/>
+			</OperationResult>
 		</WizardStep>
 	</Wizard>
 </div>

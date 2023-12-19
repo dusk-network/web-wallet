@@ -29,6 +29,7 @@
 	{...$$restProps}
 	class={makeClassName(["dusk-anchor", className])}
 	{href}
+	on:click
 	rel={target ? makeClassName([rel, "noopener", "noreferrer"]) : rel}
 	{target}
 >

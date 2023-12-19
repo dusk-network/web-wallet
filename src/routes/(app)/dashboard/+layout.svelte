@@ -47,7 +47,13 @@
 	<footer class="footer">
 		<nav class="footer__navigation">
 			<div class="footer__network-status">
-				<span class={`footer__icon-wrapper footer__icon-wrapper--${iconVariant}`}>
+				<span
+					class={`footer__icon-wrapper footer__icon-wrapper--${iconVariant}`}
+					data-tooltip-disabled={!error}
+					data-tooltip-id="main-tooltip"
+					data-tooltip-text={error?.message}
+					data-tooltip-type="error"
+				>
 					<Icon
 						className="footer__icon"
 						path={iconPath}
@@ -148,6 +154,7 @@
 
 			:global(&--error) {
 				background-color: var(--error-color);
+				cursor: help;
 
 				:global(.footer__icon) {
 					color: var(--footer-icon-color);

@@ -42,6 +42,8 @@ exports[`Withdraw > renders the Withdraw Confirmation step component 1`] = `
         aria-disabled="false"
         class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--secondary dusk-anchor-button--size--normal"
         href="https://explorer.dusk.network"
+        rel="noopener noreferrer noopener noreferrer"
+        target="_blank"
       >
         <span
           class="dusk-anchor-button__text"
@@ -53,17 +55,20 @@ exports[`Withdraw > renders the Withdraw Confirmation step component 1`] = `
       <!--&lt;Anchor&gt;-->
       <!--&lt;AnchorButton&gt;-->
        
-      <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        type="button"
+      <a
+        aria-disabled="false"
+        class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--normal"
+        href="/dashboard"
       >
         <span
-          class="dusk-button__text"
+          class="dusk-anchor-button__text"
         >
           HOME
         </span>
-      </button>
-      <!--&lt;Button&gt;-->
+        
+      </a>
+      <!--&lt;Anchor&gt;-->
+      <!--&lt;AnchorButton&gt;-->
       <!--&lt;TransactionComplete&gt;-->
        
       
