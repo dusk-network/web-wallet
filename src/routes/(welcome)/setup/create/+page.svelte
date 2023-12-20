@@ -16,7 +16,7 @@
 	import AllSet from "../AllSet.svelte";
 	import WizardStep from "$lib/dusk/components/Wizard/WizardStep.svelte";
 	import MnemonicPreSetup from "./MnemonicPreSetup.svelte";
-	import Password from "../Password.svelte";
+	import PasswordSetup from "../PasswordSetup.svelte";
 	import { goto } from "$app/navigation";
 
 	let tosAccepted = false;
@@ -24,6 +24,14 @@
 	// Password
 	let password = "";
 	let validPassword = false;
+	let showPasswordSetup = false;
+
+	const resetPassword = () => {
+		password = showPasswordSetup ? password : "";
+	};
+
+	// eslint-disable-next-line
+	$: showPasswordSetup, resetPassword();
 
 	// Notice
 	let agreementAccepted = false;
@@ -31,11 +39,15 @@
 	// Mnemonic
 	let validMnemonic = false;
 
-	async function storePasswordToLocalStorage () {
-		const mnemonic = $mnemonicPhrase.join(" ");
-		const encryptedData = await encryptMnemonic(mnemonic, password);
+	async function refreshLocalStoragePasswordInfo () {
+		loginInfoStorage.remove();
 
-		loginInfoStorage.set(encryptedData);
+		if (password.length !== 0 && validPassword) {
+			const mnemonic = $mnemonicPhrase.join(" ");
+			const encryptedData = await encryptMnemonic(mnemonic, password);
+
+			loginInfoStorage.set(encryptedData);
+		}
 	}
 </script>
 
@@ -87,14 +99,14 @@
 			</h2>
 			<ValidateMnemonic bind:isValid={validMnemonic}/>
 		</WizardStep>
-		<!--  PASSWORD -->
+		<!-- SETUP PASSWORD OPTIONAL -->
 		<WizardStep
 			step={3}
 			{key}
 			showStepper={true}
 			nextButton={{
 				action: async () => {
-					await storePasswordToLocalStorage();
+					await refreshLocalStoragePasswordInfo();
 				},
 				disabled: !validPassword
 			}}
@@ -103,13 +115,17 @@
 				<mark>Password</mark><br/>
 				Setup
 			</h2>
-			<Password bind:password bind:isValid={validPassword}/>
+			<PasswordSetup bind:password bind:isValid={validPassword} bind:isToggled={showPasswordSetup}/>
 		</WizardStep>
 		<!--  SWAP DUSK -->
 		<WizardStep
 			step={4}
 			{key}
-			showStepper={true}>
+			showStepper={true}
+			backButton={{
+				action: () => loginInfoStorage.remove(),
+				disabled: false
+			}}>
 			<h2 class="h1" slot="heading">
 				Swap ERC20<br/>
 				to <mark>Native Dusk</mark>
@@ -126,7 +142,8 @@
 				action: async () => {
 					mnemonicPhrase.set([]);
 					await goto("/dashboard");
-				}
+				},
+				disabled: false
 			}}>
 			<h2 class="h1" slot="heading">
 				Welcome to<br/>

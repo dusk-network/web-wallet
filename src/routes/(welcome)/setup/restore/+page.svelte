@@ -5,7 +5,7 @@
 	import TermsOfService from "../TermsOfService.svelte";
 
 	// Steps
-	import Password from "../Password.svelte";
+	import PasswordSetup from "../PasswordSetup.svelte";
 	import AllSet from "../AllSet.svelte";
 	import MnemonicAuthenticate from "./MnemonicAuthenticate.svelte";
 	import { Wizard, WizardStep } from "$lib/dusk/components";
@@ -19,15 +19,27 @@
 	// Password
 	let password = "";
 	let validPassword = false;
+	let showPasswordSetup = false;
+
+	const resetPassword = () => {
+		password = showPasswordSetup ? password : "";
+	};
+
+	// eslint-disable-next-line
+	$: showPasswordSetup, resetPassword();
 
 	// Mnemonic
 	let validMnemonic = false;
 
-	async function storePasswordToLocalStorage () {
-		const mnemonic = $mnemonicPhrase.join(" ");
-		const encryptedData = await encryptMnemonic(mnemonic, password);
+	async function refreshLocalStoragePasswordInfo () {
+		loginInfoStorage.remove();
 
-		loginInfoStorage.set(encryptedData);
+		if (password.length !== 0 && validPassword) {
+			const mnemonic = $mnemonicPhrase.join(" ");
+			const encryptedData = await encryptMnemonic(mnemonic, password);
+
+			loginInfoStorage.set(encryptedData);
+		}
 	}
 </script>
 
@@ -59,7 +71,7 @@
 			showStepper={true}
 			nextButton={{
 				action: async () => {
-					await storePasswordToLocalStorage();
+					await refreshLocalStoragePasswordInfo();
 				},
 				disabled: !validPassword
 			}}
@@ -68,7 +80,7 @@
 				<mark>Password</mark><br/>
 				Setup
 			</h2>
-			<Password bind:password bind:isValid={validPassword}/>
+			<PasswordSetup bind:password bind:isValid={validPassword} bind:isToggled={showPasswordSetup}/>
 		</WizardStep>
 		<WizardStep
 			step={2}
@@ -79,7 +91,8 @@
 				action: async () => {
 					mnemonicPhrase.set([]);
 					await goto("/dashboard");
-				}
+				},
+				disabled: false
 			}}>
 			<h2 class="h1" slot="heading">
 				Welcome to<br/>
