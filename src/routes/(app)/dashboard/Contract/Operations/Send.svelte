@@ -16,7 +16,7 @@
 	import { operationsStore, settingsStore, walletStore } from "$lib/stores";
 	import GasSettings from "./GasSettings/GasSettings.svelte";
 	import OperationResult from "./OperationResult/OperationResult.svelte";
-	import ScanQR from "./ScanQR/ScanQR.svelte";
+	import ScanQr from "./ScanQR/ScanQR.svelte";
 
 	/** @type {Status[]} */
 	export let statuses;
@@ -26,6 +26,12 @@
 
 	/** @type {String} */
 	let address = "";
+
+	/** @type {import("qr-scanner").default} */
+	let scanner;
+
+	/** @type {import('svelte').SvelteComponent} */
+	let scanQrComponent;
 
 	const duskFormatter = createCurrencyFormatter("en", "DUSK");
 	const resetOperationStore = () => {
@@ -101,17 +107,27 @@
 			<div in:fade|global class="operation__send">
 				<div class="operation__send-amount operation__space-between">
 					<p>Enter address:</p>
-
-					<ScanQR
-						on:scan={(event) => {
-							address = event.detail;
+					<Button
+						disabled={!scanner}
+						size="small"
+						variant="secondary"
+						on:click={() => {
+							scanQrComponent.startScan();
 						}}
+						text="SCAN QR"
 					/>
 				</div>
 				<Textbox
 					className="operation__send-address"
 					type="multiline"
 					bind:value={address}
+				/>
+				<ScanQr
+					bind:this={scanQrComponent}
+					bind:scanner
+					on:scan={(event) => {
+						address = event.detail;
+					}}
 				/>
 			</div>
 		</WizardStep>

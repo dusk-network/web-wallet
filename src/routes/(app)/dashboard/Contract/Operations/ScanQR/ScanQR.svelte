@@ -21,11 +21,11 @@
 	let overlay;
 
 	/** @type {QrScanner} */
-	let scanner;
+	export let scanner;
 
-	const startScan = async () => {
+	export const startScan = async () => {
 		try {
-			toggleScanner = !toggleScanner;
+			toggleScanner = true;
 			clearTimeout(timeoutId);
 			scanner?.start();
 		} catch (e) {
@@ -34,16 +34,16 @@
 	};
 
 	const stopScan = () => {
-		toggleScanner = !toggleScanner;
-		qrScanned = !qrScanned;
-		error = !error;
+		toggleScanner = false;
+		qrScanned = false;
+		error = false;
 		scanner?.stop();
 	};
 
 	/** @param {QrScanner.ScanResult} result */
 	const onDecodedQr = (result) => {
 		if (result.data) {
-			qrScanned = !qrScanned;
+			qrScanned = true;
 			dispatch("scan", result.data);
 			timeoutId = window.setTimeout(stopScan, 200);
 		}
@@ -67,67 +67,55 @@
 	});
 </script>
 
-<div class="scan">
+<div class="scan" class:scan--visible={toggleScanner}>
+	{#if !error}
+		<video bind:this={video}>
+			<track kind="captions"/>
+		</video>
+		<div
+			bind:this={overlay}
+			class="scan__highlight"
+			class:scan__highlight--scanned={qrScanned}
+		></div>
+	{:else}
+		<div class="scan__notice">
+			<span>An Error occurred while starting camera</span>
+		</div>
+	{/if}
+
 	<Button
 		size="small"
 		variant="secondary"
-		on:click={() => startScan()}
-		text="SCAN QR"
-		disabled={!scanner}
+		on:click={() => stopScan()}
+		text="CLOSE"
 	/>
-
-	<div class="scan-region" class:scan-region--visible={toggleScanner}>
-		{#if !error}
-			<video bind:this={video}>
-				<track kind="captions"/>
-			</video>
-			<div
-				bind:this={overlay}
-				class="scan-region__highlight"
-				class:scan-region__highlight--scanned={qrScanned}
-			></div>
-		{:else}
-			<div class="scan-region__notice">
-				<span>An Error occurred while starting camera</span>
-			</div>
-		{/if}
-
-		<Button
-			size="small"
-			variant="secondary"
-			on:click={() => stopScan()}
-			text="CLOSE"
-		/>
-	</div>
 </div>
 
 <style lang="postcss">
 	.scan {
-		z-index: 1;
-	}
-
-	.scan-region {
 		display: none;
 		flex-direction: column;
-		max-height: 80%;
+		max-height: 100%;
 		gap: var(--default-gap);
 		align-items: center;
 		justify-content: center;
 
 		&--visible {
 			display: flex;
-			position: absolute !important;
-			left: 50%;
-			top: 260px;
-			transform: translateX(-50%);
+			position: absolute;
+			left: 0px;
+			top: 0px;
 			background-color: var(--background-color-alt);
-			border-radius: 1.5em;
+			border-radius: 1em;
 			padding: 1em;
-			overflow: hidden;
 			width: 100%;
+			min-height: 100%;
+			z-index: 3;
 			video {
 				width: 100%;
 				margin: auto 0;
+				height: 100%;
+				overflow: hidden;
 			}
 		}
 
