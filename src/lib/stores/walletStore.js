@@ -1,5 +1,7 @@
 import { get, writable } from "svelte/store";
 
+import settingsStore from "./settingsStore";
+
 /**
  * @typedef {import("@dusk-network/dusk-wallet-js").Wallet} Wallet
  */
@@ -24,7 +26,16 @@ const initialState = {
 	keys: []
 };
 
-const walletStore = writable(initialState);
+/* eslint-disable-next-line svelte/require-store-callbacks-use-set-param */
+const walletStore = writable(initialState, () => settingsStore.subscribe(({
+	gasLimit,
+	gasPrice
+}) => {
+	if (walletInstance) {
+		walletInstance.gasLimit = gasLimit;
+		walletInstance.gasPrice = gasPrice;
+	}
+}));
 const { set, subscribe } = walletStore;
 const getCurrentKey = () => get(walletStore).currentKey;
 

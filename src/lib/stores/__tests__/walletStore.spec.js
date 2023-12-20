@@ -12,7 +12,7 @@ import { keys } from "lamb";
 
 import { Wallet } from "@dusk-network/dusk-wallet-js";
 
-import { walletStore } from "..";
+import { settingsStore, walletStore } from "..";
 
 vi.useFakeTimers();
 
@@ -111,6 +111,28 @@ describe("walletStore", async () => {
 			expect(getBalanceSpy).toHaveBeenCalledTimes(1);
 			expect(getBalanceSpy).toHaveBeenCalledWith(generatedKeys[0]);
 			expect(get(walletStore)).toStrictEqual(initializedStore);
+		});
+
+		it("should set the gas settings of the wallet based on the settings store values, and update them when they change", async () => {
+			const { gasLimit, gasPrice, ...rest } = get(settingsStore);
+			const newLimit = gasLimit * 3;
+			const newPrice = gasPrice * 3;
+
+			await walletStore.init(wallet);
+
+			expect(wallet.gasLimit).toBe(gasLimit);
+			expect(wallet.gasPrice).toBe(gasPrice);
+
+			settingsStore.set({
+				...rest,
+				gasLimit: newLimit,
+				gasPrice: newPrice
+			});
+
+			await vi.advanceTimersToNextTimerAsync();
+
+			expect(wallet.gasLimit).toBe(newLimit);
+			expect(wallet.gasPrice).toBe(newPrice);
 		});
 
 		it("should set the sync error in the store if the sync fails", async () => {
