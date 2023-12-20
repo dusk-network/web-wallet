@@ -10,18 +10,6 @@
 		offset as setOffset,
 		shift
 	} from "@floating-ui/dom";
-	import {
-		allOf,
-		collect,
-		compose,
-		filterWith,
-		flatten,
-		getKey,
-		getPath,
-		hasKeyValue,
-		mapWith,
-		some
-	} from "lamb";
 
 	import { makeClassName } from "$lib/dusk/string";
 
@@ -72,28 +60,6 @@
 	/** @type {HTMLDivElement} */
 	let tooltipElement;
 
-	const getTargetChildren = compose(
-		Array.from,
-
-		/** @type {(event: Event) => ArrayLike<Element>} */
-		(getPath("target.children")) // eslint-disable-line no-extra-parens
-	);
-	const getRemovedElements = compose(
-		filterWith(hasKeyValue("nodeType", Node.ELEMENT_NODE)),
-		getKey("removedNodes")
-	);
-	const getElementsToCheck = compose(
-		flatten,
-		mapWith(collect([getTargetChildren, getRemovedElements]))
-	);
-
-	/** @type {(element: Element) => boolean} */
-	const isDescribedByMe = element => element.getAttribute("aria-described-by") === id;
-	const isSomeDescribedByMeDisconnected = some(allOf([
-		isDescribedByMe,
-		hasKeyValue("isConnected", false)
-	]));
-
 	const state = writable({
 		delayHide: defaultDelayHide,
 		delayShow: defaultDelayShow,
@@ -106,8 +72,8 @@
 		y: 0
 	});
 
-	const mutationObserver = new MutationObserver((mutations, observer) => {
-		if (isSomeDescribedByMeDisconnected(getElementsToCheck(mutations))) {
+	const intersectionObserver = new IntersectionObserver((entries, observer) => {
+		if (entries[0].intersectionRatio <= 0 || !entries[0].target.isConnected) {
 			clearTimeout(timeoutID);
 			state.set({
 				...$state,
@@ -174,7 +140,7 @@
 
 		clearTimeout(timeoutID);
 		state.set({ ...$state, text: tooltipText });
-		mutationObserver.observe(event.target.parentElement, { childList: true });
+		intersectionObserver.observe(event.target);
 
 		const { placement, x, y } = await computePosition(event.target, tooltipElement, {
 			middleware: [
@@ -225,7 +191,7 @@
 	}
 
 	onDestroy(() => {
-		mutationObserver.disconnect();
+		intersectionObserver.disconnect();
 	});
 
 	$: ({
