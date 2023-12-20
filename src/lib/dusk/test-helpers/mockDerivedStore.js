@@ -1,7 +1,10 @@
 import { get, writable } from "svelte/store";
 
-/** @param {*} initialValue */
-function mockReadableStore (initialValue) {
+/**
+ * @param {*} initialValue
+ * @param {*} fn
+ */
+function mockDerivedStore (initialValue, fn) {
 	const store = writable(initialValue);
 	const { set, subscribe } = store;
 	const getMockedStoreValue = () => get(store);
@@ -9,12 +12,14 @@ function mockReadableStore (initialValue) {
 	/** @param {*} value */
 	const setMockedStoreValue = value => set(value);
 
+	const derivedMockedStoreValue = () => fn(initialValue);
+
 	return {
+		derivedMockedStoreValue,
 		getMockedStoreValue,
-		set,
 		setMockedStoreValue,
 		subscribe
 	};
 }
 
-export default mockReadableStore;
+export default mockDerivedStore;

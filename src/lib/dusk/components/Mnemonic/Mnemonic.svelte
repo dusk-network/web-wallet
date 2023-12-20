@@ -26,12 +26,16 @@
 
 	let currentIndex = 0;
 	let currentInput = "";
+	const enteredWordIndex = Array(defaultWordsCount).fill("");
 
 	/**
 	 * @param {string} word
+	 * @param {string} index
 	 */
-	function updateEnteredPhrase (word) {
+	function updateEnteredPhrase (word, index) {
 		$enteredMnemonicPhrase[currentIndex] = word;
+		enteredWordIndex[currentIndex] = index;
+
 		currentInput = "";
 		currentIndex++;
 
@@ -43,25 +47,26 @@
 
 	/**
 	 * Adds word to the entered phrase if only one prediction is available
-	 * @param {{ key: string; }} event
+	 * @param {{ key: string }} event
+	 * @param {string} index
 	 */
-	function handleKeyDownOnAuthenticateTextbox (event) {
+	function handleKeyDownOnAuthenticateTextbox (event, index) {
 		if (event.key === "Enter" && predictions.length === 1) {
-			updateEnteredPhrase(predictions[0]);
+			updateEnteredPhrase(predictions[0], index);
 		}
 	}
 
 	// @ts-ignore
-	function handleWordButtonClick (event) {
+	function handleWordButtonClick (event, index) {
 		const word = event.currentTarget.dataset.value;
 
-		updateEnteredPhrase(word);
+		updateEnteredPhrase(word, index);
 	}
 
 	$: predictions = currentInput && findFirstNMatches(enDictionary, currentInput, 3);
 
 	// eslint-disable-next-line svelte/no-reactive-functions
-	$: mnemonicContains = (/** @type {string} */ word) => $enteredMnemonicPhrase.includes(word);
+	$: mnemonicContains = (/** @type {string} */ index) => enteredWordIndex.includes(index);
 
 	$: if ($enteredMnemonicPhrase) {
 		const emptyWord = new Set($enteredMnemonicPhrase).size === 1;
@@ -99,7 +104,7 @@
 			<Textbox
 				placeholder={`Enter word ${currentIndex + 1}`}
 				bind:this={textboxElement}
-				on:keydown={handleKeyDownOnAuthenticateTextbox}
+				on:keydown={(e) => handleKeyDownOnAuthenticateTextbox(e, currentIndex.toString())}
 				maxlength={8}
 				type="text"
 				bind:value={currentInput}/>
@@ -120,8 +125,8 @@
 					variant="tertiary"
 					text={word}
 					data-value={word}
-					disabled={mnemonicContains(word)}
-					on:click={handleWordButtonClick}/>
+					disabled={mnemonicContains(index.toString())}
+					on:click={(e) => handleWordButtonClick(e, index.toString())}/>
 			{/each}
 		{/if}
 	</div>
