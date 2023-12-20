@@ -12,7 +12,7 @@
 	} from "$lib/dusk/components";
 	import { createCurrencyFormatter } from "$lib/dusk/currency";
 	import { mdiArrowUpBoldBoxOutline, mdiWalletOutline } from "@mdi/js";
-	import { operationsStore, walletStore } from "$lib/stores";
+	import { operationsStore, settingsStore, walletStore } from "$lib/stores";
 	import GasSettings from "./GasSettings/GasSettings.svelte";
 	import TransactionComplete from "./TransactionComplete/TransactionComplete.svelte";
 	import ScanQR from "./ScanQR/ScanQR.svelte";
@@ -27,13 +27,20 @@
 	let address = "";
 
 	const duskFormatter = createCurrencyFormatter("en", "DUSK");
-
 	const resetOperationStore = () => {
 		operationsStore.update((store) => ({
 			...store,
 			currentOperation: undefined
 		}));
 	};
+
+	$: ({
+		gasLimit,
+		gasLimitLower,
+		gasLimitUpper,
+		gasPrice,
+		gasPriceLower
+	} = $settingsStore);
 </script>
 
 <div class="operation">
@@ -153,8 +160,21 @@
 						<span>{address}</span>
 					</dd>
 				</dl>
+				<GasSettings
+					limit={gasLimit}
+					limitLower={gasLimitLower}
+					limitUpper={gasLimitUpper}
+					price={gasPrice}
+					priceLower={gasPriceLower}
+					on:setGasSettings={(event) => {
+						settingsStore.update(store => {
+							store.gasLimit = event.detail.limit;
+							store.gasPrice = event.detail.price;
 
-				<GasSettings on:setGasSettings={() => {}}/>
+							return store;
+						});
+					}}
+				/>
 			</div>
 		</WizardStep>
 		<WizardStep step={3} {key} showNavigation={false}>

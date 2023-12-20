@@ -190,18 +190,19 @@ exports[`Settings > should render the settings page 1`] = `
           class="settings-group__multi-control-content s-EBshooXNO1eQ"
         >
           <label
-            class="settings-group__control settings-group__control--with-label s-EBshooXNO1eQ"
+            class="gas-control s-POS_LBjGgkOM"
           >
             <span
-              class="s-EBshooXNO1eQ"
+              class="s-POS_LBjGgkOM"
             >
-              Minimum
+              Price
             </span>
              
             <input
               class="dusk-textbox dusk-textbox-number"
-              min="0"
-              placeholder="minimum gas value"
+              min="1"
+              placeholder="gas price"
+              required=""
               type="number"
             />
             
@@ -209,23 +210,26 @@ exports[`Settings > should render the settings page 1`] = `
           </label>
            
           <label
-            class="settings-group__control settings-group__control--with-label s-EBshooXNO1eQ"
+            class="gas-control s-POS_LBjGgkOM"
           >
             <span
-              class="s-EBshooXNO1eQ"
+              class="s-POS_LBjGgkOM"
             >
-              Maximum
+              Limit
             </span>
              
             <input
               class="dusk-textbox dusk-textbox-number"
-              min="0"
-              placeholder="maximum gas value"
+              max="1000000000"
+              min="10000000"
+              placeholder="gas limit"
+              required=""
               type="number"
             />
             
             <!--&lt;Textbox&gt;-->
           </label>
+          <!--&lt;GasControls&gt;-->
         </div>
       </article>
        
@@ -595,7 +599,7 @@ exports[`Settings > should render the settings page 1`] = `
           <h3
             class="h4 settings-group__heading s-EBshooXNO1eQ"
           >
-            Dangerzone
+            Danger zone
           </h3>
         </header>
          

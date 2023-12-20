@@ -1,16 +1,31 @@
 <script>
 	import { slide } from "svelte/transition";
 	import { mdiGasStationOutline } from "@mdi/js";
-	import { Button, Icon, Textbox } from "$lib/dusk/components";
+	import { Button, Icon } from "$lib/dusk/components";
+	import { GasControls } from "$lib/components";
 	import { createEventDispatcher } from "svelte";
+
+	/** @type {Number} */
+	export let limit;
+
+	/** @type {Number} */
+	export let limitLower;
+
+	/** @type {Number} */
+	export let limitUpper;
+
+	/** @type {Number} */
+	export let price;
+
+	/** @type {Number} */
+	export let priceLower;
 
 	const dispatch = createEventDispatcher();
 
-	const gas = {
-		maximum: 0,
-		minimum: 0
+	let gas = {
+		limit,
+		price
 	};
-
 	let gasSettings = false;
 </script>
 
@@ -37,31 +52,14 @@
 	</dl>
 	{#if gasSettings}
 		<div in:slide|global class="operation__gas-settings">
-			<dl class="operation__gas-settings">
-				<dt>
-					<span>Minimum gas:</span>
-				</dt>
-				<dt>
-					<Textbox
-						className="operation__input-field"
-						type="number"
-						bind:value={gas.minimum}
-					/>
-				</dt>
-			</dl>
-
-			<dl class="ooperation__gas-settings">
-				<dt>
-					<span>Maximum gas:</span>
-				</dt>
-				<dt>
-					<Textbox
-						className="operation__input-field"
-						type="number"
-						bind:value={gas.maximum}
-					/>
-				</dt>
-			</dl>
+			<GasControls
+				on:setGasSettings={(event) => { gas = event.detail; }}
+				limit={gas.limit}
+				{limitLower}
+				{limitUpper}
+				price={gas.price}
+				{priceLower}
+			/>
 		</div>
 	{/if}
 </div>
