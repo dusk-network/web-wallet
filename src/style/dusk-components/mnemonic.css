@@ -1,4 +1,4 @@
-.dusk-mnemonic__validate_actions_wrapper {
+.dusk-mnemonic__validate-actions-wrapper {
 	display: grid;
 	gap: var(--default-gap);
 	grid-template-columns: var(--mobile-grid-template-columns);
@@ -6,13 +6,13 @@
 }
 
 
-.dusk-mnemonic__authenticate_actions_wrapper {
+.dusk-mnemonic__authenticate-actions-wrapper {
 	display: flex;
 	flex-direction: column;
 	margin-top: 1em;
 }
 
-.dusk-mnemonic__predictions_wrapper {
+.dusk-mnemonic__predictions-wrapper {
 	display: grid;
 	grid-auto-flow: row;
 	grid-auto-columns: 1fr;
@@ -21,21 +21,21 @@
 }
 
 @media (min-width: 600px) {
-	.dusk-mnemonic__validate_actions_wrapper {
+	.dusk-mnemonic__validate-actions-wrapper {
 		grid-template-columns: var(--tablet-grid-template-columns);
 	}
 
-	.dusk-mnemonic__predictions_wrapper {
+	.dusk-mnemonic__predictions-wrapper {
 		grid-auto-flow: column;
 	}
 }
 
 @media (min-width: 800px) {
-	.dusk-mnemonic__validate_actions_wrapper {
+	.dusk-mnemonic__validate-actions-wrapper {
 		grid-template-columns: var(--desktop-grid-template-columns);
 	}
 
-	.dusk-mnemonic__predictions_wrapper {
+	.dusk-mnemonic__predictions-wrapper {
 		grid-auto-flow: column;
 	}
 }

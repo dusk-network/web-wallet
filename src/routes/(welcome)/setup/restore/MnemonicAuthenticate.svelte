@@ -5,23 +5,14 @@
 
 	export let isValid = false;
 
-	/**
-	 * @param {String[]} value
-	 */
-	function checkStatus (value) {
-		const filteredWords = value.filter(word => word !== "");
-		const set = new Set(filteredWords);
-
-		if (set.size === defaultWordsCount) {
-			isValid = true;
-		}
-	}
+	/** @param {String[]} value */
+	const checkStatus = (value) => {
+		isValid = value.filter(word => word !== "").length === defaultWordsCount;
+	};
 
 	const unsubscribe = enteredMnemonicPhrase.subscribe(checkStatus);
 
-	onDestroy(() => {
-		unsubscribe();
-	});
+	onDestroy(unsubscribe);
 </script>
 
 <Card heading="Enter your Mnemonic Phrase">

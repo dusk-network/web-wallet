@@ -72,7 +72,7 @@ exports[`Mnemonic > should render the "Mnemonic" component in the authenticate s
     <!--&lt;Words&gt;-->
      
     <div
-      class="dusk-mnemonic__authenticate_actions_wrapper"
+      class="dusk-mnemonic__authenticate-actions-wrapper"
     >
       <input
         class="dusk-textbox dusk-textbox-text"
@@ -162,7 +162,7 @@ exports[`Mnemonic > should render the "Mnemonic" component in the validate state
     <!--&lt;Words&gt;-->
      
     <div
-      class="dusk-mnemonic__validate_actions_wrapper"
+      class="dusk-mnemonic__validate-actions-wrapper"
     >
       
       <button
