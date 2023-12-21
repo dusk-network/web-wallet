@@ -3,6 +3,7 @@
 <script>
 	import {
 		mdiApplicationCogOutline,
+		mdiArrowLeft,
 		mdiCheckNetworkOutline,
 		mdiGasStationOutline,
 		mdiRestoreAlert,
@@ -181,6 +182,7 @@
 	<AnchorButton
 		href="/dashboard"
 		variant="tertiary"
+		icon={{ path: mdiArrowLeft }}
 		text="Back"/>
 	<Button variant="tertiary" text="Log out"/>
 </div>

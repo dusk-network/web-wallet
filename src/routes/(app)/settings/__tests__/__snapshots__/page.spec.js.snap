@@ -626,14 +626,27 @@ exports[`Settings > should render the settings page 1`] = `
   >
     <a
       aria-disabled="false"
-      class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--normal"
+      class="dusk-anchor dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--normal dusk-icon-button-labeled"
       href="/dashboard"
     >
+      <svg
+        class="dusk-icon dusk-icon--size--normal dusk-anchor-button__icon"
+        role="graphics-symbol"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
+        />
+      </svg>
+      
+      <!--&lt;Icon&gt;-->
+       
       <span
         class="dusk-anchor-button__text"
       >
         Back
       </span>
+      
       
     </a>
     <!--&lt;Anchor&gt;-->

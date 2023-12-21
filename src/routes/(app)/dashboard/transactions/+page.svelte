@@ -2,10 +2,9 @@
 
 <script>
 	import { mdiArrowLeft } from "@mdi/js";
-
 	import { Balance } from "$lib/components";
-	import { AnchorButton } from "$lib/dusk/components";
-	import { settingsStore, transactionsStore, walletStore } from "$lib/stores";
+	import { AnchorButton, Card, Throbber } from "$lib/dusk/components";
+	import { settingsStore, walletStore } from "$lib/stores";
 
 	import Transactions from "../Transactions.svelte";
 
@@ -16,10 +15,9 @@
 	const { currency, language } = $settingsStore;
 
 	$: ({ balance } = $walletStore);
-	$: ({ transactions } = $transactionsStore);
 </script>
 
-<div class="dashboard-content">
+<div class="transactions">
 	<h2 class="visible-hidden">Transactions</h2>
 
 	<Balance
@@ -30,28 +28,42 @@
 		locale={language}
 	/>
 
-	<Transactions {transactions}>
-		<h3 class="h4" slot="heading">Transactions</h3>
-		<AnchorButton
-			slot="controls"
-			href="/dashboard"
-			text="Back"
-			icon={{
-				path: mdiArrowLeft
-			}}
-			variant="tertiary"
-		/>
-	</Transactions>
-
+	{#await walletStore.getTransactionsHistory()}
+		<Throbber className="loading"/>
+	{:then transactions}
+		{#if transactions.length}
+			<Transactions transactions={transactions}>
+				<h3 class="h4" slot="heading">Transactions</h3>
+			</Transactions>
+		{:else}
+			<Card heading="Transactions">
+				<p>You have no transaction history</p>
+			</Card>
+		{/if}
+	{:catch e}
+		<Card heading="Error getting transactions">
+			<pre>{e}</pre>
+		</Card>
+	{/await}
+	<AnchorButton
+		href="/dashboard"
+		text="Back"
+		variant="tertiary"
+		icon={{ path: mdiArrowLeft }}
+	/>
 </div>
 
 <style lang="postcss">
-	.dashboard-content {
+	.transactions {
 		width: 100%;
 		display: flex;
 		flex-direction: column;
 		gap: 1.375rem;
 		overflow-y: auto;
 		flex: 1;
+	}
+
+	:global(.loading) {
+		align-self: center;
 	}
 </style>

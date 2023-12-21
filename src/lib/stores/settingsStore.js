@@ -4,6 +4,7 @@ import { browser } from "$app/environment";
 const initialState = {
 	currency: "USD",
 	darkMode: false,
+	dashboardTransactionLimit: 5,
 	gasLimit: parseInt(import.meta.env.VITE_GAS_LIMIT_DEFAULT, 10),
 	gasLimitLower: parseInt(import.meta.env.VITE_GAS_LIMIT_LOWER, 10),
 	gasLimitUpper: parseInt(import.meta.env.VITE_GAS_LIMIT_UPPER, 10),

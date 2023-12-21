@@ -8,10 +8,10 @@ type Contract = {
 
 type Transaction = {
 	amount: number,
-	block: number,
+	block_height: number,
+	direction: string,
 	fee: number,
-	hash: string,
-	method: string
+	id: string,
 }
 
 type StakeType = "stake" | "withdraw-stake" | "withdraw-rewards";
