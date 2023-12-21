@@ -20,6 +20,9 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
         >
           <span
             class="footer__icon-wrapper footer__icon-wrapper--success s-Ck0voT_hIlXn"
+            data-tooltip-disabled="true"
+            data-tooltip-id="main-tooltip"
+            data-tooltip-type="error"
           >
             <svg
               class="dusk-icon dusk-icon--size--normal footer__icon"
@@ -105,6 +108,10 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
         >
           <span
             class="footer__icon-wrapper footer__icon-wrapper--error s-Ck0voT_hIlXn"
+            data-tooltip-disabled="false"
+            data-tooltip-id="main-tooltip"
+            data-tooltip-text=""
+            data-tooltip-type="error"
           >
             <svg
               class="dusk-icon dusk-icon--size--normal footer__icon"
@@ -212,6 +219,9 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
         >
           <span
             class="footer__icon-wrapper footer__icon-wrapper--sync s-Ck0voT_hIlXn"
+            data-tooltip-disabled="true"
+            data-tooltip-id="main-tooltip"
+            data-tooltip-type="error"
           >
             <svg
               class="dusk-icon dusk-icon--size--normal footer__icon"

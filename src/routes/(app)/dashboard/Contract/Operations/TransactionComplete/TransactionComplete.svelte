@@ -1,5 +1,5 @@
 <script>
-	import { AnchorButton, Button, Icon } from "$lib/dusk/components";
+	import { AnchorButton, Icon } from "$lib/dusk/components";
 	import { mdiCheckDecagramOutline } from "@mdi/js";
 	import { operationsStore } from "$lib/stores";
 
@@ -21,11 +21,21 @@
 
 <AnchorButton
 	href="https://explorer.dusk.network"
-	variant="secondary"
+	on:click={resetOperationStore}
+	rel="noopener noreferrer"
+	target="_blank"
 	text="VIEW ON BLOCK EXPLORER"
-	on:click={() => resetOperationStore()}
+	variant="secondary"
 />
-<Button variant="tertiary" text="HOME" on:click={() => resetOperationStore()}/>
+<AnchorButton
+	href="/dashboard"
+	on:click={event => {
+		event.preventDefault();
+		resetOperationStore();
+	}}
+	text="HOME"
+	variant="tertiary"
+/>
 
 <style lang="postcss">
 	.operation__confirmation {
