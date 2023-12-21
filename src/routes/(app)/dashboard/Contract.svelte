@@ -7,7 +7,7 @@
 		Send,
 		Stake
 	} from "./Contract/Operations";
-	import { operationsStore } from "$lib/stores";
+	import { operationsStore, walletStore } from "$lib/stores";
 	import { onDestroy } from "svelte";
 
 	/** @type Contract */
@@ -53,6 +53,7 @@
 	];
 
 	$: ({ currentOperation } = $operationsStore);
+	$: ({ isSyncing, error } = $walletStore);
 	$: ({ statuses } = contract);
 
 	const { operations } = contract;
@@ -74,6 +75,7 @@
 		<ContractOperations {statuses}>
 			{#each operations as operation, index (operation.id)}
 				<Button
+					disabled={operation.label !== "receive" && (isSyncing || error)}
 					className="operations__operation"
 					variant={operation.variant ?? "secondary"}
 					on:click={() =>
