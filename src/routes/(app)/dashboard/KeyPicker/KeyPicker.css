@@ -13,10 +13,6 @@
     flex-shrink: 1;
 }
 
-.key-picker__current-key {
-    line-height: 1;
-}
-
 .key-picker__key {
     max-width: 100%;
     all: unset;
