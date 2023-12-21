@@ -29,6 +29,7 @@ describe("walletStore", async () => {
 	const getBalanceSpy = vi.spyOn(Wallet.prototype, "getBalance").mockResolvedValue(balance);
 	const getPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockReturnValue(generatedKeys);
 	const historySpy = vi.spyOn(Wallet.prototype, "history").mockResolvedValue([]);
+	const resetSpy = vi.spyOn(Wallet.prototype, "reset").mockResolvedValue(void 0);
 	const stakeInfoSpy = vi.spyOn(Wallet.prototype, "stakeInfo").mockResolvedValue({});
 	const stakeSpy = vi.spyOn(Wallet.prototype, "stake").mockResolvedValue(void 0);
 	const syncSpy = vi.spyOn(Wallet.prototype, "sync").mockResolvedValue(void 0);
@@ -40,6 +41,7 @@ describe("walletStore", async () => {
 		getBalanceSpy.mockClear();
 		getPsksSpy.mockClear();
 		historySpy.mockClear();
+		resetSpy.mockClear();
 		stakeInfoSpy.mockClear();
 		stakeSpy.mockClear();
 		syncSpy.mockClear();
@@ -52,6 +54,7 @@ describe("walletStore", async () => {
 		getBalanceSpy.mockRestore();
 		getPsksSpy.mockRestore();
 		historySpy.mockRestore();
+		resetSpy.mockRestore();
 		stakeInfoSpy.mockRestore();
 		stakeSpy.mockRestore();
 		syncSpy.mockRestore();
@@ -188,6 +191,12 @@ describe("walletStore", async () => {
 			await vi.advanceTimersToNextTimerAsync();
 
 			syncSpy.mockClear();
+		});
+
+		it("shoud expose a method to clear local data", async () => {
+			await walletStore.clearLocalData();
+
+			expect(resetSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it("should expose a method to retrieve the stake info", async () => {
