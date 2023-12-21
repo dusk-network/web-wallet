@@ -68,6 +68,7 @@ exports[`Settings > should render the settings page 1`] = `
              
           </option>
           <option
+            disabled=""
             value="mainnet"
           >
             mainnet

@@ -31,7 +31,10 @@
 		gasPriceLower,
 		network
 	} = $settingsStore;
-	const networks = ["testnet", "mainnet"];
+	const networks = [
+		{ label: "testnet", value: "testnet" },
+		{ disabled: true, label: "mainnet", value: "mainnet" }
+	];
 
 	let isDarkMode = darkMode;
 </script>
