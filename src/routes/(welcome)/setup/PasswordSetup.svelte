@@ -26,9 +26,17 @@
 	heading="Password">
 	<div class="flex flex-col gap-1">
 		<p>Please store your password safely.</p>
-		<Textbox type="password" bind:value={password} placeholder="Set Password"/>
+		<Textbox
+			type="password"
+			autocomplete="new-password"
+			bind:value={password}
+			placeholder="Set Password"/>
 		<div class="confirm-password">
-			<Textbox type="password" bind:value={confirmPassword} placeholder="Confirm Password"/>
+			<Textbox
+				type="password"
+				autocomplete="new-password"
+				bind:value={confirmPassword}
+				placeholder="Confirm Password"/>
 			{#if password.length < 8}
 				<span class="confirm-password--meta">Password must be at least 8 characters</span>
 			{:else if confirmPassword && password !== confirmPassword}

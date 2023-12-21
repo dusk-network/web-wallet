@@ -224,6 +224,7 @@ exports[`Login > Password workflow > should show the password field and the link
           class="login__form s-diEOsynXV9Ac"
         >
           <input
+            autocomplete="current-password"
             class="dusk-textbox dusk-textbox-password"
             name="secret"
             placeholder="Password"
