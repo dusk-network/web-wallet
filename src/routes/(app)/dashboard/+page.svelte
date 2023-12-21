@@ -36,8 +36,8 @@
 	const { currentPrice } = data;
 	const { currency, language } = $settingsStore;
 	const TRANSACTION_LIMIT = 5;
-	const { isSyncing, error } = $walletStore;
 
+	$: ({ isSyncing, error } = $walletStore);
 	$: ({ balance, currentKey, keys } = $walletStore);
 	$: ({ currentOperation } = $operationsStore);
 	$: ({ transactions } = $transactionsStore);
