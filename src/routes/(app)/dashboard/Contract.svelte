@@ -45,9 +45,7 @@
 			component: Receive,
 			id: "receive",
 			props: {
-				// eslint-disable-next-line max-len
-				publicSpendKey:
-					"Y05MCvisx3hIhGq50gQ7rZRmQKiIO03ly8DsVqKmU5cmIO1B7CKXPH2dtSC5sk6vmXJZ27qSMPfFsW"
+				publicSpendKey: $walletStore.currentKey
 			}
 		}
 	];
