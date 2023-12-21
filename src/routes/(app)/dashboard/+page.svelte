@@ -6,14 +6,13 @@
 		mdiArrowUpBoldBoxOutline,
 		mdiDatabaseArrowDownOutline,
 		mdiDatabaseOutline,
-		mdiEyeOffOutline,
 		mdiSwapVertical
 	} from "@mdi/js";
 	import { fade } from "svelte/transition";
 	import { find, hasKeyValue } from "lamb";
 
 	import { logo } from "$lib/dusk/icons";
-	import { AnchorButton, Button, Tabs } from "$lib/dusk/components";
+	import { AnchorButton, Tabs } from "$lib/dusk/components";
 	import { Balance } from "$lib/components";
 	import {
 		operationsStore,
@@ -23,7 +22,6 @@
 	} from "$lib/stores";
 
 	import Contract from "./Contract.svelte";
-	import { Receive } from "./Contract/Operations";
 	import Transactions from "./Transactions.svelte";
 	import KeyPicker from "./KeyPicker.svelte";
 
@@ -31,13 +29,11 @@
 	export let data;
 
 	let selectedTab = "transfer";
-	let show = false;
 
 	const { currentPrice } = data;
 	const { currency, language } = $settingsStore;
 	const TRANSACTION_LIMIT = 5;
 
-	$: ({ isSyncing, error } = $walletStore);
 	$: ({ balance, currentKey, keys } = $walletStore);
 	$: ({ currentOperation } = $operationsStore);
 	$: ({ transactions } = $transactionsStore);
@@ -138,38 +134,21 @@
 		locale={language}
 	/>
 
-	{#if isSyncing || error}
-		<Button
-			className="dashboard-content__receive"
-			variant="secondary"
-			on:click={() => {
-				show = !show;
-			}}
-			icon={!show
-				? { path: mdiArrowDownBoldBoxOutline }
-				: { path: mdiEyeOffOutline }}
-			text={!show ? "receive" : "hide"}
-		/>
-		{#if show}
-			<Receive publicSpendKey={currentKey} hideBackButton={true}/>
-		{/if}
-	{:else}
-		<article class="tabs">
-			<Tabs bind:selectedTab items={CONTRACTS}/>
-			<div
-				class="tabs__panel"
-				class:tabs__panel--first={selectedTab === CONTRACTS[0].id}
-				class:tabs__panel--last={selectedTab
-					=== CONTRACTS[CONTRACTS.length - 1].id}
-			>
-				{#key selectedTab}
-					<div in:fade|global class="tabs__contract">
-						<Contract contract={selectedContract}/>
-					</div>
-				{/key}
-			</div>
-		</article>
-	{/if}
+	<article class="tabs">
+		<Tabs bind:selectedTab items={CONTRACTS}/>
+		<div
+			class="tabs__panel"
+			class:tabs__panel--first={selectedTab === CONTRACTS[0].id}
+			class:tabs__panel--last={selectedTab
+				=== CONTRACTS[CONTRACTS.length - 1].id}
+		>
+			{#key selectedTab}
+				<div in:fade|global class="tabs__contract">
+					<Contract contract={selectedContract}/>
+				</div>
+			{/key}
+		</div>
+	</article>
 
 	{#if currentOperation === undefined && selectedTab === "transfer" }
 		<Transactions transactions={transactions.slice(-Math.abs(TRANSACTION_LIMIT))}>
