@@ -122,6 +122,7 @@ exports[`Settings > should render the settings page 1`] = `
              
             <button
               class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal"
+              disabled=""
               type="button"
             >
               <span
@@ -144,6 +145,7 @@ exports[`Settings > should render the settings page 1`] = `
              
             <button
               class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal"
+              disabled=""
               type="button"
             >
               <span

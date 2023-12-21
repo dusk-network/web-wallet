@@ -78,7 +78,7 @@
 				<div class="settings-group__control settings-group__control--with-label">
 					<span>Recovery file</span>
 					<Button
-						on:click={() => { return true; }}
+						disabled={true}
 						text="Export"
 						variant="secondary"
 					/>
@@ -86,7 +86,7 @@
 				<div class="settings-group__control settings-group__control--with-label">
 					<span>Key-Pair file</span>
 					<Button
-						on:click={() => { return true; }}
+						disabled={true}
 						text="Export"
 						variant="secondary"
 					/>
