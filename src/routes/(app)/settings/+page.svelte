@@ -15,9 +15,10 @@
 	} from "$lib/dusk/components";
 	import { GasControls } from "$lib/components";
 	import { currencies } from "$lib/dusk/currency";
-	import { settingsStore } from "$lib/stores";
+	import { settingsStore, walletStore } from "$lib/stores";
 	import { mapWith, rename } from "lamb";
 	import Badge from "$lib/dusk/components/Badge/Badge.svelte";
+	import { goto } from "$app/navigation";
 
 	/** @type {(currency: { code: string, currency: string }) => SelectOption} */
 	const currencyToOption = rename({ code: "value", currency: "label" });
@@ -184,7 +185,14 @@
 		variant="tertiary"
 		icon={{ path: mdiArrowLeft }}
 		text="Back"/>
-	<Button variant="tertiary" text="Log out"/>
+	<Button
+		on:click={async () => {
+			await walletStore.clearLocalData();
+			walletStore.reset();
+			goto("/");
+		}}
+		variant="tertiary"
+		text="Log out"/>
 </div>
 
 <style lang="postcss">
