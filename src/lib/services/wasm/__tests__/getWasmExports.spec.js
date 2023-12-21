@@ -24,6 +24,7 @@ describe("getWasmExports", () => {
 			  "filter_notes": [Function],
 			  "free_mem": [Function],
 			  "get_allow_call_data": [Function],
+			  "get_history": [Function],
 			  "get_mnemonic_seed": [Function],
 			  "get_public_key_rkyv_serialized": [Function],
 			  "get_stake_call_data": [Function],
