@@ -40,7 +40,6 @@
 		currentIndex++;
 
 		if (type === "authenticate") {
-			enDictionary = enDictionary.filter(_word => !$enteredMnemonicPhrase.includes(_word));
 			focusWordTextboxInput();
 		}
 	}
@@ -98,8 +97,8 @@
 
 	<div
 		class={type === "authenticate"
-			? "dusk-mnemonic__authenticate_actions_wrapper"
-			: "dusk-mnemonic__validate_actions_wrapper"}>
+			? "dusk-mnemonic__authenticate-actions-wrapper"
+			: "dusk-mnemonic__validate-actions-wrapper"}>
 		{#if type === "authenticate" && mnemonicContains("")}
 			<Textbox
 				placeholder={`Enter word ${currentIndex + 1}`}
@@ -109,7 +108,7 @@
 				type="text"
 				bind:value={currentInput}/>
 			{#if predictions.length}
-				<div class="dusk-mnemonic__predictions_wrapper">
+				<div class="dusk-mnemonic__predictions-wrapper">
 					{#each predictions as prediction, index (`${prediction}-${index}`)}
 						<Button
 							variant="tertiary"
