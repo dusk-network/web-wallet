@@ -30,16 +30,19 @@ The application defines these variables by reading a local `.env` file containin
 N.B. the current `0.1.2` version of the library has no option to pick the network and uses the `LOCAL_NODE` only. The current testnet address is set in that variable in the example below:
 
 ```
+VITE_CURRENT_NODE=${VITE_LOCAL_NODE}
+VITE_CURRENT_PROVER_NODE=${VITE_LOCAL_NODE}
 VITE_GAS_LIMIT_DEFAULT=20000000
 VITE_GAS_LIMIT_LOWER=10000000
 VITE_GAS_LIMIT_UPPER=1000000000
 VITE_GAS_PRICE_DEFAULT=1
 VITE_GAS_PRICE_LOWER=1
-VITE_LOCAL_NODE="https://nodes.dusk.network/"
+VITE_LOCAL_NODE="https://localhost:5173/rusk/"
 VITE_MAINNET_NODE=""
 VITE_RKYV_TREE_LEAF_SIZE=632
 VITE_STAKE_CONTRACT="0200000000000000000000000000000000000000000000000000000000000000"
-VITE_TESTNET_NODE=""
+VITE_TESTNET_NODE="https://nodes.dusk.network"
+VITE_TESTNET_PROVER_NODE="https://provers.dusk.network"
 VITE_TRANSFER_CONTRACT="0100000000000000000000000000000000000000000000000000000000000000"
 ```
 
