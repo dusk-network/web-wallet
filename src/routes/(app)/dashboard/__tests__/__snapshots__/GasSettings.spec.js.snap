@@ -103,55 +103,44 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
       class="operation__gas-settings s-viaBXp9UetOS"
       style="animation: __svelte_276924520_0 400ms linear 0ms 1 both;"
     >
-      <dl
-        class="operation__gas-settings s-viaBXp9UetOS"
+      <label
+        class="gas-control s-POS_LBjGgkOM"
       >
-        <dt
-          class="s-viaBXp9UetOS"
+        <span
+          class="s-POS_LBjGgkOM"
         >
-          <span
-            class="s-viaBXp9UetOS"
-          >
-            Minimum gas:
-          </span>
-           
-        </dt>
-        <dt
-          class="s-viaBXp9UetOS"
-        >
-          <input
-            class="dusk-textbox dusk-textbox-number operation__input-field"
-            type="number"
-          />
-          
-          <!--&lt;Textbox&gt;-->
-        </dt>
-      </dl>
+          Price
+        </span>
+         
+        <input
+          class="dusk-textbox dusk-textbox-number"
+          placeholder="gas price"
+          required=""
+          type="number"
+        />
+        
+        <!--&lt;Textbox&gt;-->
+      </label>
        
-      <dl
-        class="ooperation__gas-settings s-viaBXp9UetOS"
+      <label
+        class="gas-control s-POS_LBjGgkOM"
       >
-        <dt
-          class="s-viaBXp9UetOS"
+        <span
+          class="s-POS_LBjGgkOM"
         >
-          <span
-            class="s-viaBXp9UetOS"
-          >
-            Maximum gas:
-          </span>
-           
-        </dt>
-        <dt
-          class="s-viaBXp9UetOS"
-        >
-          <input
-            class="dusk-textbox dusk-textbox-number operation__input-field"
-            type="number"
-          />
-          
-          <!--&lt;Textbox&gt;-->
-        </dt>
-      </dl>
+          Limit
+        </span>
+         
+        <input
+          class="dusk-textbox dusk-textbox-number"
+          placeholder="gas limit"
+          required=""
+          type="number"
+        />
+        
+        <!--&lt;Textbox&gt;-->
+      </label>
+      <!--&lt;GasControls&gt;-->
     </div>
   </div>
   <!--&lt;GasSettings&gt;-->

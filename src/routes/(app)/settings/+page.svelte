@@ -10,8 +10,9 @@
 	} from "@mdi/js";
 	import {
 		AnchorButton,
-		Button, Icon, Select, Switch, Textbox
+		Button, Icon, Select, Switch
 	} from "$lib/dusk/components";
+	import { GasControls } from "$lib/components";
 	import { currencies } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
 	import { mapWith, rename } from "lamb";
@@ -20,7 +21,16 @@
 	/** @type {(currency: { code: string, currency: string }) => SelectOption} */
 	const currencyToOption = rename({ code: "value", currency: "label" });
 	const currenciesToOptions = mapWith(currencyToOption);
-	const { currency, darkMode, network } = $settingsStore;
+	const {
+		currency,
+		darkMode,
+		gasLimit,
+		gasLimitLower,
+		gasLimitUpper,
+		gasPrice,
+		gasPriceLower,
+		network
+	} = $settingsStore;
 	const networks = ["testnet", "mainnet"];
 
 	let isDarkMode = darkMode;
@@ -90,14 +100,21 @@
 				<h3 class="h4 settings-group__heading">Gas</h3>
 			</header>
 			<div class="settings-group__multi-control-content">
-				<label for={undefined} class="settings-group__control settings-group__control--with-label">
-					<span>Minimum</span>
-					<Textbox placeholder="minimum gas value" type="number" min="0"/>
-				</label>
-				<label for={undefined} class="settings-group__control settings-group__control--with-label">
-					<span>Maximum</span>
-					<Textbox placeholder="maximum gas value" type="number" min="0"/>
-				</label>
+				<GasControls
+					on:setGasSettings={(event) => {
+						settingsStore.update(store => {
+							store.gasLimit = event.detail.limit;
+							store.gasPrice = event.detail.price;
+
+							return store;
+						});
+					}}
+					limit={gasLimit}
+					limitLower={gasLimitLower}
+					limitUpper={gasLimitUpper}
+					price={gasPrice}
+					priceLower={gasPriceLower}
+				/>
 			</div>
 		</article>
 		<hr/>
@@ -145,7 +162,7 @@
 		<article class="settings-group">
 			<header class="settings-group__header">
 				<Icon path={mdiRestoreAlert}/>
-				<h3 class="h4 settings-group__heading">Dangerzone</h3>
+				<h3 class="h4 settings-group__heading">Danger zone</h3>
 			</header>
 			<Button
 				className="settings-group__button--state--danger"

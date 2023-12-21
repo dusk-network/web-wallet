@@ -10,7 +10,7 @@
 		Wizard,
 		WizardStep
 	} from "$lib/dusk/components";
-	import { operationsStore, walletStore } from "$lib/stores";
+	import { operationsStore, settingsStore, walletStore } from "$lib/stores";
 
 	import StatusList from "$lib/dusk/components/StatusList/StatusList.svelte";
 	import GasSettings from "./GasSettings/GasSettings.svelte";
@@ -32,6 +32,14 @@
 			currentOperation: undefined
 		}));
 	};
+
+	$: ({
+		gasLimit,
+		gasLimitLower,
+		gasLimitUpper,
+		gasPrice,
+		gasPriceLower
+	} = $settingsStore);
 </script>
 
 <div class="operation">
@@ -104,7 +112,21 @@
 					variant="warning"
 				/>
 				<StakeOverview amount={stakeAmount} {flow}/>
-				<GasSettings on:setGasSettings={() => {}}/>
+				<GasSettings
+					limit={gasLimit}
+					limitLower={gasLimitLower}
+					limitUpper={gasLimitUpper}
+					price={gasPrice}
+					priceLower={gasPriceLower}
+					on:setGasSettings={(event) => {
+						settingsStore.update(store => {
+							store.gasLimit = event.detail.limit;
+							store.gasPrice = event.detail.price;
+
+							return store;
+						});
+					}}
+				/>
 			</div>
 		</WizardStep>
 
