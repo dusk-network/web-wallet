@@ -13,10 +13,6 @@
 	display: flex;
 	margin-bottom: 1.25em;
 	align-items: center;
-
-	& > * {
-		line-height: 150%;
-	}
 }
 
 .dusk-card__header--toggle-off {
@@ -25,4 +21,10 @@
 
 .dusk-card .dusk-switch {
 	margin-left: auto;
+}
+
+.dusk-card pre {
+	overflow-x: auto;
+	tab-width: 4;
+	padding: 1em 0;
 }

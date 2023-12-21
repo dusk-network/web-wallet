@@ -1,14 +1,16 @@
 <script>
 	import {
-		mdiArrowDownBoldBoxOutline,
-		mdiArrowUpBoldBoxOutline,
-		mdiContain,
-		mdiDatabaseArrowDownOutline,
-		mdiDatabaseArrowUpOutline
+
+		// mdiArrowDownBoldBoxOutline,
+		// mdiArrowUpBoldBoxOutline,
+		mdiContain
+
+	// mdiDatabaseArrowDownOutline,
+		// mdiDatabaseArrowUpOutline
 	} from "@mdi/js";
 	import { fade } from "svelte/transition";
 	import { logo } from "$lib/dusk/icons";
-	import { Badge, Icon, Tooltip } from "$lib/dusk/components";
+	import { /* Badge, */ Icon, Tooltip } from "$lib/dusk/components";
 	import { createCurrencyFormatter, createTransferFormatter } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
 
@@ -27,14 +29,13 @@
 
 	<div class="transactions__lists">
 		{#if transactions.length}
-			{#each transactions as transaction (transaction.hash)}
-				{@const isPositive = Math.sign(transaction.amount) === 1}
+			{#each transactions as transaction (transaction.id)}
 				<dl class="transactions-list">
 					<dt class="transactions-list__term">Hash</dt>
 					<dd class="transactions-list__datum">
-						<samp>{transaction.hash}</samp>
+						<samp>{transaction.id}</samp>
 					</dd>
-					<dt class="transactions-list__term">Method</dt>
+					<!-- <dt class="transactions-list__term">Method</dt>
 					<dd class="transactions-list__datum">
 						<Badge className="transactions-list__badge" text={transaction.method}/>
 						{#if Math.sign(transaction.amount) !== 0}
@@ -51,10 +52,10 @@
 									}/>
 							{/if}
 						{/if}
-					</dd>
+					</dd> -->
 					<dt class="transactions-list__term">Block</dt>
 					<dd class="transactions-list__datum">
-						{new Intl.NumberFormat(language).format(transaction.block)}
+						{new Intl.NumberFormat(language).format(transaction.block_height)}
 					</dd>
 					<dt class="transactions-list__term">Amount</dt>
 					<dd class="transactions-list__datum">
@@ -130,7 +131,6 @@
 	&__term {
 		background-color: var(--background-color-alt);
 		grid-column: 1;
-		text-align: center;
 		line-height: 130%;
 		text-transform: capitalize;
 		padding: .3125em .625em .3125em 1.375em;

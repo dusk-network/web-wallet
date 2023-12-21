@@ -12,12 +12,13 @@
 	import { find, hasKeyValue } from "lamb";
 
 	import { logo } from "$lib/dusk/icons";
-	import { AnchorButton, Tabs } from "$lib/dusk/components";
+	import {
+		AnchorButton, Card, Tabs, Throbber
+	} from "$lib/dusk/components";
 	import { Balance } from "$lib/components";
 	import {
 		operationsStore,
 		settingsStore,
-		transactionsStore,
 		walletStore
 	} from "$lib/stores";
 
@@ -31,12 +32,16 @@
 	let selectedTab = "transfer";
 
 	const { currentPrice } = data;
-	const { currency, language } = $settingsStore;
-	const TRANSACTION_LIMIT = 5;
+	const {
+		currency,
+		dashboardTransactionLimit,
+		language
+	} = $settingsStore;
 
-	$: ({ balance, currentKey, keys } = $walletStore);
+	$: ({
+		balance, currentKey, keys
+	} = $walletStore);
 	$: ({ currentOperation } = $operationsStore);
-	$: ({ transactions } = $transactionsStore);
 	$: CONTRACTS = [{
 		icon: { path: mdiSwapVertical },
 		id: "transfer",
@@ -151,16 +156,30 @@
 	</article>
 
 	{#if currentOperation === undefined && selectedTab === "transfer" }
-		<Transactions transactions={transactions.slice(-Math.abs(TRANSACTION_LIMIT))}>
-			<h3 class="h4" slot="heading">Transactions</h3>
-			<AnchorButton
-				className="view-transactions"
-				slot="controls"
-				href="/dashboard/transactions"
-				text="View all transactions"
-				variant="tertiary"
-			/>
-		</Transactions>
+		{#await walletStore.getTransactionsHistory()}
+			<Throbber className="loading"/>
+		{:then transactions}
+			{#if transactions.length}
+				<Transactions transactions={transactions.slice(-Math.abs(dashboardTransactionLimit))}>
+					<h3 class="h4" slot="heading">Transactions</h3>
+					<AnchorButton
+						className="view-transactions"
+						slot="controls"
+						href="/dashboard/transactions"
+						text="View all transactions"
+						variant="tertiary"
+					/>
+				</Transactions>
+			{:else}
+				<Card heading="Transactions">
+					<p>You have no transaction history</p>
+				</Card>
+			{/if}
+		{:catch e}
+			<Card heading="Error getting transactions">
+				<pre>{e}</pre>
+			</Card>
+		{/await}
 	{/if}
 </div>
 
@@ -218,5 +237,9 @@
 
 	:global(.view-transactions) {
 		width: 100%;
+	}
+
+	:global(.loading) {
+		align-self: center;
 	}
 </style>
