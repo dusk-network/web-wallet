@@ -18,6 +18,8 @@ type WalletStoreContent = {
 };
 
 type WalletStoreServices = {
+	clearLocalData: () => Promise<void>,
+
 	getStakeInfo: () => Promise<any> & ReturnType<Wallet["stakeInfo"]>;
 
 	// The return type apparently is not in a promise here

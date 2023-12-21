@@ -10,6 +10,7 @@ class Wallet {
 	async stake () {}
 	async stakeAllow () {}
 	async stakeInfo () {}
+	async reset () {}
 	async sync () {}
 	async transfer () {}
 	async unstake () {}
