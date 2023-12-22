@@ -90,12 +90,18 @@
 	/* Dividers */
 
 	--divider-color-primary: var(--taupe-grey);
-    
+
     /* Footer icon */
+
     --footer-icon-color: var(--light-grey);
 
 	/* Home animation */
 
 	--home-box-color: var(--silver-metallic);
 	--home-grid-color: var(--light-gray);
+
+	/* Ribbon */
+
+	--ribbon-color: var(--magnolia);
+	--ribbon-bg-color: var(--cornflower)
 }
