@@ -2,7 +2,7 @@
 
 <script>
 	import { fade } from "svelte/transition";
-	import { encryptMnemonic } from "$lib/wallet";
+	import { encryptMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 	import { mnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
 	import { Wizard } from "$lib/dusk/components";
 	import loginInfoStorage from "$lib/services/loginInfoStorage";
@@ -18,6 +18,8 @@
 	import MnemonicPreSetup from "./MnemonicPreSetup.svelte";
 	import PasswordSetup from "../PasswordSetup.svelte";
 	import { goto } from "$app/navigation";
+	import { getWallet } from "$lib/services/wallet";
+	import { settingsStore, walletStore } from "$lib/stores";
 
 	let tosAccepted = false;
 
@@ -48,6 +50,16 @@
 
 			loginInfoStorage.set(encryptedData);
 		}
+	}
+
+	async function initializeWallet () {
+		settingsStore.reset();
+
+		const mnemonic = $mnemonicPhrase.join(" ");
+		const seed = getSeedFromMnemonic(mnemonic);
+		const wallet = await getWallet(seed);
+
+		await walletStore.clearLocalDataAndInit(wallet);
 	}
 </script>
 
@@ -92,7 +104,10 @@
 			step={2}
 			{key}
 			showStepper={true}
-			nextButton={{ disabled: !validMnemonic }}>
+			nextButton={{
+				action: initializeWallet,
+				disabled: !validMnemonic
+			}}>
 			<h2 class="h1" slot="heading">
 				Backup<br/>
 				<mark>Mnemonic Phrase</mark>

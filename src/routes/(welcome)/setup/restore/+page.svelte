@@ -10,9 +10,11 @@
 	import MnemonicAuthenticate from "./MnemonicAuthenticate.svelte";
 	import { Wizard, WizardStep } from "$lib/dusk/components";
 	import { mnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
-	import { encryptMnemonic } from "$lib/wallet";
+	import { encryptMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 	import loginInfoStorage from "$lib/services/loginInfoStorage";
 	import { goto } from "$app/navigation";
+	import { getWallet } from "$lib/services/wallet";
+	import { settingsStore, walletStore } from "$lib/stores";
 
 	let tosAccepted = false;
 
@@ -41,6 +43,16 @@
 			loginInfoStorage.set(encryptedData);
 		}
 	}
+
+	async function initializeWallet () {
+		settingsStore.reset();
+
+		const mnemonic = $mnemonicPhrase.join(" ");
+		const seed = getSeedFromMnemonic(mnemonic);
+		const wallet = await getWallet(seed);
+
+		await walletStore.clearLocalDataAndInit(wallet);
+	}
 </script>
 
 {#if !tosAccepted}
@@ -58,7 +70,10 @@
 				href: "/setup",
 				isAnchor: true
 			}}
-			nextButton={{ disabled: !validMnemonic }}>
+			nextButton={{
+				action: initializeWallet,
+				disabled: !validMnemonic
+			}}>
 			<h2 class="h1" slot="heading">
 				Enter<br/>
 				<mark>Mnemonic Phrase</mark>
