@@ -18,7 +18,9 @@ type WalletStoreContent = {
 };
 
 type WalletStoreServices = {
-	clearLocalData: () => Promise<void>,
+	clearLocalData: () => Promise<void>;
+
+	clearLocalDataAndInit: (wallet: Wallet) => Promise<void>;
 
 	getStakeInfo: () => Promise<any> & ReturnType<Wallet["stakeInfo"]>;
 
