@@ -18,12 +18,8 @@ describe("Settings", () => {
 		expect(container.firstChild).toMatchSnapshot();
 	});
 
-	it("should clear local data, reset wallet store, and navigate on clicking the Log Out button", async () => {
+	it("should reset wallet store and navigate to login page on clicking the Log Out button", async () => {
 		const { getByRole } = render(Settings);
-
-		const clearLocalDataMock = vi.fn(() => Promise.resolve());
-
-		walletStore.clearLocalData = clearLocalDataMock;
 
 		const resetMock = vi.fn();
 
@@ -34,8 +30,6 @@ describe("Settings", () => {
 		await fireEvent.click(button);
 
 		await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
-
-		expect(clearLocalDataMock).toHaveBeenCalled();
 
 		await vi.advanceTimersToNextTimerAsync();
 
