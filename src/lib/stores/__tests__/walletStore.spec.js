@@ -37,6 +37,25 @@ describe("walletStore", async () => {
 	const unstakeSpy = vi.spyOn(Wallet.prototype, "unstake").mockResolvedValue(void 0);
 	const withdrawRewardSpy = vi.spyOn(Wallet.prototype, "withdrawReward").mockResolvedValue(void 0);
 
+	const initialState = {
+		balance: {
+			maximum: 0,
+			value: 0
+		},
+		currentKey: "",
+		error: null,
+		initialized: false,
+		isSyncing: false,
+		keys: []
+	};
+	const initializedStore = {
+		...initialState,
+		balance,
+		currentKey: generatedKeys[0],
+		initialized: true,
+		keys: generatedKeys
+	};
+
 	afterEach(() => {
 		getBalanceSpy.mockClear();
 		getPsksSpy.mockClear();
@@ -64,25 +83,6 @@ describe("walletStore", async () => {
 	});
 
 	describe("Initialization and sync", () => {
-		const initialState = {
-			balance: {
-				maximum: 0,
-				value: 0
-			},
-			currentKey: "",
-			error: null,
-			initialized: false,
-			isSyncing: false,
-			keys: []
-		};
-		const initializedStore = {
-			...initialState,
-			balance,
-			currentKey: generatedKeys[0],
-			initialized: true,
-			keys: generatedKeys
-		};
-
 		it("should expose a `reset` method to bring back the store to its initial state", async () => {
 			await walletStore.init(wallet);
 			await vi.advanceTimersToNextTimerAsync();
@@ -197,6 +197,32 @@ describe("walletStore", async () => {
 			await walletStore.clearLocalData();
 
 			expect(resetSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it("should expose a method to clear local data and then init the wallet", async () => {
+			getPsksSpy.mockClear();
+			getBalanceSpy.mockClear();
+			syncSpy.mockClear();
+			walletStore.reset();
+
+			await walletStore.clearLocalDataAndInit(wallet);
+
+			expect(get(walletStore)).toStrictEqual({
+				...initialState,
+				currentKey: generatedKeys[0],
+				error: null,
+				initialized: true,
+				isSyncing: true,
+				keys: generatedKeys
+			});
+			expect(getPsksSpy).toHaveBeenCalledTimes(1);
+			expect(getBalanceSpy).toHaveBeenCalledTimes(1);
+			expect(getBalanceSpy).toHaveBeenCalledWith(generatedKeys[0]);
+			expect(syncSpy).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersToNextTimerAsync();
+
+			expect(get(walletStore)).toStrictEqual(initializedStore);
 		});
 
 		it("should expose a method to retrieve the stake info", async () => {

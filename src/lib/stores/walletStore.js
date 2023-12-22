@@ -45,6 +45,9 @@ const syncedAction = action => sync().then(action).finally(sync);
 /** @type {() => Promise<void>} */
 const clearLocalData = async () => walletInstance?.reset();
 
+/** @type {(wallet: Wallet) => Promise<void>} */
+const clearLocalDataAndInit = wallet => wallet.reset().then(() => init(wallet));
+
 /** @type {import("./stores").WalletStoreServices["getStakeInfo"]} */
 // @ts-expect-error
 const getStakeInfo = async () => sync().then(() => walletInstance.stakeInfo(getCurrentKey()));
@@ -135,6 +138,7 @@ const withdrawReward = async () => syncedAction(() => walletInstance.withdrawRew
 /** @type {import("./stores").WalletStore} */
 export default {
 	clearLocalData,
+	clearLocalDataAndInit,
 	getStakeInfo,
 	getTransactionsHistory,
 	init,
