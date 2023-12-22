@@ -42,6 +42,8 @@
 	}
 </script>
 
+<svelte:window on:beforeunload={event => { event.preventDefault(); }}/>
+
 <section class="dashboard">
 	<slot/>
 	<footer class="footer">
