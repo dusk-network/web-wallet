@@ -13,7 +13,7 @@
 <style>
 	.app {
 		height: 100%;
-		padding: 3.25rem 1.38rem 1.38rem;
+		padding: 1.38rem;
 		display: flex;
 		flex-direction: column;
 		gap: 2rem;
