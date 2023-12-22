@@ -9,22 +9,19 @@
 	/** @type {Boolean} */
 	export let hideBackButton = false;
 
-	const QR_MIN_WIDTH = 150;
-	const QR_MAX_WIDTH = 520;
+	let offsetHeight = 0;
+	let receiveKeyHeight = 0;
+	let buttonHeight = 0;
 
-	let offsetWidth = 0;
+	const COLUMN_COUNT = 2;
+	const COLUMN_WIDTH = 16;
+	const BOTTOM_PADDING = 22;
 
-	$: qrWidth = Math.min(
-		Math.max(
-			Math.round(offsetWidth),
-			QR_MIN_WIDTH
-		),
-		QR_MAX_WIDTH
-	);
-
+	$: qrWidth = offsetHeight - receiveKeyHeight - buttonHeight
+		- COLUMN_COUNT * COLUMN_WIDTH - BOTTOM_PADDING;
 </script>
 
-<div class="receive" bind:offsetWidth>
+<div class="receive" bind:offsetHeight>
 	<figure class="receive__psk">
 		<QrCode
 			value={publicSpendKey}
@@ -32,12 +29,12 @@
 			width={qrWidth}
 		/>
 
-		<figcaption class="receive__key">
+		<figcaption class="receive__key" bind:offsetHeight={receiveKeyHeight}>
 			<samp>{publicSpendKey}</samp>
 		</figcaption>
 	</figure>
 
-	<div class="receive__buttons">
+	<div class="receive__buttons" bind:offsetHeight={buttonHeight}>
 		{#if !hideBackButton}
 			<Button
 				variant="tertiary"
@@ -62,10 +59,17 @@
 
 <style lang="postcss">
 	.receive {
+		position: absolute;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
+		justify-content: space-between;
 		gap: var(--default-gap);
+		background-color: var(--background-color);
+		top: 0;
+		left: 0;
+		z-index: 3;
+		height: 100%;
 
 		&__psk {
 			display: flex;
@@ -76,7 +80,8 @@
 
 		&__key, :global(&__qr) {
 			border-radius: 1.5em;
-			width: 100%;
+			max-width: 100%;
+			max-height: 100%;
 		}
 
 		&__key {
