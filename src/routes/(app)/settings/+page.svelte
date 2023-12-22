@@ -187,7 +187,6 @@
 		text="Back"/>
 	<Button
 		on:click={async () => {
-			await walletStore.clearLocalData();
 			walletStore.reset();
 			goto("/");
 		}}
