@@ -7,7 +7,7 @@ import { expect, vi } from "vitest";
 import { readable } from "svelte/store";
 import crypto from "node:crypto";
 
-import { ResizeObserver } from "./src/lib/dusk/mocks";
+import { IntersectionObserver, ResizeObserver } from "./src/lib/dusk/mocks";
 import init from "./__mocks__/initDuskWalletCore.js";
 import Wallet from "./__mocks__/Wallet.js";
 
@@ -31,6 +31,11 @@ vi.spyOn(global, "atob").mockImplementation(data => Buffer.from(data, "base64").
 vi.spyOn(global, "btoa").mockImplementation(data => Buffer.from(data, "binary").toString("base64"));
 
 // Adding missing bits in JSDOM
+
+vi.mock("./src/lib/dusk/mocks/IntersectionObserver");
+
+global.IntersectionObserver = IntersectionObserver;
+global.ResizeObserver = ResizeObserver;
 
 /*
  * Need to set it this way for Node 20, otherwise
@@ -119,5 +124,3 @@ vi.mock("$app/stores", () => {
 		updated
 	};
 });
-
-global.ResizeObserver = ResizeObserver;
