@@ -5,47 +5,30 @@ exports[`ScanQR > renders the ScanQR component 1`] = `
   <div
     class="scan s-ZIsptfDMOqIA"
   >
+    <video
+      class="s-ZIsptfDMOqIA"
+    >
+      <track
+        class="s-ZIsptfDMOqIA"
+        kind="captions"
+      />
+    </video>
+     
+    <div
+      class="scan__highlight s-ZIsptfDMOqIA"
+    />
+     
     <button
       class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--small"
-      disabled=""
       type="button"
     >
       <span
         class="dusk-button__text"
       >
-        SCAN QR
+        CLOSE
       </span>
     </button>
     <!--&lt;Button&gt;-->
-     
-    <div
-      class="scan-region s-ZIsptfDMOqIA"
-    >
-      <video
-        class="s-ZIsptfDMOqIA"
-      >
-        <track
-          class="s-ZIsptfDMOqIA"
-          kind="captions"
-        />
-      </video>
-       
-      <div
-        class="scan-region__highlight s-ZIsptfDMOqIA"
-      />
-       
-      <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--small"
-        type="button"
-      >
-        <span
-          class="dusk-button__text"
-        >
-          CLOSE
-        </span>
-      </button>
-      <!--&lt;Button&gt;-->
-    </div>
   </div>
   <!--&lt;ScanQR&gt;-->
 </div>
