@@ -69,6 +69,7 @@
 					placeholder={modeLabel}
 					required
 					type="password"
+					autocomplete={loginInfo ? "current-password" : undefined}
 				/>
 				{#if errorMessage}
 					<span class="login__error">{errorMessage}</span>
