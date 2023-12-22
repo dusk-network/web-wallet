@@ -13,6 +13,7 @@
 	import { /* Badge, */ Icon, Tooltip } from "$lib/dusk/components";
 	import { createCurrencyFormatter, createTransferFormatter } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
+	import { getKey, sortWith, sorterDesc } from "lamb";
 
 	/** @type Transaction[] */
 	export let transactions;
@@ -20,6 +21,7 @@
 	const { language } = $settingsStore;
 	const feeFormatter = createCurrencyFormatter(language, "DUSK");
 	const transferFormatter = createTransferFormatter(language);
+	const sortTransactions = sortWith([sorterDesc(getKey("block_height"))]);
 </script>
 
 <article in:fade|global class="transactions">
@@ -29,7 +31,7 @@
 
 	<div class="transactions__lists">
 		{#if transactions.length}
-			{#each transactions as transaction (transaction.id)}
+			{#each sortTransactions(transactions) as transaction (transaction.id)}
 				<dl class="transactions-list">
 					<dt class="transactions-list__term">Hash</dt>
 					<dd class="transactions-list__datum">

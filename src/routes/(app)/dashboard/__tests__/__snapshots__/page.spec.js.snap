@@ -1118,7 +1118,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             <samp
               class="s-ms4M-9Zd82pR"
             >
-              tg874534tddsghdtst54hdfh791h
+              tg874534tddsghdtst54hdfh795h
             </samp>
              
           </dd>
@@ -1130,7 +1130,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            33,456
+            33,460
              
           </dd>
           <dt
@@ -1141,7 +1141,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            -25,000.00
+            +27,000.00
              
             <svg
               class="dusk-icon dusk-icon--size--normal transactions-list__icon"
@@ -1200,7 +1200,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             <samp
               class="s-ms4M-9Zd82pR"
             >
-              tg874534tddsghdtst54hdfh792h
+              tg874534tddsghdtst54hdfh794h
             </samp>
              
           </dd>
@@ -1212,7 +1212,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            33,457
+            33,459
              
           </dd>
           <dt
@@ -1364,7 +1364,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             <samp
               class="s-ms4M-9Zd82pR"
             >
-              tg874534tddsghdtst54hdfh794h
+              tg874534tddsghdtst54hdfh792h
             </samp>
              
           </dd>
@@ -1376,7 +1376,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            33,459
+            33,457
              
           </dd>
           <dt
@@ -1446,7 +1446,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             <samp
               class="s-ms4M-9Zd82pR"
             >
-              tg874534tddsghdtst54hdfh795h
+              tg874534tddsghdtst54hdfh791h
             </samp>
              
           </dd>
@@ -1458,7 +1458,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            33,460
+            33,456
              
           </dd>
           <dt
@@ -1469,7 +1469,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            +27,000.00
+            -25,000.00
              
             <svg
               class="dusk-icon dusk-icon--size--normal transactions-list__icon"
