@@ -50,7 +50,12 @@
 
 <div class="notice">
 	<Icon path={mdiAlertOutline} size="large"/>
-	<p>Setting a password for your web wallet is optional, but doing so will weaken its security.</p>
+	<p>
+		Setting a password for your web wallet is optional. Doing so allows you
+		the convenience of opening your wallet file using a password, but it
+		weakens the overall security. Not using a password requires you to input
+		the full mnemonic to open your wallet.
+	</p>
 </div>
 
 <style lang="postcss">
