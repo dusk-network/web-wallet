@@ -99,7 +99,7 @@ svg {
 	color: var(--ribbon-color);
 	line-height: 45px;
 	transform:rotate(45deg);
-	z-index: 2;
+	z-index: 4;
 }
 
 .dusk-anchor-button:not(.dusk-anchor-button__disabled),
