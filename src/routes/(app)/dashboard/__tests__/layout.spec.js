@@ -10,7 +10,7 @@ import {
 import { act, cleanup } from "@testing-library/svelte";
 
 import { renderWithSimpleContent } from "$lib/dusk/test-helpers";
-import mockedWalletStore from "../__mocks__/mockedWalletStore";
+import mockedWalletStore from "../../__mocks__/mockedWalletStore";
 import Layout from "../+layout.svelte";
 
 vi.mock("$lib/stores", async importOriginal => {

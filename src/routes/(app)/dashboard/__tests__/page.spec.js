@@ -8,7 +8,7 @@ import {
 } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 
-import mockedWalletStore from "../__mocks__/mockedWalletStore";
+import mockedWalletStore from "../../__mocks__/mockedWalletStore";
 import mockTransactions from "$lib/stores/__tests__/mockData";
 import Dashboard from "../+page.svelte";
 import { walletStore } from "$lib/stores";

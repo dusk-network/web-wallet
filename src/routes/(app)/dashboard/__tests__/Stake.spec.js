@@ -11,7 +11,7 @@ import { mdiDatabaseOutline, mdiLockOpenVariantOutline, mdiLockOutline } from "@
 
 import { logo } from "$lib/dusk/icons";
 
-import mockedWalletStore from "../__mocks__/mockedWalletStore";
+import mockedWalletStore from "../../__mocks__/mockedWalletStore";
 import Stake from "../Contract/Operations/Stake.svelte";
 
 vi.mock("$lib/stores", async importOriginal => {

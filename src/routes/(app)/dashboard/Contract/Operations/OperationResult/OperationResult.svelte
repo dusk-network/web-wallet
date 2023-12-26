@@ -3,6 +3,7 @@
 <script>
 	import {
 		AnchorButton,
+		ErrorDetails,
 		Icon,
 		Throbber
 	} from "$lib/dusk/components";
@@ -60,10 +61,10 @@
 			path={mdiCloseThick}
 			size="large"
 		/>
-		<details class="operation-result__details">
-			<summary class="operation-result__summary">{errorMessage}</summary>
-			<pre class="operation-result__error">{error.message}</pre>
-		</details>
+		<ErrorDetails
+			{error}
+			summary={errorMessage}
+		/>
 		<slot name="error-content"/>
 		<AnchorButton
 			href="/dashboard"
@@ -84,27 +85,6 @@
 
 		:global(.dusk-anchor-button) {
 			width: 100%;
-		}
-
-		&__summary {
-			outline: none;
-			cursor: default;
-
-			&::marker {
-				font-size: 1.2em;
-				transition: color 0.2s ease-in-out 0s;
-			}
-
-			&:hover::marker{
-				color: var(--secondary-color);
-			}
-		}
-
-		&__error {
-			margin-top: var(--default-gap);
-			font-size: .875em;
-			white-space: pre-wrap;
-			word-break: keep-all;
 		}
 	}
 </style>

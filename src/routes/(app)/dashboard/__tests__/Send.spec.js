@@ -12,7 +12,7 @@ import "jsdom-worker";
 import { logo } from "$lib/dusk/icons";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 
-import mockedWalletStore from "../__mocks__/mockedWalletStore";
+import mockedWalletStore from "../../__mocks__/mockedWalletStore";
 import Send from "../Contract/Operations/Send.svelte";
 
 vi.mock("$lib/stores", async importOriginal => {
