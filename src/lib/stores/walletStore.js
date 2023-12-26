@@ -10,6 +10,9 @@ import settingsStore from "./settingsStore";
  * @typedef {import("./stores").WalletStoreServices["getTransactionsHistory"]} GetTransactionsHistory
  */
 
+/** @type {Promise<void> | null} */
+let syncPromise = null;
+
 /** @type {Wallet | null} */
 let walletInstance = null;
 
@@ -104,19 +107,23 @@ async function setCurrentKey (key) {
 const stake = async amount => syncedAction(() => walletInstance.stake(getCurrentKey(), amount));
 
 /** @type {import("./stores").WalletStoreServices["sync"]} */
-async function sync () {
+function sync () {
 	if (!walletInstance) {
 		throw new Error("No wallet instance to sync");
 	}
 
-	const store = get(walletStore);
+	if (!syncPromise) {
+		const store = get(walletStore);
 
-	set({ ...store, error: null, isSyncing: true });
+		set({ ...store, error: null, isSyncing: true });
 
-	return walletInstance.sync().then(
-		updateAfterSync,
-		error => { set({ ...store, error, isSyncing: false }); }
-	);
+		syncPromise = walletInstance.sync().then(
+			updateAfterSync,
+			error => { set({ ...store, error, isSyncing: false }); }
+		).finally(() => { syncPromise = null; });
+	}
+
+	return syncPromise;
 }
 
 /** @type {import("./stores").WalletStoreServices["transfer"]} */
