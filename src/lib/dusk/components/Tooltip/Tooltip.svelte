@@ -111,6 +111,8 @@
 			visible: false
 		};
 
+		intersectionObserver.unobserve(event.target);
+
 		if (delayHide) {
 			timeoutID = window.setTimeout(() => {
 				event.target.removeAttribute("aria-described-by");

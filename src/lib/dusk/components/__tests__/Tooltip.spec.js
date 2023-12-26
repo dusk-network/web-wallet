@@ -54,6 +54,7 @@ describe("Tooltip", () => {
 	const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
 	const disconnectSpy = vi.spyOn(IntersectionObserver.prototype, "disconnect");
 	const observeSpy = vi.spyOn(IntersectionObserver.prototype, "observe");
+	const unobserveSpy = vi.spyOn(IntersectionObserver.prototype, "unobserve");
 
 	vi.mocked(computePosition).mockResolvedValue(defaultComputedPosition);
 
@@ -65,6 +66,7 @@ describe("Tooltip", () => {
 		clearTimeoutSpy.mockClear();
 		disconnectSpy.mockClear();
 		observeSpy.mockClear();
+		unobserveSpy.mockClear();
 	});
 
 	afterAll(() => {
@@ -72,6 +74,7 @@ describe("Tooltip", () => {
 		clearTimeoutSpy.mockRestore();
 		disconnectSpy.mockRestore();
 		observeSpy.mockRestore();
+		unobserveSpy.mockRestore();
 	});
 
 	it("should render the Tooltip component", () => {
@@ -360,6 +363,8 @@ describe("Tooltip", () => {
 				await vi.advanceTimersToNextTimerAsync();
 
 				expect(tooltip.getAttribute("aria-hidden")).toBe("false");
+
+				expect(unobserveSpy).not.toHaveBeenCalled();
 			});
 
 			it("should hide the tooltip on a focus-out event if the target element refers to it", async () => {
@@ -376,6 +381,8 @@ describe("Tooltip", () => {
 				await fireEvent.focusOut(target);
 
 				expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+				expect(unobserveSpy).toHaveBeenCalledTimes(1);
+				expect(unobserveSpy).toHaveBeenCalledWith(target);
 
 				await vi.advanceTimersByTimeAsync(Number(baseProps.defaultDelayHide));
 
@@ -398,6 +405,8 @@ describe("Tooltip", () => {
 				await fireEvent.mouseLeave(target);
 
 				expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+				expect(unobserveSpy).toHaveBeenCalledTimes(1);
+				expect(unobserveSpy).toHaveBeenCalledWith(target);
 
 				await vi.advanceTimersByTimeAsync(Number(baseProps.defaultDelayHide));
 
@@ -422,6 +431,8 @@ describe("Tooltip", () => {
 				await fireEvent.mouseLeave(target);
 
 				expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+				expect(unobserveSpy).toHaveBeenCalledTimes(1);
+				expect(unobserveSpy).toHaveBeenCalledWith(target);
 
 				await vi.advanceTimersByTimeAsync(Number(baseProps.defaultDelayHide));
 
@@ -450,6 +461,9 @@ describe("Tooltip", () => {
 				await fireEvent.mouseLeave(target);
 				await tick();
 
+				expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+				expect(unobserveSpy).toHaveBeenCalledTimes(1);
+				expect(unobserveSpy).toHaveBeenCalledWith(target);
 				expect(tooltip).toHaveTextContent("");
 				expect(tooltip.getAttribute("aria-hidden")).toBe("true");
 				expect(target.getAttribute("aria-described-by")).toBeNull();
@@ -470,11 +484,15 @@ describe("Tooltip", () => {
 				await vi.advanceTimersToNextTimerAsync();
 
 				expect(clearTimeoutSpy).not.toHaveBeenCalled();
+				expect(unobserveSpy).not.toHaveBeenCalled();
 				expect(tooltip.getAttribute("aria-hidden")).toBe("false");
 
 				await fireEvent.keyDown(target, { key: "Escape" });
 				await vi.advanceTimersToNextTimerAsync();
 
+				expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+				expect(unobserveSpy).toHaveBeenCalledTimes(1);
+				expect(unobserveSpy).toHaveBeenCalledWith(target);
 				expect(tooltip).toHaveTextContent("");
 				expect(tooltip.getAttribute("aria-hidden")).toBe("true");
 				expect(target.getAttribute("aria-described-by")).toBeNull();
