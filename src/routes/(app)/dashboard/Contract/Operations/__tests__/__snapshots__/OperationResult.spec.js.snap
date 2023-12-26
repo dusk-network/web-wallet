@@ -17,20 +17,25 @@ exports[`OperationResult > should accept a custom message for the failure state 
   <!--&lt;Icon&gt;-->
    
   <details
-    class="operation-result__details s-BW3vM7eYEkBN"
+    class="dusk-error-details dusk-error-details__details"
   >
     <summary
-      class="operation-result__summary s-BW3vM7eYEkBN"
+      class="dusk-error-details__summary"
     >
       Transaction failed
     </summary>
      
     <pre
-      class="operation-result__error s-BW3vM7eYEkBN"
+      class="dusk-error-details__error"
     >
+      			
       some error
+      
+		
     </pre>
   </details>
+  
+  <!--&lt;ErrorDetails&gt;-->
    
    
   <a
@@ -177,20 +182,25 @@ exports[`OperationResult > should be able to render the \`OperationResult\` in a
   <!--&lt;Icon&gt;-->
    
   <details
-    class="operation-result__details s-BW3vM7eYEkBN"
+    class="dusk-error-details dusk-error-details__details"
   >
     <summary
-      class="operation-result__summary s-BW3vM7eYEkBN"
+      class="dusk-error-details__summary"
     >
       Operation failed
     </summary>
      
     <pre
-      class="operation-result__error s-BW3vM7eYEkBN"
+      class="dusk-error-details__error"
     >
+      			
       some error
+      
+		
     </pre>
   </details>
+  
+  <!--&lt;ErrorDetails&gt;-->
    
    
   <a

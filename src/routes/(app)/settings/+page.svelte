@@ -9,16 +9,35 @@
 		mdiRestoreAlert,
 		mdiWalletOutline
 	} from "@mdi/js";
+	import { mapWith, rename } from "lamb";
+	import { goto } from "$app/navigation";
+
 	import {
 		AnchorButton,
-		Button, Icon, Select, Switch
+		Badge,
+		Button,
+		ErrorDetails,
+		Icon,
+		Select,
+		Switch
 	} from "$lib/dusk/components";
 	import { GasControls } from "$lib/components";
 	import { currencies } from "$lib/dusk/currency";
 	import { settingsStore, walletStore } from "$lib/stores";
-	import { mapWith, rename } from "lamb";
-	import Badge from "$lib/dusk/components/Badge/Badge.svelte";
-	import { goto } from "$app/navigation";
+
+	const resetWallet = () => walletStore.clearLocalData().then(() => {
+		settingsStore.reset();
+		walletStore.reset();
+		goto("/");
+	}).catch(err => { resetError = err; });
+
+	function handleResetWalletClick () {
+		// eslint-disable-next-line no-alert
+		if (confirm("Are you sure you want to reset the wallet?")) {
+			resetError = null;
+			resetWallet();
+		}
+	}
 
 	/** @type {(currency: { code: string, currency: string }) => SelectOption} */
 	const currencyToOption = rename({ code: "value", currency: "label" });
@@ -39,6 +58,11 @@
 	];
 
 	let isDarkMode = darkMode;
+
+	/** @type {Error | null} */
+	let resetError = null;
+
+	$: ({ isSyncing } = $walletStore);
 </script>
 
 <section class="settings">
@@ -169,9 +193,18 @@
 				<Icon path={mdiRestoreAlert}/>
 				<h3 class="h4 settings-group__heading">Danger zone</h3>
 			</header>
+			<ErrorDetails
+				error={resetError}
+				summary="An error occured while resetting the wallet. Please try again."
+			/>
 			<Button
 				className="settings-group__button--state--danger"
-				on:click={() => { return true; }}
+				disabled={isSyncing}
+				data-tooltip-disabled={!isSyncing}
+				data-tooltip-id="main-tooltip"
+				data-tooltip-text="Impossible to reset while a sync is in progress"
+				data-tooltip-type="warning"
+				on:click={handleResetWalletClick}
 				text="Reset Wallet"
 				variant="secondary"
 			/>
