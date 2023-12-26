@@ -175,7 +175,38 @@ describe("walletStore", async () => {
 		it("should throw an error when the syncronization is called without initializing the store first", async () => {
 			walletStore.reset();
 
-			expect(walletStore.sync).rejects.toThrow();
+			expect(() => walletStore.sync()).toThrow();
+		});
+
+		it("should return the pending sync promise if a sync is called while another one is in progress", async () => {
+			walletStore.reset();
+
+			await walletStore.init(wallet);
+			await vi.advanceTimersToNextTimerAsync();
+
+			expect(syncSpy).toHaveBeenCalledTimes(1);
+
+			syncSpy.mockClear();
+
+			const syncPromise1 = walletStore.sync();
+			const syncPromise2 = walletStore.sync();
+			const syncPromise3 = walletStore.sync();
+
+			expect(syncPromise1).toBe(syncPromise2);
+			expect(syncPromise1).toBe(syncPromise3);
+
+			await syncPromise1;
+
+			expect(syncSpy).toHaveBeenCalledTimes(1);
+
+			const syncPromise4 = walletStore.sync();
+
+			expect(syncPromise1).not.toBe(syncPromise4);
+			expect(syncSpy).toHaveBeenCalledTimes(2);
+
+			await syncPromise4;
+
+			walletStore.reset();
 		});
 	});
 
