@@ -104,7 +104,7 @@
 		gap: 1.375rem;
 		flex: 1;
 		flex-direction: column;
-		overflow: hidden;
+		max-height: 100%;
 	}
 
 	.footer {
