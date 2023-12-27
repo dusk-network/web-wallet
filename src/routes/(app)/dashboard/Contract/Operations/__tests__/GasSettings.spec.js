@@ -1,17 +1,38 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	describe,
+	expect,
+	it,
+	vi
+} from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import GasSettings from "../Contract/Operations/GasSettings/GasSettings.svelte";
+
+import GasSettings from "../GasSettings/GasSettings.svelte";
 
 describe("GasSettings", () => {
+	const baseProps = {
+		limit: 20000000,
+		limitLower: 10000000,
+		limitUpper: 1000000000,
+		price: 1,
+		priceLower: 1
+	};
+
+	const baseOptions = {
+		props: baseProps,
+		target: document.body
+	};
+
 	afterEach(cleanup);
+
 	it("renders the GasSettings component closed", () => {
-		const { container } = render(GasSettings);
+		const { container } = render(GasSettings, baseOptions);
 
 		expect(container.firstChild).toMatchSnapshot();
 	});
 
 	it("renders the GasSettings component opened", async () => {
-		const { container, getByRole } = render(GasSettings);
+		const { container, getByRole } = render(GasSettings, baseOptions);
 
 		const next = getByRole("button", { name: "EDIT" });
 
@@ -21,7 +42,7 @@ describe("GasSettings", () => {
 	});
 
 	it("checks setGasSettings event is dispatched on click with the corect event data", async () => {
-		const { component, getByRole, getAllByRole } = render(GasSettings);
+		const { component, getByRole, getAllByRole } = render(GasSettings, baseOptions);
 		const edit = getByRole("button", { name: "EDIT" });
 
 		await fireEvent.click(edit);
