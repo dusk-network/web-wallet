@@ -229,10 +229,13 @@
 
 <style lang="postcss">
 	.settings {
-		overflow: hidden;
+		overflow-y: hidden;
 		background-color: var(--surface-color);
 		border-radius: 1.125em;
-		padding: 1em 1em 0 1em;
+
+		& > * {
+			padding: 1em 1em 0 1em;
+		}
 
 		&, &__content {
 			display: flex;
