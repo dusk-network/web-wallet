@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
-import ScanQR from "../Contract/Operations/ScanQR/ScanQR.svelte";
+import ScanQR from "../ScanQR/ScanQR.svelte";
 import "jsdom-worker";
 
 describe("ScanQR", () => {
