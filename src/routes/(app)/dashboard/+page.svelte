@@ -42,6 +42,20 @@
 		balance, currentKey, keys
 	} = $walletStore);
 	$: ({ currentOperation } = $operationsStore);
+
+	/** @type {WalletStakeInfo} */
+	let stakeInfo;
+
+	$: if (selectedTab || currentOperation) {
+		fetchStakeInfo();
+	}
+
+	async function fetchStakeInfo () {
+		walletStore.getStakeInfo().then((info) => {
+			stakeInfo = info;
+		});
+	}
+
 	$: CONTRACTS = [{
 		icon: { path: mdiSwapVertical },
 		id: "transfer",
@@ -73,15 +87,20 @@
 		id: "staking",
 		label: "Stake",
 		operations: [{
+			// Disabled if user has staked already of
+			// if the key is not allowed to stake
+			disabled: !stakeInfo?.has_key || stakeInfo?.has_staked,
 			icon: { path: mdiDatabaseOutline, position: "before" },
 			id: "stake",
 			label: "stake"
 		}, {
+			disabled: !stakeInfo?.has_staked,
 			icon: { path: mdiDatabaseArrowDownOutline, position: "before" },
 			id: "withdraw-stake",
 			label: "withdraw stake",
 			variant: "tertiary"
 		}, {
+			disabled: !stakeInfo?.has_staked,
 			icon: { path: mdiDatabaseArrowDownOutline, position: "before" },
 			id: "withdraw-rewards",
 			label: "withdraw rewards",
@@ -95,7 +114,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				value: 0
+				value: balance.maximum
 			}
 		}, {
 			key: {
@@ -105,7 +124,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				value: 0
+				value: stakeInfo?.amount ?? 0
 			}
 		}, {
 			key: {
@@ -116,7 +135,7 @@
 					label: "DUSK",
 					path: logo
 				},
-				value: 0
+				value: stakeInfo?.reward ?? 0
 			}
 		}]
 	}];

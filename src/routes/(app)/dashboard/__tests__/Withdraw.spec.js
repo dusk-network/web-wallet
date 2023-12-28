@@ -60,25 +60,13 @@ describe("Withdraw", () => {
 
 		expect(container.firstChild).toMatchSnapshot();
 	});
+
 	it("renders the Withdraw Review step component", async () => {
 		const { container, getByRole } = render(Stake, { props: { statuses, flow: "withdraw-stake" } });
 
-		const next = getByRole("button", { name: "Next" });
+		const next = getByRole("button", { name: "WITHDRAW" });
 
 		await fireEvent.click(next);
-
-		expect(container.firstChild).toMatchSnapshot();
-	});
-	it("renders the Withdraw Confirmation step component", async () => {
-		const { container, getByRole } = render(Stake, { props: { statuses, flow: "withdraw-stake" } });
-
-		const next = getByRole("button", { name: "Next" });
-
-		await fireEvent.click(next);
-
-		const stake = getByRole("button", { name: "WITHDRAW" });
-
-		await fireEvent.click(stake);
 
 		expect(container.firstChild).toMatchSnapshot();
 	});

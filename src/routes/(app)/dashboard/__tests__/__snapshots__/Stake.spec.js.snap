@@ -188,6 +188,7 @@ exports[`Stake > renders the Stake component 1`] = `
       >
         <input
           class="dusk-textbox dusk-textbox-number operation__input-field"
+          min="1000"
           type="number"
         />
         
@@ -240,7 +241,6 @@ exports[`Stake > renders the Stake component 1`] = `
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled"
-          disabled=""
           type="button"
         >
           <span
