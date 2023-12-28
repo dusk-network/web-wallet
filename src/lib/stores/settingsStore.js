@@ -11,7 +11,8 @@ const initialState = {
 	gasPrice: parseInt(import.meta.env.VITE_GAS_PRICE_DEFAULT, 10),
 	gasPriceLower: parseInt(import.meta.env.VITE_GAS_PRICE_LOWER, 10),
 	language: browser ? navigator.language : "en",
-	network: "testnet"
+	network: "testnet",
+	userId: ""
 };
 const settingsStore = persisted(`${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`, initialState);
 const { set, subscribe, update } = settingsStore;

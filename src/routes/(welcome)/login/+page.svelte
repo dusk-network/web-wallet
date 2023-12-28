@@ -1,16 +1,39 @@
 <svelte:options immutable={true}/>
 
 <script>
-	import {
-		AnchorButton, Button, Card, Textbox
-	} from "$lib/dusk/components";
 	import { mdiArrowLeft, mdiFileKeyOutline, mdiKeyOutline } from "@mdi/js";
 	import { goto } from "$app/navigation";
 	import { validateMnemonic } from "bip39";
+	import { setKey } from "lamb";
+
+	import {
+		AnchorButton,
+		Button,
+		Card,
+		Textbox
+	} from "$lib/dusk/components";
+	import { settingsStore, walletStore } from "$lib/stores";
 	import { decryptMnemonic, getSeedFromMnemonic } from "$lib/wallet";
-	import { getWallet } from "$lib/services/wallet";
-	import { walletStore } from "$lib/stores";
 	import loginInfoStorage from "$lib/services/loginInfoStorage";
+	import { getWallet } from "$lib/services/wallet";
+
+	/**
+	 * @typedef {import("@dusk-network/dusk-wallet-js").Wallet} Wallet
+	 */
+
+	/** @type {(wallet: Wallet) => Promise<Wallet>} */
+	async function checkLocalData (wallet) {
+		const defaultKey = wallet.getPsks()[0];
+		const currentKey = $settingsStore.userId;
+
+		if (defaultKey !== currentKey) {
+			await wallet.reset();
+			settingsStore.reset();
+			settingsStore.update(setKey("userId", defaultKey));
+		}
+
+		return wallet;
+	}
 
 	/** @type {(mnemonic: string) => Promise<Uint8Array>} */
 	const getSeedFromMnemonicAsync = async mnemonic => (
@@ -37,6 +60,7 @@
 
 		getSeed(secretText.trim())
 			.then(getWallet)
+			.then(checkLocalData)
 			.then(wallet => {
 				walletStore.init(wallet);
 			})

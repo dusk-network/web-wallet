@@ -613,6 +613,12 @@ declare module "lamb" {
 		S extends Record<string, any>
 	> (keyMap: KM): (source: S) => { [K in keyof S as K extends keyof KM ? KM[K] : K]: S[K] };
 
+	function setKey<
+		S extends Record<PropertyKey, any>,
+		T,
+		K extends string
+	> (key: K, value: T): (source: S) => Omit<S, K> & { [k in K]: T };
+
 	function skip<
 		S extends Record<string, any>,
 		B extends string[]
