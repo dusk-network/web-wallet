@@ -392,6 +392,12 @@ declare module "lamb" {
 
 	function uniques<T> (arrayLike: ArrayLike<T>): Array<T>;
 
+	function uniquesBy<
+		T,
+		L extends ArrayLike<T>,
+		F extends ListIteratorCallback<L, any>
+	> (iteratee: F): (arrayLike: L) => Array<T>;
+
 	/* ------------------------- *
 	 * *****     CORE      ***** *
 	 * ------------------------- */

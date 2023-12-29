@@ -9,8 +9,9 @@ import {
 } from "vitest";
 import { get } from "svelte/store";
 import { keys } from "lamb";
-
 import { Wallet } from "@dusk-network/dusk-wallet-js";
+
+import { transactions } from "$lib/mock-data";
 
 import { settingsStore, walletStore } from "..";
 
@@ -28,7 +29,7 @@ describe("walletStore", async () => {
 
 	const getBalanceSpy = vi.spyOn(Wallet.prototype, "getBalance").mockResolvedValue(balance);
 	const getPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockReturnValue(generatedKeys);
-	const historySpy = vi.spyOn(Wallet.prototype, "history").mockResolvedValue([]);
+	const historySpy = vi.spyOn(Wallet.prototype, "history").mockResolvedValue(transactions);
 	const resetSpy = vi.spyOn(Wallet.prototype, "reset").mockResolvedValue(void 0);
 	const stakeInfoSpy = vi.spyOn(Wallet.prototype, "stakeInfo").mockResolvedValue({});
 	const stakeSpy = vi.spyOn(Wallet.prototype, "stake").mockResolvedValue(void 0);
@@ -274,6 +275,14 @@ describe("walletStore", async () => {
 			expect(historySpy).toHaveBeenCalledWith(currentKey);
 			expect(syncSpy.mock.invocationCallOrder[0])
 				.toBeLessThan(historySpy.mock.invocationCallOrder[0]);
+		});
+
+		it("should remove eventual duplicate transactions from the list", async () => {
+			historySpy.mockResolvedValueOnce(transactions.concat(transactions));
+
+			const result = await walletStore.getTransactionsHistory();
+
+			expect(result).toStrictEqual(transactions);
 		});
 
 		it("should expose a method to set the current key", async () => {

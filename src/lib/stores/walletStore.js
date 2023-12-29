@@ -1,4 +1,5 @@
 import { get, writable } from "svelte/store";
+import { getKey, uniquesBy } from "lamb";
 
 import settingsStore from "./settingsStore";
 
@@ -15,6 +16,8 @@ let syncPromise = null;
 
 /** @type {Wallet | null} */
 let walletInstance = null;
+
+const uniquesById = uniquesBy(getKey("id"));
 
 /** @type {import("./stores").WalletStoreContent} */
 const initialState = {
@@ -56,8 +59,10 @@ const clearLocalDataAndInit = wallet => wallet.reset().then(() => init(wallet));
 const getStakeInfo = async () => sync().then(() => walletInstance.stakeInfo(getCurrentKey()));
 
 /** @type {GetTransactionsHistory} */
+
 // @ts-expect-error
-const getTransactionsHistory = async () => sync().then(() => walletInstance.history(getCurrentKey()));
+const getTransactionsHistory = async () => sync().then(() => walletInstance.history(getCurrentKey()))
+	.then(uniquesById);
 
 function reset () {
 	walletInstance = null;
