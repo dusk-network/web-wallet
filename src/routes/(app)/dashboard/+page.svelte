@@ -11,8 +11,10 @@
 	import { fade } from "svelte/transition";
 	import {
 		compose,
+		filterWith,
 		find,
 		hasKeyValue,
+		last,
 		take
 	} from "lamb";
 
@@ -35,8 +37,6 @@
 	/** @type {import('./$types').PageData} */
 	export let data;
 
-	let selectedTab = "transfer";
-
 	const { currentPrice } = data;
 	const {
 		currency,
@@ -44,17 +44,11 @@
 		language
 	} = $settingsStore;
 
-	$: ({
-		balance, currentKey, keys
-	} = $walletStore);
-	$: ({ currentOperation } = $operationsStore);
+	/** @type {String | Undefined} */
+	let clickedTab;
 
 	/** @type {WalletStakeInfo} */
 	let stakeInfo;
-
-	$: if (selectedTab || currentOperation) {
-		fetchStakeInfo();
-	}
 
 	async function fetchStakeInfo () {
 		walletStore.getStakeInfo().then((info) => {
@@ -62,12 +56,15 @@
 		});
 	}
 
+	const getEnabledContracts = filterWith(hasKeyValue("enabled", true));
+
 	const getTransactionsShortlist = compose(
 		take(dashboardTransactionLimit),
 		sortByHeightDesc
 	);
 
 	$: CONTRACTS = [{
+		enabled: import.meta.env.VITE_CONTRACT_TRANSFER_ENABLED === "true",
 		icon: { path: mdiSwapVertical },
 		id: "transfer",
 		label: "Transact",
@@ -94,6 +91,7 @@
 			}
 		}]
 	}, {
+		enabled: import.meta.env.VITE_CONTRACT_STAKE_ENABLED === "true",
 		icon: { path: mdiDatabaseOutline },
 		id: "staking",
 		label: "Stake",
@@ -150,7 +148,15 @@
 			}
 		}]
 	}];
-	$: selectedContract = find(CONTRACTS, hasKeyValue("id", selectedTab));
+
+	$: enabledContracts = getEnabledContracts(CONTRACTS);
+	$: selectedTab = clickedTab ?? enabledContracts[0]?.id;
+	$: selectedContract = find(enabledContracts, hasKeyValue("id", selectedTab));
+	$: ({ balance, currentKey, keys	} = $walletStore);
+	$: ({ currentOperation } = $operationsStore);
+	$: if (selectedTab || currentOperation) {
+		fetchStakeInfo();
+	}
 </script>
 
 <div class="dashboard-content">
@@ -169,30 +175,33 @@
 		locale={language}
 	/>
 
-	<article class="tabs">
-		<Tabs
-			bind:selectedTab
-			items={CONTRACTS}
-			on:change={() =>
-				operationsStore.update((store) => ({
-					...store,
-					currentOperation: undefined
-				}))
-			}
-		/>
-		<div
-			class="tabs__panel"
-			class:tabs__panel--first={selectedTab === CONTRACTS[0].id}
-			class:tabs__panel--last={selectedTab
-				=== CONTRACTS[CONTRACTS.length - 1].id}
-		>
-			{#key selectedTab}
-				<div in:fade|global class="tabs__contract">
-					<Contract contract={selectedContract}/>
-				</div>
-			{/key}
-		</div>
-	</article>
+	{#if selectedContract}
+		<article class="tabs">
+			<Tabs
+				{selectedTab}
+				items={enabledContracts}
+				on:change={({ detail }) => {
+					operationsStore.update((store) => ({
+						...store,
+						currentOperation: undefined
+					}));
+					clickedTab = detail;
+				}}
+			/>
+			<div
+				class="tabs__panel"
+				class:tabs__panel--first={selectedTab === enabledContracts[0].id}
+				class:tabs__panel--last={ enabledContracts.length > 1
+					&& selectedTab === last(enabledContracts).id}
+			>
+				{#key selectedTab}
+					<div in:fade|global class="tabs__contract">
+						<Contract contract={selectedContract}/>
+					</div>
+				{/key}
+			</div>
+		</article>
+	{/if}
 
 	{#if currentOperation === undefined && selectedTab === "transfer" }
 		{#await walletStore.getTransactionsHistory()}
