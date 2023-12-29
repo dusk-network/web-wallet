@@ -22,10 +22,6 @@
 
 	const dispatch = createEventDispatcher();
 
-	let gas = {
-		limit,
-		price
-	};
 	let gasSettings = false;
 </script>
 
@@ -41,23 +37,19 @@
 				variant={gasSettings ? "secondary" : "tertiary"}
 				on:click={() => {
 					gasSettings = !gasSettings;
-
-					if (!gasSettings) {
-						dispatch("setGasSettings", gas);
-					}
 				}}
-				text={gasSettings ? "SAVE" : "EDIT"}
+				text={gasSettings ? "CLOSE" : "EDIT"}
 			/>
 		</dd>
 	</dl>
 	{#if gasSettings}
 		<div in:slide|global class="operation__gas-settings">
 			<GasControls
-				on:setGasSettings={(event) => { gas = event.detail; }}
-				limit={gas.limit}
+				on:setGasSettings={(event) => { dispatch("setGasSettings", event.detail); }}
+				{limit}
 				{limitLower}
 				{limitUpper}
-				price={gas.price}
+				{price}
 				{priceLower}
 			/>
 		</div>
