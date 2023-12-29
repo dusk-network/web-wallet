@@ -1,5 +1,13 @@
 <script>
 	import { fade } from "svelte/transition";
+	import { mdiArrowUpBoldBoxOutline, mdiWalletOutline } from "@mdi/js";
+	import {
+		always,
+		compose,
+		getKey,
+		head
+	} from "lamb";
+
 	import { logo } from "$lib/dusk/icons";
 	import {
 		AnchorButton,
@@ -12,11 +20,18 @@
 		WizardStep
 	} from "$lib/dusk/components";
 	import { createCurrencyFormatter } from "$lib/dusk/currency";
-	import { mdiArrowUpBoldBoxOutline, mdiWalletOutline } from "@mdi/js";
 	import { operationsStore, settingsStore, walletStore } from "$lib/stores";
+	import { sortByHeightDesc } from "$lib/transactions";
+
 	import GasSettings from "./GasSettings/GasSettings.svelte";
 	import OperationResult from "./OperationResult/OperationResult.svelte";
 	import ScanQr from "./ScanQR/ScanQR.svelte";
+
+	const getFirstHash = compose(getKey("id"), head);
+	const getLastTransactionHash = () => walletStore.getTransactionsHistory()
+		.then(sortByHeightDesc)
+		.then(getFirstHash)
+		.catch(always(""));
 
 	/** @type {Status[]} */
 	export let statuses;
@@ -197,20 +212,23 @@
 		<WizardStep step={3} {key} showNavigation={false}>
 			<OperationResult
 				onBeforeLeave={resetOperationStore}
-				operation={walletStore.transfer(address, amount)}
-				errorMessage="Transaction Failed"
+				operation={walletStore.transfer(address, amount).then(getLastTransactionHash)}
+				errorMessage="Transaction failed"
 				pendingMessage="Processing transaction"
 				successMessage="Transaction completed"
 			>
-				<AnchorButton
-					href="https://explorer.dusk.network"
-					on:click={resetOperationStore}
-					rel="noopener noreferrer"
-					slot="success-content"
-					target="_blank"
-					text="VIEW ON BLOCK EXPLORER"
-					variant="secondary"
-				/>
+				<svelte:fragment slot="success-content" let:result={hash}>
+					{#if hash}
+						<AnchorButton
+							href="https://explorer.dusk.network/transactions/transaction?id={hash}"
+							on:click={resetOperationStore}
+							rel="noopener noreferrer"
+							target="_blank"
+							text="VIEW ON BLOCK EXPLORER"
+							variant="secondary"
+						/>
+					{/if}
+				</svelte:fragment>
 			</OperationResult>
 		</WizardStep>
 	</Wizard>

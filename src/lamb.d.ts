@@ -385,6 +385,11 @@ declare module "lamb" {
 		S extends Array<Sorter<T, boolean> | SorterReader<T>> = [Sorter<T, false>]
 	> (sorters?: S): (arrayLike: L) => Array<T>;
 
+	function take<
+		T,
+		L extends ArrayLike<T>
+	> (amount: number): (arrayLike: L) => Array<T>;
+
 	function uniques<T> (arrayLike: ArrayLike<T>): Array<T>;
 
 	/* ------------------------- *

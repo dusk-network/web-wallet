@@ -1,4 +1,5 @@
 /* eslint-disable camelcase */
+
 /** @type {WalletStakeInfo} */
 export default {
 	amount: 1000,

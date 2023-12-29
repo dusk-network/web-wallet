@@ -43,13 +43,13 @@
 	{#await operation}
 		<Throbber/>
 		<span>{pendingMessage}</span>
-	{:then}
+	{:then result}
 		<Icon
 			path={mdiCheckDecagramOutline}
 			size="large"
 		/>
 		<span>{successMessage}</span>
-		<slot name="success-content"/>
+		<slot name="success-content" {result}/>
 		<AnchorButton
 			href="/dashboard"
 			on:click={handleGoHomeClick}

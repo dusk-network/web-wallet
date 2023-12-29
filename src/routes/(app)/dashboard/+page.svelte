@@ -9,7 +9,12 @@
 		mdiSwapVertical
 	} from "@mdi/js";
 	import { fade } from "svelte/transition";
-	import { find, hasKeyValue } from "lamb";
+	import {
+		compose,
+		find,
+		hasKeyValue,
+		take
+	} from "lamb";
 
 	import { logo } from "$lib/dusk/icons";
 	import {
@@ -21,6 +26,7 @@
 		settingsStore,
 		walletStore
 	} from "$lib/stores";
+	import { sortByHeightDesc } from "$lib/transactions";
 
 	import Contract from "./Contract.svelte";
 	import Transactions from "./Transactions.svelte";
@@ -55,6 +61,11 @@
 			stakeInfo = info;
 		});
 	}
+
+	const getTransactionsShortlist = compose(
+		take(dashboardTransactionLimit),
+		sortByHeightDesc
+	);
 
 	$: CONTRACTS = [{
 		icon: { path: mdiSwapVertical },
@@ -179,7 +190,7 @@
 			<Throbber className="loading"/>
 		{:then transactions}
 			{#if transactions.length}
-				<Transactions transactions={transactions.slice(-Math.abs(dashboardTransactionLimit))}>
+				<Transactions transactions={getTransactionsShortlist(transactions)}>
 					<h3 class="h4" slot="heading">Transactions</h3>
 					<AnchorButton
 						className="view-transactions"
