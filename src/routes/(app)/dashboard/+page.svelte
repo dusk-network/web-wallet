@@ -170,7 +170,16 @@
 	/>
 
 	<article class="tabs">
-		<Tabs bind:selectedTab items={CONTRACTS}/>
+		<Tabs
+			bind:selectedTab
+			items={CONTRACTS}
+			on:change={() =>
+				operationsStore.update((store) => ({
+					...store,
+					currentOperation: undefined
+				}))
+			}
+		/>
 		<div
 			class="tabs__panel"
 			class:tabs__panel--first={selectedTab === CONTRACTS[0].id}
