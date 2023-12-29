@@ -12,6 +12,7 @@
 	import {
 		compose,
 		find,
+		findIndex,
 		hasKeyValue,
 		take
 	} from "lamb";
@@ -35,7 +36,10 @@
 	/** @type {import('./$types').PageData} */
 	export let data;
 
-	let selectedTab = "transfer";
+	let selectedTab = undefined;
+
+	selectedTab = import.meta.env.VITE_STAKING_ENABLED === "true" ? "staking" : selectedTab;
+	selectedTab = import.meta.env.VITE_TRANSFER_ENABLED === "true" ? "transfer" : selectedTab;
 
 	const { currentPrice } = data;
 	const {
@@ -150,7 +154,13 @@
 			}
 		}]
 	}];
-	$: selectedContract = find(CONTRACTS, hasKeyValue("id", selectedTab));
+
+	$: import.meta.env.VITE_STAKING_ENABLED === "false"
+		&& CONTRACTS.splice(findIndex(CONTRACTS, hasKeyValue("id", "staking")), 1);
+	$: import.meta.env.VITE_TRANSFER_ENABLED === "false"
+		&& CONTRACTS.splice(findIndex(CONTRACTS, hasKeyValue("id", "transfer")), 1);
+	$: selectedContract = CONTRACTS.length
+		&& selectedTab ? find(CONTRACTS, hasKeyValue("id", selectedTab)) : null;
 </script>
 
 <div class="dashboard-content">
@@ -169,30 +179,32 @@
 		locale={language}
 	/>
 
-	<article class="tabs">
-		<Tabs
-			bind:selectedTab
-			items={CONTRACTS}
-			on:change={() =>
-				operationsStore.update((store) => ({
-					...store,
-					currentOperation: undefined
-				}))
-			}
-		/>
-		<div
-			class="tabs__panel"
-			class:tabs__panel--first={selectedTab === CONTRACTS[0].id}
-			class:tabs__panel--last={selectedTab
-				=== CONTRACTS[CONTRACTS.length - 1].id}
-		>
-			{#key selectedTab}
-				<div in:fade|global class="tabs__contract">
-					<Contract contract={selectedContract}/>
-				</div>
-			{/key}
-		</div>
-	</article>
+	{#if selectedContract}
+		<article class="tabs">
+			<Tabs
+                bind:selectedTab
+                items={CONTRACTS}
+                on:change={() =>
+                    operationsStore.update((store) => ({
+                        ...store,
+                        currentOperation: undefined
+                    }))
+                }
+            />
+			<div
+				class="tabs__panel"
+				class:tabs__panel--first={selectedTab === CONTRACTS[0].id}
+				class:tabs__panel--last={selectedTab
+					=== CONTRACTS[CONTRACTS.length - 1].id}
+			>
+				{#key selectedTab}
+					<div in:fade|global class="tabs__contract">
+						<Contract contract={selectedContract}/>
+					</div>
+				{/key}
+			</div>
+		</article>
+	{/if}
 
 	{#if currentOperation === undefined && selectedTab === "transfer" }
 		{#await walletStore.getTransactionsHistory()}
