@@ -2,9 +2,11 @@
 
 <script>
 	import { mdiArrowLeft } from "@mdi/js";
+
 	import { Balance } from "$lib/components";
 	import { AnchorButton, Card, Throbber } from "$lib/dusk/components";
 	import { settingsStore, walletStore } from "$lib/stores";
+	import { sortByHeightDesc } from "$lib/transactions";
 
 	import Transactions from "../Transactions.svelte";
 
@@ -32,7 +34,7 @@
 		<Throbber className="loading"/>
 	{:then transactions}
 		{#if transactions.length}
-			<Transactions transactions={transactions}>
+			<Transactions transactions={sortByHeightDesc(transactions)}>
 				<h3 class="h4" slot="heading">Transactions</h3>
 			</Transactions>
 		{:else}

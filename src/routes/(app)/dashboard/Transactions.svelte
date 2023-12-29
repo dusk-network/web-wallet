@@ -1,19 +1,10 @@
 <script>
-	import {
-
-		// mdiArrowDownBoldBoxOutline,
-		// mdiArrowUpBoldBoxOutline,
-		mdiContain
-
-	// mdiDatabaseArrowDownOutline,
-		// mdiDatabaseArrowUpOutline
-	} from "@mdi/js";
+	import { mdiContain	} from "@mdi/js";
 	import { fade } from "svelte/transition";
 	import { logo } from "$lib/dusk/icons";
-	import { /* Badge, */ Icon, Tooltip } from "$lib/dusk/components";
+	import { Icon, Tooltip } from "$lib/dusk/components";
 	import { createCurrencyFormatter, createTransferFormatter } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
-	import { getKey, sortWith, sorterDesc } from "lamb";
 
 	/** @type Transaction[] */
 	export let transactions;
@@ -21,7 +12,6 @@
 	const { language } = $settingsStore;
 	const feeFormatter = createCurrencyFormatter(language, "DUSK");
 	const transferFormatter = createTransferFormatter(language);
-	const sortTransactions = sortWith([sorterDesc(getKey("block_height"))]);
 </script>
 
 <article in:fade|global class="transactions">
@@ -31,30 +21,12 @@
 
 	<div class="transactions__lists">
 		{#if transactions.length}
-			{#each sortTransactions(transactions) as transaction (transaction.id)}
+			{#each transactions as transaction (transaction.id)}
 				<dl class="transactions-list">
 					<dt class="transactions-list__term">Hash</dt>
 					<dd class="transactions-list__datum">
 						<samp>{transaction.id}</samp>
 					</dd>
-					<!-- <dt class="transactions-list__term">Method</dt>
-					<dd class="transactions-list__datum">
-						<Badge className="transactions-list__badge" text={transaction.method}/>
-						{#if Math.sign(transaction.amount) !== 0}
-							{#if transaction.method === "transfer"}
-								<Icon
-									path={
-										isPositive ? mdiArrowDownBoldBoxOutline : mdiArrowUpBoldBoxOutline
-									}/>
-							{/if}
-							{#if transaction.method === "stake"}
-								<Icon
-									path={
-										isPositive ? mdiDatabaseArrowDownOutline : mdiDatabaseArrowUpOutline
-									}/>
-							{/if}
-						{/if}
-					</dd> -->
 					<dt class="transactions-list__term">Block</dt>
 					<dd class="transactions-list__datum">
 						{new Intl.NumberFormat(language).format(transaction.block_height)}
