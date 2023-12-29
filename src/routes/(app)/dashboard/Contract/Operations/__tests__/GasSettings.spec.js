@@ -41,7 +41,7 @@ describe("GasSettings", () => {
 		expect(container.firstChild).toMatchSnapshot();
 	});
 
-	it("checks setGasSettings event is dispatched on click with the corect event data", async () => {
+	it("checks setGasSettings event is dispatched on click with the correct event data", async () => {
 		const { component, getByRole, getAllByRole } = render(GasSettings, baseOptions);
 		const edit = getByRole("button", { name: "EDIT" });
 
@@ -56,13 +56,15 @@ describe("GasSettings", () => {
 		component.$on("setGasSettings", changeHandler);
 
 		await fireEvent.input(minGas, { target: { value: 50000 } });
-		await fireEvent.input(maxGas, { target: { value: 50000 } });
-
-		const save = getByRole("button", { name: "SAVE" });
-
-		await fireEvent.click(save);
 
 		expect(changeHandler).toHaveBeenCalledTimes(1);
+		expect(changeHandler).toHaveBeenCalledWith(
+			new CustomEvent("setGasSettings", { detail: { minimum: 50000, maximum: maxGas } })
+		);
+
+		await fireEvent.input(maxGas, { target: { value: 50000 } });
+
+		expect(changeHandler).toHaveBeenCalledTimes(2);
 		expect(changeHandler).toHaveBeenCalledWith(
 			new CustomEvent("setGasSettings", { detail: { minimum: 50000, maximum: 50000 } })
 		);
