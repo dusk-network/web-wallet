@@ -205,7 +205,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
             <span
               class="s-POS_LBjGgkOM"
             >
-              Price
+              Price (lux)
             </span>
              
             <input
@@ -912,7 +912,7 @@ exports[`Settings > should render the settings page 1`] = `
             <span
               class="s-POS_LBjGgkOM"
             >
-              Price
+              Price (lux)
             </span>
              
             <input
