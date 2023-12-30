@@ -86,7 +86,7 @@ svg {
 }
 
 #outer-container:after{
-	content: "alpha";
+	content: "beta";
 	position: absolute;
 	width: 90px;
 	height: 36px;
