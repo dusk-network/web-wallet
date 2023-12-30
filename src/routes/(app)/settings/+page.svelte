@@ -120,6 +120,10 @@
 						variant="secondary"
 					/>
 				</div>
+				<p>
+					These functionalities are currently disabled in the beta
+					version of the web wallet and will be enabled in a future update.
+				</p>
 			</div>
 		</article>
 		<hr/>
@@ -166,7 +170,12 @@
 							});
 						}}
 					/>
+
 				</label>
+				<p>
+					This functionality is currently disabled in the beta
+					version of the web wallet and will be enabled in a future update.
+				</p>
 				<label class="settings-group__control settings-group__control--with-label" for={undefined}>
 					<span>Currency</span>
 					<Select
