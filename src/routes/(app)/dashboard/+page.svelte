@@ -11,9 +11,10 @@
 	import { fade } from "svelte/transition";
 	import {
 		compose,
+		filterWith,
 		find,
-		findIndex,
 		hasKeyValue,
+		last,
 		take
 	} from "lamb";
 
@@ -36,11 +37,6 @@
 	/** @type {import('./$types').PageData} */
 	export let data;
 
-	let selectedTab = undefined;
-
-	selectedTab = import.meta.env.VITE_STAKING_ENABLED === "true" ? "staking" : selectedTab;
-	selectedTab = import.meta.env.VITE_TRANSFER_ENABLED === "true" ? "transfer" : selectedTab;
-
 	const { currentPrice } = data;
 	const {
 		currency,
@@ -48,17 +44,11 @@
 		language
 	} = $settingsStore;
 
-	$: ({
-		balance, currentKey, keys
-	} = $walletStore);
-	$: ({ currentOperation } = $operationsStore);
+	/** @type {String | Undefined} */
+	let clickedTab;
 
 	/** @type {WalletStakeInfo} */
 	let stakeInfo;
-
-	$: if (selectedTab || currentOperation) {
-		fetchStakeInfo();
-	}
 
 	async function fetchStakeInfo () {
 		walletStore.getStakeInfo().then((info) => {
@@ -66,12 +56,15 @@
 		});
 	}
 
+	const getEnabledContracts = filterWith(hasKeyValue("enabled", true));
+
 	const getTransactionsShortlist = compose(
 		take(dashboardTransactionLimit),
 		sortByHeightDesc
 	);
 
 	$: CONTRACTS = [{
+		enabled: import.meta.env.VITE_STAKING_ENABLED === "true",
 		icon: { path: mdiSwapVertical },
 		id: "transfer",
 		label: "Transact",
@@ -98,6 +91,7 @@
 			}
 		}]
 	}, {
+		enabled: import.meta.env.VITE_TRANSFER_ENABLED === "true",
 		icon: { path: mdiDatabaseOutline },
 		id: "staking",
 		label: "Stake",
@@ -155,12 +149,14 @@
 		}]
 	}];
 
-	$: import.meta.env.VITE_STAKING_ENABLED === "false"
-		&& CONTRACTS.splice(findIndex(CONTRACTS, hasKeyValue("id", "staking")), 1);
-	$: import.meta.env.VITE_TRANSFER_ENABLED === "false"
-		&& CONTRACTS.splice(findIndex(CONTRACTS, hasKeyValue("id", "transfer")), 1);
-	$: selectedContract = CONTRACTS.length
-		&& selectedTab ? find(CONTRACTS, hasKeyValue("id", selectedTab)) : null;
+	$: enabledContracts = getEnabledContracts(CONTRACTS);
+	$: selectedTab = clickedTab ?? enabledContracts[0]?.id;
+	$: selectedContract = find(enabledContracts, hasKeyValue("id", selectedTab));
+	$: ({ balance, currentKey, keys	} = $walletStore);
+	$: ({ currentOperation } = $operationsStore);
+	$: if (selectedTab || currentOperation) {
+		fetchStakeInfo();
+	}
 </script>
 
 <div class="dashboard-content">
@@ -182,20 +178,21 @@
 	{#if selectedContract}
 		<article class="tabs">
 			<Tabs
-				bind:selectedTab
-				items={CONTRACTS}
-				on:change={() =>
+				{selectedTab}
+				items={enabledContracts}
+				on:change={({ detail }) => {
 					operationsStore.update((store) => ({
 						...store,
 						currentOperation: undefined
-					}))
-				}
+					}));
+					clickedTab = detail;
+				}}
 			/>
 			<div
 				class="tabs__panel"
-				class:tabs__panel--first={selectedTab === CONTRACTS[0].id}
-				class:tabs__panel--last={selectedTab
-					=== CONTRACTS[CONTRACTS.length - 1].id}
+				class:tabs__panel--first={selectedTab === enabledContracts[0].id}
+				class:tabs__panel--last={ enabledContracts.length > 1
+					&& selectedTab === last(enabledContracts).id}
 			>
 				{#key selectedTab}
 					<div in:fade|global class="tabs__contract">

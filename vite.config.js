@@ -36,7 +36,9 @@ export default defineConfig(({ mode }) => {
 				VITE_GAS_LIMIT_UPPER: env.VITE_GAS_LIMIT_UPPER,
 				VITE_GAS_PRICE_DEFAULT: env.VITE_GAS_PRICE_DEFAULT,
 				VITE_GAS_PRICE_LOWER: env.VITE_GAS_PRICE_LOWER,
-				VITE_GAS_PRICE_UPPER: env.VITE_GAS_PRICE_UPPER
+				VITE_GAS_PRICE_UPPER: env.VITE_GAS_PRICE_UPPER,
+				VITE_STAKING_ENABLED: env.VITE_STAKING_ENABLED,
+				VITE_TRANSFER_ENABLED: env.VITE_TRANSFER_ENABLED
 			}
 		},
 		plugins: mode === "development" ? [basicSsl(), ...commonPlugins] : commonPlugins,
@@ -70,7 +72,9 @@ export default defineConfig(({ mode }) => {
 				VITE_GAS_LIMIT_LOWER: "10000000",
 				VITE_GAS_LIMIT_UPPER: "1000000000",
 				VITE_GAS_PRICE_DEFAULT: "1",
-				VITE_GAS_PRICE_LOWER: "1"
+				VITE_GAS_PRICE_LOWER: "1",
+				VITE_STAKING_ENABLED: "true",
+				VITE_TRANSFER_ENABLED: "true"
 			},
 			environment: "jsdom",
 			include: ["src/**/*.{test,spec}.{js,ts}"],
