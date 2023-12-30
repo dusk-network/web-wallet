@@ -29,11 +29,10 @@
 	function handleInput () {
 		dispatch("setGasSettings", gas);
 	}
-
 </script>
 
 <label for={undefined} class="gas-control">
-	<span>Price</span>
+	<span>Price (lux)</span>
 	<Textbox
 		bind:value={gas.price}
 		placeholder="gas price"
@@ -63,7 +62,7 @@
 <style lang="postcss">
 	.gas-control {
 		display: flex;
-		gap: .5em;
+		gap: 0.5em;
 		width: 100%;
 		flex-direction: column;
 		justify-content: start;

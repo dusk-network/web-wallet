@@ -105,7 +105,7 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
       <span
         class="s-POS_LBjGgkOM"
       >
-        Price
+        Price (lux)
       </span>
        
       <input
