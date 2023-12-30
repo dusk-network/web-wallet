@@ -60,6 +60,7 @@
 			return b.id === a.id;
 		});
 	});
+	const isStakingDisabled = contract.id === "staking" && contract.operations[0].disabled;
 </script>
 
 <div in:fade|global class="contract">
@@ -71,6 +72,15 @@
 		/>
 	{:else}
 		<ContractOperations {statuses}>
+			{#if isStakingDisabled}
+				<div class="info">
+					<!-- <Icon path={mdiAlertOutline} size="large"/> -->
+					<p>
+						Third-party staking will be enabled at the start of the upcoming incentivized testnet
+						and will begin to accrue real rewards as well. Stay tuned for more information.
+					</p>
+				</div>
+			{/if}
 			{#each operations as operation, index (operation.id)}
 				<Button
 					disabled={operation.label !== "receive" && (isSyncing || error || operation.disabled)}
@@ -88,3 +98,10 @@
 		</ContractOperations>
 	{/if}
 </div>
+
+<style>
+.info {
+	font-size: .8em;
+	padding: 0.5em 1em;
+}
+</style>

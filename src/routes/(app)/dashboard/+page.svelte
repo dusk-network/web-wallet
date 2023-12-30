@@ -98,7 +98,7 @@
 		id: "staking",
 		label: "Stake",
 		operations: [{
-			// Disabled if user has staked already of
+			// Disabled if user has staked already or
 			// if the key is not allowed to stake
 			disabled: !stakeInfo?.has_key || stakeInfo?.has_staked,
 			icon: { path: mdiDatabaseOutline, position: "before" },
