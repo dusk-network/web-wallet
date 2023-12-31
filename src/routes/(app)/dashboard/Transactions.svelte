@@ -2,15 +2,16 @@
 	import { mdiContain	} from "@mdi/js";
 	import { fade } from "svelte/transition";
 	import { logo } from "$lib/dusk/icons";
-	import { Icon, Tooltip } from "$lib/dusk/components";
-	import { createCurrencyFormatter, createTransferFormatter } from "$lib/dusk/currency";
+	import {
+		Anchor, Badge, Icon, Tooltip
+	} from "$lib/dusk/components";
+	import { createTransferFormatter } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
 
 	/** @type Transaction[] */
 	export let transactions;
 
 	const { language } = $settingsStore;
-	const feeFormatter = createCurrencyFormatter(language, "DUSK");
 	const transferFormatter = createTransferFormatter(language);
 </script>
 
@@ -25,8 +26,24 @@
 				<dl class="transactions-list">
 					<dt class="transactions-list__term">Hash</dt>
 					<dd class="transactions-list__datum">
-						<samp>{transaction.id}</samp>
+						<samp>
+							<Anchor
+								href="https://explorer.dusk.network/transactions/transaction?id={transaction.id}"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								{transaction.id}
+							</Anchor>
+						</samp>
 					</dd>
+					{#if transaction.type}
+						<dt class="transactions-list__term">Type</dt>
+						<dd class="transactions-list__datum">
+							<Badge>
+								{transaction.type}
+							</Badge>
+						</dd>
+					{/if}
 					<dt class="transactions-list__term">Block</dt>
 					<dd class="transactions-list__datum">
 						{new Intl.NumberFormat(language).format(transaction.block_height)}
@@ -42,23 +59,25 @@
 							data-tooltip-place="top"
 						/>
 					</dd>
-					<dt class="transactions-list__term">Fee</dt>
-					<dd class="transactions-list__datum">
-						{feeFormatter(transaction.fee)}
-						<Icon
-							className="transactions-list__icon"
-							path={logo}
-							data-tooltip-id="transactions-tooltip"
-							data-tooltip-text="DUSK"
-							data-tooltip-place="top"
-						/>
-					</dd>
+					{#if transaction.direction === "Out"}
+						<dt class="transactions-list__term">Fee</dt>
+						<dd class="transactions-list__datum">
+							{transferFormatter(transaction.fee)}
+							<Icon
+								className="transactions-list__icon"
+								path={logo}
+								data-tooltip-id="transactions-tooltip"
+								data-tooltip-text="DUSK"
+								data-tooltip-place="top"
+							/>
+						</dd>
+					{/if}
 				</dl>
 			{/each}
 		{:else}
 			<div class="transactions-list__empty">
 				<Icon path={mdiContain} size="large"/>
-				<p>No transactions to show yet.</p>
+				<p>You have no transaction history</p>
 			</div>
 		{/if}
 	</div>

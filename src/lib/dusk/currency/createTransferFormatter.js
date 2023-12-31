@@ -5,7 +5,7 @@
  * @returns {(value: number | bigint) => string}
  */
 const createFormatter = (locale) => {
-	const formatter = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, signDisplay: "exceptZero" });
+	const formatter = new Intl.NumberFormat(locale, { minimumFractionDigits: 9, signDisplay: "exceptZero" });
 
 	return value => formatter.format(value);
 };
