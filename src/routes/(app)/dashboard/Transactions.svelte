@@ -36,12 +36,10 @@
 							</Anchor>
 						</samp>
 					</dd>
-					{#if transaction.type}
+					{#if transaction.tx_type}
 						<dt class="transactions-list__term">Type</dt>
 						<dd class="transactions-list__datum">
-							<Badge>
-								{transaction.type}
-							</Badge>
+							<Badge className="w-100" text={transaction.tx_type}/>
 						</dd>
 					{/if}
 					<dt class="transactions-list__term">Block</dt>

@@ -12,7 +12,7 @@ type Transaction = {
 	direction: string,
 	fee: number,
 	id: string,
-	type: string
+	tx_type: string
 }
 
 type StakeType = "stake" | "withdraw-stake" | "withdraw-rewards";
