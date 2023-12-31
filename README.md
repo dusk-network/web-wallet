@@ -30,6 +30,8 @@ The application defines these variables by reading a local `.env` file containin
 N.B. the current `0.1.2` version of the library has no option to pick the network and uses the `LOCAL_NODE` only. The current testnet address is set in that variable in the example below:
 
 ```
+VITE_CONTRACT_STAKE_ENABLED=true
+VITE_CONTRACT_TRANSFER_ENABLED=true
 VITE_CURRENT_NODE=${VITE_LOCAL_NODE}
 VITE_CURRENT_PROVER_NODE=${VITE_LOCAL_NODE}
 VITE_GAS_LIMIT_DEFAULT=20000000
