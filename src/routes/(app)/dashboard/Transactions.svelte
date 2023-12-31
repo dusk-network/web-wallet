@@ -5,7 +5,7 @@
 	import {
 		Anchor, Badge, Icon, Tooltip
 	} from "$lib/dusk/components";
-	import { createTransferFormatter } from "$lib/dusk/currency";
+	import { createFeeFormatter, createTransferFormatter } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
 
 	/** @type Transaction[] */
@@ -13,6 +13,7 @@
 
 	const { language } = $settingsStore;
 	const transferFormatter = createTransferFormatter(language);
+	const feeFormatter = createFeeFormatter(language);
 </script>
 
 <article in:fade|global class="transactions">
@@ -60,7 +61,7 @@
 					{#if transaction.direction === "Out"}
 						<dt class="transactions-list__term">Fee</dt>
 						<dd class="transactions-list__datum">
-							{transferFormatter(transaction.fee)}
+							{feeFormatter(transaction.fee)}
 							<Icon
 								className="transactions-list__icon"
 								path={logo}
