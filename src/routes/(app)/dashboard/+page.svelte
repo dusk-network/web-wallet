@@ -96,7 +96,7 @@
 		id: "staking",
 		label: "Stake",
 		operations: [{
-			// Disabled if user has staked already of
+			// Disabled if user has staked already or
 			// if the key is not allowed to stake
 			disabled: !stakeInfo?.has_key || stakeInfo?.has_staked,
 			icon: { path: mdiDatabaseOutline, position: "before" },
@@ -109,7 +109,7 @@
 			label: "withdraw stake",
 			variant: "tertiary"
 		}, {
-			disabled: !stakeInfo?.has_staked,
+			disabled: !(stakeInfo?.reward > 0),
 			icon: { path: mdiDatabaseArrowDownOutline, position: "before" },
 			id: "withdraw-rewards",
 			label: "withdraw rewards",
@@ -207,22 +207,16 @@
 		{#await walletStore.getTransactionsHistory()}
 			<Throbber className="loading"/>
 		{:then transactions}
-			{#if transactions.length}
-				<Transactions transactions={getTransactionsShortlist(transactions)}>
-					<h3 class="h4" slot="heading">Transactions</h3>
-					<AnchorButton
-						className="view-transactions"
-						slot="controls"
-						href="/dashboard/transactions"
-						text="View all transactions"
-						variant="tertiary"
-					/>
-				</Transactions>
-			{:else}
-				<Card heading="Transactions">
-					<p>You have no transaction history</p>
-				</Card>
-			{/if}
+			<Transactions transactions={getTransactionsShortlist(transactions)}>
+				<h3 class="h4" slot="heading">Transactions</h3>
+				<AnchorButton
+					className="view-transactions"
+					slot="controls"
+					href="/dashboard/transactions"
+					text="View all transactions"
+					variant="tertiary"
+				/>
+			</Transactions>
 		{:catch e}
 			<Card heading="Error getting transactions">
 				<pre>{e}</pre>

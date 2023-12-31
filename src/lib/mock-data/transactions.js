@@ -6,35 +6,41 @@ export default [{
 	block_height: 33458,
 	direction: "In",
 	fee: 1876,
-	id: "tg874534tddsghdtst54hdfh793h"
+	id: "tg874534tddsghdtst54hdfh793h",
+	type: "TRANSFER"
 }, {
 	amount: -25000,
 	block_height: 33456,
 	direction: "In",
 	fee: 1876,
-	id: "tg874534tddsghdtst54hdfh791h"
+	id: "tg874534tddsghdtst54hdfh791h",
+	type: "TRANSFER"
 }, {
 	amount: 25000,
 	block_height: 33455,
 	direction: "In",
 	fee: 1876,
-	id: "tg874534tddsghdtst54hdfh790h"
+	id: "tg874534tddsghdtst54hdfh790h",
+	type: "STAKE"
 }, {
 	amount: -25000,
 	block_height: 33459,
 	direction: "In",
 	fee: 1876,
-	id: "tg874534tddsghdtst54hdfh794h"
+	id: "tg874534tddsghdtst54hdfh794h",
+	type: "TRANSFER"
 }, {
 	amount: 27000,
 	block_height: 33460,
 	direction: "Out",
 	fee: 1876,
-	id: "tg874534tddsghdtst54hdfh795h"
+	id: "tg874534tddsghdtst54hdfh795h",
+	type: "STAKE"
 }, {
 	amount: -25000,
 	block_height: 33457,
 	direction: "Out",
 	fee: 1876,
-	id: "tg874534tddsghdtst54hdfh792h"
+	id: "tg874534tddsghdtst54hdfh792h",
+	type: "TRANSFER"
 }];
