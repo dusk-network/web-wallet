@@ -52,10 +52,8 @@
 
 	$: ({ currentOperation } = $operationsStore);
 	$: ({ isSyncing, error } = $walletStore);
-	$: ({ statuses } = contract);
-
-	const { operations } = contract;
-	const contractOperations = allOperations.filter((a) => {
+	$: ({ operations, statuses } = contract);
+	$: contractOperations = allOperations.filter((a) => {
 		return operations.some((b) => {
 			return b.id === a.id;
 		});
@@ -74,7 +72,6 @@
 		<ContractOperations {statuses}>
 			{#if isStakingDisabled}
 				<div class="info">
-					<!-- <Icon path={mdiAlertOutline} size="large"/> -->
 					<p>
 						Third-party staking will be enabled at the start of the upcoming incentivized testnet
 						and will begin to accrue real rewards as well. Stay tuned for more information.

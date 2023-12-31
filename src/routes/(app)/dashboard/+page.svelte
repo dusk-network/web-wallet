@@ -69,11 +69,11 @@
 		id: "transfer",
 		label: "Transact",
 		operations: [{
-			icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
+			icon: { path: mdiArrowUpBoldBoxOutline, size: "normal" },
 			id: "send",
 			label: "send"
 		}, {
-			icon: { path: mdiArrowDownBoldBoxOutline, position: "before" },
+			icon: { path: mdiArrowDownBoldBoxOutline, size: "normal" },
 			id: "receive",
 			label: "receive",
 			variant: "tertiary"
@@ -99,18 +99,18 @@
 			// Disabled if user has staked already or
 			// if the key is not allowed to stake
 			disabled: !stakeInfo?.has_key || stakeInfo?.has_staked,
-			icon: { path: mdiDatabaseOutline, position: "before" },
+			icon: { path: mdiDatabaseOutline, size: "normal" },
 			id: "stake",
 			label: "stake"
 		}, {
 			disabled: !stakeInfo?.has_staked,
-			icon: { path: mdiDatabaseArrowDownOutline, position: "before" },
+			icon: { path: mdiDatabaseArrowDownOutline, size: "normal" },
 			id: "withdraw-stake",
 			label: "withdraw stake",
 			variant: "tertiary"
 		}, {
 			disabled: !(stakeInfo?.reward > 0),
-			icon: { path: mdiDatabaseArrowDownOutline, position: "before" },
+			icon: { path: mdiDatabaseArrowDownOutline, size: "normal" },
 			id: "withdraw-rewards",
 			label: "withdraw rewards",
 			variant: "tertiary"
