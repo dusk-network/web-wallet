@@ -12,6 +12,7 @@
 		WizardStep
 	} from "$lib/dusk/components";
 	import { operationsStore, settingsStore, walletStore } from "$lib/stores";
+	import { getLastTransactionHash } from "$lib/transactions";
 
 	import StatusList from "$lib/dusk/components/StatusList/StatusList.svelte";
 	import GasSettings from "./GasSettings/GasSettings.svelte";
@@ -169,21 +170,24 @@
 			showNavigation={false}>
 
 			<OperationResult
-				onBeforeLeave={resetOperationStore}
-				operation={stake()}
 				errorMessage="Transaction Failed"
+				onBeforeLeave={resetOperationStore}
+				operation={stake().then(getLastTransactionHash)}
 				pendingMessage="Processing transaction"
 				successMessage="Transaction completed"
 			>
-				<AnchorButton
-					href="https://explorer.dusk.network"
-					on:click={resetOperationStore}
-					rel="noopener noreferrer"
-					slot="success-content"
-					target="_blank"
-					text="VIEW ON BLOCK EXPLORER"
-					variant="secondary"
-				/>
+				<svelte:fragment slot="success-content" let:result={hash}>
+					{#if hash}
+						<AnchorButton
+							href={`https://explorer.dusk.network/transactions/transaction?id=${hash}`}
+							on:click={resetOperationStore}
+							rel="noopener noreferrer"
+							target="_blank"
+							text="VIEW ON BLOCK EXPLORER"
+							variant="secondary"
+						/>
+					{/if}
+				</svelte:fragment>
 			</OperationResult>
 		</WizardStep>
 	</Wizard>
