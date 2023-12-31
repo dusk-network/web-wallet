@@ -1168,7 +1168,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            +27,000.000000000
+            +27,000.00
              
             <svg
               class="dusk-icon dusk-icon--size--normal transactions-list__icon"
@@ -1194,7 +1194,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            +1,876.000000000
+            1,876.00
              
             <svg
               class="dusk-icon dusk-icon--size--normal transactions-list__icon"
@@ -1274,7 +1274,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            -25,000.000000000
+            -25,000.00
              
             <svg
               class="dusk-icon dusk-icon--size--normal transactions-list__icon"
@@ -1354,7 +1354,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            +25,000.000000000
+            +25,000.00
              
             <svg
               class="dusk-icon dusk-icon--size--normal transactions-list__icon"
@@ -1434,7 +1434,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            -25,000.000000000
+            -25,000.00
              
             <svg
               class="dusk-icon dusk-icon--size--normal transactions-list__icon"
@@ -1460,7 +1460,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            +1,876.000000000
+            1,876.00
              
             <svg
               class="dusk-icon dusk-icon--size--normal transactions-list__icon"
@@ -1540,7 +1540,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <dd
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
-            -25,000.000000000
+            -25,000.00
              
             <svg
               class="dusk-icon dusk-icon--size--normal transactions-list__icon"
