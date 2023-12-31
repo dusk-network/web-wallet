@@ -1142,9 +1142,9 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
             <span
-              class="dusk-badge dusk-badge--variant-neutral"
+              class="dusk-badge dusk-badge--variant-neutral w-100"
             >
-              
+              STAKE
             </span>
             <!--&lt;Badge&gt;-->
              
@@ -1248,9 +1248,9 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
             <span
-              class="dusk-badge dusk-badge--variant-neutral"
+              class="dusk-badge dusk-badge--variant-neutral w-100"
             >
-              
+              TRANSFER
             </span>
             <!--&lt;Badge&gt;-->
              
@@ -1328,9 +1328,9 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
             <span
-              class="dusk-badge dusk-badge--variant-neutral"
+              class="dusk-badge dusk-badge--variant-neutral w-100"
             >
-              
+              TRANSFER
             </span>
             <!--&lt;Badge&gt;-->
              
@@ -1408,9 +1408,9 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
             <span
-              class="dusk-badge dusk-badge--variant-neutral"
+              class="dusk-badge dusk-badge--variant-neutral w-100"
             >
-              
+              TRANSFER
             </span>
             <!--&lt;Badge&gt;-->
              
@@ -1514,9 +1514,9 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             class="transactions-list__datum s-ms4M-9Zd82pR"
           >
             <span
-              class="dusk-badge dusk-badge--variant-neutral"
+              class="dusk-badge dusk-badge--variant-neutral w-100"
             >
-              
+              TRANSFER
             </span>
             <!--&lt;Badge&gt;-->
              
