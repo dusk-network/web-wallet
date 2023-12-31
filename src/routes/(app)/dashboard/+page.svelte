@@ -111,7 +111,7 @@
 			label: "withdraw stake",
 			variant: "tertiary"
 		}, {
-			disabled: !stakeInfo?.has_staked,
+			disabled: !(stakeInfo?.reward > 0),
 			icon: { path: mdiDatabaseArrowDownOutline, position: "before" },
 			id: "withdraw-rewards",
 			label: "withdraw rewards",
