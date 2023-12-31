@@ -31,7 +31,7 @@
 		"typecheck:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch --fail-on-warnings"
 	},
 	"type": "module",
-	"version": "0.0.1",
+	"version": "1.0.0-beta",
 	"dependencies": {
 		"@dusk-network/dusk-wallet-core": "0.21.8",
 		"@dusk-network/dusk-wallet-js": "0.3.0",
