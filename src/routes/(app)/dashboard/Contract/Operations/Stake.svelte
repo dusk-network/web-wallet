@@ -52,7 +52,8 @@
 		gasLimitLower,
 		gasLimitUpper,
 		gasPrice,
-		gasPriceLower
+		gasPriceLower,
+		language
 	} = $settingsStore);
 
 	async function stake () {
@@ -150,6 +151,7 @@
 					limit={gasLimit}
 					limitLower={gasLimitLower}
 					limitUpper={gasLimitUpper}
+					locale={language}
 					price={gasPrice}
 					priceLower={gasPriceLower}
 					on:setGasSettings={(event) => {

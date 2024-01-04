@@ -57,6 +57,7 @@
 		{type}
 		{value}
 		bind:this={inputElement}
+		on:blur
 		on:input={handleInput}
 		on:input
 		on:keydown

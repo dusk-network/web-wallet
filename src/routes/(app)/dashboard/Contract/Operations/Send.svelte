@@ -49,7 +49,8 @@
 		gasLimitLower,
 		gasLimitUpper,
 		gasPrice,
-		gasPriceLower
+		gasPriceLower,
+		language
 	} = $settingsStore);
 </script>
 
@@ -184,6 +185,7 @@
 					limit={gasLimit}
 					limitLower={gasLimitLower}
 					limitUpper={gasLimitUpper}
+					locale={language}
 					price={gasPrice}
 					priceLower={gasPriceLower}
 					on:setGasSettings={(event) => {
