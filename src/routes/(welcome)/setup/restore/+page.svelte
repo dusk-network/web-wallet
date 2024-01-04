@@ -9,7 +9,7 @@
 	import AllSet from "../AllSet.svelte";
 	import MnemonicAuthenticate from "./MnemonicAuthenticate.svelte";
 	import { Wizard, WizardStep } from "$lib/dusk/components";
-	import { mnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
+	import { enteredMnemonicPhrase, mnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
 	import { encryptMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 	import loginInfoStorage from "$lib/services/loginInfoStorage";
 	import { goto } from "$app/navigation";
@@ -52,6 +52,10 @@
 		const wallet = await getWallet(seed);
 
 		await walletStore.clearLocalDataAndInit(wallet);
+	}
+
+	$: if (validMnemonic) {
+		mnemonicPhrase.set($enteredMnemonicPhrase);
 	}
 </script>
 
