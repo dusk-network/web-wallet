@@ -9,6 +9,8 @@
 
 .key-picker__current-key {
     width: 100%;
+    text-align: center;
+    font-family: monospace;
 }
 
 .key-picker__copy-key-button-wrapper {
@@ -21,18 +23,12 @@
     width: 1.5em;
 }
 
-.key-picker__copy-key-button-wrapper:hover {
+.key-picker__copy-key-button:hover {
     cursor: copy;
 }
 
 .key-picker__copy-key-button, .key-picker__copy-key-button:hover {
     color: var(--primary-color) !important;
-}
-
-.key-picker__current-key, .key-picker__key {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 1;
 }
 
 .key-picker__key {
