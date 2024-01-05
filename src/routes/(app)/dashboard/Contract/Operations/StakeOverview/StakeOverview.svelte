@@ -23,7 +23,7 @@
 	export let amount;
 
 	const { language } = $settingsStore;
-	const duskFormatter = createCurrencyFormatter(language, "DUSK");
+	const duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
 </script>
 
 <dl class="stake-overview">

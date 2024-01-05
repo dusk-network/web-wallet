@@ -20,6 +20,7 @@
 	import GasSettings from "./GasSettings/GasSettings.svelte";
 	import OperationResult from "./OperationResult/OperationResult.svelte";
 	import ScanQr from "./ScanQR/ScanQR.svelte";
+	import { onMount } from "svelte";
 
 	/** @type {Status[]} */
 	export let statuses;
@@ -36,7 +37,18 @@
 	/** @type {import('svelte').SvelteComponent} */
 	let scanQrComponent;
 
-	const duskFormatter = createCurrencyFormatter("en", "DUSK");
+	/** @type {HTMLInputElement|null} */
+	let amountInput;
+
+	let isNextButtonDisabled = false;
+
+	const { balance } = $walletStore;
+
+	const checkAmountValid = () => {
+		isNextButtonDisabled = !amountInput?.checkValidity();
+	};
+
+	const duskFormatter = createCurrencyFormatter("en", "DUSK", 9);
 	const resetOperationStore = () => {
 		operationsStore.update((store) => ({
 			...store,
@@ -52,6 +64,10 @@
 		gasPriceLower,
 		language
 	} = $settingsStore);
+
+	onMount(() => {
+		amountInput = document.querySelector(".operation__input-field");
+	});
 </script>
 
 <div class="operation">
@@ -63,9 +79,7 @@
 				action: () => resetOperationStore(),
 				disabled: false
 			}}
-			nextButton={{
-				disabled: amount === 0
-			}}
+			nextButton={{ disabled: isNextButtonDisabled }}
 		>
 			<div in:fade|global class="operation__send">
 				<StatusList {statuses}/>
@@ -75,9 +89,12 @@
 						size="small"
 						variant="tertiary"
 						on:click={() => {
-							const { balance } = $walletStore;
+							if (amountInput) {
+								amountInput.value = balance.maximum.toString();
+							}
 
 							amount = balance.maximum;
+							checkAmountValid();
 						}}
 						text="USE MAX"
 					/>
@@ -86,8 +103,13 @@
 				<div class="operation__send-amount operation__input">
 					<Textbox
 						className="operation__input-field"
-						type="number"
 						bind:value={amount}
+						required
+						type="number"
+						min={0.000000001}
+						max={balance.maximum}
+						step="0.000000001"
+						on:input={() => {checkAmountValid();}}
 					/>
 					{#if statuses[0]?.value?.icon}
 						<Icon
@@ -268,6 +290,10 @@
 		:global(&__input &__input-field) {
 			width: 100%;
 			padding: 0.5em 1em;
+		}
+
+		:global(&__input-field:invalid) {
+			color: var(--error-color);
 		}
 
 		:global(&__send-address) {

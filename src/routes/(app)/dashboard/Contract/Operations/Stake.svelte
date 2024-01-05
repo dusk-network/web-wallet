@@ -18,6 +18,7 @@
 	import GasSettings from "./GasSettings/GasSettings.svelte";
 	import StakeOverview from "./StakeOverview/StakeOverview.svelte";
 	import OperationResult from "./OperationResult/OperationResult.svelte";
+	import { onMount } from "svelte";
 
 	/** @type {Status[]} */
 	export let statuses;
@@ -27,6 +28,13 @@
 
 	/** @type {StakeType} */
 	export let flow;
+
+	/** @type {HTMLInputElement|null} */
+	let stakeInput;
+
+	let isNextButtonDisabled = false;
+
+	const { balance } = $walletStore;
 
 	const getStatusValue = (/** @type {string} */ label) => {
 		const currentStatus = statuses.find(status => status.key.label === label);
@@ -45,6 +53,10 @@
 			...store,
 			currentOperation: undefined
 		}));
+	};
+
+	const checkAmountValid = () => {
+		isNextButtonDisabled = !stakeInput?.checkValidity();
 	};
 
 	$: ({
@@ -74,6 +86,10 @@
 				break;
 		}
 	}
+
+	onMount(() => {
+		stakeInput = document.querySelector(".operation__input-field");
+	});
 </script>
 
 <div class="operation">
@@ -86,7 +102,7 @@
 					action: () => resetOperationStore(),
 					disabled: false
 				}}
-				nextButton={{ disabled: stakeAmount === 0 }}>
+				nextButton={{ disabled: isNextButtonDisabled }}>
 				<StatusList {statuses}/>
 				<div class="operation__amount operation__space-between">
 					<p>Enter amount:</p>
@@ -94,9 +110,12 @@
 						size="small"
 						variant="tertiary"
 						on:click={() => {
-							const { balance } = $walletStore;
+							if (stakeInput) {
+								stakeInput.value = balance.maximum.toString();
+							}
 
 							stakeAmount = balance.maximum;
+							checkAmountValid();
 						}}
 						text="USE MAX"
 					/>
@@ -105,9 +124,13 @@
 				<div class="operation__amount operation__input">
 					<Textbox
 						className="operation__input-field"
-						type="number"
 						bind:value={stakeAmount}
+						type="number"
 						min={1000}
+						max={balance.maximum}
+						required
+						step="0.000000001"
+						on:input={() => {checkAmountValid();}}
 					/>
 					{#if statuses[0]?.value?.icon}
 						<Icon
@@ -196,28 +219,34 @@
 </div>
 
 <style lang="postcss">
-	.operation__amount {
-		display: flex;
-		align-items: center;
-		width: 100%;
-	}
+	.operation {
+		&__amount {
+			display: flex;
+			align-items: center;
+			width: 100%;
+		}
 
-	.operation__stake {
-		display: flex;
-		flex-direction: column;
-		gap: 1.2em;
-	}
+		&__stake {
+			display: flex;
+			flex-direction: column;
+			gap: 1.2em;
+		}
 
-	.operation__space-between {
-		justify-content: space-between;
-	}
+		&__space-between {
+			justify-content: space-between;
+		}
 
-	.operation__input {
-		column-gap: var(--default-gap);
-	}
+		&__input {
+			column-gap: var(--default-gap);
+		}
 
-	:global(.operation__input .operation__input-field) {
-		width: 100%;
-		padding: 0.5em 1em;
+		:global(&__input &__input-field) {
+			width: 100%;
+			padding: 0.5em 1em;
+		}
+
+		:global(&__input-field:invalid) {
+			color: var(--error-color);
+		}
 	}
 </style>

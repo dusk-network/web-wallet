@@ -29,8 +29,8 @@
 		className
 	]);
 
-	const duskFormatter = createCurrencyFormatter(locale, tokenCurrency);
-	const fiatFormatter = createCurrencyFormatter(locale, fiatCurrency);
+	const duskFormatter = createCurrencyFormatter(locale, tokenCurrency, 9);
+	const fiatFormatter = createCurrencyFormatter(locale, fiatCurrency, 2);
 </script>
 
 <article
