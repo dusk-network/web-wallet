@@ -2,6 +2,14 @@
 
 <script>
 	import { createEventDispatcher } from "svelte";
+	import {
+		always,
+		clamp,
+		clampWithin,
+		compose,
+		when
+	} from "lamb";
+
 	import { Textbox } from "$lib/dusk/components";
 
 	/** @type {Number} */
@@ -13,6 +21,9 @@
 	/** @type {Number} */
 	export let limitUpper;
 
+	/** @type {String} A BCP 47 language tag */
+	export let locale;
+
 	/** @type {Number} */
 	export let price;
 
@@ -20,42 +31,70 @@
 	export let priceLower;
 
 	const dispatch = createEventDispatcher();
+	const formatter = new Intl.NumberFormat(locale);
 
-	const gas = {
-		limit,
-		price
-	};
+	// browsers may allow input of invalid characters
+	const toNumber = compose(when(isNaN, always(0)), n => parseInt(n, 10));
+	const toValidLimit = compose(clampWithin(limitLower, limitUpper), toNumber);
 
-	function handleInput () {
-		dispatch("setGasSettings", gas);
+	/**
+	 * @param {Number} n
+	 * @param {Number} upperLimit
+	 * @returns {Number}
+	 */
+	const toValidPrice = (n, upperLimit) => clamp(toNumber(n), priceLower, upperLimit);
+
+	function dispatchGasChange () {
+		const validLimit = toValidLimit(limit);
+
+		dispatch("setGasSettings", {
+			limit: validLimit,
+			price: toValidPrice(price, validLimit)
+		});
+	}
+
+	function handleLimitChange () {
+		const newLimit = toValidLimit(limit);
+
+		if (price > newLimit) {
+			price = toValidPrice(price, newLimit);
+		}
+
+		dispatchGasChange();
 	}
 </script>
 
 <label for={undefined} class="gas-control">
-	<span>Price (lux)</span>
+	<span class="gas-control__label">
+		Price (in Lux, integers between {formatter.format(priceLower)}
+		and {formatter.format(toValidLimit(limit))})
+	</span>
 	<Textbox
-		bind:value={gas.price}
-		placeholder="gas price"
-		type="number"
+		bind:value={price}
+		className="gas-control__input"
+		max={toValidLimit(limit)}
 		min={priceLower}
+		on:blur={() => { price = toValidPrice(price, limit); }}
+		on:input={dispatchGasChange}
 		required
-		on:input={() => {
-			handleInput();
-		}}
+		type="number"
 	/>
 </label>
+
 <label for={undefined} class="gas-control">
-	<span>Limit</span>
+	<span class="gas-control__label">
+		Limit (integers between {formatter.format(limitLower)}
+		and {formatter.format(limitUpper)})
+	</span>
 	<Textbox
-		bind:value={gas.limit}
-		placeholder="gas limit"
-		type="number"
+		bind:value={limit}
+		className="gas-control__input"
 		max={limitUpper}
 		min={limitLower}
+		on:blur={() => { limit = toValidLimit(limit); }}
+		on:input={handleLimitChange}
 		required
-		on:input={() => {
-			handleInput();
-		}}
+		type="number"
 	/>
 </label>
 
@@ -68,8 +107,12 @@
 		justify-content: start;
 		align-items: stretch;
 
-		& > span {
+		&__label {
 			line-height: 140%;
+		}
+
+		:global(&__input:invalid) {
+			color: var(--error-color);
 		}
 	}
 </style>

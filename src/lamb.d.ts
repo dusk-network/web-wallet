@@ -540,6 +540,26 @@ declare module "lamb" {
 		P extends Predicate<T, U>,
 		F extends UnaryFunction<Exclude<T, U>, R>
 	> (predicate: P, fn: F): (value: T | U) => U extends T ? T : R;
+	function unless<
+		R,
+		T,
+		P extends UnaryFunction<T, boolean>,
+		F extends UnaryFunction<T, R>
+	> (predicate: P, fn: F): (value: T) => ReturnType<P> extends true ? T : R;
+
+	function when<
+		R,
+		T,
+		U extends T,
+		P extends Predicate<T, U>,
+		F extends UnaryFunction<Exclude<T, U>, R>
+	> (predicate: P, fn: F): (value: T | U) => U extends T ? T : T;
+	function when<
+		R,
+		T,
+		P extends UnaryFunction<T, boolean>,
+		F extends UnaryFunction<T, R>
+	> (predicate: P, fn: F): (value: T) => ReturnType<P> extends true ? R : T;
 
 	/* ------------------------- *
 	 * *****     MATH      ***** *

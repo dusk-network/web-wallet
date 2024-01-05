@@ -203,15 +203,20 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
             class="gas-control s-POS_LBjGgkOM"
           >
             <span
-              class="s-POS_LBjGgkOM"
+              class="gas-control__label s-POS_LBjGgkOM"
             >
-              Price (lux)
+              Price (in Lux, integers between 
+              1
+              
+		and 
+              20,000,000
+              )
             </span>
              
             <input
-              class="dusk-textbox dusk-textbox-number"
+              class="dusk-textbox dusk-textbox-number gas-control__input"
+              max="20000000"
               min="1"
-              placeholder="gas price"
               required=""
               type="number"
             />
@@ -223,16 +228,20 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
             class="gas-control s-POS_LBjGgkOM"
           >
             <span
-              class="s-POS_LBjGgkOM"
+              class="gas-control__label s-POS_LBjGgkOM"
             >
-              Limit
+              Limit (integers between 
+              10,000,000
+              
+		and 
+              1,000,000,000
+              )
             </span>
              
             <input
-              class="dusk-textbox dusk-textbox-number"
+              class="dusk-textbox dusk-textbox-number gas-control__input"
               max="1000000000"
               min="10000000"
-              placeholder="gas limit"
               required=""
               type="number"
             />
@@ -910,15 +919,20 @@ exports[`Settings > should render the settings page 1`] = `
             class="gas-control s-POS_LBjGgkOM"
           >
             <span
-              class="s-POS_LBjGgkOM"
+              class="gas-control__label s-POS_LBjGgkOM"
             >
-              Price (lux)
+              Price (in Lux, integers between 
+              1
+              
+		and 
+              20,000,000
+              )
             </span>
              
             <input
-              class="dusk-textbox dusk-textbox-number"
+              class="dusk-textbox dusk-textbox-number gas-control__input"
+              max="20000000"
               min="1"
-              placeholder="gas price"
               required=""
               type="number"
             />
@@ -930,16 +944,20 @@ exports[`Settings > should render the settings page 1`] = `
             class="gas-control s-POS_LBjGgkOM"
           >
             <span
-              class="s-POS_LBjGgkOM"
+              class="gas-control__label s-POS_LBjGgkOM"
             >
-              Limit
+              Limit (integers between 
+              10,000,000
+              
+		and 
+              1,000,000,000
+              )
             </span>
              
             <input
-              class="dusk-textbox dusk-textbox-number"
+              class="dusk-textbox dusk-textbox-number gas-control__input"
               max="1000000000"
               min="10000000"
-              placeholder="gas limit"
               required=""
               type="number"
             />

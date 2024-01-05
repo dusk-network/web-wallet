@@ -14,6 +14,7 @@ describe("GasSettings", () => {
 		limit: 20000000,
 		limitLower: 10000000,
 		limitUpper: 1000000000,
+		locale: "it",
 		price: 1,
 		priceLower: 1
 	};

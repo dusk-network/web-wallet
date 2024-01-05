@@ -14,6 +14,9 @@
 	/** @type {Number} */
 	export let limitUpper;
 
+	/** @type {String} A BCP 47 language tag */
+	export let locale;
+
 	/** @type {Number} */
 	export let price;
 
@@ -49,6 +52,7 @@
 				{limit}
 				{limitLower}
 				{limitUpper}
+				{locale}
 				{price}
 				{priceLower}
 			/>
