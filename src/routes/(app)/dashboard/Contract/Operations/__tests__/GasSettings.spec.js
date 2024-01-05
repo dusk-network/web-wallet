@@ -43,31 +43,32 @@ describe("GasSettings", () => {
 	});
 
 	it("checks setGasSettings event is dispatched on click with the correct event data", async () => {
+		const eventHandler = vi.fn();
 		const { component, getByRole, getAllByRole } = render(GasSettings, baseOptions);
-		const edit = getByRole("button", { name: "EDIT" });
+		const editButton = getByRole("button", { name: "EDIT" });
 
-		await fireEvent.click(edit);
+		expect(() => getAllByRole("spinbutton")).toThrow();
 
-		const changeHandler = vi.fn();
+		await fireEvent.click(editButton);
 
-		const gas = getAllByRole("spinbutton");
-		const minGas = gas[0];
-		const maxGas = gas[1];
+		component.$on("setGasSettings", eventHandler);
 
-		component.$on("setGasSettings", changeHandler);
+		const [priceInput, limitInput] = getAllByRole("spinbutton");
 
-		await fireEvent.input(minGas, { target: { value: 50000 } });
+		await fireEvent.input(limitInput, { target: { value: baseProps.limitLower } });
 
-		expect(changeHandler).toHaveBeenCalledTimes(1);
-		expect(changeHandler).toHaveBeenCalledWith(
-			new CustomEvent("setGasSettings", { detail: { minimum: 50000, maximum: maxGas } })
-		);
+		expect(eventHandler).toHaveBeenCalledTimes(1);
+		expect(eventHandler.mock.lastCall[0].detail).toStrictEqual({
+			limit: baseProps.limitLower,
+			price: baseProps.price
+		});
 
-		await fireEvent.input(maxGas, { target: { value: 50000 } });
+		await fireEvent.input(priceInput, { target: { value: baseProps.price * 2 } });
 
-		expect(changeHandler).toHaveBeenCalledTimes(2);
-		expect(changeHandler).toHaveBeenCalledWith(
-			new CustomEvent("setGasSettings", { detail: { minimum: 50000, maximum: 50000 } })
-		);
+		expect(eventHandler).toHaveBeenCalledTimes(2);
+		expect(eventHandler.mock.lastCall[0].detail).toStrictEqual({
+			limit: baseProps.limitLower,
+			price: baseProps.price * 2
+		});
 	});
 });
