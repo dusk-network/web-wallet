@@ -11,6 +11,24 @@
     width: 100%;
 }
 
+.key-picker__copy-key-button-wrapper {
+    background-color: var(--secondary-color);
+    border-radius: 50%;
+}
+
+.key-picker__copy-key-button {
+    aspect-ratio: 1/1;
+    width: 1.5em;
+}
+
+.key-picker__copy-key-button-wrapper:hover {
+    cursor: copy;
+}
+
+.key-picker__copy-key-button, .key-picker__copy-key-button:hover {
+    color: var(--primary-color) !important;
+}
+
 .key-picker__current-key, .key-picker__key {
     overflow: hidden;
     text-overflow: ellipsis;

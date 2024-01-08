@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import KeyPicker from "../KeyPicker.svelte";
 
 describe("KeyPicker", () => {
@@ -12,11 +12,29 @@ describe("KeyPicker", () => {
 
 	const props = { currentKey, keys };
 
+	beforeEach(() => {
+		Object.assign(navigator, {
+			clipboard: {
+				writeText: vi.fn().mockResolvedValue(undefined)
+			}
+		});
+	});
+
 	afterEach(cleanup);
 
 	it("renders the KeyPicker component", () => {
 		const { container } = render(KeyPicker, props);
 
 		expect(container.firstChild).toMatchSnapshot();
+	});
+
+	it("copies the current key on Copy button click", async () => {
+		const { getByRole } = render(KeyPicker, props);
+
+		const component = getByRole("button", { name: "Copy Key" });
+
+		await fireEvent.click(component);
+
+		expect(navigator.clipboard.writeText).toHaveBeenCalledWith(currentKey);
 	});
 });
