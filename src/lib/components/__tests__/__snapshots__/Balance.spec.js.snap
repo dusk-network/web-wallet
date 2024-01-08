@@ -18,7 +18,7 @@ exports[`Balance > renders the Balance component 1`] = `
       class="dusk-balance__dusk"
     >
       <strong>
-        0.00
+        0.000000000
       </strong>
        
       <svg
@@ -81,7 +81,7 @@ exports[`Balance > should update the Balance component when the props change 1`]
       class="dusk-balance__dusk"
     >
       <strong>
-        0.00
+        0.000000000
       </strong>
        
       <svg
@@ -144,7 +144,7 @@ exports[`Balance > should update the Balance component when the props change 2`]
       class="dusk-balance__dusk"
     >
       <strong>
-        0.00
+        0.000000000
       </strong>
        
       <svg

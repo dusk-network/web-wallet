@@ -250,6 +250,10 @@ exports[`Send > renders the Send component Amount step 1`] = `
         >
           <input
             class="dusk-textbox dusk-textbox-number operation__input-field"
+            max="50000"
+            min="1e-9"
+            required=""
+            step="0.000000001"
             type="number"
           />
           
@@ -402,7 +406,7 @@ exports[`Send > renders the Send component Review step 1`] = `
             <span
               class="s--bvhT2XkmH9a"
             >
-              1.00
+              1.000000000
             </span>
              
             <svg

@@ -261,7 +261,7 @@ exports[`Withdraw > renders the Withdraw step component 1`] = `
             <span
               class="s-ILOSa06gtJJl"
             >
-              0.00
+              0.000000000
             </span>
              
             <svg

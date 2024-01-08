@@ -5,7 +5,7 @@
 	import { createCurrencyFormatter } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
 	const { language } = $settingsStore;
-	const duskFormatter = createCurrencyFormatter(language, "DUSK");
+	const duskFormatter = createCurrencyFormatter(language, "DUSK", 2);
 
 	/** @type Status[] */
 	export let statuses;

@@ -65,7 +65,7 @@ exports[`Dashboard > should render a card when there is an error getting transac
         class="dusk-balance__dusk"
       >
         <strong>
-          2,345.00
+          2,345.000000000
         </strong>
          
         <svg
@@ -438,7 +438,7 @@ exports[`Dashboard > should render the dashboard page and show a throbber while 
         class="dusk-balance__dusk"
       >
         <strong>
-          2,345.00
+          2,345.000000000
         </strong>
          
         <svg
@@ -810,7 +810,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         class="dusk-balance__dusk"
       >
         <strong>
-          2,345.00
+          2,345.000000000
         </strong>
          
         <svg

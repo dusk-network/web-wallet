@@ -26,7 +26,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         class="dusk-balance__dusk"
       >
         <strong>
-          0.00
+          0.000000000
         </strong>
          
         <svg
