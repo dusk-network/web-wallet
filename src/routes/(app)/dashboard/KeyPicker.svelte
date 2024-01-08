@@ -4,7 +4,7 @@
 	import { createEventDispatcher	} from "svelte";
 	import { makeClassName } from "$lib/dusk/string";
 	import {
-		mdiKeyOutline, mdiPlusBoxOutline, mdiTimerSand
+		mdiContentCopy, mdiPlusBoxOutline, mdiSwapHorizontal, mdiTimerSand
 	} from "@mdi/js";
 	import {
 		Button, CircularIcon, Icon, ProgressBar
@@ -75,10 +75,19 @@
 		aria-haspopup="true"
 		aria-expanded={expanded}
 		on:keydown={handleDropDownKeyDown}>
-		<CircularIcon>
-			<Icon path={mdiKeyOutline} size="large"/>
+		<CircularIcon color="var(--background-color)" bgColor="var(--primary-color)">
+			<Icon path={mdiSwapHorizontal} size="large"/>
 		</CircularIcon>
 		<p class="key-picker__current-key">{currentKey}</p>
+		<span class="key-picker__copy-key-button-wrapper">
+			<Button
+				aria-label="Copy Key"
+				className="key-picker__copy-key-button"
+				icon={{ path: mdiContentCopy }}
+				on:click={() => { navigator.clipboard.writeText(currentKey); }}
+				variant="text"
+			/>
+		</span>
 	</div>
 
 	{#if expanded}
