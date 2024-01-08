@@ -10,6 +10,7 @@
 	import {
 		AnchorButton,
 		Button,
+		CircularIcon,
 		Icon,
 		ProgressBar
 	} from "$lib/dusk/components";
@@ -28,7 +29,7 @@
 	let iconVariant = "";
 
 	$: if (isSyncing) {
-		iconVariant = "sync";
+		iconVariant = "warning";
 		iconPath = mdiTimerSand;
 		syncStatus = `Syncing with Dusk ${network}`;
 	} else if (error) {
@@ -49,20 +50,20 @@
 	<footer class="footer">
 		<nav class="footer__navigation">
 			<div class="footer__network-status">
-				<span
-					class={`footer__icon-wrapper footer__icon-wrapper--${iconVariant}`}
+				<CircularIcon
+					className="footer__network-status-icon footer__network-status-icon--{iconVariant}"
+					color="var(--footer-icon-color)"
+					bgColor="var(--{iconVariant}-color)"
 					data-tooltip-disabled={!error}
 					data-tooltip-id="main-tooltip"
 					data-tooltip-text={error?.message}
 					data-tooltip-type="error"
 				>
 					<Icon
-						className="footer__icon"
 						path={iconPath}
-						size="normal"
+						size="large"
 					/>
-				</span>
-
+				</CircularIcon>
 				<div class="footer__network-message">
 					<span>{syncStatus}</span>
 					{#if isSyncing}
@@ -131,37 +132,16 @@
 			gap: var(--small-gap);
 			line-height: 150%;
 			text-transform: capitalize;
-
-			&__network-message {
-				display: flex;
-				align-items: center;
-			}
 		}
 
-		&__icon-wrapper {
+		&__network-message {
 			display: flex;
+			flex-direction: column;
 			align-items: center;
-			justify-content: center;
-			width: 1.625em;
-			height: 1.625em;
-			border-radius: 100%;
+		}
 
-			:global(&--success) {
-				background-color: var(--success-color);
-			}
-
-			:global(&--sync) {
-				background-color: var(--warning-color);
-			}
-
-			:global(&--error) {
-				background-color: var(--error-color);
-				cursor: help;
-
-				:global(.footer__icon) {
-					color: var(--footer-icon-color);
-				}
-			}
+		:global(.footer__network-status-icon--error) {
+			cursor: help;
 		}
 	}
 </style>
