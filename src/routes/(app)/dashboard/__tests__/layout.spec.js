@@ -26,11 +26,11 @@ vi.mock("$lib/stores", async importOriginal => {
 describe("Dashboard Layout", () => {
 	/**
 	 * @param {Element} container
-	 * @param {"error" | "success" | "sync"} status
+	 * @param {"error" | "success" | "warning"} status
 	 * @returns
 	 */
 	const getStatusWrapper = (container, status) =>
-		container.querySelector(`.footer__icon-wrapper--${status}`);
+		container.querySelector(`.footer__network-status-icon--${status}`);
 	const initialState = structuredClone(mockedWalletStore.getMockedStoreValue());
 
 	beforeEach(() => {
@@ -53,7 +53,7 @@ describe("Dashboard Layout", () => {
 	it("should render the dashboard layout in the sync state", async () => {
 		const { container } = renderWithSimpleContent(Layout, {});
 
-		expect(getStatusWrapper(container, "sync")).toBeNull();
+		expect(getStatusWrapper(container, "warning")).toBeNull();
 
 		await act(() => {
 			mockedWalletStore.setMockedStoreValue({
@@ -62,14 +62,14 @@ describe("Dashboard Layout", () => {
 			});
 		});
 
-		expect(getStatusWrapper(container, "sync")).toBeTruthy();
+		expect(getStatusWrapper(container, "warning")).toBeTruthy();
 		expect(container.firstChild).toMatchSnapshot();
 
 		await act(() => {
 			mockedWalletStore.setMockedStoreValue({ initialState });
 		});
 
-		expect(getStatusWrapper(container, "sync")).toBeNull();
+		expect(getStatusWrapper(container, "warning")).toBeNull();
 	});
 
 	it("should render the dashboard layout in the error state", async () => {

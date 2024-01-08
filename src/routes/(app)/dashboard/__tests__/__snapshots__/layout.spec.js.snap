@@ -18,14 +18,15 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
         <div
           class="footer__network-status s-Ck0voT_hIlXn"
         >
-          <span
-            class="footer__icon-wrapper footer__icon-wrapper--success s-Ck0voT_hIlXn"
+          <div
+            class="dusk-icon--circular footer__network-status-icon footer__network-status-icon--success"
             data-tooltip-disabled="true"
             data-tooltip-id="main-tooltip"
             data-tooltip-type="error"
+            style=""
           >
             <svg
-              class="dusk-icon dusk-icon--size--normal footer__icon"
+              class="dusk-icon dusk-icon--size--large"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -35,7 +36,8 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
             </svg>
             
             <!--&lt;Icon&gt;-->
-          </span>
+          </div>
+          <!--&lt;CircularIcon&gt;-->
            
           <div
             class="footer__network-message s-Ck0voT_hIlXn"
@@ -106,15 +108,16 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
         <div
           class="footer__network-status s-Ck0voT_hIlXn"
         >
-          <span
-            class="footer__icon-wrapper footer__icon-wrapper--error s-Ck0voT_hIlXn"
+          <div
+            class="dusk-icon--circular footer__network-status-icon footer__network-status-icon--error"
             data-tooltip-disabled="false"
             data-tooltip-id="main-tooltip"
             data-tooltip-text=""
             data-tooltip-type="error"
+            style=""
           >
             <svg
-              class="dusk-icon dusk-icon--size--normal footer__icon"
+              class="dusk-icon dusk-icon--size--large"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -124,7 +127,8 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
             </svg>
             
             <!--&lt;Icon&gt;-->
-          </span>
+          </div>
+          <!--&lt;CircularIcon&gt;-->
            
           <div
             class="footer__network-message s-Ck0voT_hIlXn"
@@ -217,14 +221,15 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
         <div
           class="footer__network-status s-Ck0voT_hIlXn"
         >
-          <span
-            class="footer__icon-wrapper footer__icon-wrapper--sync s-Ck0voT_hIlXn"
+          <div
+            class="dusk-icon--circular footer__network-status-icon footer__network-status-icon--warning"
             data-tooltip-disabled="true"
             data-tooltip-id="main-tooltip"
             data-tooltip-type="error"
+            style=""
           >
             <svg
-              class="dusk-icon dusk-icon--size--normal footer__icon"
+              class="dusk-icon dusk-icon--size--large"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -234,7 +239,8 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             </svg>
             
             <!--&lt;Icon&gt;-->
-          </span>
+          </div>
+          <!--&lt;CircularIcon&gt;-->
            
           <div
             class="footer__network-message s-Ck0voT_hIlXn"
