@@ -1,8 +1,10 @@
 <script>
+	import { mdiAlertOutline, mdiContentPaste } from "@mdi/js";
 	import { wordlists } from "bip39";
 	import { Button, Textbox, Words } from "$lib/dusk/components";
 	import { makeClassName } from "$lib/dusk/string";
 	import { findFirstNMatches } from "$lib/dusk/array";
+	import { toast } from "$lib/dusk/components/Toast/store";
 
 	/** @type {MnemonicType} */
 	export let type;
@@ -72,9 +74,48 @@
 	}
 
 	$: suggestions = currentInput && findFirstNMatches(enDictionary, currentInput, 3);
+
+	const pasteSeed = () => {
+		navigator.clipboard.readText()
+			.then((data) => {
+				const sanitizedData = data.replace(/[^a-zA-Z\s]/g, "").toLowerCase();
+				const words = sanitizedData.trim().split(/\s+/);
+
+				if (words.length !== 12) {
+					throw Error("Mnemonic phrase is not valid");
+				}
+
+				currentIndex = 0;
+				words.forEach(word => {
+					updateEnteredPhrase(word, currentIndex.toString());
+				});
+			}).catch(err => {
+				if (err.name === "NotAllowedError") {
+					toast("error", "Clipboard access denied", mdiAlertOutline);
+				} else {
+					toast("error", err.message, mdiAlertOutline);
+				}
+			});
+	};
+
+	const shouldShowPaste =
+		"clipboard" in navigator && typeof navigator.clipboard.readText === "function";
+
 </script>
 
 <div {...$$restProps} class={classes}>
+
+	{#if type === "authenticate" && shouldShowPaste}
+		<div class="dusk-mnemonic__authenticate-paste-wrapper">
+			<Button
+				icon={{ path: mdiContentPaste }}
+				text="Paste seed phrase"
+				variant="tertiary"
+				on:click={pasteSeed}
+			/>
+		</div>
+	{/if}
+
 	<Words words={enteredMnemonicPhrase}/>
 
 	<div

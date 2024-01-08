@@ -5,6 +5,7 @@ exports[`Mnemonic > should render the "Mnemonic" component in the authenticate s
   <div
     class="dusk-mnemonic"
   >
+     
     <ol
       class="dusk-words"
     >
@@ -95,6 +96,7 @@ exports[`Mnemonic > should render the "Mnemonic" component in the validate state
   <div
     class="dusk-mnemonic"
   >
+     
     <ol
       class="dusk-words"
     >
