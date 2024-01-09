@@ -1,8 +1,8 @@
 <svelte:options immutable={true}/>
 
 <script>
-	import { createEventDispatcher	} from "svelte";
-	import { makeClassName } from "$lib/dusk/string";
+	import { createEventDispatcher, onMount	} from "svelte";
+	import { makeClassName, middleEllipsis } from "$lib/dusk/string";
 	import {
 		mdiContentCopy, mdiPlusBoxOutline, mdiSwapHorizontal, mdiTimerSand
 	} from "@mdi/js";
@@ -13,6 +13,7 @@
 
 	import "./KeyPicker/KeyPicker.css";
 	import Overlay from "./Overlay.svelte";
+	import { getPublicSpendKeyCharacterCount } from "$lib/wallet";
 
 	/** @type {String} */
 	export let currentKey;
@@ -55,6 +56,21 @@
 		}
 	}
 
+	/** @type {Number} */
+	let screenWidth = window.innerWidth;
+
+	onMount(() => {
+		const resizeObserver = new ResizeObserver(entries => {
+			const entry = entries[0];
+
+			screenWidth = entry.contentRect.width;
+		});
+
+		resizeObserver.observe(document.body);
+
+		return () => resizeObserver.disconnect();
+	});
+
 	/** @type {HTMLMenuElement} */
 	let keyOptionsMenu;
 </script>
@@ -78,7 +94,10 @@
 		<CircularIcon color="var(--background-color)" bgColor="var(--primary-color)">
 			<Icon path={mdiSwapHorizontal} size="large"/>
 		</CircularIcon>
-		<p class="key-picker__current-key">{currentKey}</p>
+		<p class="key-picker__current-key">{middleEllipsis(
+			currentKey,
+			getPublicSpendKeyCharacterCount(screenWidth)
+		)}</p>
 		<span class="key-picker__copy-key-button-wrapper">
 			<Button
 				aria-label="Copy Key"

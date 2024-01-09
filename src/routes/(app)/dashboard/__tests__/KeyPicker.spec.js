@@ -2,6 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import KeyPicker from "../KeyPicker.svelte";
 
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+	observe: vi.fn(),
+	unobserve: vi.fn(),
+	disconnect: vi.fn()
+}));
+
 describe("KeyPicker", () => {
 	const keys = ["2087290d3dc213d43e493f03f5435f99",
 		"ffbee869aca5ff5ee13c2706e5d9779d",
