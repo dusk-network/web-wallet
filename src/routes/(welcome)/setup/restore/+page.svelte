@@ -49,7 +49,7 @@
 
 		const mnemonic = $mnemonicPhrase.join(" ");
 		const seed = getSeedFromMnemonic(mnemonic);
-		const wallet = await getWallet(seed);
+		const wallet = getWallet(seed);
 
 		await walletStore.clearLocalDataAndInit(wallet);
 	}

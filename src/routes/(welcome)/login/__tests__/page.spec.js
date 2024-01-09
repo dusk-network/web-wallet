@@ -33,7 +33,7 @@ describe("Login", async () => {
 	const pwd = "some pwd";
 	const loginInfo = await encryptMnemonic(mnemonic, pwd);
 	const seed = getSeedFromMnemonic(mnemonic);
-	const userId = new Wallet({}, seed).getPsks()[0];
+	const userId = new Wallet(seed).getPsks()[0];
 	const getErrorElement = () => document.querySelector(".login__error");
 	const getWalletSpy = vi.spyOn(walletService, "getWallet");
 	const gotoSpy = vi.spyOn(appNavigation, "goto");

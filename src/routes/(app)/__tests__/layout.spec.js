@@ -33,7 +33,7 @@ describe("App layout.js", () => {
 	});
 
 	it("should do nothing otherwise", async () => {
-		await walletStore.init(new Wallet({}, [], 0, 0));
+		await walletStore.init(new Wallet([], 0, 0));
 
 		// @ts-ignore
 		await expect(load()).resolves.toBe(void 0);
