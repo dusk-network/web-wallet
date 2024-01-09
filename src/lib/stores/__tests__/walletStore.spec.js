@@ -25,7 +25,7 @@ describe("walletStore", async () => {
 		"06527a34e1c91fc5785ea7764a0c34b1",
 		"f62d307103ca54516b29fcedd5463d16"
 	];
-	const wallet = new Wallet({}, []);
+	const wallet = new Wallet([]);
 
 	const getBalanceSpy = vi.spyOn(Wallet.prototype, "getBalance").mockResolvedValue(balance);
 	const getPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockReturnValue(generatedKeys);
