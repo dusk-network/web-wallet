@@ -62,3 +62,10 @@ type TextboxTypes = "email" | "hidden" | "multiline" | "number" | "password" | "
 type TooltipType = "error" | "info" | "success" | "warning";
 
 type MnemonicType = "authenticate" | "validate";
+
+type ToastItem = {
+	icon?: string,
+	id: string,
+	message: string,
+	type: TooltipType
+}

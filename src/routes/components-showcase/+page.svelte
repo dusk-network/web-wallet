@@ -19,6 +19,7 @@
 	import Tabboxes from "./Tabboxes.svelte";
 	import Textboxes from "./Textboxes.svelte";
 	import Throbbers from "./Throbbers.svelte";
+	import Toasts from "./Toasts.svelte";
 	import Tooltips from "./Tooltips.svelte";
 	import Wizards from "./Wizards.svelte";
 
@@ -38,6 +39,7 @@
 		"Tabboxes": Tabboxes,
 		"Textboxes": Textboxes,
 		"Throbbers": Throbbers,
+		"Toasts": Toasts,
 		"Tooltips": Tooltips,
 		"Wizards": Wizards
 	};
