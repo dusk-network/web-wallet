@@ -25,8 +25,8 @@
 </script>
 
 <div class="dusk-stepper" role="tablist">
-	<div class="dusk-stepper__progress_bar">
-		<div class="dusk-stepper__progress_filler" style={progress}/>
+	<div class="dusk-stepper__progress-bar">
+		<div class="dusk-stepper__progress-filler" style={progress}/>
 	</div>
 
 	{#if steps >= 2}

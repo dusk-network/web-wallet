@@ -339,10 +339,10 @@ describe("Tabs", () => {
 			.mockReturnValue(
 				DOMRect.fromRect({ x: 0, width: tabsList.clientWidth })
 			);
-		const firstTabeGetRectSpy = vi
+		const firstTabGetRectSpy = vi
 			.spyOn(firstTab, "getBoundingClientRect")
 			.mockReturnValue(DOMRect.fromRect({ x: -100, width: 100 }));
-		const lastTabeGetRectSpy = vi
+		const lastTabGetRectSpy = vi
 			.spyOn(lastTab, "getBoundingClientRect")
 			.mockReturnValue(
 				DOMRect.fromRect({ x: tabsList.clientWidth, width: 100 })
@@ -361,8 +361,8 @@ describe("Tabs", () => {
 		expect(firstTab.scrollIntoView).toHaveBeenCalledTimes(1);
 
 		tabsListGetRectSpy.mockRestore();
-		firstTabeGetRectSpy.mockRestore();
-		lastTabeGetRectSpy.mockRestore();
+		firstTabGetRectSpy.mockRestore();
+		lastTabGetRectSpy.mockRestore();
 	});
 
 	it("should scroll the tabs on a wheel event if there is a deltaX", async () => {

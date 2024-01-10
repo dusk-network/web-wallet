@@ -72,13 +72,13 @@ describe("Switch", () => {
 	describe("Event handlers", () => {
 		it("should dispatch a `change` event when the switch is clicked", async () => {
 			const { component, getByRole } = render(Switch, baseOptions);
-			const switchElelement = getByRole("switch");
+			const switchElement = getByRole("switch");
 			const handler = vi.fn();
 
 			component.$on("change", handler);
 
-			await fireEvent.click(switchElelement);
-			await fireEvent.click(switchElelement);
+			await fireEvent.click(switchElement);
+			await fireEvent.click(switchElement);
 
 			expect(handler).toHaveBeenCalledTimes(2);
 			expect(handler).toHaveBeenNthCalledWith(1, expect.objectContaining({ detail: true }));
@@ -87,13 +87,13 @@ describe("Switch", () => {
 
 		it("should dispatch a `change` event when the user presses space on the switch", async () => {
 			const { component, getByRole } = render(Switch, baseOptions);
-			const switchElelement = getByRole("switch");
+			const switchElement = getByRole("switch");
 			const handler = vi.fn();
 
 			component.$on("change", handler);
 
-			await fireEvent.keyDown(switchElelement, { key: " " });
-			await fireEvent.keyDown(switchElelement, { key: " " });
+			await fireEvent.keyDown(switchElement, { key: " " });
+			await fireEvent.keyDown(switchElement, { key: " " });
 
 			expect(handler).toHaveBeenCalledTimes(2);
 			expect(handler).toHaveBeenNthCalledWith(1, expect.objectContaining({ detail: true }));
@@ -102,13 +102,13 @@ describe("Switch", () => {
 
 		it("should not dispatch an event if the user presses another key", async () => {
 			const { component, getByRole } = render(Switch, baseOptions);
-			const switchElelement = getByRole("switch");
+			const switchElement = getByRole("switch");
 			const handler = vi.fn();
 
 			component.$on("change", handler);
 
-			await fireEvent.keyDown(switchElelement, { key: "Enter" });
-			await fireEvent.keyDown(switchElelement, { key: "a" });
+			await fireEvent.keyDown(switchElement, { key: "Enter" });
+			await fireEvent.keyDown(switchElement, { key: "a" });
 
 			expect(handler).not.toHaveBeenCalled();
 		});
@@ -119,13 +119,13 @@ describe("Switch", () => {
 				disabled: true
 			};
 			const { component, getByRole } = render(Switch, { ...baseOptions, props });
-			const switchElelement = getByRole("switch");
+			const switchElement = getByRole("switch");
 			const handler = vi.fn();
 
 			component.$on("change", handler);
 
-			await fireEvent.click(switchElelement);
-			await fireEvent.keyDown(switchElelement, { key: " " });
+			await fireEvent.click(switchElement);
+			await fireEvent.keyDown(switchElement, { key: " " });
 
 			expect(handler).not.toHaveBeenCalled();
 		});

@@ -3,7 +3,7 @@
 	width: 100%;
 }
 
-.dusk-stepper__progress_bar {
+.dusk-stepper__progress-bar {
 	position: absolute;
 	top: 50%;
 	transform: translateY(-50%);
@@ -14,7 +14,7 @@
 	overflow: hidden;
 }
 
-.dusk-stepper__progress_filler {
+.dusk-stepper__progress-filler {
 	height: 100%;
 	background-color: var(--progress-filler-color);
 }
