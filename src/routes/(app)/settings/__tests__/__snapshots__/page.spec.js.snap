@@ -635,7 +635,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           <summary
             class="dusk-error-details__summary"
           >
-            An error occured while resetting the wallet. Please try again.
+            An error occurred while resetting the wallet. Please try again.
           </summary>
            
           <pre

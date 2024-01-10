@@ -8,7 +8,7 @@
 </script>
 
 <section>
-	<p>Wizard wtih stepper and headings</p>
+	<p>Wizard with stepper and headings</p>
 	<Wizard steps={3} let:key>
 		<WizardStep
 			showStepper

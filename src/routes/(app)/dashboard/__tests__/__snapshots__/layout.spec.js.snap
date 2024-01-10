@@ -146,10 +146,10 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
           class="footer__actions s-Ck0voT_hIlXn"
         >
           <button
-            aria-label="Retry syncronization"
+            aria-label="Retry synchronization"
             class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button footer__actions-button"
             data-tooltip-id="main-tooltip"
-            data-tooltip-text="Retry syncronization"
+            data-tooltip-text="Retry synchronization"
             type="button"
           >
             <svg

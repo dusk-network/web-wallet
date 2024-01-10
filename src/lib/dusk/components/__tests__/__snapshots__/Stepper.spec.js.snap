@@ -7,10 +7,10 @@ exports[`Stepper > renders the Stepper component with a completed step 1`] = `
     role="tablist"
   >
     <div
-      class="dusk-stepper__progress_bar"
+      class="dusk-stepper__progress-bar"
     >
       <div
-        class="dusk-stepper__progress_filler"
+        class="dusk-stepper__progress-filler"
         style="width: 100%;"
       />
     </div>
@@ -41,10 +41,10 @@ exports[`Stepper > renders the Stepper component with five steps 1`] = `
     role="tablist"
   >
     <div
-      class="dusk-stepper__progress_bar"
+      class="dusk-stepper__progress-bar"
     >
       <div
-        class="dusk-stepper__progress_filler"
+        class="dusk-stepper__progress-filler"
         style="width: 0%;"
       />
     </div>
@@ -90,10 +90,10 @@ exports[`Stepper > renders the Stepper component with five steps, with the third
     role="tablist"
   >
     <div
-      class="dusk-stepper__progress_bar"
+      class="dusk-stepper__progress-bar"
     >
       <div
-        class="dusk-stepper__progress_filler"
+        class="dusk-stepper__progress-filler"
         style="width: 75%;"
       />
     </div>
@@ -139,10 +139,10 @@ exports[`Stepper > renders the Stepper component with two steps 1`] = `
     role="tablist"
   >
     <div
-      class="dusk-stepper__progress_bar"
+      class="dusk-stepper__progress-bar"
     >
       <div
-        class="dusk-stepper__progress_filler"
+        class="dusk-stepper__progress-filler"
         style="width: 0%;"
       />
     </div>

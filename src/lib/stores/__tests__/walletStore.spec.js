@@ -142,7 +142,7 @@ describe("walletStore", async () => {
 		it("should set the sync error in the store if the sync fails", async () => {
 			walletStore.reset();
 
-			const storewWhileLoading = {
+			const storeWhileLoading = {
 				...initialState,
 				currentKey: generatedKeys[0],
 				error: null,
@@ -156,7 +156,7 @@ describe("walletStore", async () => {
 
 			await walletStore.init(wallet);
 
-			expect(get(walletStore)).toStrictEqual(storewWhileLoading);
+			expect(get(walletStore)).toStrictEqual(storeWhileLoading);
 			expect(getPsksSpy).toHaveBeenCalledTimes(1);
 			expect(getBalanceSpy).not.toHaveBeenCalled();
 
@@ -165,7 +165,7 @@ describe("walletStore", async () => {
 			expect(syncSpy).toHaveBeenCalledTimes(1);
 			expect(getBalanceSpy).not.toHaveBeenCalled();
 			expect(get(walletStore)).toStrictEqual({
-				...storewWhileLoading,
+				...storeWhileLoading,
 				error,
 				isSyncing: false
 			});
@@ -173,7 +173,7 @@ describe("walletStore", async () => {
 			walletStore.reset();
 		});
 
-		it("should throw an error when the syncronization is called without initializing the store first", async () => {
+		it("should throw an error when the synchronization is called without initializing the store first", async () => {
 			walletStore.reset();
 
 			expect(() => walletStore.sync()).toThrow();
@@ -225,7 +225,7 @@ describe("walletStore", async () => {
 			syncSpy.mockClear();
 		});
 
-		it("shoud expose a method to clear local data", async () => {
+		it("should expose a method to clear local data", async () => {
 			await walletStore.clearLocalData();
 
 			expect(resetSpy).toHaveBeenCalledTimes(1);

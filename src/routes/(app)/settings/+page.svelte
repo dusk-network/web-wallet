@@ -206,7 +206,7 @@
 			</header>
 			<ErrorDetails
 				error={resetError}
-				summary="An error occured while resetting the wallet. Please try again."
+				summary="An error occurred while resetting the wallet. Please try again."
 			/>
 			<Button
 				className="settings-group__button--state--danger"

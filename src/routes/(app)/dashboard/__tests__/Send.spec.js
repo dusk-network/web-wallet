@@ -82,7 +82,7 @@ describe("Send", () => {
 		expect(next).toBeEnabled();
 	});
 
-	it("sets amount to zero and checks next if buton is disabled", async () => {
+	it("sets amount to zero and checks next if button is disabled", async () => {
 		const { getByRole } = render(Send, props);
 
 		const input = getByRole("spinbutton");
@@ -177,7 +177,7 @@ describe("Send", () => {
 
 		const amount = 567;
 		const mostRecentHash = transactions.slice().sort((a, b) => b.block_height - a.block_height)[0].id;
-		const expectdExplorerLink = `https://explorer.dusk.network/transactions/transaction?id=${mostRecentHash}`;
+		const expectedExplorerLink = `https://explorer.dusk.network/transactions/transaction?id=${mostRecentHash}`;
 
 		const transactionHistorySpy = vi.spyOn(walletStore, "getTransactionsHistory");
 		const transferSpy = vi.spyOn(walletStore, "transfer");
@@ -216,7 +216,7 @@ describe("Send", () => {
 
 			expect(getByText("Transaction completed")).toBeInTheDocument();
 			expect(explorerLink).toHaveAttribute("target", "_blank");
-			expect(explorerLink).toHaveAttribute("href", expectdExplorerLink);
+			expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
 		});
 
 		it("should show an error message if the transfer fails", async () => {
@@ -245,7 +245,7 @@ describe("Send", () => {
 			expect(getByText(errorMessage)).toBeInTheDocument();
 		});
 
-		it("should show the success message, but no explorer link, if the transfer suceeds but the retrieving the transaction history fails", async () => {
+		it("should show the success message, but no explorer link, if the transfer succeeds but the retrieving the transaction history fails", async () => {
 			transactionHistorySpy.mockRejectedValueOnce(new Error("some error"));
 
 			const { getByRole, getByText } = render(Send, props);

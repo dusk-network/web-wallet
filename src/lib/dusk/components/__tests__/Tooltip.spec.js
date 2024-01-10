@@ -105,7 +105,7 @@ describe("Tooltip", () => {
 		expect(tooltip).toMatchSnapshot();
 	});
 
-	it("shouldn't allow ovewriting the `left` and `top` style rules", () => {
+	it("shouldn't allow overwriting the `left` and `top` style rules", () => {
 		const expectedStyle = "color: red; left: 0px; top: 0px;";
 		const props = {
 			...baseProps,

@@ -74,10 +74,10 @@
 			<div class="footer__actions">
 				{#if error}
 					<Button
-						aria-label="Retry syncronization"
+						aria-label="Retry synchronization"
 						className="footer__actions-button"
 						data-tooltip-id="main-tooltip"
-						data-tooltip-text="Retry syncronization"
+						data-tooltip-text="Retry synchronization"
 						icon={{ path: mdiRestore, size: "large" }}
 						on:click={() => { walletStore.sync(); }}
 						variant="text"
