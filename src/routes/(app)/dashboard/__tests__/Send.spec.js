@@ -52,7 +52,7 @@ describe("Send", () => {
 
 	const props = { statuses };
 	const address =
-		"Y05MCvisx3hIhGq50gQ7rZRmQKiIO03ly8DsVqKmU5cmIO1B7CKXPH2dtSC5sk6vmXJZ27qSMPfFsW";
+		"aB5rL7yC2zK9eV3xH1gQ6fP4jD8sM0iU2oX7wG9nZ8lT3hU4jP5mK8nS6qJ3wF4aA9bB2cC5dD8eE7";
 
 	afterEach(cleanup);
 
