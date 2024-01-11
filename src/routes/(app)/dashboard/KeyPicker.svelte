@@ -2,7 +2,7 @@
 
 <script>
 	import { createEventDispatcher, onMount	} from "svelte";
-	import { makeClassName, middleEllipsis } from "$lib/dusk/string";
+	import { calculateAdaptiveCharCount, makeClassName, middleEllipsis } from "$lib/dusk/string";
 	import {
 		mdiContentCopy, mdiPlusBoxOutline, mdiSwapHorizontal, mdiTimerSand
 	} from "@mdi/js";
@@ -13,7 +13,6 @@
 
 	import "./KeyPicker/KeyPicker.css";
 	import Overlay from "./Overlay.svelte";
-	import { getPublicSpendKeyCharacterCount } from "$lib/wallet";
 
 	/** @type {String} */
 	export let currentKey;
@@ -96,7 +95,7 @@
 		</CircularIcon>
 		<p class="key-picker__current-key">{middleEllipsis(
 			currentKey,
-			getPublicSpendKeyCharacterCount(screenWidth)
+			calculateAdaptiveCharCount(screenWidth)
 		)}</p>
 		<span class="key-picker__copy-key-button-wrapper">
 			<Button

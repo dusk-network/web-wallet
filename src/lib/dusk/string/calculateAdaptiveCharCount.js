@@ -16,23 +16,23 @@
  *
  * @example
  * // if screen width is 320px
- * getPublicSpendKeyCharacterCount(320); // returns 5
+ * calculateAdaptiveCharCount(320); // returns 5
  *
  * @example
  * // if screen width is 520px
- * getPublicSpendKeyCharacterCount(520); // returns a value between 5 and 20
+ * calculateAdaptiveCharCount(520); // returns a value between 5 and 20
  *
  * @example
  * // if screen width is 720px or more
- * getPublicSpendKeyCharacterCount(720); // returns 20
+ * calculateAdaptiveCharCount(720); // returns 20
  *
  * @example
  * // using custom parameters
- * getPublicSpendKeyCharacterCount(500, 400, 800, 10, 30); //
+ * calculateAdaptiveCharCount(500, 400, 800, 10, 30); //
  * returns a calculated value based on custom parameters
  */
 
-function getPublicSpendKeyCharacterCount (
+function calculateAdaptiveCharCount (
 	width,
 	minWidth = 320,
 	maxWidth = 640,
@@ -45,4 +45,4 @@ function getPublicSpendKeyCharacterCount (
 	return Math.round(Math.max(minCharacters, Math.min(characters, maxCharacters)));
 }
 
-export default getPublicSpendKeyCharacterCount;
+export default calculateAdaptiveCharCount;

@@ -7,6 +7,8 @@
 	} from "$lib/dusk/components";
 	import { createFeeFormatter, createTransferFormatter } from "$lib/dusk/currency";
 	import { settingsStore } from "$lib/stores";
+	import { calculateAdaptiveCharCount, middleEllipsis } from "$lib/dusk/string";
+	import { onMount } from "svelte";
 
 	/** @type Transaction[] */
 	export let transactions;
@@ -14,6 +16,22 @@
 	const { language } = $settingsStore;
 	const transferFormatter = createTransferFormatter(language);
 	const feeFormatter = createFeeFormatter(language);
+
+	/** @type {Number} */
+	let screenWidth = window.innerWidth;
+
+	onMount(() => {
+		const resizeObserver = new ResizeObserver(entries => {
+			const entry = entries[0];
+
+			screenWidth = entry.contentRect.width;
+		});
+
+		resizeObserver.observe(document.body);
+
+		return () => resizeObserver.disconnect();
+	});
+
 </script>
 
 <article in:fade|global class="transactions">
@@ -26,14 +44,17 @@
 			{#each transactions as transaction (transaction.id)}
 				<dl class="transactions-list">
 					<dt class="transactions-list__term">Hash</dt>
-					<dd class="transactions-list__datum">
+					<dd class="transactions-list__datum transactions-list__datum--hash">
 						<samp>
 							<Anchor
 								href="https://explorer.dusk.network/transactions/transaction?id={transaction.id}"
 								target="_blank"
 								rel="noopener noreferrer"
 							>
-								{transaction.id}
+								{middleEllipsis(
+									transaction.id,
+									calculateAdaptiveCharCount(screenWidth, 320, 640, 5, 20)
+								)}
 							</Anchor>
 						</samp>
 					</dd>
@@ -137,16 +158,15 @@
 		gap: 0.625em;
 		font-family: var(--mono-font-family);
 		overflow: hidden;
-		min-width: 0;
-		max-width: 100%;
 
 		& samp {
 			display: block;
 			white-space: nowrap;
 			overflow: hidden;
-			text-overflow: ellipsis;
-			min-width: 0;
-			max-width: 100%;
+		}
+
+		&--hash {
+			justify-content: center;
 		}
 	}
 
