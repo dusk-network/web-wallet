@@ -82,13 +82,13 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
       class="s-viaBXp9UetOS"
     >
       <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--small"
+        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          CLOSE
+          SAVE
         </span>
       </button>
       <!--&lt;Button&gt;-->

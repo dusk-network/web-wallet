@@ -37,11 +37,11 @@
 		<dd>
 			<Button
 				size="small"
-				variant={gasSettings ? "secondary" : "tertiary"}
+				variant="tertiary"
 				on:click={() => {
 					gasSettings = !gasSettings;
 				}}
-				text={gasSettings ? "CLOSE" : "EDIT"}
+				text={gasSettings ? "SAVE" : "EDIT"}
 			/>
 		</dd>
 	</dl>
