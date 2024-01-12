@@ -1191,7 +1191,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             Hash
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum transactions-list__datum--hash s-ms4M-9Zd82pR"
           >
             <samp
               class="s-ms4M-9Zd82pR"
@@ -1297,7 +1297,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             Hash
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum transactions-list__datum--hash s-ms4M-9Zd82pR"
           >
             <samp
               class="s-ms4M-9Zd82pR"
@@ -1377,7 +1377,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             Hash
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum transactions-list__datum--hash s-ms4M-9Zd82pR"
           >
             <samp
               class="s-ms4M-9Zd82pR"
@@ -1457,7 +1457,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             Hash
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum transactions-list__datum--hash s-ms4M-9Zd82pR"
           >
             <samp
               class="s-ms4M-9Zd82pR"
@@ -1563,7 +1563,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             Hash
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum transactions-list__datum--hash s-ms4M-9Zd82pR"
           >
             <samp
               class="s-ms4M-9Zd82pR"
