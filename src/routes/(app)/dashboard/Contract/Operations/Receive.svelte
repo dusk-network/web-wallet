@@ -2,6 +2,7 @@
 	import { Button, QrCode } from "$lib/dusk/components";
 	import { mdiArrowLeft, mdiContentCopy } from "@mdi/js";
 	import { operationsStore } from "$lib/stores";
+	import { toast } from "$lib/dusk/components/Toast/store";
 
 	/** @type {String} */
 	export let publicSpendKey = "";
@@ -50,7 +51,10 @@
 		{/if}
 		<Button
 			variant="tertiary"
-			on:click={() => navigator.clipboard.writeText(publicSpendKey ?? "")}
+			on:click={() => {
+				navigator.clipboard.writeText(publicSpendKey);
+				toast("success", "Address copied", mdiContentCopy);
+			}}
 			className="flex-1"
 			icon={{ path: mdiContentCopy }}
 			text="Copy"/>

@@ -9,6 +9,7 @@
 	import {
 		Button, CircularIcon, Icon, ProgressBar
 	} from "$lib/dusk/components";
+	import { toast } from "$lib/dusk/components/Toast/store";
 	import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
 
 	import "./KeyPicker/KeyPicker.css";
@@ -102,7 +103,10 @@
 				aria-label="Copy Key"
 				className="key-picker__copy-key-button"
 				icon={{ path: mdiContentCopy }}
-				on:click={() => { navigator.clipboard.writeText(currentKey); }}
+				on:click={() => {
+					navigator.clipboard.writeText(currentKey);
+					toast("success", "Address copied", mdiContentCopy);
+				}}
 				variant="text"
 			/>
 		</span>

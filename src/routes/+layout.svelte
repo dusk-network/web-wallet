@@ -1,5 +1,5 @@
 <script>
-	import { Tooltip } from "$lib/dusk/components";
+	import { Toast, Tooltip } from "$lib/dusk/components";
 	import "../style/main.css";
 </script>
 
@@ -9,6 +9,7 @@
 </main>
 
 <Tooltip id="main-tooltip"/>
+<Toast/>
 
 <style>
 	.app {
