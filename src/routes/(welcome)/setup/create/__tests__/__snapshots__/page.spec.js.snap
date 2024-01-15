@@ -31,7 +31,7 @@ exports[`Create > should render the Terms of Service step of the Create flow 1`]
             <a
               class="dusk-anchor"
               href="https://dusk.network/privacy-policy/"
-              rel="noopener noreferrer noopener noreferrer"
+              rel="noopener noreferrer"
               target="_blank"
             >
               Terms & Privacy Policy

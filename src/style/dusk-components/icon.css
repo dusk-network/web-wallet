@@ -13,6 +13,11 @@
 	width: calc(var(--icon-size) * var(--scaler));
 }
 
+.dusk-icon--size--small {
+	height: calc(var(--icon-size) / var(--scaler));
+	width: calc(var(--icon-size) / var(--scaler));
+}
+
 .dusk-icon--circular {
 	display: flex;
 	border-radius: 50%;

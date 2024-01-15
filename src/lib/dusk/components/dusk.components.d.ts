@@ -21,7 +21,7 @@ type WizardButtonProps = {
 	action?: () => void,
 }
 
-type IconSize = "normal" | "large";
+type IconSize = "small" | "normal" | "large";
 
 type GroupedSelectOptions = Record<string, SelectOption[] | string[]>;
 
