@@ -1,8 +1,12 @@
 <script>
 	import {
-		Anchor, AnchorButton, Button, Card
+		Anchor,
+		AnchorButton,
+		Button,
+		Card
 	} from "$lib/dusk/components";
 
+	/** @type {boolean} */
 	export let tosAccepted = false;
 </script>
 

@@ -1,22 +1,21 @@
 <script>
-	import { Agreement, Card } from "$lib/dusk/components";
-	import Icon from "$lib/dusk/components/Icon/Icon.svelte";
+	import {
+		Agreement,
+		Card,
+		Icon
+	} from "$lib/dusk/components";
 	import { mdiAlertOutline } from "@mdi/js";
 
-	let agreementOneChecked = false;
-	let agreementTwoChecked = false;
-
-	const agreementOneLabel =
-		"I understand that without my seed phrase I cannot access my wallet and its assets.";
-	const agreementTwoLabel =
-		`I understand that securing my recovery phrase is my own responsibility.
-		Only I have access to my recovery phrase`;
-
+	/** @type {boolean} */
 	export let isValid = false;
 
-	$: if (agreementOneChecked && agreementTwoChecked) {
-		isValid = true;
-	}
+	/** @type {boolean} */
+	let agreementOneChecked = isValid || false;
+
+	/** @type {boolean} */
+	let agreementTwoChecked = isValid || false;
+
+	$: isValid = agreementOneChecked && agreementTwoChecked;
 </script>
 
 <Card heading="Securely store your seed phrase!">
@@ -24,11 +23,14 @@
 		<Agreement
 			name="mnemonic_agreement_one"
 			bind:checked={agreementOneChecked}
-			label={agreementOneLabel}/>
+			label="I understand that without my seed phrase I cannot access my wallet and its assets."
+		/>
 		<Agreement
 			name="mnemonic_agreement_two"
 			bind:checked={agreementTwoChecked}
-			label={agreementTwoLabel}/>
+			label="I understand that securing my recovery phrase is my own responsibility.
+				Only I have access to my recovery phrase"
+		/>
 	</div>
 </Card>
 

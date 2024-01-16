@@ -1,5 +1,7 @@
 <script>
 	import { Card } from "$lib/dusk/components";
+
+	/** @type {string} */
 	const allSetIllustration = "/images/onboarding/all_set_illustration.svg";
 </script>
 

@@ -11,19 +11,19 @@
 	} from "$lib/dusk/components";
 	import { toast } from "$lib/dusk/components/Toast/store";
 	import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
-
 	import "./KeyPicker/KeyPicker.css";
 	import Overlay from "./Overlay.svelte";
 
-	/** @type {String} */
+	/** @type {string} */
 	export let currentKey;
 
-	/** @type {String[]} */
+	/** @type {string[]} */
 	export let keys = [currentKey];
 
+	/** @type {boolean} */
 	export let generatingKey = false;
 
-	/** @type {String | Undefined} */
+	/** @type {string|undefined} */
 	export let className = undefined;
 
 	$: classes = makeClassName(["key-picker", className]);
@@ -56,7 +56,7 @@
 		}
 	}
 
-	/** @type {Number} */
+	/** @type {number} */
 	let screenWidth = window.innerWidth;
 
 	onMount(() => {

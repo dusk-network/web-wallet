@@ -6,7 +6,6 @@
 		mdiRestore,
 		mdiTimerSand
 	} from "@mdi/js";
-
 	import {
 		AnchorButton,
 		Button,
@@ -19,13 +18,13 @@
 	$: ({ network } = $settingsStore);
 	$: ({ isSyncing, error } = $walletStore);
 
-	/** @type {String} */
+	/** @type {string} */
 	let syncStatus = "";
 
-	/** @type {String} */
+	/** @type {string} */
 	let iconPath = "";
 
-	/** @type {String} */
+	/** @type {string} */
 	let iconVariant = "";
 
 	$: if (isSyncing) {

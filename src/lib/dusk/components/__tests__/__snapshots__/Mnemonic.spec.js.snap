@@ -167,156 +167,156 @@ exports[`Mnemonic > should render the "Mnemonic" component in the validate state
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="serendipity"
+        data-value="auction"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          serendipity
+          auction
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="quixotic"
+        data-value="tribe"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          quixotic
+          tribe
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="mellifluous"
+        data-value="type"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          mellifluous
+          type
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="resplendent"
+        data-value="torch"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          resplendent
+          torch
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="nebulous"
+        data-value="domain"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          nebulous
+          domain
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="jubilant"
+        data-value="auction"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          jubilant
+          auction
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="capricious"
+        data-value="lyrics"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          capricious
+          lyrics
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="pernicious"
+        data-value="mouse"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          pernicious
+          mouse
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="ephemeral"
+        data-value="alert"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          ephemeral
+          alert
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="ineffable"
+        data-value="fabric"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          ineffable
+          fabric
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="mellifluous"
+        data-value="snake"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          mellifluous
+          snake
         </span>
       </button>
       <!--&lt;Button&gt;-->
       
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal"
-        data-value="effervescent"
+        data-value="ticket"
         type="button"
       >
         <span
           class="dusk-button__text"
         >
-          effervescent
+          ticket
         </span>
       </button>
       <!--&lt;Button&gt;-->

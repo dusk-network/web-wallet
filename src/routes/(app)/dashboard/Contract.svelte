@@ -49,6 +49,7 @@
 			}
 		}
 	];
+	const isStakingDisabled = contract.id === "staking" && contract.operations[0].disabled;
 
 	$: ({ currentOperation } = $operationsStore);
 	$: ({ isSyncing, error } = $walletStore);
@@ -58,7 +59,6 @@
 			return b.id === a.id;
 		});
 	});
-	const isStakingDisabled = contract.id === "staking" && contract.operations[0].disabled;
 </script>
 
 <div in:fade|global class="contract">

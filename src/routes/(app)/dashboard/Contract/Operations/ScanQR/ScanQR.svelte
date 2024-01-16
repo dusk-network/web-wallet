@@ -4,14 +4,16 @@
 	import { Button } from "$lib/dusk/components";
 	import { createEventDispatcher, onDestroy, onMount } from "svelte";
 
-	const dispatch = createEventDispatcher();
-
 	/** @type {number} */
 	let timeoutId;
 
-	/** @type {Boolean} */
+	/** @type {boolean} */
 	let toggleScanner = false;
+
+	/** @type {boolean} */
 	let qrScanned = false;
+
+	/** @type {boolean} */
 	let error = false;
 
 	/** @type {HTMLVideoElement} */
@@ -33,6 +35,7 @@
 		}
 	};
 
+	const dispatch = createEventDispatcher();
 	const stopScan = () => {
 		toggleScanner = false;
 		qrScanned = false;

@@ -39,8 +39,8 @@ function calculateAdaptiveCharCount (
 	minCharacters = 5,
 	maxCharacters = 18
 ) {
-	const characters = minCharacters + (width - minWidth)
-			* (maxCharacters - minCharacters) / (maxWidth - minWidth);
+	const characters =
+		minCharacters + (width - minWidth) * (maxCharacters - minCharacters) / (maxWidth - minWidth);
 
 	return Math.round(Math.max(minCharacters, Math.min(characters, maxCharacters)));
 }

@@ -12,7 +12,7 @@
 	margin-top: 1em;
 }
 
-.dusk-mnemonic__predictions-wrapper {
+.dusk-mnemonic__suggestions-wrapper {
 	display: grid;
 	grid-auto-flow: row;
 	grid-auto-columns: 1fr;
@@ -25,7 +25,7 @@
 		grid-template-columns: var(--tablet-grid-template-columns);
 	}
 
-	.dusk-mnemonic__predictions-wrapper {
+	.dusk-mnemonic__suggestions-wrapper {
 		grid-auto-flow: column;
 	}
 }
@@ -35,7 +35,7 @@
 		grid-template-columns: var(--desktop-grid-template-columns);
 	}
 
-	.dusk-mnemonic__predictions-wrapper {
+	.dusk-mnemonic__suggestions-wrapper {
 		grid-auto-flow: column;
 	}
 }

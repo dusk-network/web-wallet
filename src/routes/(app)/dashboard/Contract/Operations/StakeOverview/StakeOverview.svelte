@@ -19,7 +19,7 @@
 		}
 	}
 
-	/** @type { Number } */
+	/** @type {number} */
 	export let amount;
 
 	const { language } = $settingsStore;

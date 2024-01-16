@@ -5,27 +5,28 @@
 	import { GasControls } from "$lib/components";
 	import { createEventDispatcher } from "svelte";
 
-	/** @type {Number} */
+	/** @type {number} */
 	export let limit;
 
-	/** @type {Number} */
+	/** @type {number} */
 	export let limitLower;
 
-	/** @type {Number} */
+	/** @type {number} */
 	export let limitUpper;
 
-	/** @type {String} A BCP 47 language tag */
+	/** @type {string} A BCP 47 language tag */
 	export let locale;
 
-	/** @type {Number} */
+	/** @type {number} */
 	export let price;
 
-	/** @type {Number} */
+	/** @type {number} */
 	export let priceLower;
 
-	const dispatch = createEventDispatcher();
-
+	/** @type {boolean} */
 	let gasSettings = false;
+
+	const dispatch = createEventDispatcher();
 </script>
 
 <div class="operation__gas-settings">

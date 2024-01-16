@@ -4,10 +4,10 @@
 	import { operationsStore } from "$lib/stores";
 	import { toast } from "$lib/dusk/components/Toast/store";
 
-	/** @type {String} */
+	/** @type {string} */
 	export let publicSpendKey = "";
 
-	/** @type {Boolean} */
+	/** @type {boolean} */
 	export let hideBackButton = false;
 
 	let offsetHeight = 0;
