@@ -1,73 +1,61 @@
 import {
-	afterAll,
 	afterEach,
-	beforeEach,
 	describe,
 	expect,
-	it,
-	vi
+	it
 } from "vitest";
 import {
 	cleanup,
 	fireEvent,
 	render
 } from "@testing-library/svelte";
-
-import {
-	mockedEnteredMnemonicPhrase,
-	mockedMnemonicPhrase,
-	mockedShuffledMnemonicPhrase
-} from "../__mocks__/mockedMnemonicStore.js";
 import { Mnemonic } from "..";
 
-vi.mock("../Mnemonic/store.js", async importOriginal => {
-	/** @type {import('svelte/store').Writable<string[]>} */
-	const original = await importOriginal();
+/** @type {string[]} */
+const enteredSeed = [];
 
-	return {
-		...original,
-		mnemonicPhrase: mockedMnemonicPhrase,
-		enteredMnemonicPhrase: mockedEnteredMnemonicPhrase,
-		shuffledMnemonicPhrase: mockedShuffledMnemonicPhrase
-	};
-});
+/** @type {string[]} */
+const seed = ["auction", "tribe", "type", "torch", "domain", "auction",
+	"lyrics", "mouse", "alert", "fabric", "snake", "ticket"];
 
 describe("Mnemonic", () => {
-	const initialMnemonicState = structuredClone(mockedMnemonicPhrase.getMockedStoreValue());
-	const initialEnteredMnemonicState = structuredClone(mockedEnteredMnemonicPhrase.getMockedStoreValue());
-
-	beforeEach(() => {
-		mockedMnemonicPhrase.setMockedStoreValue(initialMnemonicState);
-		mockedEnteredMnemonicPhrase.setMockedStoreValue(initialEnteredMnemonicState);
-		mockedShuffledMnemonicPhrase.derivedMockedStoreValue();
-	});
-
 	afterEach(cleanup);
 
-	afterAll(() => {
-		vi.doUnmock("../Mnemonic/store");
-	});
-
 	it("should render the \"Mnemonic\" component in the authenticate state", async () => {
-		const { container } = render(Mnemonic, { props: { type: "authenticate" } });
+		const { container } = render(Mnemonic, {
+			props: {
+				enteredMnemonicPhrase: enteredSeed,
+				type: "authenticate"
+			}
+		});
 
 		expect(container.firstChild).toMatchSnapshot();
 	});
 
 	it("should render the \"Mnemonic\" component in the validate state", () => {
-		const { container } = render(Mnemonic, { props: { type: "validate" } });
+		const { container } = render(Mnemonic, {
+			props: {
+				mnemonicPhrase: seed,
+				type: "validate"
+			}
+		});
 
 		expect(container.firstChild).toMatchSnapshot();
 	});
 
 	it("should display all the words in the order they have been clicked", async () => {
-		const { getAllByRole } = render(Mnemonic, { props: { type: "validate" } });
+		const { getAllByRole } = render(Mnemonic, {
+			props: {
+				enteredMnemonicPhrase: enteredSeed,
+				mnemonicPhrase: seed,
+				type: "validate"
+			}
+		});
 
 		const buttons = getAllByRole("button");
 
 		for (const word of buttons) {
 			await fireEvent.click(word);
-
 			expect(word).toBeDisabled();
 		}
 

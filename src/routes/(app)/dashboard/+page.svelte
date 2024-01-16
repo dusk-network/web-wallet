@@ -17,7 +17,6 @@
 		last,
 		take
 	} from "lamb";
-
 	import { logo } from "$lib/dusk/icons";
 	import {
 		AnchorButton, Card, Tabs, Throbber
@@ -29,7 +28,6 @@
 		walletStore
 	} from "$lib/stores";
 	import { sortByHeightDesc } from "$lib/transactions";
-
 	import Contract from "./Contract.svelte";
 	import Transactions from "./Transactions.svelte";
 	import KeyPicker from "./KeyPicker.svelte";
@@ -44,7 +42,7 @@
 		language
 	} = $settingsStore;
 
-	/** @type {String | Undefined} */
+	/** @type {string|undefined} */
 	let clickedTab;
 
 	/** @type {WalletStakeInfo} */

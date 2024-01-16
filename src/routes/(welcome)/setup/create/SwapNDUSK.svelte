@@ -1,5 +1,4 @@
 <script>
-
 	import { Button } from "$lib/dusk/components";
 	import { logo } from "$lib/dusk/icons";
 </script>

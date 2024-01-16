@@ -11,7 +11,6 @@
 	} from "@mdi/js";
 	import { mapWith, rename } from "lamb";
 	import { goto } from "$app/navigation";
-
 	import {
 		AnchorButton,
 		Badge,

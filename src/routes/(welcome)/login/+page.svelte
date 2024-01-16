@@ -5,7 +5,6 @@
 	import { goto } from "$app/navigation";
 	import { validateMnemonic } from "bip39";
 	import { setKey } from "lamb";
-
 	import {
 		AnchorButton,
 		Button,
@@ -51,7 +50,11 @@
 
 	/** @type {Textbox} */
 	let fldSecret;
+
+	/** @type {string} */
 	let secretText = "";
+
+	/** @type {string} */
 	let errorMessage = "";
 
 	/** @type {import("svelte/elements").FormEventHandler<HTMLFormElement>} */

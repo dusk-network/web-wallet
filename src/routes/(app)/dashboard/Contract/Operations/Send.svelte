@@ -25,10 +25,10 @@
 	/** @type {Status[]} */
 	export let statuses;
 
-	/** @type {Number} */
+	/** @type {number} */
 	let amount = 1;
 
-	/** @type {String} */
+	/** @type {string} */
 	let address = "";
 
 	/** @type {import("qr-scanner").default} */

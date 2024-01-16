@@ -2,64 +2,47 @@
 
 <script>
 	import { fade } from "svelte/transition";
-	import { encryptMnemonic, getSeedFromMnemonic } from "$lib/wallet";
-	import { mnemonicPhrase } from "$lib/dusk/components/Mnemonic/store";
-	import { Wizard } from "$lib/dusk/components";
+	import {
+		initializeWallet,
+		refreshLocalStoragePasswordInfo
+	} from "$lib/wallet";
+	import { Wizard, WizardStep } from "$lib/dusk/components";
 	import loginInfoStorage from "$lib/services/loginInfoStorage";
-
 	import TermsOfService from "../TermsOfService.svelte";
-
-	// Steps
 	import MnemonicPhrase from "./MnemonicPhrase.svelte";
-	import ValidateMnemonic from "./ValidateMnemonic.svelte";
+	import MnemonicValidate from "./MnemonicValidate.svelte";
 	import SwapNDUSK from "./SwapNDUSK.svelte";
 	import AllSet from "../AllSet.svelte";
-	import WizardStep from "$lib/dusk/components/Wizard/WizardStep.svelte";
 	import MnemonicPreSetup from "./MnemonicPreSetup.svelte";
 	import PasswordSetup from "../PasswordSetup.svelte";
 	import { goto } from "$app/navigation";
-	import { getWallet } from "$lib/services/wallet";
-	import { settingsStore, walletStore } from "$lib/stores";
 
+	/** @type {boolean} */
 	let tosAccepted = false;
 
-	// Password
+	/** @type {string} */
 	let password = "";
-	let validPassword = false;
+
+	/** @type {boolean} */
+	let isValidPassword = false;
+
+	/** @type {boolean} */
 	let showPasswordSetup = false;
 
-	const resetPassword = () => {
-		password = showPasswordSetup ? password : "";
-	};
-
-	// eslint-disable-next-line
-	$: showPasswordSetup, resetPassword();
-
-	// Notice
+	/** @type {boolean} */
 	let agreementAccepted = false;
 
-	// Mnemonic
-	let validMnemonic = false;
+	/** @type {boolean} */
+	let isValidMnemonic = false;
 
-	async function refreshLocalStoragePasswordInfo () {
-		loginInfoStorage.remove();
+	/** @type {string[]} */
+	let mnemonicPhrase = [];
 
-		if (password.length !== 0 && validPassword) {
-			const mnemonic = $mnemonicPhrase.join(" ");
-			const encryptedData = await encryptMnemonic(mnemonic, password);
+	/** @type {string[]} */
+	let enteredMnemonicPhrase = [];
 
-			loginInfoStorage.set(encryptedData);
-		}
-	}
-
-	async function initializeWallet () {
-		settingsStore.reset();
-
-		const mnemonic = $mnemonicPhrase.join(" ");
-		const seed = getSeedFromMnemonic(mnemonic);
-		const wallet = getWallet(seed);
-
-		await walletStore.clearLocalDataAndInit(wallet);
+	$: if (showPasswordSetup) {
+		password = showPasswordSetup ? password : "";
 	}
 </script>
 
@@ -69,7 +52,6 @@
 	</div>
 {:else}
 	<Wizard fullHeight={true} steps={6} let:key>
-		<!--  MNEMONIC PRE-SETUP -->
 		<WizardStep
 			step={0}
 			{key}
@@ -87,7 +69,6 @@
 			</h2>
 			<MnemonicPreSetup bind:isValid={agreementAccepted}/>
 		</WizardStep>
-		<!--  BACKUP MNEMONIC -->
 		<WizardStep
 			step={1}
 			{key}
@@ -97,42 +78,46 @@
 				Backup<br/>
 				<mark>Mnemonic Phrase</mark>
 			</h2>
-			<MnemonicPhrase/>
+			<MnemonicPhrase bind:mnemonicPhrase={mnemonicPhrase}/>
 		</WizardStep>
-		<!--  VALIDATE MNEMONIC -->
 		<WizardStep
 			step={2}
 			{key}
 			showStepper={true}
+			backButton={{
+				action: () => { enteredMnemonicPhrase = []; }
+			}}
 			nextButton={{
-				action: initializeWallet,
-				disabled: !validMnemonic
+				action: async () => { await initializeWallet(mnemonicPhrase); },
+				disabled: !isValidMnemonic
 			}}>
 			<h2 class="h1" slot="heading">
 				Backup<br/>
 				<mark>Mnemonic Phrase</mark>
 			</h2>
-			<ValidateMnemonic bind:isValid={validMnemonic}/>
+			<MnemonicValidate
+				bind:isValid={isValidMnemonic}
+				bind:enteredMnemonicPhrase={enteredMnemonicPhrase}
+				bind:mnemonicPhrase={mnemonicPhrase}
+			/>
 		</WizardStep>
-		<!-- SETUP PASSWORD OPTIONAL -->
 		<WizardStep
 			step={3}
 			{key}
 			showStepper={true}
 			nextButton={{
 				action: async () => {
-					await refreshLocalStoragePasswordInfo();
+					await refreshLocalStoragePasswordInfo(mnemonicPhrase, password);
 				},
-				disabled: !validPassword
+				disabled: !isValidPassword
 			}}
 		>
 			<h2 class="h1" slot="heading">
 				<mark>Password</mark><br/>
 				Setup
 			</h2>
-			<PasswordSetup bind:password bind:isValid={validPassword} bind:isToggled={showPasswordSetup}/>
+			<PasswordSetup bind:password bind:isValid={isValidPassword} bind:isToggled={showPasswordSetup}/>
 		</WizardStep>
-		<!--  SWAP DUSK -->
 		<WizardStep
 			step={4}
 			{key}
@@ -147,7 +132,6 @@
 			</h2>
 			<SwapNDUSK/>
 		</WizardStep>
-		<!--  ALL DONE -->
 		<WizardStep
 			step={5}
 			{key}
@@ -155,7 +139,7 @@
 			hideBackButton={true}
 			nextButton={{
 				action: async () => {
-					mnemonicPhrase.set([]);
+					mnemonicPhrase = [];
 					await goto("/dashboard");
 				},
 				disabled: false

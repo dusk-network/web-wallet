@@ -8,28 +8,25 @@
 		Throbber
 	} from "$lib/dusk/components";
 	import { mdiCheckDecagramOutline, mdiCloseThick } from "@mdi/js";
-
 	import { makeClassName } from "$lib/dusk/string";
 
-	/** @type {String | Undefined} */
+	/** @type {string|undefined} */
 	export let className = undefined;
 
 	/** @type {Promise<any>} */
 	export let operation;
 
-	/** @type {String} */
+	/** @type {string} */
 	export let errorMessage = "Operation failed";
 
-	/** @type {Function | Undefined} */
+	/** @type {Function|undefined} */
 	export let onBeforeLeave = undefined;
 
-	/** @type {String} */
+	/** @type {string} */
 	export let pendingMessage = "";
 
-	/** @type {String} */
+	/** @type {string} */
 	export let successMessage = "Operation completed";
-
-	$: classes = makeClassName(["operation-result", className]);
 
 	/** @param {Event} event */
 	function handleGoHomeClick (event) {
@@ -37,6 +34,8 @@
 
 		onBeforeLeave && onBeforeLeave();
 	}
+
+	$: classes = makeClassName(["operation-result", className]);
 </script>
 
 <div class={classes}>

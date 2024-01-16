@@ -3,11 +3,11 @@
 <script>
 	import "css-doodle";
 	import Animation from "./Animation.svelte";
+	import { AnchorButton } from "$lib/dusk/components";
 	import {
-		AnchorButton
-	} from "$lib/dusk/components";
-	import {
-		mdiKeyOutline, mdiRestore, mdiWalletOutline
+		mdiKeyOutline,
+		mdiRestore,
+		mdiWalletOutline
 	} from "@mdi/js";
 </script>
 

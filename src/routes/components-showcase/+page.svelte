@@ -2,9 +2,7 @@
 
 <script>
 	import { fade } from "svelte/transition";
-
 	import { Select } from "$lib/dusk/components";
-
 	import AnchorButtons from "./AnchorButtons.svelte";
 	import Badges from "./Badges.svelte";
 	import Balances from "./Balances.svelte";

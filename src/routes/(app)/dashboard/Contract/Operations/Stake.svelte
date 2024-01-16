@@ -1,20 +1,18 @@
 <script>
 	import { mdiDatabaseArrowDownOutline, mdiDatabaseOutline } from "@mdi/js";
 	import { fade } from "svelte/transition";
-
 	import {
 		AnchorButton,
 		Badge,
 		Button,
 		Icon,
+		StatusList,
 		Textbox,
 		Wizard,
 		WizardStep
 	} from "$lib/dusk/components";
 	import { operationsStore, settingsStore, walletStore } from "$lib/stores";
 	import { getLastTransactionHash } from "$lib/transactions";
-
-	import StatusList from "$lib/dusk/components/StatusList/StatusList.svelte";
 	import GasSettings from "./GasSettings/GasSettings.svelte";
 	import StakeOverview from "./StakeOverview/StakeOverview.svelte";
 	import OperationResult from "./OperationResult/OperationResult.svelte";
@@ -23,7 +21,7 @@
 	/** @type {Status[]} */
 	export let statuses;
 
-	/** @type {Number} */
+	/** @type {number} */
 	let stakeAmount = 1000;
 
 	/** @type {StakeType} */
@@ -32,6 +30,7 @@
 	/** @type {HTMLInputElement|null} */
 	let stakeInput;
 
+	/** @type {boolean} */
 	let isNextButtonDisabled = false;
 
 	const { balance } = $walletStore;

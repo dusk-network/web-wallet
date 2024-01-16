@@ -1,14 +1,22 @@
 <script>
 	import {
-		Card, Icon, Textbox
+		Card,
+		Icon,
+		Textbox
 	} from "$lib/dusk/components";
 	import { mdiAlertOutline, mdiKeyOutline } from "@mdi/js";
 
+	/** @type {string} */
 	export let password = "";
-	let confirmPassword = "";
 
+	/** @type {boolean} */
 	export let isValid = false;
+
+	/** @type {boolean} */
 	export let isToggled = false;
+
+	/** @type {string} */
+	let confirmPassword = "";
 
 	$: isValid = !isToggled
 		|| ((password.length >= 8 && confirmPassword.length >= 8) && (password === confirmPassword));
