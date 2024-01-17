@@ -5,10 +5,17 @@
 	margin-top: 1em;
 }
 
-
+.dusk-mnemonic__authenticate-paste-wrapper,
 .dusk-mnemonic__authenticate-actions-wrapper {
 	display: flex;
 	flex-direction: column;
+}
+
+.dusk-mnemonic__authenticate-paste-wrapper {
+	margin-bottom: 1em;
+}
+
+.dusk-mnemonic__authenticate-actions-wrapper {
 	margin-top: 1em;
 }
 
