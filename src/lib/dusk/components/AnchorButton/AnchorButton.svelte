@@ -17,7 +17,7 @@
 	/** @type {String} */
 	export let href;
 
-	/** @type {ButtonIconProp | Undefined} */
+	/** @type {IconProp | Undefined} */
 	export let icon = undefined;
 
 	/** @type {ButtonSize} */

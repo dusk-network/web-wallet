@@ -253,66 +253,50 @@ exports[`Dashboard > should render a card when there is an error getting transac
         <div
           class="tabs__contract s-qpUp5WgwgSGx"
         >
-          <div
-            class="contract s-opgtbWrLmJMD"
+          <dl
+            class="contract-statuses s-fYGIMZDSuGmT"
           >
-            <div
-              class="operations"
+            <dt
+              class="contract-statuses__label s-fYGIMZDSuGmT"
             >
-              <dl
-                class="dusk-status-list"
+              Spendable
+               
+            </dt>
+            <dd
+              class="contract-statuses__value s-fYGIMZDSuGmT"
+            >
+              <span
+                class="s-fYGIMZDSuGmT"
               >
-                <dt
-                  class="dusk-status-list__key dusk-status"
-                >
-                   
-                  <span>
-                    Spendable
-                  </span>
-                </dt>
-                 
-                <dd
-                  class="dusk-status-list__value dusk-status"
-                >
-                  <span>
-                    50,000.00
-                  </span>
-                   
-                  <svg
-                    class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-                    data-tooltip-id="status-tooltip"
-                    data-tooltip-place="top"
-                    data-tooltip-text="DUSK"
-                    role="graphics-symbol"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-                    />
-                  </svg>
-                  
-                  <!--&lt;Icon&gt;-->
-                </dd>
-                 
-                 
-                <div
-                  aria-hidden="true"
-                  class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-                  id="status-tooltip"
-                  role="tooltip"
-                  style="left: 0px; top: 0px;"
-                >
-                  
-                </div>
-                <!--&lt;Tooltip&gt;-->
-                <!--&lt;Statuses&gt;-->
-              </dl>
-              <!--&lt;StatusList&gt;-->
+                50,000.000000000
+              </span>
                
-               
+              <svg
+                class="dusk-icon dusk-icon--size--normal contract-statuses__icon"
+                data-tooltip-id="main-tooltip"
+                data-tooltip-text="DUSK"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+                />
+              </svg>
               
+              <!--&lt;Icon&gt;-->
+               
+            </dd>
+          </dl>
+          <!--&lt;ContractStatusesList&gt;-->
+           
+          <menu
+            class="contract-operations s-MYVJhCZxEBFW"
+          >
+            <li
+              class="contract-operations__operation s-MYVJhCZxEBFW"
+            >
               <button
-                class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled operations__operation"
+                class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled contract-operations__operation-button"
                 type="button"
               >
                 <svg
@@ -330,14 +314,18 @@ exports[`Dashboard > should render a card when there is an error getting transac
                 <span
                   class="dusk-button__text"
                 >
-                  send
+                  Send
                 </span>
                 
               </button>
               <!--&lt;Button&gt;-->
-              
+               
+            </li>
+            <li
+              class="contract-operations__operation s-MYVJhCZxEBFW"
+            >
               <button
-                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled operations__operation"
+                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled contract-operations__operation-button"
                 type="button"
               >
                 <svg
@@ -355,16 +343,17 @@ exports[`Dashboard > should render a card when there is an error getting transac
                 <span
                   class="dusk-button__text"
                 >
-                  receive
+                  Receive
                 </span>
                 
               </button>
               <!--&lt;Button&gt;-->
-              
-            </div>
-            <!--&lt;Operations&gt;-->
-          </div>
-          <!--&lt;Contract&gt;-->
+               
+            </li>
+          </menu>
+          <!--&lt;ContractOperations&gt;-->
+          
+          <!--&lt;TransferContract&gt;-->
         </div>
       </div>
     </article>
@@ -651,66 +640,50 @@ exports[`Dashboard > should render the dashboard page and show a throbber while 
         <div
           class="tabs__contract s-qpUp5WgwgSGx"
         >
-          <div
-            class="contract s-opgtbWrLmJMD"
+          <dl
+            class="contract-statuses s-fYGIMZDSuGmT"
           >
-            <div
-              class="operations"
+            <dt
+              class="contract-statuses__label s-fYGIMZDSuGmT"
             >
-              <dl
-                class="dusk-status-list"
+              Spendable
+               
+            </dt>
+            <dd
+              class="contract-statuses__value s-fYGIMZDSuGmT"
+            >
+              <span
+                class="s-fYGIMZDSuGmT"
               >
-                <dt
-                  class="dusk-status-list__key dusk-status"
-                >
-                   
-                  <span>
-                    Spendable
-                  </span>
-                </dt>
-                 
-                <dd
-                  class="dusk-status-list__value dusk-status"
-                >
-                  <span>
-                    50,000.00
-                  </span>
-                   
-                  <svg
-                    class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-                    data-tooltip-id="status-tooltip"
-                    data-tooltip-place="top"
-                    data-tooltip-text="DUSK"
-                    role="graphics-symbol"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-                    />
-                  </svg>
-                  
-                  <!--&lt;Icon&gt;-->
-                </dd>
-                 
-                 
-                <div
-                  aria-hidden="true"
-                  class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-                  id="status-tooltip"
-                  role="tooltip"
-                  style="left: 0px; top: 0px;"
-                >
-                  
-                </div>
-                <!--&lt;Tooltip&gt;-->
-                <!--&lt;Statuses&gt;-->
-              </dl>
-              <!--&lt;StatusList&gt;-->
+                50,000.000000000
+              </span>
                
-               
+              <svg
+                class="dusk-icon dusk-icon--size--normal contract-statuses__icon"
+                data-tooltip-id="main-tooltip"
+                data-tooltip-text="DUSK"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+                />
+              </svg>
               
+              <!--&lt;Icon&gt;-->
+               
+            </dd>
+          </dl>
+          <!--&lt;ContractStatusesList&gt;-->
+           
+          <menu
+            class="contract-operations s-MYVJhCZxEBFW"
+          >
+            <li
+              class="contract-operations__operation s-MYVJhCZxEBFW"
+            >
               <button
-                class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled operations__operation"
+                class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled contract-operations__operation-button"
                 type="button"
               >
                 <svg
@@ -728,14 +701,18 @@ exports[`Dashboard > should render the dashboard page and show a throbber while 
                 <span
                   class="dusk-button__text"
                 >
-                  send
+                  Send
                 </span>
                 
               </button>
               <!--&lt;Button&gt;-->
-              
+               
+            </li>
+            <li
+              class="contract-operations__operation s-MYVJhCZxEBFW"
+            >
               <button
-                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled operations__operation"
+                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled contract-operations__operation-button"
                 type="button"
               >
                 <svg
@@ -753,16 +730,17 @@ exports[`Dashboard > should render the dashboard page and show a throbber while 
                 <span
                   class="dusk-button__text"
                 >
-                  receive
+                  Receive
                 </span>
                 
               </button>
               <!--&lt;Button&gt;-->
-              
-            </div>
-            <!--&lt;Operations&gt;-->
-          </div>
-          <!--&lt;Contract&gt;-->
+               
+            </li>
+          </menu>
+          <!--&lt;ContractOperations&gt;-->
+          
+          <!--&lt;TransferContract&gt;-->
         </div>
       </div>
     </article>
@@ -1048,66 +1026,50 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         <div
           class="tabs__contract s-qpUp5WgwgSGx"
         >
-          <div
-            class="contract s-opgtbWrLmJMD"
+          <dl
+            class="contract-statuses s-fYGIMZDSuGmT"
           >
-            <div
-              class="operations"
+            <dt
+              class="contract-statuses__label s-fYGIMZDSuGmT"
             >
-              <dl
-                class="dusk-status-list"
+              Spendable
+               
+            </dt>
+            <dd
+              class="contract-statuses__value s-fYGIMZDSuGmT"
+            >
+              <span
+                class="s-fYGIMZDSuGmT"
               >
-                <dt
-                  class="dusk-status-list__key dusk-status"
-                >
-                   
-                  <span>
-                    Spendable
-                  </span>
-                </dt>
-                 
-                <dd
-                  class="dusk-status-list__value dusk-status"
-                >
-                  <span>
-                    50,000.00
-                  </span>
-                   
-                  <svg
-                    class="dusk-icon dusk-icon--size--normal dusk-status__icon"
-                    data-tooltip-id="status-tooltip"
-                    data-tooltip-place="top"
-                    data-tooltip-text="DUSK"
-                    role="graphics-symbol"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-                    />
-                  </svg>
-                  
-                  <!--&lt;Icon&gt;-->
-                </dd>
-                 
-                 
-                <div
-                  aria-hidden="true"
-                  class="dusk-tooltip dusk-tooltip-top dusk-tooltip-info"
-                  id="status-tooltip"
-                  role="tooltip"
-                  style="left: 0px; top: 0px;"
-                >
-                  
-                </div>
-                <!--&lt;Tooltip&gt;-->
-                <!--&lt;Statuses&gt;-->
-              </dl>
-              <!--&lt;StatusList&gt;-->
+                50,000.000000000
+              </span>
                
-               
+              <svg
+                class="dusk-icon dusk-icon--size--normal contract-statuses__icon"
+                data-tooltip-id="main-tooltip"
+                data-tooltip-text="DUSK"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+                />
+              </svg>
               
+              <!--&lt;Icon&gt;-->
+               
+            </dd>
+          </dl>
+          <!--&lt;ContractStatusesList&gt;-->
+           
+          <menu
+            class="contract-operations s-MYVJhCZxEBFW"
+          >
+            <li
+              class="contract-operations__operation s-MYVJhCZxEBFW"
+            >
               <button
-                class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled operations__operation"
+                class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--normal dusk-icon-button-labeled contract-operations__operation-button"
                 type="button"
               >
                 <svg
@@ -1125,14 +1087,18 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
                 <span
                   class="dusk-button__text"
                 >
-                  send
+                  Send
                 </span>
                 
               </button>
               <!--&lt;Button&gt;-->
-              
+               
+            </li>
+            <li
+              class="contract-operations__operation s-MYVJhCZxEBFW"
+            >
               <button
-                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled operations__operation"
+                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--normal dusk-icon-button-labeled contract-operations__operation-button"
                 type="button"
               >
                 <svg
@@ -1150,26 +1116,27 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
                 <span
                   class="dusk-button__text"
                 >
-                  receive
+                  Receive
                 </span>
                 
               </button>
               <!--&lt;Button&gt;-->
-              
-            </div>
-            <!--&lt;Operations&gt;-->
-          </div>
-          <!--&lt;Contract&gt;-->
+               
+            </li>
+          </menu>
+          <!--&lt;ContractOperations&gt;-->
+          
+          <!--&lt;TransferContract&gt;-->
         </div>
       </div>
     </article>
      
     <article
-      class="transactions s-ms4M-9Zd82pR"
+      class="transactions s-j8yKepzodVZ-"
       style="animation: __svelte_3516408220_0 400ms linear 0ms 1 both;"
     >
       <header
-        class="transactions__header s-ms4M-9Zd82pR"
+        class="transactions__header s-j8yKepzodVZ-"
       >
         <h3
           class="h4 s-qpUp5WgwgSGx"
@@ -1180,21 +1147,21 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
       </header>
        
       <div
-        class="transactions__lists s-ms4M-9Zd82pR"
+        class="transactions__lists s-j8yKepzodVZ-"
       >
         <dl
-          class="transactions-list s-ms4M-9Zd82pR"
+          class="transactions-list s-j8yKepzodVZ-"
         >
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Hash
           </dt>
           <dd
-            class="transactions-list__datum transactions-list__datum--hash s-ms4M-9Zd82pR"
+            class="transactions-list__datum transactions-list__datum--hash s-j8yKepzodVZ-"
           >
             <samp
-              class="s-ms4M-9Zd82pR"
+              class="s-j8yKepzodVZ-"
             >
               <a
                 class="dusk-anchor"
@@ -1209,12 +1176,12 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Type
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             <span
               class="dusk-badge dusk-badge--variant-neutral w-100"
@@ -1225,23 +1192,23 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Block
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             33,460
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Amount
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             +27,000.00
              
@@ -1262,12 +1229,12 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Fee
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             1,876.00
              
@@ -1289,18 +1256,18 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           </dd>
         </dl>
         <dl
-          class="transactions-list s-ms4M-9Zd82pR"
+          class="transactions-list s-j8yKepzodVZ-"
         >
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Hash
           </dt>
           <dd
-            class="transactions-list__datum transactions-list__datum--hash s-ms4M-9Zd82pR"
+            class="transactions-list__datum transactions-list__datum--hash s-j8yKepzodVZ-"
           >
             <samp
-              class="s-ms4M-9Zd82pR"
+              class="s-j8yKepzodVZ-"
             >
               <a
                 class="dusk-anchor"
@@ -1315,12 +1282,12 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Type
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             <span
               class="dusk-badge dusk-badge--variant-neutral w-100"
@@ -1331,23 +1298,23 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Block
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             33,459
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Amount
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             -25,000.00
              
@@ -1369,18 +1336,18 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           </dd>
         </dl>
         <dl
-          class="transactions-list s-ms4M-9Zd82pR"
+          class="transactions-list s-j8yKepzodVZ-"
         >
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Hash
           </dt>
           <dd
-            class="transactions-list__datum transactions-list__datum--hash s-ms4M-9Zd82pR"
+            class="transactions-list__datum transactions-list__datum--hash s-j8yKepzodVZ-"
           >
             <samp
-              class="s-ms4M-9Zd82pR"
+              class="s-j8yKepzodVZ-"
             >
               <a
                 class="dusk-anchor"
@@ -1395,12 +1362,12 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Type
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             <span
               class="dusk-badge dusk-badge--variant-neutral w-100"
@@ -1411,23 +1378,23 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Block
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             33,458
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Amount
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             +25,000.00
              
@@ -1449,18 +1416,18 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           </dd>
         </dl>
         <dl
-          class="transactions-list s-ms4M-9Zd82pR"
+          class="transactions-list s-j8yKepzodVZ-"
         >
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Hash
           </dt>
           <dd
-            class="transactions-list__datum transactions-list__datum--hash s-ms4M-9Zd82pR"
+            class="transactions-list__datum transactions-list__datum--hash s-j8yKepzodVZ-"
           >
             <samp
-              class="s-ms4M-9Zd82pR"
+              class="s-j8yKepzodVZ-"
             >
               <a
                 class="dusk-anchor"
@@ -1475,12 +1442,12 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Type
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             <span
               class="dusk-badge dusk-badge--variant-neutral w-100"
@@ -1491,23 +1458,23 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Block
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             33,457
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Amount
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             -25,000.00
              
@@ -1528,12 +1495,12 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Fee
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             1,876.00
              
@@ -1555,18 +1522,18 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           </dd>
         </dl>
         <dl
-          class="transactions-list s-ms4M-9Zd82pR"
+          class="transactions-list s-j8yKepzodVZ-"
         >
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Hash
           </dt>
           <dd
-            class="transactions-list__datum transactions-list__datum--hash s-ms4M-9Zd82pR"
+            class="transactions-list__datum transactions-list__datum--hash s-j8yKepzodVZ-"
           >
             <samp
-              class="s-ms4M-9Zd82pR"
+              class="s-j8yKepzodVZ-"
             >
               <a
                 class="dusk-anchor"
@@ -1581,12 +1548,12 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Type
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             <span
               class="dusk-badge dusk-badge--variant-neutral w-100"
@@ -1597,23 +1564,23 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Block
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             33,456
              
           </dd>
           <dt
-            class="transactions-list__term s-ms4M-9Zd82pR"
+            class="transactions-list__term s-j8yKepzodVZ-"
           >
             Amount
           </dt>
           <dd
-            class="transactions-list__datum s-ms4M-9Zd82pR"
+            class="transactions-list__datum s-j8yKepzodVZ-"
           >
             -25,000.00
              
@@ -1638,7 +1605,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
       </div>
        
       <footer
-        class="transactions__footer s-ms4M-9Zd82pR"
+        class="transactions__footer s-j8yKepzodVZ-"
       >
         <a
           aria-disabled="false"

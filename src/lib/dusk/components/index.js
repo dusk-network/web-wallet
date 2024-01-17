@@ -12,7 +12,6 @@ export { default as Mnemonic } from "./Mnemonic/Mnemonic.svelte";
 export { default as ProgressBar } from "./ProgressBar/ProgressBar.svelte";
 export { default as QrCode } from "./QrCode/QrCode.svelte";
 export { default as Select } from "./Select/Select.svelte";
-export { default as StatusList } from "./StatusList/StatusList.svelte";
 export { default as Stepper } from "./Stepper/Stepper.svelte";
 export { default as Switch } from "./Switch/Switch.svelte";
 export { default as Tabs } from "./Tabs/Tabs.svelte";

@@ -11,7 +11,7 @@
 	/** @type {String | Undefined} */
 	export let className = undefined;
 
-	/** @type {ButtonIconProp | Undefined} */
+	/** @type {IconProp | Undefined} */
 	export let icon = undefined;
 
 	/** @type {ButtonSize} */
