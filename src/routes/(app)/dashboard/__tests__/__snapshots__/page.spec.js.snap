@@ -1199,7 +1199,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               <a
                 class="dusk-anchor"
                 href="https://explorer.dusk.network/transactions/transaction?id=tg874534tddsghdtst54hdfh795h"
-                rel="noopener noreferrer noopener noreferrer"
+                rel="noopener noreferrer"
                 target="_blank"
               >
                 tg874534tddsghdtst54hdfh795h
@@ -1305,7 +1305,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               <a
                 class="dusk-anchor"
                 href="https://explorer.dusk.network/transactions/transaction?id=tg874534tddsghdtst54hdfh794h"
-                rel="noopener noreferrer noopener noreferrer"
+                rel="noopener noreferrer"
                 target="_blank"
               >
                 tg874534tddsghdtst54hdfh794h
@@ -1385,7 +1385,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               <a
                 class="dusk-anchor"
                 href="https://explorer.dusk.network/transactions/transaction?id=tg874534tddsghdtst54hdfh793h"
-                rel="noopener noreferrer noopener noreferrer"
+                rel="noopener noreferrer"
                 target="_blank"
               >
                 tg874534tddsghdtst54hdfh793h
@@ -1465,7 +1465,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               <a
                 class="dusk-anchor"
                 href="https://explorer.dusk.network/transactions/transaction?id=tg874534tddsghdtst54hdfh792h"
-                rel="noopener noreferrer noopener noreferrer"
+                rel="noopener noreferrer"
                 target="_blank"
               >
                 tg874534tddsghdtst54hdfh792h
@@ -1571,7 +1571,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               <a
                 class="dusk-anchor"
                 href="https://explorer.dusk.network/transactions/transaction?id=tg874534tddsghdtst54hdfh791h"
-                rel="noopener noreferrer noopener noreferrer"
+                rel="noopener noreferrer"
                 target="_blank"
               >
                 tg874534tddsghdtst54hdfh791h

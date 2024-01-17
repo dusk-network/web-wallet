@@ -48,8 +48,8 @@
 						<samp>
 							<Anchor
 								href="https://explorer.dusk.network/transactions/transaction?id={transaction.id}"
-								target="_blank"
 								rel="noopener noreferrer"
+								target="_blank"
 							>
 								{middleEllipsis(
 									transaction.id,

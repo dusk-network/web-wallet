@@ -14,9 +14,9 @@ describe("Anchor", () => {
 	const baseProps = {
 		href: "https://example.com"
 	};
+
 	const baseOptions = {
-		props: baseProps,
-		target: document.body
+		props: baseProps
 	};
 
 	afterEach(cleanup);
@@ -33,17 +33,6 @@ describe("Anchor", () => {
 			className: "foo bar",
 			href: "https://dusk.network",
 			title: "Some title"
-		};
-		const { container } = renderWithSimpleContent(Anchor, { ...baseOptions, props });
-
-		expect(container.firstChild).toMatchSnapshot();
-	});
-
-	it("should add \"noopener\" and \"noreferrer\" values to the rel attribute if a target is used", () => {
-		const props = {
-			...baseProps,
-			rel: "external",
-			target: "_blank"
 		};
 		const { container } = renderWithSimpleContent(Anchor, { ...baseOptions, props });
 
