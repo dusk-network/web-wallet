@@ -34,7 +34,7 @@ VITE_CONTRACT_STAKE_ENABLED=true
 VITE_CONTRACT_TRANSFER_ENABLED=true
 VITE_CURRENT_NODE=${VITE_LOCAL_NODE}
 VITE_CURRENT_PROVER_NODE=${VITE_LOCAL_NODE}
-VITE_GAS_LIMIT_DEFAULT=20000000
+VITE_GAS_LIMIT_DEFAULT=2900000000
 VITE_GAS_LIMIT_LOWER=10000000
 VITE_GAS_LIMIT_UPPER=1000000000
 VITE_GAS_PRICE_DEFAULT=1
@@ -67,46 +67,4 @@ To run a local node different steps are needed, so please read the [related sect
 
 ## Running a local Rusk node
 
-To run a local node you should have [Docker](https://www.docker.com/) installed.
-
-In a local folder on your computer create a `genesis.toml` file with the following content:
-
-```toml
-[acl.stake]
-owners = [
-    'oCqYsUMRqpRn2kSabH52Gt6FQCwH5JXj5MtRdYVtjMSJ73AFvdbPf98p3gz98fQwNy9ZBiDem6m9BivzURKFSKLYWP3N9JahSPZs9PnZ996P18rTGAjQTNFsxtbrKx79yWu',
-]
-allowlist = [
-    'oCqYsUMRqpRn2kSabH52Gt6FQCwH5JXj5MtRdYVtjMSJ73AFvdbPf98p3gz98fQwNy9ZBiDem6m9BivzURKFSKLYWP3N9JahSPZs9PnZ996P18rTGAjQTNFsxtbrKx79yWu',
-    'ocXXBAafr7xFqQTpC1vfdSYdHMXerbPCED2apyUVpLjkuycsizDxwA6b9D7UW91kG58PFKqm9U9NmY9VSwufUFL5rVRSnFSYxbiKK658TF6XjHsHGBzavFJcxAzjjBRM4eF'
-]
-
-[[balance]]
-address = '4ZH3oyfTuMHyWD1Rp4e7QKp5yK6wLrWvxHneufAiYBAjvereFvfjtDvTbBcZN5ZCsaoMo49s1LKPTwGpowik6QJG'
-seed = 0xdead_beef
-notes = [100_000_000_000_000]
-
-[[stake]]
-address = 'oCqYsUMRqpRn2kSabH52Gt6FQCwH5JXj5MtRdYVtjMSJ73AFvdbPf98p3gz98fQwNy9ZBiDem6m9BivzURKFSKLYWP3N9JahSPZs9PnZ996P18rTGAjQTNFsxtbrKx79yWu'
-amount = 1_000_000_000_000
-```
-
-Open a terminal, go to the folder with the `genesis.toml` file and run:
-
-```bash
-docker run --name rusk -p 9000:9000/udp -p 8080:8080/tcp -v ./genesis.toml:/opt/rusk/state.toml dusknetwork/node:latest
-```
-
-This will download the image and run the node on `http://localhost:8080/`.
-
-In your `.env` file edit the `VITE_LOCAL_NODE` variable as follows:
-
-```
-VITE_LOCAL_NODE="https://localhost:5173/rusk/"
-```
-
-The Vite dev server will act as a proxy, so the node will appear to the browser as running on HTTPS and on the same origin, without requiring CORS headers.
-
-With the local node you can use the following mnemonic to test an account with some Dusk on it:
-
-`auction tribe type torch domain caution lyrics mouse alert fabric snake ticket`
+To run a local node, follow the instructions outlined in the [Rusk's readme](https://github.com/dusk-network/rusk).
