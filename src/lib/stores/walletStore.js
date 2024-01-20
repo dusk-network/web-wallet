@@ -86,7 +86,7 @@ async function updateAfterSync () {
 async function init (wallet) {
 	walletInstance = wallet;
 
-	const keys = walletInstance.getPsks();
+	const keys = await walletInstance.getPsks();
 	const currentKey = keys[0];
 
 	set({

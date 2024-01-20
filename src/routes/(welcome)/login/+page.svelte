@@ -21,8 +21,8 @@
 	 */
 
 	/** @type {(wallet: Wallet) => Promise<Wallet>} */
-	async function checkLocalData (wallet) {
-		const defaultKey = wallet.getPsks()[0];
+	async function checkLocalData(wallet) {
+		const defaultKey = (await wallet.getPsks())[0];
 		const currentKey = $settingsStore.userId;
 
 		if (defaultKey !== currentKey) {
