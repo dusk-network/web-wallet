@@ -24,7 +24,7 @@
 	export let priceLower;
 
 	/** @type {boolean} */
-	let gasSettings = false;
+	let isExpanded = false;
 
 	const dispatch = createEventDispatcher();
 </script>
@@ -40,13 +40,13 @@
 				size="small"
 				variant="tertiary"
 				on:click={() => {
-					gasSettings = !gasSettings;
+					isExpanded = !isExpanded;
 				}}
-				text={gasSettings ? "SAVE" : "EDIT"}
+				text={isExpanded ? "SAVE" : "EDIT"}
 			/>
 		</dd>
 	</dl>
-	{#if gasSettings}
+	{#if isExpanded}
 		<div in:slide|global class="gas-settings">
 			<GasControls
 				on:setGasSettings={(event) => { dispatch("setGasSettings", event.detail); }}
