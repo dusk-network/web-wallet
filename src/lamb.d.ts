@@ -648,7 +648,7 @@ declare module "lamb" {
 		S extends Record<PropertyKey, any>,
 		T,
 		K extends string
-	> (key: K, value: T): (source: S) => Omit<S, K> & { [k in K]: T };
+	> (key: K, value: T): (source: S) => S & { [k in K]: T };
 
 	function skip<
 		S extends Record<string, any>,

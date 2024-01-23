@@ -2,11 +2,10 @@
 
 <script>
 	import { mdiArrowLeft } from "@mdi/js";
-	import { Balance } from "$lib/components";
+	import { Balance, Transactions } from "$lib/components";
 	import { AnchorButton, Card, Throbber } from "$lib/dusk/components";
 	import { settingsStore, walletStore } from "$lib/stores";
 	import { sortByHeightDesc } from "$lib/transactions";
-	import Transactions from "../Transactions.svelte";
 
 	/** @type {import('./$types').PageData} */
 	export let data;

@@ -1,5 +1,5 @@
 
-type ButtonIconProp = {
+type IconProp = {
   path: string,
   position?: "after" | "before"
   size?: IconSize,
@@ -15,7 +15,7 @@ type WizardButtonProps = {
 	isAnchor?: boolean,
 	href?: string,
 	disabled?: boolean,
-	icon?: ButtonIconProp,
+	icon?: IconProp,
 	variant?: ButtonVariant,
 	label?: string,
 	action?: () => void,
@@ -31,28 +31,8 @@ type SelectOption = {
   value: string
 }
 
-type Status = {
-	key: StatusMember,
-	value: StatusValue
-}
-
-type StatusIconProp = {
-	label?: string,
-	path: string
-  }
-
-type StatusMember = {
-	icon?: StatusIconProp,
-	label: string
-}
-
-type StatusValue = {
-	icon?: StatusIconProp,
-	value: number
-}
-
 type TabItem = {
-	icon?: ButtonIconProp,
+	icon?: IconProp,
 	id: string,
 	label?: string
 }

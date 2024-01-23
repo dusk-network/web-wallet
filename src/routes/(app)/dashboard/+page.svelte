@@ -1,13 +1,7 @@
 <svelte:options immutable={true}/>
 
 <script>
-	import {
-		mdiArrowDownBoldBoxOutline,
-		mdiArrowUpBoldBoxOutline,
-		mdiDatabaseArrowDownOutline,
-		mdiDatabaseOutline,
-		mdiSwapVertical
-	} from "@mdi/js";
+	import { onDestroy } from "svelte";
 	import { fade } from "svelte/transition";
 	import {
 		compose,
@@ -17,20 +11,33 @@
 		last,
 		take
 	} from "lamb";
-	import { logo } from "$lib/dusk/icons";
 	import {
-		AnchorButton, Card, Tabs, Throbber
+		mdiDatabaseOutline,
+		mdiSwapVertical
+	} from "@mdi/js";
+
+	import {
+		AnchorButton,
+		Card,
+		Tabs,
+		Throbber
 	} from "$lib/dusk/components";
-	import { Balance } from "$lib/components";
+	import {
+		StakeContract,
+		TransferContract
+	} from "$lib/containers";
+	import {
+		Balance,
+		KeyPicker,
+		Transactions
+	} from "$lib/components";
 	import {
 		operationsStore,
 		settingsStore,
 		walletStore
 	} from "$lib/stores";
+	import { contractDescriptors } from "$lib/contracts";
 	import { sortByHeightDesc } from "$lib/transactions";
-	import Contract from "./Contract.svelte";
-	import Transactions from "./Transactions.svelte";
-	import KeyPicker from "./KeyPicker.svelte";
 
 	/** @type {import('./$types').PageData} */
 	export let data;
@@ -42,119 +49,48 @@
 		language
 	} = $settingsStore;
 
-	/** @type {string|undefined} */
-	let clickedTab;
+	/** @type {(descriptors: ContractDescriptor[]) => ContractDescriptor[]} */
+	const getEnabledContracts = filterWith(hasKeyValue("disabled", false));
 
-	/** @type {WalletStakeInfo} */
-	let stakeInfo;
-
-	async function fetchStakeInfo () {
-		walletStore.getStakeInfo().then((info) => {
-			stakeInfo = info;
-		});
-	}
-
-	const getEnabledContracts = filterWith(hasKeyValue("enabled", true));
-
+	/** @type {(transactions: Transaction[]) => Transaction[]} */
 	const getTransactionsShortlist = compose(
 		take(dashboardTransactionLimit),
 		sortByHeightDesc
 	);
 
-	$: CONTRACTS = [{
-		enabled: import.meta.env.VITE_CONTRACT_TRANSFER_ENABLED === "true",
-		icon: { path: mdiSwapVertical },
-		id: "transfer",
-		label: "Transact",
-		operations: [{
-			icon: { path: mdiArrowUpBoldBoxOutline, size: "normal" },
-			id: "send",
-			label: "send"
-		}, {
-			icon: { path: mdiArrowDownBoldBoxOutline, size: "normal" },
-			id: "receive",
-			label: "receive",
-			variant: "tertiary"
-		}],
-		statuses: [{
-			key: {
-				label: "Spendable"
+	/** @param {CustomEvent} event */
+	function handleSetGasSettings ({ detail }) {
+		settingsStore.update(store => ({
+			...store,
+			gasLimit: detail.limit,
+			gasPrice: detail.price
+		}));
+	}
 
-			}, value: {
-				icon: {
-					label: "DUSK",
-					path: logo
-				},
-				value: balance.maximum
-			}
-		}]
-	}, {
-		enabled: import.meta.env.VITE_CONTRACT_STAKE_ENABLED === "true",
-		icon: { path: mdiDatabaseOutline },
-		id: "staking",
-		label: "Stake",
-		operations: [{
-			// Disabled if user has staked already or
-			// if the key is not allowed to stake
-			disabled: !stakeInfo?.has_key || stakeInfo?.has_staked,
-			icon: { path: mdiDatabaseOutline, size: "normal" },
-			id: "stake",
-			label: "stake"
-		}, {
-			disabled: !stakeInfo?.has_staked,
-			icon: { path: mdiDatabaseArrowDownOutline, size: "normal" },
-			id: "withdraw-stake",
-			label: "withdraw stake",
-			variant: "tertiary"
-		}, {
-			disabled: !(stakeInfo?.reward > 0),
-			icon: { path: mdiDatabaseArrowDownOutline, size: "normal" },
-			id: "withdraw-rewards",
-			label: "withdraw rewards",
-			variant: "tertiary"
-		}],
-		statuses: [{
-			key: {
-				label: "Spendable"
-			}, value: {
-				icon: {
-					label: "DUSK",
-					path: logo
-				},
-				value: balance.maximum
-			}
-		}, {
-			key: {
-				label: "Total Locked"
-			}, value: {
-				icon: {
-					label: "DUSK",
-					path: logo
-				},
-				value: stakeInfo?.amount ?? 0
-			}
-		}, {
-			key: {
-				label: "Rewards"
-			},
-			value: {
-				icon: {
-					label: "DUSK",
-					path: logo
-				},
-				value: stakeInfo?.reward ?? 0
-			}
-		}]
-	}];
+	/** @param {string} id */
+	function updateOperation (id) {
+		operationsStore.update((store) => ({
+			...store,
+			currentOperation: id
+		}));
+	}
 
-	$: enabledContracts = getEnabledContracts(CONTRACTS);
-	$: selectedTab = clickedTab ?? enabledContracts[0]?.id;
+	const enabledContracts = getEnabledContracts(contractDescriptors);
+	const tabItems = enabledContracts.map(({ id, label }) => ({
+		icon: { path: id === "transfer" ? mdiSwapVertical : mdiDatabaseOutline },
+		id,
+		label
+	}));
+
+	let selectedTab = tabItems[0]?.id ?? "";
+
 	$: selectedContract = find(enabledContracts, hasKeyValue("id", selectedTab));
 	$: ({ balance, currentKey, keys	} = $walletStore);
 	$: ({ currentOperation } = $operationsStore);
-	$: if (selectedTab || currentOperation) {
-		fetchStakeInfo();
-	}
+
+	onDestroy(() => {
+		updateOperation("");
+	});
 </script>
 
 <div class="dashboard-content">
@@ -176,15 +112,9 @@
 	{#if selectedContract}
 		<article class="tabs">
 			<Tabs
-				{selectedTab}
-				items={enabledContracts}
-				on:change={({ detail }) => {
-					operationsStore.update((store) => ({
-						...store,
-						currentOperation: undefined
-					}));
-					clickedTab = detail;
-				}}
+				bind:selectedTab
+				items={tabItems}
+				on:change={() => updateOperation("")}
 			/>
 			<div
 				class="tabs__panel"
@@ -193,15 +123,20 @@
 					&& selectedTab === last(enabledContracts).id}
 			>
 				{#key selectedTab}
-					<div in:fade|global class="tabs__contract">
-						<Contract contract={selectedContract}/>
+					<div in:fade class="tabs__contract">
+						<svelte:component
+							descriptor={selectedContract}
+							on:operationChange={({ detail }) => updateOperation(detail)}
+							on:setGasSettings={handleSetGasSettings}
+							this={selectedTab === "transfer" ? TransferContract : StakeContract}
+						/>
 					</div>
 				{/key}
 			</div>
 		</article>
 	{/if}
 
-	{#if currentOperation === undefined && selectedTab === "transfer" }
+	{#if currentOperation === "" && selectedTab === "transfer" }
 		{#await walletStore.getTransactionsHistory()}
 			<Throbber className="loading"/>
 		{:then transactions}
@@ -231,26 +166,11 @@
 		gap: 1.375rem;
 		overflow-y: auto;
 		flex: 1;
-
-		:global(&__receive) {
-			text-align: left;
-
-			:global(svg) {
-				height: var(--icon-size);
-				width: var(--icon-size);
-			}
-		}
-
-		:global(&__receive + .receive) {
-			:global(.receive__qr) {
-				padding: 2em;
-			}
-		}
 	}
 
 	.tabs {
 		&__panel {
-			border-radius: 1.25rem;
+			border-radius: var(--control-border-radius-size);
 			background: var(--surface-color);
 			transition: border-radius 0.4s ease-in-out;
 
@@ -265,13 +185,9 @@
 
 		&__contract {
 			display: flex;
-			padding: 1rem 1.375rem;
 			flex-direction: column;
-			justify-content: center;
-			align-items: flex-start;
-			gap: 1em;
-			align-self: stretch;
-			width: 100%;
+			padding: 1rem 1.375rem;
+			gap: var(--default-gap);
 		}
 	}
 

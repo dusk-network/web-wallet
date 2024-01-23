@@ -267,6 +267,28 @@ describe("walletStore", async () => {
 				.toBeLessThan(stakeInfoSpy.mock.invocationCallOrder[0]);
 		});
 
+		it("should fix the returned stake info by adding the amount and the reward if they are missing", async () => {
+			stakeInfoSpy.mockResolvedValueOnce({
+				"has_key": false,
+				"has_staked": false
+			});
+
+			const expected = {
+				"amount": 0,
+				"has_key": false,
+				"has_staked": false,
+				"reward": 0
+			};
+			const result = await walletStore.getStakeInfo();
+
+			expect(syncSpy).toHaveBeenCalledTimes(1);
+			expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
+			expect(stakeInfoSpy).toHaveBeenCalledWith(currentKey);
+			expect(syncSpy.mock.invocationCallOrder[0])
+				.toBeLessThan(stakeInfoSpy.mock.invocationCallOrder[0]);
+			expect(result).toStrictEqual(expected);
+		});
+
 		it("should expose a method to retrieve the transaction history", async () => {
 			await walletStore.getTransactionsHistory();
 

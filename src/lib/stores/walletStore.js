@@ -43,6 +43,21 @@ const walletStore = writable(initialState, () => settingsStore.subscribe(({
 	}
 }));
 const { set, subscribe } = walletStore;
+
+/**
+ * Defensive code here as the `amount` and
+ * `reward` properties can be `undefined` in the
+ * returned stake info object.
+ *
+ * @param {WalletStakeInfo} stakeInfo
+ * @returns {WalletStakeInfo}
+ */
+const fixStakeInfo = stakeInfo => ({
+	...stakeInfo,
+	amount: stakeInfo.amount ?? 0,
+	reward: stakeInfo.reward ?? 0
+});
+
 const getCurrentKey = () => get(walletStore).currentKey;
 
 /** @type {(action: (...args: any[]) => Promise<any>) => Promise<void>} */
@@ -56,7 +71,8 @@ const clearLocalDataAndInit = wallet => wallet.reset().then(() => init(wallet));
 
 /** @type {import("./stores").WalletStoreServices["getStakeInfo"]} */
 // @ts-expect-error
-const getStakeInfo = async () => sync().then(() => walletInstance.stakeInfo(getCurrentKey()));
+const getStakeInfo = async () => sync().then(() => walletInstance.stakeInfo(getCurrentKey()))
+	.then(fixStakeInfo);
 
 /** @type {GetTransactionsHistory} */
 
