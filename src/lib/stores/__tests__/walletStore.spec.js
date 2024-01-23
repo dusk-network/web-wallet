@@ -11,7 +11,7 @@ import { get } from "svelte/store";
 import { keys } from "lamb";
 import { Wallet } from "@dusk-network/dusk-wallet-js";
 
-import { transactions } from "$lib/mock-data";
+import { generatedKeys, transactions } from "$lib/mock-data";
 
 import { settingsStore, walletStore } from "..";
 
@@ -19,16 +19,10 @@ vi.useFakeTimers();
 
 describe("walletStore", async () => {
 	const balance = { maximum: 100, value: 1 };
-	const generatedKeys = [
-		"2087290d3dc213d43e493f03f5435f99",
-		"ffbee869aca5ff5ee13c2706e5d9779d",
-		"06527a34e1c91fc5785ea7764a0c34b1",
-		"f62d307103ca54516b29fcedd5463d16"
-	];
 	const wallet = new Wallet([]);
 
 	const getBalanceSpy = vi.spyOn(Wallet.prototype, "getBalance").mockResolvedValue(balance);
-	const getPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockReturnValue(generatedKeys);
+	const getPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockResolvedValue(generatedKeys);
 	const historySpy = vi.spyOn(Wallet.prototype, "history").mockResolvedValue(transactions);
 	const resetSpy = vi.spyOn(Wallet.prototype, "reset").mockResolvedValue(void 0);
 	const stakeInfoSpy = vi.spyOn(Wallet.prototype, "stakeInfo").mockResolvedValue({});
@@ -248,6 +242,10 @@ describe("walletStore", async () => {
 				keys: generatedKeys
 			});
 			expect(getPsksSpy).toHaveBeenCalledTimes(1);
+			expect(getBalanceSpy).not.toHaveBeenCalled();
+
+			await vi.advanceTimersToNextTimerAsync();
+
 			expect(getBalanceSpy).toHaveBeenCalledTimes(1);
 			expect(getBalanceSpy).toHaveBeenCalledWith(generatedKeys[0]);
 			expect(syncSpy).toHaveBeenCalledTimes(1);

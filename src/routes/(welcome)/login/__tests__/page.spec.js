@@ -19,6 +19,7 @@ import { settingsStore, walletStore } from "$lib/stores";
 import { encryptMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 import loginInfoStorage from "$lib/services/loginInfoStorage";
 import * as walletService from "$lib/services/wallet";
+import { generatedKeys } from "$lib/mock-data";
 
 import Login from "../+page.svelte";
 
@@ -29,17 +30,18 @@ function getTextInput (container) {
 }
 
 describe("Login", async () => {
+	const walletResetSpy = vi.spyOn(Wallet.prototype, "reset").mockResolvedValue(void 0);
+	const walletGetPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockResolvedValue(generatedKeys);
 	const mnemonic = generateMnemonic();
 	const pwd = "some pwd";
 	const loginInfo = await encryptMnemonic(mnemonic, pwd);
 	const seed = getSeedFromMnemonic(mnemonic);
-	const userId = new Wallet(seed).getPsks()[0];
+	const userId = (await new Wallet(seed).getPsks())[0];
 	const getErrorElement = () => document.querySelector(".login__error");
 	const getWalletSpy = vi.spyOn(walletService, "getWallet");
 	const gotoSpy = vi.spyOn(appNavigation, "goto");
 	const initSpy = vi.spyOn(walletStore, "init");
 	const settingsResetSpy = vi.spyOn(settingsStore, "reset");
-	const walletResetSpy = vi.spyOn(Wallet.prototype, "reset").mockResolvedValue(void 0);
 
 	afterEach(() => {
 		cleanup();
@@ -48,6 +50,7 @@ describe("Login", async () => {
 		initSpy.mockClear();
 		settingsStore.reset();
 		settingsResetSpy.mockClear();
+		walletGetPsksSpy.mockClear();
 		walletResetSpy.mockClear();
 		walletStore.reset();
 	});
@@ -57,6 +60,7 @@ describe("Login", async () => {
 		gotoSpy.mockRestore();
 		initSpy.mockRestore();
 		settingsResetSpy.mockRestore();
+		walletGetPsksSpy.mockRestore();
 		walletResetSpy.mockRestore();
 	});
 

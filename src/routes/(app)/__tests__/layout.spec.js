@@ -15,13 +15,16 @@ import { load } from "../+layout";
 
 describe("App layout.js", () => {
 	const redirectSpy = vi.spyOn(SvelteKit, "redirect");
+	const walletGetPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockResolvedValue([]);
 
 	afterEach(() => {
 		redirectSpy.mockClear();
+		walletGetPsksSpy.mockClear();
 	});
 
 	afterAll(() => {
 		redirectSpy.mockRestore();
+		walletGetPsksSpy.mockRestore();
 	});
 
 	it("should check if a wallet is missing in the `walletStore` and redirect the user to the login page", async () => {
