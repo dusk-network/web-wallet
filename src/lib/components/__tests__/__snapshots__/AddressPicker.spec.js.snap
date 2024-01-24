@@ -1,15 +1,15 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`KeyPicker > renders the KeyPicker component 1`] = `
+exports[`AddressPicker > renders the AddressPicker component 1`] = `
 <div>
    
   <div
-    class="key-picker"
+    class="address-picker"
   >
     <div
       aria-expanded="false"
       aria-haspopup="true"
-      class="key-picker__trigger"
+      class="address-picker__trigger"
       role="button"
       tabindex="0"
     >
@@ -32,17 +32,17 @@ exports[`KeyPicker > renders the KeyPicker component 1`] = `
       <!--&lt;CircularIcon&gt;-->
        
       <p
-        class="key-picker__current-key"
+        class="address-picker__current-address"
       >
         2087290d3dc213d43e493f03f5435f99
       </p>
        
       <span
-        class="key-picker__copy-key-button-wrapper"
+        class="address-picker__copy-address-button-wrapper"
       >
         <button
-          aria-label="Copy Key"
-          class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button key-picker__copy-key-button"
+          aria-label="Copy Address"
+          class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button address-picker__copy-address-button"
           type="button"
         >
           <svg
@@ -64,6 +64,6 @@ exports[`KeyPicker > renders the KeyPicker component 1`] = `
     </div>
      
   </div>
-  <!--&lt;KeyPicker&gt;-->
+  <!--&lt;AddressPicker&gt;-->
 </div>
 `;

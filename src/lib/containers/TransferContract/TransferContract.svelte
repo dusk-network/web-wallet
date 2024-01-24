@@ -49,7 +49,7 @@
 	] = collectSettings($settingsStore);
 	$: ({
 		balance,
-		currentKey,
+		currentAddress,
 		error,
 		isSyncing
 	} = $walletStore);
@@ -82,7 +82,7 @@
 		{statuses}
 	/>
 {:else if currentOperation === "receive"}
-	<Receive on:operationChange publicSpendKey={currentKey}/>
+	<Receive on:operationChange address={currentAddress}/>
 {:else}
 	<ContractStatusesList items={statuses}/>
 	<ContractOperations items={operations} on:operationChange/>

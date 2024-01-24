@@ -1,4 +1,4 @@
-.key-picker {
+.address-picker {
     position: relative;
     background-color: var(--surface-color);
     padding: 1em;
@@ -7,51 +7,51 @@
     z-index: 2;
 }
 
-.key-picker__current-key {
+.address-picker__current-address {
     width: 100%;
     text-align: center;
     font-family: monospace;
 }
 
-.key-picker__copy-key-button-wrapper {
+.address-picker__copy-address-button-wrapper {
     background-color: var(--secondary-color);
     border-radius: 50%;
 }
 
-.key-picker__copy-key-button {
+.address-picker__copy-address-button {
     aspect-ratio: 1/1;
     width: 1.5em;
 }
 
-.key-picker__copy-key-button:hover {
+.address-picker__copy-address-button:hover {
     cursor: copy;
 }
 
-.key-picker__copy-key-button, .key-picker__copy-key-button:hover {
+.address-picker__copy-address-button, .address-picker__copy-address-button:hover {
     color: var(--primary-color) !important;
 }
 
-.key-picker__key {
+.address-picker__address {
     max-width: 100%;
     all: unset;
 }
 
-.key-picker__key:hover, .key-picker__key--selected {
+.address-picker__address:hover, .address-picker__address--selected {
     color: var(--secondary-color);
 }
 
-.key-picker__key:hover {
+.address-picker__address:hover {
     cursor: pointer;
 }
 
-.key-picker__trigger {
+.address-picker__trigger {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: var(--default-gap);
 }
 
-.key-picker__drop-down {
+.address-picker__drop-down {
     display: flex;
     position: absolute;
     top: 100%;
@@ -69,13 +69,13 @@
     width: 100%;
 }
 
-.key-picker__key-options {
+.address-picker__address-options {
     overflow-y: auto;
     width: 100%;
     max-height: 20svh;
 }
 
-.key-picker__key-option-button {
+.address-picker__address-option-button {
     all: unset;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -85,19 +85,19 @@
     padding: .5em 0;
 }
 
-.key-picker__generating-key-wrapper {
+.address-picker__generating-address-wrapper {
     display: flex;
     flex-direction: row;
     align-self: flex-start;
     gap: var(--small-gap)
 }
 
-.key-picker--expanded {
+.address-picker--expanded {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-.key-picker__generate-key-button {
+.address-picker__generate-address-button {
     text-align: left;
     width: 100%
 }

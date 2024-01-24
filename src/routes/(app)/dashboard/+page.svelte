@@ -27,8 +27,8 @@
 		TransferContract
 	} from "$lib/containers";
 	import {
+		AddressPicker,
 		Balance,
-		KeyPicker,
 		Transactions
 	} from "$lib/components";
 	import {
@@ -85,7 +85,7 @@
 	let selectedTab = tabItems[0]?.id ?? "";
 
 	$: selectedContract = find(enabledContracts, hasKeyValue("id", selectedTab));
-	$: ({ balance, currentKey, keys	} = $walletStore);
+	$: ({ balance, currentAddress, addresses } = $walletStore);
 	$: ({ currentOperation } = $operationsStore);
 
 	onDestroy(() => {
@@ -96,9 +96,9 @@
 <div class="dashboard-content">
 	<h2 class="visible-hidden">Dashboard</h2>
 
-	<KeyPicker
-		{keys}
-		{currentKey}
+	<AddressPicker
+		{addresses}
+		{currentAddress}
 	/>
 
 	<Balance

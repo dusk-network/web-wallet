@@ -22,13 +22,13 @@
 
 	/** @type {(wallet: Wallet) => Promise<Wallet>} */
 	async function checkLocalData (wallet) {
-		const defaultKey = wallet.getPsks()[0];
-		const currentKey = $settingsStore.userId;
+		const defaultAddress = wallet.getPsks()[0];
+		const currentAddress = $settingsStore.userId;
 
-		if (defaultKey !== currentKey) {
+		if (defaultAddress !== currentAddress) {
 			await wallet.reset();
 			settingsStore.reset();
-			settingsStore.update(setKey("userId", defaultKey));
+			settingsStore.update(setKey("userId", defaultAddress));
 		}
 
 		return wallet;

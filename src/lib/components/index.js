@@ -1,9 +1,9 @@
+export { default as AddressPicker } from "./AddressPicker/AddressPicker.svelte";
 export { default as Balance } from "./Balance/Balance.svelte";
 export { default as ContractOperations } from "./ContractOperations/ContractOperations.svelte";
 export { default as ContractStatusesList } from "./ContractStatusesList/ContractStatusesList.svelte";
 export { default as GasControls } from "./GasControls/GasControls.svelte";
 export { default as GasSettings } from "./GasSettings/GasSettings.svelte";
-export { default as KeyPicker } from "./KeyPicker/KeyPicker.svelte";
 export { default as OperationResult } from "./OperationResult/OperationResult.svelte";
 export { default as Receive } from "./Receive/Receive.svelte";
 export { default as Send } from "./Send/Send.svelte";
