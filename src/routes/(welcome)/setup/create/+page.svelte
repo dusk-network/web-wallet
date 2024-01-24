@@ -88,7 +88,6 @@
 				action: () => { enteredMnemonicPhrase = []; }
 			}}
 			nextButton={{
-				action: async () => { await initializeWallet(mnemonicPhrase); },
 				disabled: !isValidMnemonic
 			}}>
 			<h2 class="h1" slot="heading">
@@ -139,6 +138,7 @@
 			hideBackButton={true}
 			nextButton={{
 				action: async () => {
+					await initializeWallet(mnemonicPhrase);
 					mnemonicPhrase = [];
 					await goto("/dashboard");
 				},
