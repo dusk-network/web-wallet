@@ -119,52 +119,54 @@
 	$: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
 </script>
 
-{#await walletStore.getStakeInfo()}
-	<Throbber className="stake-throbber"/>
-{:then stakeInfo}
-	{@const statuses = getStatuses(stakeInfo, balance.maximum)}
-	{@const operations = isSyncOK
-		? getOperations(descriptor.operations, stakeInfo)
-		: disableAllOperations(descriptor.operations)
-	}
-	{#if isStakeOperation(currentOperation)}
-		<Stake
-			execute={executeOperations[currentOperation]}
-			flow={currentOperation}
-			formatter={duskFormatter}
-			{gasSettings}
-			on:operationChange
-			on:setGasSettings
-			{language}
-			rewards={stakeInfo.reward}
-			spendable={balance.maximum}
-			staked={stakeInfo.amount}
-			{statuses}
-		/>
-	{:else}
-		{#if isStakingDisabled(operations)}
-			<div class="info">
-				<p>
-					Third-party staking will be enabled at the start of the upcoming incentivized testnet
-					and will begin to accrue real rewards as well. Stay tuned for more information.
-				</p>
-			</div>
+{#key currentOperation}
+	{#await walletStore.getStakeInfo()}
+		<Throbber className="stake-throbber"/>
+	{:then stakeInfo}
+		{@const statuses = getStatuses(stakeInfo, balance.maximum)}
+		{@const operations = isSyncOK
+			? getOperations(descriptor.operations, stakeInfo)
+			: disableAllOperations(descriptor.operations)
+		}
+		{#if isStakeOperation(currentOperation)}
+			<Stake
+				execute={executeOperations[currentOperation]}
+				flow={currentOperation}
+				formatter={duskFormatter}
+				{gasSettings}
+				on:operationChange
+				on:setGasSettings
+				{language}
+				rewards={stakeInfo.reward}
+				spendable={balance.maximum}
+				staked={stakeInfo.amount}
+				{statuses}
+			/>
+		{:else}
+			{#if isStakingDisabled(operations)}
+				<div class="info">
+					<p>
+						Third-party staking will be enabled at the start of the upcoming incentivized testnet
+						and will begin to accrue real rewards as well. Stay tuned for more information.
+					</p>
+				</div>
+			{/if}
+			<ContractStatusesList items={statuses}/>
+			<ContractOperations items={operations} on:operationChange/>
 		{/if}
-		<ContractStatusesList items={statuses}/>
-		<ContractOperations items={operations} on:operationChange/>
-	{/if}
-{:catch stakeInfoError}
-	<div class="fetch-stake-info-error">
-		<Icon
-			path={mdiCloseThick}
-			size="large"
-		/>
-		<ErrorDetails
-			error={stakeInfoError}
-			summary="Failed to retrieve stake info"
-		/>
-	</div>
-{/await}
+	{:catch stakeInfoError}
+		<div class="fetch-stake-info-error">
+			<Icon
+				path={mdiCloseThick}
+				size="large"
+			/>
+			<ErrorDetails
+				error={stakeInfoError}
+				summary="Failed to retrieve stake info"
+			/>
+		</div>
+	{/await}
+{/key}
 
 <style lang="postcss">
 	:global(.stake-throbber) {
