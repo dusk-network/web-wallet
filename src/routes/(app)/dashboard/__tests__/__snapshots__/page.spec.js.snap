@@ -13,12 +13,12 @@ exports[`Dashboard > should render a card when there is an error getting transac
      
      
     <div
-      class="key-picker"
+      class="address-picker"
     >
       <div
         aria-expanded="false"
         aria-haspopup="true"
-        class="key-picker__trigger"
+        class="address-picker__trigger"
         role="button"
         tabindex="0"
       >
@@ -41,17 +41,17 @@ exports[`Dashboard > should render a card when there is an error getting transac
         <!--&lt;CircularIcon&gt;-->
          
         <p
-          class="key-picker__current-key"
+          class="address-picker__current-address"
         >
           2087290d3dc213d43e493f03f5435f99
         </p>
          
         <span
-          class="key-picker__copy-key-button-wrapper"
+          class="address-picker__copy-address-button-wrapper"
         >
           <button
-            aria-label="Copy Key"
-            class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button key-picker__copy-key-button"
+            aria-label="Copy Address"
+            class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button address-picker__copy-address-button"
             type="button"
           >
             <svg
@@ -73,7 +73,7 @@ exports[`Dashboard > should render a card when there is an error getting transac
       </div>
        
     </div>
-    <!--&lt;KeyPicker&gt;-->
+    <!--&lt;AddressPicker&gt;-->
      
     <article
       class="dusk-balance"
@@ -400,12 +400,12 @@ exports[`Dashboard > should render the dashboard page and show a throbber while 
      
      
     <div
-      class="key-picker"
+      class="address-picker"
     >
       <div
         aria-expanded="false"
         aria-haspopup="true"
-        class="key-picker__trigger"
+        class="address-picker__trigger"
         role="button"
         tabindex="0"
       >
@@ -428,17 +428,17 @@ exports[`Dashboard > should render the dashboard page and show a throbber while 
         <!--&lt;CircularIcon&gt;-->
          
         <p
-          class="key-picker__current-key"
+          class="address-picker__current-address"
         >
           2087290d3dc213d43e493f03f5435f99
         </p>
          
         <span
-          class="key-picker__copy-key-button-wrapper"
+          class="address-picker__copy-address-button-wrapper"
         >
           <button
-            aria-label="Copy Key"
-            class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button key-picker__copy-key-button"
+            aria-label="Copy Address"
+            class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button address-picker__copy-address-button"
             type="button"
           >
             <svg
@@ -460,7 +460,7 @@ exports[`Dashboard > should render the dashboard page and show a throbber while 
       </div>
        
     </div>
-    <!--&lt;KeyPicker&gt;-->
+    <!--&lt;AddressPicker&gt;-->
      
     <article
       class="dusk-balance"
@@ -786,12 +786,12 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
      
      
     <div
-      class="key-picker"
+      class="address-picker"
     >
       <div
         aria-expanded="false"
         aria-haspopup="true"
-        class="key-picker__trigger"
+        class="address-picker__trigger"
         role="button"
         tabindex="0"
       >
@@ -814,17 +814,17 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         <!--&lt;CircularIcon&gt;-->
          
         <p
-          class="key-picker__current-key"
+          class="address-picker__current-address"
         >
           2087290d3dc213d43e493f03f5435f99
         </p>
          
         <span
-          class="key-picker__copy-key-button-wrapper"
+          class="address-picker__copy-address-button-wrapper"
         >
           <button
-            aria-label="Copy Key"
-            class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button key-picker__copy-key-button"
+            aria-label="Copy Address"
+            class="dusk-button dusk-button--type--button dusk-button--variant--text dusk-button--size--normal dusk-icon-button address-picker__copy-address-button"
             type="button"
           >
             <svg
@@ -846,7 +846,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
       </div>
        
     </div>
-    <!--&lt;KeyPicker&gt;-->
+    <!--&lt;AddressPicker&gt;-->
      
     <article
       class="dusk-balance"

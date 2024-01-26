@@ -19,7 +19,7 @@ vi.useFakeTimers();
 
 describe("walletStore", async () => {
 	const balance = { maximum: 100, value: 1 };
-	const generatedKeys = [
+	const addresses = [
 		"2087290d3dc213d43e493f03f5435f99",
 		"ffbee869aca5ff5ee13c2706e5d9779d",
 		"06527a34e1c91fc5785ea7764a0c34b1",
@@ -28,7 +28,7 @@ describe("walletStore", async () => {
 	const wallet = new Wallet([]);
 
 	const getBalanceSpy = vi.spyOn(Wallet.prototype, "getBalance").mockResolvedValue(balance);
-	const getPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockReturnValue(generatedKeys);
+	const getPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockReturnValue(addresses);
 	const historySpy = vi.spyOn(Wallet.prototype, "history").mockResolvedValue(transactions);
 	const resetSpy = vi.spyOn(Wallet.prototype, "reset").mockResolvedValue(void 0);
 	const stakeInfoSpy = vi.spyOn(Wallet.prototype, "stakeInfo").mockResolvedValue({});
@@ -43,18 +43,18 @@ describe("walletStore", async () => {
 			maximum: 0,
 			value: 0
 		},
-		currentKey: "",
+		currentAddress: "",
 		error: null,
 		initialized: false,
 		isSyncing: false,
-		keys: []
+		addresses: []
 	};
 	const initializedStore = {
 		...initialState,
 		balance,
-		currentKey: generatedKeys[0],
+		currentAddress: addresses[0],
 		initialized: true,
-		keys: generatedKeys
+		addresses: addresses
 	};
 
 	afterEach(() => {
@@ -100,11 +100,11 @@ describe("walletStore", async () => {
 
 			expect(get(walletStore)).toStrictEqual({
 				...initialState,
-				currentKey: generatedKeys[0],
+				currentAddress: addresses[0],
 				error: null,
 				initialized: true,
 				isSyncing: true,
-				keys: generatedKeys
+				addresses: addresses
 			});
 			expect(getPsksSpy).toHaveBeenCalledTimes(1);
 			expect(getBalanceSpy).not.toHaveBeenCalled();
@@ -113,7 +113,7 @@ describe("walletStore", async () => {
 
 			expect(syncSpy).toHaveBeenCalledTimes(1);
 			expect(getBalanceSpy).toHaveBeenCalledTimes(1);
-			expect(getBalanceSpy).toHaveBeenCalledWith(generatedKeys[0]);
+			expect(getBalanceSpy).toHaveBeenCalledWith(addresses[0]);
 			expect(get(walletStore)).toStrictEqual(initializedStore);
 		});
 
@@ -144,11 +144,11 @@ describe("walletStore", async () => {
 
 			const storeWhileLoading = {
 				...initialState,
-				currentKey: generatedKeys[0],
+				currentAddress: addresses[0],
 				error: null,
 				initialized: true,
 				isSyncing: true,
-				keys: generatedKeys
+				addresses: addresses
 			};
 			const error = new Error("sync failed");
 
@@ -212,7 +212,7 @@ describe("walletStore", async () => {
 	});
 
 	describe("Wallet store services", () => {
-		const currentKey = generatedKeys[0];
+		const currentAddress = addresses[0];
 
 		afterEach(() => {
 			walletStore.reset();
@@ -241,15 +241,15 @@ describe("walletStore", async () => {
 
 			expect(get(walletStore)).toStrictEqual({
 				...initialState,
-				currentKey: generatedKeys[0],
+				currentAddress: addresses[0],
 				error: null,
 				initialized: true,
 				isSyncing: true,
-				keys: generatedKeys
+				addresses: addresses
 			});
 			expect(getPsksSpy).toHaveBeenCalledTimes(1);
 			expect(getBalanceSpy).toHaveBeenCalledTimes(1);
-			expect(getBalanceSpy).toHaveBeenCalledWith(generatedKeys[0]);
+			expect(getBalanceSpy).toHaveBeenCalledWith(addresses[0]);
 			expect(syncSpy).toHaveBeenCalledTimes(1);
 
 			await vi.advanceTimersToNextTimerAsync();
@@ -262,7 +262,7 @@ describe("walletStore", async () => {
 
 			expect(syncSpy).toHaveBeenCalledTimes(1);
 			expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
-			expect(stakeInfoSpy).toHaveBeenCalledWith(currentKey);
+			expect(stakeInfoSpy).toHaveBeenCalledWith(currentAddress);
 			expect(syncSpy.mock.invocationCallOrder[0])
 				.toBeLessThan(stakeInfoSpy.mock.invocationCallOrder[0]);
 		});
@@ -283,7 +283,7 @@ describe("walletStore", async () => {
 
 			expect(syncSpy).toHaveBeenCalledTimes(1);
 			expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
-			expect(stakeInfoSpy).toHaveBeenCalledWith(currentKey);
+			expect(stakeInfoSpy).toHaveBeenCalledWith(currentAddress);
 			expect(syncSpy.mock.invocationCallOrder[0])
 				.toBeLessThan(stakeInfoSpy.mock.invocationCallOrder[0]);
 			expect(result).toStrictEqual(expected);
@@ -294,7 +294,7 @@ describe("walletStore", async () => {
 
 			expect(syncSpy).toHaveBeenCalledTimes(1);
 			expect(historySpy).toHaveBeenCalledTimes(1);
-			expect(historySpy).toHaveBeenCalledWith(currentKey);
+			expect(historySpy).toHaveBeenCalledWith(currentAddress);
 			expect(syncSpy.mock.invocationCallOrder[0])
 				.toBeLessThan(historySpy.mock.invocationCallOrder[0]);
 		});
@@ -307,24 +307,24 @@ describe("walletStore", async () => {
 			expect(result).toStrictEqual(transactions);
 		});
 
-		it("should expose a method to set the current key", async () => {
-			const setCurrentKeySpy = vi.spyOn(walletStore, "setCurrentKey");
+		it("should expose a method to set the current address", async () => {
+			const setCurrentAddressSpy = vi.spyOn(walletStore, "setCurrentAddress");
 
-			await walletStore.setCurrentKey(generatedKeys[1]);
+			await walletStore.setCurrentAddress(addresses[1]);
 
 			expect(syncSpy).toHaveBeenCalledTimes(1);
-			expect(get(walletStore).currentKey).toBe(generatedKeys[1]);
-			expect(setCurrentKeySpy.mock.invocationCallOrder[0])
+			expect(get(walletStore).currentAddress).toBe(addresses[1]);
+			expect(setCurrentAddressSpy.mock.invocationCallOrder[0])
 				.toBeLessThan(syncSpy.mock.invocationCallOrder[0]);
 
-			setCurrentKeySpy.mockRestore();
+			setCurrentAddressSpy.mockRestore();
 		});
 
-		it("should return a rejected promise if the new key is not in the list", () => {
-			expect(walletStore.setCurrentKey("foo bar")).rejects.toThrow();
+		it("should return a rejected promise if the new address is not in the list", () => {
+			expect(walletStore.setCurrentAddress("foo bar")).rejects.toThrow();
 
 			expect(syncSpy).not.toHaveBeenCalled();
-			expect(get(walletStore).currentKey).toBe(currentKey);
+			expect(get(walletStore).currentAddress).toBe(currentAddress);
 		});
 
 		it("should expose a method to allow to stake an amount of Dusk", async () => {
@@ -332,7 +332,7 @@ describe("walletStore", async () => {
 
 			expect(syncSpy).toHaveBeenCalledTimes(2);
 			expect(stakeSpy).toHaveBeenCalledTimes(1);
-			expect(stakeSpy).toHaveBeenCalledWith(currentKey, 10);
+			expect(stakeSpy).toHaveBeenCalledWith(currentAddress, 10);
 			expect(syncSpy.mock.invocationCallOrder[0])
 				.toBeLessThan(stakeSpy.mock.invocationCallOrder[0]);
 			expect(syncSpy.mock.invocationCallOrder[1])
@@ -340,23 +340,23 @@ describe("walletStore", async () => {
 		});
 
 		it("should expose a method to allow to transfer an amount of Dusk", async () => {
-			await walletStore.transfer(generatedKeys[1], 10);
+			await walletStore.transfer(addresses[1], 10);
 
 			expect(syncSpy).toHaveBeenCalledTimes(2);
 			expect(transferSpy).toHaveBeenCalledTimes(1);
-			expect(transferSpy).toHaveBeenCalledWith(currentKey, generatedKeys[1], 10);
+			expect(transferSpy).toHaveBeenCalledWith(currentAddress, addresses[1], 10);
 			expect(syncSpy.mock.invocationCallOrder[0])
 				.toBeLessThan(transferSpy.mock.invocationCallOrder[0]);
 			expect(syncSpy.mock.invocationCallOrder[1])
 				.toBeGreaterThan(transferSpy.mock.invocationCallOrder[0]);
 		});
 
-		it("should expose a method to allow to unstake the current key", async () => {
+		it("should expose a method to allow to unstake the current address", async () => {
 			await walletStore.unstake();
 
 			expect(syncSpy).toHaveBeenCalledTimes(2);
 			expect(unstakeSpy).toHaveBeenCalledTimes(1);
-			expect(unstakeSpy).toHaveBeenCalledWith(currentKey);
+			expect(unstakeSpy).toHaveBeenCalledWith(currentAddress);
 			expect(syncSpy.mock.invocationCallOrder[0])
 				.toBeLessThan(unstakeSpy.mock.invocationCallOrder[0]);
 			expect(syncSpy.mock.invocationCallOrder[1])
@@ -368,7 +368,7 @@ describe("walletStore", async () => {
 
 			expect(syncSpy).toHaveBeenCalledTimes(2);
 			expect(withdrawRewardSpy).toHaveBeenCalledTimes(1);
-			expect(withdrawRewardSpy).toHaveBeenCalledWith(currentKey);
+			expect(withdrawRewardSpy).toHaveBeenCalledWith(currentAddress);
 			expect(syncSpy.mock.invocationCallOrder[0])
 				.toBeLessThan(withdrawRewardSpy.mock.invocationCallOrder[0]);
 			expect(syncSpy.mock.invocationCallOrder[1])

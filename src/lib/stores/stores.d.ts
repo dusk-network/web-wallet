@@ -10,10 +10,10 @@ type WalletStoreContent = {
 		maximum: number;
 		value: number;
 	};
-	currentKey: string;
+	currentAddress: string;
 	error: Error | null;
 	initialized: boolean;
-	keys: string[];
+	addresses: string[];
 	isSyncing: boolean;
 };
 
@@ -31,7 +31,7 @@ type WalletStoreServices = {
 
 	reset: () => void;
 
-	setCurrentKey: (key: string) => Promise<void>;
+	setCurrentAddress: (address: string) => Promise<void>;
 
 	stake: (amount: number) => Promise<any> & ReturnType<Wallet["stake"]>;
 

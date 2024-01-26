@@ -14,21 +14,21 @@
 
 	import Overlay from "./Overlay.svelte";
 
-	import "./KeyPicker.css";
+	import "./AddressPicker.css";
 
 	/** @type {string} */
-	export let currentKey;
+	export let currentAddress;
 
 	/** @type {string[]} */
-	export let keys = [currentKey];
+	export let addresses = [currentAddress];
 
 	/** @type {boolean} */
-	export let generatingKey = false;
+	export let isAddingAddress = false;
 
 	/** @type {string|undefined} */
 	export let className = undefined;
 
-	$: classes = makeClassName(["key-picker", className]);
+	$: classes = makeClassName(["address-picker", className]);
 
 	const dispatch = createEventDispatcher();
 
@@ -42,9 +42,9 @@
 		expanded = false;
 	}
 
-	// Scrolls the key options menu to top on keys change
-	$: if (keys && keyOptionsMenu) {
-		keyOptionsMenu.scrollTo(0, 0);
+	// Scrolls the address options menu to top on addresses change
+	$: if (addresses && addressOptionsMenu) {
+		addressOptionsMenu.scrollTo(0, 0);
 	}
 
 	/** @type {import("svelte/elements").KeyboardEventHandler<HTMLDivElement>} */
@@ -74,7 +74,7 @@
 	});
 
 	/** @type {HTMLMenuElement} */
-	let keyOptionsMenu;
+	let addressOptionsMenu;
 </script>
 
 {#if expanded}
@@ -84,10 +84,10 @@
 <div
 	use:handlePageClick={{ callback: closeDropDown, enabled: expanded }}
 	class={classes}
-	class:key-picker--expanded={expanded}>
+	class:address-picker--expanded={expanded}>
 
 	<div
-		class="key-picker__trigger"
+		class="address-picker__trigger"
 		role="button"
 		tabindex="0"
 		aria-haspopup="true"
@@ -96,17 +96,17 @@
 		<CircularIcon color="var(--background-color)" bgColor="var(--primary-color)">
 			<Icon path={mdiSwapHorizontal} size="large"/>
 		</CircularIcon>
-		<p class="key-picker__current-key">{middleEllipsis(
-			currentKey,
+		<p class="address-picker__current-address">{middleEllipsis(
+			currentAddress,
 			calculateAdaptiveCharCount(screenWidth)
 		)}</p>
-		<span class="key-picker__copy-key-button-wrapper">
+		<span class="address-picker__copy-address-button-wrapper">
 			<Button
-				aria-label="Copy Key"
-				className="key-picker__copy-key-button"
+				aria-label="Copy Address"
+				className="address-picker__copy-address-button"
 				icon={{ path: mdiContentCopy }}
 				on:click={() => {
-					navigator.clipboard.writeText(currentKey);
+					navigator.clipboard.writeText(currentAddress);
 					toast("success", "Address copied", mdiContentCopy);
 				}}
 				variant="text"
@@ -115,42 +115,42 @@
 	</div>
 
 	{#if expanded}
-		<div class="key-picker__drop-down">
+		<div class="address-picker__drop-down">
 			<hr/>
-			<menu class="key-picker__key-options" bind:this={keyOptionsMenu}>
-				{#each keys as key (key)}
+			<menu class="address-picker__address-options" bind:this={addressOptionsMenu}>
+				{#each addresses as address (address)}
 					<li
-						class="key-picker__key"
-						class:key-picker__key--selected={key === currentKey}>
+						class="address-picker__address"
+						class:address-picker__address--selected={address === currentAddress}>
 						<button
-							class="key-picker__key-option-button"
+							class="address-picker__address-option-button"
 							tabindex="0"
 							type="button"
 							role="menuitem"
 							on:click={() => {
-								currentKey = key;
+								currentAddress = address;
 								closeDropDown();
-							}}>{key}</button>
+							}}>{address}</button>
 					</li>
 				{/each}
 			</menu>
 			<hr/>
-			{#if generatingKey}
-				<div class="key-picker__generating-key-wrapper">
+			{#if isAddingAddress}
+				<div class="address-picker__generating-address-wrapper">
 					<Icon path={mdiTimerSand}/>
-					<p>Generating new <b>Key</b></p>
+					<p>Generating <b>Address</b></p>
 				</div>
 				<ProgressBar/>
 			{:else}
 				<Button
 					tabindex="0"
-					className="key-picker__generate-key-button"
+					className="address-picker__generate-address-button"
 					variant="secondary"
 					icon={{ path: mdiPlusBoxOutline }}
-					text="Generate Key"
-					on:click={async (event) => {
+					text="Generate Address"
+					on:click={(event) => {
 						event.preventDefault();
-						dispatch("generateKey");
+						dispatch("generateAddress");
 					}}/>
 			{/if}
 		</div>

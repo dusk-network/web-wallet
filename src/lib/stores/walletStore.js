@@ -21,15 +21,15 @@ const uniquesById = uniquesBy(getKey("id"));
 
 /** @type {import("./stores").WalletStoreContent} */
 const initialState = {
+	addresses: [],
 	balance: {
 		maximum: 0,
 		value: 0
 	},
-	currentKey: "",
+	currentAddress: "",
 	error: null,
 	initialized: false,
-	isSyncing: false,
-	keys: []
+	isSyncing: false
 };
 
 /* eslint-disable-next-line svelte/require-store-callbacks-use-set-param */
@@ -58,7 +58,7 @@ const fixStakeInfo = stakeInfo => ({
 	reward: stakeInfo.reward ?? 0
 });
 
-const getCurrentKey = () => get(walletStore).currentKey;
+const getCurrentAddress = () => get(walletStore).currentAddress;
 
 /** @type {(action: (...args: any[]) => Promise<any>) => Promise<void>} */
 const syncedAction = action => sync().then(action).finally(sync);
@@ -71,13 +71,13 @@ const clearLocalDataAndInit = wallet => wallet.reset().then(() => init(wallet));
 
 /** @type {import("./stores").WalletStoreServices["getStakeInfo"]} */
 // @ts-expect-error
-const getStakeInfo = async () => sync().then(() => walletInstance.stakeInfo(getCurrentKey()))
+const getStakeInfo = async () => sync().then(() => walletInstance.stakeInfo(getCurrentAddress()))
 	.then(fixStakeInfo);
 
 /** @type {GetTransactionsHistory} */
 
 // @ts-expect-error
-const getTransactionsHistory = async () => sync().then(() => walletInstance.history(getCurrentKey()))
+const getTransactionsHistory = async () => sync().then(() => walletInstance.history(getCurrentAddress()))
 	.then(uniquesById);
 
 function reset () {
@@ -89,7 +89,7 @@ async function updateAfterSync () {
 	const store = get(walletStore);
 
 	// @ts-expect-error
-	const balance = await walletInstance.getBalance(store.currentKey);
+	const balance = await walletInstance.getBalance(store.currentAddress);
 
 	set({
 		...store,
@@ -102,30 +102,31 @@ async function updateAfterSync () {
 async function init (wallet) {
 	walletInstance = wallet;
 
-	const keys = walletInstance.getPsks();
-	const currentKey = keys[0];
+	const addresses = walletInstance.getPsks();
+	const currentAddress = addresses[0];
 
 	set({
 		...initialState,
-		currentKey,
-		initialized: true,
-		keys
+		addresses,
+		currentAddress,
+		initialized: true
+
 	});
 	sync();
 }
 
-/** @type {import("./stores").WalletStoreServices["setCurrentKey"]} */
-async function setCurrentKey (key) {
+/** @type {import("./stores").WalletStoreServices["setCurrentAddress"]} */
+async function setCurrentAddress (address) {
 	const store = get(walletStore);
 
-	return store.keys.includes(key)
-		? Promise.resolve(set({ ...store, currentKey: key })).then(sync)
-		: Promise.reject(new Error("The received key is not in the list"));
+	return store.addresses.includes(address)
+		? Promise.resolve(set({ ...store, currentAddress: address })).then(sync)
+		: Promise.reject(new Error("The received address is not in the list"));
 }
 
 /** @type {import("./stores").WalletStoreServices["stake"]} */
 // @ts-expect-error
-const stake = async amount => syncedAction(() => walletInstance.stake(getCurrentKey(), amount));
+const stake = async amount => syncedAction(() => walletInstance.stake(getCurrentAddress(), amount));
 
 /** @type {import("./stores").WalletStoreServices["sync"]} */
 function sync () {
@@ -150,18 +151,18 @@ function sync () {
 /** @type {import("./stores").WalletStoreServices["transfer"]} */
 // @ts-expect-error
 const transfer = async (to, amount) => syncedAction(() => walletInstance.transfer(
-	getCurrentKey(),
+	getCurrentAddress(),
 	to,
 	amount
 ));
 
 /** @type {import("./stores").WalletStoreServices["unstake"]} */
 // @ts-expect-error
-const unstake = async () => syncedAction(() => walletInstance.unstake(getCurrentKey()));
+const unstake = async () => syncedAction(() => walletInstance.unstake(getCurrentAddress()));
 
 /** @type {import("./stores").WalletStoreServices["withdrawReward"]} */
 // @ts-expect-error
-const withdrawReward = async () => syncedAction(() => walletInstance.withdrawReward(getCurrentKey()));
+const withdrawReward = async () => syncedAction(() => walletInstance.withdrawReward(getCurrentAddress()));
 
 /** @type {import("./stores").WalletStore} */
 export default {
@@ -171,7 +172,7 @@ export default {
 	getTransactionsHistory,
 	init,
 	reset,
-	setCurrentKey,
+	setCurrentAddress,
 	stake,
 	subscribe,
 	sync,
