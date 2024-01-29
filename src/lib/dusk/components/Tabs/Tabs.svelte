@@ -205,9 +205,9 @@
 		bind:this={tabsList}
 		class="dusk-tabs-list"
 		on:scroll={updateScrollStatus}
-		on:touchmove|preventDefault={handleTouchMove}
-		on:touchstart={handleTouchStart}
-		on:wheel|preventDefault={handleWheel}
+		on:touchmove|passive={handleTouchMove}
+		on:touchstart|passive={handleTouchStart}
+		on:wheel|passive={handleWheel}
 		role="tablist"
 	>
 		{#each items as item (item.id)}
