@@ -119,8 +119,7 @@
 			<div
 				class="tabs__panel"
 				class:tabs__panel--first={selectedTab === enabledContracts[0].id}
-				class:tabs__panel--last={ enabledContracts.length > 1
-					&& selectedTab === last(enabledContracts).id}
+				class:tabs__panel--last={selectedTab === last(enabledContracts).id}
 			>
 				{#key selectedTab}
 					<div in:fade class="tabs__contract">
