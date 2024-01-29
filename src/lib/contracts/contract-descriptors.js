@@ -6,7 +6,7 @@
  * @type {ContractDescriptor[]}
  */
 export default [{
-	disabled: import.meta.env.VITE_CONTRACT_TRANSFER_ENABLED !== "true",
+	disabled: import.meta.env.VITE_CONTRACT_TRANSFER_DISABLED === "true",
 	id: "transfer",
 	label: "Transact",
 	operations: [{
@@ -21,7 +21,7 @@ export default [{
 		primary: false
 	}]
 }, {
-	disabled: import.meta.env.VITE_CONTRACT_STAKE_ENABLED !== "true",
+	disabled: import.meta.env.VITE_CONTRACT_STAKE_DISABLED === "true",
 	id: "staking",
 	label: "Stake",
 	operations: [{
