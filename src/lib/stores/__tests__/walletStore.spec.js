@@ -11,7 +11,7 @@ import { get } from "svelte/store";
 import { keys } from "lamb";
 import { Wallet } from "@dusk-network/dusk-wallet-js";
 
-import { transactions } from "$lib/mock-data";
+import { addresses, transactions } from "$lib/mock-data";
 
 import { settingsStore, walletStore } from "..";
 
@@ -19,12 +19,6 @@ vi.useFakeTimers();
 
 describe("walletStore", async () => {
 	const balance = { maximum: 100, value: 1 };
-	const addresses = [
-		"2087290d3dc213d43e493f03f5435f99",
-		"ffbee869aca5ff5ee13c2706e5d9779d",
-		"06527a34e1c91fc5785ea7764a0c34b1",
-		"f62d307103ca54516b29fcedd5463d16"
-	];
 	const wallet = new Wallet([]);
 
 	const getBalanceSpy = vi.spyOn(Wallet.prototype, "getBalance").mockResolvedValue(balance);
