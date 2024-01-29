@@ -34,6 +34,31 @@
 	}
 
 	/**
+	 * Returns the icon for the wizard button
+	 * It can be:
+	 * – The default icon for the
+	 * wizard button ("back" or "next"), based on the button,
+	 * if no icon is provided
+	 * – No icon at all, if the icon prop is set to "null"
+	 * - A custom icon, provided by the user
+	 * @param {WizardButtonProps | Undefined} buttonProps
+	 * @param {String} defaultIconPath
+	 * @param {Boolean} isNextButton
+	 * @returns {IconProp | Undefined}
+	 */
+	function getButtonIcon (buttonProps, defaultIconPath, isNextButton) {
+		if (buttonProps?.icon === null) {
+			return undefined;
+		}
+
+		return buttonProps?.icon ?? {
+			path: defaultIconPath,
+			position: isNextButton ? "after" : "before",
+			size: "normal"
+		};
+	}
+
+	/**
 	 * Returns the common props for the wizard buttons
 	 * @param {WizardButtonProps | Undefined} wizardButtonProps
 	 * @param {String} defaultLabel
@@ -44,8 +69,7 @@
 
 		return {
 			disabled: wizardButtonProps?.disabled ?? stepCondition,
-			icon: wizardButtonProps?.icon
-				?? { path: defaultIconPath, position: isNextButton ? "after" : "before", size: "normal" },
+			icon: getButtonIcon(wizardButtonProps, defaultIconPath, isNextButton),
 			text: wizardButtonProps?.label ?? defaultLabel,
 			variant: wizardButtonProps?.variant ?? "tertiary"
 		};
