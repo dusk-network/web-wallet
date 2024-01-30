@@ -73,7 +73,7 @@
 		textboxElement?.focus();
 	}
 
-	$: suggestions = currentInput && findFirstNMatches(enDictionary, currentInput, 3);
+	$: suggestions = currentInput && findFirstNMatches(enDictionary, currentInput.toLowerCase(), 3);
 
 	const pasteSeed = () => {
 		navigator.clipboard.readText()
