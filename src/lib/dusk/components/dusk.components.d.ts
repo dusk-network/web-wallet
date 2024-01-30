@@ -15,7 +15,7 @@ type WizardButtonProps = {
 	isAnchor?: boolean,
 	href?: string,
 	disabled?: boolean,
-	icon?: IconProp,
+	icon?: IconProp | null,
 	variant?: ButtonVariant,
 	label?: string,
 	action?: () => void,
