@@ -8,13 +8,20 @@ import {
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { GasSettings } from "..";
+import { get } from "svelte/store";
+import { settingsStore } from "$lib/stores";
+import { createCurrencyFormatter } from "$lib/dusk/currency";
 
 describe("GasSettings", () => {
+	const settings = get(settingsStore);
+	const duskFormatter = createCurrencyFormatter(settings.language, "DUSK", 9);
+	const fee = duskFormatter(settings.gasPrice * settings.gasLimit * 0.000000001);
+
 	const baseProps = {
+		fee: fee,
 		limit: 20000000,
 		limitLower: 10000000,
 		limitUpper: 1000000000,
-		locale: "it",
 		price: 1,
 		priceLower: 1
 	};

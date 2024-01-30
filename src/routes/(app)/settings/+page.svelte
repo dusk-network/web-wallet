@@ -49,7 +49,6 @@
 		gasLimitUpper,
 		gasPrice,
 		gasPriceLower,
-		language,
 		network
 	} = $settingsStore;
 	const networks = [
@@ -145,7 +144,6 @@
 					limit={gasLimit}
 					limitLower={gasLimitLower}
 					limitUpper={gasLimitUpper}
-					locale={language}
 					price={gasPrice}
 					priceLower={gasPriceLower}
 				/>

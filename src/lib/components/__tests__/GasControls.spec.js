@@ -30,7 +30,6 @@ describe("GasControls", () => {
 		limit: 20,
 		limitLower: 10,
 		limitUpper: 100,
-		locale: "it",
 		price: 10,
 		priceLower: 1
 	};
@@ -61,12 +60,9 @@ describe("GasControls", () => {
 	it("should dispatch a \"setGasSettings\" event when the price or the limit are changed", async () => {
 		const { component, getByLabelText } = render(GasControls, baseOptions);
 		const priceInput = asInput(getByLabelText(/price/i));
-		const priceLabel = priceInput.previousElementSibling;
 		const limitInput = asInput(getByLabelText(/limit/i));
 
 		component.$on("setGasSettings", eventHandler);
-
-		expect(priceLabel).toHaveTextContent(new RegExp(`${baseProps.limit}\\)$`));
 
 		await fireInput(priceInput, 15);
 
@@ -85,7 +81,6 @@ describe("GasControls", () => {
 			price: 15
 		});
 		expect(limitInput.valueAsNumber).toBe(25);
-		expect(priceLabel).toHaveTextContent(/25\)/);
 		expect(priceInput.max).toBe("25");
 	});
 
@@ -140,16 +135,11 @@ describe("GasControls", () => {
 	it("should convert the inputted limit to integer, clamp it within its limits, dispatch the event and update the viewed value on blur", async () => {
 		const { component, getByLabelText } = render(GasControls, baseOptions);
 		const priceInput = asInput(getByLabelText(/price/i));
-		const priceLabel = priceInput.previousElementSibling;
 		const limitInput = asInput(getByLabelText(/limit/i));
 		const expectedLimit1 = baseProps.limitLower;
 		const expectedLimit2 = baseProps.limitUpper;
-		const expectedLabelPattern1 = new RegExp(`${expectedLimit1}\\)$`);
-		const expectedLabelPattern2 = new RegExp(`${expectedLimit2}\\)$`);
 
 		component.$on("setGasSettings", eventHandler);
-
-		expect(priceLabel).toHaveTextContent(new RegExp(`${baseProps.limit}\\)$`));
 
 		await fireInput(limitInput, "foo");
 
@@ -160,7 +150,6 @@ describe("GasControls", () => {
 		});
 		expect(limitInput.valueAsNumber).toBeNaN();
 		expect(priceInput.max).toBe(expectedLimit1.toString());
-		expect(priceLabel).toHaveTextContent(expectedLabelPattern1);
 
 		await fireEvent.blur(limitInput);
 
@@ -175,7 +164,6 @@ describe("GasControls", () => {
 		});
 		expect(limitInput.valueAsNumber).toBe(0);
 		expect(priceInput.max).toBe(expectedLimit1.toString());
-		expect(priceLabel).toHaveTextContent(expectedLabelPattern1);
 
 		await fireEvent.blur(limitInput);
 
@@ -190,7 +178,6 @@ describe("GasControls", () => {
 		});
 		expect(limitInput.valueAsNumber).toBe(baseProps.limitUpper * 2);
 		expect(priceInput.max).toBe(expectedLimit2.toString());
-		expect(priceLabel).toHaveTextContent(expectedLabelPattern2);
 
 		await fireEvent.blur(limitInput);
 
@@ -204,13 +191,9 @@ describe("GasControls", () => {
 		};
 		const { component, getByLabelText } = render(GasControls, { ...baseOptions, props });
 		const priceInput = asInput(getByLabelText(/price/i));
-		const priceLabel = priceInput.previousElementSibling;
 		const limitInput = asInput(getByLabelText(/limit/i));
-		const expectedLabelPattern = new RegExp(`${props.limitLower}\\)$`);
 
 		component.$on("setGasSettings", eventHandler);
-
-		expect(priceLabel).toHaveTextContent(new RegExp(`${baseProps.limit}\\)$`));
 
 		await fireInput(limitInput, props.limitLower);
 
@@ -222,7 +205,6 @@ describe("GasControls", () => {
 		expect(limitInput.valueAsNumber).toBe(props.limitLower);
 		expect(priceInput.valueAsNumber).toBe(props.limitLower);
 		expect(priceInput.max).toBe(props.limitLower.toString());
-		expect(priceLabel).toHaveTextContent(expectedLabelPattern);
 
 		await fireEvent.blur(limitInput);
 

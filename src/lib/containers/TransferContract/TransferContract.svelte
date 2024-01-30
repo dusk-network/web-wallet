@@ -36,7 +36,6 @@
 		pick(["gasLimit", "gasLimitLower", "gasLimitUpper", "gasPrice", "gasPriceLower"]),
 		getKey("language")
 	]);
-
 	const isEnabledSend = allOf([
 		hasKeyValue("disabled", false),
 		hasKeyValue("id", "send")
@@ -68,16 +67,17 @@
 		descriptor.operations,
 		when(isEnabledSend, setKey("disabled", isSyncing || !!error))
 	);
+	$: fee = duskFormatter(gasSettings.gasLimit * gasSettings.gasPrice * 1e-9);
 </script>
 
 {#if currentOperation === "send"}
 	<Send
 		execute={executeSend}
+		{fee}
 		formatter={duskFormatter}
 		{gasSettings}
 		on:operationChange
 		on:setGasSettings
-		{language}
 		spendable={balance.maximum}
 		{statuses}
 	/>

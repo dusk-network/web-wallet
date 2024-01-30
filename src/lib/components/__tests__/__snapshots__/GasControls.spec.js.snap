@@ -8,12 +8,7 @@ exports[`GasControls > should render the \`GasControls\` component 1`] = `
     <span
       class="gas-control__label s-POS_LBjGgkOM"
     >
-      Price (in Lux, integers between 
-      1
-      
-		and 
-      20
-      )
+      Price: (lux)
     </span>
      
     <input
@@ -33,12 +28,7 @@ exports[`GasControls > should render the \`GasControls\` component 1`] = `
     <span
       class="gas-control__label s-POS_LBjGgkOM"
     >
-      Limit (integers between 
-      10
-      
-		and 
-      100
-      )
+      Gas Limit: (unit)
     </span>
      
     <input

@@ -15,9 +15,9 @@
 		Wizard,
 		WizardStep
 	} from "$lib/dusk/components";
-
 	import {
 		ContractStatusesList,
+		GasFee,
 		GasSettings,
 		OperationResult,
 		ScanQR
@@ -26,14 +26,14 @@
 	/** @type {(to: string, amount: number) => Promise<string>} */
 	export let execute;
 
+	/** @type {string} */
+	export let fee;
+
 	/** @type {(amount: number) => string} */
 	export let formatter;
 
 	/** @type {ContractGasSettings} */
 	export let gasSettings;
-
-	/** @type {string} */
-	export let language;
 
 	/** @type {number} */
 	export let spendable;
@@ -117,6 +117,16 @@
 						path={logo}
 					/>
 				</div>
+
+				<GasSettings
+					{fee}
+					limit={gasSettings.gasLimit}
+					limitLower={gasSettings.gasLimitLower}
+					limitUpper={gasSettings.gasLimitUpper}
+					price={gasSettings.gasPrice}
+					priceLower={gasSettings.gasPriceLower}
+					on:setGasSettings
+				/>
 			</div>
 		</WizardStep>
 		<WizardStep
@@ -196,15 +206,8 @@
 						<span>{address}</span>
 					</dd>
 				</dl>
-				<GasSettings
-					limit={gasSettings.gasLimit}
-					limitLower={gasSettings.gasLimitLower}
-					limitUpper={gasSettings.gasLimitUpper}
-					locale={language}
-					price={gasSettings.gasPrice}
-					priceLower={gasSettings.gasPriceLower}
-					on:setGasSettings
-				/>
+
+				<GasFee {fee}/>
 			</div>
 		</WizardStep>
 		<WizardStep step={3} {key} showNavigation={false}>

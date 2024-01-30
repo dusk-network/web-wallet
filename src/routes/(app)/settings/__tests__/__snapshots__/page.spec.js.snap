@@ -205,12 +205,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
             <span
               class="gas-control__label s-POS_LBjGgkOM"
             >
-              Price (in Lux, integers between 
-              1
-              
-		and 
-              20,000,000
-              )
+              Price: (lux)
             </span>
              
             <input
@@ -230,12 +225,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
             <span
               class="gas-control__label s-POS_LBjGgkOM"
             >
-              Limit (integers between 
-              10,000,000
-              
-		and 
-              1,000,000,000
-              )
+              Gas Limit: (unit)
             </span>
              
             <input
@@ -921,12 +911,7 @@ exports[`Settings > should render the settings page 1`] = `
             <span
               class="gas-control__label s-POS_LBjGgkOM"
             >
-              Price (in Lux, integers between 
-              1
-              
-		and 
-              20,000,000
-              )
+              Price: (lux)
             </span>
              
             <input
@@ -946,12 +931,7 @@ exports[`Settings > should render the settings page 1`] = `
             <span
               class="gas-control__label s-POS_LBjGgkOM"
             >
-              Limit (integers between 
-              10,000,000
-              
-		and 
-              1,000,000,000
-              )
+              Gas Limit: (unit)
             </span>
              
             <input

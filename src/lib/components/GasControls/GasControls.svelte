@@ -21,9 +21,6 @@
 	/** @type {Number} */
 	export let limitUpper;
 
-	/** @type {String} A BCP 47 language tag */
-	export let locale;
-
 	/** @type {Number} */
 	export let price;
 
@@ -31,7 +28,6 @@
 	export let priceLower;
 
 	const dispatch = createEventDispatcher();
-	const formatter = new Intl.NumberFormat(locale);
 
 	// browsers may allow input of invalid characters
 	const toNumber = compose(when(isNaN, always(0)), n => parseInt(n, 10));
@@ -66,8 +62,7 @@
 
 <label for={undefined} class="gas-control">
 	<span class="gas-control__label">
-		Price (in Lux, integers between {formatter.format(priceLower)}
-		and {formatter.format(toValidLimit(limit))})
+		Price: (lux)
 	</span>
 	<Textbox
 		bind:value={price}
@@ -83,8 +78,7 @@
 
 <label for={undefined} class="gas-control">
 	<span class="gas-control__label">
-		Limit (integers between {formatter.format(limitLower)}
-		and {formatter.format(limitUpper)})
+		Gas Limit: (unit)
 	</span>
 	<Textbox
 		bind:value={limit}
