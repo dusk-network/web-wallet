@@ -103,7 +103,7 @@
 				{/if}
 				<Button variant="secondary" text="Unlock Wallet" type="submit"/>
 				{#if modeLabel === "Password"}
-					<AnchorButton variant="text" href="/setup/restore" text="Forgot Password?"/>
+					<AnchorButton variant="quaternary" href="/setup/restore" text="Forgot Password?"/>
 				{/if}
 			</form>
 		</Card>

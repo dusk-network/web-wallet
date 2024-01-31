@@ -79,11 +79,11 @@
 						data-tooltip-text="Retry synchronization"
 						icon={{ path: mdiRestore, size: "large" }}
 						on:click={() => { walletStore.sync(); }}
-						variant="text"
+						variant="quaternary"
 					/>
 				{/if}
 				<AnchorButton
-					variant="text"
+					variant="quaternary"
 					className="footer__anchor-button"
 					icon={{ path: mdiCogOutline, size: "large" }}
 					href="/settings"

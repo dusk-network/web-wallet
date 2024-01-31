@@ -93,21 +93,21 @@
 		href="http://example.com"
 		icon={{ path: mdiHome }}
 		text="Anchor text"
-		variant="text"
+		variant="quaternary"
 	/>
 	<AnchorButton
 		disabled={true}
 		href="http://example.com"
 		icon={{ path: mdiHome }}
 		text="Anchor text"
-		variant="text"
+		variant="quaternary"
 	/>
 	<AnchorButton
 		href="http://example.com"
 		icon={{ path: mdiHome }}
 		size="small"
 		text="Anchor text"
-		variant="text"
+		variant="quaternary"
 	/>
 	<AnchorButton
 		disabled={true}
@@ -115,31 +115,31 @@
 		icon={{ path: mdiHome }}
 		size="small"
 		text="Anchor text"
-		variant="text"
+		variant="quaternary"
 	/>
 	<AnchorButton
 		href="http://example.com"
 		icon={{ path: mdiHome }}
-		variant="text"
-	/>
-	<AnchorButton
-		disabled={true}
-		href="http://example.com"
-		icon={{ path: mdiHome }}
-		variant="text"
-	/>
-	<AnchorButton
-		href="http://example.com"
-		icon={{ path: mdiHome }}
-		size="small"
-		variant="text"
+		variant="quaternary"
 	/>
 	<AnchorButton
 		disabled={true}
 		href="http://example.com"
 		icon={{ path: mdiHome }}
+		variant="quaternary"
+	/>
+	<AnchorButton
+		href="http://example.com"
+		icon={{ path: mdiHome }}
 		size="small"
-		variant="text"
+		variant="quaternary"
+	/>
+	<AnchorButton
+		disabled={true}
+		href="http://example.com"
+		icon={{ path: mdiHome }}
+		size="small"
+		variant="quaternary"
 	/>
 </section>
 <section>
@@ -152,11 +152,11 @@
 		href="http://example.com"
 		text="Anchor text"
 		icon={{ path: mdiHome, size: "large" }}
-		variant="text"
+		variant="quaternary"
 	/>
 	<AnchorButton
 		href="http://example.com"
 		icon={{ path: mdiHome, size: "large" }}
-		variant="text"
+		variant="quaternary"
 	/>
 </section>
