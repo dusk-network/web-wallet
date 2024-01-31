@@ -65,33 +65,33 @@
 <section>
 	<Button
 		icon={{ path: mdiHome }}
-		variant="text"
+		variant="quaternary"
 	/>
 	<Button
 		disabled={true}
 		icon={{ path: mdiHome }}
-		variant="text"
+		variant="quaternary"
 	/>
 	<Button
 		icon={{ path: mdiHome }}
 		size="small"
-		variant="text"
+		variant="quaternary"
 	/>
 	<Button
 		disabled={true}
 		icon={{ path: mdiHome }}
 		size="small"
-		variant="text"
+		variant="quaternary"
 	/>
 </section>
 <section>
 	<Button
 		icon={{ path: mdiHome, size: "large" }}
-		variant="text"
+		variant="quaternary"
 	/>
 	<Button
 		disabled={true}
 		icon={{ path: mdiHome, size: "large" }}
-		variant="text"
+		variant="quaternary"
 	/>
 </section>

@@ -109,7 +109,7 @@
 					navigator.clipboard.writeText(currentAddress);
 					toast("success", "Address copied", mdiContentCopy);
 				}}
-				variant="text"
+				variant="quaternary"
 			/>
 		</span>
 	</div>

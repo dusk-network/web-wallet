@@ -41,8 +41,8 @@
 	transform: scale(.98, .98);
 }
 
-.dusk-button--variant--text.dusk-icon-button:not(.dusk-icon-button-labeled):enabled:hover,
-.dusk-icon-button:not(.dusk-icon-button-labeled).dusk-anchor-button--variant--text:not(.dusk-anchor-button--disabled):hover {
+.dusk-button--variant--quaternary.dusk-icon-button:not(.dusk-icon-button-labeled):enabled:hover,
+.dusk-icon-button:not(.dusk-icon-button-labeled).dusk-anchor-button--variant--quaternary:not(.dusk-anchor-button--disabled):hover {
 	transform: scale(1.2, 1.2);
 }
 
@@ -118,8 +118,8 @@
 	color: var(--control-tertiary-text-color-hover);
 }
 
-.dusk-button--variant--text,
-.dusk-anchor-button.dusk-anchor-button--variant--text {
+.dusk-button--variant--quaternary,
+.dusk-anchor-button.dusk-anchor-button--variant--quaternary {
 	background-color: transparent;
 	border-color: transparent;
 	color: var(--control-text-color);
@@ -130,9 +130,9 @@
 	line-height: 1.5;
 }
 
-.dusk-button--variant--text:enabled:hover,
-.dusk-anchor-button--variant--text:not(.dusk-anchor-button--disabled):hover,
-.dusk-anchor-button--variant--text:not(.dusk-anchor-button--disabled):active  {
+.dusk-button--variant--quaternary:enabled:hover,
+.dusk-anchor-button--variant--quaternary:not(.dusk-anchor-button--disabled):hover,
+.dusk-anchor-button--variant--quaternary:not(.dusk-anchor-button--disabled):active  {
 	background-color: inherit;
 	color: var(--secondary-color);
 }
