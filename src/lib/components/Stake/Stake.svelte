@@ -17,6 +17,7 @@
 	} from "$lib/dusk/components";
 	import {
 		ContractStatusesList,
+		GasFee,
 		GasSettings,
 		OperationResult
 	} from "$lib/components";
@@ -26,6 +27,9 @@
 	/** @type {(...args: any[]) => Promise<string>} */
 	export let execute;
 
+	/** @type {string} */
+	export let fee;
+
 	/** @type {StakeType} */
 	export let flow;
 
@@ -34,9 +38,6 @@
 
 	/** @type {ContractGasSettings} */
 	export let gasSettings;
-
-	/** @type {string} */
-	export let language;
 
 	/** @type {number} */
 	export let rewards;
@@ -128,6 +129,16 @@
 						path={logo}
 					/>
 				</div>
+
+				<GasSettings
+					{fee}
+					limit={gasSettings.gasLimit}
+					limitLower={gasSettings.gasLimitLower}
+					limitUpper={gasSettings.gasLimitUpper}
+					price={gasSettings.gasPrice}
+					priceLower={gasSettings.gasPriceLower}
+					on:setGasSettings
+				/>
 			</WizardStep>
 		{/if}
 
@@ -159,15 +170,21 @@
 					label={overviewLabels[flow]}
 					value={formatter(stakeAmount)}
 				/>
-				<GasSettings
-					limit={gasSettings.gasLimit}
-					limitLower={gasSettings.gasLimitLower}
-					limitUpper={gasSettings.gasLimitUpper}
-					locale={language}
-					price={gasSettings.gasPrice}
-					priceLower={gasSettings.gasPriceLower}
-					on:setGasSettings
-				/>
+
+				{#if flow === "stake"}
+					<GasFee {fee}/>
+				{:else}
+					<GasSettings
+						{fee}
+						limit={gasSettings.gasLimit}
+						limitLower={gasSettings.gasLimitLower}
+						limitUpper={gasSettings.gasLimitUpper}
+						price={gasSettings.gasPrice}
+						priceLower={gasSettings.gasPriceLower}
+						on:setGasSettings
+					/>
+				{/if}
+
 			</div>
 		</WizardStep>
 

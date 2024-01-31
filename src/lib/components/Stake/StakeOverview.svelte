@@ -39,6 +39,10 @@
 			display: inline-flex;
 			align-items: center;
 			gap: var(--small-gap);
+
+			& > span {
+				font-weight: 600;
+			}
 		}
 
 		:global(&__icon) {

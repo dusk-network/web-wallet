@@ -16,18 +16,19 @@ describe("Stake", () => {
 
 	const baseProps = {
 		execute: vi.fn().mockResolvedValue(lastTxId),
+		fee: (1 * 20000000 * 0.000000001).toString(),
 
 		/** @type {StakeType} */
 		flow: "stake",
 		formatter,
 		gasSettings: {
+			fee: (1 * 20000000 * 0.000000001).toString(),
 			gasLimit: 20000000,
 			gasLimitLower: 10000000,
 			gasLimitUpper: 1000000000,
 			gasPrice: 1,
 			gasPriceLower: 1
 		},
-		language: "it",
 		rewards: 345,
 		spendable: 1000,
 		staked: 278,
