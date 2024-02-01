@@ -5,6 +5,8 @@
 	import { createEventDispatcher, onMount } from "svelte";
 	import { mdiArrowUpBoldBoxOutline, mdiWalletOutline } from "@mdi/js";
 
+	import { deductLuxFeeFrom } from "$lib/contracts";
+	import { luxToDusk } from "$lib/dusk/currency";
 	import { logo } from "$lib/dusk/icons";
 	import {
 		AnchorButton,
@@ -25,9 +27,6 @@
 
 	/** @type {(to: string, amount: number) => Promise<string>} */
 	export let execute;
-
-	/** @type {string} */
-	export let fee;
 
 	/** @type {(amount: number) => string} */
 	export let formatter;
@@ -67,7 +66,12 @@
 
 	onMount(() => {
 		amountInput = document.querySelector(".operation__input-field");
+		checkAmountValid();
 	});
+
+	$: luxFee = gasSettings.gasLimit * gasSettings.gasPrice;
+	$: fee = formatter(luxToDusk(luxFee));
+	$: maxSpendable = deductLuxFeeFrom(spendable, luxFee);
 </script>
 
 <div class="operation">
@@ -90,10 +94,10 @@
 						variant="tertiary"
 						on:click={() => {
 							if (amountInput) {
-								amountInput.value = spendable.toString();
+								amountInput.value = maxSpendable.toString();
 							}
 
-							amount = spendable;
+							amount = maxSpendable;
 							checkAmountValid();
 						}}
 						text="USE MAX"
@@ -107,7 +111,7 @@
 						required
 						type="number"
 						min={0.000000001}
-						max={spendable}
+						max={maxSpendable}
 						step="0.000000001"
 						on:input={checkAmountValid}
 					/>

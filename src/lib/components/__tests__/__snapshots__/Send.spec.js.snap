@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Send > renders the Send component Address step 1`] = `
+exports[`Send > Address step > should render the Send component Address step 1`] = `
 <div>
   <div
     class="operation s-m9vn8aRVZTU1"
@@ -183,7 +183,7 @@ exports[`Send > renders the Send component Address step 1`] = `
 </div>
 `;
 
-exports[`Send > renders the Send component Amount step 1`] = `
+exports[`Send > Amount step > should render the Send component Amount step 1`] = `
 <div>
   <div
     class="operation s-m9vn8aRVZTU1"
@@ -259,7 +259,7 @@ exports[`Send > renders the Send component Amount step 1`] = `
         >
           <input
             class="dusk-textbox dusk-textbox-number operation__input-field"
-            max="1000"
+            max="999.98"
             min="1e-9"
             required=""
             step="0.000000001"
@@ -304,7 +304,7 @@ exports[`Send > renders the Send component Amount step 1`] = `
                 <span
                   class="gas-fee__amount-value s-IvXTyNf8Mc_c"
                 >
-                  0.02
+                  0.020000000
                 </span>
                  
                 <svg
@@ -416,7 +416,7 @@ exports[`Send > renders the Send component Amount step 1`] = `
 </div>
 `;
 
-exports[`Send > renders the Send component Review step 1`] = `
+exports[`Send > Review step > should render the Send component Review step 1`] = `
 <div>
   <div
     class="operation s-m9vn8aRVZTU1"
@@ -510,7 +510,7 @@ exports[`Send > renders the Send component Review step 1`] = `
             <span
               class="s-m9vn8aRVZTU1"
             >
-              1
+              2,345.000000000
             </span>
              
             <svg
@@ -560,7 +560,7 @@ exports[`Send > renders the Send component Review step 1`] = `
             <span
               class="s-m9vn8aRVZTU1"
             >
-              
+              aB5rL7yC2zK9eV3xH1gQ6fP4jD8sM0iU2oX7wG9nZ8lT3hU4jP5mK8nS6qJ3wF4aA9bB2cC5dD8eE7
             </span>
           </dd>
         </dl>
@@ -580,7 +580,7 @@ exports[`Send > renders the Send component Review step 1`] = `
             <span
               class="gas-fee__amount-value s-IvXTyNf8Mc_c"
             >
-              0.02
+              0.020000000
             </span>
              
             <svg

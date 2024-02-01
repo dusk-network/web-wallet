@@ -112,7 +112,7 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
         <span
           class="dusk-button__text"
         >
-          SAVE
+          CLOSE
         </span>
       </button>
       <!--&lt;Button&gt;-->
