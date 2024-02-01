@@ -38,7 +38,7 @@
 				on:click={() => {
 					isExpanded = !isExpanded;
 				}}
-				text={isExpanded ? "SAVE" : "EDIT"}
+				text={isExpanded ? "CLOSE" : "EDIT"}
 			/>
 		</dd>
 	</dl>

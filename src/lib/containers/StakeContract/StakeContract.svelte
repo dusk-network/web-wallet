@@ -117,7 +117,6 @@
 	$: ({ balance, error, isSyncing } = $walletStore);
 	$: isSyncOK = !(isSyncing || !!error);
 	$: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
-	$: fee = duskFormatter(gasSettings.gasLimit * gasSettings.gasPrice * 1e-9);
 </script>
 
 {#key currentOperation}
@@ -132,7 +131,6 @@
 		{#if isStakeOperation(currentOperation)}
 			<Stake
 				execute={executeOperations[currentOperation]}
-				{fee}
 				flow={currentOperation}
 				formatter={duskFormatter}
 				{gasSettings}

@@ -9,20 +9,19 @@ import {
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import "jsdom-worker";
 
+import { deductLuxFeeFrom } from "$lib/contracts";
+import { createCurrencyFormatter } from "$lib/dusk/currency";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 
 import { Send } from "..";
 
 describe("Send", () => {
-	/** @type {(n: number) => string} */
-	const formatter = n => n.toString().replace(/(\d(?!$))/g, "$1-");
+	const formatter = createCurrencyFormatter("en", "DUSK", 9);
 	const lastTxId = "some-id";
 	const baseProps = {
 		execute: vi.fn().mockResolvedValue(lastTxId),
-		fee: (1 * 20000000 * 0.000000001).toString(),
 		formatter,
 		gasSettings: {
-			fee: (1 * 20000000 * 0.000000001).toString(),
 			gasLimit: 20000000,
 			gasLimitLower: 10000000,
 			gasLimitUpper: 1000000000,
@@ -43,121 +42,118 @@ describe("Send", () => {
 		baseProps.execute.mockClear();
 	});
 
-	it("renders the Send component Amount step", () => {
-		const { container } = render(Send, baseProps);
+	describe("Amount step", () => {
+		it("should render the Send component Amount step", () => {
+			const { container } = render(Send, baseProps);
 
-		expect(container.firstChild).toMatchSnapshot();
+			expect(container.firstChild).toMatchSnapshot();
+		});
+
+		it("should disable the next button if the amount is invalid on mount", () => {
+			const props = {
+				...baseProps,
+				gasSettings: {
+					...baseProps.gasSettings,
+					gasLimit: 40000000,
+					gasPrice: 40000000
+				}
+			};
+			const { getByRole } = render(Send, props);
+			const next = getByRole("button", { name: "Next" });
+
+			expect(next).toBeDisabled();
+		});
+
+		it("should set the max amount in the textbox if the user clicks the related button", async () => {
+			const maxSpendable = deductLuxFeeFrom(
+				baseProps.spendable,
+				baseProps.gasSettings.gasPrice * baseProps.gasSettings.gasLimit
+			);
+			const { getByRole } = render(Send, baseProps);
+			const useMaxButton = getByRole("button", { name: "USE MAX" });
+			const nextButton = getByRole("button", { name: "Next" });
+			const amountInput = getByRole("spinbutton");
+
+			await fireEvent.click(useMaxButton);
+
+			expect(amountInput).toHaveValue(maxSpendable);
+			expect(nextButton).toBeEnabled();
+		});
+
+		it("should disable the next button if the user enters an invalid amount", async () => {
+			const { getByRole } = render(Send, baseProps);
+			const nextButton = getByRole("button", { name: "Next" });
+			const amountInput = getByRole("spinbutton");
+
+			expect(nextButton).toBeEnabled();
+
+			await fireEvent.input(amountInput, { target: { value: 0 } });
+
+			expect(amountInput).toHaveValue(0);
+			expect(nextButton).toBeDisabled();
+		});
 	});
 
-	it("sets the amount to max on click and checks if next button is enabled", async () => {
-		const { getByRole } = render(Send, baseProps);
+	describe("Address step", () => {
+		it("should render the Send component Address step", async () => {
+			const { container, getByRole } = render(Send, baseProps);
+			const nextButton = getByRole("button", { name: "Next" });
 
-		const component = getByRole("button", { name: "USE MAX" });
+			await fireEvent.click(nextButton);
 
-		await fireEvent.click(component);
+			expect(container.firstChild).toMatchSnapshot();
+		});
 
-		const input = getByRole("spinbutton");
+		it("should disable the next button if the address is empty", async () => {
+			const { getByRole } = render(Send, baseProps);
 
-		expect(input).toHaveValue(baseProps.spendable);
+			await fireEvent.click(getByRole("button", { name: "Next" }));
 
-		const next = getByRole("button", { name: "Next" });
+			const nextButton = getByRole("button", { name: "Next" });
+			const addressInput = getByRole("textbox");
 
-		expect(next).toBeEnabled();
+			expect(addressInput).toHaveValue("");
+			expect(nextButton).toBeDisabled();
+		});
+
+		it("should enable the next button if the user inputs an address", async () => {
+			const { getByRole } = render(Send, baseProps);
+
+			await fireEvent.click(getByRole("button", { name: "Next" }));
+
+			const nextButton = getByRole("button", { name: "Next" });
+			const addressInput = getByRole("textbox");
+
+			expect(nextButton).toBeDisabled();
+
+			await fireEvent.input(addressInput, { target: { value: address } });
+
+			expect(addressInput).toHaveValue(address);
+			expect(nextButton).toBeEnabled();
+		});
 	});
 
-	it("sets amount to zero and checks next if button is disabled", async () => {
-		const { getByRole } = render(Send, baseProps);
+	describe("Review step", () => {
+		it("should render the Send component Review step", async () => {
+			const amount = 2345;
+			const { container, getByRole } = render(Send, baseProps);
+			const amountInput = getByRole("spinbutton");
 
-		const input = getByRole("spinbutton");
+			await fireEvent.input(amountInput, { target: { value: amount } });
+			await fireEvent.click(getByRole("button", { name: "Next" }));
 
-		await fireEvent.input(input, { target: { value: 0 } });
+			const addressInput = getByRole("textbox");
 
-		expect(input).toHaveValue(0);
+			await fireEvent.input(addressInput, { target: { value: address } });
+			await fireEvent.click(getByRole("button", { name: "Next" }));
 
-		const next = getByRole("button", { name: "Next" });
+			const value = getAsHTMLElement(container, ".operation__review-amount span");
+			const key = getAsHTMLElement(container, ".operation__review-address span");
 
-		expect(next).toBeDisabled();
-	});
-
-	it("renders the Send component Address step", async () => {
-		const { container, getByRole } = render(Send, baseProps);
-
-		const next = getByRole("button", { name: "Next" });
-
-		await fireEvent.click(next);
-
-		expect(container.firstChild).toMatchSnapshot();
-	});
-
-	it("checks input for address value and next button if disabled", async () => {
-		const { getByRole } = render(Send, baseProps);
-
-		const next = getByRole("button", { name: "Next" });
-
-		await fireEvent.click(next);
-
-		const input = getByRole("textbox");
-
-		expect(input).toHaveValue("");
-	});
-
-	it("checks input for address value and next button if enabled", async () => {
-		const { getByRole } = render(Send, baseProps);
-
-		const next = getByRole("button", { name: "Next" });
-
-		await fireEvent.click(next);
-
-		const input = getByRole("textbox");
-
-		await fireEvent.input(input, { target: { value: address } });
-
-		expect(input).toHaveValue(address);
-
-		expect(next).toBeEnabled();
-	});
-
-	it("renders the Send component Review step", async () => {
-		const { container, getByRole } = render(Send, baseProps);
-
-		const next = getByRole("button", { name: "Next" });
-
-		await fireEvent.click(next);
-
-		const next1 = getByRole("button", { name: "Next" });
-
-		await fireEvent.click(next1);
-
-		expect(container.firstChild).toMatchSnapshot();
-	});
-
-	it("checks the displayed amount and address", async () => {
-		const amount = 2345;
-		const { container, getByRole } = render(Send, baseProps);
-
-		const amountInput = getByRole("spinbutton");
-
-		await fireEvent.input(amountInput, { target: { value: amount } });
-
-		const next = getByRole("button", { name: "Next" });
-
-		await fireEvent.click(next);
-
-		const input = getByRole("textbox");
-
-		await fireEvent.input(input, { target: { value: address } });
-
-		const next1 = getByRole("button", { name: "Next" });
-
-		await fireEvent.click(next1);
-
-		const value = getAsHTMLElement(container, ".operation__review-amount span");
-
-		expect(value.textContent).toBe(baseProps.formatter(amount));
-
-		const key = getAsHTMLElement(container, ".operation__review-address span");
-
-		expect(key.textContent).toBe(address);
+			expect(value.textContent).toBe(baseProps.formatter(amount));
+			expect(key.textContent).toBe(address);
+			expect(container.firstChild).toMatchSnapshot();
+		});
 	});
 
 	describe("Send operation", () => {

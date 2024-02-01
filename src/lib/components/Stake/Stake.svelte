@@ -5,6 +5,8 @@
 	import { fade } from "svelte/transition";
 	import { mdiDatabaseArrowDownOutline, mdiDatabaseOutline } from "@mdi/js";
 
+	import { deductLuxFeeFrom } from "$lib/contracts";
+	import { luxToDusk } from "$lib/dusk/currency";
 	import { logo } from "$lib/dusk/icons";
 	import {
 		AnchorButton,
@@ -27,9 +29,6 @@
 	/** @type {(...args: any[]) => Promise<string>} */
 	export let execute;
 
-	/** @type {string} */
-	export let fee;
-
 	/** @type {StakeType} */
 	export let flow;
 
@@ -51,9 +50,11 @@
 	/** @type {ContractStatus[]} */
 	export let statuses;
 
+	const defaultMinStake = 1000;
+
 	/** @type {number} */
 	let stakeAmount = {
-		"stake": 1000,
+		"stake": defaultMinStake,
 		"withdraw-rewards": rewards,
 		"withdraw-stake": staked
 	}[flow];
@@ -79,8 +80,17 @@
 	const resetOperation = () => dispatch("operationChange", "");
 
 	onMount(() => {
-		stakeInput = document.querySelector(".operation__input-field");
+		if (flow === "stake") {
+			stakeInput = document.querySelector(".operation__input-field");
+			stakeAmount = Math.min(minStake, stakeAmount);
+			checkAmountValid();
+		}
 	});
+
+	$: luxFee = gasSettings.gasLimit * gasSettings.gasPrice;
+	$: fee = formatter(luxToDusk(luxFee));
+	$: maxSpendable = deductLuxFeeFrom(spendable, luxFee);
+	$: minStake = maxSpendable > 0 ? Math.min(defaultMinStake, maxSpendable) : defaultMinStake;
 </script>
 
 <div class="operation">
@@ -102,10 +112,10 @@
 						variant="tertiary"
 						on:click={() => {
 							if (stakeInput) {
-								stakeInput.value = spendable.toString();
+								stakeInput.value = maxSpendable.toString();
 							}
 
-							stakeAmount = spendable;
+							stakeAmount = maxSpendable;
 							checkAmountValid();
 						}}
 						text="USE MAX"
@@ -117,8 +127,8 @@
 						className="operation__input-field"
 						bind:value={stakeAmount}
 						type="number"
-						min={1000}
-						max={spendable}
+						min={minStake}
+						max={maxSpendable}
 						required
 						step="0.000000001"
 						on:input={checkAmountValid}
@@ -194,7 +204,7 @@
 			showNavigation={false}>
 
 			<OperationResult
-				errorMessage="Transaction Failed"
+				errorMessage="Transaction failed"
 				onBeforeLeave={resetOperation}
 				operation={flow === "stake" ? execute(stakeAmount) : execute()}
 				pendingMessage="Processing transaction"
