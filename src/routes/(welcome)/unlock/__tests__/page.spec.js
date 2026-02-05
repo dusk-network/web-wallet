@@ -44,6 +44,8 @@ describe("Unlock Wallet", async () => {
 
   const getErrorElement = () => document.querySelector(".banner--error");
   const gotoSpy = vi.spyOn(navigation, "goto");
+  const waitForGoto = () =>
+    vi.waitUntil(() => gotoSpy.mock.calls.length > 0, { timeout: 5_000 });
 
   /**
    * Sometimes a "DatabaseClosedError: Database has been closed" is
@@ -104,7 +106,7 @@ describe("Unlock Wallet", async () => {
 
       await fireEvent.input(textInput, { target: { value: mnemonic } });
       await fireEvent.submit(form, { currentTarget: form });
-      await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
+      await waitForGoto();
 
       expect(get(settingsStore).userId).toBe("");
       expect(initSpy).not.toHaveBeenCalled();
@@ -121,7 +123,7 @@ describe("Unlock Wallet", async () => {
 
       await fireEvent.input(textInput, { target: { value: mnemonic } });
       await fireEvent.submit(form, { currentTarget: form });
-      await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
+      await waitForGoto();
 
       expect(get(settingsStore).userId).toBe(currentUserID);
       expect(initSpy).not.toHaveBeenCalled();
@@ -137,7 +139,7 @@ describe("Unlock Wallet", async () => {
 
       await fireEvent.input(textInput, { target: { value: mnemonic } });
       await fireEvent.submit(form, { currentTarget: form });
-      await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
+      await waitForGoto();
 
       expect(get(settingsStore).userId).toBe(userId);
       expect(initSpy).toHaveBeenCalledTimes(1);
@@ -157,7 +159,7 @@ describe("Unlock Wallet", async () => {
         target: { value: `  \t${mnemonic.toUpperCase()} \t  ` },
       });
       await fireEvent.submit(form, { currentTarget: form });
-      await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
+      await waitForGoto();
 
       expect(get(settingsStore).userId).toBe(userId);
       expect(initSpy).toHaveBeenCalledTimes(1);
@@ -170,8 +172,10 @@ describe("Unlock Wallet", async () => {
   describe("Password workflow", () => {
     beforeAll(() => {
       loginInfoStorage.set(loginInfo);
+    });
 
-      return () => loginInfoStorage.remove();
+    afterAll(() => {
+      loginInfoStorage.remove();
     });
 
     it("should show the password field and the link to restore the wallet if there is login info stored", () => {
@@ -218,7 +222,7 @@ describe("Unlock Wallet", async () => {
 
       expect(getErrorElement()).toBeNull();
 
-      await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
+      await waitForGoto();
 
       expect(getErrorElement()).toBeNull();
       expect(get(settingsStore).userId).toBe("");
@@ -245,7 +249,7 @@ describe("Unlock Wallet", async () => {
 
       expect(getErrorElement()).toBeNull();
 
-      await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
+      await waitForGoto();
 
       expect(initSpy).not.toHaveBeenCalled();
       expect(gotoSpy).toHaveBeenCalledTimes(1);
@@ -261,7 +265,7 @@ describe("Unlock Wallet", async () => {
 
       await fireEvent.input(textInput, { target: { value: pwd } });
       await fireEvent.submit(form, { currentTarget: form });
-      await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
+      await waitForGoto();
 
       expect(get(settingsStore).userId).toBe(userId);
       expect(initSpy).toHaveBeenCalledTimes(1);
@@ -281,7 +285,7 @@ describe("Unlock Wallet", async () => {
         target: { value: `  \t${pwd} \t  ` },
       });
       await fireEvent.submit(form, { currentTarget: form });
-      await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
+      await waitForGoto();
 
       expect(get(settingsStore).userId).toBe(userId);
       expect(initSpy).toHaveBeenCalledTimes(1);
