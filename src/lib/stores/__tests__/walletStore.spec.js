@@ -475,6 +475,10 @@ describe("Wallet store", async () => {
       // check that a sync starts after the transaction is removed from the mempool
       await vi.waitUntil(() => treasuryUpdateSpy.mock.calls.length === 2);
 
+      // wait for the post-removal sync to finish updating the derived state
+      await vi.waitUntil(() => balanceSpy.mock.calls.length === 2);
+      await vi.waitUntil(() => stakeInfoSpy.mock.calls.length === 1);
+
       // check that the balance is updated afterwards
       expect(balanceSpy).toHaveBeenCalledTimes(2);
       expect(balanceSpy).toHaveBeenNthCalledWith(1, defaultProfile.address);
@@ -516,6 +520,10 @@ describe("Wallet store", async () => {
 
       await walletStore.init(profileGenerator);
       await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+      await vi.waitUntil(
+        () => get(walletStore).syncStatus.isInProgress === false
+      );
 
       vi.clearAllTimers();
 
@@ -605,6 +613,10 @@ describe("Wallet store", async () => {
 
       await walletStore.init(profileGenerator);
       await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+      await vi.waitUntil(
+        () => get(walletStore).syncStatus.isInProgress === false
+      );
 
       vi.clearAllTimers();
 
