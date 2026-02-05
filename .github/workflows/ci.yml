@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
+
+jobs:
+  lint-test:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    name: Validate & build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setting up Node from `.nvmrc`
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: "./.nvmrc"
+          cache: "npm"
+          cache-dependency-path: "./package-lock.json"
+          scope: "@dusk-network"
+
+      - name: Installing dev dependencies
+        run: npm ci
+
+      - name: Sync SvelteKit config
+        run: npx svelte-kit sync
+
+      - name: Formatting check
+        run: npm run format
+
+      - name: Linting
+        run: npm run lint
+
+      - name: Type checks
+        run: npm run typecheck
+
+      - name: Run the test suite
+        run: npm test
+
+      - name: Building the app
+        run: npm run build

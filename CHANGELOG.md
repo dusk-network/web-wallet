@@ -636,25 +636,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- VERSIONS -->
 
-[Unreleased]: https://github.com/dusk-network/rusk/tree/master/web-wallet
-[1.7.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v1.7.0
-[1.6.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v1.6.0
-[1.5.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v1.5.0
-[1.4.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v1.4.0
-[1.3.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v1.3.0
-[1.2.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v1.2.0
-[1.1.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v1.1.0
-[1.0.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v1.0.0
-[0.10.1]: https://github.com/dusk-network/rusk/tree/web-wallet-v0.10.1
-[0.10.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v0.10.0
-[0.9.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v0.9.0
-[0.8.1]: https://github.com/dusk-network/rusk/tree/web-wallet-v0.8.1
-[0.8.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v0.8.0
-[0.7.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v0.7.0
-[0.6.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v0.6.0
-[0.5.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v0.5.0
-[0.4.0]: https://github.com/dusk-network/rusk/tree/web-wallet-0.4.0
-[0.3.0]: https://github.com/dusk-network/rusk/tree/web-wallet-0.3.0
-[0.2.1]: https://github.com/dusk-network/rusk/tree/web-wallet-0.2.1
-[0.2.0]: https://github.com/dusk-network/rusk/tree/web-wallet-0.2.0
-[0.1.0-beta]: https://github.com/dusk-network/rusk/tree/web-wallet-0.1.0-beta
+[Unreleased]: https://github.com/dusk-network/web-wallet/tree/main
+[1.7.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.0
+[1.6.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.6.0
+[1.5.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.5.0
+[1.4.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.4.0
+[1.3.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.3.0
+[1.2.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.2.0
+[1.1.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.1.0
+[1.0.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.0.0
+[0.10.1]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v0.10.1
+[0.10.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v0.10.0
+[0.9.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v0.9.0
+[0.8.1]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v0.8.1
+[0.8.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v0.8.0
+[0.7.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v0.7.0
+[0.6.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v0.6.0
+[0.5.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v0.5.0
+[0.4.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-0.4.0
+[0.3.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-0.3.0
+[0.2.1]: https://github.com/dusk-network/web-wallet/tree/web-wallet-0.2.1
+[0.2.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-0.2.0
+[0.1.0-beta]: https://github.com/dusk-network/web-wallet/tree/web-wallet-0.1.0-beta

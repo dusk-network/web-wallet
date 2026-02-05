@@ -78,8 +78,8 @@ All notable changes to Web Wallet will be documented in this file.
 
 <!-- VERSIONS -->
 
-[1.1.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v1.1.0
-[1.0.0]: https://github.com/dusk-network/rusk/tree/web-wallet-v1.0.0
+[1.1.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.1.0
+[1.0.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.0.0
 ```
 
 ### 5. Create and Review Pull Request
