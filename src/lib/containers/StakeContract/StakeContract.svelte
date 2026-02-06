@@ -1,186 +1,136 @@
-<svelte:options immutable={true}/>
+<svelte:options immutable={true} />
 
 <script>
-	import {
-		collect,
-		find,
-		getKey,
-		hasKeyValue,
-		map,
-		mapWith,
-		pick,
-		setKey,
-		when
-	} from "lamb";
-	import { mdiCloseThick } from "@mdi/js";
+  import { getKey, hasKeyValue, map, mapWith, setKey, when } from "lamb";
+  import { Gas } from "@dusk/w3sper";
+  import {
+    gasStore,
+    operationsStore,
+    settingsStore,
+    walletStore,
+  } from "$lib/stores";
+  import { ContractOperations, Stake, Unstake } from "$lib/components";
+  import { mdiDatabaseArrowDownOutline, mdiGiftOpenOutline } from "@mdi/js";
 
-	import { createCurrencyFormatter } from "$lib/dusk/currency";
-	import { getLastTransactionHash } from "$lib/transactions";
-	import {
-		operationsStore,
-		settingsStore,
-		walletStore
-	} from "$lib/stores";
-	import {
-		ContractOperations,
-		ContractStatusesList,
-		Stake
-	} from "$lib/components";
-	import {
-		ErrorDetails,
-		Icon,
-		Throbber
-	} from "$lib/dusk/components";
+  /** @type {ContractDescriptor} */
+  export let descriptor;
 
-	/** @type {ContractDescriptor} */
-	export let descriptor;
+  /** @type {ContractGasSettings} */
+  export let gasSettings;
 
-	const collectSettings = collect([
-		pick(["gasLimit", "gasLimitLower", "gasLimitUpper", "gasPrice", "gasPriceLower"]),
-		getKey("language")
-	]);
+  /** @type {StakeInfo} */
+  export let stakeInfo;
 
-	/** @type {Record<string, (info: WalletStakeInfo) => boolean>} */
-	const disablingConditions = {
-		"stake": info => !info.has_key || info.has_staked,
-		"withdraw-rewards": info => info.reward <= 0,
-		"withdraw-stake": info => !info.has_staked
-	};
+  /** @type {(value: number | bigint) => string} */
+  export let formatter;
 
-	/** @type {Record<StakeType, (...args: any[]) => Promise<string>>} */
-	const executeOperations = {
-		"stake": amount => walletStore.stake(amount).then(getLastTransactionHash),
-		"withdraw-rewards": () => walletStore.withdrawReward().then(getLastTransactionHash),
-		"withdraw-stake": () => walletStore.unstake().then(getLastTransactionHash)
-	};
+  /** @type {ContractOperation[]} */
+  let operations;
 
-	/** @type {(operations: ContractOperation[]) => ContractOperation[]} */
-	const disableAllOperations = mapWith(setKey("disabled", true));
+  const gasLimits = $gasStore;
+  const { hideStakingNotice } = $settingsStore;
 
-	/** @type {(operationId: string) => operationId is StakeType} */
-	const isStakeOperation = operationId => [
-		"stake",
-		"withdraw-rewards",
-		"withdraw-stake"
-	].includes(operationId);
+  /** @type {Record<string, (info: StakeInfo) => boolean>} */
+  const disablingConditions = {
+    "claim-rewards": (info) => info.reward <= 0n,
+    stake: (info) => !!info.amount,
+    unstake: (info) => !info.amount || info.amount.total === 0n,
+  };
 
-	/**
-	 * We want to update the disabled status ourselves only
-	 * when the operation is enabled in the descriptor;
-	 * otherwise the descriptor takes precedence.
-	 *
-	 * @param {ContractOperation[]} operations
-	 * @param {WalletStakeInfo} stakeInfo
-	 * @returns {ContractOperation[]}
-	 */
-	const getOperations = (operations, stakeInfo) => map(
-		operations,
-		when(hasKeyValue("disabled", false), updateOperationDisabledStatus(stakeInfo))
-	);
+  /** @type {Record<StakeType, (...args: any[]) => Promise<string>>} */
+  const executeOperations = {
+    "claim-rewards": (amount, gasPrice, gasLimit) =>
+      walletStore
+        .claimRewards(amount, new Gas({ limit: gasLimit, price: gasPrice }))
+        .then(getKey("hash")),
+    stake: (amount, gasPrice, gasLimit) =>
+      walletStore
+        .stake(amount, new Gas({ limit: gasLimit, price: gasPrice }))
+        .then(getKey("hash")),
+    unstake: (amount, gasPrice, gasLimit) =>
+      walletStore
+        .unstake(amount, new Gas({ limit: gasLimit, price: gasPrice }))
+        .then(getKey("hash")),
+  };
 
-	/**
-	 * @param {ContractOperation[]} operations
-	 * @returns {boolean}
-	 */
-	const isStakingDisabled = operations => find(operations, hasKeyValue("id", "stake"))?.disabled ?? true;
+  /** @type {(operations: ContractOperation[]) => ContractOperation[]} */
+  const disableAllOperations = mapWith(setKey("disabled", true));
 
-	/**
-	 * @param {WalletStakeInfo} stakeInfo
-	 * @param {number} spendable
-	 * @returns {ContractStatus[]}
-	 */
-	const getStatuses = (stakeInfo, spendable) => [{
-		label: "Spendable",
-		value: duskFormatter(spendable)
-	}, {
-		label: "Total Locked",
-		value: duskFormatter(stakeInfo.amount)
-	}, {
-		label: "Rewards",
-		value: duskFormatter(stakeInfo.reward)
-	}];
+  /**
+   * We want to update the disabled status ourselves only
+   * when the operation is enabled in the descriptor;
+   * otherwise the descriptor takes precedence.
+   *
+   * @returns {ContractOperation[]}
+   */
+  const getOperations = () =>
+    map(
+      descriptor.operations,
+      when(hasKeyValue("disabled", false), updateOperationDisabledStatus())
+    );
 
-	/**
-	 * @param {WalletStakeInfo} stakeInfo
-	 * @returns {(operation: ContractOperation) => ContractOperation}
-	 */
-	const updateOperationDisabledStatus = stakeInfo => operation => ({
-		...operation,
-		disabled: disablingConditions[operation.id]?.(stakeInfo) ?? true
-	});
+  const getMaxWithdrawAmount = () => {
+    if (currentOperation === "unstake") {
+      return stakeInfo.amount ? stakeInfo.amount.total : 0n;
+    }
 
-	$: ({ currentOperation } = $operationsStore);
-	$: [
-		gasSettings,
-		language
-	] = collectSettings($settingsStore);
-	$: ({ balance, error, isSyncing } = $walletStore);
-	$: isSyncOK = !(isSyncing || !!error);
-	$: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
+    return stakeInfo.reward;
+  };
+  /**
+   * @returns {(operation: ContractOperation) => ContractOperation}
+   */
+  const updateOperationDisabledStatus = () => (operation) => ({
+    ...operation,
+    disabled: disablingConditions[operation.id]?.(stakeInfo) ?? true,
+  });
+
+  $: if (stakeInfo) {
+    operations = getOperations();
+  }
+  $: ({ currentOperation } = $operationsStore);
+  $: ({ balance, minimumStake, syncStatus } = $walletStore);
+  $: isSyncOK = !(syncStatus.isInProgress || !!syncStatus.error);
+  $: if (!isSyncOK) {
+    disableAllOperations(descriptor.operations);
+  }
 </script>
 
 {#key currentOperation}
-	{#await walletStore.getStakeInfo()}
-		<Throbber className="stake-throbber"/>
-	{:then stakeInfo}
-		{@const statuses = getStatuses(stakeInfo, balance.maximum)}
-		{@const operations = isSyncOK
-			? getOperations(descriptor.operations, stakeInfo)
-			: disableAllOperations(descriptor.operations)
-		}
-		{#if isStakeOperation(currentOperation)}
-			<Stake
-				execute={executeOperations[currentOperation]}
-				flow={currentOperation}
-				formatter={duskFormatter}
-				{gasSettings}
-				on:operationChange
-				on:setGasSettings
-				rewards={stakeInfo.reward}
-				spendable={balance.maximum}
-				staked={stakeInfo.amount}
-				{statuses}
-			/>
-		{:else}
-			{#if isStakingDisabled(operations)}
-				<div class="info">
-					<p>
-						Third-party staking will be enabled at the start of the upcoming incentivized testnet
-						and will begin to accrue real rewards as well. Stay tuned for more information.
-					</p>
-				</div>
-			{/if}
-			<ContractStatusesList items={statuses}/>
-			<ContractOperations items={operations} on:operationChange/>
-		{/if}
-	{:catch stakeInfoError}
-		<div class="fetch-stake-info-error">
-			<Icon
-				path={mdiCloseThick}
-				size="large"
-			/>
-			<ErrorDetails
-				error={stakeInfoError}
-				summary="Failed to retrieve stake info"
-			/>
-		</div>
-	{/await}
+  {#if currentOperation === "stake"}
+    <Stake
+      execute={executeOperations[currentOperation]}
+      {formatter}
+      {gasLimits}
+      {gasSettings}
+      minStakeRequirement={minimumStake}
+      on:operationChange
+      on:suppressStakingNotice
+      availableBalance={balance.unshielded.value}
+      {hideStakingNotice}
+    />
+  {:else if currentOperation === "unstake" || currentOperation === "claim-rewards"}
+    <Unstake
+      execute={executeOperations[currentOperation]}
+      {formatter}
+      {gasLimits}
+      {gasSettings}
+      on:operationChange
+      maxWithdrawAmount={getMaxWithdrawAmount()}
+      minStakeRequirement={currentOperation === "unstake"
+        ? minimumStake
+        : undefined}
+      availableBalance={balance.unshielded.value}
+      operationCtaLabel={currentOperation === "unstake"
+        ? "Unstake"
+        : "Claim Rewards"}
+      operationCtaIconPath={currentOperation === "unstake"
+        ? mdiDatabaseArrowDownOutline
+        : mdiGiftOpenOutline}
+      operationOverviewLabel={currentOperation === "unstake"
+        ? "Unstake Amount"
+        : "Rewards Amount"}
+    />
+  {:else}
+    <ContractOperations items={operations} on:operationChange />
+  {/if}
 {/key}
-
-<style lang="postcss">
-	:global(.stake-throbber) {
-		align-self: center;
-	}
-
-	.fetch-stake-info-error {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--default-gap);
-	}
-
-	.info {
-		font-size: .8em;
-		padding: 0.5em 1em;
-	}
-</style>

@@ -11,7 +11,7 @@ exports[`Toast > should render and dismiss 2 Toasts 1`] = `
       class="dusk-toast__item-icon-wrapper dusk-toast__item-icon-wrapper--success"
     >
       <svg
-        class="dusk-icon dusk-icon--size--normal dusk-toast__item-icon"
+        class="dusk-icon dusk-icon--size--default dusk-toast__item-icon"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -20,7 +20,6 @@ exports[`Toast > should render and dismiss 2 Toasts 1`] = `
         />
       </svg>
       
-      <!--&lt;Icon&gt;-->
     </span>
      
     <span
@@ -37,7 +36,7 @@ exports[`Toast > should render and dismiss 2 Toasts 1`] = `
       class="dusk-toast__item-icon-wrapper dusk-toast__item-icon-wrapper--info"
     >
       <svg
-        class="dusk-icon dusk-icon--size--normal dusk-toast__item-icon"
+        class="dusk-icon dusk-icon--size--default dusk-toast__item-icon"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -46,7 +45,6 @@ exports[`Toast > should render and dismiss 2 Toasts 1`] = `
         />
       </svg>
       
-      <!--&lt;Icon&gt;-->
     </span>
      
     <span
@@ -70,7 +68,7 @@ exports[`Toast > should render and dismiss the Toast component with the correct 
       class="dusk-toast__item-icon-wrapper dusk-toast__item-icon-wrapper--success"
     >
       <svg
-        class="dusk-icon dusk-icon--size--normal dusk-toast__item-icon"
+        class="dusk-icon dusk-icon--size--default dusk-toast__item-icon"
         role="graphics-symbol"
         viewBox="0 0 24 24"
       >
@@ -79,7 +77,6 @@ exports[`Toast > should render and dismiss the Toast component with the correct 
         />
       </svg>
       
-      <!--&lt;Icon&gt;-->
     </span>
      
     <span

@@ -1,261 +1,380 @@
-<svelte:options immutable={true}/>
+<svelte:options immutable={true} />
 
 <script>
-	import { createEventDispatcher, onMount } from "svelte";
-	import { fade } from "svelte/transition";
-	import { mdiDatabaseArrowDownOutline, mdiDatabaseOutline } from "@mdi/js";
+  import { createEventDispatcher, onMount } from "svelte";
+  import { fade } from "svelte/transition";
+  import { mdiAlertOutline, mdiDatabaseOutline } from "@mdi/js";
 
-	import { deductLuxFeeFrom } from "$lib/contracts";
-	import { luxToDusk } from "$lib/dusk/currency";
-	import { logo } from "$lib/dusk/icons";
-	import {
-		AnchorButton,
-		Badge,
-		Button,
-		Icon,
-		Textbox,
-		Wizard,
-		WizardStep
-	} from "$lib/dusk/components";
-	import {
-		ContractStatusesList,
-		GasFee,
-		GasSettings,
-		OperationResult
-	} from "$lib/components";
+  import { DOCUMENTATION_LINKS, MESSAGES } from "$lib/constants";
+  import { areValidGasSettings } from "$lib/contracts";
+  import { duskToLux, luxToDusk } from "$lib/dusk/currency";
+  import { logo } from "$lib/dusk/icons";
 
-	import StakeOverview from "./StakeOverview.svelte";
+  import {
+    Agreement,
+    AnchorButton,
+    Badge,
+    Button,
+    Icon,
+    Stepper,
+    Textbox,
+    Wizard,
+    WizardStep,
+  } from "$lib/dusk/components";
+  import { toast } from "$lib/dusk/components/Toast/store";
+  import {
+    AppAnchor,
+    GasFee,
+    GasSettings,
+    OperationResult,
+  } from "$lib/components";
 
-	/** @type {(...args: any[]) => Promise<string>} */
-	export let execute;
+  import { WarningCard } from "$lib/containers/Cards";
 
-	/** @type {StakeType} */
-	export let flow;
+  import StakeOverview from "./StakeOverview.svelte";
+  import Banner from "../Banner/Banner.svelte";
 
-	/** @type {(amount: number) => string} */
-	export let formatter;
+  /** @type {(...args: any[]) => Promise<string>} */
+  export let execute;
 
-	/** @type {ContractGasSettings} */
-	export let gasSettings;
+  /** @type {(amount: number) => string} */
+  export let formatter;
 
-	/** @type {number} */
-	export let rewards;
+  /** @type {GasStoreContent} */
+  export let gasLimits;
 
-	/** @type {number} */
-	export let spendable;
+  /** @type {ContractGasSettings} */
+  export let gasSettings;
 
-	/** @type {number} */
-	export let staked;
+  /** @type {boolean} */
+  export let hideStakingNotice;
 
-	/** @type {ContractStatus[]} */
-	export let statuses;
+  /** @type {bigint} */
+  export let minStakeRequirement;
 
-	const defaultMinStake = 1000;
+  /** @type {bigint} */
+  export let availableBalance;
 
-	/** @type {number} */
-	let stakeAmount = {
-		"stake": defaultMinStake,
-		"withdraw-rewards": rewards,
-		"withdraw-stake": staked
-	}[flow];
+  let activeStep = 0;
+  let { gasLimit, gasPrice } = gasSettings;
+  let hideStakingNoticeNextTime = false;
+  let isGasValid = false;
 
-	/** @type {HTMLInputElement|null} */
-	let stakeInput;
+  /**
+   * We are forced to keep `stakeAmount`
+   * as number if we want to use
+   * Svelte's binding.
+   */
+  let stakeAmount = luxToDusk(minStakeRequirement);
 
-	/** @type {boolean} */
-	let isNextButtonDisabled = false;
+  const steps = getStepperSteps();
 
-	/** @type {Record<StakeType, string>} */
-	const overviewLabels = {
-		"stake": "Amount",
-		"withdraw-rewards": "Withdraw Rewards",
-		"withdraw-stake": "Withdraw Amount"
-	};
+  const dispatch = createEventDispatcher();
+  const resetOperation = () => dispatch("operationChange", "");
+  const suppressStakingNotice = () => dispatch("suppressStakingNotice");
 
-	const checkAmountValid = () => {
-		isNextButtonDisabled = !stakeInput?.checkValidity();
-	};
+  /**
+   * @param {{detail: {price: bigint, limit: bigint}}} event
+   */
+  const setGasValues = (event) => {
+    isGasValid = areValidGasSettings(event.detail.price, event.detail.limit);
 
-	const dispatch = createEventDispatcher();
-	const resetOperation = () => dispatch("operationChange", "");
+    if (isGasValid) {
+      gasPrice = event.detail.price;
+      gasLimit = event.detail.limit;
+    }
+  };
 
-	onMount(() => {
-		if (flow === "stake") {
-			stakeInput = document.querySelector(".operation__input-field");
-			stakeAmount = Math.min(minStake, stakeAmount);
-			checkAmountValid();
-		}
-	});
+  function getStepperSteps() {
+    return hideStakingNotice
+      ? [{ label: "Amount" }, { label: "Overview" }, { label: "Done" }]
+      : [
+          { label: "Notice" },
+          { label: "Amount" },
+          { label: "Overview" },
+          { label: "Done" },
+        ];
+  }
 
-	$: luxFee = gasSettings.gasLimit * gasSettings.gasPrice;
-	$: fee = formatter(luxToDusk(luxFee));
-	$: maxSpendable = deductLuxFeeFrom(spendable, luxFee);
-	$: minStake = maxSpendable > 0 ? Math.min(defaultMinStake, maxSpendable) : defaultMinStake;
+  function setMaxAmount() {
+    if (!isGasValid) {
+      toast("error", "Please set valid gas settings first", mdiAlertOutline);
+      return;
+    }
+
+    if (availableBalance < maxGasFee) {
+      toast(
+        "error",
+        "You don't have enough DUSK to cover the transaction fee",
+        mdiAlertOutline
+      );
+      return;
+    }
+
+    stakeAmount = luxToDusk(maxSpendableAmount);
+  }
+
+  onMount(() => {
+    isGasValid = areValidGasSettings(gasPrice, gasLimit);
+  });
+
+  $: stakeAmountInLux = stakeAmount ? duskToLux(stakeAmount) : 0n;
+
+  // Calculate the maximum gas fee based on the gas limit and gas price.
+  $: maxGasFee = gasLimit * gasPrice;
+
+  // Check if the available balance is sufficient to cover the max gas fee.
+  // This is a prerequisite for any transaction.
+  $: isBalanceSufficientForGas = availableBalance >= maxGasFee;
+
+  // Determine the maximum amount spendable for staking.
+  // If the available balance is less than the max gas fee, set it to 0n to avoid negative values.
+  $: maxSpendableAmount =
+    availableBalance >= maxGasFee ? availableBalance - maxGasFee : 0n;
+
+  // Validate that the stake amount is within allowable limits:
+  // - At least the minimum staking requirement.
+  // - At most the maximum spendable amount (after accounting for maximum gas fees).
+  $: isStakeAmountValid =
+    stakeAmountInLux >= minStakeRequirement &&
+    stakeAmountInLux <= maxSpendableAmount;
+
+  // Calculate the total amount for the transaction, which includes:
+  // - The maximum gas fee.
+  // - The user-specified stake amount (converted to Lux).
+  $: totalAmount = maxGasFee + stakeAmountInLux;
+
+  // Validate that the total amount is within the user's available balance.
+  $: isTotalAmountWithinAvailableBalance = totalAmount <= availableBalance;
+
+  $: isNextButtonDisabled = !(
+    isStakeAmountValid &&
+    isGasValid &&
+    isTotalAmountWithinAvailableBalance &&
+    isBalanceSufficientForGas
+  );
 </script>
 
 <div class="operation">
-	<Wizard steps={flow === "stake" ? 3 : 2} let:key>
-		{#if flow === "stake"}
-			<WizardStep
-				step={0}
-				{key}
-				backButton={{
-					action: resetOperation,
-					disabled: false
-				}}
-				nextButton={{ disabled: isNextButtonDisabled }}>
-				<ContractStatusesList items={statuses}/>
-				<div class="operation__amount operation__space-between">
-					<p>Enter amount:</p>
-					<Button
-						size="small"
-						variant="tertiary"
-						on:click={() => {
-							if (stakeInput) {
-								stakeInput.value = maxSpendable.toString();
-							}
+  <Wizard steps={hideStakingNotice ? 3 : 4} let:key>
+    <div slot="stepper">
+      <Stepper {activeStep} {steps} />
+    </div>
 
-							stakeAmount = maxSpendable;
-							checkAmountValid();
-						}}
-						text="USE MAX"
-					/>
-				</div>
+    {#if !hideStakingNotice}
+      <!-- STAKING NOTICE STEP -->
+      <WizardStep
+        step={0}
+        {key}
+        backButton={{
+          action: resetOperation,
+          disabled: false,
+        }}
+        nextButton={{
+          action: () => {
+            activeStep++;
+            if (hideStakingNoticeNextTime) {
+              suppressStakingNotice();
+            }
+          },
+          icon: null,
+          label: "Agree",
+          variant: "primary",
+        }}
+      >
+        <Badge text="WARNING" variant="warning" />
+        <WarningCard onSurface heading="Only stake if you have a node set up!">
+          <p class="staking-warning">
+            I understand that I have set up a node properly, as described <AppAnchor
+              class="staking-warning__step-node-setup-link"
+              rel="noopener noreferrer"
+              target="_blank"
+              href={DOCUMENTATION_LINKS.RUN_A_PROVISIONER}>HERE</AppAnchor
+            >, and that, if not done correctly, I may be subject to <AppAnchor
+              class="staking-warning__step-node-setup-link"
+              href={DOCUMENTATION_LINKS.SLASHING}
+              rel="noopener noreferrer"
+              target="_blank">soft-slashing</AppAnchor
+            > penalties, requiring me to unstake and stake again.
+          </p>
 
-				<div class="operation__amount operation__input">
-					<Textbox
-						className="operation__input-field"
-						bind:value={stakeAmount}
-						type="number"
-						min={minStake}
-						max={maxSpendable}
-						required
-						step="0.000000001"
-						on:input={checkAmountValid}
-					/>
-					<Icon
-						data-tooltip-id="main-tooltip"
-						data-tooltip-text="DUSK"
-						path={logo}
-					/>
-				</div>
+          <Agreement
+            className="staking-warning__agreement"
+            name="staking-warning"
+            label="Don't show this step again."
+            bind:checked={hideStakingNoticeNextTime}
+          />
+        </WarningCard>
+      </WizardStep>
+    {/if}
 
-				<GasSettings
-					{fee}
-					limit={gasSettings.gasLimit}
-					limitLower={gasSettings.gasLimitLower}
-					limitUpper={gasSettings.gasLimitUpper}
-					price={gasSettings.gasPrice}
-					priceLower={gasSettings.gasPriceLower}
-					on:setGasSettings
-				/>
-			</WizardStep>
-		{/if}
+    <!-- ENTER STAKING AMOUNT STEP -->
+    <WizardStep
+      step={hideStakingNotice ? 0 : 1}
+      {key}
+      backButton={{
+        action: () => {
+          if (hideStakingNotice) {
+            resetOperation();
+          } else {
+            activeStep--;
+          }
+        },
+        disabled: false,
+      }}
+      nextButton={{
+        action: () => activeStep++,
+        disabled: isNextButtonDisabled,
+      }}
+    >
+      <div class="operation__amount-wrapper">
+        <p>Amount:</p>
+        <Button
+          size="small"
+          variant="tertiary"
+          on:click={setMaxAmount}
+          text="USE MAX"
+        />
+      </div>
 
-		<WizardStep
-			step={flow === "stake" ? 1 : 0}
-			{key}
-			backButton={
-				flow !== "stake"
-					? { action: resetOperation, disabled: false }
-					: undefined
-			}
-			nextButton={{
-				disabled: stakeAmount === 0,
-				icon: {
-					path: flow === "stake" ? mdiDatabaseOutline : mdiDatabaseArrowDownOutline,
-					position: "before"
-				},
-				label: flow === "stake" ? "STAKE" : "WITHDRAW",
-				variant: "secondary"
-			}}>
-			<div in:fade|global class="operation__stake">
-				<ContractStatusesList items={statuses}/>
-				<Badge
-					className="operation__rewards-notice"
-					text="REVIEW TRANSACTION"
-					variant="warning"
-				/>
-				<StakeOverview
-					label={overviewLabels[flow]}
-					value={formatter(stakeAmount)}
-				/>
+      <div class="operation__input-wrapper">
+        <Textbox
+          className="operation__input-field"
+          bind:value={stakeAmount}
+          type="number"
+          min={luxToDusk(minStakeRequirement)}
+          max={luxToDusk(maxSpendableAmount)}
+          required
+          step="0.000000001"
+        />
+        <Icon
+          data-tooltip-id="main-tooltip"
+          data-tooltip-text="DUSK"
+          path={logo}
+        />
+      </div>
 
-				{#if flow === "stake"}
-					<GasFee {fee}/>
-				{:else}
-					<GasSettings
-						{fee}
-						limit={gasSettings.gasLimit}
-						limitLower={gasSettings.gasLimitLower}
-						limitUpper={gasSettings.gasLimitUpper}
-						price={gasSettings.gasPrice}
-						priceLower={gasSettings.gasPriceLower}
-						on:setGasSettings
-					/>
-				{/if}
+      <GasSettings
+        {formatter}
+        fee={maxGasFee}
+        limit={gasSettings.gasLimit}
+        limitLower={gasLimits.gasLimitLower}
+        limitUpper={gasLimits.gasLimitUpper}
+        price={gasSettings.gasPrice}
+        priceLower={gasLimits.gasPriceLower}
+        on:gasSettings={setGasValues}
+      />
 
-			</div>
-		</WizardStep>
+      {#if !isBalanceSufficientForGas}
+        <Banner variant="error" title="Insufficient balance for gas fees">
+          <p>
+            Your current balance is too low to cover the required gas fees for
+            this transaction. Please deposit additional funds or reduce the gas
+            limit.
+          </p>
+        </Banner>
+      {:else if stakeAmountInLux < minStakeRequirement}
+        <Banner variant="error" title="Stake amount below minimum requirement">
+          <p>
+            The amount you are trying to stake is below the minimum staking
+            requirement of {luxToDusk(minStakeRequirement).toLocaleString()} DUSK.
+            Please enter a valid amount that meets this minimum.
+          </p>
+        </Banner>
+      {:else if stakeAmountInLux > maxSpendableAmount}
+        <Banner variant="error" title="Stake amount exceeds available balance">
+          <p>
+            The amount you are trying to stake exceeds the spendable balance
+            after accounting for gas fees. Please reduce the stake amount.
+          </p>
+        </Banner>
+      {/if}
+    </WizardStep>
 
-		<WizardStep
-			step={flow === "stake" ? 2 : 1}
-			{key}
-			showNavigation={false}>
+    <!-- OPERATION OVERVIEW STEP  -->
+    <WizardStep
+      step={hideStakingNotice ? 1 : 2}
+      {key}
+      backButton={{
+        action: () => activeStep--,
+        disabled: false,
+      }}
+      nextButton={{
+        action: () => activeStep++,
+        icon: {
+          path: mdiDatabaseOutline,
+          position: "before",
+        },
+        label: "Stake",
+        variant: "primary",
+      }}
+    >
+      <div in:fade|global class="operation__stake">
+        <Badge text="REVIEW TRANSACTION" variant="warning" />
+        <StakeOverview label="Amount" value={formatter(stakeAmount)} />
+        <GasFee {formatter} fee={maxGasFee} />
+      </div>
+    </WizardStep>
 
-			<OperationResult
-				errorMessage="Transaction failed"
-				onBeforeLeave={resetOperation}
-				operation={flow === "stake" ? execute(stakeAmount) : execute()}
-				pendingMessage="Processing transaction"
-				successMessage="Transaction completed"
-			>
-				<svelte:fragment slot="success-content" let:result={hash}>
-					{#if hash}
-						<AnchorButton
-							href={`https://explorer.dusk.network/transactions/transaction?id=${hash}`}
-							on:click={resetOperation}
-							text="VIEW ON BLOCK EXPLORER"
-							variant="secondary"
-							rel="noopener noreferrer"
-							target="_blank"
-						/>
-					{/if}
-				</svelte:fragment>
-			</OperationResult>
-		</WizardStep>
-	</Wizard>
+    <!-- OPERATION RESULT STEP  -->
+    <WizardStep step={hideStakingNotice ? 2 : 3} {key} showNavigation={false}>
+      <OperationResult
+        errorMessage="Transaction failed"
+        onBeforeLeave={resetOperation}
+        operation={execute(stakeAmountInLux, gasPrice, gasLimit)}
+        pendingMessage="Processing transaction"
+        successMessage="Transaction created"
+      >
+        <svelte:fragment slot="success-content" let:result={hash}>
+          <p>{MESSAGES.TRANSACTION_CREATED}</p>
+          {#if hash}
+            <AnchorButton
+              href={`/explorer/transactions/transaction?id=${hash}`}
+              on:click={resetOperation}
+              text="VIEW ON BLOCK EXPLORER"
+              rel="noopener noreferrer"
+              target="_blank"
+            />
+          {/if}
+        </svelte:fragment>
+      </OperationResult>
+    </WizardStep>
+  </Wizard>
 </div>
 
 <style lang="postcss">
-	.operation {
-		&__amount {
-			display: flex;
-			align-items: center;
-			width: 100%;
-		}
+  .operation {
+    &__stake {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2em;
+    }
 
-		&__stake {
-			display: flex;
-			flex-direction: column;
-			gap: 1.2em;
-		}
+    &__amount-wrapper,
+    &__input-wrapper {
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
 
-		&__space-between {
-			justify-content: space-between;
-		}
+    &__amount-wrapper {
+      justify-content: space-between;
+    }
 
-		&__input {
-			column-gap: var(--default-gap);
-		}
+    &__input-wrapper {
+      column-gap: var(--default-gap);
+    }
+  }
 
-		:global(&__input &__input-field) {
-			width: 100%;
-			padding: 0.5em 1em;
-		}
+  .staking-warning {
+    margin-bottom: 1em;
+  }
 
-		:global(&__input-field:invalid) {
-			color: var(--error-color);
-		}
-	}
+  :global(.staking-warning__step-node-setup-link) {
+    color: var(--secondary-color-variant-dark);
+  }
+
+  :global(.staking-warning__agreement) {
+    align-items: baseline;
+  }
 </style>

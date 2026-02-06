@@ -1,59 +1,105 @@
-<svelte:options immutable={true}/>
+<svelte:options immutable={true} />
 
 <script>
-	import { Icon, Tooltip } from "$lib/dusk/components";
-	import { logo } from "$lib/dusk/icons";
-	import { makeClassName } from "$lib/dusk/string";
-	import { createCurrencyFormatter } from "$lib/dusk/currency";
+  import { makeClassName } from "$lib/dusk/string";
+  import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
+  import { Card, Icon } from "$lib/dusk/components";
+  import { mdiShieldLock, mdiShieldLockOpenOutline } from "@mdi/js";
+  import { logo } from "$lib/dusk/icons";
+  import { createNumberFormatter } from "$lib/dusk/number";
 
-	/** @type {String | Undefined} */
-	export let className = undefined;
+  import "./Balance.css";
 
-	/** @type {Number} */
-	export let tokens = 0;
+  /** @type {string | undefined} */
+  export let className = undefined;
 
-	/** @type {Number} */
-	export let fiat = 0;
+  /** @type {string} */
+  export let fiatCurrency;
 
-	/** @type {String} */
-	export let tokenCurrency = "DUSK";
+  /** @type {number | undefined} */
+  export let fiatPrice = undefined;
 
-	/** @type {String} */
-	export let fiatCurrency = "USD";
+  /**
+   * A BCP 47 language tag.
+   * @type {string}
+   */
+  export let locale;
 
-	/** @type {String} */
-	export let locale = "en";
+  /** @type {string} */
+  export let tokenCurrency;
 
-	$: classes = makeClassName([
-		"dusk-balance",
-		className
-	]);
+  /** @type {bigint} */
+  export let shieldedAmount;
 
-	const duskFormatter = createCurrencyFormatter(locale, tokenCurrency, 9);
-	const fiatFormatter = createCurrencyFormatter(locale, fiatCurrency, 2);
+  /** @type {bigint} */
+  export let unshieldedAmount;
+
+  $: totalBalance = luxToDusk(shieldedAmount + unshieldedAmount);
+
+  $: shieldedPercentage = totalBalance
+    ? (luxToDusk(shieldedAmount) / totalBalance) * 100
+    : 0;
+
+  $: unshieldedPercentage = totalBalance
+    ? (luxToDusk(unshieldedAmount) / totalBalance) * 100
+    : 0;
+
+  $: classes = makeClassName(["dusk-balance", className]);
+
+  $: duskFormatter = createCurrencyFormatter(locale, tokenCurrency, 9);
+  $: fiatFormatter = createCurrencyFormatter(locale, fiatCurrency, 2);
+  $: numberFormatter = createNumberFormatter(locale, 2);
 </script>
 
-<article
-	{...$$restProps}
-	class={classes}
->
-	<header class="dusk-balance__header">
-		<h2>Your Balance:</h2>
-	</header>
-	<p class="dusk-balance__dusk">
-		<strong>{duskFormatter(tokens)}</strong>
-		<Icon
-			className="dusk-balance__icon"
-			path={logo}
-			data-tooltip-id="balance-tooltip"
-			data-tooltip-text={tokenCurrency}
-			data-tooltip-place="right"
-		/>
-	</p>
-	<p class="dusk-balance__fiat">
-		<strong>
-			({fiatFormatter(fiat)})
-		</strong>
-	</p>
-	<Tooltip id="balance-tooltip"/>
+<article {...$$restProps} class={classes}>
+  <header class="dusk-balance__header">
+    <h2 class="sr-only">Your Balance:</h2>
+  </header>
+  <p class="dusk-balance__dusk">
+    <span>{duskFormatter(totalBalance)}</span>
+    <span>{tokenCurrency}</span>
+  </p>
+  <p
+    class="dusk-balance__fiat"
+    class:dusk-balance__fiat--visible={fiatPrice !== undefined}
+  >
+    <span>
+      {fiatFormatter(fiatPrice ? fiatPrice * totalBalance : 0)}
+    </span>
+  </p>
+
+  <Card className="dusk-balance__usage-details">
+    <div class="dusk-balance__account">
+      <span class="dusk-balance__percentage"
+        ><Icon
+          path={mdiShieldLockOpenOutline}
+          data-tooltip-id="main-tooltip"
+          data-tooltip-text="Public"
+        />{numberFormatter(unshieldedPercentage)}%</span
+      >
+      <span class="dusk-balance__value"
+        >{duskFormatter(luxToDusk(unshieldedAmount))}<Icon
+          data-tooltip-id="main-tooltip"
+          data-tooltip-text="DUSK"
+          path={logo}
+        /></span
+      >
+    </div>
+    <div class="dusk-balance__account">
+      <span class="dusk-balance__percentage"
+        ><Icon
+          path={mdiShieldLock}
+          data-tooltip-id="main-tooltip"
+          data-tooltip-text="Shielded"
+        />{numberFormatter(shieldedPercentage)}%</span
+      >
+      <span class="dusk-balance__value"
+        >{duskFormatter(luxToDusk(shieldedAmount))}<Icon
+          data-tooltip-id="main-tooltip"
+          data-tooltip-text="DUSK"
+          path={logo}
+        /></span
+      >
+    </div>
+  </Card>
 </article>

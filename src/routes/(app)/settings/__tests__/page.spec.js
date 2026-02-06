@@ -1,162 +1,226 @@
 import {
-	afterAll,
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
 } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
-import * as appNavigation from "$app/navigation";
+import { get } from "svelte/store";
+import { setKey } from "lamb";
 
-import mockedWalletStore from "../../__mocks__/mockedWalletStore";
-import { settingsStore, walletStore } from "$lib/stores";
+import mockedWalletStore from "$lib/mocks/mockedWalletStore";
+import * as navigation from "$lib/navigation";
+import {
+  gasStore,
+  networkStore,
+  settingsStore,
+  walletStore,
+} from "$lib/stores";
+import loginInfoStorage from "$lib/services/loginInfoStorage";
 
 import Settings from "../+page.svelte";
 
-vi.mock("$lib/stores", async importOriginal => {
-	/** @type {import("$lib/stores/stores").WalletStore} */
-	const original = await importOriginal();
+/**
+ * @param {HTMLElement} input
+ * @param {*} value
+ * @returns {Promise<boolean>}
+ */
+const fireInput = (input, value) =>
+  fireEvent.input(input, { target: { value } });
 
-	return {
-		...original,
-		walletStore: {
-			...(await vi.importMock("$lib/stores/walletStore")).default,
-			...mockedWalletStore
-		}
-	};
+/** @param {HTMLElement} element */
+const asInput = (element) => /** @type {HTMLInputElement} */ (element);
+
+vi.mock("$lib/stores", async (importOriginal) => {
+  /** @type {WalletStore} */
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    walletStore: {
+      // @ts-ignore
+      ...(await vi.importMock("$lib/stores/walletStore")).default,
+      ...mockedWalletStore,
+    },
+  };
 });
 
 vi.useFakeTimers();
 
 describe("Settings", () => {
-	const initialWalletStoreState = structuredClone(mockedWalletStore.getMockedStoreValue());
-	const gotoSpy = vi.spyOn(appNavigation, "goto");
-	const resetSpy = vi.spyOn(walletStore, "reset");
+  const initialWalletStoreState = structuredClone(
+    mockedWalletStore.getMockedStoreValue()
+  );
+  const logoutSpy = vi.spyOn(navigation, "logout");
 
-	beforeEach(() => {
-		mockedWalletStore.setMockedStoreValue(initialWalletStoreState);
-	});
+  beforeEach(async () => {
+    await networkStore.connect();
+    mockedWalletStore.setMockedStoreValue(initialWalletStoreState);
+  });
 
-	afterEach(() => {
-		cleanup();
-		gotoSpy.mockClear();
-		resetSpy.mockClear();
-	});
+  afterEach(() => {
+    cleanup();
+    logoutSpy.mockClear();
+  });
 
-	afterAll(() => {
-		gotoSpy.mockRestore();
-		resetSpy.mockRestore();
-		vi.doUnmock("$lib/stores");
-	});
+  afterAll(() => {
+    logoutSpy.mockRestore();
+    vi.doUnmock("$lib/stores");
+  });
 
-	it("should render the settings page", () => {
-		const { container } = render(Settings, {});
+  it("should render the settings page displaying the status of the network", async () => {
+    const { container } = render(Settings, {});
 
-		expect(container.firstChild).toMatchSnapshot();
-	});
+    expect(container.firstChild).toMatchSnapshot();
 
-	it("should disable the reset button while a sync is in progress", async () => {
-		const { getByRole } = render(Settings);
-		const resetButton = getByRole("button", { name: /reset/i });
+    await networkStore.disconnect();
 
-		expect(resetButton).not.toHaveAttribute("disabled");
-		expect(resetButton).toHaveAttribute("data-tooltip-disabled", "true");
+    expect(container.firstChild).toMatchSnapshot();
+  });
 
-		await act(() => {
-			mockedWalletStore.setMockedStoreValue({
-				...initialWalletStoreState,
-				isSyncing: true
-			});
-		});
+  it("should show the wallet creation block height if it's greater than zero", () => {
+    settingsStore.update(setKey("walletCreationBlockHeight", 123n));
 
-		expect(resetButton).toHaveAttribute("disabled");
-		expect(resetButton).toHaveAttribute("data-tooltip-disabled", "false");
-	});
+    const { container, getByDisplayValue } = render(Settings, {});
+    const creationBlockInput = getByDisplayValue("123");
 
-	it("should reset wallet store and navigate to login page on clicking the Log Out button", async () => {
-		const { getByRole } = render(Settings);
+    expect(creationBlockInput).toBeInTheDocument();
+    expect(container.firstChild).toMatchSnapshot();
 
-		const button = getByRole("button", { name: "Log out" });
+    settingsStore.reset();
+  });
 
-		await fireEvent.click(button);
-		await vi.advanceTimersToNextTimerAsync();
+  it("should disable the reset wallet button while a sync is in progress", async () => {
+    const { getByRole } = render(Settings);
+    const resetButton = getByRole("button", { name: /reset wallet/i });
 
-		expect(resetSpy).toHaveBeenCalledTimes(1);
-		expect(gotoSpy).toHaveBeenCalledTimes(1);
-		expect(gotoSpy).toHaveBeenCalledWith("/");
-	});
+    expect(resetButton).not.toHaveAttribute("disabled");
+    expect(resetButton).toHaveAttribute("data-tooltip-disabled", "true");
 
-	describe("Resetting the wallet", () => {
-		const clearDataSpy = vi.spyOn(walletStore, "clearLocalData").mockResolvedValue(void 0);
-		const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-		const settingsResetSpy = vi.spyOn(settingsStore, "reset");
+    await act(() => {
+      mockedWalletStore.setMockedStoreValue({
+        ...initialWalletStoreState,
+        syncStatus: {
+          ...initialWalletStoreState.syncStatus,
+          isInProgress: true,
+        },
+      });
+    });
 
-		afterEach(() => {
-			clearDataSpy.mockClear();
-			confirmSpy.mockClear();
-			settingsResetSpy.mockClear();
-		});
+    expect(resetButton).toHaveAttribute("disabled");
+    expect(resetButton).toHaveAttribute("data-tooltip-disabled", "false");
+  });
 
-		afterAll(() => {
-			clearDataSpy.mockRestore();
-			confirmSpy.mockRestore();
-			settingsResetSpy.mockRestore();
-		});
+  it('should disable the "Back" button if invalid gas limit or price are introduced', async () => {
+    const { gasLimitLower, gasLimitUpper, gasPriceLower } = get(gasStore);
+    const { getByLabelText, getByRole } = render(Settings, {});
+    const priceInput = asInput(getByLabelText(/price/i));
+    const limitInput = asInput(getByLabelText(/limit/i));
+    const backButton = getByRole("link", { name: /back/i });
 
-		it("should clear local data and settings and then log out the user if the reset button is clicked and the user confirms the operation", async () => {
-			const { getByRole } = render(Settings);
-			const resetButton = getByRole("button", { name: /reset/i });
+    await fireInput(priceInput, String(gasPriceLower - 1n));
+    expect(backButton).toHaveAttribute("aria-disabled", "true");
+    await fireInput(priceInput, gasPriceLower.toString());
+    expect(backButton).toHaveAttribute("aria-disabled", "false");
 
-			await fireEvent.click(resetButton);
+    await fireInput(limitInput, String(gasLimitLower - 1n));
+    expect(backButton).toHaveAttribute("aria-disabled", "true");
+    await fireInput(limitInput, gasLimitLower.toString());
+    expect(backButton).toHaveAttribute("aria-disabled", "false");
+    await fireInput(limitInput, String(gasLimitUpper + 1n));
+    expect(backButton).toHaveAttribute("aria-disabled", "true");
+    await fireInput(limitInput, gasLimitUpper.toString());
+    expect(backButton).toHaveAttribute("aria-disabled", "false");
+  });
 
-			expect(confirmSpy).toHaveBeenCalledTimes(1);
-			expect(clearDataSpy).toHaveBeenCalledTimes(1);
+  it("should reset wallet store and navigate to landing page on clicking the Lock Wallet button", async () => {
+    const { getByRole } = render(Settings);
 
-			await vi.advanceTimersToNextTimerAsync();
+    const button = getByRole("button", { name: "Lock Wallet" });
 
-			expect(settingsResetSpy).toHaveBeenCalledTimes(1);
-			expect(resetSpy).toHaveBeenCalledTimes(1);
-			expect(gotoSpy).toHaveBeenCalledTimes(1);
-			expect(gotoSpy).toHaveBeenCalledWith("/");
-		});
+    await fireEvent.click(button);
+    await vi.advanceTimersToNextTimerAsync();
 
-		it("should do nothing if the user doesn't confirm the reset", async () => {
-			confirmSpy.mockReturnValueOnce(false);
+    expect(logoutSpy).toHaveBeenCalledTimes(1);
+    expect(logoutSpy).toHaveBeenCalledWith(false);
+  });
 
-			const { getByRole } = render(Settings);
-			const resetButton = getByRole("button", { name: /reset/i });
+  describe("Resetting the wallet", () => {
+    const clearDataSpy = vi
+      .spyOn(walletStore, "clearLocalData")
+      .mockResolvedValue(void 0);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const settingsResetSpy = vi.spyOn(settingsStore, "reset");
+    const loginInfoStorageSpy = vi.spyOn(loginInfoStorage, "remove");
 
-			await fireEvent.click(resetButton);
+    beforeEach(() => {
+      clearDataSpy.mockClear();
+      confirmSpy.mockClear();
+      settingsResetSpy.mockClear();
+      loginInfoStorageSpy.mockClear();
+    });
 
-			expect(confirmSpy).toHaveBeenCalledTimes(1);
-			expect(clearDataSpy).not.toHaveBeenCalled();
+    afterAll(() => {
+      clearDataSpy.mockRestore();
+      confirmSpy.mockRestore();
+      settingsResetSpy.mockRestore();
+      loginInfoStorageSpy.mockRestore();
+    });
 
-			await vi.advanceTimersToNextTimerAsync();
+    it("should clear local data, settings, and login info before logging out the user if the reset wallet button is clicked and the user confirms the operation", async () => {
+      const { getByRole } = render(Settings);
+      const resetButton = getByRole("button", { name: /reset wallet/i });
 
-			expect(settingsResetSpy).not.toHaveBeenCalled();
-			expect(resetSpy).not.toHaveBeenCalled();
-			expect(gotoSpy).not.toHaveBeenCalled();
-		});
+      await fireEvent.click(resetButton);
 
-		it("should show an error if clearing local data fails", async () => {
-			clearDataSpy.mockRejectedValueOnce(new Error("Clear data error"));
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(clearDataSpy).toHaveBeenCalledTimes(1);
 
-			const { container, getByRole } = render(Settings);
-			const resetButton = getByRole("button", { name: /reset/i });
+      await vi.advanceTimersToNextTimerAsync();
 
-			await fireEvent.click(resetButton);
+      expect(loginInfoStorageSpy).toHaveBeenCalledTimes(1);
+      expect(settingsResetSpy).toHaveBeenCalledTimes(1);
+      expect(logoutSpy).toHaveBeenCalledTimes(1);
+      expect(logoutSpy).toHaveBeenCalledWith(false);
+    });
 
-			expect(confirmSpy).toHaveBeenCalledTimes(1);
-			expect(clearDataSpy).toHaveBeenCalledTimes(1);
+    it("should do nothing if the user doesn't confirm the reset", async () => {
+      confirmSpy.mockReturnValueOnce(false);
 
-			await vi.advanceTimersToNextTimerAsync();
+      const { getByRole } = render(Settings);
+      const resetButton = getByRole("button", { name: /reset wallet/i });
 
-			expect(settingsResetSpy).not.toHaveBeenCalled();
-			expect(resetSpy).not.toHaveBeenCalled();
-			expect(gotoSpy).not.toHaveBeenCalled();
-			expect(container.firstChild).toMatchSnapshot();
-		});
-	});
+      await fireEvent.click(resetButton);
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(clearDataSpy).not.toHaveBeenCalled();
+
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(loginInfoStorageSpy).not.toHaveBeenCalled();
+      expect(settingsResetSpy).not.toHaveBeenCalled();
+      expect(logoutSpy).not.toHaveBeenCalled();
+    });
+
+    it("should show an error if clearing local data fails", async () => {
+      clearDataSpy.mockRejectedValueOnce(new Error("Clear data error"));
+
+      const { container, getByRole } = render(Settings);
+      const resetButton = getByRole("button", { name: /reset wallet/i });
+
+      await fireEvent.click(resetButton);
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(clearDataSpy).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(settingsResetSpy).not.toHaveBeenCalled();
+      expect(logoutSpy).not.toHaveBeenCalled();
+      expect(container.firstChild).toMatchSnapshot();
+    });
+  });
 });

@@ -1,9 +1,30 @@
-.dusk-anchor,
-.dusk-anchor:visited {
-	color: var(--secondary-color);
+.dusk-anchor {
+  text-decoration: none;
 }
 
-.dusk-anchor:hover,
-.dusk-anchor:active {
-	color: var(--secondary-color-variant-light);
+.dusk-anchor--off-surface {
+  color: var(--anchor-color);
+}
+
+.dusk-anchor--off-surface:visited {
+  color: var(--anchor-color-visited);
+}
+
+.dusk-anchor--off-surface:hover {
+  color: var(--anchor-color-hover);
+}
+
+.dusk-anchor--off-surface:active {
+  color: var(--anchor-color-active);
+}
+
+.dusk-anchor--on-surface,
+.dusk-anchor--on-surface:visited,
+.dusk-anchor--on-surface:hover,
+.dusk-anchor--on-surface:active {
+  color: var(--anchor-color-on-surface);
+}
+
+.dusk-anchor--on-surface:not(.dusk-anchor-button):hover {
+  text-decoration: underline;
 }

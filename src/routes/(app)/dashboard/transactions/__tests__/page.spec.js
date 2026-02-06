@@ -1,15 +1,19 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 import Transactions from "../+page.svelte";
 
+vi.useFakeTimers();
+
 describe("Dashboard", () => {
-	afterEach(cleanup);
+  afterEach(cleanup);
 
-	const currentPrice = { usd: 0.5 };
+  // const currentPrice = Promise.resolve({ usd: 0.5 });
 
-	it("should render the transactions page", () => {
-		const { container } = render(Transactions, { data: { currentPrice } });
+  it("should render the transactions page", async () => {
+    const { container } = render(Transactions);
 
-		expect(container.firstChild).toMatchSnapshot();
-	});
+    await vi.advanceTimersToNextTimerAsync();
+
+    expect(container.firstChild).toMatchSnapshot();
+  });
 });

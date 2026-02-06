@@ -1,10 +1,11 @@
+const scaleFactor = 1e9;
+
 /**
- * Temporary conversion function until
- * `dusk-wallet-js` exposes its own.
- *
  * @param {number} n
- * @returns {number}
+ * @returns {bigint}
  */
-const duskToLux = n => n * 1e9;
+const duskToLux = (n) =>
+  BigInt(Math.floor(n)) * BigInt(scaleFactor) +
+  BigInt(Math.round((n % 1) * scaleFactor));
 
 export default duskToLux;

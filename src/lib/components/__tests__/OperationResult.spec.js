@@ -1,117 +1,109 @@
-import {
-	afterEach,
-	describe,
-	expect,
-	it,
-	vi
-} from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render } from "@testing-library/svelte";
+
+import { rejectAfter, resolveAfter } from "$lib/dusk/promise";
 
 import { OperationResult } from "..";
 
 vi.useFakeTimers();
 
 describe("OperationResult", () => {
-	const delay = 1000;
+  const delay = 1000;
 
-	/** @type {(delay: number) => Promise<any>} */
-	const rejectAfter = ms => new Promise((resolve, reject) => {
-		setTimeout(() => reject(new Error("some error")), ms);
-	});
+  const onBeforeLeave = vi.fn();
 
-	/** @type {(delay: number) => Promise<any>} */
-	const resolveAfter = ms => new Promise(resolve => { setTimeout(resolve, ms); });
+  const baseProps = {
+    onBeforeLeave,
+    operation: resolveAfter(delay, ""),
+  };
 
-	const onBeforeLeave = vi.fn();
+  const baseOptions = {
+    props: baseProps,
+    target: document.body,
+  };
 
-	const baseProps = {
-		onBeforeLeave,
-		operation: resolveAfter(delay)
-	};
+  afterEach(() => {
+    cleanup();
+    onBeforeLeave.mockClear();
+  });
 
-	const baseOptions = {
-		props: baseProps,
-		target: document.body
-	};
+  it("should be able to render the `OperationResult` component in a pending state", () => {
+    const { container } = render(OperationResult, baseOptions);
 
-	afterEach(() => {
-		cleanup();
-		onBeforeLeave.mockClear();
-	});
+    expect(container.firstChild).toMatchSnapshot();
+  });
 
-	it("should be able to render the `OperationResult` component in a pending state", () => {
-		const { container } = render(OperationResult, baseOptions);
+  it("should accept a custom message for the pending state", () => {
+    const props = {
+      ...baseProps,
+      pendingMessage: "Transaction pending",
+    };
+    const { container } = render(OperationResult, { ...baseOptions, props });
 
-		expect(container.firstChild).toMatchSnapshot();
-	});
+    expect(container.firstChild).toMatchSnapshot();
+  });
 
-	it("should accept a custom message for the pending state", () => {
-		const props = {
-			...baseProps,
-			pendingMessage: "Transaction pending"
-		};
-		const { container } = render(OperationResult, { ...baseOptions, props });
+  it("should be able to render the `OperationResult` in a successful state", async () => {
+    const { container } = render(OperationResult, baseOptions);
 
-		expect(container.firstChild).toMatchSnapshot();
-	});
+    await vi.advanceTimersByTimeAsync(delay);
 
-	it("should be able to render the `OperationResult` in a successful state", async () => {
-		const { container } = render(OperationResult, baseOptions);
+    expect(container.firstChild).toMatchSnapshot();
+  });
 
-		await vi.advanceTimersByTimeAsync(delay);
+  it("should accept a custom message for the successful state", async () => {
+    const props = {
+      ...baseProps,
+      successMessage: "Transaction created",
+    };
 
-		expect(container.firstChild).toMatchSnapshot();
-	});
+    const { container } = render(OperationResult, { ...baseOptions, props });
 
-	it("should accept a custom message for the successful state", async () => {
-		const props = {
-			...baseProps,
-			successMessage: "Transaction completed"
-		};
+    await vi.advanceTimersByTimeAsync(delay);
 
-		const { container } = render(OperationResult, { ...baseOptions, props });
+    expect(container.firstChild).toMatchSnapshot();
+  });
 
-		await vi.advanceTimersByTimeAsync(delay);
+  it("should call the `onBeforeLeave` function when the home button is clicked", async () => {
+    const { getByRole } = render(OperationResult, baseOptions);
 
-		expect(container.firstChild).toMatchSnapshot();
-	});
+    await vi.advanceTimersByTimeAsync(delay);
 
-	it("should call the `onBeforeLeave` function when the home button is clicked", async () => {
-		const { getByRole } = render(OperationResult, baseOptions);
+    const homeBtn = getByRole("link");
 
-		await vi.advanceTimersByTimeAsync(delay);
+    // prevents the browser from attempting to navigate
+    // to the link's href, which jsdom cannot handle
+    homeBtn.addEventListener("click", (event) => event.preventDefault());
 
-		const homeBtn = getByRole("link");
+    await fireEvent.click(homeBtn);
 
-		homeBtn.click();
+    expect(baseProps.onBeforeLeave).toHaveBeenCalledTimes(1);
+  });
 
-		expect(baseProps.onBeforeLeave).toHaveBeenCalledTimes(1);
-	});
+  it("should be able to render the `OperationResult` in a failure state", async () => {
+    const props = {
+      ...baseProps,
+      operation: rejectAfter(delay, new Error("some error")),
+    };
 
-	it("should be able to render the `OperationResult` in a failure state", async () => {
-		const props = {
-			...baseProps,
-			operation: rejectAfter(delay)
-		};
+    const { container } = render(OperationResult, { ...baseOptions, props });
 
-		const { container } = render(OperationResult, { ...baseOptions, props });
+    await vi.advanceTimersByTimeAsync(delay);
 
-		await vi.advanceTimersByTimeAsync(delay);
+    expect(container.firstChild).toMatchSnapshot();
+  });
 
-		expect(container.firstChild).toMatchSnapshot();
-	});
+  it("should accept a custom message for the failure state", async () => {
+    const props = {
+      ...baseProps,
+      errorMessage: "Transaction failed",
+      operation: rejectAfter(delay, new Error("some error")),
+    };
 
-	it("should accept a custom message for the failure state", async () => {
-		const props = {
-			...baseProps,
-			errorMessage: "Transaction failed",
-			operation: rejectAfter(delay)
-		};
+    const { container } = render(OperationResult, { ...baseOptions, props });
 
-		const { container } = render(OperationResult, { ...baseOptions, props });
+    await vi.advanceTimersByTimeAsync(delay);
 
-		await vi.advanceTimersByTimeAsync(delay);
-
-		expect(container.firstChild).toMatchSnapshot();
-	});
+    expect(container.firstChild).toMatchSnapshot();
+  });
 });

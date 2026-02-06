@@ -1,429 +1,733 @@
 import {
-	afterAll,
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
 } from "vitest";
 import { get } from "svelte/store";
-import { keys } from "lamb";
-import { Wallet } from "@dusk-network/dusk-wallet-js";
-
-import { addresses, transactions } from "$lib/mock-data";
-
-import { settingsStore, walletStore } from "..";
-
-vi.useFakeTimers();
-
-describe("walletStore", async () => {
-	const balance = { maximum: 100, value: 1 };
-	const wallet = new Wallet([]);
-
-	const getBalanceSpy = vi.spyOn(Wallet.prototype, "getBalance").mockResolvedValue(balance);
-	const getPsksSpy = vi.spyOn(Wallet.prototype, "getPsks").mockReturnValue(addresses);
-	const historySpy = vi.spyOn(Wallet.prototype, "history").mockResolvedValue(transactions);
-	const resetSpy = vi.spyOn(Wallet.prototype, "reset").mockResolvedValue(void 0);
-	const stakeInfoSpy = vi.spyOn(Wallet.prototype, "stakeInfo").mockResolvedValue({});
-	const stakeSpy = vi.spyOn(Wallet.prototype, "stake").mockResolvedValue(void 0);
-	const syncSpy = vi.spyOn(Wallet.prototype, "sync").mockResolvedValue(void 0);
-	const transferSpy = vi.spyOn(Wallet.prototype, "transfer").mockResolvedValue(void 0);
-	const unstakeSpy = vi.spyOn(Wallet.prototype, "unstake").mockResolvedValue(void 0);
-	const withdrawRewardSpy = vi.spyOn(Wallet.prototype, "withdrawReward").mockResolvedValue(void 0);
-
-	const initialState = {
-		balance: {
-			maximum: 0,
-			value: 0
-		},
-		currentAddress: "",
-		error: null,
-		initialized: false,
-		isSyncing: false,
-		addresses: []
-	};
-	const initializedStore = {
-		...initialState,
-		balance,
-		currentAddress: addresses[0],
-		initialized: true,
-		addresses: addresses
-	};
-
-	afterEach(() => {
-		getBalanceSpy.mockClear();
-		getPsksSpy.mockClear();
-		historySpy.mockClear();
-		resetSpy.mockClear();
-		stakeInfoSpy.mockClear();
-		stakeSpy.mockClear();
-		syncSpy.mockClear();
-		transferSpy.mockClear();
-		unstakeSpy.mockClear();
-		withdrawRewardSpy.mockClear();
-	});
-
-	afterAll(() => {
-		getBalanceSpy.mockRestore();
-		getPsksSpy.mockRestore();
-		historySpy.mockRestore();
-		resetSpy.mockRestore();
-		stakeInfoSpy.mockRestore();
-		stakeSpy.mockRestore();
-		syncSpy.mockRestore();
-		transferSpy.mockRestore();
-		unstakeSpy.mockRestore();
-		withdrawRewardSpy.mockRestore();
-	});
-
-	describe("Initialization and sync", () => {
-		it("should expose a `reset` method to bring back the store to its initial state", async () => {
-			await walletStore.init(wallet);
-			await vi.advanceTimersToNextTimerAsync();
-
-			expect(get(walletStore)).toStrictEqual(initializedStore);
-
-			walletStore.reset();
-
-			expect(get(walletStore)).toStrictEqual(initialState);
-		});
-
-		it("should expose a method to initialize the store with a Wallet instance", async () => {
-			await walletStore.init(wallet);
-
-			expect(get(walletStore)).toStrictEqual({
-				...initialState,
-				currentAddress: addresses[0],
-				error: null,
-				initialized: true,
-				isSyncing: true,
-				addresses: addresses
-			});
-			expect(getPsksSpy).toHaveBeenCalledTimes(1);
-			expect(getBalanceSpy).not.toHaveBeenCalled();
-
-			await vi.advanceTimersToNextTimerAsync();
-
-			expect(syncSpy).toHaveBeenCalledTimes(1);
-			expect(getBalanceSpy).toHaveBeenCalledTimes(1);
-			expect(getBalanceSpy).toHaveBeenCalledWith(addresses[0]);
-			expect(get(walletStore)).toStrictEqual(initializedStore);
-		});
-
-		it("should set the gas settings of the wallet based on the settings store values, and update them when they change", async () => {
-			const { gasLimit, gasPrice, ...rest } = get(settingsStore);
-			const newLimit = gasLimit * 3;
-			const newPrice = gasPrice * 3;
-
-			await walletStore.init(wallet);
-
-			expect(wallet.gasLimit).toBe(gasLimit);
-			expect(wallet.gasPrice).toBe(gasPrice);
-
-			settingsStore.set({
-				...rest,
-				gasLimit: newLimit,
-				gasPrice: newPrice
-			});
-
-			await vi.advanceTimersToNextTimerAsync();
-
-			expect(wallet.gasLimit).toBe(newLimit);
-			expect(wallet.gasPrice).toBe(newPrice);
-		});
-
-		it("should set the sync error in the store if the sync fails", async () => {
-			walletStore.reset();
-
-			const storeWhileLoading = {
-				...initialState,
-				currentAddress: addresses[0],
-				error: null,
-				initialized: true,
-				isSyncing: true,
-				addresses: addresses
-			};
-			const error = new Error("sync failed");
-
-			syncSpy.mockRejectedValueOnce(error);
-
-			await walletStore.init(wallet);
-
-			expect(get(walletStore)).toStrictEqual(storeWhileLoading);
-			expect(getPsksSpy).toHaveBeenCalledTimes(1);
-			expect(getBalanceSpy).not.toHaveBeenCalled();
-
-			await vi.advanceTimersToNextTimerAsync();
-
-			expect(syncSpy).toHaveBeenCalledTimes(1);
-			expect(getBalanceSpy).not.toHaveBeenCalled();
-			expect(get(walletStore)).toStrictEqual({
-				...storeWhileLoading,
-				error,
-				isSyncing: false
-			});
-
-			walletStore.reset();
-		});
-
-		it("should throw an error when the synchronization is called without initializing the store first", async () => {
-			walletStore.reset();
-
-			expect(() => walletStore.sync()).toThrow();
-		});
-
-		it("should return the pending sync promise if a sync is called while another one is in progress", async () => {
-			walletStore.reset();
-
-			await walletStore.init(wallet);
-			await vi.advanceTimersToNextTimerAsync();
-
-			expect(syncSpy).toHaveBeenCalledTimes(1);
-
-			syncSpy.mockClear();
-
-			const syncPromise1 = walletStore.sync();
-			const syncPromise2 = walletStore.sync();
-			const syncPromise3 = walletStore.sync();
-
-			expect(syncPromise1).toBe(syncPromise2);
-			expect(syncPromise1).toBe(syncPromise3);
-
-			await syncPromise1;
-
-			expect(syncSpy).toHaveBeenCalledTimes(1);
-
-			const syncPromise4 = walletStore.sync();
-
-			expect(syncPromise1).not.toBe(syncPromise4);
-			expect(syncSpy).toHaveBeenCalledTimes(2);
-
-			await syncPromise4;
-
-			walletStore.reset();
-		});
-	});
-
-	describe("Wallet store services", () => {
-		const currentAddress = addresses[0];
-
-		afterEach(() => {
-			walletStore.reset();
-		});
-
-		beforeEach(async () => {
-			await walletStore.init(wallet);
-			await vi.advanceTimersToNextTimerAsync();
-
-			syncSpy.mockClear();
-		});
-
-		it("should expose a method to clear local data", async () => {
-			await walletStore.clearLocalData();
-
-			expect(resetSpy).toHaveBeenCalledTimes(1);
-		});
-
-		it("should expose a method to clear local data and then init the wallet", async () => {
-			getPsksSpy.mockClear();
-			getBalanceSpy.mockClear();
-			syncSpy.mockClear();
-			walletStore.reset();
-
-			await walletStore.clearLocalDataAndInit(wallet);
-
-			expect(get(walletStore)).toStrictEqual({
-				...initialState,
-				currentAddress: addresses[0],
-				error: null,
-				initialized: true,
-				isSyncing: true,
-				addresses: addresses
-			});
-			expect(getPsksSpy).toHaveBeenCalledTimes(1);
-			expect(getBalanceSpy).toHaveBeenCalledTimes(1);
-			expect(getBalanceSpy).toHaveBeenCalledWith(addresses[0]);
-			expect(syncSpy).toHaveBeenCalledTimes(1);
-
-			await vi.advanceTimersToNextTimerAsync();
-
-			expect(get(walletStore)).toStrictEqual(initializedStore);
-		});
-
-		it("should expose a method to retrieve the stake info", async () => {
-			await walletStore.getStakeInfo();
-
-			expect(syncSpy).toHaveBeenCalledTimes(1);
-			expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
-			expect(stakeInfoSpy).toHaveBeenCalledWith(currentAddress);
-			expect(syncSpy.mock.invocationCallOrder[0])
-				.toBeLessThan(stakeInfoSpy.mock.invocationCallOrder[0]);
-		});
-
-		it("should fix the returned stake info by adding the amount and the reward if they are missing", async () => {
-			stakeInfoSpy.mockResolvedValueOnce({
-				"has_key": false,
-				"has_staked": false
-			});
-
-			const expected = {
-				"amount": 0,
-				"has_key": false,
-				"has_staked": false,
-				"reward": 0
-			};
-			const result = await walletStore.getStakeInfo();
-
-			expect(syncSpy).toHaveBeenCalledTimes(1);
-			expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
-			expect(stakeInfoSpy).toHaveBeenCalledWith(currentAddress);
-			expect(syncSpy.mock.invocationCallOrder[0])
-				.toBeLessThan(stakeInfoSpy.mock.invocationCallOrder[0]);
-			expect(result).toStrictEqual(expected);
-		});
-
-		it("should expose a method to retrieve the transaction history", async () => {
-			await walletStore.getTransactionsHistory();
-
-			expect(syncSpy).toHaveBeenCalledTimes(1);
-			expect(historySpy).toHaveBeenCalledTimes(1);
-			expect(historySpy).toHaveBeenCalledWith(currentAddress);
-			expect(syncSpy.mock.invocationCallOrder[0])
-				.toBeLessThan(historySpy.mock.invocationCallOrder[0]);
-		});
-
-		it("should remove eventual duplicate transactions from the list", async () => {
-			historySpy.mockResolvedValueOnce(transactions.concat(transactions));
-
-			const result = await walletStore.getTransactionsHistory();
-
-			expect(result).toStrictEqual(transactions);
-		});
-
-		it("should expose a method to set the current address", async () => {
-			const setCurrentAddressSpy = vi.spyOn(walletStore, "setCurrentAddress");
-
-			await walletStore.setCurrentAddress(addresses[1]);
-
-			expect(syncSpy).toHaveBeenCalledTimes(1);
-			expect(get(walletStore).currentAddress).toBe(addresses[1]);
-			expect(setCurrentAddressSpy.mock.invocationCallOrder[0])
-				.toBeLessThan(syncSpy.mock.invocationCallOrder[0]);
-
-			setCurrentAddressSpy.mockRestore();
-		});
-
-		it("should return a rejected promise if the new address is not in the list", () => {
-			expect(walletStore.setCurrentAddress("foo bar")).rejects.toThrow();
-
-			expect(syncSpy).not.toHaveBeenCalled();
-			expect(get(walletStore).currentAddress).toBe(currentAddress);
-		});
-
-		it("should expose a method to allow to stake an amount of Dusk", async () => {
-			await walletStore.stake(10);
-
-			expect(syncSpy).toHaveBeenCalledTimes(2);
-			expect(stakeSpy).toHaveBeenCalledTimes(1);
-			expect(stakeSpy).toHaveBeenCalledWith(currentAddress, 10);
-			expect(syncSpy.mock.invocationCallOrder[0])
-				.toBeLessThan(stakeSpy.mock.invocationCallOrder[0]);
-			expect(syncSpy.mock.invocationCallOrder[1])
-				.toBeGreaterThan(stakeSpy.mock.invocationCallOrder[0]);
-		});
-
-		it("should expose a method to allow to transfer an amount of Dusk", async () => {
-			await walletStore.transfer(addresses[1], 10);
-
-			expect(syncSpy).toHaveBeenCalledTimes(2);
-			expect(transferSpy).toHaveBeenCalledTimes(1);
-			expect(transferSpy).toHaveBeenCalledWith(currentAddress, addresses[1], 10);
-			expect(syncSpy.mock.invocationCallOrder[0])
-				.toBeLessThan(transferSpy.mock.invocationCallOrder[0]);
-			expect(syncSpy.mock.invocationCallOrder[1])
-				.toBeGreaterThan(transferSpy.mock.invocationCallOrder[0]);
-		});
-
-		it("should expose a method to allow to unstake the current address", async () => {
-			await walletStore.unstake();
-
-			expect(syncSpy).toHaveBeenCalledTimes(2);
-			expect(unstakeSpy).toHaveBeenCalledTimes(1);
-			expect(unstakeSpy).toHaveBeenCalledWith(currentAddress);
-			expect(syncSpy.mock.invocationCallOrder[0])
-				.toBeLessThan(unstakeSpy.mock.invocationCallOrder[0]);
-			expect(syncSpy.mock.invocationCallOrder[1])
-				.toBeGreaterThan(unstakeSpy.mock.invocationCallOrder[0]);
-		});
-
-		it("should expose a method to allow to withdraw a reward", async () => {
-			await walletStore.withdrawReward();
-
-			expect(syncSpy).toHaveBeenCalledTimes(2);
-			expect(withdrawRewardSpy).toHaveBeenCalledTimes(1);
-			expect(withdrawRewardSpy).toHaveBeenCalledWith(currentAddress);
-			expect(syncSpy.mock.invocationCallOrder[0])
-				.toBeLessThan(withdrawRewardSpy.mock.invocationCallOrder[0]);
-			expect(syncSpy.mock.invocationCallOrder[1])
-				.toBeGreaterThan(withdrawRewardSpy.mock.invocationCallOrder[0]);
-		});
-	});
-
-	describe("State changing failures", () => {
-		/** @typedef {"stake" | "transfer" | "unstake" | "withdrawReward"} Operation */
-		/** @type {Record<Operation, import("vitest").SpyInstance<any>>} */
-		const operationsMap = {
-			stake: stakeSpy,
-			transfer: transferSpy,
-			unstake: unstakeSpy,
-			withdrawReward: withdrawRewardSpy
-		};
-		const fakeFailure = new Error("operation failure");
-		const fakeSuccess = {};
-		const fakeSyncError = new Error("bad sync");
-
-		keys(operationsMap).forEach(operation => {
-			const spy = operationsMap[operation];
-
-			it("should return a resolved promise with the operation result if an operation succeeds", async () => {
-				await walletStore.init(wallet);
-				await vi.advanceTimersToNextTimerAsync();
-
-				syncSpy
-					.mockResolvedValueOnce(void 0)
-					.mockRejectedValueOnce(fakeSyncError);
-				spy.mockResolvedValueOnce(fakeSuccess);
-
-				expect(get(walletStore).error).toBe(null);
-
-				// @ts-ignore it's a mock and we don't care to pass the correct arguments
-				expect(await walletStore[operation]()).toBe(fakeSuccess);
-				expect(get(walletStore).error).toBe(fakeSyncError);
-
-				walletStore.reset();
-			});
-
-			it("should return a rejected promise with the operation error if an operation fails and try a sync afterwards nonetheless", async () => {
-				await walletStore.init(wallet);
-				await vi.advanceTimersToNextTimerAsync();
-
-				syncSpy
-					.mockResolvedValueOnce(void 0)
-					.mockRejectedValueOnce(fakeSyncError);
-				spy.mockRejectedValueOnce(fakeFailure);
-
-				expect(get(walletStore).error).toBe(null);
-
-				// @ts-ignore it's a mock and we don't care to pass the correct arguments
-				expect(walletStore[operation]()).rejects.toThrowError(fakeFailure);
-
-				await vi.advanceTimersToNextTimerAsync();
-
-				expect(get(walletStore).error).toBe(fakeSyncError);
-
-				walletStore.reset();
-			});
-		});
-	});
+import { Bookkeeper, Gas, Network, ProfileGenerator } from "@dusk/w3sper";
+
+import { stakeInfo } from "$lib/mock-data";
+
+import WalletTreasury from "$lib/wallet-treasury";
+import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
+
+import { networkStore, walletStore } from "..";
+
+const VITE_SYNC_INTERVAL = import.meta.env.VITE_SYNC_INTERVAL;
+
+describe("Wallet store", async () => {
+  const AUTO_SYNC_INTERVAL = !isNaN(Number(VITE_SYNC_INTERVAL))
+    ? Number(VITE_SYNC_INTERVAL)
+    : 5 * 60 * 1000;
+
+  const cachedBalance = {
+    shielded: {
+      spendable: 10n,
+      value: 5n,
+    },
+    unshielded: {
+      nonce: 3n,
+      value: 4n,
+    },
+  };
+  const cachedStakeInfo = {
+    amount: {
+      eligibility: 123n,
+      locked: 456n,
+      get total() {
+        return this.value + this.locked;
+      },
+      value: 100n,
+    },
+    faults: 10,
+    hardFaults: 2,
+    nonce: 5n,
+    reward: 56789n,
+  };
+  const shielded = {
+    spendable: 400000000000000n,
+    value: 1026179647718621n,
+  };
+  const unshielded = {
+    nonce: 1234n,
+    value: shielded.value / 2n,
+  };
+  const minimumStake = 1_000_000_000_000n;
+
+  vi.spyOn(Bookkeeper.prototype, "minimumStake", "get").mockResolvedValue(
+    minimumStake
+  );
+
+  /** @type {import("vitest").Mock<typeof setTimeout>} */
+  let setTimeoutSpy;
+
+  /** @type {import("vitest").Mock<typeof clearTimeout>} */
+  let clearTimeoutSpy;
+
+  const abortControllerSpy = vi.spyOn(AbortController.prototype, "abort");
+  const balanceSpy = vi
+    .spyOn(Bookkeeper.prototype, "balance")
+    .mockImplementation(async (identifier) => {
+      return ProfileGenerator.typeOf(identifier.toString()) === "address"
+        ? shielded
+        : unshielded;
+    });
+
+  const stakeInfoSpy = vi
+    .spyOn(Bookkeeper.prototype, "stakeInfo")
+    .mockImplementation(async () => stakeInfo);
+
+  const getCachedBalanceSpy = vi
+    .spyOn(WalletTreasury.prototype, "getCachedBalance")
+    .mockResolvedValue(cachedBalance);
+  const setCachedBalanceSpy = vi
+    .spyOn(WalletTreasury.prototype, "setCachedBalance")
+    .mockResolvedValue(undefined);
+  const getCachedStakeInfoSpy = vi
+    .spyOn(WalletTreasury.prototype, "getCachedStakeInfo")
+    .mockResolvedValue(cachedStakeInfo);
+  const setCachedStakeInfoSpy = vi
+    .spyOn(WalletTreasury.prototype, "setCachedStakeInfo")
+    .mockResolvedValue(undefined);
+  const setProfilesSpy = vi.spyOn(WalletTreasury.prototype, "setProfiles");
+  const treasuryUpdateSpy = vi.spyOn(WalletTreasury.prototype, "update");
+
+  vi.spyOn(networkStore, "checkBlock").mockResolvedValue(true);
+  vi.spyOn(networkStore, "getBlockHashByHeight").mockResolvedValue(
+    "some-block-hash"
+  );
+  vi.spyOn(networkStore, "getLastFinalizedBlockHeight").mockResolvedValue(121n);
+
+  const seed = getSeedFromMnemonic(generateMnemonic());
+  const profileGenerator = new ProfileGenerator(async () => seed);
+  const defaultProfile = await profileGenerator.default;
+
+  const initialState = {
+    balance: {
+      shielded: {
+        spendable: 0n,
+        value: 0n,
+      },
+      unshielded: {
+        nonce: 0n,
+        value: 0n,
+      },
+    },
+    currentProfile: null,
+    initialized: false,
+    minimumStake: 0n,
+    profiles: [],
+    stakeInfo: {
+      amount: null,
+      faults: 0,
+      hardFaults: 0,
+      reward: 0n,
+    },
+    syncStatus: {
+      error: null,
+      from: 0n,
+      isInProgress: false,
+      last: 0n,
+      progress: 0,
+    },
+  };
+
+  beforeEach(async () => {
+    vi.useFakeTimers();
+
+    setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+
+    await vi.runOnlyPendingTimersAsync();
+
+    vi.clearAllTimers();
+    vi.clearAllMocks();
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.clearAllTimers();
+  });
+
+  describe("Initialization and sync", () => {
+    it("should expose a method to initialize the store with a `ProfileGenerator` instance", async () => {
+      await walletStore.init(profileGenerator);
+
+      const state = get(walletStore);
+
+      expect(state.balance).toStrictEqual(cachedBalance);
+      expect(state.currentProfile).toBe(defaultProfile);
+      expect(state.initialized).toBe(true);
+      expect(state.minimumStake).toBe(minimumStake);
+      expect(state.stakeInfo).toStrictEqual(cachedStakeInfo);
+      expect(state.syncStatus).toStrictEqual({
+        error: null,
+        from: 0n,
+        isInProgress: true,
+        last: 0n,
+        progress: 0,
+      });
+
+      // Check that we have exactly 2 profiles
+      expect(state.profiles).toHaveLength(2);
+      expect(state.profiles[0]).toBe(defaultProfile);
+      expect(state.profiles[1]).toBeDefined();
+
+      expect(getCachedBalanceSpy).toHaveBeenCalledTimes(1);
+      expect(getCachedBalanceSpy).toHaveBeenCalledWith(defaultProfile);
+      expect(getCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
+      expect(getCachedStakeInfoSpy).toHaveBeenCalledWith(defaultProfile);
+
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+      const finalState = get(walletStore);
+      expect(finalState.balance).toStrictEqual({ shielded, unshielded });
+      expect(finalState.currentProfile).toBe(defaultProfile);
+      expect(finalState.initialized).toBe(true);
+      expect(finalState.minimumStake).toBe(minimumStake);
+      expect(finalState.stakeInfo).toStrictEqual(stakeInfo);
+      expect(finalState.syncStatus).toStrictEqual({
+        error: null,
+        from: 0n,
+        isInProgress: false,
+        last: 0n,
+        progress: 0,
+      });
+
+      // Check that we still have exactly 2 profiles
+      expect(finalState.profiles).toHaveLength(2);
+      expect(finalState.profiles[0]).toBe(defaultProfile);
+      expect(finalState.profiles[1]).toBeDefined();
+
+      expect(setProfilesSpy).toHaveBeenCalledTimes(1);
+      expect(setProfilesSpy.mock.calls[0][0]).toHaveLength(2);
+      expect(setProfilesSpy.mock.calls[0][0][0]).toBe(defaultProfile);
+      expect(setProfilesSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        treasuryUpdateSpy.mock.invocationCallOrder[0]
+      );
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
+      expect(balanceSpy).toHaveBeenCalledTimes(2);
+      expect(balanceSpy).toHaveBeenNthCalledWith(1, defaultProfile.address);
+      expect(balanceSpy).toHaveBeenNthCalledWith(2, defaultProfile.account);
+      expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
+      expect(stakeInfoSpy).toHaveBeenCalledWith(defaultProfile.account);
+      expect(balanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        treasuryUpdateSpy.mock.invocationCallOrder[0]
+      );
+      expect(stakeInfoSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        treasuryUpdateSpy.mock.invocationCallOrder[0]
+      );
+      expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
+      expect(setCachedBalanceSpy).toHaveBeenCalledWith(defaultProfile, {
+        shielded: await balanceSpy.mock.results[0].value,
+        unshielded: await balanceSpy.mock.results[1].value,
+      });
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
+        defaultProfile,
+        await stakeInfoSpy.mock.results[0].value
+      );
+      expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        balanceSpy.mock.invocationCallOrder[1]
+      );
+      expect(setCachedStakeInfoSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        stakeInfoSpy.mock.invocationCallOrder[0]
+      );
+
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+
+      /**
+       * The first call is caused by the timeout in the network
+       * connect, so we check the last call, that is the one
+       * made in the wallet store.
+       */
+      expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
+      expect(clearTimeoutSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        setTimeoutSpy.mock.invocationCallOrder[1]
+      );
+
+      await vi.advanceTimersByTimeAsync(1);
+      await vi.runOnlyPendingTimersAsync();
+
+      // auto sync started - check that we have 2 profiles and sync is in progress
+      const autoSyncState = get(walletStore);
+      expect(autoSyncState.profiles).toHaveLength(2);
+      expect(autoSyncState.profiles[0]).toBe(defaultProfile);
+      expect(autoSyncState.profiles[1]).toBeDefined();
+      expect(autoSyncState.syncStatus.isInProgress).toBe(true);
+
+      walletStore.reset();
+      expect(get(walletStore)).toStrictEqual(initialState);
+
+      await vi.runOnlyPendingTimersAsync();
+    });
+  });
+
+  describe("Abort sync", () => {
+    beforeEach(async () => {
+      walletStore.reset();
+
+      await vi.runOnlyPendingTimersAsync();
+
+      expect(get(walletStore)).toStrictEqual(initialState);
+
+      await walletStore.init(profileGenerator);
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+      vi.clearAllTimers();
+
+      const currentState = get(walletStore);
+      expect(currentState.profiles).toHaveLength(2);
+      expect(currentState.profiles[0]).toBe(defaultProfile);
+      expect(currentState.profiles[1]).toBeDefined();
+      expect(currentState.initialized).toBe(true);
+      expect(currentState.syncStatus.isInProgress).toBe(false);
+
+      clearTimeoutSpy.mockClear();
+
+      // somewhere else (dexie?) the abort is called already six times
+      abortControllerSpy.mockClear();
+      treasuryUpdateSpy.mockClear();
+    });
+
+    it("should expose a method to abort a sync that is in progress and set the current sync promise to `null` so that a new sync can be started", async () => {
+      walletStore.sync();
+
+      await vi.waitUntil(() => treasuryUpdateSpy.mock.calls.length === 1);
+
+      walletStore.abortSync();
+
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+      expect(abortControllerSpy).toHaveBeenCalledTimes(1);
+
+      await vi.runAllTimersAsync();
+
+      const { syncStatus } = get(walletStore);
+
+      expect(syncStatus.isInProgress).toBe(false);
+      expect(syncStatus.error).toBeInstanceOf(Error);
+
+      walletStore.sync();
+
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+      const finalState = get(walletStore);
+      expect(finalState.profiles).toHaveLength(2);
+      expect(finalState.profiles[0]).toBe(defaultProfile);
+      expect(finalState.profiles[1]).toBeDefined();
+      expect(finalState.initialized).toBe(true);
+      expect(finalState.syncStatus.isInProgress).toBe(false);
+
+      walletStore.abortSync();
+
+      await vi.runAllTimersAsync();
+    });
+
+    it("should do nothing but stopping the auto-sync if there is no sync in progress", async () => {
+      walletStore.abortSync();
+
+      expect(abortControllerSpy).not.toHaveBeenCalled();
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+
+      await vi.runAllTimersAsync();
+    });
+  });
+
+  describe("Wallet store transfers", () => {
+    const toPhoenix =
+      "4ZH3oyfTuMHyWD1Rp4e7QKp5yK6wLrWvxHneufAiYBAjvereFvfjtDvTbBcZN5ZCsaoMo49s1LKPTwGpowik6QJG";
+    const toMoonlight =
+      "zTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE4FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
+    const amount = 150_000_000_000n;
+    const gas = new Gas({ limit: 500n, price: 1n });
+    const memo = "";
+
+    const phoenixTxResult = {
+      buffer: new Uint8Array(),
+      hash: "some-tx-id",
+      nullifiers: [],
+    };
+
+    const executeSpy = vi
+      .spyOn(Network.prototype, "execute")
+      .mockResolvedValue(phoenixTxResult);
+
+    const updateNonceSpy = vi.spyOn(
+      WalletTreasury.prototype,
+      "updateCachedNonce"
+    );
+
+    const updateCachedPendingNotesSpy = vi.spyOn(
+      WalletTreasury.prototype,
+      "updateCachedPendingNotes"
+    );
+
+    /**
+     * @typedef { "claimRewards" | "shield" | "stake" | "transfer" | "unshield" | "unstake" } TransferMethod
+     */
+
+    /**
+     * @template {TransferMethod} M
+     * @param {M} method
+     * @param {Parameters<WalletStoreServices[M]>} args
+     */
+    async function walletStoreTransferCheck(method, args) {
+      vi.useRealTimers();
+
+      const currentlyCachedBalance =
+        await new WalletTreasury().getCachedBalance(defaultProfile);
+      const newNonce = currentlyCachedBalance.unshielded.nonce + 1n;
+
+      let expectedTx;
+
+      const isPhoenixTransfer = method === "transfer" && args[0] === toPhoenix;
+      const isMoonlightTransfer =
+        method === "transfer" && args[0] === toMoonlight;
+
+      if (isPhoenixTransfer) {
+        expectedTx = {
+          amount,
+          gas,
+          obfuscated: true,
+          payload: { memo },
+          to: toPhoenix,
+        };
+      } else {
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: phoenixTxResult.hash,
+          nonce: newNonce,
+        });
+
+        if (isMoonlightTransfer) {
+          expectedTx = { amount, gas, payload: { memo }, to: toMoonlight };
+        } else {
+          switch (method) {
+            case "stake":
+              expectedTx = { amount, gas, topup: false };
+              break;
+
+            case "unstake":
+              expectedTx = { amount, gas };
+              break;
+
+            default:
+              expectedTx = { amount, gas };
+              break;
+          }
+        }
+      }
+
+      // @ts-ignore here args can't be inferred apparently
+      await walletStore[method](...args);
+
+      expect(executeSpy).toHaveBeenCalledTimes(1);
+      expect(executeSpy.mock.calls[0][0].attributes).toStrictEqual(expectedTx);
+      expect(executeSpy.mock.calls[0][0].bookentry.profile).toStrictEqual(
+        defaultProfile
+      );
+
+      if (isPhoenixTransfer) {
+        expect(updateNonceSpy).not.toHaveBeenCalled();
+        expect(updateCachedPendingNotesSpy).toHaveBeenCalledTimes(1);
+        expect(updateCachedPendingNotesSpy).toHaveBeenCalledWith(
+          phoenixTxResult.nullifiers,
+          phoenixTxResult.hash
+        );
+        updateCachedPendingNotesSpy.mockClear();
+      } else {
+        expect(updateNonceSpy).toHaveBeenCalledTimes(1);
+        expect(updateNonceSpy).toHaveBeenCalledWith(defaultProfile, newNonce);
+        expect(updateCachedPendingNotesSpy).not.toHaveBeenCalled();
+        setCachedBalanceSpy.mockClear();
+      }
+
+      // check that we made a sync before the transfer
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
+
+      // but the balance is not updated yet
+      expect(balanceSpy).not.toHaveBeenCalled();
+
+      // and neither the stake info
+      expect(stakeInfoSpy).not.toHaveBeenCalled();
+
+      expect(treasuryUpdateSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        executeSpy.mock.invocationCallOrder[0]
+      );
+
+      // hacky check that we used the correct API through our Transactions mock
+      const expectedScope = {
+        id: phoenixTxResult.hash,
+        name: "transactions",
+        once: true,
+      };
+
+      // this will trigger the resolve in the `removed` promise
+      dispatchEvent(
+        new CustomEvent("transaction::removed", { detail: expectedScope })
+      );
+
+      // check that a sync starts after the transaction is removed from the mempool
+      await vi.waitUntil(() => treasuryUpdateSpy.mock.calls.length === 2);
+
+      // wait for the post-removal sync to finish updating the derived state
+      await vi.waitUntil(() => balanceSpy.mock.calls.length === 2);
+      await vi.waitUntil(() => stakeInfoSpy.mock.calls.length === 1);
+
+      // check that the balance is updated afterwards
+      expect(balanceSpy).toHaveBeenCalledTimes(2);
+      expect(balanceSpy).toHaveBeenNthCalledWith(1, defaultProfile.address);
+      expect(balanceSpy).toHaveBeenNthCalledWith(2, defaultProfile.account);
+      expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
+      expect(stakeInfoSpy).toHaveBeenCalledWith(defaultProfile.account);
+      expect(balanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        treasuryUpdateSpy.mock.invocationCallOrder[1]
+      );
+      expect(balanceSpy.mock.invocationCallOrder[1]).toBeGreaterThan(
+        treasuryUpdateSpy.mock.invocationCallOrder[1]
+      );
+      expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
+      expect(setCachedBalanceSpy).toHaveBeenCalledWith(defaultProfile, {
+        shielded: await balanceSpy.mock.results[0].value,
+        unshielded: await balanceSpy.mock.results[1].value,
+      });
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
+        defaultProfile,
+        await stakeInfoSpy.mock.results[0].value
+      );
+      expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        balanceSpy.mock.invocationCallOrder[1]
+      );
+      expect(setCachedStakeInfoSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        stakeInfoSpy.mock.invocationCallOrder[0]
+      );
+
+      vi.useFakeTimers();
+    }
+
+    beforeEach(async () => {
+      walletStore.reset();
+
+      await vi.runOnlyPendingTimersAsync();
+
+      expect(get(walletStore)).toStrictEqual(initialState);
+
+      await walletStore.init(profileGenerator);
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+      await vi.waitUntil(
+        () => get(walletStore).syncStatus.isInProgress === false
+      );
+
+      vi.clearAllTimers();
+
+      const currentStore = get(walletStore);
+
+      expect(currentStore.profiles).toHaveLength(2);
+      expect(currentStore.profiles[0]).toBe(defaultProfile);
+      expect(currentStore.profiles[1]).toBeDefined();
+      expect(currentStore.initialized).toBe(true);
+      expect(currentStore.syncStatus.isInProgress).toBe(false);
+
+      const { currentProfile } = currentStore;
+
+      expect(currentProfile).toBeDefined();
+
+      treasuryUpdateSpy.mockClear();
+      balanceSpy.mockClear();
+      stakeInfoSpy.mockClear();
+      setCachedBalanceSpy.mockClear();
+      setCachedStakeInfoSpy.mockClear();
+    });
+
+    afterEach(async () => {
+      executeSpy.mockClear();
+      updateNonceSpy.mockClear();
+      updateCachedPendingNotesSpy.mockClear();
+    });
+
+    afterAll(() => {
+      executeSpy.mockRestore();
+      updateNonceSpy.mockRestore();
+      updateCachedPendingNotesSpy.mockRestore();
+    });
+
+    /* eslint-disable vitest/expect-expect */
+
+    it("should expose a method to claim the rewards", async () => {
+      await walletStoreTransferCheck("claimRewards", [amount, gas]);
+    });
+
+    it("should expose a method to shield a given amount from the unshielded account", async () => {
+      await walletStoreTransferCheck("shield", [amount, gas]);
+    });
+
+    it("should expose a method to execute a stake", async () => {
+      await walletStoreTransferCheck("stake", [amount, gas]);
+    });
+
+    it("should expose a method to execute a phoenix transfer, if the receiver is a phoenix address", async () => {
+      await walletStoreTransferCheck("transfer", [
+        toPhoenix,
+        amount,
+        memo,
+        gas,
+      ]);
+    });
+
+    it("should use the moonlight account and shouldn't obfuscate the transaction if the receiver is a moonlight account", async () => {
+      await walletStoreTransferCheck("transfer", [
+        toMoonlight,
+        amount,
+        memo,
+        gas,
+      ]);
+    });
+
+    it("should expose a method to unshield a given amount from the shielded account", async () => {
+      await walletStoreTransferCheck("unshield", [amount, gas]);
+    });
+
+    it("should expose a method to unstake the staked amount", async () => {
+      await walletStoreTransferCheck("unstake", [amount, gas]);
+    });
+
+    /* eslint-enable vitest/expect-expect */
+  });
+
+  describe("Wallet store services", () => {
+    const cacheClearSpy = vi.spyOn(WalletTreasury.prototype, "clearCache");
+
+    beforeEach(async () => {
+      walletStore.reset();
+
+      await vi.runOnlyPendingTimersAsync();
+
+      expect(get(walletStore)).toStrictEqual(initialState);
+
+      await walletStore.init(profileGenerator);
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+      await vi.waitUntil(
+        () => get(walletStore).syncStatus.isInProgress === false
+      );
+
+      vi.clearAllTimers();
+
+      const currentStore = get(walletStore);
+
+      expect(currentStore.profiles).toHaveLength(2);
+      expect(currentStore.profiles[0]).toBe(defaultProfile);
+      expect(currentStore.profiles[1]).toBeDefined();
+      expect(currentStore.initialized).toBe(true);
+      expect(currentStore.syncStatus.isInProgress).toBe(false);
+
+      const { currentProfile } = currentStore;
+
+      expect(currentProfile).toBeDefined();
+
+      treasuryUpdateSpy.mockClear();
+      balanceSpy.mockClear();
+      cacheClearSpy.mockClear();
+      stakeInfoSpy.mockClear();
+      setCachedBalanceSpy.mockClear();
+      setCachedStakeInfoSpy.mockClear();
+    });
+
+    afterAll(() => {
+      cacheClearSpy.mockRestore();
+    });
+
+    it("should expose a method to clear local data", async () => {
+      vi.useRealTimers();
+
+      await walletStore.clearLocalData();
+      expect(cacheClearSpy).toHaveBeenCalledTimes(1);
+      vi.useFakeTimers();
+    });
+
+    it("should expose a method to clear local data and init the wallet", async () => {
+      const newGenerator = new ProfileGenerator(() => new Uint8Array());
+      const newProfile = await newGenerator.default;
+
+      walletStore.clearLocalDataAndInit(newGenerator, 99n);
+
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+      vi.clearAllTimers();
+
+      expect(cacheClearSpy).toHaveBeenCalledTimes(1);
+      const finalState = get(walletStore);
+      expect(finalState.profiles).toHaveLength(2);
+      expect(finalState.profiles[0]).toBe(newProfile);
+      expect(finalState.profiles[1]).toBeDefined(); // Don't check exact instance, just that it exists
+      expect(finalState.currentProfile).toBe(newProfile);
+      expect(finalState.initialized).toBe(true);
+      expect(finalState.balance).toStrictEqual({ shielded, unshielded });
+      expect(finalState.stakeInfo).toStrictEqual(stakeInfo);
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
+      expect(balanceSpy).toHaveBeenCalledTimes(2);
+      expect(balanceSpy).toHaveBeenNthCalledWith(1, newProfile.address);
+      expect(balanceSpy).toHaveBeenNthCalledWith(2, newProfile.account);
+      expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
+      expect(stakeInfoSpy).toHaveBeenCalledWith(newProfile.account);
+    });
+
+    it("should expose a method to set the current profile and update the balance afterwards", async () => {
+      const fakeExtraProfile = {
+        account: {
+          toString() {
+            return "some-fake-account";
+          },
+        },
+        address: {
+          toString() {
+            return "some-fake-address";
+          },
+        },
+      };
+
+      // nasty mutation for the sake of easy testing
+      // @ts-expect-error we don't care for it to be a real profile
+      get(walletStore).profiles.push(fakeExtraProfile);
+
+      await expect(
+        // @ts-expect-error we don't care to set a real profile
+        walletStore.setCurrentProfile(fakeExtraProfile)
+      ).resolves.toBeUndefined();
+
+      expect(get(walletStore).currentProfile).toBe(fakeExtraProfile);
+      expect(balanceSpy).toHaveBeenCalledTimes(2);
+      expect(balanceSpy).toHaveBeenNthCalledWith(1, fakeExtraProfile.address);
+      expect(balanceSpy).toHaveBeenNthCalledWith(2, fakeExtraProfile.account);
+      expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
+      expect(stakeInfoSpy).toHaveBeenCalledWith(fakeExtraProfile.account);
+      expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
+      expect(setCachedBalanceSpy).toHaveBeenCalledWith(fakeExtraProfile, {
+        shielded: await balanceSpy.mock.results[0].value,
+        unshielded: await balanceSpy.mock.results[1].value,
+      });
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
+        fakeExtraProfile,
+        await stakeInfoSpy.mock.results[0].value
+      );
+      expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        balanceSpy.mock.invocationCallOrder[1]
+      );
+      expect(setCachedStakeInfoSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        stakeInfoSpy.mock.invocationCallOrder[0]
+      );
+    });
+
+    it("should reject with an error if the profile is not in the known list", async () => {
+      // @ts-expect-error we don't care to set a real profile
+      await expect(walletStore.setCurrentProfile({})).rejects.toThrow();
+    });
+  });
 });

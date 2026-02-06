@@ -4,31 +4,88 @@
 
 import * as matchers from "@testing-library/jest-dom/matchers";
 import { expect, vi } from "vitest";
+
 import { readable } from "svelte/store";
+import { ResizeObserver } from "@juggle/resize-observer";
 import crypto from "node:crypto";
+import "jsdom-worker";
+import "vitest-canvas-mock";
 
-import { IntersectionObserver, ResizeObserver } from "./src/lib/dusk/mocks";
-import init from "./__mocks__/initDuskWalletCore.js";
-import Wallet from "./__mocks__/Wallet.js";
+// see https://github.com/dumbmatter/fakeIndexedDB?tab=readme-ov-file#jsdom-often-used-with-jest
+import "core-js/stable/structured-clone";
 
-// Mocking the wallet core wasm
-vi.doMock(
-	"@dusk-network/dusk-wallet-core/dusk_wallet_core_bg.wasm?init",
-	() => ({ default: vi.fn(init) })
-);
+// adds in-memory replacement for IndexedDB
+import "fake-indexeddb/auto";
 
-// Mocking the Wallet
-vi.doMock(
-	"@dusk-network/dusk-wallet-js",
-	() => ({ Wallet })
-);
+import { IntersectionObserver } from "./src/lib/dusk/mocks";
+
+// Mocking wallet connection modules
+vi.mock("@reown/appkit");
+
+/**
+ * Mocking fetch calls.
+ * For wasm files we build a response with a minimal valid wasm.
+ */
+globalThis.fetch = vi.fn((url) => {
+  return typeof url === "string" && url.endsWith(".wasm")
+    ? Promise.resolve(
+        new Response(
+          new Uint8Array([
+            0x00,
+            0x61,
+            0x73,
+            0x6d, // magic word "\0asm"
+            0x01,
+            0x00,
+            0x00,
+            0x00, // version 1
+            0x01,
+            0x04,
+            0x01,
+            0x60,
+            0x00,
+            0x00, // empty type section
+          ]),
+          {
+            headers: { "Content-Type": "application/wasm" },
+          }
+        )
+      )
+    : Promise.reject(new Error("Fetch calls should be mocked"));
+});
+
+vi.mock("@dusk/w3sper", async (importOriginal) => ({
+  ...(await importOriginal()),
+  AccountSyncer: (await import("$lib/mocks/AccountSyncer")).default,
+  AddressSyncer: (await import("$lib/mocks/AddressSyncer")).default,
+  Network: (await import("$lib/mocks/Network")).default,
+}));
+
+// Removing the console logging created by the walletConnect library after each test file
+Object.defineProperty(window, "litIssuedWarnings", {
+  value: new Set([
+    "Lit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.",
+    "Multiple versions of Lit loaded. Loading multiple versions is not recommended. See https://lit.dev/msg/multiple-versions for more information.",
+  ]),
+  writable: false,
+});
 
 /*
- * Mocking deprecated `atob` and `btoa` functions in Node.
- * Vitest get stuck otherwise.
+ * Add a polyfill for Promise.withResolvers for Node 20
  */
-vi.spyOn(global, "atob").mockImplementation(data => Buffer.from(data, "base64").toString("binary"));
-vi.spyOn(global, "btoa").mockImplementation(data => Buffer.from(data, "binary").toString("base64"));
+if (!Promise.withResolvers) {
+  Promise.withResolvers = function () {
+    let reject;
+    let resolve;
+
+    const promise = new Promise((res, rej) => {
+      reject = rej;
+      resolve = res;
+    });
+
+    return { promise, reject, resolve };
+  };
+}
 
 // Adding missing bits in JSDOM
 
@@ -43,15 +100,20 @@ global.ResizeObserver = ResizeObserver;
  * which only has a getter.
  */
 Object.defineProperty(global, "crypto", {
-	get () { return crypto; }
+  get() {
+    return crypto;
+  },
 });
 
 const elementMethods = ["scrollBy", "scrollTo", "scrollIntoView"];
 
-elementMethods.forEach(method => {
-	if (!Element.prototype[method]) {
-		Object.defineProperty(Element.prototype, method, { value: () => {}, writable: true });
-	}
+elementMethods.forEach((method) => {
+  if (!Element.prototype[method]) {
+    Object.defineProperty(Element.prototype, method, {
+      value: () => {},
+      writable: true,
+    });
+  }
 });
 
 // Add custom jest matchers
@@ -59,68 +121,76 @@ expect.extend(matchers);
 
 // Mock SvelteKit runtime module $app/environment
 vi.mock("$app/environment", () => ({
-	browser: false,
-	building: false,
-	dev: true,
-	version: "any"
+  browser: false,
+  building: false,
+  dev: true,
+  version: "any",
+}));
+
+// Mock app paths
+vi.mock("$app/paths", async (importOriginal) => ({
+  ...(await importOriginal()),
+  get base() {
+    return "/some-base-path";
+  },
 }));
 
 // Mock SvelteKit runtime module $app/navigation
 vi.mock("$app/navigation", () => ({
-	afterNavigate: () => {},
-	beforeNavigate: () => {},
-	disableScrollHandling: () => {},
-	goto: () => Promise.resolve(),
-	invalidate: () => Promise.resolve(),
-	invalidateAll: () => Promise.resolve(),
-	preloadCode: () => Promise.resolve(),
-	preloadData: () => Promise.resolve()
+  afterNavigate: () => {},
+  beforeNavigate: () => {},
+  disableScrollHandling: () => {},
+  goto: () => Promise.resolve(),
+  invalidate: () => Promise.resolve(),
+  invalidateAll: () => Promise.resolve(),
+  preloadCode: () => Promise.resolve(),
+  preloadData: () => Promise.resolve(),
 }));
 
 // Mock SvelteKit runtime module $app/stores
 vi.mock("$app/stores", () => {
-	const getStores = () => {
-		const navigating = readable(null);
-		const page = readable({
-			data: {},
-			error: null,
-			form: undefined,
-			params: {},
-			route: {
-				id: null
-			},
-			status: 200,
-			url: new URL("http://localhost")
-		});
-		const updated = {
-			check: async () => false,
-			subscribe: readable(false).subscribe
-		};
+  const getStores = () => {
+    const navigating = readable(null);
+    const page = readable({
+      data: {},
+      error: null,
+      form: undefined,
+      params: {},
+      route: {
+        id: null,
+      },
+      status: 200,
+      url: new URL("http://localhost"),
+    });
+    const updated = {
+      check: async () => false,
+      subscribe: readable(false).subscribe,
+    };
 
-		return { navigating, page, updated };
-	};
+    return { navigating, page, updated };
+  };
 
-	const page = {
-		subscribe (fn) {
-			return getStores().page.subscribe(fn);
-		}
-	};
-	const navigating = {
-		subscribe (fn) {
-			return getStores().navigating.subscribe(fn);
-		}
-	};
-	const updated = {
-		check: async () => false,
-		subscribe (fn) {
-			return getStores().updated.subscribe(fn);
-		}
-	};
+  const page = {
+    subscribe(fn) {
+      return getStores().page.subscribe(fn);
+    },
+  };
+  const navigating = {
+    subscribe(fn) {
+      return getStores().navigating.subscribe(fn);
+    },
+  };
+  const updated = {
+    check: async () => false,
+    subscribe(fn) {
+      return getStores().updated.subscribe(fn);
+    },
+  };
 
-	return {
-		getStores,
-		navigating,
-		page,
-		updated
-	};
+  return {
+    getStores,
+    navigating,
+    page,
+    updated,
+  };
 });

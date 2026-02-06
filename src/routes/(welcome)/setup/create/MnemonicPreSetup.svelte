@@ -1,41 +1,37 @@
 <script>
-	import {
-		Agreement,
-		Card,
-		Icon
-	} from "$lib/dusk/components";
-	import { mdiAlertOutline } from "@mdi/js";
+  import { Agreement } from "$lib/dusk/components";
+  import { IconHeadingCard } from "$lib/containers/Cards";
+  import { Banner } from "$lib/components";
 
-	/** @type {boolean} */
-	export let isValid = false;
+  /** @type {boolean} */
+  export let isValid = false;
 
-	/** @type {boolean} */
-	let agreementOneChecked = isValid || false;
+  /** @type {boolean} */
+  let agreementOneChecked = isValid || false;
 
-	/** @type {boolean} */
-	let agreementTwoChecked = isValid || false;
+  /** @type {boolean} */
+  let agreementTwoChecked = isValid || false;
 
-	$: isValid = agreementOneChecked && agreementTwoChecked;
+  $: isValid = agreementOneChecked && agreementTwoChecked;
 </script>
 
-<Card heading="Securely store your seed phrase!">
-	<div class="flex flex-col gap-1">
-		<Agreement
-			name="mnemonic_agreement_one"
-			bind:checked={agreementOneChecked}
-			label="I understand that without my seed phrase I cannot access my wallet and its assets."
-		/>
-		<Agreement
-			name="mnemonic_agreement_two"
-			bind:checked={agreementTwoChecked}
-			label="I understand that securing my recovery phrase is my own responsibility.
-				Only I have access to my recovery phrase"
-		/>
-	</div>
-</Card>
+<IconHeadingCard gap="medium" heading="Securely store your mnemonic phrase!">
+  <Agreement
+    name="mnemonic_agreement_one"
+    bind:checked={agreementOneChecked}
+    label="I understand that without my mnemonic phrase I cannot access my wallet and its assets."
+  />
+  <Agreement
+    name="mnemonic_agreement_two"
+    bind:checked={agreementTwoChecked}
+    label="I understand that securing my recovery phrase is my own responsibility.
+        Only I have access to my recovery phrase"
+  />
+</IconHeadingCard>
 
-<div class="notice">
-	<Icon path={mdiAlertOutline} size="large"/>
-	<p>To proceed, please check all the relevant boxes.
-		Dusk will not save and cannot retrieve your passphrase.</p>
-</div>
+<Banner
+  title="Dusk will not save and cannot retrieve your mnemonic phrase."
+  variant="warning"
+>
+  <p>To proceed, please check all the relevant boxes.</p>
+</Banner>

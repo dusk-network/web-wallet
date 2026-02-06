@@ -1,158 +1,229 @@
-<svelte:options immutable={true}/>
+<svelte:options immutable={true} />
 
 <script>
-	import { createEventDispatcher, onMount	} from "svelte";
-	import { calculateAdaptiveCharCount, makeClassName, middleEllipsis } from "$lib/dusk/string";
-	import {
-		mdiContentCopy, mdiPlusBoxOutline, mdiSwapHorizontal, mdiTimerSand
-	} from "@mdi/js";
-	import {
-		Button, CircularIcon, Icon, ProgressBar
-	} from "$lib/dusk/components";
-	import { toast } from "$lib/dusk/components/Toast/store";
-	import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
+  import { createEventDispatcher } from "svelte";
+  import {
+    calculateAdaptiveCharCount,
+    makeClassName,
+    middleEllipsis,
+  } from "$lib/dusk/string";
+  import { mdiAlertOutline, mdiChevronDown, mdiContentCopy } from "@mdi/js";
+  import { Icon } from "$lib/dusk/components";
+  import { toast } from "$lib/dusk/components/Toast/store";
+  import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
 
-	import Overlay from "./Overlay.svelte";
+  import Overlay from "./Overlay.svelte";
 
-	import "./AddressPicker.css";
+  import "./AddressPicker.css";
 
-	/** @type {string} */
-	export let currentAddress;
+  /** @type {Profile | null} */
+  export let currentProfile;
 
-	/** @type {string[]} */
-	export let addresses = [currentAddress];
+  /** @type {Profile[]} */
+  export let profiles;
 
-	/** @type {boolean} */
-	export let isAddingAddress = false;
+  /** @type {string|undefined} */
+  export let className = undefined;
 
-	/** @type {string|undefined} */
-	export let className = undefined;
+  const dispatch = createEventDispatcher();
 
-	$: classes = makeClassName(["address-picker", className]);
+  let expanded = false;
+  let innerWidth = 0;
 
-	const dispatch = createEventDispatcher();
+  /** @type {HTMLMenuElement} */
+  let addressOptionsMenu;
 
-	let expanded = false;
+  function closeDropDown() {
+    expanded = false;
+  }
 
-	function toggle () {
-		expanded = !expanded;
-	}
+  function toggleDropDown() {
+    expanded = !expanded;
+  }
 
-	function closeDropDown () {
-		expanded = false;
-	}
+  /** @type {import("svelte/elements").MouseEventHandler<HTMLDivElement>} */
+  function handleTriggerClick() {
+    toggleDropDown();
+  }
 
-	// Scrolls the address options menu to top on addresses change
-	$: if (addresses && addressOptionsMenu) {
-		addressOptionsMenu.scrollTo(0, 0);
-	}
+  /** @type {import("svelte/elements").KeyboardEventHandler<HTMLDivElement>} */
+  function handleTriggerKeyDown(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleDropDown();
+    }
+    if (event.key === "Escape") {
+      closeDropDown();
+    }
+    if (event.key === "ArrowDown" && !expanded) {
+      event.preventDefault();
+      toggleDropDown();
+    }
+  }
 
-	/** @type {import("svelte/elements").KeyboardEventHandler<HTMLDivElement>} */
-	function handleDropDownKeyDown	(event) {
-		if (event.key === "Enter" || event.key === " ") {
-			toggle();
-		}
+  /**
+   * @param {Profile} profile
+   */
+  function handleProfileSelect(profile) {
+    dispatch("setCurrentProfile", { profile });
+    closeDropDown();
+  }
 
-		if (event.key === "Escape") {
-			closeDropDown();
-		}
-	}
+  /**
+   * @param {string} address
+   */
+  async function handleCopyAddress(address) {
+    try {
+      await navigator.clipboard.writeText(address);
+      toast("success", "Address copied", mdiContentCopy);
+    } catch (err) {
+      toast(
+        "error",
+        err instanceof Error && err.name === "NotAllowedError"
+          ? "Clipboard access denied"
+          : "Failed to copy address",
+        mdiAlertOutline
+      );
+    }
+  }
 
-	/** @type {number} */
-	let screenWidth = window.innerWidth;
+  /**
+   * @param {KeyboardEvent & { currentTarget: EventTarget & HTMLButtonElement }} event
+   * @param {Profile} profile
+   */
+  function handleProfileKeyDown(event, profile) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleProfileSelect(profile);
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeDropDown();
+    }
+  }
 
-	onMount(() => {
-		const resizeObserver = new ResizeObserver(entries => {
-			const entry = entries[0];
+  $: classes = makeClassName(["address-picker", className]);
 
-			screenWidth = entry.contentRect.width;
-		});
+  // Scrolls the address options menu to top on addresses change
+  $: if (profiles && addressOptionsMenu) {
+    addressOptionsMenu.scrollTo(0, 0);
+  }
 
-		resizeObserver.observe(document.body);
+  $: displayedAddress = currentProfile
+    ? `Profile ${profiles.indexOf(currentProfile) + 1}${profiles.indexOf(currentProfile) === 0 ? " (Default)" : ""}`
+    : "No profile selected";
 
-		return () => resizeObserver.disconnect();
-	});
-
-	/** @type {HTMLMenuElement} */
-	let addressOptionsMenu;
+  // Calculate adaptive character count based on screen width
+  $: charCount = calculateAdaptiveCharCount(innerWidth);
 </script>
 
 {#if expanded}
-	<Overlay/>
+  <Overlay />
 {/if}
 
+<svelte:window bind:innerWidth />
+
 <div
-	use:handlePageClick={{ callback: closeDropDown, enabled: expanded }}
-	class={classes}
-	class:address-picker--expanded={expanded}>
+  use:handlePageClick={{
+    callback: closeDropDown,
+    enabled: expanded,
+  }}
+  class={classes}
+  class:address-picker--expanded={expanded}
+>
+  <div
+    class="address-picker__trigger"
+    role="button"
+    tabindex="0"
+    aria-haspopup="menu"
+    aria-expanded={expanded}
+    aria-label="Select address profile"
+    on:click={handleTriggerClick}
+    on:keydown={handleTriggerKeyDown}
+  >
+    <span class="address-picker__current-profile">{displayedAddress}</span>
+    <Icon path={mdiChevronDown} className="address-picker__chevron" />
+  </div>
 
-	<div
-		class="address-picker__trigger"
-		role="button"
-		tabindex="0"
-		aria-haspopup="true"
-		aria-expanded={expanded}
-		on:keydown={handleDropDownKeyDown}>
-		<CircularIcon color="var(--background-color)" bgColor="var(--primary-color)">
-			<Icon path={mdiSwapHorizontal} size="large"/>
-		</CircularIcon>
-		<p class="address-picker__current-address">{middleEllipsis(
-			currentAddress,
-			calculateAdaptiveCharCount(screenWidth)
-		)}</p>
-		<span class="address-picker__copy-address-button-wrapper">
-			<Button
-				aria-label="Copy Address"
-				className="address-picker__copy-address-button"
-				icon={{ path: mdiContentCopy }}
-				on:click={() => {
-					navigator.clipboard.writeText(currentAddress);
-					toast("success", "Address copied", mdiContentCopy);
-				}}
-				variant="quaternary"
-			/>
-		</span>
-	</div>
-
-	{#if expanded}
-		<div class="address-picker__drop-down">
-			<hr/>
-			<menu class="address-picker__address-options" bind:this={addressOptionsMenu}>
-				{#each addresses as address (address)}
-					<li
-						class="address-picker__address"
-						class:address-picker__address--selected={address === currentAddress}>
-						<button
-							class="address-picker__address-option-button"
-							tabindex="0"
-							type="button"
-							role="menuitem"
-							on:click={() => {
-								currentAddress = address;
-								closeDropDown();
-							}}>{address}</button>
-					</li>
-				{/each}
-			</menu>
-			<hr/>
-			{#if isAddingAddress}
-				<div class="address-picker__generating-address-wrapper">
-					<Icon path={mdiTimerSand}/>
-					<p>Generating <b>Address</b></p>
-				</div>
-				<ProgressBar/>
-			{:else}
-				<Button
-					tabindex="0"
-					className="address-picker__generate-address-button"
-					variant="secondary"
-					icon={{ path: mdiPlusBoxOutline }}
-					text="Generate Address"
-					on:click={(event) => {
-						event.preventDefault();
-						dispatch("generateAddress");
-					}}/>
-			{/if}
-		</div>
-	{/if}
+  {#if expanded}
+    <div class="address-picker__drop-down">
+      <ul
+        class="address-picker__address-options"
+        bind:this={addressOptionsMenu}
+        role="menu"
+        aria-label="Profile selection"
+      >
+        {#each profiles as profile (profile)}
+          <li
+            class="address-picker__profile"
+            class:address-picker__profile--selected={profile === currentProfile}
+            role="none"
+          >
+            <div class="address-picker__profile-container">
+              <button
+                class="address-picker__profile-button"
+                tabindex="0"
+                type="button"
+                role="menuitem"
+                aria-current={profile === currentProfile ? "true" : "false"}
+                on:click={() => handleProfileSelect(profile)}
+                on:keydown={(event) => handleProfileKeyDown(event, profile)}
+              >
+                <div class="address-picker__profile-header">
+                  Profile {profiles.indexOf(profile) + 1}
+                  {#if profile === currentProfile}
+                    <span class="address-picker__current-indicator"
+                      >(Current)</span
+                    >
+                  {/if}
+                </div>
+                <div class="address-picker__addresses">
+                  <div class="address-picker__address-row">
+                    <span class="address-picker__address-label"
+                      >Public Account</span
+                    >
+                    <span class="address-picker__address-value"
+                      >{middleEllipsis(
+                        profile.account.toString(),
+                        charCount
+                      )}</span
+                    >
+                  </div>
+                  <div class="address-picker__address-row">
+                    <span class="address-picker__address-label"
+                      >Shielded Account</span
+                    >
+                    <span class="address-picker__address-value"
+                      >{middleEllipsis(
+                        profile.address.toString(),
+                        charCount
+                      )}</span
+                    >
+                  </div>
+                </div>
+              </button>
+              <div class="address-picker__copy-buttons">
+                <button
+                  class="address-picker__copy-button"
+                  type="button"
+                  title="Copy public address"
+                  on:click={() => handleCopyAddress(profile.account.toString())}
+                >
+                  <Icon path={mdiContentCopy} size="small" />
+                </button>
+                <button
+                  class="address-picker__copy-button"
+                  type="button"
+                  title="Copy shielded address"
+                  on:click={() => handleCopyAddress(profile.address.toString())}
+                >
+                  <Icon path={mdiContentCopy} size="small" />
+                </button>
+              </div>
+            </div>
+          </li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
 </div>

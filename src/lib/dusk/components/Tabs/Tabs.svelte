@@ -1,252 +1,224 @@
-<svelte:options immutable={true}/>
+<svelte:options immutable={true} />
 
 <script>
-	import { mdiChevronLeft, mdiChevronRight } from "@mdi/js";
-	import { createEventDispatcher, onMount	} from "svelte";
-	import { writable } from "svelte/store";
-	import { isGTE, isLTE } from "lamb";
+  import { mdiChevronLeft, mdiChevronRight } from "@mdi/js";
+  import { createEventDispatcher, onMount } from "svelte";
+  import { writable } from "svelte/store";
+  import { isGTE, isLTE } from "lamb";
 
-	import { Button, Icon } from "$lib/dusk/components";
-	import { lerp } from "$lib/dusk/math";
-	import { makeClassName } from "$lib/dusk/string";
+  import { Button, Icon } from "$lib/dusk/components";
+  import { makeClassName } from "$lib/dusk/string";
 
-	import "./Tabs.css";
+  import "./Tabs.css";
 
-	/** @type {String | Undefined} */
-	export let className = undefined;
+  /** @type {String | Undefined} */
+  export let className = undefined;
 
-	/** @type {TabItem[]} */
-	export let items;
+  /** @type {TabItem[]} */
+  export let items;
 
-	/** @type {String | Undefined} */
-	export let selectedTab = undefined;
+  /** @type {String | Undefined} */
+  export let selectedTab = undefined;
 
-	/** @type {HTMLUListElement} */
-	let tabsList;
+  /** @type {HTMLUListElement} */
+  let tabsList;
 
-	/** @type {Number} */
-	let rafID = 0;
+  /** @type {Number} */
+  let rafID = 0;
 
-	let scrollLeftStart = 0;
-	let touchStartX = 0;
+  const dispatch = createEventDispatcher();
 
-	const dispatch = createEventDispatcher();
+  const scrollStatus = writable({
+    canScroll: false,
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
 
-	const scrollStatus = writable({
-		canScroll: false,
-		canScrollLeft: false,
-		canScrollRight: false
-	});
+  /** @type {ScrollIntoViewOptions} */
+  const smoothScrollOptions = {
+    behavior: "smooth",
+    block: "nearest",
+    inline: "nearest",
+  };
 
-	/** @type {ScrollIntoViewOptions} */
-	const smoothScrollOptions = {
-		behavior: "smooth",
-		block: "nearest",
-		inline: "nearest"
-	};
+  /** @param {"left" | "right"} side */
+  function isTabSideVisible(side) {
+    const tabsListRect = tabsList.getBoundingClientRect();
+    const tolerance = 5;
+    const checkSide =
+      side === "left"
+        ? isGTE(tabsListRect.left - tolerance)
+        : isLTE(tabsListRect.right + tolerance);
 
-	/** @param {"left" | "right"} side */
-	function isTabSideVisible (side) {
-		const tabsListRect = tabsList.getBoundingClientRect();
-		const tolerance = 5;
-		const checkSide = side === "left"
-			? isGTE(tabsListRect.left - tolerance)
-			: isLTE(tabsListRect.right + tolerance);
+    /** @param {HTMLLIElement} tab */
+    return (tab) => checkSide(tab.getBoundingClientRect()[side]);
+  }
 
-		/** @param {HTMLLIElement} tab */
-		return tab => checkSide(tab.getBoundingClientRect()[side]);
-	}
+  // @ts-ignore
+  function handleScrollButtonClick(event) {
+    /** @type {NodeListOf<HTMLLIElement>} */
+    const tabs = tabsList.querySelectorAll("[role='tab']");
+    const step = event.currentTarget.matches(
+      ".dusk-tab-scroll-button:first-of-type"
+    )
+      ? -1
+      : 1;
+    const isTabFullyVisible = isTabSideVisible(step === 1 ? "right" : "left");
 
-	/** @type {import("svelte/elements").TouchEventHandler<HTMLUListElement>} */
-	function handleTouchMove (event) {
-		const scrollX = tabsList.scrollLeft;
-		const deltaX = event.targetTouches[0].clientX - touchStartX;
-		const amount = lerp(deltaX, scrollX - scrollLeftStart, .4);
+    let loops = tabs.length;
+    let idx = step === 1 ? 0 : loops - 1;
 
-		tabsList.scrollBy(-amount, 0);
-	}
+    for (; loops--; idx += step) {
+      if (!isTabFullyVisible(tabs[idx])) {
+        tabs[idx].scrollIntoView(smoothScrollOptions);
+        break;
+      }
+    }
+  }
 
-	/** @type {import("svelte/elements").TouchEventHandler<HTMLUListElement>} */
-	function handleTouchStart (event) {
-		scrollLeftStart = tabsList.scrollLeft;
-		touchStartX = event.targetTouches[0].clientX;
-	}
+  // @ts-ignore
+  function handleScrollButtonMouseDown(event) {
+    if (event.buttons === 1) {
+      const amount = event.currentTarget.matches(
+        ".dusk-tab-scroll-button:first-of-type"
+      )
+        ? -5
+        : 5;
 
-	/** @type {import("svelte/elements").WheelEventHandler<HTMLUListElement>} */
-	function handleWheel (event) {
-		tabsList.scrollBy(event.deltaX, 0);
-	}
+      keepScrollingTabsBy(amount);
+    }
+  }
 
-	// @ts-ignore
-	function handleScrollButtonClick (event) {
-		/** @type {NodeListOf<HTMLLIElement>} */
-		const tabs = tabsList.querySelectorAll("[role='tab']");
-		const step = event
-			.currentTarget
-			.matches(".dusk-tab-scroll-button:first-of-type") ? -1 : 1;
-		const isTabFullyVisible = isTabSideVisible(step === 1 ? "right" : "left");
+  function handleScrollButtonMouseUp() {
+    cancelAnimationFrame(rafID);
+  }
 
-		let loops = tabs.length;
-		let idx = step === 1 ? 0 : loops - 1;
+  /** @type {import("svelte/elements").UIEventHandler<HTMLLIElement>} */
+  function handleTabClick(event) {
+    const clickedID = event.currentTarget.dataset.tabid;
 
-		for (; loops--; idx += step) {
-			if (!isTabFullyVisible(tabs[idx])) {
-				tabs[idx].scrollIntoView(smoothScrollOptions);
-				break;
-			}
-		}
-	}
+    if (selectedTab !== clickedID) {
+      selectedTab = clickedID;
+      dispatch("change", clickedID);
+    }
+  }
 
-	// @ts-ignore
-	function handleScrollButtonMouseDown (event) {
-		if (event.buttons === 1) {
-			const amount = event
-				.currentTarget
-				.matches(".dusk-tab-scroll-button:first-of-type") ? -5 : 5;
+  /** @type {import("svelte/elements").UIEventHandler<HTMLLIElement>} */
+  function handleTabFocusin(event) {
+    event.currentTarget.scrollIntoView(smoothScrollOptions);
+  }
 
-			keepScrollingTabsBy(amount);
-		}
-	}
+  /** @type {import("svelte/elements").KeyboardEventHandler<HTMLLIElement>} */
+  function handleTabKeyDown(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
 
-	function handleScrollButtonMouseUp () {
-		cancelAnimationFrame(rafID);
-	}
+      handleTabClick(event);
+    }
+  }
 
-	/** @type {import("svelte/elements").UIEventHandler<HTMLLIElement>} */
-	function handleTabClick (event) {
-		const clickedID = event.currentTarget.dataset.tabid;
+  /** @param {Number} amount */
+  function keepScrollingTabsBy(amount) {
+    const { canScrollLeft, canScrollRight } = $scrollStatus;
 
-		if (selectedTab !== clickedID) {
-			selectedTab = clickedID;
-			dispatch("change", clickedID);
-		}
-	}
+    tabsList.scrollBy(amount, 0);
 
-	/** @type {import("svelte/elements").UIEventHandler<HTMLLIElement>} */
-	function handleTabFocusin (event) {
-		event.currentTarget.scrollIntoView(smoothScrollOptions);
-	}
+    if ((canScrollLeft && amount < 0) || (canScrollRight && amount > 0)) {
+      rafID = requestAnimationFrame(() => keepScrollingTabsBy(amount));
+    }
+  }
 
-	/** @type {import("svelte/elements").KeyboardEventHandler<HTMLLIElement>} */
-	function handleTabKeyDown (event) {
-		if (event.key === "Enter" || event.key === " ") {
-			event.preventDefault();
+  function updateScrollStatus() {
+    const { clientWidth = 0, scrollLeft = 0, scrollWidth = 0 } = tabsList;
 
-			handleTabClick(event);
-		}
-	}
+    const canScroll = scrollWidth > clientWidth;
+    const maxScroll = scrollWidth - clientWidth;
 
-	/** @param {Number} amount */
-	function keepScrollingTabsBy (amount) {
-		const { canScrollLeft, canScrollRight } = $scrollStatus;
+    scrollStatus.set({
+      canScroll,
+      canScrollLeft: canScroll && scrollLeft > 0,
+      canScrollRight: canScroll && scrollLeft < maxScroll,
+    });
+  }
 
-		tabsList.scrollBy(amount, 0);
+  onMount(() => {
+    const resizeObserver = new ResizeObserver(() => {
+      const tab = tabsList.querySelector(`[data-tabid="${selectedTab}"]`);
 
-		if (canScrollLeft && amount < 0 || canScrollRight && amount > 0) {
-			rafID = requestAnimationFrame(() => keepScrollingTabsBy(amount));
-		}
-	}
+      tab &&
+        tab.scrollIntoView({
+          behavior: "instant",
+          block: "nearest",
+          inline: "nearest",
+        });
 
-	function updateScrollStatus () {
-		const {
-			clientWidth = 0,
-			scrollLeft = 0,
-			scrollWidth = 0
-		} = tabsList;
+      updateScrollStatus();
+    });
 
-		const canScroll = scrollWidth > clientWidth;
-		const maxScroll = scrollWidth - clientWidth;
+    tabsList.scrollTo(0, 0);
+    resizeObserver.observe(tabsList);
 
-		scrollStatus.set({
-			canScroll,
-			canScrollLeft: canScroll && scrollLeft > 0,
-			canScrollRight: canScroll && scrollLeft < maxScroll
-		});
-	}
+    return () => resizeObserver.disconnect();
+  });
 
-	onMount(() => {
-		const resizeObserver = new ResizeObserver(() => {
-			const tab = tabsList.querySelector(`[data-tabid="${selectedTab}"]`);
-
-			tab && tab.scrollIntoView({
-				behavior: "instant",
-				block: "nearest",
-				inline: "nearest"
-			});
-
-			updateScrollStatus();
-		});
-
-		tabsList.scrollTo(0, 0);
-		resizeObserver.observe(tabsList);
-
-		return () => resizeObserver.disconnect();
-	});
-
-	$: ({ canScroll, canScrollLeft, canScrollRight } = $scrollStatus);
+  $: ({ canScroll, canScrollLeft, canScrollRight } = $scrollStatus);
 </script>
 
-<div
-	{...$$restProps}
-	class={makeClassName(["dusk-tabs", className])}
->
-	<Button
-		className="dusk-tab-scroll-button"
-		disabled={!canScrollLeft}
-		hidden={!canScroll}
-		icon={{ path: mdiChevronLeft }}
-		on:click={handleScrollButtonClick}
-		on:mousedown={handleScrollButtonMouseDown}
-		on:mouseup={handleScrollButtonMouseUp}
-		tabindex="-1"
-		variant="quaternary"
-	/>
-	<ul
-		bind:this={tabsList}
-		class="dusk-tabs-list"
-		on:scroll={updateScrollStatus}
-		on:touchmove|preventDefault={handleTouchMove}
-		on:touchstart={handleTouchStart}
-		on:wheel|preventDefault={handleWheel}
-		role="tablist"
-	>
-		{#each items as item (item.id)}
-			{@const { icon, id, label } = item}
-			<li
-				aria-selected={id === selectedTab}
-				class={`dusk-tab-item${id === selectedTab ? " dusk-tab-item__selected" : ""}`}
-				data-tabid={id}
-				on:click={handleTabClick}
-				on:focusin={handleTabFocusin}
-				on:keydown={handleTabKeyDown}
-				role="tab"
-				tabindex="0"
-			>
-				{#if icon?.position === "after"}
-					{#if label}
-						<span class="dusk-tab-label">{label}</span>
-					{/if}
-					<Icon path={icon.path}/>
-				{:else if icon}
-					<Icon path={icon.path}/>
-					{#if label}
-						<span class="dusk-tab-label">{label}</span>
-					{/if}
-				{:else}
-					<span class="dusk-tab-label">{label ?? id}</span>
-				{/if}
-			</li>
-		{/each}
-	</ul>
-	<Button
-		className="dusk-tab-scroll-button"
-		disabled={!canScrollRight}
-		hidden={!canScroll}
-		icon={{ path: mdiChevronRight }}
-		on:click={handleScrollButtonClick}
-		on:mousedown={handleScrollButtonMouseDown}
-		on:mouseup={handleScrollButtonMouseUp}
-		tabindex="-1"
-		variant="quaternary"
-	/>
+<div {...$$restProps} class={makeClassName(["dusk-tabs", className])}>
+  <Button
+    className="dusk-tab-scroll-button"
+    disabled={!canScrollLeft}
+    hidden={!canScroll}
+    icon={{ path: mdiChevronLeft }}
+    on:click={handleScrollButtonClick}
+    on:mousedown={handleScrollButtonMouseDown}
+    on:mouseup={handleScrollButtonMouseUp}
+    tabindex="-1"
+    variant="tertiary"
+  />
+  <ul
+    bind:this={tabsList}
+    class="dusk-tabs-list"
+    on:scroll={updateScrollStatus}
+    role="tablist"
+  >
+    {#each items as item (item.id)}
+      {@const { icon, id, label } = item}
+      <li
+        aria-selected={id === selectedTab}
+        class={`dusk-tab-item${id === selectedTab ? " dusk-tab-item__selected" : ""}`}
+        data-tabid={id}
+        on:click={handleTabClick}
+        on:focusin={handleTabFocusin}
+        on:keydown={handleTabKeyDown}
+        role="tab"
+        tabindex="0"
+      >
+        {#if icon?.position === "after"}
+          {#if label}
+            <span class="dusk-tab-label">{label}</span>
+          {/if}
+          <Icon path={icon.path} />
+        {:else if icon}
+          <Icon path={icon.path} />
+          {#if label}
+            <span class="dusk-tab-label">{label}</span>
+          {/if}
+        {:else}
+          <span class="dusk-tab-label">{label ?? id}</span>
+        {/if}
+      </li>
+    {/each}
+  </ul>
+  <Button
+    className="dusk-tab-scroll-button"
+    disabled={!canScrollRight}
+    hidden={!canScroll}
+    icon={{ path: mdiChevronRight }}
+    on:click={handleScrollButtonClick}
+    on:mousedown={handleScrollButtonMouseDown}
+    on:mouseup={handleScrollButtonMouseUp}
+    tabindex="-1"
+    variant="tertiary"
+  />
 </div>

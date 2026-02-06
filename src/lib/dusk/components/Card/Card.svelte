@@ -1,39 +1,45 @@
+<svelte:options immutable={true} />
+
 <script>
-	import Icon from "../Icon/Icon.svelte";
-	import Switch from "../Switch/Switch.svelte";
-	import { makeClassName } from "$lib/dusk/string";
+  import { makeClassName } from "$lib/dusk/string";
 
-	/** @type {string} */
-	export let tag = "div";
+  /** @type {string} */
+  export let tag = "div";
 
-	/** @type {string | Undefined} */
-	export let className = undefined;
+  /** @type {CardGap} */
+  export let gap = "default";
 
-	/** @type {string | Undefined} */
-	export let iconPath = undefined;
+  /** @type {string | Undefined} */
+  export let className = undefined;
 
-	/** @type {string} */
-	export let heading;
+  /** @type {boolean} */
+  export let onSurface = false;
 
-	export let hasToggle = false;
-	export let isToggled = false;
+  /** @type {boolean} */
+  export let showBody = true;
 
-	$: classes = makeClassName(["dusk-card", className]);
+  $: classes = makeClassName(["dusk-card", `dusk-card--gap-${gap}`, className]);
 </script>
 
-<svelte:element this={tag} {...$$restProps} class={classes}>
-	<header
-		class="dusk-card__header"
-		class:dusk-card__header--toggle-off={hasToggle && !isToggled}>
-		{#if iconPath}
-			<Icon className="dusk-card__icon" path={iconPath}/>
-		{/if}
-		<h3 class="h4">{heading}</h3>
-		{#if hasToggle}
-			<Switch onSurface bind:value={isToggled}/>
-		{/if}
-	</header>
-	{#if !hasToggle || isToggled}
-		<slot/>
-	{/if}
+<svelte:element
+  this={tag}
+  {...$$restProps}
+  class={classes}
+  class:dusk-card--on-surface={onSurface}
+>
+  {#if $$slots.header}
+    <div class="dusk-card__header-container">
+      <slot name="header" />
+    </div>
+  {/if}
+  {#if showBody}
+    <div class="dusk-card__body-container">
+      <slot />
+    </div>
+  {/if}
+  {#if $$slots.footer}
+    <div class="dusk-card__footer-container">
+      <slot name="footer" />
+    </div>
+  {/if}
 </svelte:element>

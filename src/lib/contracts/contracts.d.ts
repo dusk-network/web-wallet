@@ -1,28 +1,25 @@
 type ContractDescriptor = {
-	disabled: boolean;
-	id: string;
-	label: string;
-	operations: ContractOperation[];
+  enabled: boolean;
+  id: string;
+  label: string;
+  operations: ContractOperation[];
 };
 
 type ContractGasSettings = {
-	gasLimit: number;
-	gasLimitLower: number;
-	gasLimitUpper: number;
-	gasPrice: number;
-	gasPriceLower: number;
+  gasLimit: bigint;
+  gasPrice: bigint;
 };
 
 type ContractOperation = {
-	disabled: boolean;
-	id: string;
-	label: string;
-	primary: boolean;
+  disabled: boolean;
+  id: string;
+  label: string;
+  primary: boolean;
 };
 
 type ContractStatus = {
-	label: string;
-	value: string;
+  label: string;
+  value: string | null;
 };
 
-type StakeType = "stake" | "withdraw-stake" | "withdraw-rewards";
+type StakeType = "stake" | "unstake" | "claim-rewards";

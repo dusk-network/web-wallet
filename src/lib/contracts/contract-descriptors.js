@@ -5,39 +5,85 @@
  *
  * @type {ContractDescriptor[]}
  */
-export default [{
-	disabled: import.meta.env.VITE_CONTRACT_TRANSFER_DISABLED === "true",
-	id: "transfer",
-	label: "Transact",
-	operations: [{
-		disabled: false,
-		id: "send",
-		label: "Send",
-		primary: true
-	}, {
-		disabled: false,
-		id: "receive",
-		label: "Receive",
-		primary: false
-	}]
-}, {
-	disabled: import.meta.env.VITE_CONTRACT_STAKE_DISABLED === "true",
-	id: "staking",
-	label: "Stake",
-	operations: [{
-		disabled: false,
-		id: "stake",
-		label: "stake",
-		primary: true
-	}, {
-		disabled: false,
-		id: "withdraw-stake",
-		label: "withdraw stake",
-		primary: false
-	}, {
-		disabled: false,
-		id: "withdraw-rewards",
-		label: "withdraw rewards",
-		primary: false
-	}]
-}];
+export default [
+  {
+    enabled: import.meta.env.VITE_FEATURE_TRANSFER === "true",
+    id: "send",
+    label: "Send",
+    operations: [],
+  },
+  {
+    enabled: import.meta.env.VITE_FEATURE_TRANSFER === "true",
+    id: "receive",
+    label: "Receive",
+    operations: [],
+  },
+  {
+    enabled: import.meta.env.VITE_FEATURE_STAKE === "true",
+    id: "stake",
+    label: "Stake",
+    operations: [
+      {
+        disabled: false,
+        id: "stake",
+        label: "stake",
+        primary: true,
+      },
+      {
+        disabled: false,
+        id: "unstake",
+        label: "unstake",
+        primary: false,
+      },
+      {
+        disabled: false,
+        id: "claim-rewards",
+        label: "claim rewards",
+        primary: false,
+      },
+    ],
+  },
+  {
+    enabled: import.meta.env.VITE_FEATURE_ALLOCATE === "true",
+    id: "allocate",
+    label: "Allocate",
+    operations: [
+      {
+        disabled: false,
+        id: "send",
+        label: "send",
+        primary: true,
+      },
+    ],
+  },
+  {
+    enabled:
+      import.meta.env.VITE_FEATURE_MIGRATE === "true" &&
+      import.meta.env.VITE_REOWN_PROJECT_ID !== "",
+    id: "migrate",
+    label: "Migrate",
+    operations: [
+      {
+        disabled: false,
+        id: "connect",
+        label: "Connect",
+        primary: true,
+      },
+    ],
+  },
+  {
+    enabled:
+      import.meta.env.VITE_FEATURE_BRIDGE === "true" &&
+      import.meta.env.VITE_REOWN_PROJECT_ID !== "",
+    id: "bridge",
+    label: "Bridge",
+    operations: [
+      {
+        disabled: false,
+        id: "connect",
+        label: "Connect",
+        primary: true,
+      },
+    ],
+  },
+];

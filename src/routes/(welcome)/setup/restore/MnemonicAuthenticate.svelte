@@ -1,20 +1,29 @@
 <script>
-	import { Card, Mnemonic } from "$lib/dusk/components";
+  import { mdiAlertOutline } from "@mdi/js";
 
-	/** @type {boolean} */
-	export let isValid = false;
+  import { validateMnemonic } from "$lib/wallet";
+  import { Mnemonic } from "$lib/dusk/components";
+  import { IconHeadingCard } from "$lib/containers/Cards";
+  import { toast } from "$lib/dusk/components/Toast/store";
 
-	/** @type {number} */
-	export let wordLimit = 12;
+  /** @type {boolean} */
+  export let isValid = false;
 
-	/** @type {string[]} */
-	export let enteredMnemonicPhrase = [];
+  /** @type {number} */
+  export let wordLimit = 12;
 
-	$: isValid = enteredMnemonicPhrase.filter(word => word !== "").length === wordLimit;
+  /** @type {string[]} */
+  export let enteredMnemonicPhrase = [];
+
+  $: isValid = validateMnemonic(enteredMnemonicPhrase.join(" "));
+  $: if (
+    enteredMnemonicPhrase.filter((word) => word !== "").length === wordLimit &&
+    !isValid
+  ) {
+    toast("error", "Invalid mnemonic phrase", mdiAlertOutline);
+  }
 </script>
 
-<Card heading="Enter your Mnemonic Phrase">
-	<div class="flex flex-col gap-1">
-		<Mnemonic bind:enteredMnemonicPhrase {wordLimit} type="authenticate"/>
-	</div>
-</Card>
+<IconHeadingCard gap="medium" heading="Enter your Mnemonic Phrase">
+  <Mnemonic bind:enteredMnemonicPhrase {wordLimit} type="authenticate" />
+</IconHeadingCard>

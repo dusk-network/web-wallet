@@ -1,22 +1,30 @@
 .dusk-textbox {
-  	font-size: var(--control-font-size);
-	padding: var(--control-padding);
-	background-color: var(--control-bg-color);
-	border-color: var(--control-border-color);
-	border-radius: var(--control-border-radius-size);
-	border-style: solid;
-	border-width: var(--control-border-size);
+  font-family: inherit;
+  font-size: var(--control-font-size);
+  letter-spacing: inherit;
+  padding: var(--control-small-padding);
+  background-color: var(--non-button-control-bg-color);
+  border-color: var(--control-border-color);
+  border-radius: var(--control-border-radius-size);
+  border-style: solid;
+  border-width: var(--control-border-size);
+  color: var(--non-button-control-text-color);
+  min-height: 44px;
 }
 
 .dusk-textbox:disabled,
 .dusk-textbox::placeholder {
-	opacity: .5;
+  opacity: 0.5;
+}
+
+.dusk-textbox:not(:focus):invalid {
+  color: var(--error-color);
 }
 
 .dusk-textbox:read-only {
-	outline: 0 none;
+  outline: 0 none;
 }
 
 .dusk-textbox.dusk-textbox-multiline {
-	line-height: 1.3;
+  line-height: 1.3;
 }

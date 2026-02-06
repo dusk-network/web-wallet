@@ -1,200 +1,160 @@
-<svelte:options immutable={true}/>
+<svelte:options immutable={true} />
 
 <script>
-	import { onDestroy } from "svelte";
-	import { fade } from "svelte/transition";
-	import {
-		compose,
-		filterWith,
-		find,
-		hasKeyValue,
-		last,
-		take
-	} from "lamb";
-	import {
-		mdiDatabaseOutline,
-		mdiSwapVertical
-	} from "@mdi/js";
+  import {
+    mdiArrowBottomLeft,
+    mdiArrowTopRight,
+    mdiBridge,
+    mdiContain,
+    mdiDatabaseOutline,
+    mdiListBoxOutline,
+    mdiSwapHorizontal,
+    mdiSync,
+  } from "@mdi/js";
+  import { AnchorButton, Icon } from "$lib/dusk/components";
+  import { DashboardNav, Transactions } from "$lib/components";
+  import { networkStore, settingsStore, walletStore } from "$lib/stores";
+  import { contractDescriptors } from "$lib/contracts";
+  import IconHeadingCard from "$lib/containers/Cards/IconHeadingCard.svelte";
+  import { page } from "$app/stores";
 
-	import {
-		AnchorButton,
-		Card,
-		Tabs,
-		Throbber
-	} from "$lib/dusk/components";
-	import {
-		StakeContract,
-		TransferContract
-	} from "$lib/containers";
-	import {
-		AddressPicker,
-		Balance,
-		Transactions
-	} from "$lib/components";
-	import {
-		operationsStore,
-		settingsStore,
-		walletStore
-	} from "$lib/stores";
-	import { contractDescriptors } from "$lib/contracts";
-	import { sortByHeightDesc } from "$lib/transactions";
+  const { dashboardTransactionLimit, language } = $settingsStore;
+  const { networkName } = $networkStore;
 
-	/** @type {import('./$types').PageData} */
-	export let data;
+  /** @param {string} contract */
+  function getIconsForContract(contract) {
+    /** @type {Array.<DashboardNavItemIconProp>} */
+    let icons = [{ path: "" }];
 
-	const { currentPrice } = data;
-	const {
-		currency,
-		dashboardTransactionLimit,
-		language
-	} = $settingsStore;
+    switch (contract) {
+      case "allocate":
+        icons = [{ path: mdiSync }];
+        break;
+      case "migrate":
+        icons = [{ path: mdiSwapHorizontal }];
+        break;
+      case "bridge":
+        icons = [{ path: mdiBridge }];
+        break;
+      case "receive":
+        icons = [{ path: mdiArrowBottomLeft }];
+        break;
+      case "send":
+        icons = [{ path: mdiArrowTopRight }];
+        break;
+      case "stake":
+        icons = [{ path: mdiDatabaseOutline }];
+        break;
+      default:
+        break;
+    }
 
-	/** @type {(descriptors: ContractDescriptor[]) => ContractDescriptor[]} */
-	const getEnabledContracts = filterWith(hasKeyValue("disabled", false));
+    return icons;
+  }
 
-	/** @type {(transactions: Transaction[]) => Transaction[]} */
-	const getTransactionsShortlist = compose(
-		take(dashboardTransactionLimit),
-		sortByHeightDesc
-	);
+  function getExplorerPath() {
+    const isStaging = $page.url.href.includes("staging");
+    const baseUrl = isStaging ? "https://apps.staging" : "https://apps";
 
-	/** @param {CustomEvent} event */
-	function handleSetGasSettings ({ detail }) {
-		settingsStore.update(store => ({
-			...store,
-			gasLimit: detail.limit,
-			gasPrice: detail.price
-		}));
-	}
+    switch (networkName) {
+      case "devnet":
+        return `${baseUrl}.devnet.dusk.network/explorer`;
+      case "testnet":
+        return `${baseUrl}.testnet.dusk.network/explorer`;
+      default:
+        return `${baseUrl}.dusk.network/explorer`;
+    }
+  }
 
-	/** @param {string} id */
-	function updateOperation (id) {
-		operationsStore.update((store) => ({
-			...store,
-			currentOperation: id
-		}));
-	}
+  /** @type {ContractDescriptor[]} */
+  const enabledContracts = contractDescriptors.filter(
+    (contract) => contract.enabled === true
+  );
 
-	const enabledContracts = getEnabledContracts(contractDescriptors);
-	const tabItems = enabledContracts.map(({ id, label }) => ({
-		icon: { path: id === "transfer" ? mdiSwapVertical : mdiDatabaseOutline },
-		id,
-		label
-	}));
+  const dashboardNavItems = enabledContracts.map(({ id, label }) => ({
+    href: id,
+    icons: getIconsForContract(id),
+    id,
+    label,
+  }));
 
-	let selectedTab = tabItems[0]?.id ?? "";
-
-	$: selectedContract = find(enabledContracts, hasKeyValue("id", selectedTab));
-	$: ({ balance, currentAddress, addresses } = $walletStore);
-	$: ({ currentOperation } = $operationsStore);
-
-	onDestroy(() => {
-		updateOperation("");
-	});
+  $: ({ syncStatus } = $walletStore);
 </script>
 
-<div class="dashboard-content">
-	<h2 class="visible-hidden">Dashboard</h2>
+{#if enabledContracts.length}
+  <DashboardNav items={dashboardNavItems} />
+{:else}
+  <div class="no-contracts">
+    <Icon path={mdiContain} size="large" />
+    <h3>No Contracts Enabled</h3>
+    <p>
+      It appears that no contracts are currently enabled. To access the full
+      range of functionalities, enabling contracts is essential.
+    </p>
+    {#if import.meta.env.MODE === "development"}
+      <h4>For Developers:</h4>
+      <p>
+        No contracts are currently enabled. Please check the environment
+        variables.
+      </p>
+    {/if}
+  </div>
+{/if}
 
-	<AddressPicker
-		{addresses}
-		{currentAddress}
-	/>
+<slot />
 
-	<Balance
-		tokens={balance.value}
-		tokenCurrency="DUSK"
-		fiat={balance.value * currentPrice[currency.toLowerCase()]}
-		fiatCurrency={currency}
-		locale={language}
-	/>
+{#if import.meta.env.VITE_FEATURE_TRANSACTION_HISTORY === "true"}
+  <Transactions
+    items={walletStore.getTransactionsHistory()}
+    {language}
+    limit={dashboardTransactionLimit}
+    isSyncing={syncStatus.isInProgress}
+    syncError={syncStatus.error}
+  />
+{:else}
+  <IconHeadingCard
+    gap="medium"
+    icons={[mdiListBoxOutline]}
+    heading="Transactions"
+  >
+    <p>
+      Transaction history will be available in an upcoming release. Meanwhile,
+      you can check the status of your transactions on the Dusk Block Explorer.
+    </p>
 
-	{#if selectedContract}
-		<article class="tabs">
-			<Tabs
-				bind:selectedTab
-				items={tabItems}
-				on:change={() => updateOperation("")}
-			/>
-			<div
-				class="tabs__panel"
-				class:tabs__panel--first={selectedTab === enabledContracts[0].id}
-				class:tabs__panel--last={selectedTab === last(enabledContracts).id}
-			>
-				{#key selectedTab}
-					<div in:fade class="tabs__contract">
-						<svelte:component
-							descriptor={selectedContract}
-							on:operationChange={({ detail }) => updateOperation(detail)}
-							on:setGasSettings={handleSetGasSettings}
-							this={selectedTab === "transfer" ? TransferContract : StakeContract}
-						/>
-					</div>
-				{/key}
-			</div>
-		</article>
-	{/if}
-
-	{#if currentOperation === "" && selectedTab === "transfer" }
-		{#await walletStore.getTransactionsHistory()}
-			<Throbber className="loading"/>
-		{:then transactions}
-			<Transactions transactions={getTransactionsShortlist(transactions)}>
-				<h3 class="h4" slot="heading">Transactions</h3>
-				<AnchorButton
-					className="view-transactions"
-					slot="controls"
-					href="/dashboard/transactions"
-					text="View all transactions"
-					variant="tertiary"
-				/>
-			</Transactions>
-		{:catch e}
-			<Card heading="Error getting transactions">
-				<pre>{e}</pre>
-			</Card>
-		{/await}
-	{/if}
-</div>
+    <AnchorButton
+      variant="tertiary"
+      href={getExplorerPath()}
+      text="Block Explorer"
+      rel="noopener noreferrer"
+      target="_blank"
+    />
+  </IconHeadingCard>
+{/if}
 
 <style lang="postcss">
-	.dashboard-content {
-		width: 100%;
-		display: flex;
-		flex-direction: column;
-		gap: 1.375rem;
-		overflow-y: auto;
-		flex: 1;
-	}
+  .no-contracts {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--surface-color);
+    padding: 1rem 1.375rem;
+    border-radius: var(--control-border-radius-size);
 
-	.tabs {
-		&__panel {
-			border-radius: var(--control-border-radius-size);
-			background: var(--surface-color);
-			transition: border-radius 0.4s ease-in-out;
+    & h3 {
+      text-align: center;
+      margin-bottom: 1em;
+    }
 
-			&--first {
-				border-top-left-radius: 0;
-			}
+    & p:not(:last-child) {
+      margin-bottom: 1em;
+    }
+    h4 {
+      margin-bottom: 0.5em;
+    }
 
-			&--last {
-				border-top-right-radius: 0;
-			}
-		}
-
-		&__contract {
-			display: flex;
-			flex-direction: column;
-			padding: 1rem 1.375rem;
-			gap: var(--default-gap);
-		}
-	}
-
-	:global(.view-transactions) {
-		width: 100%;
-	}
-
-	:global(.loading) {
-		align-self: center;
-	}
+    :global(.dusk-icon) {
+      align-self: center;
+      margin-bottom: 0.5rem;
+    }
+  }
 </style>

@@ -1,37 +1,41 @@
 name: CI
 
 on:
-  push:
-    branches: [ main ]
-
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
 
 jobs:
   lint-test:
-
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-
-    name: Node ${{ matrix.node-version }}
+    name: Validate & build
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setting up Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - name: Setting up Node from `.nvmrc`
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          registry-url: "https://npm.pkg.github.com/"
+          node-version-file: "./.nvmrc"
+          cache: "npm"
+          cache-dependency-path: "./package-lock.json"
           scope: "@dusk-network"
 
       - name: Installing dev dependencies
         run: npm ci
-        env:
-          REGISTRY_TOKEN: ${{secrets.GH_TOKEN}}
+
+      - name: Sync SvelteKit config
+        run: npx svelte-kit sync
+
+      - name: Formatting check
+        run: npm run format
 
       - name: Linting
         run: npm run lint

@@ -1,89 +1,73 @@
-<svelte:options immutable={true}/>
+<svelte:options immutable={true} />
 
 <script>
-	import {
-		AnchorButton,
-		ErrorDetails,
-		Icon,
-		Throbber
-	} from "$lib/dusk/components";
-	import { mdiCheckDecagramOutline, mdiCloseThick } from "@mdi/js";
-	import { makeClassName } from "$lib/dusk/string";
+  import { mdiCheckDecagramOutline } from "@mdi/js";
 
-	/** @type {string|undefined} */
-	export let className = undefined;
+  import { makeClassName } from "$lib/dusk/string";
+  import { Icon, Suspense } from "$lib/dusk/components";
 
-	/** @type {Promise<any>} */
-	export let operation;
+  import { AppAnchorButton } from "..";
 
-	/** @type {string} */
-	export let errorMessage = "Operation failed";
+  /** @type {string|undefined} */
+  export let className = undefined;
 
-	/** @type {Function|undefined} */
-	export let onBeforeLeave = undefined;
+  /** @type {Promise<any>} */
+  export let operation;
 
-	/** @type {string} */
-	export let pendingMessage = "";
+  /** @type {string} */
+  export let errorMessage = "Operation failed";
 
-	/** @type {string} */
-	export let successMessage = "Operation completed";
+  /** @type {Function|undefined} */
+  export let onBeforeLeave = undefined;
 
-	/** @param {Event} event */
-	function handleGoHomeClick (event) {
-		event.preventDefault();
+  /** @type {string} */
+  export let pendingMessage = "";
 
-		onBeforeLeave && onBeforeLeave();
-	}
+  /** @type {string} */
+  export let successMessage = "Operation completed";
 
-	$: classes = makeClassName(["operation-result", className]);
+  function handleGoHomeClick() {
+    onBeforeLeave && onBeforeLeave();
+  }
+
+  $: classes = makeClassName(["operation-result", className]);
 </script>
 
-<div class={classes}>
-	{#await operation}
-		<Throbber/>
-		<span>{pendingMessage}</span>
-	{:then result}
-		<Icon
-			path={mdiCheckDecagramOutline}
-			size="large"
-		/>
-		<span>{successMessage}</span>
-		<slot name="success-content" {result}/>
-		<AnchorButton
-			href="/dashboard"
-			on:click={handleGoHomeClick}
-			variant="tertiary"
-			text="HOME"
-		/>
-	{:catch error}
-		<Icon
-			path={mdiCloseThick}
-			size="large"
-		/>
-		<ErrorDetails
-			{error}
-			summary={errorMessage}
-		/>
-		<slot name="error-content"/>
-		<AnchorButton
-			href="/dashboard"
-			on:click={handleGoHomeClick}
-			variant="tertiary"
-			text="HOME"
-		/>
-	{/await}
-</div>
+<Suspense
+  className={classes}
+  {errorMessage}
+  gap="large"
+  {pendingMessage}
+  waitFor={operation}
+>
+  <svelte:fragment slot="success-content" let:result>
+    <Icon path={mdiCheckDecagramOutline} size="large" />
+    <b>{successMessage}</b>
+    <slot name="success-content" {result} />
+    <AppAnchorButton
+      href="/dashboard"
+      on:click={handleGoHomeClick}
+      variant="tertiary"
+      text="HOME"
+    />
+  </svelte:fragment>
+  <AppAnchorButton
+    href="/dashboard"
+    on:click={handleGoHomeClick}
+    slot="error-extra-content"
+    text="HOME"
+    variant="tertiary"
+  />
+</Suspense>
 
 <style lang="postcss">
-	.operation-result {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--large-gap);
-		padding: 1.5em 0;
+  :global {
+    .operation-result {
+      padding: 1.5em 0;
 
-		:global(.dusk-anchor-button) {
-			width: 100%;
-		}
-	}
+      .dusk-anchor-button {
+        width: 100%;
+      }
+    }
+  }
 </style>

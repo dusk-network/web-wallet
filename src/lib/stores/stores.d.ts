@@ -1,47 +1,146 @@
-import type { Readable } from "svelte/store";
-import type { Wallet } from "@dusk-network/dusk-wallet-js";
+type Readable<T> = import("svelte/store").Readable<T>;
+
+type Writable<T> = import("svelte/store").Writable<T>;
+
+type GasStoreContent = {
+  gasLimitLower: bigint;
+  gasLimitUpper: bigint;
+  gasPriceLower: bigint;
+};
+
+type GasStore = Readable<GasStoreContent>;
+
+type SettingsStoreContent = {
+  currency: string;
+  darkMode: boolean;
+  dashboardTransactionLimit: number;
+  gasLimit: bigint;
+  gasPrice: bigint;
+  hideStakingNotice: boolean;
+  language: string;
+  userId: string;
+  walletCreationBlockHeight: bigint;
+};
+
+type SettingsStore = Writable<SettingsStoreContent> & {
+  reset: () => void;
+  resetGasSettings: () => void;
+};
+
+type TransactionInfo = Awaited<ReturnType<Network["execute"]>>;
 
 type TransactionsStoreContent = { transactions: Transaction[] };
 
 type TransactionsStore = Readable<TransactionsStoreContent>;
 
+type OperationsStoreContent = { currentOperation: string };
+
+type OperationsStore = Writable<OperationsStoreContent>;
+
+type NetworkStoreContent = {
+  get connected(): boolean;
+  networkName: string;
+};
+
+type NetworkStoreServices = {
+  checkBlock: (height: bigint, hash: string) => Promise<boolean>;
+  connect: () => Promise<Network>;
+  disconnect: () => Promise<void>;
+  getAccountSyncer: () => Promise<AccountSyncer>;
+  getAddressSyncer: () => Promise<AddressSyncer>;
+  getBlockHashByHeight: (height: bigint) => Promise<string>;
+  getCurrentBlockHeight: () => Promise<bigint>;
+  getLastFinalizedBlockHeight: () => Promise<bigint>;
+  init: () => Promise<void>;
+  registerDataDriver: (id: string, driver: any) => Promise<DataDriverRegistry>;
+};
+
+type NetworkStore = Readable<NetworkStoreContent> & NetworkStoreServices;
+
+type NodeInfo = {
+  bootstrappingNodes: Array<string>;
+  chainId: number;
+  kadcastAddress: string;
+  version: string;
+  versionBuild: string;
+};
+
+type WalletStoreBalance = {
+  shielded: AddressBalance;
+  unshielded: AccountBalance;
+};
+
 type WalletStoreContent = {
-	balance: {
-		maximum: number;
-		value: number;
-	};
-	currentAddress: string;
-	error: Error | null;
-	initialized: boolean;
-	addresses: string[];
-	isSyncing: boolean;
+  balance: WalletStoreBalance;
+  currentProfile: Profile | null;
+  initialized: boolean;
+  minimumStake: bigint;
+  profiles: Array<Profile>;
+  stakeInfo: StakeInfo;
+  syncStatus: {
+    from: bigint;
+    isInProgress: boolean;
+    last: bigint;
+    error: Error | null;
+    progress: number;
+  };
 };
 
 type WalletStoreServices = {
-	clearLocalData: () => Promise<void>;
+  abortSync: () => void;
 
-	clearLocalDataAndInit: (wallet: Wallet) => Promise<void>;
+  claimRewards: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
 
-	getStakeInfo: () => Promise<any> & ReturnType<Wallet["stakeInfo"]>;
+  clearLocalData: () => Promise<void>;
 
-	// The return type apparently is not in a promise here
-	getTransactionsHistory: () => Promise<ReturnType<Wallet["history"]>>;
+  clearLocalDataAndInit: (
+    profileGenerator: ProfileGenerator,
+    syncFromBlock?: bigint
+  ) => Promise<void>;
 
-	init: (wallet: Wallet) => Promise<void>;
+  depositEvmFunctionCall: (
+    address: `0x${string}`,
+    amount: bigint,
+    contractId: string,
+    wasmPath: string,
+    gas: Gas
+  ) => Promise<TransactionInfo>;
 
-	reset: () => void;
+  useContract: (contractId: string, wasmPath: string) => Promise<Contract>;
 
-	setCurrentAddress: (address: string) => Promise<void>;
+  getTransactionsHistory: () => Promise<any>;
 
-	stake: (amount: number) => Promise<any> & ReturnType<Wallet["stake"]>;
+  finalizeWithdrawalEvmFunctionCall: (
+    contractId: string,
+    withdrawalId: bigint,
+    wasmPath: string
+  ) => Promise<any>;
 
-	sync: () => Promise<void>;
+  init: (
+    profileGenerator: ProfileGenerator,
+    syncFromBlock?: bigint
+  ) => Promise<void>;
 
-	transfer: (to: string, amount: number) => Promise<any> & ReturnType<Wallet["transfer"]>;
+  reset: () => void;
 
-	unstake: () => Promise<any> & ReturnType<Wallet["unstake"]>;
+  setCurrentProfile: (profile: Profile) => Promise<void>;
 
-	withdrawReward: () => Promise<any> & ReturnType<Wallet["withdrawReward"]>;
+  shield: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
+
+  stake: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
+
+  sync: (fromBlock?: bigint) => Promise<void>;
+
+  transfer: (
+    to: string,
+    amount: bigint,
+    memo: string,
+    gas: Gas
+  ) => Promise<TransactionInfo>;
+
+  unshield: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
+
+  unstake: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
 };
 
 type WalletStore = Readable<WalletStoreContent> & WalletStoreServices;
