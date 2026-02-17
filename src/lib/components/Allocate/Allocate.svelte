@@ -8,6 +8,8 @@
     mdiShieldLock,
     mdiShieldLockOpenOutline,
   } from "@mdi/js";
+  import { formatUnits } from "viem";
+
   import { areValidGasSettings } from "$lib/contracts";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
   import { calculateAdaptiveCharCount, middleEllipsis } from "$lib/dusk/string";
@@ -41,7 +43,7 @@
   /** @type {string} */
   export let unshieldedAddress;
 
-  /** @type {bigint} */
+  /** @type {AddressBalance} */
   export let shieldedBalance;
 
   /** @type {bigint} */
@@ -109,13 +111,13 @@
   let hasEnoughFunds = true;
 
   // Constant total
-  const totalBalance = shieldedBalance + unshieldedBalance;
+  const totalBalance = shieldedBalance.spendable + unshieldedBalance;
 
   // Used to keep the difference between the initial shielded balance and the current one
-  const initialShielded = shieldedBalance;
+  const initialShielded = shieldedBalance.spendable;
 
   // Internal state of the balances
-  let shielded = shieldedBalance;
+  let shielded = shieldedBalance.spendable;
   $: unshielded = totalBalance - shielded;
 
   // Derived number states for UI Inputs
@@ -129,7 +131,7 @@
   $: difference = shielded - initialShielded;
 
   $: hasEnoughFunds = isUnshielding
-    ? shieldedBalance - difference - fee >= 0n
+    ? shieldedBalance.spendable - difference - fee >= 0n
     : unshieldedBalance + difference - fee >= 0n;
 
   $: isNextButtonDisabled =
@@ -193,7 +195,15 @@
 
           <hr class="glyph" />
 
-          <p class="operation__label">Shielded</p>
+          <p class="operation__label">
+            Shielded<br />
+            <small
+              >({formatUnits(shieldedBalance.spendable, 9)} spendable out of {formatUnits(
+                shieldedBalance.value,
+                9
+              )} total)</small
+            >
+          </p>
 
           <div class="operation__address-wrapper">
             <Icon path={mdiShieldLock} />
