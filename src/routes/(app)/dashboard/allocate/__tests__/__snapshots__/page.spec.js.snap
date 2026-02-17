@@ -122,6 +122,15 @@ exports[`Allocate > should render the allocation page 1`] = `
               class="operation__label svelte-eoztn2"
             >
               Shielded
+              <br />
+               
+              <small>
+                (
+                0
+                 spendable out of 
+                0
+                 total)
+              </small>
             </p>
              
             <div

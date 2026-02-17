@@ -25,7 +25,7 @@
 <Allocate
   {shieldedAddress}
   {unshieldedAddress}
-  shieldedBalance={balance.shielded.spendable}
+  shieldedBalance={balance.shielded}
   unshieldedBalance={balance.unshielded.value}
   formatter={duskFormatter}
   {gasLimits}
