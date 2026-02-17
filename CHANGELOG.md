@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.7.1] - 2026-02-17
+
+### Added
+
+- Added spendable vs. total shielded balance label in allocate flow [#928]
+
 ## [1.7.0] - 2026-02-04
 
 ### Added
@@ -633,10 +639,12 @@ dusk-network/rusk#3955: https://github.com/dusk-network/rusk/issues/3955
 dusk-network/rusk#3958: https://github.com/dusk-network/rusk/issues/3958
 dusk-network/rusk#3982: https://github.com/dusk-network/rusk/issues/3982
 dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
+[#928]: https://github.com/dusk-network/web-wallet/issues/928
 
 <!-- VERSIONS -->
 
 [Unreleased]: https://github.com/dusk-network/web-wallet/tree/main
+[1.7.1]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.1
 [1.7.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.0
 [1.6.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.6.0
 [1.5.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.5.0
