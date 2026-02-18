@@ -108,7 +108,6 @@
   let screenWidth = window.innerWidth;
 
   let hasInvalidInput = false;
-  let hasEnoughFunds = true;
 
   // Constant total
   const totalBalance = shieldedBalance.spendable + unshieldedBalance;
@@ -125,17 +124,23 @@
   $: unshieldedNumber = luxToDusk(unshielded);
 
   $: isShielding = difference > 0n;
-  $: isUnshielding = !isShielding;
 
   $: fee = gasLimit * gasPrice;
   $: difference = shielded - initialShielded;
 
-  $: hasEnoughFunds = isUnshielding
-    ? shieldedBalance.spendable - difference - fee >= 0n
-    : unshieldedBalance + difference - fee >= 0n;
+  $: hasEnoughFundsForFees =
+    difference === 0n ||
+    (isShielding
+      ? unshieldedBalance - difference - fee >= 0n
+      : shieldedBalance.spendable + difference - fee >= 0n);
+  $: fundsErrorMessage = hasEnoughFundsForFees
+    ? ""
+    : shielded < 0n || unshielded < 0n
+      ? "Not enough funds for the transaction."
+      : "Your balance is too low to cover the allocation fees.";
 
   $: isNextButtonDisabled =
-    !hasEnoughFunds ||
+    !hasEnoughFundsForFees ||
     !isGasValid ||
     difference === 0n || // No change in balance
     shielded < 0n || // Shielded balance is negative
@@ -254,11 +259,11 @@
           }}
         />
 
-        {#if !hasEnoughFunds}
+        {#if fundsErrorMessage}
           <Banner title="Insufficient Funds" variant="error">
             <p>
-              Your balance is too low to cover the allocation fees. Please
-              adjust your transaction or add more funds to proceed.
+              {fundsErrorMessage} Please adjust your transaction or add more funds
+              to proceed.
             </p>
           </Banner>
         {/if}
@@ -312,13 +317,13 @@
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">
             <Icon
-              path={isUnshielding ? mdiShieldLockOpenOutline : mdiShieldLock}
+              path={isShielding ? mdiShieldLock : mdiShieldLockOpenOutline}
             />
             <span>To</span>
           </dt>
           <dd class="operation__review-address">
             <span>
-              {isUnshielding ? unshieldedAddress : shieldedAddress}
+              {isShielding ? shieldedAddress : unshieldedAddress}
             </span>
           </dd>
         </dl>
@@ -326,7 +331,7 @@
         <Banner title="Fee Details" variant="info">
           <p>
             The fee will be deducted from your <b
-              >{isUnshielding ? "shielded" : "public"}</b
+              >{isShielding ? "public" : "shielded"}</b
             > balance.
           </p>
         </Banner>
