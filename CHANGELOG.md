@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.7.2] - 2026-02-18
+
+### Fixed
+
 - Fixed wrong logic for the `hasEnoughFunds` variable in allocate flow [#932]
 
 ## [1.7.1] - 2026-02-17
@@ -647,6 +651,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 <!-- VERSIONS -->
 
 [Unreleased]: https://github.com/dusk-network/web-wallet/tree/main
+[1.7.2]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.2
 [1.7.1]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.1
 [1.7.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.0
 [1.6.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.6.0
