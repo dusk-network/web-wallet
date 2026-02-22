@@ -54,6 +54,7 @@ VITE_SYNC_INTERVAL=300000
 VITE_MODE_MAINTENANCE=false
 VITE_REOWN_PROJECT_ID="" # the ID of the EVM project (as on Reown Cloud)
 VITE_NODE_URL="" # connect to a specific node
+VITE_PROVER_URL="" # connect to a specific prover
 ```
 
 To run a local node different steps are needed, so please read the [related section](#running-a-local-rusk-node).

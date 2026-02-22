@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Added support for a dedicated prover endpoint (`VITE_PROVER_URL`) separated from node URL routing [#936]
+
 ### Removed
 
 ### Fixed
@@ -647,6 +649,7 @@ dusk-network/rusk#3982: https://github.com/dusk-network/rusk/issues/3982
 dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#928]: https://github.com/dusk-network/web-wallet/issues/928
 [#932]: https://github.com/dusk-network/web-wallet/issues/932
+[#936]: https://github.com/dusk-network/web-wallet/issues/936
 
 <!-- VERSIONS -->
 

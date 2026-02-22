@@ -9,7 +9,7 @@ import {
 } from "@dusk/w3sper";
 
 import { rejectAfter } from "$lib/dusk/promise";
-import { makeNodeUrl } from "$lib/url";
+import { makeNodeUrl, makeProverUrl } from "$lib/url";
 
 import wasmPath from "$lib/vendor/wallet_core-1.3.0.wasm?url";
 
@@ -25,10 +25,58 @@ function getNetworkUrl() {
   }
 }
 
+function getProverUrl() {
+  if (browser) {
+    return makeProverUrl();
+  } else {
+    return (
+      (import.meta.env.VITE_PROVER_URL &&
+        new URL(import.meta.env.VITE_PROVER_URL)) ||
+      getNetworkUrl()
+    );
+  }
+}
+
 const networkUrl = getNetworkUrl();
+const proverUrl = getProverUrl();
+
+class NetworkWithProver extends Network {
+  #proverUrl;
+
+  /**
+   * @param {string | URL} url
+   * @param {string | URL} prover
+   */
+  constructor(url, prover) {
+    super(url);
+    this.#proverUrl = prover;
+  }
+
+  /**
+   * @param {Uint8Array<ArrayBuffer>} circuits
+   * @returns {Promise<ArrayBuffer>}
+   */
+  async prove(circuits) {
+    const response = await fetch(
+      new URL("/on/prover/prove", this.#proverUrl).toString(),
+      {
+        body: circuits,
+        headers: { "Content-Type": "application/octet-stream" },
+        method: "POST",
+      }
+    );
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(body || `HTTP ${response.status}`);
+    }
+
+    return response.arrayBuffer();
+  }
+}
 
 /** @type {Network} */
-const network = new Network(networkUrl);
+const network = new NetworkWithProver(networkUrl, proverUrl);
 
 /** @type {NetworkStoreContent} */
 const initialState = {
