@@ -11,7 +11,7 @@ import {
 import { rejectAfter } from "$lib/dusk/promise";
 import { makeNodeUrl } from "$lib/url";
 
-import wasmPath from "$lib/vendor/wallet_core-1.3.0.wasm?url";
+import wasmPath from "$lib/vendor/wallet_core-1.6.0.wasm?url";
 
 function getNetworkUrl() {
   if (browser) {

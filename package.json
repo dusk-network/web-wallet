@@ -33,9 +33,9 @@
     "typecheck:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch --fail-on-warnings"
   },
   "type": "module",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "dependencies": {
-    "@dusk/w3sper": "npm:@jsr/dusk__w3sper@^1.4.0",
+    "@dusk/w3sper": "npm:@jsr/dusk__w3sper@1.6.0",
     "@floating-ui/dom": "1.7.5",
     "@mdi/js": "7.4.47",
     "@reown/appkit": "1.7.20",
