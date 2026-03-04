@@ -64,6 +64,40 @@ describe("Network store", async () => {
     vi.unstubAllEnvs();
   });
 
+  it("should send prove requests to the dedicated prover URL when configured", async () => {
+    vi.stubEnv("VITE_NODE_URL", "https://nodes.dusk.network/");
+    vi.stubEnv("VITE_PROVER_URL", "https://provers.dusk.network/");
+    vi.resetModules();
+
+    const store = (await import("..")).networkStore;
+    const network = await store.connect();
+
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([1, 2, 3]).buffer, { status: 200 })
+      );
+    globalThis.fetch = fetchMock;
+
+    try {
+      await expect(
+        network.prove(new Uint8Array([1, 2, 3]))
+      ).resolves.toBeInstanceOf(ArrayBuffer);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        "https://provers.dusk.network/on/prover/prove"
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      await store.disconnect();
+    }
+
+    vi.resetModules();
+    vi.unstubAllEnvs();
+  });
+
   it("should expose a method to connect to the network and update the store's connection status", async () => {
     const store = (await import("..")).networkStore;
 
