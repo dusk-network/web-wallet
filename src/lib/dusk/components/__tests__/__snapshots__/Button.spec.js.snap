@@ -5,12 +5,15 @@ exports[`Button > should be able to render a button with an icon and text 1`] = 
   class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
   type="button"
 >
+  <!---->
   <span
     class="dusk-button__text"
   >
     some text
   </span>
+  <!---->
    
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--default dusk-button__icon"
     role="graphics-symbol"
@@ -21,6 +24,8 @@ exports[`Button > should be able to render a button with an icon and text 1`] = 
     />
   </svg>
   
+  <!---->
+  <!---->
 </button>
 `;
 
@@ -29,12 +34,15 @@ exports[`Button > should be able to render a button with an icon and text 2`] = 
   class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
   type="button"
 >
+  <!---->
   <span
     class="dusk-button__text"
   >
     some text
   </span>
+  <!---->
    
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--default dusk-button__icon"
     role="graphics-symbol"
@@ -45,6 +53,8 @@ exports[`Button > should be able to render a button with an icon and text 2`] = 
     />
   </svg>
   
+  <!---->
+  <!---->
 </button>
 `;
 
@@ -53,7 +63,10 @@ exports[`Button > should be able to render a button with an icon only 1`] = `
   class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button"
   type="button"
 >
+  <!---->
+  <!---->
    
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--default dusk-button__icon"
     role="graphics-symbol"
@@ -64,6 +77,8 @@ exports[`Button > should be able to render a button with an icon only 1`] = `
     />
   </svg>
   
+  <!---->
+  <!---->
 </button>
 `;
 
@@ -72,7 +87,10 @@ exports[`Button > should be able to render a button with an icon only 2`] = `
   class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button"
   type="button"
 >
+  <!---->
+  <!---->
    
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--default dusk-button__icon"
     role="graphics-symbol"
@@ -83,6 +101,8 @@ exports[`Button > should be able to render a button with an icon only 2`] = `
     />
   </svg>
   
+  <!---->
+  <!---->
 </button>
 `;
 
@@ -97,6 +117,7 @@ exports[`Button > should pass additional class names and attributes to the rende
   >
     some text
   </span>
+  <!---->
 </button>
 `;
 
@@ -110,6 +131,7 @@ exports[`Button > should render a button of the desired type 1`] = `
   >
     some text
   </span>
+  <!---->
 </button>
 `;
 
@@ -123,6 +145,7 @@ exports[`Button > should render a button of the desired type 2`] = `
   >
     some text
   </span>
+  <!---->
 </button>
 `;
 
@@ -136,6 +159,7 @@ exports[`Button > should render a button of the desired type 3`] = `
   >
     some text
   </span>
+  <!---->
 </button>
 `;
 
@@ -149,6 +173,7 @@ exports[`Button > should render a button of the desired type 4`] = `
   >
     some text
   </span>
+  <!---->
 </button>
 `;
 
@@ -156,7 +181,9 @@ exports[`Button > should render a button without a text 1`] = `
 <button
   class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default"
   type="button"
-/>
+>
+  <!---->
+</button>
 `;
 
 exports[`Button > should render the Button component using the type "button" as a default 1`] = `
@@ -169,5 +196,6 @@ exports[`Button > should render the Button component using the type "button" as 
   >
     some text
   </span>
+  <!---->
 </button>
 `;

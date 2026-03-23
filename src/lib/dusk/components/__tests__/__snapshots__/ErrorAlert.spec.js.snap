@@ -6,6 +6,7 @@ exports[`ErrorAlert > should pass additional class names and attributes to the r
   data-foo="baz"
   id="some-id"
 >
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--large dusk-error-alert__icon"
     role="graphics-symbol"
@@ -16,7 +17,9 @@ exports[`ErrorAlert > should pass additional class names and attributes to the r
     />
   </svg>
   
+  <!---->
    
+  <!---->
   <details
     class="dusk-error-details dusk-error-details__details dusk-error-alert__error-details"
   >
@@ -29,13 +32,13 @@ exports[`ErrorAlert > should pass additional class names and attributes to the r
     <pre
       class="dusk-error-details__error"
     >
-      			
-      some error message
       
+			some error message
 		
     </pre>
   </details>
   
+  <!---->
 </div>
 `;
 
@@ -43,6 +46,7 @@ exports[`ErrorAlert > should render the \`ErrorAlert\` component 1`] = `
 <div
   class="dusk-error-alert"
 >
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--large dusk-error-alert__icon"
     role="graphics-symbol"
@@ -53,7 +57,9 @@ exports[`ErrorAlert > should render the \`ErrorAlert\` component 1`] = `
     />
   </svg>
   
+  <!---->
    
+  <!---->
   <details
     class="dusk-error-details dusk-error-details__details dusk-error-alert__error-details"
   >
@@ -66,12 +72,12 @@ exports[`ErrorAlert > should render the \`ErrorAlert\` component 1`] = `
     <pre
       class="dusk-error-details__error"
     >
-      			
-      some error message
       
+			some error message
 		
     </pre>
   </details>
   
+  <!---->
 </div>
 `;

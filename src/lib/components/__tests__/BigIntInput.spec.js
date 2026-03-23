@@ -13,15 +13,19 @@ describe("BigIntInput", () => {
   });
 
   it("changes the value on valid input", async () => {
-    const { getByDisplayValue, component } = render(BigIntInput, {
-      value: 123n,
+    const { getByDisplayValue } = render(BigIntInput, {
+      events: {
+        change: (event) => {
+          updatedValue = event.detail;
+        },
+      },
+      props: {
+        value: 123n,
+      },
     });
     const input = getByDisplayValue("123");
 
     let updatedValue;
-    component.$on("change", (event) => {
-      updatedValue = event.detail;
-    });
 
     await fireEvent.input(input, { target: { value: "456" } });
 
@@ -40,14 +44,15 @@ describe("BigIntInput", () => {
 
   it("emits an error event when the input is a valid number that can be converted to a BigInt but exceed the limits", async () => {
     const errorHandler = vi.fn();
-    const { getByDisplayValue, component } = render(BigIntInput, {
-      maxValue: 10n,
-      minValue: 1n,
-      value: 2n,
+    const { getByDisplayValue } = render(BigIntInput, {
+      events: { error: errorHandler },
+      props: {
+        maxValue: 10n,
+        minValue: 1n,
+        value: 2n,
+      },
     });
     const input = getByDisplayValue("2");
-
-    component.$on("error", errorHandler);
 
     await fireEvent.input(input, { target: { value: "11" } });
 

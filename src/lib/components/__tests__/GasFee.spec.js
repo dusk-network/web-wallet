@@ -25,6 +25,6 @@ describe("GasFee", () => {
         ?.innerHTML
     ).toBe(duskFormatter(luxToDusk(fee)));
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

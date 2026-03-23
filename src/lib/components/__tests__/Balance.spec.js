@@ -26,13 +26,13 @@ describe("Balance", () => {
     expect(
       container.querySelector(".dusk-balance__usage-details")
     ).toBeInTheDocument();
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should update the Balance component when the props change", async () => {
     const { container, rerender } = render(Balance, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     await rerender({
       fiatCurrency: "EUR",
@@ -43,7 +43,7 @@ describe("Balance", () => {
       unshieldedAmount: 2_500_000n,
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should display the right percentage values", async () => {
@@ -93,8 +93,8 @@ describe("Balance", () => {
     };
     const { container, rerender } = render(Balance, { ...baseOptions, props });
 
-    expect(container.firstChild).toHaveClass("foo bar");
-    expect(container.firstChild).toHaveAttribute("id", "balance");
+    expect(container.firstElementChild).toHaveClass("foo bar");
+    expect(container.firstElementChild).toHaveAttribute("id", "balance");
 
     await rerender({
       ...props,
@@ -102,8 +102,8 @@ describe("Balance", () => {
       id: "new-balance",
     });
 
-    expect(container.firstChild).toHaveClass("qux");
-    expect(container.firstChild).toHaveAttribute("id", "new-balance");
+    expect(container.firstElementChild).toHaveClass("qux");
+    expect(container.firstElementChild).toHaveAttribute("id", "new-balance");
   });
 
   it("should not display the fiat value if the fiat price is `undefined`", () => {
@@ -111,6 +111,6 @@ describe("Balance", () => {
     const { container } = render(Balance, { ...baseOptions, props });
 
     expect(container.querySelector(".dusk-balance__fiat--visible")).toBeNull();
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

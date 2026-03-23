@@ -31,7 +31,7 @@ describe("GasSettings", () => {
   it("renders the GasSettings component closed", () => {
     const { container } = render(GasSettings, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("renders the GasSettings component opened", async () => {
@@ -41,22 +41,23 @@ describe("GasSettings", () => {
 
     await fireEvent.click(next);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it('checks "gasSettings" event is dispatched on click with the correct event data', async () => {
     const eventHandler = vi.fn();
-    const { component, getByRole, getAllByRole } = render(
-      GasSettings,
-      baseOptions
-    );
+    const { getByRole, getAllByRole } = render(GasSettings, {
+      ...baseOptions,
+      events: { gasSettings: eventHandler },
+    });
     const editButton = getByRole("button", { name: "EDIT" });
 
     expect(() => getAllByRole("textbox")).toThrow();
 
     await fireEvent.click(editButton);
 
-    component.$on("gasSettings", eventHandler);
+    // Gas controls fires the event on mount
+    expect(eventHandler).toHaveBeenCalledTimes(1);
 
     const [priceInput, limitInput] = getAllByRole("textbox");
 
@@ -64,7 +65,7 @@ describe("GasSettings", () => {
       target: { value: baseProps.limitLower },
     });
 
-    expect(eventHandler).toHaveBeenCalledTimes(1);
+    expect(eventHandler).toHaveBeenCalledTimes(2);
     expect(eventHandler.mock.lastCall?.[0].detail).toStrictEqual({
       limit: baseProps.limitLower,
       price: baseProps.price,
@@ -74,7 +75,7 @@ describe("GasSettings", () => {
       target: { value: baseProps.price * 2n },
     });
 
-    expect(eventHandler).toHaveBeenCalledTimes(2);
+    expect(eventHandler).toHaveBeenCalledTimes(3);
     expect(eventHandler.mock.lastCall?.[0].detail).toStrictEqual({
       limit: baseProps.limitLower,
       price: baseProps.price * 2n,

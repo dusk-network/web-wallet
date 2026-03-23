@@ -34,9 +34,12 @@ exports[`Balance > renders the Balance component 1`] = `
     </span>
   </p>
    
+  <!---->
   <div
     class="dusk-card dusk-card--gap-default dusk-balance__usage-details"
   >
+    <!---->
+    <!---->
      
     <div
       class="dusk-card__body-container"
@@ -47,6 +50,7 @@ exports[`Balance > renders the Balance component 1`] = `
         <span
           class="dusk-balance__percentage"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -59,14 +63,15 @@ exports[`Balance > renders the Balance component 1`] = `
             />
           </svg>
           
-          66.67
-          %
+          <!---->
+          66.67%
         </span>
          
         <span
           class="dusk-balance__value"
         >
           0.002000000
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -79,6 +84,7 @@ exports[`Balance > renders the Balance component 1`] = `
             />
           </svg>
           
+          <!---->
         </span>
       </div>
        
@@ -88,6 +94,7 @@ exports[`Balance > renders the Balance component 1`] = `
         <span
           class="dusk-balance__percentage"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -100,14 +107,15 @@ exports[`Balance > renders the Balance component 1`] = `
             />
           </svg>
           
-          33.33
-          %
+          <!---->
+          33.33%
         </span>
          
         <span
           class="dusk-balance__value"
         >
           0.001000000
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -120,12 +128,18 @@ exports[`Balance > renders the Balance component 1`] = `
             />
           </svg>
           
+          <!---->
         </span>
       </div>
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    
   </div>
   
+  <!---->
 </article>
 `;
 
@@ -163,9 +177,12 @@ exports[`Balance > should not display the fiat value if the fiat price is \`unde
     </span>
   </p>
    
+  <!---->
   <div
     class="dusk-card dusk-card--gap-default dusk-balance__usage-details"
   >
+    <!---->
+    <!---->
      
     <div
       class="dusk-card__body-container"
@@ -176,6 +193,7 @@ exports[`Balance > should not display the fiat value if the fiat price is \`unde
         <span
           class="dusk-balance__percentage"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -188,14 +206,15 @@ exports[`Balance > should not display the fiat value if the fiat price is \`unde
             />
           </svg>
           
-          66.67
-          %
+          <!---->
+          66.67%
         </span>
          
         <span
           class="dusk-balance__value"
         >
           0.002000000
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -208,6 +227,7 @@ exports[`Balance > should not display the fiat value if the fiat price is \`unde
             />
           </svg>
           
+          <!---->
         </span>
       </div>
        
@@ -217,6 +237,7 @@ exports[`Balance > should not display the fiat value if the fiat price is \`unde
         <span
           class="dusk-balance__percentage"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -229,14 +250,15 @@ exports[`Balance > should not display the fiat value if the fiat price is \`unde
             />
           </svg>
           
-          33.33
-          %
+          <!---->
+          33.33%
         </span>
          
         <span
           class="dusk-balance__value"
         >
           0.001000000
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -249,12 +271,18 @@ exports[`Balance > should not display the fiat value if the fiat price is \`unde
             />
           </svg>
           
+          <!---->
         </span>
       </div>
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    
   </div>
   
+  <!---->
 </article>
 `;
 
@@ -292,9 +320,12 @@ exports[`Balance > should update the Balance component when the props change 1`]
     </span>
   </p>
    
+  <!---->
   <div
     class="dusk-card dusk-card--gap-default dusk-balance__usage-details"
   >
+    <!---->
+    <!---->
      
     <div
       class="dusk-card__body-container"
@@ -305,6 +336,7 @@ exports[`Balance > should update the Balance component when the props change 1`]
         <span
           class="dusk-balance__percentage"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -317,14 +349,15 @@ exports[`Balance > should update the Balance component when the props change 1`]
             />
           </svg>
           
-          66.67
-          %
+          <!---->
+          66.67%
         </span>
          
         <span
           class="dusk-balance__value"
         >
           0.002000000
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -337,6 +370,7 @@ exports[`Balance > should update the Balance component when the props change 1`]
             />
           </svg>
           
+          <!---->
         </span>
       </div>
        
@@ -346,6 +380,7 @@ exports[`Balance > should update the Balance component when the props change 1`]
         <span
           class="dusk-balance__percentage"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -358,14 +393,15 @@ exports[`Balance > should update the Balance component when the props change 1`]
             />
           </svg>
           
-          33.33
-          %
+          <!---->
+          33.33%
         </span>
          
         <span
           class="dusk-balance__value"
         >
           0.001000000
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -378,12 +414,18 @@ exports[`Balance > should update the Balance component when the props change 1`]
             />
           </svg>
           
+          <!---->
         </span>
       </div>
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    
   </div>
   
+  <!---->
 </article>
 `;
 
@@ -421,9 +463,12 @@ exports[`Balance > should update the Balance component when the props change 2`]
     </span>
   </p>
    
+  <!---->
   <div
     class="dusk-card dusk-card--gap-default dusk-balance__usage-details"
   >
+    <!---->
+    <!---->
      
     <div
       class="dusk-card__body-container"
@@ -434,6 +479,7 @@ exports[`Balance > should update the Balance component when the props change 2`]
         <span
           class="dusk-balance__percentage"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -446,14 +492,15 @@ exports[`Balance > should update the Balance component when the props change 2`]
             />
           </svg>
           
-          83,33
-          %
+          <!---->
+          83,33%
         </span>
          
         <span
           class="dusk-balance__value"
         >
           0,002500000
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -466,6 +513,7 @@ exports[`Balance > should update the Balance component when the props change 2`]
             />
           </svg>
           
+          <!---->
         </span>
       </div>
        
@@ -475,6 +523,7 @@ exports[`Balance > should update the Balance component when the props change 2`]
         <span
           class="dusk-balance__percentage"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -487,14 +536,15 @@ exports[`Balance > should update the Balance component when the props change 2`]
             />
           </svg>
           
-          16,67
-          %
+          <!---->
+          16,67%
         </span>
          
         <span
           class="dusk-balance__value"
         >
           0,000500000
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
@@ -507,11 +557,17 @@ exports[`Balance > should update the Balance component when the props change 2`]
             />
           </svg>
           
+          <!---->
         </span>
       </div>
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    
   </div>
   
+  <!---->
 </article>
 `;

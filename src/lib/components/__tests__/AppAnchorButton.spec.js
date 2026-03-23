@@ -20,7 +20,7 @@ describe("AppAnchorButton", () => {
     );
     const anchorA = getByRole("link");
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
     expect(anchorA).toHaveAttribute("href", `${base}${baseProps.href}`);
     expect(anchorA).toHaveClass("foo bar");
     expect(anchorA).toHaveAttribute("id", baseProps.id);
@@ -52,12 +52,13 @@ describe("AppAnchorButton", () => {
 
   it("should forward the `onclick` event to the `AnchorButton`", async () => {
     const handler = vi.fn();
-    const { component, getByRole } = render(AppAnchorButton, {
-      ...baseProps,
-      href: "#",
+    const { getByRole } = render(AppAnchorButton, {
+      events: { click: handler },
+      props: {
+        ...baseProps,
+        href: "#",
+      },
     });
-
-    component.$on("click", handler);
 
     await fireEvent.click(getByRole("link"));
 

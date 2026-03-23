@@ -32,7 +32,7 @@ describe("Mnemonic", () => {
       },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it('should render the "Mnemonic" component in the validate state', () => {
@@ -43,7 +43,7 @@ describe("Mnemonic", () => {
       },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should display all the words in the order they have been clicked", async () => {

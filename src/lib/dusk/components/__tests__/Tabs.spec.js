@@ -72,9 +72,13 @@ describe("Tabs", () => {
     target: document.body,
   };
 
-  /** @param {import("svelte").ComponentProps<Tabs>} props */
-  const renderTabs = async (props) => {
-    const renderResult = render(Tabs, { ...baseOptions, props });
+  /**
+   * @param {import("svelte").ComponentProps<Tabs>} props
+   * @param {Record<string, (evt: any) => any>} events
+   */
+
+  const renderTabs = async (props, events = {}) => {
+    const renderResult = render(Tabs, { ...baseOptions, events, props });
 
     /**
      * `@juggle/resize-observer` uses some scheduling, so we
@@ -121,7 +125,7 @@ describe("Tabs", () => {
 
     expect(tabsList.scrollTo).toHaveBeenCalledTimes(1);
     expect(tabsList.scrollTo).toHaveBeenCalledWith(0, 0);
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should scroll the selected tab into view if there's a selection", async () => {
@@ -140,7 +144,7 @@ describe("Tabs", () => {
       items: itemsWithTextAndIcon,
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should be able to render tabs with icons only", async () => {
@@ -149,7 +153,7 @@ describe("Tabs", () => {
       items: itemsWithIcon,
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should use the id as label if the tab hasn't one and is without icon", async () => {
@@ -158,7 +162,7 @@ describe("Tabs", () => {
       items: itemsWithIdOnly,
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should observe the tab list resize on mounting and stop observing when unmounting", async () => {
@@ -185,20 +189,18 @@ describe("Tabs", () => {
       id: "some-id",
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should fire a change event when a tab is selected and it's not the current selection", async () => {
-    const { component, getAllByRole } = await renderTabs(baseProps);
+    const { getAllByRole } = await renderTabs(baseProps, {
+      change: (event) => {
+        expect(event.detail).toBe(expectedTab.dataset.tabid);
+      },
+    });
     const tabs = getAllByRole("tab");
 
     let expectedTab = tabs[0];
-
-    expect.assertions(3);
-
-    component.$on("change", (event) => {
-      expect(event.detail).toBe(expectedTab.dataset.tabid);
-    });
 
     // does nothing as it's currently selected
     await fireEvent.click(tabs[1]);
@@ -215,6 +217,8 @@ describe("Tabs", () => {
 
     // does nothing as neither space or Enter are pressed
     await fireEvent.keyDown(tabs[1], { key: "f" });
+
+    expect.assertions(3);
   });
 
   it("should scroll a tab into view when it gains focus", async () => {
@@ -241,9 +245,9 @@ describe("Tabs", () => {
       ".dusk-tab-scroll-button:last-of-type"
     );
 
-    expect(leftBtn.getAttribute("hidden")).toBe("true");
+    expect(leftBtn).toHaveAttribute("hidden");
     expect(leftBtn.getAttribute("disabled")).toBe("");
-    expect(rightBtn.getAttribute("hidden")).toBe("true");
+    expect(rightBtn).toHaveAttribute("hidden");
     expect(rightBtn.getAttribute("disabled")).toBe("");
   });
 
@@ -260,9 +264,9 @@ describe("Tabs", () => {
       ".dusk-tab-scroll-button:last-of-type"
     );
 
-    expect(leftBtn.getAttribute("hidden")).toBe("false");
+    expect(leftBtn).not.toHaveAttribute("hidden");
     expect(leftBtn.getAttribute("disabled")).toBe("");
-    expect(rightBtn.getAttribute("hidden")).toBe("false");
+    expect(rightBtn).not.toHaveAttribute("hidden");
     expect(rightBtn.getAttribute("disabled")).toBeNull();
 
     await fireEvent.mouseDown(rightBtn, { buttons: 1 });
@@ -291,9 +295,9 @@ describe("Tabs", () => {
       ".dusk-tab-scroll-button:last-of-type"
     );
 
-    expect(leftBtn.getAttribute("hidden")).toBe("false");
+    expect(leftBtn).not.toHaveAttribute("hidden");
     expect(leftBtn.getAttribute("disabled")).toBeNull();
-    expect(rightBtn.getAttribute("hidden")).toBe("false");
+    expect(rightBtn).not.toHaveAttribute("hidden");
     expect(rightBtn.getAttribute("disabled")).toBe("");
 
     scrollBySpy.mockClear();
@@ -316,7 +320,7 @@ describe("Tabs", () => {
       ".dusk-tab-scroll-button:last-of-type"
     );
 
-    expect(rightBtn.getAttribute("hidden")).toBe("false");
+    expect(rightBtn).not.toHaveAttribute("hidden");
     expect(rightBtn.getAttribute("disabled")).toBeNull();
 
     await fireEvent.mouseDown(rightBtn, { buttons: 1 });

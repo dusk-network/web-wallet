@@ -7,7 +7,7 @@ exports[`ProgressBar > re-renders the ProgressBar component when the current per
 >
   <div
     class="dusk-progress-bar__filler"
-    style="width: 0%"
+    style="width: 0%;"
   />
 </div>
 `;
@@ -19,7 +19,7 @@ exports[`ProgressBar > re-renders the ProgressBar component when the current per
 >
   <div
     class="dusk-progress-bar__filler"
-    style="width: 50%"
+    style="width: 50%;"
   />
 </div>
 `;
@@ -31,7 +31,7 @@ exports[`ProgressBar > renders the ProgressBar component with current percentage
 >
   <div
     class="dusk-progress-bar__filler"
-    style="width: 0%"
+    style="width: 0%;"
   />
 </div>
 `;

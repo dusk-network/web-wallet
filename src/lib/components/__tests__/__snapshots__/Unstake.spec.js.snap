@@ -10,16 +10,19 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
     <div
       slot="stepper"
     >
+      <!---->
       <div
         class="dusk-stepper dusk-stepper--variant--primary"
         style="--columns: 3; --progress-width: 0%;"
       >
+        <!---->
         <span
           aria-current="step"
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           1
+          <!---->
         </span>
          
         <span
@@ -27,13 +30,13 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           id="step-some-generated-id"
         >
           Amount
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           2
+          <!---->
         </span>
          
         <span
@@ -41,13 +44,13 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           id="step-some-generated-id"
         >
           Overview
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           3
+          <!---->
         </span>
          
         <span
@@ -55,17 +58,24 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           id="step-some-generated-id"
         >
           Done
-           
         </span>
         
+        <!---->
       </div>
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
+    <!---->
+    <!---->
      
+    <!---->
      
     <div
-      class="operation__amount-wrapper svelte-1p653d4"
+      class="operation__amount-wrapper svelte-g5cixq"
     >
       <p>
         Amount:
@@ -80,12 +90,15 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
         >
           USE MAX
         </span>
+        <!---->
       </button>
+      <!---->
     </div>
      
     <div
-      class="operation__input-wrapper svelte-1p653d4"
+      class="operation__input-wrapper svelte-g5cixq"
     >
+      <!---->
       <input
         class="dusk-textbox dusk-textbox-number operation__input-field"
         max="345"
@@ -94,7 +107,9 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
         type="number"
       />
       
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         data-tooltip-id="main-tooltip"
@@ -107,40 +122,42 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
         />
       </svg>
       
+      <!---->
     </div>
      
     <div
-      class="gas-settings svelte-1daay07"
+      class="gas-settings svelte-1wfde5f"
     >
       <dl
-        class="gas-settings__edit svelte-1daay07"
+        class="gas-settings__edit svelte-1wfde5f"
       >
         <div
-          class="gas-fee svelte-1c6b481"
+          class="gas-fee svelte-9uj43"
         >
           <span>
             Fee:
           </span>
            
           <div
-            class="gas-fee__amount svelte-1c6b481"
+            class="gas-fee__amount svelte-9uj43"
           >
             <div
-              class="gas-fee__amount-value svelte-1c6b481"
+              class="gas-fee__amount-value svelte-9uj43"
             >
               <span
-                class="svelte-1c6b481"
+                class="svelte-9uj43"
               >
                 max
               </span>
                
               <span
-                class="svelte-1c6b481"
+                class="svelte-9uj43"
               >
                 0.020000000
               </span>
             </div>
              
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default dusk-amount__icon"
               data-tooltip-id="main-tooltip"
@@ -153,8 +170,11 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
               />
             </svg>
             
+            <!---->
           </div>
         </div>
+        <!---->
+         
         <dd>
           <button
             class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
@@ -165,21 +185,30 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
             >
               EDIT
             </span>
+            <!---->
           </button>
+          <!---->
         </dd>
       </dl>
        
+      <!---->
     </div>
+    <!---->
      
-    
+    <!---->
+    <!---->
      
+    <!---->
     <div
       class="dusk-wizard__step-navigation"
     >
+      <!---->
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -190,26 +219,32 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-button__text"
         >
           Back
         </span>
-        
+        <!---->
+        <!---->
       </button>
       
+      <!---->
        
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
         <span
           class="dusk-button__text"
         >
           Next
         </span>
+        <!---->
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -220,15 +255,26 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           />
         </svg>
         
+        <!---->
+        <!---->
       </button>
+      <!---->
     </div>
     
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
+    <!---->
   </div>
+  <!---->
 </div>
 `;
 
@@ -242,16 +288,19 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
     <div
       slot="stepper"
     >
+      <!---->
       <div
         class="dusk-stepper dusk-stepper--variant--primary"
         style="--columns: 3; --progress-width: 0%;"
       >
+        <!---->
         <span
           aria-current="step"
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           1
+          <!---->
         </span>
          
         <span
@@ -259,13 +308,13 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           id="step-some-generated-id"
         >
           Amount
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           2
+          <!---->
         </span>
          
         <span
@@ -273,13 +322,13 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           id="step-some-generated-id"
         >
           Overview
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           3
+          <!---->
         </span>
          
         <span
@@ -287,17 +336,24 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           id="step-some-generated-id"
         >
           Done
-           
         </span>
         
+        <!---->
       </div>
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
+    <!---->
+    <!---->
      
+    <!---->
      
     <div
-      class="operation__amount-wrapper svelte-1p653d4"
+      class="operation__amount-wrapper svelte-g5cixq"
     >
       <p>
         Amount:
@@ -312,12 +368,15 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
         >
           USE MAX
         </span>
+        <!---->
       </button>
+      <!---->
     </div>
      
     <div
-      class="operation__input-wrapper svelte-1p653d4"
+      class="operation__input-wrapper svelte-g5cixq"
     >
+      <!---->
       <input
         class="dusk-textbox dusk-textbox-number operation__input-field"
         max="278"
@@ -327,7 +386,9 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
         type="number"
       />
       
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         data-tooltip-id="main-tooltip"
@@ -340,40 +401,42 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
         />
       </svg>
       
+      <!---->
     </div>
      
     <div
-      class="gas-settings svelte-1daay07"
+      class="gas-settings svelte-1wfde5f"
     >
       <dl
-        class="gas-settings__edit svelte-1daay07"
+        class="gas-settings__edit svelte-1wfde5f"
       >
         <div
-          class="gas-fee svelte-1c6b481"
+          class="gas-fee svelte-9uj43"
         >
           <span>
             Fee:
           </span>
            
           <div
-            class="gas-fee__amount svelte-1c6b481"
+            class="gas-fee__amount svelte-9uj43"
           >
             <div
-              class="gas-fee__amount-value svelte-1c6b481"
+              class="gas-fee__amount-value svelte-9uj43"
             >
               <span
-                class="svelte-1c6b481"
+                class="svelte-9uj43"
               >
                 max
               </span>
                
               <span
-                class="svelte-1c6b481"
+                class="svelte-9uj43"
               >
                 0.020000000
               </span>
             </div>
              
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default dusk-amount__icon"
               data-tooltip-id="main-tooltip"
@@ -386,8 +449,11 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
               />
             </svg>
             
+            <!---->
           </div>
         </div>
+        <!---->
+         
         <dd>
           <button
             class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
@@ -398,21 +464,30 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
             >
               EDIT
             </span>
+            <!---->
           </button>
+          <!---->
         </dd>
       </dl>
        
+      <!---->
     </div>
+    <!---->
      
-    
+    <!---->
+    <!---->
      
+    <!---->
     <div
       class="dusk-wizard__step-navigation"
     >
+      <!---->
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -423,26 +498,32 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-button__text"
         >
           Back
         </span>
-        
+        <!---->
+        <!---->
       </button>
       
+      <!---->
        
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
         <span
           class="dusk-button__text"
         >
           Next
         </span>
+        <!---->
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -453,14 +534,25 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           />
         </svg>
         
+        <!---->
+        <!---->
       </button>
+      <!---->
     </div>
     
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
+    <!---->
   </div>
+  <!---->
 </div>
 `;

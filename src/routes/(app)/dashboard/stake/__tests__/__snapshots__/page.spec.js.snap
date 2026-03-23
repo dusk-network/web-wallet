@@ -5,6 +5,7 @@ exports[`Staking > should render the staking page 1`] = `
   class="dusk-card dusk-card--gap-large"
   reverse="true"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -24,7 +25,7 @@ exports[`Staking > should render the staking page 1`] = `
         <div
           class="dusk-card__heading-icons"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -35,33 +36,40 @@ exports[`Staking > should render the staking page 1`] = `
             />
           </svg>
           
+          
         </div>
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
   <div
     class="dusk-card__body-container"
   >
+    <!---->
+    <!---->
     <div
-      class="contract-statuses svelte-1up3579"
+      class="contract-statuses svelte-193vool"
     >
       <dl
-        class="contract-statuses__list svelte-1up3579"
+        class="contract-statuses__list svelte-193vool"
       >
         <dt
-          class="contract-statuses__label svelte-1up3579"
+          class="contract-statuses__label svelte-193vool"
         >
           Spendable
-           
         </dt>
+         
         <dd
-          class="contract-statuses__value svelte-1up3579"
+          class="contract-statuses__value svelte-193vool"
         >
           <span>
             0.000000000
           </span>
            
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default contract-statuses__icon"
             data-tooltip-id="main-tooltip"
@@ -74,21 +82,22 @@ exports[`Staking > should render the staking page 1`] = `
             />
           </svg>
           
-           
+          <!---->
         </dd>
         <dt
-          class="contract-statuses__label svelte-1up3579"
+          class="contract-statuses__label svelte-193vool"
         >
           Rewards
-           
         </dt>
+         
         <dd
-          class="contract-statuses__value svelte-1up3579"
+          class="contract-statuses__value svelte-193vool"
         >
           <span>
             0.000000000
           </span>
            
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default contract-statuses__icon"
             data-tooltip-id="main-tooltip"
@@ -101,23 +110,31 @@ exports[`Staking > should render the staking page 1`] = `
             />
           </svg>
           
-           
+          <!---->
         </dd>
+        
       </dl>
        
+      <!---->
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
     <menu
-      class="contract-operations svelte-1iyylnh"
+      class="contract-operations svelte-17trzih"
     >
       <li
-        class="contract-operations__operation svelte-1iyylnh"
+        class="contract-operations__operation svelte-17trzih"
       >
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
           type="button"
         >
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-button__icon"
             role="graphics-symbol"
@@ -128,23 +145,28 @@ exports[`Staking > should render the staking page 1`] = `
             />
           </svg>
           
+          <!---->
            
           <span
             class="dusk-button__text"
           >
             stake
           </span>
-          
+          <!---->
+          <!---->
         </button>
+        <!---->
       </li>
       <li
-        class="contract-operations__operation svelte-1iyylnh"
+        class="contract-operations__operation svelte-17trzih"
       >
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
           disabled=""
           type="button"
         >
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-button__icon"
             role="graphics-symbol"
@@ -155,23 +177,28 @@ exports[`Staking > should render the staking page 1`] = `
             />
           </svg>
           
+          <!---->
            
           <span
             class="dusk-button__text"
           >
             unstake
           </span>
-          
+          <!---->
+          <!---->
         </button>
+        <!---->
       </li>
       <li
-        class="contract-operations__operation svelte-1iyylnh"
+        class="contract-operations__operation svelte-17trzih"
       >
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
           disabled=""
           type="button"
         >
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-button__icon"
             role="graphics-symbol"
@@ -182,24 +209,31 @@ exports[`Staking > should render the staking page 1`] = `
             />
           </svg>
           
+          <!---->
            
           <span
             class="dusk-button__text"
           >
             claim rewards
           </span>
-          
+          <!---->
+          <!---->
         </button>
+        <!---->
       </li>
+      <!---->
        
       <li
-        class="contract-operations__operation svelte-1iyylnh"
+        class="contract-operations__operation svelte-17trzih"
       >
         <a
           aria-disabled="false"
           class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
           href="/some-base-path/dashboard"
         >
+          <!---->
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
             role="graphics-symbol"
@@ -210,20 +244,29 @@ exports[`Staking > should render the staking page 1`] = `
             />
           </svg>
           
+          <!---->
            
           <span
             class="dusk-anchor-button__text"
           >
             Back
           </span>
+          <!---->
           
-          
+          <!---->
         </a>
+        <!---->
       </li>
     </menu>
     
     
+    <!---->
+    
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;

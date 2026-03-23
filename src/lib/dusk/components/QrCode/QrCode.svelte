@@ -44,7 +44,7 @@
 </script>
 
 {#await getDataUrl(value, { bgColor, qrColor, width })}
-  <div style:height={`${width}px`} style:width={`${width}px`} />
+  <div style:height={`${width}px`} style:width={`${width}px`}></div>
 {:then url}
   <AppImage
     {...$$restProps}

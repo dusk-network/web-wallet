@@ -19,7 +19,7 @@ describe("Anchor", () => {
   it("should render the Anchor component", () => {
     const { container } = renderWithSimpleContent(Anchor, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should pass additional class names and attributes to the rendered element", () => {
@@ -34,6 +34,6 @@ describe("Anchor", () => {
       props,
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

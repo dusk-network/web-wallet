@@ -12,7 +12,7 @@ describe("IconHeadingCard", () => {
       },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("renders the ToggleableCard component with a heading and an icon", () => {
@@ -23,7 +23,7 @@ describe("IconHeadingCard", () => {
       },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("renders the ToggleableCard component with a toggle", () => {
@@ -35,6 +35,6 @@ describe("IconHeadingCard", () => {
       },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

@@ -161,7 +161,7 @@ describe("Dashboard Layout", () => {
 
     expect(container.querySelector(".dusk-balance__fiat--visible")).toBeNull();
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     await vi.runAllTimersAsync();
 
@@ -195,7 +195,7 @@ describe("Dashboard Layout", () => {
     });
 
     expect(getStatusWrapper(container, "warning")).toBeTruthy();
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     await act(() => {
       mockedWalletStore.setMockedStoreValue(initialState);

@@ -9,6 +9,7 @@ exports[`Anchor > should pass additional class names and attributes to the rende
   <span>
     some text
   </span>
+  <!---->
 </a>
 `;
 
@@ -20,5 +21,6 @@ exports[`Anchor > should render the Anchor component 1`] = `
   <span>
     some text
   </span>
+  <!---->
 </a>
 `;

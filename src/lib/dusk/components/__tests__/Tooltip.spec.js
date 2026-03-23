@@ -130,31 +130,31 @@ describe("Tooltip", () => {
       1,
       "focusin",
       expect.any(Function),
-      true
+      expect.objectContaining({ capture: true })
     );
     expect(addListenerSpy).toHaveBeenNthCalledWith(
       2,
       "focusout",
       expect.any(Function),
-      true
+      expect.objectContaining({ capture: true })
     );
     expect(addListenerSpy).toHaveBeenNthCalledWith(
       3,
       "keydown",
       expect.any(Function),
-      true
+      expect.objectContaining({ capture: true })
     );
     expect(addListenerSpy).toHaveBeenNthCalledWith(
       4,
       "mouseenter",
       expect.any(Function),
-      true
+      expect.objectContaining({ capture: true })
     );
     expect(addListenerSpy).toHaveBeenNthCalledWith(
       5,
       "mouseleave",
       expect.any(Function),
-      true
+      expect.objectContaining({ capture: true })
     );
 
     unmount();
@@ -165,31 +165,31 @@ describe("Tooltip", () => {
       1,
       "focusin",
       handlers[0],
-      true
+      expect.objectContaining({ capture: true })
     );
     expect(removeListenerSpy).toHaveBeenNthCalledWith(
       2,
       "focusout",
       handlers[1],
-      true
+      expect.objectContaining({ capture: true })
     );
     expect(removeListenerSpy).toHaveBeenNthCalledWith(
       3,
       "keydown",
       handlers[2],
-      true
+      expect.objectContaining({ capture: true })
     );
     expect(removeListenerSpy).toHaveBeenNthCalledWith(
       4,
       "mouseenter",
       handlers[3],
-      true
+      expect.objectContaining({ capture: true })
     );
     expect(removeListenerSpy).toHaveBeenNthCalledWith(
       5,
       "mouseleave",
       handlers[4],
-      true
+      expect.objectContaining({ capture: true })
     );
 
     addListenerSpy.mockRestore();

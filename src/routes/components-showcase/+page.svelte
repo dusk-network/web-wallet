@@ -25,7 +25,7 @@
   import Tooltips from "./Tooltips.svelte";
   import Wizards from "./Wizards.svelte";
 
-  /** @type {Record<string, import("svelte").ComponentType>} */
+  /** @type {Record<string, import("svelte").Component>} */
   const componentsMap = {
     Badges: Badges,
     Balances: Balances,

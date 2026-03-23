@@ -2,12 +2,14 @@
 
 exports[`Restore > should render the Existing Wallet notice step of the Restore flow if there is a userId saved in localStorage 1`] = `
 <div
-  class="onboarding-wrapper svelte-i0tbsw"
+  class="onboarding-wrapper svelte-9nqzkf"
 >
   <section>
+    <!---->
     <div
       class="dusk-card dusk-card--gap-default"
     >
+      <!---->
       <div
         class="dusk-card__header-container"
       >
@@ -18,6 +20,7 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
           <div
             class="dusk-card__heading-container dusk-card__heading-container--warning-card"
           >
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -28,6 +31,7 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
               />
             </svg>
             
+            <!---->
              
             <h3
               class="h4"
@@ -36,11 +40,14 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
             </h3>
           </div>
         </header>
+        <!---->
       </div>
+      <!---->
        
       <div
         class="dusk-card__body-container"
       >
+        <!---->
         <p>
           Initializing a new wallet will replace your existing local wallet cache,
       erasing any stored data. Ensure you have securely backed up your current
@@ -49,20 +56,23 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
         </p>
          
         <div
-          class="actions svelte-3n8m2w"
+          class="actions svelte-17crhcd"
         >
           <a
             aria-disabled="false"
             class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default actions__action"
             href="/some-base-path/setup"
           >
+            <!---->
             <span
               class="dusk-anchor-button__text"
             >
               Back
             </span>
             
+            <!---->
           </a>
+          <!---->
            
           <button
             class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default actions__action"
@@ -73,13 +83,22 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
             >
               Proceed
             </span>
+            <!---->
           </button>
+          <!---->
         </div>
+        
+        <!---->
       </div>
+      <!---->
        
+      <!---->
+      
     </div>
     
+    <!---->
   </section>
+  <!---->
 </div>
 `;
 
@@ -87,7 +106,11 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
 <div
   class="dusk-wizard dusk-wizard--full-height"
 >
+  <!---->
    
+  <!---->
+  <!---->
+  <!---->
   <h2
     class="h1"
     slot="heading"
@@ -99,49 +122,51 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
       Mnemonic Phrase
     </mark>
   </h2>
+  <!---->
    
+  <!---->
   <div
     class="dusk-stepper dusk-stepper--variant--secondary"
     style="--columns: 5; --progress-width: 0%;"
   >
+    <!---->
     <span
       aria-current="step"
       class="dusk-stepper__step dusk-stepper__step--processed"
     >
       1
-       
     </span>
     <span
       class="dusk-stepper__step"
     >
       2
-       
     </span>
     <span
       class="dusk-stepper__step"
     >
       3
-       
     </span>
     <span
       class="dusk-stepper__step"
     >
       4
-       
     </span>
     <span
       class="dusk-stepper__step"
     >
       5
-       
     </span>
     
+    <!---->
   </div>
   
+  <!---->
    
+  <!---->
   <div
     class="dusk-card dusk-card--gap-medium"
   >
+    <!---->
     <div
       class="dusk-card__header-container"
     >
@@ -158,13 +183,17 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
             Enter your Mnemonic Phrase
           </h3>
            
+          <!---->
         </div>
       </header>
+      <!---->
     </div>
+    <!---->
      
     <div
       class="dusk-card__body-container"
     >
+      <!---->
       <div
         class="dusk-mnemonic"
       >
@@ -175,6 +204,8 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
             class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
             type="button"
           >
+            <!---->
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default dusk-button__icon"
               role="graphics-symbol"
@@ -185,20 +216,25 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               />
             </svg>
             
+            <!---->
              
             <span
               class="dusk-button__text"
             >
               Paste mnemonic phrase
             </span>
-            
+            <!---->
+            <!---->
           </button>
+          <!---->
            
           <button
             class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
             disabled=""
             type="button"
           >
+            <!---->
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default dusk-button__icon"
               role="graphics-symbol"
@@ -209,15 +245,19 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               />
             </svg>
             
+            <!---->
              
             <span
               class="dusk-button__text"
             >
               Undo
             </span>
-            
+            <!---->
+            <!---->
           </button>
+          <!---->
         </div>
+        <!---->
          
         <ol
           class="dusk-words"
@@ -282,11 +322,15 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
           >
             _____
           </li>
+          
         </ol>
+        <!---->
          
         <div
           class="dusk-mnemonic__authenticate-actions-wrapper"
         >
+          <!---->
+          <!---->
           <input
             class="dusk-textbox dusk-textbox-text"
             maxlength="8"
@@ -294,23 +338,37 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
             type="text"
           />
           
+          <!---->
            
-          
+          <!---->
+          <!---->
         </div>
+        <!---->
       </div>
+      
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    
   </div>
   
+  <!---->
    
+  <!---->
   <div
     class="dusk-wizard__step-navigation"
   >
+    <!---->
     <a
       aria-disabled="false"
       class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
       href="/some-base-path/setup"
     >
+      <!---->
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
         role="graphics-symbol"
@@ -321,28 +379,34 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-anchor-button__text"
       >
         Back
       </span>
+      <!---->
       
-      
+      <!---->
     </a>
     
+    <!---->
      
     <button
       class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
       disabled=""
       type="button"
     >
+      <!---->
       <span
         class="dusk-button__text"
       >
         Next
       </span>
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-button__icon"
         role="graphics-symbol"
@@ -353,29 +417,45 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
         />
       </svg>
       
+      <!---->
+      <!---->
     </button>
+    <!---->
   </div>
   
+  <!---->
   
+  <!---->
    
+  <!---->
   
+  <!---->
    
+  <!---->
   
+  <!---->
    
+  <!---->
   
+  <!---->
    
+  <!---->
   
+  <!---->
+  <!---->
 </div>
 `;
 
 exports[`Restore > should render the Terms of Service step of the Restore flow if there is no userId saved in localStorage 1`] = `
 <div
-  class="onboarding-wrapper svelte-i0tbsw"
+  class="onboarding-wrapper svelte-9nqzkf"
 >
   <section>
+    <!---->
     <div
       class="dusk-card dusk-card--gap-default"
     >
+      <!---->
       <div
         class="dusk-card__header-container"
       >
@@ -392,13 +472,17 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
               Terms & Privacy Policy
             </h3>
              
+            <!---->
           </div>
         </header>
+        <!---->
       </div>
+      <!---->
        
       <div
         class="dusk-card__body-container"
       >
+        <!---->
         <p>
           Our 
           <a
@@ -407,27 +491,34 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
             rel="noopener noreferrer"
             target="_blank"
           >
+            <!---->
             Terms & Privacy Policy
+            
+            <!---->
           </a>
+          <!---->
            govern your use of our services, including data handling and user responsibilities.
       Your privacy and security are our top priorities.
         </p>
          
         <div
-          class="actions svelte-3n8m2w"
+          class="actions svelte-10rf2xb"
         >
           <a
             aria-disabled="false"
             class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default actions__action"
             href="/some-base-path/setup"
           >
+            <!---->
             <span
               class="dusk-anchor-button__text"
             >
               Cancel
             </span>
             
+            <!---->
           </a>
+          <!---->
            
           <button
             class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default actions__action"
@@ -438,12 +529,21 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
             >
               Accept
             </span>
+            <!---->
           </button>
+          <!---->
         </div>
+        
+        <!---->
       </div>
+      <!---->
        
+      <!---->
+      
     </div>
     
+    <!---->
   </section>
+  <!---->
 </div>
 `;

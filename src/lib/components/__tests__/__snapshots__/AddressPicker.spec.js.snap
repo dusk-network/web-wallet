@@ -18,6 +18,7 @@ exports[`AddressPicker > renders the AddressPicker component 1`] = `
       Profile 1 (Default)
     </span>
      
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default address-picker__chevron"
       role="graphics-symbol"
@@ -28,8 +29,10 @@ exports[`AddressPicker > renders the AddressPicker component 1`] = `
       />
     </svg>
     
+    <!---->
   </div>
    
+  <!---->
 </div>
 `;
 
@@ -51,6 +54,7 @@ exports[`AddressPicker > should be able to render the component if the current p
       No profile selected
     </span>
      
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default address-picker__chevron"
       role="graphics-symbol"
@@ -61,7 +65,9 @@ exports[`AddressPicker > should be able to render the component if the current p
       />
     </svg>
     
+    <!---->
   </div>
    
+  <!---->
 </div>
 `;

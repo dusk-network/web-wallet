@@ -72,10 +72,11 @@ describe("AddressPicker", () => {
     });
 
     it("should dispatch setCurrentProfile event when a profile is selected", async () => {
-      const { container, component } = render(AddressPicker, props);
-
       const mockHandler = vi.fn();
-      component.$on("setCurrentProfile", mockHandler);
+      const { container } = render(AddressPicker, {
+        events: { setCurrentProfile: mockHandler },
+        props,
+      });
 
       // Open dropdown
       const trigger = container.querySelector(".address-picker__trigger");

@@ -26,7 +26,7 @@ describe("CopyField", () => {
   it("renders the CopyField component", () => {
     const { container } = render(CopyField, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should pass additional class names and attributes to the rendered element", () => {
@@ -37,7 +37,7 @@ describe("CopyField", () => {
     };
     const { container } = render(CopyField, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("renders the CopyField component with the copy button disabled", () => {
@@ -50,7 +50,7 @@ describe("CopyField", () => {
 
     expect(copyButton).toBeDisabled();
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("copies the raw value on pressing the copy button", async () => {

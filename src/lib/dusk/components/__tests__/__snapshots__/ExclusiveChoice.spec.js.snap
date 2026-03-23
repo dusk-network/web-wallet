@@ -62,6 +62,7 @@ exports[`ExclusiveChoice > should accept a custom name for the radio elements 1`
   >
     four
   </label>
+  
 </div>
 `;
 
@@ -126,6 +127,7 @@ exports[`ExclusiveChoice > should accept an array of options object without labe
   >
     4
   </label>
+  
 </div>
 `;
 
@@ -190,6 +192,7 @@ exports[`ExclusiveChoice > should accept an array of string as options 1`] = `
   >
     four
   </label>
+  
 </div>
 `;
 
@@ -256,6 +259,7 @@ exports[`ExclusiveChoice > should pass additional class names and attributes to 
   >
     four
   </label>
+  
 </div>
 `;
 
@@ -321,5 +325,6 @@ exports[`ExclusiveChoice > should render the \`ExclusiveChoice\` component 1`] =
   >
     four
   </label>
+  
 </div>
 `;

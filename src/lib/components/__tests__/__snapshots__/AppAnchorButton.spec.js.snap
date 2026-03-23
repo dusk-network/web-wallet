@@ -7,6 +7,8 @@ exports[`AppAnchorButton > should render an \`AnchorButton\` with the base path 
   href="/some-base-path/setup"
   id="some-id"
 >
+  <!---->
   
+  <!---->
 </a>
 `;

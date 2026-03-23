@@ -4,6 +4,7 @@ exports[`Receive > should render the receive page with a choice to switch from p
 <div
   class="dusk-card dusk-card--gap-medium"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -23,7 +24,7 @@ exports[`Receive > should render the receive page with a choice to switch from p
         <div
           class="dusk-card__heading-icons"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -34,7 +35,7 @@ exports[`Receive > should render the receive page with a choice to switch from p
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -45,14 +46,20 @@ exports[`Receive > should render the receive page with a choice to switch from p
             />
           </svg>
           
+          
         </div>
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
   <div
     class="dusk-card__body-container"
   >
+    <!---->
+    <!---->
     <div
       class="dusk-exclusive-choice"
       role="radiogroup"
@@ -85,25 +92,29 @@ exports[`Receive > should render the receive page with a choice to switch from p
       >
         Shielded
       </label>
+      
     </div>
+    <!---->
      
     <div
-      class="receive svelte-14g7par"
+      class="receive svelte-hh88gv"
     >
       <figure
-        class="receive__address-qr-figure svelte-14g7par"
+        class="receive__address-qr-figure svelte-hh88gv"
       >
+        <!---->
         <img
           alt="Key QR code"
           class="dusk-qr-code receive__qr"
           height="0"
-          src="data:image/png;base64,00"
+          src="data:image/png;base64,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"
           width="0"
         />
         
+        <!---->
          
         <figcaption
-          class="receive__address svelte-14g7par"
+          class="receive__address svelte-hh88gv"
         >
           <samp>
             bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
@@ -112,13 +123,16 @@ exports[`Receive > should render the receive page with a choice to switch from p
       </figure>
        
       <div
-        class="receive__buttons svelte-14g7par"
+        class="receive__buttons svelte-hh88gv"
       >
         <a
           aria-disabled="false"
           class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled receive__button"
           href="/some-base-path/dashboard"
         >
+          <!---->
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
             role="graphics-symbol"
@@ -129,20 +143,25 @@ exports[`Receive > should render the receive page with a choice to switch from p
             />
           </svg>
           
+          <!---->
            
           <span
             class="dusk-anchor-button__text"
           >
             Back
           </span>
+          <!---->
           
-          
+          <!---->
         </a>
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled receive__button"
           type="button"
         >
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-button__icon"
             role="graphics-symbol"
@@ -153,18 +172,27 @@ exports[`Receive > should render the receive page with a choice to switch from p
             />
           </svg>
           
+          <!---->
            
           <span
             class="dusk-button__text"
           >
             Copy
           </span>
-          
+          <!---->
+          <!---->
         </button>
+        <!---->
       </div>
     </div>
+    <!---->
+    
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;
 
@@ -172,6 +200,7 @@ exports[`Receive > should show the shielded address when the user makes such cho
 <div
   class="dusk-card dusk-card--gap-medium"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -191,7 +220,7 @@ exports[`Receive > should show the shielded address when the user makes such cho
         <div
           class="dusk-card__heading-icons"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -202,7 +231,7 @@ exports[`Receive > should show the shielded address when the user makes such cho
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -213,14 +242,20 @@ exports[`Receive > should show the shielded address when the user makes such cho
             />
           </svg>
           
+          
         </div>
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
   <div
     class="dusk-card__body-container"
   >
+    <!---->
+    <!---->
     <div
       class="dusk-exclusive-choice"
       role="radiogroup"
@@ -253,25 +288,29 @@ exports[`Receive > should show the shielded address when the user makes such cho
       >
         Shielded
       </label>
+      
     </div>
+    <!---->
      
     <div
-      class="receive svelte-14g7par"
+      class="receive svelte-hh88gv"
     >
       <figure
-        class="receive__address-qr-figure svelte-14g7par"
+        class="receive__address-qr-figure svelte-hh88gv"
       >
+        <!---->
         <img
           alt="Key QR code"
           class="dusk-qr-code receive__qr"
           height="0"
-          src="data:image/png;base64,00"
+          src="data:image/png;base64,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"
           width="0"
         />
         
+        <!---->
          
         <figcaption
-          class="receive__address svelte-14g7par"
+          class="receive__address svelte-hh88gv"
         >
           <samp>
             2zFZwXf4JEvD2Vmd4kqx5tHDv73LkRr2Ydb84Knr2gmFJJoEEpZPtTbuQCrojM85QDHAvosxoZdnpLPSNRqzqmai
@@ -280,13 +319,16 @@ exports[`Receive > should show the shielded address when the user makes such cho
       </figure>
        
       <div
-        class="receive__buttons svelte-14g7par"
+        class="receive__buttons svelte-hh88gv"
       >
         <a
           aria-disabled="false"
           class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled receive__button"
           href="/some-base-path/dashboard"
         >
+          <!---->
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
             role="graphics-symbol"
@@ -297,20 +339,25 @@ exports[`Receive > should show the shielded address when the user makes such cho
             />
           </svg>
           
+          <!---->
            
           <span
             class="dusk-anchor-button__text"
           >
             Back
           </span>
+          <!---->
           
-          
+          <!---->
         </a>
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled receive__button"
           type="button"
         >
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-button__icon"
             role="graphics-symbol"
@@ -321,17 +368,26 @@ exports[`Receive > should show the shielded address when the user makes such cho
             />
           </svg>
           
+          <!---->
            
           <span
             class="dusk-button__text"
           >
             Copy
           </span>
-          
+          <!---->
+          <!---->
         </button>
+        <!---->
       </div>
     </div>
+    <!---->
+    
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;

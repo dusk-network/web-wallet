@@ -39,29 +39,29 @@ describe("Stepper", () => {
   it("should render the `Stepper` component accepting an array of `StepperStep` objects as steps", async () => {
     const { container, rerender } = render(Stepper, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     await rerender({ ...baseProps, activeStep: 3 });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render the `Stepper` component accepting a number as the amount of steps", async () => {
     const props = { ...baseProps, steps: 5 };
     const { container, rerender } = render(Stepper, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     await rerender({ ...baseProps, activeStep: 3 });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render the `Stepper` with all step labels being displayed, if the right flag is provided", async () => {
     const props = { ...baseProps, showStepLabelWhenInactive: true, steps: 5 };
     const { container } = render(Stepper, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should pass additional class names and attributes to the rendered element", () => {
@@ -72,7 +72,7 @@ describe("Stepper", () => {
     };
     const { container } = render(Stepper, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should add the proper class name for the desired variant", () => {
@@ -84,7 +84,7 @@ describe("Stepper", () => {
     };
     const { container } = render(Stepper, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should allow to hide the step numbers", () => {
@@ -94,6 +94,6 @@ describe("Stepper", () => {
     };
     const { container } = render(Stepper, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

@@ -55,7 +55,7 @@ describe("Receive", () => {
     expect(getByRole("radiogroup")).toBeInTheDocument();
     expect(getByText(expectedAccount)).toBeInTheDocument();
     expect(() => getByText(expectedAddress)).toThrow();
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should show the shielded address when the user makes such choice", async () => {
@@ -71,6 +71,6 @@ describe("Receive", () => {
 
     expect(() => getByText(expectedAccount)).toThrow();
     expect(getByText(expectedAddress)).toBeInTheDocument();
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

@@ -4,9 +4,12 @@ exports[`Suspense > should accept a custom message for the failure state 1`] = `
 <div
   class="dusk-suspense"
 >
+  <!---->
+  <!---->
   <div
     class="dusk-error-alert dusk-suspense__error"
   >
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--large dusk-error-alert__icon"
       role="graphics-symbol"
@@ -17,7 +20,9 @@ exports[`Suspense > should accept a custom message for the failure state 1`] = `
       />
     </svg>
     
+    <!---->
      
+    <!---->
     <details
       class="dusk-error-details dusk-error-details__details dusk-error-alert__error-details"
     >
@@ -30,16 +35,21 @@ exports[`Suspense > should accept a custom message for the failure state 1`] = `
       <pre
         class="dusk-error-details__error"
       >
-        			
-        some error
         
+			some error
 		
       </pre>
     </details>
     
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  <!---->
    
+  <!---->
+  <!---->
 </div>
 `;
 
@@ -47,6 +57,8 @@ exports[`Suspense > should accept a custom message for the pending state 1`] = `
 <div
   class="dusk-suspense"
 >
+  <!---->
+  <!---->
   <svg
     class="dusk-throbber dusk-suspense__throbber"
     height="64px"
@@ -68,12 +80,15 @@ exports[`Suspense > should accept a custom message for the pending state 1`] = `
       />
     </g>
   </svg>
+  <!---->
    
   <span
     class="dusk-suspense__pending-message"
   >
     Operation pending
   </span>
+  
+  <!---->
 </div>
 `;
 
@@ -81,6 +96,8 @@ exports[`Suspense > should be able to render the \`Suspense\` component in a pen
 <div
   class="dusk-suspense"
 >
+  <!---->
+  <!---->
   <svg
     class="dusk-throbber dusk-suspense__throbber"
     height="64px"
@@ -102,12 +119,15 @@ exports[`Suspense > should be able to render the \`Suspense\` component in a pen
       />
     </g>
   </svg>
+  <!---->
    
   <span
     class="dusk-suspense__pending-message"
   >
     
   </span>
+  
+  <!---->
 </div>
 `;
 
@@ -115,9 +135,12 @@ exports[`Suspense > should be able to render the \`Suspense\` in a failure state
 <div
   class="dusk-suspense"
 >
+  <!---->
+  <!---->
   <div
     class="dusk-error-alert dusk-suspense__error"
   >
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--large dusk-error-alert__icon"
       role="graphics-symbol"
@@ -128,7 +151,9 @@ exports[`Suspense > should be able to render the \`Suspense\` in a failure state
       />
     </svg>
     
+    <!---->
      
+    <!---->
     <details
       class="dusk-error-details dusk-error-details__details dusk-error-alert__error-details"
     >
@@ -141,16 +166,21 @@ exports[`Suspense > should be able to render the \`Suspense\` in a failure state
       <pre
         class="dusk-error-details__error"
       >
-        			
-        some error
         
+			some error
 		
       </pre>
     </details>
     
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  <!---->
    
+  <!---->
+  <!---->
 </div>
 `;
 
@@ -158,6 +188,9 @@ exports[`Suspense > should be able to render the \`Suspense\` in a failure state
 <div
   class="dusk-suspense"
 >
+  <!---->
+  <!---->
+  <!---->
   <details
     class="dusk-error-details dusk-error-details__details dusk-suspense__error"
   >
@@ -170,22 +203,30 @@ exports[`Suspense > should be able to render the \`Suspense\` in a failure state
     <pre
       class="dusk-error-details__error"
     >
-      			
-      some error
       
+			some error
 		
     </pre>
   </details>
   
+  <!---->
    
+  <!---->
+  <!---->
    
+  <!---->
+  <!---->
 </div>
 `;
 
 exports[`Suspense > should be able to render the \`Suspense\` in a successful state 1`] = `
 <div
   class="dusk-suspense"
-/>
+>
+  <!---->
+  
+  <!---->
+</div>
 `;
 
 exports[`Suspense > should pass additional class names and attributes to the rendered element 1`] = `
@@ -194,6 +235,8 @@ exports[`Suspense > should pass additional class names and attributes to the ren
   data-baz="baz"
   id="some-id"
 >
+  <!---->
+  <!---->
   <svg
     class="dusk-throbber dusk-suspense__throbber"
     height="64px"
@@ -215,11 +258,14 @@ exports[`Suspense > should pass additional class names and attributes to the ren
       />
     </g>
   </svg>
+  <!---->
    
   <span
     class="dusk-suspense__pending-message"
   >
     
   </span>
+  
+  <!---->
 </div>
 `;

@@ -14,7 +14,7 @@ describe("Agreement", () => {
   it("renders the Agreement component", () => {
     const { container } = render(Agreement, { props: { ...baseProps } });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   // Rest of the functionality is covered under the Checkbox component tests

@@ -31,8 +31,7 @@
   /** @type {Textbox} */
   let textboxElement;
 
-  const classes = makeClassName(["dusk-mnemonic", className]);
-  const enteredWordIndex = Array(wordLimit).fill("");
+  let enteredWordIndex = Array(wordLimit).fill("");
 
   if (enteredMnemonicPhrase.length === 0) {
     enteredMnemonicPhrase = Array(wordLimit).fill("");
@@ -50,6 +49,9 @@
     enteredWordIndex[currentIndex] = index;
     currentInput = "";
     currentIndex++;
+
+    // enteredMnemonicPhrase = enteredMnemonicPhrase.slice();
+    // enteredWordIndex = enteredWordIndex.slice();
 
     if (type === "authenticate") {
       focusWordTextboxInput();
@@ -100,10 +102,6 @@
     enteredWordIndex[currentIndex] = "";
   }
 
-  $: suggestions =
-    currentInput &&
-    findFirstNMatches(enDictionary, currentInput.toLowerCase(), 3);
-
   const pasteMnemonic = () => {
     navigator.clipboard
       .readText()
@@ -132,6 +130,26 @@
   const shouldShowPaste =
     "clipboard" in navigator &&
     typeof navigator.clipboard.readText === "function";
+
+  $: classes = makeClassName(["dusk-mnemonic", className]);
+  $: suggestions =
+    currentInput &&
+    findFirstNMatches(enDictionary, currentInput.toLowerCase(), 3);
+
+  /**
+   * HACK: Workaround for Svelte 5 reactivity changes.
+   * The original code mutates array elements directly by index (e.g., arr[i] = val).
+   * While Svelte 4 detected this automatically, Svelte 5 relies on strict reference
+   * equality (`===`) under the hood, even in legacy mode. Since mutating by index
+   * doesn't change the array's memory address, the UI fails to update.
+   * Calling `.slice()` forces the creation of a new array reference, triggering the re-render.
+   * This is a temporary band-aid for poorly structured state management and should be
+   * removed once the component is properly rewritten using Svelte 5 runes.
+   */
+  $: {
+    enteredMnemonicPhrase = enteredMnemonicPhrase.slice();
+    enteredWordIndex = enteredWordIndex.slice();
+  }
 </script>
 
 <div {...$$restProps} class={classes}>

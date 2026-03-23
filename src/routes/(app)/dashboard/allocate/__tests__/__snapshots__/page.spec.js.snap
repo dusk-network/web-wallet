@@ -4,6 +4,7 @@ exports[`Allocate > should render the allocation page 1`] = `
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -23,7 +24,7 @@ exports[`Allocate > should render the allocation page 1`] = `
         <div
           class="dusk-card__heading-icons"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -34,25 +35,36 @@ exports[`Allocate > should render the allocation page 1`] = `
             />
           </svg>
           
+          
         </div>
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
   <div
     class="dusk-card__body-container"
   >
+    <!---->
     <div
-      class="operation svelte-eoztn2"
+      class="operation svelte-1w73wy7"
     >
       <div
         class="dusk-wizard"
       >
+        <!---->
          
+        <!---->
+        <!---->
+        <!---->
+        <!---->
          
+        <!---->
          
         <div
-          class="operation__allocate svelte-eoztn2"
+          class="operation__allocate svelte-1w73wy7"
         >
           <p>
             Edit the value to change the allocation of your Dusk between your
@@ -60,17 +72,18 @@ exports[`Allocate > should render the allocation page 1`] = `
           </p>
            
           <fieldset
-            class="operation__fieldset svelte-eoztn2"
+            class="operation__fieldset svelte-1w73wy7"
           >
             <p
-              class="operation__label svelte-eoztn2"
+              class="operation__label svelte-1w73wy7"
             >
               Public
             </p>
              
             <div
-              class="operation__address-wrapper svelte-eoztn2"
+              class="operation__address-wrapper svelte-1w73wy7"
             >
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 role="graphics-symbol"
@@ -81,13 +94,14 @@ exports[`Allocate > should render the allocation page 1`] = `
                 />
               </svg>
               
+              <!---->
                
-              
             </div>
              
             <div
-              class="operation__input-wrapper svelte-eoztn2"
+              class="operation__input-wrapper svelte-1w73wy7"
             >
+              <!---->
               <input
                 class="dusk-textbox dusk-textbox-number operation__input-field"
                 id="unshielded-amount"
@@ -99,7 +113,9 @@ exports[`Allocate > should render the allocation page 1`] = `
                 type="number"
               />
               
+              <!---->
                
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 data-tooltip-id="main-tooltip"
@@ -112,30 +128,28 @@ exports[`Allocate > should render the allocation page 1`] = `
                 />
               </svg>
               
+              <!---->
             </div>
              
             <hr
-              class="glyph svelte-eoztn2"
+              class="glyph svelte-1w73wy7"
             />
              
             <p
-              class="operation__label svelte-eoztn2"
+              class="operation__label svelte-1w73wy7"
             >
               Shielded
               <br />
                
               <small>
-                (
-                0
-                 spendable out of 
-                0
-                 total)
+                (0 spendable out of 0 total)
               </small>
             </p>
              
             <div
-              class="operation__address-wrapper svelte-eoztn2"
+              class="operation__address-wrapper svelte-1w73wy7"
             >
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 role="graphics-symbol"
@@ -146,13 +160,14 @@ exports[`Allocate > should render the allocation page 1`] = `
                 />
               </svg>
               
+              <!---->
                
-              
             </div>
              
             <div
-              class="operation__input-wrapper svelte-eoztn2"
+              class="operation__input-wrapper svelte-1w73wy7"
             >
+              <!---->
               <input
                 class="dusk-textbox dusk-textbox-number operation__input-field"
                 max="0"
@@ -163,7 +178,9 @@ exports[`Allocate > should render the allocation page 1`] = `
                 type="number"
               />
               
+              <!---->
                
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 data-tooltip-id="main-tooltip"
@@ -176,41 +193,43 @@ exports[`Allocate > should render the allocation page 1`] = `
                 />
               </svg>
               
+              <!---->
             </div>
           </fieldset>
            
           <div
-            class="gas-settings svelte-1daay07"
+            class="gas-settings svelte-1wfde5f"
           >
             <dl
-              class="gas-settings__edit svelte-1daay07"
+              class="gas-settings__edit svelte-1wfde5f"
             >
               <div
-                class="gas-fee svelte-1c6b481"
+                class="gas-fee svelte-9uj43"
               >
                 <span>
                   Fee:
                 </span>
                  
                 <div
-                  class="gas-fee__amount svelte-1c6b481"
+                  class="gas-fee__amount svelte-9uj43"
                 >
                   <div
-                    class="gas-fee__amount-value svelte-1c6b481"
+                    class="gas-fee__amount-value svelte-9uj43"
                   >
                     <span
-                      class="svelte-1c6b481"
+                      class="svelte-9uj43"
                     >
                       max
                     </span>
                      
                     <span
-                      class="svelte-1c6b481"
+                      class="svelte-9uj43"
                     >
                       0.100000000
                     </span>
                   </div>
                    
+                  <!---->
                   <svg
                     class="dusk-icon dusk-icon--size--default dusk-amount__icon"
                     data-tooltip-id="main-tooltip"
@@ -223,8 +242,11 @@ exports[`Allocate > should render the allocation page 1`] = `
                     />
                   </svg>
                   
+                  <!---->
                 </div>
               </div>
+              <!---->
+               
               <dd>
                 <button
                   class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
@@ -235,22 +257,33 @@ exports[`Allocate > should render the allocation page 1`] = `
                   >
                     EDIT
                   </span>
+                  <!---->
                 </button>
+                <!---->
               </dd>
             </dl>
              
+            <!---->
           </div>
+          <!---->
            
+          <!---->
         </div>
+        <!---->
          
+        <!---->
         <div
           class="dusk-wizard__step-navigation"
         >
+          <!---->
           <a
             aria-disabled="false"
             class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
             href="/some-base-path/dashboard"
           >
+            <!---->
+            <!---->
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
               role="graphics-symbol"
@@ -261,28 +294,34 @@ exports[`Allocate > should render the allocation page 1`] = `
               />
             </svg>
             
+            <!---->
              
             <span
               class="dusk-anchor-button__text"
             >
               Back
             </span>
+            <!---->
             
-            
+            <!---->
           </a>
           
+          <!---->
            
           <button
             class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
             disabled=""
             type="button"
           >
+            <!---->
             <span
               class="dusk-button__text"
             >
               Next
             </span>
+            <!---->
              
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default dusk-button__icon"
               role="graphics-symbol"
@@ -293,17 +332,33 @@ exports[`Allocate > should render the allocation page 1`] = `
               />
             </svg>
             
+            <!---->
+            <!---->
           </button>
+          <!---->
         </div>
         
+        <!---->
         
+        <!---->
          
+        <!---->
         
+        <!---->
          
+        <!---->
         
+        <!---->
+        <!---->
       </div>
+      <!---->
     </div>
+    
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;

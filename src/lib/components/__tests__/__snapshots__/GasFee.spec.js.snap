@@ -2,31 +2,32 @@
 
 exports[`GasFee > renders the GasFee component 1`] = `
 <div
-  class="gas-fee svelte-1c6b481"
+  class="gas-fee svelte-9uj43"
 >
   <span>
     Fee:
   </span>
    
   <div
-    class="gas-fee__amount svelte-1c6b481"
+    class="gas-fee__amount svelte-9uj43"
   >
     <div
-      class="gas-fee__amount-value svelte-1c6b481"
+      class="gas-fee__amount-value svelte-9uj43"
     >
       <span
-        class="svelte-1c6b481"
+        class="svelte-9uj43"
       >
         max
       </span>
        
       <span
-        class="svelte-1c6b481"
+        class="svelte-9uj43"
       >
         0.100000000
       </span>
     </div>
      
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-amount__icon"
       data-tooltip-id="main-tooltip"
@@ -39,6 +40,7 @@ exports[`GasFee > renders the GasFee component 1`] = `
       />
     </svg>
     
+    <!---->
   </div>
 </div>
 `;

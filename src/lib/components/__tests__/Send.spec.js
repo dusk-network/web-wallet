@@ -58,7 +58,7 @@ describe("Send", () => {
     it("should render the Send component Address step", () => {
       const { container } = render(Send, baseProps);
 
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should disable the next button if the address is empty", () => {
@@ -94,7 +94,7 @@ describe("Send", () => {
       });
 
       expect(addressInput).toHaveValue(sendToAddress);
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should display a warning if the address input is self-referential", async () => {
@@ -106,7 +106,7 @@ describe("Send", () => {
       });
 
       expect(addressInput).toHaveValue(publicAddress);
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should display a notice if the address input is the BEP20 bridge address", async () => {
@@ -130,7 +130,7 @@ describe("Send", () => {
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should disable the next button if the amount is invalid on mount", async () => {
@@ -362,7 +362,7 @@ describe("Send", () => {
       expect(value.textContent).toBe(baseProps.formatter(amount));
       expect(key.textContent).toBe(shieldedAddress);
       expect(memo.textContent).toBe("abc-example-memo");
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
   });
 

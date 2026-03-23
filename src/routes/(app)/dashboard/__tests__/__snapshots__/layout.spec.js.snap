@@ -14,6 +14,8 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
         Dashboard
       </h2>
        
+      <!---->
+      <!---->
        
       <div
         class="address-picker"
@@ -32,6 +34,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
             Profile 1 (Default)
           </span>
            
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default address-picker__chevron"
             role="graphics-symbol"
@@ -42,9 +45,12 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
             />
           </svg>
           
+          <!---->
         </div>
          
+        <!---->
       </div>
+      <!---->
        
       <article
         class="dusk-balance"
@@ -79,9 +85,12 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           </span>
         </p>
          
+        <!---->
         <div
           class="dusk-card dusk-card--gap-default dusk-balance__usage-details"
         >
+          <!---->
+          <!---->
            
           <div
             class="dusk-card__body-container"
@@ -92,6 +101,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
               <span
                 class="dusk-balance__percentage"
               >
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -104,14 +114,15 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
                   />
                 </svg>
                 
-                33.33
-                %
+                <!---->
+                33.33%
               </span>
                
               <span
                 class="dusk-balance__value"
               >
                 1,172.500000000
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -124,6 +135,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
                   />
                 </svg>
                 
+                <!---->
               </span>
             </div>
              
@@ -133,6 +145,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
               <span
                 class="dusk-balance__percentage"
               >
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -145,14 +158,15 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
                   />
                 </svg>
                 
-                66.67
-                %
+                <!---->
+                66.67%
               </span>
                
               <span
                 class="dusk-balance__value"
               >
                 2,345.000000000
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -165,14 +179,22 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
                   />
                 </svg>
                 
+                <!---->
               </span>
             </div>
+            <!---->
           </div>
+          <!---->
            
+          <!---->
+          
         </div>
         
+        <!---->
       </article>
+      <!---->
        
+      <!---->
     </div>
      
     <footer
@@ -181,6 +203,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
       <div
         class="footer__network-status"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--large footer__network-status-icon footer__network-status-icon--success"
           data-tooltip-disabled="true"
@@ -194,6 +217,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           />
         </svg>
         
+        <!---->
          
         <div
           class="footer__network-message"
@@ -201,13 +225,16 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           <span>
             Dusk unknown
           </span>
+          <!---->
            
+          <!---->
         </div>
       </div>
        
       <div
         class="footer__actions"
       >
+        <!---->
          
         <a
           aria-disabled="false"
@@ -217,6 +244,9 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           data-tooltip-text="Settings"
           href="/some-base-path/settings"
         >
+          <!---->
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--large dusk-anchor-button__icon"
             role="graphics-symbol"
@@ -227,13 +257,17 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
             />
           </svg>
           
+          <!---->
            
+          <!---->
           
-          
+          <!---->
         </a>
+        <!---->
       </div>
     </footer>
   </section>
+  
 </div>
 `;
 
@@ -250,6 +284,8 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
       Dashboard
     </h2>
      
+    <!---->
+    <!---->
      
     <div
       class="address-picker"
@@ -268,6 +304,7 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
           Profile 1 (Default)
         </span>
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default address-picker__chevron"
           role="graphics-symbol"
@@ -278,9 +315,12 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
           />
         </svg>
         
+        <!---->
       </div>
        
+      <!---->
     </div>
+    <!---->
      
     <article
       class="dusk-balance"
@@ -315,9 +355,12 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
         </span>
       </p>
        
+      <!---->
       <div
         class="dusk-card dusk-card--gap-default dusk-balance__usage-details"
       >
+        <!---->
+        <!---->
          
         <div
           class="dusk-card__body-container"
@@ -328,6 +371,7 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
             <span
               class="dusk-balance__percentage"
             >
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 data-tooltip-id="main-tooltip"
@@ -340,14 +384,15 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
                 />
               </svg>
               
-              33.33
-              %
+              <!---->
+              33.33%
             </span>
              
             <span
               class="dusk-balance__value"
             >
               1,172.500000000
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 data-tooltip-id="main-tooltip"
@@ -360,6 +405,7 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
                 />
               </svg>
               
+              <!---->
             </span>
           </div>
            
@@ -369,6 +415,7 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
             <span
               class="dusk-balance__percentage"
             >
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 data-tooltip-id="main-tooltip"
@@ -381,14 +428,15 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
                 />
               </svg>
               
-              66.67
-              %
+              <!---->
+              66.67%
             </span>
              
             <span
               class="dusk-balance__value"
             >
               2,345.000000000
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 data-tooltip-id="main-tooltip"
@@ -401,14 +449,22 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
                 />
               </svg>
               
+              <!---->
             </span>
           </div>
+          <!---->
         </div>
+        <!---->
          
+        <!---->
+        
       </div>
       
+      <!---->
     </article>
+    <!---->
      
+    <!---->
   </div>
    
   <footer
@@ -417,6 +473,7 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
     <div
       class="footer__network-status"
     >
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--large footer__network-status-icon footer__network-status-icon--success"
         data-tooltip-disabled="true"
@@ -430,6 +487,7 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
         />
       </svg>
       
+      <!---->
        
       <div
         class="footer__network-message"
@@ -437,13 +495,16 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
         <span>
           Dusk unknown
         </span>
+        <!---->
          
+        <!---->
       </div>
     </div>
      
     <div
       class="footer__actions"
     >
+      <!---->
        
       <a
         aria-disabled="false"
@@ -453,6 +514,9 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
         data-tooltip-text="Settings"
         href="/some-base-path/settings"
       >
+        <!---->
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--large dusk-anchor-button__icon"
           role="graphics-symbol"
@@ -463,10 +527,13 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
           />
         </svg>
         
+        <!---->
          
+        <!---->
         
-        
+        <!---->
       </a>
+      <!---->
     </div>
   </footer>
 </section>
@@ -486,6 +553,8 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
         Dashboard
       </h2>
        
+      <!---->
+      <!---->
        
       <div
         class="address-picker"
@@ -504,6 +573,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
             Profile 1 (Default)
           </span>
            
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default address-picker__chevron"
             role="graphics-symbol"
@@ -514,9 +584,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
             />
           </svg>
           
+          <!---->
         </div>
          
+        <!---->
       </div>
+      <!---->
        
       <article
         class="dusk-balance"
@@ -551,9 +624,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
           </span>
         </p>
          
+        <!---->
         <div
           class="dusk-card dusk-card--gap-default dusk-balance__usage-details"
         >
+          <!---->
+          <!---->
            
           <div
             class="dusk-card__body-container"
@@ -564,6 +640,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
               <span
                 class="dusk-balance__percentage"
               >
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -576,14 +653,15 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
                   />
                 </svg>
                 
-                33.33
-                %
+                <!---->
+                33.33%
               </span>
                
               <span
                 class="dusk-balance__value"
               >
                 1,172.500000000
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -596,6 +674,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
                   />
                 </svg>
                 
+                <!---->
               </span>
             </div>
              
@@ -605,6 +684,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
               <span
                 class="dusk-balance__percentage"
               >
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -617,14 +697,15 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
                   />
                 </svg>
                 
-                66.67
-                %
+                <!---->
+                66.67%
               </span>
                
               <span
                 class="dusk-balance__value"
               >
                 2,345.000000000
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -637,14 +718,22 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
                   />
                 </svg>
                 
+                <!---->
               </span>
             </div>
+            <!---->
           </div>
+          <!---->
            
+          <!---->
+          
         </div>
         
+        <!---->
       </article>
+      <!---->
        
+      <!---->
     </div>
      
     <footer
@@ -653,6 +742,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
       <div
         class="footer__network-status"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--large footer__network-status-icon footer__network-status-icon--error"
           data-tooltip-disabled="false"
@@ -667,6 +757,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
           />
         </svg>
         
+        <!---->
          
         <div
           class="footer__network-message"
@@ -674,7 +765,9 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
           <span>
             Dusk unknown - Sync Failed
           </span>
+          <!---->
            
+          <!---->
         </div>
       </div>
        
@@ -688,6 +781,8 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
           data-tooltip-text="Retry synchronization"
           type="button"
         >
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--large dusk-button__icon"
             role="graphics-symbol"
@@ -698,9 +793,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
             />
           </svg>
           
+          <!---->
            
-          
+          <!---->
+          <!---->
         </button>
+        <!---->
          
         <a
           aria-disabled="false"
@@ -710,6 +808,9 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
           data-tooltip-text="Settings"
           href="/some-base-path/settings"
         >
+          <!---->
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--large dusk-anchor-button__icon"
             role="graphics-symbol"
@@ -720,13 +821,17 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
             />
           </svg>
           
+          <!---->
            
+          <!---->
           
-          
+          <!---->
         </a>
+        <!---->
       </div>
     </footer>
   </section>
+  
 </div>
 `;
 
@@ -743,6 +848,8 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
       Dashboard
     </h2>
      
+    <!---->
+    <!---->
      
     <div
       class="address-picker"
@@ -761,6 +868,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
           Profile 1 (Default)
         </span>
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default address-picker__chevron"
           role="graphics-symbol"
@@ -771,9 +879,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
           />
         </svg>
         
+        <!---->
       </div>
        
+      <!---->
     </div>
+    <!---->
      
     <article
       class="dusk-balance"
@@ -808,9 +919,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
         </span>
       </p>
        
+      <!---->
       <div
         class="dusk-card dusk-card--gap-default dusk-balance__usage-details"
       >
+        <!---->
+        <!---->
          
         <div
           class="dusk-card__body-container"
@@ -821,6 +935,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             <span
               class="dusk-balance__percentage"
             >
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 data-tooltip-id="main-tooltip"
@@ -833,14 +948,15 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
                 />
               </svg>
               
-              33.33
-              %
+              <!---->
+              33.33%
             </span>
              
             <span
               class="dusk-balance__value"
             >
               1,172.500000000
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 data-tooltip-id="main-tooltip"
@@ -853,6 +969,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
                 />
               </svg>
               
+              <!---->
             </span>
           </div>
            
@@ -862,6 +979,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             <span
               class="dusk-balance__percentage"
             >
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 data-tooltip-id="main-tooltip"
@@ -874,14 +992,15 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
                 />
               </svg>
               
-              66.67
-              %
+              <!---->
+              66.67%
             </span>
              
             <span
               class="dusk-balance__value"
             >
               2,345.000000000
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 data-tooltip-id="main-tooltip"
@@ -894,14 +1013,22 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
                 />
               </svg>
               
+              <!---->
             </span>
           </div>
+          <!---->
         </div>
+        <!---->
          
+        <!---->
+        
       </div>
       
+      <!---->
     </article>
+    <!---->
      
+    <!---->
   </div>
    
   <footer
@@ -910,6 +1037,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
     <div
       class="footer__network-status"
     >
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--large footer__network-status-icon footer__network-status-icon--warning"
         data-tooltip-disabled="true"
@@ -923,28 +1051,29 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
         />
       </svg>
       
+      <!---->
        
       <div
         class="footer__network-message"
       >
+        <!---->
          
         <span>
-          Dusk unknown
-           –
-            
+          Dusk unknown – 
           <b>
             Syncing... 
-            
           </b>
         </span>
          
-        
+        <!---->
+        <!---->
       </div>
     </div>
      
     <div
       class="footer__actions"
     >
+      <!---->
        
       <a
         aria-disabled="false"
@@ -954,6 +1083,9 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
         data-tooltip-text="Settings"
         href="/some-base-path/settings"
       >
+        <!---->
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--large dusk-anchor-button__icon"
           role="graphics-symbol"
@@ -964,10 +1096,13 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
           />
         </svg>
         
+        <!---->
          
+        <!---->
         
-        
+        <!---->
       </a>
+      <!---->
     </div>
   </footer>
 </section>
@@ -987,6 +1122,8 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
         Dashboard
       </h2>
        
+      <!---->
+      <!---->
        
       <div
         class="address-picker"
@@ -1005,6 +1142,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             Profile 1 (Default)
           </span>
            
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default address-picker__chevron"
             role="graphics-symbol"
@@ -1015,9 +1153,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             />
           </svg>
           
+          <!---->
         </div>
          
+        <!---->
       </div>
+      <!---->
        
       <article
         class="dusk-balance"
@@ -1052,9 +1193,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
           </span>
         </p>
          
+        <!---->
         <div
           class="dusk-card dusk-card--gap-default dusk-balance__usage-details"
         >
+          <!---->
+          <!---->
            
           <div
             class="dusk-card__body-container"
@@ -1065,6 +1209,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
               <span
                 class="dusk-balance__percentage"
               >
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -1077,14 +1222,15 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
                   />
                 </svg>
                 
-                33.33
-                %
+                <!---->
+                33.33%
               </span>
                
               <span
                 class="dusk-balance__value"
               >
                 1,172.500000000
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -1097,6 +1243,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
                   />
                 </svg>
                 
+                <!---->
               </span>
             </div>
              
@@ -1106,6 +1253,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
               <span
                 class="dusk-balance__percentage"
               >
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -1118,14 +1266,15 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
                   />
                 </svg>
                 
-                66.67
-                %
+                <!---->
+                66.67%
               </span>
                
               <span
                 class="dusk-balance__value"
               >
                 2,345.000000000
+                <!---->
                 <svg
                   class="dusk-icon dusk-icon--size--default"
                   data-tooltip-id="main-tooltip"
@@ -1138,14 +1287,22 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
                   />
                 </svg>
                 
+                <!---->
               </span>
             </div>
+            <!---->
           </div>
+          <!---->
            
+          <!---->
+          
         </div>
         
+        <!---->
       </article>
+      <!---->
        
+      <!---->
     </div>
      
     <footer
@@ -1154,6 +1311,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
       <div
         class="footer__network-status"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--large footer__network-status-icon footer__network-status-icon--warning"
           data-tooltip-disabled="true"
@@ -1167,23 +1325,22 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
           />
         </svg>
         
+        <!---->
          
         <div
           class="footer__network-message"
         >
+          <!---->
            
           <span>
-            Dusk unknown
-             –
-            
+            Dusk unknown – 
             <b>
-              Syncing... 
-              50%
+              Syncing... 50%
             </b>
           </span>
            
           <div
-            class="sync-bar svelte-zpfqie"
+            class="sync-bar svelte-1wv49c3"
           >
             <span>
               100
@@ -1194,20 +1351,23 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             >
               <div
                 class="dusk-progress-bar__filler"
-                style="width: 0%"
+                style="width: 0%;"
               />
             </div>
+            <!---->
             <span>
               200
             </span>
           </div>
-          
+          <!---->
+          <!---->
         </div>
       </div>
        
       <div
         class="footer__actions"
       >
+        <!---->
          
         <a
           aria-disabled="false"
@@ -1217,6 +1377,9 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
           data-tooltip-text="Settings"
           href="/some-base-path/settings"
         >
+          <!---->
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--large dusk-anchor-button__icon"
             role="graphics-symbol"
@@ -1227,12 +1390,16 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             />
           </svg>
           
+          <!---->
            
+          <!---->
           
-          
+          <!---->
         </a>
+        <!---->
       </div>
     </footer>
   </section>
+  
 </div>
 `;

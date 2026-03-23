@@ -19,7 +19,7 @@ describe("ErrorAlert", () => {
   it("should render the `ErrorAlert` component", () => {
     const { container } = render(ErrorAlert, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should pass additional class names and attributes to the rendered element", () => {
@@ -31,6 +31,6 @@ describe("ErrorAlert", () => {
     };
     const { container } = render(ErrorAlert, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

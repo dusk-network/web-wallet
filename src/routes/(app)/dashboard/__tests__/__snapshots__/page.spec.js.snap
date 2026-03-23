@@ -2,9 +2,14 @@
 
 exports[`Dashboard > should render a card when there is an error getting transactions 1`] = `
 <div>
+  <!---->
+  <!---->
+  <!---->
   <div
     class="dusk-card dusk-card--gap-default"
   >
+    <!---->
+    <!---->
      
     <div
       class="dusk-card__body-container"
@@ -13,23 +18,23 @@ exports[`Dashboard > should render a card when there is an error getting transac
         aria-label="Transaction and operations navigation"
         class="dashboard-nav"
       >
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="send"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Send
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -40,26 +45,29 @@ exports[`Dashboard > should render a card when there is an error getting transac
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="receive"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Receive
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -70,26 +78,29 @@ exports[`Dashboard > should render a card when there is an error getting transac
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="stake"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Stake
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -100,26 +111,29 @@ exports[`Dashboard > should render a card when there is an error getting transac
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="allocate"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Allocate
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -130,26 +144,29 @@ exports[`Dashboard > should render a card when there is an error getting transac
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="migrate"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Migrate
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -160,26 +177,29 @@ exports[`Dashboard > should render a card when there is an error getting transac
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="bridge"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Bridge
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -190,24 +210,34 @@ exports[`Dashboard > should render a card when there is an error getting transac
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
+        
       </nav>
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    
   </div>
   
+  <!---->
    
   <span>
     some text
   </span>
+  <!---->
    
   <article
-    class="transactions svelte-mwi4ip"
+    class="transactions svelte-1kwg8z"
   >
     <header
-      class="transactions__header svelte-mwi4ip"
+      class="transactions__header svelte-1kwg8z"
     >
       <h3
         class="h4"
@@ -220,18 +250,24 @@ exports[`Dashboard > should render a card when there is an error getting transac
         class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default transactions__footer-button"
         href="/some-base-path/dashboard/transactions"
       >
+        <!---->
         <span
           class="dusk-anchor-button__text"
         >
           All transactions
         </span>
         
+        <!---->
       </a>
+      <!---->
     </header>
      
     <div
       class="dusk-suspense transactions-list__container"
     >
+      <!---->
+      <!---->
+      <!---->
       <details
         class="dusk-error-details dusk-error-details__details dusk-suspense__error"
       >
@@ -244,17 +280,23 @@ exports[`Dashboard > should render a card when there is an error getting transac
         <pre
           class="dusk-error-details__error"
         >
-          			
-          some error message
           
+			some error message
 		
         </pre>
       </details>
       
+      <!---->
        
+      <!---->
+      <!---->
        
+      <!---->
+      <!---->
     </div>
+    <!---->
   </article>
+  <!---->
   
   
 </div>
@@ -262,9 +304,14 @@ exports[`Dashboard > should render a card when there is an error getting transac
 
 exports[`Dashboard > should render the dashboard page with the transactions after they are loaded 1`] = `
 <div>
+  <!---->
+  <!---->
+  <!---->
   <div
     class="dusk-card dusk-card--gap-default"
   >
+    <!---->
+    <!---->
      
     <div
       class="dusk-card__body-container"
@@ -273,23 +320,23 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         aria-label="Transaction and operations navigation"
         class="dashboard-nav"
       >
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="send"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Send
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -300,26 +347,29 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="receive"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Receive
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -330,26 +380,29 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="stake"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Stake
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -360,26 +413,29 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="allocate"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Allocate
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -390,26 +446,29 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="migrate"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Migrate
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -420,26 +479,29 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
-        
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="bridge"
           role="menuitem"
           tabindex="0"
         >
+          <!---->
           <span
-            class="dashboard-nav__item-label svelte-1opr8zc"
+            class="dashboard-nav__item-label svelte-dk858j"
           >
             Bridge
           </span>
            
           <span
-            class="dashboard-nav__item-icons svelte-1opr8zc"
+            class="dashboard-nav__item-icons svelte-dk858j"
           >
-            
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -450,24 +512,34 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               />
             </svg>
             
+            
           </span>
-           
+          <!---->
+          
+          <!---->
         </a>
+        
       </nav>
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    
   </div>
   
+  <!---->
    
   <span>
     some text
   </span>
+  <!---->
    
   <article
-    class="transactions svelte-mwi4ip"
+    class="transactions svelte-1kwg8z"
   >
     <header
-      class="transactions__header svelte-mwi4ip"
+      class="transactions__header svelte-1kwg8z"
     >
       <h3
         class="h4"
@@ -480,18 +552,24 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default transactions__footer-button"
         href="/some-base-path/dashboard/transactions"
       >
+        <!---->
         <span
           class="dusk-anchor-button__text"
         >
           All transactions
         </span>
         
+        <!---->
       </a>
+      <!---->
     </header>
      
     <div
       class="dusk-suspense transactions-list__container"
     >
+      <!---->
+      <!---->
+      <!---->
       <dl
         class="transactions-list"
       >
@@ -500,6 +578,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -511,15 +590,18 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               target="_blank"
             >
               tg874534tddsghdtst54hdfh795h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -528,53 +610,56 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           >
             STAKE
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,460
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          +27,000.00
-           
+          +27,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Fee
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          1,876.00
-           
+          1,876.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+        <!---->
       </dl>
       <dl
         class="transactions-list"
@@ -584,6 +669,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -595,15 +681,18 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               target="_blank"
             >
               tg874534tddsghdtst54hdfh794h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -612,36 +701,40 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           >
             TRANSFER
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,459
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          -25,000.00
-           
+          -25,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
+        <!---->
       </dl>
       <dl
         class="transactions-list"
@@ -651,6 +744,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -662,15 +756,18 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               target="_blank"
             >
               tg874534tddsghdtst54hdfh793h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -679,36 +776,40 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           >
             TRANSFER
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,458
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          +25,000.00
-           
+          +25,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
+        <!---->
       </dl>
       <dl
         class="transactions-list"
@@ -718,6 +819,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -729,15 +831,18 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               target="_blank"
             >
               tg874534tddsghdtst54hdfh792h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -746,53 +851,56 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           >
             TRANSFER
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,457
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          -25,000.00
-           
+          -25,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Fee
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          1,876.00
-           
+          1,876.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+        <!---->
       </dl>
       <dl
         class="transactions-list"
@@ -802,6 +910,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -813,15 +922,18 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
               target="_blank"
             >
               tg874534tddsghdtst54hdfh791h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -830,41 +942,49 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           >
             TRANSFER
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,456
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          -25,000.00
-           
+          -25,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
+        <!---->
       </dl>
       
       
+      
+      <!---->
     </div>
+    <!---->
   </article>
+  <!---->
   
   
 </div>

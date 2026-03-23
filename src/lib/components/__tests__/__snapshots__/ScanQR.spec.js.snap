@@ -2,10 +2,10 @@
 
 exports[`ScanQR > renders the ScanQR component 1`] = `
 <div
-  class="scan svelte-1uf7z44"
+  class="scan svelte-spu5d1"
 >
   <video
-    class="svelte-1uf7z44"
+    class="svelte-spu5d1"
   >
     <track
       kind="captions"
@@ -13,8 +13,9 @@ exports[`ScanQR > renders the ScanQR component 1`] = `
   </video>
    
   <div
-    class="scan__highlight svelte-1uf7z44"
+    class="scan__highlight svelte-spu5d1"
   />
+  <!---->
    
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
@@ -25,6 +26,8 @@ exports[`ScanQR > renders the ScanQR component 1`] = `
     >
       CLOSE
     </span>
+    <!---->
   </button>
+  <!---->
 </div>
 `;

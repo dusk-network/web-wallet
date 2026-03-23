@@ -30,7 +30,7 @@ describe("ContractStatusesList", () => {
   it("should render the `ContractStatusesList` component", () => {
     const { container } = render(ContractStatusesList, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should be able to render the component without items", () => {
@@ -43,6 +43,6 @@ describe("ContractStatusesList", () => {
       props,
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

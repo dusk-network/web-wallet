@@ -45,7 +45,7 @@ describe("DashboardNav", () => {
   it("renders the DashboardNav component", () => {
     const { container } = render(DashboardNav, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should not display icons if the item's icons array is undefined", () => {
@@ -57,7 +57,7 @@ describe("DashboardNav", () => {
       )
     ).toBeNull();
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should not display icons if the item's icon array is empty", () => {
@@ -69,7 +69,7 @@ describe("DashboardNav", () => {
       )
     ).toBeNull();
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should display icons if the item's icon array is present", () => {
@@ -81,6 +81,6 @@ describe("DashboardNav", () => {
       )
     ).toBeTruthy();
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

@@ -14,6 +14,6 @@ describe("Dashboard", () => {
 
     await vi.advanceTimersToNextTimerAsync();
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

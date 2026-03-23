@@ -1,6 +1,7 @@
 import {
   afterAll,
   afterEach,
+  beforeAll,
   beforeEach,
   describe,
   expect,
@@ -67,14 +68,16 @@ describe("Settings store", () => {
   });
 
   describe("In a browser environment", () => {
-    vi.doMock("$app/environment", async (importOriginal) => {
-      /** @type {typeof import("$app/environment")} */
-      const original = await importOriginal();
+    beforeAll(() => {
+      vi.doMock("$app/environment", async (importOriginal) => {
+        /** @type {typeof import("$app/environment")} */
+        const original = await importOriginal();
 
-      return {
-        ...original,
-        browser: true,
-      };
+        return {
+          ...original,
+          browser: true,
+        };
+      });
     });
 
     afterEach(() => {
@@ -171,9 +174,27 @@ describe("Settings store", () => {
   });
 
   describe("In a non browser environment", () => {
+    beforeAll(() => {
+      vi.doMock("$app/environment", async (importOriginal) => {
+        /** @type {typeof import("$app/environment")} */
+        const original = await importOriginal();
+
+        return {
+          ...original,
+          browser: false,
+        };
+      });
+    });
+
+    afterAll(() => {
+      vi.doUnmock("$app/environment");
+    });
+
     it("should use its own defaults in place of the browser's settings", () => {
-      expect(settingsStoreContent.language).toBe("en");
-      expect(settingsStoreContent.darkMode).toBe(false);
+      expect(settingsStoreContent).toMatchObject({
+        darkMode: false,
+        language: "en",
+      });
     });
   });
 

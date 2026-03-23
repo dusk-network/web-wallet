@@ -72,13 +72,13 @@ describe("Restore", async () => {
 
     const { container } = render(Restore);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render the Terms of Service step of the Restore flow if there is no userId saved in localStorage", () => {
     const { container } = render(Restore);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render the Mnemonic Authenticate step after accepting the Existing Wallet Notice and the Terms of Service", async () => {
@@ -89,7 +89,7 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("button", { name: "Proceed" }));
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should allow the user to proceed to password setup after a valid mnemonic has been provided", async () => {

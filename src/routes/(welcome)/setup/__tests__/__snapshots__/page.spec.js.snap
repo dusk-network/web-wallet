@@ -2,18 +2,17 @@
 
 exports[`Setup > should render the Setup page 1`] = `
 <section
-  class="setup-content svelte-12gru0s"
+  class="setup-content svelte-r2q2pe"
 >
   <div
-    class="setup-content__wrapper svelte-12gru0s"
+    class="setup-content__wrapper svelte-r2q2pe"
   >
     <h2
-      class="h1 setup-heading svelte-12gru0s"
+      class="h1 setup-heading svelte-r2q2pe"
     >
       Unlocking the Future: 
       <br />
-      
-      Your 
+       Your 
       <mark>
         DUSK
       </mark>
@@ -21,16 +20,19 @@ exports[`Setup > should render the Setup page 1`] = `
     </h2>
      
     <div
-      class="setup-content__options svelte-12gru0s"
+      class="setup-content__options svelte-r2q2pe"
     >
       <div
-        class="setup-content__options-group svelte-12gru0s"
+        class="setup-content__options-group svelte-r2q2pe"
       >
         <a
           aria-disabled="false"
           class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default dusk-icon-button--labeled"
           href="/some-base-path/setup/create"
         >
+          <!---->
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
             role="graphics-symbol"
@@ -41,21 +43,27 @@ exports[`Setup > should render the Setup page 1`] = `
             />
           </svg>
           
+          <!---->
            
           <span
             class="dusk-anchor-button__text"
           >
             Create new wallet
           </span>
+          <!---->
           
-          
+          <!---->
         </a>
+        <!---->
          
         <a
           aria-disabled="false"
           class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
           href="/some-base-path/setup/restore/"
         >
+          <!---->
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
             role="graphics-symbol"
@@ -66,19 +74,22 @@ exports[`Setup > should render the Setup page 1`] = `
             />
           </svg>
           
+          <!---->
            
           <span
             class="dusk-anchor-button__text"
           >
             Restore Wallet
           </span>
+          <!---->
           
-          
+          <!---->
         </a>
+        <!---->
       </div>
        
       <css-doodle
-        class="animation svelte-u23wmk"
+        class="animation svelte-sovw6"
       >
         <style>
           --color: var(--home-box-color);
@@ -114,12 +125,16 @@ exports[`Setup > should render the Setup page 1`] = `
     }
         </style>
       </css-doodle>
+      <!---->
        
       <a
         aria-disabled="false"
         class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default dusk-icon-button--labeled"
         href="/some-base-path/unlock"
       >
+        <!---->
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
           role="graphics-symbol"
@@ -130,15 +145,18 @@ exports[`Setup > should render the Setup page 1`] = `
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-anchor-button__text"
         >
           Unlock Wallet
         </span>
+        <!---->
         
-        
+        <!---->
       </a>
+      <!---->
     </div>
   </div>
 </section>

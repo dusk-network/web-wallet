@@ -2,7 +2,7 @@
 
 exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wallet page and show the field to enter the mnemonic phrase, if there is no login info stored 1`] = `
 <section
-  class="login svelte-1e8gc2s"
+  class="login svelte-121vw4x"
 >
   <h2
     class="h1"
@@ -20,11 +20,13 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
   </h2>
    
   <div
-    class="login svelte-1e8gc2s"
+    class="login svelte-121vw4x"
   >
+    <!---->
     <article
       class="dusk-card dusk-card--gap-medium"
     >
+      <!---->
       <div
         class="dusk-card__header-container"
       >
@@ -44,7 +46,7 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
             <div
               class="dusk-card__heading-icons"
             >
-              
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 role="graphics-symbol"
@@ -55,17 +57,23 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
                 />
               </svg>
               
+              
             </div>
+            <!---->
           </div>
         </header>
+        <!---->
       </div>
+      <!---->
        
       <div
         class="dusk-card__body-container"
       >
+        <!---->
         <form
-          class="login__form svelte-1e8gc2s"
+          class="login__form svelte-121vw4x"
         >
+          <!---->
           <input
             aria-label="Mnemonic phrase"
             autocomplete="current-password"
@@ -77,7 +85,9 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
             type="password"
           />
           
+          <!---->
            
+          <!---->
            
           <button
             class="dusk-button dusk-button--type--submit dusk-button--variant--primary dusk-button--size--default"
@@ -88,23 +98,35 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
             >
               Unlock Wallet
             </span>
+            <!---->
           </button>
+          <!---->
            
+          <!---->
         </form>
+        
+        <!---->
       </div>
+      <!---->
        
+      <!---->
+      
     </article>
     
+    <!---->
   </div>
    
   <footer
-    class="login-footer svelte-1e8gc2s"
+    class="login-footer svelte-121vw4x"
   >
     <a
       aria-disabled="false"
       class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
       href="/some-base-path/setup"
     >
+      <!---->
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
         role="graphics-symbol"
@@ -115,22 +137,25 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-anchor-button__text"
       >
         Back
       </span>
+      <!---->
       
-      
+      <!---->
     </a>
+    <!---->
   </footer>
 </section>
 `;
 
 exports[`Unlock Wallet > Password workflow > should show the password field and the link to restore the wallet if there is login info stored 1`] = `
 <section
-  class="login svelte-1e8gc2s"
+  class="login svelte-121vw4x"
 >
   <h2
     class="h1"
@@ -148,11 +173,13 @@ exports[`Unlock Wallet > Password workflow > should show the password field and 
   </h2>
    
   <div
-    class="login svelte-1e8gc2s"
+    class="login svelte-121vw4x"
   >
+    <!---->
     <article
       class="dusk-card dusk-card--gap-medium"
     >
+      <!---->
       <div
         class="dusk-card__header-container"
       >
@@ -172,7 +199,7 @@ exports[`Unlock Wallet > Password workflow > should show the password field and 
             <div
               class="dusk-card__heading-icons"
             >
-              
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
                 role="graphics-symbol"
@@ -183,17 +210,23 @@ exports[`Unlock Wallet > Password workflow > should show the password field and 
                 />
               </svg>
               
+              
             </div>
+            <!---->
           </div>
         </header>
+        <!---->
       </div>
+      <!---->
        
       <div
         class="dusk-card__body-container"
       >
+        <!---->
         <form
-          class="login__form svelte-1e8gc2s"
+          class="login__form svelte-121vw4x"
         >
+          <!---->
           <input
             aria-label="Password"
             autocomplete="current-password"
@@ -205,7 +238,9 @@ exports[`Unlock Wallet > Password workflow > should show the password field and 
             type="password"
           />
           
+          <!---->
            
+          <!---->
            
           <button
             class="dusk-button dusk-button--type--submit dusk-button--variant--primary dusk-button--size--default"
@@ -216,35 +251,49 @@ exports[`Unlock Wallet > Password workflow > should show the password field and 
             >
               Unlock Wallet
             </span>
+            <!---->
           </button>
+          <!---->
            
           <a
             aria-disabled="false"
             class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default"
             href="/some-base-path/setup/restore"
           >
+            <!---->
             <span
               class="dusk-anchor-button__text"
             >
               Forgot Password?
             </span>
             
+            <!---->
           </a>
+          <!---->
         </form>
+        
+        <!---->
       </div>
+      <!---->
        
+      <!---->
+      
     </article>
     
+    <!---->
   </div>
    
   <footer
-    class="login-footer svelte-1e8gc2s"
+    class="login-footer svelte-121vw4x"
   >
     <a
       aria-disabled="false"
       class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
       href="/some-base-path/setup"
     >
+      <!---->
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
         role="graphics-symbol"
@@ -255,15 +304,18 @@ exports[`Unlock Wallet > Password workflow > should show the password field and 
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-anchor-button__text"
       >
         Back
       </span>
+      <!---->
       
-      
+      <!---->
     </a>
+    <!---->
   </footer>
 </section>
 `;

@@ -2,7 +2,7 @@
 
 exports[`Send > Address step > should display a warning if the address input is a public account 1`] = `
 <div
-  class="operation svelte-adnu6a"
+  class="operation svelte-x7e9dl"
 >
   <div
     class="dusk-wizard"
@@ -10,16 +10,19 @@ exports[`Send > Address step > should display a warning if the address input is 
     <div
       slot="stepper"
     >
+      <!---->
       <div
         class="dusk-stepper dusk-stepper--variant--primary"
         style="--columns: 4; --progress-width: 0%;"
       >
+        <!---->
         <span
           aria-current="step"
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           1
+          <!---->
         </span>
          
         <span
@@ -27,13 +30,13 @@ exports[`Send > Address step > should display a warning if the address input is 
           id="step-some-generated-id"
         >
           Address
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           2
+          <!---->
         </span>
          
         <span
@@ -41,13 +44,13 @@ exports[`Send > Address step > should display a warning if the address input is 
           id="step-some-generated-id"
         >
           Amount
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           3
+          <!---->
         </span>
          
         <span
@@ -55,13 +58,13 @@ exports[`Send > Address step > should display a warning if the address input is 
           id="step-some-generated-id"
         >
           Overview
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           4
+          <!---->
         </span>
          
         <span
@@ -69,20 +72,27 @@ exports[`Send > Address step > should display a warning if the address input is 
           id="step-some-generated-id"
         >
           Done
-           
         </span>
         
+        <!---->
       </div>
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
+    <!---->
+    <!---->
      
+    <!---->
      
     <div
-      class="operation__send svelte-adnu6a"
+      class="operation__send svelte-x7e9dl"
     >
       <div
-        class="operation__address-wrapper svelte-adnu6a"
+        class="operation__address-wrapper svelte-x7e9dl"
       >
         <p>
           Address
@@ -98,19 +108,25 @@ exports[`Send > Address step > should display a warning if the address input is 
           >
             SCAN QR
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
        
+      <!---->
       <textarea
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
       
+      <!---->
        
+      <!---->
        
       <div
         class="banner banner--info"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--large banner__icon banner__icon--info"
           role="graphics-symbol"
@@ -121,6 +137,7 @@ exports[`Send > Address step > should display a warning if the address input is 
           />
         </svg>
         
+        <!---->
          
         <div>
           <strong
@@ -136,14 +153,16 @@ exports[`Send > Address step > should display a warning if the address input is 
             </strong>
              account.
           </p>
+          <!---->
         </div>
       </div>
+      <!---->
        
       <div
-        class="scan svelte-1uf7z44"
+        class="scan svelte-spu5d1"
       >
         <video
-          class="svelte-1uf7z44"
+          class="svelte-spu5d1"
         >
           <track
             kind="captions"
@@ -151,8 +170,9 @@ exports[`Send > Address step > should display a warning if the address input is 
         </video>
          
         <div
-          class="scan__highlight svelte-1uf7z44"
+          class="scan__highlight svelte-spu5d1"
         />
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
@@ -163,20 +183,31 @@ exports[`Send > Address step > should display a warning if the address input is 
           >
             CLOSE
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
+      <!---->
        
+      <!---->
        
+      <!---->
     </div>
+    <!---->
      
+    <!---->
     <div
       class="dusk-wizard__step-navigation"
     >
+      <!---->
       <a
         aria-disabled="false"
         class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
         href="/some-base-path/dashboard"
       >
+        <!---->
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
           role="graphics-symbol"
@@ -187,27 +218,33 @@ exports[`Send > Address step > should display a warning if the address input is 
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-anchor-button__text"
         >
           Back
         </span>
+        <!---->
         
-        
+        <!---->
       </a>
       
+      <!---->
        
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
         <span
           class="dusk-button__text"
         >
           Next
         </span>
+        <!---->
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -218,23 +255,36 @@ exports[`Send > Address step > should display a warning if the address input is 
           />
         </svg>
         
+        <!---->
+        <!---->
       </button>
+      <!---->
     </div>
     
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
+    <!---->
   </div>
+  <!---->
 </div>
 `;
 
 exports[`Send > Address step > should display a warning if the address input is self-referential 1`] = `
 <div
-  class="operation svelte-adnu6a"
+  class="operation svelte-x7e9dl"
 >
   <div
     class="dusk-wizard"
@@ -242,16 +292,19 @@ exports[`Send > Address step > should display a warning if the address input is 
     <div
       slot="stepper"
     >
+      <!---->
       <div
         class="dusk-stepper dusk-stepper--variant--primary"
         style="--columns: 4; --progress-width: 0%;"
       >
+        <!---->
         <span
           aria-current="step"
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           1
+          <!---->
         </span>
          
         <span
@@ -259,13 +312,13 @@ exports[`Send > Address step > should display a warning if the address input is 
           id="step-some-generated-id"
         >
           Address
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           2
+          <!---->
         </span>
          
         <span
@@ -273,13 +326,13 @@ exports[`Send > Address step > should display a warning if the address input is 
           id="step-some-generated-id"
         >
           Amount
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           3
+          <!---->
         </span>
          
         <span
@@ -287,13 +340,13 @@ exports[`Send > Address step > should display a warning if the address input is 
           id="step-some-generated-id"
         >
           Overview
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           4
+          <!---->
         </span>
          
         <span
@@ -301,20 +354,27 @@ exports[`Send > Address step > should display a warning if the address input is 
           id="step-some-generated-id"
         >
           Done
-           
         </span>
         
+        <!---->
       </div>
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
+    <!---->
+    <!---->
      
+    <!---->
      
     <div
-      class="operation__send svelte-adnu6a"
+      class="operation__send svelte-x7e9dl"
     >
       <div
-        class="operation__address-wrapper svelte-adnu6a"
+        class="operation__address-wrapper svelte-x7e9dl"
       >
         <p>
           Address
@@ -330,19 +390,25 @@ exports[`Send > Address step > should display a warning if the address input is 
           >
             SCAN QR
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
        
+      <!---->
       <textarea
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
       
+      <!---->
        
+      <!---->
        
       <div
         class="banner banner--info"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--large banner__icon banner__icon--info"
           role="graphics-symbol"
@@ -353,6 +419,7 @@ exports[`Send > Address step > should display a warning if the address input is 
           />
         </svg>
         
+        <!---->
          
         <div>
           <strong
@@ -368,14 +435,16 @@ exports[`Send > Address step > should display a warning if the address input is 
             </strong>
              account.
           </p>
+          <!---->
         </div>
       </div>
+      <!---->
        
       <div
-        class="scan svelte-1uf7z44"
+        class="scan svelte-spu5d1"
       >
         <video
-          class="svelte-1uf7z44"
+          class="svelte-spu5d1"
         >
           <track
             kind="captions"
@@ -383,8 +452,9 @@ exports[`Send > Address step > should display a warning if the address input is 
         </video>
          
         <div
-          class="scan__highlight svelte-1uf7z44"
+          class="scan__highlight svelte-spu5d1"
         />
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
@@ -395,12 +465,16 @@ exports[`Send > Address step > should display a warning if the address input is 
           >
             CLOSE
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
+      <!---->
        
       <div
         class="banner banner--warning"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--large banner__icon banner__icon--warning"
           role="graphics-symbol"
@@ -411,6 +485,7 @@ exports[`Send > Address step > should display a warning if the address input is 
           />
         </svg>
         
+        <!---->
          
         <div>
           <strong
@@ -425,19 +500,28 @@ exports[`Send > Address step > should display a warning if the address input is 
               transactions may not have meaningful purpose and will incur gas
               fees.
           </p>
+          <!---->
         </div>
       </div>
+      <!---->
        
+      <!---->
     </div>
+    <!---->
      
+    <!---->
     <div
       class="dusk-wizard__step-navigation"
     >
+      <!---->
       <a
         aria-disabled="false"
         class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
         href="/some-base-path/dashboard"
       >
+        <!---->
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
           role="graphics-symbol"
@@ -448,27 +532,33 @@ exports[`Send > Address step > should display a warning if the address input is 
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-anchor-button__text"
         >
           Back
         </span>
+        <!---->
         
-        
+        <!---->
       </a>
       
+      <!---->
        
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
         <span
           class="dusk-button__text"
         >
           Next
         </span>
+        <!---->
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -479,23 +569,36 @@ exports[`Send > Address step > should display a warning if the address input is 
           />
         </svg>
         
+        <!---->
+        <!---->
       </button>
+      <!---->
     </div>
     
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
+    <!---->
   </div>
+  <!---->
 </div>
 `;
 
 exports[`Send > Address step > should render the Send component Address step 1`] = `
 <div
-  class="operation svelte-adnu6a"
+  class="operation svelte-x7e9dl"
 >
   <div
     class="dusk-wizard"
@@ -503,16 +606,19 @@ exports[`Send > Address step > should render the Send component Address step 1`]
     <div
       slot="stepper"
     >
+      <!---->
       <div
         class="dusk-stepper dusk-stepper--variant--primary"
         style="--columns: 4; --progress-width: 0%;"
       >
+        <!---->
         <span
           aria-current="step"
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           1
+          <!---->
         </span>
          
         <span
@@ -520,13 +626,13 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           id="step-some-generated-id"
         >
           Address
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           2
+          <!---->
         </span>
          
         <span
@@ -534,13 +640,13 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           id="step-some-generated-id"
         >
           Amount
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           3
+          <!---->
         </span>
          
         <span
@@ -548,13 +654,13 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           id="step-some-generated-id"
         >
           Overview
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           4
+          <!---->
         </span>
          
         <span
@@ -562,20 +668,27 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           id="step-some-generated-id"
         >
           Done
-           
         </span>
         
+        <!---->
       </div>
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
+    <!---->
+    <!---->
      
+    <!---->
      
     <div
-      class="operation__send svelte-adnu6a"
+      class="operation__send svelte-x7e9dl"
     >
       <div
-        class="operation__address-wrapper svelte-adnu6a"
+        class="operation__address-wrapper svelte-x7e9dl"
       >
         <p>
           Address
@@ -591,22 +704,28 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           >
             SCAN QR
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
        
+      <!---->
       <textarea
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
       
+      <!---->
        
+      <!---->
        
+      <!---->
        
       <div
-        class="scan svelte-1uf7z44"
+        class="scan svelte-spu5d1"
       >
         <video
-          class="svelte-1uf7z44"
+          class="svelte-spu5d1"
         >
           <track
             kind="captions"
@@ -614,8 +733,9 @@ exports[`Send > Address step > should render the Send component Address step 1`]
         </video>
          
         <div
-          class="scan__highlight svelte-1uf7z44"
+          class="scan__highlight svelte-spu5d1"
         />
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
@@ -626,20 +746,31 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           >
             CLOSE
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
+      <!---->
        
+      <!---->
        
+      <!---->
     </div>
+    <!---->
      
+    <!---->
     <div
       class="dusk-wizard__step-navigation"
     >
+      <!---->
       <a
         aria-disabled="false"
         class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
         href="/some-base-path/dashboard"
       >
+        <!---->
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
           role="graphics-symbol"
@@ -650,28 +781,34 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-anchor-button__text"
         >
           Back
         </span>
+        <!---->
         
-        
+        <!---->
       </a>
       
+      <!---->
        
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         disabled=""
         type="button"
       >
+        <!---->
         <span
           class="dusk-button__text"
         >
           Next
         </span>
+        <!---->
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -682,23 +819,36 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           />
         </svg>
         
+        <!---->
+        <!---->
       </button>
+      <!---->
     </div>
     
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
+    <!---->
   </div>
+  <!---->
 </div>
 `;
 
 exports[`Send > Amount step > should render the Send component Amount step 1`] = `
 <div
-  class="operation svelte-adnu6a"
+  class="operation svelte-x7e9dl"
 >
   <div
     class="dusk-wizard"
@@ -706,15 +856,18 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
     <div
       slot="stepper"
     >
+      <!---->
       <div
         class="dusk-stepper dusk-stepper--variant--primary"
         style="--columns: 4; --progress-width: 25%;"
       >
+        <!---->
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           1
+          <!---->
         </span>
          
         <span
@@ -722,7 +875,6 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           id="step-some-generated-id"
         >
           Address
-           
         </span>
         <span
           aria-current="step"
@@ -730,6 +882,7 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           2
+          <!---->
         </span>
          
         <span
@@ -737,13 +890,13 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           id="step-some-generated-id"
         >
           Amount
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           3
+          <!---->
         </span>
          
         <span
@@ -751,13 +904,13 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           id="step-some-generated-id"
         >
           Overview
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           4
+          <!---->
         </span>
          
         <span
@@ -765,23 +918,31 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           id="step-some-generated-id"
         >
           Done
-           
         </span>
         
+        <!---->
       </div>
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
     
+    <!---->
      
+    <!---->
+    <!---->
+    <!---->
      
+    <!---->
      
     <div
-      class="operation__send svelte-adnu6a"
-      style="animation: __svelte_3516408220_0 400ms linear 0ms 1 both;"
+      class="operation__send svelte-x7e9dl"
     >
       <div
-        class="operation__amount-wrapper svelte-adnu6a"
+        class="operation__amount-wrapper svelte-x7e9dl"
       >
         <p>
           Amount
@@ -796,12 +957,15 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           >
             USE MAX
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
        
       <div
-        class="operation__input-wrapper svelte-adnu6a"
+        class="operation__input-wrapper svelte-x7e9dl"
       >
+        <!---->
         <input
           class="dusk-textbox dusk-textbox-number operation__input-field"
           max="999.98"
@@ -811,7 +975,9 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           type="number"
         />
         
+        <!---->
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           data-tooltip-id="main-tooltip"
@@ -824,14 +990,14 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           />
         </svg>
         
+        <!---->
       </div>
        
       <div
-        class="operation__input-wrapper svelte-adnu6a"
+        class="operation__input-wrapper svelte-x7e9dl"
       >
         <p>
-          Memo
-           (optional)
+          Memo (optional)
         </p>
          
         <div
@@ -841,41 +1007,44 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           role="switch"
           tabindex="0"
         />
+        <!---->
       </div>
        
+      <!---->
        
       <div
-        class="gas-settings svelte-1daay07"
+        class="gas-settings svelte-1wfde5f"
       >
         <dl
-          class="gas-settings__edit svelte-1daay07"
+          class="gas-settings__edit svelte-1wfde5f"
         >
           <div
-            class="gas-fee svelte-1c6b481"
+            class="gas-fee svelte-9uj43"
           >
             <span>
               Fee:
             </span>
              
             <div
-              class="gas-fee__amount svelte-1c6b481"
+              class="gas-fee__amount svelte-9uj43"
             >
               <div
-                class="gas-fee__amount-value svelte-1c6b481"
+                class="gas-fee__amount-value svelte-9uj43"
               >
                 <span
-                  class="svelte-1c6b481"
+                  class="svelte-9uj43"
                 >
                   max
                 </span>
                  
                 <span
-                  class="svelte-1c6b481"
+                  class="svelte-9uj43"
                 >
                   0.020000000
                 </span>
               </div>
                
+              <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default dusk-amount__icon"
                 data-tooltip-id="main-tooltip"
@@ -888,8 +1057,11 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
                 />
               </svg>
               
+              <!---->
             </div>
           </div>
+          <!---->
+           
           <dd>
             <button
               class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
@@ -900,21 +1072,31 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
               >
                 EDIT
               </span>
+              <!---->
             </button>
+            <!---->
           </dd>
         </dl>
          
+        <!---->
       </div>
+      <!---->
        
+      <!---->
     </div>
+    <!---->
      
+    <!---->
     <div
       class="dusk-wizard__step-navigation"
     >
+      <!---->
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -925,26 +1107,32 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-button__text"
         >
           Back
         </span>
-        
+        <!---->
+        <!---->
       </button>
       
+      <!---->
        
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
         <span
           class="dusk-button__text"
         >
           Next
         </span>
+        <!---->
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -955,21 +1143,32 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           />
         </svg>
         
+        <!---->
+        <!---->
       </button>
+      <!---->
     </div>
     
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
+    <!---->
   </div>
+  <!---->
 </div>
 `;
 
 exports[`Send > Review step > should render the Send component Review step 1`] = `
 <div
-  class="operation svelte-adnu6a"
+  class="operation svelte-x7e9dl"
 >
   <div
     class="dusk-wizard"
@@ -977,15 +1176,18 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
     <div
       slot="stepper"
     >
+      <!---->
       <div
         class="dusk-stepper dusk-stepper--variant--primary"
         style="--columns: 4; --progress-width: 50%;"
       >
+        <!---->
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           1
+          <!---->
         </span>
          
         <span
@@ -993,13 +1195,13 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           id="step-some-generated-id"
         >
           Address
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           2
+          <!---->
         </span>
          
         <span
@@ -1007,7 +1209,6 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           id="step-some-generated-id"
         >
           Amount
-           
         </span>
         <span
           aria-current="step"
@@ -1015,6 +1216,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           3
+          <!---->
         </span>
          
         <span
@@ -1022,13 +1224,13 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           id="step-some-generated-id"
         >
           Overview
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           4
+          <!---->
         </span>
          
         <span
@@ -1036,35 +1238,47 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           id="step-some-generated-id"
         >
           Done
-           
         </span>
         
+        <!---->
       </div>
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
+    <!---->
+    <!---->
      
+    <!---->
      
     <div
-      class="operation__send svelte-adnu6a"
-      style="animation: __svelte_3516408220_0 400ms linear 0ms 1 both;"
+      class="operation__send svelte-x7e9dl"
     >
       <span
         class="dusk-badge dusk-badge--variant-warning operation__review-notice"
       >
         REVIEW TRANSACTION
       </span>
+      <!---->
        
       <dl
-        class="operation__review-transaction svelte-adnu6a"
+        class="operation__review-transaction svelte-x7e9dl"
       >
         <dt
-          class="review-transaction__label svelte-adnu6a"
+          class="review-transaction__label svelte-x7e9dl"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -1075,19 +1289,21 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
             />
           </svg>
           
+          <!---->
            
           <span>
             Amount
           </span>
-           
         </dt>
+         
         <dd
-          class="review-transaction__value operation__review-amount svelte-adnu6a"
+          class="review-transaction__value operation__review-amount svelte-x7e9dl"
         >
           <span>
             2,345.000000000
           </span>
            
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-amount__icon"
             data-tooltip-id="main-tooltip"
@@ -1100,15 +1316,17 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
             />
           </svg>
           
+          <!---->
         </dd>
       </dl>
        
       <dl
-        class="operation__review-transaction svelte-adnu6a"
+        class="operation__review-transaction svelte-x7e9dl"
       >
         <dt
-          class="review-transaction__label svelte-adnu6a"
+          class="review-transaction__label svelte-x7e9dl"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -1119,14 +1337,15 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
             />
           </svg>
           
+          <!---->
            
           <span>
             To
           </span>
-           
         </dt>
+         
         <dd
-          class="operation__review-address svelte-adnu6a"
+          class="operation__review-address svelte-x7e9dl"
         >
           <span>
             47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnMM
@@ -1135,51 +1354,53 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
       </dl>
        
       <dl
-        class="operation__review-transaction svelte-adnu6a"
+        class="operation__review-transaction svelte-x7e9dl"
       >
         <dt
-          class="review-transaction__label svelte-adnu6a"
+          class="review-transaction__label svelte-x7e9dl"
         >
           <span>
             Memo
           </span>
-           
         </dt>
+         
         <dd
-          class="operation__review-memo svelte-adnu6a"
+          class="operation__review-memo svelte-x7e9dl"
         >
           <span>
             abc-example-memo
           </span>
         </dd>
       </dl>
+      <!---->
        
       <div
-        class="gas-fee svelte-1c6b481"
+        class="gas-fee svelte-9uj43"
       >
         <span>
           Fee:
         </span>
          
         <div
-          class="gas-fee__amount svelte-1c6b481"
+          class="gas-fee__amount svelte-9uj43"
         >
           <div
-            class="gas-fee__amount-value svelte-1c6b481"
+            class="gas-fee__amount-value svelte-9uj43"
           >
             <span
-              class="svelte-1c6b481"
+              class="svelte-9uj43"
             >
               max
             </span>
              
             <span
-              class="svelte-1c6b481"
+              class="svelte-9uj43"
             >
               0.020000000
             </span>
           </div>
            
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-amount__icon"
             data-tooltip-id="main-tooltip"
@@ -1192,17 +1413,24 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
             />
           </svg>
           
+          <!---->
         </div>
       </div>
+      <!---->
     </div>
+    <!---->
      
+    <!---->
     <div
       class="dusk-wizard__step-navigation"
     >
+      <!---->
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -1213,20 +1441,25 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-button__text"
         >
           Back
         </span>
-        
+        <!---->
+        <!---->
       </button>
       
+      <!---->
        
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -1237,19 +1470,28 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-button__text"
         >
           SEND
         </span>
-        
+        <!---->
+        <!---->
       </button>
+      <!---->
     </div>
     
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
+    <!---->
   </div>
+  <!---->
 </div>
 `;

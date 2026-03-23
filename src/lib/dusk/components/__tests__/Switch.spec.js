@@ -16,11 +16,11 @@ describe("Switch", () => {
   it('should render the "Switch" component with a default tab index of `0`', async () => {
     const { container, rerender } = render(Switch, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     await rerender({ ...baseProps, value: true });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should use the received tab index", () => {
@@ -30,7 +30,7 @@ describe("Switch", () => {
     };
     const { container } = render(Switch, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render the component in a disabled status with a tabindex of `-1`", async () => {
@@ -41,11 +41,11 @@ describe("Switch", () => {
     };
     const { container, rerender } = render(Switch, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     await rerender({ ...props, value: true });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should pass additional class names and attributes to the root element", () => {
@@ -56,16 +56,17 @@ describe("Switch", () => {
     };
     const { container } = render(Switch, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   describe("Event handlers", () => {
     it("should dispatch a `change` event when the switch is clicked", async () => {
-      const { component, getByRole } = render(Switch, baseOptions);
-      const switchElement = getByRole("switch");
       const handler = vi.fn();
-
-      component.$on("change", handler);
+      const { getByRole } = render(Switch, {
+        ...baseOptions,
+        events: { change: handler },
+      });
+      const switchElement = getByRole("switch");
 
       await fireEvent.click(switchElement);
       await fireEvent.click(switchElement);
@@ -82,11 +83,12 @@ describe("Switch", () => {
     });
 
     it("should dispatch a `change` event when the user presses space on the switch", async () => {
-      const { component, getByRole } = render(Switch, baseOptions);
-      const switchElement = getByRole("switch");
       const handler = vi.fn();
-
-      component.$on("change", handler);
+      const { getByRole } = render(Switch, {
+        ...baseOptions,
+        events: { change: handler },
+      });
+      const switchElement = getByRole("switch");
 
       await fireEvent.keyDown(switchElement, { key: " " });
       await fireEvent.keyDown(switchElement, { key: " " });
@@ -103,11 +105,12 @@ describe("Switch", () => {
     });
 
     it("should not dispatch an event if the user presses another key", async () => {
-      const { component, getByRole } = render(Switch, baseOptions);
-      const switchElement = getByRole("switch");
       const handler = vi.fn();
-
-      component.$on("change", handler);
+      const { getByRole } = render(Switch, {
+        ...baseOptions,
+        events: { change: handler },
+      });
+      const switchElement = getByRole("switch");
 
       await fireEvent.keyDown(switchElement, { key: "Enter" });
       await fireEvent.keyDown(switchElement, { key: "a" });
@@ -120,14 +123,13 @@ describe("Switch", () => {
         ...baseProps,
         disabled: true,
       };
-      const { component, getByRole } = render(Switch, {
+      const handler = vi.fn();
+      const { getByRole } = render(Switch, {
         ...baseOptions,
+        events: { change: handler },
         props,
       });
       const switchElement = getByRole("switch");
-      const handler = vi.fn();
-
-      component.$on("change", handler);
 
       await fireEvent.click(switchElement);
       await fireEvent.keyDown(switchElement, { key: " " });

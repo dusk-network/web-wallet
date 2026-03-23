@@ -44,6 +44,11 @@ export default defineConfig(({ mode }) => {
     },
     plugins:
       mode === "development" ? [basicSsl(), ...commonPlugins] : commonPlugins,
+    resolve: {
+      // Vitest runs in Node, but these are DOM tests (jsdom). Prefer browser
+      // export conditions so Svelte resolves to the client runtime.
+      conditions: mode === "test" ? ["browser"] : undefined,
+    },
     server: {
       proxy: {
         "/on": { target: "ws://localhost:8080/", ws: true },
@@ -56,9 +61,6 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       alias: [
-        /** @see https://github.com/vitest-dev/vitest/issues/2834 */
-        { find: /^svelte$/, replacement: "svelte/internal" },
-
         // Aliases to mock private w3sper's modules
         {
           find: /.+\/protocol-driver\/mod\.js$/,
