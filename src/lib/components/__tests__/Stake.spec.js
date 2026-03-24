@@ -82,7 +82,7 @@ describe("Stake", () => {
 
     const { container } = render(Stake, options);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render the Stake component", () => {
@@ -95,7 +95,7 @@ describe("Stake", () => {
       luxToDusk(baseProps.minStakeRequirement).toString()
     );
     expect(amountInput.getAttribute("max")).toBe(maxSpendableDusk.toString());
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should disable the next button if the stake amount is invalid on mount", async () => {
@@ -185,7 +185,7 @@ describe("Stake", () => {
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   describe("Stake operation", () => {

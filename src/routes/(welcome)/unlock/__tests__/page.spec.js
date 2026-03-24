@@ -74,7 +74,7 @@ describe("Unlock Wallet", async () => {
     it("should render the Unlock Wallet page and show the field to enter the mnemonic phrase, if there is no login info stored", () => {
       const { container } = render(UnlockWallet, {});
 
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should show an error message if the user enters an invalid mnemonic", async () => {
@@ -181,7 +181,7 @@ describe("Unlock Wallet", async () => {
     it("should show the password field and the link to restore the wallet if there is login info stored", () => {
       const { container } = render(UnlockWallet, {});
 
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should show an error message if the user enters the wrong password", async () => {

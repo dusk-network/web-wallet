@@ -2,10 +2,10 @@
 
 exports[`Transactions > renders the correct amount of Transactions, as the limit supplied 1`] = `
 <article
-  class="transactions svelte-mwi4ip"
+  class="transactions svelte-1kwg8z"
 >
   <header
-    class="transactions__header svelte-mwi4ip"
+    class="transactions__header svelte-1kwg8z"
   >
     <h3
       class="h4"
@@ -18,18 +18,24 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
       class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default transactions__footer-button"
       href="/some-base-path/dashboard/transactions"
     >
+      <!---->
       <span
         class="dusk-anchor-button__text"
       >
         All transactions
       </span>
       
+      <!---->
     </a>
+    <!---->
   </header>
    
   <div
     class="dusk-suspense transactions-list__container"
   >
+    <!---->
+    <!---->
+    <!---->
     <dl
       class="transactions-list"
     >
@@ -38,6 +44,7 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
       >
         Hash
       </dt>
+       
       <dd
         class="transactions-list__datum transactions-list__datum--hash"
       >
@@ -49,15 +56,18 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
             target="_blank"
           >
             tg874534tddsghdtst54hdfh795h
+            <!---->
           </a>
+          <!---->
         </samp>
-         
       </dd>
+       
       <dt
         class="transactions-list__term"
       >
         Type
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
@@ -66,53 +76,56 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
         >
           STAKE
         </span>
-         
+        <!---->
       </dd>
+      <!---->
+       
       <dt
         class="transactions-list__term"
       >
         Block
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
         33,460
-         
       </dd>
+       
       <dt
         class="transactions-list__term"
       >
         Amount
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
-        +27,000.00
-         
+        +27,000.00 
         <span
           class="transactions-list__ticker"
         >
           Dusk
         </span>
-         
       </dd>
+       
       <dt
         class="transactions-list__term"
       >
         Fee
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
-        1,876.00
-         
+        1,876.00 
         <span
           class="transactions-list__ticker"
         >
           Dusk
         </span>
-         
       </dd>
+      <!---->
     </dl>
     <dl
       class="transactions-list"
@@ -122,6 +135,7 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
       >
         Hash
       </dt>
+       
       <dd
         class="transactions-list__datum transactions-list__datum--hash"
       >
@@ -133,15 +147,18 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
             target="_blank"
           >
             tg874534tddsghdtst54hdfh794h
+            <!---->
           </a>
+          <!---->
         </samp>
-         
       </dd>
+       
       <dt
         class="transactions-list__term"
       >
         Type
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
@@ -150,36 +167,40 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
         >
           TRANSFER
         </span>
-         
+        <!---->
       </dd>
+      <!---->
+       
       <dt
         class="transactions-list__term"
       >
         Block
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
         33,459
-         
       </dd>
+       
       <dt
         class="transactions-list__term"
       >
         Amount
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
-        -25,000.00
-         
+        -25,000.00 
         <span
           class="transactions-list__ticker"
         >
           Dusk
         </span>
-         
       </dd>
+       
+      <!---->
     </dl>
     <dl
       class="transactions-list"
@@ -189,6 +210,7 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
       >
         Hash
       </dt>
+       
       <dd
         class="transactions-list__datum transactions-list__datum--hash"
       >
@@ -200,15 +222,18 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
             target="_blank"
           >
             tg874534tddsghdtst54hdfh793h
+            <!---->
           </a>
+          <!---->
         </samp>
-         
       </dd>
+       
       <dt
         class="transactions-list__term"
       >
         Type
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
@@ -217,49 +242,56 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
         >
           TRANSFER
         </span>
-         
+        <!---->
       </dd>
+      <!---->
+       
       <dt
         class="transactions-list__term"
       >
         Block
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
         33,458
-         
       </dd>
+       
       <dt
         class="transactions-list__term"
       >
         Amount
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
-        +25,000.00
-         
+        +25,000.00 
         <span
           class="transactions-list__ticker"
         >
           Dusk
         </span>
-         
       </dd>
+       
+      <!---->
     </dl>
     
     
+    
+    <!---->
   </div>
+  <!---->
 </article>
 `;
 
 exports[`Transactions > renders transactions correctly when items are fulfilled 1`] = `
 <article
-  class="transactions svelte-mwi4ip"
+  class="transactions svelte-1kwg8z"
 >
   <header
-    class="transactions__header svelte-mwi4ip"
+    class="transactions__header svelte-1kwg8z"
   >
     <h3
       class="h4"
@@ -272,18 +304,24 @@ exports[`Transactions > renders transactions correctly when items are fulfilled 
       class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default transactions__footer-button"
       href="/some-base-path/dashboard/transactions"
     >
+      <!---->
       <span
         class="dusk-anchor-button__text"
       >
         All transactions
       </span>
       
+      <!---->
     </a>
+    <!---->
   </header>
    
   <div
     class="dusk-suspense transactions-list__container"
   >
+    <!---->
+    <!---->
+    <!---->
     <dl
       class="transactions-list"
     >
@@ -292,6 +330,7 @@ exports[`Transactions > renders transactions correctly when items are fulfilled 
       >
         Hash
       </dt>
+       
       <dd
         class="transactions-list__datum transactions-list__datum--hash"
       >
@@ -303,15 +342,18 @@ exports[`Transactions > renders transactions correctly when items are fulfilled 
             target="_blank"
           >
             tg874534tddsghdtst54hdfh795h
+            <!---->
           </a>
+          <!---->
         </samp>
-         
       </dd>
+       
       <dt
         class="transactions-list__term"
       >
         Type
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
@@ -320,56 +362,62 @@ exports[`Transactions > renders transactions correctly when items are fulfilled 
         >
           STAKE
         </span>
-         
+        <!---->
       </dd>
+      <!---->
+       
       <dt
         class="transactions-list__term"
       >
         Block
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
         33,460
-         
       </dd>
+       
       <dt
         class="transactions-list__term"
       >
         Amount
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
-        +27,000.00
-         
+        +27,000.00 
         <span
           class="transactions-list__ticker"
         >
           Dusk
         </span>
-         
       </dd>
+       
       <dt
         class="transactions-list__term"
       >
         Fee
       </dt>
+       
       <dd
         class="transactions-list__datum"
       >
-        1,876.00
-         
+        1,876.00 
         <span
           class="transactions-list__ticker"
         >
           Dusk
         </span>
-         
       </dd>
+      <!---->
     </dl>
     
     
+    
+    <!---->
   </div>
+  <!---->
 </article>
 `;

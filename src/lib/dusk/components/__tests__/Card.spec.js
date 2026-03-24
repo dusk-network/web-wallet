@@ -8,6 +8,6 @@ describe("Card", () => {
   it("renders the Card component", () => {
     const { container } = render(Card);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

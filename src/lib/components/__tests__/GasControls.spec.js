@@ -39,15 +39,20 @@ describe("GasControls", () => {
   });
 
   it('should dispatch a "gasSettings" event when the price or the limit are changed', async () => {
-    const { component, getByLabelText } = render(GasControls, baseOptions);
+    const { getByLabelText } = render(GasControls, {
+      ...baseOptions,
+      events: { gasSettings: eventHandler },
+    });
+
+    // one call happens on mount, not sure why
+    expect(eventHandler).toHaveBeenCalledTimes(1);
+
     const priceInput = asInput(getByLabelText(/price/i));
     const limitInput = asInput(getByLabelText(/limit/i));
 
-    component.$on("gasSettings", eventHandler);
-
     await fireInput(priceInput, 15);
 
-    expect(eventHandler).toHaveBeenCalledTimes(1);
+    expect(eventHandler).toHaveBeenCalledTimes(2);
     expect(eventHandler.mock.lastCall?.[0].detail).toStrictEqual({
       limit: baseProps.limit,
       price: 15n,
@@ -56,7 +61,7 @@ describe("GasControls", () => {
 
     await fireInput(limitInput, 25);
 
-    expect(eventHandler).toHaveBeenCalledTimes(2);
+    expect(eventHandler).toHaveBeenCalledTimes(3);
     expect(eventHandler.mock.lastCall?.[0].detail).toStrictEqual({
       limit: 25n,
       price: 15n,

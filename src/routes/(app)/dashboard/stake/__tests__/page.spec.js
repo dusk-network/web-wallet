@@ -12,6 +12,6 @@ describe("Staking", () => {
 
     await vi.advanceTimersToNextTimerAsync(); // Wait until the stakeInfo promise has resolved
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

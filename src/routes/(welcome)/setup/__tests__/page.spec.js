@@ -14,6 +14,6 @@ describe("Setup", () => {
   it("should render the Setup page", () => {
     const { container } = render(Setup, {});
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

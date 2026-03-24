@@ -10,6 +10,7 @@ exports[`Toast > should render and dismiss 2 Toasts 1`] = `
     <span
       class="dusk-toast__item-icon-wrapper dusk-toast__item-icon-wrapper--success"
     >
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-toast__item-icon"
         role="graphics-symbol"
@@ -20,14 +21,15 @@ exports[`Toast > should render and dismiss 2 Toasts 1`] = `
         />
       </svg>
       
+      <!---->
     </span>
+    <!---->
      
     <span
       class="dusk-toast__item-message"
     >
       Render Toast 1
     </span>
-     
   </li>
   <li
     class="dusk-toast__item"
@@ -35,6 +37,7 @@ exports[`Toast > should render and dismiss 2 Toasts 1`] = `
     <span
       class="dusk-toast__item-icon-wrapper dusk-toast__item-icon-wrapper--info"
     >
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-toast__item-icon"
         role="graphics-symbol"
@@ -45,15 +48,17 @@ exports[`Toast > should render and dismiss 2 Toasts 1`] = `
         />
       </svg>
       
+      <!---->
     </span>
+    <!---->
      
     <span
       class="dusk-toast__item-message"
     >
       Render Toast 2
     </span>
-     
   </li>
+  
 </ul>
 `;
 
@@ -67,6 +72,7 @@ exports[`Toast > should render and dismiss the Toast component with the correct 
     <span
       class="dusk-toast__item-icon-wrapper dusk-toast__item-icon-wrapper--success"
     >
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-toast__item-icon"
         role="graphics-symbol"
@@ -77,15 +83,17 @@ exports[`Toast > should render and dismiss the Toast component with the correct 
         />
       </svg>
       
+      <!---->
     </span>
+    <!---->
      
     <span
       class="dusk-toast__item-message"
     >
       Render Toast 1
     </span>
-     
   </li>
+  
 </ul>
 `;
 
@@ -94,5 +102,7 @@ exports[`Toast > should render the Toast component with the correct custom class
   class="dusk-toast test-toast"
   data-baz="baz"
   id="toast-container"
-/>
+>
+  
+</ul>
 `;

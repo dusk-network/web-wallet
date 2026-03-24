@@ -11,9 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- chore: dependency update to address newfound vulnerabilities [#939]
+
 ### Removed
 
 ### Fixed
+
+- fixed bug in `BigIntInput` input validation [#939]
+- fixed `GasControls` reacting to `input` events instead of `change`s [#939]
 
 ## [1.7.3] - 2026-03-03
 
@@ -654,6 +659,7 @@ dusk-network/rusk#3982: https://github.com/dusk-network/rusk/issues/3982
 dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#928]: https://github.com/dusk-network/web-wallet/issues/928
 [#932]: https://github.com/dusk-network/web-wallet/issues/932
+[#939]: https://github.com/dusk-network/web-wallet/issues/939
 
 <!-- VERSIONS -->
 

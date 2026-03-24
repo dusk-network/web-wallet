@@ -17,7 +17,7 @@ describe("Icon", () => {
   it("should render the Icon component", () => {
     const { container } = render(Icon, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should accept a custom role for the SVG component", () => {
@@ -27,7 +27,7 @@ describe("Icon", () => {
     };
     const { container } = render(Icon, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render the icon inside a `g` element if it's part of a stack", () => {
@@ -37,7 +37,7 @@ describe("Icon", () => {
     };
     const { container } = render(Icon, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should pass additional class names and attributes to the rendered element", async () => {
@@ -47,7 +47,7 @@ describe("Icon", () => {
       "data-baz": "baz",
     };
     const { container, rerender } = render(Icon, { ...baseOptions, props });
-    const icon = container.firstChild;
+    const icon = container.firstElementChild;
 
     expect(icon).toHaveClass("foo bar");
     expect(icon).toHaveAttribute("data-baz", "baz");
@@ -55,7 +55,7 @@ describe("Icon", () => {
 
     await rerender({ ...props, isInStack: true });
 
-    const icon2 = container.firstChild;
+    const icon2 = container.firstElementChild;
 
     expect(icon2).toHaveClass("foo bar");
     expect(icon2).toHaveAttribute("data-baz", "baz");

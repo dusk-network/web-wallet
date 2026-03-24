@@ -20,7 +20,7 @@ describe("AnchorButton", () => {
   it("should render the AnchorButton component", () => {
     const { container } = render(AnchorButton, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should add a disabled class if the related property is `true`", () => {
@@ -30,7 +30,7 @@ describe("AnchorButton", () => {
     };
     const { container } = render(AnchorButton, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should pass additional class names and attributes to the rendered element", () => {
@@ -41,7 +41,7 @@ describe("AnchorButton", () => {
     };
     const { container } = render(AnchorButton, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render a AnchorButton without a text", () => {
@@ -51,7 +51,7 @@ describe("AnchorButton", () => {
     };
     const { container } = render(AnchorButton, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should be able to render a AnchorButton with an icon and text", () => {
@@ -65,7 +65,7 @@ describe("AnchorButton", () => {
       };
       const { container } = render(AnchorButton, { ...baseOptions, props });
 
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
   });
 
@@ -81,7 +81,7 @@ describe("AnchorButton", () => {
       };
       const { container } = render(AnchorButton, { ...baseOptions, props });
 
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
   });
 });

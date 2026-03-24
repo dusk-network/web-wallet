@@ -17,7 +17,11 @@ import "core-js/stable/structured-clone";
 // adds in-memory replacement for IndexedDB
 import "fake-indexeddb/auto";
 
-import { IntersectionObserver } from "./src/lib/dusk/mocks";
+import {
+  IntersectionObserver,
+  MediaQueryList,
+  MediaQueryListEvent,
+} from "./src/lib/dusk/mocks";
 
 // Mocking wallet connection modules
 vi.mock("@reown/appkit");
@@ -93,6 +97,8 @@ vi.mock("./src/lib/dusk/mocks/IntersectionObserver");
 
 global.IntersectionObserver = IntersectionObserver;
 global.ResizeObserver = ResizeObserver;
+global.MediaQueryListEvent = MediaQueryListEvent;
+global.MediaQueryList = MediaQueryList;
 
 /*
  * Need to set it this way for Node 20, otherwise
@@ -105,6 +111,12 @@ Object.defineProperty(global, "crypto", {
   },
 });
 
+// Define matchMedia property
+Object.defineProperty(window, "matchMedia", {
+  value: (query) => new MediaQueryList(query, false),
+  writable: true,
+});
+
 const elementMethods = ["scrollBy", "scrollTo", "scrollIntoView"];
 
 elementMethods.forEach((method) => {
@@ -115,6 +127,26 @@ elementMethods.forEach((method) => {
     });
   }
 });
+
+if (!Element.prototype.animate) {
+  Element.prototype.animate = () => ({
+    cancel: () => {},
+    set onfinish(callback) {
+      if (typeof callback === "function") {
+        callback();
+      }
+    },
+    play: () => {},
+  });
+}
+
+// Needed by Svelte's animation helpers (e.g. `animate:flip`) which use the Web Animations API.
+if (!Element.prototype.getAnimations) {
+  Object.defineProperty(Element.prototype, "getAnimations", {
+    value: () => [],
+    writable: true,
+  });
+}
 
 // Add custom jest matchers
 expect.extend(matchers);

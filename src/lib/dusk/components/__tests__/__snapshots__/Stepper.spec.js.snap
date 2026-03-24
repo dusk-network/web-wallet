@@ -5,11 +5,13 @@ exports[`Stepper > should add the proper class name for the desired variant 1`] 
   class="dusk-stepper dusk-stepper--variant--secondary"
   style="--columns: 5; --progress-width: 40%;"
 >
+  <!---->
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     1
+    <!---->
   </span>
    
   <span
@@ -17,13 +19,13 @@ exports[`Stepper > should add the proper class name for the desired variant 1`] 
     id="step-some-generated-id"
   >
     foo
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     2
+    <!---->
   </span>
    
   <span
@@ -31,7 +33,6 @@ exports[`Stepper > should add the proper class name for the desired variant 1`] 
     id="step-some-generated-id"
   >
     bar
-     
   </span>
   <span
     aria-current="step"
@@ -39,6 +40,7 @@ exports[`Stepper > should add the proper class name for the desired variant 1`] 
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     3
+    <!---->
   </span>
    
   <span
@@ -46,13 +48,13 @@ exports[`Stepper > should add the proper class name for the desired variant 1`] 
     id="step-some-generated-id"
   >
     baz
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step"
   >
     4
+    <!---->
   </span>
    
   <span
@@ -60,12 +62,12 @@ exports[`Stepper > should add the proper class name for the desired variant 1`] 
     id="step-some-generated-id"
   >
     qux
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step"
   >
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default"
       role="graphics-symbol"
@@ -76,6 +78,7 @@ exports[`Stepper > should add the proper class name for the desired variant 1`] 
       />
     </svg>
     
+    <!---->
   </span>
    
   <span
@@ -83,9 +86,9 @@ exports[`Stepper > should add the proper class name for the desired variant 1`] 
     id="step-some-generated-id"
   >
     quux
-     
   </span>
   
+  <!---->
 </div>
 `;
 
@@ -94,11 +97,13 @@ exports[`Stepper > should allow to hide the step numbers 1`] = `
   class="dusk-stepper dusk-stepper--variant--primary"
   style="--columns: 5; --progress-width: 40%;"
 >
+  <!---->
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     
+    <!---->
   </span>
    
   <span
@@ -106,13 +111,13 @@ exports[`Stepper > should allow to hide the step numbers 1`] = `
     id="step-some-generated-id"
   >
     foo
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     
+    <!---->
   </span>
    
   <span
@@ -120,7 +125,6 @@ exports[`Stepper > should allow to hide the step numbers 1`] = `
     id="step-some-generated-id"
   >
     bar
-     
   </span>
   <span
     aria-current="step"
@@ -128,6 +132,7 @@ exports[`Stepper > should allow to hide the step numbers 1`] = `
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     
+    <!---->
   </span>
    
   <span
@@ -135,13 +140,13 @@ exports[`Stepper > should allow to hide the step numbers 1`] = `
     id="step-some-generated-id"
   >
     baz
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step"
   >
     
+    <!---->
   </span>
    
   <span
@@ -149,12 +154,12 @@ exports[`Stepper > should allow to hide the step numbers 1`] = `
     id="step-some-generated-id"
   >
     qux
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step"
   >
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default"
       role="graphics-symbol"
@@ -165,6 +170,7 @@ exports[`Stepper > should allow to hide the step numbers 1`] = `
       />
     </svg>
     
+    <!---->
   </span>
    
   <span
@@ -172,9 +178,9 @@ exports[`Stepper > should allow to hide the step numbers 1`] = `
     id="step-some-generated-id"
   >
     quux
-     
   </span>
   
+  <!---->
 </div>
 `;
 
@@ -184,11 +190,13 @@ exports[`Stepper > should pass additional class names and attributes to the rend
   id="some-id"
   style="--columns: 5; --progress-width: 40%;"
 >
+  <!---->
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     1
+    <!---->
   </span>
    
   <span
@@ -196,13 +204,13 @@ exports[`Stepper > should pass additional class names and attributes to the rend
     id="step-some-generated-id"
   >
     foo
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     2
+    <!---->
   </span>
    
   <span
@@ -210,7 +218,6 @@ exports[`Stepper > should pass additional class names and attributes to the rend
     id="step-some-generated-id"
   >
     bar
-     
   </span>
   <span
     aria-current="step"
@@ -218,6 +225,7 @@ exports[`Stepper > should pass additional class names and attributes to the rend
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     3
+    <!---->
   </span>
    
   <span
@@ -225,13 +233,13 @@ exports[`Stepper > should pass additional class names and attributes to the rend
     id="step-some-generated-id"
   >
     baz
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step"
   >
     4
+    <!---->
   </span>
    
   <span
@@ -239,12 +247,12 @@ exports[`Stepper > should pass additional class names and attributes to the rend
     id="step-some-generated-id"
   >
     qux
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step"
   >
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default"
       role="graphics-symbol"
@@ -255,6 +263,7 @@ exports[`Stepper > should pass additional class names and attributes to the rend
       />
     </svg>
     
+    <!---->
   </span>
    
   <span
@@ -262,9 +271,9 @@ exports[`Stepper > should pass additional class names and attributes to the rend
     id="step-some-generated-id"
   >
     quux
-     
   </span>
   
+  <!---->
 </div>
 `;
 
@@ -273,38 +282,35 @@ exports[`Stepper > should render the \`Stepper\` component accepting a number as
   class="dusk-stepper dusk-stepper--variant--primary"
   style="--columns: 5; --progress-width: 40%;"
 >
+  <!---->
   <span
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     1
-     
   </span>
   <span
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     2
-     
   </span>
   <span
     aria-current="step"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     3
-     
   </span>
   <span
     class="dusk-stepper__step"
   >
     4
-     
   </span>
   <span
     class="dusk-stepper__step"
   >
     5
-     
   </span>
   
+  <!---->
 </div>
 `;
 
@@ -313,11 +319,13 @@ exports[`Stepper > should render the \`Stepper\` component accepting a number as
   class="dusk-stepper dusk-stepper--variant--primary"
   style="--columns: 5; --progress-width: 60%;"
 >
+  <!---->
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     1
+    <!---->
   </span>
    
   <span
@@ -325,13 +333,13 @@ exports[`Stepper > should render the \`Stepper\` component accepting a number as
     id="step-some-generated-id"
   >
     foo
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     2
+    <!---->
   </span>
    
   <span
@@ -339,13 +347,13 @@ exports[`Stepper > should render the \`Stepper\` component accepting a number as
     id="step-some-generated-id"
   >
     bar
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     3
+    <!---->
   </span>
    
   <span
@@ -353,7 +361,6 @@ exports[`Stepper > should render the \`Stepper\` component accepting a number as
     id="step-some-generated-id"
   >
     baz
-     
   </span>
   <span
     aria-current="step"
@@ -361,6 +368,7 @@ exports[`Stepper > should render the \`Stepper\` component accepting a number as
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     4
+    <!---->
   </span>
    
   <span
@@ -368,12 +376,12 @@ exports[`Stepper > should render the \`Stepper\` component accepting a number as
     id="step-some-generated-id"
   >
     qux
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step"
   >
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default"
       role="graphics-symbol"
@@ -384,6 +392,7 @@ exports[`Stepper > should render the \`Stepper\` component accepting a number as
       />
     </svg>
     
+    <!---->
   </span>
    
   <span
@@ -391,9 +400,9 @@ exports[`Stepper > should render the \`Stepper\` component accepting a number as
     id="step-some-generated-id"
   >
     quux
-     
   </span>
   
+  <!---->
 </div>
 `;
 
@@ -402,11 +411,13 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
   class="dusk-stepper dusk-stepper--variant--primary"
   style="--columns: 5; --progress-width: 40%;"
 >
+  <!---->
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     1
+    <!---->
   </span>
    
   <span
@@ -414,13 +425,13 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     id="step-some-generated-id"
   >
     foo
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     2
+    <!---->
   </span>
    
   <span
@@ -428,7 +439,6 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     id="step-some-generated-id"
   >
     bar
-     
   </span>
   <span
     aria-current="step"
@@ -436,6 +446,7 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     3
+    <!---->
   </span>
    
   <span
@@ -443,13 +454,13 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     id="step-some-generated-id"
   >
     baz
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step"
   >
     4
+    <!---->
   </span>
    
   <span
@@ -457,12 +468,12 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     id="step-some-generated-id"
   >
     qux
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step"
   >
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default"
       role="graphics-symbol"
@@ -473,6 +484,7 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
       />
     </svg>
     
+    <!---->
   </span>
    
   <span
@@ -480,9 +492,9 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     id="step-some-generated-id"
   >
     quux
-     
   </span>
   
+  <!---->
 </div>
 `;
 
@@ -491,11 +503,13 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
   class="dusk-stepper dusk-stepper--variant--primary"
   style="--columns: 5; --progress-width: 60%;"
 >
+  <!---->
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     1
+    <!---->
   </span>
    
   <span
@@ -503,13 +517,13 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     id="step-some-generated-id"
   >
     foo
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     2
+    <!---->
   </span>
    
   <span
@@ -517,13 +531,13 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     id="step-some-generated-id"
   >
     bar
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     3
+    <!---->
   </span>
    
   <span
@@ -531,7 +545,6 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     id="step-some-generated-id"
   >
     baz
-     
   </span>
   <span
     aria-current="step"
@@ -539,6 +552,7 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     4
+    <!---->
   </span>
    
   <span
@@ -546,12 +560,12 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     id="step-some-generated-id"
   >
     qux
-     
   </span>
   <span
     aria-labelledby="step-some-generated-id"
     class="dusk-stepper__step"
   >
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default"
       role="graphics-symbol"
@@ -562,6 +576,7 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
       />
     </svg>
     
+    <!---->
   </span>
    
   <span
@@ -569,9 +584,9 @@ exports[`Stepper > should render the \`Stepper\` component accepting an array of
     id="step-some-generated-id"
   >
     quux
-     
   </span>
   
+  <!---->
 </div>
 `;
 
@@ -580,37 +595,34 @@ exports[`Stepper > should render the \`Stepper\` with all step labels being disp
   class="dusk-stepper dusk-stepper--variant--primary"
   style="--columns: 5; --progress-width: 40%;"
 >
+  <!---->
   <span
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     1
-     
   </span>
   <span
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     2
-     
   </span>
   <span
     aria-current="step"
     class="dusk-stepper__step dusk-stepper__step--processed"
   >
     3
-     
   </span>
   <span
     class="dusk-stepper__step"
   >
     4
-     
   </span>
   <span
     class="dusk-stepper__step"
   >
     5
-     
   </span>
   
+  <!---->
 </div>
 `;

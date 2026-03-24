@@ -30,7 +30,7 @@ describe("OperationResult", () => {
   it("should be able to render the `OperationResult` component in a pending state", () => {
     const { container } = render(OperationResult, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should accept a custom message for the pending state", () => {
@@ -40,7 +40,7 @@ describe("OperationResult", () => {
     };
     const { container } = render(OperationResult, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should be able to render the `OperationResult` in a successful state", async () => {
@@ -48,7 +48,7 @@ describe("OperationResult", () => {
 
     await vi.advanceTimersByTimeAsync(delay);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should accept a custom message for the successful state", async () => {
@@ -61,7 +61,7 @@ describe("OperationResult", () => {
 
     await vi.advanceTimersByTimeAsync(delay);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should call the `onBeforeLeave` function when the home button is clicked", async () => {
@@ -90,7 +90,7 @@ describe("OperationResult", () => {
 
     await vi.advanceTimersByTimeAsync(delay);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should accept a custom message for the failure state", async () => {
@@ -104,6 +104,6 @@ describe("OperationResult", () => {
 
     await vi.advanceTimersByTimeAsync(delay);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

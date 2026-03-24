@@ -7,10 +7,11 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button dusk-tab-scroll-button"
     disabled=""
-    hidden="false"
     tabindex="-1"
     type="button"
   >
+    <!---->
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-button__icon"
       role="graphics-symbol"
@@ -21,9 +22,12 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       />
     </svg>
     
+    <!---->
      
-    
+    <!---->
+    <!---->
   </button>
+  <!---->
    
   <ul
     class="dusk-tabs-list"
@@ -36,6 +40,8 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -46,14 +52,15 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-tab-label"
       >
         Dashboard
       </span>
-      
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="true"
@@ -62,12 +69,15 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
       <span
         class="dusk-tab-label"
       >
         User Settings
       </span>
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -78,7 +88,8 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
         />
       </svg>
       
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -87,6 +98,8 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -97,14 +110,15 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-tab-label"
       >
         User Profile
       </span>
-      
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -113,12 +127,15 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
       <span
         class="dusk-tab-label"
       >
         Notifications
       </span>
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -129,7 +146,8 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
         />
       </svg>
       
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -138,6 +156,8 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -148,14 +168,15 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-tab-label"
       >
         Direct Messaging
       </span>
-      
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -164,12 +185,15 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
       <span
         class="dusk-tab-label"
       >
         Task Manager
       </span>
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -180,7 +204,8 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
         />
       </svg>
       
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -189,6 +214,8 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -199,14 +226,15 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-tab-label"
       >
         Event Calendar
       </span>
-      
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -215,12 +243,15 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
       <span
         class="dusk-tab-label"
       >
         Analytics
       </span>
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -231,7 +262,8 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
         />
       </svg>
       
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -240,6 +272,8 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -250,14 +284,15 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-tab-label"
       >
         Team Management
       </span>
-      
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -266,12 +301,15 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
       <span
         class="dusk-tab-label"
       >
         Help
       </span>
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -282,16 +320,19 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
         />
       </svg>
       
-       
+      <!---->
+      <!---->
     </li>
+    
   </ul>
    
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button dusk-tab-scroll-button"
-    hidden="false"
     tabindex="-1"
     type="button"
   >
+    <!---->
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-button__icon"
       role="graphics-symbol"
@@ -302,9 +343,12 @@ exports[`Tabs > should be able to render tabs with icon and text 1`] = `
       />
     </svg>
     
+    <!---->
      
-    
+    <!---->
+    <!---->
   </button>
+  <!---->
 </div>
 `;
 
@@ -315,10 +359,11 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button dusk-tab-scroll-button"
     disabled=""
-    hidden="false"
     tabindex="-1"
     type="button"
   >
+    <!---->
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-button__icon"
       role="graphics-symbol"
@@ -329,9 +374,12 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       />
     </svg>
     
+    <!---->
      
-    
+    <!---->
+    <!---->
   </button>
+  <!---->
    
   <ul
     class="dusk-tabs-list"
@@ -344,6 +392,8 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -354,9 +404,10 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
         />
       </svg>
       
+      <!---->
        
-      
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="true"
@@ -365,7 +416,10 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -376,7 +430,8 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
         />
       </svg>
       
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -385,6 +440,8 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -395,9 +452,10 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
         />
       </svg>
       
+      <!---->
        
-      
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -406,7 +464,10 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -417,7 +478,8 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
         />
       </svg>
       
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -426,6 +488,8 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -436,9 +500,10 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
         />
       </svg>
       
+      <!---->
        
-      
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -447,7 +512,10 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -458,7 +526,8 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
         />
       </svg>
       
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -467,6 +536,8 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -477,9 +548,10 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
         />
       </svg>
       
+      <!---->
        
-      
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -488,7 +560,10 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -499,7 +574,8 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
         />
       </svg>
       
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -508,6 +584,8 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -518,9 +596,10 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
         />
       </svg>
       
+      <!---->
        
-      
-       
+      <!---->
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -529,7 +608,10 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       role="tab"
       tabindex="0"
     >
+      <!---->
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         role="graphics-symbol"
@@ -540,16 +622,19 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
         />
       </svg>
       
-       
+      <!---->
+      <!---->
     </li>
+    
   </ul>
    
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button dusk-tab-scroll-button"
-    hidden="false"
     tabindex="-1"
     type="button"
   >
+    <!---->
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-button__icon"
       role="graphics-symbol"
@@ -560,9 +645,12 @@ exports[`Tabs > should be able to render tabs with icons only 1`] = `
       />
     </svg>
     
+    <!---->
      
-    
+    <!---->
+    <!---->
   </button>
+  <!---->
 </div>
 `;
 
@@ -574,10 +662,11 @@ exports[`Tabs > should pass additional class names and attributes to the root el
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button dusk-tab-scroll-button"
     disabled=""
-    hidden="false"
     tabindex="-1"
     type="button"
   >
+    <!---->
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-button__icon"
       role="graphics-symbol"
@@ -588,9 +677,12 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       />
     </svg>
     
+    <!---->
      
-    
+    <!---->
+    <!---->
   </button>
+  <!---->
    
   <ul
     class="dusk-tabs-list"
@@ -608,7 +700,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       >
         Dashboard
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="true"
@@ -622,7 +714,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       >
         User Settings
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -636,7 +728,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       >
         User Profile
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -650,7 +742,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       >
         Notifications
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -664,7 +756,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       >
         Direct Messaging
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -678,7 +770,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       >
         Task Manager
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -692,7 +784,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       >
         Event Calendar
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -706,7 +798,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       >
         Analytics
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -720,7 +812,7 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       >
         Team Management
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -734,16 +826,18 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       >
         Help
       </span>
-       
+      <!---->
     </li>
+    
   </ul>
    
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button dusk-tab-scroll-button"
-    hidden="false"
     tabindex="-1"
     type="button"
   >
+    <!---->
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-button__icon"
       role="graphics-symbol"
@@ -754,9 +848,12 @@ exports[`Tabs > should pass additional class names and attributes to the root el
       />
     </svg>
     
+    <!---->
      
-    
+    <!---->
+    <!---->
   </button>
+  <!---->
 </div>
 `;
 
@@ -767,10 +864,11 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button dusk-tab-scroll-button"
     disabled=""
-    hidden="false"
     tabindex="-1"
     type="button"
   >
+    <!---->
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-button__icon"
       role="graphics-symbol"
@@ -781,9 +879,12 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       />
     </svg>
     
+    <!---->
      
-    
+    <!---->
+    <!---->
   </button>
+  <!---->
    
   <ul
     class="dusk-tabs-list"
@@ -801,7 +902,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       >
         Dashboard
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -815,7 +916,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       >
         User Settings
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -829,7 +930,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       >
         User Profile
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -843,7 +944,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       >
         Notifications
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -857,7 +958,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       >
         Direct Messaging
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -871,7 +972,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       >
         Task Manager
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -885,7 +986,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       >
         Event Calendar
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -899,7 +1000,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       >
         Analytics
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -913,7 +1014,7 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       >
         Team Management
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -927,16 +1028,18 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       >
         Help
       </span>
-       
+      <!---->
     </li>
+    
   </ul>
    
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button dusk-tab-scroll-button"
-    hidden="false"
     tabindex="-1"
     type="button"
   >
+    <!---->
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-button__icon"
       role="graphics-symbol"
@@ -947,9 +1050,12 @@ exports[`Tabs > should render a "Tabs" component and reset its scroll status if 
       />
     </svg>
     
+    <!---->
      
-    
+    <!---->
+    <!---->
   </button>
+  <!---->
 </div>
 `;
 
@@ -960,10 +1066,11 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button dusk-tab-scroll-button"
     disabled=""
-    hidden="false"
     tabindex="-1"
     type="button"
   >
+    <!---->
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-button__icon"
       role="graphics-symbol"
@@ -974,9 +1081,12 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       />
     </svg>
     
+    <!---->
      
-    
+    <!---->
+    <!---->
   </button>
+  <!---->
    
   <ul
     class="dusk-tabs-list"
@@ -994,7 +1104,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       >
         dashboard
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="true"
@@ -1008,7 +1118,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       >
         user-settings
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -1022,7 +1132,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       >
         user-profile
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -1036,7 +1146,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       >
         notifications
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -1050,7 +1160,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       >
         direct-messaging
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -1064,7 +1174,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       >
         task-manager
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -1078,7 +1188,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       >
         event-calendar
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -1092,7 +1202,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       >
         analytics
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -1106,7 +1216,7 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       >
         team-management
       </span>
-       
+      <!---->
     </li>
     <li
       aria-selected="false"
@@ -1120,16 +1230,18 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       >
         help
       </span>
-       
+      <!---->
     </li>
+    
   </ul>
    
   <button
     class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button dusk-tab-scroll-button"
-    hidden="false"
     tabindex="-1"
     type="button"
   >
+    <!---->
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--default dusk-button__icon"
       role="graphics-symbol"
@@ -1140,8 +1252,11 @@ exports[`Tabs > should use the id as label if the tab hasn't one and is without 
       />
     </svg>
     
+    <!---->
      
-    
+    <!---->
+    <!---->
   </button>
+  <!---->
 </div>
 `;

@@ -40,7 +40,7 @@
     className="gas-control__input"
     maxValue={limit}
     minValue={priceLower}
-    on:input={dispatchGasLimits}
+    on:change={dispatchGasLimits}
     required
   />
 </label>
@@ -52,7 +52,7 @@
     className="gas-control__input"
     maxValue={limitUpper}
     minValue={limitLower}
-    on:input={dispatchGasLimits}
+    on:change={dispatchGasLimits}
     required
   />
 </label>

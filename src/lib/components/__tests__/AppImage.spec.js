@@ -19,7 +19,7 @@ describe("AppImage", () => {
     const { container, getByRole, rerender } = render(AppImage, baseProps);
     const imgA = getByRole("img");
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
     expect(imgA).toHaveAttribute("alt", baseProps.alt);
     expect(imgA).toHaveClass("foo bar");
     expect(imgA).toHaveAttribute("height", baseProps.height);

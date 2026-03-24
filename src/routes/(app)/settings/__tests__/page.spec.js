@@ -74,11 +74,11 @@ describe("Settings", () => {
   it("should render the settings page displaying the status of the network", async () => {
     const { container } = render(Settings, {});
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     await networkStore.disconnect();
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should show the wallet creation block height if it's greater than zero", () => {
@@ -88,7 +88,7 @@ describe("Settings", () => {
     const creationBlockInput = getByDisplayValue("123");
 
     expect(creationBlockInput).toBeInTheDocument();
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     settingsStore.reset();
   });
@@ -220,7 +220,7 @@ describe("Settings", () => {
 
       expect(settingsResetSpy).not.toHaveBeenCalled();
       expect(logoutSpy).not.toHaveBeenCalled();
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
   });
 });

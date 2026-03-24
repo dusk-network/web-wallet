@@ -4,9 +4,12 @@ exports[`OperationResult > should accept a custom message for the failure state 
 <div
   class="dusk-suspense dusk-suspense--large-gap operation-result"
 >
+  <!---->
+  <!---->
   <div
     class="dusk-error-alert dusk-error-alert--large-gap dusk-suspense__error"
   >
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--large dusk-error-alert__icon"
       role="graphics-symbol"
@@ -17,7 +20,9 @@ exports[`OperationResult > should accept a custom message for the failure state 
       />
     </svg>
     
+    <!---->
      
+    <!---->
     <details
       class="dusk-error-details dusk-error-details__details dusk-error-alert__error-details"
     >
@@ -30,14 +35,15 @@ exports[`OperationResult > should accept a custom message for the failure state 
       <pre
         class="dusk-error-details__error"
       >
-        			
-        some error
         
+			some error
 		
       </pre>
     </details>
     
+    <!---->
   </div>
+  <!---->
    
   <a
     aria-disabled="false"
@@ -45,14 +51,20 @@ exports[`OperationResult > should accept a custom message for the failure state 
     href="/some-base-path/dashboard"
     slot="error-extra-content"
   >
+    <!---->
     <span
       class="dusk-anchor-button__text"
     >
       HOME
     </span>
     
+    <!---->
   </a>
+  <!---->
+  <!---->
    
+  <!---->
+  <!---->
 </div>
 `;
 
@@ -60,6 +72,8 @@ exports[`OperationResult > should accept a custom message for the pending state 
 <div
   class="dusk-suspense dusk-suspense--large-gap operation-result"
 >
+  <!---->
+  <!---->
   <svg
     class="dusk-throbber dusk-suspense__throbber"
     height="64px"
@@ -81,12 +95,15 @@ exports[`OperationResult > should accept a custom message for the pending state 
       />
     </g>
   </svg>
+  <!---->
    
   <span
     class="dusk-suspense__pending-message"
   >
     Transaction pending
   </span>
+  
+  <!---->
 </div>
 `;
 
@@ -94,6 +111,9 @@ exports[`OperationResult > should accept a custom message for the successful sta
 <div
   class="dusk-suspense dusk-suspense--large-gap operation-result"
 >
+  <!---->
+  <!---->
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--large"
     role="graphics-symbol"
@@ -104,24 +124,31 @@ exports[`OperationResult > should accept a custom message for the successful sta
     />
   </svg>
   
+  <!---->
    
   <b>
     Transaction created
   </b>
    
+  <!---->
    
   <a
     aria-disabled="false"
     class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default"
     href="/some-base-path/dashboard"
   >
+    <!---->
     <span
       class="dusk-anchor-button__text"
     >
       HOME
     </span>
     
+    <!---->
   </a>
+  <!---->
+  
+  <!---->
 </div>
 `;
 
@@ -129,6 +156,8 @@ exports[`OperationResult > should be able to render the \`OperationResult\` comp
 <div
   class="dusk-suspense dusk-suspense--large-gap operation-result"
 >
+  <!---->
+  <!---->
   <svg
     class="dusk-throbber dusk-suspense__throbber"
     height="64px"
@@ -150,12 +179,15 @@ exports[`OperationResult > should be able to render the \`OperationResult\` comp
       />
     </g>
   </svg>
+  <!---->
    
   <span
     class="dusk-suspense__pending-message"
   >
     
   </span>
+  
+  <!---->
 </div>
 `;
 
@@ -163,9 +195,12 @@ exports[`OperationResult > should be able to render the \`OperationResult\` in a
 <div
   class="dusk-suspense dusk-suspense--large-gap operation-result"
 >
+  <!---->
+  <!---->
   <div
     class="dusk-error-alert dusk-error-alert--large-gap dusk-suspense__error"
   >
+    <!---->
     <svg
       class="dusk-icon dusk-icon--size--large dusk-error-alert__icon"
       role="graphics-symbol"
@@ -176,7 +211,9 @@ exports[`OperationResult > should be able to render the \`OperationResult\` in a
       />
     </svg>
     
+    <!---->
      
+    <!---->
     <details
       class="dusk-error-details dusk-error-details__details dusk-error-alert__error-details"
     >
@@ -189,14 +226,15 @@ exports[`OperationResult > should be able to render the \`OperationResult\` in a
       <pre
         class="dusk-error-details__error"
       >
-        			
-        some error
         
+			some error
 		
       </pre>
     </details>
     
+    <!---->
   </div>
+  <!---->
    
   <a
     aria-disabled="false"
@@ -204,14 +242,20 @@ exports[`OperationResult > should be able to render the \`OperationResult\` in a
     href="/some-base-path/dashboard"
     slot="error-extra-content"
   >
+    <!---->
     <span
       class="dusk-anchor-button__text"
     >
       HOME
     </span>
     
+    <!---->
   </a>
+  <!---->
+  <!---->
    
+  <!---->
+  <!---->
 </div>
 `;
 
@@ -219,6 +263,9 @@ exports[`OperationResult > should be able to render the \`OperationResult\` in a
 <div
   class="dusk-suspense dusk-suspense--large-gap operation-result"
 >
+  <!---->
+  <!---->
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--large"
     role="graphics-symbol"
@@ -229,23 +276,30 @@ exports[`OperationResult > should be able to render the \`OperationResult\` in a
     />
   </svg>
   
+  <!---->
    
   <b>
     Operation completed
   </b>
    
+  <!---->
    
   <a
     aria-disabled="false"
     class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default"
     href="/some-base-path/dashboard"
   >
+    <!---->
     <span
       class="dusk-anchor-button__text"
     >
       HOME
     </span>
     
+    <!---->
   </a>
+  <!---->
+  
+  <!---->
 </div>
 `;

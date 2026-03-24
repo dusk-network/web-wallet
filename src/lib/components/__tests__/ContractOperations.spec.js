@@ -48,7 +48,7 @@ describe("ContractOperations", () => {
   it("should render the `ContractOperations` component", () => {
     const { container } = render(ContractOperations, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should be able to render the component without items", () => {
@@ -58,7 +58,7 @@ describe("ContractOperations", () => {
     };
     const { container } = render(ContractOperations, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should use a default icon if the operation is not on the known list", () => {
@@ -75,15 +75,16 @@ describe("ContractOperations", () => {
     };
     const { container } = render(ContractOperations, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it('should dispatch a "operationChange" event when a operation button is clicked', () => {
     const handleOperationChange = vi.fn();
-    const { component, getByRole } = render(ContractOperations, baseOptions);
+    const { getByRole } = render(ContractOperations, {
+      ...baseOptions,
+      events: { operationChange: handleOperationChange },
+    });
     const btnReceive = getByRole("button", { name: "Receive" });
-
-    component.$on("operationChange", handleOperationChange);
 
     fireEvent.click(btnReceive);
 

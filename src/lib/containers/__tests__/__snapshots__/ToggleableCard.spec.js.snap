@@ -4,6 +4,7 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a heading 1
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -27,12 +28,19 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a heading 1
           role="switch"
           tabindex="0"
         />
+        <!---->
          
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
+  <!---->
    
+  <!---->
+  
 </div>
 `;
 
@@ -40,6 +48,7 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a heading a
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -63,7 +72,9 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a heading a
           role="switch"
           tabindex="0"
         />
+        <!---->
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -74,11 +85,17 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a heading a
           />
         </svg>
         
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
+  <!---->
    
+  <!---->
+  
 </div>
 `;
 
@@ -86,6 +103,7 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a toggle 1`
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -109,7 +127,9 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a toggle 1`
           role="switch"
           tabindex="0"
         />
+        <!---->
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -120,15 +140,25 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a toggle 1`
           />
         </svg>
         
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
   <div
     class="dusk-card__body-container"
   >
+    <!---->
+    <!---->
     
+    
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;

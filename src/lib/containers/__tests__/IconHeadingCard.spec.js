@@ -12,7 +12,7 @@ describe("IconHeadingCard", () => {
       },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("renders the IconHeadingCard component with a heading and an icon", () => {
@@ -23,7 +23,7 @@ describe("IconHeadingCard", () => {
       },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("renders the IconHeadingCard component with a heading and two icons", () => {
@@ -37,6 +37,6 @@ describe("IconHeadingCard", () => {
       },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

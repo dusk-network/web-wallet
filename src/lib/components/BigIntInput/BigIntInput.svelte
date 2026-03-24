@@ -1,7 +1,7 @@
 <svelte:options immutable />
 
 <script>
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onMount, tick } from "svelte";
   import { Textbox } from "$lib/dusk/components";
   import { makeClassName } from "$lib/dusk/string";
   import "./BigIntInput.css";
@@ -32,8 +32,22 @@
     }
   };
 
-  function validateInput() {
+  /**
+   * We must await Svelte's microtask queue before parsing.
+   * The `bind:value` updates `internalValue` with the raw,
+   * potentially invalid DOM string.
+   * Awaiting a tick forces Svelte to flush this dirty state
+   * to the DOM first.
+   * If parsing fails, the catch block restores the previous
+   * valid string, which forces Svelte to register a legitimate
+   * state mutation and wipe the invalid characters from the UI.
+   *
+   * The situation is not ideal, but it's a quick fix that makes
+   * the component work as its author intended at least.
+   */
+  async function validateInput() {
     try {
+      await tick();
       value = BigInt(internalValue);
       checkValidity();
       dispatch("change", value);
@@ -62,6 +76,5 @@
   type="text"
   bind:value={internalValue}
   on:input={validateInput}
-  on:input
   pattern="\d+"
 />

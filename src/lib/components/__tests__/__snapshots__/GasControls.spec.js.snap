@@ -3,14 +3,15 @@
 exports[`GasControls > should render the \`GasControls\` component 1`] = `
 <body>
   <label
-    class="gas-control svelte-1p4ekyk"
+    class="gas-control svelte-p462n7"
   >
     <span
-      class="gas-control__label svelte-1p4ekyk"
+      class="gas-control__label svelte-p462n7"
     >
       Price (lux):
     </span>
      
+    <!---->
     <input
       class="dusk-textbox dusk-textbox-text gas-control__input"
       inputmode="numeric"
@@ -19,17 +20,19 @@ exports[`GasControls > should render the \`GasControls\` component 1`] = `
       type="text"
     />
     
+    <!---->
   </label>
    
   <label
-    class="gas-control svelte-1p4ekyk"
+    class="gas-control svelte-p462n7"
   >
     <span
-      class="gas-control__label svelte-1p4ekyk"
+      class="gas-control__label svelte-p462n7"
     >
       Gas Limit (unit):
     </span>
      
+    <!---->
     <input
       class="dusk-textbox dusk-textbox-text gas-control__input"
       inputmode="numeric"
@@ -38,6 +41,8 @@ exports[`GasControls > should render the \`GasControls\` component 1`] = `
       type="text"
     />
     
+    <!---->
   </label>
+  
 </body>
 `;

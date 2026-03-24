@@ -4,6 +4,8 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
+  <!---->
    
   <div
     class="dusk-card__body-container"
@@ -12,53 +14,57 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
       aria-label="Transaction and operations navigation"
       class="dashboard-nav"
     >
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Something
         </span>
          
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Send
         </span>
          
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Receive
         </span>
          
         <span
-          class="dashboard-nav__item-icons svelte-1opr8zc"
+          class="dashboard-nav__item-icons svelte-dk858j"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -69,26 +75,29 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
             />
           </svg>
           
+          
         </span>
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Stake
         </span>
          
         <span
-          class="dashboard-nav__item-icons svelte-1opr8zc"
+          class="dashboard-nav__item-icons svelte-dk858j"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -99,7 +108,7 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -110,7 +119,7 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -121,12 +130,20 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
             />
           </svg>
           
+          
         </span>
-         
+        <!---->
+        
+        <!---->
       </a>
+      
     </nav>
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;
 
@@ -134,6 +151,8 @@ exports[`DashboardNav > should display icons if the item's icon array is present
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
+  <!---->
    
   <div
     class="dusk-card__body-container"
@@ -142,53 +161,57 @@ exports[`DashboardNav > should display icons if the item's icon array is present
       aria-label="Transaction and operations navigation"
       class="dashboard-nav"
     >
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Something
         </span>
          
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Send
         </span>
          
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Receive
         </span>
          
         <span
-          class="dashboard-nav__item-icons svelte-1opr8zc"
+          class="dashboard-nav__item-icons svelte-dk858j"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -199,26 +222,29 @@ exports[`DashboardNav > should display icons if the item's icon array is present
             />
           </svg>
           
+          
         </span>
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Stake
         </span>
          
         <span
-          class="dashboard-nav__item-icons svelte-1opr8zc"
+          class="dashboard-nav__item-icons svelte-dk858j"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -229,7 +255,7 @@ exports[`DashboardNav > should display icons if the item's icon array is present
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -240,7 +266,7 @@ exports[`DashboardNav > should display icons if the item's icon array is present
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -251,12 +277,20 @@ exports[`DashboardNav > should display icons if the item's icon array is present
             />
           </svg>
           
+          
         </span>
-         
+        <!---->
+        
+        <!---->
       </a>
+      
     </nav>
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;
 
@@ -264,6 +298,8 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
+  <!---->
    
   <div
     class="dusk-card__body-container"
@@ -272,53 +308,57 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
       aria-label="Transaction and operations navigation"
       class="dashboard-nav"
     >
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Something
         </span>
          
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Send
         </span>
          
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Receive
         </span>
          
         <span
-          class="dashboard-nav__item-icons svelte-1opr8zc"
+          class="dashboard-nav__item-icons svelte-dk858j"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -329,26 +369,29 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
             />
           </svg>
           
+          
         </span>
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Stake
         </span>
          
         <span
-          class="dashboard-nav__item-icons svelte-1opr8zc"
+          class="dashboard-nav__item-icons svelte-dk858j"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -359,7 +402,7 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -370,7 +413,7 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -381,12 +424,20 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
             />
           </svg>
           
+          
         </span>
-         
+        <!---->
+        
+        <!---->
       </a>
+      
     </nav>
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;
 
@@ -394,6 +445,8 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
+  <!---->
    
   <div
     class="dusk-card__body-container"
@@ -402,53 +455,57 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
       aria-label="Transaction and operations navigation"
       class="dashboard-nav"
     >
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Something
         </span>
          
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Send
         </span>
          
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Receive
         </span>
          
         <span
-          class="dashboard-nav__item-icons svelte-1opr8zc"
+          class="dashboard-nav__item-icons svelte-dk858j"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -459,26 +516,29 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
             />
           </svg>
           
+          
         </span>
-         
+        <!---->
+        
+        <!---->
       </a>
-      
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
         role="menuitem"
         tabindex="0"
       >
+        <!---->
         <span
-          class="dashboard-nav__item-label svelte-1opr8zc"
+          class="dashboard-nav__item-label svelte-dk858j"
         >
           Stake
         </span>
          
         <span
-          class="dashboard-nav__item-icons svelte-1opr8zc"
+          class="dashboard-nav__item-icons svelte-dk858j"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -489,7 +549,7 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -500,7 +560,7 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -511,11 +571,19 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
             />
           </svg>
           
+          
         </span>
-         
+        <!---->
+        
+        <!---->
       </a>
+      
     </nav>
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;

@@ -77,5 +77,21 @@ export default defineConfig([
       ],
     },
   },
+
+  /**
+   * Because of how svelte export types, currently
+   * `eslint-plugin-import`'s sees duplicates imports
+   * (`import/no-duplicates` rule)
+   */
+  {
+    files: [
+      "src/lib/dusk/components/ProgressBar/ProgressBar.svelte",
+      "src/lib/dusk/components/Toast/Toast.svelte",
+      "src/lib/dusk/components/__tests__/Toast.spec.js",
+    ],
+    rules: {
+      "import/no-duplicates": 0,
+    },
+  },
   globalIgnores([".svelte-kit/", "build/", "coverage/"]),
 ]);

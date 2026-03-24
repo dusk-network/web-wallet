@@ -2,17 +2,21 @@
 
 exports[`ContractOperations > should be able to render the component without items 1`] = `
 <menu
-  class="contract-operations svelte-1iyylnh"
+  class="contract-operations svelte-17trzih"
 >
+  <!---->
    
   <li
-    class="contract-operations__operation svelte-1iyylnh"
+    class="contract-operations__operation svelte-17trzih"
   >
     <a
       aria-disabled="false"
       class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
       href="/some-base-path/dashboard"
     >
+      <!---->
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
         role="graphics-symbol"
@@ -23,30 +27,35 @@ exports[`ContractOperations > should be able to render the component without ite
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-anchor-button__text"
       >
         Back
       </span>
+      <!---->
       
-      
+      <!---->
     </a>
+    <!---->
   </li>
 </menu>
 `;
 
 exports[`ContractOperations > should render the \`ContractOperations\` component 1`] = `
 <menu
-  class="contract-operations svelte-1iyylnh"
+  class="contract-operations svelte-17trzih"
 >
   <li
-    class="contract-operations__operation svelte-1iyylnh"
+    class="contract-operations__operation svelte-17trzih"
   >
     <button
       class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
       type="button"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-button__icon"
         role="graphics-symbol"
@@ -57,22 +66,27 @@ exports[`ContractOperations > should render the \`ContractOperations\` component
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-button__text"
       >
         Send
       </span>
-      
+      <!---->
+      <!---->
     </button>
+    <!---->
   </li>
   <li
-    class="contract-operations__operation svelte-1iyylnh"
+    class="contract-operations__operation svelte-17trzih"
   >
     <button
       class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
       type="button"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-button__icon"
         role="graphics-symbol"
@@ -83,23 +97,28 @@ exports[`ContractOperations > should render the \`ContractOperations\` component
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-button__text"
       >
         Receive
       </span>
-      
+      <!---->
+      <!---->
     </button>
+    <!---->
   </li>
   <li
-    class="contract-operations__operation svelte-1iyylnh"
+    class="contract-operations__operation svelte-17trzih"
   >
     <button
       class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
       disabled=""
       type="button"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-button__icon"
         role="graphics-symbol"
@@ -110,22 +129,27 @@ exports[`ContractOperations > should render the \`ContractOperations\` component
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-button__text"
       >
         stake
       </span>
-      
+      <!---->
+      <!---->
     </button>
+    <!---->
   </li>
   <li
-    class="contract-operations__operation svelte-1iyylnh"
+    class="contract-operations__operation svelte-17trzih"
   >
     <button
       class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
       type="button"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-button__icon"
         role="graphics-symbol"
@@ -136,22 +160,27 @@ exports[`ContractOperations > should render the \`ContractOperations\` component
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-button__text"
       >
         unstake
       </span>
-      
+      <!---->
+      <!---->
     </button>
+    <!---->
   </li>
   <li
-    class="contract-operations__operation svelte-1iyylnh"
+    class="contract-operations__operation svelte-17trzih"
   >
     <button
       class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
       type="button"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-button__icon"
         role="graphics-symbol"
@@ -162,24 +191,31 @@ exports[`ContractOperations > should render the \`ContractOperations\` component
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-button__text"
       >
         claim rewards
       </span>
-      
+      <!---->
+      <!---->
     </button>
+    <!---->
   </li>
+  <!---->
    
   <li
-    class="contract-operations__operation svelte-1iyylnh"
+    class="contract-operations__operation svelte-17trzih"
   >
     <a
       aria-disabled="false"
       class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
       href="/some-base-path/dashboard"
     >
+      <!---->
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
         role="graphics-symbol"
@@ -190,30 +226,35 @@ exports[`ContractOperations > should render the \`ContractOperations\` component
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-anchor-button__text"
       >
         Back
       </span>
+      <!---->
       
-      
+      <!---->
     </a>
+    <!---->
   </li>
 </menu>
 `;
 
 exports[`ContractOperations > should use a default icon if the operation is not on the known list 1`] = `
 <menu
-  class="contract-operations svelte-1iyylnh"
+  class="contract-operations svelte-17trzih"
 >
   <li
-    class="contract-operations__operation svelte-1iyylnh"
+    class="contract-operations__operation svelte-17trzih"
   >
     <button
       class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
       type="button"
     >
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-button__icon"
         role="graphics-symbol"
@@ -224,24 +265,31 @@ exports[`ContractOperations > should use a default icon if the operation is not 
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-button__text"
       >
         Foo operation
       </span>
-      
+      <!---->
+      <!---->
     </button>
+    <!---->
   </li>
+  <!---->
    
   <li
-    class="contract-operations__operation svelte-1iyylnh"
+    class="contract-operations__operation svelte-17trzih"
   >
     <a
       aria-disabled="false"
       class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled contract-operations__operation-button"
       href="/some-base-path/dashboard"
     >
+      <!---->
+      <!---->
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
         role="graphics-symbol"
@@ -252,15 +300,18 @@ exports[`ContractOperations > should use a default icon if the operation is not 
         />
       </svg>
       
+      <!---->
        
       <span
         class="dusk-anchor-button__text"
       >
         Back
       </span>
+      <!---->
       
-      
+      <!---->
     </a>
+    <!---->
   </li>
 </menu>
 `;

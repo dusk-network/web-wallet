@@ -19,6 +19,6 @@ describe("Forced logout page", () => {
 
     expect(window.alert).toHaveBeenCalledTimes(1);
     expect(window.alert).toHaveBeenCalledWith(expect.any(String));
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

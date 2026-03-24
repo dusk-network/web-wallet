@@ -5,7 +5,7 @@ exports[`QrCode > should render the QrCode component and update it when any of t
   alt="Key QR code"
   class="dusk-qr-code"
   height="200"
-  src="data:image/png;base64,00"
+  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
   width="200"
 />
 `;

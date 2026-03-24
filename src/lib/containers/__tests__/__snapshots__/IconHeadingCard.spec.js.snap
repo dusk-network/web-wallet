@@ -4,6 +4,7 @@ exports[`IconHeadingCard > renders the IconHeadingCard component with a heading 
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -20,14 +21,24 @@ exports[`IconHeadingCard > renders the IconHeadingCard component with a heading 
           My Card
         </h3>
          
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
   <div
     class="dusk-card__body-container"
-  />
+  >
+    <!---->
+    
+    <!---->
+  </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;
 
@@ -35,6 +46,7 @@ exports[`IconHeadingCard > renders the IconHeadingCard component with a heading 
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -54,7 +66,7 @@ exports[`IconHeadingCard > renders the IconHeadingCard component with a heading 
         <div
           class="dusk-card__heading-icons"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -65,15 +77,26 @@ exports[`IconHeadingCard > renders the IconHeadingCard component with a heading 
             />
           </svg>
           
+          
         </div>
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
   <div
     class="dusk-card__body-container"
-  />
+  >
+    <!---->
+    
+    <!---->
+  </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;
 
@@ -81,6 +104,7 @@ exports[`IconHeadingCard > renders the IconHeadingCard component with a heading 
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -100,7 +124,7 @@ exports[`IconHeadingCard > renders the IconHeadingCard component with a heading 
         <div
           class="dusk-card__heading-icons"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -111,7 +135,7 @@ exports[`IconHeadingCard > renders the IconHeadingCard component with a heading 
             />
           </svg>
           
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -122,14 +146,25 @@ exports[`IconHeadingCard > renders the IconHeadingCard component with a heading 
             />
           </svg>
           
+          
         </div>
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
   <div
     class="dusk-card__body-container"
-  />
+  >
+    <!---->
+    
+    <!---->
+  </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;

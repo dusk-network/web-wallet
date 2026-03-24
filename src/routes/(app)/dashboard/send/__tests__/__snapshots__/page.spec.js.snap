@@ -5,6 +5,7 @@ exports[`Send page > should render the send page 1`] = `
   class="dusk-card dusk-card--gap-large"
   reverse="true"
 >
+  <!---->
   <div
     class="dusk-card__header-container"
   >
@@ -24,7 +25,7 @@ exports[`Send page > should render the send page 1`] = `
         <div
           class="dusk-card__heading-icons"
         >
-          
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -35,33 +36,40 @@ exports[`Send page > should render the send page 1`] = `
             />
           </svg>
           
+          
         </div>
+        <!---->
       </div>
     </header>
+    <!---->
   </div>
+  <!---->
    
   <div
     class="dusk-card__body-container"
   >
+    <!---->
+    <!---->
     <div
-      class="contract-statuses svelte-1up3579"
+      class="contract-statuses svelte-193vool"
     >
       <dl
-        class="contract-statuses__list svelte-1up3579"
+        class="contract-statuses__list svelte-193vool"
       >
         <dt
-          class="contract-statuses__label svelte-1up3579"
+          class="contract-statuses__label svelte-193vool"
         >
           Spendable
-           
         </dt>
+         
         <dd
-          class="contract-statuses__value svelte-1up3579"
+          class="contract-statuses__value svelte-193vool"
         >
           <span>
             1,172.500000000
           </span>
            
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default contract-statuses__icon"
             data-tooltip-id="main-tooltip"
@@ -74,14 +82,17 @@ exports[`Send page > should render the send page 1`] = `
             />
           </svg>
           
-           
+          <!---->
         </dd>
+        
       </dl>
        
+      <!---->
     </div>
+    <!---->
      
     <div
-      class="operation svelte-adnu6a"
+      class="operation svelte-x7e9dl"
     >
       <div
         class="dusk-wizard"
@@ -89,16 +100,19 @@ exports[`Send page > should render the send page 1`] = `
         <div
           slot="stepper"
         >
+          <!---->
           <div
             class="dusk-stepper dusk-stepper--variant--primary"
             style="--columns: 4; --progress-width: 0%;"
           >
+            <!---->
             <span
               aria-current="step"
               aria-labelledby="step-some-generated-id"
               class="dusk-stepper__step dusk-stepper__step--processed"
             >
               1
+              <!---->
             </span>
              
             <span
@@ -106,13 +120,13 @@ exports[`Send page > should render the send page 1`] = `
               id="step-some-generated-id"
             >
               Address
-               
             </span>
             <span
               aria-labelledby="step-some-generated-id"
               class="dusk-stepper__step"
             >
               2
+              <!---->
             </span>
              
             <span
@@ -120,13 +134,13 @@ exports[`Send page > should render the send page 1`] = `
               id="step-some-generated-id"
             >
               Amount
-               
             </span>
             <span
               aria-labelledby="step-some-generated-id"
               class="dusk-stepper__step"
             >
               3
+              <!---->
             </span>
              
             <span
@@ -134,13 +148,13 @@ exports[`Send page > should render the send page 1`] = `
               id="step-some-generated-id"
             >
               Overview
-               
             </span>
             <span
               aria-labelledby="step-some-generated-id"
               class="dusk-stepper__step"
             >
               4
+              <!---->
             </span>
              
             <span
@@ -148,20 +162,27 @@ exports[`Send page > should render the send page 1`] = `
               id="step-some-generated-id"
             >
               Done
-               
             </span>
             
+            <!---->
           </div>
           
+          <!---->
         </div>
+        <!---->
          
+        <!---->
+        <!---->
+        <!---->
+        <!---->
          
+        <!---->
          
         <div
-          class="operation__send svelte-adnu6a"
+          class="operation__send svelte-x7e9dl"
         >
           <div
-            class="operation__address-wrapper svelte-adnu6a"
+            class="operation__address-wrapper svelte-x7e9dl"
           >
             <p>
               Address
@@ -177,22 +198,28 @@ exports[`Send page > should render the send page 1`] = `
               >
                 SCAN QR
               </span>
+              <!---->
             </button>
+            <!---->
           </div>
            
+          <!---->
           <textarea
             class="dusk-textbox dusk-textbox-multiline operation__send-address"
             required=""
           />
           
+          <!---->
            
+          <!---->
            
+          <!---->
            
           <div
-            class="scan svelte-1uf7z44"
+            class="scan svelte-spu5d1"
           >
             <video
-              class="svelte-1uf7z44"
+              class="svelte-spu5d1"
             >
               <track
                 kind="captions"
@@ -200,8 +227,9 @@ exports[`Send page > should render the send page 1`] = `
             </video>
              
             <div
-              class="scan__highlight svelte-1uf7z44"
+              class="scan__highlight svelte-spu5d1"
             />
+            <!---->
              
             <button
               class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
@@ -212,20 +240,31 @@ exports[`Send page > should render the send page 1`] = `
               >
                 CLOSE
               </span>
+              <!---->
             </button>
+            <!---->
           </div>
+          <!---->
            
+          <!---->
            
+          <!---->
         </div>
+        <!---->
          
+        <!---->
         <div
           class="dusk-wizard__step-navigation"
         >
+          <!---->
           <a
             aria-disabled="false"
             class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
             href="/some-base-path/dashboard"
           >
+            <!---->
+            <!---->
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
               role="graphics-symbol"
@@ -236,28 +275,34 @@ exports[`Send page > should render the send page 1`] = `
               />
             </svg>
             
+            <!---->
              
             <span
               class="dusk-anchor-button__text"
             >
               Back
             </span>
+            <!---->
             
-            
+            <!---->
           </a>
           
+          <!---->
            
           <button
             class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
             disabled=""
             type="button"
           >
+            <!---->
             <span
               class="dusk-button__text"
             >
               Next
             </span>
+            <!---->
              
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default dusk-button__icon"
               role="graphics-symbol"
@@ -268,19 +313,38 @@ exports[`Send page > should render the send page 1`] = `
               />
             </svg>
             
+            <!---->
+            <!---->
           </button>
+          <!---->
         </div>
         
+        <!---->
         
+        <!---->
          
+        <!---->
         
+        <!---->
          
+        <!---->
         
+        <!---->
          
+        <!---->
         
+        <!---->
+        <!---->
       </div>
+      <!---->
     </div>
+    <!---->
+    
+    <!---->
   </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;

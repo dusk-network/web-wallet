@@ -9,7 +9,7 @@ describe("Words", () => {
   it('should render the "Words" component with underscores for empty string', () => {
     const { container } = render(Words, { props: { words: ["", "", ""] } });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it('should render the "Words" component with the passed words', () => {
@@ -17,6 +17,6 @@ describe("Words", () => {
       props: { words: ["snow", "winter", "christmas"] },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

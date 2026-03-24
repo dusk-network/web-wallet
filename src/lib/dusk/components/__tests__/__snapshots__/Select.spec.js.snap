@@ -4,48 +4,55 @@ exports[`Select > should accept a grouped object as \`options\` and create optio
 <select
   class="dusk-select"
 >
+  <!---->
+  <!---->
   <optgroup
     label="Group one"
   >
+    <!---->
+    <!---->
     <option
       value="1"
     >
       one
-       
     </option>
     <option
       value="2"
     >
       two
-       
     </option>
     <option
       disabled=""
       value="3"
     >
       three
-       
     </option>
     
+    <!---->
+    <!---->
   </optgroup>
   <optgroup
     label="Group two"
   >
+    <!---->
+    <!---->
     <option
       value="4"
     >
       four
-       
     </option>
     <option
       value="5"
     >
       five
-       
     </option>
     
+    <!---->
+    <!---->
   </optgroup>
   
+  <!---->
+  <!---->
 </select>
 `;
 
@@ -53,32 +60,32 @@ exports[`Select > should accept an array of objects as options 1`] = `
 <select
   class="dusk-select"
 >
+  <!---->
+  <!---->
   <option
     value="1"
   >
     one
-     
   </option>
   <option
     value="2"
   >
     two
-     
   </option>
   <option
     disabled=""
     value="3"
   >
     three
-     
   </option>
   <option
     value="4"
   >
     four
-     
   </option>
   
+  <!---->
+  <!---->
 </select>
 `;
 
@@ -86,59 +93,64 @@ exports[`Select > should accept an array of string as values of a grouped object
 <select
   class="dusk-select"
 >
+  <!---->
+  <!---->
   <optgroup
     label="Group one"
   >
+    <!---->
+    <!---->
     <option
       value="one"
     >
       one
-       
     </option>
     <option
       value="two"
     >
       two
-       
     </option>
     <option
       value="three"
     >
       three
-       
     </option>
     <option
       value="four"
     >
       four
-       
     </option>
     
+    <!---->
+    <!---->
   </optgroup>
   <optgroup
     label="Group two"
   >
+    <!---->
+    <!---->
     <option
       value="five"
     >
       five
-       
     </option>
     <option
       value="six"
     >
       six
-       
     </option>
     <option
       value="seven"
     >
       seven
-       
     </option>
     
+    <!---->
+    <!---->
   </optgroup>
   
+  <!---->
+  <!---->
 </select>
 `;
 
@@ -146,31 +158,31 @@ exports[`Select > should accept an array of strings as \`options\` and use each 
 <select
   class="dusk-select"
 >
+  <!---->
+  <!---->
   <option
     value="one"
   >
     one
-     
   </option>
   <option
     value="two"
   >
     two
-     
   </option>
   <option
     value="three"
   >
     three
-     
   </option>
   <option
     value="four"
   >
     four
-     
   </option>
   
+  <!---->
+  <!---->
 </select>
 `;
 
@@ -178,38 +190,37 @@ exports[`Select > should accept an empty string as label and use it instead of f
 <select
   class="dusk-select"
 >
+  <!---->
+  <!---->
   <option
     value="1"
   >
     one
-     
   </option>
   <option
     value="2"
   >
     two
-     
   </option>
   <option
     disabled=""
     value="3"
   >
     three
-     
   </option>
   <option
     value="4"
   >
     four
-     
   </option>
   <option
     value="5"
   >
     
-     
   </option>
   
+  <!---->
+  <!---->
 </select>
 `;
 
@@ -218,31 +229,31 @@ exports[`Select > should pass additional class names and attributes to the rende
   class="dusk-select foo bar"
   id="some-id"
 >
+  <!---->
+  <!---->
   <option
     value="one"
   >
     one
-     
   </option>
   <option
     value="two"
   >
     two
-     
   </option>
   <option
     value="three"
   >
     three
-     
   </option>
   <option
     value="four"
   >
     four
-     
   </option>
   
+  <!---->
+  <!---->
 </select>
 `;
 
@@ -250,31 +261,31 @@ exports[`Select > should render the Select component 1`] = `
 <select
   class="dusk-select"
 >
+  <!---->
+  <!---->
   <option
     value="one"
   >
     one
-     
   </option>
   <option
     value="two"
   >
     two
-     
   </option>
   <option
     value="three"
   >
     three
-     
   </option>
   <option
     value="four"
   >
     four
-     
   </option>
   
+  <!---->
+  <!---->
 </select>
 `;
 
@@ -282,37 +293,36 @@ exports[`Select > should use the value as label if an object is missing it 1`] =
 <select
   class="dusk-select"
 >
+  <!---->
+  <!---->
   <option
     value="1"
   >
     one
-     
   </option>
   <option
     value="2"
   >
     two
-     
   </option>
   <option
     disabled=""
     value="3"
   >
     three
-     
   </option>
   <option
     value="4"
   >
     four
-     
   </option>
   <option
     value="5"
   >
     5
-     
   </option>
   
+  <!---->
+  <!---->
 </select>
 `;

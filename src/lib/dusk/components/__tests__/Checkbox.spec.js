@@ -15,7 +15,7 @@ describe("Checkbox", () => {
       props: { ...baseProps, checked: false },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("renders the Checkbox component in a checked state", () => {
@@ -23,7 +23,7 @@ describe("Checkbox", () => {
       props: { ...baseProps, checked: true },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("renders the Checkbox component in a disabled state", () => {
@@ -31,7 +31,7 @@ describe("Checkbox", () => {
       props: { ...baseProps, disabled: true },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("renders the Checkbox component in a disabled, checked state", () => {
@@ -39,7 +39,7 @@ describe("Checkbox", () => {
       props: { ...baseProps, checked: true, disabled: true },
     });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("renders the Checkbox component and can transition to a checked state on click", async () => {

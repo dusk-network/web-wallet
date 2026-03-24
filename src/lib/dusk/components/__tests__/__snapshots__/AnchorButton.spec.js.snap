@@ -7,12 +7,14 @@ exports[`AnchorButton > should add a disabled class if the related property is \
   href="/some-url"
   tabindex="-1"
 >
+  <!---->
   <span
     class="dusk-anchor-button__text"
   >
     some text
   </span>
   
+  <!---->
 </a>
 `;
 
@@ -22,12 +24,16 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon and
   class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default dusk-icon-button--labeled"
   href="/some-url"
 >
+  <!---->
+  <!---->
   <span
     class="dusk-anchor-button__text"
   >
     some text
   </span>
+  <!---->
    
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
     role="graphics-symbol"
@@ -38,7 +44,9 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon and
     />
   </svg>
   
+  <!---->
   
+  <!---->
 </a>
 `;
 
@@ -48,12 +56,16 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon and
   class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default dusk-icon-button--labeled"
   href="/some-url"
 >
+  <!---->
+  <!---->
   <span
     class="dusk-anchor-button__text"
   >
     some text
   </span>
+  <!---->
    
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
     role="graphics-symbol"
@@ -64,7 +76,9 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon and
     />
   </svg>
   
+  <!---->
   
+  <!---->
 </a>
 `;
 
@@ -74,12 +88,16 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon and
   class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default dusk-icon-button--labeled"
   href="/some-url"
 >
+  <!---->
+  <!---->
   <span
     class="dusk-anchor-button__text"
   >
     some text
   </span>
+  <!---->
    
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
     role="graphics-symbol"
@@ -90,7 +108,9 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon and
     />
   </svg>
   
+  <!---->
   
+  <!---->
 </a>
 `;
 
@@ -100,7 +120,11 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon onl
   class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default dusk-icon-button"
   href="/some-url"
 >
+  <!---->
+  <!---->
+  <!---->
    
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
     role="graphics-symbol"
@@ -111,7 +135,9 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon onl
     />
   </svg>
   
+  <!---->
   
+  <!---->
 </a>
 `;
 
@@ -121,7 +147,11 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon onl
   class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default dusk-icon-button"
   href="/some-url"
 >
+  <!---->
+  <!---->
+  <!---->
    
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
     role="graphics-symbol"
@@ -132,7 +162,9 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon onl
     />
   </svg>
   
+  <!---->
   
+  <!---->
 </a>
 `;
 
@@ -142,7 +174,11 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon onl
   class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default dusk-icon-button"
   href="/some-url"
 >
+  <!---->
+  <!---->
+  <!---->
    
+  <!---->
   <svg
     class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
     role="graphics-symbol"
@@ -153,7 +189,9 @@ exports[`AnchorButton > should be able to render a AnchorButton with an icon onl
     />
   </svg>
   
+  <!---->
   
+  <!---->
 </a>
 `;
 
@@ -164,12 +202,14 @@ exports[`AnchorButton > should pass additional class names and attributes to the
   href="/some-url"
   id="some-id"
 >
+  <!---->
   <span
     class="dusk-anchor-button__text"
   >
     some text
   </span>
   
+  <!---->
 </a>
 `;
 
@@ -179,7 +219,9 @@ exports[`AnchorButton > should render a AnchorButton without a text 1`] = `
   class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default"
   href="/some-url"
 >
+  <!---->
   
+  <!---->
 </a>
 `;
 
@@ -189,11 +231,13 @@ exports[`AnchorButton > should render the AnchorButton component 1`] = `
   class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default"
   href="/some-url"
 >
+  <!---->
   <span
     class="dusk-anchor-button__text"
   >
     some text
   </span>
   
+  <!---->
 </a>
 `;

@@ -50,7 +50,7 @@ describe("ExclusiveChoice", () => {
   it("should render the `ExclusiveChoice` component", () => {
     const { container } = render(ExclusiveChoice, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should accept a custom name for the radio elements", () => {
@@ -60,7 +60,7 @@ describe("ExclusiveChoice", () => {
     };
     const { container } = render(ExclusiveChoice, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should accept an array of options object without labels and use the value as labels", () => {
@@ -70,7 +70,7 @@ describe("ExclusiveChoice", () => {
     };
     const { container } = render(ExclusiveChoice, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should accept an array of string as options", () => {
@@ -80,7 +80,7 @@ describe("ExclusiveChoice", () => {
     };
     const { container } = render(ExclusiveChoice, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should pass additional class names and attributes to the rendered element", () => {
@@ -91,17 +91,18 @@ describe("ExclusiveChoice", () => {
     };
     const { container } = render(ExclusiveChoice, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should accept a change event handler", async () => {
     const changeHandler = vi.fn();
-    const { component, container } = render(ExclusiveChoice, baseOptions);
+    const { container } = render(ExclusiveChoice, {
+      ...baseOptions,
+      events: { change: changeHandler },
+    });
     const target = /** @type {HTMLInputElement} */ (
       container.querySelector("input[value='4']")
     );
-
-    component.$on("change", changeHandler);
 
     await fireEvent.click(target);
 

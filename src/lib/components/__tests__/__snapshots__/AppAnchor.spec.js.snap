@@ -6,8 +6,11 @@ exports[`AppAnchor > should render an \`Anchor\` with the base path prepended to
   href="/some-base-path/setup"
   id="some-id"
 >
+  <!---->
   <span>
     some text
   </span>
+  
+  <!---->
 </a>
 `;

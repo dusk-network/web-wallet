@@ -21,6 +21,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -31,6 +32,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -43,14 +45,15 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
         class="settings-group__multi-control-content"
       >
         <label
-          class="gas-control svelte-1p4ekyk"
+          class="gas-control svelte-p462n7"
         >
           <span
-            class="gas-control__label svelte-1p4ekyk"
+            class="gas-control__label svelte-p462n7"
           >
             Price (lux):
           </span>
            
+          <!---->
           <input
             class="dusk-textbox dusk-textbox-text gas-control__input"
             inputmode="numeric"
@@ -59,17 +62,19 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
             type="text"
           />
           
+          <!---->
         </label>
          
         <label
-          class="gas-control svelte-1p4ekyk"
+          class="gas-control svelte-p462n7"
         >
           <span
-            class="gas-control__label svelte-1p4ekyk"
+            class="gas-control__label svelte-p462n7"
           >
             Gas Limit (unit):
           </span>
            
+          <!---->
           <input
             class="dusk-textbox dusk-textbox-text gas-control__input"
             inputmode="numeric"
@@ -78,7 +83,9 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
             type="text"
           />
           
+          <!---->
         </label>
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default"
@@ -89,7 +96,9 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           >
             Reset to defaults
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
     </article>
      
@@ -101,6 +110,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -111,6 +121,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -132,278 +143,238 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           <select
             class="dusk-select settings-group__control settings-group__control--with-label"
           >
+            <!---->
+            <!---->
             <option
               value="AED"
             >
               United Arab Emirates Dirham
-               
             </option>
             <option
               value="ARS"
             >
               Argentine Peso
-               
             </option>
             <option
               value="AUD"
             >
               Australian Dollar
-               
             </option>
             <option
               value="BDT"
             >
               Bangladeshi Taka
-               
             </option>
             <option
               value="BHD"
             >
               Bahraini Dinar
-               
             </option>
             <option
               value="BMD"
             >
               Bermudian Dollar
-               
             </option>
             <option
               value="BRL"
             >
               Brazilian Real
-               
             </option>
             <option
               value="CAD"
             >
               Canadian Dollar
-               
             </option>
             <option
               value="CFH"
             >
               Swiss Franc
-               
             </option>
             <option
               value="CLP"
             >
               Chilean Peso
-               
             </option>
             <option
               value="CNY"
             >
               Renminbi
-               
             </option>
             <option
               value="CZK"
             >
               Czech Koruna
-               
             </option>
             <option
               value="DKK"
             >
               Danish Krone
-               
             </option>
             <option
               value="EUR"
             >
               Euro
-               
             </option>
             <option
               value="GBP"
             >
               Pound Sterling
-               
             </option>
             <option
               value="HKD"
             >
               Hong Kong Dollar
-               
             </option>
             <option
               value="HUF"
             >
               Hungarian Forint
-               
             </option>
             <option
               value="IDR"
             >
               Indonesian Rupiah
-               
             </option>
             <option
               value="ILS"
             >
               Israeli New Shekel
-               
             </option>
             <option
               value="INR"
             >
               Indian Rupee
-               
             </option>
             <option
               value="JPY"
             >
               Japanese Yen
-               
             </option>
             <option
               value="KRW"
             >
               South Korean Won
-               
             </option>
             <option
               value="KWD"
             >
               Kuwaiti Dinar
-               
             </option>
             <option
               value="LKR"
             >
               Sri Lankan Rupee
-               
             </option>
             <option
               value="MMK"
             >
               Myanmar Kyat
-               
             </option>
             <option
               value="MXN"
             >
               Mexican Peso
-               
             </option>
             <option
               value="MYR"
             >
               Malaysian Ringgit
-               
             </option>
             <option
               value="NGN"
             >
               Nigerian Naira
-               
             </option>
             <option
               value="NOK"
             >
               Norwegian Krone
-               
             </option>
             <option
               value="NZD"
             >
               New Zealand Dollar
-               
             </option>
             <option
               value="PHP"
             >
               Philippine Peso
-               
             </option>
             <option
               value="PKR"
             >
               Pakistani Rupee
-               
             </option>
             <option
               value="PLN"
             >
               Polish Złoty
-               
             </option>
             <option
               value="RUB"
             >
               Russian Ruble
-               
             </option>
             <option
               value="SAR"
             >
               Saudi Riyal
-               
             </option>
             <option
               value="SEK"
             >
               Swedish Krona
-               
             </option>
             <option
               value="SGD"
             >
               Singapore Dollar
-               
             </option>
             <option
               value="THB"
             >
               Thai Baht
-               
             </option>
             <option
               value="TRY"
             >
               Turkish Lira
-               
             </option>
             <option
               value="TWD"
             >
               New Taiwan Dollar
-               
             </option>
             <option
               value="UAH"
             >
               Ukrainian Hryvnia
-               
             </option>
             <option
               value="USD"
             >
               United States Dollar
-               
             </option>
             <option
               value="VEF"
             >
               Venezuelan Bolívar Fuerte
-               
             </option>
             <option
               value="VND"
             >
               Vietnamese Dồng
-               
             </option>
             <option
               value="ZAR"
             >
               South African Rand
-               
             </option>
             
+            <!---->
+            <!---->
           </select>
+          <!---->
         </label>
          
         <label
@@ -420,12 +391,14 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
             role="switch"
             tabindex="0"
           />
+          <!---->
         </label>
       </div>
     </article>
      
     <hr />
      
+    <!---->
      
     <article
       class="settings-group"
@@ -433,6 +406,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -443,6 +417,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -460,10 +435,10 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           target="_blank"
         >
           Dusk Docs
+          <!---->
         </a>
-        
-        for detailed documentation, join the
-        
+        <!---->
+         for detailed documentation, join the 
         <a
           class="dusk-anchor dusk-anchor--on-surface"
           href="https://discord.gg/dusk-official"
@@ -471,9 +446,10 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           target="_blank"
         >
           community Discord
+          <!---->
         </a>
-         for questions and discussions, and visit the
-        
+        <!---->
+         for questions and discussions, and visit the 
         <a
           class="dusk-anchor dusk-anchor--on-surface"
           href="https://github.com/dusk-network/rusk"
@@ -481,7 +457,9 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           target="_blank"
         >
           GitHub repository
+          <!---->
         </a>
+        <!---->
          to view known issues, report bugs, or share feedback.
       </p>
     </article>
@@ -494,6 +472,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -504,6 +483,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -522,6 +502,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           before proceeding.
         </p>
          
+        <!---->
         <details
           class="dusk-error-details dusk-error-details__details"
         >
@@ -534,13 +515,13 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           <pre
             class="dusk-error-details__error"
           >
-            			
-            Clear data error
             
+			Clear data error
 		
           </pre>
         </details>
         
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default settings-group__button--state--danger"
@@ -555,7 +536,9 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           >
             Reset Wallet
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
     </article>
   </div>
@@ -583,6 +566,7 @@ exports[`Settings > should render the settings page displaying the status of the
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -593,6 +577,7 @@ exports[`Settings > should render the settings page displaying the status of the
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -605,14 +590,15 @@ exports[`Settings > should render the settings page displaying the status of the
         class="settings-group__multi-control-content"
       >
         <label
-          class="gas-control svelte-1p4ekyk"
+          class="gas-control svelte-p462n7"
         >
           <span
-            class="gas-control__label svelte-1p4ekyk"
+            class="gas-control__label svelte-p462n7"
           >
             Price (lux):
           </span>
            
+          <!---->
           <input
             class="dusk-textbox dusk-textbox-text gas-control__input"
             inputmode="numeric"
@@ -621,17 +607,19 @@ exports[`Settings > should render the settings page displaying the status of the
             type="text"
           />
           
+          <!---->
         </label>
          
         <label
-          class="gas-control svelte-1p4ekyk"
+          class="gas-control svelte-p462n7"
         >
           <span
-            class="gas-control__label svelte-1p4ekyk"
+            class="gas-control__label svelte-p462n7"
           >
             Gas Limit (unit):
           </span>
            
+          <!---->
           <input
             class="dusk-textbox dusk-textbox-text gas-control__input"
             inputmode="numeric"
@@ -640,7 +628,9 @@ exports[`Settings > should render the settings page displaying the status of the
             type="text"
           />
           
+          <!---->
         </label>
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default"
@@ -651,7 +641,9 @@ exports[`Settings > should render the settings page displaying the status of the
           >
             Reset to defaults
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
     </article>
      
@@ -663,6 +655,7 @@ exports[`Settings > should render the settings page displaying the status of the
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -673,6 +666,7 @@ exports[`Settings > should render the settings page displaying the status of the
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -694,278 +688,238 @@ exports[`Settings > should render the settings page displaying the status of the
           <select
             class="dusk-select settings-group__control settings-group__control--with-label"
           >
+            <!---->
+            <!---->
             <option
               value="AED"
             >
               United Arab Emirates Dirham
-               
             </option>
             <option
               value="ARS"
             >
               Argentine Peso
-               
             </option>
             <option
               value="AUD"
             >
               Australian Dollar
-               
             </option>
             <option
               value="BDT"
             >
               Bangladeshi Taka
-               
             </option>
             <option
               value="BHD"
             >
               Bahraini Dinar
-               
             </option>
             <option
               value="BMD"
             >
               Bermudian Dollar
-               
             </option>
             <option
               value="BRL"
             >
               Brazilian Real
-               
             </option>
             <option
               value="CAD"
             >
               Canadian Dollar
-               
             </option>
             <option
               value="CFH"
             >
               Swiss Franc
-               
             </option>
             <option
               value="CLP"
             >
               Chilean Peso
-               
             </option>
             <option
               value="CNY"
             >
               Renminbi
-               
             </option>
             <option
               value="CZK"
             >
               Czech Koruna
-               
             </option>
             <option
               value="DKK"
             >
               Danish Krone
-               
             </option>
             <option
               value="EUR"
             >
               Euro
-               
             </option>
             <option
               value="GBP"
             >
               Pound Sterling
-               
             </option>
             <option
               value="HKD"
             >
               Hong Kong Dollar
-               
             </option>
             <option
               value="HUF"
             >
               Hungarian Forint
-               
             </option>
             <option
               value="IDR"
             >
               Indonesian Rupiah
-               
             </option>
             <option
               value="ILS"
             >
               Israeli New Shekel
-               
             </option>
             <option
               value="INR"
             >
               Indian Rupee
-               
             </option>
             <option
               value="JPY"
             >
               Japanese Yen
-               
             </option>
             <option
               value="KRW"
             >
               South Korean Won
-               
             </option>
             <option
               value="KWD"
             >
               Kuwaiti Dinar
-               
             </option>
             <option
               value="LKR"
             >
               Sri Lankan Rupee
-               
             </option>
             <option
               value="MMK"
             >
               Myanmar Kyat
-               
             </option>
             <option
               value="MXN"
             >
               Mexican Peso
-               
             </option>
             <option
               value="MYR"
             >
               Malaysian Ringgit
-               
             </option>
             <option
               value="NGN"
             >
               Nigerian Naira
-               
             </option>
             <option
               value="NOK"
             >
               Norwegian Krone
-               
             </option>
             <option
               value="NZD"
             >
               New Zealand Dollar
-               
             </option>
             <option
               value="PHP"
             >
               Philippine Peso
-               
             </option>
             <option
               value="PKR"
             >
               Pakistani Rupee
-               
             </option>
             <option
               value="PLN"
             >
               Polish Złoty
-               
             </option>
             <option
               value="RUB"
             >
               Russian Ruble
-               
             </option>
             <option
               value="SAR"
             >
               Saudi Riyal
-               
             </option>
             <option
               value="SEK"
             >
               Swedish Krona
-               
             </option>
             <option
               value="SGD"
             >
               Singapore Dollar
-               
             </option>
             <option
               value="THB"
             >
               Thai Baht
-               
             </option>
             <option
               value="TRY"
             >
               Turkish Lira
-               
             </option>
             <option
               value="TWD"
             >
               New Taiwan Dollar
-               
             </option>
             <option
               value="UAH"
             >
               Ukrainian Hryvnia
-               
             </option>
             <option
               value="USD"
             >
               United States Dollar
-               
             </option>
             <option
               value="VEF"
             >
               Venezuelan Bolívar Fuerte
-               
             </option>
             <option
               value="VND"
             >
               Vietnamese Dồng
-               
             </option>
             <option
               value="ZAR"
             >
               South African Rand
-               
             </option>
             
+            <!---->
+            <!---->
           </select>
+          <!---->
         </label>
          
         <label
@@ -982,12 +936,14 @@ exports[`Settings > should render the settings page displaying the status of the
             role="switch"
             tabindex="0"
           />
+          <!---->
         </label>
       </div>
     </article>
      
     <hr />
      
+    <!---->
      
     <article
       class="settings-group"
@@ -995,6 +951,7 @@ exports[`Settings > should render the settings page displaying the status of the
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -1005,6 +962,7 @@ exports[`Settings > should render the settings page displaying the status of the
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -1022,10 +980,10 @@ exports[`Settings > should render the settings page displaying the status of the
           target="_blank"
         >
           Dusk Docs
+          <!---->
         </a>
-        
-        for detailed documentation, join the
-        
+        <!---->
+         for detailed documentation, join the 
         <a
           class="dusk-anchor dusk-anchor--on-surface"
           href="https://discord.gg/dusk-official"
@@ -1033,9 +991,10 @@ exports[`Settings > should render the settings page displaying the status of the
           target="_blank"
         >
           community Discord
+          <!---->
         </a>
-         for questions and discussions, and visit the
-        
+        <!---->
+         for questions and discussions, and visit the 
         <a
           class="dusk-anchor dusk-anchor--on-surface"
           href="https://github.com/dusk-network/rusk"
@@ -1043,7 +1002,9 @@ exports[`Settings > should render the settings page displaying the status of the
           target="_blank"
         >
           GitHub repository
+          <!---->
         </a>
+        <!---->
          to view known issues, report bugs, or share feedback.
       </p>
     </article>
@@ -1056,6 +1017,7 @@ exports[`Settings > should render the settings page displaying the status of the
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -1066,6 +1028,7 @@ exports[`Settings > should render the settings page displaying the status of the
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -1084,7 +1047,9 @@ exports[`Settings > should render the settings page displaying the status of the
           before proceeding.
         </p>
          
+        <!---->
         
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default settings-group__button--state--danger"
@@ -1099,7 +1064,9 @@ exports[`Settings > should render the settings page displaying the status of the
           >
             Reset Wallet
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
     </article>
   </div>
@@ -1127,6 +1094,7 @@ exports[`Settings > should render the settings page displaying the status of the
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -1137,6 +1105,7 @@ exports[`Settings > should render the settings page displaying the status of the
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -1149,14 +1118,15 @@ exports[`Settings > should render the settings page displaying the status of the
         class="settings-group__multi-control-content"
       >
         <label
-          class="gas-control svelte-1p4ekyk"
+          class="gas-control svelte-p462n7"
         >
           <span
-            class="gas-control__label svelte-1p4ekyk"
+            class="gas-control__label svelte-p462n7"
           >
             Price (lux):
           </span>
            
+          <!---->
           <input
             class="dusk-textbox dusk-textbox-text gas-control__input"
             inputmode="numeric"
@@ -1165,17 +1135,19 @@ exports[`Settings > should render the settings page displaying the status of the
             type="text"
           />
           
+          <!---->
         </label>
          
         <label
-          class="gas-control svelte-1p4ekyk"
+          class="gas-control svelte-p462n7"
         >
           <span
-            class="gas-control__label svelte-1p4ekyk"
+            class="gas-control__label svelte-p462n7"
           >
             Gas Limit (unit):
           </span>
            
+          <!---->
           <input
             class="dusk-textbox dusk-textbox-text gas-control__input"
             inputmode="numeric"
@@ -1184,7 +1156,9 @@ exports[`Settings > should render the settings page displaying the status of the
             type="text"
           />
           
+          <!---->
         </label>
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default"
@@ -1195,7 +1169,9 @@ exports[`Settings > should render the settings page displaying the status of the
           >
             Reset to defaults
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
     </article>
      
@@ -1207,6 +1183,7 @@ exports[`Settings > should render the settings page displaying the status of the
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -1217,6 +1194,7 @@ exports[`Settings > should render the settings page displaying the status of the
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -1238,278 +1216,238 @@ exports[`Settings > should render the settings page displaying the status of the
           <select
             class="dusk-select settings-group__control settings-group__control--with-label"
           >
+            <!---->
+            <!---->
             <option
               value="AED"
             >
               United Arab Emirates Dirham
-               
             </option>
             <option
               value="ARS"
             >
               Argentine Peso
-               
             </option>
             <option
               value="AUD"
             >
               Australian Dollar
-               
             </option>
             <option
               value="BDT"
             >
               Bangladeshi Taka
-               
             </option>
             <option
               value="BHD"
             >
               Bahraini Dinar
-               
             </option>
             <option
               value="BMD"
             >
               Bermudian Dollar
-               
             </option>
             <option
               value="BRL"
             >
               Brazilian Real
-               
             </option>
             <option
               value="CAD"
             >
               Canadian Dollar
-               
             </option>
             <option
               value="CFH"
             >
               Swiss Franc
-               
             </option>
             <option
               value="CLP"
             >
               Chilean Peso
-               
             </option>
             <option
               value="CNY"
             >
               Renminbi
-               
             </option>
             <option
               value="CZK"
             >
               Czech Koruna
-               
             </option>
             <option
               value="DKK"
             >
               Danish Krone
-               
             </option>
             <option
               value="EUR"
             >
               Euro
-               
             </option>
             <option
               value="GBP"
             >
               Pound Sterling
-               
             </option>
             <option
               value="HKD"
             >
               Hong Kong Dollar
-               
             </option>
             <option
               value="HUF"
             >
               Hungarian Forint
-               
             </option>
             <option
               value="IDR"
             >
               Indonesian Rupiah
-               
             </option>
             <option
               value="ILS"
             >
               Israeli New Shekel
-               
             </option>
             <option
               value="INR"
             >
               Indian Rupee
-               
             </option>
             <option
               value="JPY"
             >
               Japanese Yen
-               
             </option>
             <option
               value="KRW"
             >
               South Korean Won
-               
             </option>
             <option
               value="KWD"
             >
               Kuwaiti Dinar
-               
             </option>
             <option
               value="LKR"
             >
               Sri Lankan Rupee
-               
             </option>
             <option
               value="MMK"
             >
               Myanmar Kyat
-               
             </option>
             <option
               value="MXN"
             >
               Mexican Peso
-               
             </option>
             <option
               value="MYR"
             >
               Malaysian Ringgit
-               
             </option>
             <option
               value="NGN"
             >
               Nigerian Naira
-               
             </option>
             <option
               value="NOK"
             >
               Norwegian Krone
-               
             </option>
             <option
               value="NZD"
             >
               New Zealand Dollar
-               
             </option>
             <option
               value="PHP"
             >
               Philippine Peso
-               
             </option>
             <option
               value="PKR"
             >
               Pakistani Rupee
-               
             </option>
             <option
               value="PLN"
             >
               Polish Złoty
-               
             </option>
             <option
               value="RUB"
             >
               Russian Ruble
-               
             </option>
             <option
               value="SAR"
             >
               Saudi Riyal
-               
             </option>
             <option
               value="SEK"
             >
               Swedish Krona
-               
             </option>
             <option
               value="SGD"
             >
               Singapore Dollar
-               
             </option>
             <option
               value="THB"
             >
               Thai Baht
-               
             </option>
             <option
               value="TRY"
             >
               Turkish Lira
-               
             </option>
             <option
               value="TWD"
             >
               New Taiwan Dollar
-               
             </option>
             <option
               value="UAH"
             >
               Ukrainian Hryvnia
-               
             </option>
             <option
               value="USD"
             >
               United States Dollar
-               
             </option>
             <option
               value="VEF"
             >
               Venezuelan Bolívar Fuerte
-               
             </option>
             <option
               value="VND"
             >
               Vietnamese Dồng
-               
             </option>
             <option
               value="ZAR"
             >
               South African Rand
-               
             </option>
             
+            <!---->
+            <!---->
           </select>
+          <!---->
         </label>
          
         <label
@@ -1526,12 +1464,14 @@ exports[`Settings > should render the settings page displaying the status of the
             role="switch"
             tabindex="0"
           />
+          <!---->
         </label>
       </div>
     </article>
      
     <hr />
      
+    <!---->
      
     <article
       class="settings-group"
@@ -1539,6 +1479,7 @@ exports[`Settings > should render the settings page displaying the status of the
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -1549,6 +1490,7 @@ exports[`Settings > should render the settings page displaying the status of the
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -1566,10 +1508,10 @@ exports[`Settings > should render the settings page displaying the status of the
           target="_blank"
         >
           Dusk Docs
+          <!---->
         </a>
-        
-        for detailed documentation, join the
-        
+        <!---->
+         for detailed documentation, join the 
         <a
           class="dusk-anchor dusk-anchor--on-surface"
           href="https://discord.gg/dusk-official"
@@ -1577,9 +1519,10 @@ exports[`Settings > should render the settings page displaying the status of the
           target="_blank"
         >
           community Discord
+          <!---->
         </a>
-         for questions and discussions, and visit the
-        
+        <!---->
+         for questions and discussions, and visit the 
         <a
           class="dusk-anchor dusk-anchor--on-surface"
           href="https://github.com/dusk-network/rusk"
@@ -1587,7 +1530,9 @@ exports[`Settings > should render the settings page displaying the status of the
           target="_blank"
         >
           GitHub repository
+          <!---->
         </a>
+        <!---->
          to view known issues, report bugs, or share feedback.
       </p>
     </article>
@@ -1600,6 +1545,7 @@ exports[`Settings > should render the settings page displaying the status of the
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -1610,6 +1556,7 @@ exports[`Settings > should render the settings page displaying the status of the
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -1628,7 +1575,9 @@ exports[`Settings > should render the settings page displaying the status of the
           before proceeding.
         </p>
          
+        <!---->
         
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default settings-group__button--state--danger"
@@ -1643,7 +1592,9 @@ exports[`Settings > should render the settings page displaying the status of the
           >
             Reset Wallet
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
     </article>
   </div>
@@ -1671,6 +1622,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -1681,6 +1633,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -1693,14 +1646,15 @@ exports[`Settings > should show the wallet creation block height if it's greater
         class="settings-group__multi-control-content"
       >
         <label
-          class="gas-control svelte-1p4ekyk"
+          class="gas-control svelte-p462n7"
         >
           <span
-            class="gas-control__label svelte-1p4ekyk"
+            class="gas-control__label svelte-p462n7"
           >
             Price (lux):
           </span>
            
+          <!---->
           <input
             class="dusk-textbox dusk-textbox-text gas-control__input"
             inputmode="numeric"
@@ -1709,17 +1663,19 @@ exports[`Settings > should show the wallet creation block height if it's greater
             type="text"
           />
           
+          <!---->
         </label>
          
         <label
-          class="gas-control svelte-1p4ekyk"
+          class="gas-control svelte-p462n7"
         >
           <span
-            class="gas-control__label svelte-1p4ekyk"
+            class="gas-control__label svelte-p462n7"
           >
             Gas Limit (unit):
           </span>
            
+          <!---->
           <input
             class="dusk-textbox dusk-textbox-text gas-control__input"
             inputmode="numeric"
@@ -1728,7 +1684,9 @@ exports[`Settings > should show the wallet creation block height if it's greater
             type="text"
           />
           
+          <!---->
         </label>
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default"
@@ -1739,7 +1697,9 @@ exports[`Settings > should show the wallet creation block height if it's greater
           >
             Reset to defaults
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
     </article>
      
@@ -1751,6 +1711,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -1761,6 +1722,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -1782,278 +1744,238 @@ exports[`Settings > should show the wallet creation block height if it's greater
           <select
             class="dusk-select settings-group__control settings-group__control--with-label"
           >
+            <!---->
+            <!---->
             <option
               value="AED"
             >
               United Arab Emirates Dirham
-               
             </option>
             <option
               value="ARS"
             >
               Argentine Peso
-               
             </option>
             <option
               value="AUD"
             >
               Australian Dollar
-               
             </option>
             <option
               value="BDT"
             >
               Bangladeshi Taka
-               
             </option>
             <option
               value="BHD"
             >
               Bahraini Dinar
-               
             </option>
             <option
               value="BMD"
             >
               Bermudian Dollar
-               
             </option>
             <option
               value="BRL"
             >
               Brazilian Real
-               
             </option>
             <option
               value="CAD"
             >
               Canadian Dollar
-               
             </option>
             <option
               value="CFH"
             >
               Swiss Franc
-               
             </option>
             <option
               value="CLP"
             >
               Chilean Peso
-               
             </option>
             <option
               value="CNY"
             >
               Renminbi
-               
             </option>
             <option
               value="CZK"
             >
               Czech Koruna
-               
             </option>
             <option
               value="DKK"
             >
               Danish Krone
-               
             </option>
             <option
               value="EUR"
             >
               Euro
-               
             </option>
             <option
               value="GBP"
             >
               Pound Sterling
-               
             </option>
             <option
               value="HKD"
             >
               Hong Kong Dollar
-               
             </option>
             <option
               value="HUF"
             >
               Hungarian Forint
-               
             </option>
             <option
               value="IDR"
             >
               Indonesian Rupiah
-               
             </option>
             <option
               value="ILS"
             >
               Israeli New Shekel
-               
             </option>
             <option
               value="INR"
             >
               Indian Rupee
-               
             </option>
             <option
               value="JPY"
             >
               Japanese Yen
-               
             </option>
             <option
               value="KRW"
             >
               South Korean Won
-               
             </option>
             <option
               value="KWD"
             >
               Kuwaiti Dinar
-               
             </option>
             <option
               value="LKR"
             >
               Sri Lankan Rupee
-               
             </option>
             <option
               value="MMK"
             >
               Myanmar Kyat
-               
             </option>
             <option
               value="MXN"
             >
               Mexican Peso
-               
             </option>
             <option
               value="MYR"
             >
               Malaysian Ringgit
-               
             </option>
             <option
               value="NGN"
             >
               Nigerian Naira
-               
             </option>
             <option
               value="NOK"
             >
               Norwegian Krone
-               
             </option>
             <option
               value="NZD"
             >
               New Zealand Dollar
-               
             </option>
             <option
               value="PHP"
             >
               Philippine Peso
-               
             </option>
             <option
               value="PKR"
             >
               Pakistani Rupee
-               
             </option>
             <option
               value="PLN"
             >
               Polish Złoty
-               
             </option>
             <option
               value="RUB"
             >
               Russian Ruble
-               
             </option>
             <option
               value="SAR"
             >
               Saudi Riyal
-               
             </option>
             <option
               value="SEK"
             >
               Swedish Krona
-               
             </option>
             <option
               value="SGD"
             >
               Singapore Dollar
-               
             </option>
             <option
               value="THB"
             >
               Thai Baht
-               
             </option>
             <option
               value="TRY"
             >
               Turkish Lira
-               
             </option>
             <option
               value="TWD"
             >
               New Taiwan Dollar
-               
             </option>
             <option
               value="UAH"
             >
               Ukrainian Hryvnia
-               
             </option>
             <option
               value="USD"
             >
               United States Dollar
-               
             </option>
             <option
               value="VEF"
             >
               Venezuelan Bolívar Fuerte
-               
             </option>
             <option
               value="VND"
             >
               Vietnamese Dồng
-               
             </option>
             <option
               value="ZAR"
             >
               South African Rand
-               
             </option>
             
+            <!---->
+            <!---->
           </select>
+          <!---->
         </label>
          
         <label
@@ -2070,6 +1992,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
             role="switch"
             tabindex="0"
           />
+          <!---->
         </label>
       </div>
     </article>
@@ -2082,6 +2005,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -2092,6 +2016,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -2103,12 +2028,14 @@ exports[`Settings > should show the wallet creation block height if it's greater
       <div
         class="copy-field settings-group__control"
       >
+        <!---->
         <input
           class="dusk-textbox dusk-textbox-text copy-field__content"
           readonly=""
           type="text"
         />
         
+        <!---->
          
         <button
           aria-label="Copy Address"
@@ -2117,6 +2044,8 @@ exports[`Settings > should show the wallet creation block height if it's greater
           data-tooltip-text="Copy to clipboard"
           type="button"
         >
+          <!---->
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-button__icon"
             role="graphics-symbol"
@@ -2127,13 +2056,18 @@ exports[`Settings > should show the wallet creation block height if it's greater
             />
           </svg>
           
+          <!---->
            
-          
+          <!---->
+          <!---->
         </button>
+        <!---->
       </div>
+      <!---->
     </article>
      
     <hr />
+    <!---->
      
     <article
       class="settings-group"
@@ -2141,6 +2075,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -2151,6 +2086,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -2168,10 +2104,10 @@ exports[`Settings > should show the wallet creation block height if it's greater
           target="_blank"
         >
           Dusk Docs
+          <!---->
         </a>
-        
-        for detailed documentation, join the
-        
+        <!---->
+         for detailed documentation, join the 
         <a
           class="dusk-anchor dusk-anchor--on-surface"
           href="https://discord.gg/dusk-official"
@@ -2179,9 +2115,10 @@ exports[`Settings > should show the wallet creation block height if it's greater
           target="_blank"
         >
           community Discord
+          <!---->
         </a>
-         for questions and discussions, and visit the
-        
+        <!---->
+         for questions and discussions, and visit the 
         <a
           class="dusk-anchor dusk-anchor--on-surface"
           href="https://github.com/dusk-network/rusk"
@@ -2189,7 +2126,9 @@ exports[`Settings > should show the wallet creation block height if it's greater
           target="_blank"
         >
           GitHub repository
+          <!---->
         </a>
+        <!---->
          to view known issues, report bugs, or share feedback.
       </p>
     </article>
@@ -2202,6 +2141,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
       <header
         class="settings-group__header"
       >
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default"
           role="graphics-symbol"
@@ -2212,6 +2152,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
           />
         </svg>
         
+        <!---->
          
         <h3
           class="h4 settings-group__heading"
@@ -2230,7 +2171,9 @@ exports[`Settings > should show the wallet creation block height if it's greater
           before proceeding.
         </p>
          
+        <!---->
         
+        <!---->
          
         <button
           class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default settings-group__button--state--danger"
@@ -2245,7 +2188,9 @@ exports[`Settings > should show the wallet creation block height if it's greater
           >
             Reset Wallet
           </span>
+          <!---->
         </button>
+        <!---->
       </div>
     </article>
   </div>

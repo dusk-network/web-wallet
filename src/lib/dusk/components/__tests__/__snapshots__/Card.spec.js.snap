@@ -4,10 +4,17 @@ exports[`Card > renders the Card component 1`] = `
 <div
   class="dusk-card dusk-card--gap-default"
 >
+  <!---->
+  <!---->
    
   <div
     class="dusk-card__body-container"
-  />
+  >
+    <!---->
+  </div>
+  <!---->
    
+  <!---->
+  
 </div>
 `;

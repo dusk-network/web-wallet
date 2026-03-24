@@ -10,16 +10,19 @@ exports[`Stake > should render the Stake component 1`] = `
     <div
       slot="stepper"
     >
+      <!---->
       <div
         class="dusk-stepper dusk-stepper--variant--primary"
         style="--columns: 3; --progress-width: 0%;"
       >
+        <!---->
         <span
           aria-current="step"
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           1
+          <!---->
         </span>
          
         <span
@@ -27,13 +30,13 @@ exports[`Stake > should render the Stake component 1`] = `
           id="step-some-generated-id"
         >
           Amount
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           2
+          <!---->
         </span>
          
         <span
@@ -41,13 +44,13 @@ exports[`Stake > should render the Stake component 1`] = `
           id="step-some-generated-id"
         >
           Overview
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           3
+          <!---->
         </span>
          
         <span
@@ -55,18 +58,26 @@ exports[`Stake > should render the Stake component 1`] = `
           id="step-some-generated-id"
         >
           Done
-           
         </span>
         
+        <!---->
       </div>
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
      
+    <!---->
+    <!---->
+    <!---->
      
+    <!---->
      
     <div
-      class="operation__amount-wrapper svelte-xevz12"
+      class="operation__amount-wrapper svelte-19xjhab"
     >
       <p>
         Amount:
@@ -81,12 +92,15 @@ exports[`Stake > should render the Stake component 1`] = `
         >
           USE MAX
         </span>
+        <!---->
       </button>
+      <!---->
     </div>
      
     <div
-      class="operation__input-wrapper svelte-xevz12"
+      class="operation__input-wrapper svelte-19xjhab"
     >
+      <!---->
       <input
         class="dusk-textbox dusk-textbox-number operation__input-field"
         max="9999.98"
@@ -96,7 +110,9 @@ exports[`Stake > should render the Stake component 1`] = `
         type="number"
       />
       
+      <!---->
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default"
         data-tooltip-id="main-tooltip"
@@ -109,40 +125,42 @@ exports[`Stake > should render the Stake component 1`] = `
         />
       </svg>
       
+      <!---->
     </div>
      
     <div
-      class="gas-settings svelte-1daay07"
+      class="gas-settings svelte-1wfde5f"
     >
       <dl
-        class="gas-settings__edit svelte-1daay07"
+        class="gas-settings__edit svelte-1wfde5f"
       >
         <div
-          class="gas-fee svelte-1c6b481"
+          class="gas-fee svelte-9uj43"
         >
           <span>
             Fee:
           </span>
            
           <div
-            class="gas-fee__amount svelte-1c6b481"
+            class="gas-fee__amount svelte-9uj43"
           >
             <div
-              class="gas-fee__amount-value svelte-1c6b481"
+              class="gas-fee__amount-value svelte-9uj43"
             >
               <span
-                class="svelte-1c6b481"
+                class="svelte-9uj43"
               >
                 max
               </span>
                
               <span
-                class="svelte-1c6b481"
+                class="svelte-9uj43"
               >
                 0.020000000
               </span>
             </div>
              
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default dusk-amount__icon"
               data-tooltip-id="main-tooltip"
@@ -155,8 +173,11 @@ exports[`Stake > should render the Stake component 1`] = `
               />
             </svg>
             
+            <!---->
           </div>
         </div>
+        <!---->
+         
         <dd>
           <button
             class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
@@ -167,21 +188,30 @@ exports[`Stake > should render the Stake component 1`] = `
             >
               EDIT
             </span>
+            <!---->
           </button>
+          <!---->
         </dd>
       </dl>
        
+      <!---->
     </div>
+    <!---->
      
-    
+    <!---->
+    <!---->
      
+    <!---->
     <div
       class="dusk-wizard__step-navigation"
     >
+      <!---->
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -192,26 +222,32 @@ exports[`Stake > should render the Stake component 1`] = `
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-button__text"
         >
           Back
         </span>
-        
+        <!---->
+        <!---->
       </button>
       
+      <!---->
        
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
         <span
           class="dusk-button__text"
         >
           Next
         </span>
+        <!---->
          
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -222,15 +258,26 @@ exports[`Stake > should render the Stake component 1`] = `
           />
         </svg>
         
+        <!---->
+        <!---->
       </button>
+      <!---->
     </div>
     
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
+    <!---->
   </div>
+  <!---->
 </div>
 `;
 
@@ -244,16 +291,19 @@ exports[`Stake > should render the Stake notice 1`] = `
     <div
       slot="stepper"
     >
+      <!---->
       <div
         class="dusk-stepper dusk-stepper--variant--primary"
         style="--columns: 4; --progress-width: 0%;"
       >
+        <!---->
         <span
           aria-current="step"
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           1
+          <!---->
         </span>
          
         <span
@@ -261,13 +311,13 @@ exports[`Stake > should render the Stake notice 1`] = `
           id="step-some-generated-id"
         >
           Notice
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           2
+          <!---->
         </span>
          
         <span
@@ -275,13 +325,13 @@ exports[`Stake > should render the Stake notice 1`] = `
           id="step-some-generated-id"
         >
           Amount
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           3
+          <!---->
         </span>
          
         <span
@@ -289,13 +339,13 @@ exports[`Stake > should render the Stake notice 1`] = `
           id="step-some-generated-id"
         >
           Overview
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           4
+          <!---->
         </span>
          
         <span
@@ -303,24 +353,35 @@ exports[`Stake > should render the Stake notice 1`] = `
           id="step-some-generated-id"
         >
           Done
-           
         </span>
         
+        <!---->
       </div>
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
+    <!---->
+    <!---->
      
+    <!---->
      
+    <!---->
     <span
       class="dusk-badge dusk-badge--variant-warning"
     >
       WARNING
     </span>
+    <!---->
      
+    <!---->
     <div
       class="dusk-card dusk-card--gap-default dusk-card--on-surface"
     >
+      <!---->
       <div
         class="dusk-card__header-container"
       >
@@ -331,6 +392,7 @@ exports[`Stake > should render the Stake notice 1`] = `
           <div
             class="dusk-card__heading-container dusk-card__heading-container--warning-card"
           >
+            <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
               role="graphics-symbol"
@@ -341,6 +403,7 @@ exports[`Stake > should render the Stake notice 1`] = `
               />
             </svg>
             
+            <!---->
              
             <h3
               class="h4"
@@ -349,13 +412,16 @@ exports[`Stake > should render the Stake notice 1`] = `
             </h3>
           </div>
         </header>
+        <!---->
       </div>
+      <!---->
        
       <div
         class="dusk-card__body-container"
       >
+        <!---->
         <p
-          class="staking-warning svelte-xevz12"
+          class="staking-warning svelte-19xjhab"
         >
           I understand that I have set up a node properly, as described 
           <a
@@ -364,8 +430,12 @@ exports[`Stake > should render the Stake notice 1`] = `
             rel="noopener noreferrer"
             target="_blank"
           >
+            <!---->
             HERE
+            
+            <!---->
           </a>
+          <!---->
           , and that, if not done correctly, I may be subject to 
           <a
             class="dusk-anchor dusk-anchor--on-surface"
@@ -373,8 +443,12 @@ exports[`Stake > should render the Stake notice 1`] = `
             rel="noopener noreferrer"
             target="_blank"
           >
+            <!---->
             soft-slashing
+            
+            <!---->
           </a>
+          <!---->
            penalties, requiring me to unstake and stake again.
         </p>
          
@@ -388,6 +462,7 @@ exports[`Stake > should render the Stake notice 1`] = `
             tabindex="0"
             type="checkbox"
           />
+          <!---->
            
           <label
             class="dusk-agreement__label"
@@ -396,18 +471,30 @@ exports[`Stake > should render the Stake notice 1`] = `
             Don't show this step again.
           </label>
         </div>
+        <!---->
+        
+        <!---->
       </div>
+      <!---->
        
+      <!---->
+      
     </div>
     
+    <!---->
+    <!---->
      
+    <!---->
     <div
       class="dusk-wizard__step-navigation"
     >
+      <!---->
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -418,15 +505,18 @@ exports[`Stake > should render the Stake notice 1`] = `
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-button__text"
         >
           Back
         </span>
-        
+        <!---->
+        <!---->
       </button>
       
+      <!---->
        
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default"
@@ -437,17 +527,29 @@ exports[`Stake > should render the Stake notice 1`] = `
         >
           Agree
         </span>
+        <!---->
       </button>
+      <!---->
     </div>
     
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
+    <!---->
   </div>
+  <!---->
 </div>
 `;
 
@@ -461,15 +563,18 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
     <div
       slot="stepper"
     >
+      <!---->
       <div
         class="dusk-stepper dusk-stepper--variant--primary"
         style="--columns: 3; --progress-width: 33.333333333333336%;"
       >
+        <!---->
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           1
+          <!---->
         </span>
          
         <span
@@ -477,7 +582,6 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           id="step-some-generated-id"
         >
           Amount
-           
         </span>
         <span
           aria-current="step"
@@ -485,6 +589,7 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
           2
+          <!---->
         </span>
          
         <span
@@ -492,13 +597,13 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           id="step-some-generated-id"
         >
           Overview
-           
         </span>
         <span
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
           3
+          <!---->
         </span>
          
         <span
@@ -506,34 +611,45 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           id="step-some-generated-id"
         >
           Done
-           
         </span>
         
+        <!---->
       </div>
       
+      <!---->
     </div>
+    <!---->
      
+    <!---->
+    <!---->
      
+    <!---->
     
+    <!---->
      
+    <!---->
+    <!---->
+    <!---->
      
+    <!---->
      
     <div
-      class="operation__stake svelte-xevz12"
-      style="animation: __svelte_3516408220_0 400ms linear 0ms 1 both;"
+      class="operation__stake svelte-19xjhab"
     >
       <span
         class="dusk-badge dusk-badge--variant-warning"
       >
         REVIEW TRANSACTION
       </span>
+      <!---->
        
       <dl
-        class="stake-overview svelte-1uhmq4r"
+        class="stake-overview svelte-md57kw"
       >
         <dt
           class="stake-overview__label"
         >
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
@@ -544,22 +660,23 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
             />
           </svg>
           
+          <!---->
            
           <span>
-            Amount
-            :
+            Amount:
           </span>
-           
         </dt>
+         
         <dd
-          class="stake-overview__value svelte-1uhmq4r"
+          class="stake-overview__value svelte-md57kw"
         >
           <span
-            class="svelte-1uhmq4r"
+            class="svelte-md57kw"
           >
             1,234.000000000
           </span>
            
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default stake-overview__icon"
             data-tooltip-id="main-tooltip"
@@ -572,35 +689,38 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
             />
           </svg>
           
+          <!---->
         </dd>
       </dl>
+      <!---->
        
       <div
-        class="gas-fee svelte-1c6b481"
+        class="gas-fee svelte-9uj43"
       >
         <span>
           Fee:
         </span>
          
         <div
-          class="gas-fee__amount svelte-1c6b481"
+          class="gas-fee__amount svelte-9uj43"
         >
           <div
-            class="gas-fee__amount-value svelte-1c6b481"
+            class="gas-fee__amount-value svelte-9uj43"
           >
             <span
-              class="svelte-1c6b481"
+              class="svelte-9uj43"
             >
               max
             </span>
              
             <span
-              class="svelte-1c6b481"
+              class="svelte-9uj43"
             >
               0.020000000
             </span>
           </div>
            
+          <!---->
           <svg
             class="dusk-icon dusk-icon--size--default dusk-amount__icon"
             data-tooltip-id="main-tooltip"
@@ -613,17 +733,24 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
             />
           </svg>
           
+          <!---->
         </div>
       </div>
+      <!---->
     </div>
+    <!---->
      
+    <!---->
     <div
       class="dusk-wizard__step-navigation"
     >
+      <!---->
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -634,20 +761,25 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-button__text"
         >
           Back
         </span>
-        
+        <!---->
+        <!---->
       </button>
       
+      <!---->
        
       <button
         class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-button__icon"
           role="graphics-symbol"
@@ -658,19 +790,28 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-button__text"
         >
           Stake
         </span>
-        
+        <!---->
+        <!---->
       </button>
+      <!---->
     </div>
     
+    <!---->
     
+    <!---->
      
+    <!---->
     
+    <!---->
+    <!---->
   </div>
+  <!---->
 </div>
 `;

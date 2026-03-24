@@ -79,7 +79,7 @@ describe("Unstake", () => {
       const nextButton = getByRole("button", { name: "Next" });
 
       expect(nextButton).toBeEnabled();
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should perform an ustake, give a success message and supply a link to see the transaction in the explorer", async () => {
@@ -159,7 +159,7 @@ describe("Unstake", () => {
       const nextButton = getByRole("button", { name: "Next" });
 
       expect(nextButton).toBeEnabled();
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should perform a claim rewards, give a success message and supply a link to see the transaction in the explorer", async () => {

@@ -87,7 +87,7 @@ describe("Transactions", () => {
     const transactionType = getByText(transaction.tx_type.toUpperCase());
     const transactionFee = getByText(feeFormatter(transaction.fee));
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     expect(transactionAmount).toBeInTheDocument();
     expect(transactionBlockHeight).toBeInTheDocument();
@@ -105,7 +105,7 @@ describe("Transactions", () => {
 
     await vi.advanceTimersToNextTimerAsync();
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     const transactionHashes = getAllByText("Hash");
 

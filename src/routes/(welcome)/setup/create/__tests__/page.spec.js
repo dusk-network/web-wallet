@@ -137,13 +137,13 @@ describe("Create", async () => {
 
     const { container } = render(Create, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render the Terms of Service step of the Create flow if there is no userId saved in localStorage", () => {
     const { container } = render(Create, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render the `Securely store your mnemonic phrase!` agreement step after the ToS", async () => {
@@ -153,7 +153,7 @@ describe("Create", async () => {
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     mathRandomSpy.mockRestore();
   });
@@ -199,7 +199,7 @@ describe("Create", async () => {
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("correctly renders the Mnemonic Verification page", async () => {
@@ -213,7 +213,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("doesn't let the user proceed if they have entered mismatching Mnemonic", async () => {
@@ -239,7 +239,7 @@ describe("Create", async () => {
 
     await tick();
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     expect(getByRole("button", { name: "Next" })).toBeDisabled();
   });
@@ -263,7 +263,7 @@ describe("Create", async () => {
 
     await tick();
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     expect(getByRole("button", { name: "Next" })).toBeEnabled();
   });
@@ -289,7 +289,7 @@ describe("Create", async () => {
 
     await fireEvent.click(getByRole("button", { name: "Undo" }));
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     expect(getByRole("button", { name: "Next" })).toBeDisabled();
   });
@@ -316,12 +316,12 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // Password enabled
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     await fireEvent.click(getByRole("switch"));
 
     // Password disabled
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("ensures the Network Syncing step renders as expected", async () => {
@@ -344,7 +344,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("ensures the All Done step renders as expected", async () => {
@@ -368,7 +368,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
 
     /*
      * We wait for the `clearLocalDataAndInit` call inside `initializeWallet`

@@ -42,7 +42,7 @@ describe("Send page", () => {
   it("should render the send page", async () => {
     const { container } = render(SendPage);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should update the spendable amount passed to its child components when a `keyChange` event is fired", async () => {

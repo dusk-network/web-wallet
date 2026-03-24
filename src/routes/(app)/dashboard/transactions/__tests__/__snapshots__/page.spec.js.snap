@@ -2,7 +2,7 @@
 
 exports[`Dashboard > should render the transactions page 1`] = `
 <div
-  class="transactions svelte-1dmjkox"
+  class="transactions svelte-1eu9zeg"
 >
   <h2
     class="sr-only"
@@ -11,10 +11,10 @@ exports[`Dashboard > should render the transactions page 1`] = `
   </h2>
    
   <article
-    class="transactions svelte-mwi4ip"
+    class="transactions svelte-1kwg8z"
   >
     <header
-      class="transactions__header svelte-mwi4ip"
+      class="transactions__header svelte-1kwg8z"
     >
       <h3
         class="h4"
@@ -27,6 +27,9 @@ exports[`Dashboard > should render the transactions page 1`] = `
         class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled transactions__footer-button"
         href="/some-base-path/dashboard"
       >
+        <!---->
+        <!---->
+        <!---->
         <svg
           class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
           role="graphics-symbol"
@@ -37,20 +40,26 @@ exports[`Dashboard > should render the transactions page 1`] = `
           />
         </svg>
         
+        <!---->
          
         <span
           class="dusk-anchor-button__text"
         >
           Back
         </span>
+        <!---->
         
-        
+        <!---->
       </a>
+      <!---->
     </header>
      
     <div
       class="dusk-suspense transactions-list__container"
     >
+      <!---->
+      <!---->
+      <!---->
       <dl
         class="transactions-list"
       >
@@ -59,6 +68,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -70,15 +80,18 @@ exports[`Dashboard > should render the transactions page 1`] = `
               target="_blank"
             >
               tg874534tddsghdtst54hdfh795h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -87,53 +100,56 @@ exports[`Dashboard > should render the transactions page 1`] = `
           >
             STAKE
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,460
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          +27,000.00
-           
+          +27,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Fee
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          1,876.00
-           
+          1,876.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+        <!---->
       </dl>
       <dl
         class="transactions-list"
@@ -143,6 +159,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -154,15 +171,18 @@ exports[`Dashboard > should render the transactions page 1`] = `
               target="_blank"
             >
               tg874534tddsghdtst54hdfh794h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -171,36 +191,40 @@ exports[`Dashboard > should render the transactions page 1`] = `
           >
             TRANSFER
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,459
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          -25,000.00
-           
+          -25,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
+        <!---->
       </dl>
       <dl
         class="transactions-list"
@@ -210,6 +234,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -221,15 +246,18 @@ exports[`Dashboard > should render the transactions page 1`] = `
               target="_blank"
             >
               tg874534tddsghdtst54hdfh793h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -238,36 +266,40 @@ exports[`Dashboard > should render the transactions page 1`] = `
           >
             TRANSFER
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,458
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          +25,000.00
-           
+          +25,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
+        <!---->
       </dl>
       <dl
         class="transactions-list"
@@ -277,6 +309,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -288,15 +321,18 @@ exports[`Dashboard > should render the transactions page 1`] = `
               target="_blank"
             >
               tg874534tddsghdtst54hdfh792h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -305,53 +341,56 @@ exports[`Dashboard > should render the transactions page 1`] = `
           >
             TRANSFER
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,457
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          -25,000.00
-           
+          -25,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Fee
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          1,876.00
-           
+          1,876.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+        <!---->
       </dl>
       <dl
         class="transactions-list"
@@ -361,6 +400,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -372,15 +412,18 @@ exports[`Dashboard > should render the transactions page 1`] = `
               target="_blank"
             >
               tg874534tddsghdtst54hdfh791h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -389,36 +432,40 @@ exports[`Dashboard > should render the transactions page 1`] = `
           >
             TRANSFER
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,456
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          -25,000.00
-           
+          -25,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
+        <!---->
       </dl>
       <dl
         class="transactions-list"
@@ -428,6 +475,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         >
           Hash
         </dt>
+         
         <dd
           class="transactions-list__datum transactions-list__datum--hash"
         >
@@ -439,15 +487,18 @@ exports[`Dashboard > should render the transactions page 1`] = `
               target="_blank"
             >
               tg874534tddsghdtst54hdfh790h
+              <!---->
             </a>
+            <!---->
           </samp>
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Type
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
@@ -456,40 +507,48 @@ exports[`Dashboard > should render the transactions page 1`] = `
           >
             STAKE
           </span>
-           
+          <!---->
         </dd>
+        <!---->
+         
         <dt
           class="transactions-list__term"
         >
           Block
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
           33,455
-           
         </dd>
+         
         <dt
           class="transactions-list__term"
         >
           Amount
         </dt>
+         
         <dd
           class="transactions-list__datum"
         >
-          +25,000.00
-           
+          +25,000.00 
           <span
             class="transactions-list__ticker"
           >
             Dusk
           </span>
-           
         </dd>
+         
+        <!---->
       </dl>
       
       
+      
+      <!---->
     </div>
+    <!---->
   </article>
+  <!---->
 </div>
 `;

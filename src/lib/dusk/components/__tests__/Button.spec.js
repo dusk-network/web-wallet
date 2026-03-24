@@ -18,7 +18,7 @@ describe("Button", () => {
   it('should render the Button component using the type "button" as a default', () => {
     const { container } = render(Button, baseOptions);
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render a button of the desired type", () => {
@@ -26,7 +26,7 @@ describe("Button", () => {
       const props = { ...baseProps, type };
       const { container } = render(Button, { ...baseOptions, props });
 
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
   });
 
@@ -38,7 +38,7 @@ describe("Button", () => {
     };
     const { container } = render(Button, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should render a button without a text", () => {
@@ -48,7 +48,7 @@ describe("Button", () => {
     };
     const { container } = render(Button, { ...baseOptions, props });
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should be able to render a button with an icon and text", () => {
@@ -62,7 +62,7 @@ describe("Button", () => {
       };
       const { container } = render(Button, { ...baseOptions, props });
 
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
   });
 
@@ -78,7 +78,7 @@ describe("Button", () => {
       };
       const { container } = render(Button, { ...baseOptions, props });
 
-      expect(container.firstChild).toMatchSnapshot();
+      expect(container.firstElementChild).toMatchSnapshot();
     });
   });
 });

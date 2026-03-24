@@ -2,35 +2,39 @@
 
 exports[`ContractStatusesList > should be able to render the component without items 1`] = `
 <div
-  class="contract-statuses svelte-1up3579"
+  class="contract-statuses svelte-193vool"
 >
   <dl
-    class="contract-statuses__list svelte-1up3579"
-  />
+    class="contract-statuses__list svelte-193vool"
+  >
+    
+  </dl>
    
+  <!---->
 </div>
 `;
 
 exports[`ContractStatusesList > should render the \`ContractStatusesList\` component 1`] = `
 <div
-  class="contract-statuses svelte-1up3579"
+  class="contract-statuses svelte-193vool"
 >
   <dl
-    class="contract-statuses__list svelte-1up3579"
+    class="contract-statuses__list svelte-193vool"
   >
     <dt
-      class="contract-statuses__label svelte-1up3579"
+      class="contract-statuses__label svelte-193vool"
     >
       Spendable
-       
     </dt>
+     
     <dd
-      class="contract-statuses__value svelte-1up3579"
+      class="contract-statuses__value svelte-193vool"
     >
       <span>
         99,899.999724165
       </span>
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default contract-statuses__icon"
         data-tooltip-id="main-tooltip"
@@ -43,21 +47,22 @@ exports[`ContractStatusesList > should render the \`ContractStatusesList\` compo
         />
       </svg>
       
-       
+      <!---->
     </dd>
     <dt
-      class="contract-statuses__label svelte-1up3579"
+      class="contract-statuses__label svelte-193vool"
     >
       Total Locked
-       
     </dt>
+     
     <dd
-      class="contract-statuses__value svelte-1up3579"
+      class="contract-statuses__value svelte-193vool"
     >
       <span>
         1,000.000000000
       </span>
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default contract-statuses__icon"
         data-tooltip-id="main-tooltip"
@@ -70,21 +75,22 @@ exports[`ContractStatusesList > should render the \`ContractStatusesList\` compo
         />
       </svg>
       
-       
+      <!---->
     </dd>
     <dt
-      class="contract-statuses__label svelte-1up3579"
+      class="contract-statuses__label svelte-193vool"
     >
       Rewards
-       
     </dt>
+     
     <dd
-      class="contract-statuses__value svelte-1up3579"
+      class="contract-statuses__value svelte-193vool"
     >
       <span>
         99,288.000000000
       </span>
        
+      <!---->
       <svg
         class="dusk-icon dusk-icon--size--default contract-statuses__icon"
         data-tooltip-id="main-tooltip"
@@ -97,9 +103,11 @@ exports[`ContractStatusesList > should render the \`ContractStatusesList\` compo
         />
       </svg>
       
-       
+      <!---->
     </dd>
+    
   </dl>
    
+  <!---->
 </div>
 `;
