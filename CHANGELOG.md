@@ -11,9 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- chore: dependency update to address newfound vulnerabilities [#939]
-
 ### Removed
+
+### Fixed
+
+## [1.8.0] - 2026-03-25
+
+### Changed
+
+- chore: dependency update to address newfound vulnerabilities [#939]
 
 ### Fixed
 
@@ -664,6 +670,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 <!-- VERSIONS -->
 
 [Unreleased]: https://github.com/dusk-network/web-wallet/tree/main
+[1.8.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.8.0
 [1.7.3]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.3
 [1.7.2]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.2
 [1.7.1]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.1
