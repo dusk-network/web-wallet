@@ -21,7 +21,13 @@ exports[`Stake > should render the Stake component 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          1
+          <!---->
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
+          
           <!---->
         </span>
          
@@ -35,7 +41,13 @@ exports[`Stake > should render the Stake component 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          2
+          <!---->
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
+          
           <!---->
         </span>
          
@@ -49,7 +61,13 @@ exports[`Stake > should render the Stake component 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          3
+          <!---->
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
+          
           <!---->
         </span>
          
@@ -302,7 +320,13 @@ exports[`Stake > should render the Stake notice 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          1
+          <!---->
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
+          
           <!---->
         </span>
          
@@ -316,7 +340,13 @@ exports[`Stake > should render the Stake notice 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          2
+          <!---->
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
+          
           <!---->
         </span>
          
@@ -330,7 +360,13 @@ exports[`Stake > should render the Stake notice 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          3
+          <!---->
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
+          
           <!---->
         </span>
          
@@ -344,7 +380,13 @@ exports[`Stake > should render the Stake notice 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          4
+          <!---->
+          <span
+            class="dusk-stepper__step-number"
+          >
+            4
+          </span>
+          
           <!---->
         </span>
          
@@ -573,7 +615,13 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          1
+          <!---->
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
+          
           <!---->
         </span>
          
@@ -588,7 +636,13 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          2
+          <!---->
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
+          
           <!---->
         </span>
          
@@ -602,7 +656,13 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          3
+          <!---->
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
+          
           <!---->
         </span>
          

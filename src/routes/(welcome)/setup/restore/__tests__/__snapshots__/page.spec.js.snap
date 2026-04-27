@@ -134,27 +134,52 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
       aria-current="step"
       class="dusk-stepper__step dusk-stepper__step--processed"
     >
-      1
+      <span
+        class="dusk-stepper__step-number"
+      >
+        1
+      </span>
+      <!---->
     </span>
     <span
       class="dusk-stepper__step"
     >
-      2
+      <span
+        class="dusk-stepper__step-number"
+      >
+        2
+      </span>
+      <!---->
     </span>
     <span
       class="dusk-stepper__step"
     >
-      3
+      <span
+        class="dusk-stepper__step-number"
+      >
+        3
+      </span>
+      <!---->
     </span>
     <span
       class="dusk-stepper__step"
     >
-      4
+      <span
+        class="dusk-stepper__step-number"
+      >
+        4
+      </span>
+      <!---->
     </span>
     <span
       class="dusk-stepper__step"
     >
-      5
+      <span
+        class="dusk-stepper__step-number"
+      >
+        5
+      </span>
+      <!---->
     </span>
     
     <!---->

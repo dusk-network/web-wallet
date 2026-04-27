@@ -6,7 +6,7 @@ exports[`Dashboard > should render a card when there is an error getting transac
   <!---->
   <!---->
   <div
-    class="dusk-card dusk-card--gap-default"
+    class="dusk-card dusk-card--gap-default dashboard-nav-card"
   >
     <!---->
     <!---->
@@ -16,7 +16,7 @@ exports[`Dashboard > should render a card when there is an error getting transac
     >
       <nav
         aria-label="Transaction and operations navigation"
-        class="dashboard-nav"
+        class="dashboard-nav svelte-dk858j"
       >
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
@@ -308,7 +308,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
   <!---->
   <!---->
   <div
-    class="dusk-card dusk-card--gap-default"
+    class="dusk-card dusk-card--gap-default dashboard-nav-card"
   >
     <!---->
     <!---->
@@ -318,7 +318,7 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
     >
       <nav
         aria-label="Transaction and operations navigation"
-        class="dashboard-nav"
+        class="dashboard-nav svelte-dk858j"
       >
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"

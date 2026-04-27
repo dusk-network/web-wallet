@@ -46,7 +46,7 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
       </dt>
        
       <dd
-        class="transactions-list__datum transactions-list__datum--hash"
+        class="transactions-list__datum"
       >
         <samp>
           <a
@@ -137,7 +137,7 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
       </dt>
        
       <dd
-        class="transactions-list__datum transactions-list__datum--hash"
+        class="transactions-list__datum"
       >
         <samp>
           <a
@@ -212,7 +212,7 @@ exports[`Transactions > renders the correct amount of Transactions, as the limit
       </dt>
        
       <dd
-        class="transactions-list__datum transactions-list__datum--hash"
+        class="transactions-list__datum"
       >
         <samp>
           <a
@@ -332,7 +332,7 @@ exports[`Transactions > renders transactions correctly when items are fulfilled 
       </dt>
        
       <dd
-        class="transactions-list__datum transactions-list__datum--hash"
+        class="transactions-list__datum"
       >
         <samp>
           <a

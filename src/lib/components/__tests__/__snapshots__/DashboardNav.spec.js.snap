@@ -2,7 +2,7 @@
 
 exports[`DashboardNav > renders the DashboardNav component 1`] = `
 <div
-  class="dusk-card dusk-card--gap-default"
+  class="dusk-card dusk-card--gap-default dashboard-nav-card"
 >
   <!---->
   <!---->
@@ -12,7 +12,7 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
   >
     <nav
       aria-label="Transaction and operations navigation"
-      class="dashboard-nav"
+      class="dashboard-nav svelte-dk858j"
     >
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
@@ -149,7 +149,7 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
 
 exports[`DashboardNav > should display icons if the item's icon array is present 1`] = `
 <div
-  class="dusk-card dusk-card--gap-default"
+  class="dusk-card dusk-card--gap-default dashboard-nav-card"
 >
   <!---->
   <!---->
@@ -159,7 +159,7 @@ exports[`DashboardNav > should display icons if the item's icon array is present
   >
     <nav
       aria-label="Transaction and operations navigation"
-      class="dashboard-nav"
+      class="dashboard-nav svelte-dk858j"
     >
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
@@ -296,7 +296,7 @@ exports[`DashboardNav > should display icons if the item's icon array is present
 
 exports[`DashboardNav > should not display icons if the item's icon array is empty 1`] = `
 <div
-  class="dusk-card dusk-card--gap-default"
+  class="dusk-card dusk-card--gap-default dashboard-nav-card"
 >
   <!---->
   <!---->
@@ -306,7 +306,7 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
   >
     <nav
       aria-label="Transaction and operations navigation"
-      class="dashboard-nav"
+      class="dashboard-nav svelte-dk858j"
     >
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
@@ -443,7 +443,7 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
 
 exports[`DashboardNav > should not display icons if the item's icons array is undefined 1`] = `
 <div
-  class="dusk-card dusk-card--gap-default"
+  class="dusk-card dusk-card--gap-default dashboard-nav-card"
 >
   <!---->
   <!---->
@@ -453,7 +453,7 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
   >
     <nav
       aria-label="Transaction and operations navigation"
-      class="dashboard-nav"
+      class="dashboard-nav svelte-dk858j"
     >
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"

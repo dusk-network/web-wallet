@@ -59,9 +59,9 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           class="dusk-balance__header"
         >
           <h2
-            class="sr-only"
+            class="dusk-balance__label"
           >
-            Your Balance:
+            Total balance
           </h2>
         </header>
          
@@ -329,9 +329,9 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
         class="dusk-balance__header"
       >
         <h2
-          class="sr-only"
+          class="dusk-balance__label"
         >
-          Your Balance:
+          Total balance
         </h2>
       </header>
        
@@ -598,9 +598,9 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
           class="dusk-balance__header"
         >
           <h2
-            class="sr-only"
+            class="dusk-balance__label"
           >
-            Your Balance:
+            Total balance
           </h2>
         </header>
          
@@ -893,9 +893,9 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
         class="dusk-balance__header"
       >
         <h2
-          class="sr-only"
+          class="dusk-balance__label"
         >
-          Your Balance:
+          Total balance
         </h2>
       </header>
        
@@ -1167,9 +1167,9 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
           class="dusk-balance__header"
         >
           <h2
-            class="sr-only"
+            class="dusk-balance__label"
           >
-            Your Balance:
+            Total balance
           </h2>
         </header>
          
