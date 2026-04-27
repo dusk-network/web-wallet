@@ -2,13 +2,13 @@
   /* Theme colours */
 
   --page-background-color: var(--smokey-black);
-  --background-color: var(--light-grey);
-  --background-color-alt: #fff;
+  --background-color: #edeaf3;
+  --background-color-alt: #f7f5fb;
   --primary-color: var(--smokey-black);
   --secondary-color: var(--cornflower);
   --secondary-color-variant-dark: var(--cornflower-dark);
   --secondary-color-variant-light: var(--cornflower-light);
-  --surface-color: var(--magnolia);
+  --surface-color: #f7f5fb;
   --error-color: var(--error-500);
   --error-color-variant-dark: var(--error-700);
   --info-color: var(--info-500);
@@ -18,6 +18,18 @@
   --warning-color: var(--warning-500);
   --warning-color-variant-dark: var(--warning-700);
   --muted-color: var(--granite-grey);
+  --badge-error-color: var(--error-700);
+  --badge-success-color: #0b744f;
+  --badge-warning-color: #6f5600;
+  --surface-border-color: #d4cedd;
+  --surface-border-color-subtle: #e4deea;
+  --surface-hover-color: #eef3ff;
+  --surface-soft-color: #f0eef5;
+  --focus-ring-color: rgb(113 177 255 / 0.38);
+  --progress-bg-color-muted: #d4cedd;
+  --status-error-bg-color: #fae8ed;
+  --status-success-bg-color: #e4f4ee;
+  --status-warning-bg-color: #fff4c2;
 
   --on-background-color: var(--smokey-black);
   --on-primary-color: var(--light-grey);
@@ -50,27 +62,27 @@
 
   /* Controls */
 
-  --control-border-radius-size: 1.5em;
+  --control-border-radius-size: 0.5rem;
   --control-border-size: 0.0625em;
   --control-font-size: 1em;
   --control-icon-size: 2em;
-  --control-padding: 0.9em 1.25em;
-  --control-small-padding: 0.65em 0.875em;
+  --control-padding: 0.75em 1em;
+  --control-small-padding: 0.625em 0.875em;
 
   --non-button-control-bg-color: #fff;
   --non-button-control-text-color: var(--smokey-black);
 
-  --control-bg-color: var(--smokey-black);
+  --control-bg-color: var(--cornflower);
   --control-bg-color-hover: var(--cornflower);
   --control-border-color: transparent;
   --control-border-color-hover: transparent;
-  --control-text-color: #fff;
+  --control-text-color: var(--smokey-black);
   --control-text-color-hover: var(--smokey-black);
 
-  --control-secondary-bg-color: #fff;
-  --control-secondary-bg-color-hover: var(--silver-metallic);
-  --control-secondary-border-color: transparent;
-  --control-secondary-border-color-hover: transparent;
+  --control-secondary-bg-color: transparent;
+  --control-secondary-bg-color-hover: rgb(16 16 16 / 0.045);
+  --control-secondary-border-color: #d4cedd;
+  --control-secondary-border-color-hover: var(--cornflower);
   --control-secondary-text-color: var(--smokey-black);
 
   --control-tertiary-bg-color: transparent;
@@ -90,16 +102,16 @@
   /* Progress bars */
 
   --progress-bar-height: 0.6125em;
-  --progress-bg-color: var(--primary-color);
+  --progress-bg-color: var(--progress-bg-color-muted);
   --progress-filler-color: var(--secondary-color);
 
   /* Steppers */
 
-  --stepper-bar-height: 0.3125em;
-  --stepper-rail-color: var(--background-color);
-  --stepper-rail-color-variant-secondary: var(--primary-color);
-  --stepper-filler-color: var(--success-color);
-  --stepper-on-filler-color: var(--on-success-color);
+  --stepper-bar-height: 0.125em;
+  --stepper-rail-color: var(--surface-border-color-subtle);
+  --stepper-rail-color-variant-secondary: var(--surface-border-color);
+  --stepper-filler-color: var(--secondary-color);
+  --stepper-on-filler-color: var(--smokey-black);
   --stepper-on-rail-color: var(--on-background-color);
   --stepper-on-rail-variant-secondary-color: var(--on-primary-color);
 
@@ -113,14 +125,14 @@
 
   /* Fieldset */
 
-  --fieldset-background-color: var(--light-grey);
-  --fieldset-border-radius: 1.5em;
+  --fieldset-background-color: var(--background-color-alt);
+  --fieldset-border-radius: var(--control-border-radius-size);
 
   /* Dividers */
 
-  --divider-color-primary: var(--smokey-black);
-  --divider-background-color: var(--light-grey);
-  --divider-border-color: var(--smokey-black);
+  --divider-color-primary: var(--surface-border-color);
+  --divider-background-color: var(--background-color);
+  --divider-border-color: var(--surface-border-color);
 
   /* Home animation */
 
@@ -137,11 +149,24 @@
 :root.dark {
   /* Theme colours */
 
-  --page-background-color: var(--jet);
+  --page-background-color: var(--smokey-black);
   --background-color: var(--smokey-black);
-  --background-color-alt: var(--granite-grey);
+  --background-color-alt: #151519;
   --primary-color: var(--light-grey);
-  --surface-color: var(--jet);
+  --surface-color: #151519;
+  --muted-color: var(--silver-metallic);
+  --badge-error-color: #ff6f8c;
+  --badge-success-color: var(--success-color);
+  --badge-warning-color: var(--warning-color);
+  --surface-border-color: #34333a;
+  --surface-border-color-subtle: #26252b;
+  --surface-hover-color: #182334;
+  --surface-soft-color: #1c1c21;
+  --focus-ring-color: rgb(113 177 255 / 0.4);
+  --progress-bg-color-muted: #34333a;
+  --status-error-bg-color: #31131b;
+  --status-success-bg-color: #11291f;
+  --status-warning-bg-color: #302814;
 
   --on-background-color: var(--light-grey);
   --on-primary-color: var(--smokey-black);
@@ -150,14 +175,21 @@
   /* Anchors */
   --anchor-color-on-surface: var(--accent-dark-900);
 
+  /* Steppers */
+
+  --stepper-rail-color: #24232a;
+  --stepper-rail-color-variant-secondary: #34333a;
+
   /* Controls */
 
-  --non-button-control-bg-color: #000;
+  --non-button-control-bg-color: #101014;
   --non-button-control-text-color: var(--light-grey);
 
-  --control-bg-color: var(--light-grey);
+  --control-bg-color: var(--cornflower);
   --control-text-color: var(--smokey-black);
-  --control-secondary-bg-color: var(--smokey-black);
+  --control-secondary-bg-color: transparent;
+  --control-secondary-bg-color-hover: rgb(237 234 243 / 0.06);
+  --control-secondary-border-color: #34333a;
   --control-secondary-text-color: var(--light-grey);
   --control-tertiary-border-color: var(--light-grey);
   --control-tertiary-text-color: var(--light-grey);
@@ -169,13 +201,13 @@
 
   /* Fieldset */
 
-  --fieldset-background-color: var(--smokey-black);
+  --fieldset-background-color: var(--background-color-alt);
 
   /* Dividers */
 
-  --divider-color-primary: var(--magnolia);
+  --divider-color-primary: var(--surface-border-color);
   --divider-background-color: var(--smokey-black);
-  --divider-border-color: var(--magnolia);
+  --divider-border-color: var(--surface-border-color);
 
   /* Home animation */
 

@@ -1,16 +1,17 @@
 .dusk-words {
-  --words-container-padding: 1.25em 1em;
-  --words-word-index-size: 2em;
+  --words-container-padding: 1rem;
+  --words-word-index-size: 1.75rem;
 }
 
 .dusk-words {
-  font-size: 0.75em;
+  font-family: var(--mono-font-family);
+  font-size: 0.8125rem;
   padding: var(--words-container-padding);
-  overflow: hidden;
-  background-color: var(--on-primary-color);
+  background-color: var(--surface-soft-color);
+  border: 1px solid var(--surface-border-color);
   display: grid;
-  grid-template-columns: var(--mobile-grid-template-columns);
-  gap: var(--small-gap);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
   border-radius: var(--control-border-radius-size);
   list-style-type: none;
   counter-reset: list-counter;
@@ -18,21 +19,27 @@
 
 .dusk-words__word {
   counter-increment: list-counter;
-  text-transform: uppercase;
   align-items: center;
   display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow: hidden;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .dusk-words__word::before {
   content: counter(list-counter);
-  margin-right: var(--small-gap);
-  border: 2px solid var(--on-surface-color);
-  border-radius: 30%;
+  border: 1px solid var(--surface-border-color);
+  border-radius: var(--control-border-radius-size);
+  background-color: var(--surface-color);
+  color: var(--on-background-color);
   height: var(--words-word-index-size);
   width: var(--words-word-index-size);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 var(--words-word-index-size);
+  font-weight: 600;
 }
 
 @media (min-width: 800px) {

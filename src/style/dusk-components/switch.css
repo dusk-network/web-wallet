@@ -2,8 +2,8 @@
   --hover-scale: 1.1;
 
   box-sizing: content-box;
-  background-color: var(--surface-color);
-  border-color: var(--control-border-color);
+  background-color: var(--surface-soft-color);
+  border-color: var(--surface-border-color);
   border-radius: var(--control-border-radius-size);
   border-style: solid;
   border-width: var(--control-border-size);
@@ -13,16 +13,24 @@
 }
 
 .dusk-switch--on-surface {
-  background-color: var(--on-primary-color);
+  background-color: var(--surface-soft-color);
 }
 
 .dusk-switch::after {
   content: "";
   display: inline-block;
-  transition: transform 0.3s ease-in-out 0s;
+  box-shadow: 0 0 0 1px var(--surface-border-color-subtle);
+  transition:
+    background-color 0.2s ease,
+    transform 0.3s ease-in-out 0s;
   width: 1.5em;
   height: 1.5em;
   border-radius: var(--control-border-radius-size);
+}
+
+.dusk-switch:focus-visible {
+  outline: 2px solid var(--secondary-color);
+  outline-offset: 2px;
 }
 
 .dusk-switch[aria-checked="false"][aria-disabled="false"]:hover::after {
@@ -39,11 +47,11 @@
 }
 
 .dusk-switch[aria-checked="false"]::after {
-  background-color: var(--primary-color);
+  background-color: var(--on-background-color);
 }
 
 .dusk-switch[aria-disabled="true"] {
-  opacity: 0.5;
+  opacity: 0.72;
 }
 
 .dusk-switch[aria-disabled="true"] {

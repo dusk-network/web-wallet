@@ -6,7 +6,8 @@
   align-items: center;
   justify-content: center;
   font-family: inherit;
-  letter-spacing: inherit;
+  font-weight: 500;
+  letter-spacing: 0;
   line-height: 1;
   border-radius: var(--control-border-radius-size);
   border-style: solid;
@@ -48,7 +49,7 @@
 .dusk-button--size--small,
 .dusk-anchor-button--size--small,
 .dusk-anchor-button--size--small:visited {
-  font-size: var(--control-font-size);
+  font-size: 0.875em;
   gap: calc(var(--control-font-size) / 2);
   padding: var(--control-small-padding);
 }
@@ -66,7 +67,7 @@
 .dusk-anchor-button.dusk-anchor-button--disabled,
 .dusk-anchor-button.dusk-anchor-button--disabled:hover,
 .dusk-anchor-button.dusk-anchor-button--disabled:visited {
-  opacity: 0.5;
+  opacity: 0.58;
 }
 
 .dusk-button > span,
@@ -80,7 +81,7 @@
 
 /* Icon Buttons */
 .dusk-icon-button:not(.dusk-icon-button--labeled) {
-  border-radius: 50%;
+  border-radius: var(--control-border-radius-size);
   padding: 0.2em;
 }
 

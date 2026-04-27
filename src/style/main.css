@@ -76,11 +76,11 @@ html {
   color: var(--on-background-color);
   font-family: var(--main-font-family);
   font-size: var(--main-font-size);
-  letter-spacing: 0.06125rem;
+  letter-spacing: 0;
 }
 
 body {
-  padding: 2rem;
+  padding: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -96,11 +96,12 @@ fieldset {
 
 #outer-container {
   background-color: var(--background-color);
-  width: 60%;
-  max-width: 40rem;
+  width: min(100%, 41rem);
   max-height: 60rem;
   height: 80%;
-  border-radius: 2rem;
+  border: 1px solid var(--surface-border-color);
+  border-radius: 0.75rem;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.28);
   transition: all 0.2s ease-in-out 0s;
   position: relative;
   overflow: hidden;
@@ -116,8 +117,7 @@ fieldset {
 ):focus,
 .dusk-exclusive-choice:focus-within {
   border-color: var(--secondary-color-variant-dark);
-  box-shadow: inset 0 0 0 var(--control-border-size)
-    var(--secondary-color-variant-dark);
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
   outline: 0 none;
 }
 
@@ -145,6 +145,8 @@ fieldset {
 
   #outer-container {
     border-radius: 0;
+    border: none;
+    box-shadow: none;
   }
 }
 
@@ -163,6 +165,6 @@ fieldset {
 @media (max-height: 800px) {
   #outer-container {
     gap: 1rem;
-    border-radius: 1.5rem;
+    border-radius: 0.75rem;
   }
 }

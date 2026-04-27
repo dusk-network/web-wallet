@@ -3,11 +3,11 @@
   appearance: none;
   font-family: inherit;
   font-size: var(--control-font-size);
-  letter-spacing: inherit;
+  letter-spacing: 0;
   padding: var(--control-padding);
   padding-right: 2.25em;
   background-color: var(--non-button-control-bg-color);
-  border-color: var(--control-border-color);
+  border-color: var(--surface-border-color);
   border-radius: var(--control-border-radius-size);
   border-style: solid;
   border-width: var(--control-border-size);
@@ -37,7 +37,7 @@
 }
 
 .dusk-select:disabled {
-  opacity: 0.5;
+  opacity: 0.58;
 }
 
 /* stylelint-disable-next-line selector-pseudo-element-no-unknown */
