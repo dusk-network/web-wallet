@@ -168,7 +168,7 @@
       position: relative;
       display: flex;
       align-content: space-between;
-      gap: 1.375rem;
+      gap: 1rem;
       flex: 1;
       flex-direction: column;
       max-height: 100%;
@@ -178,9 +178,11 @@
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 1.375rem;
+      gap: 1rem;
       overflow-y: auto;
       flex: 1;
+      padding-right: 0.125rem;
+      scrollbar-color: var(--surface-border-color) transparent;
     }
 
     .footer {
@@ -189,6 +191,9 @@
       justify-content: space-between;
       gap: 0.75rem;
       align-items: center;
+      border-top: 1px solid
+        var(--surface-border-color-subtle);
+      padding-top: 0.875rem;
 
       &__actions {
         display: flex;
@@ -215,24 +220,26 @@
       }
 
       .footer__network-status-icon {
-        border-radius: 50%;
+        border: 1px solid
+          currentColor;
+        border-radius: var(--control-border-radius-size);
         padding: 0.2em;
       }
 
       .footer__network-status-icon--error {
         cursor: help;
-        color: var(--on-error-color);
-        background: var(--error-color);
+        color: var(--badge-error-color);
+        background: var(--status-error-bg-color);
       }
 
       .footer__network-status-icon--success {
-        color: var(--on-success-color);
-        background: var(--success-color);
+        color: var(--badge-success-color);
+        background: var(--status-success-bg-color);
       }
 
       .footer__network-status-icon--warning {
-        color: var(--on-warning-color);
-        background: var(--warning-color);
+        color: var(--badge-warning-color);
+        background: var(--status-warning-bg-color);
       }
     }
   }

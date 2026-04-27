@@ -8,7 +8,7 @@
   export let items;
 </script>
 
-<Card>
+<Card className="dashboard-nav-card">
   <nav class="dashboard-nav" aria-label="Transaction and operations navigation">
     {#each items as item (item.id)}
       {@const { icons, label, href } = item}
@@ -33,39 +33,59 @@
 
 <style lang="postcss">
   .dashboard-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+
     :global(&__item) {
       display: flex;
-      flex-direction: row;
+      flex-direction: row-reverse;
       align-items: center;
-      justify-content: space-between;
-      padding: 0.5rem 0;
+      justify-content: center;
+      gap: 0.5rem;
+      min-height: 3.5rem;
+      padding: 0.75rem 0.5rem;
+      border-right: 1px solid var(--surface-border-color-subtle);
+      border-bottom: 1px solid var(--surface-border-color-subtle);
       color: var(--on-surface-color) !important;
+      text-align: center;
 
-      &:first-child {
-        padding-top: 0;
+      &:nth-child(2n) {
+        border-right: none;
       }
 
-      &:last-child {
-        padding-bottom: 0;
+      &:nth-last-child(-n + 2) {
+        border-bottom: none;
       }
 
       &:hover {
-        color: var(--anchor-color-on-surface) !important;
+        background-color: var(--surface-hover-color);
+        color: var(--secondary-color-variant-dark) !important;
         text-decoration: none !important;
       }
     }
 
     &__item-label {
-      font-size: 1.125rem;
+      font-size: 0.95rem;
       font-style: normal;
       font-weight: 500;
-      line-height: 1.6875rem;
+      line-height: 1.1;
     }
 
     &__item-icons {
       display: flex;
       flex-direction: row;
       gap: 0.625rem;
+      color: var(--secondary-color-variant-dark);
     }
+  }
+
+  :global(.dashboard-nav-card .dusk-card__body-container) {
+    padding: 0;
+  }
+
+  :global(.dark .dashboard-nav__item-icons),
+  :global(.dark .dashboard-nav__item:hover) {
+    color: var(--secondary-color) !important;
   }
 </style>

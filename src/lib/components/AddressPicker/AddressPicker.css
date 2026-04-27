@@ -1,8 +1,9 @@
 .address-picker {
   position: relative;
   background-color: var(--surface-color);
-  padding: 1em;
-  border-radius: 1.25rem;
+  border: 1px solid var(--surface-border-color);
+  padding: 0.75rem 1rem;
+  border-radius: var(--control-border-radius-size);
   user-select: none;
   z-index: 2;
 }
@@ -11,6 +12,7 @@
   width: 100%;
   text-align: center;
   font-weight: 500;
+  font-size: 0.95rem;
 }
 
 .address-picker__copy-address-button:hover {
@@ -35,11 +37,11 @@
 }
 
 .address-picker__trigger:hover {
-  opacity: 0.8;
+  color: var(--secondary-color-variant-dark);
 }
 
 .address-picker__trigger:focus-visible {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--secondary-color);
   outline-offset: 2px;
 }
 
@@ -60,10 +62,11 @@
   right: 0;
   z-index: 2;
   background-color: var(--surface-color);
+  border: 1px solid var(--surface-border-color);
   padding: 0.75em;
-  border-bottom-left-radius: 1.25rem;
-  border-bottom-right-radius: 1.25rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-bottom-left-radius: var(--control-border-radius-size);
+  border-bottom-right-radius: var(--control-border-radius-size);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.22);
   border-top: none;
   display: flex;
   flex-direction: column;
@@ -93,7 +96,12 @@
   display: flex;
   align-items: flex-start;
   gap: 0.5em;
-  padding: 0.5em 0;
+  border-top: 1px solid var(--surface-border-color-subtle);
+  padding: 0.625em 0;
+}
+
+.address-picker__profile:first-child .address-picker__profile-container {
+  border-top: none;
 }
 
 .address-picker__profile-button {
@@ -104,16 +112,16 @@
   padding: 0.75em;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  border-radius: 0.5rem;
+  border-radius: var(--control-border-radius-size);
   background-color: transparent;
 }
 
 .address-picker__profile-button:hover {
-  background-color: var(--background-color);
+  background-color: var(--surface-soft-color);
 }
 
 .address-picker__profile-button:focus-visible {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--secondary-color);
   outline-offset: 2px;
 }
 
@@ -147,11 +155,11 @@
   color: var(--muted-color);
   font-size: 0.75em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.12em;
 }
 
 .address-picker__address-value {
-  font-family: monospace;
+  font-family: var(--mono-font-family);
   color: var(--on-surface-color);
   font-size: 0.85em;
 }
@@ -174,18 +182,18 @@
   width: 2em;
   height: 2em;
   cursor: pointer;
-  border-radius: 0.375rem;
+  border-radius: var(--control-border-radius-size);
   transition: background-color 0.2s ease;
   color: var(--muted-color);
 }
 
 .address-picker__copy-button:hover {
-  background-color: var(--background-color);
+  background-color: var(--surface-soft-color);
   color: var(--on-surface-color);
 }
 
 .address-picker__copy-button:focus-visible {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--secondary-color);
   outline-offset: 2px;
 }
 

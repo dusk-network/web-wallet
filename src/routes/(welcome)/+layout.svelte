@@ -15,7 +15,7 @@
   }
 </script>
 
-<header>
+<header class="welcome-layout__header">
   <AppImage
     src={darkMode ? "/dusk_logo_light.svg" : "/dusk_logo.svg"}
     alt="Dusk Logo"
@@ -64,6 +64,14 @@
     width: 100%;
   }
   :global {
+    .welcome-layout__header {
+      align-items: center;
+      border-bottom: 1px solid var(--surface-border-color-subtle);
+      display: flex;
+      min-height: 3rem;
+      padding-bottom: 0.875rem;
+    }
+
     .welcome-layout__loading {
       width: 100%;
       display: flex;

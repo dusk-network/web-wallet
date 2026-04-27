@@ -98,7 +98,7 @@
         {#each getOrderedTransactions(transactions) as transaction (transaction.id)}
           <dl class="transactions-list">
             <dt class="transactions-list__term">Hash</dt>
-            <dd class="transactions-list__datum transactions-list__datum--hash">
+            <dd class="transactions-list__datum">
               <samp>
                 <Anchor
                   href="/explorer/transactions/transaction?id={transaction.id}"
@@ -151,12 +151,14 @@
 
 <style lang="postcss">
   .transactions {
-    border-radius: 1.25em;
+    border: 1px solid
+      var(--surface-border-color);
+    border-radius: var(--control-border-radius-size);
     background: var(--surface-color);
     display: flex;
     flex-direction: column;
     gap: var(--default-gap);
-    padding-top: 1.375em;
+    padding-top: 1rem;
 
     &__header {
       display: flex;
@@ -168,7 +170,22 @@
       flex-wrap: wrap;
 
       & :global(h3) {
-        line-height: 150%;
+        font-family: var(--mono-font-family);
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.12em;
+        line-height: 1.2;
+        text-transform: uppercase;
+      }
+
+      & :global(h3)::before {
+        content: "[ ";
+        color: var(--secondary-color);
+      }
+
+      & :global(h3)::after {
+        content: " ]";
+        color: var(--secondary-color);
       }
     }
   }
@@ -176,15 +193,22 @@
   :global {
     .transactions-list {
       display: grid;
-      grid-template-columns: max-content auto;
+      grid-template-columns: minmax(4.75rem, max-content) minmax(0, 1fr);
       width: 100%;
+      border-top: 1px solid var(--surface-border-color-subtle);
+      row-gap: 0;
 
       &__term {
-        background-color: var(--background-color-alt);
+        background-color: transparent;
+        color: var(--muted-color);
+        font-family: var(--mono-font-family);
+        font-size: 0.72rem;
         grid-column: 1;
-        line-height: 130%;
-        text-transform: capitalize;
-        padding: 0.3125em 0.625em 0.3125em 1.375em;
+        line-height: 1.5;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.4rem 0.75rem 0.4rem 1rem;
+        align-self: center;
       }
 
       &__ticker {
@@ -197,22 +221,19 @@
 
       &__datum {
         grid-column: 2;
-        line-height: 150%;
-        padding: 0.312em 0.625em;
+        line-height: 1.5;
+        padding: 0.4rem 1rem 0.4rem 0.75rem;
         display: flex;
         align-items: center;
         gap: 0.625em;
         font-family: var(--mono-font-family);
         overflow: hidden;
+        min-width: 0;
 
         & samp {
           display: block;
           white-space: nowrap;
           overflow: hidden;
-        }
-
-        &--hash {
-          justify-content: center;
         }
       }
 
@@ -225,25 +246,7 @@
       }
 
       &__badge {
-        flex: 1;
-      }
-
-      & dt:first-of-type,
-      & dd:first-of-type {
-        padding-top: 1em;
-      }
-
-      & dt:last-of-type,
-      & dd:last-of-type {
-        padding-bottom: 1em;
-      }
-
-      & dt:first-of-type {
-        border-top-right-radius: 2em;
-      }
-
-      & dt:last-of-type {
-        border-bottom-right-radius: 2em;
+        flex: 0 1 auto;
       }
     }
   }

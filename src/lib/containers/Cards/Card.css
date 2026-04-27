@@ -24,6 +24,26 @@
 .dusk-card__heading-icons {
   display: flex;
   gap: var(--small-gap);
+  color: var(--secondary-color-variant-dark);
+}
+
+.dusk-card__heading-container h3 {
+  font-family: var(--mono-font-family);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.dusk-card__heading-container h3::before {
+  content: "[ ";
+  color: var(--secondary-color);
+}
+
+.dusk-card__heading-container h3::after {
+  content: " ]";
+  color: var(--secondary-color);
 }
 
 .dusk-card__header-toggle {

@@ -256,7 +256,8 @@
     .settings {
       overflow-y: hidden;
       background-color: var(--surface-color);
-      border-radius: 1.125em;
+      border: 1px solid var(--surface-border-color);
+      border-radius: var(--control-border-radius-size);
 
       & > * {
         padding: 1em 1em 0 1em;
@@ -271,6 +272,24 @@
 
       &__content {
         overflow-y: auto;
+        scrollbar-color: var(--surface-border-color) transparent;
+      }
+
+      &__header h2 {
+        font-family: var(--mono-font-family);
+        font-size: 0.75rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      &__header h2::before {
+        content: "[ ";
+        color: var(--secondary-color);
+      }
+
+      &__header h2::after {
+        content: " ]";
+        color: var(--secondary-color);
       }
     }
 
@@ -287,10 +306,16 @@
         display: flex;
         align-items: center;
         gap: 0.75em;
+        color: var(--secondary-color-variant-dark);
       }
 
       &__heading {
+        color: var(--on-background-color);
+        font-family: var(--mono-font-family);
+        font-size: 0.75rem;
+        letter-spacing: 0.12em;
         line-height: 140%;
+        text-transform: uppercase;
       }
 
       &__control {
@@ -312,9 +337,10 @@
         }
 
         &--switch {
-          background-color: var(--background-color);
+          background-color: var(--surface-soft-color);
+          border: 1px solid var(--surface-border-color);
           padding: 0.625em 0.75em 0.625em 0.75em;
-          border-radius: 1.5em;
+          border-radius: var(--control-border-radius-size);
         }
       }
 
@@ -342,8 +368,9 @@
     }
 
     .dusk-button.settings-group__button--state--danger {
-      background-color: var(--error-color);
-      color: var(--on-danger-color);
+      background-color: var(--status-error-bg-color);
+      border-color: var(--badge-error-color);
+      color: var(--badge-error-color);
     }
   }
 </style>

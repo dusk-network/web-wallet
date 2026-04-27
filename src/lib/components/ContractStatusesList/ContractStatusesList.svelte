@@ -30,7 +30,8 @@
 
 <style lang="postcss">
   .contract-statuses {
-    background-color: var(--background-color);
+    background-color: var(--surface-soft-color);
+    border: 1px solid var(--surface-border-color);
     border-radius: var(--control-border-radius-size);
     padding: 0.75em;
     width: 100%;
@@ -41,36 +42,67 @@
 
     &__list {
       width: 100%;
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: 0.625em;
+      display: grid;
+      grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+      row-gap: 0.5rem;
     }
 
     &__label,
     &__value {
-      flex: 1 1 calc(50% - 0.625em / 2);
-      line-height: 150%;
+      min-width: 0;
+      line-height: 1.5;
+      padding-block: 0.25rem;
     }
 
     &__label {
-      padding-left: 0.625em;
+      align-self: center;
+      color: var(--muted-color);
+      font-family: var(--mono-font-family);
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      padding-left: 0.5rem;
+      padding-right: 0.75rem;
+      text-transform: uppercase;
     }
 
     &__value {
       display: inline-flex;
       align-items: center;
-      padding-right: 0.625em;
       gap: var(--small-gap);
-      text-align: right;
-      font-weight: 600;
+      font-family: var(--mono-font-family);
+      font-size: 0.9375rem;
+      font-weight: 500;
       justify-content: end;
+      padding-left: 0.75rem;
+      padding-right: 0.5rem;
+      text-align: right;
     }
 
     :global(&__icon) {
       width: 1em;
       height: 1em;
       flex-shrink: 0;
+    }
+  }
+
+  @media (max-width: 32rem) {
+    .contract-statuses {
+      padding: 0.625rem;
+
+      &__list {
+        grid-template-columns: 1fr;
+        row-gap: 0.15rem;
+      }
+
+      &__label,
+      &__value {
+        padding-inline: 0;
+      }
+
+      &__value {
+        justify-content: flex-start;
+        text-align: left;
+      }
     }
   }
 </style>

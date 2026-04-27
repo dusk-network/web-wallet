@@ -20,10 +20,10 @@
 <style>
   .app {
     height: 100%;
-    padding: 1.38rem;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1.25rem;
     overflow-y: hidden;
   }
 </style>

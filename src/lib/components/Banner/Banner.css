@@ -3,7 +3,8 @@
   display: flex;
   align-items: center;
   padding: 1em 1.25em;
-  border-radius: 12px;
+  background-color: var(--surface-soft-color);
+  border-radius: var(--control-border-radius-size);
   font-size: 0.875em;
   border-style: solid;
   border-width: 1px;
@@ -12,19 +13,22 @@
 
 .banner--info {
   border-color: var(--banner-info-color);
+  background-color: var(--surface-hover-color);
 }
 
 .banner--warning {
   border-color: var(--banner-warning-color);
+  background-color: var(--status-warning-bg-color);
 }
 
 .banner--error {
   border-color: var(--banner-error-color);
+  background-color: var(--status-error-bg-color);
 }
 
 .banner__title {
   font-weight: 500;
-  font-size: 1.1em;
+  font-size: 1em;
   display: block;
 }
 
