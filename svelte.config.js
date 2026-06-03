@@ -14,6 +14,7 @@ const config = {
 
     paths: {
       base: /** @type {"" | `/${string}` | undefined} */ (env.VITE_BASE_PATH),
+      relative: false,
     },
   },
   preprocess: [
