@@ -3,7 +3,7 @@
 <script>
   import { makeClassName } from "$lib/dusk/string";
   import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
-  import { Card, Icon } from "$lib/dusk/components";
+  import { Icon } from "$lib/dusk/components";
   import { mdiShieldLock, mdiShieldLockOpenOutline } from "@mdi/js";
   import { logo } from "$lib/dusk/icons";
   import { createNumberFormatter } from "$lib/dusk/number";
@@ -53,22 +53,22 @@
 
 <article {...$$restProps} class={classes}>
   <header class="dusk-balance__header">
-    <h2 class="sr-only">Your Balance:</h2>
+    <h2 class="dusk-balance__label">Total balance</h2>
+    <p
+      class="dusk-balance__fiat"
+      class:dusk-balance__fiat--visible={fiatPrice !== undefined}
+    >
+      <span>
+        {fiatFormatter(fiatPrice ? fiatPrice * totalBalance : 0)}
+      </span>
+    </p>
   </header>
   <p class="dusk-balance__dusk">
     <span>{duskFormatter(totalBalance)}</span>
     <span>{tokenCurrency}</span>
   </p>
-  <p
-    class="dusk-balance__fiat"
-    class:dusk-balance__fiat--visible={fiatPrice !== undefined}
-  >
-    <span>
-      {fiatFormatter(fiatPrice ? fiatPrice * totalBalance : 0)}
-    </span>
-  </p>
 
-  <Card className="dusk-balance__usage-details">
+  <div class="dusk-balance__usage-details">
     <div class="dusk-balance__account">
       <span class="dusk-balance__percentage"
         ><Icon
@@ -101,5 +101,5 @@
         /></span
       >
     </div>
-  </Card>
+  </div>
 </article>

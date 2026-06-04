@@ -84,8 +84,8 @@
         >
           {#if currentStep.iconPath}
             <Icon path={currentStep.iconPath} />
-          {:else}
-            {showStepNumbers ? idx + 1 : ""}
+          {:else if showStepNumbers}
+            <span class="dusk-stepper__step-number">{idx + 1}</span>
           {/if}
         </span>
 
@@ -105,7 +105,9 @@
           class:dusk-stepper__step--processed={idx <= activeStep}
           aria-current={idx === activeStep ? "step" : undefined}
         >
-          {showStepNumbers ? idx + 1 : ""}
+          {#if showStepNumbers}
+            <span class="dusk-stepper__step-number">{idx + 1}</span>
+          {/if}
         </span>
       {/each}
     {/if}

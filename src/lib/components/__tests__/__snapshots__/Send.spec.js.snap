@@ -21,7 +21,11 @@ exports[`Send > Address step > should display a warning if the address input is 
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          1
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
           <!---->
         </span>
          
@@ -35,7 +39,11 @@ exports[`Send > Address step > should display a warning if the address input is 
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          2
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
           <!---->
         </span>
          
@@ -49,7 +57,11 @@ exports[`Send > Address step > should display a warning if the address input is 
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          3
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
           <!---->
         </span>
          
@@ -63,7 +75,11 @@ exports[`Send > Address step > should display a warning if the address input is 
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          4
+          <span
+            class="dusk-stepper__step-number"
+          >
+            4
+          </span>
           <!---->
         </span>
          
@@ -303,7 +319,11 @@ exports[`Send > Address step > should display a warning if the address input is 
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          1
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
           <!---->
         </span>
          
@@ -317,7 +337,11 @@ exports[`Send > Address step > should display a warning if the address input is 
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          2
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
           <!---->
         </span>
          
@@ -331,7 +355,11 @@ exports[`Send > Address step > should display a warning if the address input is 
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          3
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
           <!---->
         </span>
          
@@ -345,7 +373,11 @@ exports[`Send > Address step > should display a warning if the address input is 
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          4
+          <span
+            class="dusk-stepper__step-number"
+          >
+            4
+          </span>
           <!---->
         </span>
          
@@ -617,7 +649,11 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          1
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
           <!---->
         </span>
          
@@ -631,7 +667,11 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          2
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
           <!---->
         </span>
          
@@ -645,7 +685,11 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          3
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
           <!---->
         </span>
          
@@ -659,7 +703,11 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          4
+          <span
+            class="dusk-stepper__step-number"
+          >
+            4
+          </span>
           <!---->
         </span>
          
@@ -866,7 +914,11 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          1
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
           <!---->
         </span>
          
@@ -881,7 +933,11 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          2
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
           <!---->
         </span>
          
@@ -895,7 +951,11 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          3
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
           <!---->
         </span>
          
@@ -909,7 +969,11 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          4
+          <span
+            class="dusk-stepper__step-number"
+          >
+            4
+          </span>
           <!---->
         </span>
          
@@ -1186,7 +1250,11 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          1
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
           <!---->
         </span>
          
@@ -1200,7 +1268,11 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          2
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
           <!---->
         </span>
          
@@ -1215,7 +1287,11 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          3
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
           <!---->
         </span>
          
@@ -1229,7 +1305,11 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          4
+          <span
+            class="dusk-stepper__step-number"
+          >
+            4
+          </span>
           <!---->
         </span>
          

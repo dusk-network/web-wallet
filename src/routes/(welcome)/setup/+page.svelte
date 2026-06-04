@@ -9,10 +9,7 @@
 
 <section class="setup-content">
   <div class="setup-content__wrapper">
-    <h2 class="h1 setup-heading">
-      Unlocking the Future: <br />
-      Your <mark>DUSK</mark> Native Wallet
-    </h2>
+    <h2 class="h1 setup-heading">Dusk Web Wallet</h2>
 
     <div class="setup-content__options">
       <div class="setup-content__options-group">
@@ -52,7 +49,7 @@
     &__wrapper {
       display: flex;
       flex-direction: column;
-      gap: var(--large-gap);
+      gap: 1.5rem;
       height: 100%;
     }
 
@@ -60,6 +57,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      gap: 1.25rem;
       height: 100%;
 
       &-group {
@@ -72,9 +70,13 @@
 
   .setup-heading {
     position: relative;
+    max-width: 12ch;
   }
 
   .setup-footer {
+    color: var(--muted-color);
+    font-family: var(--mono-font-family);
     font-size: 0.75em;
+    letter-spacing: 0.08em;
   }
 </style>

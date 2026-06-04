@@ -67,7 +67,12 @@
     align-items: stretch;
 
     &__label {
+      color: var(--muted-color);
+      font-family: var(--mono-font-family);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
       line-height: 140%;
+      text-transform: uppercase;
     }
   }
 </style>
