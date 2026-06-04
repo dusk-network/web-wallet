@@ -1,10 +1,10 @@
 .dusk-textbox {
   font-family: inherit;
   font-size: var(--control-font-size);
-  letter-spacing: inherit;
+  letter-spacing: 0;
   padding: var(--control-small-padding);
   background-color: var(--non-button-control-bg-color);
-  border-color: var(--control-border-color);
+  border-color: var(--surface-border-color);
   border-radius: var(--control-border-radius-size);
   border-style: solid;
   border-width: var(--control-border-size);
@@ -14,7 +14,7 @@
 
 .dusk-textbox:disabled,
 .dusk-textbox::placeholder {
-  opacity: 0.5;
+  opacity: 0.58;
 }
 
 .dusk-textbox:not(:focus):invalid {

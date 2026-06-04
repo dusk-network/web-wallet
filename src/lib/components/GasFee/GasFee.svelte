@@ -40,7 +40,7 @@
     }
 
     &__amount-value {
-      font-weight: 600;
+      font-weight: 500;
       display: flex;
       gap: var(--small-gap);
 

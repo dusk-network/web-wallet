@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@dusk/w3sper": "npm:@jsr/dusk__w3sper@1.6.0",
+    "@duskit/css": "0.4.0",
     "@floating-ui/dom": "1.7.6",
     "@mdi/js": "7.4.47",
     "@reown/appkit": "1.7.20",
@@ -54,7 +55,7 @@
   "devDependencies": {
     "@dusk-network/eslint-config": "4.0.1",
     "@dusk-network/prettier-config": "1.1.0",
-    "@duskit/encoding": "0.0.1",
+    "@duskit/encoding": "0.0.3",
     "@eslint/js": "9.39.4",
     "@juggle/resize-observer": "3.4.0",
     "@sveltejs/adapter-static": "3.0.10",

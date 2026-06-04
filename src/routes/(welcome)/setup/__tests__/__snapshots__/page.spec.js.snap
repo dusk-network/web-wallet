@@ -10,13 +10,7 @@ exports[`Setup > should render the Setup page 1`] = `
     <h2
       class="h1 setup-heading svelte-r2q2pe"
     >
-      Unlocking the Future: 
-      <br />
-       Your 
-      <mark>
-        DUSK
-      </mark>
-       Native Wallet
+      Dusk Web Wallet
     </h2>
      
     <div

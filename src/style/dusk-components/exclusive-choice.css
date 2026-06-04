@@ -12,7 +12,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: inherit;
-  letter-spacing: inherit;
+  font-weight: 500;
+  letter-spacing: 0;
   line-height: 1;
   text-align: center;
   text-transform: uppercase;
@@ -33,5 +34,5 @@
 }
 
 .dusk-exclusive-choice__radio:disabled + .dusk-exclusive-choice__label {
-  opacity: 0.5;
+  opacity: 0.58;
 }

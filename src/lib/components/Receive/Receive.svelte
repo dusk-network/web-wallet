@@ -79,20 +79,23 @@
 
     &__address,
     :global(&__qr) {
-      border-radius: 1.5em;
+      border-radius: var(--control-border-radius-size);
       width: 100%;
     }
 
     &__address {
       line-break: anywhere;
       padding: 0.75em 1em;
-      background-color: transparent;
-      border: 1px solid var(--primary-color);
+      background-color: var(--surface-soft-color);
+      border: 1px solid var(--surface-border-color);
+      font-family: var(--mono-font-family);
+      font-size: 0.875rem;
     }
 
     :global(&__qr) {
       padding: 0.625em;
-      background-color: var(--background-color-alt);
+      background-color: var(--surface-soft-color);
+      border: 1px solid var(--surface-border-color);
     }
 
     :global(&__button) {

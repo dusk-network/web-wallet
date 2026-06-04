@@ -70,7 +70,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         </dt>
          
         <dd
-          class="transactions-list__datum transactions-list__datum--hash"
+          class="transactions-list__datum"
         >
           <samp>
             <a
@@ -161,7 +161,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         </dt>
          
         <dd
-          class="transactions-list__datum transactions-list__datum--hash"
+          class="transactions-list__datum"
         >
           <samp>
             <a
@@ -236,7 +236,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         </dt>
          
         <dd
-          class="transactions-list__datum transactions-list__datum--hash"
+          class="transactions-list__datum"
         >
           <samp>
             <a
@@ -311,7 +311,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         </dt>
          
         <dd
-          class="transactions-list__datum transactions-list__datum--hash"
+          class="transactions-list__datum"
         >
           <samp>
             <a
@@ -402,7 +402,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         </dt>
          
         <dd
-          class="transactions-list__datum transactions-list__datum--hash"
+          class="transactions-list__datum"
         >
           <samp>
             <a
@@ -477,7 +477,7 @@ exports[`Dashboard > should render the transactions page 1`] = `
         </dt>
          
         <dd
-          class="transactions-list__datum transactions-list__datum--hash"
+          class="transactions-list__datum"
         >
           <samp>
             <a

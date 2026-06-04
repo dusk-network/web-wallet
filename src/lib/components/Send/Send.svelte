@@ -510,9 +510,11 @@
     }
     &__review-address,
     &__review-memo {
-      background-color: transparent;
-      border: 1px solid var(--primary-color);
-      border-radius: 1.5em;
+      background-color: var(--surface-soft-color);
+      border: 1px solid var(--surface-border-color);
+      border-radius: var(--control-border-radius-size);
+      font-family: var(--mono-font-family);
+      font-size: 0.875rem;
       padding: 0.75em 1em;
       width: 100%;
       line-break: anywhere;
@@ -560,7 +562,8 @@
   }
 
   .review-transaction__value {
-    font-weight: bold;
+    font-family: var(--mono-font-family);
+    font-weight: 500;
   }
 
   :global(
@@ -573,16 +576,16 @@
   }
 
   :global(.dusk-textbox.operation__send-address--invalid) {
-    color: var(--error-color);
+    color: var(--badge-error-color);
   }
 
   :global(.dusk-textbox.operation__send-address--blocked) {
-    color: var(--error-color);
-    border-color: var(--error-color);
+    color: var(--badge-error-color);
+    border-color: var(--badge-error-color);
   }
 
   :global(.dusk-textbox.operation__send-memo--invalid) {
-    border-color: var(--error-color);
+    border-color: var(--badge-error-color);
   }
 
   :global(.allocate-button) {

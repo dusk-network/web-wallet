@@ -21,7 +21,11 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          1
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
           <!---->
         </span>
          
@@ -35,7 +39,11 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          2
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
           <!---->
         </span>
          
@@ -49,7 +57,11 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          3
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
           <!---->
         </span>
          
@@ -299,7 +311,11 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step dusk-stepper__step--processed"
         >
-          1
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
           <!---->
         </span>
          
@@ -313,7 +329,11 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          2
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
           <!---->
         </span>
          
@@ -327,7 +347,11 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           aria-labelledby="step-some-generated-id"
           class="dusk-stepper__step"
         >
-          3
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
           <!---->
         </span>
          
