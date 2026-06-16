@@ -35,15 +35,18 @@
   "type": "module",
   "version": "1.8.0",
   "overrides": {
-    "cookie": "0.7.2"
+    "cookie": "0.7.2",
+    "viem": {
+      "ws": "8.21.0"
+    }
   },
   "dependencies": {
     "@dusk/w3sper": "npm:@jsr/dusk__w3sper@1.6.0",
     "@duskit/css": "0.4.0",
     "@floating-ui/dom": "1.7.6",
     "@mdi/js": "7.4.47",
-    "@reown/appkit": "1.7.20",
-    "@reown/appkit-adapter-wagmi": "1.7.20",
+    "@reown/appkit": "1.8.20",
+    "@reown/appkit-adapter-wagmi": "1.8.20",
     "@scure/bip39": "2.0.1",
     "css-doodle": "0.50.2",
     "dexie": "4.0.11",
@@ -59,14 +62,14 @@
     "@eslint/js": "9.39.4",
     "@juggle/resize-observer": "3.4.0",
     "@sveltejs/adapter-static": "3.0.10",
-    "@sveltejs/kit": "2.55.0",
+    "@sveltejs/kit": "2.65.1",
     "@sveltejs/vite-plugin-svelte": "7.0.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/svelte": "5.3.1",
     "@types/node": "25.5.0",
     "@vitejs/plugin-basic-ssl": "2.2.0",
-    "@vitest/browser": "4.1.0",
-    "@vitest/coverage-istanbul": "4.1.0",
+    "@vitest/browser": "4.1.9",
+    "@vitest/coverage-istanbul": "4.1.9",
     "autoprefixer": "10.4.27",
     "core-js": "3.49.0",
     "eslint": "9.39.4",
@@ -81,13 +84,13 @@
     "postcss-nested": "7.0.2",
     "prettier": "3.8.1",
     "prettier-plugin-svelte": "3.5.1",
-    "svelte": "5.54.1",
+    "svelte": "5.56.3",
     "svelte-check": "4.4.5",
     "svelte-preprocess": "6.0.3",
     "typescript": "5.9.3",
-    "vite": "8.0.1",
+    "vite": "8.0.16",
     "vite-tsconfig-paths": "6.1.1",
-    "vitest": "4.1.0",
+    "vitest": "4.1.9",
     "vitest-canvas-mock": "1.1.3"
   }
 }
