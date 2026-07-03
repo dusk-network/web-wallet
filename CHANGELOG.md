@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Migrate DuskEVM bridge flows to the current bridge contract API [#947]
+
 ### Removed
 
 ### Fixed

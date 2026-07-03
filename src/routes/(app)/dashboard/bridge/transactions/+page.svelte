@@ -2,17 +2,11 @@
 
 <script>
   import { EvmTransactions } from "$lib/components";
-  import { settingsStore } from "$lib/stores";
-
-  /** @type {import('./$types').PageData} */
-  export let data;
-
-  const { language } = $settingsStore;
 </script>
 
 <div class="transactions">
   <h2 class="sr-only">Transactions</h2>
-  <EvmTransactions items={data.pendingWithdrawals} {language} />
+  <EvmTransactions />
 </div>
 
 <style lang="postcss">

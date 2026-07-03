@@ -8,5 +8,16 @@
     "outputs": [],
     "stateMutability": "payable",
     "type": "function"
+  },
+  {
+    "inputs": [
+      { "name": "to", "type": "address" },
+      { "name": "minGasLimit", "type": "uint32" },
+      { "name": "extraData", "type": "bytes" }
+    ],
+    "name": "bridgeETHTo",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
   }
 ]

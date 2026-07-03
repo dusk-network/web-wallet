@@ -32,9 +32,6 @@
   /** @type {GetBalanceReturnType | undefined}  */
   let evmDuskBalance;
 
-  /** @type {Promise<PendingWithdrawalEntry[]>} */
-  export let pendingWithdrawals = Promise.resolve([]);
-
   /**
    * @param {number} id
    */
@@ -82,6 +79,7 @@
   $: unshieldedAddress = currentProfile
     ? currentProfile.account.toString()
     : "";
+  $: unshieldedAccount = currentProfile ? currentProfile.account : null;
   $: formatter = createCurrencyFormatter(language, "DUSK", 9);
 </script>
 
@@ -90,8 +88,8 @@
 {:else}
   <Bridge
     {unshieldedAddress}
+    {unshieldedAccount}
     {evmDuskBalance}
-    {pendingWithdrawals}
     unshieldedBalance={balance.unshielded.value}
     {formatter}
     {gasLimits}

@@ -56,6 +56,14 @@ VITE_REOWN_PROJECT_ID="" # the ID of the EVM project (as on Reown Cloud)
 VITE_NODE_URL="" # connect to a specific node
 ```
 
+For the DuskEVM bridge, `VITE_BRIDGE_CONTRACT_ID` is the Dusk L1
+`L1StandardBridge` contract id used for DuskDS -> DuskEVM deposits.
+`VITE_EVM_BRIDGE_CONTRACT_ADDRESS` is the DuskEVM L2 `L2StandardBridge`
+address used for DuskEVM -> DuskDS withdrawals. The current wallet bridge
+flows encode bridge-specific asset-recipient metadata only. Generic Dusk
+delivery envelopes for arbitrary L2 -> L1 contract messages are a separate
+application surface and are not exposed by the bridge UI.
+
 To run a local node different steps are needed, so please read the [related section](#running-a-local-rusk-node).
 
 ## NPM scripts

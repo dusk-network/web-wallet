@@ -1,0 +1,112 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  BRIDGE_EXTERNAL_RECIPIENT_BYTES,
+  BRIDGE_RECIPIENT_EXTERNAL,
+  bytesToHex,
+  compressedBlsPublicKeyToRaw,
+  encodeExternalBridgeRecipient,
+  hexToBytes,
+} from "../encoding";
+import { encodeDepositETHToWithValueArgs } from "../deposit";
+
+const COMPRESSED_G2_GENERATOR =
+  "93e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8";
+
+// Generated with dusk_bls12_381::G2Affine::generator().to_raw_bytes().
+const RAW_G2_GENERATOR =
+  "100a9402a28ff2f51a96b48726fbf5b380e52a3eb593a8a1e9ae3c1a9d9994986b36631863b7676fd7bc50439291810506f6239e75c0a9a5c360cdbc9dc5a0aa067886e2187eb13b67b34185ccb61a1b478515f20eedb6c2f3ed6073092a92114a4c4960f80a734c5a9c365e1ffa7c595a630aaa6c85e6e75f490d6ee9b5efbba225eff075a9d307e5da807e8efd83005db064df92fcc0addc61142b0a27aa18a0ebe43b6aacad863aa33dc94e5c4979edca3ca4505817e7f21bde63a1c22b0b00";
+
+describe("bridge recipient encoding", () => {
+  it("converts compressed Dusk account keys to Rust raw BLS bytes", () => {
+    const raw = compressedBlsPublicKeyToRaw(
+      hexToBytes(COMPRESSED_G2_GENERATOR)
+    );
+
+    expect(bytesToHex(raw)).toBe(`0x${RAW_G2_GENERATOR}`);
+  });
+
+  it("encodes external account recipient extraData", () => {
+    const recipient = encodeExternalBridgeRecipient(
+      hexToBytes(COMPRESSED_G2_GENERATOR)
+    );
+
+    expect(recipient).toHaveLength(BRIDGE_EXTERNAL_RECIPIENT_BYTES);
+    expect(recipient[0]).toBe(BRIDGE_RECIPIENT_EXTERNAL);
+    expect(bytesToHex(recipient.slice(1))).toBe(`0x${RAW_G2_GENERATOR}`);
+  });
+
+  it("rejects malformed account public keys", () => {
+    expect(() => compressedBlsPublicKeyToRaw(new Uint8Array(95))).toThrow(
+      RangeError
+    );
+    expect(() => compressedBlsPublicKeyToRaw(new Uint8Array(96))).toThrow();
+  });
+});
+
+describe("current bridge deposit payload encoding", () => {
+  const to = "0x1111111111111111111111111111111111111111";
+
+  it("matches Rust rkyv for empty extraData", () => {
+    expect(
+      bytesToHex(
+        encodeDepositETHToWithValueArgs({
+          amountLux: 123n,
+          minGasLimit: 150_000,
+          to,
+        })
+      )
+    ).toBe(
+      "0x7b000000000000001111111111111111111111111111111111111111f0490200e0ffffff00000000"
+    );
+  });
+
+  it("matches Rust rkyv for non-empty extraData", () => {
+    expect(
+      bytesToHex(
+        encodeDepositETHToWithValueArgs({
+          amountLux: 123n,
+          extraData: [0xaa, 0xbb, 0xcc],
+          minGasLimit: 150_000,
+          to,
+        })
+      )
+    ).toBe(
+      "0xaabbcc00000000007b000000000000001111111111111111111111111111111111111111f0490200d8ffffff03000000"
+    );
+  });
+
+  it("rejects malformed deposit inputs", () => {
+    const malformedExtraData = /** @type {any} */ ("not bytes");
+
+    expect(() =>
+      encodeDepositETHToWithValueArgs({
+        amountLux: 2n ** 64n,
+        minGasLimit: 150_000,
+        to,
+      })
+    ).toThrow(RangeError);
+    expect(() =>
+      encodeDepositETHToWithValueArgs({
+        amountLux: 123n,
+        minGasLimit: 2 ** 32,
+        to,
+      })
+    ).toThrow(RangeError);
+    expect(() =>
+      encodeDepositETHToWithValueArgs({
+        amountLux: 123n,
+        extraData: malformedExtraData,
+        minGasLimit: 150_000,
+        to,
+      })
+    ).toThrow(TypeError);
+    expect(() =>
+      encodeDepositETHToWithValueArgs({
+        amountLux: 123n,
+        minGasLimit: 150_000,
+        to: "0x11111111111111111111111111111111111111",
+      })
+    ).toThrow(RangeError);
+  });
+});

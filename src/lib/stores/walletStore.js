@@ -2,6 +2,10 @@ import { get, writable } from "svelte/store";
 import { setKey } from "lamb";
 import { Bookkeeper, Bookmark, ProfileGenerator } from "@dusk/w3sper";
 
+import {
+  BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
+  buildDepositETHToWithValuePayload,
+} from "$lib/bridge/deposit";
 import WalletTreasury from "$lib/wallet-treasury";
 
 import { transactions } from "$lib/mock-data";
@@ -69,6 +73,16 @@ function unsafeGetCurrentProfile() {
   } else {
     return profile;
   }
+}
+
+function getBridgeContractId() {
+  const bridgeContractId = import.meta.env.VITE_BRIDGE_CONTRACT_ID;
+
+  if (!bridgeContractId) {
+    throw new Error("DuskEVM bridge contract id is not configured.");
+  }
+
+  return bridgeContractId;
 }
 
 /** @type {(txInfo: TransactionInfo) => void} */
@@ -424,65 +438,37 @@ const transfer = async (to, amount, memo, gas) =>
 const depositEvmFunctionCall = async (
   address,
   amount,
-  contractId,
-  wasmPath,
-  gas
-) =>
-  sync()
+  gas,
+  {
+    extraData = new Uint8Array(),
+    minGasLimit = BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
+  } = {}
+) => {
+  const bridgeContractId = getBridgeContractId();
+
+  return sync()
     .then(networkStore.connect)
     .then(async (network) => {
-      network.dataDrivers.register(contractId, () =>
-        fetch(wasmPath).then((r) => r.arrayBuffer())
-      );
-
-      const payloadAmount = Number(amount);
       const profile = unsafeGetCurrentProfile();
       const bookentry = bookkeeper.as(profile);
-      const bridgeContract = bookentry.contract(contractId, network);
-
-      /* eslint-disable camelcase */
-      const payload = {
-        amount: payloadAmount,
-        extra_data: "",
-        fee: 500000,
+      const payload = buildDepositETHToWithValuePayload({
+        amountLux: amount,
+        contractId: bridgeContractId,
+        extraData,
+        minGasLimit,
         to: address,
-      };
-      /* eslint-enable camelcase */
-
-      const builder = await bridgeContract.tx.deposit(payload);
+      });
+      const builder = /** @type {any} */ (bookentry.transfer(0n)).payload(
+        payload
+      );
 
       return await network.execute(
-        builder
-          .to(profile.account)
-          .deposit(BigInt(payloadAmount + payload.fee))
-          .gas(gas)
+        builder.to(profile.account).deposit(BigInt(amount)).gas(gas)
       );
     })
     .then(updateCacheAfterTransaction)
     .then(passThruWithEffects(observeTxRemoval));
-
-/** @type {WalletStoreServices["finalizeWithdrawalEvmFunctionCall"]} */
-const finalizeWithdrawalEvmFunctionCall = async (
-  contractId,
-  withdrawalId,
-  wasmPath
-) =>
-  sync()
-    .then(networkStore.connect)
-    .then(async (network) => {
-      network.dataDrivers.register(contractId, () =>
-        fetch(wasmPath).then((r) => r.arrayBuffer())
-      );
-
-      const profile = unsafeGetCurrentProfile();
-      const bookentry = bookkeeper.as(profile);
-      const contract = bookentry.contract(contractId, network);
-      const builder = await contract.tx.finalize_withdrawal(withdrawalId);
-
-      return await network.execute(builder.to(profile.account));
-    })
-    .then(updateCacheAfterTransaction)
-    .then(passThruWithEffects(observeTxRemoval));
+};
 
 /** @type {WalletStoreServices["unshield"]} */
 const unshield = async (amount, gas) =>
@@ -529,7 +515,6 @@ export default {
   clearLocalData,
   clearLocalDataAndInit,
   depositEvmFunctionCall,
-  finalizeWithdrawalEvmFunctionCall,
   getTransactionsHistory,
   init,
   reset,

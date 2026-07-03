@@ -101,20 +101,16 @@ type WalletStoreServices = {
   depositEvmFunctionCall: (
     address: `0x${string}`,
     amount: bigint,
-    contractId: string,
-    wasmPath: string,
-    gas: Gas
+    gas: Gas,
+    options?: {
+      extraData?: Uint8Array | ArrayBuffer | number[];
+      minGasLimit?: number;
+    }
   ) => Promise<TransactionInfo>;
 
   useContract: (contractId: string, wasmPath: string) => Promise<Contract>;
 
   getTransactionsHistory: () => Promise<any>;
-
-  finalizeWithdrawalEvmFunctionCall: (
-    contractId: string,
-    withdrawalId: bigint,
-    wasmPath: string
-  ) => Promise<any>;
 
   init: (
     profileGenerator: ProfileGenerator,

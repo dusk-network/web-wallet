@@ -2,12 +2,11 @@
 
 <script>
   import { fade } from "svelte/transition";
-  import { mdiArrowUpBoldBoxOutline, mdiHistory } from "@mdi/js";
+  import { mdiArrowUpBoldBoxOutline } from "@mdi/js";
   import { parseUnits } from "viem";
   import { switchChain, writeContract } from "@wagmi/core";
   import { getKey } from "lamb";
   import { Gas } from "@dusk/w3sper";
-  import { bytesToHexString } from "@duskit/encoding";
 
   import {
     AnchorButton,
@@ -20,8 +19,6 @@
     WizardStep,
   } from "$lib/dusk/components";
   import {
-    AppAnchor,
-    AppAnchorButton,
     Banner,
     GasFee,
     GasSettings,
@@ -30,32 +27,21 @@
   import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
   import bridgeABI from "$lib/web3/abi/bridgeABI.json";
   import { logo } from "$lib/dusk/icons";
-  import { formatBlocksAsTime } from "$lib/bridge/formatBlocksAsTime";
-  import { countPendingWithdrawalsFor } from "$lib/bridge/pendingWithdrawals";
+  import {
+    BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
+    BRIDGE_WITHDRAWAL_MIN_GAS_LIMIT,
+  } from "$lib/bridge/deposit";
+  import { encodeExternalBridgeRecipientHex } from "$lib/bridge/encoding";
   import { MESSAGES } from "$lib/constants";
   import { luxToDusk } from "$lib/dusk/currency";
-  import {
-    createNumberFormatter,
-    getDecimalSeparator,
-    slashDecimals,
-  } from "$lib/dusk/number";
+  import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
   import { cleanNumberString } from "$lib/dusk/string";
   import { areValidGasSettings } from "$lib/contracts";
-  import { settingsStore, walletStore } from "$lib/stores";
-  import wasmPath from "$lib/vendor/standard_bridge_dd_opt.wasm?url";
-
-  /** @type {string} */
-  const VITE_BRIDGE_CONTRACT_ID = import.meta.env.VITE_BRIDGE_CONTRACT_ID;
+  import { walletStore } from "$lib/stores";
 
   /** @type {`0x${string}`} */
   const VITE_EVM_BRIDGE_CONTRACT_ADDRESS = import.meta.env
     .VITE_EVM_BRIDGE_CONTRACT_ADDRESS;
-
-  /**
-   * The value needs to be passed but is ignored by the EVM, therefore we're setting it to zero.
-   * @type {number}
-   */
-  const EVM_MINIMUM_GAS_LIMIT = 0;
 
   /**
    * DuskEVM uses duskEvm.nativeCurrency.decimals (currently 18). DuskDS uses 9 decimals (Lux).
@@ -77,48 +63,14 @@
   /** @type {string} */
   export let unshieldedAddress;
 
+  /** @type {unknown} */
+  export let unshieldedAccount;
+
   /** @type {bigint} */
   export let unshieldedBalance;
 
   /** @type {import('@wagmi/core').GetBalanceReturnType | undefined} */
   export let evmDuskBalance;
-
-  /** @type {Promise<PendingWithdrawalEntry[]>} */
-  export let pendingWithdrawals = Promise.resolve([]);
-
-  /** @type {string} */
-  let language = "en";
-
-  /** @type {(n: number | bigint) => string} */
-  let blocksFormatter = (n) => `${n}`;
-
-  /** @type {bigint | null} */
-  let finalizationPeriodBlocks = null;
-
-  /** @type {boolean} */
-  let isFinalizationPeriodLoading = false;
-
-  async function loadFinalizationPeriod() {
-    if (finalizationPeriodBlocks !== null || isFinalizationPeriodLoading) {
-      return;
-    }
-
-    isFinalizationPeriodLoading = true;
-
-    try {
-      const contract = await walletStore.useContract(
-        VITE_BRIDGE_CONTRACT_ID,
-        wasmPath
-      );
-      const period = await contract.call.finalization_period();
-      finalizationPeriodBlocks =
-        typeof period === "bigint" ? period : BigInt(period);
-    } catch {
-      finalizationPeriodBlocks = null;
-    } finally {
-      isFinalizationPeriodLoading = false;
-    }
-  }
 
   /** @type {string} */
   let destinationNetwork = "";
@@ -150,21 +102,14 @@
     if (originNetwork === "duskEvm" && destinationNetwork === "duskDs") {
       // Withdraw...
 
-      /** @type {[number,string] | []} */
-      let args = [];
+      if (!unshieldedAccount) {
+        throw new Error("Dusk account is not available.");
+      }
 
-      await walletStore
-        .useContract(VITE_BRIDGE_CONTRACT_ID, wasmPath)
-        .then(async (contract) => {
-          const encodedExtraData = await contract.encode(
-            "extra_data",
-            unshieldedAddress
-          );
-          args = [
-            EVM_MINIMUM_GAS_LIMIT,
-            `0x${bytesToHexString(encodedExtraData)}`,
-          ];
-        });
+      const args = [
+        BRIDGE_WITHDRAWAL_MIN_GAS_LIMIT,
+        encodeExternalBridgeRecipientHex(unshieldedAccount),
+      ];
 
       await switchChain(wagmiConfig, { chainId: duskEvm.id });
 
@@ -188,9 +133,10 @@
       const response = await walletStore.depositEvmFunctionCall(
         $account.address,
         amountLux,
-        VITE_BRIDGE_CONTRACT_ID,
-        wasmPath,
-        gas
+        gas,
+        {
+          minGasLimit: BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
+        }
       );
 
       hash = getKey("hash")(response);
@@ -226,9 +172,6 @@
     originNetwork === "duskDs" && destinationNetwork === "duskEvm";
   $: isWithdrawing =
     originNetwork === "duskEvm" && destinationNetwork === "duskDs";
-  $: if (isWithdrawing) {
-    loadFinalizationPeriod();
-  }
   $: {
     // viem expects a dot as decimal separator.
     // We also guard against incomplete inputs like "1." or ",5".
@@ -258,33 +201,11 @@
     amountLux === 0n || (isDepositing && !isGasValid) || !isBalanceSufficient;
   $: isGasValid = areValidGasSettings(gasPrice, gasLimit);
   $: ({ address } = $account);
-  $: ({ language } = $settingsStore);
-  $: blocksFormatter = createNumberFormatter(language, 0);
 </script>
 
 <article class="bridge">
   <header class="bridge__header">
     <h3 class="h4">Bridge</h3>
-    <div class="bridge__header-icons">
-      <AppAnchor
-        href="/dashboard/bridge/transactions"
-        className="bridge__transactions-link"
-        aria-label="Pending withdrawals"
-      >
-        <Icon path={mdiHistory} />
-        {#await pendingWithdrawals then withdrawals}
-          {@const pendingCount = countPendingWithdrawalsFor(
-            unshieldedAddress,
-            withdrawals
-          )}
-          {#if pendingCount > 0}
-            <span class="bridge__transactions-indicator" aria-hidden="true">
-              {pendingCount > 9 ? "9+" : pendingCount}
-            </span>
-          {/if}
-        {/await}
-      </AppAnchor>
-    </div>
   </header>
 
   <aside class="bridge__balances">
@@ -474,27 +395,6 @@
               <p>{MESSAGES.TRANSACTION_CREATED}</p>
             {:else}
               <p>{MESSAGES.TRANSACTION_PENDING}</p>
-
-              {#if isFinalizationPeriodLoading}
-                <p class="bridge__finalization-hint">
-                  <Throbber size={16} /> Fetching finalization period…
-                </p>
-              {:else if finalizationPeriodBlocks !== null}
-                <p class="bridge__finalization-hint">
-                  Finalization period:
-                  {blocksFormatter(finalizationPeriodBlocks)} blocks ({formatBlocksAsTime(
-                    finalizationPeriodBlocks,
-                    language
-                  )} at ~10s/block). You can finalize your withdrawal once the period
-                  has passed.
-                </p>
-              {/if}
-
-              <AppAnchorButton
-                href="/dashboard/bridge/transactions"
-                text="PENDING WITHDRAWALS"
-                variant="primary"
-              />
             {/if}
             {#if hash}
               <AnchorButton
@@ -525,56 +425,6 @@
     &__header {
       display: flex;
       justify-content: space-between;
-    }
-
-    &__header-icons {
-      display: flex;
-      align-items: center;
-      gap: 0.675em;
-    }
-
-    :global(&__transactions-link) {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    :global(&__transactions-link .dusk-icon) {
-      /* Make the transaction history icon a little bit bigger */
-      --icon-size: 1.8rem;
-    }
-
-    &__transactions-indicator {
-      position: absolute;
-      top: -0.45em;
-      right: -0.45em;
-
-      min-width: 1.4em;
-      height: 1.4em;
-      padding: 0 0.4em;
-
-      border-radius: 999px;
-      background: var(--error-color);
-      color: var(--on-error-color);
-
-      font-size: 0.75em;
-      font-weight: 500;
-      line-height: 1.4em;
-
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-
-      border: 2px solid var(--surface-color);
-      box-sizing: border-box;
-      pointer-events: none;
-    }
-
-    &__finalization-hint {
-      opacity: 0.9;
-      line-height: 1.4;
-      margin-top: 0.75em;
     }
 
     &__balances {
