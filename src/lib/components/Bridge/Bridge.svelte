@@ -19,6 +19,7 @@
     WizardStep,
   } from "$lib/dusk/components";
   import {
+    AppAnchorButton,
     Banner,
     GasFee,
     GasSettings,
@@ -405,6 +406,13 @@
                 rel="noopener noreferrer"
                 target="_blank"
               />
+              {#if isWithdrawing}
+                <AppAnchorButton
+                  href={`/dashboard/bridge/transactions?tx=${hash}`}
+                  text="FINALIZE WITHDRAWAL"
+                  variant="tertiary"
+                />
+              {/if}
             {/if}
           </svelte:fragment>
         </OperationResult>

@@ -508,6 +508,66 @@ const useContract = async (contractId, wasmPath) =>
     return contract;
   });
 
+/**
+ * @param {string} contractId
+ * @param {string} wasmPath
+ * @param {string} fnName
+ * @param {unknown} args
+ * @param {Gas | undefined} gas
+ */
+const executeContractFunction = async (
+  contractId,
+  wasmPath,
+  fnName,
+  args,
+  gas
+) =>
+  sync()
+    .then(networkStore.connect)
+    .then(async (network) => {
+      network.dataDrivers.register(contractId, () =>
+        fetch(wasmPath).then((r) => r.arrayBuffer())
+      );
+
+      const profile = unsafeGetCurrentProfile();
+      const contract = bookkeeper.as(profile).contract(contractId, network);
+      const builder = await contract.tx[fnName](args);
+      let tx = builder.to(profile.account);
+
+      if (gas) {
+        tx = tx.gas(gas);
+      }
+
+      return await network.execute(tx);
+    })
+    .then(updateCacheAfterTransaction)
+    .then(passThruWithEffects(observeTxRemoval));
+
+/** @type {WalletStoreServices["finalizeDuskEvmWithdrawal"]} */
+const finalizeDuskEvmWithdrawal = async (
+  contractId,
+  wasmPath,
+  withdrawal,
+  gas
+) =>
+  executeContractFunction(
+    contractId,
+    wasmPath,
+    "finalizeWithdrawalTransaction",
+    withdrawal,
+    gas
+  );
+
+/** @type {WalletStoreServices["proveDuskEvmWithdrawal"]} */
+const proveDuskEvmWithdrawal = async (contractId, wasmPath, args, gas) =>
+  executeContractFunction(
+    contractId,
+    wasmPath,
+    "proveWithdrawalTransaction",
+    args,
+    gas
+  );
+
 /** @type {WalletStore} */
 export default {
   abortSync,
@@ -515,8 +575,10 @@ export default {
   clearLocalData,
   clearLocalDataAndInit,
   depositEvmFunctionCall,
+  finalizeDuskEvmWithdrawal,
   getTransactionsHistory,
   init,
+  proveDuskEvmWithdrawal,
   reset,
   setCurrentProfile,
   shield,

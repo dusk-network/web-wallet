@@ -50,6 +50,7 @@ type NetworkStoreServices = {
   getAddressSyncer: () => Promise<AddressSyncer>;
   getBlockHashByHeight: (height: bigint) => Promise<string>;
   getCurrentBlockHeight: () => Promise<bigint>;
+  getLatestBlockTimestamp: () => Promise<bigint>;
   getLastFinalizedBlockHeight: () => Promise<bigint>;
   init: () => Promise<void>;
   registerDataDriver: (id: string, driver: any) => Promise<DataDriverRegistry>;
@@ -106,6 +107,20 @@ type WalletStoreServices = {
       extraData?: Uint8Array | ArrayBuffer | number[];
       minGasLimit?: number;
     }
+  ) => Promise<TransactionInfo>;
+
+  finalizeDuskEvmWithdrawal: (
+    contractId: string,
+    wasmPath: string,
+    withdrawal: unknown,
+    gas?: Gas
+  ) => Promise<TransactionInfo>;
+
+  proveDuskEvmWithdrawal: (
+    contractId: string,
+    wasmPath: string,
+    args: unknown,
+    gas?: Gas
   ) => Promise<TransactionInfo>;
 
   useContract: (contractId: string, wasmPath: string) => Promise<Contract>;

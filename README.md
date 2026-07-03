@@ -39,6 +39,11 @@ VITE_EVM_BRIDGE_BLOCK_EXPLORER_NAME="Dusk EVM Explorer"
 VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL=""
 VITE_EVM_BRIDGE_RPC_URL=""
 VITE_EVM_CHAIN_ID=745
+VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID=""
+VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL=""
+VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID=""
+VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL=""
+VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH=64
 VITE_FEATURE_ALLOCATE=true
 VITE_FEATURE_BRIDGE=true
 VITE_FEATURE_MIGRATE=true
@@ -63,6 +68,23 @@ address used for DuskEVM -> DuskDS withdrawals. The current wallet bridge
 flows encode bridge-specific asset-recipient metadata only. Generic Dusk
 delivery envelopes for arbitrary L2 -> L1 contract messages are a separate
 application surface and are not exposed by the bridge UI.
+
+Withdrawal finalization uses the existing Dusk-native wallet path on L1.
+Reown/Wagmi is only used for the DuskEVM/L2 side. The wallet uses
+`VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID` and its data-driver URL to call
+`proveWithdrawalTransaction`, `finalizeWithdrawalTransaction`, and withdrawal
+status getters through w3sper. It uses
+`VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID` and its data-driver URL to find a
+dispute game/output proposal that covers the L2 withdrawal block. The respected
+dispute game type is read from the portal at runtime.
+The data-driver URLs must point to browser-loadable Forge data-driver WASM
+artifacts for the deployed contracts; they are not the deployed contract WASM
+artifacts themselves. These `VITE_*` values are public build-time browser
+configuration and must not be derived from user input. Data-driver URLs may be
+relative/root-relative asset paths or `http(s)` URLs.
+The legacy pending-withdrawal contract list is retired; withdrawal status is
+now checked from the L2 withdrawal transaction hash against the OP-style Portal
+state.
 
 To run a local node different steps are needed, so please read the [related section](#running-a-local-rusk-node).
 
