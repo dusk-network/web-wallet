@@ -2,7 +2,7 @@
 
 <script>
   import { fade } from "svelte/transition";
-  import { mdiArrowUpBoldBoxOutline } from "@mdi/js";
+  import { mdiArrowUpBoldBoxOutline, mdiListStatus } from "@mdi/js";
   import { parseUnits } from "viem";
   import { switchChain, writeContract } from "@wagmi/core";
   import { getKey } from "lamb";
@@ -207,6 +207,12 @@
 <article class="bridge">
   <header class="bridge__header">
     <h3 class="h4">Bridge</h3>
+    <AppAnchorButton
+      href="/dashboard/bridge/transactions"
+      text="Withdrawal status"
+      variant="tertiary"
+      icon={{ path: mdiListStatus }}
+    />
   </header>
 
   <aside class="bridge__balances">
@@ -431,7 +437,10 @@
     padding: 1.25em;
 
     &__header {
+      align-items: center;
       display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
       justify-content: space-between;
     }
 
