@@ -29,6 +29,10 @@ const VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL = import.meta.env
 const VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH = BigInt(
   import.meta.env.VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH ?? 64
 );
+const DEFAULT_OPTIMISM_PORTAL_DATA_DRIVER_URL =
+  "/drivers/optimism_portal_dd_opt.wasm";
+const DEFAULT_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL =
+  "/drivers/dispute_game_factory_dd_opt.wasm";
 
 const messagePassedEvent = parseAbiItem(
   "event MessagePassed(uint256 indexed nonce, address indexed sender, address indexed target, uint256 value, uint256 gasLimit, bytes data, bytes32 withdrawalHash)"
@@ -57,6 +61,18 @@ function isConfiguredDataDriverUrl(value) {
 }
 
 /**
+ * @param {string | undefined} value
+ * @param {string} fallback
+ */
+function dataDriverUrl(value, fallback) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return fallback;
+  }
+
+  return value.trim();
+}
+
+/**
  * @param {string} value
  */
 function strip0x(value) {
@@ -80,12 +96,20 @@ export function isWithdrawalTxHash(value) {
 
 export function getWithdrawalFinalizationConfig() {
   const missing = [];
+  const optimismPortalDataDriverUrl = dataDriverUrl(
+    VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL,
+    DEFAULT_OPTIMISM_PORTAL_DATA_DRIVER_URL
+  );
+  const disputeGameFactoryDataDriverUrl = dataDriverUrl(
+    VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL,
+    DEFAULT_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL
+  );
 
   if (!isContractId(VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID)) {
     missing.push("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID");
   }
 
-  if (!isConfiguredDataDriverUrl(VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL)) {
+  if (!isConfiguredDataDriverUrl(optimismPortalDataDriverUrl)) {
     missing.push("VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL");
   }
 
@@ -93,9 +117,7 @@ export function getWithdrawalFinalizationConfig() {
     missing.push("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID");
   }
 
-  if (
-    !isConfiguredDataDriverUrl(VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL)
-  ) {
+  if (!isConfiguredDataDriverUrl(disputeGameFactoryDataDriverUrl)) {
     missing.push("VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL");
   }
 
@@ -106,16 +128,13 @@ export function getWithdrawalFinalizationConfig() {
     )
       ? normalizeContractId(VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID)
       : VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID,
-    disputeGameFactoryDataDriverUrl:
-      VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL,
+    disputeGameFactoryDataDriverUrl,
     l2RpcUrl: duskEvm.rpcUrls.default.http[0],
     missing,
-    optimismPortalContractId: isContractId(
-      VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID
-    )
+    optimismPortalContractId: isContractId(VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID)
       ? normalizeContractId(VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID)
       : VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID,
-    optimismPortalDataDriverUrl: VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL,
+    optimismPortalDataDriverUrl,
   });
 }
 
@@ -211,7 +230,9 @@ function fixedBytes(value, expectedLength) {
   const bytes = bytesLikeToArray(value);
 
   if (expectedLength !== undefined && bytes.length !== expectedLength) {
-    throw new RangeError(`Expected ${expectedLength} bytes, got ${bytes.length}`);
+    throw new RangeError(
+      `Expected ${expectedLength} bytes, got ${bytes.length}`
+    );
   }
 
   return bytes;
@@ -314,7 +335,7 @@ function hexToArray(value, expectedLength) {
 function withdrawalToDriverInput(withdrawal) {
   return {
     data: hexToArray(withdrawal.data, undefined),
-    "gas_limit": bigIntToU256(withdrawal.gasLimit),
+    ["gas_limit"]: bigIntToU256(withdrawal.gasLimit),
     nonce: bigIntToU256(withdrawal.nonce),
     sender: hexToArray(withdrawal.sender, 20),
     target: hexToArray(withdrawal.target, 20),
@@ -331,12 +352,12 @@ function withdrawalToDriverInput(withdrawal) {
  */
 function outputRootProofToDriverInput(outputRootProof) {
   return {
-    "latest_blockhash": hexToArray(outputRootProof.latestBlockhash, 32),
-    "message_passer_storage_root": hexToArray(
+    ["latest_blockhash"]: hexToArray(outputRootProof.latestBlockhash, 32),
+    ["message_passer_storage_root"]: hexToArray(
       outputRootProof.messagePasserStorageRoot,
       32
     ),
-    "state_root": hexToArray(outputRootProof.stateRoot, 32),
+    ["state_root"]: hexToArray(outputRootProof.stateRoot, 32),
     version: hexToArray(outputRootProof.version, 32),
   };
 }
@@ -973,11 +994,7 @@ async function readProvenAt(portal, withdrawalHash, proofSubmitter) {
  * @param {import("@dusk/w3sper").Contract} portal
  * @param {`0x${string}`} proofSubmitter
  */
-async function provenWithdrawalStatus(
-  event,
-  portal,
-  proofSubmitter
-) {
+async function provenWithdrawalStatus(event, portal, proofSubmitter) {
   const provenWithdrawal = await readProvenAt(
     portal,
     event.withdrawalHash,
@@ -1068,11 +1085,7 @@ async function provenWithdrawalGameStatus(
   }
 
   try {
-    await checkWithdrawalAccepted(
-      portal,
-      event.withdrawalHash,
-      proofSubmitter
-    );
+    await checkWithdrawalAccepted(portal, event.withdrawalHash, proofSubmitter);
   } catch {
     return await classifyRejectedProofStatus(event, provenWithdrawal);
   }
@@ -1099,11 +1112,7 @@ async function readLatestL1Timestamp() {
  * @param {`0x${string}`} withdrawalHash
  * @param {`0x${string}`} proofSubmitter
  */
-async function checkWithdrawalAccepted(
-  portal,
-  withdrawalHash,
-  proofSubmitter
-) {
+async function checkWithdrawalAccepted(portal, withdrawalHash, proofSubmitter) {
   await portal.call.checkWithdrawal([
     hexToArray(withdrawalHash, 32),
     hexToArray(proofSubmitter, 20),
@@ -1202,11 +1211,7 @@ export async function loadWithdrawalStatus(txHash) {
     proofSubmitterCount - 1n
   );
 
-  return await provenWithdrawalStatus(
-    event,
-    portal,
-    proofSubmitter
-  );
+  return await provenWithdrawalStatus(event, portal, proofSubmitter);
 }
 
 /**

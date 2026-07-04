@@ -40,9 +40,9 @@ VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL=""
 VITE_EVM_BRIDGE_RPC_URL=""
 VITE_EVM_CHAIN_ID=745
 VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID=""
-VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL=""
+VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL="/drivers/optimism_portal_dd_opt.wasm"
 VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID=""
-VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL=""
+VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL="/drivers/dispute_game_factory_dd_opt.wasm"
 VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH=64
 VITE_FEATURE_ALLOCATE=true
 VITE_FEATURE_BRIDGE=true
@@ -81,7 +81,9 @@ The data-driver URLs must point to browser-loadable Forge data-driver WASM
 artifacts for the deployed contracts; they are not the deployed contract WASM
 artifacts themselves. These `VITE_*` values are public build-time browser
 configuration and must not be derived from user input. Data-driver URLs may be
-relative/root-relative asset paths or `http(s)` URLs.
+relative/root-relative asset paths or `http(s)` URLs. If the URL variables are
+unset or empty, the wallet uses the bundled `/drivers/optimism_portal_dd_opt.wasm`
+and `/drivers/dispute_game_factory_dd_opt.wasm` artifacts.
 The legacy pending-withdrawal contract list is retired; withdrawal status is
 now checked from the L2 withdrawal transaction hash against the OP-style Portal
 state.

@@ -30,16 +30,21 @@ describe("DuskEVM withdrawal helpers", () => {
     vi.unstubAllEnvs();
   });
 
-  it("requires browser-loadable Portal and DGF data-driver URLs", async () => {
+  it("rejects unsupported Portal and DGF data-driver URL schemes", async () => {
     vi.resetModules();
     vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", "11".repeat(32));
-    vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL", "file:///tmp/portal.wasm");
-    vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", "22".repeat(32));
-    vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL", "data:application/wasm;base64,AA==");
-
-    const { getWithdrawalFinalizationConfig } = await import(
-      "$lib/bridge/withdrawals"
+    vi.stubEnv(
+      "VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL",
+      "file:///tmp/portal.wasm"
     );
+    vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", "22".repeat(32));
+    vi.stubEnv(
+      "VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL",
+      "data:application/wasm;base64,AA=="
+    );
+
+    const { getWithdrawalFinalizationConfig } =
+      await import("$lib/bridge/withdrawals");
     const config = getWithdrawalFinalizationConfig();
 
     expect(config.configured).toBe(false);
@@ -49,19 +54,42 @@ describe("DuskEVM withdrawal helpers", () => {
     ]);
   });
 
+  it("uses bundled Portal and DGF data-driver URLs when env URLs are blank", async () => {
+    vi.resetModules();
+    vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", "11".repeat(32));
+    vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL", "");
+    vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", "22".repeat(32));
+    vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL", "");
+
+    const { getWithdrawalFinalizationConfig } =
+      await import("$lib/bridge/withdrawals");
+    const config = getWithdrawalFinalizationConfig();
+
+    expect(config.configured).toBe(true);
+    expect(config.missing).toEqual([]);
+    expect(config.optimismPortalDataDriverUrl).toBe(
+      "/drivers/optimism_portal_dd_opt.wasm"
+    );
+    expect(config.disputeGameFactoryDataDriverUrl).toBe(
+      "/drivers/dispute_game_factory_dd_opt.wasm"
+    );
+  });
+
   it("accepts relative and http data-driver URLs", async () => {
     vi.resetModules();
     vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", "11".repeat(32));
-    vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL", "/drivers/portal.wasm");
+    vi.stubEnv(
+      "VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL",
+      "/drivers/portal.wasm"
+    );
     vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", "22".repeat(32));
     vi.stubEnv(
       "VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL",
       "https://assets.example.test/dgf.wasm"
     );
 
-    const { getWithdrawalFinalizationConfig } = await import(
-      "$lib/bridge/withdrawals"
-    );
+    const { getWithdrawalFinalizationConfig } =
+      await import("$lib/bridge/withdrawals");
     const config = getWithdrawalFinalizationConfig();
 
     expect(config.configured).toBe(true);
@@ -102,7 +130,10 @@ describe("DuskEVM withdrawal helpers", () => {
   it("rejects tampered MessagePassed payloads", () => {
     const tamperedLog = {
       ...messagePassedLog,
-      data: messagePassedLog.data.replace("8ac7230489e80000", "8ac7230489e80001"),
+      data: messagePassedLog.data.replace(
+        "8ac7230489e80000",
+        "8ac7230489e80001"
+      ),
     };
 
     expect(() =>
