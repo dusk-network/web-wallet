@@ -1,6 +1,8 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { browser } from "$app/environment";
+  import { onMount } from "svelte";
   import { fade } from "svelte/transition";
   import { mdiArrowUpBoldBoxOutline, mdiListStatus } from "@mdi/js";
   import { parseUnits } from "viem";
@@ -51,6 +53,8 @@
    */
   const EVM_TO_LUX_SCALE_FACTOR =
     10n ** BigInt(duskEvm.nativeCurrency.decimals - 9);
+  const LAST_WITHDRAWAL_TX_HASH_KEY = "dusk-evm:last-withdrawal-tx-hash";
+  const WITHDRAWAL_TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
   /** @type {(amount: bigint|number) => string} */
   export let formatter;
@@ -78,6 +82,9 @@
 
   /** @type {string} */
   let amount = "";
+
+  /** @type {string} */
+  let lastWithdrawalTxHash = "";
 
   /** @type {bigint} */
   let amountLux = 0n;
@@ -149,6 +156,29 @@
   }
 
   /**
+   * @param {string | undefined} hash
+   */
+  function withdrawalStatusHref(hash = lastWithdrawalTxHash) {
+    return WITHDRAWAL_TX_HASH_PATTERN.test(hash)
+      ? `/dashboard/bridge/transactions?tx=${hash}`
+      : "/dashboard/bridge/transactions";
+  }
+
+  /**
+   * @param {string | undefined} hash
+   */
+  function rememberWithdrawalTxHash(hash) {
+    if (!browser || !WITHDRAWAL_TX_HASH_PATTERN.test(hash ?? "")) {
+      return hash;
+    }
+
+    lastWithdrawalTxHash = /** @type {string} */ (hash);
+    localStorage.setItem(LAST_WITHDRAWAL_TX_HASH_KEY, lastWithdrawalTxHash);
+
+    return hash;
+  }
+
+  /**
    * Options used for selecting which network to bridge between in the UI.
    *
    * @type {Array<SelectOption>}
@@ -202,13 +232,18 @@
     amountLux === 0n || (isDepositing && !isGasValid) || !isBalanceSufficient;
   $: isGasValid = areValidGasSettings(gasPrice, gasLimit);
   $: ({ address } = $account);
+
+  onMount(() => {
+    lastWithdrawalTxHash =
+      localStorage.getItem(LAST_WITHDRAWAL_TX_HASH_KEY) ?? "";
+  });
 </script>
 
 <article class="bridge">
   <header class="bridge__header">
     <h3 class="h4">Bridge</h3>
     <AppAnchorButton
-      href="/dashboard/bridge/transactions"
+      href={withdrawalStatusHref()}
       text="Withdrawal status"
       variant="tertiary"
       icon={{ path: mdiListStatus }}
@@ -414,7 +449,7 @@
               />
               {#if isWithdrawing}
                 <AppAnchorButton
-                  href={`/dashboard/bridge/transactions?tx=${hash}`}
+                  href={withdrawalStatusHref(rememberWithdrawalTxHash(hash))}
                   text="FINALIZE WITHDRAWAL"
                   variant="tertiary"
                 />
