@@ -27,7 +27,11 @@ const messagePassedLog = {
 
 describe("DuskEVM withdrawal helpers", () => {
   afterEach(() => {
+    vi.doUnmock("$lib/stores");
+    vi.doUnmock("$lib/web3/walletConnection");
+    vi.restoreAllMocks();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   it("rejects unsupported Portal and DGF data-driver URL schemes", async () => {
@@ -146,4 +150,155 @@ describe("DuskEVM withdrawal helpers", () => {
       })
     ).toThrow("Withdrawal hash mismatch in MessagePassed event.");
   });
+
+  it("ignores MessagePassed-shaped logs from the wrong contract", () => {
+    const wrongContractLog = {
+      ...messagePassedLog,
+      address: "0x4200000000000000000000000000000000000017",
+    };
+
+    expect(() =>
+      parseWithdrawalReceipt({
+        blockHash: wrongContractLog.blockHash,
+        blockNumber: wrongContractLog.blockNumber,
+        logs: [wrongContractLog],
+        status: "0x1",
+        transactionHash: wrongContractLog.transactionHash,
+      })
+    ).toThrow("Withdrawal MessagePassed event was not found.");
+  });
+
+  it("keeps a proven withdrawal waiting when finalize preflight rejects", async () => {
+    const { portal } = mockWithdrawalFinalization({
+      finalizePreflight: vi
+        .fn()
+        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
+    });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    const status = await loadWithdrawalStatus(messagePassedLog.transactionHash);
+
+    expect(status.stage).toBe("proven_waiting");
+    expect(status.statusMessage).toContain(
+      "The existing proof is not accepted"
+    );
+    expect(portal.call.profileFinalizeWithdrawalTransaction).toHaveBeenCalled();
+  });
+
+  it("refuses to submit finalization for already-finalized withdrawals", async () => {
+    const { portal, walletStore } = mockWithdrawalFinalization({
+      finalized: true,
+      finalizePreflight: vi.fn(),
+    });
+    const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
+
+    await expect(
+      finalizeWithdrawal(messagePassedLog.transactionHash)
+    ).rejects.toThrow("The withdrawal is already finalized.");
+    expect(
+      portal.call.profileFinalizeWithdrawalTransaction
+    ).not.toHaveBeenCalled();
+    expect(walletStore.finalizeDuskEvmWithdrawal).not.toHaveBeenCalled();
+  });
+
+  it("reloads readiness before finalization and refuses stale ready state", async () => {
+    const { walletStore } = mockWithdrawalFinalization({
+      finalizePreflight: vi
+        .fn()
+        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
+    });
+    const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
+
+    await expect(
+      finalizeWithdrawal(messagePassedLog.transactionHash)
+    ).rejects.toThrow("The existing proof is not accepted");
+    expect(walletStore.finalizeDuskEvmWithdrawal).not.toHaveBeenCalled();
+  });
 });
+
+/**
+ * @param {bigint | number} value
+ */
+function u256(value) {
+  let remaining = BigInt(value);
+  const out = Array(32).fill(0);
+
+  for (let i = out.length - 1; i >= 0; i -= 1) {
+    out[i] = Number(remaining & 0xffn);
+    remaining >>= 8n;
+  }
+
+  return out;
+}
+
+/**
+ * @param {object} options
+ * @param {boolean} [options.finalized]
+ * @param {ReturnType<typeof vi.fn>} options.finalizePreflight
+ */
+function mockWithdrawalFinalization({ finalized = false, finalizePreflight }) {
+  vi.resetModules();
+  vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", "11".repeat(32));
+  vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL", "");
+  vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", "22".repeat(32));
+  vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL", "");
+
+  const proofSubmitter = Array(20).fill(0x2c);
+  const disputeGameProxy = Array(20).fill(0x1e);
+  const portal = {
+    call: {
+      finalizedWithdrawals: vi.fn().mockResolvedValue(finalized),
+      numProofSubmitters: vi.fn().mockResolvedValue(u256(1)),
+      profileFinalizeWithdrawalTransaction: finalizePreflight,
+      proofSubmitters: vi.fn().mockResolvedValue(proofSubmitter),
+      provenWithdrawals: vi.fn().mockResolvedValue([disputeGameProxy, 100n]),
+      proofMaturityDelaySeconds: vi.fn().mockResolvedValue(u256(0)),
+      respectedGameType: vi.fn().mockResolvedValue(0),
+    },
+  };
+  const dgf = {
+    call: {
+      gameCount: vi.fn().mockResolvedValue(u256(0)),
+    },
+  };
+  const walletStore = {
+    finalizeDuskEvmWithdrawal: vi.fn(),
+    useContract: vi.fn(async (contractId) =>
+      contractId === "11".repeat(32) ? portal : dgf
+    ),
+  };
+  const networkStore = {
+    getLatestBlockTimestamp: vi.fn().mockResolvedValue(200n),
+  };
+
+  vi.doMock("$lib/stores", () => ({
+    networkStore,
+    walletStore,
+  }));
+  vi.doMock("$lib/web3/walletConnection", () => ({
+    duskEvm: {
+      rpcUrls: {
+        default: {
+          http: ["https://l2.example.test"],
+        },
+      },
+    },
+  }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      json: async () => ({
+        result: {
+          blockHash: messagePassedLog.blockHash,
+          blockNumber: messagePassedLog.blockNumber,
+          logs: [messagePassedLog],
+          status: "0x1",
+          transactionHash: messagePassedLog.transactionHash,
+        },
+      }),
+      ok: true,
+    }))
+  );
+
+  return { dgf, networkStore, portal, walletStore };
+}

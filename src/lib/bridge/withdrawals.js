@@ -1085,7 +1085,7 @@ async function provenWithdrawalGameStatus(
   }
 
   try {
-    await checkWithdrawalAccepted(portal, event.withdrawalHash, proofSubmitter);
+    await preflightFinalizeWithdrawal(portal, event.withdrawal);
   } catch {
     return await classifyRejectedProofStatus(event, provenWithdrawal);
   }
@@ -1109,14 +1109,12 @@ async function readLatestL1Timestamp() {
 
 /**
  * @param {import("@dusk/w3sper").Contract} portal
- * @param {`0x${string}`} withdrawalHash
- * @param {`0x${string}`} proofSubmitter
+ * @param {object} withdrawal
  */
-async function checkWithdrawalAccepted(portal, withdrawalHash, proofSubmitter) {
-  await portal.call.checkWithdrawal([
-    hexToArray(withdrawalHash, 32),
-    hexToArray(proofSubmitter, 20),
-  ]);
+async function preflightFinalizeWithdrawal(portal, withdrawal) {
+  await portal.call.profileFinalizeWithdrawalTransaction(
+    withdrawalToDriverInput(withdrawal)
+  );
 }
 
 /**
@@ -1248,15 +1246,45 @@ export async function proveWithdrawal(txHash) {
  * @param {`0x${string}`} txHash
  */
 export async function finalizeWithdrawal(txHash) {
-  const receipt = await fetchL2Receipt(txHash);
-  const event = parseWithdrawalReceipt(receipt);
+  const status = await loadWithdrawalStatus(txHash);
+
+  if (status.stage !== "ready_to_finalize") {
+    throw new Error(finalizationNotReadyMessage(status));
+  }
+
   const config = requireWithdrawalFinalizationConfig();
 
   const response = await walletStore.finalizeDuskEvmWithdrawal(
     config.optimismPortalContractId,
     config.optimismPortalDataDriverUrl,
-    withdrawalToDriverInput(event.withdrawal)
+    withdrawalToDriverInput(status.withdrawal)
   );
 
   return response.hash;
+}
+
+/**
+ * @param {any} status
+ */
+function finalizationNotReadyMessage(status) {
+  if (status.statusMessage) {
+    return status.statusMessage;
+  }
+
+  switch (status.stage) {
+    case "waiting_for_output":
+      return "The withdrawal is waiting for an output proposal.";
+    case "ready_to_prove":
+      return "The withdrawal must be proven before it can be finalized.";
+    case "prove_submitted":
+      return "The withdrawal proof transaction is still pending.";
+    case "proven_waiting":
+      return "The withdrawal is proven but not ready to finalize yet.";
+    case "finalize_submitted":
+      return "The finalization transaction is already pending.";
+    case "finalized":
+      return "The withdrawal is already finalized.";
+    default:
+      return "The withdrawal is not ready to finalize yet.";
+  }
 }
