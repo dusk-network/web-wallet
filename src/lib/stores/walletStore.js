@@ -531,7 +531,15 @@ const executeContractFunction = async (
 
       const profile = unsafeGetCurrentProfile();
       const contract = bookkeeper.as(profile).contract(contractId, network);
-      const builder = await contract.tx[fnName](args);
+      const contractFunction = contract.tx?.[fnName];
+
+      if (typeof contractFunction !== "function") {
+        throw new Error(
+          `Contract data-driver for ${contractId} does not expose ${fnName}.`
+        );
+      }
+
+      const builder = await contractFunction.call(contract.tx, args);
       let tx = builder.to(profile.account);
 
       if (gas) {

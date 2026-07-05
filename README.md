@@ -84,9 +84,6 @@ configuration and must not be derived from user input. Data-driver URLs may be
 relative/root-relative asset paths or `http(s)` URLs. If the URL variables are
 unset or empty, the wallet uses the bundled `/drivers/optimism_portal_dd_opt.wasm`
 and `/drivers/dispute_game_factory_dd_opt.wasm` artifacts.
-The legacy pending-withdrawal contract list is retired; withdrawal status is
-now checked from the L2 withdrawal transaction hash against the OP-style Portal
-state.
 
 To run a local node different steps are needed, so please read the [related section](#running-a-local-rusk-node).
 

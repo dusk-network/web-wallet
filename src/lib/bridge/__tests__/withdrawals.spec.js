@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { toRlp } from "viem";
 
 import {
   hashWithdrawal,
+  maybeAddProofNode,
   parseWithdrawalReceipt,
   withdrawalStorageKey,
 } from "$lib/bridge/withdrawals";
@@ -24,6 +26,10 @@ const messagePassedLog = {
     "0x57ac2440f740f3cdd4c90c758dcf28be7b35ed496d8b580958693d2e37883a57",
   transactionIndex: "0x1",
 };
+
+const withdrawalTxHash = /** @type {`0x${string}`} */ (
+  messagePassedLog.transactionHash
+);
 
 describe("DuskEVM withdrawal helpers", () => {
   afterEach(() => {
@@ -100,6 +106,42 @@ describe("DuskEVM withdrawal helpers", () => {
     expect(config.missing).toEqual([]);
   });
 
+  it("appends directly embedded terminal nodes from branch proofs", () => {
+    const key = /** @type {`0x${string}`} */ (`0x${"00".repeat(30)}0abc`);
+    const terminalNode = /** @type {[`0x${string}`, `0x${string}`]} */ ([
+      "0x3abc",
+      "0xbeef",
+    ]);
+    const branchNode = /** @type {any[]} */ (Array(17).fill("0x"));
+
+    branchNode[10] = terminalNode;
+
+    const branchRlp = toRlp(/** @type {any} */ (branchNode));
+    const terminalRlp = toRlp(terminalNode);
+
+    expect(maybeAddProofNode(key, [branchRlp])).toEqual([
+      branchRlp,
+      terminalRlp,
+    ]);
+  });
+
+  it("appends RLP-encoded embedded terminal nodes from branch proofs", () => {
+    const key = /** @type {`0x${string}`} */ (`0x${"00".repeat(30)}0abc`);
+    const terminalRlp = toRlp(
+      /** @type {[`0x${string}`, `0x${string}`]} */ (["0x3abc", "0xbeef"])
+    );
+    const branchNode = /** @type {any[]} */ (Array(17).fill("0x"));
+
+    branchNode[10] = terminalRlp;
+
+    const branchRlp = toRlp(/** @type {any} */ (branchNode));
+
+    expect(maybeAddProofNode(key, [branchRlp])).toEqual([
+      branchRlp,
+      terminalRlp,
+    ]);
+  });
+
   it("parses and verifies the L2 MessagePassed withdrawal event", () => {
     const event = parseWithdrawalReceipt({
       blockHash: messagePassedLog.blockHash,
@@ -113,6 +155,14 @@ describe("DuskEVM withdrawal helpers", () => {
     expect(event.withdrawalHash).toBe(
       "0xe78b3f4d6f313300774677027a3a41540ab6eeaed0c3464d5865d53553fc2786"
     );
+    expect(event.withdrawal).toMatchObject({
+      gasLimit: 519_542n,
+      nonce: BigInt(messagePassedLog.topics[1]),
+      sender: "0x4200000000000000000000000000000000000007",
+      target: "0x04ffbC4C863235f94F99CCc849DE181A1aB74759",
+      value: 10_000_000_000_000_000_000n,
+    });
+    expect(event.withdrawal.data).toMatch(/^0xd764ad0b/);
     expect(hashWithdrawal(event.withdrawal)).toBe(event.withdrawalHash);
     expect(withdrawalStorageKey(event.withdrawalHash)).toBe(
       "0x11621f5996455c272294d13d1550a2df7805c8ab70fbabdc9a540e260011c3c6"
@@ -151,6 +201,23 @@ describe("DuskEVM withdrawal helpers", () => {
     ).toThrow("Withdrawal hash mismatch in MessagePassed event.");
   });
 
+  it("rejects malformed MessagePassed payloads", () => {
+    const malformedLog = {
+      ...messagePassedLog,
+      data: "0x1234",
+    };
+
+    expect(() =>
+      parseWithdrawalReceipt({
+        blockHash: malformedLog.blockHash,
+        blockNumber: malformedLog.blockNumber,
+        logs: [malformedLog],
+        status: "0x1",
+        transactionHash: malformedLog.transactionHash,
+      })
+    ).toThrow();
+  });
+
   it("ignores MessagePassed-shaped logs from the wrong contract", () => {
     const wrongContractLog = {
       ...messagePassedLog,
@@ -168,6 +235,23 @@ describe("DuskEVM withdrawal helpers", () => {
     ).toThrow("Withdrawal MessagePassed event was not found.");
   });
 
+  it("ignores non-MessagePassed logs from the message passer contract", () => {
+    const wrongTopicLog = {
+      ...messagePassedLog,
+      topics: [`0x${"00".repeat(32)}`, ...messagePassedLog.topics.slice(1)],
+    };
+
+    expect(() =>
+      parseWithdrawalReceipt({
+        blockHash: wrongTopicLog.blockHash,
+        blockNumber: wrongTopicLog.blockNumber,
+        logs: [wrongTopicLog],
+        status: "0x1",
+        transactionHash: wrongTopicLog.transactionHash,
+      })
+    ).toThrow("Withdrawal MessagePassed event was not found.");
+  });
+
   it("keeps a proven withdrawal waiting when finalize preflight rejects", async () => {
     const { portal } = mockWithdrawalFinalization({
       finalizePreflight: vi
@@ -176,7 +260,7 @@ describe("DuskEVM withdrawal helpers", () => {
     });
     const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
 
-    const status = await loadWithdrawalStatus(messagePassedLog.transactionHash);
+    const status = await loadWithdrawalStatus(withdrawalTxHash);
 
     expect(status.stage).toBe("proven_waiting");
     expect(status.statusMessage).toContain(
@@ -193,7 +277,7 @@ describe("DuskEVM withdrawal helpers", () => {
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
 
     await expect(
-      finalizeWithdrawal(messagePassedLog.transactionHash)
+      finalizeWithdrawal(withdrawalTxHash)
     ).rejects.toThrow("The withdrawal is already finalized.");
     expect(
       portal.call.profileFinalizeWithdrawalTransaction
@@ -210,7 +294,7 @@ describe("DuskEVM withdrawal helpers", () => {
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
 
     await expect(
-      finalizeWithdrawal(messagePassedLog.transactionHash)
+      finalizeWithdrawal(withdrawalTxHash)
     ).rejects.toThrow("The existing proof is not accepted");
     expect(walletStore.finalizeDuskEvmWithdrawal).not.toHaveBeenCalled();
   });
@@ -250,9 +334,9 @@ function mockWithdrawalFinalization({ finalized = false, finalizePreflight }) {
       finalizedWithdrawals: vi.fn().mockResolvedValue(finalized),
       numProofSubmitters: vi.fn().mockResolvedValue(u256(1)),
       profileFinalizeWithdrawalTransaction: finalizePreflight,
+      proofMaturityDelaySeconds: vi.fn().mockResolvedValue(u256(0)),
       proofSubmitters: vi.fn().mockResolvedValue(proofSubmitter),
       provenWithdrawals: vi.fn().mockResolvedValue([disputeGameProxy, 100n]),
-      proofMaturityDelaySeconds: vi.fn().mockResolvedValue(u256(0)),
       respectedGameType: vi.fn().mockResolvedValue(0),
     },
   };

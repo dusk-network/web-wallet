@@ -37,6 +37,8 @@ const DEFAULT_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL =
 const messagePassedEvent = parseAbiItem(
   "event MessagePassed(uint256 indexed nonce, address indexed sender, address indexed target, uint256 value, uint256 gasLimit, bytes data, bytes32 withdrawalHash)"
 );
+const MESSAGE_PASSED_EVENT_TOPIC =
+  "0x02a52367d10742d8032712c1bb8e0144ff1ec5ffda1ed7d70bb05a2744955054";
 
 /**
  * @param {string | undefined} value
@@ -84,6 +86,16 @@ function strip0x(value) {
  */
 function normalizeContractId(value) {
   return strip0x(value).toLowerCase();
+}
+
+/**
+ * @param {any} log
+ */
+function isMessagePassedLog(log) {
+  return (
+    log?.address?.toLowerCase?.() === L2_TO_L1_MESSAGE_PASSER.toLowerCase() &&
+    log?.topics?.[0]?.toLowerCase?.() === MESSAGE_PASSED_EVENT_TOPIC
+  );
 }
 
 /**
@@ -426,6 +438,12 @@ export function parseMessagePassedLog(log) {
     throw new Error("Log is not from L2ToL1MessagePasser");
   }
 
+  if (
+    log.topics[0]?.toLowerCase?.() !== MESSAGE_PASSED_EVENT_TOPIC.toLowerCase()
+  ) {
+    throw new Error("Log is not a MessagePassed event");
+  }
+
   const decoded = decodeEventLog({
     abi: [messagePassedEvent],
     data: log.data,
@@ -464,9 +482,7 @@ export function parseWithdrawalReceipt(receipt) {
   const logs = Array.isArray(receipt.logs) ? receipt.logs : [];
 
   for (const log of logs) {
-    if (
-      log?.address?.toLowerCase?.() !== L2_TO_L1_MESSAGE_PASSER.toLowerCase()
-    ) {
+    if (!isMessagePassedLog(log)) {
       continue;
     }
 
@@ -602,13 +618,53 @@ async function getWithdrawalProof(withdrawalHash, blockNumber) {
 }
 
 /**
+ * @param {any} item
+ * @returns {{ node: any[], rlp: `0x${string}` } | null}
+ */
+function embeddedProofNode(item) {
+  if (Array.isArray(item)) {
+    return {
+      node: item,
+      rlp: toRlp(item),
+    };
+  }
+
+  if (typeof item !== "string" || !item.startsWith("0x") || item === "0x") {
+    return null;
+  }
+
+  try {
+    const rlp = /** @type {`0x${string}`} */ (item);
+    const decoded = fromRlp(rlp);
+
+    return Array.isArray(decoded)
+      ? {
+          node: decoded,
+          rlp,
+        }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {any[]} node
+ */
+function proofNodePathSuffix(node) {
+  const path = node[0];
+
+  return typeof path === "string" ? path.slice(3) : null;
+}
+
+/**
  * OP Stack clients append embedded terminal nodes when the storage proof ends
  * in a branch node. Dusk's portal proof verifier follows the same MPT shape.
  *
  * @param {`0x${string}`} key
  * @param {readonly `0x${string}`[]} proof
  */
-function maybeAddProofNode(key, proof) {
+export function maybeAddProofNode(key, proof) {
   const lastProofRlp = proof[proof.length - 1];
   const lastProof = fromRlp(lastProofRlp);
 
@@ -619,17 +675,19 @@ function maybeAddProofNode(key, proof) {
   const modifiedProof = [...proof];
 
   for (const item of lastProof) {
-    if (!Array.isArray(item)) {
+    const embedded = embeddedProofNode(item);
+
+    if (embedded === null) {
       continue;
     }
 
-    const suffix = item[0]?.slice?.(3);
+    const suffix = proofNodePathSuffix(embedded.node);
 
-    if (typeof suffix !== "string" || !key.endsWith(suffix)) {
+    if (suffix === null || !key.endsWith(suffix)) {
       continue;
     }
 
-    modifiedProof.push(toRlp(item));
+    modifiedProof.push(embedded.rlp);
   }
 
   return modifiedProof;
@@ -1033,8 +1091,7 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
   const gameStatus = await provenWithdrawalGameStatus(
     event,
     portal,
-    provenWithdrawal,
-    proofSubmitter
+    provenWithdrawal
   );
 
   if (gameStatus.stage === "ready_to_finalize") {
@@ -1063,13 +1120,11 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
  * @param {object} provenWithdrawal
  * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
  * @param {bigint} provenWithdrawal.timestamp
- * @param {`0x${string}`} proofSubmitter
  */
 async function provenWithdrawalGameStatus(
   event,
   portal,
-  provenWithdrawal,
-  proofSubmitter
+  provenWithdrawal
 ) {
   const [proofMaturityDelay, latestTimestamp] = await Promise.all([
     readProofMaturityDelaySeconds(portal),
@@ -1110,6 +1165,12 @@ async function readLatestL1Timestamp() {
 /**
  * @param {import("@dusk/w3sper").Contract} portal
  * @param {object} withdrawal
+ * @param {`0x${string}`} withdrawal.data
+ * @param {bigint} withdrawal.gasLimit
+ * @param {bigint} withdrawal.nonce
+ * @param {`0x${string}`} withdrawal.sender
+ * @param {`0x${string}`} withdrawal.target
+ * @param {bigint} withdrawal.value
  */
 async function preflightFinalizeWithdrawal(portal, withdrawal) {
   await portal.call.profileFinalizeWithdrawalTransaction(
@@ -1212,10 +1273,6 @@ export async function loadWithdrawalStatus(txHash) {
   return await provenWithdrawalStatus(event, portal, proofSubmitter);
 }
 
-/**
- * @param {string} fnName
- * @param {unknown} args
- */
 /**
  * @param {`0x${string}`} txHash
  */

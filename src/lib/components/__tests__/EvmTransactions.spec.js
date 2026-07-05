@@ -3,23 +3,30 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { EvmTransactions } from "..";
 
-const mocks = vi.hoisted(() => ({
-  finalizeWithdrawal: vi.fn(),
-  loadWithdrawalStatus: vi.fn(),
-  proveWithdrawal: vi.fn(),
-}));
+const mocks = vi.hoisted(() => {
+  const configuredFinalizationConfig = () =>
+    /** @type {{ configured: boolean, disputeGameFactoryContractId: string | undefined, disputeGameFactoryDataDriverUrl: string, l2RpcUrl: string, missing: string[], optimismPortalContractId: string | undefined, optimismPortalDataDriverUrl: string }} */ ({
+      configured: true,
+      disputeGameFactoryContractId: "22".repeat(32),
+      disputeGameFactoryDataDriverUrl: "/dispute_game_factory_dd_opt.wasm",
+      l2RpcUrl: "https://rpc.devnet.duskevm.dusk.network",
+      missing: [],
+      optimismPortalContractId: "11".repeat(32),
+      optimismPortalDataDriverUrl: "/optimism_portal_dd_opt.wasm",
+    });
+
+  return {
+    configuredFinalizationConfig,
+    finalizationConfig: configuredFinalizationConfig(),
+    finalizeWithdrawal: vi.fn(),
+    loadWithdrawalStatus: vi.fn(),
+    proveWithdrawal: vi.fn(),
+  };
+});
 
 vi.mock("$lib/bridge/withdrawals", () => ({
   finalizeWithdrawal: mocks.finalizeWithdrawal,
-  getWithdrawalFinalizationConfig: () => ({
-    configured: true,
-    disputeGameFactoryContractId: "22".repeat(32),
-    disputeGameFactoryDataDriverUrl: "/dispute_game_factory_dd_opt.wasm",
-    l2RpcUrl: "https://rpc.devnet.duskevm.dusk.network",
-    missing: [],
-    optimismPortalContractId: "11".repeat(32),
-    optimismPortalDataDriverUrl: "/optimism_portal_dd_opt.wasm",
-  }),
+  getWithdrawalFinalizationConfig: () => mocks.finalizationConfig,
   /**
    * @param {unknown} value
    */
@@ -33,6 +40,7 @@ vi.mock("$lib/bridge/withdrawals", () => ({
 describe("EvmTransactions", () => {
   afterEach(() => {
     cleanup();
+    mocks.finalizationConfig = mocks.configuredFinalizationConfig();
     vi.clearAllMocks();
   });
 
@@ -48,6 +56,39 @@ describe("EvmTransactions", () => {
     expect(getByRole("link", { name: /back/i }).getAttribute("href")).toMatch(
       /\/dashboard\/bridge$/
     );
+  });
+
+  it("shows missing finalization config and disables status checks", async () => {
+    const txHash = `0x${"57".repeat(32)}`;
+    mocks.finalizationConfig = {
+      configured: false,
+      disputeGameFactoryContractId: undefined,
+      disputeGameFactoryDataDriverUrl: "/dispute_game_factory_dd_opt.wasm",
+      l2RpcUrl: "https://rpc.devnet.duskevm.dusk.network",
+      missing: [
+        "VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID",
+        "VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID",
+      ],
+      optimismPortalContractId: undefined,
+      optimismPortalDataDriverUrl: "/optimism_portal_dd_opt.wasm",
+    };
+
+    const { getByLabelText, getByRole, getByText } = render(EvmTransactions, {
+      target: document.body,
+    });
+
+    await fireEvent.input(getByLabelText("L2 withdrawal transaction hash"), {
+      target: { value: txHash },
+    });
+
+    expect(getByText("Finalization not configured")).toBeInTheDocument();
+    expect(
+      getByText(
+        "Missing VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID, VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID."
+      )
+    ).toBeInTheDocument();
+    expect(getByRole("button", { name: /check status/i })).toBeDisabled();
+    expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
   });
 
   it("shows the prove action when a withdrawal is ready to prove", async () => {
