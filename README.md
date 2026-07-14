@@ -71,6 +71,13 @@ argument serialization. Generic Dusk delivery envelopes for arbitrary L2 ->
 L1 contract messages are a separate application surface and are not exposed
 by the bridge UI.
 
+`VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL` must point to a Blockscout-compatible
+explorer for the configured DuskEVM network. Withdrawal activity uses its v2
+address-transactions and transaction-detail APIs, including the
+`op_withdrawals` data returned by Blockscout's Optimism module. If the explorer
+is temporarily unavailable, the wallet retains and displays a bounded local
+history of withdrawals initiated in that browser.
+
 Withdrawal finalization uses the existing Dusk-native wallet path on L1.
 Reown/Wagmi is only used for the DuskEVM/L2 side. The wallet uses
 `VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID` and its data-driver URL to call

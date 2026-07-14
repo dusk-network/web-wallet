@@ -31,6 +31,7 @@
   import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
   import { logo } from "$lib/dusk/icons";
   import { BRIDGE_DEPOSIT_MIN_GAS_LIMIT } from "$lib/bridge/deposit";
+  import { rememberWithdrawalTransaction } from "$lib/bridge/withdrawalActivity";
   import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
   import { MESSAGES } from "$lib/constants";
   import { luxToDusk } from "$lib/dusk/currency";
@@ -178,6 +179,10 @@
 
     lastWithdrawalTxHash = /** @type {string} */ (hash);
     localStorage.setItem(LAST_WITHDRAWAL_TX_HASH_KEY, lastWithdrawalTxHash);
+    rememberWithdrawalTransaction(
+      /** @type {`0x${string}`} */ (lastWithdrawalTxHash),
+      { account: $account.address, amountWei }
+    );
 
     return hash;
   }
@@ -248,7 +253,7 @@
     <h3 class="h4">Bridge</h3>
     <AppAnchorButton
       href={withdrawalStatusHref()}
-      text="Withdrawal status"
+      text="Activity"
       variant="tertiary"
       icon={{ path: mdiListStatus }}
     />
@@ -454,7 +459,7 @@
               {#if isWithdrawing}
                 <AppAnchorButton
                   href={withdrawalStatusHref(rememberWithdrawalTxHash(hash))}
-                  text="FINALIZE WITHDRAWAL"
+                  text="TRACK WITHDRAWAL"
                   variant="tertiary"
                 />
               {/if}

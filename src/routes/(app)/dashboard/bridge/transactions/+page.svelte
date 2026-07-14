@@ -15,7 +15,6 @@
     display: flex;
     flex-direction: column;
     gap: 1.375rem;
-    overflow-y: auto;
     flex: 1;
   }
 </style>

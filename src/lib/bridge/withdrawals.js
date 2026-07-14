@@ -1027,6 +1027,7 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
     provenAt: provenWithdrawal.timestamp,
     stage: gameStatus.stage,
     statusMessage: gameStatus.statusMessage,
+    ...("readyAt" in gameStatus ? { readyAt: gameStatus.readyAt } : {}),
   };
 }
 
@@ -1052,8 +1053,9 @@ async function provenWithdrawalGameStatus(
 
   if (latestTimestamp < readyAt) {
     return {
+      readyAt,
       stage: "proven_waiting",
-      statusMessage: `The proof maturity delay has not elapsed yet. Ready at L1 timestamp ${readyAt}.`,
+      statusMessage: "The proof maturity delay has not elapsed yet.",
     };
   }
 
