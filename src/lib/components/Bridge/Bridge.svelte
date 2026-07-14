@@ -5,8 +5,9 @@
   import { onMount } from "svelte";
   import { fade } from "svelte/transition";
   import { mdiArrowUpBoldBoxOutline, mdiListStatus } from "@mdi/js";
+  import { DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT } from "@dusk/evm-sdk";
   import { parseUnits } from "viem";
-  import { switchChain, writeContract } from "@wagmi/core";
+  import { sendTransaction, switchChain } from "@wagmi/core";
   import { getKey } from "lamb";
   import { Gas } from "@dusk/w3sper";
 
@@ -28,13 +29,9 @@
     OperationResult,
   } from "$lib/components";
   import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
-  import bridgeABI from "$lib/web3/abi/bridgeABI.json";
   import { logo } from "$lib/dusk/icons";
-  import {
-    BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
-    BRIDGE_WITHDRAWAL_MIN_GAS_LIMIT,
-  } from "$lib/bridge/deposit";
-  import { encodeExternalBridgeRecipientHex } from "$lib/bridge/encoding";
+  import { BRIDGE_DEPOSIT_MIN_GAS_LIMIT } from "$lib/bridge/deposit";
+  import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
   import { MESSAGES } from "$lib/constants";
   import { luxToDusk } from "$lib/dusk/currency";
   import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
@@ -98,6 +95,33 @@
   /** @type {ContractGasSettings} */
   let { gasLimit, gasPrice } = gasSettings;
 
+  async function submitNativeWithdrawal() {
+    if (!unshieldedAccount) {
+      throw new Error("Dusk account is not available.");
+    }
+
+    if (!$account.address) {
+      throw new Error("DuskEVM account is not available.");
+    }
+
+    const withdrawal = prepareNativeDuskWithdrawalCall({
+      accountPublicKey: unshieldedAccount,
+      amountWei,
+      bridgeAddress: VITE_EVM_BRIDGE_CONTRACT_ADDRESS,
+      evmRecipient: $account.address,
+      minGasLimit: DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT,
+    });
+
+    await switchChain(wagmiConfig, { chainId: duskEvm.id });
+
+    return await sendTransaction(wagmiConfig, {
+      chainId: duskEvm.id,
+      data: withdrawal.data,
+      to: withdrawal.to,
+      value: withdrawal.value,
+    });
+  }
+
   /**
    * Determines the direction of the transaction as either a withdrawal or deposit,
    * makes the appropriate contract call and returns the transaction hash.
@@ -108,27 +132,7 @@
     let hash;
 
     if (originNetwork === "duskEvm" && destinationNetwork === "duskDs") {
-      // Withdraw...
-
-      if (!unshieldedAccount) {
-        throw new Error("Dusk account is not available.");
-      }
-
-      const args = [
-        BRIDGE_WITHDRAWAL_MIN_GAS_LIMIT,
-        encodeExternalBridgeRecipientHex(unshieldedAccount),
-      ];
-
-      await switchChain(wagmiConfig, { chainId: duskEvm.id });
-
-      hash = await writeContract(wagmiConfig, {
-        abi: bridgeABI,
-        address: VITE_EVM_BRIDGE_CONTRACT_ADDRESS,
-        args,
-        chainId: duskEvm.id,
-        functionName: "bridgeETH",
-        value: amountWei,
-      });
+      hash = await submitNativeWithdrawal();
     } else if (originNetwork === "duskDs" && destinationNetwork === "duskEvm") {
       // Deposit...
 

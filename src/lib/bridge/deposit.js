@@ -1,7 +1,6 @@
 import { hexToBytes, normalizeBytes } from "./encoding";
 
 export const BRIDGE_DEPOSIT_MIN_GAS_LIMIT = 150_000;
-export const BRIDGE_WITHDRAWAL_MIN_GAS_LIMIT = 200_000;
 
 const UINT32_MAX = 2n ** 32n - 1n;
 const UINT64_MAX = 2n ** 64n - 1n;

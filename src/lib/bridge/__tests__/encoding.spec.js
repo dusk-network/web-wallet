@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-
 import {
-  BRIDGE_EXTERNAL_RECIPIENT_BYTES,
-  BRIDGE_RECIPIENT_EXTERNAL,
-  bytesToHex,
-  compressedBlsPublicKeyToRaw,
-  encodeExternalBridgeRecipient,
-  hexToBytes,
-} from "../encoding";
+  DUSK_EXTERNAL_ASSET_RECIPIENT_BYTES,
+  compressedDuskBlsPublicKeyToRaw,
+  encodeDuskExternalAssetRecipient,
+  l2StandardBridgeAbi,
+} from "@dusk/evm-sdk";
+import { bytesToHex, decodeFunctionData, hexToBytes } from "viem";
+
 import { encodeDepositETHToWithValueArgs } from "../deposit";
+import { prepareNativeDuskWithdrawalCall } from "../withdrawalInitiation";
 
 const COMPRESSED_G2_GENERATOR =
   "93e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8";
@@ -19,28 +19,57 @@ const RAW_G2_GENERATOR =
 
 describe("bridge recipient encoding", () => {
   it("converts compressed Dusk account keys to Rust raw BLS bytes", () => {
-    const raw = compressedBlsPublicKeyToRaw(
-      hexToBytes(COMPRESSED_G2_GENERATOR)
+    const raw = compressedDuskBlsPublicKeyToRaw(
+      hexToBytes(`0x${COMPRESSED_G2_GENERATOR}`)
     );
 
     expect(bytesToHex(raw)).toBe(`0x${RAW_G2_GENERATOR}`);
   });
 
-  it("encodes external account recipient extraData", () => {
-    const recipient = encodeExternalBridgeRecipient(
-      hexToBytes(COMPRESSED_G2_GENERATOR)
+  it("encodes the current versioned external account recipient", () => {
+    const recipient = encodeDuskExternalAssetRecipient(
+      hexToBytes(`0x${COMPRESSED_G2_GENERATOR}`)
     );
 
-    expect(recipient).toHaveLength(BRIDGE_EXTERNAL_RECIPIENT_BYTES);
-    expect(recipient[0]).toBe(BRIDGE_RECIPIENT_EXTERNAL);
-    expect(bytesToHex(recipient.slice(1))).toBe(`0x${RAW_G2_GENERATOR}`);
+    expect(hexToBytes(recipient)).toHaveLength(
+      DUSK_EXTERNAL_ASSET_RECIPIENT_BYTES
+    );
+    expect(recipient.slice(0, 8)).toBe("0x020100");
+    expect(recipient.slice(8)).toBe(RAW_G2_GENERATOR);
   });
 
   it("rejects malformed account public keys", () => {
-    expect(() => compressedBlsPublicKeyToRaw(new Uint8Array(95))).toThrow(
-      RangeError
-    );
-    expect(() => compressedBlsPublicKeyToRaw(new Uint8Array(96))).toThrow();
+    expect(() => compressedDuskBlsPublicKeyToRaw(new Uint8Array(95))).toThrow();
+    expect(() => compressedDuskBlsPublicKeyToRaw(new Uint8Array(96))).toThrow();
+  });
+
+  it("prepares the canonical native withdrawal call through the SDK", () => {
+    const amountWei = 1_000_000_000_000_000_000n;
+    const bridgeAddress = "0x4200000000000000000000000000000000000010";
+    const evmRecipient = "0x1111111111111111111111111111111111111111";
+    const accountPublicKey = hexToBytes(`0x${COMPRESSED_G2_GENERATOR}`);
+    const call = prepareNativeDuskWithdrawalCall({
+      accountPublicKey: { valueOf: () => accountPublicKey },
+      amountWei,
+      bridgeAddress,
+      evmRecipient,
+      minGasLimit: 200_000,
+    });
+    const decoded = decodeFunctionData({
+      abi: l2StandardBridgeAbi,
+      data: call.data,
+    });
+
+    expect(call).toMatchObject({
+      to: bridgeAddress,
+      value: amountWei,
+    });
+    expect(decoded.functionName).toBe("bridgeETHTo");
+    expect(decoded.args).toEqual([
+      evmRecipient,
+      200_000,
+      encodeDuskExternalAssetRecipient(accountPublicKey),
+    ]);
   });
 });
 

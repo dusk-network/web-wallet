@@ -41,11 +41,11 @@
     }
   },
   "dependencies": {
+    "@dusk/evm-sdk": "npm:@jsr/dusk__evm-sdk@0.1.0-beta.2",
     "@dusk/w3sper": "npm:@jsr/dusk__w3sper@1.6.0",
     "@duskit/css": "0.4.0",
     "@floating-ui/dom": "1.7.6",
     "@mdi/js": "7.4.47",
-    "@noble/curves": "^1.8.0",
     "@reown/appkit": "1.8.20",
     "@reown/appkit-adapter-wagmi": "1.8.20",
     "@scure/bip39": "2.0.1",

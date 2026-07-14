@@ -198,7 +198,7 @@ describe("DuskEVM withdrawal helpers", () => {
         status: "0x1",
         transactionHash: tamperedLog.transactionHash,
       })
-    ).toThrow("Withdrawal hash mismatch in MessagePassed event.");
+    ).toThrow("MessagePassed withdrawalHash does not match event payload");
   });
 
   it("rejects malformed MessagePassed payloads", () => {
@@ -276,9 +276,9 @@ describe("DuskEVM withdrawal helpers", () => {
     });
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
 
-    await expect(
-      finalizeWithdrawal(withdrawalTxHash)
-    ).rejects.toThrow("The withdrawal is already finalized.");
+    await expect(finalizeWithdrawal(withdrawalTxHash)).rejects.toThrow(
+      "The withdrawal is already finalized."
+    );
     expect(
       portal.call.profileFinalizeWithdrawalTransaction
     ).not.toHaveBeenCalled();
@@ -293,10 +293,39 @@ describe("DuskEVM withdrawal helpers", () => {
     });
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
 
-    await expect(
-      finalizeWithdrawal(withdrawalTxHash)
-    ).rejects.toThrow("The existing proof is not accepted");
+    await expect(finalizeWithdrawal(withdrawalTxHash)).rejects.toThrow(
+      "The existing proof is not accepted"
+    );
     expect(walletStore.finalizeDuskEvmWithdrawal).not.toHaveBeenCalled();
+  });
+
+  it("submits the SDK-serialized withdrawal through the Portal data driver", async () => {
+    const { walletStore } = mockWithdrawalFinalization({
+      finalizePreflight: vi.fn().mockResolvedValue(undefined),
+    });
+    const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
+
+    await expect(finalizeWithdrawal(withdrawalTxHash)).resolves.toBe(
+      "finalize-hash"
+    );
+
+    const [, , withdrawal] =
+      walletStore.finalizeDuskEvmWithdrawal.mock.calls[0];
+
+    expect(withdrawal).toMatchObject({
+      data: expect.any(Array),
+      nonce: expect.any(Array),
+      sender: expect.any(Array),
+      target: expect.any(Array),
+      value: expect.any(Array),
+    });
+    expect(Reflect.get(withdrawal, "gas_limit")).toEqual(expect.any(Array));
+    expect(withdrawal.data.slice(0, 4)).toEqual([0xd7, 0x64, 0xad, 0x0b]);
+    expect(withdrawal.gas_limit).toHaveLength(32);
+    expect(withdrawal.nonce).toHaveLength(32);
+    expect(withdrawal.sender).toHaveLength(20);
+    expect(withdrawal.target).toHaveLength(20);
+    expect(withdrawal.value).toHaveLength(32);
   });
 });
 
@@ -346,7 +375,9 @@ function mockWithdrawalFinalization({ finalized = false, finalizePreflight }) {
     },
   };
   const walletStore = {
-    finalizeDuskEvmWithdrawal: vi.fn(),
+    finalizeDuskEvmWithdrawal: vi
+      .fn()
+      .mockResolvedValue({ hash: "finalize-hash" }),
     useContract: vi.fn(async (contractId) =>
       contractId === "11".repeat(32) ? portal : dgf
     ),

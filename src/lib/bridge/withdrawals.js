@@ -1,18 +1,23 @@
 import {
-  decodeEventLog,
+  bytesToHex,
   encodeAbiParameters,
   fromRlp,
+  hexToBytes,
   keccak256,
-  parseAbiItem,
   toHex,
   toRlp,
 } from "viem";
+import {
+  L2_TO_L1_MESSAGE_PASSER_ADDRESS,
+  parseMessagePassedReceipt,
+  hashWithdrawal as sdkHashWithdrawal,
+  serializeOutputRootProofForDuskAbi,
+  serializeWithdrawalForDuskAbi,
+} from "@dusk/evm-sdk";
 
-import { bytesToHex, hexToBytes } from "$lib/bridge/encoding";
 import { networkStore, walletStore } from "$lib/stores";
 import { duskEvm } from "$lib/web3/walletConnection";
 
-const L2_TO_L1_MESSAGE_PASSER = "0x4200000000000000000000000000000000000016";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const ZERO_HASH = /** @type {`0x${string}`} */ (
   "0x0000000000000000000000000000000000000000000000000000000000000000"
@@ -33,12 +38,6 @@ const DEFAULT_OPTIMISM_PORTAL_DATA_DRIVER_URL =
   "/drivers/optimism_portal_dd_opt.wasm";
 const DEFAULT_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL =
   "/drivers/dispute_game_factory_dd_opt.wasm";
-
-const messagePassedEvent = parseAbiItem(
-  "event MessagePassed(uint256 indexed nonce, address indexed sender, address indexed target, uint256 value, uint256 gasLimit, bytes data, bytes32 withdrawalHash)"
-);
-const MESSAGE_PASSED_EVENT_TOPIC =
-  "0x02a52367d10742d8032712c1bb8e0144ff1ec5ffda1ed7d70bb05a2744955054";
 
 /**
  * @param {string | undefined} value
@@ -86,16 +85,6 @@ function strip0x(value) {
  */
 function normalizeContractId(value) {
   return strip0x(value).toLowerCase();
-}
-
-/**
- * @param {any} log
- */
-function isMessagePassedLog(log) {
-  return (
-    log?.address?.toLowerCase?.() === L2_TO_L1_MESSAGE_PASSER.toLowerCase() &&
-    log?.topics?.[0]?.toLowerCase?.() === MESSAGE_PASSED_EVENT_TOPIC
-  );
 }
 
 /**
@@ -216,7 +205,11 @@ async function disputeGameFactoryContract() {
  */
 function bytesLikeToArray(value) {
   if (typeof value === "string") {
-    return Array.from(hexToBytes(value));
+    if (!/^0x(?:[0-9a-fA-F]{2})*$/.test(value)) {
+      throw new TypeError("Expected 0x-prefixed byte hex");
+    }
+
+    return Array.from(hexToBytes(/** @type {`0x${string}`} */ (value)));
   }
 
   if (value instanceof Uint8Array) {
@@ -345,13 +338,15 @@ function hexToArray(value, expectedLength) {
  * @param {bigint} withdrawal.value
  */
 function withdrawalToDriverInput(withdrawal) {
+  const encoded = serializeWithdrawalForDuskAbi(withdrawal);
+
   return {
-    data: hexToArray(withdrawal.data, undefined),
-    ["gas_limit"]: bigIntToU256(withdrawal.gasLimit),
-    nonce: bigIntToU256(withdrawal.nonce),
-    sender: hexToArray(withdrawal.sender, 20),
-    target: hexToArray(withdrawal.target, 20),
-    value: bigIntToU256(withdrawal.value),
+    data: hexToArray(encoded.data, undefined),
+    ["gas_limit"]: hexToArray(encoded.gas_limit, 32),
+    nonce: hexToArray(encoded.nonce, 32),
+    sender: hexToArray(encoded.sender, 20),
+    target: hexToArray(encoded.target, 20),
+    value: hexToArray(encoded.value, 32),
   };
 }
 
@@ -363,14 +358,16 @@ function withdrawalToDriverInput(withdrawal) {
  * @param {`0x${string}`} outputRootProof.version
  */
 function outputRootProofToDriverInput(outputRootProof) {
+  const encoded = serializeOutputRootProofForDuskAbi(outputRootProof);
+
   return {
-    ["latest_blockhash"]: hexToArray(outputRootProof.latestBlockhash, 32),
+    ["latest_blockhash"]: hexToArray(encoded.latest_blockhash, 32),
     ["message_passer_storage_root"]: hexToArray(
-      outputRootProof.messagePasserStorageRoot,
+      encoded.message_passer_storage_root,
       32
     ),
-    ["state_root"]: hexToArray(outputRootProof.stateRoot, 32),
-    version: hexToArray(outputRootProof.version, 32),
+    ["state_root"]: hexToArray(encoded.state_root, 32),
+    version: hexToArray(encoded.version, 32),
   };
 }
 
@@ -416,59 +413,8 @@ async function fetchL2Receipt(txHash) {
 }
 
 /**
- * @param {unknown} value
- */
-function parseHexBigInt(value) {
-  if (typeof value !== "string" || !value.startsWith("0x")) {
-    throw new TypeError("Expected hex quantity");
-  }
-
-  return BigInt(value);
-}
-
-/**
- * @param {any} log
- */
-export function parseMessagePassedLog(log) {
-  if (!log?.address?.toLowerCase || !Array.isArray(log?.topics)) {
-    throw new Error("Invalid log");
-  }
-
-  if (log.address.toLowerCase() !== L2_TO_L1_MESSAGE_PASSER.toLowerCase()) {
-    throw new Error("Log is not from L2ToL1MessagePasser");
-  }
-
-  if (
-    log.topics[0]?.toLowerCase?.() !== MESSAGE_PASSED_EVENT_TOPIC.toLowerCase()
-  ) {
-    throw new Error("Log is not a MessagePassed event");
-  }
-
-  const decoded = decodeEventLog({
-    abi: [messagePassedEvent],
-    data: log.data,
-    topics: log.topics,
-  });
-
-  const { data, gasLimit, nonce, sender, target, value, withdrawalHash } =
-    decoded.args;
-  const withdrawal = {
-    data,
-    gasLimit,
-    nonce,
-    sender,
-    target,
-    value,
-  };
-
-  return {
-    withdrawal,
-    withdrawalHash,
-  };
-}
-
-/**
  * @param {any} receipt
+ * @returns {import("@dusk/evm-sdk").ParsedWithdrawalMessage & {blockNumber: bigint}}
  */
 export function parseWithdrawalReceipt(receipt) {
   if (!receipt) {
@@ -479,62 +425,31 @@ export function parseWithdrawalReceipt(receipt) {
     throw new Error("Withdrawal transaction failed on DuskEVM.");
   }
 
-  const logs = Array.isArray(receipt.logs) ? receipt.logs : [];
+  try {
+    const parsed = parseMessagePassedReceipt(receipt);
 
-  for (const log of logs) {
-    if (!isMessagePassedLog(log)) {
-      continue;
+    if (parsed.blockNumber === undefined) {
+      throw new Error("Withdrawal receipt is missing its L2 block number.");
     }
 
-    const parsed = parseMessagePassedLog(log);
-    const computed = hashWithdrawal(parsed.withdrawal);
-
-    if (computed.toLowerCase() !== parsed.withdrawalHash.toLowerCase()) {
-      throw new Error("Withdrawal hash mismatch in MessagePassed event.");
+    return /** @type {import("@dusk/evm-sdk").ParsedWithdrawalMessage & {blockNumber: bigint}} */ (
+      parsed
+    );
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "No MessagePassed event found in receipt"
+    ) {
+      throw new Error("Withdrawal MessagePassed event was not found.", {
+        cause: error,
+      });
     }
 
-    return {
-      ...parsed,
-      blockHash: receipt.blockHash,
-      blockNumber: parseHexBigInt(receipt.blockNumber),
-      transactionHash: receipt.transactionHash,
-    };
+    throw error;
   }
-
-  throw new Error("Withdrawal MessagePassed event was not found.");
 }
 
-/**
- * @param {object} withdrawal
- * @param {`0x${string}`} withdrawal.data
- * @param {bigint} withdrawal.gasLimit
- * @param {bigint} withdrawal.nonce
- * @param {`0x${string}`} withdrawal.sender
- * @param {`0x${string}`} withdrawal.target
- * @param {bigint} withdrawal.value
- */
-export function hashWithdrawal(withdrawal) {
-  return keccak256(
-    encodeAbiParameters(
-      [
-        { type: "uint256" },
-        { type: "address" },
-        { type: "address" },
-        { type: "uint256" },
-        { type: "uint256" },
-        { type: "bytes" },
-      ],
-      [
-        withdrawal.nonce,
-        withdrawal.sender,
-        withdrawal.target,
-        withdrawal.value,
-        withdrawal.gasLimit,
-        withdrawal.data,
-      ]
-    )
-  );
-}
+export const hashWithdrawal = sdkHashWithdrawal;
 
 /**
  * @param {`0x${string}`} withdrawalHash
@@ -599,7 +514,7 @@ async function getWithdrawalProof(withdrawalHash, blockNumber) {
   const config = requireWithdrawalFinalizationConfig();
   const key = withdrawalStorageKey(withdrawalHash);
   const proof = await rpc(config.l2RpcUrl, "eth_getProof", [
-    L2_TO_L1_MESSAGE_PASSER,
+    L2_TO_L1_MESSAGE_PASSER_ADDRESS,
     [key],
     toHex(blockNumber),
   ]);
@@ -1121,11 +1036,7 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
  * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
  * @param {bigint} provenWithdrawal.timestamp
  */
-async function provenWithdrawalGameStatus(
-  event,
-  portal,
-  provenWithdrawal
-) {
+async function provenWithdrawalGameStatus(event, portal, provenWithdrawal) {
   const [proofMaturityDelay, latestTimestamp] = await Promise.all([
     readProofMaturityDelaySeconds(portal),
     readLatestL1Timestamp(),
