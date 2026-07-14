@@ -78,7 +78,9 @@ Reown/Wagmi is only used for the DuskEVM/L2 side. The wallet uses
 status getters through w3sper. It uses
 `VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID` and its data-driver URL to find a
 dispute game/output proposal that covers the L2 withdrawal block. The respected
-dispute game type is read from the portal at runtime.
+dispute game type is read from the portal at runtime. This flow requires Rusk
+1.7.1 or later so read-only contract queries execute at the current chain tip
+and can evaluate proof maturity correctly.
 The data-driver URLs must point to browser-loadable Forge data-driver WASM
 artifacts for the deployed contracts; they are not the deployed contract WASM
 artifacts themselves. These `VITE_*` values are public build-time browser
@@ -106,4 +108,5 @@ To run a local node different steps are needed, so please read the [related sect
 
 ## Running a local Rusk node
 
-To run a local node, follow the instructions outlined in the [Rusk's readme](https://github.com/dusk-network/rusk).
+The DuskEVM withdrawal flow requires Rusk 1.7.1 or later. To run a local node,
+follow the instructions outlined in the [Rusk's readme](https://github.com/dusk-network/rusk).
