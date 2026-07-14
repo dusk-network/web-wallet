@@ -1006,7 +1006,8 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
   const gameStatus = await provenWithdrawalGameStatus(
     event,
     portal,
-    provenWithdrawal
+    provenWithdrawal,
+    proofSubmitter
   );
 
   if (gameStatus.stage === "ready_to_finalize") {
@@ -1035,8 +1036,14 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
  * @param {object} provenWithdrawal
  * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
  * @param {bigint} provenWithdrawal.timestamp
+ * @param {`0x${string}`} proofSubmitter
  */
-async function provenWithdrawalGameStatus(event, portal, provenWithdrawal) {
+async function provenWithdrawalGameStatus(
+  event,
+  portal,
+  provenWithdrawal,
+  proofSubmitter
+) {
   const [proofMaturityDelay, latestTimestamp] = await Promise.all([
     readProofMaturityDelaySeconds(portal),
     readLatestL1Timestamp(),
@@ -1051,7 +1058,11 @@ async function provenWithdrawalGameStatus(event, portal, provenWithdrawal) {
   }
 
   try {
-    await preflightFinalizeWithdrawal(portal, event.withdrawal);
+    await preflightFinalizeWithdrawal(
+      portal,
+      event.withdrawalHash,
+      proofSubmitter
+    );
   } catch {
     return await classifyRejectedProofStatus(event, provenWithdrawal);
   }
@@ -1075,18 +1086,18 @@ async function readLatestL1Timestamp() {
 
 /**
  * @param {import("@dusk/w3sper").Contract} portal
- * @param {object} withdrawal
- * @param {`0x${string}`} withdrawal.data
- * @param {bigint} withdrawal.gasLimit
- * @param {bigint} withdrawal.nonce
- * @param {`0x${string}`} withdrawal.sender
- * @param {`0x${string}`} withdrawal.target
- * @param {bigint} withdrawal.value
+ * @param {`0x${string}`} withdrawalHash
+ * @param {`0x${string}`} proofSubmitter
  */
-async function preflightFinalizeWithdrawal(portal, withdrawal) {
-  await portal.call.profileFinalizeWithdrawalTransaction(
-    withdrawalToDriverInput(withdrawal)
-  );
+async function preflightFinalizeWithdrawal(
+  portal,
+  withdrawalHash,
+  proofSubmitter
+) {
+  await portal.call.checkWithdrawal([
+    hexToArray(withdrawalHash, 32),
+    hexToArray(proofSubmitter, 20),
+  ]);
 }
 
 /**

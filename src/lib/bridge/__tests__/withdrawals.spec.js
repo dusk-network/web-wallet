@@ -266,7 +266,11 @@ describe("DuskEVM withdrawal helpers", () => {
     expect(status.statusMessage).toContain(
       "The existing proof is not accepted"
     );
-    expect(portal.call.profileFinalizeWithdrawalTransaction).toHaveBeenCalled();
+    expect(portal.call.checkWithdrawal).toHaveBeenCalledOnce();
+    const [[withdrawalHash, proofSubmitter]] =
+      portal.call.checkWithdrawal.mock.calls[0];
+    expect(withdrawalHash).toHaveLength(32);
+    expect(proofSubmitter).toEqual(Array(20).fill(0x2c));
   });
 
   it("refuses to submit finalization for already-finalized withdrawals", async () => {
@@ -279,9 +283,7 @@ describe("DuskEVM withdrawal helpers", () => {
     await expect(finalizeWithdrawal(withdrawalTxHash)).rejects.toThrow(
       "The withdrawal is already finalized."
     );
-    expect(
-      portal.call.profileFinalizeWithdrawalTransaction
-    ).not.toHaveBeenCalled();
+    expect(portal.call.checkWithdrawal).not.toHaveBeenCalled();
     expect(walletStore.finalizeDuskEvmWithdrawal).not.toHaveBeenCalled();
   });
 
@@ -360,9 +362,9 @@ function mockWithdrawalFinalization({ finalized = false, finalizePreflight }) {
   const disputeGameProxy = Array(20).fill(0x1e);
   const portal = {
     call: {
+      checkWithdrawal: finalizePreflight,
       finalizedWithdrawals: vi.fn().mockResolvedValue(finalized),
       numProofSubmitters: vi.fn().mockResolvedValue(u256(1)),
-      profileFinalizeWithdrawalTransaction: finalizePreflight,
       proofMaturityDelaySeconds: vi.fn().mockResolvedValue(u256(0)),
       proofSubmitters: vi.fn().mockResolvedValue(proofSubmitter),
       provenWithdrawals: vi.fn().mockResolvedValue([disputeGameProxy, 100n]),
