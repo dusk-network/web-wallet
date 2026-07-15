@@ -37,7 +37,9 @@ VITE_EVM_BRIDGE_CONTRACT_ADDRESS=""
 VITE_EVM_BRIDGE_CONTRACT_BLOCK_CREATED=
 VITE_EVM_BRIDGE_BLOCK_EXPLORER_NAME="Dusk EVM Explorer"
 VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL=""
+VITE_EVM_L1_BRIDGE_RPC_URL=""
 VITE_EVM_BRIDGE_RPC_URL=""
+VITE_EVM_DEPOSIT_DELAY_THRESHOLD_MS=300000
 VITE_EVM_CHAIN_ID=745
 VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID=""
 VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL="/drivers/optimism_portal_dd_opt.wasm"
@@ -67,9 +69,13 @@ For the DuskEVM bridge, `VITE_BRIDGE_CONTRACT_ID` is the Dusk L1
 address used for DuskEVM -> DuskDS withdrawals. The current wallet bridge
 uses the pinned `@dusk/evm-sdk` beta for versioned Dusk asset-recipient
 metadata, L2 withdrawal calldata, `MessagePassed` verification, and L1 Portal
-argument serialization. Generic Dusk delivery envelopes for arbitrary L2 ->
-L1 contract messages are a separate application surface and are not exposed
-by the bridge UI.
+argument serialization. `VITE_EVM_L1_BRIDGE_RPC_URL` points to the DuskEVM
+adapter's Ethereum-compatible L1 RPC. The wallet uses it to confirm a deposit's
+DuskDS receipt, derive the OP deposit transaction, and track delivery on
+`VITE_EVM_BRIDGE_RPC_URL`. `VITE_EVM_DEPOSIT_DELAY_THRESHOLD_MS` controls when
+an in-transit deposit is labelled delayed; it defaults to five minutes. Generic
+Dusk delivery envelopes for arbitrary L2 -> L1 contract messages are a
+separate application surface and are not exposed by the bridge UI.
 
 `VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL` must point to a Blockscout-compatible
 explorer for the configured DuskEVM network. Withdrawal activity uses its v2

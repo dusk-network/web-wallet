@@ -41,7 +41,7 @@
     }
   },
   "dependencies": {
-    "@dusk/evm-sdk": "npm:@jsr/dusk__evm-sdk@0.1.0-beta.2",
+    "@dusk/evm-sdk": "npm:@jsr/dusk__evm-sdk@0.1.0-beta.3",
     "@dusk/w3sper": "npm:@jsr/dusk__w3sper@1.6.0",
     "@duskit/css": "0.4.0",
     "@floating-ui/dom": "1.7.6",
