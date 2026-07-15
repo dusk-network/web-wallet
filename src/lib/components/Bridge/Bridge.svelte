@@ -24,6 +24,7 @@
   import {
     AppAnchorButton,
     Banner,
+    DepositResult,
     GasFee,
     GasSettings,
     OperationResult,
@@ -31,6 +32,13 @@
   import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
   import { logo } from "$lib/dusk/icons";
   import { BRIDGE_DEPOSIT_MIN_GAS_LIMIT } from "$lib/bridge/deposit";
+  import {
+    depositActivityStore,
+    pendingDepositAmountLux,
+    rememberDepositTransaction,
+    resumeDepositTracking,
+    trackDepositTransaction,
+  } from "$lib/bridge/depositActivity";
   import { rememberWithdrawalTransaction } from "$lib/bridge/withdrawalActivity";
   import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
   import { MESSAGES } from "$lib/constants";
@@ -90,6 +98,9 @@
   /** @type {bigint} */
   let amountWei = 0n;
 
+  /** @type {bigint} */
+  let incomingDepositLux = 0n;
+
   /** @type {boolean} */
   let isGasValid = true;
 
@@ -123,41 +134,53 @@
     });
   }
 
+  async function submitNativeDeposit() {
+    if (!$account.address) {
+      throw new Error("Account address is not available.");
+    }
+
+    const response = await walletStore.depositEvmFunctionCall(
+      $account.address,
+      amountLux,
+      new Gas({ limit: gasLimit, price: gasPrice }),
+      { minGasLimit: BRIDGE_DEPOSIT_MIN_GAS_LIMIT }
+    );
+    const hash = getKey("hash")(response);
+
+    if (typeof hash !== "string") {
+      throw new Error("The DuskDS transaction did not return a hash.");
+    }
+
+    const remembered = rememberDepositTransaction(hash, {
+      account: $account.address,
+      amountLux,
+      amountWei,
+    });
+
+    if (!remembered) {
+      throw new Error("The DuskDS transaction returned an invalid hash.");
+    }
+
+    void trackDepositTransaction(remembered.transactionHash);
+    return remembered.transactionHash;
+  }
+
   /**
    * Determines the direction of the transaction as either a withdrawal or deposit,
    * makes the appropriate contract call and returns the transaction hash.
    *
-   * @return {Promise<string | undefined>} hash
+   * @return {Promise<string>} hash
    */
   async function bridge() {
-    let hash;
-
     if (originNetwork === "duskEvm" && destinationNetwork === "duskDs") {
-      hash = await submitNativeWithdrawal();
-    } else if (originNetwork === "duskDs" && destinationNetwork === "duskEvm") {
-      // Deposit...
-
-      const gas = new Gas({ limit: gasLimit, price: gasPrice });
-
-      if (!$account.address) {
-        throw new Error("Account address is not available.");
-      }
-
-      const response = await walletStore.depositEvmFunctionCall(
-        $account.address,
-        amountLux,
-        gas,
-        {
-          minGasLimit: BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
-        }
-      );
-
-      hash = getKey("hash")(response);
-    } else {
-      throw new Error("Invalid bridge operation.");
+      return await submitNativeWithdrawal();
     }
 
-    return hash;
+    if (originNetwork === "duskDs" && destinationNetwork === "duskEvm") {
+      return await submitNativeDeposit();
+    }
+
+    throw new Error("Invalid bridge operation.");
   }
 
   /**
@@ -212,6 +235,10 @@
     originNetwork === "duskDs" && destinationNetwork === "duskEvm";
   $: isWithdrawing =
     originNetwork === "duskEvm" && destinationNetwork === "duskDs";
+  $: incomingDepositLux = pendingDepositAmountLux(
+    $account.address,
+    $depositActivityStore
+  );
   $: {
     // viem expects a dot as decimal separator.
     // We also guard against incomplete inputs like "1." or ",5".
@@ -245,6 +272,12 @@
   onMount(() => {
     lastWithdrawalTxHash =
       localStorage.getItem(LAST_WITHDRAWAL_TX_HASH_KEY) ?? "";
+
+    const unsubscribeAccount = account.subscribe((value) => {
+      resumeDepositTracking(value.address);
+    });
+
+    return unsubscribeAccount;
   });
 </script>
 
@@ -271,6 +304,11 @@
           {formatter(luxToDusk(evmDuskBalance.value / EVM_TO_LUX_SCALE_FACTOR))}
         {:else}
           <Throbber size={16} />
+        {/if}
+        {#if incomingDepositLux > 0n}
+          <small>
+            + {formatter(luxToDusk(incomingDepositLux))} incoming
+          </small>
         {/if}
       </dd>
     </dl>
@@ -433,39 +471,33 @@
         </div>
       </WizardStep>
       <WizardStep step={2} {key} showNavigation={false}>
-        <OperationResult
-          errorMessage="Bridging failed"
-          operation={bridge()}
-          pendingMessage="Processing transaction"
-          successMessage={isDepositing
-            ? "Deposit submitted"
-            : "Withdrawal request submitted"}
-        >
-          <svelte:fragment slot="success-content" let:result={hash}>
-            {#if isDepositing}
-              <p>{MESSAGES.TRANSACTION_CREATED}</p>
-            {:else}
+        {#if isDepositing}
+          <DepositResult operation={bridge()} />
+        {:else}
+          <OperationResult
+            errorMessage="Bridging failed"
+            operation={bridge()}
+            pendingMessage="Processing transaction"
+            successMessage="Withdrawal request submitted"
+          >
+            <svelte:fragment slot="success-content" let:result={hash}>
               <p>{MESSAGES.TRANSACTION_PENDING}</p>
-            {/if}
-            {#if hash}
-              <AnchorButton
-                href={isDepositing
-                  ? `/explorer/transactions/transaction?id=${hash}`
-                  : `${duskEvm.blockExplorers.default.url}/tx/${hash}`}
-                text="VIEW ON BLOCK EXPLORER"
-                rel="noopener noreferrer"
-                target="_blank"
-              />
-              {#if isWithdrawing}
+              {#if hash}
+                <AnchorButton
+                  href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}
+                  text="VIEW ON BLOCK EXPLORER"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                />
                 <AppAnchorButton
                   href={withdrawalStatusHref(rememberWithdrawalTxHash(hash))}
                   text="TRACK WITHDRAWAL"
                   variant="tertiary"
                 />
               {/if}
-            {/if}
-          </svelte:fragment>
-        </OperationResult>
+            </svelte:fragment>
+          </OperationResult>
+        {/if}
       </WizardStep>
     </Wizard>
   </div>
@@ -515,9 +547,18 @@
     }
 
     &__balance {
+      align-items: flex-end;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
       margin: 0;
       overflow-wrap: anywhere;
       text-align: right;
+
+      & small {
+        color: var(--secondary-text-color);
+        font-size: 0.75rem;
+      }
     }
   }
 
