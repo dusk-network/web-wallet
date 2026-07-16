@@ -1,6 +1,8 @@
 import {
   bytesToHex,
+  decodeFunctionResult,
   encodeAbiParameters,
+  encodeFunctionData,
   fromRlp,
   hexToBytes,
   keccak256,
@@ -31,6 +33,7 @@ const VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID = import.meta.env
   .VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID;
 const VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL = import.meta.env
   .VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL;
+const VITE_EVM_L1_BRIDGE_RPC_URL = import.meta.env.VITE_EVM_L1_BRIDGE_RPC_URL;
 const VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH = BigInt(
   import.meta.env.VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH ?? 64
 );
@@ -38,6 +41,20 @@ const DEFAULT_OPTIMISM_PORTAL_DATA_DRIVER_URL =
   "/drivers/optimism_portal_dd_opt.wasm";
 const DEFAULT_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL =
   "/drivers/dispute_game_factory_dd_opt.wasm";
+const GAME_STATUS = Object.freeze({
+  CHALLENGER_WINS: 1,
+  DEFENDER_WINS: 2,
+  IN_PROGRESS: 0,
+});
+const GAME_STATUS_ABI = Object.freeze([
+  {
+    inputs: [],
+    name: "status",
+    outputs: [{ type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+  },
+]);
 
 /**
  * @param {string | undefined} value
@@ -401,6 +418,21 @@ async function rpc(url, method, params = []) {
   }
 
   return body.result;
+}
+
+/**
+ * @param {`0x${string}`} to
+ * @param {`0x${string}`} data
+ */
+async function callL1Contract(to, data) {
+  if (!VITE_EVM_L1_BRIDGE_RPC_URL) {
+    throw new Error("DuskEVM L1 bridge RPC is not configured.");
+  }
+
+  return await rpc(VITE_EVM_L1_BRIDGE_RPC_URL, "eth_call", [
+    { data, to },
+    "latest",
+  ]);
 }
 
 /**
@@ -1066,7 +1098,7 @@ async function provenWithdrawalGameStatus(
       proofSubmitter
     );
   } catch {
-    return await classifyRejectedProofStatus(event, provenWithdrawal);
+    return await classifyRejectedProofStatus(event, portal, provenWithdrawal);
   }
 
   return {
@@ -1103,11 +1135,72 @@ async function preflightFinalizeWithdrawal(
 }
 
 /**
+ * @param {import("@dusk/w3sper").Contract} portal
+ * @param {`0x${string}`} disputeGameProxy
+ */
+async function readProvenGameDisposition(portal, disputeGameProxy) {
+  const [gameStatusResult, isGameBlacklisted] = await Promise.all([
+    callL1Contract(
+      disputeGameProxy,
+      encodeFunctionData({ abi: GAME_STATUS_ABI, functionName: "status" })
+    ),
+    portal.call.disputeGameBlacklist(hexToArray(disputeGameProxy, 20)),
+  ]);
+
+  return {
+    gameStatus: Number(
+      decodeFunctionResult({
+        abi: GAME_STATUS_ABI,
+        data: gameStatusResult,
+        functionName: "status",
+      })
+    ),
+    isGameBlacklisted: Boolean(isGameBlacklisted),
+  };
+}
+
+/**
+ * @param {object} disposition
+ * @param {number} disposition.gameStatus
+ * @param {boolean} disposition.isGameBlacklisted
+ */
+export function proofRequiresReplacement(disposition) {
+  return (
+    disposition.isGameBlacklisted ||
+    disposition.gameStatus === GAME_STATUS.CHALLENGER_WINS
+  );
+}
+
+/**
  * @param {any} event
+ * @param {import("@dusk/w3sper").Contract} portal
  * @param {object} provenWithdrawal
  * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
  */
-async function classifyRejectedProofStatus(event, provenWithdrawal) {
+async function classifyRejectedProofStatus(event, portal, provenWithdrawal) {
+  try {
+    const disposition = await readProvenGameDisposition(
+      portal,
+      provenWithdrawal.disputeGameProxy
+    );
+
+    if (!proofRequiresReplacement(disposition)) {
+      return {
+        stage: "proven_waiting",
+        statusMessage:
+          disposition.gameStatus === GAME_STATUS.IN_PROGRESS
+            ? "The proof is accepted. Its dispute game is still in progress."
+            : "The proof is accepted. Wait for its dispute game to become final.",
+      };
+    }
+  } catch {
+    return {
+      stage: "proven_waiting",
+      statusMessage:
+        "The proof is accepted, but its dispute game is not final yet.",
+    };
+  }
+
   const proofAvailability = await lookupWithdrawalProof({
     withdrawalBlockNumber: event.blockNumber,
     withdrawalHash: event.withdrawalHash,
@@ -1128,7 +1221,7 @@ async function classifyRejectedProofStatus(event, provenWithdrawal) {
   return {
     stage: "proven_waiting",
     statusMessage:
-      "The existing proof is not accepted by the portal yet. Wait for the current dispute game to become accepted or for a newer output proposal.",
+      "The existing proof was rejected, but no replacement output proposal is available yet.",
   };
 }
 

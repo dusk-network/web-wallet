@@ -5,6 +5,7 @@ import {
   hashWithdrawal,
   maybeAddProofNode,
   parseWithdrawalReceipt,
+  proofRequiresReplacement,
   withdrawalStorageKey,
 } from "$lib/bridge/withdrawals";
 
@@ -218,6 +219,24 @@ describe("DuskEVM withdrawal helpers", () => {
     ).toThrow();
   });
 
+  it("does not replace proofs while their dispute game is progressing", () => {
+    expect(
+      proofRequiresReplacement({ gameStatus: 0, isGameBlacklisted: false })
+    ).toBe(false);
+    expect(
+      proofRequiresReplacement({ gameStatus: 2, isGameBlacklisted: false })
+    ).toBe(false);
+  });
+
+  it("replaces challenger-won or blacklisted dispute-game proofs", () => {
+    expect(
+      proofRequiresReplacement({ gameStatus: 1, isGameBlacklisted: false })
+    ).toBe(true);
+    expect(
+      proofRequiresReplacement({ gameStatus: 0, isGameBlacklisted: true })
+    ).toBe(true);
+  });
+
   it("ignores MessagePassed-shaped logs from the wrong contract", () => {
     const wrongContractLog = {
       ...messagePassedLog,
@@ -253,7 +272,7 @@ describe("DuskEVM withdrawal helpers", () => {
   });
 
   it("keeps a proven withdrawal waiting when finalize preflight rejects", async () => {
-    const { portal } = mockWithdrawalFinalization({
+    const { dgf, portal } = mockWithdrawalFinalization({
       finalizePreflight: vi
         .fn()
         .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
@@ -263,14 +282,13 @@ describe("DuskEVM withdrawal helpers", () => {
     const status = await loadWithdrawalStatus(withdrawalTxHash);
 
     expect(status.stage).toBe("proven_waiting");
-    expect(status.statusMessage).toContain(
-      "The existing proof is not accepted"
-    );
+    expect(status.statusMessage).toContain("dispute game is still in progress");
     expect(portal.call.checkWithdrawal).toHaveBeenCalledOnce();
     const [[withdrawalHash, proofSubmitter]] =
       portal.call.checkWithdrawal.mock.calls[0];
     expect(withdrawalHash).toHaveLength(32);
     expect(proofSubmitter).toEqual(Array(20).fill(0x2c));
+    expect(dgf.call.gameCount).not.toHaveBeenCalled();
   });
 
   it("refuses to submit finalization for already-finalized withdrawals", async () => {
@@ -296,7 +314,7 @@ describe("DuskEVM withdrawal helpers", () => {
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
 
     await expect(finalizeWithdrawal(withdrawalTxHash)).rejects.toThrow(
-      "The existing proof is not accepted"
+      "The proof is accepted. Its dispute game is still in progress."
     );
     expect(walletStore.finalizeDuskEvmWithdrawal).not.toHaveBeenCalled();
   });
@@ -350,19 +368,28 @@ function u256(value) {
  * @param {object} options
  * @param {boolean} [options.finalized]
  * @param {ReturnType<typeof vi.fn>} options.finalizePreflight
+ * @param {number} [options.gameStatus]
+ * @param {boolean} [options.isGameBlacklisted]
  */
-function mockWithdrawalFinalization({ finalized = false, finalizePreflight }) {
+function mockWithdrawalFinalization({
+  finalized = false,
+  finalizePreflight,
+  gameStatus = 0,
+  isGameBlacklisted = false,
+}) {
   vi.resetModules();
   vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", "11".repeat(32));
   vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL", "");
   vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", "22".repeat(32));
   vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL", "");
+  vi.stubEnv("VITE_EVM_L1_BRIDGE_RPC_URL", "https://l1.example.test");
 
   const proofSubmitter = Array(20).fill(0x2c);
   const disputeGameProxy = Array(20).fill(0x1e);
   const portal = {
     call: {
       checkWithdrawal: finalizePreflight,
+      disputeGameBlacklist: vi.fn().mockResolvedValue(isGameBlacklisted),
       finalizedWithdrawals: vi.fn().mockResolvedValue(finalized),
       numProofSubmitters: vi.fn().mockResolvedValue(u256(1)),
       proofMaturityDelaySeconds: vi.fn().mockResolvedValue(u256(0)),
@@ -403,18 +430,31 @@ function mockWithdrawalFinalization({ finalized = false, finalizePreflight }) {
   }));
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => ({
-      json: async () => ({
-        result: {
-          blockHash: messagePassedLog.blockHash,
-          blockNumber: messagePassedLog.blockNumber,
-          logs: [messagePassedLog],
-          status: "0x1",
-          transactionHash: messagePassedLog.transactionHash,
-        },
-      }),
-      ok: true,
-    }))
+    vi.fn(async (_url, request) => {
+      const body = JSON.parse(request.body);
+
+      if (body.method === "eth_call") {
+        return {
+          json: async () => ({
+            result: `0x${BigInt(gameStatus).toString(16).padStart(64, "0")}`,
+          }),
+          ok: true,
+        };
+      }
+
+      return {
+        json: async () => ({
+          result: {
+            blockHash: messagePassedLog.blockHash,
+            blockNumber: messagePassedLog.blockNumber,
+            logs: [messagePassedLog],
+            status: "0x1",
+            transactionHash: messagePassedLog.transactionHash,
+          },
+        }),
+        ok: true,
+      };
+    })
   );
 
   return { dgf, networkStore, portal, walletStore };
