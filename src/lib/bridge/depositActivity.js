@@ -13,6 +13,7 @@ import {
   updateDepositTransaction,
 } from "$lib/bridge/depositActivityStorage";
 import { isDepositTerminal } from "$lib/bridge/depositLifecycle";
+import { normalizedTxHash } from "$lib/bridge/withdrawalActivityValues";
 
 const L1_RPC_URL = import.meta.env.VITE_EVM_L1_BRIDGE_RPC_URL;
 const ACTIVE_POLL_INTERVAL_MS = 5_000;
@@ -42,6 +43,31 @@ function trackingClients() {
   }
 
   return { l1Client, l2Client };
+}
+
+/** @param {any} remembered */
+async function resolveL1TransactionHash(remembered) {
+  if (remembered.l1TransactionHash) return remembered.l1TransactionHash;
+
+  const { l1Client: client } = trackingClients();
+  const resolved = await client.request({
+    method: "duskevm_getTransactionHashByDuskHash",
+    params: [remembered.transactionHash],
+  });
+
+  if (resolved === null) return null;
+
+  const hash = normalizedTxHash(resolved);
+  if (!hash) {
+    throw new Error(
+      "The DuskEVM adapter returned an invalid transaction hash."
+    );
+  }
+
+  updateDepositTransaction(remembered.transactionHash, {
+    l1TransactionHash: hash,
+  });
+  return hash;
 }
 
 /** @param {unknown} error */
@@ -99,9 +125,20 @@ export async function refreshDepositTransaction(transactionHash) {
   if (!remembered || isDepositTerminal(remembered)) return remembered;
 
   try {
+    const l1TransactionHash = await resolveL1TransactionHash(remembered);
+
+    if (!l1TransactionHash) {
+      const updatedAt = Date.now();
+      return updateDepositTransaction(remembered.transactionHash, {
+        lastCheckedAt: updatedAt,
+        trackingError: null,
+        updatedAt,
+      });
+    }
+
     const status = await observeDepositStatus({
       ...trackingClients(),
-      l1TransactionHash: remembered.transactionHash,
+      l1TransactionHash,
     });
     const metadata = status.metadata;
 

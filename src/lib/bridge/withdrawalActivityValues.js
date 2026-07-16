@@ -1,6 +1,7 @@
 export const MAX_ACTIVITY_ITEMS = 12;
 
 const EVM_ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+const DUSK_TX_HASH_PATTERN = /^(?:0x)?[0-9a-fA-F]{64}$/;
 const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
 /**
@@ -61,6 +62,19 @@ export function normalizedTxHash(value) {
 }
 
 /**
+ * Normalize the native transaction ID returned by a Dusk client. Dusk
+ * explorers and GraphQL use the unprefixed form, while some callers add the
+ * Ethereum-style prefix before persistence.
+ *
+ * @param {unknown} value
+ */
+export function normalizedDuskTxHash(value) {
+  return typeof value === "string" && DUSK_TX_HASH_PATTERN.test(value)
+    ? value.replace(/^0x/u, "").toLowerCase()
+    : null;
+}
+
+/**
  * @param {unknown} value
  */
 export function normalizedTimestamp(value) {
@@ -77,7 +91,9 @@ export function normalizedTimestamp(value) {
  * @param {unknown} value
  */
 export function stringValue(value) {
-  return typeof value === "string" || typeof value === "number"
+  return typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "bigint"
     ? String(value)
     : null;
 }

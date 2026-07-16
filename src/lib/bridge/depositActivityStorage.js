@@ -4,6 +4,7 @@ import { duskEvm } from "$lib/web3/walletConnection";
 import {
   normalizedAddress,
   normalizedAmountWei,
+  normalizedDuskTxHash,
   normalizedTxHash,
   stringValue,
 } from "$lib/bridge/withdrawalActivityValues";
@@ -29,13 +30,14 @@ const VALID_STAGES = new Set([
  * @property {"l1" | "l2" | null} failureLayer
  * @property {number | null} l1ConfirmedAt
  * @property {string | null} l1BlockHeight
+ * @property {`0x${string}` | null} l1TransactionHash
  * @property {string | null} l2BlockNumber
  * @property {`0x${string}` | null} l2TransactionHash
  * @property {number | null} lastCheckedAt
  * @property {string} stage
  * @property {string | null} statusMessage
  * @property {string | null} trackingError
- * @property {`0x${string}`} transactionHash
+ * @property {string} transactionHash Native Dusk transaction ID.
  * @property {number} updatedAt
  */
 
@@ -72,10 +74,26 @@ function finiteNumber(value, fallback) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+/**
+ * @param {unknown} value
+ * @param {string | null} fallback
+ */
+function nullableStringPatch(value, fallback) {
+  return value === null ? null : (stringValue(value) ?? fallback);
+}
+
+/**
+ * @param {unknown} value
+ * @param {`0x${string}` | null} fallback
+ */
+function nullableTransactionHashPatch(value, fallback) {
+  return value === null ? null : (normalizedTxHash(value) ?? fallback);
+}
+
 /** @param {any} value */
 function normalizeStoredItem(value) {
   const stored = value && typeof value === "object" ? value : {};
-  const transactionHash = normalizedTxHash(stored.transactionHash);
+  const transactionHash = normalizedDuskTxHash(stored.transactionHash);
 
   if (!transactionHash || Number(stored.chainId) !== duskEvm.id) return null;
 
@@ -90,6 +108,7 @@ function normalizeStoredItem(value) {
     failureLayer: validFailureLayer(stored.failureLayer),
     l1BlockHeight: stringValue(stored.l1BlockHeight),
     l1ConfirmedAt: finiteNumber(stored.l1ConfirmedAt, 0) || null,
+    l1TransactionHash: normalizedTxHash(stored.l1TransactionHash),
     l2BlockNumber: stringValue(stored.l2BlockNumber),
     l2TransactionHash: normalizedTxHash(stored.l2TransactionHash),
     lastCheckedAt: finiteNumber(stored.lastCheckedAt, 0) || null,
@@ -138,7 +157,7 @@ export function hydrateDepositActivity() {
  * @param {{ account?: string | null, amountLux?: bigint | string, amountWei?: bigint | string, createdAt?: number }} [options]
  */
 export function rememberDepositTransaction(transactionHash, options = {}) {
-  const hash = normalizedTxHash(transactionHash);
+  const hash = normalizedDuskTxHash(transactionHash);
 
   if (!hash) return null;
 
@@ -156,6 +175,7 @@ export function rememberDepositTransaction(transactionHash, options = {}) {
       failureLayer: null,
       l1BlockHeight: null,
       l1ConfirmedAt: null,
+      l1TransactionHash: null,
       l2BlockNumber: null,
       l2TransactionHash: null,
       lastCheckedAt: null,
@@ -188,7 +208,7 @@ export function rememberDepositTransaction(transactionHash, options = {}) {
  * @param {Partial<DepositActivityItem>} patch
  */
 export function updateDepositTransaction(transactionHash, patch) {
-  const hash = normalizedTxHash(transactionHash);
+  const hash = normalizedDuskTxHash(transactionHash);
 
   if (!hash) return null;
 
@@ -210,6 +230,18 @@ export function updateDepositTransaction(transactionHash, patch) {
         : patch.failureLayer === null
           ? null
           : existing.failureLayer,
+    l1BlockHeight: nullableStringPatch(
+      patch.l1BlockHeight,
+      existing.l1BlockHeight
+    ),
+    l1TransactionHash: nullableTransactionHashPatch(
+      patch.l1TransactionHash,
+      existing.l1TransactionHash
+    ),
+    l2BlockNumber: nullableStringPatch(
+      patch.l2BlockNumber,
+      existing.l2BlockNumber
+    ),
     l2TransactionHash:
       normalizedTxHash(patch.l2TransactionHash) ?? existing.l2TransactionHash,
     stage: VALID_STAGES.has(patch.stage ?? "") ? patch.stage : existing.stage,
@@ -237,7 +269,7 @@ export function getRememberedDepositActivity(account) {
 
 /** @param {string} transactionHash */
 export function getRememberedDepositTransaction(transactionHash) {
-  const hash = normalizedTxHash(transactionHash);
+  const hash = normalizedDuskTxHash(transactionHash);
   return hash
     ? (readRememberedItems().find((item) => item.transactionHash === hash) ??
         null)

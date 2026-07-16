@@ -22,8 +22,10 @@ import {
 
 const account = "0x2222222222222222222222222222222222222222";
 const otherAccount = "0x3333333333333333333333333333333333333333";
-const depositHash = `0x${"44".repeat(32)}`;
-const otherHash = `0x${"55".repeat(32)}`;
+const depositHash = "44".repeat(32);
+const otherHash = "55".repeat(32);
+/** @type {`0x${string}`} */
+const l1TransactionHash = `0x${"77".repeat(32)}`;
 
 describe("DuskEVM deposit activity", () => {
   beforeEach(() => {
@@ -32,7 +34,7 @@ describe("DuskEVM deposit activity", () => {
   });
 
   it("persists deposits by destination account and preserves their amounts", () => {
-    rememberDepositTransaction(depositHash, {
+    rememberDepositTransaction(`0x${depositHash}`, {
       account,
       amountLux: 2_500_000_000n,
       amountWei: 2_500_000_000_000_000_000n,
@@ -56,6 +58,18 @@ describe("DuskEVM deposit activity", () => {
       }),
     ]);
     expect(getRememberedDepositActivity(otherAccount)).toHaveLength(1);
+  });
+
+  it("keeps native Dusk and canonical adapter transaction hashes separate", () => {
+    rememberDepositTransaction(depositHash, { account });
+    updateDepositTransaction(depositHash, { l1TransactionHash });
+
+    expect(getRememberedDepositActivity(account)[0]).toEqual(
+      expect.objectContaining({
+        l1TransactionHash,
+        transactionHash: depositHash,
+      })
+    );
   });
 
   it("counts only nonterminal deposits as incoming DuskEVM balance", () => {
