@@ -107,6 +107,45 @@ describe("DuskEVM withdrawal helpers", () => {
     expect(config.missing).toEqual([]);
   });
 
+  it("loads a submitted Dusk transaction execution from Rusk", async () => {
+    vi.resetModules();
+    const query = vi.fn().mockResolvedValue({
+      tx: { blockHeight: 14_002, err: "contract execution failed" },
+    });
+    const connect = vi.fn().mockResolvedValue({ query });
+
+    vi.doMock("$lib/stores", () => ({
+      networkStore: { connect },
+      walletStore: {},
+    }));
+    vi.doMock("$lib/web3/walletConnection", () => ({
+      duskEvm: { rpcUrls: { default: { http: ["https://l2.example.test"] } } },
+    }));
+
+    const { loadDuskTransactionExecution } =
+      await import("$lib/bridge/withdrawals");
+    const execution = await loadDuskTransactionExecution(
+      `0x${"AB".repeat(32)}`
+    );
+
+    expect(query).toHaveBeenCalledWith(
+      `tx(hash: "${"ab".repeat(32)}") { err blockHeight }`
+    );
+    expect(execution).toEqual({
+      blockHeight: 14_002n,
+      error: "contract execution failed",
+    });
+  });
+
+  it("rejects an invalid submitted Dusk transaction hash", async () => {
+    const { loadDuskTransactionExecution } =
+      await import("$lib/bridge/withdrawals");
+
+    await expect(loadDuskTransactionExecution("not-a-hash")).rejects.toThrow(
+      "Dusk transaction hash is invalid."
+    );
+  });
+
   it("appends directly embedded terminal nodes from branch proofs", () => {
     const key = /** @type {`0x${string}`} */ (`0x${"00".repeat(30)}0abc`);
     const terminalNode = /** @type {[`0x${string}`, `0x${string}`]} */ ([

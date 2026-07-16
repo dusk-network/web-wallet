@@ -1291,6 +1291,31 @@ export async function loadWithdrawalStatus(txHash) {
 }
 
 /**
+ * @param {string} txHash
+ */
+export async function loadDuskTransactionExecution(txHash) {
+  const normalizedHash = strip0x(txHash);
+
+  if (!/^[0-9a-fA-F]{64}$/.test(normalizedHash)) {
+    throw new Error("Dusk transaction hash is invalid.");
+  }
+
+  const network = await networkStore.connect();
+  const result = await network.query(
+    `tx(hash: "${normalizedHash.toLowerCase()}") { err blockHeight }`
+  );
+
+  if (!result?.tx) {
+    return null;
+  }
+
+  return {
+    blockHeight: BigInt(result.tx.blockHeight),
+    error: result.tx.err ?? null,
+  };
+}
+
+/**
  * @param {`0x${string}`} txHash
  */
 export async function proveWithdrawal(txHash) {

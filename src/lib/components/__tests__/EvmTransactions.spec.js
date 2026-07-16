@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => {
     configuredFinalizationConfig,
     finalizationConfig: configuredFinalizationConfig(),
     finalizeWithdrawal: vi.fn(),
+    loadDuskTransactionExecution: vi.fn(),
     loadWithdrawalActivity: vi.fn(),
     loadWithdrawalStatus: vi.fn(),
     modalOpen: vi.fn(),
@@ -66,6 +67,7 @@ vi.mock("$lib/bridge/withdrawals", () => ({
   isWithdrawalTxHash(value) {
     return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
   },
+  loadDuskTransactionExecution: mocks.loadDuskTransactionExecution,
   loadWithdrawalStatus: mocks.loadWithdrawalStatus,
   proveWithdrawal: mocks.proveWithdrawal,
 }));
@@ -145,6 +147,7 @@ function emptyActivity() {
 describe("EvmTransactions", () => {
   beforeEach(() => {
     mocks.finalizeWithdrawal.mockReset();
+    mocks.loadDuskTransactionExecution.mockReset();
     mocks.loadWithdrawalActivity.mockReset();
     mocks.loadWithdrawalStatus.mockReset();
     mocks.modalOpen.mockReset();
@@ -153,6 +156,7 @@ describe("EvmTransactions", () => {
     mocks.finalizationConfig = mocks.configuredFinalizationConfig();
     mocks.setAccount({ address: undefined, isConnected: false });
     mocks.loadWithdrawalActivity.mockImplementation(emptyActivity);
+    mocks.loadDuskTransactionExecution.mockResolvedValue(null);
     mocks.rememberWithdrawalTransaction.mockImplementation((hash) =>
       activityItem(hash)
     );
@@ -347,6 +351,83 @@ describe("EvmTransactions", () => {
     await waitFor(() => {
       expect(mocks.proveWithdrawal).toHaveBeenCalledWith(checkedHash);
     });
+  });
+
+  it("does not offer a duplicate proof while the submitted proof is pending", async () => {
+    const txHash = `0x${"64".repeat(32)}`;
+
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      blockNumber: 13673n,
+      stage: "ready_to_prove",
+      transactionHash: txHash,
+      withdrawalHash: `0x${"ec".repeat(32)}`,
+    });
+    mocks.proveWithdrawal.mockResolvedValue("65".repeat(32));
+
+    const {
+      findAllByText,
+      findByRole,
+      getByLabelText,
+      getByRole,
+      queryByRole,
+    } = render(EvmTransactions, { target: document.body });
+
+    await fireEvent.input(getByLabelText("Find by transaction hash"), {
+      target: { value: txHash },
+    });
+    await fireEvent.click(getByRole("button", { name: /^check$/i }));
+    await fireEvent.click(
+      await findByRole("button", { name: /prove withdrawal/i })
+    );
+    expect((await findAllByText("Proof submitted")).length).toBeGreaterThan(0);
+
+    await fireEvent.click(getByRole("button", { name: /refresh status/i }));
+
+    await waitFor(() => {
+      expect(mocks.loadDuskTransactionExecution).toHaveBeenCalledWith(
+        "65".repeat(32)
+      );
+    });
+    expect(
+      queryByRole("button", { name: /prove withdrawal/i })
+    ).not.toBeInTheDocument();
+    expect((await findAllByText("Proof submitted")).length).toBeGreaterThan(0);
+  });
+
+  it("re-enables proof with an error when the submitted transaction fails", async () => {
+    const txHash = `0x${"66".repeat(32)}`;
+
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      blockNumber: 13674n,
+      stage: "ready_to_prove",
+      transactionHash: txHash,
+      withdrawalHash: `0x${"ed".repeat(32)}`,
+    });
+    mocks.proveWithdrawal.mockResolvedValue("67".repeat(32));
+    mocks.loadDuskTransactionExecution.mockResolvedValue({
+      blockHeight: 14_000n,
+      error: "contract execution failed",
+    });
+
+    const { findAllByText, findByRole, findByText, getByLabelText, getByRole } =
+      render(EvmTransactions, { target: document.body });
+
+    await fireEvent.input(getByLabelText("Find by transaction hash"), {
+      target: { value: txHash },
+    });
+    await fireEvent.click(getByRole("button", { name: /^check$/i }));
+    await fireEvent.click(
+      await findByRole("button", { name: /prove withdrawal/i })
+    );
+    await findAllByText("Proof submitted");
+    await fireEvent.click(getByRole("button", { name: /refresh status/i }));
+
+    expect(
+      await findByRole("button", { name: /prove withdrawal/i })
+    ).toBeInTheDocument();
+    expect(
+      await findByText("Proof transaction failed: contract execution failed")
+    ).toBeInTheDocument();
   });
 
   it("refreshes the selected withdrawal instead of an unsubmitted input edit", async () => {

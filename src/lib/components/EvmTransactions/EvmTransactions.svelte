@@ -12,6 +12,7 @@
     finalizeWithdrawal,
     getWithdrawalFinalizationConfig,
     isWithdrawalTxHash,
+    loadDuskTransactionExecution,
     loadWithdrawalStatus,
     proveWithdrawal,
   } from "$lib/bridge/withdrawals";
@@ -87,6 +88,11 @@
 
   /** @type {HTMLElement | null} */
   let statusPaneElement = null;
+
+  /** @type {Map<string, { action: "finalize" | "prove", hash: string, stage: string }>} */
+  // This map is only read while reconciling async requests; it does not render directly.
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
+  const pendingSubmissions = new Map();
 
   /**
    * @param {unknown} error
@@ -201,7 +207,7 @@
     }
 
     statusError = "";
-    submittedHash = "";
+    submittedHash = pendingSubmissions.get(normalized)?.hash ?? "";
 
     return /** @type {`0x${string}`} */ (normalized);
   }
@@ -252,6 +258,72 @@
   }
 
   /**
+   * @param {{ action: "finalize" | "prove" }} pending
+   * @param {any} status
+   */
+  function submissionIsReflected(pending, status) {
+    if (pending.action === "finalize") {
+      return status.stage === "finalized";
+    }
+
+    return (
+      Boolean(status.proofSubmitter) ||
+      !["ready_to_prove", "waiting_for_output"].includes(status.stage)
+    );
+  }
+
+  /**
+   * @param {`0x${string}`} checkedHash
+   * @param {any} status
+   */
+  async function reconcilePendingSubmission(checkedHash, status) {
+    const pending = pendingSubmissions.get(checkedHash);
+
+    if (!pending) {
+      return { status, transactionError: "" };
+    }
+
+    if (submissionIsReflected(pending, status)) {
+      pendingSubmissions.delete(checkedHash);
+      return { status, transactionError: "" };
+    }
+
+    let execution;
+
+    try {
+      execution = await loadDuskTransactionExecution(pending.hash);
+    } catch {
+      return {
+        status: { ...status, stage: pending.stage },
+        transactionError: "",
+      };
+    }
+
+    if (!execution || !execution.error) {
+      return {
+        status: { ...status, stage: pending.stage },
+        transactionError: "",
+      };
+    }
+
+    pendingSubmissions.delete(checkedHash);
+
+    return {
+      status,
+      transactionError: `${pending.action === "prove" ? "Proof" : "Finalization"} transaction failed: ${execution.error}`,
+    };
+  }
+
+  /**
+   * @param {`0x${string}`} checkedHash
+   */
+  async function loadReconciledStatus(checkedHash) {
+    const status = await loadWithdrawalStatus(checkedHash);
+
+    return await reconcilePendingSubmission(checkedHash, status);
+  }
+
+  /**
    * @param {string} [hash]
    * @param {boolean} [reportValidation]
    */
@@ -268,13 +340,15 @@
     isChecking = true;
 
     try {
-      const status = await loadWithdrawalStatus(checkedHash);
+      const { status, transactionError } =
+        await loadReconciledStatus(checkedHash);
 
       if (
         request === statusRequest &&
         selectedActivity?.transactionHash === checkedHash
       ) {
         applyLoadedStatus(status);
+        statusError = transactionError;
       }
     } catch (error) {
       if (request === statusRequest) {
@@ -296,7 +370,7 @@
     txHash = item.transactionHash;
     hashError = "";
     statusError = "";
-    submittedHash = "";
+    submittedHash = pendingSubmissions.get(item.transactionHash)?.hash ?? "";
 
     revealSelectedWithdrawal();
 
@@ -327,6 +401,11 @@
 
     try {
       submittedHash = await action(checkedStatusTxHash());
+      pendingSubmissions.set(withdrawalStatus.transactionHash, {
+        action: submittedStage === "prove_submitted" ? "prove" : "finalize",
+        hash: submittedHash,
+        stage: submittedStage,
+      });
       withdrawalStatus = {
         ...withdrawalStatus,
         stage: submittedStage,
@@ -382,6 +461,8 @@
         isChecking = false;
         selectedActivity = null;
         withdrawalStatus = null;
+        pendingSubmissions.clear();
+        submittedHash = "";
         txHash = "";
         void refreshActivity();
       }
