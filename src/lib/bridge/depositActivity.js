@@ -2,6 +2,7 @@ import { observeDepositStatus } from "@dusk/evm-sdk";
 import { getPublicClient } from "@wagmi/core";
 import { createPublicClient, http } from "viem";
 
+import { networkStore } from "$lib/stores";
 import { duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
 import {
   depositActivityStore,
@@ -45,22 +46,66 @@ function trackingClients() {
   return { l1Client, l2Client };
 }
 
+/** @param {string} transactionHash */
+async function finalizedDuskTransactionPosition(transactionHash) {
+  const network = await networkStore.connect();
+  const transactionResult = await network.query(
+    `tx(hash: "${transactionHash}") { blockHeight }`
+  );
+
+  if (!transactionResult?.tx) return null;
+
+  const blockHeight = BigInt(transactionResult.tx.blockHeight);
+  const blockResult = await network.query(
+    `block(height: ${blockHeight}) { status transactions { id } }`
+  );
+  const duskBlock = blockResult?.block;
+
+  if (!duskBlock || !Object.hasOwn(duskBlock.status ?? {}, "Final")) {
+    return null;
+  }
+
+  const transactionIndex = duskBlock.transactions?.findIndex(
+    /** @param {{ id?: string }} transaction */
+    (transaction) => transaction?.id?.toLowerCase() === transactionHash
+  );
+
+  if (!Number.isInteger(transactionIndex) || transactionIndex < 0) {
+    throw new Error(
+      "The finalized DuskDS block did not contain the submitted deposit."
+    );
+  }
+
+  return { blockHeight, transactionIndex };
+}
+
 /** @param {any} remembered */
 async function resolveL1TransactionHash(remembered) {
   if (remembered.l1TransactionHash) return remembered.l1TransactionHash;
 
+  const position = await finalizedDuskTransactionPosition(
+    remembered.transactionHash
+  );
+
+  if (!position) return null;
+
+  const { blockHeight, transactionIndex } = position;
   const { l1Client: client } = trackingClients();
-  const resolved = await client.request({
-    method: "duskevm_getTransactionHashByDuskHash",
-    params: [remembered.transactionHash],
+  const l1Block = await client.request({
+    method: "eth_getBlockByNumber",
+    params: [`0x${blockHeight.toString(16)}`, true],
   });
 
-  if (resolved === null) return null;
+  if (l1Block === null) return null;
+
+  const l1Transaction = l1Block.transactions?.[transactionIndex];
+  const resolved =
+    typeof l1Transaction === "string" ? l1Transaction : l1Transaction?.hash;
 
   const hash = normalizedTxHash(resolved);
   if (!hash) {
     throw new Error(
-      "The DuskEVM adapter returned an invalid transaction hash."
+      "The DuskEVM adapter returned no matching transaction for the finalized DuskDS deposit."
     );
   }
 

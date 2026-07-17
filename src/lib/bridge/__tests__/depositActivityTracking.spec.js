@@ -1,8 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  connect: vi.fn(),
   getPublicClient: vi.fn(() => ({ chain: { id: 310 } })),
   observeDepositStatus: vi.fn(),
+  query: vi.fn(),
   request: vi.fn(),
 }));
 
@@ -12,6 +14,10 @@ vi.mock("@dusk/evm-sdk", () => ({
 
 vi.mock("@wagmi/core", () => ({
   getPublicClient: mocks.getPublicClient,
+}));
+
+vi.mock("$lib/stores", () => ({
+  networkStore: { connect: mocks.connect },
 }));
 
 vi.mock("viem", () => ({
@@ -25,6 +31,7 @@ vi.mock("$lib/web3/walletConnection", () => ({
 }));
 
 const duskTransactionHash = "44".repeat(32);
+const otherDuskTransactionHash = "55".repeat(32);
 /** @type {`0x${string}`} */
 const l1TransactionHash = `0x${"77".repeat(32)}`;
 /** @type {`0x${string}`} */
@@ -48,14 +55,33 @@ describe("DuskEVM deposit tracking", () => {
 
   beforeEach(() => {
     localStorage.clear();
+    mocks.connect.mockReset();
+    mocks.connect.mockResolvedValue({ query: mocks.query });
     mocks.getPublicClient.mockClear();
     mocks.observeDepositStatus.mockReset();
+    mocks.query.mockReset();
     mocks.request.mockReset();
   });
 
   it("resolves the native Dusk hash before observing the canonical deposit", async () => {
     rememberDepositTransaction(duskTransactionHash);
-    mocks.request.mockResolvedValue(l1TransactionHash);
+    mocks.query
+      .mockResolvedValueOnce({ tx: { blockHeight: 8512 } })
+      .mockResolvedValueOnce({
+        block: {
+          status: { Final: 1 },
+          transactions: [
+            { id: otherDuskTransactionHash },
+            { id: duskTransactionHash },
+          ],
+        },
+      });
+    mocks.request.mockResolvedValue({
+      transactions: [
+        { hash: `0x${"66".repeat(32)}` },
+        { hash: l1TransactionHash },
+      ],
+    });
     mocks.observeDepositStatus.mockResolvedValue({
       message: "The deposit is available on DuskEVM.",
       metadata: {
@@ -70,9 +96,17 @@ describe("DuskEVM deposit tracking", () => {
 
     const result = await refreshDepositTransaction(duskTransactionHash);
 
+    expect(mocks.query).toHaveBeenNthCalledWith(
+      1,
+      `tx(hash: "${duskTransactionHash}") { blockHeight }`
+    );
+    expect(mocks.query).toHaveBeenNthCalledWith(
+      2,
+      "block(height: 8512) { status transactions { id } }"
+    );
     expect(mocks.request).toHaveBeenCalledWith({
-      method: "duskevm_getTransactionHashByDuskHash",
-      params: [duskTransactionHash],
+      method: "eth_getBlockByNumber",
+      params: ["0x2140", true],
     });
     expect(mocks.observeDepositStatus).toHaveBeenCalledWith(
       expect.objectContaining({ l1TransactionHash })
@@ -87,8 +121,43 @@ describe("DuskEVM deposit tracking", () => {
     );
   });
 
-  it("keeps an unindexed Dusk transaction pending without reporting an error", async () => {
+  it("keeps an unfinalized Dusk transaction pending without reporting an error", async () => {
     rememberDepositTransaction(duskTransactionHash);
+    mocks.query
+      .mockResolvedValueOnce({ tx: { blockHeight: 8512 } })
+      .mockResolvedValueOnce({
+        block: {
+          status: { Attested: 1 },
+          transactions: [{ id: duskTransactionHash }],
+        },
+      });
+
+    const result = await refreshDepositTransaction(duskTransactionHash);
+
+    expect(mocks.request).not.toHaveBeenCalled();
+    expect(mocks.observeDepositStatus).not.toHaveBeenCalled();
+    expect(result).toEqual(
+      expect.objectContaining({
+        l1TransactionHash: null,
+        stage: "l1_pending",
+        trackingError: null,
+      })
+    );
+    expect(
+      getRememberedDepositTransaction(duskTransactionHash)?.trackingError
+    ).toBeNull();
+  });
+
+  it("keeps a finalized deposit pending while the adapter catches up", async () => {
+    rememberDepositTransaction(duskTransactionHash);
+    mocks.query
+      .mockResolvedValueOnce({ tx: { blockHeight: 8512 } })
+      .mockResolvedValueOnce({
+        block: {
+          status: { Final: 1 },
+          transactions: [{ id: duskTransactionHash }],
+        },
+      });
     mocks.request.mockResolvedValue(null);
 
     const result = await refreshDepositTransaction(duskTransactionHash);
@@ -101,8 +170,5 @@ describe("DuskEVM deposit tracking", () => {
         trackingError: null,
       })
     );
-    expect(
-      getRememberedDepositTransaction(duskTransactionHash)?.trackingError
-    ).toBeNull();
   });
 });
