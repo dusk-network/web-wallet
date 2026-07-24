@@ -23,7 +23,6 @@
   import { account } from "$lib/web3/walletConnection";
 
   import WithdrawalActivityList from "./WithdrawalActivityList.svelte";
-  import WithdrawalLifecycle from "./WithdrawalLifecycle.svelte";
   import { shortened } from "./withdrawalPresentation";
 
   const finalizationConfig = getWithdrawalFinalizationConfig();
@@ -85,9 +84,6 @@
 
   /** @type {number} */
   let statusRequest = 0;
-
-  /** @type {HTMLElement | null} */
-  let statusPaneElement = null;
 
   /** @type {Map<string, { action: "finalize" | "prove", hash: string, stage: string }>} */
   // This map is only read while reconciling async requests; it does not render directly.
@@ -365,6 +361,16 @@
    * @param {any} item
    */
   async function selectActivity(item) {
+    if (selectedActivity?.transactionHash === item.transactionHash) {
+      statusRequest += 1;
+      selectedActivity = null;
+      withdrawalStatus = null;
+      statusError = "";
+      submittedHash = "";
+      isChecking = false;
+      return;
+    }
+
     selectedActivity = item;
     withdrawalStatus = null;
     txHash = item.transactionHash;
@@ -372,22 +378,7 @@
     statusError = "";
     submittedHash = pendingSubmissions.get(item.transactionHash)?.hash ?? "";
 
-    revealSelectedWithdrawal();
-
     await checkStatus();
-  }
-
-  function revealSelectedWithdrawal() {
-    if (!window.matchMedia("(max-width: 48rem)").matches) return;
-
-    window.requestAnimationFrame(() => {
-      statusPaneElement?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-        block: "start",
-      });
-    });
   }
 
   /**
@@ -482,7 +473,6 @@
       if (remembered) {
         selectedActivity = remembered;
         upsertActivity(remembered);
-        revealSelectedWithdrawal();
       }
 
       void checkStatus();
@@ -546,24 +536,20 @@
       {currentAccount}
       {isActivityLoading}
       {isChecking}
-      {lastCheckedAt}
-      selectedTransactionHash={selectedActivity?.transactionHash ?? null}
-      bind:hashError
-      bind:txHash
-      on:check={(event) => checkStatus(event.detail)}
-      on:select={(event) => selectActivity(event.detail)}
-    />
-    <WithdrawalLifecycle
-      {isChecking}
       {isSubmitting}
+      {lastCheckedAt}
       {selectedWithdrawal}
       {statusError}
       {submittedHash}
       {withdrawalStatus}
-      bind:element={statusPaneElement}
+      selectedTransactionHash={selectedActivity?.transactionHash ?? null}
+      bind:hashError
+      bind:txHash
+      on:check={(event) => checkStatus(event.detail)}
       on:finalize={submitFinalization}
       on:prove={submitProof}
       on:refresh={refreshSelectedStatus}
+      on:select={(event) => selectActivity(event.detail)}
     />
   </div>
 </article>
@@ -610,15 +596,7 @@
 
     &__body {
       border-top: 1px solid var(--surface-border-color-subtle);
-      display: grid;
-      grid-template-columns: minmax(17rem, 0.85fr) minmax(0, 1.35fr);
       min-height: 32rem;
-    }
-  }
-
-  @media (max-width: 48rem) {
-    .transactions__body {
-      grid-template-columns: minmax(0, 1fr);
     }
   }
 

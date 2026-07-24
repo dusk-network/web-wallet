@@ -4,6 +4,7 @@
   import { fade } from "svelte/transition";
   import {
     mdiArrowLeft,
+    mdiChevronDown,
     mdiContain,
     mdiRefresh,
     mdiWalletOutline,
@@ -51,9 +52,6 @@
   /** @type {boolean} */
   let isChecking = false;
 
-  /** @type {HTMLElement | null} */
-  let statusPaneElement = null;
-
   function filterActivity() {
     activity = allActivity
       .filter(
@@ -80,18 +78,12 @@
 
   /** @param {any} item */
   function selectDeposit(item) {
+    if (selectedDeposit?.transactionHash === item.transactionHash) {
+      selectedDeposit = null;
+      return;
+    }
+
     selectedDeposit = item;
-
-    if (!window.matchMedia("(max-width: 48rem)").matches) return;
-
-    window.requestAnimationFrame(() => {
-      statusPaneElement?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-        block: "start",
-      });
-    });
   }
 
   async function refresh() {
@@ -200,9 +192,17 @@
       {:else if activity.length > 0}
         <ul class="activity-list">
           {#each activity as item (item.transactionHash)}
-            <li>
+            <li
+              class:activity-list__entry--expanded={selectedDeposit?.transactionHash ===
+                item.transactionHash}
+              class="activity-list__entry"
+            >
               <button
-                aria-pressed={selectedDeposit?.transactionHash ===
+                aria-controls={selectedDeposit?.transactionHash ===
+                item.transactionHash
+                  ? `deposit-status-${item.transactionHash}`
+                  : undefined}
+                aria-expanded={selectedDeposit?.transactionHash ===
                   item.transactionHash}
                 class:activity-list__item--selected={selectedDeposit?.transactionHash ===
                   item.transactionHash}
@@ -219,13 +219,30 @@
                   >
                 </span>
                 <span class="activity-list__status">
-                  <Badge
-                    text={depositStageLabel(item)}
-                    variant={depositStageBadge(item)}
-                  />
+                  <span class="activity-list__status-summary">
+                    <Badge
+                      text={depositStageLabel(item)}
+                      variant={depositStageBadge(item)}
+                    />
+                    <span class="activity-list__chevron">
+                      <Icon path={mdiChevronDown} size="small" />
+                    </span>
+                  </span>
                   <span>{shortened(item.transactionHash)}</span>
                 </span>
               </button>
+              {#if selectedDeposit?.transactionHash === item.transactionHash}
+                <div
+                  class="activity-list__details"
+                  id={`deposit-status-${item.transactionHash}`}
+                >
+                  <DepositLifecycle
+                    deposit={selectedDeposit}
+                    {isChecking}
+                    on:refresh={refresh}
+                  />
+                </div>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -233,21 +250,6 @@
         <div class="transactions-list__empty">
           <Icon path={mdiContain} size="large" />
           <p>No deposits found</p>
-        </div>
-      {/if}
-    </section>
-
-    <section class="status-pane" bind:this={statusPaneElement}>
-      {#if selectedDeposit}
-        <DepositLifecycle
-          deposit={selectedDeposit}
-          {isChecking}
-          on:refresh={refresh}
-        />
-      {:else}
-        <div class="transactions-list__empty status-pane__empty">
-          <Icon path={mdiContain} size="large" />
-          <p>Select a deposit to view its progress</p>
         </div>
       {/if}
     </section>
@@ -292,23 +294,16 @@
 
     &__body {
       border-top: 1px solid var(--surface-border-color-subtle);
-      display: grid;
-      grid-template-columns: minmax(17rem, 0.85fr) minmax(0, 1.35fr);
       min-height: 32rem;
     }
   }
 
-  .activity-pane,
-  .status-pane {
+  .activity-pane {
     display: flex;
     flex-direction: column;
     gap: 1rem;
     min-width: 0;
     padding: 1.25rem;
-  }
-
-  .activity-pane {
-    border-right: 1px solid var(--surface-border-color-subtle);
   }
 
   .pane-header {
@@ -344,6 +339,10 @@
 
     & li + li {
       border-top: 1px solid var(--surface-border-color-subtle);
+    }
+
+    &__entry--expanded {
+      background: var(--surface-hover-color);
     }
 
     &__item {
@@ -392,6 +391,26 @@
       font-family: var(--mono-font-family);
       text-align: right;
     }
+
+    &__status-summary {
+      align-items: center;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    &__chevron {
+      display: inline-flex;
+      transition: transform 150ms ease;
+    }
+
+    &__entry--expanded &__chevron {
+      transform: rotate(180deg);
+    }
+
+    &__details {
+      border-top: 1px solid var(--surface-border-color-subtle);
+      padding: 1.25rem;
+    }
   }
 
   .transactions-list__empty {
@@ -404,24 +423,13 @@
     text-align: center;
   }
 
-  .status-pane__empty {
-    margin: auto;
-  }
-
-  @media (max-width: 48rem) {
-    .transactions__body {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .activity-pane {
-      border-bottom: 1px solid var(--surface-border-color-subtle);
-      border-right: 0;
-    }
-  }
-
   @media (max-width: 30rem) {
-    .activity-pane,
-    .status-pane {
+    .activity-pane {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .activity-list__details {
       padding-left: 1rem;
       padding-right: 1rem;
     }

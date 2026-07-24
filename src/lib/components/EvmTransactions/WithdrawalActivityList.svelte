@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { mdiContain, mdiWalletOutline } from "@mdi/js";
+  import { mdiChevronDown, mdiContain, mdiWalletOutline } from "@mdi/js";
 
   import {
     withdrawalStageBadge,
@@ -11,6 +11,7 @@
   import { modal } from "$lib/web3/walletConnection";
 
   import Banner from "../Banner/Banner.svelte";
+  import WithdrawalLifecycle from "./WithdrawalLifecycle.svelte";
   import {
     activityAmount,
     formatTimestamp,
@@ -40,14 +41,29 @@
   /** @type {boolean} */
   export let isChecking;
 
+  /** @type {boolean} */
+  export let isSubmitting;
+
   /** @type {Date | null} */
   export let lastCheckedAt;
 
   /** @type {string | null} */
   export let selectedTransactionHash;
 
+  /** @type {any} */
+  export let selectedWithdrawal;
+
+  /** @type {string} */
+  export let statusError;
+
+  /** @type {string} */
+  export let submittedHash;
+
   /** @type {string} */
   export let txHash;
+
+  /** @type {any} */
+  export let withdrawalStatus;
 
   function validateHashInput() {
     hashError =
@@ -92,9 +108,16 @@
   {:else if activity.length > 0}
     <ul class="activity-list">
       {#each activity as item (item.transactionHash)}
-        <li>
+        <li
+          class:activity-list__entry--expanded={selectedTransactionHash ===
+            item.transactionHash}
+          class="activity-list__entry"
+        >
           <button
-            aria-pressed={selectedTransactionHash === item.transactionHash}
+            aria-controls={selectedTransactionHash === item.transactionHash
+              ? `withdrawal-status-${item.transactionHash}`
+              : undefined}
+            aria-expanded={selectedTransactionHash === item.transactionHash}
             class:activity-list__item--selected={selectedTransactionHash ===
               item.transactionHash}
             class="activity-list__item"
@@ -106,13 +129,36 @@
               <span>{formatTimestamp(item.timestamp)}</span>
             </span>
             <span class="activity-list__status">
-              <Badge
-                text={withdrawalStageLabel(item.stage)}
-                variant={withdrawalStageBadge(item.stage)}
-              />
+              <span class="activity-list__status-summary">
+                <Badge
+                  text={withdrawalStageLabel(item.stage)}
+                  variant={withdrawalStageBadge(item.stage)}
+                />
+                <span class="activity-list__chevron">
+                  <Icon path={mdiChevronDown} size="small" />
+                </span>
+              </span>
               <span>{shortened(item.transactionHash)}</span>
             </span>
           </button>
+          {#if selectedTransactionHash === item.transactionHash}
+            <div
+              class="activity-list__details"
+              id={`withdrawal-status-${item.transactionHash}`}
+            >
+              <WithdrawalLifecycle
+                {isChecking}
+                {isSubmitting}
+                {selectedWithdrawal}
+                {statusError}
+                {submittedHash}
+                {withdrawalStatus}
+                on:finalize={() => dispatch("finalize")}
+                on:prove={() => dispatch("prove")}
+                on:refresh={() => dispatch("refresh")}
+              />
+            </div>
+          {/if}
         </li>
       {/each}
     </ul>
@@ -158,7 +204,6 @@
 
 <style lang="postcss">
   .activity-pane {
-    border-right: 1px solid var(--surface-border-color-subtle);
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -204,6 +249,10 @@
 
     & li + li {
       border-top: 1px solid var(--surface-border-color-subtle);
+    }
+
+    &__entry--expanded {
+      background: var(--surface-hover-color);
     }
 
     &__item {
@@ -252,6 +301,25 @@
       font-family: var(--mono-font-family);
       text-align: right;
     }
+
+    &__status-summary {
+      align-items: center;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    &__chevron {
+      display: inline-flex;
+      transition: transform 150ms ease;
+    }
+
+    &__entry--expanded &__chevron {
+      transform: rotate(180deg);
+    }
+
+    &__details {
+      border-top: 1px solid var(--surface-border-color-subtle);
+    }
   }
 
   .withdrawal-lookup {
@@ -283,13 +351,6 @@
     gap: 1rem;
     padding: 3rem 1.5rem;
     text-align: center;
-  }
-
-  @media (max-width: 48rem) {
-    .activity-pane {
-      border-bottom: 1px solid var(--surface-border-color-subtle);
-      border-right: 0;
-    }
   }
 
   @media (max-width: 30rem) {

@@ -241,13 +241,14 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"e7".repeat(32)}`,
     });
 
-    const { findByRole } = render(EvmTransactions, {
+    const { findByRole, queryByRole } = render(EvmTransactions, {
       target: document.body,
     });
     const item = await findByRole("button", {
       name: /0\.1 DUSK.*Waiting for output/i,
     });
 
+    expect(item).toHaveAttribute("aria-expanded", "false");
     await fireEvent.click(item);
 
     expect(mocks.loadWithdrawalActivity).toHaveBeenCalledWith(accountAddress);
@@ -255,6 +256,16 @@ describe("EvmTransactions", () => {
     expect(
       await findByRole("button", { name: /refresh status/i })
     ).toBeInTheDocument();
+    expect(item).toHaveAttribute("aria-expanded", "true");
+
+    await fireEvent.click(item);
+
+    await waitFor(() => {
+      expect(item).toHaveAttribute("aria-expanded", "false");
+    });
+    expect(
+      queryByRole("button", { name: /refresh status/i })
+    ).not.toBeInTheDocument();
   });
 
   it("shows the complete journey and prove action when ready", async () => {
