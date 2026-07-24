@@ -1,7 +1,4 @@
 <script>
-  import { createEventDispatcher } from "svelte";
-  import { mdiRefresh } from "@mdi/js";
-
   import {
     DEPOSIT_TIMELINE_STEPS,
     depositStageBadge,
@@ -11,14 +8,12 @@
     isDepositDelayed,
   } from "$lib/bridge/depositLifecycle";
   import { duskEvm } from "$lib/web3/walletConnection";
-  import { Badge, Button } from "$lib/dusk/components";
+  import { Badge } from "$lib/dusk/components";
 
   import Banner from "../Banner/Banner.svelte";
   import BridgeTimeline from "./BridgeTimeline.svelte";
   import WithdrawalHash from "./WithdrawalHash.svelte";
   import { activityAmount, formatTimestamp } from "./withdrawalPresentation";
-
-  const dispatch = createEventDispatcher();
 
   /** @type {any} */
   export let deposit;
@@ -26,24 +21,13 @@
   /** @type {HTMLElement | null} */
   export let element = null;
 
-  /** @type {boolean} */
-  export let isChecking = false;
-
-  /** @type {boolean} */
-  export let showRefresh = true;
-
   $: l2ExplorerUrl = deposit?.l2TransactionHash
     ? `${duskEvm.blockExplorers.default.url}/tx/${deposit.l2TransactionHash}`
     : null;
   $: stageMessage = depositStageMessage(deposit);
 </script>
 
-<section
-  class="deposit-status"
-  aria-live="polite"
-  aria-busy={isChecking}
-  bind:this={element}
->
+<section class="deposit-status" aria-live="polite" bind:this={element}>
   {#if deposit}
     <header class="deposit-status__header">
       <div>
@@ -87,18 +71,6 @@
           automatically.
         </p>
       </Banner>
-    {/if}
-
-    {#if showRefresh}
-      <div class="deposit-status__actions">
-        <Button
-          disabled={isChecking}
-          icon={{ path: mdiRefresh }}
-          text={isChecking ? "Checking" : "Refresh status"}
-          on:click={() => dispatch("refresh")}
-          variant="secondary"
-        />
-      </div>
     {/if}
 
     <dl class="deposit-status__details">
@@ -161,13 +133,6 @@
         margin: 0 0 0.25rem;
         text-transform: uppercase;
       }
-    }
-
-    &__actions {
-      align-items: center;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
     }
 
     &__details {

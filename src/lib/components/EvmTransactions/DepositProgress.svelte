@@ -4,7 +4,6 @@
   import {
     depositActivityStore,
     hydrateDepositActivity,
-    refreshDepositTransaction,
     trackDepositTransaction,
   } from "$lib/bridge/depositActivity";
   import { AppAnchorButton } from "$lib/components";
@@ -16,19 +15,6 @@
 
   /** @type {any} */
   let deposit = null;
-
-  /** @type {boolean} */
-  let isChecking = false;
-
-  async function refresh() {
-    isChecking = true;
-
-    try {
-      await refreshDepositTransaction(transactionHash);
-    } finally {
-      isChecking = false;
-    }
-  }
 
   onMount(() => {
     hydrateDepositActivity();
@@ -43,7 +29,7 @@
 </script>
 
 <div class="deposit-progress">
-  <DepositLifecycle {deposit} {isChecking} on:refresh={refresh} />
+  <DepositLifecycle {deposit} />
   <div class="deposit-progress__actions">
     <AppAnchorButton
       href={`/dashboard/bridge/transactions?view=deposits&tx=${transactionHash}`}

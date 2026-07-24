@@ -7,6 +7,7 @@ const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 /**
  * @typedef {object} WithdrawalActivityItem
  * @property {string | null} account
+ * @property {string | null} actionError
  * @property {string | null} amountWei
  * @property {string | null} blockNumber
  * @property {string | null} challengePeriodEnd
@@ -14,10 +15,18 @@ const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
  * @property {number} createdAt
  * @property {string | null} explorerStatus
  * @property {string | null} l1TransactionHash
+ * @property {number | null} lastCheckedAt
+ * @property {"finalize" | "prove" | null} pendingAction
+ * @property {string | null} pendingTransactionHash
+ * @property {string | null} proofSubmitter
+ * @property {string | null} readyAt
  * @property {"explorer" | "local"} source
- * @property {string} stage
+ * @property {"failed" | "finalize_submitted" | "finalized" | "prove_submitted" | "proven_waiting" | "ready_to_finalize" | "ready_to_prove" | "submitted" | "waiting_for_output"} stage
+ * @property {string | null} statusMessage
  * @property {string | null} timestamp
+ * @property {string | null} trackingError
  * @property {`0x${string}`} transactionHash
+ * @property {`0x${string}` | null} withdrawalHash
  */
 
 /**

@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { mdiContain, mdiRefresh } from "@mdi/js";
+  import { mdiContain } from "@mdi/js";
 
   import { withdrawalExplorerUrl } from "$lib/bridge/withdrawalActivity";
   import {
@@ -41,9 +41,6 @@
   /** @type {string} */
   export let submittedHash;
 
-  /** @type {any} */
-  export let withdrawalStatus;
-
   $: selectedStage = selectedWithdrawal?.stage ?? "submitted";
   $: selectedExplorerUrl = selectedWithdrawal
     ? withdrawalExplorerUrl(selectedWithdrawal.transactionHash)
@@ -75,9 +72,18 @@
       steps={WITHDRAWAL_TIMELINE_STEPS}
     />
 
-    {#if statusError}
-      <Banner title="Status unavailable" variant="error">
-        <p>{statusError}</p>
+    {#if statusError || selectedWithdrawal.actionError}
+      <Banner title="Transaction failed" variant="error">
+        <p>{statusError || selectedWithdrawal.actionError}</p>
+      </Banner>
+    {/if}
+
+    {#if selectedWithdrawal.trackingError}
+      <Banner title="Status temporarily unavailable" variant="warning">
+        <p>
+          The last confirmed withdrawal state is still shown. Tracking will
+          retry automatically.
+        </p>
       </Banner>
     {/if}
 
@@ -93,28 +99,23 @@
       </Banner>
     {/if}
 
-    <div class="status-actions">
-      {#if withdrawalStatus?.stage === "ready_to_prove"}
-        <Button
-          disabled={isSubmitting}
-          text={isSubmitting ? "Submitting" : "Prove withdrawal"}
-          on:click={() => dispatch("prove")}
-        />
-      {:else if withdrawalStatus?.stage === "ready_to_finalize"}
-        <Button
-          disabled={isSubmitting}
-          text={isSubmitting ? "Submitting" : "Finalize withdrawal"}
-          on:click={() => dispatch("finalize")}
-        />
-      {/if}
-      <Button
-        disabled={isChecking || isSubmitting}
-        icon={{ path: mdiRefresh }}
-        text={isChecking ? "Checking" : "Refresh status"}
-        on:click={() => dispatch("refresh")}
-        variant="secondary"
-      />
-    </div>
+    {#if selectedStage === "ready_to_prove" || selectedStage === "ready_to_finalize"}
+      <div class="status-actions">
+        {#if selectedStage === "ready_to_prove"}
+          <Button
+            disabled={isSubmitting}
+            text={isSubmitting ? "Submitting" : "Prove withdrawal"}
+            on:click={() => dispatch("prove")}
+          />
+        {:else}
+          <Button
+            disabled={isSubmitting}
+            text={isSubmitting ? "Submitting" : "Finalize withdrawal"}
+            on:click={() => dispatch("finalize")}
+          />
+        {/if}
+      </div>
+    {/if}
 
     <dl class="withdrawal-details">
       <dt>Initiated</dt>

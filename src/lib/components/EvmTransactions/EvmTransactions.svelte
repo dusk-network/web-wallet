@@ -3,22 +3,26 @@
 <script>
   import { page } from "$app/stores";
   import { onMount } from "svelte";
-  import { mdiArrowLeft, mdiRefresh } from "@mdi/js";
+  import { mdiArrowLeft } from "@mdi/js";
   import { fade } from "svelte/transition";
 
   import { AppAnchorButton, Banner } from "$lib/components";
-  import { Button } from "$lib/dusk/components";
   import {
     finalizeWithdrawal,
     getWithdrawalFinalizationConfig,
     isWithdrawalTxHash,
-    loadDuskTransactionExecution,
-    loadWithdrawalStatus,
     proveWithdrawal,
   } from "$lib/bridge/withdrawals";
   import {
+    hydrateWithdrawalActivity,
     loadWithdrawalActivity,
+    mergeWithdrawalActivity,
+    recordWithdrawalSubmission,
+    refreshWithdrawalTransaction,
     rememberWithdrawalTransaction,
+    resumeWithdrawalTracking,
+    trackWithdrawalTransaction,
+    withdrawalActivityStore,
   } from "$lib/bridge/withdrawalActivity";
   import { account } from "$lib/web3/walletConnection";
 
@@ -31,14 +35,14 @@
   /** @type {string} */
   let txHash = "";
 
-  /** @type {any} */
-  let withdrawalStatus = null;
-
-  /** @type {any} */
-  let selectedActivity = null;
-
   /** @type {any[]} */
   let activity = [];
+
+  /** @type {any[]} */
+  let indexedActivity = [];
+
+  /** @type {any[]} */
+  let rememberedActivity = [];
 
   /** @type {string} */
   let statusError = "";
@@ -49,11 +53,11 @@
   /** @type {string} */
   let hashError = "";
 
-  /** @type {string} */
-  let submittedHash = "";
-
   /** @type {Date | null} */
   let lastCheckedAt = null;
+
+  /** @type {number} */
+  let activityLoadedAt = 0;
 
   /** @type {boolean} */
   let isChecking = false;
@@ -70,11 +74,14 @@
   /** @type {string | null} */
   let currentAccount = null;
 
+  /** @type {string | null} */
+  let selectedTransactionHash = null;
+
+  /** @type {any} */
+  let selectedActivity = null;
+
   /** @type {any} */
   let selectedWithdrawal = null;
-
-  /** @type {string} */
-  let selectedStage = "submitted";
 
   /** @type {boolean} */
   let canCheck = false;
@@ -84,11 +91,6 @@
 
   /** @type {number} */
   let statusRequest = 0;
-
-  /** @type {Map<string, { action: "finalize" | "prove", hash: string, stage: string }>} */
-  // This map is only read while reconciling async requests; it does not render directly.
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity
-  const pendingSubmissions = new Map();
 
   /**
    * @param {unknown} error
@@ -101,44 +103,42 @@
    * @returns {`0x${string}`}
    */
   function checkedStatusTxHash() {
-    if (!isWithdrawalTxHash(withdrawalStatus?.transactionHash)) {
+    if (!isWithdrawalTxHash(selectedWithdrawal?.transactionHash)) {
       throw new Error("Check the withdrawal status before continuing.");
     }
 
-    return withdrawalStatus.transactionHash;
+    return selectedWithdrawal.transactionHash;
   }
 
-  /**
-   * @param {any} item
-   */
-  function upsertActivity(item) {
-    activity = [
-      item,
-      ...activity.filter(
-        (candidate) => candidate.transactionHash !== item.transactionHash
-      ),
-    ];
-  }
-
-  /**
-   * @param {string} stage
-   */
-  function updateSelectedStage(stage) {
-    if (!selectedActivity) {
-      return;
-    }
-
-    selectedActivity = { ...selectedActivity, stage };
-    upsertActivity(selectedActivity);
+  function rebuildActivity() {
+    const remembered = rememberedActivity.filter(
+      (item) =>
+        item.account === null ||
+        (currentAccount !== null && item.account === currentAccount)
+    );
+    activity = mergeWithdrawalActivity(remembered, indexedActivity);
   }
 
   /**
    * @param {{ error: string | null, items: any[] }} result
    */
   function applyActivityResult(result) {
-    activity = result.items;
+    indexedActivity = result.items;
     activityError = result.error ?? "";
-    lastCheckedAt = new Date();
+    activityLoadedAt = Date.now();
+    rebuildActivity();
+
+    for (const item of result.items) {
+      const remembered = rememberWithdrawalTransaction(item.transactionHash, {
+        account: item.account,
+        amountWei: item.amountWei,
+        createdAt: item.createdAt,
+      });
+
+      if (remembered && item.stage !== "finalized") {
+        void trackWithdrawalTransaction(remembered.transactionHash);
+      }
+    }
   }
 
   async function refreshActivity() {
@@ -154,24 +154,6 @@
       }
 
       applyActivityResult(result);
-
-      if (selectedActivity) {
-        const refreshed = activity.find(
-          (item) => item.transactionHash === selectedActivity.transactionHash
-        );
-
-        if (refreshed) {
-          selectedActivity = {
-            ...refreshed,
-            ...(withdrawalStatus
-              ? {
-                  blockNumber: withdrawalStatus.blockNumber?.toString(),
-                  stage: withdrawalStatus.stage,
-                }
-              : {}),
-          };
-        }
-      }
     } finally {
       if (request === activityRequest) {
         isActivityLoading = false;
@@ -191,7 +173,6 @@
       if (reportValidation) {
         hashError = "Enter a 0x-prefixed 32-byte transaction hash.";
         statusError = "";
-        withdrawalStatus = null;
       }
 
       return null;
@@ -203,7 +184,6 @@
     }
 
     statusError = "";
-    submittedHash = pendingSubmissions.get(normalized)?.hash ?? "";
 
     return /** @type {`0x${string}`} */ (normalized);
   }
@@ -216,14 +196,11 @@
       account: currentAccount,
     });
 
-    if (
-      remembered &&
-      selectedActivity?.transactionHash !== remembered.transactionHash
-    ) {
-      selectedActivity = remembered;
-      withdrawalStatus = null;
-      upsertActivity(remembered);
+    if (remembered) {
+      selectedTransactionHash = remembered.transactionHash;
     }
+
+    return remembered;
   }
 
   function finalizationIsConfigured() {
@@ -236,90 +213,6 @@
   }
 
   /**
-   * @param {any} status
-   */
-  function applyLoadedStatus(status) {
-    withdrawalStatus = status;
-    lastCheckedAt = new Date();
-    selectedActivity = {
-      ...selectedActivity,
-      blockNumber: status.blockNumber?.toString() ?? null,
-      chainId: selectedActivity?.chainId,
-      createdAt: selectedActivity?.createdAt ?? Date.now(),
-      source: selectedActivity?.source ?? "local",
-      stage: status.stage,
-      transactionHash: status.transactionHash,
-    };
-    upsertActivity(selectedActivity);
-  }
-
-  /**
-   * @param {{ action: "finalize" | "prove" }} pending
-   * @param {any} status
-   */
-  function submissionIsReflected(pending, status) {
-    if (pending.action === "finalize") {
-      return status.stage === "finalized";
-    }
-
-    return (
-      Boolean(status.proofSubmitter) ||
-      !["ready_to_prove", "waiting_for_output"].includes(status.stage)
-    );
-  }
-
-  /**
-   * @param {`0x${string}`} checkedHash
-   * @param {any} status
-   */
-  async function reconcilePendingSubmission(checkedHash, status) {
-    const pending = pendingSubmissions.get(checkedHash);
-
-    if (!pending) {
-      return { status, transactionError: "" };
-    }
-
-    if (submissionIsReflected(pending, status)) {
-      pendingSubmissions.delete(checkedHash);
-      return { status, transactionError: "" };
-    }
-
-    let execution;
-
-    try {
-      execution = await loadDuskTransactionExecution(pending.hash);
-    } catch {
-      return {
-        status: { ...status, stage: pending.stage },
-        transactionError: "",
-      };
-    }
-
-    if (!execution || !execution.error) {
-      return {
-        status: { ...status, stage: pending.stage },
-        transactionError: "",
-      };
-    }
-
-    pendingSubmissions.delete(checkedHash);
-
-    return {
-      status,
-      transactionError: `${pending.action === "prove" ? "Proof" : "Finalization"} transaction failed: ${execution.error}`,
-    };
-  }
-
-  /**
-   * @param {`0x${string}`} checkedHash
-   */
-  async function loadReconciledStatus(checkedHash) {
-    const status = await loadWithdrawalStatus(checkedHash);
-
-    return await reconcilePendingSubmission(checkedHash, status);
-  }
-
-  /**
    * @param {string} [hash]
    * @param {boolean} [reportValidation]
    */
@@ -328,23 +221,22 @@
 
     if (!checkedHash) return;
 
-    rememberCheckedTransaction(checkedHash);
+    const remembered = rememberCheckedTransaction(checkedHash);
 
-    if (!finalizationIsConfigured()) return;
+    if (!remembered || !finalizationIsConfigured()) return;
 
     const request = ++statusRequest;
     isChecking = true;
 
     try {
-      const { status, transactionError } =
-        await loadReconciledStatus(checkedHash);
+      const updated = await refreshWithdrawalTransaction(checkedHash);
+      void trackWithdrawalTransaction(checkedHash);
 
       if (
         request === statusRequest &&
-        selectedActivity?.transactionHash === checkedHash
+        selectedTransactionHash === checkedHash
       ) {
-        applyLoadedStatus(status);
-        statusError = transactionError;
+        statusError = updated?.actionError ?? "";
       }
     } catch (error) {
       if (request === statusRequest) {
@@ -361,47 +253,37 @@
    * @param {any} item
    */
   async function selectActivity(item) {
-    if (selectedActivity?.transactionHash === item.transactionHash) {
+    if (selectedTransactionHash === item.transactionHash) {
       statusRequest += 1;
-      selectedActivity = null;
-      withdrawalStatus = null;
+      selectedTransactionHash = null;
       statusError = "";
-      submittedHash = "";
       isChecking = false;
       return;
     }
 
-    selectedActivity = item;
-    withdrawalStatus = null;
+    selectedTransactionHash = item.transactionHash;
     txHash = item.transactionHash;
     hashError = "";
     statusError = "";
-    submittedHash = pendingSubmissions.get(item.transactionHash)?.hash ?? "";
 
-    await checkStatus();
+    await checkStatus(item.transactionHash, false);
   }
 
   /**
    * @param {(hash: `0x${string}`) => Promise<string>} action
-   * @param {string} submittedStage
+   * @param {"finalize" | "prove"} actionName
    */
-  async function submitWithdrawalAction(action, submittedStage) {
+  async function submitWithdrawalAction(action, actionName) {
     isSubmitting = true;
     statusError = "";
-    submittedHash = "";
 
     try {
-      submittedHash = await action(checkedStatusTxHash());
-      pendingSubmissions.set(withdrawalStatus.transactionHash, {
-        action: submittedStage === "prove_submitted" ? "prove" : "finalize",
+      const checkedHash = checkedStatusTxHash();
+      const submittedHash = await action(checkedHash);
+      recordWithdrawalSubmission(checkedHash, {
+        action: actionName,
         hash: submittedHash,
-        stage: submittedStage,
       });
-      withdrawalStatus = {
-        ...withdrawalStatus,
-        stage: submittedStage,
-      };
-      updateSelectedStage(submittedStage);
     } catch (error) {
       statusError = getErrorMessage(error);
     } finally {
@@ -410,39 +292,21 @@
   }
 
   function submitProof() {
-    return submitWithdrawalAction(proveWithdrawal, "prove_submitted");
+    return submitWithdrawalAction(proveWithdrawal, "prove");
   }
 
   function submitFinalization() {
-    return submitWithdrawalAction(finalizeWithdrawal, "finalize_submitted");
-  }
-
-  async function poll() {
-    if (document.visibilityState === "hidden") {
-      return;
-    }
-
-    await refreshActivity();
-
-    if (
-      selectedActivity &&
-      selectedStage !== "finalized" &&
-      !isChecking &&
-      !isSubmitting
-    ) {
-      await checkStatus(selectedActivity.transactionHash, false);
-    }
-  }
-
-  async function refreshSelectedStatus() {
-    if (selectedActivity) {
-      await checkStatus(selectedActivity.transactionHash, false);
-    } else {
-      await checkStatus();
-    }
+    return submitWithdrawalAction(finalizeWithdrawal, "finalize");
   }
 
   onMount(() => {
+    rememberedActivity = hydrateWithdrawalActivity();
+    rebuildActivity();
+
+    const unsubscribeActivity = withdrawalActivityStore.subscribe((items) => {
+      rememberedActivity = items;
+      rebuildActivity();
+    });
     const unsubscribe = account.subscribe((value) => {
       currentAccount = value.address?.toLowerCase() ?? null;
 
@@ -450,11 +314,11 @@
         observedAccount = currentAccount;
         statusRequest += 1;
         isChecking = false;
-        selectedActivity = null;
-        withdrawalStatus = null;
-        pendingSubmissions.clear();
-        submittedHash = "";
+        selectedTransactionHash = null;
         txHash = "";
+        indexedActivity = [];
+        rebuildActivity();
+        resumeWithdrawalTracking(currentAccount);
         void refreshActivity();
       }
     });
@@ -471,25 +335,36 @@
         : null;
 
       if (remembered) {
-        selectedActivity = remembered;
-        upsertActivity(remembered);
+        selectedTransactionHash = remembered.transactionHash;
       }
 
       void checkStatus();
     }
 
-    const timer = window.setInterval(poll, POLL_INTERVAL_MS);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") {
+        void refreshActivity();
+      }
+    }, POLL_INTERVAL_MS);
 
     return () => {
       unsubscribe();
+      unsubscribeActivity();
       window.clearInterval(timer);
     };
   });
 
-  $: selectedWithdrawal = withdrawalStatus
-    ? { ...selectedActivity, ...withdrawalStatus }
-    : selectedActivity;
-  $: selectedStage = selectedWithdrawal?.stage ?? "submitted";
+  $: selectedActivity =
+    activity.find((item) => item.transactionHash === selectedTransactionHash) ??
+    null;
+  $: selectedWithdrawal = selectedActivity;
+  $: {
+    const latestCheck = Math.max(
+      activityLoadedAt,
+      ...activity.map((item) => item.lastCheckedAt ?? 0)
+    );
+    lastCheckedAt = latestCheck > 0 ? new Date(latestCheck) : null;
+  }
   $: canCheck = finalizationConfig.configured && !isChecking && !isSubmitting;
 </script>
 
@@ -502,15 +377,6 @@
       {/if}
     </div>
     <div class="transactions__header-actions">
-      <Button
-        aria-label="Refresh withdrawal activity"
-        data-tooltip-id="main-tooltip"
-        data-tooltip-text="Refresh activity"
-        disabled={isActivityLoading || isChecking}
-        icon={{ path: mdiRefresh }}
-        on:click={() => poll()}
-        variant="tertiary"
-      />
       <AppAnchorButton
         href="/dashboard/bridge"
         text="Back"
@@ -540,15 +406,13 @@
       {lastCheckedAt}
       {selectedWithdrawal}
       {statusError}
-      {submittedHash}
-      {withdrawalStatus}
-      selectedTransactionHash={selectedActivity?.transactionHash ?? null}
+      submittedHash={selectedWithdrawal?.pendingTransactionHash ?? ""}
+      {selectedTransactionHash}
       bind:hashError
       bind:txHash
       on:check={(event) => checkStatus(event.detail)}
       on:finalize={submitFinalization}
       on:prove={submitProof}
-      on:refresh={refreshSelectedStatus}
       on:select={(event) => selectActivity(event.detail)}
     />
   </div>

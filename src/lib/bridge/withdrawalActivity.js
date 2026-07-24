@@ -5,6 +5,7 @@ import {
 } from "$lib/bridge/blockscoutWithdrawalActivity";
 import {
   getRememberedWithdrawalActivity,
+  hydrateWithdrawalActivity,
   rememberWithdrawalTransaction,
 } from "$lib/bridge/withdrawalActivityStorage";
 import {
@@ -25,7 +26,18 @@ export {
   withdrawalStageLabel,
   withdrawalStageProgress,
 } from "$lib/bridge/withdrawalLifecycle";
-export { getRememberedWithdrawalActivity, rememberWithdrawalTransaction };
+export {
+  getRememberedWithdrawalActivity,
+  hydrateWithdrawalActivity,
+  rememberWithdrawalTransaction,
+};
+export {
+  recordWithdrawalSubmission,
+  refreshWithdrawalTransaction,
+  resumeWithdrawalTracking,
+  trackWithdrawalTransaction,
+  withdrawalActivityStore,
+} from "$lib/bridge/withdrawalTracking";
 
 /**
  * @param {WithdrawalActivityItem[]} remembered
@@ -40,11 +52,30 @@ export function mergeWithdrawalActivity(remembered, indexed) {
 
   for (const item of indexed) {
     const local = byHash.get(item.transactionHash);
+    const canonical =
+      !local?.withdrawalHash &&
+      !local?.pendingAction &&
+      local?.stage !== "failed"
+        ? {}
+        : {
+            actionError: local.actionError,
+            blockNumber: local.blockNumber,
+            lastCheckedAt: local.lastCheckedAt,
+            pendingAction: local.pendingAction,
+            pendingTransactionHash: local.pendingTransactionHash,
+            proofSubmitter: local.proofSubmitter,
+            readyAt: local.readyAt,
+            stage: local.stage,
+            statusMessage: local.statusMessage,
+            trackingError: local.trackingError,
+            withdrawalHash: local.withdrawalHash,
+          };
 
     byHash.set(item.transactionHash, {
       ...local,
       ...item,
       createdAt: local?.createdAt ?? item.createdAt,
+      ...canonical,
     });
   }
 

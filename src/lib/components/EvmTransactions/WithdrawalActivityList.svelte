@@ -62,9 +62,6 @@
   /** @type {string} */
   export let txHash;
 
-  /** @type {any} */
-  export let withdrawalStatus;
-
   function validateHashInput() {
     hashError =
       txHash.length > 0 && !isWithdrawalTxHash(txHash.trim())
@@ -152,10 +149,8 @@
                 {selectedWithdrawal}
                 {statusError}
                 {submittedHash}
-                {withdrawalStatus}
                 on:finalize={() => dispatch("finalize")}
                 on:prove={() => dispatch("prove")}
-                on:refresh={() => dispatch("refresh")}
               />
             </div>
           {/if}

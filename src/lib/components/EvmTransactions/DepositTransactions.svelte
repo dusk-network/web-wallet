@@ -6,23 +6,20 @@
     mdiArrowLeft,
     mdiChevronDown,
     mdiContain,
-    mdiRefresh,
     mdiWalletOutline,
   } from "@mdi/js";
 
   import {
     depositActivityStore,
     hydrateDepositActivity,
-    refreshDepositTransaction,
     resumeDepositTracking,
   } from "$lib/bridge/depositActivity";
   import {
     depositStageBadge,
     depositStageLabel,
-    isDepositTerminal,
   } from "$lib/bridge/depositLifecycle";
   import { AppAnchorButton, Banner } from "$lib/components";
-  import { Badge, Button, Icon, Throbber } from "$lib/dusk/components";
+  import { Badge, Button, Icon } from "$lib/dusk/components";
   import { account, modal } from "$lib/web3/walletConnection";
 
   import DepositLifecycle from "./DepositLifecycle.svelte";
@@ -31,8 +28,6 @@
     formatTimestamp,
     shortened,
   } from "./withdrawalPresentation";
-
-  const POLL_INTERVAL_MS = 30_000;
 
   /** @type {any[]} */
   let allActivity = [];
@@ -48,9 +43,6 @@
 
   /** @type {Date | null} */
   let lastCheckedAt = null;
-
-  /** @type {boolean} */
-  let isChecking = false;
 
   function filterActivity() {
     activity = allActivity
@@ -86,24 +78,6 @@
     selectedDeposit = item;
   }
 
-  async function refresh() {
-    if (isChecking) return;
-
-    isChecking = true;
-    const pending = activity.filter((item) => !isDepositTerminal(item));
-    const targets =
-      pending.length > 0 ? pending : selectedDeposit ? [selectedDeposit] : [];
-
-    try {
-      await Promise.all(
-        targets.map((item) => refreshDepositTransaction(item.transactionHash))
-      );
-      lastCheckedAt = new Date();
-    } finally {
-      isChecking = false;
-    }
-  }
-
   onMount(() => {
     const unsubscribeAccount = account.subscribe((value) => {
       currentAccount = value.address?.toLowerCase() ?? null;
@@ -121,16 +95,19 @@
     allActivity = hydrateDepositActivity();
     filterActivity();
 
-    const timer = window.setInterval(() => {
-      if (document.visibilityState !== "hidden") void refresh();
-    }, POLL_INTERVAL_MS);
-
     return () => {
       unsubscribeAccount();
       unsubscribeActivity();
-      window.clearInterval(timer);
     };
   });
+
+  $: {
+    const latestCheck = Math.max(
+      0,
+      ...activity.map((item) => item.lastCheckedAt ?? 0)
+    );
+    lastCheckedAt = latestCheck > 0 ? new Date(latestCheck) : null;
+  }
 </script>
 
 <article in:fade|global class="transactions">
@@ -142,15 +119,6 @@
       {/if}
     </div>
     <div class="transactions__header-actions">
-      <Button
-        aria-label="Refresh deposit activity"
-        data-tooltip-id="main-tooltip"
-        data-tooltip-text="Refresh activity"
-        disabled={isChecking}
-        icon={{ path: mdiRefresh }}
-        on:click={refresh}
-        variant="tertiary"
-      />
       <AppAnchorButton
         href="/dashboard/bridge"
         text="Back"
@@ -184,12 +152,7 @@
         </Banner>
       {/if}
 
-      {#if isChecking && activity.length === 0}
-        <div class="transactions-list__empty" aria-live="polite">
-          <Throbber />
-          <p>Loading activity</p>
-        </div>
-      {:else if activity.length > 0}
+      {#if activity.length > 0}
         <ul class="activity-list">
           {#each activity as item (item.transactionHash)}
             <li
@@ -236,11 +199,7 @@
                   class="activity-list__details"
                   id={`deposit-status-${item.transactionHash}`}
                 >
-                  <DepositLifecycle
-                    deposit={selectedDeposit}
-                    {isChecking}
-                    on:refresh={refresh}
-                  />
+                  <DepositLifecycle deposit={selectedDeposit} />
                 </div>
               {/if}
             </li>

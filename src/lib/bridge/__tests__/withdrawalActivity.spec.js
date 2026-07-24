@@ -238,4 +238,35 @@ describe("DuskEVM withdrawal activity", () => {
       }),
     ]);
   });
+
+  it("keeps indexed progress when tracking fails before canonical observation", () => {
+    const remembered = {
+      ...rememberWithdrawalTransaction(withdrawalHash, {
+        account,
+        createdAt: 1_000,
+      }),
+      lastCheckedAt: 2_000,
+      trackingError: "RPC unavailable",
+    };
+    const indexed = {
+      ...remembered,
+      source: "explorer",
+      stage: "ready_to_prove",
+      withdrawalHash: null,
+    };
+    delete indexed.lastCheckedAt;
+    delete indexed.trackingError;
+
+    expect(
+      mergeWithdrawalActivity(
+        [/** @type {any} */ (remembered)],
+        [/** @type {any} */ (indexed)]
+      )
+    ).toEqual([
+      expect.objectContaining({
+        stage: "ready_to_prove",
+        trackingError: "RPC unavailable",
+      }),
+    ]);
+  });
 });

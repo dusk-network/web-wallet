@@ -16,10 +16,14 @@ const mocks = vi.hoisted(() => {
     });
   /** @type {Set<(value: any) => void>} */
   const subscribers = new Set();
+  /** @type {Set<(value: any[]) => void>} */
+  const activitySubscribers = new Set();
   let accountValue = {
     address: undefined,
     isConnected: false,
   };
+  /** @type {any[]} */
+  let withdrawalItems = [];
   const account = {
     /**
      * @param {(value: any) => void} run
@@ -31,18 +35,60 @@ const mocks = vi.hoisted(() => {
       return () => subscribers.delete(run);
     },
   };
+  const withdrawalActivityStore = {
+    /**
+     * @param {(value: any[]) => void} run
+     */
+    subscribe(run) {
+      activitySubscribers.add(run);
+      run(withdrawalItems);
+
+      return () => activitySubscribers.delete(run);
+    },
+  };
 
   return {
     account,
     configuredFinalizationConfig,
     finalizationConfig: configuredFinalizationConfig(),
     finalizeWithdrawal: vi.fn(),
+    hydrateWithdrawalActivity: vi.fn(() => withdrawalItems),
     loadDuskTransactionExecution: vi.fn(),
     loadWithdrawalActivity: vi.fn(),
     loadWithdrawalStatus: vi.fn(),
+    mergeWithdrawalActivity: vi.fn((remembered, indexed) => {
+      const byHash = new Map();
+
+      for (const item of remembered) {
+        byHash.set(item.transactionHash, item);
+      }
+
+      for (const item of indexed) {
+        const local = byHash.get(item.transactionHash);
+        byHash.set(item.transactionHash, {
+          ...local,
+          ...item,
+          ...(local?.lastCheckedAt
+            ? {
+                actionError: local.actionError,
+                lastCheckedAt: local.lastCheckedAt,
+                pendingAction: local.pendingAction,
+                pendingTransactionHash: local.pendingTransactionHash,
+                stage: local.stage,
+                trackingError: local.trackingError,
+              }
+            : {}),
+        });
+      }
+
+      return [...byHash.values()];
+    }),
     modalOpen: vi.fn(),
     proveWithdrawal: vi.fn(),
+    recordWithdrawalSubmission: vi.fn(),
+    refreshWithdrawalTransaction: vi.fn(),
     rememberWithdrawalTransaction: vi.fn(),
+    resumeWithdrawalTracking: vi.fn(),
     /**
      * @param {any} value
      */
@@ -50,6 +96,16 @@ const mocks = vi.hoisted(() => {
       accountValue = value;
       subscribers.forEach((run) => run(value));
     },
+    /**
+     * @param {any[]} value
+     */
+    setWithdrawalItems(value) {
+      withdrawalItems = value;
+      activitySubscribers.forEach((run) => run(value));
+    },
+    trackWithdrawalTransaction: vi.fn(() => Promise.resolve(null)),
+    withdrawalActivityStore,
+    withdrawalItems: () => withdrawalItems,
   };
 });
 
@@ -73,8 +129,15 @@ vi.mock("$lib/bridge/withdrawals", () => ({
 }));
 
 vi.mock("$lib/bridge/withdrawalActivity", () => ({
+  hydrateWithdrawalActivity: mocks.hydrateWithdrawalActivity,
   loadWithdrawalActivity: mocks.loadWithdrawalActivity,
+  mergeWithdrawalActivity: mocks.mergeWithdrawalActivity,
+  recordWithdrawalSubmission: mocks.recordWithdrawalSubmission,
+  refreshWithdrawalTransaction: mocks.refreshWithdrawalTransaction,
   rememberWithdrawalTransaction: mocks.rememberWithdrawalTransaction,
+  resumeWithdrawalTracking: mocks.resumeWithdrawalTracking,
+  trackWithdrawalTransaction: mocks.trackWithdrawalTransaction,
+  withdrawalActivityStore: mocks.withdrawalActivityStore,
   /** @param {string} hash */
   withdrawalExplorerUrl: (hash) => `https://explorer.example.test/tx/${hash}`,
   /** @param {string} stage */
@@ -152,14 +215,81 @@ describe("EvmTransactions", () => {
     mocks.loadWithdrawalStatus.mockReset();
     mocks.modalOpen.mockReset();
     mocks.proveWithdrawal.mockReset();
+    mocks.recordWithdrawalSubmission.mockReset();
+    mocks.refreshWithdrawalTransaction.mockReset();
     mocks.rememberWithdrawalTransaction.mockReset();
+    mocks.resumeWithdrawalTracking.mockReset();
+    mocks.trackWithdrawalTransaction.mockClear();
     mocks.finalizationConfig = mocks.configuredFinalizationConfig();
     mocks.setAccount({ address: undefined, isConnected: false });
+    mocks.setWithdrawalItems([]);
     mocks.loadWithdrawalActivity.mockImplementation(emptyActivity);
     mocks.loadDuskTransactionExecution.mockResolvedValue(null);
-    mocks.rememberWithdrawalTransaction.mockImplementation((hash) =>
-      activityItem(hash)
-    );
+    mocks.rememberWithdrawalTransaction.mockImplementation((hash, options) => {
+      const existing = mocks
+        .withdrawalItems()
+        .find((item) => item.transactionHash === hash);
+      const base = existing ?? activityItem(hash);
+      const item = {
+        ...base,
+        account:
+          options && Object.hasOwn(options, "account")
+            ? options.account
+            : base.account,
+        amountWei: options?.amountWei ?? base.amountWei,
+      };
+      mocks.setWithdrawalItems([
+        item,
+        ...mocks
+          .withdrawalItems()
+          .filter((candidate) => candidate.transactionHash !== hash),
+      ]);
+      return item;
+    });
+    mocks.refreshWithdrawalTransaction.mockImplementation(async (hash) => {
+      const status = await mocks.loadWithdrawalStatus(hash);
+      const existing =
+        mocks.withdrawalItems().find((item) => item.transactionHash === hash) ??
+        activityItem(hash);
+      const item = {
+        ...existing,
+        ...status,
+        blockNumber: status.blockNumber?.toString() ?? existing.blockNumber,
+        lastCheckedAt: Date.now(),
+        pendingAction: null,
+        pendingTransactionHash: null,
+        trackingError: null,
+      };
+      mocks.setWithdrawalItems([
+        item,
+        ...mocks
+          .withdrawalItems()
+          .filter((candidate) => candidate.transactionHash !== hash),
+      ]);
+      return item;
+    });
+    mocks.recordWithdrawalSubmission.mockImplementation((hash, submission) => {
+      const existing = mocks
+        .withdrawalItems()
+        .find((item) => item.transactionHash === hash);
+      const item = {
+        ...existing,
+        actionError: null,
+        pendingAction: submission.action,
+        pendingTransactionHash: submission.hash,
+        stage:
+          submission.action === "prove"
+            ? "prove_submitted"
+            : "finalize_submitted",
+      };
+      mocks.setWithdrawalItems([
+        item,
+        ...mocks
+          .withdrawalItems()
+          .filter((candidate) => candidate.transactionHash !== hash),
+      ]);
+      return item;
+    });
   });
 
   afterEach(() => {
@@ -254,8 +384,8 @@ describe("EvmTransactions", () => {
     expect(mocks.loadWithdrawalActivity).toHaveBeenCalledWith(accountAddress);
     expect(mocks.loadWithdrawalStatus).toHaveBeenCalledWith(txHash);
     expect(
-      await findByRole("button", { name: /refresh status/i })
-    ).toBeInTheDocument();
+      queryByRole("button", { name: /refresh status/i })
+    ).not.toBeInTheDocument();
     expect(item).toHaveAttribute("aria-expanded", "true");
 
     await fireEvent.click(item);
@@ -263,9 +393,6 @@ describe("EvmTransactions", () => {
     await waitFor(() => {
       expect(item).toHaveAttribute("aria-expanded", "false");
     });
-    expect(
-      queryByRole("button", { name: /refresh status/i })
-    ).not.toBeInTheDocument();
   });
 
   it("shows the complete journey and prove action when ready", async () => {
@@ -391,16 +518,15 @@ describe("EvmTransactions", () => {
       await findByRole("button", { name: /prove withdrawal/i })
     );
     expect((await findAllByText("Proof submitted")).length).toBeGreaterThan(0);
-
-    await fireEvent.click(getByRole("button", { name: /refresh status/i }));
-
-    await waitFor(() => {
-      expect(mocks.loadDuskTransactionExecution).toHaveBeenCalledWith(
-        "65".repeat(32)
-      );
+    expect(mocks.recordWithdrawalSubmission).toHaveBeenCalledWith(txHash, {
+      action: "prove",
+      hash: "65".repeat(32),
     });
     expect(
       queryByRole("button", { name: /prove withdrawal/i })
+    ).not.toBeInTheDocument();
+    expect(
+      queryByRole("button", { name: /refresh status/i })
     ).not.toBeInTheDocument();
     expect((await findAllByText("Proof submitted")).length).toBeGreaterThan(0);
   });
@@ -415,11 +541,6 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"ed".repeat(32)}`,
     });
     mocks.proveWithdrawal.mockResolvedValue("67".repeat(32));
-    mocks.loadDuskTransactionExecution.mockResolvedValue({
-      blockHeight: 14_000n,
-      error: "contract execution failed",
-    });
-
     const { findAllByText, findByRole, findByText, getByLabelText, getByRole } =
       render(EvmTransactions, { target: document.body });
 
@@ -431,7 +552,19 @@ describe("EvmTransactions", () => {
       await findByRole("button", { name: /prove withdrawal/i })
     );
     await findAllByText("Proof submitted");
-    await fireEvent.click(getByRole("button", { name: /refresh status/i }));
+
+    const pending = mocks
+      .withdrawalItems()
+      .find((item) => item.transactionHash === txHash);
+    mocks.setWithdrawalItems([
+      {
+        ...pending,
+        actionError: "Proof transaction failed: contract execution failed",
+        pendingAction: null,
+        pendingTransactionHash: null,
+        stage: "ready_to_prove",
+      },
+    ]);
 
     expect(
       await findByRole("button", { name: /prove withdrawal/i })
@@ -441,7 +574,7 @@ describe("EvmTransactions", () => {
     ).toBeInTheDocument();
   });
 
-  it("refreshes the selected withdrawal instead of an unsubmitted input edit", async () => {
+  it("updates the expanded withdrawal from background tracking", async () => {
     const selectedHash = `0x${"62".repeat(32)}`;
     const editedHash = `0x${"63".repeat(32)}`;
 
@@ -459,14 +592,27 @@ describe("EvmTransactions", () => {
 
     await fireEvent.input(input, { target: { value: selectedHash } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
-    await findByRole("button", { name: /refresh status/i });
-    await fireEvent.input(input, { target: { value: editedHash } });
-    mocks.loadWithdrawalStatus.mockClear();
-    await fireEvent.click(getByRole("button", { name: /refresh status/i }));
-
-    await waitFor(() => {
-      expect(mocks.loadWithdrawalStatus).toHaveBeenCalledWith(selectedHash);
+    await findByRole("button", {
+      name: /0\.1 DUSK.*Waiting for output/i,
     });
+    await fireEvent.input(input, { target: { value: editedHash } });
+
+    const selected = mocks
+      .withdrawalItems()
+      .find((item) => item.transactionHash === selectedHash);
+    mocks.setWithdrawalItems([
+      {
+        ...selected,
+        proofSubmitter: "0xeb9ea22334e679cdbc669cf9ad2d713b559708b1",
+        stage: "proven_waiting",
+      },
+    ]);
+
+    expect(
+      await findByRole("button", {
+        name: /0\.1 DUSK.*Challenge period/i,
+      })
+    ).toHaveAttribute("aria-expanded", "true");
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalledWith(editedHash);
   });
 });

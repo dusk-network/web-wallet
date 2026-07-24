@@ -39,7 +39,11 @@
     resumeDepositTracking,
     trackDepositTransaction,
   } from "$lib/bridge/depositActivity";
-  import { rememberWithdrawalTransaction } from "$lib/bridge/withdrawalActivity";
+  import {
+    rememberWithdrawalTransaction,
+    resumeWithdrawalTracking,
+    trackWithdrawalTransaction,
+  } from "$lib/bridge/withdrawalActivity";
   import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
   import { MESSAGES } from "$lib/constants";
   import { luxToDusk } from "$lib/dusk/currency";
@@ -202,10 +206,14 @@
 
     lastWithdrawalTxHash = /** @type {string} */ (hash);
     localStorage.setItem(LAST_WITHDRAWAL_TX_HASH_KEY, lastWithdrawalTxHash);
-    rememberWithdrawalTransaction(
+    const remembered = rememberWithdrawalTransaction(
       /** @type {`0x${string}`} */ (lastWithdrawalTxHash),
       { account: $account.address, amountWei }
     );
+
+    if (remembered) {
+      void trackWithdrawalTransaction(remembered.transactionHash);
+    }
 
     return hash;
   }
@@ -275,6 +283,7 @@
 
     const unsubscribeAccount = account.subscribe((value) => {
       resumeDepositTracking(value.address);
+      resumeWithdrawalTracking(value.address);
     });
 
     return unsubscribeAccount;

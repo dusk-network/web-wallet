@@ -1,6 +1,6 @@
 /**
  * @typedef {object} StageMetadata
- * @property {"neutral" | "success" | "warning"} badge
+ * @property {"error" | "neutral" | "success" | "warning"} badge
  * @property {string} label
  * @property {string} message
  * @property {number} progress
@@ -87,6 +87,15 @@ const STAGES = new Map([
       label: "Finalized",
       message: "The withdrawal has been finalized on Dusk.",
       progress: 5,
+    },
+  ],
+  [
+    "failed",
+    {
+      badge: "error",
+      label: "Failed",
+      message: "The withdrawal transaction failed on DuskEVM.",
+      progress: 0,
     },
   ],
 ]);
