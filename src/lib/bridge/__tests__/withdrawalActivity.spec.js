@@ -248,12 +248,13 @@ describe("DuskEVM withdrawal activity", () => {
       lastCheckedAt: 2_000,
       trackingError: "RPC unavailable",
     };
-    const indexed = {
-      ...remembered,
-      source: "explorer",
-      stage: "ready_to_prove",
-      withdrawalHash: null,
-    };
+    const indexed =
+      /** @type {Partial<NonNullable<ReturnType<typeof rememberWithdrawalTransaction>>>} */ ({
+        ...remembered,
+        source: "explorer",
+        stage: "ready_to_prove",
+        withdrawalHash: null,
+      });
     delete indexed.lastCheckedAt;
     delete indexed.trackingError;
 
