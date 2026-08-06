@@ -6,7 +6,8 @@
   },
   "bugs": "https://github.com/dusk-network/web-wallet/issues",
   "engines": {
-    "node": "^24.0.0"
+    "node": "^24.0.0",
+    "npm": ">=11.6.2 <12"
   },
   "homepage": "https://github.com/dusk-network/web-wallet",
   "license": "MPL-2.0",
