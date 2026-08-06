@@ -116,6 +116,8 @@ type WalletStoreServices = {
     gas?: Gas
   ) => Promise<TransactionInfo>;
 
+  getDuskEvmProofSubmitter: () => `0x${string}`;
+
   proveDuskEvmWithdrawal: (
     contractId: string,
     wasmPath: string,

@@ -9,6 +9,7 @@ import { bytesToHex, decodeFunctionData, hexToBytes } from "viem";
 
 import { encodeDepositETHToWithValueArgs } from "../deposit";
 import { prepareNativeDuskWithdrawalCall } from "../withdrawalInitiation";
+import depositRkyvFixtures from "./fixtures/deposit-rkyv";
 
 const COMPRESSED_G2_GENERATOR =
   "93e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8";
@@ -76,34 +77,19 @@ describe("bridge recipient encoding", () => {
 describe("current bridge deposit payload encoding", () => {
   const to = "0x1111111111111111111111111111111111111111";
 
-  it("matches Rust rkyv for empty extraData", () => {
-    expect(
-      bytesToHex(
-        encodeDepositETHToWithValueArgs({
-          amountLux: 123n,
-          minGasLimit: 150_000,
-          to,
-        })
-      )
-    ).toBe(
-      "0x7b000000000000001111111111111111111111111111111111111111f0490200e0ffffff00000000"
-    );
-  });
-
-  it("matches Rust rkyv for non-empty extraData", () => {
-    expect(
-      bytesToHex(
-        encodeDepositETHToWithValueArgs({
-          amountLux: 123n,
-          extraData: [0xaa, 0xbb, 0xcc],
-          minGasLimit: 150_000,
-          to,
-        })
-      )
-    ).toBe(
-      "0xaabbcc00000000007b000000000000001111111111111111111111111111111111111111f0490200d8ffffff03000000"
-    );
-  });
+  it.each(depositRkyvFixtures)(
+    "matches the Rust rkyv fixture for %#",
+    ({ encoded, ...input }) => {
+      expect(
+        bytesToHex(
+          encodeDepositETHToWithValueArgs({
+            ...input,
+            extraData: Array.from(input.extraData),
+          })
+        )
+      ).toBe(encoded);
+    }
+  );
 
   it("rejects malformed deposit inputs", () => {
     const malformedExtraData = /** @type {any} */ ("not bytes");

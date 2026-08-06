@@ -34,6 +34,7 @@ const VALID_STAGES = new Set([
  * @property {string | null} l2BlockNumber
  * @property {`0x${string}` | null} l2TransactionHash
  * @property {number | null} lastCheckedAt
+ * @property {number} progressedAt
  * @property {string} stage
  * @property {string | null} statusMessage
  * @property {string | null} trackingError
@@ -112,6 +113,7 @@ function normalizeStoredItem(value) {
     l2BlockNumber: stringValue(stored.l2BlockNumber),
     l2TransactionHash: normalizedTxHash(stored.l2TransactionHash),
     lastCheckedAt: finiteNumber(stored.lastCheckedAt, 0) || null,
+    progressedAt: finiteNumber(stored.progressedAt, createdAt),
     stage: validStage(stored.stage),
     statusMessage: stringValue(stored.statusMessage),
     trackingError: stringValue(stored.trackingError),
@@ -179,6 +181,7 @@ export function rememberDepositTransaction(transactionHash, options = {}) {
       l2BlockNumber: null,
       l2TransactionHash: null,
       lastCheckedAt: null,
+      progressedAt: createdAt,
       stage: "l1_pending",
       statusMessage: null,
       trackingError: null,
@@ -204,6 +207,31 @@ export function rememberDepositTransaction(transactionHash, options = {}) {
 }
 
 /**
+ * @param {DepositActivityItem} existing
+ * @param {Partial<DepositActivityItem>} patch
+ * @param {string} nextStage
+ * @param {`0x${string}` | null} nextL1TransactionHash
+ * @param {`0x${string}` | null} nextL2TransactionHash
+ */
+function nextProgressedAt(
+  existing,
+  patch,
+  nextStage,
+  nextL1TransactionHash,
+  nextL2TransactionHash
+) {
+  const progressed =
+    nextStage !== existing.stage ||
+    nextL1TransactionHash !== existing.l1TransactionHash ||
+    nextL2TransactionHash !== existing.l2TransactionHash;
+
+  return finiteNumber(
+    patch.progressedAt,
+    progressed ? Date.now() : existing.progressedAt
+  );
+}
+
+/**
  * @param {string} transactionHash
  * @param {Partial<DepositActivityItem>} patch
  */
@@ -217,6 +245,16 @@ export function updateDepositTransaction(transactionHash, patch) {
 
   if (!existing) return null;
 
+  const nextStage =
+    typeof patch.stage === "string" && VALID_STAGES.has(patch.stage)
+      ? patch.stage
+      : existing.stage;
+  const nextL1TransactionHash = nullableTransactionHashPatch(
+    patch.l1TransactionHash,
+    existing.l1TransactionHash
+  );
+  const nextL2TransactionHash =
+    normalizedTxHash(patch.l2TransactionHash) ?? existing.l2TransactionHash;
   const item = /** @type {DepositActivityItem} */ ({
     ...existing,
     ...patch,
@@ -234,17 +272,20 @@ export function updateDepositTransaction(transactionHash, patch) {
       patch.l1BlockHeight,
       existing.l1BlockHeight
     ),
-    l1TransactionHash: nullableTransactionHashPatch(
-      patch.l1TransactionHash,
-      existing.l1TransactionHash
-    ),
+    l1TransactionHash: nextL1TransactionHash,
     l2BlockNumber: nullableStringPatch(
       patch.l2BlockNumber,
       existing.l2BlockNumber
     ),
-    l2TransactionHash:
-      normalizedTxHash(patch.l2TransactionHash) ?? existing.l2TransactionHash,
-    stage: VALID_STAGES.has(patch.stage ?? "") ? patch.stage : existing.stage,
+    l2TransactionHash: nextL2TransactionHash,
+    progressedAt: nextProgressedAt(
+      existing,
+      patch,
+      nextStage,
+      nextL1TransactionHash,
+      nextL2TransactionHash
+    ),
+    stage: nextStage,
     transactionHash: hash,
   });
 

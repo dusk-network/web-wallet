@@ -5,6 +5,13 @@ const DELAY_THRESHOLD_MS =
   Number.isFinite(configuredDelayThreshold) && configuredDelayThreshold > 0
     ? configuredDelayThreshold
     : 300_000;
+const configuredStallThreshold = Number(
+  import.meta.env.VITE_EVM_DEPOSIT_STALL_THRESHOLD_MS
+);
+const STALL_THRESHOLD_MS =
+  Number.isFinite(configuredStallThreshold) && configuredStallThreshold > 0
+    ? configuredStallThreshold
+    : 1_800_000;
 
 /** @typedef {"neutral" | "success" | "warning" | "error"} BadgeVariant */
 
@@ -69,6 +76,18 @@ export function isDepositDelayed(deposit, now = Date.now()) {
  * @param {any} deposit
  * @param {number} [now]
  */
+export function isDepositStalled(deposit, now = Date.now()) {
+  return (
+    !isDepositTerminal(deposit) &&
+    Number.isFinite(deposit?.progressedAt ?? deposit?.createdAt) &&
+    now - (deposit.progressedAt ?? deposit.createdAt) >= STALL_THRESHOLD_MS
+  );
+}
+
+/**
+ * @param {any} deposit
+ * @param {number} [now]
+ */
 function stageMetadata(deposit, now = Date.now()) {
   if (deposit?.stage === "failed") {
     return {
@@ -80,6 +99,16 @@ function stageMetadata(deposit, now = Date.now()) {
           ? "The DuskDS transaction failed, so the deposit did not enter the bridge."
           : "Delivery failed on DuskEVM. Do not submit the deposit again; use the transaction references when requesting bridge recovery.",
       progress: deposit.failureLayer === "l1" ? 1 : 2,
+    };
+  }
+
+  if (isDepositStalled(deposit, now)) {
+    return {
+      badge: /** @type {BadgeVariant} */ ("warning"),
+      label: "Tracking delayed",
+      message:
+        "No new bridge progress has been observed recently. Tracking continues at a reduced rate; do not submit the deposit again.",
+      progress: deposit?.stage === "l2_pending" ? 2 : 1,
     };
   }
 
@@ -113,7 +142,9 @@ export function depositStageLabel(deposit) {
 export function depositStageMessage(deposit) {
   const metadata = stageMetadata(deposit);
 
-  return deposit?.stage === "failed" || isDepositDelayed(deposit)
+  return deposit?.stage === "failed" ||
+    isDepositDelayed(deposit) ||
+    isDepositStalled(deposit)
     ? metadata.message
     : deposit?.statusMessage || metadata.message;
 }

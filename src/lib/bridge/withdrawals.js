@@ -34,8 +34,8 @@ const VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID = import.meta.env
 const VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL = import.meta.env
   .VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL;
 const VITE_EVM_L1_BRIDGE_RPC_URL = import.meta.env.VITE_EVM_L1_BRIDGE_RPC_URL;
-const VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH = BigInt(
-  import.meta.env.VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH ?? 64
+const VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH = parseGameSearchDepth(
+  import.meta.env.VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH
 );
 const DEFAULT_OPTIMISM_PORTAL_DATA_DRIVER_URL =
   "/drivers/optimism_portal_dd_opt.wasm";
@@ -55,6 +55,13 @@ const GAME_STATUS_ABI = Object.freeze([
     type: "function",
   },
 ]);
+
+/** @param {unknown} value */
+export function parseGameSearchDepth(value) {
+  const parsed = Number(value ?? 64);
+
+  return Number.isSafeInteger(parsed) && parsed > 0 ? BigInt(parsed) : 64n;
+}
 
 /**
  * @param {string | undefined} value
@@ -318,7 +325,7 @@ function u256ToBigInt(value) {
   }
 
   if (typeof value === "string") {
-    return value.startsWith("0x") ? BigInt(value) : BigInt(value);
+    return BigInt(value);
   }
 
   let out = 0n;
@@ -964,20 +971,6 @@ async function readProofSubmitterCount(portal, withdrawalHash) {
 /**
  * @param {import("@dusk/w3sper").Contract} portal
  * @param {`0x${string}`} withdrawalHash
- * @param {bigint} index
- */
-async function readProofSubmitterAt(portal, withdrawalHash, index) {
-  return evmAddressToHex(
-    await portal.call.proofSubmitters([
-      hexToArray(withdrawalHash, 32),
-      bigIntToU256(index),
-    ])
-  );
-}
-
-/**
- * @param {import("@dusk/w3sper").Contract} portal
- * @param {`0x${string}`} withdrawalHash
  * @param {`0x${string}`} proofSubmitter
  */
 async function readProvenAt(portal, withdrawalHash, proofSubmitter) {
@@ -1281,13 +1274,12 @@ export async function loadWithdrawalStatus(txHash) {
     return await unprovenWithdrawalStatus(event);
   }
 
-  const proofSubmitter = await readProofSubmitterAt(
-    portal,
-    event.withdrawalHash,
-    proofSubmitterCount - 1n
-  );
+  const proofSubmitter = walletStore.getDuskEvmProofSubmitter();
 
-  return await provenWithdrawalStatus(event, portal, proofSubmitter);
+  return {
+    ...(await provenWithdrawalStatus(event, portal, proofSubmitter)),
+    proofSubmitterCount,
+  };
 }
 
 /**

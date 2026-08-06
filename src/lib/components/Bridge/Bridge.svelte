@@ -130,12 +130,15 @@
 
     await switchChain(wagmiConfig, { chainId: duskEvm.id });
 
-    return await sendTransaction(wagmiConfig, {
+    const hash = await sendTransaction(wagmiConfig, {
       chainId: duskEvm.id,
       data: withdrawal.data,
       to: withdrawal.to,
       value: withdrawal.value,
     });
+
+    rememberWithdrawalTxHash(hash);
+    return hash;
   }
 
   async function submitNativeDeposit() {
@@ -499,7 +502,7 @@
                   target="_blank"
                 />
                 <AppAnchorButton
-                  href={withdrawalStatusHref(rememberWithdrawalTxHash(hash))}
+                  href={withdrawalStatusHref(hash)}
                   text="TRACK WITHDRAWAL"
                   variant="tertiary"
                 />

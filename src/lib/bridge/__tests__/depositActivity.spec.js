@@ -18,6 +18,7 @@ import {
   depositStageMessage,
   depositStageProgress,
   isDepositDelayed,
+  isDepositStalled,
 } from "$lib/bridge/depositLifecycle";
 
 const account = "0x2222222222222222222222222222222222222222";
@@ -114,6 +115,25 @@ describe("DuskEVM deposit activity", () => {
     );
   });
 
+  it("moves the progress timestamp only when the bridge state advances", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    rememberDepositTransaction(depositHash, { account });
+
+    vi.setSystemTime(2_000);
+    updateDepositTransaction(depositHash, { trackingError: "RPC unavailable" });
+    expect(getRememberedDepositActivity(account)[0].progressedAt).toBe(1_000);
+
+    vi.setSystemTime(3_000);
+    updateDepositTransaction(depositHash, {
+      l1TransactionHash,
+      stage: "l2_pending",
+    });
+    expect(getRememberedDepositActivity(account)[0].progressedAt).toBe(3_000);
+
+    vi.useRealTimers();
+  });
+
   it("presents pending, delayed, and layer-specific failure states", () => {
     const pending = {
       createdAt: Date.now(),
@@ -130,6 +150,19 @@ describe("DuskEVM deposit activity", () => {
     expect(depositStageProgress(pending)).toBe(2);
     expect(isDepositDelayed(pendingForDelay, 599_999)).toBe(false);
     expect(isDepositDelayed(pendingForDelay, 600_000)).toBe(true);
+    expect(
+      isDepositStalled(
+        { createdAt: 1_000, progressedAt: 1_000, stage: "l1_pending" },
+        1_801_000
+      )
+    ).toBe(true);
+    expect(
+      depositStageLabel({
+        createdAt: Date.now() - 1_800_000,
+        progressedAt: Date.now() - 1_800_000,
+        stage: "l1_pending",
+      })
+    ).toBe("Tracking delayed");
     expect(
       isDepositDelayed({ createdAt: 1_000, stage: "l2_pending" }, 301_000)
     ).toBe(true);

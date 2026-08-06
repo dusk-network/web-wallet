@@ -4,6 +4,7 @@ import { toRlp } from "viem";
 import {
   hashWithdrawal,
   maybeAddProofNode,
+  parseGameSearchDepth,
   parseWithdrawalReceipt,
   proofRequiresReplacement,
   withdrawalStorageKey,
@@ -39,6 +40,14 @@ describe("DuskEVM withdrawal helpers", () => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+  });
+
+  it("falls back to a positive game search depth for invalid env values", () => {
+    expect(parseGameSearchDepth(undefined)).toBe(64n);
+    expect(parseGameSearchDepth("")).toBe(64n);
+    expect(parseGameSearchDepth("not-a-number")).toBe(64n);
+    expect(parseGameSearchDepth("0")).toBe(64n);
+    expect(parseGameSearchDepth("32")).toBe(32n);
   });
 
   it("rejects unsupported Portal and DGF data-driver URL schemes", async () => {
@@ -330,6 +339,24 @@ describe("DuskEVM withdrawal helpers", () => {
     expect(dgf.call.gameCount).not.toHaveBeenCalled();
   });
 
+  it("checks readiness for the wallet submitter rather than a third party", async () => {
+    const { portal, walletStore } = mockWithdrawalFinalization({
+      finalizePreflight: vi.fn().mockResolvedValue(undefined),
+    });
+    portal.call.proofSubmitters.mockResolvedValue(Array(20).fill(0x3d));
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    const status = await loadWithdrawalStatus(withdrawalTxHash);
+
+    expect(status.proofSubmitter).toBe(`0x${"2c".repeat(20)}`);
+    expect(walletStore.getDuskEvmProofSubmitter).toHaveBeenCalledOnce();
+    expect(portal.call.proofSubmitters).not.toHaveBeenCalled();
+    expect(portal.call.checkWithdrawal).toHaveBeenCalledWith([
+      expect.any(Array),
+      Array(20).fill(0x2c),
+    ]);
+  });
+
   it("refuses to submit finalization for already-finalized withdrawals", async () => {
     const { portal, walletStore } = mockWithdrawalFinalization({
       finalized: true,
@@ -446,6 +473,7 @@ function mockWithdrawalFinalization({
     finalizeDuskEvmWithdrawal: vi
       .fn()
       .mockResolvedValue({ hash: "finalize-hash" }),
+    getDuskEvmProofSubmitter: vi.fn().mockReturnValue(`0x${"2c".repeat(20)}`),
     useContract: vi.fn(async (contractId) =>
       contractId === "11".repeat(32) ? portal : dgf
     ),

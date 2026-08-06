@@ -6,6 +6,7 @@
     depositStageMessage,
     depositStageProgress,
     isDepositDelayed,
+    isDepositStalled,
   } from "$lib/bridge/depositLifecycle";
   import { duskEvm } from "$lib/web3/walletConnection";
   import { Badge } from "$lib/dusk/components";
@@ -54,8 +55,13 @@
       <Banner title={depositStageLabel(deposit)} variant="error">
         <p>{stageMessage}</p>
       </Banner>
-    {:else if isDepositDelayed(deposit)}
-      <Banner title="Deposit delayed" variant="warning">
+    {:else if isDepositStalled(deposit) || isDepositDelayed(deposit)}
+      <Banner
+        title={isDepositStalled(deposit)
+          ? "Deposit tracking delayed"
+          : "Deposit delayed"}
+        variant="warning"
+      >
         <p>{stageMessage}</p>
       </Banner>
     {:else if deposit.stage === "l2_pending"}

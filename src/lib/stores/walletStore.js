@@ -1,6 +1,8 @@
 import { get, writable } from "svelte/store";
 import { setKey } from "lamb";
+import { compressedDuskBlsPublicKeyToRaw } from "@dusk/evm-sdk";
 import { Bookkeeper, Bookmark, ProfileGenerator } from "@dusk/w3sper";
+import { keccak256 } from "viem";
 
 import {
   BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
@@ -64,6 +66,14 @@ const treasury = new WalletTreasury();
 const bookkeeper = new Bookkeeper(treasury);
 
 const getCurrentProfile = () => get(walletStore).currentProfile;
+
+const getDuskEvmProofSubmitter = () => {
+  const account = unsafeGetCurrentProfile().account;
+  const rawPublicKey = compressedDuskBlsPublicKeyToRaw(account.valueOf());
+  const hash = keccak256(rawPublicKey);
+
+  return /** @type {`0x${string}`} */ (`0x${hash.slice(-40)}`);
+};
 
 function unsafeGetCurrentProfile() {
   const profile = getCurrentProfile();
@@ -584,6 +594,7 @@ export default {
   clearLocalDataAndInit,
   depositEvmFunctionCall,
   finalizeDuskEvmWithdrawal,
+  getDuskEvmProofSubmitter,
   getTransactionsHistory,
   init,
   proveDuskEvmWithdrawal,

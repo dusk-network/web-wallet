@@ -19,9 +19,12 @@ import { normalizedTxHash } from "$lib/bridge/withdrawalActivityValues";
 const L1_RPC_URL = import.meta.env.VITE_EVM_L1_BRIDGE_RPC_URL;
 const ACTIVE_POLL_INTERVAL_MS = 5_000;
 const BACKGROUND_POLL_INTERVAL_MS = 30_000;
+const MAX_POLL_INTERVAL_MS = 300_000;
 const activeTrackers = new Map();
 
 let l1Client;
+
+class DuskDepositExecutionError extends Error {}
 
 export {
   depositActivityStore,
@@ -47,17 +50,17 @@ function trackingClients() {
 }
 
 /** @param {string} transactionHash */
-async function finalizedDuskTransactionPosition(transactionHash) {
+async function finalizedDuskTransaction(transactionHash) {
   const network = await networkStore.connect();
   const transactionResult = await network.query(
-    `tx(hash: "${transactionHash}") { blockHeight }`
+    `tx(hash: "${transactionHash}") { blockHeight err }`
   );
 
   if (!transactionResult?.tx) return null;
 
   const blockHeight = BigInt(transactionResult.tx.blockHeight);
   const blockResult = await network.query(
-    `block(height: ${blockHeight}) { status transactions { id } }`
+    `block(height: ${blockHeight}) { status }`
   );
   const duskBlock = blockResult?.block;
 
@@ -65,42 +68,30 @@ async function finalizedDuskTransactionPosition(transactionHash) {
     return null;
   }
 
-  const transactionIndex = duskBlock.transactions?.findIndex(
-    /** @param {{ id?: string }} transaction */
-    (transaction) => transaction?.id?.toLowerCase() === transactionHash
-  );
-
-  if (!Number.isInteger(transactionIndex) || transactionIndex < 0) {
-    throw new Error(
-      "The finalized DuskDS block did not contain the submitted deposit."
+  if (transactionResult.tx.err) {
+    throw new DuskDepositExecutionError(
+      `The DuskDS deposit failed: ${transactionResult.tx.err}`
     );
   }
 
-  return { blockHeight, transactionIndex };
+  return { blockHeight };
 }
 
 /** @param {any} remembered */
 async function resolveL1TransactionHash(remembered) {
   if (remembered.l1TransactionHash) return remembered.l1TransactionHash;
 
-  const position = await finalizedDuskTransactionPosition(
-    remembered.transactionHash
-  );
+  const finalized = await finalizedDuskTransaction(remembered.transactionHash);
 
-  if (!position) return null;
+  if (!finalized) return null;
 
-  const { blockHeight, transactionIndex } = position;
   const { l1Client: client } = trackingClients();
-  const l1Block = await client.request({
-    method: "eth_getBlockByNumber",
-    params: [`0x${blockHeight.toString(16)}`, true],
+  const resolved = await client.request({
+    method: "duskevm_getTransactionHashByDuskHash",
+    params: [remembered.transactionHash],
   });
 
-  if (l1Block === null) return null;
-
-  const l1Transaction = l1Block.transactions?.[transactionIndex];
-  const resolved =
-    typeof l1Transaction === "string" ? l1Transaction : l1Transaction?.hash;
+  if (resolved === null) return null;
 
   const hash = normalizedTxHash(resolved);
   if (!hash) {
@@ -163,6 +154,34 @@ function observationPatch(remembered, status, metadata) {
   };
 }
 
+/** @param {any} remembered */
+function pendingObservationPatch(remembered) {
+  const updatedAt = Date.now();
+  return updateDepositTransaction(remembered.transactionHash, {
+    lastCheckedAt: updatedAt,
+    trackingError: null,
+    updatedAt,
+  });
+}
+
+/**
+ * @param {any} remembered
+ * @param {unknown} error
+ */
+function failedObservationPatch(remembered, error) {
+  const updatedAt = Date.now();
+  const failedOnL1 = error instanceof DuskDepositExecutionError;
+
+  return updateDepositTransaction(remembered.transactionHash, {
+    ...(failedOnL1
+      ? { failureLayer: "l1", stage: "failed", statusMessage: error.message }
+      : {}),
+    lastCheckedAt: updatedAt,
+    trackingError: failedOnL1 ? null : errorMessage(error),
+    updatedAt,
+  });
+}
+
 /** @param {string} transactionHash */
 export async function refreshDepositTransaction(transactionHash) {
   const remembered = getRememberedDepositTransaction(transactionHash);
@@ -172,14 +191,7 @@ export async function refreshDepositTransaction(transactionHash) {
   try {
     const l1TransactionHash = await resolveL1TransactionHash(remembered);
 
-    if (!l1TransactionHash) {
-      const updatedAt = Date.now();
-      return updateDepositTransaction(remembered.transactionHash, {
-        lastCheckedAt: updatedAt,
-        trackingError: null,
-        updatedAt,
-      });
-    }
+    if (!l1TransactionHash) return pendingObservationPatch(remembered);
 
     const status = await observeDepositStatus({
       ...trackingClients(),
@@ -198,17 +210,31 @@ export async function refreshDepositTransaction(transactionHash) {
       observationPatch(remembered, status, metadata)
     );
   } catch (error) {
-    return updateDepositTransaction(remembered.transactionHash, {
-      lastCheckedAt: Date.now(),
-      trackingError: errorMessage(error),
-      updatedAt: Date.now(),
-    });
+    return failedObservationPatch(remembered, error);
   }
 }
 
 /** @param {number} milliseconds */
 function delay(milliseconds) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+/**
+ * @param {number} unchangedPolls
+ * @param {boolean} hidden
+ */
+export function depositTrackingPollInterval(unchangedPolls, hidden) {
+  const base = hidden ? BACKGROUND_POLL_INTERVAL_MS : ACTIVE_POLL_INTERVAL_MS;
+  const backoff = 2 ** Math.min(6, Math.floor(unchangedPolls / 6));
+
+  return Math.min(MAX_POLL_INTERVAL_MS, base * backoff);
+}
+
+/** @param {any} item */
+function progressIdentity(item) {
+  return [item?.stage, item?.l1TransactionHash, item?.l2TransactionHash].join(
+    ":"
+  );
 }
 
 /**
@@ -224,15 +250,26 @@ export function trackDepositTransaction(transactionHash) {
   if (active) return active;
 
   const tracker = (async () => {
+    let unchangedPolls = 0;
+    let previousProgress = progressIdentity(
+      getRememberedDepositTransaction(hash)
+    );
+
     while (true) {
       const item = await refreshDepositTransaction(hash);
 
       if (!item || isDepositTerminal(item)) return item;
 
+      const currentProgress = progressIdentity(item);
+      unchangedPolls =
+        currentProgress === previousProgress ? unchangedPolls + 1 : 0;
+      previousProgress = currentProgress;
+
       await delay(
-        document.visibilityState === "hidden"
-          ? BACKGROUND_POLL_INTERVAL_MS
-          : ACTIVE_POLL_INTERVAL_MS
+        depositTrackingPollInterval(
+          unchangedPolls,
+          document.visibilityState === "hidden"
+        )
       );
     }
   })().finally(() => activeTrackers.delete(hash));
