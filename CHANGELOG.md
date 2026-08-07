@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Migrate DuskEVM bridge flows to the current contracts and the published
+  `@dusk/evm-sdk` beta [#946], [#948]
+
 ### Removed
 
 ### Fixed
@@ -666,6 +669,8 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#928]: https://github.com/dusk-network/web-wallet/issues/928
 [#932]: https://github.com/dusk-network/web-wallet/issues/932
 [#939]: https://github.com/dusk-network/web-wallet/issues/939
+[#946]: https://github.com/dusk-network/web-wallet/issues/946
+[#948]: https://github.com/dusk-network/web-wallet/issues/948
 
 <!-- VERSIONS -->
 

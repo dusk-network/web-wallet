@@ -37,8 +37,16 @@ VITE_EVM_BRIDGE_CONTRACT_ADDRESS=""
 VITE_EVM_BRIDGE_CONTRACT_BLOCK_CREATED=
 VITE_EVM_BRIDGE_BLOCK_EXPLORER_NAME="Dusk EVM Explorer"
 VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL=""
+VITE_EVM_L1_BRIDGE_RPC_URL=""
 VITE_EVM_BRIDGE_RPC_URL=""
+VITE_EVM_DEPOSIT_DELAY_THRESHOLD_MS=300000
+VITE_EVM_DEPOSIT_STALL_THRESHOLD_MS=1800000
 VITE_EVM_CHAIN_ID=745
+VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID=""
+VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL="/drivers/optimism_portal_dd_opt.wasm"
+VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID=""
+VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL="/drivers/dispute_game_factory_dd_opt.wasm"
+VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH=64
 VITE_FEATURE_ALLOCATE=true
 VITE_FEATURE_BRIDGE=true
 VITE_FEATURE_MIGRATE=true
@@ -55,6 +63,45 @@ VITE_MODE_MAINTENANCE=false
 VITE_REOWN_PROJECT_ID="" # the ID of the EVM project (as on Reown Cloud)
 VITE_NODE_URL="" # connect to a specific node
 ```
+
+For the DuskEVM bridge, `VITE_BRIDGE_CONTRACT_ID` is the Dusk L1
+`L1StandardBridge` contract id used for DuskDS -> DuskEVM deposits.
+`VITE_EVM_BRIDGE_CONTRACT_ADDRESS` is the DuskEVM L2 `L2StandardBridge`
+address used for DuskEVM -> DuskDS withdrawals. The current wallet bridge
+uses the pinned `@dusk/evm-sdk` beta for versioned Dusk asset-recipient
+metadata, L2 withdrawal calldata, `MessagePassed` verification, and L1 Portal
+argument serialization. `VITE_EVM_L1_BRIDGE_RPC_URL` points to the DuskEVM
+adapter's Ethereum-compatible L1 RPC. The wallet uses it to confirm a deposit's
+DuskDS receipt, derive the OP deposit transaction, and track delivery on
+`VITE_EVM_BRIDGE_RPC_URL`. `VITE_EVM_DEPOSIT_DELAY_THRESHOLD_MS` controls when
+an in-transit deposit is labelled delayed; it defaults to five minutes. Generic
+Dusk delivery envelopes for arbitrary L2 -> L1 contract messages are a
+separate application surface and are not exposed by the bridge UI.
+
+`VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL` must point to a Blockscout-compatible
+explorer for the configured DuskEVM network. Withdrawal activity uses its v2
+address-transactions and transaction-detail APIs, including the
+`op_withdrawals` data returned by Blockscout's Optimism module. If the explorer
+is temporarily unavailable, the wallet retains and displays a bounded local
+history of withdrawals initiated in that browser.
+
+Withdrawal finalization uses the existing Dusk-native wallet path on L1.
+Reown/Wagmi is only used for the DuskEVM/L2 side. The wallet uses
+`VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID` and its data-driver URL to call
+`proveWithdrawalTransaction`, `finalizeWithdrawalTransaction`, and withdrawal
+status getters through w3sper. It uses
+`VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID` and its data-driver URL to find a
+dispute game/output proposal that covers the L2 withdrawal block. The respected
+dispute game type is read from the portal at runtime. This flow requires Rusk
+1.7.1 or later so read-only contract queries execute at the current chain tip
+and can evaluate proof maturity correctly.
+The data-driver URLs must point to browser-loadable Forge data-driver WASM
+artifacts for the deployed contracts; they are not the deployed contract WASM
+artifacts themselves. These `VITE_*` values are public build-time browser
+configuration and must not be derived from user input. Data-driver URLs may be
+relative/root-relative asset paths or `http(s)` URLs. If the URL variables are
+unset or empty, the wallet uses the bundled `/drivers/optimism_portal_dd_opt.wasm`
+and `/drivers/dispute_game_factory_dd_opt.wasm` artifacts.
 
 To run a local node different steps are needed, so please read the [related section](#running-a-local-rusk-node).
 
@@ -75,4 +122,5 @@ To run a local node different steps are needed, so please read the [related sect
 
 ## Running a local Rusk node
 
-To run a local node, follow the instructions outlined in the [Rusk's readme](https://github.com/dusk-network/rusk).
+The DuskEVM withdrawal flow requires Rusk 1.7.1 or later. To run a local node,
+follow the instructions outlined in the [Rusk's readme](https://github.com/dusk-network/rusk).

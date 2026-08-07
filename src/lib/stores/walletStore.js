@@ -1,7 +1,13 @@
 import { get, writable } from "svelte/store";
 import { setKey } from "lamb";
+import { compressedDuskBlsPublicKeyToRaw } from "@dusk/evm-sdk";
 import { Bookkeeper, Bookmark, ProfileGenerator } from "@dusk/w3sper";
+import { keccak256 } from "viem";
 
+import {
+  BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
+  buildDepositETHToWithValuePayload,
+} from "$lib/bridge/deposit";
 import WalletTreasury from "$lib/wallet-treasury";
 
 import { transactions } from "$lib/mock-data";
@@ -61,6 +67,14 @@ const bookkeeper = new Bookkeeper(treasury);
 
 const getCurrentProfile = () => get(walletStore).currentProfile;
 
+const getDuskEvmProofSubmitter = () => {
+  const account = unsafeGetCurrentProfile().account;
+  const rawPublicKey = compressedDuskBlsPublicKeyToRaw(account.valueOf());
+  const hash = keccak256(rawPublicKey);
+
+  return /** @type {`0x${string}`} */ (`0x${hash.slice(-40)}`);
+};
+
 function unsafeGetCurrentProfile() {
   const profile = getCurrentProfile();
 
@@ -69,6 +83,16 @@ function unsafeGetCurrentProfile() {
   } else {
     return profile;
   }
+}
+
+function getBridgeContractId() {
+  const bridgeContractId = import.meta.env.VITE_BRIDGE_CONTRACT_ID;
+
+  if (!bridgeContractId) {
+    throw new Error("DuskEVM bridge contract id is not configured.");
+  }
+
+  return bridgeContractId;
 }
 
 /** @type {(txInfo: TransactionInfo) => void} */
@@ -424,65 +448,37 @@ const transfer = async (to, amount, memo, gas) =>
 const depositEvmFunctionCall = async (
   address,
   amount,
-  contractId,
-  wasmPath,
-  gas
-) =>
-  sync()
+  gas,
+  {
+    extraData = new Uint8Array(),
+    minGasLimit = BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
+  } = {}
+) => {
+  const bridgeContractId = getBridgeContractId();
+
+  return sync()
     .then(networkStore.connect)
     .then(async (network) => {
-      network.dataDrivers.register(contractId, () =>
-        fetch(wasmPath).then((r) => r.arrayBuffer())
-      );
-
-      const payloadAmount = Number(amount);
       const profile = unsafeGetCurrentProfile();
       const bookentry = bookkeeper.as(profile);
-      const bridgeContract = bookentry.contract(contractId, network);
-
-      /* eslint-disable camelcase */
-      const payload = {
-        amount: payloadAmount,
-        extra_data: "",
-        fee: 500000,
+      const payload = buildDepositETHToWithValuePayload({
+        amountLux: amount,
+        contractId: bridgeContractId,
+        extraData,
+        minGasLimit,
         to: address,
-      };
-      /* eslint-enable camelcase */
-
-      const builder = await bridgeContract.tx.deposit(payload);
+      });
+      const builder = /** @type {any} */ (bookentry.transfer(0n)).payload(
+        payload
+      );
 
       return await network.execute(
-        builder
-          .to(profile.account)
-          .deposit(BigInt(payloadAmount + payload.fee))
-          .gas(gas)
+        builder.to(profile.account).deposit(BigInt(amount)).gas(gas)
       );
     })
     .then(updateCacheAfterTransaction)
     .then(passThruWithEffects(observeTxRemoval));
-
-/** @type {WalletStoreServices["finalizeWithdrawalEvmFunctionCall"]} */
-const finalizeWithdrawalEvmFunctionCall = async (
-  contractId,
-  withdrawalId,
-  wasmPath
-) =>
-  sync()
-    .then(networkStore.connect)
-    .then(async (network) => {
-      network.dataDrivers.register(contractId, () =>
-        fetch(wasmPath).then((r) => r.arrayBuffer())
-      );
-
-      const profile = unsafeGetCurrentProfile();
-      const bookentry = bookkeeper.as(profile);
-      const contract = bookentry.contract(contractId, network);
-      const builder = await contract.tx.finalize_withdrawal(withdrawalId);
-
-      return await network.execute(builder.to(profile.account));
-    })
-    .then(updateCacheAfterTransaction)
-    .then(passThruWithEffects(observeTxRemoval));
+};
 
 /** @type {WalletStoreServices["unshield"]} */
 const unshield = async (amount, gas) =>
@@ -522,6 +518,74 @@ const useContract = async (contractId, wasmPath) =>
     return contract;
   });
 
+/**
+ * @param {string} contractId
+ * @param {string} wasmPath
+ * @param {string} fnName
+ * @param {unknown} args
+ * @param {Gas | undefined} gas
+ */
+const executeContractFunction = async (
+  contractId,
+  wasmPath,
+  fnName,
+  args,
+  gas
+) =>
+  sync()
+    .then(networkStore.connect)
+    .then(async (network) => {
+      network.dataDrivers.register(contractId, () =>
+        fetch(wasmPath).then((r) => r.arrayBuffer())
+      );
+
+      const profile = unsafeGetCurrentProfile();
+      const contract = bookkeeper.as(profile).contract(contractId, network);
+      const contractFunction = contract.tx?.[fnName];
+
+      if (typeof contractFunction !== "function") {
+        throw new Error(
+          `Contract data-driver for ${contractId} does not expose ${fnName}.`
+        );
+      }
+
+      const builder = await contractFunction.call(contract.tx, args);
+      let tx = builder.to(profile.account);
+
+      if (gas) {
+        tx = tx.gas(gas);
+      }
+
+      return await network.execute(tx);
+    })
+    .then(updateCacheAfterTransaction)
+    .then(passThruWithEffects(observeTxRemoval));
+
+/** @type {WalletStoreServices["finalizeDuskEvmWithdrawal"]} */
+const finalizeDuskEvmWithdrawal = async (
+  contractId,
+  wasmPath,
+  withdrawal,
+  gas
+) =>
+  executeContractFunction(
+    contractId,
+    wasmPath,
+    "finalizeWithdrawalTransaction",
+    withdrawal,
+    gas
+  );
+
+/** @type {WalletStoreServices["proveDuskEvmWithdrawal"]} */
+const proveDuskEvmWithdrawal = async (contractId, wasmPath, args, gas) =>
+  executeContractFunction(
+    contractId,
+    wasmPath,
+    "proveWithdrawalTransaction",
+    args,
+    gas
+  );
+
 /** @type {WalletStore} */
 export default {
   abortSync,
@@ -529,9 +593,11 @@ export default {
   clearLocalData,
   clearLocalDataAndInit,
   depositEvmFunctionCall,
-  finalizeWithdrawalEvmFunctionCall,
+  finalizeDuskEvmWithdrawal,
+  getDuskEvmProofSubmitter,
   getTransactionsHistory,
   init,
+  proveDuskEvmWithdrawal,
   reset,
   setCurrentProfile,
   shield,

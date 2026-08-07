@@ -1,313 +1,473 @@
+<svelte:options immutable={true} />
+
 <script>
-  import { mdiArrowLeft, mdiContain } from "@mdi/js";
+  import { page } from "$app/stores";
   import { onMount } from "svelte";
+  import { mdiArrowLeft } from "@mdi/js";
   import { fade } from "svelte/transition";
 
-  import { goto } from "$lib/navigation";
+  import { AppAnchorButton, Banner } from "$lib/components";
+  import {
+    finalizeWithdrawal,
+    getWithdrawalFinalizationConfig,
+    isWithdrawalTxHash,
+    proveWithdrawal,
+  } from "$lib/bridge/withdrawals";
+  import {
+    hydrateWithdrawalActivity,
+    loadWithdrawalActivity,
+    mergeWithdrawalActivity,
+    recordWithdrawalSubmission,
+    refreshWithdrawalTransaction,
+    rememberWithdrawalTransaction,
+    resumeWithdrawalTracking,
+    trackWithdrawalTransaction,
+    withdrawalActivityStore,
+  } from "$lib/bridge/withdrawalActivity";
+  import { account } from "$lib/web3/walletConnection";
 
-  import { formatBlocksAsTime } from "$lib/bridge/formatBlocksAsTime";
-  import { AppAnchorButton } from "$lib/components";
-  import { Button, Icon, Suspense, Throbber } from "$lib/dusk/components";
-  import { createTransferFormatter, luxToDusk } from "$lib/dusk/currency";
-  import { calculateAdaptiveCharCount, middleEllipsis } from "$lib/dusk/string";
-  import { networkStore, walletStore } from "$lib/stores";
-  import wasmPath from "$lib/vendor/standard_bridge_dd_opt.wasm?url";
+  import WithdrawalActivityList from "./WithdrawalActivityList.svelte";
+  import { shortened } from "./withdrawalPresentation";
+
+  const finalizationConfig = getWithdrawalFinalizationConfig();
+  const POLL_INTERVAL_MS = 30_000;
 
   /** @type {string} */
-  const VITE_BRIDGE_CONTRACT_ID = import.meta.env.VITE_BRIDGE_CONTRACT_ID;
+  let txHash = "";
+
+  /** @type {any[]} */
+  let activity = [];
+
+  /** @type {any[]} */
+  let indexedActivity = [];
+
+  /** @type {any[]} */
+  let rememberedActivity = [];
 
   /** @type {string} */
-  export let language;
+  let statusError = "";
 
-  /** @type {Promise<PendingWithdrawalEntry[]>} */
-  export let items = Promise.resolve(
-    /** @type {PendingWithdrawalEntry[]} */ ([])
-  );
+  /** @type {string} */
+  let activityError = "";
+
+  /** @type {string} */
+  let hashError = "";
+
+  /** @type {Date | null} */
+  let lastCheckedAt = null;
 
   /** @type {number} */
-  let screenWidth = window.innerWidth;
+  let activityLoadedAt = 0;
+
+  /** @type {boolean} */
+  let isChecking = false;
+
+  /** @type {boolean} */
+  let isActivityLoading = false;
+
+  /** @type {boolean} */
+  let isSubmitting = false;
+
+  /** @type {string | null | undefined} */
+  let observedAccount;
+
+  /** @type {string | null} */
+  let currentAccount = null;
+
+  /** @type {string | null} */
+  let selectedTransactionHash = null;
+
+  /** @type {any} */
+  let selectedActivity = null;
+
+  /** @type {any} */
+  let selectedWithdrawal = null;
+
+  /** @type {boolean} */
+  let canCheck = false;
 
   /** @type {number} */
-  let ellipsisChars = calculateAdaptiveCharCount(screenWidth, 320, 640, 5, 20);
+  let activityRequest = 0;
 
-  /** @type {(n: bigint|number) => string} */
-  let transferFormatter;
+  /** @type {number} */
+  let statusRequest = 0;
 
-  /** @type {Intl.NumberFormat} */
-  let numberFormatter;
-
-  /** @type {{ height: bigint; period: bigint } | null} */
-  let chainInfo = null;
-
-  async function loadChainInfo() {
-    const [height, periodNum] =
-      await getCurrentBlockHeightAndFinalizationPeriod();
-    chainInfo = { height, period: BigInt(periodNum) };
+  /**
+   * @param {unknown} error
+   */
+  function getErrorMessage(error) {
+    return error instanceof Error ? error.message : String(error);
   }
 
   /**
-   * @param {number} txHeight
-   * @returns {bigint} remaining blocks (>= 0n)
+   * @returns {`0x${string}`}
    */
-  function remainingBlocks(txHeight) {
-    if (!chainInfo) return 0n;
+  function checkedStatusTxHash() {
+    if (!isWithdrawalTxHash(selectedWithdrawal?.transactionHash)) {
+      throw new Error("Check the withdrawal status before continuing.");
+    }
 
-    const height = BigInt(txHeight);
-    const remaining = height + chainInfo.period - chainInfo.height;
-
-    return remaining > 0n ? remaining : 0n;
+    return selectedWithdrawal.transactionHash;
   }
 
-  /**
-   * @return {Promise<number>}
-   */
-  async function getFinalizationPeriod() {
-    const contract = await walletStore.useContract(
-      VITE_BRIDGE_CONTRACT_ID,
-      wasmPath
+  function rebuildActivity() {
+    const remembered = rememberedActivity.filter(
+      (item) =>
+        item.account === null ||
+        (currentAccount !== null && item.account === currentAccount)
     );
-    return await contract.call.finalization_period();
+    activity = mergeWithdrawalActivity(remembered, indexedActivity);
   }
 
   /**
-   * @return {Promise<bigint>}
+   * @param {{ error: string | null, items: any[] }} result
    */
-  async function getCurrentBlockHeight() {
-    return await networkStore.getCurrentBlockHeight();
+  function applyActivityResult(result) {
+    indexedActivity = result.items;
+    activityError = result.error ?? "";
+    activityLoadedAt = Date.now();
+    rebuildActivity();
+
+    for (const item of result.items) {
+      const remembered = rememberWithdrawalTransaction(item.transactionHash, {
+        account: item.account,
+        amountWei: item.amountWei,
+        createdAt: item.createdAt,
+      });
+
+      if (remembered && item.stage !== "finalized") {
+        void trackWithdrawalTransaction(remembered.transactionHash);
+      }
+    }
+  }
+
+  async function refreshActivity() {
+    const request = ++activityRequest;
+    const requestedAccount = currentAccount;
+    isActivityLoading = true;
+
+    try {
+      const result = await loadWithdrawalActivity(requestedAccount);
+
+      if (request !== activityRequest || requestedAccount !== currentAccount) {
+        return;
+      }
+
+      applyActivityResult(result);
+    } finally {
+      if (request === activityRequest) {
+        isActivityLoading = false;
+      }
+    }
   }
 
   /**
-   * @return {Promise<[bigint, number]>}
+   * @param {string} value
+   * @param {boolean} reportValidation
+   * @returns {`0x${string}` | null}
    */
-  async function getCurrentBlockHeightAndFinalizationPeriod() {
-    return await Promise.all([
-      getCurrentBlockHeight(),
-      getFinalizationPeriod(),
-    ]);
+  function validatedStatusHash(value, reportValidation) {
+    const normalized = value.trim();
+
+    if (!isWithdrawalTxHash(normalized)) {
+      if (reportValidation) {
+        hashError = "Enter a 0x-prefixed 32-byte transaction hash.";
+        statusError = "";
+      }
+
+      return null;
+    }
+
+    if (reportValidation) {
+      txHash = normalized;
+      hashError = "";
+    }
+
+    statusError = "";
+
+    return /** @type {`0x${string}`} */ (normalized);
+  }
+
+  /**
+   * @param {`0x${string}`} hash
+   */
+  function rememberCheckedTransaction(hash) {
+    const remembered = rememberWithdrawalTransaction(hash, {
+      account: currentAccount,
+    });
+
+    if (remembered) {
+      selectedTransactionHash = remembered.transactionHash;
+    }
+
+    return remembered;
+  }
+
+  function finalizationIsConfigured() {
+    if (!finalizationConfig.configured) {
+      statusError = "Withdrawal finalization is not configured.";
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * @param {string} [hash]
+   * @param {boolean} [reportValidation]
+   */
+  async function checkStatus(hash = txHash, reportValidation = true) {
+    const checkedHash = validatedStatusHash(hash, reportValidation);
+
+    if (!checkedHash) return;
+
+    const remembered = rememberCheckedTransaction(checkedHash);
+
+    if (!remembered || !finalizationIsConfigured()) return;
+
+    const request = ++statusRequest;
+    isChecking = true;
+
+    try {
+      const updated = await refreshWithdrawalTransaction(checkedHash);
+      void trackWithdrawalTransaction(checkedHash);
+
+      if (
+        request === statusRequest &&
+        selectedTransactionHash === checkedHash
+      ) {
+        statusError = updated?.actionError ?? "";
+      }
+    } catch (error) {
+      if (request === statusRequest) {
+        statusError = getErrorMessage(error);
+      }
+    } finally {
+      if (request === statusRequest) {
+        isChecking = false;
+      }
+    }
+  }
+
+  /**
+   * @param {any} item
+   */
+  async function selectActivity(item) {
+    if (selectedTransactionHash === item.transactionHash) {
+      statusRequest += 1;
+      selectedTransactionHash = null;
+      statusError = "";
+      isChecking = false;
+      return;
+    }
+
+    selectedTransactionHash = item.transactionHash;
+    txHash = item.transactionHash;
+    hashError = "";
+    statusError = "";
+
+    await checkStatus(item.transactionHash, false);
+  }
+
+  /**
+   * @param {(hash: `0x${string}`) => Promise<string>} action
+   * @param {"finalize" | "prove"} actionName
+   */
+  async function submitWithdrawalAction(action, actionName) {
+    isSubmitting = true;
+    statusError = "";
+
+    try {
+      const checkedHash = checkedStatusTxHash();
+      const submittedHash = await action(checkedHash);
+      recordWithdrawalSubmission(checkedHash, {
+        action: actionName,
+        hash: submittedHash,
+      });
+    } catch (error) {
+      statusError = getErrorMessage(error);
+    } finally {
+      isSubmitting = false;
+    }
+  }
+
+  function submitProof() {
+    return submitWithdrawalAction(proveWithdrawal, "prove");
+  }
+
+  function submitFinalization() {
+    return submitWithdrawalAction(finalizeWithdrawal, "finalize");
   }
 
   onMount(() => {
-    loadChainInfo();
+    rememberedActivity = hydrateWithdrawalActivity();
+    rebuildActivity();
 
-    function onResize() {
-      screenWidth = window.innerWidth;
+    const unsubscribeActivity = withdrawalActivityStore.subscribe((items) => {
+      rememberedActivity = items;
+      rebuildActivity();
+    });
+    const unsubscribe = account.subscribe((value) => {
+      currentAccount = value.address?.toLowerCase() ?? null;
+
+      if (observedAccount !== currentAccount) {
+        observedAccount = currentAccount;
+        statusRequest += 1;
+        isChecking = false;
+        selectedTransactionHash = null;
+        txHash = "";
+        indexedActivity = [];
+        rebuildActivity();
+        resumeWithdrawalTracking(currentAccount);
+        void refreshActivity();
+      }
+    });
+
+    const queryHash = $page.url.searchParams.get("tx");
+
+    if (queryHash) {
+      txHash = queryHash;
+      const remembered = isWithdrawalTxHash(queryHash)
+        ? rememberWithdrawalTransaction(
+            /** @type {`0x${string}`} */ (queryHash),
+            { account: currentAccount }
+          )
+        : null;
+
+      if (remembered) {
+        selectedTransactionHash = remembered.transactionHash;
+      }
+
+      void checkStatus();
     }
 
-    window.addEventListener("resize", onResize);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") {
+        void refreshActivity();
+      }
+    }, POLL_INTERVAL_MS);
 
     return () => {
-      window.removeEventListener("resize", onResize);
+      unsubscribe();
+      unsubscribeActivity();
+      window.clearInterval(timer);
     };
   });
 
-  $: ({ currentProfile } = $walletStore);
-  $: ellipsisChars = calculateAdaptiveCharCount(screenWidth, 320, 640, 5, 20);
-  $: transferFormatter = createTransferFormatter(language);
-  $: numberFormatter = new Intl.NumberFormat(language);
-  $: currentProfileAccountAddress = currentProfile
-    ? currentProfile.account.toString()
-    : "";
+  $: selectedActivity =
+    activity.find((item) => item.transactionHash === selectedTransactionHash) ??
+    null;
+  $: selectedWithdrawal = selectedActivity;
+  $: {
+    const latestCheck = Math.max(
+      activityLoadedAt,
+      ...activity.map((item) => item.lastCheckedAt ?? 0)
+    );
+    lastCheckedAt = latestCheck > 0 ? new Date(latestCheck) : null;
+  }
+  $: canCheck = finalizationConfig.configured && !isChecking && !isSubmitting;
 </script>
 
 <article in:fade|global class="transactions">
   <header class="transactions__header">
-    <h3 class="h4">Pending Withdrawals</h3>
-    <AppAnchorButton
-      className="transactions__footer-button"
-      href="/dashboard/bridge"
-      text="Back"
-      variant="tertiary"
-      icon={{ path: mdiArrowLeft }}
-    />
-  </header>
-  <Suspense
-    className="transactions-list__container"
-    errorMessage="Error getting transactions"
-    errorVariant="details"
-    waitFor={items}
-  >
-    <svelte:fragment slot="pending-content">
-      <div class="transactions-list__loading-container">
-        <Throbber />
-      </div>
-    </svelte:fragment>
-    <svelte:fragment slot="success-content" let:result={transactions}>
-      {@const userTransactions =
-        currentProfileAccountAddress && Array.isArray(transactions)
-          ? transactions.filter(
-              ([, tx]) => tx?.to?.External === currentProfileAccountAddress
-            )
-          : []}
-
-      {#if userTransactions.length}
-        {#each userTransactions as [txId, tx] (txId)}
-          {@const amount = BigInt(tx.amount)}
-          <dl class="transactions-list">
-            <dt class="transactions-list__term">Block</dt>
-            <dd class="transactions-list__datum">
-              {numberFormatter.format(tx.block_height)}
-            </dd>
-            <dt class="transactions-list__term">Amount</dt>
-            <dd class="transactions-list__datum">
-              {transferFormatter(luxToDusk(amount))}
-              <span class="transactions-list__ticker">Dusk</span>
-            </dd>
-            <dt class="transactions-list__term">From</dt>
-            <dd class="transactions-list__datum">
-              {middleEllipsis(tx.from, ellipsisChars)}
-            </dd>
-            {#if chainInfo}
-              {#if chainInfo.height >= BigInt(tx.block_height) + chainInfo.period}
-                <dt class="transactions-list__term">Status</dt>
-                <dd class="transactions-list__datum">
-                  <Button
-                    text="Finalize now"
-                    on:click={async () => {
-                      try {
-                        const res =
-                          await walletStore.finalizeWithdrawalEvmFunctionCall(
-                            VITE_BRIDGE_CONTRACT_ID,
-                            txId,
-                            wasmPath
-                          );
-                        const hash = res.hash;
-                        await goto("/dashboard/bridge/transactions/complete", {
-                          replaceState: true,
-                          state: {
-                            hash,
-                          },
-                        });
-                      } catch (e) {
-                        // eslint-disable-next-line no-console
-                        console.error("Finalize failed", e);
-                      }
-                    }}
-                  />
-                </dd>
-              {:else}
-                {@const remBlocks = remainingBlocks(tx.block_height)}
-                <dt class="transactions-list__term">Status</dt>
-                <dd class="transactions-list__datum">
-                  Finalization possible in {numberFormatter.format(remBlocks)} blocks
-                  ({formatBlocksAsTime(remBlocks, language)} at ~10s/block)
-                </dd>
-              {/if}
-            {:else}
-              <dt class="transactions-list__term">Status</dt>
-              <dd class="transactions-list__datum"><Throbber /></dd>
-            {/if}
-          </dl>
-        {/each}
-      {:else}
-        <div class="transactions-list__empty">
-          <Icon path={mdiContain} size="large" />
-          <p>
-            You have no pending withdrawals. If you have just made a withdrawal,
-            it can take up to 10 minutes to appear here (depending on network
-            usage).
-          </p>
-        </div>
+    <div>
+      <h3 class="h4">Withdrawal activity</h3>
+      {#if currentAccount}
+        <p>{shortened(currentAccount)}</p>
       {/if}
-    </svelte:fragment>
-  </Suspense>
+    </div>
+    <div class="transactions__header-actions">
+      <AppAnchorButton
+        href="/dashboard/bridge"
+        text="Back"
+        variant="tertiary"
+        icon={{ path: mdiArrowLeft }}
+      />
+    </div>
+  </header>
+
+  {#if !finalizationConfig.configured}
+    <div class="transactions__notice">
+      <Banner title="Finalization not configured" variant="warning">
+        <p>Missing {finalizationConfig.missing.join(", ")}.</p>
+      </Banner>
+    </div>
+  {/if}
+
+  <div class="transactions__body">
+    <WithdrawalActivityList
+      {activity}
+      {activityError}
+      {canCheck}
+      {currentAccount}
+      {isActivityLoading}
+      {isChecking}
+      {isSubmitting}
+      {lastCheckedAt}
+      {selectedWithdrawal}
+      {statusError}
+      submittedHash={selectedWithdrawal?.pendingTransactionHash ?? ""}
+      {selectedTransactionHash}
+      bind:hashError
+      bind:txHash
+      on:check={(event) => checkStatus(event.detail)}
+      on:finalize={submitFinalization}
+      on:prove={submitProof}
+      on:select={(event) => selectActivity(event.detail)}
+    />
+  </div>
 </article>
 
 <style lang="postcss">
   .transactions {
-    border-radius: 1.25em;
     background: var(--surface-color);
+    border-radius: 1.25em;
     display: flex;
     flex-direction: column;
-    gap: var(--default-gap);
-    padding-top: 1.375em;
+    overflow: hidden;
 
     &__header {
-      display: flex;
-      flex-direction: row;
       align-items: center;
-      justify-content: space-between;
-      padding: 0 1rem;
-      gap: 0.625rem;
+      display: flex;
       flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: space-between;
+      padding: 1.25rem;
 
-      & :global(h3) {
-        line-height: 150%;
+      & h3,
+      & p {
+        margin: 0;
       }
+
+      & p {
+        color: var(--secondary-text-color);
+        font-family: var(--mono-font-family);
+        font-size: 0.8125rem;
+        margin-top: 0.25rem;
+      }
+    }
+
+    &__header-actions {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    &__notice {
+      padding: 0 1.25rem 1.25rem;
+    }
+
+    &__body {
+      border-top: 1px solid var(--surface-border-color-subtle);
+      min-height: 32rem;
     }
   }
 
-  :global {
-    .transactions-list {
-      display: grid;
-      grid-template-columns: max-content 1fr;
-      width: 100%;
-
-      &__term {
-        background-color: var(--background-color-alt);
-        grid-column: 1;
-        line-height: 130%;
-        text-transform: capitalize;
-        padding: 0.3125em 0.625em 0.3125em 1.375em;
-      }
-
-      &__ticker {
-        text-transform: uppercase;
-      }
-
-      &__loading-container {
-        margin: 1.25em 0;
-      }
-
-      &__datum {
-        grid-column: 2;
-        line-height: 150%;
-        padding: 0.312em 0.625em;
-        display: flex;
-        align-items: center;
-        gap: 0.625em;
-        font-family: var(--mono-font-family);
-        overflow: hidden;
-
-        & samp {
-          display: block;
-          white-space: nowrap;
-          overflow: hidden;
-        }
-
-        &--hash {
-          justify-content: center;
-        }
-      }
-
-      &__empty {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.5em;
-        margin: 1.25em 0;
-      }
-
-      &__badge {
-        flex: 1;
-      }
-
-      & dt:first-of-type,
-      & dd:first-of-type {
-        padding-top: 1em;
-      }
-
-      & dt:last-of-type,
-      & dd:last-of-type {
-        padding-bottom: 1em;
-      }
-
-      & dt:first-of-type {
-        border-top-right-radius: 2em;
-      }
-
-      & dt:last-of-type {
-        border-bottom-right-radius: 2em;
-      }
+  @media (max-width: 30rem) {
+    .transactions__header {
+      padding-left: 1rem;
+      padding-right: 1rem;
     }
   }
 </style>

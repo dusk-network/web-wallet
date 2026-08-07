@@ -11,6 +11,7 @@ import { get } from "svelte/store";
 import { Bookkeeper, Gas, Network, ProfileGenerator } from "@dusk/w3sper";
 
 import { stakeInfo } from "$lib/mock-data";
+import { buildDepositETHToWithValuePayload } from "$lib/bridge/deposit";
 
 import WalletTreasury from "$lib/wallet-treasury";
 import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
@@ -547,6 +548,7 @@ describe("Wallet store", async () => {
     });
 
     afterEach(async () => {
+      vi.unstubAllEnvs();
       executeSpy.mockClear();
       updateNonceSpy.mockClear();
       updateCachedPendingNotesSpy.mockClear();
@@ -596,6 +598,71 @@ describe("Wallet store", async () => {
 
     it("should expose a method to unstake the staked amount", async () => {
       await walletStoreTransferCheck("unstake", [amount, gas]);
+    });
+
+    it("should deposit through the configured DuskEVM bridge function", async () => {
+      vi.useRealTimers();
+
+      const address = "0x1111111111111111111111111111111111111111";
+      const bridgeContractId =
+        "76648ce7bb9b2ef3ed6ad542a2f7371550beb07f9b811a22a22c78876623ad63";
+      const extraData = Uint8Array.of(
+        0x01,
+        0x01,
+        ...Array.from({ length: 32 }, (_, index) => index),
+        0xde,
+        0xad
+      );
+      const minGasLimit = 150_000;
+      const currentlyCachedBalance =
+        await new WalletTreasury().getCachedBalance(defaultProfile);
+      const newNonce = currentlyCachedBalance.unshielded.nonce + 1n;
+
+      executeSpy.mockResolvedValueOnce({
+        buffer: new Uint8Array(),
+        hash: phoenixTxResult.hash,
+        nonce: newNonce,
+      });
+
+      vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridgeContractId);
+
+      await walletStore.depositEvmFunctionCall(address, amount, gas, {
+        extraData,
+        minGasLimit,
+      });
+
+      expect(executeSpy).toHaveBeenCalledTimes(1);
+      expect(executeSpy.mock.calls[0][0].attributes).toStrictEqual({
+        amount: 0n,
+        deposit: amount,
+        gas,
+        payload: buildDepositETHToWithValuePayload({
+          amountLux: amount,
+          contractId: bridgeContractId,
+          extraData,
+          minGasLimit,
+          to: address,
+        }),
+        to: defaultProfile.account.toString(),
+      });
+      expect(updateNonceSpy).toHaveBeenCalledWith(defaultProfile, newNonce);
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should reject DuskEVM bridge deposits when the bridge contract is not configured", async () => {
+      vi.useRealTimers();
+      vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", "");
+
+      await expect(
+        walletStore.depositEvmFunctionCall(
+          "0x1111111111111111111111111111111111111111",
+          amount,
+          gas
+        )
+      ).rejects.toThrow("DuskEVM bridge contract id is not configured.");
+
+      expect(executeSpy).not.toHaveBeenCalled();
+      expect(treasuryUpdateSpy).not.toHaveBeenCalled();
     });
 
     /* eslint-enable vitest/expect-expect */

@@ -1,13 +1,15 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { browser } from "$app/environment";
+  import { onMount } from "svelte";
   import { fade } from "svelte/transition";
-  import { mdiArrowUpBoldBoxOutline, mdiHistory } from "@mdi/js";
+  import { mdiArrowUpBoldBoxOutline, mdiListStatus } from "@mdi/js";
+  import { DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT } from "@dusk/evm-sdk";
   import { parseUnits } from "viem";
-  import { switchChain, writeContract } from "@wagmi/core";
+  import { sendTransaction, switchChain } from "@wagmi/core";
   import { getKey } from "lamb";
   import { Gas } from "@dusk/w3sper";
-  import { bytesToHexString } from "@duskit/encoding";
 
   import {
     AnchorButton,
@@ -20,42 +22,39 @@
     WizardStep,
   } from "$lib/dusk/components";
   import {
-    AppAnchor,
     AppAnchorButton,
     Banner,
+    DepositResult,
     GasFee,
     GasSettings,
     OperationResult,
   } from "$lib/components";
   import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
-  import bridgeABI from "$lib/web3/abi/bridgeABI.json";
   import { logo } from "$lib/dusk/icons";
-  import { formatBlocksAsTime } from "$lib/bridge/formatBlocksAsTime";
-  import { countPendingWithdrawalsFor } from "$lib/bridge/pendingWithdrawals";
+  import { BRIDGE_DEPOSIT_MIN_GAS_LIMIT } from "$lib/bridge/deposit";
+  import {
+    depositActivityStore,
+    pendingDepositAmountLux,
+    rememberDepositTransaction,
+    resumeDepositTracking,
+    trackDepositTransaction,
+  } from "$lib/bridge/depositActivity";
+  import {
+    rememberWithdrawalTransaction,
+    resumeWithdrawalTracking,
+    trackWithdrawalTransaction,
+  } from "$lib/bridge/withdrawalActivity";
+  import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
   import { MESSAGES } from "$lib/constants";
   import { luxToDusk } from "$lib/dusk/currency";
-  import {
-    createNumberFormatter,
-    getDecimalSeparator,
-    slashDecimals,
-  } from "$lib/dusk/number";
+  import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
   import { cleanNumberString } from "$lib/dusk/string";
   import { areValidGasSettings } from "$lib/contracts";
-  import { settingsStore, walletStore } from "$lib/stores";
-  import wasmPath from "$lib/vendor/standard_bridge_dd_opt.wasm?url";
-
-  /** @type {string} */
-  const VITE_BRIDGE_CONTRACT_ID = import.meta.env.VITE_BRIDGE_CONTRACT_ID;
+  import { walletStore } from "$lib/stores";
 
   /** @type {`0x${string}`} */
   const VITE_EVM_BRIDGE_CONTRACT_ADDRESS = import.meta.env
     .VITE_EVM_BRIDGE_CONTRACT_ADDRESS;
-
-  /**
-   * The value needs to be passed but is ignored by the EVM, therefore we're setting it to zero.
-   * @type {number}
-   */
-  const EVM_MINIMUM_GAS_LIMIT = 0;
 
   /**
    * DuskEVM uses duskEvm.nativeCurrency.decimals (currently 18). DuskDS uses 9 decimals (Lux).
@@ -64,6 +63,8 @@
    */
   const EVM_TO_LUX_SCALE_FACTOR =
     10n ** BigInt(duskEvm.nativeCurrency.decimals - 9);
+  const LAST_WITHDRAWAL_TX_HASH_KEY = "dusk-evm:last-withdrawal-tx-hash";
+  const WITHDRAWAL_TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
   /** @type {(amount: bigint|number) => string} */
   export let formatter;
@@ -77,48 +78,14 @@
   /** @type {string} */
   export let unshieldedAddress;
 
+  /** @type {unknown} */
+  export let unshieldedAccount;
+
   /** @type {bigint} */
   export let unshieldedBalance;
 
   /** @type {import('@wagmi/core').GetBalanceReturnType | undefined} */
   export let evmDuskBalance;
-
-  /** @type {Promise<PendingWithdrawalEntry[]>} */
-  export let pendingWithdrawals = Promise.resolve([]);
-
-  /** @type {string} */
-  let language = "en";
-
-  /** @type {(n: number | bigint) => string} */
-  let blocksFormatter = (n) => `${n}`;
-
-  /** @type {bigint | null} */
-  let finalizationPeriodBlocks = null;
-
-  /** @type {boolean} */
-  let isFinalizationPeriodLoading = false;
-
-  async function loadFinalizationPeriod() {
-    if (finalizationPeriodBlocks !== null || isFinalizationPeriodLoading) {
-      return;
-    }
-
-    isFinalizationPeriodLoading = true;
-
-    try {
-      const contract = await walletStore.useContract(
-        VITE_BRIDGE_CONTRACT_ID,
-        wasmPath
-      );
-      const period = await contract.call.finalization_period();
-      finalizationPeriodBlocks =
-        typeof period === "bigint" ? period : BigInt(period);
-    } catch {
-      finalizationPeriodBlocks = null;
-    } finally {
-      isFinalizationPeriodLoading = false;
-    }
-  }
 
   /** @type {string} */
   let destinationNetwork = "";
@@ -126,11 +93,17 @@
   /** @type {string} */
   let amount = "";
 
+  /** @type {string} */
+  let lastWithdrawalTxHash = "";
+
   /** @type {bigint} */
   let amountLux = 0n;
 
   /** @type {bigint} */
   let amountWei = 0n;
+
+  /** @type {bigint} */
+  let incomingDepositLux = 0n;
 
   /** @type {boolean} */
   let isGasValid = true;
@@ -138,64 +111,111 @@
   /** @type {ContractGasSettings} */
   let { gasLimit, gasPrice } = gasSettings;
 
+  async function submitNativeWithdrawal() {
+    if (!unshieldedAccount) {
+      throw new Error("Dusk account is not available.");
+    }
+
+    if (!$account.address) {
+      throw new Error("DuskEVM account is not available.");
+    }
+
+    const withdrawal = prepareNativeDuskWithdrawalCall({
+      accountPublicKey: unshieldedAccount,
+      amountWei,
+      bridgeAddress: VITE_EVM_BRIDGE_CONTRACT_ADDRESS,
+      evmRecipient: $account.address,
+      minGasLimit: DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT,
+    });
+
+    await switchChain(wagmiConfig, { chainId: duskEvm.id });
+
+    const hash = await sendTransaction(wagmiConfig, {
+      chainId: duskEvm.id,
+      data: withdrawal.data,
+      to: withdrawal.to,
+      value: withdrawal.value,
+    });
+
+    rememberWithdrawalTxHash(hash);
+    return hash;
+  }
+
+  async function submitNativeDeposit() {
+    if (!$account.address) {
+      throw new Error("Account address is not available.");
+    }
+
+    const response = await walletStore.depositEvmFunctionCall(
+      $account.address,
+      amountLux,
+      new Gas({ limit: gasLimit, price: gasPrice }),
+      { minGasLimit: BRIDGE_DEPOSIT_MIN_GAS_LIMIT }
+    );
+    const hash = getKey("hash")(response);
+
+    if (typeof hash !== "string") {
+      throw new Error("The DuskDS transaction did not return a hash.");
+    }
+
+    const remembered = rememberDepositTransaction(hash, {
+      account: $account.address,
+      amountLux,
+      amountWei,
+    });
+
+    if (!remembered) {
+      throw new Error("The DuskDS transaction returned an invalid hash.");
+    }
+
+    void trackDepositTransaction(remembered.transactionHash);
+    return remembered.transactionHash;
+  }
+
   /**
    * Determines the direction of the transaction as either a withdrawal or deposit,
    * makes the appropriate contract call and returns the transaction hash.
    *
-   * @return {Promise<string | undefined>} hash
+   * @return {Promise<string>} hash
    */
   async function bridge() {
-    let hash;
-
     if (originNetwork === "duskEvm" && destinationNetwork === "duskDs") {
-      // Withdraw...
+      return await submitNativeWithdrawal();
+    }
 
-      /** @type {[number,string] | []} */
-      let args = [];
+    if (originNetwork === "duskDs" && destinationNetwork === "duskEvm") {
+      return await submitNativeDeposit();
+    }
 
-      await walletStore
-        .useContract(VITE_BRIDGE_CONTRACT_ID, wasmPath)
-        .then(async (contract) => {
-          const encodedExtraData = await contract.encode(
-            "extra_data",
-            unshieldedAddress
-          );
-          args = [
-            EVM_MINIMUM_GAS_LIMIT,
-            `0x${bytesToHexString(encodedExtraData)}`,
-          ];
-        });
+    throw new Error("Invalid bridge operation.");
+  }
 
-      await switchChain(wagmiConfig, { chainId: duskEvm.id });
+  /**
+   * @param {string | undefined} hash
+   */
+  function withdrawalStatusHref(hash = lastWithdrawalTxHash) {
+    return WITHDRAWAL_TX_HASH_PATTERN.test(hash)
+      ? `/dashboard/bridge/transactions?tx=${hash}`
+      : "/dashboard/bridge/transactions";
+  }
 
-      hash = await writeContract(wagmiConfig, {
-        abi: bridgeABI,
-        address: VITE_EVM_BRIDGE_CONTRACT_ADDRESS,
-        args,
-        chainId: duskEvm.id,
-        functionName: "bridgeETH",
-        value: amountWei,
-      });
-    } else if (originNetwork === "duskDs" && destinationNetwork === "duskEvm") {
-      // Deposit...
+  /**
+   * @param {string | undefined} hash
+   */
+  function rememberWithdrawalTxHash(hash) {
+    if (!browser || !WITHDRAWAL_TX_HASH_PATTERN.test(hash ?? "")) {
+      return hash;
+    }
 
-      const gas = new Gas({ limit: gasLimit, price: gasPrice });
+    lastWithdrawalTxHash = /** @type {string} */ (hash);
+    localStorage.setItem(LAST_WITHDRAWAL_TX_HASH_KEY, lastWithdrawalTxHash);
+    const remembered = rememberWithdrawalTransaction(
+      /** @type {`0x${string}`} */ (lastWithdrawalTxHash),
+      { account: $account.address, amountWei }
+    );
 
-      if (!$account.address) {
-        throw new Error("Account address is not available.");
-      }
-
-      const response = await walletStore.depositEvmFunctionCall(
-        $account.address,
-        amountLux,
-        VITE_BRIDGE_CONTRACT_ID,
-        wasmPath,
-        gas
-      );
-
-      hash = getKey("hash")(response);
-    } else {
-      throw new Error("Invalid bridge operation.");
+    if (remembered) {
+      void trackWithdrawalTransaction(remembered.transactionHash);
     }
 
     return hash;
@@ -226,9 +246,10 @@
     originNetwork === "duskDs" && destinationNetwork === "duskEvm";
   $: isWithdrawing =
     originNetwork === "duskEvm" && destinationNetwork === "duskDs";
-  $: if (isWithdrawing) {
-    loadFinalizationPeriod();
-  }
+  $: incomingDepositLux = pendingDepositAmountLux(
+    $account.address,
+    $depositActivityStore
+  );
   $: {
     // viem expects a dot as decimal separator.
     // We also guard against incomplete inputs like "1." or ",5".
@@ -258,33 +279,29 @@
     amountLux === 0n || (isDepositing && !isGasValid) || !isBalanceSufficient;
   $: isGasValid = areValidGasSettings(gasPrice, gasLimit);
   $: ({ address } = $account);
-  $: ({ language } = $settingsStore);
-  $: blocksFormatter = createNumberFormatter(language, 0);
+
+  onMount(() => {
+    lastWithdrawalTxHash =
+      localStorage.getItem(LAST_WITHDRAWAL_TX_HASH_KEY) ?? "";
+
+    const unsubscribeAccount = account.subscribe((value) => {
+      resumeDepositTracking(value.address);
+      resumeWithdrawalTracking(value.address);
+    });
+
+    return unsubscribeAccount;
+  });
 </script>
 
 <article class="bridge">
   <header class="bridge__header">
     <h3 class="h4">Bridge</h3>
-    <div class="bridge__header-icons">
-      <AppAnchor
-        href="/dashboard/bridge/transactions"
-        className="bridge__transactions-link"
-        aria-label="Pending withdrawals"
-      >
-        <Icon path={mdiHistory} />
-        {#await pendingWithdrawals then withdrawals}
-          {@const pendingCount = countPendingWithdrawalsFor(
-            unshieldedAddress,
-            withdrawals
-          )}
-          {#if pendingCount > 0}
-            <span class="bridge__transactions-indicator" aria-hidden="true">
-              {pendingCount > 9 ? "9+" : pendingCount}
-            </span>
-          {/if}
-        {/await}
-      </AppAnchor>
-    </div>
+    <AppAnchorButton
+      href={withdrawalStatusHref()}
+      text="Activity"
+      variant="tertiary"
+      icon={{ path: mdiListStatus }}
+    />
   </header>
 
   <aside class="bridge__balances">
@@ -299,6 +316,11 @@
           {formatter(luxToDusk(evmDuskBalance.value / EVM_TO_LUX_SCALE_FACTOR))}
         {:else}
           <Throbber size={16} />
+        {/if}
+        {#if incomingDepositLux > 0n}
+          <small>
+            + {formatter(luxToDusk(incomingDepositLux))} incoming
+          </small>
         {/if}
       </dd>
     </dl>
@@ -461,53 +483,33 @@
         </div>
       </WizardStep>
       <WizardStep step={2} {key} showNavigation={false}>
-        <OperationResult
-          errorMessage="Bridging failed"
-          operation={bridge()}
-          pendingMessage="Processing transaction"
-          successMessage={isDepositing
-            ? "Deposit submitted"
-            : "Withdrawal request submitted"}
-        >
-          <svelte:fragment slot="success-content" let:result={hash}>
-            {#if isDepositing}
-              <p>{MESSAGES.TRANSACTION_CREATED}</p>
-            {:else}
+        {#if isDepositing}
+          <DepositResult operation={bridge()} />
+        {:else}
+          <OperationResult
+            errorMessage="Bridging failed"
+            operation={bridge()}
+            pendingMessage="Processing transaction"
+            successMessage="Withdrawal request submitted"
+          >
+            <svelte:fragment slot="success-content" let:result={hash}>
               <p>{MESSAGES.TRANSACTION_PENDING}</p>
-
-              {#if isFinalizationPeriodLoading}
-                <p class="bridge__finalization-hint">
-                  <Throbber size={16} /> Fetching finalization period…
-                </p>
-              {:else if finalizationPeriodBlocks !== null}
-                <p class="bridge__finalization-hint">
-                  Finalization period:
-                  {blocksFormatter(finalizationPeriodBlocks)} blocks ({formatBlocksAsTime(
-                    finalizationPeriodBlocks,
-                    language
-                  )} at ~10s/block). You can finalize your withdrawal once the period
-                  has passed.
-                </p>
+              {#if hash}
+                <AnchorButton
+                  href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}
+                  text="VIEW ON BLOCK EXPLORER"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                />
+                <AppAnchorButton
+                  href={withdrawalStatusHref(hash)}
+                  text="TRACK WITHDRAWAL"
+                  variant="tertiary"
+                />
               {/if}
-
-              <AppAnchorButton
-                href="/dashboard/bridge/transactions"
-                text="PENDING WITHDRAWALS"
-                variant="primary"
-              />
-            {/if}
-            {#if hash}
-              <AnchorButton
-                href={isDepositing
-                  ? `/explorer/transactions/transaction?id=${hash}`
-                  : `${duskEvm.blockExplorers.default.url}/tx/${hash}`}
-                text="VIEW ON BLOCK EXPLORER"
-                rel="noopener noreferrer"
-                target="_blank"
-              />
-            {/if}
-          </svelte:fragment>
-        </OperationResult>
+            </svelte:fragment>
+          </OperationResult>
+        {/if}
       </WizardStep>
     </Wizard>
   </div>
@@ -523,58 +525,11 @@
     padding: 1.25em;
 
     &__header {
+      align-items: center;
       display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
       justify-content: space-between;
-    }
-
-    &__header-icons {
-      display: flex;
-      align-items: center;
-      gap: 0.675em;
-    }
-
-    :global(&__transactions-link) {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    :global(&__transactions-link .dusk-icon) {
-      /* Make the transaction history icon a little bit bigger */
-      --icon-size: 1.8rem;
-    }
-
-    &__transactions-indicator {
-      position: absolute;
-      top: -0.45em;
-      right: -0.45em;
-
-      min-width: 1.4em;
-      height: 1.4em;
-      padding: 0 0.4em;
-
-      border-radius: 999px;
-      background: var(--error-color);
-      color: var(--on-error-color);
-
-      font-size: 0.75em;
-      font-weight: 500;
-      line-height: 1.4em;
-
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-
-      border: 2px solid var(--surface-color);
-      box-sizing: border-box;
-      pointer-events: none;
-    }
-
-    &__finalization-hint {
-      opacity: 0.9;
-      line-height: 1.4;
-      margin-top: 0.75em;
     }
 
     &__balances {
@@ -604,9 +559,18 @@
     }
 
     &__balance {
+      align-items: flex-end;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
       margin: 0;
       overflow-wrap: anywhere;
       text-align: right;
+
+      & small {
+        color: var(--secondary-text-color);
+        font-size: 0.75rem;
+      }
     }
   }
 

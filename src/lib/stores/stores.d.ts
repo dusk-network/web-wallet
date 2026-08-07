@@ -50,6 +50,7 @@ type NetworkStoreServices = {
   getAddressSyncer: () => Promise<AddressSyncer>;
   getBlockHashByHeight: (height: bigint) => Promise<string>;
   getCurrentBlockHeight: () => Promise<bigint>;
+  getLatestBlockTimestamp: () => Promise<bigint>;
   getLastFinalizedBlockHeight: () => Promise<bigint>;
   init: () => Promise<void>;
   registerDataDriver: (id: string, driver: any) => Promise<DataDriverRegistry>;
@@ -101,20 +102,32 @@ type WalletStoreServices = {
   depositEvmFunctionCall: (
     address: `0x${string}`,
     amount: bigint,
+    gas: Gas,
+    options?: {
+      extraData?: Uint8Array | ArrayBuffer | number[];
+      minGasLimit?: number;
+    }
+  ) => Promise<TransactionInfo>;
+
+  finalizeDuskEvmWithdrawal: (
     contractId: string,
     wasmPath: string,
-    gas: Gas
+    withdrawal: unknown,
+    gas?: Gas
+  ) => Promise<TransactionInfo>;
+
+  getDuskEvmProofSubmitter: () => `0x${string}`;
+
+  proveDuskEvmWithdrawal: (
+    contractId: string,
+    wasmPath: string,
+    args: unknown,
+    gas?: Gas
   ) => Promise<TransactionInfo>;
 
   useContract: (contractId: string, wasmPath: string) => Promise<Contract>;
 
   getTransactionsHistory: () => Promise<any>;
-
-  finalizeWithdrawalEvmFunctionCall: (
-    contractId: string,
-    withdrawalId: bigint,
-    wasmPath: string
-  ) => Promise<any>;
 
   init: (
     profileGenerator: ProfileGenerator,

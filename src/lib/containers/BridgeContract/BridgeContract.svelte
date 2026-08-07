@@ -9,6 +9,7 @@
     watchBlocks,
     watchChainId,
   } from "@wagmi/core";
+  import { mdiListStatus } from "@mdi/js";
 
   import { Button } from "$lib/dusk/components";
   import {
@@ -17,7 +18,7 @@
     modal,
     wagmiConfig,
   } from "$lib/web3/walletConnection";
-  import { Bridge } from "$lib/components";
+  import { AppAnchorButton, Bridge } from "$lib/components";
   import { createCurrencyFormatter } from "$lib/dusk/currency";
   import { gasStore, settingsStore, walletStore } from "$lib/stores";
 
@@ -31,9 +32,6 @@
    */
   /** @type {GetBalanceReturnType | undefined}  */
   let evmDuskBalance;
-
-  /** @type {Promise<PendingWithdrawalEntry[]>} */
-  export let pendingWithdrawals = Promise.resolve([]);
 
   /**
    * @param {number} id
@@ -82,16 +80,30 @@
   $: unshieldedAddress = currentProfile
     ? currentProfile.account.toString()
     : "";
+  $: unshieldedAccount = currentProfile ? currentProfile.account : null;
   $: formatter = createCurrencyFormatter(language, "DUSK", 9);
 </script>
 
 {#if !isConnected}
-  <Button text="CONNECT WEB3 WALLET" on:click={() => modal.open()} />
+  <article class="bridge-wallet">
+    <header class="bridge-wallet__header">
+      <h3 class="h4">Bridge</h3>
+      <AppAnchorButton
+        href="/dashboard/bridge/transactions"
+        text="Activity"
+        variant="tertiary"
+        icon={{ path: mdiListStatus }}
+      />
+    </header>
+    <div class="bridge-wallet__connect">
+      <Button text="CONNECT WEB3 WALLET" on:click={() => modal.open()} />
+    </div>
+  </article>
 {:else}
   <Bridge
     {unshieldedAddress}
+    {unshieldedAccount}
     {evmDuskBalance}
-    {pendingWithdrawals}
     unshieldedBalance={balance.unshielded.value}
     {formatter}
     {gasLimits}
@@ -99,3 +111,32 @@
     on:operationChange
   />
 {/if}
+
+<style lang="postcss">
+  .bridge-wallet {
+    background: var(--surface-color);
+    border-radius: 1.25em;
+    display: flex;
+    flex-direction: column;
+    gap: var(--default-gap);
+    padding: 1.25em;
+
+    &__header {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: space-between;
+    }
+
+    &__connect {
+      align-items: center;
+      border: 1px solid var(--surface-border-color);
+      border-radius: var(--fieldset-border-radius);
+      display: flex;
+      justify-content: center;
+      min-height: 10rem;
+      padding: 1rem;
+    }
+  }
+</style>

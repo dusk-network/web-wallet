@@ -89,6 +89,20 @@ const getBlockHashByHeight = (height) =>
 /** @type {NetworkStoreServices["getCurrentBlockHeight"]} */
 const getCurrentBlockHeight = () => network.blockHeight;
 
+/** @type {NetworkStoreServices["getLatestBlockTimestamp"]} */
+const getLatestBlockTimestamp = () =>
+  connect()
+    .then(() => network.query("block(height: -1) { header { timestamp } }"))
+    .then((body) => {
+      const timestamp = body?.block?.header?.timestamp;
+
+      if (timestamp === null || timestamp === undefined) {
+        throw new Error("Latest block timestamp is unavailable");
+      }
+
+      return BigInt(timestamp);
+    });
+
 /** @type {NetworkStoreServices["getLastFinalizedBlockHeight"]} */
 const getLastFinalizedBlockHeight = () =>
   connect()
@@ -120,6 +134,7 @@ export default {
   getBlockHashByHeight,
   getCurrentBlockHeight,
   getLastFinalizedBlockHeight,
+  getLatestBlockTimestamp,
   init,
   registerDataDriver,
   subscribe,
