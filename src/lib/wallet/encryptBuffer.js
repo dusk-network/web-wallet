@@ -3,12 +3,13 @@ import getDerivedKey from "./getDerivedKey";
 /**
  * @param {BufferSource} buffer
  * @param {string} pwd
+ * @param {number} [iterations]
  * @returns {Promise<WalletEncryptInfo>}
  */
-async function encryptBuffer(buffer, pwd) {
+async function encryptBuffer(buffer, pwd, iterations) {
   const salt = crypto.getRandomValues(new Uint8Array(32));
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await getDerivedKey(pwd, salt);
+  const key = await getDerivedKey(pwd, salt, iterations);
   const data = new Uint8Array(
     await crypto.subtle.encrypt({ iv, name: "AES-GCM" }, key, buffer)
   );

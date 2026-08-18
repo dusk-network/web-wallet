@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { encryptMnemonic, generateMnemonic } from "..";
 
@@ -7,17 +7,28 @@ describe("encryptMnemonic", () => {
   const pwd = "some password";
 
   it("should be able to encrypt the mnemonic phrase using the given password", async () => {
+    const deriveKeySpy = vi.spyOn(crypto.subtle, "deriveKey");
     const result = await encryptMnemonic(mnemonic, pwd);
 
     expect(result).toMatchObject({
       data: expect.any(Uint8Array),
       iv: expect.any(Uint8Array),
       salt: expect.any(Uint8Array),
+      version: 1,
     });
     expect(result.data.toString()).not.toBe(
       new TextEncoder().encode(mnemonic).toString()
     );
     expect(result.iv.length).toBe(12);
     expect(result.salt.length).toBe(32);
+    expect(deriveKeySpy).toHaveBeenCalledWith(
+      expect.objectContaining({ iterations: 600_000 }),
+      expect.any(CryptoKey),
+      expect.any(Object),
+      true,
+      ["encrypt", "decrypt"]
+    );
+
+    deriveKeySpy.mockRestore();
   });
 });

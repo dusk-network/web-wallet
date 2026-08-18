@@ -10,6 +10,6 @@ describe("decryptBuffer", () => {
     const encryptInfo = await encryptBuffer(plaintext, pwd);
     const decrypted = await decryptBuffer(encryptInfo, pwd);
 
-    expect(decrypted.toString()).toBe(plaintext.buffer.toString());
+    expect([...new Uint8Array(decrypted)]).toStrictEqual([...plaintext]);
   });
 });
