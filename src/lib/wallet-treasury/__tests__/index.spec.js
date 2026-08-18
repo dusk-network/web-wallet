@@ -9,6 +9,7 @@ import {
   vi,
 } from "vitest";
 import { mapValues, mapWith, multiplyBy, pluckFrom } from "lamb";
+import { AccountSyncer, AddressSyncer } from "@dusk/w3sper";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
@@ -178,6 +179,73 @@ describe("WalletTreasury", () => {
           },
         })
       ).rejects.toThrow();
+    });
+
+    it("should discard retained profiles and derived account state when reset", async () => {
+      const balancesSpy = vi.spyOn(AccountSyncer.prototype, "balances");
+      const stakesSpy = vi.spyOn(AccountSyncer.prototype, "stakes");
+      const notesSpy = vi.spyOn(AddressSyncer.prototype, "notes");
+
+      await walletTreasury.update(0n, () => {}, new AbortController().signal);
+
+      // @ts-expect-error We only need an index accepted by the treasury mock.
+      await expect(walletTreasury.account(0)).resolves.toBeDefined();
+
+      walletTreasury.reset();
+
+      // @ts-expect-error We only need an index accepted by the treasury mock.
+      await expect(walletTreasury.account(0)).rejects.toThrow();
+      // @ts-expect-error We only need an index accepted by the treasury mock.
+      await expect(walletTreasury.stakeInfo(0)).rejects.toThrow();
+
+      await walletTreasury.update(0n, () => {}, new AbortController().signal);
+
+      expect(balancesSpy).toHaveBeenLastCalledWith([]);
+      expect(stakesSpy).toHaveBeenLastCalledWith([]);
+      expect(notesSpy).toHaveBeenLastCalledWith([], expect.any(Object));
+
+      balancesSpy.mockRestore();
+      stakesSpy.mockRestore();
+      notesSpy.mockRestore();
+    });
+
+    it("should remove sync listeners when an update fails", async () => {
+      const error = new Error("Unable to retrieve balances");
+      const balancesSpy = vi
+        .spyOn(AccountSyncer.prototype, "balances")
+        .mockRejectedValueOnce(error);
+      const addEventListenerSpy = vi.spyOn(
+        AddressSyncer.prototype,
+        "addEventListener"
+      );
+      const removeEventListenerSpy = vi.spyOn(
+        AddressSyncer.prototype,
+        "removeEventListener"
+      );
+
+      try {
+        await expect(
+          walletTreasury.update(0n, () => {}, new AbortController().signal)
+        ).rejects.toBe(error);
+
+        expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
+        expect(removeEventListenerSpy.mock.calls).toStrictEqual(
+          addEventListenerSpy.mock.calls
+        );
+
+        await expect(
+          walletTreasury.update(0n, () => {}, new AbortController().signal)
+        ).resolves.toBeUndefined();
+
+        expect(addEventListenerSpy).toHaveBeenCalledTimes(4);
+        expect(removeEventListenerSpy.mock.calls).toStrictEqual(
+          addEventListenerSpy.mock.calls
+        );
+      } finally {
+        balancesSpy.mockRestore();
+        addEventListenerSpy.mockRestore();
+        removeEventListenerSpy.mockRestore();
+      }
     });
   });
 
