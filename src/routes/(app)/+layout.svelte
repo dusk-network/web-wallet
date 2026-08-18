@@ -1,5 +1,9 @@
 <script>
-  import { logout } from "$lib/navigation";
+  import { onMount } from "svelte";
+
+  import { logout, startInactivityTimer } from "$lib/navigation";
+
+  onMount(() => startInactivityTimer(() => logout(false)));
 
   /** @param {StorageEvent} event */
   function handleStorageChange(event) {

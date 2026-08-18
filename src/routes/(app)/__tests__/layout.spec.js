@@ -46,7 +46,7 @@ describe("App layout.js", () => {
 });
 
 describe("App layout.svelte", () => {
-  const logoutSpy = vi.spyOn(navigation, "logout");
+  const logoutSpy = vi.spyOn(navigation, "logout").mockResolvedValue();
   const removeListenerSpy = vi.spyOn(window, "removeEventListener");
   const key = `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`;
   const storage = {
@@ -122,5 +122,22 @@ describe("App layout.svelte", () => {
 
     expect(removeListenerSpy).not.toHaveBeenCalled();
     expect(logoutSpy).not.toHaveBeenCalled();
+  });
+
+  it("should logout the user after fifteen minutes without activity", async () => {
+    walletStore.abortSync();
+    vi.useFakeTimers();
+
+    try {
+      render(Layout);
+
+      await vi.advanceTimersByTimeAsync(navigation.INACTIVITY_TIMEOUT);
+
+      expect(logoutSpy).toHaveBeenCalledTimes(1);
+      expect(logoutSpy).toHaveBeenCalledWith(false);
+    } finally {
+      walletStore.abortSync();
+      vi.useRealTimers();
+    }
   });
 });
