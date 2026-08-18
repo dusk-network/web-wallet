@@ -17,6 +17,8 @@ import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import * as navigation from "$lib/navigation";
 import { settingsStore, walletStore } from "$lib/stores";
 import {
+  decryptMnemonic,
+  encryptBuffer,
   encryptMnemonic,
   generateMnemonic,
   getSeedFromMnemonic,
@@ -36,6 +38,11 @@ describe("Unlock Wallet", async () => {
   const mnemonic = generateMnemonic();
   const pwd = "some pwd";
   const loginInfo = await encryptMnemonic(mnemonic, pwd);
+  const legacyLoginInfo = await encryptBuffer(
+    new TextEncoder().encode(mnemonic),
+    pwd,
+    10_000
+  );
   const seed = getSeedFromMnemonic(mnemonic);
   const userId = await profileGeneratorFrom(seed)
     .then(getKey("default"))
@@ -292,6 +299,68 @@ describe("Unlock Wallet", async () => {
       expect(initSpy).toHaveBeenCalledWith(expect.any(ProfileGenerator));
       expect(gotoSpy).toHaveBeenCalledTimes(1);
       expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+    });
+  });
+
+  describe("Legacy password migration", () => {
+    afterEach(() => {
+      loginInfoStorage.remove();
+    });
+
+    it("should migrate legacy login info after unlocking the expected wallet", async () => {
+      loginInfoStorage.set(legacyLoginInfo);
+      settingsStore.update(setKey("userId", userId));
+
+      const { container } = render(UnlockWallet, {});
+      const form = getAsHTMLElement(container, "form");
+      const textInput = getTextInput(container);
+
+      await fireEvent.input(textInput, { target: { value: pwd } });
+      await fireEvent.submit(form, { currentTarget: form });
+      await waitForGoto();
+
+      const migratedLoginInfo = loginInfoStorage.get();
+
+      expect(migratedLoginInfo).not.toBeNull();
+
+      if (!migratedLoginInfo) {
+        throw new Error("Expected migrated login info");
+      }
+
+      expect(migratedLoginInfo.version).toBe(1);
+      expect(await decryptMnemonic(migratedLoginInfo, pwd)).toBe(mnemonic);
+      expect(initSpy).toHaveBeenCalledTimes(1);
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+    });
+
+    it("should preserve legacy login info if the wallet identity does not match", async () => {
+      loginInfoStorage.set(legacyLoginInfo);
+      settingsStore.update(setKey("userId", "some-user-id"));
+
+      const { container } = render(UnlockWallet, {});
+      const form = getAsHTMLElement(container, "form");
+      const textInput = getTextInput(container);
+
+      await fireEvent.input(textInput, { target: { value: pwd } });
+      await fireEvent.submit(form, { currentTarget: form });
+      await waitForGoto();
+
+      const storedLoginInfo = loginInfoStorage.get();
+
+      expect(storedLoginInfo).not.toBeNull();
+
+      if (!storedLoginInfo) {
+        throw new Error("Expected stored login info");
+      }
+
+      for (const field of /** @type {const} */ (["data", "iv", "salt"])) {
+        expect([...storedLoginInfo[field]]).toStrictEqual([
+          ...legacyLoginInfo[field],
+        ]);
+      }
+      expect(storedLoginInfo.version).toBeUndefined();
+      expect(initSpy).not.toHaveBeenCalled();
+      expect(gotoSpy).toHaveBeenCalledWith("/setup/restore");
     });
   });
 });

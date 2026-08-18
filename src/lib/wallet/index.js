@@ -6,6 +6,7 @@ export { default as generateMnemonic } from "./generateMnemonic";
 export { default as getAddressInfo } from "./getAddressInfo";
 export { default as getSeedFromMnemonic } from "./getSeedFromMnemonic";
 export { default as initializeWallet } from "./initializeWallet";
+export { default as migrateLoginInfo } from "./migrateLoginInfo";
 export { default as notesArrayToMap } from "./notesArrayToMap";
 export { default as profileGeneratorFrom } from "./profileGeneratorFrom";
 export { default as refreshLocalStoragePasswordInfo } from "./refreshLocalStoragePasswordInfo";

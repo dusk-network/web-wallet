@@ -1,4 +1,5 @@
 import decryptBuffer from "./decryptBuffer";
+import { getWalletEncryptionIterations } from "./walletEncryption";
 
 /**
  * @param {WalletEncryptInfo} encryptInfo
@@ -6,6 +7,12 @@ import decryptBuffer from "./decryptBuffer";
  * @returns {Promise<string>}
  */
 const decryptMnemonic = async (encryptInfo, pwd) =>
-  new TextDecoder().decode(await decryptBuffer(encryptInfo, pwd));
+  new TextDecoder().decode(
+    await decryptBuffer(
+      encryptInfo,
+      pwd,
+      getWalletEncryptionIterations(encryptInfo.version)
+    )
+  );
 
 export default decryptMnemonic;

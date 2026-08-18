@@ -22,6 +22,7 @@
   import {
     decryptMnemonic,
     getSeedFromMnemonic,
+    migrateLoginInfo,
     profileGeneratorFrom,
     validateMnemonic,
   } from "$lib/wallet";
@@ -71,9 +72,21 @@
       ? getSeedFromInfo(loginInfo)
       : (mnemonic) => getSeedFromMnemonicAsync(mnemonic.toLowerCase());
 
-    getSeed(secretText.trim())
+    const secret = secretText.trim();
+
+    getSeed(secret)
       .then(checkLocalData)
-      .then((profileGenerator) => walletStore.init(profileGenerator))
+      .then(async (profileGenerator) => {
+        await walletStore.init(profileGenerator);
+
+        if (loginInfo) {
+          try {
+            await migrateLoginInfo(loginInfo, secret);
+          } catch {
+            // A failed migration should not prevent an otherwise valid unlock.
+          }
+        }
+      })
       .then(() => goto("/dashboard"))
       .catch((err) => {
         if (err instanceof MismatchedWalletError) {

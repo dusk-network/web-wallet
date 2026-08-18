@@ -1,17 +1,27 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { isNull, mapValuesWith, unless } from "lamb";
-
 import { bytesToBase64 } from "$lib/dusk/base64";
 
 import loginInfoStorage from "..";
 
 describe("loginInfoStorage", () => {
   const storeKey = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`;
-  const valuesToArray = unless(
-    isNull,
-    mapValuesWith((v) => [...v])
-  );
-  const valuesToBase64 = mapValuesWith(bytesToBase64);
+  /** @param {WalletEncryptInfo | null} info */
+  const byteValuesToArray = (info) =>
+    info === null
+      ? null
+      : {
+          ...info,
+          data: [...info.data],
+          iv: [...info.iv],
+          salt: [...info.salt],
+        };
+  /** @param {WalletEncryptInfo} info */
+  const valuesToBase64 = (info) => ({
+    ...info,
+    data: bytesToBase64(info.data),
+    iv: bytesToBase64(info.iv),
+    salt: bytesToBase64(info.salt),
+  });
   const loginInfo = {
     data: new TextEncoder().encode("some string"),
     iv: Uint8Array.of(1, 2, 3, 4),
@@ -35,7 +45,9 @@ describe("loginInfoStorage", () => {
     });
 
     // The `toStrictEqual` matcher doesn't play well with typed arrays in this case
-    expect(valuesToArray(result)).toStrictEqual(valuesToArray(loginInfo));
+    expect(byteValuesToArray(result)).toStrictEqual(
+      byteValuesToArray(loginInfo)
+    );
   });
 
   it("should return `null` if there is no login info stored", () => {
@@ -55,5 +67,18 @@ describe("loginInfoStorage", () => {
     const stored = localStorage.getItem(storeKey);
 
     expect(stored).toBe(storedInfo);
+  });
+
+  it("should preserve the numeric encryption version", () => {
+    const versionedLoginInfo = { ...loginInfo, version: 1 };
+
+    loginInfoStorage.set(versionedLoginInfo);
+
+    expect(byteValuesToArray(loginInfoStorage.get())).toStrictEqual(
+      byteValuesToArray(versionedLoginInfo)
+    );
+    expect(localStorage.getItem(storeKey)).toBe(
+      JSON.stringify(valuesToBase64(versionedLoginInfo))
+    );
   });
 });
