@@ -150,9 +150,11 @@
   // Validate that the total amount is within the user's available balance.
   $: isTotalAmountWithinAvailableBalance = totalAmount <= availableBalance;
 
+  $: transactionMemo = isSendingToBep20Bridge ? memo.trim() : memo;
+
   // For BEP20 bridge operations, memo is required and must be a valid EVM address
   $: isMemoValidForBridge =
-    !isSendingToBep20Bridge || (memo.trim() !== "" && isMemoValid);
+    !isSendingToBep20Bridge || (transactionMemo !== "" && isMemoValid);
 
   $: isNextButtonDisabled = !(
     isSendAmountValid &&
@@ -185,11 +187,10 @@
   }
 
   $: {
-    const trimmedMemo = memo.trim();
-    if (isSendingToBep20Bridge && trimmedMemo !== "") {
+    if (isSendingToBep20Bridge && transactionMemo !== "") {
       // If sending to the BEP20 bridge and a memo is provided,
       // it must be a valid EVM address.
-      isMemoValid = isValidEvmAddress(trimmedMemo);
+      isMemoValid = isValidEvmAddress(transactionMemo);
     } else {
       // Otherwise (not sending to BEP20 bridge, or memo is empty),
       // the memo is not considered invalid from an EVM format perspective.
@@ -457,13 +458,13 @@
           </dd>
         </dl>
 
-        {#if memo}
+        {#if transactionMemo}
           <dl class="operation__review-transaction">
             <dt class="review-transaction__label">
               <span>Memo</span>
             </dt>
             <dd class="operation__review-memo">
-              <span>{memo}</span>
+              <span>{transactionMemo}</span>
             </dd>
           </dl>
         {/if}
@@ -478,7 +479,7 @@
         operation={execute(
           sendToAddress,
           sendAmountInLux,
-          memo,
+          transactionMemo,
           gasPrice,
           gasLimit
         )}
