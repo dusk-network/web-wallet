@@ -412,6 +412,7 @@ describe("Send", () => {
     it("should perform a transfer for the desired amount, with a memo, give a success message and supply a link to see the transaction in the explorer", async () => {
       const { getByRole, getByText } = render(Send, baseProps);
       const addressInput = getByRole("textbox");
+      const memo = " abc-example-memo ";
 
       await fireEvent.input(addressInput, {
         target: { value: shieldedAddress },
@@ -424,7 +425,7 @@ describe("Send", () => {
 
       await fireEvent.input(amountInput, { target: { value: amount } });
       await fireEvent.input(memoInput, {
-        target: { value: "abc-example-memo" },
+        target: { value: memo },
       });
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -436,7 +437,7 @@ describe("Send", () => {
       expect(baseProps.execute).toHaveBeenCalledWith(
         shieldedAddress,
         duskToLux(amount),
-        "abc-example-memo",
+        memo,
         baseProps.gasSettings.gasPrice,
         baseProps.gasSettings.gasLimit
       );
@@ -446,6 +447,44 @@ describe("Send", () => {
       expect(getByText("Transaction created")).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
+    });
+
+    it("should trim a BEP20 bridge memo before review and execution", async () => {
+      const { container, getByRole } = render(Send, baseProps);
+      const evmAddress = "0x9876543210987654321098765432109876543210";
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: bep20BridgeAddress },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      await fireEvent.input(getByRole("spinbutton"), {
+        target: { value: amount },
+      });
+      await fireEvent.input(
+        getAsHTMLElement(container, ".operation__send-memo"),
+        { target: { value: ` \n${evmAddress}\t ` } }
+      );
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      const reviewMemo = getAsHTMLElement(
+        container,
+        ".operation__review-memo span"
+      );
+
+      expect(reviewMemo).toHaveTextContent(evmAddress);
+
+      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(baseProps.execute).toHaveBeenCalledTimes(1);
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        bep20BridgeAddress,
+        duskToLux(amount),
+        evmAddress,
+        baseProps.gasSettings.gasPrice,
+        baseProps.gasSettings.gasLimit
+      );
     });
 
     it("should show an error message if the transfer fails", async () => {
