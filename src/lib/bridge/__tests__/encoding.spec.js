@@ -52,7 +52,6 @@ describe("bridge recipient encoding", () => {
     const call = prepareNativeDuskWithdrawalCall({
       accountPublicKey: { valueOf: () => accountPublicKey },
       amountWei,
-      bridgeAddress,
       evmRecipient,
       minGasLimit: 200_000,
     });
