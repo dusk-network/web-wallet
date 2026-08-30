@@ -1,6 +1,6 @@
 import {
   encodeDuskExternalAssetRecipient,
-  encodeL2NativeWithdrawalCall,
+  prepareNativeWithdrawal,
 } from "@dusk/evm-sdk";
 import { getAddress } from "viem";
 
@@ -11,14 +11,12 @@ import { getAddress } from "viem";
  * @param {object} options
  * @param {unknown} options.accountPublicKey
  * @param {bigint} options.amountWei
- * @param {string} options.bridgeAddress
  * @param {string} options.evmRecipient
  * @param {number} options.minGasLimit
  */
 export function prepareNativeDuskWithdrawalCall({
   accountPublicKey,
   amountWei,
-  bridgeAddress,
   evmRecipient,
   minGasLimit,
 }) {
@@ -26,13 +24,12 @@ export function prepareNativeDuskWithdrawalCall({
     accountPublicKeyBytes(accountPublicKey)
   );
 
-  return encodeL2NativeWithdrawalCall({
+  return prepareNativeWithdrawal({
     amountWei,
-    bridgeAddress: getAddress(bridgeAddress),
     extraData,
     minGasLimit,
     recipient: getAddress(evmRecipient),
-  });
+  }).l2Transaction;
 }
 
 /**

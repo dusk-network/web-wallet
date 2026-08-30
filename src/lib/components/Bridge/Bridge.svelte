@@ -52,10 +52,6 @@
   import { areValidGasSettings } from "$lib/contracts";
   import { walletStore } from "$lib/stores";
 
-  /** @type {`0x${string}`} */
-  const VITE_EVM_BRIDGE_CONTRACT_ADDRESS = import.meta.env
-    .VITE_EVM_BRIDGE_CONTRACT_ADDRESS;
-
   /**
    * DuskEVM uses duskEvm.nativeCurrency.decimals (currently 18). DuskDS uses 9 decimals (Lux).
    * This converts from EVM base units (1e18) to Lux units (1e9) so we can reuse luxToDusk().
@@ -123,7 +119,6 @@
     const withdrawal = prepareNativeDuskWithdrawalCall({
       accountPublicKey: unshieldedAccount,
       amountWei,
-      bridgeAddress: VITE_EVM_BRIDGE_CONTRACT_ADDRESS,
       evmRecipient: $account.address,
       minGasLimit: DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT,
     });
