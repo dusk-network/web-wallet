@@ -60,7 +60,6 @@
   "devDependencies": {
     "@dusk-network/eslint-config": "4.0.1",
     "@dusk-network/prettier-config": "1.1.0",
-    "@duskit/encoding": "0.0.3",
     "@eslint/js": "9.39.4",
     "@juggle/resize-observer": "3.4.0",
     "@sveltejs/adapter-static": "3.0.10",
@@ -90,7 +89,6 @@
     "svelte-preprocess": "6.0.3",
     "typescript": "5.9.3",
     "vite": "8.0.16",
-    "vite-tsconfig-paths": "6.1.1",
     "vitest": "4.1.9",
     "vitest-canvas-mock": "1.1.3"
   }
