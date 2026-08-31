@@ -8,6 +8,8 @@ class WalletTreasury {
   /** @type {AccountBalance[]} */
   #accountBalances = [];
 
+  #generation = 0;
+
   #profiles;
 
   /** @type {StakeInfo[]} */
@@ -107,6 +109,13 @@ class WalletTreasury {
     return await walletCache.getSyncInfo();
   }
 
+  reset() {
+    this.#accountBalances = [];
+    this.#accountStakeInfo = [];
+    this.#profiles = [];
+    this.#generation++;
+  }
+
   /**
    * @param {Profile} profile
    * @param {WalletCacheBalanceInfo["balance"]} balance
@@ -127,7 +136,10 @@ class WalletTreasury {
 
   /** @param {Profile[]} profiles */
   setProfiles(profiles) {
+    this.#accountBalances = [];
+    this.#accountStakeInfo = [];
     this.#profiles = profiles;
+    this.#generation++;
   }
 
   /**
@@ -154,6 +166,12 @@ class WalletTreasury {
    */
   // eslint-disable-next-line max-statements
   async update(from, syncIterationListener, signal) {
+    const generation = this.#generation;
+    const ensureCurrent = () => {
+      if (generation !== this.#generation || signal.aborted) {
+        throw new Error("Synchronization aborted");
+      }
+    };
     let lastBlockHeight = 0n;
 
     /** @type {(evt: CustomEvent) => void} */
@@ -162,114 +180,137 @@ class WalletTreasury {
     };
     const accountSyncer = await networkStore.getAccountSyncer();
     const addressSyncer = await networkStore.getAddressSyncer();
+    const eventName = "synciteration";
+    const cleanup = () => {
+      // @ts-ignore
+      addressSyncer.removeEventListener(eventName, lastBlockHeightListener);
 
-    // @ts-ignore
-    addressSyncer.addEventListener("synciteration", lastBlockHeightListener);
+      // @ts-ignore
+      addressSyncer.removeEventListener(eventName, syncIterationListener);
+    };
+    let profiles = this.#profiles;
 
-    // @ts-ignore
-    addressSyncer.addEventListener("synciteration", syncIterationListener);
+    try {
+      ensureCurrent();
 
-    [this.#accountBalances, this.#accountStakeInfo] = await Promise.all([
-      accountSyncer.balances(this.#profiles),
-      accountSyncer.stakes(this.#profiles),
-    ]);
+      // @ts-ignore
+      addressSyncer.addEventListener(eventName, lastBlockHeightListener);
 
-    const notesStream = await addressSyncer.notes(this.#profiles, {
-      from,
-      signal,
-    });
+      // @ts-ignore
+      addressSyncer.addEventListener(eventName, syncIterationListener);
 
-    /**
-     * For each chunk of data in the stream we enrich the sync
-     * info with the block hash, that will be used to check that
-     * our local state is consistent with the remote one.
-     * This way we can ensure that if a user interrupts the sync
-     * while it's still in progress we can safely resume it from
-     * the stored bookmark if no block has been rejected in the
-     * meantime.
-     */
-    for await (const [notesInfo, streamSyncInfo] of notesStream) {
-      const notesSyncInfo = {
-        block: {
-          hash: await networkStore
-            .getBlockHashByHeight(streamSyncInfo.blockHeight)
-            .catch(() => ""),
-          height: streamSyncInfo.blockHeight,
-        },
-        bookmark: streamSyncInfo.bookmark,
-      };
-      await walletCache.addUnspentNotes(
-        walletCache.toCacheNotes(notesInfo, this.#profiles),
-        notesSyncInfo
-      );
-    }
+      const [accountBalances, accountStakeInfo] = await Promise.all([
+        accountSyncer.balances(profiles),
+        accountSyncer.stakes(profiles),
+      ]);
 
-    // gather all unspent nullifiers in the cache
-    const currentUnspentNullifiers =
-      await walletCache.getUnspentNotesNullifiers();
+      ensureCurrent();
+      this.#accountBalances = accountBalances;
+      this.#accountStakeInfo = accountStakeInfo;
 
-    /**
-     * Retrieving the nullifiers that are now spent.
-     *
-     * Currently `w3sper.js` returns an array of `ArrayBuffer`s
-     * instead of one of `Uint8Array<ArrayBuffer>`s, but we don't
-     * care as `ArrayBuffers` will be written in the
-     * database anyway.
-     */
-    const spentNullifiers = await addressSyncer.spent(currentUnspentNullifiers);
+      const notesStream = await addressSyncer.notes(profiles, {
+        from,
+        signal,
+      });
 
-    // update the cache with the spent nullifiers info
-    await walletCache.spendNotes(spentNullifiers);
+      ensureCurrent();
 
-    // gather all spent nullifiers in the cache
-    const currentSpentNullifiers =
-      await walletCache.getUnspentNotesNullifiers();
+      /**
+       * For each chunk of data in the stream we enrich the sync
+       * info with the block hash, that will be used to check that
+       * our local state is consistent with the remote one.
+       * This way we can ensure that if a user interrupts the sync
+       * while it's still in progress we can safely resume it from
+       * the stored bookmark if no block has been rejected in the
+       * meantime.
+       */
+      for await (const [notesInfo, streamSyncInfo] of notesStream) {
+        const notesSyncInfo = {
+          block: {
+            hash: await networkStore
+              .getBlockHashByHeight(streamSyncInfo.blockHeight)
+              .catch(() => ""),
+            height: streamSyncInfo.blockHeight,
+          },
+          bookmark: streamSyncInfo.bookmark,
+        };
 
-    /**
-     * Retrieving the nullifiers that are really spent given our
-     * list of spent nullifiers.
-     * We make this check because a block can be rejected and
-     * we may end up having some notes marked as spent in the
-     * cache, while they really aren't.
-     *
-     * Currently `w3sper.js` returns an array of `ArrayBuffer`s
-     * instead of one of `Uint8Array<ArrayBuffer>`s.
-     */
-    const reallySpentNullifiers = await addressSyncer.spent(
-      currentSpentNullifiers
-    );
+        ensureCurrent();
+        await walletCache.addUnspentNotes(
+          walletCache.toCacheNotes(notesInfo, profiles),
+          notesSyncInfo
+        );
+      }
 
-    /**
-     * As the previous `addressSyncer.spent` call returns a subset of
-     * our spent nullifiers, we can skip this operation if the lengths
-     * are the same.
-     */
-    if (reallySpentNullifiers.length !== currentSpentNullifiers.length) {
-      const nullifiersToUnspend = walletCache.nullifiersDifference(
-        currentSpentNullifiers,
-        map(reallySpentNullifiers, (buf) => new Uint8Array(buf))
+      profiles = [];
+      ensureCurrent();
+
+      // gather all unspent nullifiers in the cache
+      const currentUnspentNullifiers =
+        await walletCache.getUnspentNotesNullifiers();
+
+      /**
+       * Retrieving the nullifiers that are now spent.
+       *
+       * Currently `w3sper.js` returns an array of `ArrayBuffer`s
+       * instead of one of `Uint8Array<ArrayBuffer>`s, but we don't
+       * care as `ArrayBuffers` will be written in the
+       * database anyway.
+       */
+      const spentNullifiers = await addressSyncer.spent(
+        currentUnspentNullifiers
       );
 
-      await walletCache.unspendNotes(nullifiersToUnspend);
+      // update the cache with the spent nullifiers info
+      await walletCache.spendNotes(spentNullifiers);
+
+      // gather all spent nullifiers in the cache
+      const currentSpentNullifiers =
+        await walletCache.getUnspentNotesNullifiers();
+
+      /**
+       * Retrieving the nullifiers that are really spent given our
+       * list of spent nullifiers.
+       * We make this check because a block can be rejected and
+       * we may end up having some notes marked as spent in the
+       * cache, while they really aren't.
+       *
+       * Currently `w3sper.js` returns an array of `ArrayBuffer`s
+       * instead of one of `Uint8Array<ArrayBuffer>`s.
+       */
+      const reallySpentNullifiers = await addressSyncer.spent(
+        currentSpentNullifiers
+      );
+
+      /**
+       * As the previous `addressSyncer.spent` call returns a subset of
+       * our spent nullifiers, we can skip this operation if the lengths
+       * are the same.
+       */
+      if (reallySpentNullifiers.length !== currentSpentNullifiers.length) {
+        const nullifiersToUnspend = walletCache.nullifiersDifference(
+          currentSpentNullifiers,
+          map(reallySpentNullifiers, (buf) => new Uint8Array(buf))
+        );
+
+        await walletCache.unspendNotes(nullifiersToUnspend);
+      }
+
+      /**
+       * We enrich the sync info by retrieving the hash of the last
+       * processed block and the height of the last finalized block.
+       * We'll use this information at the start of the sync
+       * to determine if a block has been rejected, so that we can
+       * fix our local cache state by syncing from the last finalized
+       * block height.
+       */
+      await walletCache.setSyncInfo(
+        await this.#getEnrichedSyncInfo(lastBlockHeight)
+      );
+    } finally {
+      profiles = [];
+      cleanup();
     }
-
-    /**
-     * We enrich the sync info by retrieving the hash of the last
-     * processed block and the height of the last finalized block.
-     * We'll use this information at the start of the sync
-     * to determine if a block has been rejected, so that we can
-     * fix our local cache state by syncing from the last finalized
-     * block height.
-     */
-    await walletCache.setSyncInfo(
-      await this.#getEnrichedSyncInfo(lastBlockHeight)
-    );
-
-    // @ts-ignore
-    addressSyncer.removeEventListener("synciteration", lastBlockHeightListener);
-
-    // @ts-ignore
-    addressSyncer.removeEventListener("synciteration", syncIterationListener);
   }
 
   /**
