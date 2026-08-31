@@ -7,6 +7,7 @@ Web Wallet website.
 - [Web Wallet](#web-wallet)
   - [TOC](#toc)
   - [Build system and dev environment](#build-system-and-dev-environment)
+  - [Browser support](#browser-support)
   - [Environment variables](#environment-variables)
     - [NPM scripts](#npm-scripts)
   - [Running a local Rusk node](#running-a-local-rusk-node)
@@ -21,6 +22,15 @@ Run `npm install` from the root folder to get the necessary dependencies.
 As the application uses the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API), in development mode [`@vitejs/plugin-basic-ssl`](https://github.com/vitejs/vite-plugin-basic-ssl) is used to create a self-signed certificate to run the application in HTTPS. Being the certificate self-signed you need to create an exception in the browser to allow it to use the certificate.
 
 The staging environment is at https://web-wallet-staging-oxs3z.ondigitalocean.app/
+
+## Browser support
+
+Web Wallet supports browser releases from the previous two years. The current
+minimum versions are Chrome 129, Edge 129, Firefox 130, and Safari 18. These
+versions must be reviewed with each major Web Wallet release.
+
+The Vite build target enforces the corresponding JavaScript and CSS syntax
+level. It does not polyfill browser APIs or built-in methods.
 
 ## Environment variables
 
