@@ -1,6 +1,5 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { randomUUID as nodeRandomUUID } from "crypto";
-import { range } from "lamb";
 
 describe("randomUUID", () => {
   const originalCrypto = global.crypto;
@@ -43,13 +42,13 @@ describe("randomUUID", () => {
       const { randomUUID } = await import("..");
       const generated = new Set();
 
-      range(0, 100, 1).forEach(() => {
+      for (let i = 0; i < 100; i++) {
         const uuid = randomUUID();
 
         expect(uuidRE.test(uuid)).toBe(true);
 
         generated.add(uuid);
-      });
+      }
 
       expect(generated.size).toBe(100);
 
@@ -69,13 +68,13 @@ describe("randomUUID", () => {
       const { randomUUID } = await import("..");
       const generated = new Set();
 
-      range(0, 100, 1).forEach(() => {
+      for (let i = 0; i < 100; i++) {
         const uuid = randomUUID();
 
         expect(uuidRE.test(uuid)).toBe(true);
 
         generated.add(uuid);
-      });
+      }
 
       expect(generated.size).toBe(100);
 

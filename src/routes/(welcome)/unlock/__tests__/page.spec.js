@@ -11,8 +11,6 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { ProfileGenerator } from "@dusk/w3sper";
 
-import { getKey, setKey } from "lamb";
-
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import * as navigation from "$lib/navigation";
 import { settingsStore, walletStore } from "$lib/stores";
@@ -27,6 +25,11 @@ import {
 import loginInfoStorage from "$lib/services/loginInfoStorage";
 
 import UnlockWallet from "../+page.svelte";
+
+const getKey = (/** @type {string} */ key) => (/** @type {any} */ value) =>
+  value[key];
+/** @type {(userId: string) => (settings: SettingsStoreContent) => SettingsStoreContent} */
+const setUserId = (userId) => (settings) => ({ ...settings, userId });
 
 /** @param {HTMLElement} container */
 const getTextInput = (container) =>
@@ -122,7 +125,7 @@ describe("Unlock Wallet", async () => {
 
     it("should redirect to the Restore flow the user inputs a valid mnemonic different from the last one used", async () => {
       const currentUserID = "some-user-id";
-      settingsStore.update(setKey("userId", currentUserID));
+      settingsStore.update(setUserId(currentUserID));
 
       const { container } = render(UnlockWallet, {});
       const form = getAsHTMLElement(container, "form");
@@ -138,7 +141,7 @@ describe("Unlock Wallet", async () => {
     });
 
     it("should unlock the Wallet if the entered mnemonic is the last one used", async () => {
-      settingsStore.update(setKey("userId", userId));
+      settingsStore.update(setUserId(userId));
 
       const { container } = render(UnlockWallet, {});
       const form = getAsHTMLElement(container, "form");
@@ -156,7 +159,7 @@ describe("Unlock Wallet", async () => {
     });
 
     it("should trim and lower case the entered mnemonic before validating it", async () => {
-      settingsStore.update(setKey("userId", userId));
+      settingsStore.update(setUserId(userId));
 
       const { container } = render(UnlockWallet, {});
       const form = getAsHTMLElement(container, "form");
@@ -218,7 +221,7 @@ describe("Unlock Wallet", async () => {
      * the workflow is able to deal with it.
      */
     it("should redirect to the Restore flow if the user inputs the correct password with no prior wallet created", async () => {
-      settingsStore.update(setKey("userId", ""));
+      settingsStore.update(setUserId(""));
 
       const { container } = render(UnlockWallet, {});
       const form = getAsHTMLElement(container, "form");
@@ -245,7 +248,7 @@ describe("Unlock Wallet", async () => {
     it("should redirect to the Restore flow if the user inputs the correct password for a mnemonic different from the last one used", async () => {
       const currentUserID = "some-user-id";
 
-      settingsStore.update(setKey("userId", currentUserID));
+      settingsStore.update(setUserId(currentUserID));
 
       const { container } = render(UnlockWallet, {});
       const form = getAsHTMLElement(container, "form");
@@ -264,7 +267,7 @@ describe("Unlock Wallet", async () => {
     });
 
     it("should unlock the Wallet is the entered password is for the last used mnemonic", async () => {
-      settingsStore.update(setKey("userId", userId));
+      settingsStore.update(setUserId(userId));
 
       const { container } = render(UnlockWallet, {});
       const form = getAsHTMLElement(container, "form");
@@ -282,7 +285,7 @@ describe("Unlock Wallet", async () => {
     });
 
     it("should trim the entered password before validating it", async () => {
-      settingsStore.update(setKey("userId", userId));
+      settingsStore.update(setUserId(userId));
 
       const { container } = render(UnlockWallet, {});
       const form = getAsHTMLElement(container, "form");
@@ -309,7 +312,7 @@ describe("Unlock Wallet", async () => {
 
     it("should migrate legacy login info after unlocking the expected wallet", async () => {
       loginInfoStorage.set(legacyLoginInfo);
-      settingsStore.update(setKey("userId", userId));
+      settingsStore.update(setUserId(userId));
 
       const { container } = render(UnlockWallet, {});
       const form = getAsHTMLElement(container, "form");
@@ -335,7 +338,7 @@ describe("Unlock Wallet", async () => {
 
     it("should preserve legacy login info if the wallet identity does not match", async () => {
       loginInfoStorage.set(legacyLoginInfo);
-      settingsStore.update(setKey("userId", "some-user-id"));
+      settingsStore.update(setUserId("some-user-id"));
 
       const { container } = render(UnlockWallet, {});
       const form = getAsHTMLElement(container, "form");

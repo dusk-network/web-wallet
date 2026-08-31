@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { getKey } from "lamb";
-
 import { fillCacheDatabase, getCacheDatabase, getCacheTableCount } from "..";
 
 describe("getCacheTableCount", () => {
@@ -10,7 +8,7 @@ describe("getCacheTableCount", () => {
     await db.open();
 
     const tableNames = /** @type {WalletCacheTableName[]} */ (
-      db.tables.map(getKey("name"))
+      db.tables.map(({ name }) => name)
     );
 
     for (const tableName of tableNames) {

@@ -1,8 +1,6 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { ownPairs } from "lamb";
-
   import { makeClassName } from "$lib/dusk/string";
 
   import Options from "./Options.svelte";
@@ -26,7 +24,7 @@
   {#if Array.isArray(options)}
     <Options {options} />
   {:else}
-    {#each ownPairs(options) as [label, opts] (label)}
+    {#each Object.entries(options) as [label, opts] (label)}
       <optgroup {label}>
         <Options options={opts} />
       </optgroup>

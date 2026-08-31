@@ -1,36 +1,31 @@
 import { Dexie } from "dexie";
-import {
-  compose,
-  condition,
-  getKey,
-  getPath,
-  head,
-  isUndefined,
-  mapWith,
-  updateKey,
-  when,
-} from "lamb";
-
-/** @type {(buffer: ArrayBuffer) => Uint8Array<ArrayBuffer>} */
-const bufferToUint8Array = (buffer) => new Uint8Array(buffer);
+/** @type {(buffer: ArrayBufferLike) => Uint8Array<ArrayBuffer>} */
+const bufferToUint8Array = (buffer) => new Uint8Array(new Uint8Array(buffer));
 
 /** @type {(profiles: Array<Profile>) => string[]} */
-const getAddressesFrom = mapWith(compose(String, getKey("address")));
+const getAddressesFrom = (profiles) =>
+  profiles.map(({ address }) => String(address));
 
-const nullifiersToString = mapWith(String);
-
-/** @type {(source: WalletCacheDbNote) => Omit<WalletCacheDbNote, "note"> & { note: Uint8Array<ArrayBuffer> }} */
-const updateNote = updateKey("note", bufferToUint8Array);
-
-const updateNullifier = updateKey("nullifier", bufferToUint8Array);
+/** @type {(nullifiers: Uint8Array[]) => string[]} */
+const nullifiersToString = (nullifiers) => nullifiers.map(String);
 
 /** @type {(v: WalletCacheDbPendingNoteInfo[]) => WalletCachePendingNoteInfo[]} */
-const restorePendingInfo = mapWith(updateNullifier);
+const restorePendingInfo = (entries) =>
+  entries.map((entry) => ({
+    ...entry,
+    nullifier: bufferToUint8Array(entry.nullifier),
+  }));
 
 /** @type {(v: WalletCacheDbNote[]) => WalletCacheNote[]} */
-const restoreNotes = mapWith(compose(updateNullifier, updateNote));
+const restoreNotes = (entries) =>
+  entries.map((entry) => ({
+    ...entry,
+    note: bufferToUint8Array(entry.note),
+    nullifier: bufferToUint8Array(entry.nullifier),
+  }));
 
-const restoreNullifiers = mapWith(bufferToUint8Array);
+/** @type {(nullifiers: ArrayBuffer[]) => Uint8Array<ArrayBuffer>[]} */
+const restoreNullifiers = (nullifiers) => nullifiers.map(bufferToUint8Array);
 
 class WalletCache {
   /** @type {Dexie} */
@@ -154,9 +149,9 @@ class WalletCache {
     return this.#getEntriesFrom("balancesInfo", false, {
       field: "address",
       values: [address],
-    })
-      .then(getPath("0.balance"))
-      .then(when(isUndefined, () => this.#emptyBalanceInfo));
+    }).then(([entry]) =>
+      entry?.balance === undefined ? this.#emptyBalanceInfo : entry.balance
+    );
   }
 
   /**
@@ -200,35 +195,30 @@ class WalletCache {
     return this.#getEntriesFrom("stakeInfo", false, {
       field: "account",
       values: [account],
-    })
-      .then(getPath("0.stakeInfo"))
-      .then(
-        condition(
-          isUndefined,
-          () => this.#emptyStakeInfo,
+    }).then(([entry]) => {
+      const stakeInfo = entry?.stakeInfo;
+      if (stakeInfo === undefined) return this.#emptyStakeInfo;
 
-          // we reinstate the `total` getter if the
-          // amount is not `null`
-          (stakeInfo) => ({
-            ...stakeInfo,
-            amount: stakeInfo.amount
-              ? {
-                  ...stakeInfo.amount,
-                  get total() {
-                    return this.value + this.locked;
-                  },
-                }
-              : null,
-          })
-        )
-      );
+      // Reinstate the `total` getter if the amount is not `null`.
+      return {
+        ...stakeInfo,
+        amount: stakeInfo.amount
+          ? {
+              ...stakeInfo.amount,
+              get total() {
+                return this.value + this.locked;
+              },
+            }
+          : null,
+      };
+    });
   }
 
   /** @returns {Promise<WalletCacheSyncInfo>} */
   getSyncInfo() {
-    return this.#getEntriesFrom("syncInfo", false)
-      .then(head)
-      .then(when(isUndefined, () => this.#emptySyncInfo));
+    return this.#getEntriesFrom("syncInfo", false).then(([entry]) =>
+      entry === undefined ? this.#emptySyncInfo : entry
+    );
   }
 
   /**

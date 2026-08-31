@@ -1,7 +1,6 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { collect, getKey, pick } from "lamb";
   import { mdiArrowTopRight } from "@mdi/js";
   import { ContractStatusesList, Send } from "$lib/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
@@ -25,10 +24,14 @@
     return [spendable, statuses];
   }
 
-  const collectSettings = collect([
-    pick(["gasLimit", "gasPrice"]),
-    getKey("language"),
-  ]);
+  /**
+   * @param {SettingsStoreContent} settings
+   * @returns {[ContractGasSettings, string]}
+   */
+  const collectSettings = ({ gasLimit, gasPrice, language }) => [
+    { gasLimit, gasPrice },
+    language,
+  ];
   const gasLimits = $gasStore;
 
   /** @type {"shielded" | "unshielded"} */

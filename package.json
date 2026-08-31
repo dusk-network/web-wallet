@@ -52,7 +52,6 @@
     "@scure/bip39": "2.0.1",
     "css-doodle": "0.50.2",
     "dexie": "4.0.11",
-    "lamb": "0.61.1",
     "qr-scanner": "1.4.2",
     "qrcode": "1.5.4",
     "web-streams-polyfill": "4.2.0"
@@ -80,7 +79,6 @@
     "globals": "17.4.0",
     "jsdom": "29.0.1",
     "jsdom-worker": "0.3.0",
-    "lamb-types": "0.61.16",
     "postcss-nested": "7.0.2",
     "prettier": "3.8.1",
     "prettier-plugin-svelte": "3.5.1",

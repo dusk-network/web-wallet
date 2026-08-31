@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { last, setIndex } from "lamb";
-
 import { generateMnemonic, validateMnemonic } from "..";
 
 describe("validateMnemonic", () => {
@@ -14,9 +12,10 @@ describe("validateMnemonic", () => {
 
     const validMnemonic = generateMnemonic();
     const words = validMnemonic.split(" ");
-    const originalLastWord = last(words);
+    const originalLastWord = words.at(-1);
     const fakeLastWord = originalLastWord === "zoo" ? "abandon" : "zoo";
-    const tamperedMnemonic = setIndex(words, -1, fakeLastWord).join(" ");
+    words[words.length - 1] = fakeLastWord;
+    const tamperedMnemonic = words.join(" ");
 
     expect(validateMnemonic(tamperedMnemonic)).toBe(false);
   });

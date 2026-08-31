@@ -1,6 +1,4 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { getKey, skipIn, sortWith } from "lamb";
-
 import {
   cacheBalances,
   cachePendingNotesInfo,
@@ -19,14 +17,28 @@ import { fillCacheDatabase, getCacheDatabase, sortByNullifier } from "..";
  * @typedef {{ nullifier: ArrayBuffer }} T
  * @type {<U extends T>(entries: U[]) => U[]}
  */
-const sortByDbNullifier = sortWith([
-  /** @type {(entry: T) => string} */ (
-    ({ nullifier }) => new Uint8Array(nullifier).toString()
-  ),
-]);
+const sortByDbNullifier = (entries) =>
+  entries.toSorted((a, b) =>
+    new Uint8Array(a.nullifier)
+      .toString()
+      .localeCompare(new Uint8Array(b.nullifier).toString())
+  );
 
-const sortByAccount = sortWith([getKey("account")]);
-const sortByAddress = sortWith([getKey("address")]);
+/**
+ * @template {{ account: string }} T
+ * @param {T[]} entries
+ */
+function sortByAccount(entries) {
+  return entries.toSorted((a, b) => a.account.localeCompare(b.account));
+}
+
+/**
+ * @template {{ address: string }} T
+ * @param {T[]} entries
+ */
+function sortByAddress(entries) {
+  return entries.toSorted((a, b) => a.address.localeCompare(b.address));
+}
 
 /** @type {(entry: WalletCacheNote) => WalletCacheDbNote} */
 const toDbNote = (entry) => ({
@@ -70,7 +82,11 @@ describe("fillCacheDatabase", () => {
         ...entry,
         stakeInfo: {
           ...entry.stakeInfo,
-          amount: skipIn(entry.stakeInfo.amount, ["total"]),
+          amount: {
+            eligibility: entry.stakeInfo.amount.eligibility,
+            locked: entry.stakeInfo.amount.locked,
+            value: entry.stakeInfo.amount.value,
+          },
         },
       }))
     );

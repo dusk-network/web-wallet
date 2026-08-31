@@ -1,5 +1,3 @@
-import { getPath, isUndefined, when } from "lamb";
-
 import { failureToRejection } from "$lib/dusk/http";
 
 const createEmptyObject = () => ({});
@@ -26,8 +24,8 @@ export async function load({ fetch }) {
     )
       .then(failureToRejection)
       .then((res) => res.json())
-      .then(getPath("market_data.current_price"))
-      .then(when(isUndefined, createEmptyObject))
+      .then((data) => data?.market_data?.current_price)
+      .then((price) => (price === undefined ? createEmptyObject() : price))
       .catch(createEmptyObject),
   };
 }

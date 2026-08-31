@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { getKey } from "lamb";
-
 import { getCacheDatabase } from "..";
 
 describe("getCacheDatabase", () => {
@@ -9,7 +7,7 @@ describe("getCacheDatabase", () => {
 
     await db.open();
 
-    expect(db.tables.map(getKey("name"))).toMatchInlineSnapshot(`
+    expect(db.tables.map(({ name }) => name)).toMatchInlineSnapshot(`
       [
         "balancesInfo",
         "pendingNotesInfo",

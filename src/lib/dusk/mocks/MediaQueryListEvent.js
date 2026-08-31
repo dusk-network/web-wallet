@@ -1,5 +1,3 @@
-import { pickIn } from "lamb";
-
 export default class MediaQueryListEvent extends Event {
   #matches;
 
@@ -10,7 +8,11 @@ export default class MediaQueryListEvent extends Event {
    * @param {MediaQueryListEventInit} options
    */
   constructor(type, options) {
-    super(type, pickIn(options, ["bubbles", "cancelable", "composed"]));
+    super(type, {
+      bubbles: options.bubbles,
+      cancelable: options.cancelable,
+      composed: options.composed,
+    });
 
     this.#matches = options.matches;
     this.#media = options.media;

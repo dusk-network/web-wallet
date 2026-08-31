@@ -1,5 +1,4 @@
 import { get, writable } from "svelte/store";
-import { setKey } from "lamb";
 import { compressedDuskBlsPublicKeyToRaw } from "@dusk/evm-sdk";
 import { Bookkeeper, Bookmark, ProfileGenerator } from "@dusk/w3sper";
 import { keccak256 } from "viem";
@@ -253,7 +252,10 @@ async function init(profileGeneratorInstance, syncFromBlock) {
 
   sync(syncFromBlock)
     .then(() => {
-      settingsStore.update(setKey("userId", currentProfile.address.toString()));
+      settingsStore.update((settings) => ({
+        ...settings,
+        userId: currentProfile.address.toString(),
+      }));
     })
     .finally(updateStaticInfo);
 }

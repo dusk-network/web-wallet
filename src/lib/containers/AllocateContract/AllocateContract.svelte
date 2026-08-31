@@ -1,16 +1,18 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { collect, getKey, pick } from "lamb";
-
   import { createCurrencyFormatter } from "$lib/dusk/currency";
   import { gasStore, settingsStore, walletStore } from "$lib/stores";
   import { Allocate } from "$lib/components";
 
-  const collectSettings = collect([
-    pick(["gasLimit", "gasPrice"]),
-    getKey("language"),
-  ]);
+  /**
+   * @param {SettingsStoreContent} settings
+   * @returns {[ContractGasSettings, string]}
+   */
+  const collectSettings = ({ gasLimit, gasPrice, language }) => [
+    { gasLimit, gasPrice },
+    language,
+  ];
   const gasLimits = $gasStore;
 
   $: [gasSettings, language] = collectSettings($settingsStore);

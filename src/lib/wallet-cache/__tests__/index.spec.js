@@ -1,23 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  add,
-  collect,
-  compose,
-  drop,
-  filterWith,
-  getKey,
-  mapWith,
-  partitionWith,
-  pluck,
-  pluckFrom,
-  setKey,
-  take,
-  takeFrom,
-  uniques,
-  updatePathIn,
-} from "lamb";
-
-import {
   cacheBalances,
   cachePendingNotesInfo,
   cacheSpentNotes,
@@ -35,6 +17,22 @@ import notesArrayToMap from "$lib/wallet/notesArrayToMap";
 
 import walletCache from "..";
 
+/**
+ * @template {Record<string, any>} T
+ * @template {keyof T} K
+ * @param {T[]} entries
+ * @param {K} key
+ * @returns {T[K][]}
+ */
+const pluckFrom = (entries, key) => entries.map((entry) => entry[key]);
+
+/**
+ * @template T
+ * @param {T[]} entries
+ * @returns {[T[], T[]]}
+ */
+const splitAtTwo = (entries) => [entries.slice(0, 2), entries.slice(2)];
+
 describe("Wallet cache", () => {
   const db = getCacheDatabase();
 
@@ -44,19 +42,19 @@ describe("Wallet cache", () => {
   });
 
   describe("Reading and clearing the cache", async () => {
-    const addresses = takeFrom(
-      uniques(pluckFrom(cacheSpentNotes, "address")),
+    const addresses = [...new Set(pluckFrom(cacheSpentNotes, "address"))].slice(
+      0,
       2
     );
     const addressA = addresses[0];
 
     /** @type {(entries: WalletCacheNote[]) => WalletCacheNote[]} */
-    const filterByAddressA = filterWith((entry) => entry.address === addressA);
+    const filterByAddressA = (entries) =>
+      entries.filter((entry) => entry.address === addressA);
 
     /** @type {(entries: WalletCacheNote[]) => WalletCacheNote[]} */
-    const filterByAddresses = filterWith((entry) =>
-      addresses.includes(entry.address)
-    );
+    const filterByAddresses = (entries) =>
+      entries.filter((entry) => addresses.includes(entry.address));
 
     it("should expose a method to clear the database", async () => {
       await db.open();
@@ -103,15 +101,12 @@ describe("Wallet cache", () => {
       const pendingDbNotesInfo = sortByNullifier(
         await walletCache.getPendingNotesInfo()
       );
-      const nullifiers = takeFrom(
-        pluckFrom(pendingDbNotesInfo, "nullifier"),
-        2
-      );
+      const nullifiers = pluckFrom(pendingDbNotesInfo, "nullifier").slice(0, 2);
       const pendingNotesInfo = sortByNullifier(cachePendingNotesInfo);
       const pendingDbNotesInfoByNullifiers = sortByNullifier(
         await walletCache.getPendingNotesInfo(nullifiers)
       );
-      const pendingNotesInfoByNullifiers = takeFrom(pendingNotesInfo, 2);
+      const pendingNotesInfoByNullifiers = pendingNotesInfo.slice(0, 2);
 
       expect(pendingDbNotesInfo).toStrictEqual(pendingNotesInfo);
       expect(pendingDbNotesInfoByNullifiers).toStrictEqual(
@@ -329,7 +324,10 @@ describe("Wallet cache", () => {
        * as we just need to see that they are added.
        * Notes can't go from spent to unspent anyway.
        */
-      const unspentNotesToAdd = cacheSpentNotes.map(setKey("address", address));
+      const unspentNotesToAdd = cacheSpentNotes.map((note) => ({
+        ...note,
+        address,
+      }));
 
       const unspentNoteDuplicate = cacheUnspentNotes.find(hasTestAddress);
 
@@ -382,28 +380,31 @@ describe("Wallet cache", () => {
   describe("Spending notes", () => {
     it("should expose a method to move a group of notes from the unspent to the spent table", async () => {
       /** @type {(entry: { nullifier: Uint8Array<ArrayBuffer> }) => Uint8Array<ArrayBuffer>} */
-      const getNullifier = getKey("nullifier");
+      const getNullifier = (entry) => entry.nullifier;
       const [pendingToSpend, expectedPending] = await walletCache
         .getPendingNotesInfo()
         .then(sortByNullifier)
-        .then(collect([take(2), drop(2)]));
+        .then(splitAtTwo);
 
       // checks to ensure we have enough meaningful data for the test
       expect(pendingToSpend.length).toBe(2);
       expect(expectedPending.length).toBeGreaterThan(0);
 
       const pendingNullifiersLookup = new Set(
-        pendingToSpend.map(compose(String, getNullifier))
+        pendingToSpend.map((entry) => String(getNullifier(entry)))
       );
 
       const [expectedNotesToBeSpent, expectedUnspentNotes] = await walletCache
         .getUnspentNotes()
         .then(sortByNullifier)
-        .then(
-          partitionWith((note) =>
+        .then((notes) => [
+          notes.filter((note) =>
             pendingNullifiersLookup.has(note.nullifier.toString())
-          )
-        );
+          ),
+          notes.filter(
+            (note) => !pendingNullifiersLookup.has(note.nullifier.toString())
+          ),
+        ]);
 
       const expectedSpentNotes = await walletCache
         .getSpentNotes()
@@ -495,7 +496,7 @@ describe("Wallet cache", () => {
       const [notesToUnspend, expectedSpentNotes] = await walletCache
         .getSpentNotes()
         .then(sortByNullifier)
-        .then(collect([take(2), drop(2)]));
+        .then(splitAtTwo);
       const expectedUnspentNotes = await walletCache
         .getUnspentNotes()
         .then((notes) => notes.concat(notesToUnspend))
@@ -578,7 +579,7 @@ describe("Wallet cache", () => {
   describe("Utilities", () => {
     it("should expose a method that returns the array of unique nullifiers contained only in the first of the two given sets of nullifiers", () => {
       /** @type {(source: WalletCacheNote[]) => Uint8Array<ArrayBuffer>[]} */
-      const getNullifiers = pluck("nullifier");
+      const getNullifiers = (entries) => pluckFrom(entries, "nullifier");
       const a = getNullifiers(cacheUnspentNotes);
       const b = getNullifiers(cacheUnspentNotes.slice(0, a.length - 2));
 
@@ -616,11 +617,13 @@ describe("Wallet cache", () => {
       }
 
       // overwrite test
-      const modifiedBalance = updatePathIn(
-        newBalance.balance,
-        "shielded.value",
-        add(345n)
-      );
+      const modifiedBalance = {
+        ...newBalance.balance,
+        shielded: {
+          ...newBalance.balance.shielded,
+          value: newBalance.balance.shielded.value + 345n,
+        },
+      };
 
       await walletCache.setBalanceInfo(
         cacheBalances[0].address,
@@ -635,18 +638,18 @@ describe("Wallet cache", () => {
     it("should expose a method to set a group of notes as pending", async () => {
       const existingPendingNullifiersAsStrings = await walletCache
         .getPendingNotesInfo()
-        .then(mapWith(compose(String, getKey("nullifier"))));
+        .then((entries) => entries.map(({ nullifier }) => String(nullifier)));
 
       /** @type {(notes: WalletCacheNote[]) => WalletCacheNote[]} */
-      const getTwoSpendableNotes = compose(
-        take(2),
-        filterWith(
-          (note) =>
-            !existingPendingNullifiersAsStrings.includes(
-              note.nullifier.toString()
-            )
-        )
-      );
+      const getTwoSpendableNotes = (notes) =>
+        notes
+          .filter(
+            (note) =>
+              !existingPendingNullifiersAsStrings.includes(
+                note.nullifier.toString()
+              )
+          )
+          .slice(0, 2);
       const spendableNotes = getTwoSpendableNotes(cacheUnspentNotes);
 
       // ensure we have the necessary data
@@ -700,11 +703,13 @@ describe("Wallet cache", () => {
       }
 
       // overwrite test
-      const modifiedStakeInfo = updatePathIn(
-        newStakeInfo.stakeInfo,
-        "amount.eligibility",
-        add(345n)
-      );
+      const modifiedStakeInfo = {
+        ...newStakeInfo.stakeInfo,
+        amount: {
+          ...newStakeInfo.stakeInfo.amount,
+          eligibility: newStakeInfo.stakeInfo.amount.eligibility + 345n,
+        },
+      };
 
       await walletCache.setStakeInfo(
         cacheStakeInfo[0].account,
@@ -736,7 +741,7 @@ describe("Wallet cache", () => {
     });
 
     it("should expose a method to convert notes in the w3sper map format into the one used by the cache", () => {
-      const addresses = uniques(pluckFrom(cacheUnspentNotes, "address"));
+      const addresses = [...new Set(pluckFrom(cacheUnspentNotes, "address"))];
       const fakeProfiles = addresses.map((address) => ({
         address: {
           toString() {

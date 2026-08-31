@@ -2,7 +2,6 @@
 
 <script>
   import { onMount } from "svelte";
-  import { collect, getKey, pick } from "lamb";
   import {
     getBalance,
     switchChain,
@@ -22,10 +21,14 @@
   import { createCurrencyFormatter } from "$lib/dusk/currency";
   import { gasStore, settingsStore, walletStore } from "$lib/stores";
 
-  const collectSettings = collect([
-    pick(["gasLimit", "gasPrice"]),
-    getKey("language"),
-  ]);
+  /**
+   * @param {SettingsStoreContent} settings
+   * @returns {[ContractGasSettings, string]}
+   */
+  const collectSettings = ({ gasLimit, gasPrice, language }) => [
+    { gasLimit, gasPrice },
+    language,
+  ];
 
   /**
    * @typedef { import("@wagmi/core").GetBalanceReturnType } GetBalanceReturnType

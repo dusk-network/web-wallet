@@ -1,5 +1,3 @@
-import { map, setPathIn } from "lamb";
-
 import notesArrayToMap from "$lib/wallet/notesArrayToMap";
 import walletCache from "$lib/wallet-cache";
 import networkStore from "$lib/stores/networkStore";
@@ -247,7 +245,7 @@ class WalletTreasury {
     if (reallySpentNullifiers.length !== currentSpentNullifiers.length) {
       const nullifiersToUnspend = walletCache.nullifiersDifference(
         currentSpentNullifiers,
-        map(reallySpentNullifiers, (buf) => new Uint8Array(buf))
+        reallySpentNullifiers.map((buffer) => new Uint8Array(buffer))
       );
 
       await walletCache.unspendNotes(nullifiersToUnspend);
@@ -281,10 +279,10 @@ class WalletTreasury {
     const address = profile.address.toString();
     const currentBalance = await walletCache.getBalanceInfo(address);
 
-    await walletCache.setBalanceInfo(
-      address,
-      setPathIn(currentBalance, "unshielded.nonce", nonce)
-    );
+    await walletCache.setBalanceInfo(address, {
+      ...currentBalance,
+      unshielded: { ...currentBalance.unshielded, nonce },
+    });
   }
 
   /**
