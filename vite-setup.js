@@ -74,23 +74,6 @@ Object.defineProperty(window, "litIssuedWarnings", {
   writable: false,
 });
 
-/*
- * Add a polyfill for Promise.withResolvers for Node 20
- */
-if (!Promise.withResolvers) {
-  Promise.withResolvers = function () {
-    let reject;
-    let resolve;
-
-    const promise = new Promise((res, rej) => {
-      reject = rej;
-      resolve = res;
-    });
-
-    return { promise, reject, resolve };
-  };
-}
-
 // Adding missing bits in JSDOM
 
 vi.mock("./src/lib/dusk/mocks/IntersectionObserver");
