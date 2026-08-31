@@ -20,6 +20,12 @@ export default defineConfig([
       sourceType: "module",
     },
     settings: {
+      "import/core-modules": [
+        "$app/environment",
+        "$app/navigation",
+        "$app/paths",
+        "$app/stores",
+      ],
       "import/resolver": {
         node: {},
         typescript: {
