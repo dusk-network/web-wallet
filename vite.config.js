@@ -5,6 +5,8 @@ import { defineConfig, loadEnv } from "vite";
 import { execSync } from "child_process";
 import { resolve } from "path";
 
+const supportedBrowsers = ["chrome129", "edge129", "firefox130", "safari18"];
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   const buildDate = new Date().toISOString().substring(0, 10);
@@ -19,6 +21,9 @@ export default defineConfig(({ mode }) => {
   process.env.PUBLIC_APP_VERSION = APP_VERSION;
 
   return {
+    build: {
+      target: supportedBrowsers,
+    },
     define: {
       CONFIG: { LOCAL_STORAGE_APP_KEY: process.env.npm_package_name },
       "import.meta.env.APP_BUILD_INFO": JSON.stringify(APP_BUILD_INFO),
