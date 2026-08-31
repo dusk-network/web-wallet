@@ -8,7 +8,6 @@
   import { contractDescriptors, updateOperation } from "$lib/contracts";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
-  import { collect, getKey, pick } from "lamb";
   import { ContractStatusesList, StakeMaturityInfo } from "$lib/components";
   import { createNumberFormatter } from "$lib/dusk/number";
 
@@ -30,16 +29,14 @@
     updateOperation("");
   });
 
-  const collectSettings = collect([
-    pick([
-      "gasLimit",
-      "gasLimitLower",
-      "gasLimitUpper",
-      "gasPrice",
-      "gasPriceLower",
-    ]),
-    getKey("language"),
-  ]);
+  /**
+   * @param {SettingsStoreContent} settings
+   * @returns {[ContractGasSettings, string]}
+   */
+  const collectSettings = ({ gasLimit, gasPrice, language }) => [
+    { gasLimit, gasPrice },
+    language,
+  ];
 
   networkStore.getCurrentBlockHeight().then((blockHeight) => {
     currentBlockHeight = blockHeight;

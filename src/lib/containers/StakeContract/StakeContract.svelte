@@ -1,7 +1,6 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { getKey, hasKeyValue, map, mapWith, setKey, when } from "lamb";
   import { Gas } from "@dusk/w3sper";
   import {
     gasStore,
@@ -42,19 +41,20 @@
     "claim-rewards": (amount, gasPrice, gasLimit) =>
       walletStore
         .claimRewards(amount, new Gas({ limit: gasLimit, price: gasPrice }))
-        .then(getKey("hash")),
+        .then(({ hash }) => hash),
     stake: (amount, gasPrice, gasLimit) =>
       walletStore
         .stake(amount, new Gas({ limit: gasLimit, price: gasPrice }))
-        .then(getKey("hash")),
+        .then(({ hash }) => hash),
     unstake: (amount, gasPrice, gasLimit) =>
       walletStore
         .unstake(amount, new Gas({ limit: gasLimit, price: gasPrice }))
-        .then(getKey("hash")),
+        .then(({ hash }) => hash),
   };
 
   /** @type {(operations: ContractOperation[]) => ContractOperation[]} */
-  const disableAllOperations = mapWith(setKey("disabled", true));
+  const disableAllOperations = (items) =>
+    items.map((operation) => ({ ...operation, disabled: true }));
 
   /**
    * We want to update the disabled status ourselves only
@@ -64,9 +64,10 @@
    * @returns {ContractOperation[]}
    */
   const getOperations = () =>
-    map(
-      descriptor.operations,
-      when(hasKeyValue("disabled", false), updateOperationDisabledStatus())
+    descriptor.operations.map((operation) =>
+      operation.disabled === false
+        ? updateOperationDisabledStatus()(operation)
+        : operation
     );
 
   const getMaxWithdrawAmount = () => {

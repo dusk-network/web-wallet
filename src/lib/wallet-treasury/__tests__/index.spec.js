@@ -8,8 +8,6 @@ import {
   it,
   vi,
 } from "vitest";
-import { mapValues, mapWith, multiplyBy, pluckFrom } from "lamb";
-
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
 import { cachePendingNotesInfo } from "$lib/mock-data";
@@ -21,6 +19,15 @@ import {
 import networkStore from "$lib/stores/networkStore";
 
 import WalletTreasury from "..";
+
+/**
+ * @template {Record<string, any>} T
+ * @template {keyof T} K
+ * @param {T[]} entries
+ * @param {K} key
+ * @returns {T[K][]}
+ */
+const pluckFrom = (entries, key) => entries.map((entry) => entry[key]);
 import walletCache from "$lib/wallet-cache";
 
 describe("WalletTreasury", () => {
@@ -97,8 +104,8 @@ describe("WalletTreasury", () => {
             )
         )
         .toArray()
-        .then(
-          mapWith((entry) => ({
+        .then((entries) =>
+          entries.map((entry) => ({
             ...entry,
             note: new Uint8Array(entry.note),
             nullifier: new Uint8Array(entry.nullifier),
@@ -228,8 +235,14 @@ describe("WalletTreasury", () => {
       const address = profiles[0].address.toString();
       const currentBalance = await walletCache.getBalanceInfo(address);
       const newBalance = {
-        shielded: mapValues(currentBalance.shielded, multiplyBy(2n)),
-        unshielded: mapValues(currentBalance.unshielded, multiplyBy(3n)),
+        shielded: {
+          spendable: currentBalance.shielded.spendable * 2n,
+          value: currentBalance.shielded.value * 2n,
+        },
+        unshielded: {
+          nonce: currentBalance.unshielded.nonce * 3n,
+          value: currentBalance.unshielded.value * 3n,
+        },
       };
 
       await walletTreasury.setCachedBalance(profiles[0], newBalance);

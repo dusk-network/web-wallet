@@ -4,8 +4,6 @@
   import { mdiChevronLeft, mdiChevronRight } from "@mdi/js";
   import { createEventDispatcher, onMount } from "svelte";
   import { writable } from "svelte/store";
-  import { isGTE, isLTE } from "lamb";
-
   import { Button, Icon } from "$lib/dusk/components";
   import { makeClassName } from "$lib/dusk/string";
 
@@ -45,10 +43,11 @@
   function isTabSideVisible(side) {
     const tabsListRect = tabsList.getBoundingClientRect();
     const tolerance = 5;
+    /** @type {(value: number) => boolean} */
     const checkSide =
       side === "left"
-        ? isGTE(tabsListRect.left - tolerance)
-        : isLTE(tabsListRect.right + tolerance);
+        ? (value) => value >= tabsListRect.left - tolerance
+        : (value) => value <= tabsListRect.right + tolerance;
 
     /** @param {HTMLLIElement} tab */
     return (tab) => checkSide(tab.getBoundingClientRect()[side]);

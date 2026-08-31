@@ -2,8 +2,6 @@
 
 <script>
   import { fade } from "svelte/transition";
-  import { setKey } from "lamb";
-
   import { Wizard, WizardStep } from "$lib/dusk/components";
 
   import { ExistingWalletNotice } from "$lib/components";
@@ -151,9 +149,10 @@
       nextButton={{
         action: async () => {
           await initializeWallet(mnemonicPhrase.join(" "), currentBlockHeight);
-          settingsStore.update(
-            setKey("walletCreationBlockHeight", currentBlockHeight)
-          );
+          settingsStore.update((settings) => ({
+            ...settings,
+            walletCreationBlockHeight: currentBlockHeight,
+          }));
 
           mnemonicPhrase = [];
         },

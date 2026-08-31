@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
-import { skipIn } from "lamb";
 import { Balance } from "..";
 
 describe("Balance", () => {
@@ -107,7 +106,7 @@ describe("Balance", () => {
   });
 
   it("should not display the fiat value if the fiat price is `undefined`", () => {
-    const props = skipIn(baseProps, ["fiatPrice"]);
+    const props = { ...baseProps, fiatPrice: undefined };
     const { container } = render(Balance, { ...baseOptions, props });
 
     expect(container.querySelector(".dusk-balance__fiat--visible")).toBeNull();

@@ -9,8 +9,6 @@ import {
 } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
-import { setKey } from "lamb";
-
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import * as navigation from "$lib/navigation";
 import {
@@ -82,7 +80,10 @@ describe("Settings", () => {
   });
 
   it("should show the wallet creation block height if it's greater than zero", () => {
-    settingsStore.update(setKey("walletCreationBlockHeight", 123n));
+    settingsStore.update((settings) => ({
+      ...settings,
+      walletCreationBlockHeight: 123n,
+    }));
 
     const { container, getByDisplayValue } = render(Settings, {});
     const creationBlockInput = getByDisplayValue("123");

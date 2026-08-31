@@ -8,7 +8,6 @@
   import { DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT } from "@dusk/evm-sdk";
   import { parseUnits } from "viem";
   import { sendTransaction, switchChain } from "@wagmi/core";
-  import { getKey } from "lamb";
   import { Gas } from "@dusk/w3sper";
 
   import {
@@ -147,7 +146,7 @@
       new Gas({ limit: gasLimit, price: gasPrice }),
       { minGasLimit: BRIDGE_DEPOSIT_MIN_GAS_LIMIT }
     );
-    const hash = getKey("hash")(response);
+    const { hash } = response;
 
     if (typeof hash !== "string") {
       throw new Error("The DuskDS transaction did not return a hash.");

@@ -1,5 +1,3 @@
-import { sortWith } from "lamb";
-
 /**
  * We need to sort the entries in tests as the
  * database doesn't guarantee a sort order.
@@ -7,8 +5,9 @@ import { sortWith } from "lamb";
  * @typedef {{ nullifier: Uint8Array<ArrayBuffer> }} T
  * @type {<U extends T>(entries: U[]) => U[]}
  */
-const sortByNullifier = sortWith([
-  /** @type {(entry: T) => string} */ ((entry) => entry.nullifier.toString()),
-]);
+const sortByNullifier = (entries) =>
+  entries.toSorted((a, b) =>
+    a.nullifier.toString().localeCompare(b.nullifier.toString())
+  );
 
 export default sortByNullifier;

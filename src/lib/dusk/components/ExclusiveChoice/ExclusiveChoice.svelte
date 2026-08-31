@@ -1,8 +1,6 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { isType } from "lamb";
-
   import { makeClassName, randomUUID } from "$lib/dusk/string";
 
   import "./ExclusiveChoice.css";
@@ -19,8 +17,8 @@
   /** @type {string} */
   export let value;
 
-  /** @type {(v: any) => v is string} */
-  const isString = isType("String");
+  /** @type {(item: any) => item is string} */
+  const isString = (item) => typeof item === "string";
 
   const baseId = randomUUID();
 

@@ -1,4 +1,3 @@
-import { getKey } from "lamb";
 import { Gas } from "@dusk/w3sper";
 
 import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
@@ -22,7 +21,7 @@ const executeSend = (to, amount, memo, gasPrice, gasLimit) => {
         price: gasPrice,
       })
     )
-    .then(getKey("hash"));
+    .then(({ hash }) => hash);
 };
 
 export default executeSend;

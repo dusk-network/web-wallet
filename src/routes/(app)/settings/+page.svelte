@@ -9,7 +9,6 @@
     mdiGasStationOutline,
     mdiRestoreAlert,
   } from "@mdi/js";
-  import { mapWith, rename } from "lamb";
   import {
     Anchor,
     Button,
@@ -59,9 +58,9 @@
     }
   }
 
-  /** @type {(currency: { code: string, currency: string }) => SelectOption} */
-  const currencyToOption = rename({ code: "value", currency: "label" });
-  const currenciesToOptions = mapWith(currencyToOption);
+  /** @type {(currencies: { code: string, currency: string }[]) => SelectOption[]} */
+  const currenciesToOptions = (items) =>
+    items.map(({ code, currency }) => ({ label: currency, value: code }));
   const { gasLimitLower, gasLimitUpper, gasPriceLower } = $gasStore;
 
   let isGasValid = false;

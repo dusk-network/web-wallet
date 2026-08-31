@@ -1,6 +1,5 @@
 import { writable } from "svelte/store";
 import { browser } from "$app/environment";
-import { always, condition, getKey, getPath, isUndefined, when } from "lamb";
 import {
   AccountSyncer,
   AddressSyncer,
@@ -50,7 +49,7 @@ const { set, subscribe } = networkStore;
 const checkBlock = (height, hash) =>
   connect()
     .then(() => network.query(`checkBlock(height: ${height}, hash: "${hash}")`))
-    .then(getKey("checkBlock"));
+    .then(({ checkBlock: result }) => result);
 
 /** @type {NetworkStoreServices["connect"]} */
 const connect = async () =>
@@ -83,8 +82,7 @@ const getAddressSyncer = () => connect().then(() => new AddressSyncer(network));
 const getBlockHashByHeight = (height) =>
   connect()
     .then(() => network.query(`block(height: ${height}) { header { hash } }`))
-    .then(getPath("block.header.hash"))
-    .then(when(isUndefined, always("")));
+    .then((data) => data?.block?.header?.hash ?? "");
 
 /** @type {NetworkStoreServices["getCurrentBlockHeight"]} */
 const getCurrentBlockHeight = () => network.blockHeight;
@@ -107,8 +105,8 @@ const getLatestBlockTimestamp = () =>
 const getLastFinalizedBlockHeight = () =>
   connect()
     .then(() => network.query("lastBlockPair { json }"))
-    .then(getPath("lastBlockPair.json.last_finalized_block.0"))
-    .then(condition(isUndefined, always(0n), BigInt));
+    .then((data) => data?.lastBlockPair?.json?.last_finalized_block?.[0])
+    .then((height) => (height === undefined ? 0n : BigInt(height)));
 
 /** @type {NetworkStoreServices["init"]} */
 async function init() {

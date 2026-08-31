@@ -1,6 +1,11 @@
-import { getKey, sortWith, sorterDesc } from "lamb";
-
 /** @type {(transactions: Transaction[]) => Transaction[]} */
-const sortByHeightDesc = sortWith([sorterDesc(getKey("block_height"))]);
+const sortByHeightDesc = (transactions) =>
+  [...transactions].sort((a, b) =>
+    a.block_height < b.block_height
+      ? 1
+      : a.block_height > b.block_height
+        ? -1
+        : 0
+  );
 
 export default sortByHeightDesc;

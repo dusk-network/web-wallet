@@ -1,5 +1,4 @@
 import { gasStore } from "$lib/stores";
-import { isType } from "lamb";
 import { get } from "svelte/store";
 
 /**
@@ -14,7 +13,7 @@ const areValidGasSettings = (price, limit) => {
   let isValidLimit = false;
   let isGasValid = false;
 
-  if ([price, limit].every(isType("BigInt"))) {
+  if ([price, limit].every((value) => typeof value === "bigint")) {
     isValidPrice = price >= gasLimits.gasPriceLower && price <= limit;
     isValidLimit =
       limit >= gasLimits.gasLimitLower && limit <= gasLimits.gasLimitUpper;

@@ -1,4 +1,3 @@
-import { mapWith, skipIn } from "lamb";
 import { getCacheDatabase } from ".";
 
 import {
@@ -18,15 +17,19 @@ import {
  * we intentionally write ArrayBuffers from the
  * beginning.
  */
-const fixPending = mapWith((record) => ({
-  ...record,
-  nullifier: record.nullifier.buffer,
-}));
-const fixNotes = mapWith((record) => ({
-  ...record,
-  note: record.note.buffer,
-  nullifier: record.nullifier.buffer,
-}));
+/** @type {(records: WalletCachePendingNoteInfo[]) => WalletCacheDbPendingNoteInfo[]} */
+const fixPending = (records) =>
+  records.map((record) => ({
+    ...record,
+    nullifier: record.nullifier.buffer,
+  }));
+/** @type {(records: WalletCacheNote[]) => WalletCacheDbNote[]} */
+const fixNotes = (records) =>
+  records.map((record) => ({
+    ...record,
+    note: record.note.buffer,
+    nullifier: record.nullifier.buffer,
+  }));
 
 /**
  * In IndexedDB objects with a getter will be
@@ -37,13 +40,24 @@ const fixNotes = mapWith((record) => ({
  *
  * Hence we remove it to simulate the real situation.
  */
-const fixStakeInfo = mapWith((entry) => ({
-  ...entry,
-  stakeInfo: {
-    ...entry.stakeInfo,
-    amount: skipIn(entry.stakeInfo.amount, ["total"]),
-  },
-}));
+/** @type {(entries: { account: string, stakeInfo: StakeInfo }[]) => WalletCacheDbStakeInfo[]} */
+const fixStakeInfo = (entries) =>
+  entries.map((entry) => {
+    const { amount } = entry.stakeInfo;
+    return {
+      ...entry,
+      stakeInfo: {
+        ...entry.stakeInfo,
+        amount: amount
+          ? {
+              eligibility: amount.eligibility,
+              locked: amount.locked,
+              value: amount.value,
+            }
+          : null,
+      },
+    };
+  });
 
 /** @type {() => Promise<void>} */
 async function fillCacheDatabase() {

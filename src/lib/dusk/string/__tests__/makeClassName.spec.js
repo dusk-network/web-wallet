@@ -64,10 +64,9 @@ describe("makeClassName", () => {
   });
 
   it("should throw an exception if the received parameter is `null` or `undefined`", () => {
-    // @ts-expect-error
+    // @ts-expect-error Testing invalid input.
     expect(() => makeClassName(null)).toThrow();
-
-    // @ts-expect-error
+    // @ts-expect-error Testing invalid input.
     expect(() => makeClassName(void 0)).toThrow();
   });
 });

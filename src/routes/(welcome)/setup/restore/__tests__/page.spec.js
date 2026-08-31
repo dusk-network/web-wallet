@@ -1,6 +1,5 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import { getKey, setKey } from "lamb";
 import { get } from "svelte/store";
 import { tick } from "svelte";
 import { ProfileGenerator } from "@dusk/w3sper";
@@ -16,6 +15,11 @@ import loginInfoStorage from "$lib/services/loginInfoStorage";
 import { toastList } from "$lib/dusk/components/Toast/store";
 
 import Restore from "../+page.svelte";
+
+const getKey = (/** @type {string} */ key) => (/** @type {any} */ value) =>
+  value[key];
+/** @type {(userId: string) => (settings: SettingsStoreContent) => SettingsStoreContent} */
+const setUserId = (userId) => (settings) => ({ ...settings, userId });
 
 /**
  * @param {HTMLElement} input
@@ -68,7 +72,7 @@ describe("Restore", async () => {
   });
 
   it("should render the Existing Wallet notice step of the Restore flow if there is a userId saved in localStorage", () => {
-    settingsStore.update(setKey("userId", userId));
+    settingsStore.update(setUserId(userId));
 
     const { container } = render(Restore);
 
@@ -82,7 +86,7 @@ describe("Restore", async () => {
   });
 
   it("should render the Mnemonic Authenticate step after accepting the Existing Wallet Notice and the Terms of Service", async () => {
-    settingsStore.update(setKey("userId", userId));
+    settingsStore.update(setUserId(userId));
 
     const { container, getByRole } = render(Restore);
 

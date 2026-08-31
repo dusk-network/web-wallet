@@ -1,10 +1,8 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { isType } from "lamb";
-
-  /** @type {(v: any) => v is string} */
-  const isString = isType("String");
+  /** @type {(value: any) => value is string} */
+  const isString = (value) => typeof value === "string";
 
   /** @type SelectOption[] | string[] */
   export let options;

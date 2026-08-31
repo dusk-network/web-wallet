@@ -1,5 +1,4 @@
 <script>
-  import { compose, take } from "lamb";
   import { mdiArrowLeft, mdiContain } from "@mdi/js";
   import { onMount } from "svelte";
   import { fade } from "svelte/transition";
@@ -41,9 +40,10 @@
   let screenWidth = window.innerWidth;
 
   /** @type {(transactions: Transaction[]) => Transaction[]} */
-  const getOrderedTransactions = limit
-    ? compose(take(limit), sortByHeightDesc)
-    : sortByHeightDesc;
+  const getOrderedTransactions = (transactions) => {
+    const ordered = sortByHeightDesc(transactions);
+    return limit ? ordered.slice(0, limit) : ordered;
+  };
 
   onMount(() => {
     const resizeObserver = new ResizeObserver((entries) => {

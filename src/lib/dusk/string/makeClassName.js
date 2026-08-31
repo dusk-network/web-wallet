@@ -1,23 +1,3 @@
-import {
-  condition,
-  filterWith,
-  joinWith,
-  keys,
-  pickIf,
-  pipe,
-  uniques,
-} from "lamb";
-
-const joinWithSpace = joinWith(" ");
-
-const makeClassNameFromArray = pipe([
-  filterWith(Boolean),
-  uniques,
-  joinWithSpace,
-]);
-
-const makeClassNameFromObject = pipe([pickIf(Boolean), keys, joinWithSpace]);
-
 /**
  * Utility function to build a CSS class name string.<br/>
  * The function accepts either an Object or an Array.<br/>
@@ -33,11 +13,12 @@ const makeClassNameFromObject = pipe([pickIf(Boolean), keys, joinWithSpace]);
  * makeClassName(arr) // => "foo baz"
  * makeClassName({}) // => ""
  * makeClassName([]) // => ""
+ * @param {any[] | Record<string, any>} value
  */
-const makeClassName = condition(
-  Array.isArray,
-  makeClassNameFromArray,
-  makeClassNameFromObject
-);
+const makeClassName = (value) =>
+  (Array.isArray(value)
+    ? [...new Set(value.filter(Boolean))]
+    : Object.keys(value).filter((key) => value[key])
+  ).join(" ");
 
 export default makeClassName;
