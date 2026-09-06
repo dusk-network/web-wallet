@@ -31,6 +31,7 @@
   /** @type {import("svelte/elements").KeyboardEventHandler<HTMLDivElement>} */
   function handleKeyDown(event) {
     if (!disabled && event.key === " ") {
+      event.preventDefault();
       toggleSwitch();
     }
   }
@@ -49,7 +50,7 @@
   class={makeClassName(["dusk-switch", className])}
   class:dusk-switch--on-surface={onSurface}
   on:click={handleClick}
-  on:keydown|preventDefault={handleKeyDown}
+  on:keydown={handleKeyDown}
   role="switch"
   tabindex={disabled ? -1 : tabindex}
 ></div>

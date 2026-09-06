@@ -24,6 +24,7 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a heading 1
         <div
           aria-checked="false"
           aria-disabled="false"
+          aria-label="My Card"
           class="dusk-switch dusk-switch--on-surface"
           role="switch"
           tabindex="0"
@@ -68,6 +69,7 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a heading a
         <div
           aria-checked="false"
           aria-disabled="false"
+          aria-label="My Card"
           class="dusk-switch dusk-switch--on-surface"
           role="switch"
           tabindex="0"
@@ -123,6 +125,7 @@ exports[`IconHeadingCard > renders the ToggleableCard component with a toggle 1`
         <div
           aria-checked="true"
           aria-disabled="false"
+          aria-label="My Card"
           class="dusk-switch dusk-switch--on-surface"
           role="switch"
           tabindex="0"

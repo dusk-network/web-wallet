@@ -244,6 +244,7 @@
         <Textbox
           required
           className={sendToAddressTextboxClasses}
+          aria-label="Recipient address"
           type="multiline"
           bind:value={sendToAddress}
         />
@@ -321,6 +322,7 @@
           <Textbox
             className="operation__input-field"
             bind:value={sendAmount}
+            aria-label="Amount"
             required
             type="number"
             min={minAmount}
@@ -337,6 +339,7 @@
         <div class="operation__input-wrapper">
           <p>Memo{isSendingToBep20Bridge ? "" : " (optional)"}</p>
           <Switch
+            aria-label="Include memo"
             on:change={() => {
               if (!isMemoShown) {
                 memo = "";
@@ -350,6 +353,7 @@
           <Textbox
             required
             className={sendMemoTextboxClasses}
+            aria-label="Memo"
             type="multiline"
             bind:value={memo}
           />

@@ -131,6 +131,7 @@ exports[`Send > Address step > should display a warning if the address input is 
        
       <!---->
       <textarea
+        aria-label="Recipient address"
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
@@ -429,6 +430,7 @@ exports[`Send > Address step > should display a warning if the address input is 
        
       <!---->
       <textarea
+        aria-label="Recipient address"
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
@@ -759,6 +761,7 @@ exports[`Send > Address step > should render the Send component Address step 1`]
        
       <!---->
       <textarea
+        aria-label="Recipient address"
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
@@ -1031,6 +1034,7 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
       >
         <!---->
         <input
+          aria-label="Amount"
           class="dusk-textbox dusk-textbox-number operation__input-field"
           max="999.98"
           min="1e-9"
@@ -1067,6 +1071,7 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
         <div
           aria-checked="false"
           aria-disabled="false"
+          aria-label="Include memo"
           class="dusk-switch dusk-switch--on-surface"
           role="switch"
           tabindex="0"

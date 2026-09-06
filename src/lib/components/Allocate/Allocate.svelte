@@ -190,6 +190,7 @@
               id="unshielded-amount"
               on:input={handleBalanceChange}
               name="unshielded-amount"
+              aria-label="Public amount"
             />
             <Icon
               data-tooltip-id="main-tooltip"
@@ -229,6 +230,7 @@
               min="0"
               on:input={handleBalanceChange}
               name="shielded-amount"
+              aria-label="Shielded amount"
             />
             <Icon
               data-tooltip-id="main-tooltip"

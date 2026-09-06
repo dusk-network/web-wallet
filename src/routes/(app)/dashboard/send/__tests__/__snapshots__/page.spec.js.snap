@@ -221,6 +221,7 @@ exports[`Send page > should render the send page 1`] = `
            
           <!---->
           <textarea
+            aria-label="Recipient address"
             class="dusk-textbox dusk-textbox-multiline operation__send-address"
             required=""
           />

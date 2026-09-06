@@ -31,6 +31,7 @@
     <h3 class="h4">{heading}</h3>
     <div class="dusk-card__header-controls-wrapper">
       <Switch
+        aria-label={heading}
         onSurface
         bind:value={isToggled}
         on:change={dispatchToggleEvent}

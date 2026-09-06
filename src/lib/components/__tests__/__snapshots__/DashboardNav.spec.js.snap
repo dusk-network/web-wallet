@@ -17,7 +17,6 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -34,7 +33,6 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -51,7 +49,6 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -84,7 +81,6 @@ exports[`DashboardNav > renders the DashboardNav component 1`] = `
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -164,7 +160,6 @@ exports[`DashboardNav > should display icons if the item's icon array is present
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -181,7 +176,6 @@ exports[`DashboardNav > should display icons if the item's icon array is present
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -198,7 +192,6 @@ exports[`DashboardNav > should display icons if the item's icon array is present
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -231,7 +224,6 @@ exports[`DashboardNav > should display icons if the item's icon array is present
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -311,7 +303,6 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -328,7 +319,6 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -345,7 +335,6 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -378,7 +367,6 @@ exports[`DashboardNav > should not display icons if the item's icon array is emp
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -458,7 +446,6 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -475,7 +462,6 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -492,7 +478,6 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
@@ -525,7 +510,6 @@ exports[`DashboardNav > should not display icons if the item's icons array is un
       <a
         class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
         href="#"
-        role="menuitem"
         tabindex="0"
       >
         <!---->
