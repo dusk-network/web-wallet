@@ -72,7 +72,7 @@
       ? getSeedFromInfo(loginInfo)
       : (mnemonic) => getSeedFromMnemonicAsync(mnemonic.toLowerCase());
 
-    const secret = secretText.trim();
+    const secret = loginInfo ? secretText : secretText.trim();
 
     getSeed(secret)
       .then(checkLocalData)
