@@ -11,6 +11,25 @@ describe("migrateLoginInfo", () => {
     loginInfoStorage.remove();
   });
 
+  it("should not restore login info when a pending migration is cancelled", async () => {
+    const legacyLoginInfo = await encryptBuffer(
+      new TextEncoder().encode(generateMnemonic()),
+      "some password",
+      10_000
+    );
+    loginInfoStorage.set(legacyLoginInfo);
+    const controller = new AbortController();
+    const migration = migrateLoginInfo(
+      legacyLoginInfo,
+      "some password",
+      controller.signal
+    );
+    controller.abort();
+    loginInfoStorage.remove();
+    await expect(migration).rejects.toMatchObject({ name: "AbortError" });
+    expect(loginInfoStorage.get()).toBeNull();
+  });
+
   it("should preserve legacy login info if migration fails", async () => {
     const legacyLoginInfo = await encryptBuffer(
       new TextEncoder().encode(generateMnemonic()),

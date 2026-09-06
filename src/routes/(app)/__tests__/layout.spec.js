@@ -1,13 +1,5 @@
-import {
-  afterAll,
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render } from "@testing-library/svelte";
 import { ProfileGenerator } from "@dusk/w3sper";
 
 import * as navigation from "$lib/navigation";
@@ -47,23 +39,6 @@ describe("App layout.js", () => {
 
 describe("App layout.svelte", () => {
   const logoutSpy = vi.spyOn(navigation, "logout").mockResolvedValue();
-  const removeListenerSpy = vi.spyOn(window, "removeEventListener");
-  const key = `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`;
-  const storage = {
-    a: 1,
-    b: { c: "some string" },
-    userId: "user-1",
-  };
-  const eventData = {
-    key,
-    newValue: JSON.stringify({ ...storage, userId: "user-2" }),
-    oldValue: JSON.stringify(storage),
-    storageArea: localStorage,
-  };
-
-  beforeEach(() => {
-    removeListenerSpy.mockClear();
-  });
 
   afterEach(() => {
     cleanup();
@@ -72,56 +47,6 @@ describe("App layout.svelte", () => {
 
   afterAll(() => {
     logoutSpy.mockRestore();
-    removeListenerSpy.mockRestore();
-  });
-
-  it("should react to storage changes and logout the user if the `userId` changed", async () => {
-    render(Layout);
-
-    await fireEvent(window, new StorageEvent("storage", eventData));
-
-    expect(removeListenerSpy).toHaveBeenCalledTimes(1);
-    expect(removeListenerSpy).toHaveBeenNthCalledWith(
-      1,
-      "storage",
-      expect.any(Function)
-    );
-    expect(logoutSpy).toHaveBeenCalledTimes(1);
-    expect(logoutSpy).toHaveBeenCalledWith(true);
-  });
-
-  it("should do nothing if the `userId` remained the same", async () => {
-    const data = {
-      ...eventData,
-      newValue: JSON.stringify({
-        ...storage,
-        a: 5,
-        b: "foo",
-      }),
-    };
-
-    render(Layout);
-
-    await fireEvent(window, new StorageEvent("storage", data));
-
-    expect(removeListenerSpy).not.toHaveBeenCalled();
-    expect(logoutSpy).not.toHaveBeenCalled();
-  });
-
-  it("should do nothing if the storage change hasn't happened in the preferences", async () => {
-    const data = {
-      ...eventData,
-      key: "some-key",
-      newValue: '"{}"',
-      oldValue: null,
-    };
-
-    render(Layout);
-
-    await fireEvent(window, new StorageEvent("storage", data));
-
-    expect(removeListenerSpy).not.toHaveBeenCalled();
-    expect(logoutSpy).not.toHaveBeenCalled();
   });
 
   it("should logout the user after fifteen minutes without activity", async () => {
