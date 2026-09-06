@@ -46,6 +46,23 @@ describe("Mnemonic", () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
+  it.each([5, 12])(
+    "should allow editing %i prefilled authentication words",
+    async (count) => {
+      const { getByRole, getByPlaceholderText, getAllByRole } = render(
+        Mnemonic,
+        {
+          enteredMnemonicPhrase: mnemonic.slice(0, count),
+          type: "authenticate",
+        }
+      );
+      await fireEvent.click(getByRole("button", { name: "Undo" }));
+      expect(getByPlaceholderText(`Enter word ${count}`)).toBeInTheDocument();
+      expect(getAllByRole("listitem")).toHaveLength(12);
+      expect(getAllByRole("listitem")[count - 1]).toHaveTextContent("_____");
+    }
+  );
+
   it("should display all the words in the order they have been clicked", async () => {
     const { container, getAllByRole } = render(Mnemonic, {
       props: {
