@@ -103,6 +103,7 @@ describe("Wallet store", async () => {
   const setProfilesSpy = vi.spyOn(WalletTreasury.prototype, "setProfiles");
   const treasuryResetSpy = vi.spyOn(WalletTreasury.prototype, "reset");
   const treasuryUpdateSpy = vi.spyOn(WalletTreasury.prototype, "update");
+  const cacheClearSpy = vi.spyOn(WalletTreasury.prototype, "clearCache");
 
   vi.spyOn(networkStore, "checkBlock").mockResolvedValue(true);
   vi.spyOn(networkStore, "getBlockHashByHeight").mockResolvedValue(
@@ -356,6 +357,7 @@ describe("Wallet store", async () => {
 
     it("should abort during sync preflight without leaving the store busy", async () => {
       const pendingSyncInfo = Promise.withResolvers();
+      cacheClearSpy.mockClear();
       const getCachedSyncInfoSpy = vi
         .spyOn(WalletTreasury.prototype, "getCachedSyncInfo")
         .mockReturnValueOnce(pendingSyncInfo.promise);
@@ -371,6 +373,7 @@ describe("Wallet store", async () => {
         expect(get(walletStore).syncStatus.isInProgress).toBe(true);
 
         walletStore.abortSync();
+        vi.mocked(networkStore.checkBlock).mockResolvedValueOnce(false);
         pendingSyncInfo.resolve({
           block: { hash: "", height: 0n },
           bookmark: 0n,
@@ -380,6 +383,7 @@ describe("Wallet store", async () => {
         await Promise.all([firstSync, secondSync]);
 
         expect(treasuryUpdateSpy).not.toHaveBeenCalled();
+        expect(cacheClearSpy).not.toHaveBeenCalled();
         expect(get(walletStore).syncStatus).toStrictEqual({
           error: expect.any(Error),
           from: 0n,
@@ -399,6 +403,7 @@ describe("Wallet store", async () => {
         walletStore.abortSync();
       } finally {
         getCachedSyncInfoSpy.mockRestore();
+        cacheClearSpy.mockClear();
       }
     });
 
@@ -762,8 +767,6 @@ describe("Wallet store", async () => {
   });
 
   describe("Wallet store services", () => {
-    const cacheClearSpy = vi.spyOn(WalletTreasury.prototype, "clearCache");
-
     beforeEach(async () => {
       walletStore.reset();
 
@@ -830,6 +833,98 @@ describe("Wallet store", async () => {
         }
       }
     );
+
+    it.each([
+      ["balance", "read"],
+      ["balance", "cache"],
+      ["stake", "read"],
+      ["stake", "cache"],
+    ])("should discard a pending %s %s after reset", async (kind, phase) => {
+      const pending = Promise.withResolvers();
+      const reader = kind === "balance" ? balanceSpy : stakeInfoSpy;
+      const setter =
+        kind === "balance" ? setCachedBalanceSpy : setCachedStakeInfoSpy;
+      const paused = phase === "read" ? reader : setter;
+      paused.mockReturnValueOnce(pending.promise);
+      const refresh = walletStore.setCurrentProfile(defaultProfile);
+      await vi.waitUntil(() => paused.mock.calls.length === 1);
+      walletStore.reset();
+      pending.resolve(
+        phase === "read"
+          ? kind === "balance"
+            ? shielded
+            : stakeInfo
+          : undefined
+      );
+      await refresh;
+      expect(get(walletStore)).toStrictEqual(initialState);
+      expect(setter).toHaveBeenCalledTimes(phase === "read" ? 0 : 1);
+    });
+
+    it.each(["balance", "stake"])(
+      "should discard a pending %s refresh after switching profiles",
+      async (kind) => {
+        const pending = Promise.withResolvers();
+        const setter =
+          kind === "balance" ? setCachedBalanceSpy : setCachedStakeInfoSpy;
+        setter.mockReturnValueOnce(pending.promise);
+        const refresh = walletStore.setCurrentProfile(defaultProfile);
+        await vi.waitUntil(() => setter.mock.calls.length === 1);
+        balanceSpy
+          .mockResolvedValueOnce(cachedBalance.shielded)
+          .mockResolvedValueOnce(cachedBalance.unshielded);
+        stakeInfoSpy.mockResolvedValueOnce(cachedStakeInfo);
+        await walletStore.setCurrentProfile(get(walletStore).profiles[1]);
+        const expected = get(walletStore);
+        pending.resolve(undefined);
+        await refresh;
+        expect(get(walletStore)).toStrictEqual(expected);
+      }
+    );
+
+    it("should cancel a pending clear-and-init on reset", async () => {
+      const pending = Promise.withResolvers();
+      cacheClearSpy.mockReturnValueOnce(pending.promise);
+      const initialization = walletStore.clearLocalDataAndInit(
+        profileGenerator,
+        99n
+      );
+      walletStore.reset();
+      pending.resolve(undefined);
+      await initialization;
+      try {
+        expect(get(walletStore)).toStrictEqual(initialState);
+      } finally {
+        walletStore.reset();
+        await vi.runOnlyPendingTimersAsync();
+      }
+    });
+
+    it("should keep only the newest pending clear-and-init", async () => {
+      const firstClear = Promise.withResolvers();
+      const secondClear = Promise.withResolvers();
+      cacheClearSpy
+        .mockReturnValueOnce(firstClear.promise)
+        .mockReturnValueOnce(secondClear.promise);
+      const newGenerator = new ProfileGenerator(() => new Uint8Array());
+      const newProfile = await newGenerator.default;
+      const first = walletStore.clearLocalDataAndInit(profileGenerator, 99n);
+      const second = walletStore.clearLocalDataAndInit(newGenerator, 99n);
+      try {
+        firstClear.resolve(undefined);
+        await first;
+        expect(get(walletStore)).toStrictEqual(initialState);
+        secondClear.resolve(undefined);
+        await second;
+        expect(get(walletStore).currentProfile).toBe(newProfile);
+      } finally {
+        firstClear.resolve(undefined);
+        secondClear.resolve(undefined);
+        await Promise.all([first, second]);
+        walletStore.reset();
+        await vi.runOnlyPendingTimersAsync();
+      }
+    });
 
     it("should expose a method to clear local data", async () => {
       vi.useRealTimers();

@@ -142,6 +142,7 @@ const updateCacheAfterTransaction = async (txInfo) => {
 
 /** @type {() => Promise<void>} */
 const updateBalance = async () => {
+  const session = walletSession;
   const profile = getCurrentProfile();
 
   if (!profile) {
@@ -160,8 +161,14 @@ const updateBalance = async () => {
    * We ignore the error as the cached balance is only
    * a nice to have for the user.
    */
+  if (session !== walletSession || profile !== getCurrentProfile()) {
+    return;
+  }
   await treasury.setCachedBalance(profile, balance).catch(() => {});
 
+  if (session !== walletSession || profile !== getCurrentProfile()) {
+    return;
+  }
   update((currentStore) => ({
     ...currentStore,
     balance,
@@ -170,6 +177,7 @@ const updateBalance = async () => {
 
 /** @type {() => Promise<void>} */
 const updateStakeInfo = async () => {
+  const session = walletSession;
   const profile = getCurrentProfile();
 
   if (!profile) {
@@ -183,8 +191,14 @@ const updateStakeInfo = async () => {
    * We ignore the error as the cached stake info is only
    * a nice to have for the user.
    */
+  if (session !== walletSession || profile !== getCurrentProfile()) {
+    return;
+  }
   await treasury.setCachedStakeInfo(profile, stakeInfo).catch(() => {});
 
+  if (session !== walletSession || profile !== getCurrentProfile()) {
+    return;
+  }
   update((currentStore) => ({
     ...currentStore,
     stakeInfo,
@@ -209,10 +223,15 @@ const clearLocalData = async () => {
 };
 
 /** @type {WalletStoreServices["clearLocalDataAndInit"]} */
-const clearLocalDataAndInit = (profileGenerator, syncFromBlock) =>
-  clearLocalData().then(() => {
-    return init(profileGenerator, syncFromBlock);
-  });
+const clearLocalDataAndInit = async (profileGenerator, syncFromBlock) => {
+  reset();
+  const session = walletSession;
+  await clearLocalData();
+
+  if (session === walletSession) {
+    await init(profileGenerator, syncFromBlock);
+  }
+};
 
 /** @type {WalletStoreServices["claimRewards"]} */
 const claimRewards = async (amount, gas) =>
@@ -347,6 +366,11 @@ async function sync(fromBlock) {
 
     const controller = new AbortController();
     syncController = controller;
+    const ensureCurrent = () => {
+      if (session !== walletSession || controller.signal.aborted) {
+        throw new Error("Synchronization aborted");
+      }
+    };
 
     const currentSyncPromise = (async () => {
       const { block, bookmark, lastFinalizedBlockHeight } =
@@ -376,17 +400,11 @@ async function sync(fromBlock) {
           : lastFinalizedBlockHeight;
       }
 
+      ensureCurrent();
       if (from === 0n) {
         await treasury.clearCache();
       }
-
-      if (controller.signal.aborted) {
-        throw new Error("Synchronization aborted");
-      }
-
-      if (session !== walletSession) {
-        return;
-      }
+      ensureCurrent();
 
       update((currentStore) => ({
         ...currentStore,
@@ -414,11 +432,7 @@ async function sync(fromBlock) {
 
       await treasury.update(from, syncIterationListener, controller.signal);
     })()
-      .then(() => {
-        if (controller.signal.aborted) {
-          throw new Error("Synchronization aborted");
-        }
-      })
+      .then(ensureCurrent)
       .then(() => {
         if (session !== walletSession) {
           return;

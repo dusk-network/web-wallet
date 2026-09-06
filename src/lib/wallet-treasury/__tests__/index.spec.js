@@ -257,6 +257,71 @@ describe("WalletTreasury", () => {
       notesSpy.mockRestore();
     });
 
+    it.each([1, 2])(
+      "should stop cache writes after reset during spent lookup %i",
+      async (lookup) => {
+        const pending = Promise.withResolvers();
+        const spentSpy = vi.spyOn(AddressSyncer.prototype, "spent");
+        if (lookup === 2) {
+          spentSpy.mockResolvedValueOnce([]);
+        }
+        spentSpy.mockReturnValueOnce(pending.promise);
+        const spendNotesSpy = vi.spyOn(walletCache, "spendNotes");
+        const unspendNotesSpy = vi.spyOn(walletCache, "unspendNotes");
+        const setSyncInfoSpy = vi.spyOn(walletCache, "setSyncInfo");
+        try {
+          const update = walletTreasury
+            .update(0n, () => {}, new AbortController().signal)
+            .then(
+              () => null,
+              (error) => error
+            );
+          await vi.waitUntil(() => spentSpy.mock.calls.length === lookup);
+          walletTreasury.reset();
+          spendNotesSpy.mockClear();
+          unspendNotesSpy.mockClear();
+          setSyncInfoSpy.mockClear();
+          pending.resolve([]);
+          const outcome = await update;
+          expect(spendNotesSpy).not.toHaveBeenCalled();
+          expect(unspendNotesSpy).not.toHaveBeenCalled();
+          expect(setSyncInfoSpy).not.toHaveBeenCalled();
+          expect(outcome).toBeInstanceOf(Error);
+        } finally {
+          pending.resolve([]);
+          spentSpy.mockRestore();
+          spendNotesSpy.mockRestore();
+          unspendNotesSpy.mockRestore();
+          setSyncInfoSpy.mockRestore();
+        }
+      }
+    );
+
+    it("should discard sync metadata resolved after reset", async () => {
+      const pending = Promise.withResolvers();
+      const heightSpy = vi
+        .spyOn(networkStore, "getLastFinalizedBlockHeight")
+        .mockReturnValueOnce(pending.promise);
+      const setSyncInfoSpy = vi.spyOn(walletCache, "setSyncInfo");
+      try {
+        const update = walletTreasury
+          .update(0n, () => {}, new AbortController().signal)
+          .then(
+            () => null,
+            (error) => error
+          );
+        await vi.waitUntil(() => heightSpy.mock.calls.length === 1);
+        walletTreasury.reset();
+        pending.resolve(0n);
+        expect(await update).toBeInstanceOf(Error);
+        expect(setSyncInfoSpy).not.toHaveBeenCalled();
+      } finally {
+        pending.resolve(0n);
+        heightSpy.mockRestore();
+        setSyncInfoSpy.mockRestore();
+      }
+    });
+
     it("should remove sync listeners when an update fails", async () => {
       const error = new Error("Unable to retrieve balances");
       const balancesSpy = vi

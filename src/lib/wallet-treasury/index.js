@@ -246,6 +246,7 @@ class WalletTreasury {
       // gather all unspent nullifiers in the cache
       const currentUnspentNullifiers =
         await walletCache.getUnspentNotesNullifiers();
+      ensureCurrent();
 
       /**
        * Retrieving the nullifiers that are now spent.
@@ -260,11 +261,13 @@ class WalletTreasury {
       );
 
       // update the cache with the spent nullifiers info
+      ensureCurrent();
       await walletCache.spendNotes(spentNullifiers);
 
       // gather all spent nullifiers in the cache
       const currentSpentNullifiers =
         await walletCache.getSpentNotesNullifiers();
+      ensureCurrent();
 
       /**
        * Retrieving the nullifiers that are really spent given our
@@ -285,6 +288,7 @@ class WalletTreasury {
        * our spent nullifiers, we can skip this operation if the lengths
        * are the same.
        */
+      ensureCurrent();
       if (reallySpentNullifiers.length !== currentSpentNullifiers.length) {
         const nullifiersToUnspend = walletCache.nullifiersDifference(
           currentSpentNullifiers,
@@ -302,9 +306,9 @@ class WalletTreasury {
        * fix our local cache state by syncing from the last finalized
        * block height.
        */
-      await walletCache.setSyncInfo(
-        await this.#getEnrichedSyncInfo(lastBlockHeight)
-      );
+      const syncInfo = await this.#getEnrichedSyncInfo(lastBlockHeight);
+      ensureCurrent();
+      await walletCache.setSyncInfo(syncInfo);
     } finally {
       profiles = [];
       cleanup();
