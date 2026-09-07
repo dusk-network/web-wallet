@@ -43,8 +43,13 @@ describe("DashboardNav", () => {
   afterEach(cleanup);
 
   it("renders the DashboardNav component", () => {
-    const { container } = render(DashboardNav, baseOptions);
+    const { container, getAllByRole, queryByRole } = render(
+      DashboardNav,
+      baseOptions
+    );
 
+    expect(getAllByRole("link")).toHaveLength(baseProps.items.length);
+    expect(queryByRole("menuitem")).toBeNull();
     expect(container.firstElementChild).toMatchSnapshot();
   });
 

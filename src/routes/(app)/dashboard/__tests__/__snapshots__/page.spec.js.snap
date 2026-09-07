@@ -21,7 +21,6 @@ exports[`Dashboard > should render a card when there is an error getting transac
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="send"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -54,7 +53,6 @@ exports[`Dashboard > should render a card when there is an error getting transac
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="receive"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -87,7 +85,6 @@ exports[`Dashboard > should render a card when there is an error getting transac
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="stake"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -120,7 +117,6 @@ exports[`Dashboard > should render a card when there is an error getting transac
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="allocate"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -153,7 +149,6 @@ exports[`Dashboard > should render a card when there is an error getting transac
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
           href="migrate"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -186,7 +181,6 @@ exports[`Dashboard > should render a card when there is an error getting transac
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
           href="bridge"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -323,7 +317,6 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="send"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -356,7 +349,6 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="receive"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -389,7 +381,6 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="stake"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -422,7 +413,6 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item"
           href="allocate"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -455,7 +445,6 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
           href="migrate"
-          role="menuitem"
           tabindex="0"
         >
           <!---->
@@ -488,7 +477,6 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
         <a
           class="dusk-anchor dusk-anchor--on-surface dashboard-nav__item dashboard-nav__item--last-row"
           href="bridge"
-          role="menuitem"
           tabindex="0"
         >
           <!---->

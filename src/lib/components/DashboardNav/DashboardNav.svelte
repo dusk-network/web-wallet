@@ -19,7 +19,6 @@
         className={isLastRow
           ? "dashboard-nav__item dashboard-nav__item--last-row"
           : "dashboard-nav__item"}
-        role="menuitem"
       >
         <span class="dashboard-nav__item-label">{label}</span>
         {#if icons?.length}

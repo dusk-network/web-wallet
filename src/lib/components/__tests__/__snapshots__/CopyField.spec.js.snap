@@ -6,6 +6,7 @@ exports[`CopyField > renders the CopyField component 1`] = `
 >
   <!---->
   <input
+    aria-label="Sample Information"
     class="dusk-textbox dusk-textbox-text copy-field__content"
     readonly=""
     type="text"
@@ -14,7 +15,7 @@ exports[`CopyField > renders the CopyField component 1`] = `
   <!---->
    
   <button
-    aria-label="Copy Address"
+    aria-label="Copy Sample Information"
     class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
     data-tooltip-id="main-tooltip"
     data-tooltip-text="Copy to clipboard"
@@ -47,6 +48,7 @@ exports[`CopyField > renders the CopyField component with the copy button disabl
 >
   <!---->
   <input
+    aria-label="Sample Information"
     class="dusk-textbox dusk-textbox-text copy-field__content"
     readonly=""
     type="text"
@@ -55,7 +57,7 @@ exports[`CopyField > renders the CopyField component with the copy button disabl
   <!---->
    
   <button
-    aria-label="Copy Address"
+    aria-label="Copy Sample Information"
     class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
     data-tooltip-id="main-tooltip"
     data-tooltip-text="Copy to clipboard"
@@ -90,6 +92,7 @@ exports[`CopyField > should pass additional class names and attributes to the re
 >
   <!---->
   <input
+    aria-label="Sample Information"
     class="dusk-textbox dusk-textbox-text copy-field__content"
     readonly=""
     type="text"
@@ -98,7 +101,7 @@ exports[`CopyField > should pass additional class names and attributes to the re
   <!---->
    
   <button
-    aria-label="Copy Address"
+    aria-label="Copy Sample Information"
     class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
     data-tooltip-id="main-tooltip"
     data-tooltip-text="Copy to clipboard"

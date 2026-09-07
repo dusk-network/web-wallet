@@ -149,6 +149,7 @@
         >
           <span>Dark mode</span>
           <Switch
+            aria-label="Dark mode"
             on:change={(event) => {
               settingsStore.update((store) => {
                 store.darkMode = event.detail;

@@ -45,13 +45,14 @@
 
 <div class={classes} {...$$restProps}>
   <Textbox
+    aria-label={name}
     className="copy-field__content"
     value={displayValue}
     type="text"
     readOnly
   />
   <Button
-    aria-label="Copy Address"
+    aria-label={`Copy ${name}`}
     className="copy-field__button"
     data-tooltip-id="main-tooltip"
     data-tooltip-text="Copy to clipboard"

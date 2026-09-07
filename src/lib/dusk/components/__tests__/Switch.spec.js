@@ -90,7 +90,7 @@ describe("Switch", () => {
       });
       const switchElement = getByRole("switch");
 
-      await fireEvent.keyDown(switchElement, { key: " " });
+      expect(await fireEvent.keyDown(switchElement, { key: " " })).toBe(false);
       await fireEvent.keyDown(switchElement, { key: " " });
 
       expect(handler).toHaveBeenCalledTimes(2);
@@ -103,6 +103,21 @@ describe("Switch", () => {
         expect.objectContaining({ detail: false })
       );
     });
+
+    it.each([false, true])(
+      "should not trap Tab navigation (shift: %s)",
+      async (shiftKey) => {
+        const { getByRole } = render(Switch);
+        const event = new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "Tab",
+          shiftKey,
+        });
+        await fireEvent(getByRole("switch"), event);
+        expect(event.defaultPrevented).toBe(false);
+      }
+    );
 
     it("should not dispatch an event if the user presses another key", async () => {
       const handler = vi.fn();

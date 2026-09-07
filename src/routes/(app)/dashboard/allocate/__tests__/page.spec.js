@@ -10,10 +10,16 @@ describe("Allocate", () => {
   afterEach(cleanup);
 
   it("should render the allocation page", async () => {
-    const { container } = render(Allocation);
+    const { container, getByRole } = render(Allocation);
 
     await vi.advanceTimersToNextTimerAsync();
 
+    expect(
+      getByRole("spinbutton", { name: "Public amount" })
+    ).toBeInTheDocument();
+    expect(
+      getByRole("spinbutton", { name: "Shielded amount" })
+    ).toBeInTheDocument();
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
