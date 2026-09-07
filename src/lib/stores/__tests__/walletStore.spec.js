@@ -8,7 +8,13 @@ import {
   vi,
 } from "vitest";
 import { get } from "svelte/store";
-import { Bookkeeper, Gas, Network, ProfileGenerator } from "@dusk/w3sper";
+import {
+  Bookkeeper,
+  Bookmark,
+  Gas,
+  Network,
+  ProfileGenerator,
+} from "@dusk/w3sper";
 
 import { stakeInfo } from "$lib/mock-data";
 import { buildDepositETHToWithValuePayload } from "$lib/bridge/deposit";
@@ -710,6 +716,33 @@ describe("Wallet store", async () => {
     afterAll(() => {
       cacheClearSpy.mockRestore();
     });
+
+    it.each([undefined, 123n, 0n])(
+      "should respect explicit sync height %s and resume only when omitted",
+      async (fromBlock) => {
+        const cached = vi
+          .spyOn(WalletTreasury.prototype, "getCachedSyncInfo")
+          .mockResolvedValue({
+            block: { hash: "known-hash", height: 100n },
+            bookmark: 9n,
+            lastFinalizedBlockHeight: 80n,
+          });
+        treasuryUpdateSpy.mockResolvedValueOnce(undefined);
+        if (fromBlock === 0n) cacheClearSpy.mockResolvedValueOnce(undefined);
+        try {
+          await walletStore.sync(fromBlock);
+          const actual = treasuryUpdateSpy.mock.calls[0][0];
+          const normalized =
+            actual instanceof Bookmark ? `bookmark:${actual.asUint()}` : actual;
+          expect(normalized).toBe(
+            fromBlock === undefined ? "bookmark:9" : fromBlock
+          );
+          expect(cacheClearSpy).toHaveBeenCalledTimes(fromBlock === 0n ? 1 : 0);
+        } finally {
+          cached.mockRestore();
+        }
+      }
+    );
 
     it("should expose a method to clear local data", async () => {
       vi.useRealTimers();
