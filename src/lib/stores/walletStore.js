@@ -345,7 +345,7 @@ async function sync(fromBlock) {
      * use our bookmark, and our only safe option is to restart
      * from the last finalized block we have cached.
      */
-    if (fromBlock) {
+    if (fromBlock !== undefined) {
       from = fromBlock;
     } else {
       const isLocalCacheValid = await networkStore

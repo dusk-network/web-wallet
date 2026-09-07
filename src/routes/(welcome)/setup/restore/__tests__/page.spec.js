@@ -113,6 +113,24 @@ describe("Restore", async () => {
     expect(nextButton).not.toBeDisabled();
   });
 
+  it("should keep the mnemonic editable when returning from password setup", async () => {
+    const { getByRole, getByPlaceholderText } = render(Restore);
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Paste mnemonic phrase" })
+    );
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+    expect(getByRole("button", { name: "Undo" })).toBeEnabled();
+    await fireEvent.click(getByRole("button", { name: "Undo" }));
+    expect(getByPlaceholderText("Enter word 12")).toBeInTheDocument();
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+    await fireEvent.click(
+      getByRole("button", { name: "Paste mnemonic phrase" })
+    );
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
   it("should not allow the user to proceed to password setup after an invalid mnemonic has been provided", async () => {
     readTextMock.mockResolvedValueOnce(invalidMnemonic);
 

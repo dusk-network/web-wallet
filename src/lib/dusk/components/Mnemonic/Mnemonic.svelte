@@ -33,12 +33,23 @@
 
   let enteredWordIndex = Array(wordLimit).fill("");
 
-  if (enteredMnemonicPhrase.length === 0) {
-    enteredMnemonicPhrase = Array(wordLimit).fill("");
+  const isPrefilledValidation =
+    type === "validate" && enteredMnemonicPhrase.some((word) => word !== "");
+
+  if (type === "authenticate" || enteredMnemonicPhrase.length === 0) {
+    enteredMnemonicPhrase = Array.from(
+      { length: wordLimit },
+      (_, index) => enteredMnemonicPhrase[index] ?? ""
+    );
   }
 
-  const isTriggeredByLogin =
-    enteredMnemonicPhrase.some((word) => word !== "") && currentIndex === 0;
+  if (type === "authenticate") {
+    currentIndex = enteredMnemonicPhrase.indexOf("");
+    if (currentIndex === -1) currentIndex = wordLimit;
+    enteredWordIndex = enteredMnemonicPhrase.map((word, index) =>
+      word ? String(index) : ""
+    );
+  }
 
   /**
    * @param {string} word
@@ -153,7 +164,7 @@
 </script>
 
 <div {...$$restProps} class={classes}>
-  {#if !isTriggeredByLogin}
+  {#if !isPrefilledValidation}
     <div class="dusk-mnemonic__actions-wrapper">
       {#if type === "authenticate" && shouldShowPaste}
         <Button
@@ -175,7 +186,7 @@
 
   <Words words={enteredMnemonicPhrase} />
 
-  {#if !isTriggeredByLogin}
+  {#if !isPrefilledValidation}
     <div
       class={type === "authenticate"
         ? "dusk-mnemonic__authenticate-actions-wrapper"

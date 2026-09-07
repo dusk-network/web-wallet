@@ -141,7 +141,10 @@
         Network<br />
         <mark>Syncing</mark>
       </h2>
-      <NetworkSyncProgress bind:isValid={isSyncCompleted} />
+      <NetworkSyncProgress
+        bind:isValid={isSyncCompleted}
+        fromBlock={blockHeight}
+      />
     </WizardStep>
     <WizardStep
       step={4}
