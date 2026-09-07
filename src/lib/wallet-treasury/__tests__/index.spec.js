@@ -8,6 +8,8 @@ import {
   it,
   vi,
 } from "vitest";
+import { AddressSyncer } from "@dusk/w3sper";
+
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
 import { cachePendingNotesInfo } from "$lib/mock-data";
@@ -174,6 +176,46 @@ describe("WalletTreasury", () => {
           reward: expect.any(BigInt),
         })
       );
+    });
+
+    it("should restore a cached spent note when the network reports it unspent", async () => {
+      const spentBefore = await walletCache.getSpentNotesNullifiers();
+      const unspentBefore = await walletCache.getUnspentNotesNullifiers();
+      expect(spentBefore.length).toBeGreaterThan(1);
+      const restored = spentBefore[0];
+      const stillSpent = new Set(spentBefore.slice(1).map(String));
+      const notes = vi
+        .spyOn(AddressSyncer.prototype, "notes")
+        .mockResolvedValueOnce(
+          new ReadableStream({
+            start(controller) {
+              controller.close();
+            },
+          })
+        );
+      const spent = vi
+        .spyOn(AddressSyncer.prototype, "spent")
+        .mockImplementation(async (nullifiers) =>
+          nullifiers
+            .filter((n) => stillSpent.has(String(n)))
+            .map((n) => n.buffer)
+        );
+      try {
+        await walletTreasury.update(0n, () => {}, new AbortController().signal);
+        const unspentAfter = (await walletCache.getUnspentNotesNullifiers())
+          .map(String)
+          .sort();
+        const spentAfter = (await walletCache.getSpentNotesNullifiers())
+          .map(String)
+          .sort();
+        expect(unspentAfter).toEqual(
+          [...unspentBefore, restored].map(String).sort()
+        );
+        expect(spentAfter).toEqual([...stillSpent].sort());
+      } finally {
+        notes.mockRestore();
+        spent.mockRestore();
+      }
     });
 
     it("should return a rejected promise if the `stakeInfo` method isn't able to find the stake info for the given account", async () => {

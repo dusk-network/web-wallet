@@ -220,8 +220,7 @@ class WalletTreasury {
     await walletCache.spendNotes(spentNullifiers);
 
     // gather all spent nullifiers in the cache
-    const currentSpentNullifiers =
-      await walletCache.getUnspentNotesNullifiers();
+    const currentSpentNullifiers = await walletCache.getSpentNotesNullifiers();
 
     /**
      * Retrieving the nullifiers that are really spent given our
