@@ -284,24 +284,37 @@ describe("Unlock Wallet", async () => {
       expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
     });
 
-    it("should trim the entered password before validating it", async () => {
+    it.each([` ${pwd}`, `${pwd} `, `\t${pwd}\t`])(
+      "should preserve password whitespace (case %#)",
+      async (password) => {
+        settingsStore.update(setUserId(userId));
+        loginInfoStorage.set(await encryptMnemonic(mnemonic, password));
+        try {
+          const { container } = render(UnlockWallet);
+          await fireEvent.input(getTextInput(container), {
+            target: { value: password },
+          });
+          await fireEvent.submit(getAsHTMLElement(container, "form"));
+          await waitForGoto();
+          expect(initSpy).toHaveBeenCalledTimes(1);
+          expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+        } finally {
+          loginInfoStorage.set(loginInfo);
+        }
+      }
+    );
+
+    it("should not ignore extra whitespace added to a password", async () => {
       settingsStore.update(setUserId(userId));
-
-      const { container } = render(UnlockWallet, {});
-      const form = getAsHTMLElement(container, "form");
-      const textInput = getTextInput(container);
-
-      await fireEvent.input(textInput, {
-        target: { value: `  \t${pwd} \t  ` },
+      const { container } = render(UnlockWallet);
+      await fireEvent.input(getTextInput(container), {
+        target: { value: ` ${pwd} ` },
       });
-      await fireEvent.submit(form, { currentTarget: form });
-      await waitForGoto();
-
-      expect(get(settingsStore).userId).toBe(userId);
-      expect(initSpy).toHaveBeenCalledTimes(1);
-      expect(initSpy).toHaveBeenCalledWith(expect.any(ProfileGenerator));
-      expect(gotoSpy).toHaveBeenCalledTimes(1);
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      await fireEvent.submit(getAsHTMLElement(container, "form"));
+      await vi.waitUntil(getErrorElement);
+      expect(getErrorElement()?.textContent).toContain("Invalid password");
+      expect(initSpy).not.toHaveBeenCalled();
+      expect(gotoSpy).not.toHaveBeenCalled();
     });
   });
 
