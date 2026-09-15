@@ -27,6 +27,8 @@ let syncController = null;
 /** @type {Promise<void> | null} */
 let syncPromise = null;
 
+let walletSession = 0;
+
 /** @type {WalletStoreContent} */
 const initialState = {
   balance: {
@@ -101,6 +103,7 @@ const observeTxRemoval = (txInfo) => {
       .withId(txInfo.hash)
       .once.removed()
       .then(() => sync())
+      .catch(() => {}) // Background sync errors are reported in syncStatus.
       .finally(updateStaticInfo)
   );
 };
@@ -140,6 +143,7 @@ const updateCacheAfterTransaction = async (txInfo) => {
 
 /** @type {() => Promise<void>} */
 const updateBalance = async () => {
+  const session = walletSession;
   const profile = getCurrentProfile();
 
   if (!profile) {
@@ -158,8 +162,14 @@ const updateBalance = async () => {
    * We ignore the error as the cached balance is only
    * a nice to have for the user.
    */
+  if (session !== walletSession || profile !== getCurrentProfile()) {
+    return;
+  }
   await treasury.setCachedBalance(profile, balance).catch(() => {});
 
+  if (session !== walletSession || profile !== getCurrentProfile()) {
+    return;
+  }
   update((currentStore) => ({
     ...currentStore,
     balance,
@@ -168,6 +178,7 @@ const updateBalance = async () => {
 
 /** @type {() => Promise<void>} */
 const updateStakeInfo = async () => {
+  const session = walletSession;
   const profile = getCurrentProfile();
 
   if (!profile) {
@@ -181,8 +192,14 @@ const updateStakeInfo = async () => {
    * We ignore the error as the cached stake info is only
    * a nice to have for the user.
    */
+  if (session !== walletSession || profile !== getCurrentProfile()) {
+    return;
+  }
   await treasury.setCachedStakeInfo(profile, stakeInfo).catch(() => {});
 
+  if (session !== walletSession || profile !== getCurrentProfile()) {
+    return;
+  }
   update((currentStore) => ({
     ...currentStore,
     stakeInfo,
@@ -195,7 +212,7 @@ const updateStaticInfo = () =>
 /** @type {WalletStoreServices["abortSync"]} */
 const abortSync = () => {
   window.clearTimeout(autoSyncId);
-  syncPromise && syncController?.abort();
+  syncController?.abort();
   syncPromise = null;
 };
 
@@ -207,10 +224,15 @@ const clearLocalData = async () => {
 };
 
 /** @type {WalletStoreServices["clearLocalDataAndInit"]} */
-const clearLocalDataAndInit = (profileGenerator, syncFromBlock) =>
-  clearLocalData().then(() => {
-    return init(profileGenerator, syncFromBlock);
-  });
+const clearLocalDataAndInit = async (profileGenerator, syncFromBlock) => {
+  reset();
+  const session = walletSession;
+  await clearLocalData();
+
+  if (session === walletSession) {
+    await init(profileGenerator, syncFromBlock);
+  }
+};
 
 /** @type {WalletStoreServices["claimRewards"]} */
 const claimRewards = async (amount, gas) =>
@@ -229,6 +251,9 @@ const getTransactionsHistory = async () => transactions;
 
 /** @type {WalletStoreServices["init"]} */
 async function init(profileGeneratorInstance, syncFromBlock) {
+  reset();
+  const session = walletSession;
+
   // Create two profiles by default
   const currentProfile = await profileGeneratorInstance.default;
   const secondProfile = await profileGeneratorInstance.next();
@@ -237,6 +262,10 @@ async function init(profileGeneratorInstance, syncFromBlock) {
   const cachedBalance = await treasury.getCachedBalance(currentProfile);
   const cachedStakeInfo = await treasury.getCachedStakeInfo(currentProfile);
   const minimumStake = await bookkeeper.minimumStake;
+
+  if (session !== walletSession) {
+    return;
+  }
 
   treasury.setProfiles(profiles);
 
@@ -251,18 +280,28 @@ async function init(profileGeneratorInstance, syncFromBlock) {
   });
 
   sync(syncFromBlock)
+    // Keep the initialized wallet identity even if its background sync fails.
+    .catch(() => {})
     .then(() => {
-      settingsStore.update((settings) => ({
-        ...settings,
-        userId: currentProfile.address.toString(),
-      }));
+      if (session === walletSession) {
+        settingsStore.update((settings) => ({
+          ...settings,
+          userId: currentProfile.address.toString(),
+        }));
+      }
     })
-    .finally(updateStaticInfo);
+    .finally(async () => {
+      if (session === walletSession) {
+        await updateStaticInfo();
+      }
+    });
 }
 
 /** @type {WalletStoreServices["reset"]} */
 function reset() {
+  walletSession++;
   abortSync();
+  treasury.reset();
   set(initialState);
 }
 
@@ -306,8 +345,8 @@ const stake = async (amount, gas) =>
     .then(passThruWithEffects(observeTxRemoval));
 
 /** @type {WalletStoreServices["sync"]} */
-// eslint-disable-next-line max-statements
 async function sync(fromBlock) {
+  const session = walletSession;
   const store = get(walletStore);
 
   if (!store.initialized) {
@@ -328,100 +367,130 @@ async function sync(fromBlock) {
       },
     });
 
-    syncController = new AbortController();
+    const controller = new AbortController();
+    syncController = controller;
+    const ensureCurrent = () => {
+      if (session !== walletSession || controller.signal.aborted) {
+        throw new Error("Synchronization aborted");
+      }
+    };
 
-    const { block, bookmark, lastFinalizedBlockHeight } =
-      await treasury.getCachedSyncInfo();
+    const currentSyncPromise = (async () => {
+      const { block, bookmark, lastFinalizedBlockHeight } =
+        await treasury.getCachedSyncInfo();
 
-    /** @type {bigint | Bookmark} */
-    let from;
+      /** @type {bigint | Bookmark} */
+      let from;
 
-    /*
-     * Unless the user wants to sync from a specific block height,
-     * we try to restart from the last stored bookmark.
-     * Before doing that we compare the block hash we have in cache
-     * with the hash at the same block height on the network: if
-     * they don't match then a block has been rejected, we can't
-     * use our bookmark, and our only safe option is to restart
-     * from the last finalized block we have cached.
-     */
-    if (fromBlock !== undefined) {
-      from = fromBlock;
-    } else {
-      const isLocalCacheValid = await networkStore
-        .checkBlock(block.height, block.hash)
-        .catch(() => false);
+      /*
+       * Unless the user wants to sync from a specific block height,
+       * we try to restart from the last stored bookmark.
+       * Before doing that we compare the block hash we have in cache
+       * with the hash at the same block height on the network: if
+       * they don't match then a block has been rejected, we can't
+       * use our bookmark, and our only safe option is to restart
+       * from the last finalized block we have cached.
+       */
+      if (fromBlock !== undefined) {
+        from = fromBlock;
+      } else {
+        const isLocalCacheValid = await networkStore
+          .checkBlock(block.height, block.hash)
+          .catch(() => false);
 
-      from = isLocalCacheValid
-        ? Bookmark.from(bookmark)
-        : lastFinalizedBlockHeight;
-    }
+        from = isLocalCacheValid
+          ? Bookmark.from(bookmark)
+          : lastFinalizedBlockHeight;
+      }
 
-    if (from === 0n) {
-      await treasury.clearCache();
-    }
+      ensureCurrent();
+      if (from === 0n) {
+        await treasury.clearCache();
+      }
+      ensureCurrent();
 
-    update((currentStore) => ({
-      ...currentStore,
-      syncStatus: {
-        ...currentStore.syncStatus,
-        from: from instanceof Bookmark ? block.height : from,
-      },
-    }));
+      update((currentStore) => ({
+        ...currentStore,
+        syncStatus: {
+          ...currentStore.syncStatus,
+          from: from instanceof Bookmark ? block.height : from,
+        },
+      }));
 
-    syncPromise = Promise.resolve(syncController.signal)
-      .then(async (signal) => {
-        /** @type {(evt: CustomEvent) => void} */
-        const syncIterationListener = ({ detail }) => {
-          update((currentStore) => ({
-            ...currentStore,
-            syncStatus: {
-              ...currentStore.syncStatus,
-              last: detail.blocks.last,
-              progress: detail.progress,
-            },
-          }));
-        };
-
-        await treasury.update(from, syncIterationListener, signal);
-      })
-      .then(() => {
-        if (syncController?.signal.aborted) {
-          throw new Error("Synchronization aborted");
+      /** @type {(evt: CustomEvent) => void} */
+      const syncIterationListener = ({ detail }) => {
+        if (session !== walletSession) {
+          return;
         }
-      })
+
+        update((currentStore) => ({
+          ...currentStore,
+          syncStatus: {
+            ...currentStore.syncStatus,
+            last: detail.blocks.last,
+            progress: detail.progress,
+          },
+        }));
+      };
+
+      await treasury.update(from, syncIterationListener, controller.signal);
+    })()
+      .then(ensureCurrent)
       .then(() => {
+        if (session !== walletSession) {
+          return;
+        }
+
         update((currentStore) => ({
           ...currentStore,
           syncStatus: initialState.syncStatus,
         }));
       })
       .then(() => {
+        if (session !== walletSession) {
+          return;
+        }
+
         window.clearTimeout(autoSyncId);
         autoSyncId = window.setTimeout(() => {
-          sync().finally(updateStaticInfo);
+          sync()
+            .catch(() => {})
+            .finally(updateStaticInfo);
         }, AUTO_SYNC_INTERVAL);
       })
       .catch((error) => {
-        syncController?.abort();
+        controller.abort();
 
-        update((currentStore) => ({
-          ...currentStore,
-          syncStatus: {
-            error,
-            from: 0n,
-            isInProgress: false,
-            last: 0n,
-            progress: 0,
-          },
-        }));
+        if (session === walletSession && syncController === controller) {
+          update((currentStore) => ({
+            ...currentStore,
+            syncStatus: {
+              error,
+              from: 0n,
+              isInProgress: false,
+              last: 0n,
+              progress: 0,
+            },
+          }));
+        }
+
+        // Transaction callers must not proceed after a failed or stale sync.
+        throw error;
       })
       .finally(() => {
-        syncPromise = null;
+        if (syncPromise === currentSyncPromise) {
+          syncPromise = null;
+        }
+
+        if (syncController === controller) {
+          syncController = null;
+        }
       });
+
+    syncPromise = currentSyncPromise;
   }
 
-  return syncPromise;
+  await syncPromise;
 }
 
 /** @type {WalletStoreServices["transfer"]} */

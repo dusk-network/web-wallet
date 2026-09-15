@@ -8,7 +8,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { AddressSyncer } from "@dusk/w3sper";
+import { AccountSyncer, AddressSyncer } from "@dusk/w3sper";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
@@ -227,6 +227,138 @@ describe("WalletTreasury", () => {
           },
         })
       ).rejects.toThrow();
+    });
+
+    it("should discard retained profiles and derived account state when reset", async () => {
+      const balancesSpy = vi.spyOn(AccountSyncer.prototype, "balances");
+      const stakesSpy = vi.spyOn(AccountSyncer.prototype, "stakes");
+      const notesSpy = vi.spyOn(AddressSyncer.prototype, "notes");
+
+      await walletTreasury.update(0n, () => {}, new AbortController().signal);
+
+      // @ts-expect-error We only need an index accepted by the treasury mock.
+      await expect(walletTreasury.account(0)).resolves.toBeDefined();
+
+      walletTreasury.reset();
+
+      // @ts-expect-error We only need an index accepted by the treasury mock.
+      await expect(walletTreasury.account(0)).rejects.toThrow();
+      // @ts-expect-error We only need an index accepted by the treasury mock.
+      await expect(walletTreasury.stakeInfo(0)).rejects.toThrow();
+
+      await walletTreasury.update(0n, () => {}, new AbortController().signal);
+
+      expect(balancesSpy).toHaveBeenLastCalledWith([]);
+      expect(stakesSpy).toHaveBeenLastCalledWith([]);
+      expect(notesSpy).toHaveBeenLastCalledWith([], expect.any(Object));
+
+      balancesSpy.mockRestore();
+      stakesSpy.mockRestore();
+      notesSpy.mockRestore();
+    });
+
+    it.each([1, 2])(
+      "should stop cache writes after reset during spent lookup %i",
+      async (lookup) => {
+        const pending = Promise.withResolvers();
+        const spentSpy = vi.spyOn(AddressSyncer.prototype, "spent");
+        if (lookup === 2) {
+          spentSpy.mockResolvedValueOnce([]);
+        }
+        spentSpy.mockReturnValueOnce(pending.promise);
+        const spendNotesSpy = vi.spyOn(walletCache, "spendNotes");
+        const unspendNotesSpy = vi.spyOn(walletCache, "unspendNotes");
+        const setSyncInfoSpy = vi.spyOn(walletCache, "setSyncInfo");
+        try {
+          const update = walletTreasury
+            .update(0n, () => {}, new AbortController().signal)
+            .then(
+              () => null,
+              (error) => error
+            );
+          await vi.waitUntil(() => spentSpy.mock.calls.length === lookup);
+          walletTreasury.reset();
+          spendNotesSpy.mockClear();
+          unspendNotesSpy.mockClear();
+          setSyncInfoSpy.mockClear();
+          pending.resolve([]);
+          const outcome = await update;
+          expect(spendNotesSpy).not.toHaveBeenCalled();
+          expect(unspendNotesSpy).not.toHaveBeenCalled();
+          expect(setSyncInfoSpy).not.toHaveBeenCalled();
+          expect(outcome).toBeInstanceOf(Error);
+        } finally {
+          pending.resolve([]);
+          spentSpy.mockRestore();
+          spendNotesSpy.mockRestore();
+          unspendNotesSpy.mockRestore();
+          setSyncInfoSpy.mockRestore();
+        }
+      }
+    );
+
+    it("should discard sync metadata resolved after reset", async () => {
+      const pending = Promise.withResolvers();
+      const heightSpy = vi
+        .spyOn(networkStore, "getLastFinalizedBlockHeight")
+        .mockReturnValueOnce(pending.promise);
+      const setSyncInfoSpy = vi.spyOn(walletCache, "setSyncInfo");
+      try {
+        const update = walletTreasury
+          .update(0n, () => {}, new AbortController().signal)
+          .then(
+            () => null,
+            (error) => error
+          );
+        await vi.waitUntil(() => heightSpy.mock.calls.length === 1);
+        walletTreasury.reset();
+        pending.resolve(0n);
+        expect(await update).toBeInstanceOf(Error);
+        expect(setSyncInfoSpy).not.toHaveBeenCalled();
+      } finally {
+        pending.resolve(0n);
+        heightSpy.mockRestore();
+        setSyncInfoSpy.mockRestore();
+      }
+    });
+
+    it("should remove sync listeners when an update fails", async () => {
+      const error = new Error("Unable to retrieve balances");
+      const balancesSpy = vi
+        .spyOn(AccountSyncer.prototype, "balances")
+        .mockRejectedValueOnce(error);
+      const addEventListenerSpy = vi.spyOn(
+        AddressSyncer.prototype,
+        "addEventListener"
+      );
+      const removeEventListenerSpy = vi.spyOn(
+        AddressSyncer.prototype,
+        "removeEventListener"
+      );
+
+      try {
+        await expect(
+          walletTreasury.update(0n, () => {}, new AbortController().signal)
+        ).rejects.toBe(error);
+
+        expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
+        expect(removeEventListenerSpy.mock.calls).toStrictEqual(
+          addEventListenerSpy.mock.calls
+        );
+
+        await expect(
+          walletTreasury.update(0n, () => {}, new AbortController().signal)
+        ).resolves.toBeUndefined();
+
+        expect(addEventListenerSpy).toHaveBeenCalledTimes(4);
+        expect(removeEventListenerSpy.mock.calls).toStrictEqual(
+          addEventListenerSpy.mock.calls
+        );
+      } finally {
+        balancesSpy.mockRestore();
+        addEventListenerSpy.mockRestore();
+        removeEventListenerSpy.mockRestore();
+      }
     });
   });
 

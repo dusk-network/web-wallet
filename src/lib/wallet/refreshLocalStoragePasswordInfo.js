@@ -6,13 +6,12 @@ import { encryptMnemonic } from "$lib/wallet";
  * @param {string} password
  */
 async function refreshLocalStoragePasswordInfo(mnemonicPhrase, password) {
-  loginInfoStorage.remove();
-
-  if (password.length !== 0) {
-    const mnemonic = mnemonicPhrase.join(" ");
-    const encryptedData = await encryptMnemonic(mnemonic, password);
-
-    loginInfoStorage.set(encryptedData);
+  if (password.length === 0) {
+    await loginInfoStorage.remove();
+  } else {
+    await loginInfoStorage.set(() =>
+      encryptMnemonic(mnemonicPhrase.join(" "), password)
+    );
   }
 }
 

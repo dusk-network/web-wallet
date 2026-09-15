@@ -48,7 +48,7 @@
       if (result.status === "success") {
         dispatch("incrementStep");
         setTimeout(() => {
-          walletStore.sync();
+          walletStore.sync().catch(() => {});
         }, 20000);
       } else {
         throw new Error("Could not validate the transaction receipt");

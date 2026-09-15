@@ -13,6 +13,7 @@ import { ProfileGenerator } from "@dusk/w3sper";
 
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import * as navigation from "$lib/navigation";
+import * as wallet from "$lib/wallet";
 import { settingsStore, walletStore } from "$lib/stores";
 import {
   decryptMnemonic,
@@ -78,6 +79,58 @@ describe("Unlock Wallet", async () => {
   afterAll(async () => {
     gotoSpy.mockRestore();
     initSpy.mockRestore();
+  });
+
+  it("should discard an unlock whose profile derivation finishes after leaving", async () => {
+    settingsStore.update(setUserId(userId));
+    const generator = await profileGeneratorFrom(seed);
+    await generator.default;
+    const pending = Promise.withResolvers();
+    const derive = vi
+      .spyOn(wallet, "profileGeneratorFrom")
+      .mockReturnValueOnce(pending.promise);
+    try {
+      const { container, unmount } = render(UnlockWallet);
+      await fireEvent.input(getTextInput(container), {
+        target: { value: mnemonic },
+      });
+      await fireEvent.submit(getAsHTMLElement(container, "form"));
+      await vi.waitUntil(() => derive.mock.calls.length === 1);
+      unmount();
+      pending.resolve(generator);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(initSpy).not.toHaveBeenCalled();
+      expect(gotoSpy).not.toHaveBeenCalled();
+    } finally {
+      pending.resolve(generator);
+      derive.mockRestore();
+    }
+  });
+
+  it("should cancel initialization on leaving and ignore duplicate submits", async () => {
+    settingsStore.update(setUserId(userId));
+    const pending = Promise.withResolvers();
+    initSpy.mockReturnValueOnce(pending.promise);
+    const reset = vi.spyOn(walletStore, "reset");
+    try {
+      const { container, unmount } = render(UnlockWallet);
+      const form = getAsHTMLElement(container, "form");
+      await fireEvent.input(getTextInput(container), {
+        target: { value: mnemonic },
+      });
+      await fireEvent.submit(form);
+      await vi.waitUntil(() => initSpy.mock.calls.length === 1);
+      await fireEvent.submit(form);
+      unmount();
+      expect(reset).toHaveBeenCalledTimes(1);
+      pending.resolve(undefined);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(initSpy).toHaveBeenCalledTimes(1);
+      expect(gotoSpy).not.toHaveBeenCalled();
+    } finally {
+      pending.resolve(undefined);
+      reset.mockRestore();
+    }
   });
 
   describe("Mnemonic phrase workflow", () => {
@@ -180,13 +233,9 @@ describe("Unlock Wallet", async () => {
   });
 
   describe("Password workflow", () => {
-    beforeAll(() => {
-      loginInfoStorage.set(loginInfo);
-    });
+    beforeAll(() => loginInfoStorage.set(loginInfo));
 
-    afterAll(() => {
-      loginInfoStorage.remove();
-    });
+    afterAll(() => loginInfoStorage.remove());
 
     it("should show the password field and the link to restore the wallet if there is login info stored", () => {
       const { container } = render(UnlockWallet, {});
@@ -288,7 +337,7 @@ describe("Unlock Wallet", async () => {
       "should preserve password whitespace (case %#)",
       async (password) => {
         settingsStore.update(setUserId(userId));
-        loginInfoStorage.set(await encryptMnemonic(mnemonic, password));
+        await loginInfoStorage.set(await encryptMnemonic(mnemonic, password));
         try {
           const { container } = render(UnlockWallet);
           await fireEvent.input(getTextInput(container), {
@@ -299,7 +348,7 @@ describe("Unlock Wallet", async () => {
           expect(initSpy).toHaveBeenCalledTimes(1);
           expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
         } finally {
-          loginInfoStorage.set(loginInfo);
+          await loginInfoStorage.set(loginInfo);
         }
       }
     );
@@ -319,12 +368,10 @@ describe("Unlock Wallet", async () => {
   });
 
   describe("Legacy password migration", () => {
-    afterEach(() => {
-      loginInfoStorage.remove();
-    });
+    afterEach(() => loginInfoStorage.remove());
 
     it("should migrate legacy login info after unlocking the expected wallet", async () => {
-      loginInfoStorage.set(legacyLoginInfo);
+      await loginInfoStorage.set(legacyLoginInfo);
       settingsStore.update(setUserId(userId));
 
       const { container } = render(UnlockWallet, {});
@@ -350,7 +397,7 @@ describe("Unlock Wallet", async () => {
     });
 
     it("should preserve legacy login info if the wallet identity does not match", async () => {
-      loginInfoStorage.set(legacyLoginInfo);
+      await loginInfoStorage.set(legacyLoginInfo);
       settingsStore.update(setUserId("some-user-id"));
 
       const { container } = render(UnlockWallet, {});

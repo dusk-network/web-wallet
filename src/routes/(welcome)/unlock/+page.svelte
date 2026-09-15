@@ -2,6 +2,8 @@
 
 <script>
   import { mdiArrowLeft, mdiKeyOutline } from "@mdi/js";
+  import { beforeNavigate } from "$app/navigation";
+  import { onDestroy } from "svelte";
 
   import { getErrorFrom } from "$lib/dusk/error";
   import { Button, Textbox } from "$lib/dusk/components";
@@ -30,6 +32,7 @@
 
   /** @type {(seed: Uint8Array<ArrayBuffer>) => Promise<ProfileGenerator>} */
   async function checkLocalData(seed) {
+    controller.signal.throwIfAborted();
     const profileGenerator = await profileGeneratorFrom(seed);
     const defaultAddress = (await profileGenerator.default).address.toString();
     const currentAddress = $settingsStore.userId;
@@ -65,8 +68,27 @@
   /** @type {Error} */
   let error;
 
+  const controller = new AbortController();
+  let pending = false;
+
+  function cancelUnlock() {
+    controller.abort();
+    secretText = "";
+    if (pending) {
+      pending = false;
+      walletStore.reset();
+    }
+  }
+
+  beforeNavigate(cancelUnlock);
+  onDestroy(cancelUnlock);
+
   /** @type {import("svelte/elements").FormEventHandler<HTMLFormElement>} */
   function handleUnlockWalletSubmit() {
+    if (pending || controller.signal.aborted) {
+      return;
+    }
+    pending = true;
     /** @type {(mnemonic: string) => Promise<Uint8Array<ArrayBuffer>>} */
     const getSeed = loginInfo
       ? getSeedFromInfo(loginInfo)
@@ -77,28 +99,35 @@
     getSeed(secret)
       .then(checkLocalData)
       .then(async (profileGenerator) => {
+        controller.signal.throwIfAborted();
         await walletStore.init(profileGenerator);
+        controller.signal.throwIfAborted();
 
         if (loginInfo) {
           try {
-            await migrateLoginInfo(loginInfo, secret);
+            await migrateLoginInfo(loginInfo, secret, controller.signal);
           } catch {
             // A failed migration should not prevent an otherwise valid unlock.
           }
         }
       })
-      .then(() => goto("/dashboard"))
+      .then(() => {
+        controller.signal.throwIfAborted();
+        pending = false;
+        return goto("/dashboard");
+      })
       .catch((err) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        pending = false;
         if (err instanceof MismatchedWalletError) {
           const enteredMnemonicPhrase = secretText.split(" ");
           mnemonicPhraseResetStore.set(enteredMnemonicPhrase);
           goto("/setup/restore");
-
           return;
-        } else {
-          error = err instanceof Error ? err : getErrorFrom(err);
         }
-
+        error = err instanceof Error ? err : getErrorFrom(err);
         fldSecret.focus();
         fldSecret.select();
       });
@@ -155,7 +184,7 @@
             <p>{error.message}</p>
           </Banner>
         {/if}
-        <Button text="Unlock Wallet" type="submit" />
+        <Button text="Unlock Wallet" type="submit" disabled={pending} />
         {#if modeLabel === "Password"}
           <AppAnchorButton
             variant="tertiary"

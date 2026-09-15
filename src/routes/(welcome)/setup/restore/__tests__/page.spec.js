@@ -154,7 +154,7 @@ describe("Restore", async () => {
   });
 
   it("should initialize the wallet without setting a password", async () => {
-    loginInfoStorage.set(loginInfo);
+    await loginInfoStorage.set(loginInfo);
 
     const { getByRole } = render(Restore);
 

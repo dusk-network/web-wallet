@@ -142,6 +142,7 @@ type WalletStoreServices = {
 
   stake: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
 
+  /** Rejects on sync failure or cancellation; syncStatus also records current-session errors. */
   sync: (fromBlock?: bigint) => Promise<void>;
 
   transfer: (

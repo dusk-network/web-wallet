@@ -32,7 +32,7 @@
     <ErrorAlert error={syncStatus.error} summary="Sync failed" />
     <Button
       text="Retry synchronization"
-      on:click={() => walletStore.sync(fromBlock)}
+      on:click={() => walletStore.sync(fromBlock).catch(() => {})}
     />
     <Button
       text="Lock wallet and exit"

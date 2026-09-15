@@ -6,9 +6,10 @@ import encryptMnemonic from "./encryptMnemonic";
 /**
  * @param {WalletEncryptInfo} loginInfo
  * @param {string} pwd
+ * @param {AbortSignal} [signal]
  * @returns {Promise<boolean>}
  */
-async function migrateLoginInfo(loginInfo, pwd) {
+async function migrateLoginInfo(loginInfo, pwd, signal) {
   if (loginInfo.version !== undefined) {
     return false;
   }
@@ -16,9 +17,7 @@ async function migrateLoginInfo(loginInfo, pwd) {
   const mnemonic = await decryptMnemonic(loginInfo, pwd);
   const migratedLoginInfo = await encryptMnemonic(mnemonic, pwd);
 
-  loginInfoStorage.set(migratedLoginInfo);
-
-  return true;
+  return loginInfoStorage.replace(loginInfo, migratedLoginInfo, signal);
 }
 
 export default migrateLoginInfo;
