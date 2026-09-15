@@ -233,13 +233,9 @@ describe("Unlock Wallet", async () => {
   });
 
   describe("Password workflow", () => {
-    beforeAll(() => {
-      loginInfoStorage.set(loginInfo);
-    });
+    beforeAll(() => loginInfoStorage.set(loginInfo));
 
-    afterAll(() => {
-      loginInfoStorage.remove();
-    });
+    afterAll(() => loginInfoStorage.remove());
 
     it("should show the password field and the link to restore the wallet if there is login info stored", () => {
       const { container } = render(UnlockWallet, {});
@@ -341,7 +337,7 @@ describe("Unlock Wallet", async () => {
       "should preserve password whitespace (case %#)",
       async (password) => {
         settingsStore.update(setUserId(userId));
-        loginInfoStorage.set(await encryptMnemonic(mnemonic, password));
+        await loginInfoStorage.set(await encryptMnemonic(mnemonic, password));
         try {
           const { container } = render(UnlockWallet);
           await fireEvent.input(getTextInput(container), {
@@ -352,7 +348,7 @@ describe("Unlock Wallet", async () => {
           expect(initSpy).toHaveBeenCalledTimes(1);
           expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
         } finally {
-          loginInfoStorage.set(loginInfo);
+          await loginInfoStorage.set(loginInfo);
         }
       }
     );
@@ -372,12 +368,10 @@ describe("Unlock Wallet", async () => {
   });
 
   describe("Legacy password migration", () => {
-    afterEach(() => {
-      loginInfoStorage.remove();
-    });
+    afterEach(() => loginInfoStorage.remove());
 
     it("should migrate legacy login info after unlocking the expected wallet", async () => {
-      loginInfoStorage.set(legacyLoginInfo);
+      await loginInfoStorage.set(legacyLoginInfo);
       settingsStore.update(setUserId(userId));
 
       const { container } = render(UnlockWallet, {});
@@ -403,7 +397,7 @@ describe("Unlock Wallet", async () => {
     });
 
     it("should preserve legacy login info if the wallet identity does not match", async () => {
-      loginInfoStorage.set(legacyLoginInfo);
+      await loginInfoStorage.set(legacyLoginInfo);
       settingsStore.update(setUserId("some-user-id"));
 
       const { container } = render(UnlockWallet, {});

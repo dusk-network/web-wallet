@@ -144,7 +144,7 @@
           data-tooltip-text="Retry synchronization"
           icon={{ path: mdiRestore, size: "large" }}
           on:click={() => {
-            walletStore.sync();
+            walletStore.sync().catch(() => {});
           }}
           variant="secondary"
         />

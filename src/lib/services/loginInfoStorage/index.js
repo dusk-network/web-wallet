@@ -37,12 +37,48 @@ const loginInfoStorage = {
   },
 
   remove() {
-    localStorage.removeItem(storeKey);
+    return navigator.locks.request(storeKey, () => {
+      localStorage.removeItem(storeKey);
+    });
   },
 
-  /** @param {WalletEncryptInfo} info */
+  /**
+   * Replace only the record that was read before migration's async work.
+   * All login writes share this lock: storage events alone arrive too late.
+   *
+   * @param {WalletEncryptInfo} expected
+   * @param {WalletEncryptInfo} info
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<boolean>}
+   */
+  replace(expected, info, signal) {
+    return navigator.locks.request(storeKey, { signal }, () => {
+      signal?.throwIfAborted();
+      const current = loginInfoStorage.get();
+      if (
+        current === null ||
+        toStorageString(current) !== toStorageString(expected)
+      ) {
+        return false;
+      }
+      localStorage.setItem(storeKey, toStorageString(info));
+      return true;
+    });
+  },
+
+  /**
+   * An async producer runs under the lock so a later reset wins even while
+   * a new password's encryption is pending.
+   * ponytail: reset waits for encryption; use a persisted revision if resets
+   * must preempt a suspended writer.
+   *
+   * @param {WalletEncryptInfo | (() => Promise<WalletEncryptInfo>)} info
+   */
   set(info) {
-    localStorage.setItem(storeKey, toStorageString(info));
+    return navigator.locks.request(storeKey, async () => {
+      const value = typeof info === "function" ? await info() : info;
+      localStorage.setItem(storeKey, toStorageString(value));
+    });
   },
 };
 

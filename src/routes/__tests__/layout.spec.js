@@ -42,9 +42,9 @@ describe("Main layout", async () => {
         };
         await fireEvent(window, new StorageEvent("storage", event));
         await fireEvent(window, new StorageEvent("storage", event));
-        expect(logout).toHaveBeenCalledTimes(2);
+        expect(logout).toHaveBeenCalledTimes(1);
         expect(logout).toHaveBeenCalledWith(true);
-        expect(reload).toHaveBeenCalledTimes(2);
+        expect(reload).toHaveBeenCalledTimes(1);
       } finally {
         logout.mockRestore();
         vi.unstubAllGlobals();
@@ -63,13 +63,10 @@ describe("Main layout", async () => {
       vi.stubGlobal("location", { reload });
       try {
         render(MainLayout);
-        await fireEvent(
-          window,
-          new StorageEvent("storage", {
-            key: null,
-            storageArea: localStorage,
-          })
-        );
+        const event = { key: null, storageArea: localStorage };
+        await fireEvent(window, new StorageEvent("storage", event));
+        await fireEvent(window, new StorageEvent("storage", event));
+        expect(logout).toHaveBeenCalledTimes(1);
         expect(logout).toHaveBeenCalledWith(true);
         expect(reload).not.toHaveBeenCalled();
         if (outcome === "failure") {

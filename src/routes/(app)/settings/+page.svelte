@@ -33,10 +33,10 @@
   const resetWallet = () =>
     walletStore
       .clearLocalData()
-      .then(() => {
-        loginInfoStorage.remove();
+      .then(async () => {
+        await loginInfoStorage.remove();
         settingsStore.reset();
-        logout(false);
+        await logout(false);
       })
       .catch((err) => {
         resetError = err;

@@ -103,6 +103,7 @@ const observeTxRemoval = (txInfo) => {
       .withId(txInfo.hash)
       .once.removed()
       .then(() => sync())
+      .catch(() => {}) // Background sync errors are reported in syncStatus.
       .finally(updateStaticInfo)
   );
 };
@@ -279,6 +280,8 @@ async function init(profileGeneratorInstance, syncFromBlock) {
   });
 
   sync(syncFromBlock)
+    // Keep the initialized wallet identity even if its background sync fails.
+    .catch(() => {})
     .then(() => {
       if (session === walletSession) {
         settingsStore.update((settings) => ({
@@ -450,26 +453,29 @@ async function sync(fromBlock) {
 
         window.clearTimeout(autoSyncId);
         autoSyncId = window.setTimeout(() => {
-          sync().finally(updateStaticInfo);
+          sync()
+            .catch(() => {})
+            .finally(updateStaticInfo);
         }, AUTO_SYNC_INTERVAL);
       })
       .catch((error) => {
         controller.abort();
 
-        if (session !== walletSession || syncController !== controller) {
-          return;
+        if (session === walletSession && syncController === controller) {
+          update((currentStore) => ({
+            ...currentStore,
+            syncStatus: {
+              error,
+              from: 0n,
+              isInProgress: false,
+              last: 0n,
+              progress: 0,
+            },
+          }));
         }
 
-        update((currentStore) => ({
-          ...currentStore,
-          syncStatus: {
-            error,
-            from: 0n,
-            isInProgress: false,
-            last: 0n,
-            progress: 0,
-          },
-        }));
+        // Transaction callers must not proceed after a failed or stale sync.
+        throw error;
       })
       .finally(() => {
         if (syncPromise === currentSyncPromise) {

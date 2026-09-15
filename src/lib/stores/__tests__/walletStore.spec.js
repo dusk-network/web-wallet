@@ -22,7 +22,7 @@ import { buildDepositETHToWithValuePayload } from "$lib/bridge/deposit";
 import WalletTreasury from "$lib/wallet-treasury";
 import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 
-import { networkStore, walletStore } from "..";
+import { networkStore, settingsStore, walletStore } from "..";
 
 const VITE_SYNC_INTERVAL = import.meta.env.VITE_SYNC_INTERVAL;
 
@@ -276,6 +276,29 @@ describe("Wallet store", async () => {
       await vi.runOnlyPendingTimersAsync();
     });
 
+    it("should retain the initialized identity when background sync fails", async () => {
+      const error = new Error("Preflight failed");
+      settingsStore.update((settings) => ({ ...settings, userId: "" }));
+      const cachedSyncInfo = vi
+        .spyOn(WalletTreasury.prototype, "getCachedSyncInfo")
+        .mockRejectedValueOnce(error);
+      try {
+        await walletStore.init(profileGenerator);
+        await vi.waitFor(() => {
+          expect(get(walletStore).syncStatus).toMatchObject({
+            error,
+            isInProgress: false,
+          });
+          expect(get(settingsStore).userId).toBe(
+            defaultProfile.address.toString()
+          );
+        });
+      } finally {
+        cachedSyncInfo.mockRestore();
+        walletStore.reset();
+      }
+    });
+
     it("should not publish profiles from an initialization reset before it completes", async () => {
       const pendingProfile = Promise.withResolvers();
       const delayedGenerator = {
@@ -323,7 +346,7 @@ describe("Wallet store", async () => {
     });
 
     it("should expose a method to abort a sync that is in progress and set the current sync promise to `null` so that a new sync can be started", async () => {
-      walletStore.sync();
+      const syncResult = walletStore.sync().catch((error) => error);
 
       await vi.waitUntil(() => treasuryUpdateSpy.mock.calls.length === 1);
 
@@ -333,6 +356,7 @@ describe("Wallet store", async () => {
       expect(abortControllerSpy).toHaveBeenCalledTimes(1);
 
       await vi.runAllTimersAsync();
+      expect(await syncResult).toBeInstanceOf(Error);
 
       const { syncStatus } = get(walletStore);
 
@@ -380,7 +404,11 @@ describe("Wallet store", async () => {
           lastFinalizedBlockHeight: 0n,
         });
 
-        await Promise.all([firstSync, secondSync]);
+        const results = await Promise.allSettled([firstSync, secondSync]);
+        expect(results).toEqual([
+          { reason: new Error("Synchronization aborted"), status: "rejected" },
+          { reason: new Error("Synchronization aborted"), status: "rejected" },
+        ]);
 
         expect(treasuryUpdateSpy).not.toHaveBeenCalled();
         expect(cacheClearSpy).not.toHaveBeenCalled();
@@ -431,7 +459,7 @@ describe("Wallet store", async () => {
       expect(treasuryResetSpy).toHaveBeenCalledTimes(1);
 
       pendingUpdate.resolve(undefined);
-      await syncPromise;
+      await expect(syncPromise).rejects.toThrow("Synchronization aborted");
 
       expect(get(walletStore)).toStrictEqual(initialState);
     });
@@ -656,6 +684,76 @@ describe("Wallet store", async () => {
       executeSpy.mockRestore();
       updateNonceSpy.mockRestore();
       updateCachedPendingNotesSpy.mockRestore();
+    });
+
+    it.each(
+      /** @type {const} */ (["getCachedSyncInfo", "clearCache", "update"])
+    )(
+      "should reject transfers when sync %s fails without executing a transaction",
+      async (method) => {
+        vi.useRealTimers();
+        const error = new Error(`${method} failed`);
+        const cachedSyncInfo = vi
+          .spyOn(WalletTreasury.prototype, "getCachedSyncInfo")
+          .mockResolvedValue({
+            block: { hash: "", height: 0n },
+            bookmark: 0n,
+            lastFinalizedBlockHeight: 0n,
+          });
+        vi.mocked(networkStore.checkBlock).mockResolvedValueOnce(false);
+        const failingCall = {
+          clearCache: cacheClearSpy,
+          getCachedSyncInfo: cachedSyncInfo,
+          update: treasuryUpdateSpy,
+        }[method];
+        failingCall.mockRejectedValueOnce(error);
+
+        try {
+          await expect(
+            walletStore.transfer(toMoonlight, amount, memo, gas)
+          ).rejects.toBe(error);
+          expect(executeSpy).not.toHaveBeenCalled();
+          expect(treasuryUpdateSpy).toHaveBeenCalledTimes(
+            method === "update" ? 1 : 0
+          );
+          expect(get(walletStore).syncStatus).toMatchObject({
+            error,
+            isInProgress: false,
+          });
+        } finally {
+          cachedSyncInfo.mockRestore();
+          vi.mocked(networkStore.checkBlock)
+            .mockReset()
+            .mockResolvedValue(true);
+          walletStore.reset();
+        }
+      }
+    );
+
+    it("should not execute an abandoned transfer after a new initialization", async () => {
+      vi.useRealTimers();
+      const pending = Promise.withResolvers();
+      const cachedSyncInfo = vi
+        .spyOn(WalletTreasury.prototype, "getCachedSyncInfo")
+        .mockReturnValueOnce(pending.promise);
+      const transfer = walletStore
+        .transfer(toMoonlight, amount, memo, gas)
+        .catch((error) => error);
+      try {
+        await walletStore.init(profileGenerator);
+        await vi.waitUntil(() => !get(walletStore).syncStatus.isInProgress);
+      } finally {
+        pending.resolve({
+          block: { hash: "", height: 0n },
+          bookmark: 0n,
+          lastFinalizedBlockHeight: 0n,
+        });
+        cachedSyncInfo.mockRestore();
+      }
+      expect(await transfer).toEqual(new Error("Synchronization aborted"));
+      expect(executeSpy).not.toHaveBeenCalled();
+      expect(get(walletStore).initialized).toBe(true);
+      expect(get(walletStore).syncStatus.error).toBeNull();
     });
 
     /* eslint-disable vitest/expect-expect */

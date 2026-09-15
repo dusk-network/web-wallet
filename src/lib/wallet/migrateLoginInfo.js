@@ -17,10 +17,7 @@ async function migrateLoginInfo(loginInfo, pwd, signal) {
   const mnemonic = await decryptMnemonic(loginInfo, pwd);
   const migratedLoginInfo = await encryptMnemonic(mnemonic, pwd);
 
-  signal?.throwIfAborted();
-  loginInfoStorage.set(migratedLoginInfo);
-
-  return true;
+  return loginInfoStorage.replace(loginInfo, migratedLoginInfo, signal);
 }
 
 export default migrateLoginInfo;

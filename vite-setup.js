@@ -8,6 +8,7 @@ import { expect, vi } from "vitest";
 import { readable } from "svelte/store";
 import { ResizeObserver } from "@juggle/resize-observer";
 import crypto from "node:crypto";
+import { locks } from "node:worker_threads";
 import "jsdom-worker";
 import "vitest-canvas-mock";
 
@@ -93,6 +94,9 @@ Object.defineProperty(global, "crypto", {
     return crypto;
   },
 });
+
+// Use Node's Web Locks implementation for login-storage coordination in JSDOM.
+Object.defineProperty(navigator, "locks", { value: locks });
 
 // Define matchMedia property
 Object.defineProperty(window, "matchMedia", {

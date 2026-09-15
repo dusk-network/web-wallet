@@ -9,6 +9,8 @@
     document.documentElement.classList.toggle("dark", darkMode);
   });
 
+  let invalidating = false;
+
   /** @param {StorageEvent} event */
   function handleStorageChange({ key, oldValue, newValue, storageArea }) {
     if (
@@ -27,7 +29,8 @@
       changed = true;
     }
 
-    if (changed) {
+    if (changed && !invalidating) {
+      invalidating = true;
       // Reload after cancellation to discard cached login info and preferences
       // on welcome routes as well as authenticated routes.
       const reload = () => location.reload();
