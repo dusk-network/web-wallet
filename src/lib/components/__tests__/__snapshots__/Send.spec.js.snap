@@ -140,6 +140,8 @@ exports[`Send > Address step > should display a warning if the address input is 
        
       <!---->
        
+      <!---->
+       
       <div
         class="banner banner--info"
       >
@@ -435,6 +437,8 @@ exports[`Send > Address step > should display a warning if the address input is 
         required=""
       />
       
+      <!---->
+       
       <!---->
        
       <!---->
@@ -766,6 +770,8 @@ exports[`Send > Address step > should render the Send component Address step 1`]
         required=""
       />
       
+      <!---->
+       
       <!---->
        
       <!---->
@@ -1428,6 +1434,8 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
             To
           </span>
         </dt>
+         
+        <!---->
          
         <dd
           class="operation__review-address svelte-x7e9dl"

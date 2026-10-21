@@ -6,7 +6,14 @@
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { executeSend } from "$lib/contracts";
   import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
-  import { gasStore, settingsStore, walletStore } from "$lib/stores";
+  import { resolveDuskName } from "$lib/dusk-domains";
+  import {
+    gasStore,
+    networkStore,
+    settingsStore,
+    walletStore,
+  } from "$lib/stores";
+  import { makeNodeUrl } from "$lib/url";
 
   /** @type {(source: "shielded" | "unshielded", balanceInfo: WalletStoreBalance) => [bigint, ContractStatus[]]}*/
   function getContractInfo(source, balanceInfo) {
@@ -50,6 +57,17 @@
 
   const BEP20_BRIDGE_ADDRESS = import.meta.env.VITE_BEP20_BRIDGE_ADDRESS;
 
+  const { networkName } = $networkStore;
+
+  /**
+   * Names resolve through the wallet's own node: the origin of its
+   * URL, which is where w3sper sends its requests.
+   *
+   * @param {string} name
+   */
+  const resolveName = (name) =>
+    resolveDuskName(name, networkName, makeNodeUrl().origin);
+
   $: [gasSettings, language] = collectSettings($settingsStore);
   $: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
   $: ({ balance, currentProfile } = $walletStore);
@@ -65,6 +83,7 @@
     {publicAddress}
     execute={executeSend}
     formatter={duskFormatter}
+    {resolveName}
     {gasLimits}
     {gasSettings}
     availableBalance={spendable}

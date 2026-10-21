@@ -9,6 +9,7 @@
     mdiWalletOutline,
   } from "@mdi/js";
   import { areValidGasSettings } from "$lib/contracts";
+  import { isDuskName } from "$lib/dusk-domains";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
@@ -40,6 +41,9 @@
 
   /** @type {(amount: number) => string} */
   export let formatter;
+
+  /** @type {(name: string) => Promise<DuskNameResolution>} */
+  export let resolveName;
 
   /** @type {ContractGasSettings} */
   export let gasSettings;
@@ -86,6 +90,9 @@
   /** @type {boolean} */
   let isMemoValid = true;
 
+  /** @type {DuskNameResolution | null} */
+  let nameLookup = null;
+
   let { gasLimit, gasPrice } = gasSettings;
 
   const minAmount = 0.000000001;
@@ -119,6 +126,56 @@
 
     sendAmount = luxToDusk(maxSpendableAmount);
   }
+
+  /**
+   * Looks up a `.dusk` name, keeping only the result
+   * for the name currently entered.
+   *
+   * @param {string} name
+   */
+  function lookUpName(name) {
+    if (!name) {
+      nameLookup = null;
+      return;
+    }
+
+    const lookup = { name };
+
+    nameLookup = lookup;
+    resolveName(name).then((result) => {
+      if (nameLookup === lookup) {
+        nameLookup = result;
+      }
+    });
+  }
+
+  /** @type {Record<DuskNameError, (name: string) => [string, string]>} */
+  const nameErrors = {
+    expired: (name) => [
+      `${name} has expired`,
+      "An expired name can't receive DUSK.",
+    ],
+    invalid: (name) => [
+      `${name} isn't a valid name`,
+      "Names use only letters, digits and hyphens.",
+    ],
+    "lookup-failed": (name) => [
+      `Couldn't look up ${name}`,
+      "Check your connection and try again.",
+    ],
+    "no-address": (name) => [
+      `${name} has no Dusk address`,
+      "Its owner needs to add one before it can receive DUSK.",
+    ],
+    "not-registered": (name) => [
+      `${name} isn't registered`,
+      "Check the name, or paste the recipient's address instead.",
+    ],
+    "unsupported-network": () => [
+      ".dusk names aren't available on this network",
+      "They work on mainnet and testnet. Paste the recipient's address instead.",
+    ],
+  };
 
   let activeStep = 0;
 
@@ -165,13 +222,23 @@
     !isRecipientBlocklisted
   );
 
+  $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";
+
+  $: lookUpName(recipientName);
+
+  // The address the transfer goes to: the one entered, or the account
+  // a `.dusk` name resolved to (empty until it has).
+  $: recipientAddress = recipientName
+    ? (nameLookup?.address ?? "")
+    : sendToAddress;
+
   $: addressInfo = getAddressInfo(
-    sendToAddress,
+    recipientAddress,
     shieldedAddress,
     publicAddress
   );
 
-  $: blocklistedRecipient = getBlocklistedRecipient(sendToAddress);
+  $: blocklistedRecipient = getBlocklistedRecipient(recipientAddress);
   $: isRecipientBlocklisted = Boolean(blocklistedRecipient);
 
   $: if (addressInfo.type) {
@@ -180,7 +247,7 @@
     });
   }
 
-  $: isSendingToBep20Bridge = sendToAddress.trim() === bep20BridgeAddress;
+  $: isSendingToBep20Bridge = recipientAddress.trim() === bep20BridgeAddress;
 
   $: if (isSendingToBep20Bridge) {
     isMemoShown = true;
@@ -201,7 +268,9 @@
   $: sendToAddressTextboxClasses = makeClassName({
     "operation__send-address": true,
     "operation__send-address--blocked": isRecipientBlocklisted,
-    "operation__send-address--invalid": sendToAddress && !addressInfo.isValid,
+    "operation__send-address--invalid": recipientName
+      ? nameLookup?.error
+      : sendToAddress && !addressInfo.isValid,
   });
 
   $: sendMemoTextboxClasses = makeClassName({
@@ -248,6 +317,32 @@
           type="multiline"
           bind:value={sendToAddress}
         />
+
+        {#if nameLookup?.address}
+          <dl class="operation__review-transaction">
+            <dt class="review-transaction__label">
+              <span>{nameLookup.name} points to</span>
+            </dt>
+            <dd class="operation__review-address">
+              <span>{nameLookup.address}</span>
+            </dd>
+          </dl>
+        {:else if nameLookup?.error}
+          {@const [title, text] = nameErrors[nameLookup.error](nameLookup.name)}
+          <Banner variant="error" {title}>
+            <p>{text}</p>
+            {#if nameLookup.error === "lookup-failed"}
+              <Button
+                size="small"
+                variant="tertiary"
+                on:click={() => lookUpName(recipientName)}
+                text="TRY AGAIN"
+              />
+            {/if}
+          </Banner>
+        {:else if nameLookup}
+          <p>Looking up {nameLookup.name}…</p>
+        {/if}
 
         {#if isRecipientBlocklisted}
           <Banner variant="error" title="Blocked recipient address">
@@ -457,8 +552,11 @@
             <Icon path={mdiWalletOutline} />
             <span>To</span>
           </dt>
+          {#if nameLookup?.address}
+            <dd class="review-transaction__value">{nameLookup.name}</dd>
+          {/if}
           <dd class="operation__review-address">
-            <span>{sendToAddress}</span>
+            <span>{recipientAddress}</span>
           </dd>
         </dl>
 
@@ -481,7 +579,7 @@
       <OperationResult
         errorMessage="Transaction failed"
         operation={execute(
-          sendToAddress,
+          recipientAddress,
           sendAmountInLux,
           transactionMemo,
           gasPrice,

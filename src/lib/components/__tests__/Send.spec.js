@@ -6,6 +6,7 @@ import {
   luxToDusk,
 } from "$lib/dusk/currency";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
+import { DEFAULT_BLOCKLISTED_ADDRESSES } from "$lib/security/addressBlocklist";
 
 import { Send } from "..";
 import { tick } from "svelte";
@@ -43,6 +44,7 @@ describe("Send", () => {
       gasPrice: 1n,
     },
     publicAddress,
+    resolveName: vi.fn(),
     shieldedAddress,
   };
 
@@ -52,6 +54,7 @@ describe("Send", () => {
   afterEach(() => {
     cleanup();
     baseProps.execute.mockClear();
+    baseProps.resolveName.mockReset();
   });
 
   describe("Address step", () => {
@@ -547,6 +550,148 @@ describe("Send", () => {
       );
       expect(getByText("Transaction created")).toBeInTheDocument();
       expect(() => getByRole("link", { name: /explorer/i })).toThrow();
+    });
+  });
+
+  describe("Dusk Domains names", () => {
+    const amount = 567;
+    const nameAccount =
+      "qaJoSNfnh7kLyMPvFkWUPhzcAo2aDexVuGGjRZvghm31NPk7i8N57EFgKoYNBAicCfZVFm9icdcQYEoedS9jN5RZhYeuoSWbmomXdm7A1yUfPSUovheWccGYUvVkKCUnt7V";
+
+    it("should send to the account a name resolves to, after showing both", async () => {
+      /** @type {(value: DuskNameResolution) => void} */
+      let finishLookup = () => {};
+
+      baseProps.resolveName.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishLookup = resolve;
+        })
+      );
+
+      const { container, findByText, getByRole, getByText } = render(
+        Send,
+        baseProps
+      );
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: " Alice.dusk " },
+      });
+
+      expect(baseProps.resolveName).toHaveBeenCalledExactlyOnceWith(
+        "Alice.dusk"
+      );
+      expect(getByText("Looking up Alice.dusk…")).toBeInTheDocument();
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+      finishLookup({ address: nameAccount, name: "alice.dusk" });
+
+      expect(await findByText("alice.dusk points to")).toBeInTheDocument();
+      expect(getByText(nameAccount)).toBeInTheDocument();
+      expect(getByText("Public account detected")).toBeInTheDocument();
+
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.input(getByRole("spinbutton"), {
+        target: { value: amount },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      expect(getByText("alice.dusk")).toBeInTheDocument();
+      expect(
+        getAsHTMLElement(container, ".operation__review-address span")
+      ).toHaveTextContent(nameAccount);
+
+      await fireEvent.click(getByRole("button", { name: "SEND" }));
+
+      expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
+        nameAccount,
+        duskToLux(amount),
+        "",
+        baseProps.gasSettings.gasPrice,
+        baseProps.gasSettings.gasLimit
+      );
+    });
+
+    it.each([
+      ["expired", "alice.dusk has expired"],
+      ["invalid", "alice.dusk isn't a valid name"],
+      ["lookup-failed", "Couldn't look up alice.dusk"],
+      ["no-address", "alice.dusk has no Dusk address"],
+      ["not-registered", "alice.dusk isn't registered"],
+      ["unsupported-network", ".dusk names aren't available on this network"],
+    ])(
+      "should explain the %s error inline and keep Next disabled",
+      async (error, title) => {
+        baseProps.resolveName.mockResolvedValueOnce({
+          error,
+          name: "alice.dusk",
+        });
+
+        const { findByText, getByRole } = render(Send, baseProps);
+
+        await fireEvent.input(getByRole("textbox"), {
+          target: { value: "alice.dusk" },
+        });
+
+        expect(await findByText(title)).toBeInTheDocument();
+        expect(getByRole("button", { name: "Next" })).toBeDisabled();
+      }
+    );
+
+    it("should look the name up again after a failed lookup", async () => {
+      baseProps.resolveName
+        .mockResolvedValueOnce({ error: "lookup-failed", name: "alice.dusk" })
+        .mockResolvedValueOnce({ address: nameAccount, name: "alice.dusk" });
+
+      const { findByRole, findByText, getByRole } = render(Send, baseProps);
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: "alice.dusk" },
+      });
+      await fireEvent.click(await findByRole("button", { name: "TRY AGAIN" }));
+
+      expect(await findByText(nameAccount)).toBeInTheDocument();
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+    });
+
+    it("should ignore the lookup of a name that is no longer entered", async () => {
+      /** @type {(value: DuskNameResolution) => void} */
+      let finishFirstLookup = () => {};
+
+      baseProps.resolveName
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            finishFirstLookup = resolve;
+          })
+        )
+        .mockResolvedValueOnce({ error: "not-registered", name: "bob.dusk" });
+
+      const { findByText, getByRole, queryByText } = render(Send, baseProps);
+      const addressInput = getByRole("textbox");
+
+      await fireEvent.input(addressInput, { target: { value: "alice.dusk" } });
+      await fireEvent.input(addressInput, { target: { value: "bob.dusk" } });
+      finishFirstLookup({ address: nameAccount, name: "alice.dusk" });
+      await tick();
+
+      expect(await findByText("bob.dusk isn't registered")).toBeInTheDocument();
+      expect(queryByText(nameAccount)).not.toBeInTheDocument();
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+    });
+
+    it("should block a name that resolves to a blocked address", async () => {
+      baseProps.resolveName.mockResolvedValueOnce({
+        address: DEFAULT_BLOCKLISTED_ADDRESSES[0].address,
+        name: "alice.dusk",
+      });
+
+      const { findByText, getByRole } = render(Send, baseProps);
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: "alice.dusk" },
+      });
+
+      expect(await findByText("Blocked recipient address")).toBeInTheDocument();
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
     });
   });
 });
