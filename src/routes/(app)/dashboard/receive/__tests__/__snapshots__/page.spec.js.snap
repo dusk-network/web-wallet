@@ -116,6 +116,10 @@ exports[`Receive > should render the receive page with a choice to switch from p
         <figcaption
           class="receive__address svelte-hh88gv"
         >
+          <!---->
+          
+          <!---->
+           
           <samp>
             bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
           </samp>
@@ -312,6 +316,10 @@ exports[`Receive > should show the shielded address when the user makes such cho
         <figcaption
           class="receive__address svelte-hh88gv"
         >
+          <!---->
+          
+          <!---->
+           
           <samp>
             2zFZwXf4JEvD2Vmd4kqx5tHDv73LkRr2Ydb84Knr2gmFJJoEEpZPtTbuQCrojM85QDHAvosxoZdnpLPSNRqzqmai
           </samp>

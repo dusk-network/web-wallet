@@ -19,6 +19,7 @@
     AnchorButton,
     Badge,
     Button,
+    ExclusiveChoice,
     Icon,
     Stepper,
     Switch,
@@ -93,6 +94,14 @@
   /** @type {DuskNameResolution | null} */
   let nameLookup = null;
 
+  /**
+   * The address of a `.dusk` name the transfer goes to: its public
+   * account, unless it has only a shielded address or the user picks that.
+   *
+   * @type {"account" | "address"}
+   */
+  let nameAddressType = "account";
+
   let { gasLimit, gasPrice } = gasSettings;
 
   const minAmount = 0.000000001;
@@ -144,10 +153,16 @@
     nameLookup = lookup;
     resolveName(name).then((result) => {
       if (nameLookup === lookup) {
+        nameAddressType = result.account ? "account" : "address";
         nameLookup = result;
       }
     });
   }
+
+  const nameAddressOptions = [
+    { label: "Public", value: "account" },
+    { label: "Shielded", value: "address" },
+  ];
 
   /** @type {Record<DuskNameError, (name: string) => [string, string]>} */
   const nameErrors = {
@@ -164,8 +179,8 @@
       "Check your connection and try again.",
     ],
     "no-address": (name) => [
-      `${name} has no Dusk address`,
-      "Its owner needs to add one before it can receive DUSK.",
+      `${name} has no address to send to`,
+      "Its owner needs to add a public account or a shielded address before it can receive DUSK.",
     ],
     "not-registered": (name) => [
       `${name} isn't registered`,
@@ -226,10 +241,10 @@
 
   $: lookUpName(recipientName);
 
-  // The address the transfer goes to: the one entered, or the account
-  // a `.dusk` name resolved to (empty until it has).
+  // The address the transfer goes to: the one entered, or the one picked
+  // of the addresses a `.dusk` name resolved to (empty until it has).
   $: recipientAddress = recipientName
-    ? (nameLookup?.address ?? "")
+    ? (nameLookup?.[nameAddressType] ?? "")
     : sendToAddress;
 
   $: addressInfo = getAddressInfo(
@@ -318,13 +333,20 @@
           bind:value={sendToAddress}
         />
 
-        {#if nameLookup?.address}
+        {#if nameLookup?.[nameAddressType]}
           <dl class="operation__review-transaction">
-            <dt class="review-transaction__label">
+            <dt class="review-transaction__label operation__name-label">
               <span>{nameLookup.name} points to</span>
+              {#if nameLookup.account && nameLookup.address}
+                <ExclusiveChoice
+                  aria-label="Address to send to"
+                  options={nameAddressOptions}
+                  bind:value={nameAddressType}
+                />
+              {/if}
             </dt>
             <dd class="operation__review-address">
-              <span>{nameLookup.address}</span>
+              <span>{recipientAddress}</span>
             </dd>
           </dl>
         {:else if nameLookup?.error}
@@ -552,7 +574,7 @@
             <Icon path={mdiWalletOutline} />
             <span>To</span>
           </dt>
-          {#if nameLookup?.address}
+          {#if nameLookup?.[nameAddressType]}
             <dd class="review-transaction__value">{nameLookup.name}</dd>
           {/if}
           <dd class="operation__review-address">
@@ -644,6 +666,10 @@
 
     &__review-amount {
       justify-content: flex-start;
+    }
+
+    &__name-label {
+      justify-content: space-between;
     }
 
     :global(&__review-notice) {

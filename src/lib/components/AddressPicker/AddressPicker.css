@@ -15,6 +15,20 @@
   font-size: 0.95rem;
 }
 
+.address-picker__name {
+  display: block;
+  margin-top: 0.25em;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.address-picker__name-account {
+  margin-left: 0.5em;
+  color: var(--muted-color);
+  font-family: var(--mono-font-family);
+  font-size: 0.75rem;
+}
+
 .address-picker__copy-address-button:hover {
   cursor: copy;
 }
@@ -162,6 +176,12 @@
   font-family: var(--mono-font-family);
   color: var(--on-surface-color);
   font-size: 0.85em;
+}
+
+.address-picker__address-name {
+  margin-right: 0.5em;
+  font-family: var(--main-font-family);
+  font-weight: 500;
 }
 
 .address-picker__copy-buttons {

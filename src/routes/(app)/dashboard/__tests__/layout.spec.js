@@ -7,11 +7,12 @@ import {
   it,
   vi,
 } from "vitest";
-import { act, cleanup, render } from "@testing-library/svelte";
+import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { apiMarketData } from "$lib/mock-data";
 import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
+import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
@@ -264,5 +265,24 @@ describe("Dashboard Layout", () => {
     expect(getStatusWrapper(container, "error")).toBeNull();
     expect(getRetryButton()).toBeNull();
     expect(getStatusWrapper(container, "success")).toBeTruthy();
+  });
+
+  it("should look no `.dusk` names up on a network without them", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const { container } = render(Layout, baseProps);
+
+    await fireEvent.click(
+      getAsHTMLElement(container, ".address-picker__trigger")
+    );
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(
+      container.querySelector(
+        ".address-picker__name, .address-picker__address-name"
+      )
+    ).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
   });
 });

@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import {
     calculateAdaptiveCharCount,
     makeClassName,
@@ -22,6 +22,13 @@
   /** @type {Profile[]} */
   export let profiles;
 
+  /**
+   * Looks up the verified `.dusk` name of a public account: "" for none.
+   *
+   * @type {(account: string) => Promise<string>}
+   */
+  export let getName = () => Promise.resolve("");
+
   /** @type {string|undefined} */
   export let className = undefined;
 
@@ -29,6 +36,11 @@
 
   let expanded = false;
   let innerWidth = 0;
+  let isMounted = false;
+
+  onMount(() => {
+    isMounted = true;
+  });
 
   /** @type {HTMLMenuElement} */
   let addressOptionsMenu;
@@ -115,6 +127,13 @@
 
   // Calculate adaptive character count based on screen width
   $: charCount = calculateAdaptiveCharCount(innerWidth);
+
+  // The current profile's name, looked up once the picker has rendered.
+  // The profiles listed look theirs up when the list opens.
+  $: currentName =
+    isMounted && currentProfile
+      ? getName(currentProfile.account.toString())
+      : "";
 </script>
 
 {#if expanded}
@@ -141,7 +160,24 @@
     on:click={handleTriggerClick}
     on:keydown={handleTriggerKeyDown}
   >
-    <span class="address-picker__current-profile">{displayedAddress}</span>
+    <span class="address-picker__current-profile">
+      {displayedAddress}
+      {#await currentName then name}
+        {#if name && currentProfile}
+          <span class="address-picker__name">
+            {name}
+            <span class="address-picker__name-account"
+              >{middleEllipsis(
+                currentProfile.account.toString(),
+                charCount
+              )}</span
+            >
+          </span>
+        {/if}
+      {:catch}
+        <!-- A failed lookup shows no name. -->
+      {/await}
+    </span>
     <Icon path={mdiChevronDown} className="address-picker__chevron" />
   </div>
 
@@ -182,12 +218,18 @@
                     <span class="address-picker__address-label"
                       >Public Account</span
                     >
-                    <span class="address-picker__address-value"
-                      >{middleEllipsis(
-                        profile.account.toString(),
-                        charCount
-                      )}</span
-                    >
+                    <span class="address-picker__address-value">
+                      {#await getName(profile.account.toString()) then name}
+                        {#if name}
+                          <span class="address-picker__address-name"
+                            >{name}</span
+                          >
+                        {/if}
+                      {:catch}
+                        <!-- A failed lookup shows no name. -->
+                      {/await}
+                      {middleEllipsis(profile.account.toString(), charCount)}
+                    </span>
                   </div>
                   <div class="address-picker__address-row">
                     <span class="address-picker__address-label"

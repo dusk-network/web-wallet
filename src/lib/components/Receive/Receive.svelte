@@ -14,6 +14,13 @@
   /** @type {boolean} */
   export let hideBackButton = false;
 
+  /**
+   * The `.dusk` name shown with the address, or its lookup: "" for none.
+   *
+   * @type {string | Promise<string>}
+   */
+  export let name = "";
+
   /** @type {HTMLElement} */
   let figureElement;
 
@@ -35,6 +42,13 @@
     <QrCode value={address} className="receive__qr" width={qrWidth} />
 
     <figcaption class="receive__address">
+      {#await name then shownName}
+        {#if shownName}
+          <span class="receive__name">{shownName}</span>
+        {/if}
+      {:catch}
+        <!-- A failed lookup shows no name. -->
+      {/await}
       <samp>{address}</samp>
     </figcaption>
   </figure>
@@ -90,6 +104,14 @@
       border: 1px solid var(--surface-border-color);
       font-family: var(--mono-font-family);
       font-size: 0.875rem;
+    }
+
+    &__name {
+      display: block;
+      margin-bottom: 0.25em;
+      font-family: var(--main-font-family);
+      font-size: 1rem;
+      font-weight: 500;
     }
 
     :global(&__qr) {

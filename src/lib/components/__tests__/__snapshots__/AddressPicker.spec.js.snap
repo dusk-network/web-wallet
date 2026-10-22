@@ -15,7 +15,8 @@ exports[`AddressPicker > renders the AddressPicker component 1`] = `
     <span
       class="address-picker__current-profile"
     >
-      Profile 1 (Default)
+      Profile 1 (Default) 
+      <!---->
     </span>
      
     <!---->
@@ -51,7 +52,10 @@ exports[`AddressPicker > should be able to render the component if the current p
     <span
       class="address-picker__current-profile"
     >
-      No profile selected
+      No profile selected 
+      <!---->
+      
+      <!---->
     </span>
      
     <!---->

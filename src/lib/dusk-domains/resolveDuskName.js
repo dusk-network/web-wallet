@@ -1,40 +1,13 @@
-/** @type {Map<string, Promise<import("@duskdomains/sdk/lens-reader").LensReader>>} */
-const readers = new Map();
+import getAddressInfo from "$lib/wallet/getAddressInfo";
+
+import getLensReader from "./getLensReader";
 
 /**
- * Returns the network's lens reader, created on first use from the pinned
- * release. It fetches only the lens driver, from the Dusk Domains site, and
- * uses it once it matches the pinned digests. A failed creation is dropped,
- * so the next lookup retries. The reader and the releases are imported only
- * then, in their own chunks.
- *
- * @param {"mainnet" | "testnet"} network
- * @param {string} nodeUrl
- */
-function getReader(network, nodeUrl) {
-  let reader = readers.get(network);
-
-  if (!reader) {
-    reader = Promise.all([
-      import("@duskdomains/sdk/lens-reader"),
-      import("./dusk-domains-releases.json"),
-    ]).then(([{ createLensReader }, { default: releases }]) =>
-      createLensReader(releases[network], {
-        artifactBaseUrl: releases[network].artifactBaseUrl,
-        nodeUrl,
-      })
-    );
-    readers.set(network, reader);
-    reader.catch(() => readers.delete(network));
-  }
-
-  return reader;
-}
-
-/**
- * Resolves a `.dusk` name to the public account in its `moonlight_address`
- * record, on mainnet and testnet only. It never rejects: a name that can't
- * be paid comes back with the reason, and there is no fallback.
+ * Resolves a `.dusk` name, on mainnet and testnet only, to the public account
+ * in its `moonlight_address` record and the shielded address in its
+ * `phoenix_payment_endpoint` record, each taken only if it is valid. It never
+ * rejects: a name that can't be paid comes back with the reason, and there is
+ * no fallback.
  *
  * @param {string} input The recipient as entered, ending in `.dusk`.
  * @param {string} network The network the wallet is connected to.
@@ -49,7 +22,7 @@ export default async function resolveDuskName(input, network, nodeUrl) {
   }
 
   try {
-    const { decodeBase58, isMoonlightEndpoint, validateName } =
+    const { encodeBase58, isMoonlightEndpoint, validateName } =
       await import("@duskdomains/sdk");
     const validation = validateName(name);
 
@@ -59,8 +32,14 @@ export default async function resolveDuskName(input, network, nodeUrl) {
 
     name = validation.name.canonical;
 
-    const reader = await getReader(network, nodeUrl);
-    const { account, status } = await reader.resolveMoonlightAccount(name);
+    const reader = await getLensReader(network, nodeUrl);
+    const {
+      records: [moonlight, phoenix],
+      status,
+    } = await reader.resolve(name, [
+      "moonlight_address",
+      "phoenix_payment_endpoint",
+    ]);
 
     if (status !== "Active") {
       return {
@@ -69,10 +48,27 @@ export default async function resolveDuskName(input, network, nodeUrl) {
       };
     }
 
-    // The reader checks only the key's shape: check it is a valid compressed
-    // 96-byte BLS key too, as Moonlight accounts are.
-    return account && isMoonlightEndpoint(decodeBase58(account) ?? [])
-      ? { address: account, name }
+    /** @type {DuskNameResolution} */
+    const resolution = { name };
+
+    // The reader doesn't check the public account: it must be a valid
+    // compressed 96-byte BLS key, as Moonlight accounts are.
+    if (moonlight && isMoonlightEndpoint(moonlight.value)) {
+      resolution.account = encodeBase58(moonlight.value);
+    }
+
+    // The shielded address is stored as text, and taken only if
+    // the wallet would take it as a pasted shielded address.
+    if (phoenix) {
+      const address = new TextDecoder().decode(Uint8Array.from(phoenix.value));
+
+      if (getAddressInfo(address, "", "").type === "address") {
+        resolution.address = address;
+      }
+    }
+
+    return resolution.account || resolution.address
+      ? resolution
       : { error: "no-address", name };
   } catch {
     return { error: "lookup-failed", name };

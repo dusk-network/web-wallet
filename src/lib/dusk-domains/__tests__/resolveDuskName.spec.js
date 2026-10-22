@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { decodeBase58 } from "@duskdomains/sdk";
 
 import releases from "../dusk-domains-releases.json";
 
@@ -7,20 +8,47 @@ const { createLensReader } = vi.hoisted(() => ({
 }));
 
 // Only the lens reader is mocked: name validation, the BLS key check and
-// Base58 are the SDK's own.
+// Base58 are the SDK's own, and shielded addresses get the wallet's checks.
 vi.mock("@duskdomains/sdk/lens-reader", () => ({ createLensReader }));
 
 describe("resolveDuskName", () => {
   // A canonical compressed BLS12-381 G2 point: the generator times 7.
   const account =
     "qaJoSNfnh7kLyMPvFkWUPhzcAo2aDexVuGGjRZvghm31NPk7i8N57EFgKoYNBAicCfZVFm9icdcQYEoedS9jN5RZhYeuoSWbmomXdm7A1yUfPSUovheWccGYUvVkKCUnt7V";
+  const address =
+    "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnMM";
+  const invalidKey = `${account.slice(0, -1)}W`;
   const nodeUrl = "https://testnet.nodes.dusk.network";
+  const recordKeys = ["moonlight_address", "phoenix_payment_endpoint"];
 
-  /** @param {any} result */
-  const readerResolving = (result) => ({
-    resolveMoonlightAccount: vi
-      .fn()
-      .mockResolvedValue({ height: 1n, ...result }),
+  /** @param {string} text */
+  const utf8 = (text) => Array.from(new TextEncoder().encode(text));
+
+  /**
+   * A reader resolving a name with these records: the public account
+   * as its key's bytes and the shielded address as text, as stored.
+   *
+   * @param {{ moonlight?: string, phoenix?: string | number[], status: string }} name
+   */
+  const readerResolving = ({ moonlight, phoenix, status }) => ({
+    resolve: vi.fn().mockResolvedValue({
+      height: 1n,
+      records: [
+        moonlight
+          ? {
+              key: "moonlight_address",
+              value: Array.from(decodeBase58(moonlight) ?? []),
+            }
+          : null,
+        phoenix
+          ? {
+              key: "phoenix_payment_endpoint",
+              value: typeof phoenix === "string" ? utf8(phoenix) : phoenix,
+            }
+          : null,
+      ],
+      status,
+    }),
   });
 
   /** @type {typeof import("..").resolveDuskName} */
@@ -36,22 +64,63 @@ describe("resolveDuskName", () => {
     createLensReader.mockReset();
   });
 
-  it("should resolve an active name to the public account in its moonlight_address record", async () => {
-    const reader = readerResolving({ account, status: "Active" });
+  it("should resolve an active name to the public account and the shielded address in its records, in one lookup", async () => {
+    const reader = readerResolving({
+      moonlight: account,
+      phoenix: address,
+      status: "Active",
+    });
 
     createLensReader.mockResolvedValue(reader);
 
     await expect(
       resolveDuskName(" Alice.dusk\n", "testnet", nodeUrl)
-    ).resolves.toStrictEqual({ address: account, name: "alice.dusk" });
-    expect(reader.resolveMoonlightAccount).toHaveBeenCalledExactlyOnceWith(
-      "alice.dusk"
+    ).resolves.toStrictEqual({ account, address, name: "alice.dusk" });
+    expect(reader.resolve).toHaveBeenCalledExactlyOnceWith(
+      "alice.dusk",
+      recordKeys
     );
   });
 
+  it.each([
+    ["only a public account", { moonlight: account }, { account }],
+    ["only a shielded address", { phoenix: address }, { address }],
+    [
+      "a public account record that isn't a valid key",
+      { moonlight: invalidKey, phoenix: address },
+      { address },
+    ],
+    [
+      "a shielded address record that is a public account",
+      { moonlight: account, phoenix: account },
+      { account },
+    ],
+    [
+      "a shielded address record with whitespace around it",
+      { moonlight: account, phoenix: ` ${address}\n` },
+      { account },
+    ],
+    [
+      "a shielded address record that isn't UTF-8 text",
+      { moonlight: account, phoenix: [...utf8(address), 0xff] },
+      { account },
+    ],
+  ])(
+    "should take only the valid addresses of a name with %s",
+    async (_, records, addresses) => {
+      createLensReader.mockResolvedValue(
+        readerResolving({ ...records, status: "Active" })
+      );
+
+      await expect(
+        resolveDuskName("alice.dusk", "testnet", nodeUrl)
+      ).resolves.toStrictEqual({ ...addresses, name: "alice.dusk" });
+    }
+  );
+
   it("should create one reader per network, from the pinned release and the wallet's node", async () => {
     createLensReader.mockResolvedValue(
-      readerResolving({ account, status: "Active" })
+      readerResolving({ moonlight: account, status: "Active" })
     );
 
     await resolveDuskName("alice.dusk", "testnet", nodeUrl);
@@ -74,9 +143,9 @@ describe("resolveDuskName", () => {
   });
 
   it("should report failed lookups, and retry a reader that failed to load", async () => {
-    const reader = readerResolving({ account, status: "Active" });
+    const reader = readerResolving({ moonlight: account, status: "Active" });
 
-    reader.resolveMoonlightAccount.mockRejectedValueOnce(
+    reader.resolve.mockRejectedValueOnce(
       new Error("The lens reader took over 15000 ms")
     );
     createLensReader
@@ -86,7 +155,7 @@ describe("resolveDuskName", () => {
     for (const expected of [
       { error: "lookup-failed", name: "alice.dusk" },
       { error: "lookup-failed", name: "alice.dusk" },
-      { address: account, name: "alice.dusk" },
+      { account, name: "alice.dusk" },
     ]) {
       await expect(
         resolveDuskName("alice.dusk", "testnet", nodeUrl)
@@ -102,11 +171,11 @@ describe("resolveDuskName", () => {
     ["expired", "a root in grace", { status: "Grace" }],
     ["expired", "a released root", { status: "Released" }],
     ["expired", "an expired subname", { status: "Expired" }],
-    ["no-address", "a name without the record", { status: "Active" }],
+    ["no-address", "a name without either record", { status: "Active" }],
     [
       "no-address",
-      "a key-shaped record that isn't a valid key",
-      { account: `${account.slice(0, -1)}W`, status: "Active" },
+      "a name whose records are neither valid",
+      { moonlight: invalidKey, phoenix: "not-an-address", status: "Active" },
     ],
   ])("should report %s for %s", async (error, _, result) => {
     createLensReader.mockResolvedValue(readerResolving(result));

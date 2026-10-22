@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Accept `.dusk` names as send recipients on mainnet and testnet
+- Send to the shielded address a `.dusk` name publishes
+- Show the profiles' verified `.dusk` names in the profile switcher and on the Receive page
 
 ### Changed
 
