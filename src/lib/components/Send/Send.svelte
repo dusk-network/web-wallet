@@ -2,7 +2,7 @@
 
 <script>
   import { fade } from "svelte/transition";
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onMount, tick } from "svelte";
   import {
     mdiAlertOutline,
     mdiArrowUpBoldBoxOutline,
@@ -13,13 +13,17 @@
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
-  import { isValidEvmAddress, makeClassName } from "$lib/dusk/string";
+  import {
+    isValidEvmAddress,
+    makeClassName,
+    middleEllipsis,
+    randomUUID,
+  } from "$lib/dusk/string";
   import { logo } from "$lib/dusk/icons";
   import {
     AnchorButton,
     Badge,
     Button,
-    ExclusiveChoice,
     Icon,
     Stepper,
     Switch,
@@ -29,6 +33,7 @@
   } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
+    AppAnchor,
     Banner,
     GasFee,
     GasSettings,
@@ -49,8 +54,26 @@
   /** @type {ContractGasSettings} */
   export let gasSettings;
 
-  /** @type {bigint} */
+  /**
+   * The spendable balance the transfer is paid from.
+   *
+   * @type {bigint}
+   */
   export let availableBalance;
+
+  /**
+   * The spendable public balance, which pays transfers to public accounts.
+   *
+   * @type {bigint}
+   */
+  export let publicBalance;
+
+  /**
+   * The spendable shielded balance, which pays transfers to shielded addresses.
+   *
+   * @type {bigint}
+   */
+  export let shieldedBalance;
 
   /** @type {GasStoreContent} */
   export let gasLimits;
@@ -95,12 +118,27 @@
   let nameLookup = null;
 
   /**
-   * The address of a `.dusk` name the transfer goes to: its public
-   * account, unless it has only a shielded address or the user picks that.
+   * The address the user picked for each `.dusk` name with both a public
+   * account and a shielded address. A pick stays with its name, through
+   * lookups of the same name and steps back, until the user makes another;
+   * any other name starts at its public account.
    *
-   * @type {"account" | "address"}
+   * @type {Record<string, "account" | "address">}
    */
-  let nameAddressType = "account";
+  let namePicks = {};
+
+  /**
+   * The options shown for a `.dusk` name with both addresses, by type,
+   * for the focus to follow the pick.
+   *
+   * @type {Partial<Record<"account" | "address", HTMLElement>>}
+   */
+  const nameOptionElements = {};
+
+  const nameOptionsId = randomUUID();
+
+  // Without the allocation page there is nowhere to link to for shielding.
+  const canShield = import.meta.env.VITE_FEATURE_ALLOCATE === "true";
 
   let { gasLimit, gasPrice } = gasSettings;
 
@@ -153,16 +191,133 @@
     nameLookup = lookup;
     resolveName(name).then((result) => {
       if (nameLookup === lookup) {
-        nameAddressType = result.account ? "account" : "address";
         nameLookup = result;
       }
     });
   }
 
-  const nameAddressOptions = [
-    { label: "Public", value: "account" },
-    { label: "Shielded", value: "address" },
-  ];
+  /**
+   * @typedef {{
+   *   address: string,
+   *   balance: string,
+   *   balanceName: string,
+   *   disabled: boolean,
+   *   title: string,
+   *   type: "account" | "address",
+   *   visibility: string,
+   * }} NameOption
+   */
+
+  /**
+   * The address of a `.dusk` name the transfer goes to: the one picked for
+   * a name with both a public account and a shielded address, its public
+   * account otherwise, or its shielded address when it has only that.
+   *
+   * @param {DuskNameResolution | null} lookup
+   * @param {Record<string, "account" | "address">} picks
+   * @returns {"account" | "address"}
+   */
+  function getNameAddressType(lookup, picks) {
+    if (!lookup?.account) {
+      return "address";
+    }
+
+    return (lookup.address && picks[lookup.name]) || "account";
+  }
+
+  /**
+   * The addresses a `.dusk` name with both a public account and a shielded
+   * address gives to pick from, with the balance that pays for each. The
+   * shielded address can't be picked while its balance can't pay.
+   *
+   * @param {DuskNameResolution | null} lookup
+   * @param {string} publicFunds The public balance, formatted.
+   * @param {string} shieldedFunds The shielded balance, formatted.
+   * @param {boolean} canPayShielded
+   * @returns {NameOption[]}
+   */
+  function getNameOptions(lookup, publicFunds, shieldedFunds, canPayShielded) {
+    if (!lookup?.account || !lookup.address) {
+      return [];
+    }
+
+    return [
+      {
+        address: lookup.account,
+        balance: publicFunds,
+        balanceName: "public balance",
+        disabled: false,
+        title: "Public account",
+        type: "account",
+        visibility: "The amount and both accounts are visible on chain.",
+      },
+      {
+        address: lookup.address,
+        balance: shieldedFunds,
+        balanceName: "shielded balance",
+        disabled: !canPayShielded,
+        title: "Shielded address",
+        type: "address",
+        visibility: "The amount and both parties stay private.",
+      },
+    ];
+  }
+
+  /**
+   * Picks which address of the `.dusk` name entered the transfer goes
+   * to, unless that option is disabled.
+   *
+   * @param {"account" | "address"} type
+   */
+  function pickNameAddress(type) {
+    const option = nameOptions.find((item) => item.type === type);
+
+    if (nameLookup && option && !option.disabled) {
+      namePicks = { ...namePicks, [nameLookup.name]: type };
+    }
+  }
+
+  /**
+   * How far each arrow key moves the pick between options.
+   *
+   * @type {Record<string, number>}
+   */
+  const arrowKeyOffsets = {
+    ArrowDown: 1,
+    ArrowLeft: -1,
+    ArrowRight: 1,
+    ArrowUp: -1,
+  };
+
+  /**
+   * Moves the pick with the arrow keys, past a disabled option, and makes
+   * it with Space, as in a radio group.
+   *
+   * @param {KeyboardEvent} event
+   * @param {"account" | "address"} type The option with the focus.
+   */
+  async function handleNameOptionKeyDown(event, type) {
+    const offset = arrowKeyOffsets[event.key] ?? 0;
+
+    if (!offset && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+
+    const types = nameOptions
+      .filter((option) => !option.disabled)
+      .map((option) => option.type);
+    const next = offset
+      ? types[(types.indexOf(type) + offset + types.length) % types.length]
+      : type;
+
+    if (next) {
+      pickNameAddress(next);
+      await tick();
+      nameOptionElements[next]?.focus();
+    }
+  }
 
   /** @type {Record<DuskNameError, (name: string) => [string, string]>} */
   const nameErrors = {
@@ -198,6 +353,14 @@
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
+
+  // A balance can pay for a transfer if it covers the smallest amount the
+  // amount step takes plus the maximum gas fee, which that step requires.
+  $: canPayFromShieldedBalance =
+    shieldedBalance >= maxGasFee + duskToLux(minAmount);
+
+  $: shownPublicBalance = formatter(luxToDusk(publicBalance));
+  $: shownShieldedBalance = formatter(luxToDusk(shieldedBalance));
 
   // Check if the available balance is sufficient to cover the max gas fee.
   // This is a prerequisite for any transaction.
@@ -241,11 +404,27 @@
 
   $: lookUpName(recipientName);
 
+  $: nameAddressType = getNameAddressType(nameLookup, namePicks);
+
+  // The addresses to pick from, for a name with both.
+  $: nameOptions = getNameOptions(
+    nameLookup,
+    shownPublicBalance,
+    shownShieldedBalance,
+    canPayFromShieldedBalance
+  );
+
   // The address the transfer goes to: the one entered, or the one picked
   // of the addresses a `.dusk` name resolved to (empty until it has).
   $: recipientAddress = recipientName
     ? (nameLookup?.[nameAddressType] ?? "")
     : sendToAddress;
+
+  // A name's shielded address needs a shielded balance that can pay.
+  $: isNameUnpayable =
+    Boolean(nameLookup?.[nameAddressType]) &&
+    nameAddressType === "address" &&
+    !canPayFromShieldedBalance;
 
   $: addressInfo = getAddressInfo(
     recipientAddress,
@@ -256,11 +435,10 @@
   $: blocklistedRecipient = getBlocklistedRecipient(recipientAddress);
   $: isRecipientBlocklisted = Boolean(blocklistedRecipient);
 
-  $: if (addressInfo.type) {
-    dispatch("keyChange", {
-      type: addressInfo.type,
-    });
-  }
+  // The page shows the balance that pays: the shielded one for a shielded
+  // address, the public one for anything else, including no recipient.
+  $: recipientType = addressInfo.type;
+  $: dispatch("keyChange", { type: recipientType });
 
   $: isSendingToBep20Bridge = recipientAddress.trim() === bep20BridgeAddress;
 
@@ -310,12 +488,13 @@
       }}
       nextButton={{
         action: () => activeStep++,
-        disabled: !addressInfo.isValid || isRecipientBlocklisted,
+        disabled:
+          !addressInfo.isValid || isRecipientBlocklisted || isNameUnpayable,
       }}
     >
       <div in:fade|global class="operation__send">
         <div class="operation__address-wrapper">
-          <p>Address</p>
+          <p>Address or .dusk name</p>
           <Button
             disabled={!scanner}
             size="small"
@@ -328,27 +507,98 @@
         <Textbox
           required
           className={sendToAddressTextboxClasses}
-          aria-label="Recipient address"
+          aria-label="Recipient address or .dusk name"
           type="multiline"
           bind:value={sendToAddress}
         />
 
         {#if nameLookup?.[nameAddressType]}
+          {#if nameOptions.length}
+            <p id="{nameOptionsId}-label">{nameLookup.name} points to</p>
+            <div
+              aria-labelledby="{nameOptionsId}-label"
+              class="operation__name-options"
+              role="radiogroup"
+            >
+              {#each nameOptions as option (option.type)}
+                {@const id = `${nameOptionsId}-${option.type}`}
+                {@const isPicked = option.type === nameAddressType}
+                <div
+                  class="operation__name-option"
+                  class:operation__name-option--disabled={option.disabled}
+                  class:operation__name-option--picked={isPicked}
+                >
+                  <div
+                    aria-checked={isPicked}
+                    aria-describedby={option.disabled
+                      ? `${id}-text ${id}-hint`
+                      : `${id}-text`}
+                    aria-disabled={option.disabled}
+                    aria-labelledby="{id}-title"
+                    bind:this={nameOptionElements[option.type]}
+                    class="operation__name-option-radio"
+                    on:click={() => pickNameAddress(option.type)}
+                    on:keydown={(event) =>
+                      handleNameOptionKeyDown(event, option.type)}
+                    role="radio"
+                    tabindex={isPicked ? 0 : -1}
+                  >
+                    <span class="operation__name-option-mark"></span>
+                    <span class="operation__name-option-text">
+                      <span class="operation__name-option-title">
+                        <strong id="{id}-title">{option.title}</strong>
+                        <samp>{middleEllipsis(option.address, 6)}</samp>
+                      </span>
+                      <span id="{id}-text">
+                        Paid from your <strong>{option.balanceName}</strong>
+                        ({option.balance} DUSK).
+                        {option.visibility}
+                      </span>
+                    </span>
+                  </div>
+                  {#if option.disabled}
+                    <p class="operation__name-hint" id="{id}-hint">
+                      Not enough shielded DUSK.
+                      {#if canShield}
+                        <AppAnchor href="/dashboard/allocate"
+                          >Shield DUSK first</AppAnchor
+                        >
+                      {:else}
+                        Shield DUSK first
+                      {/if}
+                    </p>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
           <dl class="operation__review-transaction">
-            <dt class="review-transaction__label operation__name-label">
-              <span>{nameLookup.name} points to</span>
-              {#if nameLookup.account && nameLookup.address}
-                <ExclusiveChoice
-                  aria-label="Address to send to"
-                  options={nameAddressOptions}
-                  bind:value={nameAddressType}
-                />
-              {/if}
+            <dt
+              class="review-transaction__label"
+              class:operation__full-address-label={nameOptions.length}
+            >
+              <span
+                >{nameOptions.length
+                  ? "Full address"
+                  : `${nameLookup.name} points to`}</span
+              >
             </dt>
             <dd class="operation__review-address">
               <span>{recipientAddress}</span>
             </dd>
           </dl>
+          {#if isNameUnpayable && !nameOptions.length}
+            <p class="operation__name-hint">
+              Not enough shielded DUSK.
+              {#if canShield}
+                <AppAnchor href="/dashboard/allocate"
+                  >Shield DUSK first</AppAnchor
+                >
+              {:else}
+                Shield DUSK first
+              {/if}
+            </p>
+          {/if}
         {:else if nameLookup?.error}
           {@const [title, text] = nameErrors[nameLookup.error](nameLookup.name)}
           <Banner variant="error" {title}>
@@ -372,7 +622,21 @@
           </Banner>
         {/if}
 
-        {#if addressInfo.type === "account"}
+        {#if recipientName && addressInfo.type === "account"}
+          <Banner title="Public transfer" variant="info">
+            <p>
+              Sent from your <strong>public</strong> balance. Anyone can see the amount
+              and both accounts.
+            </p>
+          </Banner>
+        {:else if recipientName && addressInfo.type === "address"}
+          <Banner title="Shielded transfer" variant="info">
+            <p>
+              Sent from your <strong>shielded</strong> balance. The amount and both
+              parties stay private.
+            </p>
+          </Banner>
+        {:else if addressInfo.type === "account"}
           <Banner title="Public account detected" variant="info">
             <p>
               This transaction will be public and sent from your <strong
@@ -582,6 +846,25 @@
           </dd>
         </dl>
 
+        <dl class="operation__review-transaction">
+          <dt class="review-transaction__label">
+            <span>Type</span>
+          </dt>
+          <dd class="operation__review-type">
+            {#if addressInfo.type === "address"}
+              <Badge text="SHIELDED" />
+              <span>
+                From your shielded balance ({shownShieldedBalance} DUSK). Private.
+              </span>
+            {:else}
+              <Badge text="PUBLIC" />
+              <span>
+                From your public balance ({shownPublicBalance} DUSK). Visible on chain.
+              </span>
+            {/if}
+          </dd>
+        </dl>
+
         {#if transactionMemo}
           <dl class="operation__review-transaction">
             <dt class="review-transaction__label">
@@ -668,8 +951,98 @@
       justify-content: flex-start;
     }
 
-    &__name-label {
-      justify-content: space-between;
+    &__review-type {
+      display: flex;
+      align-items: baseline;
+      gap: var(--small-gap);
+      font-size: 0.875em;
+      line-height: 1.4;
+    }
+
+    &__name-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625em;
+    }
+
+    &__name-option {
+      border: 1px solid var(--surface-border-color);
+      border-radius: var(--control-border-radius-size);
+
+      &:focus-within {
+        box-shadow: 0 0 0 2px var(--focus-ring-color);
+      }
+    }
+
+    &__name-option--picked {
+      border-color: var(--primary-color);
+      background-color: var(--non-button-control-bg-color);
+    }
+
+    &__name-option-radio {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      outline: none;
+    }
+
+    &__name-option--disabled &__name-option-radio {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    &__name-option-mark {
+      flex-shrink: 0;
+      width: 1rem;
+      height: 1rem;
+      margin-top: 0.2rem;
+      border: 0.125rem solid var(--checkbox-control-border-color);
+      border-radius: 50%;
+    }
+
+    &__name-option--picked &__name-option-mark {
+      background-color: var(--checkbox-control-checked-bg-color);
+      box-shadow: inset 0 0 0 0.15rem var(--non-button-control-bg-color);
+    }
+
+    &__name-option-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25em;
+      min-width: 0;
+      font-size: 0.875em;
+      line-height: 1.4;
+    }
+
+    &__name-option-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      column-gap: 0.5em;
+      font-size: 1rem;
+
+      & samp {
+        color: var(--muted-color);
+        font-family: var(--mono-font-family);
+        font-size: 0.75rem;
+      }
+    }
+
+    &__name-hint {
+      font-size: 0.875em;
+      line-height: 1.4;
+    }
+
+    &__name-option &__name-hint {
+      /* In line with the option's text, past its radio mark. */
+      padding: 0 1rem 0.75rem 2.75rem;
+    }
+
+    &__full-address-label {
+      color: var(--muted-color);
+      font-size: 0.875em;
     }
 
     :global(&__review-notice) {

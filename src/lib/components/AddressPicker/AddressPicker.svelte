@@ -121,19 +121,22 @@
     addressOptionsMenu.scrollTo(0, 0);
   }
 
+  $: profileNumber = currentProfile ? profiles.indexOf(currentProfile) + 1 : 0;
+
   $: displayedAddress = currentProfile
-    ? `Profile ${profiles.indexOf(currentProfile) + 1}${profiles.indexOf(currentProfile) === 0 ? " (Default)" : ""}`
+    ? `Profile ${profileNumber}${profileNumber === 1 ? " (Default)" : ""}`
     : "No profile selected";
+
+  $: currentAccount = currentProfile ? currentProfile.account.toString() : "";
 
   // Calculate adaptive character count based on screen width
   $: charCount = calculateAdaptiveCharCount(innerWidth);
 
-  // The current profile's name, looked up once the picker has rendered.
-  // The profiles listed look theirs up when the list opens.
+  // The current profile's name, looked up once the picker has rendered:
+  // "" for none, as when the lookup fails. The profiles listed look theirs
+  // up when the list opens.
   $: currentName =
-    isMounted && currentProfile
-      ? getName(currentProfile.account.toString())
-      : "";
+    isMounted && currentAccount ? getName(currentAccount).catch(() => "") : "";
 </script>
 
 {#if expanded}
@@ -160,22 +163,28 @@
     on:click={handleTriggerClick}
     on:keydown={handleTriggerKeyDown}
   >
+    <!-- The profile's name and "Profile N · account" when it has a name,
+      its label and account otherwise. -->
     <span class="address-picker__current-profile">
-      {displayedAddress}
-      {#await currentName then name}
-        {#if name && currentProfile}
-          <span class="address-picker__name">
-            {name}
-            <span class="address-picker__name-account"
-              >{middleEllipsis(
-                currentProfile.account.toString(),
-                charCount
-              )}</span
+      {#await currentName}
+        <span class="address-picker__title">{displayedAddress}</span>
+        <span class="address-picker__subtitle"
+          >{middleEllipsis(currentAccount, 10)}</span
+        >
+      {:then name}
+        {#if name}
+          <span class="address-picker__title address-picker__name">{name}</span>
+          <span class="address-picker__subtitle"
+            >Profile {profileNumber} · {middleEllipsis(currentAccount, 6)}</span
+          >
+        {:else}
+          <span class="address-picker__title">{displayedAddress}</span>
+          {#if currentAccount}
+            <span class="address-picker__subtitle"
+              >{middleEllipsis(currentAccount, 10)}</span
             >
-          </span>
+          {/if}
         {/if}
-      {:catch}
-        <!-- A failed lookup shows no name. -->
       {/await}
     </span>
     <Icon path={mdiChevronDown} className="address-picker__chevron" />

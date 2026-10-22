@@ -1,11 +1,13 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 import {
   createCurrencyFormatter,
   duskToLux,
   luxToDusk,
 } from "$lib/dusk/currency";
+import { middleEllipsis } from "$lib/dusk/string";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
+import { addBasePath } from "$lib/navigation";
 import { DEFAULT_BLOCKLISTED_ADDRESSES } from "$lib/security/addressBlocklist";
 
 import { Send } from "..";
@@ -44,8 +46,10 @@ describe("Send", () => {
       gasPrice: 1n,
     },
     publicAddress,
+    publicBalance: 1_000_000_000_000n,
     resolveName: vi.fn(),
     shieldedAddress,
+    shieldedBalance: 500_000_000_000n,
   };
 
   const invalidAddress =
@@ -367,6 +371,35 @@ describe("Send", () => {
       expect(memo.textContent).toBe("abc-example-memo");
       expect(container.firstElementChild).toMatchSnapshot();
     });
+
+    it.each([
+      [
+        "a public account",
+        "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff",
+        `PUBLIC From your public balance (${formatter(luxToDusk(baseProps.publicBalance))} DUSK). Visible on chain.`,
+      ],
+      [
+        "a shielded address",
+        shieldedAddress,
+        `SHIELDED From your shielded balance (${formatter(luxToDusk(baseProps.shieldedBalance))} DUSK). Private.`,
+      ],
+    ])(
+      "should show the type of a transfer to %s, with the balance it is paid from",
+      async (_, address, type) => {
+        const { container, getByRole, getByText } = render(Send, baseProps);
+
+        await fireEvent.input(getByRole("textbox"), {
+          target: { value: address },
+        });
+        await fireEvent.click(getByRole("button", { name: "Next" }));
+        await fireEvent.click(getByRole("button", { name: "Next" }));
+
+        expect(getByText("Type")).toBeInTheDocument();
+        expect(
+          getAsHTMLElement(container, ".operation__review-type")
+        ).toHaveTextContent(type);
+      }
+    );
   });
 
   describe("Send operation", () => {
@@ -559,6 +592,28 @@ describe("Send", () => {
       "qaJoSNfnh7kLyMPvFkWUPhzcAo2aDexVuGGjRZvghm31NPk7i8N57EFgKoYNBAicCfZVFm9icdcQYEoedS9jN5RZhYeuoSWbmomXdm7A1yUfPSUovheWccGYUvVkKCUnt7V";
     const nameAddress =
       "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnM";
+    const { gasLimit, gasPrice } = baseProps.gasSettings;
+
+    // The least a balance must hold to pay for a transfer is one Lux more.
+    const maxGasFee = gasLimit * gasPrice;
+
+    /** @param {bigint} balance */
+    const formatBalance = (balance) => formatter(luxToDusk(balance));
+
+    /** @param {string} name */
+    const withBothAddresses = (name) => ({
+      account: nameAccount,
+      address: nameAddress,
+      name,
+    });
+
+    /** @param {HTMLElement} container */
+    const getShownAddress = (container) =>
+      getAsHTMLElement(container, ".operation__review-address span");
+
+    /** @param {HTMLElement} container */
+    const getReviewType = (container) =>
+      getAsHTMLElement(container, ".operation__review-type");
 
     it("should send to the account a name resolves to, after showing both", async () => {
       /** @type {(value: DuskNameResolution) => void} */
@@ -570,8 +625,14 @@ describe("Send", () => {
         })
       );
 
-      const { container, findByText, getByRole, getByText, queryByRole } =
-        render(Send, baseProps);
+      const {
+        container,
+        findByText,
+        getByRole,
+        getByText,
+        queryByRole,
+        queryByText,
+      } = render(Send, baseProps);
 
       await fireEvent.input(getByRole("textbox"), {
         target: { value: " Alice.dusk " },
@@ -586,8 +647,9 @@ describe("Send", () => {
       finishLookup({ account: nameAccount, name: "alice.dusk" });
 
       expect(await findByText("alice.dusk points to")).toBeInTheDocument();
-      expect(getByText(nameAccount)).toBeInTheDocument();
-      expect(getByText("Public account detected")).toBeInTheDocument();
+      expect(getShownAddress(container)).toHaveTextContent(nameAccount);
+      expect(getByText("Public transfer")).toBeInTheDocument();
+      expect(queryByText("Public account detected")).not.toBeInTheDocument();
       expect(queryByRole("radiogroup")).not.toBeInTheDocument();
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -597,9 +659,10 @@ describe("Send", () => {
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
       expect(getByText("alice.dusk")).toBeInTheDocument();
-      expect(
-        getAsHTMLElement(container, ".operation__review-address span")
-      ).toHaveTextContent(nameAccount);
+      expect(getShownAddress(container)).toHaveTextContent(nameAccount);
+      expect(getReviewType(container)).toHaveTextContent(
+        `PUBLIC From your public balance (${formatBalance(baseProps.publicBalance)} DUSK). Visible on chain.`
+      );
 
       await fireEvent.click(getByRole("button", { name: "SEND" }));
 
@@ -607,8 +670,8 @@ describe("Send", () => {
         nameAccount,
         duskToLux(amount),
         "",
-        baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        gasPrice,
+        gasLimit
       );
     });
 
@@ -628,16 +691,15 @@ describe("Send", () => {
         queryByRole,
         queryByText,
       } = render(Send, { events: { keyChange }, props: baseProps });
-      const shownAddress = () =>
-        getAsHTMLElement(container, ".operation__review-address span");
 
       await fireEvent.input(getByRole("textbox"), {
         target: { value: "alice.dusk" },
       });
 
       expect(await findByText("alice.dusk points to")).toBeInTheDocument();
-      expect(shownAddress()).toHaveTextContent(nameAddress);
-      expect(queryByText("Public account detected")).not.toBeInTheDocument();
+      expect(getShownAddress(container)).toHaveTextContent(nameAddress);
+      expect(getByText("Shielded transfer")).toBeInTheDocument();
+      expect(queryByText(/Not enough shielded DUSK/)).not.toBeInTheDocument();
       expect(queryByRole("radiogroup")).not.toBeInTheDocument();
       expect(keyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ detail: { type: "address" } })
@@ -650,7 +712,10 @@ describe("Send", () => {
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
       expect(getByText("alice.dusk")).toBeInTheDocument();
-      expect(shownAddress()).toHaveTextContent(nameAddress);
+      expect(getShownAddress(container)).toHaveTextContent(nameAddress);
+      expect(getReviewType(container)).toHaveTextContent(
+        `SHIELDED From your shielded balance (${formatBalance(baseProps.shieldedBalance)} DUSK). Private.`
+      );
 
       await fireEvent.click(getByRole("button", { name: "SEND" }));
 
@@ -658,43 +723,83 @@ describe("Send", () => {
         nameAddress,
         duskToLux(amount),
         "",
-        baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        gasPrice,
+        gasLimit
       );
     });
 
-    it("should send to the public account of a name with both addresses, unless the user picks its shielded address", async () => {
-      const keyChange = vi.fn();
-
+    it("should keep Next disabled for a name with only a shielded address while the shielded balance can't pay for a transfer", async () => {
       baseProps.resolveName.mockResolvedValueOnce({
-        account: nameAccount,
         address: nameAddress,
         name: "alice.dusk",
       });
 
-      const { container, findByRole, getByRole, getByText, queryByText } =
-        render(Send, { events: { keyChange }, props: baseProps });
-      const shownAddress = () =>
-        getAsHTMLElement(container, ".operation__review-address span");
+      const { findByText, getByRole, getByText } = render(Send, {
+        ...baseProps,
+        shieldedBalance: maxGasFee,
+      });
 
       await fireEvent.input(getByRole("textbox"), {
         target: { value: "alice.dusk" },
       });
 
-      expect(
-        await findByRole("radiogroup", { name: "Address to send to" })
-      ).toBeInTheDocument();
-      expect(getByRole("radio", { name: "Public" })).toBeChecked();
-      expect(shownAddress()).toHaveTextContent(nameAccount);
-      expect(getByText("Public account detected")).toBeInTheDocument();
+      expect(await findByText("Shielded transfer")).toBeInTheDocument();
+      expect(getByText(/Not enough shielded DUSK/)).toBeInTheDocument();
+      expect(getByRole("link", { name: "Shield DUSK first" })).toHaveAttribute(
+        "href",
+        addBasePath("/dashboard/allocate")
+      );
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+    });
+
+    it("should offer both addresses of a name with both, saying which balance pays, and send to the one picked", async () => {
+      const keyChange = vi.fn();
+
+      baseProps.resolveName.mockResolvedValueOnce(
+        withBothAddresses("alice.dusk")
+      );
+
+      const { container, findByRole, getByRole, getByText, queryByText } =
+        render(Send, { events: { keyChange }, props: baseProps });
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: "alice.dusk" },
+      });
+
+      const options = await findByRole("radiogroup", {
+        name: "alice.dusk points to",
+      });
+      const publicOption = getByRole("radio", { name: "Public account" });
+      const shieldedOption = getByRole("radio", { name: "Shielded address" });
+
+      expect(options).toContainElement(publicOption);
+      expect(options).toContainElement(shieldedOption);
+      expect(publicOption).toHaveAttribute("aria-checked", "true");
+      expect(publicOption).toHaveTextContent(middleEllipsis(nameAccount, 6));
+      expect(publicOption).toHaveAccessibleDescription(
+        `Paid from your public balance (${formatBalance(baseProps.publicBalance)} DUSK). The amount and both accounts are visible on chain.`
+      );
+      expect(shieldedOption).toHaveAttribute("aria-checked", "false");
+      expect(shieldedOption).toHaveAttribute("aria-disabled", "false");
+      expect(shieldedOption).toHaveTextContent(middleEllipsis(nameAddress, 6));
+      expect(shieldedOption).toHaveAccessibleDescription(
+        `Paid from your shielded balance (${formatBalance(baseProps.shieldedBalance)} DUSK). The amount and both parties stay private.`
+      );
+      expect(getByText("Full address")).toBeInTheDocument();
+      expect(getShownAddress(container)).toHaveTextContent(nameAccount);
+      expect(getByText("Public transfer")).toBeInTheDocument();
+      expect(queryByText("Public account detected")).not.toBeInTheDocument();
       expect(keyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ detail: { type: "account" } })
       );
 
-      await fireEvent.click(getByRole("radio", { name: "Shielded" }));
+      await fireEvent.click(shieldedOption);
 
-      expect(shownAddress()).toHaveTextContent(nameAddress);
-      expect(queryByText("Public account detected")).not.toBeInTheDocument();
+      expect(shieldedOption).toBeChecked();
+      expect(publicOption).not.toBeChecked();
+      expect(getShownAddress(container)).toHaveTextContent(nameAddress);
+      expect(getByText("Shielded transfer")).toBeInTheDocument();
+      expect(queryByText("Public transfer")).not.toBeInTheDocument();
       expect(keyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ detail: { type: "address" } })
       );
@@ -706,7 +811,10 @@ describe("Send", () => {
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
       expect(getByText("alice.dusk")).toBeInTheDocument();
-      expect(shownAddress()).toHaveTextContent(nameAddress);
+      expect(getShownAddress(container)).toHaveTextContent(nameAddress);
+      expect(getReviewType(container)).toHaveTextContent(
+        `SHIELDED From your shielded balance (${formatBalance(baseProps.shieldedBalance)} DUSK). Private.`
+      );
 
       await fireEvent.click(getByRole("button", { name: "SEND" }));
 
@@ -714,9 +822,220 @@ describe("Send", () => {
         nameAddress,
         duskToLux(amount),
         "",
-        baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        gasPrice,
+        gasLimit
       );
+    });
+
+    it("should keep a name's shielded address from being picked while the shielded balance can't pay for a transfer", async () => {
+      baseProps.resolveName.mockResolvedValueOnce(
+        withBothAddresses("alice.dusk")
+      );
+
+      const { findByRole, getByRole } = render(Send, {
+        ...baseProps,
+        shieldedBalance: maxGasFee,
+      });
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: "alice.dusk" },
+      });
+
+      const shieldedOption = await findByRole("radio", {
+        name: "Shielded address",
+      });
+      const publicOption = getByRole("radio", { name: "Public account" });
+
+      expect(shieldedOption).toHaveAttribute("aria-disabled", "true");
+      expect(shieldedOption).toHaveAccessibleDescription(
+        `Paid from your shielded balance (${formatBalance(maxGasFee)} DUSK). The amount and both parties stay private. Not enough shielded DUSK. Shield DUSK first`
+      );
+      expect(getByRole("link", { name: "Shield DUSK first" })).toHaveAttribute(
+        "href",
+        addBasePath("/dashboard/allocate")
+      );
+
+      await fireEvent.click(shieldedOption);
+      await fireEvent.keyDown(publicOption, { key: "ArrowDown" });
+      await fireEvent.keyDown(shieldedOption, { key: " " });
+
+      expect(publicOption).toBeChecked();
+      expect(shieldedOption).not.toBeChecked();
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+    });
+
+    it("should keep the address picked when the balances change, even once the shielded one can't pay, until the user picks another", async () => {
+      baseProps.resolveName.mockResolvedValueOnce(
+        withBothAddresses("alice.dusk")
+      );
+
+      const { findByRole, getByRole, getByText, queryByText, rerender } =
+        render(Send, { ...baseProps, shieldedBalance: maxGasFee + 1n });
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: "alice.dusk" },
+      });
+
+      const shieldedOption = await findByRole("radio", {
+        name: "Shielded address",
+      });
+
+      await fireEvent.click(shieldedOption);
+      await rerender({ publicBalance: 0n });
+
+      expect(shieldedOption).toBeChecked();
+      expect(queryByText(/Not enough shielded DUSK/)).not.toBeInTheDocument();
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+
+      await rerender({ shieldedBalance: maxGasFee });
+
+      expect(shieldedOption).toBeChecked();
+      expect(shieldedOption).toHaveAttribute("aria-disabled", "true");
+      expect(getByText(/Not enough shielded DUSK/)).toBeInTheDocument();
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+      await fireEvent.click(getByRole("radio", { name: "Public account" }));
+
+      expect(shieldedOption).not.toBeChecked();
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+    });
+
+    it("should move the pick between a name's addresses with the arrow keys, and make it with Space", async () => {
+      baseProps.resolveName.mockResolvedValueOnce(
+        withBothAddresses("alice.dusk")
+      );
+
+      const { findByRole, getByRole } = render(Send, baseProps);
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: "alice.dusk" },
+      });
+
+      const publicOption = await findByRole("radio", {
+        name: "Public account",
+      });
+      const shieldedOption = getByRole("radio", { name: "Shielded address" });
+
+      expect(publicOption).toHaveAttribute("tabindex", "0");
+      expect(shieldedOption).toHaveAttribute("tabindex", "-1");
+
+      /** @type {Array<[HTMLElement, string, HTMLElement]>} */
+      const moves = [
+        [publicOption, "ArrowDown", shieldedOption],
+        [shieldedOption, "ArrowUp", publicOption],
+        [publicOption, "ArrowRight", shieldedOption],
+        [shieldedOption, "ArrowLeft", publicOption],
+        [publicOption, "ArrowUp", shieldedOption],
+      ];
+
+      for (const [focused, key, picked] of moves) {
+        await fireEvent.keyDown(focused, { key });
+        await waitFor(() => expect(picked).toHaveFocus());
+
+        expect(picked).toBeChecked();
+        expect(picked).toHaveAttribute("tabindex", "0");
+        expect(focused).not.toBeChecked();
+        expect(focused).toHaveAttribute("tabindex", "-1");
+      }
+
+      await fireEvent.keyDown(shieldedOption, { key: "Enter" });
+      await fireEvent.keyDown(publicOption, { key: "Tab" });
+
+      expect(shieldedOption).toBeChecked();
+
+      await fireEvent.keyDown(publicOption, { key: " " });
+
+      expect(publicOption).toBeChecked();
+    });
+
+    it("should keep the address picked for a name when it is entered again or the user steps back, and start any other name at its public account", async () => {
+      baseProps.resolveName.mockImplementation((input) =>
+        Promise.resolve(withBothAddresses(input.toLowerCase()))
+      );
+
+      const { findByRole, getByRole, queryByRole } = render(Send, baseProps);
+
+      /** @param {string} value */
+      const enter = (value) =>
+        fireEvent.input(getByRole("textbox"), { target: { value } });
+
+      /** @param {string} name */
+      const findPicked = async (name) => {
+        const option = await findByRole("radio", { name });
+
+        await waitFor(() => expect(option).toBeChecked());
+      };
+
+      await enter("alice.dusk");
+      await fireEvent.click(
+        await findByRole("radio", { name: "Shielded address" })
+      );
+      await findPicked("Shielded address");
+
+      await enter("alice.dus");
+
+      expect(queryByRole("radiogroup")).not.toBeInTheDocument();
+
+      await enter("alice.dusk");
+      await findPicked("Shielded address");
+      await enter("Alice.dusk");
+      await findPicked("Shielded address");
+
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Back" }));
+      await fireEvent.click(getByRole("button", { name: "Back" }));
+      await findPicked("Shielded address");
+
+      await enter("bob.dusk");
+      await findPicked("Public account");
+      await enter("alice.dusk");
+      await findPicked("Shielded address");
+
+      expect(baseProps.resolveName).toHaveBeenCalledTimes(5);
+    });
+
+    it("should report no recipient type, for the page to show the public balance, while the name entered doesn't resolve", async () => {
+      const keyChange = vi.fn();
+
+      baseProps.resolveName
+        .mockResolvedValueOnce({ address: nameAddress, name: "alice.dusk" })
+        .mockResolvedValueOnce({ error: "not-registered", name: "bob.dusk" });
+
+      const { findByText, getByRole } = render(Send, {
+        events: { keyChange },
+        props: baseProps,
+      });
+
+      /** @param {string} value */
+      const enter = (value) =>
+        fireEvent.input(getByRole("textbox"), { target: { value } });
+
+      /** @param {"account" | "address" | undefined} type */
+      const lastReported = (type) =>
+        expect(keyChange).toHaveBeenLastCalledWith(
+          expect.objectContaining({ detail: { type } })
+        );
+
+      lastReported(undefined);
+
+      await enter("alice.dusk");
+
+      expect(await findByText("Shielded transfer")).toBeInTheDocument();
+      lastReported("address");
+
+      await enter("bob.dusk");
+
+      expect(await findByText("bob.dusk isn't registered")).toBeInTheDocument();
+      lastReported(undefined);
+
+      await enter(shieldedAddress);
+
+      lastReported("address");
+
+      await enter("");
+
+      lastReported(undefined);
     });
 
     it.each([

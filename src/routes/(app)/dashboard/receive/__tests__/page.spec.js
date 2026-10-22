@@ -99,7 +99,11 @@ describe("Receive", () => {
     const getShownName = (container) =>
       container.querySelector(".receive__name")?.textContent ?? "";
 
-    it("should show the public account's name, looked up once the page has rendered", async () => {
+    /** @param {Element} container */
+    const getNameNote = (container) =>
+      container.querySelector(".receive__name-note")?.textContent?.trim() ?? "";
+
+    it("should show the public account's name, looked up once the page has rendered, saying senders to the name reach it", async () => {
       /** @type {Element | null} */
       let renderedAddress = null;
 
@@ -116,6 +120,9 @@ describe("Receive", () => {
       expect(renderedAddress).toBeInstanceOf(HTMLElement);
       expect(getShownName(container)).toBe("alice.dusk");
       expect(getByText(expectedAccount)).toBeInTheDocument();
+      expect(getNameNote(container)).toBe(
+        "People who send to alice.dusk reach this public account."
+      );
       expect(getPrimaryName).toHaveBeenCalledExactlyOnceWith(
         expectedAccount,
         "unknown",
@@ -125,11 +132,15 @@ describe("Receive", () => {
     });
 
     it.each([
-      ["pays to it", "alice.dusk"],
-      ["doesn't pay to it", ""],
+      [
+        "pays to it",
+        "alice.dusk",
+        "alice.dusk also lists this address, so people can choose to pay you privately.",
+      ],
+      ["doesn't pay to it", "", ""],
     ])(
       "should show the name with the shielded address only if the name %s",
-      async (_, shieldedName) => {
+      async (_, shieldedName, shieldedNote) => {
         getPrimaryName.mockImplementation(
           (account, network, nodeUrl, shieldedAddress) =>
             Promise.resolve(shieldedAddress ? shieldedName : "alice.dusk")
@@ -146,6 +157,7 @@ describe("Receive", () => {
 
         expect(getByText(expectedAddress)).toBeInTheDocument();
         expect(getShownName(container)).toBe(shieldedName);
+        expect(getNameNote(container)).toBe(shieldedNote);
         expect(getPrimaryName).toHaveBeenLastCalledWith(
           expectedAccount,
           "unknown",
@@ -163,6 +175,7 @@ describe("Receive", () => {
       await vi.runAllTimersAsync();
 
       expect(container.querySelector(".receive__name")).toBeNull();
+      expect(container.querySelector(".receive__name-note")).toBeNull();
       expect(getByText(expectedAccount)).toBeInTheDocument();
     });
   });

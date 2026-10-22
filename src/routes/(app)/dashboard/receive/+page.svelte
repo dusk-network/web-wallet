@@ -55,5 +55,5 @@
 
 <IconHeadingCard gap="medium" heading="Receive" {icons}>
   <ExclusiveChoice {options} bind:value={addressToShow} />
-  <Receive address={currentAddress} {name} />
+  <Receive address={currentAddress} addressType={addressProp} {name} />
 </IconHeadingCard>

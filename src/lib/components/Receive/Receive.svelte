@@ -21,6 +21,14 @@
    */
   export let name = "";
 
+  /**
+   * What the address is to the name shown with it: the public account
+   * the name points to, or a shielded address the name also lists.
+   *
+   * @type {"account" | "address"}
+   */
+  export let addressType = "account";
+
   /** @type {HTMLElement} */
   let figureElement;
 
@@ -50,6 +58,17 @@
         <!-- A failed lookup shows no name. -->
       {/await}
       <samp>{address}</samp>
+      {#await name then shownName}
+        {#if shownName}
+          <span class="receive__name-note">
+            {addressType === "account"
+              ? `People who send to ${shownName} reach this public account.`
+              : `${shownName} also lists this address, so people can choose to pay you privately.`}
+          </span>
+        {/if}
+      {:catch}
+        <!-- A failed lookup shows no name. -->
+      {/await}
     </figcaption>
   </figure>
 
@@ -112,6 +131,16 @@
       font-family: var(--main-font-family);
       font-size: 1rem;
       font-weight: 500;
+    }
+
+    &__name-note {
+      display: block;
+      margin-top: 0.5em;
+      color: var(--muted-color);
+      font-family: var(--main-font-family);
+      font-size: 0.8125rem;
+      line-break: auto;
+      overflow-wrap: anywhere;
     }
 
     :global(&__qr) {

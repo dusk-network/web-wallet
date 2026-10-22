@@ -45,13 +45,16 @@
   let spendableSource = "unshielded";
 
   /**
+   * Shows the shielded balance for a transfer to a shielded address, and
+   * the public one otherwise, also while there is no recipient.
+   *
    * @param {CustomEvent<{ type: "account" | "address" | undefined}>} event
    */
   function keyChangeHandler(event) {
-    if (event.detail.type === "account") {
-      spendableSource = "unshielded";
-    } else {
+    if (event.detail.type === "address") {
       spendableSource = "shielded";
+    } else {
+      spendableSource = "unshielded";
     }
   }
 
@@ -87,6 +90,8 @@
     {gasLimits}
     {gasSettings}
     availableBalance={spendable}
+    publicBalance={balance.unshielded.value}
+    shieldedBalance={balance.shielded.spendable}
     bep20BridgeAddress={BEP20_BRIDGE_ADDRESS}
     on:keyChange={keyChangeHandler}
   />

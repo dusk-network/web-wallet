@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Accept `.dusk` names as send recipients on mainnet and testnet
 - Send to the shielded address a `.dusk` name publishes
 - Show the profiles' verified `.dusk` names in the profile switcher and on the Receive page
+- Show on the Review step whether a transfer is public or shielded
 
 ### Changed
 
@@ -24,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Stop transaction attempts when prerequisite synchronization fails or is cancelled [#953].
 - Prevent pending login migration or password setup from restoring reset wallet credentials [#953].
+- Show the public spendable balance on Send while no valid recipient is entered
 
 ## [1.8.0] - 2026-03-25
 

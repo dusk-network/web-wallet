@@ -31,7 +31,17 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
           <span
             class="address-picker__current-profile"
           >
-            Profile 1 (Default) 
+            <span
+              class="address-picker__title"
+            >
+              Profile 1 (Default)
+            </span>
+             
+            <span
+              class="address-picker__subtitle"
+            >
+              bEjRbupbXK...iBwmzGeJ8J
+            </span>
             <!---->
           </span>
            
@@ -287,7 +297,17 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
         <span
           class="address-picker__current-profile"
         >
-          Profile 1 (Default) 
+          <span
+            class="address-picker__title"
+          >
+            Profile 1 (Default)
+          </span>
+           
+          <span
+            class="address-picker__subtitle"
+          >
+            bEjRbupbXK...iBwmzGeJ8J
+          </span>
           <!---->
         </span>
          
@@ -542,7 +562,18 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
           <span
             class="address-picker__current-profile"
           >
-            Profile 1 (Default) 
+            <!---->
+            <span
+              class="address-picker__title"
+            >
+              Profile 1 (Default)
+            </span>
+             
+            <span
+              class="address-picker__subtitle"
+            >
+              bEjRbupbXK...iBwmzGeJ8J
+            </span>
             <!---->
             
             <!---->
@@ -825,7 +856,18 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
         <span
           class="address-picker__current-profile"
         >
-          Profile 1 (Default) 
+          <!---->
+          <span
+            class="address-picker__title"
+          >
+            Profile 1 (Default)
+          </span>
+           
+          <span
+            class="address-picker__subtitle"
+          >
+            bEjRbupbXK...iBwmzGeJ8J
+          </span>
           <!---->
           
           <!---->
@@ -1087,7 +1129,18 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
           <span
             class="address-picker__current-profile"
           >
-            Profile 1 (Default) 
+            <!---->
+            <span
+              class="address-picker__title"
+            >
+              Profile 1 (Default)
+            </span>
+             
+            <span
+              class="address-picker__subtitle"
+            >
+              bEjRbupbXK...iBwmzGeJ8J
+            </span>
             <!---->
             
             <!---->

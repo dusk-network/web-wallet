@@ -455,6 +455,7 @@ describe("AddressPicker", () => {
       );
       expect(currentProfileDisplay).toBeTruthy();
       expect(currentProfileDisplay).toHaveTextContent("No profile selected");
+      expect(container.querySelector(".address-picker__subtitle")).toBeNull();
     });
   });
 
@@ -479,10 +480,21 @@ describe("AddressPicker", () => {
     const getTriggerName = (container) =>
       container.querySelector(".address-picker__name");
 
+    /**
+     * The trigger's two lines: the title and the line under it.
+     *
+     * @param {Element} container
+     */
+    const getTriggerLines = (container) =>
+      Array.from(
+        container.querySelectorAll(".address-picker__current-profile > span"),
+        (line) => line.textContent
+      );
+
     /** Lets pending lookups settle. */
     const settle = () => new Promise((resolve) => setTimeout(resolve));
 
-    it("should show the current profile's name with its account, looked up once the picker has rendered", async () => {
+    it("should show the current profile's name, with the profile and its account under it, looked up once the picker has rendered", async () => {
       /** @type {Element | null} */
       let renderedPicker = null;
 
@@ -499,26 +511,35 @@ describe("AddressPicker", () => {
       expect(await findByText("alice.dusk")).toBeInTheDocument();
       expect(renderedPicker).toBeInstanceOf(HTMLElement);
       expect(getName).toHaveBeenCalledExactlyOnceWith(firstAccount);
-      expect(
-        getAsHTMLElement(container, ".address-picker__current-profile")
-      ).toHaveTextContent("Profile 1 (Default)");
-      expect(
-        getAsHTMLElement(container, ".address-picker__name-account")
-      ).toHaveTextContent(shortened(firstAccount));
+      expect(getTriggerLines(container)).toStrictEqual([
+        "alice.dusk",
+        `Profile 1 · ${middleEllipsis(firstAccount, 6)}`,
+      ]);
     });
 
     it.each([
       ["has none", () => Promise.resolve("")],
       ["can't be looked up", () => Promise.reject(new Error("Lookup failed"))],
-    ])("should show no name when the profile's name %s", async (_, lookUp) => {
-      const getName = vi.fn(lookUp);
-      const { container } = render(AddressPicker, { ...namedProps, getName });
+      ["is being looked up", () => new Promise(() => {})],
+    ])(
+      "should show the profile and its account, and no name, when the profile's name %s",
+      async (_, lookUp) => {
+        const getName = vi.fn(lookUp);
+        const { container } = render(AddressPicker, {
+          ...namedProps,
+          getName,
+        });
 
-      await waitFor(() => expect(getName).toHaveBeenCalledOnce());
-      await settle();
+        await waitFor(() => expect(getName).toHaveBeenCalledOnce());
+        await settle();
 
-      expect(getTriggerName(container)).toBeNull();
-    });
+        expect(getTriggerName(container)).toBeNull();
+        expect(getTriggerLines(container)).toStrictEqual([
+          "Profile 1 (Default)",
+          middleEllipsis(firstAccount, 10),
+        ]);
+      }
+    );
 
     it("should look up the name of the profile switched to, and drop the previous one's", async () => {
       /** @type {(name: string) => void} */
@@ -541,21 +562,29 @@ describe("AddressPicker", () => {
       await rerender({ currentProfile: namedProfiles[1] });
 
       expect(getTriggerName(container)).toBeNull();
+      expect(getTriggerLines(container)).toStrictEqual([
+        "Profile 2",
+        middleEllipsis(secondAccount, 10),
+      ]);
       expect(getName).toHaveBeenLastCalledWith(secondAccount);
 
       finishLookup("bob.dusk");
 
       expect(await findByText("bob.dusk")).toBeInTheDocument();
-      expect(
-        getAsHTMLElement(container, ".address-picker__name-account")
-      ).toHaveTextContent(shortened(secondAccount));
+      expect(getTriggerLines(container)).toStrictEqual([
+        "bob.dusk",
+        `Profile 2 · ${middleEllipsis(secondAccount, 6)}`,
+      ]);
     });
 
     it("should look the name up again with a new lookup, as on another network", async () => {
-      const { findByText, queryByText, rerender } = render(AddressPicker, {
-        ...namedProps,
-        getName: vi.fn().mockResolvedValue("alice.dusk"),
-      });
+      const { container, findByText, queryByText, rerender } = render(
+        AddressPicker,
+        {
+          ...namedProps,
+          getName: vi.fn().mockResolvedValue("alice.dusk"),
+        }
+      );
 
       expect(await findByText("alice.dusk")).toBeInTheDocument();
 
@@ -566,6 +595,10 @@ describe("AddressPicker", () => {
 
       expect(queryByText("alice.dusk")).not.toBeInTheDocument();
       expect(getName).toHaveBeenCalledExactlyOnceWith(firstAccount);
+      expect(getTriggerLines(container)).toStrictEqual([
+        "Profile 1 (Default)",
+        middleEllipsis(firstAccount, 10),
+      ]);
     });
 
     it("should show the listed profiles' names, looked up when the list opens", async () => {
