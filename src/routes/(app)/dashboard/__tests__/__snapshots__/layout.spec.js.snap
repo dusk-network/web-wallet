@@ -36,7 +36,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
             <span
               class="address-picker__title"
             >
-              Profile 1 (Default)
+              Profile 1
             </span>
              
             <!---->
@@ -123,8 +123,6 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
               <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
-                data-tooltip-id="main-tooltip"
-                data-tooltip-text="Public"
                 role="graphics-symbol"
                 viewBox="0 0 24 24"
               >
@@ -134,7 +132,12 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
               </svg>
               
               <!---->
-              33.33%
+              <span>
+                Public
+              </span>
+              <span>
+                33.33%
+              </span>
             </span>
              
             <span
@@ -167,8 +170,6 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
               <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
-                data-tooltip-id="main-tooltip"
-                data-tooltip-text="Shielded"
                 role="graphics-symbol"
                 viewBox="0 0 24 24"
               >
@@ -178,7 +179,12 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
               </svg>
               
               <!---->
-              66.67%
+              <span>
+                Shielded
+              </span>
+              <span>
+                66.67%
+              </span>
             </span>
              
             <span
@@ -317,7 +323,7 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
           <span
             class="address-picker__title"
           >
-            Profile 1 (Default)
+            Profile 1
           </span>
            
           <!---->
@@ -404,8 +410,6 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
             <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="Public"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -415,7 +419,12 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
             </svg>
             
             <!---->
-            33.33%
+            <span>
+              Public
+            </span>
+            <span>
+              33.33%
+            </span>
           </span>
            
           <span
@@ -448,8 +457,6 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
             <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="Shielded"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -459,7 +466,12 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
             </svg>
             
             <!---->
-            66.67%
+            <span>
+              Shielded
+            </span>
+            <span>
+              66.67%
+            </span>
           </span>
            
           <span
@@ -597,7 +609,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
             <span
               class="address-picker__title"
             >
-              Profile 1 (Default)
+              Profile 1
             </span>
              
             <!---->
@@ -686,8 +698,6 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
               <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
-                data-tooltip-id="main-tooltip"
-                data-tooltip-text="Public"
                 role="graphics-symbol"
                 viewBox="0 0 24 24"
               >
@@ -697,7 +707,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
               </svg>
               
               <!---->
-              33.33%
+              <span>
+                Public
+              </span>
+              <span>
+                33.33%
+              </span>
             </span>
              
             <span
@@ -730,8 +745,6 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
               <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
-                data-tooltip-id="main-tooltip"
-                data-tooltip-text="Shielded"
                 role="graphics-symbol"
                 viewBox="0 0 24 24"
               >
@@ -741,7 +754,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
               </svg>
               
               <!---->
-              66.67%
+              <span>
+                Shielded
+              </span>
+              <span>
+                66.67%
+              </span>
             </span>
              
             <span
@@ -905,7 +923,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
           <span
             class="address-picker__title"
           >
-            Profile 1 (Default)
+            Profile 1
           </span>
            
           <!---->
@@ -994,8 +1012,6 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="Public"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -1005,7 +1021,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             </svg>
             
             <!---->
-            33.33%
+            <span>
+              Public
+            </span>
+            <span>
+              33.33%
+            </span>
           </span>
            
           <span
@@ -1038,8 +1059,6 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             <!---->
             <svg
               class="dusk-icon dusk-icon--size--default"
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="Shielded"
               role="graphics-symbol"
               viewBox="0 0 24 24"
             >
@@ -1049,7 +1068,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             </svg>
             
             <!---->
-            66.67%
+            <span>
+              Shielded
+            </span>
+            <span>
+              66.67%
+            </span>
           </span>
            
           <span
@@ -1192,7 +1216,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
             <span
               class="address-picker__title"
             >
-              Profile 1 (Default)
+              Profile 1
             </span>
              
             <!---->
@@ -1281,8 +1305,6 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
               <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
-                data-tooltip-id="main-tooltip"
-                data-tooltip-text="Public"
                 role="graphics-symbol"
                 viewBox="0 0 24 24"
               >
@@ -1292,7 +1314,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
               </svg>
               
               <!---->
-              33.33%
+              <span>
+                Public
+              </span>
+              <span>
+                33.33%
+              </span>
             </span>
              
             <span
@@ -1325,8 +1352,6 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
               <!---->
               <svg
                 class="dusk-icon dusk-icon--size--default"
-                data-tooltip-id="main-tooltip"
-                data-tooltip-text="Shielded"
                 role="graphics-symbol"
                 viewBox="0 0 24 24"
               >
@@ -1336,7 +1361,12 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
               </svg>
               
               <!---->
-              66.67%
+              <span>
+                Shielded
+              </span>
+              <span>
+                66.67%
+              </span>
             </span>
              
             <span

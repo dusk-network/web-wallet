@@ -136,7 +136,7 @@
   $: fundsErrorMessage = hasEnoughFundsForFees
     ? ""
     : shielded < 0n || unshielded < 0n
-      ? "Not enough funds for the transaction."
+      ? "The amount is more than your balance."
       : "Your balance is too low to cover the allocation fees.";
 
   $: isNextButtonDisabled =
@@ -162,10 +162,7 @@
       nextButton={{ disabled: isNextButtonDisabled }}
     >
       <div in:fade|global class="operation__allocate">
-        <p>
-          Edit the value to change the allocation of your Dusk between your
-          public and shielded accounts.
-        </p>
+        <p>Move DUSK between your public and shielded accounts.</p>
 
         <fieldset class="operation__fieldset">
           <p class="operation__label">Public</p>
@@ -263,10 +260,7 @@
 
         {#if fundsErrorMessage}
           <Banner title="Insufficient Funds" variant="error">
-            <p>
-              {fundsErrorMessage} Please adjust your transaction or add more funds
-              to proceed.
-            </p>
+            <p>{fundsErrorMessage}</p>
           </Banner>
         {/if}
       </div>
@@ -330,13 +324,10 @@
           </dd>
         </dl>
         <GasFee {formatter} {fee} />
-        <Banner title="Fee Details" variant="info">
-          <p>
-            The fee will be deducted from your <b
-              >{isShielding ? "public" : "shielded"}</b
-            > balance.
-          </p>
-        </Banner>
+        <Banner
+          title={`The fee is paid from your ${isShielding ? "public" : "shielded"} balance.`}
+          variant="info"
+        />
       </div>
     </WizardStep>
     <WizardStep step={2} {key} showNavigation={false}>

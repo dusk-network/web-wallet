@@ -51,7 +51,7 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -341,7 +341,7 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"

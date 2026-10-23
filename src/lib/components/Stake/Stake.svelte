@@ -13,7 +13,6 @@
   import {
     Agreement,
     AnchorButton,
-    Badge,
     Button,
     Icon,
     Stepper,
@@ -87,11 +86,11 @@
 
   function getStepperSteps() {
     return hideStakingNotice
-      ? [{ label: "Amount" }, { label: "Overview" }, { label: "Done" }]
+      ? [{ label: "Amount" }, { label: "Review" }, { label: "Done" }]
       : [
           { label: "Notice" },
           { label: "Amount" },
-          { label: "Overview" },
+          { label: "Review" },
           { label: "Done" },
         ];
   }
@@ -182,7 +181,6 @@
           variant: "primary",
         }}
       >
-        <Badge text="WARNING" variant="warning" />
         <WarningCard onSurface heading="Only stake if you have a node set up!">
           <p class="staking-warning">
             I understand that I have set up a node properly, as described <AppAnchor
@@ -267,26 +265,17 @@
 
       {#if !isBalanceSufficientForGas}
         <Banner variant="error" title="Insufficient balance for gas fees">
-          <p>
-            Your current balance is too low to cover the required gas fees for
-            this transaction. Please deposit additional funds or reduce the gas
-            limit.
-          </p>
+          <p>Add funds or lower the gas limit.</p>
         </Banner>
       {:else if stakeAmountInLux < minStakeRequirement}
         <Banner variant="error" title="Stake amount below minimum requirement">
           <p>
-            The amount you are trying to stake is below the minimum staking
-            requirement of {luxToDusk(minStakeRequirement).toLocaleString()} DUSK.
-            Please enter a valid amount that meets this minimum.
+            The minimum is {luxToDusk(minStakeRequirement).toLocaleString()} DUSK.
           </p>
         </Banner>
       {:else if stakeAmountInLux > maxSpendableAmount}
         <Banner variant="error" title="Stake amount exceeds available balance">
-          <p>
-            The amount you are trying to stake exceeds the spendable balance
-            after accounting for gas fees. Please reduce the stake amount.
-          </p>
+          <p>Lower the amount to leave room for the fee.</p>
         </Banner>
       {/if}
     </WizardStep>
@@ -310,7 +299,6 @@
       }}
     >
       <div in:fade|global class="operation__stake">
-        <Badge text="REVIEW TRANSACTION" variant="warning" />
         <StakeOverview label="Amount" value={formatter(stakeAmount)} />
         <GasFee {formatter} fee={maxGasFee} />
       </div>

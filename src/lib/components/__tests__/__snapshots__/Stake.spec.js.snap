@@ -51,7 +51,7 @@ exports[`Stake > should render the Stake component 1`] = `
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -362,7 +362,7 @@ exports[`Stake > should render the Stake notice 1`] = `
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -395,14 +395,6 @@ exports[`Stake > should render the Stake notice 1`] = `
     <!---->
     <!---->
      
-    <!---->
-     
-    <!---->
-    <span
-      class="dusk-badge dusk-badge--variant-warning"
-    >
-      WARNING
-    </span>
     <!---->
      
     <!---->
@@ -509,7 +501,6 @@ exports[`Stake > should render the Stake notice 1`] = `
       
     </div>
     
-    <!---->
     <!---->
      
     <!---->
@@ -632,7 +623,7 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           class="dusk-stepper__step-label"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -676,13 +667,6 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
     <div
       class="operation__stake svelte-19xjhab"
     >
-      <span
-        class="dusk-badge dusk-badge--variant-warning"
-      >
-        REVIEW TRANSACTION
-      </span>
-      <!---->
-       
       <dl
         class="stake-overview svelte-md57kw"
       >

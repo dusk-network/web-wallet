@@ -148,7 +148,7 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
       <span
         class="gas-control__label svelte-p462n7"
       >
-        Price (lux):
+        Price (lux)
       </span>
        
       <!---->
@@ -169,7 +169,7 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
       <span
         class="gas-control__label svelte-p462n7"
       >
-        Gas Limit (unit):
+        Gas limit
       </span>
        
       <!---->

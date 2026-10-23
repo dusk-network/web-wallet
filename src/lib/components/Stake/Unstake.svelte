@@ -10,7 +10,6 @@
 
   import {
     AnchorButton,
-    Badge,
     Button,
     Icon,
     Stepper,
@@ -75,7 +74,7 @@
    */
   let withdrawAmount = luxToDusk(maxWithdrawAmount);
 
-  const steps = [{ label: "Amount" }, { label: "Overview" }, { label: "Done" }];
+  const steps = [{ label: "Amount" }, { label: "Review" }, { label: "Done" }];
 
   const dispatch = createEventDispatcher();
   const resetOperation = () => dispatch("operationChange", "");
@@ -201,34 +200,21 @@
 
       {#if !isBalanceSufficientForGas}
         <Banner variant="error" title="Insufficient balance for gas fees">
-          <p>
-            Your current balance is too low to cover the required gas fees for
-            this transaction. Please deposit additional funds or reduce the gas
-            limit.
-          </p>
+          <p>Add funds or lower the gas limit.</p>
         </Banner>
       {:else if withdrawAmountInLux > maxWithdrawAmount}
         <Banner
           variant="error"
           title="Withdraw amount exceeds available balance"
-        >
-          <p>
-            The amount you are trying to withdraw exceeds the available balance.
-            Please reduce the withdraw amount.
-          </p>
-        </Banner>
+        />
       {:else if minStakeRequirement && maxWithdrawAmount !== withdrawAmountInLux && maxWithdrawAmount - withdrawAmountInLux < minStakeRequirement}
         <Banner
           variant="error"
           title="Remaining staked amount below minimum requirement"
         >
           <p>
-            The amount you are trying to unstake would leave your remaining
-            stake below the minimum staking requirement of {luxToDusk(
-              minStakeRequirement
-            ).toLocaleString()} DUSK. To proceed, either adjust your unstake amount
-            to ensure the remaining stake meets this minimum or click "Use Max" to
-            unstake your entire balance.
+            Leave at least {luxToDusk(minStakeRequirement).toLocaleString()} DUSK
+            staked, or unstake it all.
           </p>
         </Banner>
       {/if}
@@ -253,7 +239,6 @@
       }}
     >
       <div in:fade|global class="operation__unstake">
-        <Badge text="REVIEW TRANSACTION" variant="warning" />
         <StakeOverview
           label={operationOverviewLabel}
           value={formatter(withdrawAmount)}

@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Send > Address step > should display a warning if the address input is a public account 1`] = `
+exports[`Send > Address step > should display only a one-line warning if the address input is the user's own public account 1`] = `
 <div
   class="operation svelte-x7e9dl"
 >
@@ -69,7 +69,7 @@ exports[`Send > Address step > should display a warning if the address input is 
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -114,18 +114,6 @@ exports[`Send > Address step > should display a warning if the address input is 
           Address or .dusk name
         </p>
          
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
-          disabled=""
-          type="button"
-        >
-          <span
-            class="dusk-button__text"
-          >
-            SCAN QR
-          </span>
-          <!---->
-        </button>
         <!---->
       </div>
        
@@ -140,342 +128,6 @@ exports[`Send > Address step > should display a warning if the address input is 
        
       <!---->
        
-      <!---->
-       
-      <div
-        class="banner banner--info"
-      >
-        <!---->
-        <svg
-          class="dusk-icon dusk-icon--size--large banner__icon banner__icon--info"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M11,15H13V17H11V15M11,7H13V13H11V7M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20Z"
-          />
-        </svg>
-        
-        <!---->
-         
-        <div>
-          <strong
-            class="banner__title"
-          >
-            Public account detected
-          </strong>
-           
-          <p>
-            This transaction will be public and sent from your 
-            <strong>
-              public
-            </strong>
-             account.
-          </p>
-          <!---->
-        </div>
-      </div>
-      <!---->
-       
-      <div
-        class="scan svelte-spu5d1"
-      >
-        <video
-          class="svelte-spu5d1"
-        >
-          <track
-            kind="captions"
-          />
-        </video>
-         
-        <div
-          class="scan__highlight svelte-spu5d1"
-        />
-        <!---->
-         
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
-          type="button"
-        >
-          <span
-            class="dusk-button__text"
-          >
-            CLOSE
-          </span>
-          <!---->
-        </button>
-        <!---->
-      </div>
-      <!---->
-       
-      <!---->
-       
-      <!---->
-    </div>
-    <!---->
-     
-    <!---->
-    <div
-      class="dusk-wizard__step-navigation"
-    >
-      <!---->
-      <a
-        aria-disabled="false"
-        class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
-        href="/some-base-path/dashboard"
-      >
-        <!---->
-        <!---->
-        <!---->
-        <svg
-          class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
-          />
-        </svg>
-        
-        <!---->
-         
-        <span
-          class="dusk-anchor-button__text"
-        >
-          Back
-        </span>
-        <!---->
-        
-        <!---->
-      </a>
-      
-      <!---->
-       
-      <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
-        type="button"
-      >
-        <!---->
-        <span
-          class="dusk-button__text"
-        >
-          Next
-        </span>
-        <!---->
-         
-        <!---->
-        <svg
-          class="dusk-icon dusk-icon--size--default dusk-button__icon"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"
-          />
-        </svg>
-        
-        <!---->
-        <!---->
-      </button>
-      <!---->
-    </div>
-    
-    <!---->
-    
-    <!---->
-     
-    <!---->
-    
-    <!---->
-     
-    <!---->
-    
-    <!---->
-     
-    <!---->
-    
-    <!---->
-    <!---->
-  </div>
-  <!---->
-</div>
-`;
-
-exports[`Send > Address step > should display a warning if the address input is self-referential 1`] = `
-<div
-  class="operation svelte-x7e9dl"
->
-  <div
-    class="dusk-wizard"
-  >
-    <div
-      slot="stepper"
-    >
-      <!---->
-      <div
-        class="dusk-stepper dusk-stepper--variant--primary"
-        style="--columns: 4; --progress-width: 0%;"
-      >
-        <!---->
-        <span
-          aria-current="step"
-          aria-labelledby="step-some-generated-id"
-          class="dusk-stepper__step dusk-stepper__step--processed"
-        >
-          <span
-            class="dusk-stepper__step-number"
-          >
-            1
-          </span>
-          <!---->
-        </span>
-         
-        <span
-          class="dusk-stepper__step-label"
-          id="step-some-generated-id"
-        >
-          Address
-        </span>
-        <span
-          aria-labelledby="step-some-generated-id"
-          class="dusk-stepper__step"
-        >
-          <span
-            class="dusk-stepper__step-number"
-          >
-            2
-          </span>
-          <!---->
-        </span>
-         
-        <span
-          class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
-          id="step-some-generated-id"
-        >
-          Amount
-        </span>
-        <span
-          aria-labelledby="step-some-generated-id"
-          class="dusk-stepper__step"
-        >
-          <span
-            class="dusk-stepper__step-number"
-          >
-            3
-          </span>
-          <!---->
-        </span>
-         
-        <span
-          class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
-          id="step-some-generated-id"
-        >
-          Overview
-        </span>
-        <span
-          aria-labelledby="step-some-generated-id"
-          class="dusk-stepper__step"
-        >
-          <span
-            class="dusk-stepper__step-number"
-          >
-            4
-          </span>
-          <!---->
-        </span>
-         
-        <span
-          class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
-          id="step-some-generated-id"
-        >
-          Done
-        </span>
-        
-        <!---->
-      </div>
-      
-      <!---->
-    </div>
-    <!---->
-     
-    <!---->
-    <!---->
-    <!---->
-    <!---->
-     
-    <!---->
-     
-    <div
-      class="operation__send svelte-x7e9dl"
-    >
-      <div
-        class="operation__address-wrapper svelte-x7e9dl"
-      >
-        <p>
-          Address or .dusk name
-        </p>
-         
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
-          disabled=""
-          type="button"
-        >
-          <span
-            class="dusk-button__text"
-          >
-            SCAN QR
-          </span>
-          <!---->
-        </button>
-        <!---->
-      </div>
-       
-      <!---->
-      <textarea
-        aria-label="Recipient address or .dusk name"
-        class="dusk-textbox dusk-textbox-multiline operation__send-address"
-        required=""
-      />
-      
-      <!---->
-       
-      <!---->
-       
-      <!---->
-       
-      <div
-        class="banner banner--info"
-      >
-        <!---->
-        <svg
-          class="dusk-icon dusk-icon--size--large banner__icon banner__icon--info"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M11,15H13V17H11V15M11,7H13V13H11V7M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20Z"
-          />
-        </svg>
-        
-        <!---->
-         
-        <div>
-          <strong
-            class="banner__title"
-          >
-            Public account detected
-          </strong>
-           
-          <p>
-            This transaction will be public and sent from your 
-            <strong>
-              public
-            </strong>
-             account.
-          </p>
-          <!---->
-        </div>
-      </div>
       <!---->
        
       <div
@@ -529,15 +181,9 @@ exports[`Send > Address step > should display a warning if the address input is 
           <strong
             class="banner__title"
           >
-            Self-referential transaction detected
+            This is your own address.
           </strong>
            
-          <p>
-            You are attempting to initiate a transaction with your own wallet
-              address as both the sender and the receiver. Self-referential
-              transactions may not have meaningful purpose and will incur gas
-              fees.
-          </p>
           <!---->
         </div>
       </div>
@@ -703,7 +349,7 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -748,18 +394,6 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           Address or .dusk name
         </p>
          
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
-          disabled=""
-          type="button"
-        >
-          <span
-            class="dusk-button__text"
-          >
-            SCAN QR
-          </span>
-          <!---->
-        </button>
         <!---->
       </div>
        
@@ -770,8 +404,6 @@ exports[`Send > Address step > should render the Send component Address step 1`]
         required=""
       />
       
-      <!---->
-       
       <!---->
        
       <!---->
@@ -903,6 +535,260 @@ exports[`Send > Address step > should render the Send component Address step 1`]
 </div>
 `;
 
+exports[`Send > Address step > should show no banner for a public account, as the page's spendable balance says which one pays 1`] = `
+<div
+  class="operation svelte-x7e9dl"
+>
+  <div
+    class="dusk-wizard"
+  >
+    <div
+      slot="stepper"
+    >
+      <!---->
+      <div
+        class="dusk-stepper dusk-stepper--variant--primary"
+        style="--columns: 4; --progress-width: 0%;"
+      >
+        <!---->
+        <span
+          aria-current="step"
+          aria-labelledby="step-some-generated-id"
+          class="dusk-stepper__step dusk-stepper__step--processed"
+        >
+          <span
+            class="dusk-stepper__step-number"
+          >
+            1
+          </span>
+          <!---->
+        </span>
+         
+        <span
+          class="dusk-stepper__step-label"
+          id="step-some-generated-id"
+        >
+          Address
+        </span>
+        <span
+          aria-labelledby="step-some-generated-id"
+          class="dusk-stepper__step"
+        >
+          <span
+            class="dusk-stepper__step-number"
+          >
+            2
+          </span>
+          <!---->
+        </span>
+         
+        <span
+          class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
+          id="step-some-generated-id"
+        >
+          Amount
+        </span>
+        <span
+          aria-labelledby="step-some-generated-id"
+          class="dusk-stepper__step"
+        >
+          <span
+            class="dusk-stepper__step-number"
+          >
+            3
+          </span>
+          <!---->
+        </span>
+         
+        <span
+          class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
+          id="step-some-generated-id"
+        >
+          Review
+        </span>
+        <span
+          aria-labelledby="step-some-generated-id"
+          class="dusk-stepper__step"
+        >
+          <span
+            class="dusk-stepper__step-number"
+          >
+            4
+          </span>
+          <!---->
+        </span>
+         
+        <span
+          class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
+          id="step-some-generated-id"
+        >
+          Done
+        </span>
+        
+        <!---->
+      </div>
+      
+      <!---->
+    </div>
+    <!---->
+     
+    <!---->
+    <!---->
+    <!---->
+    <!---->
+     
+    <!---->
+     
+    <div
+      class="operation__send svelte-x7e9dl"
+    >
+      <div
+        class="operation__address-wrapper svelte-x7e9dl"
+      >
+        <p>
+          Address or .dusk name
+        </p>
+         
+        <!---->
+      </div>
+       
+      <!---->
+      <textarea
+        aria-label="Recipient address or .dusk name"
+        class="dusk-textbox dusk-textbox-multiline operation__send-address"
+        required=""
+      />
+      
+      <!---->
+       
+      <!---->
+       
+      <!---->
+       
+      <div
+        class="scan svelte-spu5d1"
+      >
+        <video
+          class="svelte-spu5d1"
+        >
+          <track
+            kind="captions"
+          />
+        </video>
+         
+        <div
+          class="scan__highlight svelte-spu5d1"
+        />
+        <!---->
+         
+        <button
+          class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
+          type="button"
+        >
+          <span
+            class="dusk-button__text"
+          >
+            CLOSE
+          </span>
+          <!---->
+        </button>
+        <!---->
+      </div>
+      <!---->
+       
+      <!---->
+       
+      <!---->
+    </div>
+    <!---->
+     
+    <!---->
+    <div
+      class="dusk-wizard__step-navigation"
+    >
+      <!---->
+      <a
+        aria-disabled="false"
+        class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
+        href="/some-base-path/dashboard"
+      >
+        <!---->
+        <!---->
+        <!---->
+        <svg
+          class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
+          role="graphics-symbol"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
+          />
+        </svg>
+        
+        <!---->
+         
+        <span
+          class="dusk-anchor-button__text"
+        >
+          Back
+        </span>
+        <!---->
+        
+        <!---->
+      </a>
+      
+      <!---->
+       
+      <button
+        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+        type="button"
+      >
+        <!---->
+        <span
+          class="dusk-button__text"
+        >
+          Next
+        </span>
+        <!---->
+         
+        <!---->
+        <svg
+          class="dusk-icon dusk-icon--size--default dusk-button__icon"
+          role="graphics-symbol"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"
+          />
+        </svg>
+        
+        <!---->
+        <!---->
+      </button>
+      <!---->
+    </div>
+    
+    <!---->
+    
+    <!---->
+     
+    <!---->
+    
+    <!---->
+     
+    <!---->
+    
+    <!---->
+     
+    <!---->
+    
+    <!---->
+    <!---->
+  </div>
+  <!---->
+</div>
+`;
+
 exports[`Send > Amount step > should render the Send component Amount step 1`] = `
 <div
   class="operation svelte-x7e9dl"
@@ -972,7 +858,7 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -1310,7 +1196,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           class="dusk-stepper__step-label"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -1356,13 +1242,6 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
     <div
       class="operation__send svelte-x7e9dl"
     >
-      <span
-        class="dusk-badge dusk-badge--variant-warning operation__review-notice"
-      >
-        REVIEW TRANSACTION
-      </span>
-      <!---->
-       
       <dl
         class="operation__review-transaction svelte-x7e9dl"
       >

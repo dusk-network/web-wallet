@@ -67,8 +67,7 @@ exports[`Allocate > should render the allocation page 1`] = `
           class="operation__allocate svelte-1w73wy7"
         >
           <p>
-            Edit the value to change the allocation of your Dusk between your
-          public and shielded accounts.
+            Move DUSK between your public and shielded accounts.
           </p>
            
           <fieldset

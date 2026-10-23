@@ -71,11 +71,9 @@
   <div class="dusk-balance__usage-details">
     <div class="dusk-balance__account">
       <span class="dusk-balance__percentage"
-        ><Icon
-          path={mdiShieldLockOpenOutline}
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="Public"
-        />{numberFormatter(unshieldedPercentage)}%</span
+        ><Icon path={mdiShieldLockOpenOutline} /><span>Public</span><span
+          >{numberFormatter(unshieldedPercentage)}%</span
+        ></span
       >
       <span class="dusk-balance__value"
         >{duskFormatter(luxToDusk(unshieldedAmount))}<Icon
@@ -87,11 +85,9 @@
     </div>
     <div class="dusk-balance__account">
       <span class="dusk-balance__percentage"
-        ><Icon
-          path={mdiShieldLock}
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="Shielded"
-        />{numberFormatter(shieldedPercentage)}%</span
+        ><Icon path={mdiShieldLock} /><span>Shielded</span><span
+          >{numberFormatter(shieldedPercentage)}%</span
+        ></span
       >
       <span class="dusk-balance__value"
         >{duskFormatter(luxToDusk(shieldedAmount))}<Icon

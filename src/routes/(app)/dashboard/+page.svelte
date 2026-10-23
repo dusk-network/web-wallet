@@ -117,10 +117,7 @@
     icons={[mdiListBoxOutline]}
     heading="Transactions"
   >
-    <p>
-      Transaction history will be available in an upcoming release. Meanwhile,
-      you can check the status of your transactions on the Dusk Block Explorer.
-    </p>
+    <p>Transaction history isn't available here yet.</p>
 
     <AnchorButton
       variant="tertiary"

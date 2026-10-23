@@ -376,7 +376,7 @@
               {#if isDepositing && !hasEnoughUnshielded}
                 <Banner title="Insufficient balance" variant="warning">
                   <p>
-                    Your <b>unshielded</b> balance must cover the amount
+                    Your <b>public</b> balance must cover the amount
                     <i>plus</i> the fee.
                   </p>
                 </Banner>
@@ -387,8 +387,8 @@
               {:else if isWithdrawing && evmDuskBalance && !hasEnoughEvm}
                 <Banner title="Insufficient balance" variant="warning">
                   <p>
-                    Your <b>DuskEVM</b> balance is too low for this withdrawal (you
-                    also need a little extra for gas).
+                    Your <b>DuskEVM</b> balance must cover the amount
+                    <i>plus</i> gas.
                   </p>
                 </Banner>
               {/if}
@@ -467,13 +467,10 @@
           {#if isDepositing}
             <GasFee {formatter} {fee} />
           {/if}
-          <Banner title="Fee Details" variant="info">
-            <p>
-              The fee will be deducted from your <b
-                >{isDepositing ? "unshielded" : "EVM"}</b
-              > balance.
-            </p>
-          </Banner>
+          <Banner
+            title={`The fee is paid from your ${isDepositing ? "public" : "DuskEVM"} balance.`}
+            variant="info"
+          />
         </div>
       </WizardStep>
       <WizardStep step={2} {key} showNavigation={false}>

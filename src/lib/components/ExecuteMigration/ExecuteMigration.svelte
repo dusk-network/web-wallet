@@ -63,7 +63,7 @@
   {#if !isLoading && !data && !error}
     <div class="migrate__execute-approval">
       <Icon path={mdiCheckDecagramOutline} size="large" />
-      <span>Approval successful! You may now proceed with the migration.</span>
+      <span>Approval successful!</span>
     </div>
   {:else if error}
     <div class="migrate__execute-approval">
@@ -80,14 +80,13 @@
     <div class="migrate__execute-approval">
       <Icon path={mdiTimerSand} size="large" />
       <span>Your migration request is being processed...</span>
-      <Banner title="Migration in Progress" variant="info">
+      <Banner title="This can take a few minutes" variant="info">
         <p>
-          Your migration request is currently being executed and may take a few
-          minutes to complete. You can track the transaction status <AppAnchor
+          <AppAnchor
             href={`${chain.blockExplorers.default.url}/tx/${migrationHash}`}
             target="_blank"
-            rel="noopener noreferrer">here</AppAnchor
-          >.
+            rel="noopener noreferrer">Track the transaction</AppAnchor
+          >
         </p>
       </Banner>
     </div>

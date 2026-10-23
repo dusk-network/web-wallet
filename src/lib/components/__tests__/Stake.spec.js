@@ -181,10 +181,16 @@ describe("Stake", () => {
   });
 
   it("should render the review step of the Stake component", async () => {
-    const { container, getByRole } = render(Stake, baseOptions);
+    const { container, getByRole, queryByText } = render(Stake, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
+    expect(
+      container.querySelector(
+        ".dusk-stepper__step-label:not(.dusk-stepper__step-label--invisible)"
+      )
+    ).toHaveTextContent(/^Review$/);
+    expect(queryByText("REVIEW TRANSACTION")).not.toBeInTheDocument();
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
