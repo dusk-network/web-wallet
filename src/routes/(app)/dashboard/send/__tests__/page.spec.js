@@ -100,7 +100,7 @@ describe("Send page", () => {
 
     await enter("alice.dusk");
 
-    expect(await findByText("Shielded transfer")).toBeInTheDocument();
+    expect(await findByText("Shielded address")).toBeInTheDocument();
     expect(spendable()).toHaveTextContent(formattedShielded);
 
     await enter("bob.dusk");

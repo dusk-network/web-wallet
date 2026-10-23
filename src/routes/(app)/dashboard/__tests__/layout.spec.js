@@ -19,6 +19,16 @@ import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import Layout from "../+layout.svelte";
 import { load } from "../+layout.js";
 
+vi.mock("$lib/dusk/string", async (importOriginal) => {
+  /** @type {typeof import("$lib/dusk/string")} */
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    randomUUID: () => "some-generated-id",
+  };
+});
+
 vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {typeof import("$lib/stores")} */
   const original = await importOriginal();
@@ -46,6 +56,7 @@ describe("Dashboard Layout", () => {
   afterEach(cleanup);
 
   afterAll(() => {
+    vi.doUnmock("$lib/dusk/string");
     vi.doUnmock("$lib/stores");
   });
 

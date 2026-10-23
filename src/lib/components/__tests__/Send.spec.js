@@ -5,7 +5,7 @@ import {
   duskToLux,
   luxToDusk,
 } from "$lib/dusk/currency";
-import { middleEllipsis } from "$lib/dusk/string";
+import { shortenAddress } from "$lib/dusk/string";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import { addBasePath } from "$lib/navigation";
 import { DEFAULT_BLOCKLISTED_ADDRESSES } from "$lib/security/addressBlocklist";
@@ -46,7 +46,6 @@ describe("Send", () => {
       gasPrice: 1n,
     },
     publicAddress,
-    publicBalance: 1_000_000_000_000n,
     resolveName: vi.fn(),
     shieldedAddress,
     shieldedBalance: 500_000_000_000n,
@@ -368,6 +367,10 @@ describe("Send", () => {
 
       expect(value.textContent).toBe(baseProps.formatter(amount));
       expect(key.textContent).toBe(shieldedAddress);
+      expect(key.parentElement).not.toHaveClass(
+        "operation__review-address--with-name"
+      );
+      expect(container.querySelector(".operation__review-name")).toBeNull();
       expect(memo.textContent).toBe("abc-example-memo");
       expect(container.firstElementChild).toMatchSnapshot();
     });
@@ -376,15 +379,11 @@ describe("Send", () => {
       [
         "a public account",
         "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff",
-        `PUBLIC From your public balance (${formatter(luxToDusk(baseProps.publicBalance))} DUSK). Visible on chain.`,
+        /^PUBLIC Visible on chain$/,
       ],
-      [
-        "a shielded address",
-        shieldedAddress,
-        `SHIELDED From your shielded balance (${formatter(luxToDusk(baseProps.shieldedBalance))} DUSK). Private.`,
-      ],
+      ["a shielded address", shieldedAddress, /^SHIELDED Private$/],
     ])(
-      "should show the type of a transfer to %s, with the balance it is paid from",
+      "should show the type of a transfer to %s in one short line",
       async (_, address, type) => {
         const { container, getByRole, getByText } = render(Send, baseProps);
 
@@ -597,9 +596,6 @@ describe("Send", () => {
     // The least a balance must hold to pay for a transfer is one Lux more.
     const maxGasFee = gasLimit * gasPrice;
 
-    /** @param {bigint} balance */
-    const formatBalance = (balance) => formatter(luxToDusk(balance));
-
     /** @param {string} name */
     const withBothAddresses = (name) => ({
       account: nameAccount,
@@ -615,6 +611,39 @@ describe("Send", () => {
     const getReviewType = (container) =>
       getAsHTMLElement(container, ".operation__review-type");
 
+    /**
+     * Checks that a name's one address shows as the two do, in an option
+     * card, but picked and with no radio, and with no full address or
+     * banner besides.
+     *
+     * @param {HTMLElement} container
+     * @param {string} title
+     * @param {string} address
+     * @param {string} line The option's line under its title.
+     */
+    const expectOnlyOption = (container, title, address, line) => {
+      const option = getAsHTMLElement(container, ".operation__name-option");
+
+      expect(
+        container.querySelectorAll(".operation__name-option")
+      ).toHaveLength(1);
+      expect(option).toHaveClass("operation__name-option--picked");
+      expect(option).toHaveTextContent(
+        `${title} ${shortenAddress(address)} ${address} ${line}`
+      );
+      expect(getAsHTMLElement(option, "samp")).toHaveAttribute(
+        "title",
+        address
+      );
+      expect(
+        container.querySelector(
+          "[role='radiogroup'], [role='radio'], .operation__review-address, .banner"
+        )
+      ).toBeNull();
+
+      return option;
+    };
+
     it("should send to the account a name resolves to, after showing both", async () => {
       /** @type {(value: DuskNameResolution) => void} */
       let finishLookup = () => {};
@@ -625,14 +654,10 @@ describe("Send", () => {
         })
       );
 
-      const {
-        container,
-        findByText,
-        getByRole,
-        getByText,
-        queryByRole,
-        queryByText,
-      } = render(Send, baseProps);
+      const { container, findByText, getByRole, getByText } = render(
+        Send,
+        baseProps
+      );
 
       await fireEvent.input(getByRole("textbox"), {
         target: { value: " Alice.dusk " },
@@ -647,10 +672,12 @@ describe("Send", () => {
       finishLookup({ account: nameAccount, name: "alice.dusk" });
 
       expect(await findByText("alice.dusk points to")).toBeInTheDocument();
-      expect(getShownAddress(container)).toHaveTextContent(nameAccount);
-      expect(getByText("Public transfer")).toBeInTheDocument();
-      expect(queryByText("Public account detected")).not.toBeInTheDocument();
-      expect(queryByRole("radiogroup")).not.toBeInTheDocument();
+      expectOnlyOption(
+        container,
+        "Public account",
+        nameAccount,
+        "Visible on chain"
+      );
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
       await fireEvent.input(getByRole("spinbutton"), {
@@ -658,10 +685,13 @@ describe("Send", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      expect(getByText("alice.dusk")).toBeInTheDocument();
+      expect(getByText("alice.dusk")).toHaveClass("operation__review-name");
       expect(getShownAddress(container)).toHaveTextContent(nameAccount);
+      expect(getShownAddress(container).parentElement).toHaveClass(
+        "operation__review-address--with-name"
+      );
       expect(getReviewType(container)).toHaveTextContent(
-        `PUBLIC From your public balance (${formatBalance(baseProps.publicBalance)} DUSK). Visible on chain.`
+        "PUBLIC Visible on chain"
       );
 
       await fireEvent.click(getByRole("button", { name: "SEND" }));
@@ -683,24 +713,16 @@ describe("Send", () => {
         name: "alice.dusk",
       });
 
-      const {
-        container,
-        findByText,
-        getByRole,
-        getByText,
-        queryByRole,
-        queryByText,
-      } = render(Send, { events: { keyChange }, props: baseProps });
+      const { container, findByText, getByRole, getByText, queryByText } =
+        render(Send, { events: { keyChange }, props: baseProps });
 
       await fireEvent.input(getByRole("textbox"), {
         target: { value: "alice.dusk" },
       });
 
       expect(await findByText("alice.dusk points to")).toBeInTheDocument();
-      expect(getShownAddress(container)).toHaveTextContent(nameAddress);
-      expect(getByText("Shielded transfer")).toBeInTheDocument();
+      expectOnlyOption(container, "Shielded address", nameAddress, "Private");
       expect(queryByText(/Not enough shielded DUSK/)).not.toBeInTheDocument();
-      expect(queryByRole("radiogroup")).not.toBeInTheDocument();
       expect(keyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ detail: { type: "address" } })
       );
@@ -713,9 +735,7 @@ describe("Send", () => {
 
       expect(getByText("alice.dusk")).toBeInTheDocument();
       expect(getShownAddress(container)).toHaveTextContent(nameAddress);
-      expect(getReviewType(container)).toHaveTextContent(
-        `SHIELDED From your shielded balance (${formatBalance(baseProps.shieldedBalance)} DUSK). Private.`
-      );
+      expect(getReviewType(container)).toHaveTextContent("SHIELDED Private");
 
       await fireEvent.click(getByRole("button", { name: "SEND" }));
 
@@ -734,7 +754,7 @@ describe("Send", () => {
         name: "alice.dusk",
       });
 
-      const { findByText, getByRole, getByText } = render(Send, {
+      const { container, findByText, getByRole, getByText } = render(Send, {
         ...baseProps,
         shieldedBalance: maxGasFee,
       });
@@ -743,24 +763,36 @@ describe("Send", () => {
         target: { value: "alice.dusk" },
       });
 
-      expect(await findByText("Shielded transfer")).toBeInTheDocument();
-      expect(getByText(/Not enough shielded DUSK/)).toBeInTheDocument();
-      expect(getByRole("link", { name: "Shield DUSK first" })).toHaveAttribute(
+      expect(await findByText("alice.dusk points to")).toBeInTheDocument();
+      expect(
+        expectOnlyOption(
+          container,
+          "Shielded address",
+          nameAddress,
+          "Not enough shielded DUSK · Shield first"
+        )
+      ).toHaveClass("operation__name-option--disabled");
+      expect(getByText(/Not enough shielded DUSK ·/)).toHaveTextContent(
+        /^Not enough shielded DUSK · Shield first$/
+      );
+      expect(getByRole("link", { name: "Shield first" })).toHaveAttribute(
         "href",
         addBasePath("/dashboard/allocate")
       );
       expect(getByRole("button", { name: "Next" })).toBeDisabled();
     });
 
-    it("should offer both addresses of a name with both, saying which balance pays, and send to the one picked", async () => {
+    it("should offer both addresses of a name with both, a short line each, and send to the one picked", async () => {
       const keyChange = vi.fn();
 
       baseProps.resolveName.mockResolvedValueOnce(
         withBothAddresses("alice.dusk")
       );
 
-      const { container, findByRole, getByRole, getByText, queryByText } =
-        render(Send, { events: { keyChange }, props: baseProps });
+      const { container, findByRole, getByRole, getByText } = render(Send, {
+        events: { keyChange },
+        props: baseProps,
+      });
 
       await fireEvent.input(getByRole("textbox"), {
         target: { value: "alice.dusk" },
@@ -775,20 +807,30 @@ describe("Send", () => {
       expect(options).toContainElement(publicOption);
       expect(options).toContainElement(shieldedOption);
       expect(publicOption).toHaveAttribute("aria-checked", "true");
-      expect(publicOption).toHaveTextContent(middleEllipsis(nameAccount, 6));
+      expect(publicOption).toHaveTextContent(shortenAddress(nameAccount));
+      expect(getAsHTMLElement(publicOption, "samp")).toHaveAttribute(
+        "title",
+        nameAccount
+      );
       expect(publicOption).toHaveAccessibleDescription(
-        `Paid from your public balance (${formatBalance(baseProps.publicBalance)} DUSK). The amount and both accounts are visible on chain.`
+        `Visible on chain ${nameAccount}`
       );
       expect(shieldedOption).toHaveAttribute("aria-checked", "false");
       expect(shieldedOption).toHaveAttribute("aria-disabled", "false");
-      expect(shieldedOption).toHaveTextContent(middleEllipsis(nameAddress, 6));
-      expect(shieldedOption).toHaveAccessibleDescription(
-        `Paid from your shielded balance (${formatBalance(baseProps.shieldedBalance)} DUSK). The amount and both parties stay private.`
+      expect(shieldedOption).toHaveTextContent(shortenAddress(nameAddress));
+      expect(getAsHTMLElement(shieldedOption, "samp")).toHaveAttribute(
+        "title",
+        nameAddress
       );
-      expect(getByText("Full address")).toBeInTheDocument();
-      expect(getShownAddress(container)).toHaveTextContent(nameAccount);
-      expect(getByText("Public transfer")).toBeInTheDocument();
-      expect(queryByText("Public account detected")).not.toBeInTheDocument();
+      expect(shieldedOption).toHaveAccessibleDescription(
+        `Private ${nameAddress}`
+      );
+
+      // No balances or banner, and the full address is left to Review.
+      expect(options).not.toHaveTextContent("DUSK");
+      expect(
+        container.querySelector(".operation__review-address, .banner")
+      ).toBeNull();
       expect(keyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ detail: { type: "account" } })
       );
@@ -797,9 +839,6 @@ describe("Send", () => {
 
       expect(shieldedOption).toBeChecked();
       expect(publicOption).not.toBeChecked();
-      expect(getShownAddress(container)).toHaveTextContent(nameAddress);
-      expect(getByText("Shielded transfer")).toBeInTheDocument();
-      expect(queryByText("Public transfer")).not.toBeInTheDocument();
       expect(keyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ detail: { type: "address" } })
       );
@@ -810,11 +849,12 @@ describe("Send", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      expect(getByText("alice.dusk")).toBeInTheDocument();
+      expect(getByText("alice.dusk")).toHaveClass("operation__review-name");
       expect(getShownAddress(container)).toHaveTextContent(nameAddress);
-      expect(getReviewType(container)).toHaveTextContent(
-        `SHIELDED From your shielded balance (${formatBalance(baseProps.shieldedBalance)} DUSK). Private.`
+      expect(getShownAddress(container).parentElement).toHaveClass(
+        "operation__review-address--with-name"
       );
+      expect(getReviewType(container)).toHaveTextContent("SHIELDED Private");
 
       await fireEvent.click(getByRole("button", { name: "SEND" }));
 
@@ -848,9 +888,10 @@ describe("Send", () => {
 
       expect(shieldedOption).toHaveAttribute("aria-disabled", "true");
       expect(shieldedOption).toHaveAccessibleDescription(
-        `Paid from your shielded balance (${formatBalance(maxGasFee)} DUSK). The amount and both parties stay private. Not enough shielded DUSK. Shield DUSK first`
+        `Not enough shielded DUSK · Shield first ${nameAddress}`
       );
-      expect(getByRole("link", { name: "Shield DUSK first" })).toHaveAttribute(
+      expect(shieldedOption).not.toHaveTextContent("Private");
+      expect(getByRole("link", { name: "Shield first" })).toHaveAttribute(
         "href",
         addBasePath("/dashboard/allocate")
       );
@@ -881,7 +922,7 @@ describe("Send", () => {
       });
 
       await fireEvent.click(shieldedOption);
-      await rerender({ publicBalance: 0n });
+      await rerender({ availableBalance: maxGasFee + 1n });
 
       expect(shieldedOption).toBeChecked();
       expect(queryByText(/Not enough shielded DUSK/)).not.toBeInTheDocument();
@@ -1021,7 +1062,7 @@ describe("Send", () => {
 
       await enter("alice.dusk");
 
-      expect(await findByText("Shielded transfer")).toBeInTheDocument();
+      expect(await findByText("Shielded address")).toBeInTheDocument();
       lastReported("address");
 
       await enter("bob.dusk");

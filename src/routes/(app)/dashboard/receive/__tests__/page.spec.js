@@ -53,6 +53,9 @@ describe("Receive", () => {
 
   beforeEach(() => {
     getPrimaryName.mockResolvedValue("");
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
   });
 
   afterEach(() => {
@@ -78,6 +81,31 @@ describe("Receive", () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
+  it("should copy the full address shown from its field, with no other copy button", async () => {
+    const { getAllByRole, getByRole } = render(Receive);
+
+    await vi.runAllTimersAsync();
+
+    expect(
+      getAllByRole("button").map((button) => button.getAttribute("aria-label"))
+    ).toStrictEqual(["Copy address"]);
+    expect(getByRole("link", { name: "Back" })).toBeInTheDocument();
+
+    await fireEvent.click(getByRole("button", { name: "Copy address" }));
+
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+      expectedAccount
+    );
+
+    await fireEvent.click(getByRole("radio", { checked: false }));
+    await vi.runAllTimersAsync();
+    await fireEvent.click(getByRole("button", { name: "Copy address" }));
+
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+      expectedAddress
+    );
+  });
+
   it("should show the shielded address when the user makes such choice", async () => {
     const { container, getByRole, getByText } = render(Receive);
 
@@ -100,10 +128,9 @@ describe("Receive", () => {
       container.querySelector(".receive__name")?.textContent ?? "";
 
     /** @param {Element} container */
-    const getNameNote = (container) =>
-      container.querySelector(".receive__name-note")?.textContent?.trim() ?? "";
+    const getNote = (container) => container.querySelector(".receive__note");
 
-    it("should show the public account's name, looked up once the page has rendered, saying senders to the name reach it", async () => {
+    it("should show the public account's name, looked up once the page has rendered, with what it reaches behind its info button", async () => {
       /** @type {Element | null} */
       let renderedAddress = null;
 
@@ -113,21 +140,26 @@ describe("Receive", () => {
         return Promise.resolve("alice.dusk");
       });
 
-      const { container, getByText } = render(Receive);
+      const { container, getByRole, getByText } = render(Receive);
 
       await vi.runAllTimersAsync();
 
       expect(renderedAddress).toBeInstanceOf(HTMLElement);
       expect(getShownName(container)).toBe("alice.dusk");
       expect(getByText(expectedAccount)).toBeInTheDocument();
-      expect(getNameNote(container)).toBe(
-        "People who send to alice.dusk reach this public account."
-      );
+      expect(getNote(container)).not.toBeVisible();
       expect(getPrimaryName).toHaveBeenCalledExactlyOnceWith(
         expectedAccount,
         "unknown",
         expect.any(String),
         undefined
+      );
+
+      await fireEvent.click(getByRole("button", { name: "About this name" }));
+
+      expect(getNote(container)).toBeVisible();
+      expect(getNote(container)).toHaveTextContent(
+        "People who send to alice.dusk reach this public account."
       );
     });
 
@@ -135,7 +167,7 @@ describe("Receive", () => {
       [
         "pays to it",
         "alice.dusk",
-        "alice.dusk also lists this address, so people can choose to pay you privately.",
+        "People who pay alice.dusk choose public or shielded. Anyone can see this address belongs to alice.dusk.",
       ],
       ["doesn't pay to it", "", ""],
     ])(
@@ -146,7 +178,8 @@ describe("Receive", () => {
             Promise.resolve(shieldedAddress ? shieldedName : "alice.dusk")
         );
 
-        const { container, getByRole, getByText } = render(Receive);
+        const { container, getByRole, getByText, queryByRole } =
+          render(Receive);
 
         await vi.runAllTimersAsync();
 
@@ -157,7 +190,16 @@ describe("Receive", () => {
 
         expect(getByText(expectedAddress)).toBeInTheDocument();
         expect(getShownName(container)).toBe(shieldedName);
-        expect(getNameNote(container)).toBe(shieldedNote);
+        expect(getNote(container)?.textContent?.trim() ?? "").toBe(
+          shieldedNote
+        );
+        expect(queryByRole("button", { name: "Copy name" }) !== null).toBe(
+          Boolean(shieldedName)
+        );
+        expect(
+          queryByRole("button", { name: "About this name" }) !== null
+        ).toBe(Boolean(shieldedName));
+        expect(getByRole("button", { name: "Copy address" })).toBeVisible();
         expect(getPrimaryName).toHaveBeenLastCalledWith(
           expectedAccount,
           "unknown",
@@ -167,16 +209,41 @@ describe("Receive", () => {
       }
     );
 
-    it("should show no name when the lookup fails", async () => {
+    it("should show no name, and only the address to copy, when the lookup fails", async () => {
       getPrimaryName.mockRejectedValue(new Error("Lookup failed"));
 
-      const { container, getByText } = render(Receive);
+      const { container, getAllByRole, getByText } = render(Receive);
 
       await vi.runAllTimersAsync();
 
       expect(container.querySelector(".receive__name")).toBeNull();
-      expect(container.querySelector(".receive__name-note")).toBeNull();
+      expect(getNote(container)).toBeNull();
       expect(getByText(expectedAccount)).toBeInTheDocument();
+      expect(
+        getAllByRole("button").map((button) =>
+          button.getAttribute("aria-label")
+        )
+      ).toStrictEqual(["Copy address"]);
+    });
+
+    it("should copy the name from its field, and the full address from its own", async () => {
+      getPrimaryName.mockResolvedValue("alice.dusk");
+
+      const { getByRole } = render(Receive);
+
+      await vi.runAllTimersAsync();
+      await fireEvent.click(getByRole("button", { name: "Copy name" }));
+
+      expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+        "alice.dusk"
+      );
+
+      await fireEvent.click(getByRole("button", { name: "Copy address" }));
+
+      expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+        expectedAccount
+      );
+      expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(2);
     });
   });
 });

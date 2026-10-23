@@ -1469,7 +1469,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           <!---->
            
           <span>
-            From your shielded balance (500.000000000 DUSK). Private.
+            Private
           </span>
           <!---->
         </dd>

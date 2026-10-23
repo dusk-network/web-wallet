@@ -9,15 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Accept `.dusk` names as send recipients on mainnet and testnet
-- Send to the shielded address a `.dusk` name publishes
-- Show the profiles' verified `.dusk` names in the profile switcher and on the Receive page
-- Show on the Review step whether a transfer is public or shielded
+- Accept `.dusk` names as send recipients on mainnet and testnet [#965]
+- Send to the shielded address a `.dusk` name publishes [#965]
+- Show the profiles' verified `.dusk` names in the profile switcher and on the Receive page [#965]
+- Show on the Review step whether a transfer is public or shielded [#965]
 
 ### Changed
 
 - Migrate DuskEVM bridge flows to the current contracts and the published
   `@dusk/evm-sdk` beta [#946], [#948]
+- Show each profile's `.dusk` name, or its shortened public account, under its label in the profile bar and switcher [#965]
+- Give the address and the `.dusk` name on Receive their own copy buttons, replacing the Copy button [#965]
 
 ### Removed
 
@@ -25,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Stop transaction attempts when prerequisite synchronization fails or is cancelled [#953].
 - Prevent pending login migration or password setup from restoring reset wallet credentials [#953].
-- Show the public spendable balance on Send while no valid recipient is entered
+- Show the public spendable balance on Send while no valid recipient is entered [#965]
 
 ## [1.8.0] - 2026-03-25
 
@@ -681,6 +683,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#946]: https://github.com/dusk-network/web-wallet/issues/946
 [#948]: https://github.com/dusk-network/web-wallet/issues/948
 [#953]: https://github.com/dusk-network/web-wallet/pull/953
+[#965]: https://github.com/dusk-network/web-wallet/issues/965
 
 <!-- VERSIONS -->
 

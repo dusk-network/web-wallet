@@ -90,7 +90,6 @@
     {gasLimits}
     {gasSettings}
     availableBalance={spendable}
-    publicBalance={balance.unshielded.value}
     shieldedBalance={balance.shielded.spendable}
     bep20BridgeAddress={BEP20_BRIDGE_ADDRESS}
     on:keyChange={keyChangeHandler}

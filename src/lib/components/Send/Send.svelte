@@ -16,8 +16,8 @@
   import {
     isValidEvmAddress,
     makeClassName,
-    middleEllipsis,
     randomUUID,
+    shortenAddress,
   } from "$lib/dusk/string";
   import { logo } from "$lib/dusk/icons";
   import {
@@ -60,13 +60,6 @@
    * @type {bigint}
    */
   export let availableBalance;
-
-  /**
-   * The spendable public balance, which pays transfers to public accounts.
-   *
-   * @type {bigint}
-   */
-  export let publicBalance;
 
   /**
    * The spendable shielded balance, which pays transfers to shielded addresses.
@@ -199,8 +192,6 @@
   /**
    * @typedef {{
    *   address: string,
-   *   balance: string,
-   *   balanceName: string,
    *   disabled: boolean,
    *   title: string,
    *   type: "account" | "address",
@@ -226,41 +217,34 @@
   }
 
   /**
-   * The addresses a `.dusk` name with both a public account and a shielded
-   * address gives to pick from, with the balance that pays for each. The
-   * shielded address can't be picked while its balance can't pay.
+   * The addresses a `.dusk` name points to, to pick from when it has both a
+   * public account and a shielded address. The shielded address can't be
+   * picked, or sent to, while the shielded balance can't pay.
    *
    * @param {DuskNameResolution | null} lookup
-   * @param {string} publicFunds The public balance, formatted.
-   * @param {string} shieldedFunds The shielded balance, formatted.
    * @param {boolean} canPayShielded
    * @returns {NameOption[]}
    */
-  function getNameOptions(lookup, publicFunds, shieldedFunds, canPayShielded) {
-    if (!lookup?.account || !lookup.address) {
-      return [];
-    }
-
-    return [
+  function getNameOptions(lookup, canPayShielded) {
+    /** @type {NameOption[]} */
+    const options = [
       {
-        address: lookup.account,
-        balance: publicFunds,
-        balanceName: "public balance",
+        address: lookup?.account ?? "",
         disabled: false,
         title: "Public account",
         type: "account",
-        visibility: "The amount and both accounts are visible on chain.",
+        visibility: "Visible on chain",
       },
       {
-        address: lookup.address,
-        balance: shieldedFunds,
-        balanceName: "shielded balance",
+        address: lookup?.address ?? "",
         disabled: !canPayShielded,
         title: "Shielded address",
         type: "address",
-        visibility: "The amount and both parties stay private.",
+        visibility: "Private",
       },
     ];
+
+    return options.filter((option) => option.address);
   }
 
   /**
@@ -359,9 +343,6 @@
   $: canPayFromShieldedBalance =
     shieldedBalance >= maxGasFee + duskToLux(minAmount);
 
-  $: shownPublicBalance = formatter(luxToDusk(publicBalance));
-  $: shownShieldedBalance = formatter(luxToDusk(shieldedBalance));
-
   // Check if the available balance is sufficient to cover the max gas fee.
   // This is a prerequisite for any transaction.
   $: isBalanceSufficientForGas = availableBalance >= maxGasFee;
@@ -406,13 +387,8 @@
 
   $: nameAddressType = getNameAddressType(nameLookup, namePicks);
 
-  // The addresses to pick from, for a name with both.
-  $: nameOptions = getNameOptions(
-    nameLookup,
-    shownPublicBalance,
-    shownShieldedBalance,
-    canPayFromShieldedBalance
-  );
+  // The addresses the name points to: one, or two to pick from.
+  $: nameOptions = getNameOptions(nameLookup, canPayFromShieldedBalance);
 
   // The address the transfer goes to: the one entered, or the one picked
   // of the addresses a `.dusk` name resolved to (empty until it has).
@@ -513,92 +489,78 @@
         />
 
         {#if nameLookup?.[nameAddressType]}
-          {#if nameOptions.length}
-            <p id="{nameOptionsId}-label">{nameLookup.name} points to</p>
-            <div
-              aria-labelledby="{nameOptionsId}-label"
-              class="operation__name-options"
-              role="radiogroup"
-            >
-              {#each nameOptions as option (option.type)}
-                {@const id = `${nameOptionsId}-${option.type}`}
-                {@const isPicked = option.type === nameAddressType}
-                <div
-                  class="operation__name-option"
-                  class:operation__name-option--disabled={option.disabled}
-                  class:operation__name-option--picked={isPicked}
-                >
+          {@const isChoice = nameOptions.length > 1}
+          <p id="{nameOptionsId}-label">{nameLookup.name} points to</p>
+          <!-- Radios only when there is a choice: a name's one address shows
+            in the same card, picked, as plain text. -->
+          <div
+            aria-labelledby={isChoice ? `${nameOptionsId}-label` : undefined}
+            class="operation__name-options"
+            role={isChoice ? "radiogroup" : undefined}
+          >
+            {#each nameOptions as option (option.type)}
+              {@const id = `${nameOptionsId}-${option.type}`}
+              {@const isPicked = option.type === nameAddressType}
+              {#snippet optionText()}
+                <span class="operation__name-option-mark"></span>
+                <span class="operation__name-option-text">
+                  <span class="operation__name-option-title">
+                    <strong id="{id}-title">{option.title}</strong>
+                    <samp id="{id}-address" title={option.address}>
+                      <span aria-hidden="true"
+                        >{shortenAddress(option.address)}</span
+                      >
+                      <span class="sr-only">{option.address}</span>
+                    </samp>
+                  </span>
+                  {#if !option.disabled}
+                    <span id="{id}-text">{option.visibility}</span>
+                  {/if}
+                </span>
+              {/snippet}
+              <div
+                class="operation__name-option"
+                class:operation__name-option--disabled={option.disabled}
+                class:operation__name-option--picked={isPicked}
+              >
+                {#if isChoice}
                   <div
                     aria-checked={isPicked}
                     aria-describedby={option.disabled
-                      ? `${id}-text ${id}-hint`
-                      : `${id}-text`}
+                      ? `${id}-hint ${id}-address`
+                      : `${id}-text ${id}-address`}
                     aria-disabled={option.disabled}
                     aria-labelledby="{id}-title"
                     bind:this={nameOptionElements[option.type]}
-                    class="operation__name-option-radio"
+                    class="operation__name-option-body"
                     on:click={() => pickNameAddress(option.type)}
                     on:keydown={(event) =>
                       handleNameOptionKeyDown(event, option.type)}
                     role="radio"
                     tabindex={isPicked ? 0 : -1}
                   >
-                    <span class="operation__name-option-mark"></span>
-                    <span class="operation__name-option-text">
-                      <span class="operation__name-option-title">
-                        <strong id="{id}-title">{option.title}</strong>
-                        <samp>{middleEllipsis(option.address, 6)}</samp>
-                      </span>
-                      <span id="{id}-text">
-                        Paid from your <strong>{option.balanceName}</strong>
-                        ({option.balance} DUSK).
-                        {option.visibility}
-                      </span>
-                    </span>
+                    {@render optionText()}
                   </div>
-                  {#if option.disabled}
-                    <p class="operation__name-hint" id="{id}-hint">
-                      Not enough shielded DUSK.
-                      {#if canShield}
-                        <AppAnchor href="/dashboard/allocate"
-                          >Shield DUSK first</AppAnchor
-                        >
-                      {:else}
-                        Shield DUSK first
-                      {/if}
-                    </p>
-                  {/if}
-                </div>
-              {/each}
-            </div>
-          {/if}
-          <dl class="operation__review-transaction">
-            <dt
-              class="review-transaction__label"
-              class:operation__full-address-label={nameOptions.length}
-            >
-              <span
-                >{nameOptions.length
-                  ? "Full address"
-                  : `${nameLookup.name} points to`}</span
-              >
-            </dt>
-            <dd class="operation__review-address">
-              <span>{recipientAddress}</span>
-            </dd>
-          </dl>
-          {#if isNameUnpayable && !nameOptions.length}
-            <p class="operation__name-hint">
-              Not enough shielded DUSK.
-              {#if canShield}
-                <AppAnchor href="/dashboard/allocate"
-                  >Shield DUSK first</AppAnchor
-                >
-              {:else}
-                Shield DUSK first
-              {/if}
-            </p>
-          {/if}
+                {:else}
+                  <div class="operation__name-option-body">
+                    {@render optionText()}
+                  </div>
+                {/if}
+                {#if option.disabled}
+                  <p class="operation__name-hint" id="{id}-hint">
+                    Not enough shielded DUSK ·
+                    {#if canShield}
+                      <AppAnchor href="/dashboard/allocate"
+                        >Shield first</AppAnchor
+                      >
+                    {:else}
+                      Shield first
+                    {/if}
+                  </p>
+                {/if}
+              </div>
+            {/each}
+          </div>
         {:else if nameLookup?.error}
           {@const [title, text] = nameErrors[nameLookup.error](nameLookup.name)}
           <Banner variant="error" {title}>
@@ -622,21 +584,8 @@
           </Banner>
         {/if}
 
-        {#if recipientName && addressInfo.type === "account"}
-          <Banner title="Public transfer" variant="info">
-            <p>
-              Sent from your <strong>public</strong> balance. Anyone can see the amount
-              and both accounts.
-            </p>
-          </Banner>
-        {:else if recipientName && addressInfo.type === "address"}
-          <Banner title="Shielded transfer" variant="info">
-            <p>
-              Sent from your <strong>shielded</strong> balance. The amount and both
-              parties stay private.
-            </p>
-          </Banner>
-        {:else if addressInfo.type === "account"}
+        <!-- A name's options say whether the transfer is public or shielded. -->
+        {#if !recipientName && addressInfo.type === "account"}
           <Banner title="Public account detected" variant="info">
             <p>
               This transaction will be public and sent from your <strong
@@ -839,9 +788,14 @@
             <span>To</span>
           </dt>
           {#if nameLookup?.[nameAddressType]}
-            <dd class="review-transaction__value">{nameLookup.name}</dd>
+            <dd class="operation__review-name">{nameLookup.name}</dd>
           {/if}
-          <dd class="operation__review-address">
+          <dd
+            class="operation__review-address"
+            class:operation__review-address--with-name={nameLookup?.[
+              nameAddressType
+            ]}
+          >
             <span>{recipientAddress}</span>
           </dd>
         </dl>
@@ -853,14 +807,10 @@
           <dd class="operation__review-type">
             {#if addressInfo.type === "address"}
               <Badge text="SHIELDED" />
-              <span>
-                From your shielded balance ({shownShieldedBalance} DUSK). Private.
-              </span>
+              <span>Private</span>
             {:else}
               <Badge text="PUBLIC" />
-              <span>
-                From your public balance ({shownPublicBalance} DUSK). Visible on chain.
-              </span>
+              <span>Visible on chain</span>
             {/if}
           </dd>
         </dl>
@@ -928,6 +878,18 @@
       line-break: anywhere;
     }
 
+    /* Shown with a name, the address gives way to it. */
+    &__review-address--with-name {
+      color: var(--muted-color);
+      font-size: 0.8125rem;
+    }
+
+    &__review-name {
+      font-size: 1.125rem;
+      font-weight: 500;
+      overflow-wrap: anywhere;
+    }
+
     &__address-wrapper,
     &__amount-wrapper,
     &__input-wrapper {
@@ -979,18 +941,26 @@
       background-color: var(--non-button-control-bg-color);
     }
 
-    &__name-option-radio {
+    &__name-option-body {
       display: flex;
       align-items: flex-start;
       gap: 0.75rem;
       padding: 0.75rem 1rem;
-      cursor: pointer;
       outline: none;
+
+      &[role="radio"] {
+        cursor: pointer;
+      }
     }
 
-    &__name-option--disabled &__name-option-radio {
-      cursor: not-allowed;
+    &__name-option--disabled &__name-option-body {
       opacity: 0.5;
+      /* Its hint, below, stands in for its line. */
+      padding-bottom: 0;
+
+      &[role="radio"] {
+        cursor: not-allowed;
+      }
     }
 
     &__name-option-mark {
@@ -1037,12 +1007,7 @@
 
     &__name-option &__name-hint {
       /* In line with the option's text, past its radio mark. */
-      padding: 0 1rem 0.75rem 2.75rem;
-    }
-
-    &__full-address-label {
-      color: var(--muted-color);
-      font-size: 0.875em;
+      padding: 0.25em 1rem 0.75rem 2.75rem;
     }
 
     :global(&__review-notice) {

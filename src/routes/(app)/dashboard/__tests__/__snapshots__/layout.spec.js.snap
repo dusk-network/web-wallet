@@ -21,6 +21,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
         class="address-picker"
       >
         <div
+          aria-describedby="some-generated-id-current-profile"
           aria-expanded="false"
           aria-haspopup="menu"
           aria-label="Select address profile"
@@ -30,6 +31,7 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
         >
           <span
             class="address-picker__current-profile"
+            id="some-generated-id-current-profile"
           >
             <span
               class="address-picker__title"
@@ -37,11 +39,24 @@ exports[`Dashboard Layout > should render the dashboard layout 1`] = `
               Profile 1 (Default)
             </span>
              
+            <!---->
             <span
-              class="address-picker__subtitle"
+              class="address-picker__account"
+              title="bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J"
             >
-              bEjRbupbXK...iBwmzGeJ8J
+              <span
+                aria-hidden="true"
+              >
+                bEjRbu…zGeJ8J
+              </span>
+               
+              <span
+                class="sr-only"
+              >
+                bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
+              </span>
             </span>
+            
             <!---->
           </span>
            
@@ -287,6 +302,7 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
       class="address-picker"
     >
       <div
+        aria-describedby="some-generated-id-current-profile"
         aria-expanded="false"
         aria-haspopup="menu"
         aria-label="Select address profile"
@@ -296,6 +312,7 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
       >
         <span
           class="address-picker__current-profile"
+          id="some-generated-id-current-profile"
         >
           <span
             class="address-picker__title"
@@ -303,11 +320,24 @@ exports[`Dashboard Layout > should render the dashboard layout and show a throbb
             Profile 1 (Default)
           </span>
            
+          <!---->
           <span
-            class="address-picker__subtitle"
+            class="address-picker__account"
+            title="bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J"
           >
-            bEjRbupbXK...iBwmzGeJ8J
+            <span
+              aria-hidden="true"
+            >
+              bEjRbu…zGeJ8J
+            </span>
+             
+            <span
+              class="sr-only"
+            >
+              bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
+            </span>
           </span>
+          
           <!---->
         </span>
          
@@ -552,6 +582,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
         class="address-picker"
       >
         <div
+          aria-describedby="some-generated-id-current-profile"
           aria-expanded="false"
           aria-haspopup="menu"
           aria-label="Select address profile"
@@ -561,20 +592,33 @@ exports[`Dashboard Layout > should render the dashboard layout in the error stat
         >
           <span
             class="address-picker__current-profile"
+            id="some-generated-id-current-profile"
           >
-            <!---->
             <span
               class="address-picker__title"
             >
               Profile 1 (Default)
             </span>
              
-            <span
-              class="address-picker__subtitle"
-            >
-              bEjRbupbXK...iBwmzGeJ8J
-            </span>
             <!---->
+            <!---->
+            <span
+              class="address-picker__account"
+              title="bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J"
+            >
+              <span
+                aria-hidden="true"
+              >
+                bEjRbu…zGeJ8J
+              </span>
+               
+              <span
+                class="sr-only"
+              >
+                bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
+              </span>
+            </span>
+            
             
             <!---->
           </span>
@@ -846,6 +890,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
       class="address-picker"
     >
       <div
+        aria-describedby="some-generated-id-current-profile"
         aria-expanded="false"
         aria-haspopup="menu"
         aria-label="Select address profile"
@@ -855,20 +900,33 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
       >
         <span
           class="address-picker__current-profile"
+          id="some-generated-id-current-profile"
         >
-          <!---->
           <span
             class="address-picker__title"
           >
             Profile 1 (Default)
           </span>
            
-          <span
-            class="address-picker__subtitle"
-          >
-            bEjRbupbXK...iBwmzGeJ8J
-          </span>
           <!---->
+          <!---->
+          <span
+            class="address-picker__account"
+            title="bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J"
+          >
+            <span
+              aria-hidden="true"
+            >
+              bEjRbu…zGeJ8J
+            </span>
+             
+            <span
+              class="sr-only"
+            >
+              bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
+            </span>
+          </span>
+          
           
           <!---->
         </span>
@@ -1119,6 +1177,7 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
         class="address-picker"
       >
         <div
+          aria-describedby="some-generated-id-current-profile"
           aria-expanded="false"
           aria-haspopup="menu"
           aria-label="Select address profile"
@@ -1128,20 +1187,33 @@ exports[`Dashboard Layout > should render the dashboard layout in the sync state
         >
           <span
             class="address-picker__current-profile"
+            id="some-generated-id-current-profile"
           >
-            <!---->
             <span
               class="address-picker__title"
             >
               Profile 1 (Default)
             </span>
              
-            <span
-              class="address-picker__subtitle"
-            >
-              bEjRbupbXK...iBwmzGeJ8J
-            </span>
             <!---->
+            <!---->
+            <span
+              class="address-picker__account"
+              title="bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J"
+            >
+              <span
+                aria-hidden="true"
+              >
+                bEjRbu…zGeJ8J
+              </span>
+               
+              <span
+                class="sr-only"
+              >
+                bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
+              </span>
+            </span>
+            
             
             <!---->
           </span>
