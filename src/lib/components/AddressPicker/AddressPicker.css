@@ -9,10 +9,42 @@
 }
 
 .address-picker__current-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125em;
   width: 100%;
+  min-width: 0;
+  /* Keeps both lines clear of the chevron. */
+  padding: 0 1.75rem;
   text-align: center;
   font-weight: 500;
   font-size: 0.95rem;
+}
+
+/* Each line of a profile stays on one line, a long name ending in an ellipsis. */
+.address-picker__title,
+.address-picker__name,
+.address-picker__account,
+.address-picker__profile-header,
+.address-picker__address-name,
+.address-picker__address-value {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.address-picker__name {
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.address-picker__account {
+  color: var(--muted-color);
+  font-family: var(--mono-font-family);
+  font-size: 0.75rem;
+  font-weight: 400;
 }
 
 .address-picker__copy-address-button:hover {
@@ -94,7 +126,7 @@
 
 .address-picker__profile-container {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5em;
   border-top: 1px solid var(--surface-border-color-subtle);
   padding: 0.625em 0;
@@ -107,7 +139,10 @@
 .address-picker__profile-button {
   all: unset;
   flex: 1;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  min-width: 0;
   text-align: left;
   padding: 0.75em;
   cursor: pointer;
@@ -127,7 +162,6 @@
 
 .address-picker__profile-header {
   font-weight: 500;
-  margin-bottom: 0.5em;
   font-size: 0.9em;
 }
 
@@ -137,50 +171,32 @@
   font-size: 0.85em;
 }
 
-.address-picker__addresses {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
-}
-
-.address-picker__address-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25em;
-  font-size: 0.8em;
-}
-
-.address-picker__address-label {
-  font-weight: 500;
-  color: var(--muted-color);
-  font-size: 0.75em;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+.address-picker__address-name {
+  color: var(--on-surface-color);
+  font-size: 0.875em;
 }
 
 .address-picker__address-value {
   font-family: var(--mono-font-family);
-  color: var(--on-surface-color);
-  font-size: 0.85em;
+  color: var(--muted-color);
+  font-size: 0.75em;
 }
 
 .address-picker__copy-buttons {
   display: flex;
   flex-direction: column;
-  gap: 0.5em;
-  align-self: flex-start;
-  /* Add top margin to align with the addresses section */
-  margin-top: 2.1em; /* Aligns with profile header + gap + first address row */
-  padding-top: 0.25em; /* Fine-tune alignment with address values */
+  gap: 0.25em;
+  flex-shrink: 0;
 }
 
 .address-picker__copy-button {
   all: unset;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 2em;
-  height: 2em;
+  gap: 0.375em;
+  min-height: 2em;
+  padding: 0 0.5em;
+  font-size: 0.75em;
   cursor: pointer;
   border-radius: var(--control-border-radius-size);
   transition: background-color 0.2s ease;

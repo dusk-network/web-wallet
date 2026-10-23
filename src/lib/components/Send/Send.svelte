@@ -2,17 +2,23 @@
 
 <script>
   import { fade } from "svelte/transition";
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onMount, tick } from "svelte";
   import {
     mdiAlertOutline,
     mdiArrowUpBoldBoxOutline,
     mdiWalletOutline,
   } from "@mdi/js";
   import { areValidGasSettings } from "$lib/contracts";
+  import { isDuskName } from "$lib/dusk-domains";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
-  import { isValidEvmAddress, makeClassName } from "$lib/dusk/string";
+  import {
+    isValidEvmAddress,
+    makeClassName,
+    randomUUID,
+    shortenAddress,
+  } from "$lib/dusk/string";
   import { logo } from "$lib/dusk/icons";
   import {
     AnchorButton,
@@ -27,6 +33,7 @@
   } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
+    AppAnchor,
     Banner,
     GasFee,
     GasSettings,
@@ -41,11 +48,25 @@
   /** @type {(amount: number) => string} */
   export let formatter;
 
+  /** @type {(name: string) => Promise<DuskNameResolution>} */
+  export let resolveName;
+
   /** @type {ContractGasSettings} */
   export let gasSettings;
 
-  /** @type {bigint} */
+  /**
+   * The spendable balance the transfer is paid from.
+   *
+   * @type {bigint}
+   */
   export let availableBalance;
+
+  /**
+   * The spendable shielded balance, which pays transfers to shielded addresses.
+   *
+   * @type {bigint}
+   */
+  export let shieldedBalance;
 
   /** @type {GasStoreContent} */
   export let gasLimits;
@@ -86,6 +107,32 @@
   /** @type {boolean} */
   let isMemoValid = true;
 
+  /** @type {DuskNameResolution | null} */
+  let nameLookup = null;
+
+  /**
+   * The address the user picked for each `.dusk` name with both a public
+   * account and a shielded address. A pick stays with its name, through
+   * lookups of the same name and steps back, until the user makes another;
+   * any other name starts at its public account.
+   *
+   * @type {Record<string, "account" | "address">}
+   */
+  let namePicks = {};
+
+  /**
+   * The options shown for a `.dusk` name with both addresses, by type,
+   * for the focus to follow the pick.
+   *
+   * @type {Partial<Record<"account" | "address", HTMLElement>>}
+   */
+  const nameOptionElements = {};
+
+  const nameOptionsId = randomUUID();
+
+  // Without the allocation page there is nowhere to link to for shielding.
+  const canShield = import.meta.env.VITE_FEATURE_ALLOCATE === "true";
+
   let { gasLimit, gasPrice } = gasSettings;
 
   const minAmount = 0.000000001;
@@ -120,12 +167,181 @@
     sendAmount = luxToDusk(maxSpendableAmount);
   }
 
+  /**
+   * Looks up a `.dusk` name, keeping only the result
+   * for the name currently entered.
+   *
+   * @param {string} name
+   */
+  function lookUpName(name) {
+    if (!name) {
+      nameLookup = null;
+      return;
+    }
+
+    const lookup = { name };
+
+    nameLookup = lookup;
+    resolveName(name).then((result) => {
+      if (nameLookup === lookup) {
+        nameLookup = result;
+      }
+    });
+  }
+
+  /**
+   * @typedef {{
+   *   address: string,
+   *   disabled: boolean,
+   *   title: string,
+   *   type: "account" | "address",
+   *   visibility: string,
+   * }} NameOption
+   */
+
+  /**
+   * The address of a `.dusk` name the transfer goes to: the one picked for
+   * a name with both a public account and a shielded address, its public
+   * account otherwise, or its shielded address when it has only that.
+   *
+   * @param {DuskNameResolution | null} lookup
+   * @param {Record<string, "account" | "address">} picks
+   * @returns {"account" | "address"}
+   */
+  function getNameAddressType(lookup, picks) {
+    if (!lookup?.account) {
+      return "address";
+    }
+
+    return (lookup.address && picks[lookup.name]) || "account";
+  }
+
+  /**
+   * The addresses a `.dusk` name points to, to pick from when it has both a
+   * public account and a shielded address. The shielded address can't be
+   * picked, or sent to, while the shielded balance can't pay.
+   *
+   * @param {DuskNameResolution | null} lookup
+   * @param {boolean} canPayShielded
+   * @returns {NameOption[]}
+   */
+  function getNameOptions(lookup, canPayShielded) {
+    /** @type {NameOption[]} */
+    const options = [
+      {
+        address: lookup?.account ?? "",
+        disabled: false,
+        title: "Public account",
+        type: "account",
+        visibility: "Visible on chain",
+      },
+      {
+        address: lookup?.address ?? "",
+        disabled: !canPayShielded,
+        title: "Shielded address",
+        type: "address",
+        visibility: "Private",
+      },
+    ];
+
+    return options.filter((option) => option.address);
+  }
+
+  /**
+   * Picks which address of the `.dusk` name entered the transfer goes
+   * to, unless that option is disabled.
+   *
+   * @param {"account" | "address"} type
+   */
+  function pickNameAddress(type) {
+    const option = nameOptions.find((item) => item.type === type);
+
+    if (nameLookup && option && !option.disabled) {
+      namePicks = { ...namePicks, [nameLookup.name]: type };
+    }
+  }
+
+  /**
+   * How far each arrow key moves the pick between options.
+   *
+   * @type {Record<string, number>}
+   */
+  const arrowKeyOffsets = {
+    ArrowDown: 1,
+    ArrowLeft: -1,
+    ArrowRight: 1,
+    ArrowUp: -1,
+  };
+
+  /**
+   * Moves the pick with the arrow keys, past a disabled option, and makes
+   * it with Space, as in a radio group.
+   *
+   * @param {KeyboardEvent} event
+   * @param {"account" | "address"} type The option with the focus.
+   */
+  async function handleNameOptionKeyDown(event, type) {
+    const offset = arrowKeyOffsets[event.key] ?? 0;
+
+    if (!offset && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+
+    const types = nameOptions
+      .filter((option) => !option.disabled)
+      .map((option) => option.type);
+    const next = offset
+      ? types[(types.indexOf(type) + offset + types.length) % types.length]
+      : type;
+
+    if (next) {
+      pickNameAddress(next);
+      await tick();
+      nameOptionElements[next]?.focus();
+    }
+  }
+
+  /** @type {Record<DuskNameError, (name: string) => [string, string]>} */
+  const nameErrors = {
+    expired: (name) => [
+      `${name} has expired`,
+      "An expired name can't receive DUSK.",
+    ],
+    invalid: (name) => [
+      `${name} isn't a valid name`,
+      "Names use only letters, digits and hyphens.",
+    ],
+    "lookup-failed": (name) => [
+      `Couldn't look up ${name}`,
+      "Check your connection and try again.",
+    ],
+    "no-address": (name) => [
+      `${name} has no address to send to`,
+      "Its owner needs to add a public account or a shielded address before it can receive DUSK.",
+    ],
+    "not-registered": (name) => [
+      `${name} isn't registered`,
+      "Check the name, or paste the recipient's address instead.",
+    ],
+    "unsupported-network": () => [
+      ".dusk names aren't available on this network",
+      "They work on mainnet and testnet. Paste the recipient's address instead.",
+    ],
+  };
+
   let activeStep = 0;
 
   $: sendAmountInLux = sendAmount ? duskToLux(sendAmount) : 0n;
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
+
+  // A balance can pay for a transfer if it covers the smallest amount the
+  // amount step takes plus the maximum gas fee, which that step requires.
+  $: canPayFromShieldedBalance =
+    shieldedBalance >= maxGasFee + duskToLux(minAmount);
 
   // Check if the available balance is sufficient to cover the max gas fee.
   // This is a prerequisite for any transaction.
@@ -165,22 +381,42 @@
     !isRecipientBlocklisted
   );
 
+  $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";
+
+  $: lookUpName(recipientName);
+
+  $: nameAddressType = getNameAddressType(nameLookup, namePicks);
+
+  // The addresses the name points to: one, or two to pick from.
+  $: nameOptions = getNameOptions(nameLookup, canPayFromShieldedBalance);
+
+  // The address the transfer goes to: the one entered, or the one picked
+  // of the addresses a `.dusk` name resolved to (empty until it has).
+  $: recipientAddress = recipientName
+    ? (nameLookup?.[nameAddressType] ?? "")
+    : sendToAddress;
+
+  // A name's shielded address needs a shielded balance that can pay.
+  $: isNameUnpayable =
+    Boolean(nameLookup?.[nameAddressType]) &&
+    nameAddressType === "address" &&
+    !canPayFromShieldedBalance;
+
   $: addressInfo = getAddressInfo(
-    sendToAddress,
+    recipientAddress,
     shieldedAddress,
     publicAddress
   );
 
-  $: blocklistedRecipient = getBlocklistedRecipient(sendToAddress);
+  $: blocklistedRecipient = getBlocklistedRecipient(recipientAddress);
   $: isRecipientBlocklisted = Boolean(blocklistedRecipient);
 
-  $: if (addressInfo.type) {
-    dispatch("keyChange", {
-      type: addressInfo.type,
-    });
-  }
+  // The page shows the balance that pays: the shielded one for a shielded
+  // address, the public one for anything else, including no recipient.
+  $: recipientType = addressInfo.type;
+  $: dispatch("keyChange", { type: recipientType });
 
-  $: isSendingToBep20Bridge = sendToAddress.trim() === bep20BridgeAddress;
+  $: isSendingToBep20Bridge = recipientAddress.trim() === bep20BridgeAddress;
 
   $: if (isSendingToBep20Bridge) {
     isMemoShown = true;
@@ -201,7 +437,9 @@
   $: sendToAddressTextboxClasses = makeClassName({
     "operation__send-address": true,
     "operation__send-address--blocked": isRecipientBlocklisted,
-    "operation__send-address--invalid": sendToAddress && !addressInfo.isValid,
+    "operation__send-address--invalid": recipientName
+      ? nameLookup?.error
+      : sendToAddress && !addressInfo.isValid,
   });
 
   $: sendMemoTextboxClasses = makeClassName({
@@ -226,12 +464,13 @@
       }}
       nextButton={{
         action: () => activeStep++,
-        disabled: !addressInfo.isValid || isRecipientBlocklisted,
+        disabled:
+          !addressInfo.isValid || isRecipientBlocklisted || isNameUnpayable,
       }}
     >
       <div in:fade|global class="operation__send">
         <div class="operation__address-wrapper">
-          <p>Address</p>
+          <p>Address or .dusk name</p>
           <Button
             disabled={!scanner}
             size="small"
@@ -244,10 +483,100 @@
         <Textbox
           required
           className={sendToAddressTextboxClasses}
-          aria-label="Recipient address"
+          aria-label="Recipient address or .dusk name"
           type="multiline"
           bind:value={sendToAddress}
         />
+
+        {#if nameLookup?.[nameAddressType]}
+          {@const isChoice = nameOptions.length > 1}
+          <p id="{nameOptionsId}-label">{nameLookup.name} points to</p>
+          <!-- Radios only when there is a choice: a name's one address shows
+            in the same card, picked, as plain text. -->
+          <div
+            aria-labelledby={isChoice ? `${nameOptionsId}-label` : undefined}
+            class="operation__name-options"
+            role={isChoice ? "radiogroup" : undefined}
+          >
+            {#each nameOptions as option (option.type)}
+              {@const id = `${nameOptionsId}-${option.type}`}
+              {@const isPicked = option.type === nameAddressType}
+              {#snippet optionText()}
+                <span class="operation__name-option-mark"></span>
+                <span class="operation__name-option-text">
+                  <span class="operation__name-option-title">
+                    <strong id="{id}-title">{option.title}</strong>
+                    <samp id="{id}-address" title={option.address}>
+                      <span aria-hidden="true"
+                        >{shortenAddress(option.address)}</span
+                      >
+                      <span class="sr-only">{option.address}</span>
+                    </samp>
+                  </span>
+                  {#if !option.disabled}
+                    <span id="{id}-text">{option.visibility}</span>
+                  {/if}
+                </span>
+              {/snippet}
+              <div
+                class="operation__name-option"
+                class:operation__name-option--disabled={option.disabled}
+                class:operation__name-option--picked={isPicked}
+              >
+                {#if isChoice}
+                  <div
+                    aria-checked={isPicked}
+                    aria-describedby={option.disabled
+                      ? `${id}-hint ${id}-address`
+                      : `${id}-text ${id}-address`}
+                    aria-disabled={option.disabled}
+                    aria-labelledby="{id}-title"
+                    bind:this={nameOptionElements[option.type]}
+                    class="operation__name-option-body"
+                    on:click={() => pickNameAddress(option.type)}
+                    on:keydown={(event) =>
+                      handleNameOptionKeyDown(event, option.type)}
+                    role="radio"
+                    tabindex={isPicked ? 0 : -1}
+                  >
+                    {@render optionText()}
+                  </div>
+                {:else}
+                  <div class="operation__name-option-body">
+                    {@render optionText()}
+                  </div>
+                {/if}
+                {#if option.disabled}
+                  <p class="operation__name-hint" id="{id}-hint">
+                    Not enough shielded DUSK ·
+                    {#if canShield}
+                      <AppAnchor href="/dashboard/allocate"
+                        >Shield first</AppAnchor
+                      >
+                    {:else}
+                      Shield first
+                    {/if}
+                  </p>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {:else if nameLookup?.error}
+          {@const [title, text] = nameErrors[nameLookup.error](nameLookup.name)}
+          <Banner variant="error" {title}>
+            <p>{text}</p>
+            {#if nameLookup.error === "lookup-failed"}
+              <Button
+                size="small"
+                variant="tertiary"
+                on:click={() => lookUpName(recipientName)}
+                text="TRY AGAIN"
+              />
+            {/if}
+          </Banner>
+        {:else if nameLookup}
+          <p>Looking up {nameLookup.name}…</p>
+        {/if}
 
         {#if isRecipientBlocklisted}
           <Banner variant="error" title="Blocked recipient address">
@@ -255,7 +584,8 @@
           </Banner>
         {/if}
 
-        {#if addressInfo.type === "account"}
+        <!-- A name's options say whether the transfer is public or shielded. -->
+        {#if !recipientName && addressInfo.type === "account"}
           <Banner title="Public account detected" variant="info">
             <p>
               This transaction will be public and sent from your <strong
@@ -457,8 +787,31 @@
             <Icon path={mdiWalletOutline} />
             <span>To</span>
           </dt>
-          <dd class="operation__review-address">
-            <span>{sendToAddress}</span>
+          {#if nameLookup?.[nameAddressType]}
+            <dd class="operation__review-name">{nameLookup.name}</dd>
+          {/if}
+          <dd
+            class="operation__review-address"
+            class:operation__review-address--with-name={nameLookup?.[
+              nameAddressType
+            ]}
+          >
+            <span>{recipientAddress}</span>
+          </dd>
+        </dl>
+
+        <dl class="operation__review-transaction">
+          <dt class="review-transaction__label">
+            <span>Type</span>
+          </dt>
+          <dd class="operation__review-type">
+            {#if addressInfo.type === "address"}
+              <Badge text="SHIELDED" />
+              <span>Private</span>
+            {:else}
+              <Badge text="PUBLIC" />
+              <span>Visible on chain</span>
+            {/if}
           </dd>
         </dl>
 
@@ -481,7 +834,7 @@
       <OperationResult
         errorMessage="Transaction failed"
         operation={execute(
-          sendToAddress,
+          recipientAddress,
           sendAmountInLux,
           transactionMemo,
           gasPrice,
@@ -525,6 +878,18 @@
       line-break: anywhere;
     }
 
+    /* Shown with a name, the address gives way to it. */
+    &__review-address--with-name {
+      color: var(--muted-color);
+      font-size: 0.8125rem;
+    }
+
+    &__review-name {
+      font-size: 1.125rem;
+      font-weight: 500;
+      overflow-wrap: anywhere;
+    }
+
     &__address-wrapper,
     &__amount-wrapper,
     &__input-wrapper {
@@ -546,6 +911,103 @@
 
     &__review-amount {
       justify-content: flex-start;
+    }
+
+    &__review-type {
+      display: flex;
+      align-items: baseline;
+      gap: var(--small-gap);
+      font-size: 0.875em;
+      line-height: 1.4;
+    }
+
+    &__name-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625em;
+    }
+
+    &__name-option {
+      border: 1px solid var(--surface-border-color);
+      border-radius: var(--control-border-radius-size);
+
+      &:focus-within {
+        box-shadow: 0 0 0 2px var(--focus-ring-color);
+      }
+    }
+
+    &__name-option--picked {
+      border-color: var(--primary-color);
+      background-color: var(--non-button-control-bg-color);
+    }
+
+    &__name-option-body {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      outline: none;
+
+      &[role="radio"] {
+        cursor: pointer;
+      }
+    }
+
+    &__name-option--disabled &__name-option-body {
+      opacity: 0.5;
+      /* Its hint, below, stands in for its line. */
+      padding-bottom: 0;
+
+      &[role="radio"] {
+        cursor: not-allowed;
+      }
+    }
+
+    &__name-option-mark {
+      flex-shrink: 0;
+      width: 1rem;
+      height: 1rem;
+      margin-top: 0.2rem;
+      border: 0.125rem solid var(--checkbox-control-border-color);
+      border-radius: 50%;
+    }
+
+    &__name-option--picked &__name-option-mark {
+      background-color: var(--checkbox-control-checked-bg-color);
+      box-shadow: inset 0 0 0 0.15rem var(--non-button-control-bg-color);
+    }
+
+    &__name-option-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25em;
+      min-width: 0;
+      font-size: 0.875em;
+      line-height: 1.4;
+    }
+
+    &__name-option-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      column-gap: 0.5em;
+      font-size: 1rem;
+
+      & samp {
+        color: var(--muted-color);
+        font-family: var(--mono-font-family);
+        font-size: 0.75rem;
+      }
+    }
+
+    &__name-hint {
+      font-size: 0.875em;
+      line-height: 1.4;
+    }
+
+    &__name-option &__name-hint {
+      /* In line with the option's text, past its radio mark. */
+      padding: 0.25em 1rem 0.75rem 2.75rem;
     }
 
     :global(&__review-notice) {

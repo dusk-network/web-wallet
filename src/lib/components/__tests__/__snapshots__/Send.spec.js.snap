@@ -111,7 +111,7 @@ exports[`Send > Address step > should display a warning if the address input is 
         class="operation__address-wrapper svelte-x7e9dl"
       >
         <p>
-          Address
+          Address or .dusk name
         </p>
          
         <button
@@ -131,11 +131,13 @@ exports[`Send > Address step > should display a warning if the address input is 
        
       <!---->
       <textarea
-        aria-label="Recipient address"
+        aria-label="Recipient address or .dusk name"
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
       
+      <!---->
+       
       <!---->
        
       <!---->
@@ -410,7 +412,7 @@ exports[`Send > Address step > should display a warning if the address input is 
         class="operation__address-wrapper svelte-x7e9dl"
       >
         <p>
-          Address
+          Address or .dusk name
         </p>
          
         <button
@@ -430,11 +432,13 @@ exports[`Send > Address step > should display a warning if the address input is 
        
       <!---->
       <textarea
-        aria-label="Recipient address"
+        aria-label="Recipient address or .dusk name"
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
       
+      <!---->
+       
       <!---->
        
       <!---->
@@ -741,7 +745,7 @@ exports[`Send > Address step > should render the Send component Address step 1`]
         class="operation__address-wrapper svelte-x7e9dl"
       >
         <p>
-          Address
+          Address or .dusk name
         </p>
          
         <button
@@ -761,11 +765,13 @@ exports[`Send > Address step > should render the Send component Address step 1`]
        
       <!---->
       <textarea
-        aria-label="Recipient address"
+        aria-label="Recipient address or .dusk name"
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
       
+      <!---->
+       
       <!---->
        
       <!---->
@@ -1429,12 +1435,43 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           </span>
         </dt>
          
+        <!---->
+         
         <dd
           class="operation__review-address svelte-x7e9dl"
         >
           <span>
             47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnMM
           </span>
+        </dd>
+      </dl>
+       
+      <dl
+        class="operation__review-transaction svelte-x7e9dl"
+      >
+        <dt
+          class="review-transaction__label svelte-x7e9dl"
+        >
+          <span>
+            Type
+          </span>
+        </dt>
+         
+        <dd
+          class="operation__review-type svelte-x7e9dl"
+        >
+          <!---->
+          <span
+            class="dusk-badge dusk-badge--variant-neutral"
+          >
+            SHIELDED
+          </span>
+          <!---->
+           
+          <span>
+            Private
+          </span>
+          <!---->
         </dd>
       </dl>
        

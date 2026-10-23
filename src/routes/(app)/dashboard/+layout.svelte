@@ -8,6 +8,7 @@
     mdiTimerSand,
   } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
+  import { getPrimaryName } from "$lib/dusk-domains";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import {
     AddressPicker,
@@ -15,6 +16,7 @@
     Balance,
     SyncBar,
   } from "$lib/components";
+  import { makeNodeUrl } from "$lib/url";
 
   /** @type {import('./$types').LayoutData} */
   export let data;
@@ -39,14 +41,24 @@
   });
 
   const { currency, language } = $settingsStore;
-  const { networkName } = $networkStore;
 
   const scrollToTop = () => {
     scrollContainer.scrollTo(0, 0);
   };
 
+  /**
+   * Looks up the verified `.dusk` names of public accounts on the
+   * network, through the wallet's own node as the send page does.
+   *
+   * @param {string} network
+   * @returns {(account: string) => Promise<string>}
+   */
+  const lookUpNamesOn = (network) => (account) =>
+    getPrimaryName(account, network, makeNodeUrl().origin);
+
   afterNavigate(scrollToTop);
 
+  $: ({ networkName } = $networkStore);
   $: ({ balance, currentProfile, profiles, syncStatus } = $walletStore);
   $: if (syncStatus.isInProgress) {
     iconVariant = "warning";
@@ -86,6 +98,7 @@
 
     <AddressPicker
       {currentProfile}
+      getName={lookUpNamesOn(networkName)}
       {profiles}
       on:setCurrentProfile={(event) => setCurrentProfile(event.detail.profile)}
     />
