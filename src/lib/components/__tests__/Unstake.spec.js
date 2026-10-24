@@ -9,6 +9,7 @@ import {
 } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
+import { settingsStore } from "$lib/stores";
 
 import { Unstake } from "..";
 import { mdiDatabaseArrowDownOutline, mdiGiftOpenOutline } from "@mdi/js";
@@ -55,6 +56,7 @@ describe("Unstake", () => {
   afterEach(() => {
     cleanup();
     baseProps.execute.mockClear();
+    settingsStore.reset();
   });
 
   describe("Unstake operation", () => {
@@ -113,6 +115,52 @@ describe("Unstake", () => {
       ]);
       expect(container.querySelector("dt .dusk-icon")).toBeNull();
       expect(container.querySelector(".gas-fee")).toBeNull();
+    });
+
+    it("should hide the amount it starts at, all that is staked, while balances are hidden", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      const { container, getByRole } = render(Unstake, {
+        ...baseProps,
+        ...unstakeProps,
+      });
+      const amountInput = getByRole("spinbutton");
+
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(amountInput).toHaveValue(null);
+      expect(amountInput).toHaveAttribute("placeholder", "••••");
+      expect(amountInput).toHaveAccessibleDescription("hidden");
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      expect(getReviewAmounts(container)[0]).toStrictEqual([
+        "Unstake Amount",
+        formatter(luxToDusk(unstakeProps.maxWithdrawAmount)),
+      ]);
+    });
+
+    it("should show the amount once it's typed or set to the maximum, while balances are hidden", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      const { getByRole } = render(Unstake, { ...baseProps, ...unstakeProps });
+      const amountInput = getByRole("spinbutton");
+
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(amountInput).toHaveValue(null);
+
+      await fireEvent.input(amountInput, { target: { value: 100 } });
+
+      expect(amountInput).toHaveValue(100);
+      expect(amountInput).not.toHaveAccessibleDescription();
+
+      await fireEvent.click(getByRole("button", { name: "USE MAX" }));
+
+      expect(amountInput).toHaveValue(
+        luxToDusk(unstakeProps.maxWithdrawAmount)
+      );
     });
 
     it("should perform an ustake, give a success message and supply a link to see the transaction in the explorer", async () => {

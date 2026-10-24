@@ -142,7 +142,17 @@ exports[`Allocate > should render the allocation page 1`] = `
               <br />
                
               <small>
-                (0 spendable out of 0 total)
+                (
+                <!---->
+                0
+                
+                <!---->
+                 spendable out of 
+                <!---->
+                0
+                
+                <!---->
+                 total)
               </small>
             </p>
              
@@ -196,6 +206,8 @@ exports[`Allocate > should render the allocation page 1`] = `
               
               <!---->
             </div>
+             
+            <!---->
           </fieldset>
            
           <div

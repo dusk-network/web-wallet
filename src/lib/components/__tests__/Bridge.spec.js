@@ -5,8 +5,20 @@ import {
   duskToLux,
   luxToDusk,
 } from "$lib/dusk/currency";
+import { settingsStore } from "$lib/stores";
 
 import { Bridge } from "..";
+
+const { pendingDepositAmountLux } = vi.hoisted(() => ({
+  pendingDepositAmountLux: vi.fn(() => 0n),
+}));
+
+vi.mock("$lib/bridge/depositActivity", async (importOriginal) => ({
+  .../** @type {typeof import("$lib/bridge/depositActivity")} */ (
+    await importOriginal()
+  ),
+  pendingDepositAmountLux,
+}));
 
 vi.mock("$lib/web3/walletConnection", async () => {
   const { readable } = await import("svelte/store");
@@ -64,7 +76,11 @@ describe("Bridge", () => {
   };
   const fee = baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
 
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    pendingDepositAmountLux.mockReset();
+    settingsStore.reset();
+  });
 
   it("should show the amount, the network fee and the total when reviewing a deposit", async () => {
     const { container, getByRole } = render(Bridge, baseProps);
@@ -93,6 +109,28 @@ describe("Bridge", () => {
 
     expect(getReviewAmounts(container)).toStrictEqual([
       ["Amount", formatter(2.5)],
+    ]);
+  });
+
+  it("should hide the DuskDS and DuskEVM balances while balances are hidden, but not the Review amounts", async () => {
+    pendingDepositAmountLux.mockReturnValue(1_500_000_000n);
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    const { container, getByRole } = render(Bridge, baseProps);
+
+    expect(
+      Array.from(container.querySelectorAll(".balances__balance"), (balance) =>
+        balance.textContent?.replace(/\s+/g, " ").trim()
+      )
+    ).toStrictEqual(["•••• hidden", "•••• hidden + •••• hidden incoming"]);
+
+    await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(getReviewAmounts(container)).toStrictEqual([
+      ["Amount", formatter(2.5)],
+      ["Network fee (max)", formatter(luxToDusk(fee))],
+      ["Total (max)", formatter(luxToDusk(duskToLux(2.5) + fee))],
     ]);
   });
 });
