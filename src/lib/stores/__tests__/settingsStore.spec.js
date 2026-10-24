@@ -115,6 +115,21 @@ describe("Settings store", () => {
       expect(localStorageSettings).toStrictEqual(expectedSettings);
     });
 
+    it("should remember hidden balances, which are shown by default and again after a reset", async () => {
+      expect(settingsStoreContent.hideBalances).toBe(false);
+
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+      vi.resetModules();
+
+      const reloadedStore = (await import("../settingsStore")).default;
+
+      expect(get(reloadedStore).hideBalances).toBe(true);
+
+      reloadedStore.reset();
+
+      expect(get(reloadedStore).hideBalances).toBe(false);
+    });
+
     it("should expose a method to reset the store to its initial state", () => {
       const newState = {
         ...settingsStoreContent,
@@ -137,6 +152,7 @@ describe("Settings store", () => {
         darkMode: !settingsStoreContent.darkMode,
         dashboardTransactionLimit:
           settingsStoreContent.dashboardTransactionLimit + 1,
+        hideBalances: !settingsStoreContent.hideBalances,
         hideStakingNotice: !settingsStoreContent.hideStakingNotice,
         language: "FAKE LANGUAGE",
         userId: "FAKE USER ID",

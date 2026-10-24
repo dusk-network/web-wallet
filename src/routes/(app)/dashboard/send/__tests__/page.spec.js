@@ -1,8 +1,10 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { get } from "svelte/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
+import { settingsStore } from "$lib/stores";
 
 import SendPage from "../+page.svelte";
 
@@ -42,6 +44,7 @@ describe("Send page", () => {
   afterEach(() => {
     cleanup();
     resolveDuskName.mockReset();
+    settingsStore.reset();
   });
 
   afterAll(() => {
@@ -119,5 +122,49 @@ describe("Send page", () => {
     await enter("");
 
     expect(spendable()).toHaveTextContent(formattedUnshielded);
+  });
+
+  it("should hide the spendable balance, but not the amount or the Review amounts, while balances are hidden", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    const { container, getByRole } = render(SendPage);
+    const { gasLimit, gasPrice } = get(settingsStore);
+    const fee = gasLimit * gasPrice;
+    const maxAmount = luxToDusk(balance.unshielded.value - fee);
+    const spendable = container.querySelector(".contract-statuses__value");
+
+    expect(spendable).toHaveTextContent(/^•••• hidden$/);
+    expect(container).not.toHaveTextContent(formattedUnshielded);
+
+    await fireEvent.input(getByRole("textbox"), {
+      target: {
+        value:
+          "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff",
+      },
+    });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    const amountInput = getByRole("spinbutton");
+
+    await fireEvent.input(amountInput, { target: { value: 10 } });
+
+    expect(amountInput).toHaveValue(10);
+
+    await fireEvent.click(getByRole("button", { name: "USE MAX" }));
+
+    expect(amountInput).toHaveValue(maxAmount);
+
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(
+      Array.from(container.querySelectorAll(".review-amount__value"), (value) =>
+        value.textContent?.trim()
+      )
+    ).toStrictEqual([
+      formatter(maxAmount),
+      formatter(luxToDusk(fee)),
+      formattedUnshielded,
+    ]);
+    expect(spendable).toHaveTextContent(/^•••• hidden$/);
   });
 });

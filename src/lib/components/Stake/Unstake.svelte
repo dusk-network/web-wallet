@@ -4,9 +4,11 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { fade } from "svelte/transition";
 
-  import { MESSAGES } from "$lib/constants";
+  import { BALANCE_MASK, MESSAGES } from "$lib/constants";
   import { areValidGasSettings } from "$lib/contracts";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
+  import { randomUUID } from "$lib/dusk/string";
+  import { settingsStore } from "$lib/stores";
 
   import {
     AnchorButton,
@@ -73,6 +75,16 @@
    */
   let withdrawAmount = luxToDusk(maxWithdrawAmount);
 
+  /**
+   * Whether the user typed an amount or used the maximum. The amount
+   * starts at all they can withdraw, so while balances are hidden, it
+   * stays hidden until they do.
+   */
+  let isAmountChosen = false;
+
+  // What screen readers read with the amount while it's hidden.
+  const hiddenNoteId = `${randomUUID()}-hidden-note`;
+
   const steps = [{ label: "Amount" }, { label: "Review" }, { label: "Done" }];
 
   const dispatch = createEventDispatcher();
@@ -106,6 +118,14 @@
     }
 
     withdrawAmount = luxToDusk(maxWithdrawAmount);
+    isAmountChosen = true;
+  }
+
+  /** @param {Event} event */
+  function setWithdrawAmount(event) {
+    withdrawAmount = /** @type {HTMLInputElement} */ (event.currentTarget)
+      .valueAsNumber;
+    isAmountChosen = true;
   }
 
   onMount(() => {
@@ -113,6 +133,7 @@
   });
 
   $: withdrawAmountInLux = withdrawAmount ? duskToLux(withdrawAmount) : 0n;
+  $: isAmountHidden = $settingsStore.hideBalances && !isAmountChosen;
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
@@ -170,7 +191,10 @@
       <div class="operation__input-wrapper">
         <Textbox
           className="operation__input-field"
-          bind:value={withdrawAmount}
+          value={isAmountHidden ? "" : withdrawAmount}
+          placeholder={isAmountHidden ? BALANCE_MASK : undefined}
+          aria-describedby={isAmountHidden ? hiddenNoteId : undefined}
+          on:input={setWithdrawAmount}
           type="number"
           min={minStakeRequirement !== undefined
             ? maxWithdrawAmount - withdrawAmountInLux >= minStakeRequirement
@@ -184,6 +208,9 @@
           data-tooltip-text="DUSK"
           path={logo}
         />
+        {#if isAmountHidden}
+          <span hidden id={hiddenNoteId}>hidden</span>
+        {/if}
       </div>
 
       <GasSettings

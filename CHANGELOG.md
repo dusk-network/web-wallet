@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Send to the shielded address a `.dusk` name publishes [#965]
 - Show the profiles' verified `.dusk` names in the profile switcher and on the Receive page [#965]
 - Show on the Review step whether a transfer is public or shielded [#965]
+- Hide all balances behind •••• with an eye button next to the total balance, and remember the choice [#968]
 
 ### Changed
 
@@ -689,6 +690,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#953]: https://github.com/dusk-network/web-wallet/pull/953
 [#965]: https://github.com/dusk-network/web-wallet/issues/965
 [#966]: https://github.com/dusk-network/web-wallet/issues/966
+[#968]: https://github.com/dusk-network/web-wallet/issues/968
 
 <!-- VERSIONS -->
 

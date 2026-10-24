@@ -21,6 +21,7 @@
     AppAnchorButton,
     AppImage,
     ApproveMigration,
+    BalanceValue,
     Banner,
     ExecuteMigration,
   } from "$lib/components";
@@ -254,9 +255,11 @@
           <span>Loading...</span>
         {:else}
           <span
-            >{slashDecimals(
-              formatUnits(connectedWalletBalance ?? 0n, ercDecimals)
-            )}
+            ><BalanceValue
+              value={slashDecimals(
+                formatUnits(connectedWalletBalance ?? 0n, ercDecimals)
+              )}
+            />
             {selectedChain} DUSK</span
           >
         {/if}

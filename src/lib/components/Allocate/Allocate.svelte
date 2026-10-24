@@ -12,7 +12,11 @@
 
   import { areValidGasSettings } from "$lib/contracts";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
-  import { calculateAdaptiveCharCount, middleEllipsis } from "$lib/dusk/string";
+  import {
+    calculateAdaptiveCharCount,
+    middleEllipsis,
+    randomUUID,
+  } from "$lib/dusk/string";
   import { logo } from "$lib/dusk/icons";
   import {
     AnchorButton,
@@ -22,10 +26,15 @@
     Wizard,
     WizardStep,
   } from "$lib/dusk/components";
-  import { GasSettings, OperationResult, ReviewAmount } from "$lib/components";
-  import { walletStore } from "$lib/stores";
+  import {
+    BalanceValue,
+    GasSettings,
+    OperationResult,
+    ReviewAmount,
+  } from "$lib/components";
+  import { settingsStore, walletStore } from "$lib/stores";
   import { Gas } from "@dusk/w3sper";
-  import { MESSAGES } from "$lib/constants";
+  import { BALANCE_MASK, MESSAGES } from "$lib/constants";
   import Banner from "../Banner/Banner.svelte";
 
   /** @type {(amount: number) => string} */
@@ -59,6 +68,7 @@
     }
 
     hasInvalidInput = false;
+    typedAmount = event.target.name;
 
     const isShieldedAmount = event.target.name === "shielded-amount";
     shielded = isShieldedAmount
@@ -109,6 +119,17 @@
 
   let hasInvalidInput = false;
 
+  /**
+   * The amount the user last typed. While balances are hidden, it shows,
+   * and the other one, what is left of the balance, stays hidden.
+   *
+   * @type {string}
+   */
+  let typedAmount = "";
+
+  // What screen readers read with an amount field that is hidden.
+  const hiddenNoteId = `${randomUUID()}-hidden-note`;
+
   // Constant total
   const totalBalance = shieldedBalance.spendable + unshieldedBalance;
 
@@ -122,6 +143,10 @@
   // Derived number states for UI Inputs
   $: shieldedNumber = luxToDusk(shielded);
   $: unshieldedNumber = luxToDusk(unshielded);
+
+  $: ({ hideBalances } = $settingsStore);
+  $: isShieldedHidden = hideBalances && typedAmount !== "shielded-amount";
+  $: isUnshieldedHidden = hideBalances && typedAmount !== "unshielded-amount";
 
   $: isShielding = difference > 0n;
   $: amount = isShielding ? difference : -difference;
@@ -179,7 +204,9 @@
           <div class="operation__input-wrapper">
             <Textbox
               className="operation__input-field"
-              value={unshieldedNumber}
+              value={isUnshieldedHidden ? "" : unshieldedNumber}
+              placeholder={isUnshieldedHidden ? BALANCE_MASK : undefined}
+              aria-describedby={isUnshieldedHidden ? hiddenNoteId : undefined}
               required
               type="number"
               max={luxToDusk(totalBalance)}
@@ -202,10 +229,11 @@
           <p class="operation__label">
             Shielded<br />
             <small
-              >({formatUnits(shieldedBalance.spendable, 9)} spendable out of {formatUnits(
-                shieldedBalance.value,
-                9
-              )} total)</small
+              >(<BalanceValue
+                value={formatUnits(shieldedBalance.spendable, 9)}
+              />
+              spendable out of
+              <BalanceValue value={formatUnits(shieldedBalance.value, 9)} /> total)</small
             >
           </p>
 
@@ -220,7 +248,9 @@
           <div class="operation__input-wrapper">
             <Textbox
               className="operation__input-field"
-              value={shieldedNumber}
+              value={isShieldedHidden ? "" : shieldedNumber}
+              placeholder={isShieldedHidden ? BALANCE_MASK : undefined}
+              aria-describedby={isShieldedHidden ? hiddenNoteId : undefined}
               required
               type="number"
               step="0.000000001"
@@ -236,6 +266,9 @@
               path={logo}
             />
           </div>
+          {#if hideBalances}
+            <span hidden id={hiddenNoteId}>hidden</span>
+          {/if}
         </fieldset>
 
         <GasSettings

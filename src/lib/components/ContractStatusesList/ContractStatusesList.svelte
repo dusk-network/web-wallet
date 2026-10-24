@@ -3,19 +3,23 @@
 <script>
   import { Icon } from "$lib/dusk/components";
   import { logo } from "$lib/dusk/icons";
+  import { BalanceValue } from "$lib/components";
 
   /** @type {ContractStatus[]} */
   export let statuses;
+
+  /** @type {(status: ContractStatus) => status is { label: string, value: string }} */
+  const hasValue = (status) => status.value !== null;
 </script>
 
 <div class="contract-statuses">
   <dl class="contract-statuses__list">
-    {#each statuses.filter((status) => status.value !== null) as status (status.label)}
+    {#each statuses.filter(hasValue) as status (status.label)}
       <dt class="contract-statuses__label">
         {status.label}
       </dt>
       <dd class="contract-statuses__value">
-        <span>{status.value}</span>
+        <span><BalanceValue value={status.value} /></span>
         <Icon
           className="contract-statuses__icon"
           path={logo}

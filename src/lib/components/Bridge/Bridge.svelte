@@ -22,6 +22,7 @@
   } from "$lib/dusk/components";
   import {
     AppAnchorButton,
+    BalanceValue,
     Banner,
     DepositResult,
     GasSettings,
@@ -302,18 +303,22 @@
     <dl class="balances">
       <dt class="balances__token">DuskDS</dt>
       <dd class="balances__balance">
-        {formatter(luxToDusk(unshieldedBalance))}
+        <BalanceValue value={formatter(luxToDusk(unshieldedBalance))} />
       </dd>
       <dt class="balances__token">DuskEVM</dt>
       <dd class="balances__balance">
         {#if evmDuskBalance}
-          {formatter(luxToDusk(evmDuskBalance.value / EVM_TO_LUX_SCALE_FACTOR))}
+          <BalanceValue
+            value={formatter(
+              luxToDusk(evmDuskBalance.value / EVM_TO_LUX_SCALE_FACTOR)
+            )}
+          />
         {:else}
           <Throbber size={16} />
         {/if}
         {#if incomingDepositLux > 0n}
           <small>
-            + {formatter(luxToDusk(incomingDepositLux))} incoming
+            + <BalanceValue value={formatter(luxToDusk(incomingDepositLux))} /> incoming
           </small>
         {/if}
       </dd>
