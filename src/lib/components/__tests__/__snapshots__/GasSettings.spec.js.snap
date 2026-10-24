@@ -11,27 +11,17 @@ exports[`GasSettings > renders the GasSettings component closed 1`] = `
       class="gas-fee svelte-9uj43"
     >
       <span>
-        Fee:
+        Network fee (max)
       </span>
        
       <div
         class="gas-fee__amount svelte-9uj43"
       >
-        <div
+        <span
           class="gas-fee__amount-value svelte-9uj43"
         >
-          <span
-            class="svelte-9uj43"
-          >
-            max
-          </span>
-           
-          <span
-            class="svelte-9uj43"
-          >
-            0.100000000
-          </span>
-        </div>
+          0.100000000
+        </span>
          
         <!---->
         <svg
@@ -82,27 +72,17 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
       class="gas-fee svelte-9uj43"
     >
       <span>
-        Fee:
+        Network fee (max)
       </span>
        
       <div
         class="gas-fee__amount svelte-9uj43"
       >
-        <div
+        <span
           class="gas-fee__amount-value svelte-9uj43"
         >
-          <span
-            class="svelte-9uj43"
-          >
-            max
-          </span>
-           
-          <span
-            class="svelte-9uj43"
-          >
-            0.100000000
-          </span>
-        </div>
+          0.100000000
+        </span>
          
         <!---->
         <svg

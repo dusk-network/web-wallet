@@ -40,6 +40,17 @@ vi.mock("qr-scanner", () => ({
   },
 }));
 
+/**
+ * The Review step's amounts, as their labels and values.
+ *
+ * @param {HTMLElement} container
+ */
+const getReviewAmounts = (container) =>
+  Array.from(container.querySelectorAll(".review-amount"), (row) => [
+    row.querySelector("dt")?.textContent,
+    row.querySelector("dd")?.textContent?.trim(),
+  ]);
+
 describe("Send", () => {
   const formatter = createCurrencyFormatter("en", "DUSK", 9);
   const lastTxId = "some-id";
@@ -424,17 +435,21 @@ describe("Send", () => {
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      const value = getAsHTMLElement(
-        container,
-        ".operation__review-amount span"
-      );
+      const fee =
+        baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
       const key = getAsHTMLElement(
         container,
         ".operation__review-address span"
       );
       const memo = getAsHTMLElement(container, ".operation__review-memo span");
 
-      expect(value.textContent).toBe(baseProps.formatter(amount));
+      expect(getReviewAmounts(container)).toStrictEqual([
+        ["Amount", formatter(amount)],
+        ["Network fee (max)", formatter(luxToDusk(fee))],
+        ["Total (max)", formatter(luxToDusk(duskToLux(amount) + fee))],
+      ]);
+      expect(container.querySelector("dt .dusk-icon")).toBeNull();
+      expect(container.querySelector(".gas-fee")).toBeNull();
       expect(key.textContent).toBe(shieldedAddress);
       expect(key.parentElement).not.toHaveClass(
         "operation__review-address--with-name"

@@ -23,14 +23,13 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     AppAnchor,
-    GasFee,
     GasSettings,
     OperationResult,
+    ReviewAmount,
   } from "$lib/components";
 
   import { WarningCard } from "$lib/containers/Cards";
 
-  import StakeOverview from "./StakeOverview.svelte";
   import Banner from "../Banner/Banner.svelte";
 
   /** @type {(...args: any[]) => Promise<string>} */
@@ -299,8 +298,15 @@
       }}
     >
       <div in:fade|global class="operation__stake">
-        <StakeOverview label="Amount" value={formatter(stakeAmount)} />
-        <GasFee {formatter} fee={maxGasFee} />
+        <ReviewAmount label="Amount" value={formatter(stakeAmount)} />
+        <ReviewAmount
+          label="Network fee (max)"
+          value={formatter(luxToDusk(maxGasFee))}
+        />
+        <ReviewAmount
+          label="Total (max)"
+          value={formatter(luxToDusk(totalAmount))}
+        />
       </div>
     </WizardStep>
 

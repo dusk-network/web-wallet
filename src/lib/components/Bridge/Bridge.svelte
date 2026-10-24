@@ -24,9 +24,9 @@
     AppAnchorButton,
     Banner,
     DepositResult,
-    GasFee,
     GasSettings,
     OperationResult,
+    ReviewAmount,
   } from "$lib/components";
   import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
   import { logo } from "$lib/dusk/icons";
@@ -427,23 +427,10 @@
             text="REVIEW TRANSACTION"
             variant="warning"
           />
-          <dl class="operation__review-transaction">
-            <dt class="review-transaction__label">
-              <Icon path={mdiArrowUpBoldBoxOutline} />
-              <span>Amount:</span>
-            </dt>
-            <dd class="review-transaction__value operation__review-amount">
-              <span>
-                {`${formatter(luxToDusk(amountLux))} DUSK`}
-              </span>
-              <Icon
-                className="dusk-amount__icon"
-                path={logo}
-                data-tooltip-id="main-tooltip"
-                data-tooltip-text="DUSK"
-              />
-            </dd>
-          </dl>
+          <ReviewAmount
+            label="Amount"
+            value={formatter(luxToDusk(amountLux))}
+          />
           <dl class="operation__review-transaction">
             <dt class="review-transaction__label">
               <span>From</span>
@@ -465,7 +452,14 @@
             </dd>
           </dl>
           {#if isDepositing}
-            <GasFee {formatter} {fee} />
+            <ReviewAmount
+              label="Network fee (max)"
+              value={formatter(luxToDusk(fee))}
+            />
+            <ReviewAmount
+              label="Total (max)"
+              value={formatter(luxToDusk(totalDepositLux))}
+            />
           {/if}
           <Banner
             title={`The fee is paid from your ${isDepositing ? "public" : "DuskEVM"} balance.`}
@@ -607,26 +601,16 @@
       gap: 0.625em;
     }
 
-    &__review-amount {
-      justify-content: flex-start;
-    }
-
     &__bridge {
       display: flex;
       flex-direction: column;
       gap: 1.2em;
     }
 
-    .review-transaction__label,
-    .review-transaction__value {
+    .review-transaction__label {
       display: inline-flex;
       align-items: center;
       gap: var(--small-gap);
-    }
-
-    .review-transaction__value {
-      font-family: var(--mono-font-family);
-      font-weight: 500;
     }
 
     :global(&__review-notice) {

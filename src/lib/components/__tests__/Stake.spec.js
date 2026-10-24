@@ -24,6 +24,17 @@ import { Stake } from "..";
 const fireInput = (input, value) =>
   fireEvent.input(input, { target: { value } });
 
+/**
+ * The Review step's amounts, as their labels and values.
+ *
+ * @param {HTMLElement} container
+ */
+const getReviewAmounts = (container) =>
+  Array.from(container.querySelectorAll(".review-amount"), (row) => [
+    row.querySelector("dt")?.textContent,
+    row.querySelector("dd")?.textContent?.trim(),
+  ]);
+
 vi.mock("$lib/dusk/string", async (importOriginal) => {
   /** @type {typeof import("$lib/dusk/string")} */
   const original = await importOriginal();
@@ -182,8 +193,20 @@ describe("Stake", () => {
 
   it("should render the review step of the Stake component", async () => {
     const { container, getByRole, queryByText } = render(Stake, baseOptions);
+    const fee = baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(getReviewAmounts(container)).toStrictEqual([
+      ["Amount", formatter(luxToDusk(baseProps.minStakeRequirement))],
+      ["Network fee (max)", formatter(luxToDusk(fee))],
+      [
+        "Total (max)",
+        formatter(luxToDusk(baseProps.minStakeRequirement + fee)),
+      ],
+    ]);
+    expect(container.querySelector("dt .dusk-icon")).toBeNull();
+    expect(container.querySelector(".gas-fee")).toBeNull();
 
     expect(
       container.querySelector(

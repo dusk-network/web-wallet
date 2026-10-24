@@ -19,12 +19,11 @@
   } from "$lib/dusk/components";
   import {
     Banner,
-    GasFee,
     GasSettings,
     OperationResult,
+    ReviewAmount,
   } from "$lib/components";
 
-  import StakeOverview from "./StakeOverview.svelte";
   import { logo } from "$lib/dusk/icons";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { mdiAlertOutline } from "@mdi/js";
@@ -239,11 +238,14 @@
       }}
     >
       <div in:fade|global class="operation__unstake">
-        <StakeOverview
+        <ReviewAmount
           label={operationOverviewLabel}
           value={formatter(withdrawAmount)}
         />
-        <GasFee {formatter} fee={maxGasFee} />
+        <ReviewAmount
+          label="Network fee (max)"
+          value={formatter(luxToDusk(maxGasFee))}
+        />
       </div>
     </WizardStep>
 

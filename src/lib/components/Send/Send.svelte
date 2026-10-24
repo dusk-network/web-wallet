@@ -3,11 +3,7 @@
 <script>
   import { fade } from "svelte/transition";
   import { createEventDispatcher, onMount, tick } from "svelte";
-  import {
-    mdiAlertOutline,
-    mdiArrowUpBoldBoxOutline,
-    mdiWalletOutline,
-  } from "@mdi/js";
+  import { mdiAlertOutline, mdiArrowUpBoldBoxOutline } from "@mdi/js";
   import { areValidGasSettings } from "$lib/contracts";
   import { isDuskName } from "$lib/dusk-domains";
   import { getAddressInfo } from "$lib/wallet";
@@ -35,9 +31,9 @@
   import {
     AppAnchor,
     Banner,
-    GasFee,
     GasSettings,
     OperationResult,
+    ReviewAmount,
     ScanQR,
   } from "$lib/components";
   import { MESSAGES } from "$lib/constants";
@@ -731,25 +727,10 @@
       }}
     >
       <div in:fade|global class="operation__send">
-        <dl class="operation__review-transaction">
-          <dt class="review-transaction__label">
-            <Icon path={mdiArrowUpBoldBoxOutline} />
-            <span>Amount</span>
-          </dt>
-          <dd class="review-transaction__value operation__review-amount">
-            <span>{formatter(sendAmount)}</span>
-            <Icon
-              className="dusk-amount__icon"
-              path={logo}
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="DUSK"
-            />
-          </dd>
-        </dl>
+        <ReviewAmount label="Amount" value={formatter(sendAmount)} />
 
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">
-            <Icon path={mdiWalletOutline} />
             <span>To</span>
           </dt>
           {#if nameLookup?.[nameAddressType]}
@@ -791,7 +772,14 @@
           </dl>
         {/if}
 
-        <GasFee {formatter} fee={maxGasFee} />
+        <ReviewAmount
+          label="Network fee (max)"
+          value={formatter(luxToDusk(maxGasFee))}
+        />
+        <ReviewAmount
+          label="Total (max)"
+          value={formatter(luxToDusk(totalAmount))}
+        />
       </div>
     </WizardStep>
     <!-- Result Step -->
@@ -872,10 +860,6 @@
       display: flex;
       flex-direction: column;
       gap: 0.625em;
-    }
-
-    &__review-amount {
-      justify-content: flex-start;
     }
 
     &__review-type {
@@ -987,16 +971,10 @@
     }
   }
 
-  .review-transaction__label,
-  .review-transaction__value {
+  .review-transaction__label {
     display: inline-flex;
     align-items: center;
     gap: var(--small-gap);
-  }
-
-  .review-transaction__value {
-    font-family: var(--mono-font-family);
-    font-weight: 500;
   }
 
   :global(
