@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Give the address and the `.dusk` name on Receive their own copy buttons, replacing the Copy button [#965]
 - Shorten warnings and notes, cut text that repeats what's already on screen, and drop "(Default)" from the first profile [#966]
 - Name the public and shielded balances on the dashboard and Send, and show SCAN QR only with a camera [#966]
+- Show the balance card on the dashboard only [#966]
 
 ### Removed
 
