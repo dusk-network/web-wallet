@@ -416,7 +416,10 @@ describe("Send", () => {
   describe("Review step", () => {
     it("should render the Send component Review step", async () => {
       const amount = 2345;
-      const { container, getByRole, queryByText } = render(Send, baseProps);
+      const { container, getAllByRole, getByRole, queryByText } = render(
+        Send,
+        baseProps
+      );
       const addressInput = getByRole("textbox");
 
       await fireEvent.input(addressInput, {
@@ -449,6 +452,7 @@ describe("Send", () => {
         ["Total (max)", formatter(luxToDusk(duskToLux(amount) + fee))],
       ]);
       expect(container.querySelector("dt .dusk-icon")).toBeNull();
+      expect(getAllByRole("img", { name: "DUSK" })).toHaveLength(3);
       expect(container.querySelector(".gas-fee")).toBeNull();
       expect(key.textContent).toBe(shieldedAddress);
       expect(key.parentElement).not.toHaveClass(

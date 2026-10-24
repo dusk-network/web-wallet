@@ -20,7 +20,9 @@
   <dd class="review-amount__value">
     <span>{value}</span>
     <Icon
+      aria-label="DUSK"
       className="review-amount__icon"
+      role="img"
       data-tooltip-id="main-tooltip"
       data-tooltip-text="DUSK"
       path={logo}

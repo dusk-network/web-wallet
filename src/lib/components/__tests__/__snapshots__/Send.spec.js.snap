@@ -1248,10 +1248,11 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
            
           <!---->
           <svg
+            aria-label="DUSK"
             class="dusk-icon dusk-icon--size--default review-amount__icon"
             data-tooltip-id="main-tooltip"
             data-tooltip-text="DUSK"
-            role="graphics-symbol"
+            role="img"
             viewBox="0 0 24 24"
           >
             <path
@@ -1352,10 +1353,11 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
            
           <!---->
           <svg
+            aria-label="DUSK"
             class="dusk-icon dusk-icon--size--default review-amount__icon"
             data-tooltip-id="main-tooltip"
             data-tooltip-text="DUSK"
-            role="graphics-symbol"
+            role="img"
             viewBox="0 0 24 24"
           >
             <path
@@ -1384,10 +1386,11 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
            
           <!---->
           <svg
+            aria-label="DUSK"
             class="dusk-icon dusk-icon--size--default review-amount__icon"
             data-tooltip-id="main-tooltip"
             data-tooltip-text="DUSK"
-            role="graphics-symbol"
+            role="img"
             viewBox="0 0 24 24"
           >
             <path
