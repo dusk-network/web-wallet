@@ -79,6 +79,21 @@ describe("Settings", () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
+  it("should label its controls without colons, keep the gas reset button quiet, and link the wallet's issues", () => {
+    const { getByRole, getByText } = render(Settings, {});
+
+    expect(getByText("Price (lux)")).toBeInTheDocument();
+    expect(getByText("Gas limit")).toBeInTheDocument();
+    expect(getByText("Currency")).toBeInTheDocument();
+    expect(getByRole("button", { name: "Reset to defaults" })).toHaveClass(
+      "dusk-button--variant--tertiary"
+    );
+    expect(getByRole("link", { name: "GitHub" })).toHaveAttribute(
+      "href",
+      "https://github.com/dusk-network/web-wallet/issues"
+    );
+  });
+
   it("should show the wallet creation block height if it's greater than zero", () => {
     settingsStore.update((settings) => ({
       ...settings,

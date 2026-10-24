@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `@dusk/evm-sdk` beta [#946], [#948]
 - Show each profile's `.dusk` name, or its shortened public account, under its label in the profile bar and switcher [#965]
 - Give the address and the `.dusk` name on Receive their own copy buttons, replacing the Copy button [#965]
+- Shorten warnings and notes, cut text that repeats what's already on screen, and drop "(Default)" from the first profile [#966]
+- Name the public and shielded balances on the dashboard and Send, and show SCAN QR only with a camera [#966]
+- Show the balance card on the dashboard only [#966]
+- List the amount, network fee (max) and total (max) on Review in one style, without label icons [#966]
 
 ### Removed
 
@@ -684,6 +688,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#948]: https://github.com/dusk-network/web-wallet/issues/948
 [#953]: https://github.com/dusk-network/web-wallet/pull/953
 [#965]: https://github.com/dusk-network/web-wallet/issues/965
+[#966]: https://github.com/dusk-network/web-wallet/issues/966
 
 <!-- VERSIONS -->
 

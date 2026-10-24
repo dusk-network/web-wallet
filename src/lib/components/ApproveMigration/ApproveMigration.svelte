@@ -99,15 +99,12 @@
               <b>Migrate:</b> Transfer your DUSK tokens to the migration contract.
             </li>
           </ol>
-          <p>Both steps must be completed for a successful migration.</p>
         </div>
       </Banner>
-      <Banner title="Gas Fee Reminder" variant="warning">
-        <p>
-          Please ensure your wallet has sufficient funds to cover the gas fees
-          for the migration.
-        </p>
-      </Banner>
+      <Banner
+        title="Make sure the connected wallet can pay gas for both transactions."
+        variant="warning"
+      />
     </div>
   {:else if isLoading}
     <div class="migrate__approve-approval">

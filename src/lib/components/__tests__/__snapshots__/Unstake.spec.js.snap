@@ -51,7 +51,7 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -147,27 +147,17 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
           class="gas-fee svelte-9uj43"
         >
           <span>
-            Fee:
+            Network fee (max)
           </span>
            
           <div
             class="gas-fee__amount svelte-9uj43"
           >
-            <div
+            <span
               class="gas-fee__amount-value svelte-9uj43"
             >
-              <span
-                class="svelte-9uj43"
-              >
-                max
-              </span>
-               
-              <span
-                class="svelte-9uj43"
-              >
-                0.020000000
-              </span>
-            </div>
+              0.020000000
+            </span>
              
             <!---->
             <svg
@@ -341,7 +331,7 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -438,27 +428,17 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
           class="gas-fee svelte-9uj43"
         >
           <span>
-            Fee:
+            Network fee (max)
           </span>
            
           <div
             class="gas-fee__amount svelte-9uj43"
           >
-            <div
+            <span
               class="gas-fee__amount-value svelte-9uj43"
             >
-              <span
-                class="svelte-9uj43"
-              >
-                max
-              </span>
-               
-              <span
-                class="svelte-9uj43"
-              >
-                0.020000000
-              </span>
-            </div>
+              0.020000000
+            </span>
              
             <!---->
             <svg

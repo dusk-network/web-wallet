@@ -20,7 +20,7 @@ exports[`AddressPicker > renders the AddressPicker component 1`] = `
       <span
         class="address-picker__title"
       >
-        Profile 1 (Default)
+        Profile 1
       </span>
        
       <!---->

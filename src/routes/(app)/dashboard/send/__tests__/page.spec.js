@@ -56,13 +56,15 @@ describe("Send page", () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
-  it("should update the spendable amount passed to its child components when a `keyChange` event is fired", async () => {
+  it("should update the spendable amount passed to its child components, and say which balance it is, when a `keyChange` event is fired", async () => {
     const { container, getByRole } = render(SendPage);
     const addressTextbox = getByRole("textbox");
+    const label = () => container.querySelector(".contract-statuses__label");
 
     expect(
       container.querySelector(".contract-statuses__value")
     ).toHaveTextContent(formattedUnshielded);
+    expect(label()).toHaveTextContent(/^Spendable \(public\)$/);
 
     await fireEvent.input(addressTextbox, {
       target: { value: currentProfile.address.toString() },
@@ -71,6 +73,7 @@ describe("Send page", () => {
     expect(
       container.querySelector(".contract-statuses__value")
     ).toHaveTextContent(formattedShielded);
+    expect(label()).toHaveTextContent(/^Spendable \(shielded\)$/);
 
     await fireEvent.input(addressTextbox, {
       target: { value: currentProfile.account.toString() },
@@ -79,6 +82,7 @@ describe("Send page", () => {
     expect(
       container.querySelector(".contract-statuses__value")
     ).toHaveTextContent(formattedUnshielded);
+    expect(label()).toHaveTextContent(/^Spendable \(public\)$/);
   });
 
   it("should show the public spendable amount again when the recipient entered after a shielded one doesn't resolve, or is cleared", async () => {

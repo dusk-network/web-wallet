@@ -11,11 +11,9 @@
 </script>
 
 <div class="gas-fee">
-  <span>Fee:</span>
+  <span>Network fee (max)</span>
   <div class="gas-fee__amount">
-    <div class="gas-fee__amount-value">
-      <span>max</span> <span>{formatter(luxToDusk(fee))}</span>
-    </div>
+    <span class="gas-fee__amount-value">{formatter(luxToDusk(fee))}</span>
     <Icon
       className="dusk-amount__icon"
       path={logo}
@@ -41,12 +39,6 @@
 
     &__amount-value {
       font-weight: 500;
-      display: flex;
-      gap: var(--small-gap);
-
-      & > span:first-of-type {
-        font-weight: initial;
-      }
     }
   }
 

@@ -339,13 +339,10 @@
             <Icon path={mdiCheckDecagramOutline} size="large" />
             <p>Migration request accepted!</p>
           </div>
-          <Banner title="Migration Request Accepted" variant="info">
-            <p>
-              The migration request has now been accepted on chain. We will
-              process the request in the background. Receiving your DUSK might
-              take some time. Check your wallet balance again later.
-            </p>
-          </Banner>
+          <Banner
+            title="Your DUSK can take a while to arrive."
+            variant="info"
+          />
         </div>
       {/if}
     </div>
@@ -358,9 +355,7 @@
       on:click={() => modal.open()}
     />
   {:else if connectedWalletBalance === 0n}
-    <Banner variant="warning" title="No DUSK available">
-      <p>The connected wallet has no DUSK tokens available.</p>
-    </Banner>
+    <Banner variant="warning" title="The connected wallet has no DUSK." />
   {:else if !isMigrationInitialized && address}
     <Button
       text="INITIALIZE MIGRATION"

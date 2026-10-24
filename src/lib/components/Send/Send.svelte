@@ -3,11 +3,7 @@
 <script>
   import { fade } from "svelte/transition";
   import { createEventDispatcher, onMount, tick } from "svelte";
-  import {
-    mdiAlertOutline,
-    mdiArrowUpBoldBoxOutline,
-    mdiWalletOutline,
-  } from "@mdi/js";
+  import { mdiAlertOutline, mdiArrowUpBoldBoxOutline } from "@mdi/js";
   import { areValidGasSettings } from "$lib/contracts";
   import { isDuskName } from "$lib/dusk-domains";
   import { getAddressInfo } from "$lib/wallet";
@@ -35,9 +31,9 @@
   import {
     AppAnchor,
     Banner,
-    GasFee,
     GasSettings,
     OperationResult,
+    ReviewAmount,
     ScanQR,
   } from "$lib/components";
   import { MESSAGES } from "$lib/constants";
@@ -140,7 +136,7 @@
   const steps = [
     { label: "Address" },
     { label: "Amount" },
-    { label: "Overview" },
+    { label: "Review" },
     { label: "Done" },
   ];
   const dispatch = createEventDispatcher();
@@ -315,11 +311,11 @@
     ],
     "lookup-failed": (name) => [
       `Couldn't look up ${name}`,
-      "Check your connection and try again.",
+      "Check your connection.",
     ],
     "no-address": (name) => [
       `${name} has no address to send to`,
-      "Its owner needs to add a public account or a shielded address before it can receive DUSK.",
+      "Its owner needs to add one first.",
     ],
     "not-registered": (name) => [
       `${name} isn't registered`,
@@ -471,14 +467,17 @@
       <div in:fade|global class="operation__send">
         <div class="operation__address-wrapper">
           <p>Address or .dusk name</p>
-          <Button
-            disabled={!scanner}
-            size="small"
-            on:click={() => {
-              scanQrComponent.startScan();
-            }}
-            text="SCAN QR"
-          />
+          <!-- Only with a camera, which ScanQR looks for without asking
+            for permission. -->
+          {#if scanner}
+            <Button
+              size="small"
+              on:click={() => {
+                scanQrComponent.startScan();
+              }}
+              text="SCAN QR"
+            />
+          {/if}
         </div>
         <Textbox
           required
@@ -492,7 +491,7 @@
           {@const isChoice = nameOptions.length > 1}
           <p id="{nameOptionsId}-label">{nameLookup.name} points to</p>
           <!-- Radios only when there is a choice: a name's one address shows
-            in the same card, picked, as plain text. -->
+            in the same card as plain text, with no radio mark. -->
           <div
             aria-labelledby={isChoice ? `${nameOptionsId}-label` : undefined}
             class="operation__name-options"
@@ -502,7 +501,9 @@
               {@const id = `${nameOptionsId}-${option.type}`}
               {@const isPicked = option.type === nameAddressType}
               {#snippet optionText()}
-                <span class="operation__name-option-mark"></span>
+                {#if isChoice}
+                  <span class="operation__name-option-mark"></span>
+                {/if}
                 <span class="operation__name-option-text">
                   <span class="operation__name-option-title">
                     <strong id="{id}-title">{option.title}</strong>
@@ -522,6 +523,7 @@
                 class="operation__name-option"
                 class:operation__name-option--disabled={option.disabled}
                 class:operation__name-option--picked={isPicked}
+                class:operation__name-option--single={!isChoice}
               >
                 {#if isChoice}
                   <div
@@ -584,16 +586,6 @@
           </Banner>
         {/if}
 
-        <!-- A name's options say whether the transfer is public or shielded. -->
-        {#if !recipientName && addressInfo.type === "account"}
-          <Banner title="Public account detected" variant="info">
-            <p>
-              This transaction will be public and sent from your <strong
-                >public</strong
-              > account.
-            </p>
-          </Banner>
-        {/if}
         <ScanQR
           bind:this={scanQrComponent}
           bind:scanner
@@ -602,25 +594,11 @@
           }}
         />
         {#if addressInfo.isSelfReferential}
-          <Banner
-            variant="warning"
-            title="Self-referential transaction detected"
-          >
-            <p>
-              You are attempting to initiate a transaction with your own wallet
-              address as both the sender and the receiver. Self-referential
-              transactions may not have meaningful purpose and will incur gas
-              fees.
-            </p>
-          </Banner>
+          <Banner variant="warning" title="This is your own address." />
         {/if}
         {#if isSendingToBep20Bridge}
-          <Banner variant="info" title="BEP20 bridge operation detected">
-            <p>
-              You are sending to the BEP20 bridge address. When using the memo
-              field, please enter a valid EVM address where you want to receive
-              your tokens on the destination network.
-            </p>
+          <Banner variant="info" title="BEP20 bridge address">
+            <p>In the memo, enter the EVM address that receives the tokens.</p>
           </Banner>
         {/if}
       </div>
@@ -691,8 +669,8 @@
           {#if isMemoValid === false}
             <Banner variant="error" title="Invalid EVM address format">
               <p>
-                For BEP20 bridge operations, EVM addresses must be 40
-                hexadecimal characters, optionally prefixed with "0x".
+                EVM addresses are 40 hexadecimal characters, optionally prefixed
+                with "0x".
               </p>
             </Banner>
           {/if}
@@ -720,26 +698,15 @@
         />
         {#if !isBalanceSufficientForGas}
           <Banner variant="error" title="Insufficient balance for gas fees">
-            <p>
-              Your current balance is too low to cover the required gas fees for
-              this transaction. Please deposit additional funds or reduce the
-              gas limit.
-            </p>
+            <p>Add funds or lower the gas limit.</p>
           </Banner>
         {:else if sendAmountInLux > maxSpendableAmount}
           <Banner variant="error" title="Amount exceeds available balance">
-            <p>
-              The amount you are trying to transfer exceeds the spendable
-              balance after accounting for gas fees. Please reduce the amount.
-            </p>
+            <p>Lower the amount to leave room for the fee.</p>
           </Banner>
         {:else if isSendingToBep20Bridge && memo.trim() === ""}
           <Banner variant="error" title="Memo required for bridge operation">
-            <p>
-              When sending to the BEP20 bridge, a memo containing a valid EVM
-              address is required to specify where you want to receive your
-              tokens on the destination network.
-            </p>
+            <p>Enter the EVM address that receives the tokens.</p>
           </Banner>
         {/if}
       </div>
@@ -760,31 +727,10 @@
       }}
     >
       <div in:fade|global class="operation__send">
-        <Badge
-          className="operation__review-notice"
-          text="REVIEW TRANSACTION"
-          variant="warning"
-        />
+        <ReviewAmount label="Amount" value={formatter(sendAmount)} />
 
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">
-            <Icon path={mdiArrowUpBoldBoxOutline} />
-            <span>Amount</span>
-          </dt>
-          <dd class="review-transaction__value operation__review-amount">
-            <span>{formatter(sendAmount)}</span>
-            <Icon
-              className="dusk-amount__icon"
-              path={logo}
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="DUSK"
-            />
-          </dd>
-        </dl>
-
-        <dl class="operation__review-transaction">
-          <dt class="review-transaction__label">
-            <Icon path={mdiWalletOutline} />
             <span>To</span>
           </dt>
           {#if nameLookup?.[nameAddressType]}
@@ -826,7 +772,14 @@
           </dl>
         {/if}
 
-        <GasFee {formatter} fee={maxGasFee} />
+        <ReviewAmount
+          label="Network fee (max)"
+          value={formatter(luxToDusk(maxGasFee))}
+        />
+        <ReviewAmount
+          label="Total (max)"
+          value={formatter(luxToDusk(totalAmount))}
+        />
       </div>
     </WizardStep>
     <!-- Result Step -->
@@ -907,10 +860,6 @@
       display: flex;
       flex-direction: column;
       gap: 0.625em;
-    }
-
-    &__review-amount {
-      justify-content: flex-start;
     }
 
     &__review-type {
@@ -1010,8 +959,9 @@
       padding: 0.25em 1rem 0.75rem 2.75rem;
     }
 
-    :global(&__review-notice) {
-      text-align: center;
+    /* A name's one address has no radio mark to pass. */
+    &__name-option--single &__name-hint {
+      padding-left: 1rem;
     }
 
     :global(.dusk-amount__icon) {
@@ -1021,16 +971,10 @@
     }
   }
 
-  .review-transaction__label,
-  .review-transaction__value {
+  .review-transaction__label {
     display: inline-flex;
     align-items: center;
     gap: var(--small-gap);
-  }
-
-  .review-transaction__value {
-    font-family: var(--mono-font-family);
-    font-weight: 500;
   }
 
   :global(

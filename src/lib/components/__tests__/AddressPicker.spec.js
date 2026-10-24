@@ -479,14 +479,13 @@ describe("AddressPicker", () => {
         getAsHTMLElement(container, ".address-picker__account")
       ).toHaveAttribute("title", currentProfile.account.toString());
 
-      // Should show "Profile X (Default)" format for first profile or "Profile X" for others
+      // "Profile X" for every profile, as the list names them.
       const profileIndex = profiles.indexOf(currentProfile) + 1;
-      const expectedText =
-        profileIndex === 1
-          ? `Profile ${profileIndex} (Default)`
-          : `Profile ${profileIndex}`;
 
-      expect(currentProfileDisplay).toHaveTextContent(expectedText);
+      expect(
+        getAsHTMLElement(container, ".address-picker__title")
+      ).toHaveTextContent(new RegExp(`^Profile ${profileIndex}$`));
+      expect(currentProfileDisplay).not.toHaveTextContent("(Default)");
     });
 
     it("should handle null currentProfile gracefully", () => {
@@ -559,7 +558,7 @@ describe("AddressPicker", () => {
       expect(renderedPicker).toBeInstanceOf(HTMLElement);
       expect(getName).toHaveBeenCalledExactlyOnceWith(firstAccount);
       expect(getTriggerLines(container)).toStrictEqual([
-        "Profile 1 (Default)",
+        "Profile 1",
         "alice.dusk",
       ]);
       expect(getTriggerName(container)).toHaveAttribute("title", "alice.dusk");
@@ -567,7 +566,7 @@ describe("AddressPicker", () => {
         "Select address profile"
       );
       expect(getTrigger(container)).toHaveAccessibleDescription(
-        "Profile 1 (Default) alice.dusk"
+        "Profile 1 alice.dusk"
       );
       expect(queryByText(firstAccount, { exact: false })).toBeNull();
       expect(container.querySelector(".address-picker__account")).toBeNull();
@@ -591,14 +590,14 @@ describe("AddressPicker", () => {
 
         expect(getTriggerName(container)).toBeNull();
         expect(getTriggerLines(container)).toStrictEqual([
-          "Profile 1 (Default)",
+          "Profile 1",
           shortenAddress(firstAccount),
         ]);
         expect(
           getAsHTMLElement(container, ".address-picker__account")
         ).toHaveAttribute("title", firstAccount);
         expect(getTrigger(container)).toHaveAccessibleDescription(
-          `Profile 1 (Default) ${firstAccount}`
+          `Profile 1 ${firstAccount}`
         );
       }
     );
@@ -658,7 +657,7 @@ describe("AddressPicker", () => {
       expect(queryByText("alice.dusk")).not.toBeInTheDocument();
       expect(getName).toHaveBeenCalledExactlyOnceWith(firstAccount);
       expect(getTriggerLines(container)).toStrictEqual([
-        "Profile 1 (Default)",
+        "Profile 1",
         shortenAddress(firstAccount),
       ]);
     });

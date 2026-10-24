@@ -63,6 +63,22 @@ describe("Balance", () => {
     ).toContain("33.33%");
   });
 
+  it("should name each balance next to its icon, before its percentage", () => {
+    const { container } = render(Balance, baseOptions);
+    const percentages = Array.from(
+      container.querySelectorAll(".dusk-balance__percentage"),
+      (percentage) =>
+        Array.from(percentage.children, (child) =>
+          child.tagName.toLowerCase() === "svg" ? "icon" : child.textContent
+        )
+    );
+
+    expect(percentages).toStrictEqual([
+      ["icon", "Public", "66.67%"],
+      ["icon", "Shielded", "33.33%"],
+    ]);
+  });
+
   it("should display the right percentage values when balance is zero", async () => {
     const options = {
       ...baseOptions,
