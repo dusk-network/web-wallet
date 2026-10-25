@@ -1318,7 +1318,9 @@ export async function loadDuskTransactionExecution(txHash) {
 /**
  * The gas to prove or finalize a withdrawal with. The Portal hands the gas it
  * has left to the withdrawal's own call, so finalizing adds the gas the
- * withdrawal asks for.
+ * withdrawal asks for. A withdrawal that needs more than the wallet's upper
+ * gas bound isn't sent: less gas could leave its call short, and finalizing
+ * can consume the withdrawal even when that call fails.
  *
  * @param {bigint} [withdrawalGasLimit]
  * @returns {Gas}
@@ -1327,10 +1329,13 @@ export function withdrawalGas(withdrawalGasLimit = 0n) {
   const { gasLimitUpper } = get(gasStore);
   const limit = WITHDRAWAL_GAS_LIMIT + withdrawalGasLimit;
 
-  return new Gas({
-    limit: limit < gasLimitUpper ? limit : gasLimitUpper,
-    price: get(settingsStore).gasPrice,
-  });
+  if (limit > gasLimitUpper) {
+    throw new Error(
+      "This withdrawal needs more gas than the wallet allows, so it wasn't sent."
+    );
+  }
+
+  return new Gas({ limit, price: get(settingsStore).gasPrice });
 }
 
 /**

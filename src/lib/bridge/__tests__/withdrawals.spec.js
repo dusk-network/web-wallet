@@ -47,9 +47,16 @@ describe("DuskEVM withdrawal helpers", () => {
   it("proves and finalizes withdrawals with a large gas limit, within the global bound", () => {
     expect(withdrawalGas()).toMatchObject({ limit: 50_000_000n, price: 1n });
     expect(withdrawalGas(519_542n)).toMatchObject({ limit: 50_519_542n });
-    expect(withdrawalGas(2_000_000_000n)).toMatchObject({
+    expect(withdrawalGas(950_000_000n)).toMatchObject({
       limit: 1_000_000_000n,
     });
+  });
+
+  it("refuses a withdrawal that needs more gas than the global bound, rather than sending it short", () => {
+    expect(() => withdrawalGas(950_000_001n)).toThrow(
+      "This withdrawal needs more gas than the wallet allows, so it wasn't sent."
+    );
+    expect(() => withdrawalGas(2_000_000_000n)).toThrow();
   });
 
   it("falls back to a positive game search depth for invalid env values", () => {
@@ -395,6 +402,19 @@ describe("DuskEVM withdrawal helpers", () => {
     expect(walletStore.finalizeDuskEvmWithdrawal).not.toHaveBeenCalled();
   });
 
+  it("doesn't submit a finalization that needs more gas than the global bound", async () => {
+    const { walletStore } = mockWithdrawalFinalization({
+      finalizePreflight: vi.fn().mockResolvedValue(undefined),
+      gasLimitUpper: 50_000_000n,
+    });
+    const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
+
+    await expect(finalizeWithdrawal(withdrawalTxHash)).rejects.toThrow(
+      "This withdrawal needs more gas than the wallet allows, so it wasn't sent."
+    );
+    expect(walletStore.finalizeDuskEvmWithdrawal).not.toHaveBeenCalled();
+  });
+
   it("submits the SDK-serialized withdrawal through the Portal data driver", async () => {
     const { walletStore } = mockWithdrawalFinalization({
       finalizePreflight: vi.fn().mockResolvedValue(undefined),
@@ -448,12 +468,14 @@ function u256(value) {
  * @param {boolean} [options.finalized]
  * @param {ReturnType<typeof vi.fn>} options.finalizePreflight
  * @param {number} [options.gameStatus]
+ * @param {bigint} [options.gasLimitUpper]
  * @param {boolean} [options.isGameBlacklisted]
  */
 function mockWithdrawalFinalization({
   finalized = false,
   finalizePreflight,
   gameStatus = 0,
+  gasLimitUpper = 1_000_000_000n,
   isGameBlacklisted = false,
 }) {
   vi.resetModules();
@@ -498,7 +520,7 @@ function mockWithdrawalFinalization({
   vi.doMock("$lib/stores", () => ({
     gasStore: readable({
       gasLimitLower: 2_000_000n,
-      gasLimitUpper: 1_000_000_000n,
+      gasLimitUpper,
       gasPriceLower: 1n,
     }),
     networkStore,
