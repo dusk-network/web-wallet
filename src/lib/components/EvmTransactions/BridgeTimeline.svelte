@@ -44,7 +44,7 @@
       </span>
       <span>
         <strong>{step}</strong>
-        {#if state === "current"}
+        {#if state === "current" && currentMessage}
           <small>{currentMessage}</small>
         {/if}
       </span>

@@ -45,7 +45,8 @@
     trackWithdrawalTransaction,
   } from "$lib/bridge/withdrawalActivity";
   import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
-  import { MESSAGES } from "$lib/constants";
+  import { withdrawalSentMessage } from "$lib/bridge/withdrawalLifecycle";
+  import { loadWithdrawalWaitingPeriod } from "$lib/bridge/withdrawals";
   import { luxToDusk } from "$lib/dusk/currency";
   import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
   import { cleanNumberString } from "$lib/dusk/string";
@@ -92,6 +93,9 @@
   /** @type {string} */
   let lastWithdrawalTxHash = "";
 
+  /** @type {bigint | null} */
+  let withdrawalWaitingPeriod = null;
+
   /** @type {bigint} */
   let amountLux = 0n;
 
@@ -121,6 +125,11 @@
       amountWei,
       evmRecipient: $account.address,
       minGasLimit: DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT,
+    });
+
+    // Read it while the EVM wallet asks to confirm, for the sent message.
+    void loadWithdrawalWaitingPeriod().then((seconds) => {
+      withdrawalWaitingPeriod = seconds;
     });
 
     await switchChain(wagmiConfig, { chainId: duskEvm.id });
@@ -480,10 +489,10 @@
             errorMessage="Bridging failed"
             operation={bridge()}
             pendingMessage="Processing transaction"
-            successMessage="Withdrawal request submitted"
+            successMessage="Withdrawal sent"
           >
             <svelte:fragment slot="success-content" let:result={hash}>
-              <p>{MESSAGES.TRANSACTION_PENDING}</p>
+              <p>{withdrawalSentMessage(withdrawalWaitingPeriod)}</p>
               {#if hash}
                 <AnchorButton
                   href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}

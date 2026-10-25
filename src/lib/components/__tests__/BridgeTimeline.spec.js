@@ -21,6 +21,10 @@ describe("BridgeTimeline", () => {
       "Finalized"
     );
 
+    await rerender({ currentMessage: "", progress: 2, steps });
+
+    expect(container.querySelector("[aria-current='step'] small")).toBeNull();
+
     await rerender({
       currentMessage: "Available on DuskEVM",
       progress: steps.length,

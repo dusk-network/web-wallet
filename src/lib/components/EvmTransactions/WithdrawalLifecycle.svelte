@@ -5,6 +5,7 @@
   import { withdrawalExplorerUrl } from "$lib/bridge/withdrawalActivity";
   import {
     WITHDRAWAL_TIMELINE_STEPS,
+    withdrawalActionFailure,
     withdrawalStageBadge,
     withdrawalStageLabel,
     withdrawalStageProgress,
@@ -46,6 +47,10 @@
     ? withdrawalExplorerUrl(selectedWithdrawal.transactionHash)
     : null;
   $: selectedStageMessage = stageMessage(selectedWithdrawal);
+  $: actionFailure =
+    statusError || selectedWithdrawal?.actionError
+      ? withdrawalActionFailure(selectedStage)
+      : "";
 </script>
 
 <section
@@ -72,10 +77,8 @@
       steps={WITHDRAWAL_TIMELINE_STEPS}
     />
 
-    {#if statusError || selectedWithdrawal.actionError}
-      <Banner title="Transaction failed" variant="error">
-        <p>{statusError || selectedWithdrawal.actionError}</p>
-      </Banner>
+    {#if actionFailure}
+      <Banner title={actionFailure} variant="error" />
     {/if}
 
     {#if selectedWithdrawal.trackingError}
@@ -104,13 +107,13 @@
         {#if selectedStage === "ready_to_prove"}
           <Button
             disabled={isSubmitting}
-            text={isSubmitting ? "Submitting" : "Prove withdrawal"}
+            text={isSubmitting ? "Submitting" : "Prove on Dusk"}
             on:click={() => dispatch("prove")}
           />
         {:else}
           <Button
             disabled={isSubmitting}
-            text={isSubmitting ? "Submitting" : "Finalize withdrawal"}
+            text={isSubmitting ? "Submitting" : "Claim on Dusk"}
             on:click={() => dispatch("finalize")}
           />
         {/if}

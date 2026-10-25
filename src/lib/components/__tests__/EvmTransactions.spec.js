@@ -144,17 +144,17 @@ vi.mock("$lib/bridge/withdrawalActivity", () => ({
   withdrawalStageLabel(stage) {
     switch (stage) {
       case "finalized":
-        return "Finalized";
+        return "Done";
       case "proven_waiting":
-        return "Challenge period";
+        return "Waiting period";
       case "ready_to_finalize":
-        return "Ready to finalize";
+        return "Claim on Dusk";
       case "ready_to_prove":
-        return "Ready to prove";
+        return "Prove on Dusk";
       case "waiting_for_output":
-        return "Waiting for output";
+        return "Not on Dusk yet";
       default:
-        return "Confirming";
+        return "Processing";
     }
   },
   /** @param {string} stage */
@@ -375,7 +375,7 @@ describe("EvmTransactions", () => {
       target: document.body,
     });
     const item = await findByRole("button", {
-      name: /0\.1 DUSK.*Waiting for output/i,
+      name: /0\.1 DUSK.*Not on Dusk yet/i,
     });
 
     expect(item).toHaveAttribute("aria-expanded", "false");
@@ -407,10 +407,8 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"e8".repeat(32)}`,
     });
 
-    const { findByRole, getAllByText, getByLabelText, getByRole } = render(
-      EvmTransactions,
-      { target: document.body }
-    );
+    const { findByRole, getAllByText, getByLabelText, getByRole, getByText } =
+      render(EvmTransactions, { target: document.body });
 
     await fireEvent.input(getByLabelText("Find by transaction hash"), {
       target: { value: txHash },
@@ -418,17 +416,20 @@ describe("EvmTransactions", () => {
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
     expect(
-      await findByRole("button", { name: /prove withdrawal/i })
+      await findByRole("button", { name: /^prove on dusk$/i })
     ).toBeInTheDocument();
     for (const label of [
-      "Initiated",
-      "Output available",
-      "Prove withdrawal",
-      "Challenge period",
-      "Finalized",
+      "Sent",
+      "Reported to Dusk",
+      "Proved",
+      "Waiting period",
+      "Claimed",
     ]) {
       expect(getAllByText(label).length).toBeGreaterThan(0);
     }
+    expect(
+      getByText("Step 1 of 2. Fee from your public account.")
+    ).toBeInTheDocument();
   });
 
   it("does not show the prove action before an output is available", async () => {
@@ -443,23 +444,22 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"e9".repeat(32)}`,
     });
 
-    const { findByText, getByLabelText, getByRole, queryByRole } = render(
-      EvmTransactions,
-      { target: document.body }
-    );
+    const { findByText, getByLabelText, getByRole, queryByRole, queryByText } =
+      render(EvmTransactions, { target: document.body });
 
     await fireEvent.input(getByLabelText("Find by transaction hash"), {
       target: { value: txHash },
     });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
+    expect(await findByText("Usually within an hour.")).toBeInTheDocument();
     expect(
-      await findByText(
-        "The withdrawal is confirmed. Waiting for an output proposal."
+      queryByText(
+        "No finalized output proposal covering this withdrawal is ready yet."
       )
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
     expect(
-      queryByRole("button", { name: /prove withdrawal/i })
+      queryByRole("button", { name: /^prove on dusk$/i })
     ).not.toBeInTheDocument();
   });
 
@@ -482,9 +482,9 @@ describe("EvmTransactions", () => {
 
     await fireEvent.input(input, { target: { value: checkedHash } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
-    await findByRole("button", { name: /prove withdrawal/i });
+    await findByRole("button", { name: /^prove on dusk$/i });
     await fireEvent.input(input, { target: { value: editedHash } });
-    await fireEvent.click(getByRole("button", { name: /prove withdrawal/i }));
+    await fireEvent.click(getByRole("button", { name: /^prove on dusk$/i }));
 
     await waitFor(() => {
       expect(mocks.proveWithdrawal).toHaveBeenCalledWith(checkedHash);
@@ -515,23 +515,23 @@ describe("EvmTransactions", () => {
     });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     await fireEvent.click(
-      await findByRole("button", { name: /prove withdrawal/i })
+      await findByRole("button", { name: /^prove on dusk$/i })
     );
-    expect((await findAllByText("Proof submitted")).length).toBeGreaterThan(0);
+    expect((await findAllByText("Proof sent")).length).toBeGreaterThan(0);
     expect(mocks.recordWithdrawalSubmission).toHaveBeenCalledWith(txHash, {
       action: "prove",
       hash: "65".repeat(32),
     });
     expect(
-      queryByRole("button", { name: /prove withdrawal/i })
+      queryByRole("button", { name: /^prove on dusk$/i })
     ).not.toBeInTheDocument();
     expect(
       queryByRole("button", { name: /refresh status/i })
     ).not.toBeInTheDocument();
-    expect((await findAllByText("Proof submitted")).length).toBeGreaterThan(0);
+    expect((await findAllByText("Proof sent")).length).toBeGreaterThan(0);
   });
 
-  it("re-enables proof with an error when the submitted transaction fails", async () => {
+  it("re-enables proof with a short line when the submitted transaction fails", async () => {
     const txHash = `0x${"66".repeat(32)}`;
 
     mocks.loadWithdrawalStatus.mockResolvedValue({
@@ -541,17 +541,23 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"ed".repeat(32)}`,
     });
     mocks.proveWithdrawal.mockResolvedValue("67".repeat(32));
-    const { findAllByText, findByRole, findByText, getByLabelText, getByRole } =
-      render(EvmTransactions, { target: document.body });
+    const {
+      findAllByText,
+      findByRole,
+      findByText,
+      getByLabelText,
+      getByRole,
+      queryByText,
+    } = render(EvmTransactions, { target: document.body });
 
     await fireEvent.input(getByLabelText("Find by transaction hash"), {
       target: { value: txHash },
     });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     await fireEvent.click(
-      await findByRole("button", { name: /prove withdrawal/i })
+      await findByRole("button", { name: /^prove on dusk$/i })
     );
-    await findAllByText("Proof submitted");
+    await findAllByText("Proof sent");
 
     const pending = mocks
       .withdrawalItems()
@@ -567,11 +573,103 @@ describe("EvmTransactions", () => {
     ]);
 
     expect(
-      await findByRole("button", { name: /prove withdrawal/i })
+      await findByRole("button", { name: /^prove on dusk$/i })
     ).toBeInTheDocument();
     expect(
-      await findByText("Proof transaction failed: contract execution failed")
+      await findByText("The proof wasn't sent. Try again.")
     ).toBeInTheDocument();
+    expect(queryByText(/contract execution failed/i)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      action: "prove",
+      button: /^prove on dusk$/i,
+      line: "The proof wasn't sent. Try again.",
+      stage: "ready_to_prove",
+    },
+    {
+      action: "finalize",
+      button: /^claim on dusk$/i,
+      line: "The claim wasn't sent. Try again.",
+      stage: "ready_to_finalize",
+    },
+  ])(
+    "keeps the $action action for a retry when it isn't sent, and logs why",
+    async ({ action, button, line, stage }) => {
+      const txHash = `0x${"68".repeat(32)}`;
+      const error = new Error("User rejected the request.");
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      mocks.loadWithdrawalStatus.mockResolvedValue({
+        blockNumber: 13675n,
+        stage,
+        transactionHash: txHash,
+        withdrawalHash: `0x${"ee".repeat(32)}`,
+      });
+      (action === "prove"
+        ? mocks.proveWithdrawal
+        : mocks.finalizeWithdrawal
+      ).mockRejectedValue(error);
+
+      const { findByRole, findByText, getByLabelText, getByRole, queryByText } =
+        render(EvmTransactions, { target: document.body });
+
+      await fireEvent.input(getByLabelText("Find by transaction hash"), {
+        target: { value: txHash },
+      });
+      await fireEvent.click(getByRole("button", { name: /^check$/i }));
+      await fireEvent.click(await findByRole("button", { name: button }));
+
+      // The banner is that one line.
+      expect(
+        (await findByText(line)).closest(".banner")?.textContent?.trim()
+      ).toBe(line);
+      expect(queryByText(error.message)).not.toBeInTheDocument();
+      expect(getByRole("button", { name: button })).toBeEnabled();
+      expect(consoleError).toHaveBeenCalledWith(
+        `Withdrawal ${action} failed`,
+        error
+      );
+      expect(mocks.recordWithdrawalSubmission).not.toHaveBeenCalled();
+
+      consoleError.mockRestore();
+    }
+  );
+
+  it("says the DUSK is still on DuskEVM when the withdrawal failed there", async () => {
+    const txHash = `0x${"69".repeat(32)}`;
+
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+    mocks.setWithdrawalItems([
+      {
+        ...activityItem(txHash, "failed"),
+        actionError: "Withdrawal transaction failed on DuskEVM.",
+      },
+    ]);
+    mocks.loadWithdrawalStatus.mockRejectedValue(
+      new Error("Withdrawal transaction failed on DuskEVM.")
+    );
+    mocks.refreshWithdrawalTransaction.mockImplementation(async (hash) =>
+      mocks.withdrawalItems().find((item) => item.transactionHash === hash)
+    );
+
+    const { findByRole, findByText, queryByText } = render(EvmTransactions, {
+      target: document.body,
+    });
+
+    await fireEvent.click(
+      await findByRole("button", { name: /0\.1 DUSK.*Failed/i })
+    );
+
+    expect(
+      await findByText("Your DUSK is still on DuskEVM.")
+    ).toBeInTheDocument();
+    expect(
+      queryByText("Withdrawal transaction failed on DuskEVM.")
+    ).not.toBeInTheDocument();
   });
 
   it("updates the expanded withdrawal from background tracking", async () => {
@@ -585,15 +683,16 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"eb".repeat(32)}`,
     });
 
-    const { findByRole, getByLabelText, getByRole } = render(EvmTransactions, {
-      target: document.body,
-    });
+    const { findByRole, getByLabelText, getByRole, getByText } = render(
+      EvmTransactions,
+      { target: document.body }
+    );
     const input = getByLabelText("Find by transaction hash");
 
     await fireEvent.input(input, { target: { value: selectedHash } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     await findByRole("button", {
-      name: /0\.1 DUSK.*Waiting for output/i,
+      name: /0\.1 DUSK.*Not on Dusk yet/i,
     });
     await fireEvent.input(input, { target: { value: editedHash } });
 
@@ -610,9 +709,10 @@ describe("EvmTransactions", () => {
 
     expect(
       await findByRole("button", {
-        name: /0\.1 DUSK.*Challenge period/i,
+        name: /0\.1 DUSK.*Waiting period/i,
       })
     ).toHaveAttribute("aria-expanded", "true");
+    expect(getByText("Claim in about 7 days.")).toBeInTheDocument();
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalledWith(editedHash);
   });
 });

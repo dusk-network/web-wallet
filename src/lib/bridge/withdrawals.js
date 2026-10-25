@@ -63,6 +63,16 @@ const GAME_STATUS_ABI = Object.freeze([
     type: "function",
   },
 ]);
+const GAME_RESOLUTION_ABI = Object.freeze([
+  ...GAME_STATUS_ABI,
+  {
+    inputs: [],
+    name: "resolvedAt",
+    outputs: [{ type: "uint64" }],
+    stateMutability: "view",
+    type: "function",
+  },
+]);
 
 /** @param {unknown} value */
 export function parseGameSearchDepth(value) {
@@ -1058,9 +1068,10 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
     disputeGameProxy: provenWithdrawal.disputeGameProxy,
     proofSubmitter,
     provenAt: provenWithdrawal.timestamp,
+    readyAt: gameStatus.readyAt ?? null,
+    readyAtExact: gameStatus.readyAtExact ?? false,
     stage: gameStatus.stage,
     statusMessage: gameStatus.statusMessage,
-    ...("readyAt" in gameStatus ? { readyAt: gameStatus.readyAt } : {}),
   };
 }
 
@@ -1071,6 +1082,7 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
  * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
  * @param {bigint} provenWithdrawal.timestamp
  * @param {`0x${string}`} proofSubmitter
+ * @returns {Promise<{ readyAt?: bigint | null, readyAtExact?: boolean, stage: string, statusMessage: string }>}
  */
 async function provenWithdrawalGameStatus(
   event,
@@ -1083,10 +1095,17 @@ async function provenWithdrawalGameStatus(
     readLatestL1Timestamp(),
   ]);
   const readyAt = provenWithdrawal.timestamp + proofMaturityDelay;
+  const claim = () =>
+    claimTime(
+      portal,
+      provenWithdrawal.disputeGameProxy,
+      readyAt,
+      latestTimestamp
+    );
 
   if (latestTimestamp < readyAt) {
     return {
-      readyAt,
+      ...(await claim()),
       stage: "proven_waiting",
       statusMessage: "The proof maturity delay has not elapsed yet.",
     };
@@ -1099,7 +1118,12 @@ async function provenWithdrawalGameStatus(
       proofSubmitter
     );
   } catch {
-    return await classifyRejectedProofStatus(event, portal, provenWithdrawal);
+    return await classifyRejectedProofStatus(
+      event,
+      portal,
+      provenWithdrawal,
+      claim
+    );
   }
 
   return {
@@ -1113,6 +1137,84 @@ async function provenWithdrawalGameStatus(
  */
 async function readProofMaturityDelaySeconds(portal) {
   return u256ToBigInt(await portal.call.proofMaturityDelaySeconds());
+}
+
+/**
+ * Dusk's proof maturity delay, which sets how long a proven withdrawal waits,
+ * or `null` when it can't be read.
+ */
+export async function loadWithdrawalWaitingPeriod() {
+  try {
+    return await readProofMaturityDelaySeconds(await optimismPortalContract());
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {import("@dusk/w3sper").Contract} portal
+ */
+async function readDisputeGameFinalityDelaySeconds(portal) {
+  return u256ToBigInt(await portal.call.disputeGameFinalityDelaySeconds());
+}
+
+/**
+ * The dispute game's status, or when it resolved (0 while in progress).
+ *
+ * @param {`0x${string}`} disputeGameProxy
+ * @param {"resolvedAt" | "status"} functionName
+ */
+async function readGameResolution(disputeGameProxy, functionName) {
+  const data = await callL1Contract(
+    disputeGameProxy,
+    encodeFunctionData({ abi: GAME_RESOLUTION_ABI, functionName })
+  );
+
+  return BigInt(
+    /** @type {bigint | number} */ (
+      decodeFunctionResult({ abi: GAME_RESOLUTION_ABI, data, functionName })
+    )
+  );
+}
+
+/**
+ * When a proven withdrawal can be claimed: once its proof has matured and its
+ * dispute game has resolved for the proposal and become final. The time is
+ * exact once the game has resolved. Until then the game needs at least its
+ * finality delay, which makes an estimate.
+ *
+ * @param {import("@dusk/w3sper").Contract} portal
+ * @param {`0x${string}`} disputeGameProxy
+ * @param {bigint} maturedAt
+ * @param {bigint} latestTimestamp
+ */
+async function claimTime(portal, disputeGameProxy, maturedAt, latestTimestamp) {
+  let claimAt = maturedAt;
+  let exact = false;
+
+  try {
+    const [status, resolvedAt, finalityDelay] = await Promise.all([
+      readGameResolution(disputeGameProxy, "status"),
+      readGameResolution(disputeGameProxy, "resolvedAt"),
+      readDisputeGameFinalityDelaySeconds(portal),
+    ]);
+
+    if (Number(status) === GAME_STATUS.CHALLENGER_WINS) {
+      return { readyAt: null, readyAtExact: false };
+    }
+
+    exact = Number(status) === GAME_STATUS.DEFENDER_WINS;
+
+    const finalAt = (exact ? resolvedAt : latestTimestamp) + finalityDelay;
+
+    claimAt = finalAt > maturedAt ? finalAt : maturedAt;
+  } catch {
+    // The proof's maturity alone still gives an estimate.
+  }
+
+  return claimAt > latestTimestamp
+    ? { readyAt: claimAt, readyAtExact: exact }
+    : { readyAt: null, readyAtExact: false };
 }
 
 async function readLatestL1Timestamp() {
@@ -1177,8 +1279,14 @@ export function proofRequiresReplacement(disposition) {
  * @param {import("@dusk/w3sper").Contract} portal
  * @param {object} provenWithdrawal
  * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
+ * @param {() => Promise<{ readyAt: bigint | null, readyAtExact: boolean }>} claim
  */
-async function classifyRejectedProofStatus(event, portal, provenWithdrawal) {
+async function classifyRejectedProofStatus(
+  event,
+  portal,
+  provenWithdrawal,
+  claim
+) {
   try {
     const disposition = await readProvenGameDisposition(
       portal,
@@ -1187,6 +1295,7 @@ async function classifyRejectedProofStatus(event, portal, provenWithdrawal) {
 
     if (!proofRequiresReplacement(disposition)) {
       return {
+        ...(await claim()),
         stage: "proven_waiting",
         statusMessage:
           disposition.gameStatus === GAME_STATUS.IN_PROGRESS
