@@ -390,7 +390,7 @@ describe("DuskEVM withdrawal helpers", () => {
     );
   });
 
-  it("has no claim time for a proof whose game the challenger won", async () => {
+  it("flags a proof whose game the challenger won before it matured", async () => {
     const { portal } = mockWithdrawalFinalization({
       finalizePreflight: vi.fn(),
     });
@@ -399,7 +399,12 @@ describe("DuskEVM withdrawal helpers", () => {
     const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
 
     await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
-      { readyAt: null, readyAtExact: false, stage: "proven_waiting" }
+      {
+        proofRejected: true,
+        readyAt: null,
+        readyAtExact: false,
+        stage: "proven_waiting",
+      }
     );
   });
 

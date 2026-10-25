@@ -1231,7 +1231,7 @@ async function claimTime(
     const finalAt = (resolved ? resolvedAt : latestTimestamp) + finalityDelay;
 
     if (Number(status) === GAME_STATUS.CHALLENGER_WINS) {
-      return NO_CLAIM_TIME;
+      return { ...NO_CLAIM_TIME, proofRejected: true };
     }
 
     if (!resolved || onDuskClock(resolvedAt, latestTimestamp)) {
@@ -1309,7 +1309,7 @@ export function proofRequiresReplacement(disposition) {
  * @param {import("@dusk/w3sper").Contract} portal
  * @param {object} provenWithdrawal
  * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
- * @param {() => Promise<{ readyAt: bigint | null, readyAtExact: boolean }>} claim
+ * @param {() => Promise<{ proofRejected?: boolean, readyAt: bigint | null, readyAtExact: boolean }>} claim
  */
 async function classifyRejectedProofStatus(
   event,
