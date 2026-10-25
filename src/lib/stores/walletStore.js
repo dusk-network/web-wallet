@@ -7,12 +7,14 @@ import {
   BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
   buildDepositETHToWithValuePayload,
 } from "$lib/bridge/deposit";
+import { getShieldedPausedMessage } from "$lib/network";
 import WalletTreasury from "$lib/wallet-treasury";
 
 import { transactions } from "$lib/mock-data";
 
 import networkStore from "./networkStore";
 import settingsStore from "./settingsStore";
+import shieldedStatusStore from "./shieldedStatusStore";
 
 const VITE_SYNC_INTERVAL = import.meta.env.VITE_SYNC_INTERVAL;
 const AUTO_SYNC_INTERVAL = !isNaN(Number(VITE_SYNC_INTERVAL))
@@ -114,6 +116,20 @@ const passThruWithEffects = (fn) => (a) => {
 
   return a;
 };
+
+/**
+ * Checks with the node, and refuses a shielded
+ * transaction while shielded transactions are paused.
+ *
+ * @returns {Promise<void>}
+ */
+async function refuseIfShieldedPaused() {
+  await shieldedStatusStore.refresh();
+
+  if (get(shieldedStatusStore).isPaused) {
+    throw new Error(getShieldedPausedMessage(get(networkStore).networkName));
+  }
+}
 
 /** @type {(txInfo: TransactionInfo) => Promise<TransactionInfo>} */
 const updateCacheAfterTransaction = async (txInfo) => {
@@ -323,6 +339,7 @@ async function setCurrentProfile(profile) {
 /** @type {WalletStoreServices["shield"]} */
 const shield = async (amount, gas) =>
   sync()
+    .then(refuseIfShieldedPaused)
     .then(networkStore.connect)
     .then((network) =>
       network.execute(
@@ -356,6 +373,9 @@ async function sync(fromBlock) {
   }
 
   if (!syncPromise) {
+    // Every sync also checks if shielded transactions are paused.
+    shieldedStatusStore.refresh();
+
     set({
       ...store,
       syncStatus: {
@@ -506,6 +526,8 @@ const transfer = async (to, amount, memo, gas) =>
         .gas(gas);
 
       if (ProfileGenerator.typeOf(to) === "address") {
+        await refuseIfShieldedPaused();
+
         // @ts-ignore
         tx.obfuscated();
       }
@@ -554,6 +576,7 @@ const depositEvmFunctionCall = async (
 /** @type {WalletStoreServices["unshield"]} */
 const unshield = async (amount, gas) =>
   sync()
+    .then(refuseIfShieldedPaused)
     .then(networkStore.connect)
     .then((network) =>
       network.execute(

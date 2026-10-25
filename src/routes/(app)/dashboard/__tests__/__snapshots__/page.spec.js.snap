@@ -5,6 +5,8 @@ exports[`Dashboard > should render a card when there is an error getting transac
   <!---->
   <!---->
   <!---->
+   
+  <!---->
   <div
     class="dusk-card dusk-card--gap-default dashboard-nav-card"
   >
@@ -300,6 +302,8 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
 <div>
   <!---->
   <!---->
+  <!---->
+   
   <!---->
   <div
     class="dusk-card dusk-card--gap-default dashboard-nav-card"

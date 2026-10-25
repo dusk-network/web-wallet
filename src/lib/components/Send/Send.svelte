@@ -32,6 +32,7 @@
     GasSettings,
     OperationResult,
     ScanQR,
+    ShieldedPausedNotice,
   } from "$lib/components";
   import { MESSAGES } from "$lib/constants";
 
@@ -58,6 +59,9 @@
 
   /** @type {undefined | string} */
   export let bep20BridgeAddress = undefined;
+
+  /** @type {boolean} */
+  export let isShieldedPaused = false;
 
   /** @type {number} */
   let sendAmount = 1;
@@ -162,7 +166,8 @@
     isTotalAmountWithinAvailableBalance &&
     isBalanceSufficientForGas &&
     isMemoValidForBridge &&
-    !isRecipientBlocklisted
+    !isRecipientBlocklisted &&
+    !isShieldedSendPaused
   );
 
   $: addressInfo = getAddressInfo(
@@ -173,6 +178,9 @@
 
   $: blocklistedRecipient = getBlocklistedRecipient(sendToAddress);
   $: isRecipientBlocklisted = Boolean(blocklistedRecipient);
+
+  // A transfer to a shielded address is a shielded transaction.
+  $: isShieldedSendPaused = isShieldedPaused && addressInfo.type === "address";
 
   $: if (addressInfo.type) {
     dispatch("keyChange", {
@@ -226,7 +234,10 @@
       }}
       nextButton={{
         action: () => activeStep++,
-        disabled: !addressInfo.isValid || isRecipientBlocklisted,
+        disabled:
+          !addressInfo.isValid ||
+          isRecipientBlocklisted ||
+          isShieldedSendPaused,
       }}
     >
       <div in:fade|global class="operation__send">
@@ -253,6 +264,10 @@
           <Banner variant="error" title="Blocked recipient address">
             <p>{blocklistedRecipient?.reason}</p>
           </Banner>
+        {/if}
+
+        {#if isShieldedSendPaused}
+          <ShieldedPausedNotice mentionBalance={false} />
         {/if}
 
         {#if addressInfo.type === "account"}
@@ -423,7 +438,7 @@
       }}
       nextButton={{
         action: () => activeStep++,
-        disabled: isRecipientBlocklisted,
+        disabled: isRecipientBlocklisted || isShieldedSendPaused,
         icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
         label: "SEND",
         variant: "primary",

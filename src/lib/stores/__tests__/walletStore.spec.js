@@ -22,7 +22,12 @@ import { buildDepositETHToWithValuePayload } from "$lib/bridge/deposit";
 import WalletTreasury from "$lib/wallet-treasury";
 import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 
-import { networkStore, settingsStore, walletStore } from "..";
+import {
+  networkStore,
+  settingsStore,
+  shieldedStatusStore,
+  walletStore,
+} from "..";
 
 const VITE_SYNC_INTERVAL = import.meta.env.VITE_SYNC_INTERVAL;
 
@@ -315,6 +320,32 @@ describe("Wallet store", async () => {
 
       expect(get(walletStore)).toStrictEqual(initialState);
       expect(setProfilesSpy).not.toHaveBeenCalled();
+    });
+
+    it("should check if shielded transactions are paused with every sync", async () => {
+      const refreshSpy = vi
+        .spyOn(shieldedStatusStore, "refresh")
+        .mockResolvedValue();
+
+      try {
+        await walletStore.init(profileGenerator);
+
+        expect(refreshSpy).toHaveBeenCalledTimes(1);
+
+        await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+        expect(refreshSpy).toHaveBeenCalledTimes(1);
+
+        // auto sync
+        await vi.advanceTimersByTimeAsync(1);
+        await vi.runOnlyPendingTimersAsync();
+
+        expect(refreshSpy).toHaveBeenCalledTimes(2);
+      } finally {
+        walletStore.reset();
+        await vi.runOnlyPendingTimersAsync();
+        refreshSpy.mockRestore();
+      }
     });
   });
 
@@ -859,6 +890,58 @@ describe("Wallet store", async () => {
 
       expect(executeSpy).not.toHaveBeenCalled();
       expect(treasuryUpdateSpy).not.toHaveBeenCalled();
+    });
+
+    describe("While shielded transactions are paused", () => {
+      /** @type {import("vitest").MockInstance<NetworkStore["getNodeFeatures"]>} */
+      let getNodeFeaturesSpy;
+
+      beforeEach(() => {
+        getNodeFeaturesSpy = vi
+          .spyOn(networkStore, "getNodeFeatures")
+          .mockResolvedValue({ DISABLE_PHOENIX: 1 });
+      });
+
+      afterEach(async () => {
+        getNodeFeaturesSpy.mockResolvedValue({});
+        await shieldedStatusStore.refresh();
+        getNodeFeaturesSpy.mockRestore();
+      });
+
+      it.each(
+        /** @type {const} */ ([
+          ["shield", [amount, gas]],
+          ["unshield", [amount, gas]],
+          ["transfer", [toPhoenix, amount, memo, gas]],
+        ])
+      )(
+        "should refuse to %s after checking with the node",
+        async (method, args) => {
+          vi.useRealTimers();
+
+          // The check at the start of the sync still finds them on.
+          getNodeFeaturesSpy.mockResolvedValueOnce({});
+
+          expect(get(shieldedStatusStore).isPaused).toBe(false);
+
+          // @ts-ignore here args can't be inferred apparently
+          await expect(walletStore[method](...args)).rejects.toThrow(
+            "Shielded transactions are paused on this network."
+          );
+
+          expect(get(shieldedStatusStore).isPaused).toBe(true);
+          expect(executeSpy).not.toHaveBeenCalled();
+        }
+      );
+
+      it("should still make a transfer to a public account", async () => {
+        await walletStoreTransferCheck("transfer", [
+          toMoonlight,
+          amount,
+          memo,
+          gas,
+        ]);
+      });
     });
 
     /* eslint-enable vitest/expect-expect */

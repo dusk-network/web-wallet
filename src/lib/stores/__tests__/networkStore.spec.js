@@ -185,6 +185,30 @@ describe("Network store", async () => {
       await expect(store.getCurrentBlockHeight()).resolves.toBe(blockHeight);
     });
 
+    it("should expose a service method to read the node's features afresh each time", async () => {
+      const fetchMock = vi.mocked(fetch);
+      const features = { BLOB: 1814090, DISABLE_PHOENIX: 4000000 };
+
+      fetchMock.mockClear();
+      fetchMock
+        .mockResolvedValueOnce(
+          // eslint-disable-next-line camelcase
+          Response.json({ chain_id: 2, vm_config: { features } })
+        )
+        // eslint-disable-next-line camelcase
+        .mockResolvedValueOnce(Response.json({ chain_id: 2 }));
+
+      await expect(store.getNodeFeatures()).resolves.toStrictEqual(features);
+      await expect(store.getNodeFeatures()).resolves.toStrictEqual({});
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      for (const [url, options] of fetchMock.mock.calls) {
+        expect(String(url)).toBe("https://localhost/on/node/info");
+        expect(options).toMatchObject({ method: "POST" });
+      }
+    });
+
     it("should expose a method to retrieve the last finalized block height and return `0n` if the block is not found", async () => {
       const height = 123;
 

@@ -48,6 +48,7 @@ exports[`Allocate > should render the allocation page 1`] = `
     class="dusk-card__body-container"
   >
     <!---->
+    <!---->
     <div
       class="operation svelte-1w73wy7"
     >
@@ -355,6 +356,7 @@ exports[`Allocate > should render the allocation page 1`] = `
       </div>
       <!---->
     </div>
+    
     
     <!---->
   </div>

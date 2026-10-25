@@ -12,8 +12,17 @@
     mdiSync,
   } from "@mdi/js";
   import { AnchorButton, Icon } from "$lib/dusk/components";
-  import { DashboardNav, Transactions } from "$lib/components";
-  import { networkStore, settingsStore, walletStore } from "$lib/stores";
+  import {
+    DashboardNav,
+    ShieldedPausedNotice,
+    Transactions,
+  } from "$lib/components";
+  import {
+    networkStore,
+    settingsStore,
+    shieldedStatusStore,
+    walletStore,
+  } from "$lib/stores";
   import { contractDescriptors } from "$lib/contracts";
   import IconHeadingCard from "$lib/containers/Cards/IconHeadingCard.svelte";
   import { page } from "$app/stores";
@@ -71,15 +80,29 @@
     (contract) => contract.enabled === true
   );
 
-  const dashboardNavItems = enabledContracts.map(({ id, label }) => ({
-    href: id,
-    icons: getIconsForContract(id),
-    id,
-    label,
-  }));
+  $: ({ isKnown: isShieldedStatusKnown, isPaused: isShieldedPaused } =
+    $shieldedStatusStore);
+
+  // Allocate shields and unshields, which are shielded transactions,
+  // so it waits for the node to say they aren't paused.
+  $: dashboardNavItems = enabledContracts
+    .filter(
+      ({ id }) =>
+        id !== "allocate" || (isShieldedStatusKnown && !isShieldedPaused)
+    )
+    .map(({ id, label }) => ({
+      href: id,
+      icons: getIconsForContract(id),
+      id,
+      label,
+    }));
 
   $: ({ syncStatus } = $walletStore);
 </script>
+
+{#if isShieldedPaused}
+  <ShieldedPausedNotice />
+{/if}
 
 {#if enabledContracts.length}
   <DashboardNav items={dashboardNavItems} />

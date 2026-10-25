@@ -52,11 +52,21 @@ type NetworkStoreServices = {
   getCurrentBlockHeight: () => Promise<bigint>;
   getLatestBlockTimestamp: () => Promise<bigint>;
   getLastFinalizedBlockHeight: () => Promise<bigint>;
+  getNodeFeatures: () => Promise<Record<string, unknown>>;
   init: () => Promise<void>;
   registerDataDriver: (id: string, driver: any) => Promise<DataDriverRegistry>;
 };
 
 type NetworkStore = Readable<NetworkStoreContent> & NetworkStoreServices;
+
+type ShieldedStatusStoreContent = { isKnown: boolean; isPaused: boolean };
+
+type ShieldedStatusStoreServices = {
+  refresh: () => Promise<void>;
+};
+
+type ShieldedStatusStore = Readable<ShieldedStatusStoreContent> &
+  ShieldedStatusStoreServices;
 
 type NodeInfo = {
   bootstrappingNodes: Array<string>;

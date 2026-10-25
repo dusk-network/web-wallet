@@ -2,6 +2,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
+import mockedShieldedStatusStore from "$lib/mocks/mockedShieldedStatusStore";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
 import { walletStore } from "$lib/stores";
@@ -26,6 +27,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
 
   return {
     ...original,
+    shieldedStatusStore: mockedShieldedStatusStore,
     walletStore: {
       ...mockedWalletStore,
     },
@@ -39,7 +41,13 @@ describe("Receive", () => {
   const expectedAddress = currentProfile.address.toString();
   const expectedAccount = currentProfile.account.toString();
 
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    mockedShieldedStatusStore.setMockedStoreValue({
+      isKnown: true,
+      isPaused: false,
+    });
+  });
 
   afterAll(() => {
     vi.doUnmock("$lib/dusk/string");
@@ -72,5 +80,34 @@ describe("Receive", () => {
     expect(() => getByText(expectedAccount)).toThrow();
     expect(getByText(expectedAddress)).toBeInTheDocument();
     expect(container.firstElementChild).toMatchSnapshot();
+  });
+
+  it("should show a notice instead of the shielded address while shielded transactions are paused", async () => {
+    mockedShieldedStatusStore.setMockedStoreValue({
+      isKnown: true,
+      isPaused: true,
+    });
+
+    const { container, getByRole, getByText, queryByRole, queryByText } =
+      render(Receive);
+
+    await vi.runAllTimersAsync();
+
+    expect(getByText(expectedAccount)).toBeInTheDocument();
+    expect(getByRole("button", { name: "Copy" })).toBeInTheDocument();
+
+    await fireEvent.click(getByRole("radio", { checked: false }));
+    await vi.runAllTimersAsync();
+
+    expect(
+      getByText("Shielded transactions are paused on this network.")
+    ).toBeInTheDocument();
+    expect(queryByText(expectedAddress)).not.toBeInTheDocument();
+    expect(container.querySelector(".receive")).not.toBeInTheDocument();
+    expect(queryByRole("button", { name: "Copy" })).not.toBeInTheDocument();
+    expect(getByRole("link", { name: "Back" })).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard"
+    );
   });
 });

@@ -327,6 +327,79 @@ describe("Send", () => {
     });
   });
 
+  describe("While shielded transactions are paused", () => {
+    const pausedProps = { ...baseProps, isShieldedPaused: true };
+    const pausedMessage = "Shielded transactions are paused on this network.";
+    const shieldedRecipient =
+      "37jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnMM";
+    const publicRecipient =
+      "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
+
+    it("should say so for a shielded address and keep the user on the address step", async () => {
+      const { getByRole, getByText } = render(Send, pausedProps);
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: shieldedRecipient },
+      });
+
+      expect(getByText(pausedMessage)).toBeInTheDocument();
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+    });
+
+    it("should leave transfers to a public account as they are", async () => {
+      const { getByRole, queryByText } = render(Send, pausedProps);
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: publicRecipient },
+      });
+
+      expect(queryByText(pausedMessage)).not.toBeInTheDocument();
+
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.input(getByRole("spinbutton"), { target: { value: 5 } });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      expect(getByRole("button", { name: "SEND" })).toBeEnabled();
+    });
+
+    it("should keep the user from reaching Review, or sending, if shielded transactions pause midway", async () => {
+      const { getByRole, rerender } = render(Send, baseProps);
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: shieldedRecipient },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.input(getByRole("spinbutton"), { target: { value: 5 } });
+
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+
+      await rerender({ isShieldedPaused: true });
+
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+      await rerender({ isShieldedPaused: false });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      expect(getByRole("button", { name: "SEND" })).toBeEnabled();
+
+      await rerender({ isShieldedPaused: true });
+
+      expect(getByRole("button", { name: "SEND" })).toBeDisabled();
+    });
+
+    it("should let a shielded address through once shielded transactions are back", async () => {
+      const { getByRole, queryByText, rerender } = render(Send, pausedProps);
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: shieldedRecipient },
+      });
+      await rerender({ isShieldedPaused: false });
+
+      expect(queryByText(pausedMessage)).not.toBeInTheDocument();
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+    });
+  });
+
   describe("Review step", () => {
     it("should render the Send component Review step", async () => {
       const amount = 2345;

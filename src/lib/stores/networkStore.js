@@ -108,6 +108,20 @@ const getLastFinalizedBlockHeight = () =>
     .then((data) => data?.lastBlockPair?.json?.last_finalized_block?.[0])
     .then((height) => (height === undefined ? 0n : BigInt(height)));
 
+/**
+ * Reads the features in the node's info afresh,
+ * as `network.node.info` keeps the first info it gets.
+ *
+ * @type {NetworkStoreServices["getNodeFeatures"]}
+ */
+async function getNodeFeatures() {
+  /** @type {Response} */
+  const response = await network.rues.scope("node").call.info();
+  const info = await response.json();
+
+  return info?.vm_config?.features ?? {};
+}
+
 /** @type {NetworkStoreServices["init"]} */
 async function init() {
   const info = await network.node.info;
@@ -133,6 +147,7 @@ export default {
   getCurrentBlockHeight,
   getLastFinalizedBlockHeight,
   getLatestBlockTimestamp,
+  getNodeFeatures,
   init,
   registerDataDriver,
   subscribe,

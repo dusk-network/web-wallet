@@ -140,6 +140,8 @@ exports[`Send > Address step > should display a warning if the address input is 
        
       <!---->
        
+      <!---->
+       
       <div
         class="banner banner--info"
       >
@@ -435,6 +437,8 @@ exports[`Send > Address step > should display a warning if the address input is 
         required=""
       />
       
+      <!---->
+       
       <!---->
        
       <!---->
@@ -766,6 +770,8 @@ exports[`Send > Address step > should render the Send component Address step 1`]
         required=""
       />
       
+      <!---->
+       
       <!---->
        
       <!---->

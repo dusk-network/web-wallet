@@ -6,7 +6,12 @@
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { executeSend } from "$lib/contracts";
   import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
-  import { gasStore, settingsStore, walletStore } from "$lib/stores";
+  import {
+    gasStore,
+    settingsStore,
+    shieldedStatusStore,
+    walletStore,
+  } from "$lib/stores";
 
   /** @type {(source: "shielded" | "unshielded", balanceInfo: WalletStoreBalance) => [bigint, ContractStatus[]]}*/
   function getContractInfo(source, balanceInfo) {
@@ -53,6 +58,7 @@
   $: [gasSettings, language] = collectSettings($settingsStore);
   $: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
   $: ({ balance, currentProfile } = $walletStore);
+  $: ({ isPaused: isShieldedPaused } = $shieldedStatusStore);
   $: [spendable, statuses] = getContractInfo(spendableSource, balance);
   $: shieldedAddress = currentProfile ? currentProfile.address.toString() : "";
   $: publicAddress = currentProfile ? currentProfile.account.toString() : "";
@@ -69,6 +75,7 @@
     {gasSettings}
     availableBalance={spendable}
     bep20BridgeAddress={BEP20_BRIDGE_ADDRESS}
+    {isShieldedPaused}
     on:keyChange={keyChangeHandler}
   />
 </IconHeadingCard>

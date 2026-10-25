@@ -23,6 +23,7 @@ export { default as OperationResult } from "./OperationResult/OperationResult.sv
 export { default as Receive } from "./Receive/Receive.svelte";
 export { default as Send } from "./Send/Send.svelte";
 export { default as ScanQR } from "./ScanQR/ScanQR.svelte";
+export { default as ShieldedPausedNotice } from "./ShieldedPausedNotice/ShieldedPausedNotice.svelte";
 export { default as Stake } from "./Stake/Stake.svelte";
 export { default as StakeMaturityInfo } from "./StakeMaturityInfo/StakeMaturityInfo.svelte";
 export { default as SyncBar } from "./SyncBar/SyncBar.svelte";

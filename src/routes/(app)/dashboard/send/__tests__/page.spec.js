@@ -1,6 +1,7 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
+import mockedShieldedStatusStore from "$lib/mocks/mockedShieldedStatusStore";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
 
@@ -22,6 +23,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
 
   return {
     ...original,
+    shieldedStatusStore: mockedShieldedStatusStore,
     walletStore: { ...original.walletStore, ...mockedWalletStore },
   };
 });
@@ -32,7 +34,13 @@ const formattedShielded = formatter(luxToDusk(balance.shielded.spendable));
 const formattedUnshielded = formatter(luxToDusk(balance.unshielded.value));
 
 describe("Send page", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    mockedShieldedStatusStore.setMockedStoreValue({
+      isKnown: true,
+      isPaused: false,
+    });
+  });
 
   afterAll(() => {
     vi.doUnmock("$lib/dusk/string");
@@ -68,5 +76,30 @@ describe("Send page", () => {
     expect(
       container.querySelector(".contract-statuses__value")
     ).toHaveTextContent(formattedUnshielded);
+  });
+
+  it("should stop transfers to a shielded address while shielded transactions are paused", async () => {
+    mockedShieldedStatusStore.setMockedStoreValue({
+      isKnown: true,
+      isPaused: true,
+    });
+
+    const { getByRole, getByText, queryByText } = render(SendPage);
+    const addressTextbox = getByRole("textbox");
+    const pausedMessage = "Shielded transactions are paused on this network.";
+
+    await fireEvent.input(addressTextbox, {
+      target: { value: currentProfile.address.toString() },
+    });
+
+    expect(getByText(pausedMessage)).toBeInTheDocument();
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+    await fireEvent.input(addressTextbox, {
+      target: { value: currentProfile.account.toString() },
+    });
+
+    expect(queryByText(pausedMessage)).not.toBeInTheDocument();
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
   });
 });

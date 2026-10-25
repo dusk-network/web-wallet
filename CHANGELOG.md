@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Pause shielded transactions on networks that have them turned off [#974]
+
 ### Changed
 
 - Migrate DuskEVM bridge flows to the current contracts and the published
@@ -675,6 +677,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#946]: https://github.com/dusk-network/web-wallet/issues/946
 [#948]: https://github.com/dusk-network/web-wallet/issues/948
 [#953]: https://github.com/dusk-network/web-wallet/pull/953
+[#974]: https://github.com/dusk-network/web-wallet/pull/974
 
 <!-- VERSIONS -->
 
