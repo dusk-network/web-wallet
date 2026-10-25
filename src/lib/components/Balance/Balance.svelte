@@ -4,9 +4,16 @@
   import { makeClassName } from "$lib/dusk/string";
   import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
   import { Icon } from "$lib/dusk/components";
-  import { mdiShieldLock, mdiShieldLockOpenOutline } from "@mdi/js";
+  import {
+    mdiEyeOffOutline,
+    mdiEyeOutline,
+    mdiShieldLock,
+    mdiShieldLockOpenOutline,
+  } from "@mdi/js";
   import { logo } from "$lib/dusk/icons";
   import { createNumberFormatter } from "$lib/dusk/number";
+  import { BalanceValue } from "$lib/components";
+  import { settingsStore } from "$lib/stores";
 
   import "./Balance.css";
 
@@ -46,6 +53,15 @@
 
   $: classes = makeClassName(["dusk-balance", className]);
 
+  $: hideBalances = $settingsStore.hideBalances === true;
+
+  function toggleBalances() {
+    settingsStore.update((store) => ({
+      ...store,
+      hideBalances: !store.hideBalances,
+    }));
+  }
+
   $: duskFormatter = createCurrencyFormatter(locale, tokenCurrency, 9);
   $: fiatFormatter = createCurrencyFormatter(locale, fiatCurrency, 2);
   $: numberFormatter = createNumberFormatter(locale, 2);
@@ -53,18 +69,33 @@
 
 <article {...$$restProps} class={classes}>
   <header class="dusk-balance__header">
-    <h2 class="dusk-balance__label">Total balance</h2>
+    <div class="dusk-balance__heading">
+      <h2 class="dusk-balance__label">Total balance</h2>
+      <button
+        aria-label="Hide balances"
+        aria-pressed={hideBalances}
+        class="dusk-balance__toggle"
+        data-tooltip-id="main-tooltip"
+        data-tooltip-text="Hide balances"
+        on:click={toggleBalances}
+        type="button"
+      >
+        <Icon path={hideBalances ? mdiEyeOffOutline : mdiEyeOutline} />
+      </button>
+    </div>
     <p
       class="dusk-balance__fiat"
       class:dusk-balance__fiat--visible={fiatPrice !== undefined}
     >
       <span>
-        {fiatFormatter(fiatPrice ? fiatPrice * totalBalance : 0)}
+        <BalanceValue
+          value={fiatFormatter(fiatPrice ? fiatPrice * totalBalance : 0)}
+        />
       </span>
     </p>
   </header>
   <p class="dusk-balance__dusk">
-    <span>{duskFormatter(totalBalance)}</span>
+    <span><BalanceValue value={duskFormatter(totalBalance)} /></span>
     <span>{tokenCurrency}</span>
   </p>
 
@@ -72,11 +103,15 @@
     <div class="dusk-balance__account">
       <span class="dusk-balance__percentage"
         ><Icon path={mdiShieldLockOpenOutline} /><span>Public</span><span
-          >{numberFormatter(unshieldedPercentage)}%</span
+          ><BalanceValue
+            value={`${numberFormatter(unshieldedPercentage)}%`}
+          /></span
         ></span
       >
       <span class="dusk-balance__value"
-        >{duskFormatter(luxToDusk(unshieldedAmount))}<Icon
+        ><BalanceValue
+          value={duskFormatter(luxToDusk(unshieldedAmount))}
+        /><Icon
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
           path={logo}
@@ -86,11 +121,13 @@
     <div class="dusk-balance__account">
       <span class="dusk-balance__percentage"
         ><Icon path={mdiShieldLock} /><span>Shielded</span><span
-          >{numberFormatter(shieldedPercentage)}%</span
+          ><BalanceValue
+            value={`${numberFormatter(shieldedPercentage)}%`}
+          /></span
         ></span
       >
       <span class="dusk-balance__value"
-        >{duskFormatter(luxToDusk(shieldedAmount))}<Icon
+        ><BalanceValue value={duskFormatter(luxToDusk(shieldedAmount))} /><Icon
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
           path={logo}

@@ -16,6 +16,7 @@ type SettingsStoreContent = {
   dashboardTransactionLimit: number;
   gasLimit: bigint;
   gasPrice: bigint;
+  hideBalances: boolean;
   hideStakingNotice: boolean;
   language: string;
   userId: string;

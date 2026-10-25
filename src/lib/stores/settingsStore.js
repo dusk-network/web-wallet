@@ -34,6 +34,7 @@ const initialState = {
   dashboardTransactionLimit: 5,
   gasLimit: BigInt(import.meta.env.VITE_GAS_LIMIT_DEFAULT ?? 100_000_000),
   gasPrice: BigInt(import.meta.env.VITE_GAS_PRICE_DEFAULT ?? 1),
+  hideBalances: false,
   hideStakingNotice: false,
   userId: "",
   walletCreationBlockHeight: 0n,

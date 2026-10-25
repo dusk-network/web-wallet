@@ -31,7 +31,10 @@ exports[`ContractStatusesList > should render the \`ContractStatusesList\` compo
       class="contract-statuses__value svelte-193vool"
     >
       <span>
+        <!---->
         99,899.999724165
+        
+        <!---->
       </span>
        
       <!---->
@@ -59,7 +62,10 @@ exports[`ContractStatusesList > should render the \`ContractStatusesList\` compo
       class="contract-statuses__value svelte-193vool"
     >
       <span>
+        <!---->
         1,000.000000000
+        
+        <!---->
       </span>
        
       <!---->
@@ -87,7 +93,10 @@ exports[`ContractStatusesList > should render the \`ContractStatusesList\` compo
       class="contract-statuses__value svelte-193vool"
     >
       <span>
+        <!---->
         99,288.000000000
+        
+        <!---->
       </span>
        
       <!---->

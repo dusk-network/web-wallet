@@ -4,7 +4,8 @@
   width: max-content;
   max-width: 40%;
   white-space: break-spaces;
-  z-index: 1;
+  /* Above the address picker, which sits at 2. */
+  z-index: 3;
 }
 
 .dusk-tooltip[aria-hidden="true"] {

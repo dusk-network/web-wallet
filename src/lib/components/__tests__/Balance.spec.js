@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { get } from "svelte/store";
+import { mdiEyeOffOutline, mdiEyeOutline } from "@mdi/js";
+import { settingsStore } from "$lib/stores";
 import { Balance } from "..";
 
 describe("Balance", () => {
@@ -17,7 +20,10 @@ describe("Balance", () => {
     target: document.body,
   };
 
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    settingsStore.reset();
+  });
 
   it("renders the Balance component", () => {
     const { container } = render(Balance, baseOptions);
@@ -127,5 +133,51 @@ describe("Balance", () => {
 
     expect(container.querySelector(".dusk-balance__fiat--visible")).toBeNull();
     expect(container.firstElementChild).toMatchSnapshot();
+  });
+
+  it("should hide and show the balances with the eye button by the heading", async () => {
+    const { container, getByRole } = render(Balance, baseOptions);
+    const toggle = getByRole("button", { name: "Hide balances" });
+    const getIconPath = () => toggle.querySelector("path")?.getAttribute("d");
+    const getTotal = () => container.querySelector(".dusk-balance__dusk");
+
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(getIconPath()).toBe(mdiEyeOutline);
+    expect(getTotal()).toHaveTextContent("0.003000000 DUSK");
+
+    await fireEvent.click(toggle);
+
+    expect(get(settingsStore).hideBalances).toBe(true);
+    expect(toggle).toHaveAccessibleName("Hide balances");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(getIconPath()).toBe(mdiEyeOffOutline);
+    expect(getTotal()).toHaveTextContent("•••• hidden DUSK");
+
+    await fireEvent.click(toggle);
+
+    expect(get(settingsStore).hideBalances).toBe(false);
+    expect(toggle).toHaveAccessibleName("Hide balances");
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(getTotal()).toHaveTextContent("0.003000000 DUSK");
+  });
+
+  it("should show each value as dots, which screen readers read as hidden, while balances are hidden", () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    const { container, getAllByText } = render(Balance, baseOptions);
+    const masks = getAllByText("••••");
+
+    // The total, its fiat value, and each balance with its percentage.
+    expect(masks).toHaveLength(6);
+    expect(masks.map((mask) => mask.getAttribute("aria-hidden"))).toStrictEqual(
+      Array(6).fill("true")
+    );
+    expect(
+      getAllByText("hidden").map(({ className }) => className)
+    ).toStrictEqual(Array(6).fill("sr-only"));
+    expect(container.textContent).not.toMatch(/\d/);
+    expect(container.querySelector(".dusk-balance__dusk")).toHaveTextContent(
+      /DUSK$/
+    );
   });
 });

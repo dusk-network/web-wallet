@@ -20,6 +20,41 @@
   margin-bottom: 1rem;
 }
 
+.dusk-balance__heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+/* In line with the heading, without making it taller. */
+.dusk-balance__toggle {
+  all: unset;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-block: -0.5rem;
+  border-radius: var(--control-border-radius-size);
+  color: var(--muted-color);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.dusk-balance__toggle:hover {
+  background-color: var(--control-secondary-bg-color-hover);
+  color: var(--on-surface-color);
+}
+
+.dusk-balance__toggle:focus-visible {
+  outline: 2px solid var(--secondary-color);
+}
+
 .dusk-balance__account {
   display: flex;
   align-items: center;

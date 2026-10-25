@@ -10,17 +10,46 @@ exports[`Dashboard > should render a card when there is an error getting transac
     <header
       class="dusk-balance__header"
     >
-      <h2
-        class="dusk-balance__label"
+      <div
+        class="dusk-balance__heading"
       >
-        Total balance
-      </h2>
+        <h2
+          class="dusk-balance__label"
+        >
+          Total balance
+        </h2>
+         
+        <button
+          aria-label="Hide balances"
+          aria-pressed="false"
+          class="dusk-balance__toggle"
+          data-tooltip-id="main-tooltip"
+          data-tooltip-text="Hide balances"
+          type="button"
+        >
+          <!---->
+          <svg
+            class="dusk-icon dusk-icon--size--default"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"
+            />
+          </svg>
+          
+          <!---->
+        </button>
+      </div>
        
       <p
         class="dusk-balance__fiat dusk-balance__fiat--visible"
       >
         <span>
+          <!---->
           $1,758.75
+          
+          <!---->
         </span>
       </p>
     </header>
@@ -29,7 +58,10 @@ exports[`Dashboard > should render a card when there is an error getting transac
       class="dusk-balance__dusk"
     >
       <span>
+        <!---->
         3,517.500000000
+        
+        <!---->
       </span>
        
       <span>
@@ -62,14 +94,20 @@ exports[`Dashboard > should render a card when there is an error getting transac
             Public
           </span>
           <span>
+            <!---->
             33.33%
+            
+            <!---->
           </span>
         </span>
          
         <span
           class="dusk-balance__value"
         >
+          <!---->
           1,172.500000000
+          
+          <!---->
           <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
@@ -109,14 +147,20 @@ exports[`Dashboard > should render a card when there is an error getting transac
             Shielded
           </span>
           <span>
+            <!---->
             66.67%
+            
+            <!---->
           </span>
         </span>
          
         <span
           class="dusk-balance__value"
         >
+          <!---->
           2,345.000000000
+          
+          <!---->
           <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
@@ -439,17 +483,46 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
     <header
       class="dusk-balance__header"
     >
-      <h2
-        class="dusk-balance__label"
+      <div
+        class="dusk-balance__heading"
       >
-        Total balance
-      </h2>
+        <h2
+          class="dusk-balance__label"
+        >
+          Total balance
+        </h2>
+         
+        <button
+          aria-label="Hide balances"
+          aria-pressed="false"
+          class="dusk-balance__toggle"
+          data-tooltip-id="main-tooltip"
+          data-tooltip-text="Hide balances"
+          type="button"
+        >
+          <!---->
+          <svg
+            class="dusk-icon dusk-icon--size--default"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"
+            />
+          </svg>
+          
+          <!---->
+        </button>
+      </div>
        
       <p
         class="dusk-balance__fiat dusk-balance__fiat--visible"
       >
         <span>
+          <!---->
           $1,758.75
+          
+          <!---->
         </span>
       </p>
     </header>
@@ -458,7 +531,10 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
       class="dusk-balance__dusk"
     >
       <span>
+        <!---->
         3,517.500000000
+        
+        <!---->
       </span>
        
       <span>
@@ -491,14 +567,20 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             Public
           </span>
           <span>
+            <!---->
             33.33%
+            
+            <!---->
           </span>
         </span>
          
         <span
           class="dusk-balance__value"
         >
+          <!---->
           1,172.500000000
+          
+          <!---->
           <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
@@ -538,14 +620,20 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
             Shielded
           </span>
           <span>
+            <!---->
             66.67%
+            
+            <!---->
           </span>
         </span>
          
         <span
           class="dusk-balance__value"
         >
+          <!---->
           2,345.000000000
+          
+          <!---->
           <!---->
           <svg
             class="dusk-icon dusk-icon--size--default"
