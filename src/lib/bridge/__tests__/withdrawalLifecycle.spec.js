@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  WITHDRAWAL_GAS_REFUSAL,
   WITHDRAWAL_TIMELINE_STEPS,
   roughDuration,
   withdrawalActionFailure,
@@ -74,5 +75,16 @@ describe("DuskEVM withdrawal lifecycle", () => {
     );
     expect(withdrawalActionFailure("proven_waiting")).toBe("");
     expect(withdrawalActionFailure("failed")).toBe("");
+  });
+
+  it("keeps the gas refusal's own line, as trying again wouldn't help", () => {
+    for (const stage of ["ready_to_prove", "ready_to_finalize"]) {
+      expect(withdrawalActionFailure(stage, WITHDRAWAL_GAS_REFUSAL)).toBe(
+        WITHDRAWAL_GAS_REFUSAL
+      );
+    }
+    expect(
+      withdrawalActionFailure("ready_to_finalize", "User rejected the request.")
+    ).toBe("The claim wasn't sent. Try again.");
   });
 });

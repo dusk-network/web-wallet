@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 
 import { EvmTransactions } from "..";
+import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 
 const mocks = vi.hoisted(() => {
   const configuredFinalizationConfig = () =>
@@ -638,6 +639,45 @@ describe("EvmTransactions", () => {
       consoleError.mockRestore();
     }
   );
+
+  it("keeps the gas refusal's own line on the card", async () => {
+    const txHash = `0x${"6a".repeat(32)}`;
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      blockNumber: 13675n,
+      stage: "ready_to_finalize",
+      transactionHash: txHash,
+      withdrawalHash: `0x${"ee".repeat(32)}`,
+    });
+    mocks.finalizeWithdrawal.mockRejectedValue(
+      new Error(WITHDRAWAL_GAS_REFUSAL)
+    );
+
+    const { findByRole, findByText, getByLabelText, getByRole, queryByText } =
+      render(EvmTransactions, { target: document.body });
+
+    await fireEvent.input(getByLabelText("Find by transaction hash"), {
+      target: { value: txHash },
+    });
+    await fireEvent.click(getByRole("button", { name: /^check$/i }));
+    await fireEvent.click(
+      await findByRole("button", { name: /^claim on dusk$/i })
+    );
+
+    expect(
+      (await findByText(WITHDRAWAL_GAS_REFUSAL))
+        .closest(".banner")
+        ?.textContent?.trim()
+    ).toBe(WITHDRAWAL_GAS_REFUSAL);
+    expect(
+      queryByText("The claim wasn't sent. Try again.")
+    ).not.toBeInTheDocument();
+
+    consoleError.mockRestore();
+  });
 
   it("says the DUSK is still on DuskEVM when the withdrawal failed there", async () => {
     const txHash = `0x${"69".repeat(32)}`;

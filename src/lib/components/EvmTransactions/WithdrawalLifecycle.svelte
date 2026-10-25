@@ -47,10 +47,10 @@
     ? withdrawalExplorerUrl(selectedWithdrawal.transactionHash)
     : null;
   $: selectedStageMessage = stageMessage(selectedWithdrawal);
-  $: actionFailure =
-    statusError || selectedWithdrawal?.actionError
-      ? withdrawalActionFailure(selectedStage)
-      : "";
+  $: actionError = statusError || selectedWithdrawal?.actionError;
+  $: actionFailure = actionError
+    ? withdrawalActionFailure(selectedStage, actionError)
+    : "";
 </script>
 
 <section

@@ -18,6 +18,12 @@ export const WITHDRAWAL_REPORT_SECONDS = 3_600;
  */
 export const WITHDRAWAL_WAITING_PERIOD_SECONDS = 604_800;
 
+/**
+ * Why a proof or claim that needs more gas than the wallet allows isn't sent.
+ */
+export const WITHDRAWAL_GAS_REFUSAL =
+  "This withdrawal needs more gas than the wallet allows, so it wasn't sent.";
+
 const UNKNOWN_STAGE = /** @type {StageMetadata} */ ({
   badge: "neutral",
   label: "Status unavailable",
@@ -155,16 +161,22 @@ export function withdrawalStageProgress(stage) {
 
 /**
  * The line shown when the proof or the claim couldn't be sent, at the stage
- * that offers to send it again.
+ * that offers to send it again. The gas refusal keeps its own line, since
+ * trying again would be refused too.
  *
  * @param {string} stage
+ * @param {string} [error]
  */
-export function withdrawalActionFailure(stage) {
+export function withdrawalActionFailure(stage, error = "") {
   switch (stage) {
     case "ready_to_prove":
-      return "The proof wasn't sent. Try again.";
+      return error === WITHDRAWAL_GAS_REFUSAL
+        ? error
+        : "The proof wasn't sent. Try again.";
     case "ready_to_finalize":
-      return "The claim wasn't sent. Try again.";
+      return error === WITHDRAWAL_GAS_REFUSAL
+        ? error
+        : "The claim wasn't sent. Try again.";
     default:
       return "";
   }

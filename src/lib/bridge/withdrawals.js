@@ -19,6 +19,7 @@ import {
 import { Gas } from "@dusk/w3sper";
 import { get } from "svelte/store";
 
+import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { WITHDRAWAL_GAS_LIMIT } from "$lib/contracts/gasDefaults";
 import {
   gasStore,
@@ -1470,9 +1471,7 @@ export function withdrawalGas(withdrawalGasLimit = 0n) {
   const limit = WITHDRAWAL_GAS_LIMIT + withdrawalGasLimit;
 
   if (limit > gasLimitUpper) {
-    throw new Error(
-      "This withdrawal needs more gas than the wallet allows, so it wasn't sent."
-    );
+    throw new Error(WITHDRAWAL_GAS_REFUSAL);
   }
 
   return new Gas({ limit, price: get(settingsStore).gasPrice });
