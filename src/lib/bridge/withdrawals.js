@@ -73,6 +73,13 @@ const GAME_RESOLUTION_ABI = Object.freeze([
     type: "function",
   },
 ]);
+/**
+ * Proof and game times on Dusk's clock are within days of the latest block.
+ * Older DuskEVM deployments count block height × 10 seconds instead, decades
+ * behind it, so their times give no claim time.
+ */
+const DUSK_CLOCK_WINDOW_SECONDS = 31_536_000n;
+const NO_CLAIM_TIME = Object.freeze({ readyAt: null, readyAtExact: false });
 
 /** @param {unknown} value */
 export function parseGameSearchDepth(value) {
@@ -1066,6 +1073,7 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
   return {
     ...event,
     disputeGameProxy: provenWithdrawal.disputeGameProxy,
+    proofRejected: gameStatus.proofRejected ?? false,
     proofSubmitter,
     provenAt: provenWithdrawal.timestamp,
     readyAt: gameStatus.readyAt ?? null,
@@ -1082,7 +1090,7 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
  * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
  * @param {bigint} provenWithdrawal.timestamp
  * @param {`0x${string}`} proofSubmitter
- * @returns {Promise<{ readyAt?: bigint | null, readyAtExact?: boolean, stage: string, statusMessage: string }>}
+ * @returns {Promise<{ proofRejected?: boolean, readyAt?: bigint | null, readyAtExact?: boolean, stage: string, statusMessage: string }>}
  */
 async function provenWithdrawalGameStatus(
   event,
@@ -1096,12 +1104,7 @@ async function provenWithdrawalGameStatus(
   ]);
   const readyAt = provenWithdrawal.timestamp + proofMaturityDelay;
   const claim = () =>
-    claimTime(
-      portal,
-      provenWithdrawal.disputeGameProxy,
-      readyAt,
-      latestTimestamp
-    );
+    claimTime(portal, provenWithdrawal, proofMaturityDelay, latestTimestamp);
 
   if (latestTimestamp < readyAt) {
     return {
@@ -1178,43 +1181,70 @@ async function readGameResolution(disputeGameProxy, functionName) {
 }
 
 /**
+ * Whether a proof or game time is on Dusk's clock, near the latest block.
+ *
+ * @param {bigint} time
+ * @param {bigint} latestTimestamp
+ */
+function onDuskClock(time, latestTimestamp) {
+  const distance =
+    time > latestTimestamp ? time - latestTimestamp : latestTimestamp - time;
+
+  return distance < DUSK_CLOCK_WINDOW_SECONDS;
+}
+
+/**
  * When a proven withdrawal can be claimed: once its proof has matured and its
  * dispute game has resolved for the proposal and become final. The time is
  * exact once the game has resolved. Until then the game needs at least its
- * finality delay, which makes an estimate.
+ * finality delay, which makes an estimate. A proof time off Dusk's clock
+ * gives no claim time, and a game time off it is left out.
  *
  * @param {import("@dusk/w3sper").Contract} portal
- * @param {`0x${string}`} disputeGameProxy
- * @param {bigint} maturedAt
+ * @param {object} provenWithdrawal
+ * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
+ * @param {bigint} provenWithdrawal.timestamp
+ * @param {bigint} proofMaturityDelay
  * @param {bigint} latestTimestamp
  */
-async function claimTime(portal, disputeGameProxy, maturedAt, latestTimestamp) {
+async function claimTime(
+  portal,
+  provenWithdrawal,
+  proofMaturityDelay,
+  latestTimestamp
+) {
+  if (!onDuskClock(provenWithdrawal.timestamp, latestTimestamp)) {
+    return NO_CLAIM_TIME;
+  }
+
+  const maturedAt = provenWithdrawal.timestamp + proofMaturityDelay;
   let claimAt = maturedAt;
   let exact = false;
 
   try {
     const [status, resolvedAt, finalityDelay] = await Promise.all([
-      readGameResolution(disputeGameProxy, "status"),
-      readGameResolution(disputeGameProxy, "resolvedAt"),
+      readGameResolution(provenWithdrawal.disputeGameProxy, "status"),
+      readGameResolution(provenWithdrawal.disputeGameProxy, "resolvedAt"),
       readDisputeGameFinalityDelaySeconds(portal),
     ]);
+    const resolved = Number(status) === GAME_STATUS.DEFENDER_WINS;
+    const finalAt = (resolved ? resolvedAt : latestTimestamp) + finalityDelay;
 
     if (Number(status) === GAME_STATUS.CHALLENGER_WINS) {
-      return { readyAt: null, readyAtExact: false };
+      return NO_CLAIM_TIME;
     }
 
-    exact = Number(status) === GAME_STATUS.DEFENDER_WINS;
-
-    const finalAt = (exact ? resolvedAt : latestTimestamp) + finalityDelay;
-
-    claimAt = finalAt > maturedAt ? finalAt : maturedAt;
+    if (!resolved || onDuskClock(resolvedAt, latestTimestamp)) {
+      exact = resolved;
+      claimAt = finalAt > maturedAt ? finalAt : maturedAt;
+    }
   } catch {
     // The proof's maturity alone still gives an estimate.
   }
 
   return claimAt > latestTimestamp
     ? { readyAt: claimAt, readyAtExact: exact }
-    : { readyAt: null, readyAtExact: false };
+    : NO_CLAIM_TIME;
 }
 
 async function readLatestL1Timestamp() {
@@ -1329,6 +1359,7 @@ async function classifyRejectedProofStatus(
   }
 
   return {
+    proofRejected: true,
     stage: "proven_waiting",
     statusMessage:
       "The existing proof was rejected, but no replacement output proposal is available yet.",

@@ -366,7 +366,12 @@ describe("DuskEVM withdrawal helpers", () => {
 
     // Proven at 100, so the proof matures at 604_900.
     await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
-      { readyAt: 604_900n, readyAtExact: false, stage: "proven_waiting" }
+      {
+        proofRejected: false,
+        readyAt: 604_900n,
+        readyAtExact: false,
+        stage: "proven_waiting",
+      }
     );
     expect(portal.call.checkWithdrawal).not.toHaveBeenCalled();
   });
@@ -410,6 +415,60 @@ describe("DuskEVM withdrawal helpers", () => {
     // The latest block is at 200; the game can't be final before 200 + 302_400.
     await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
       { readyAt: 302_600n, readyAtExact: false, stage: "proven_waiting" }
+    );
+  });
+
+  it("gives no claim time from a proof time off Dusk's clock", async () => {
+    const { networkStore, portal } = mockWithdrawalFinalization({
+      finalizePreflight: vi
+        .fn()
+        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
+    });
+    // Older deployments count block height × 10 seconds.
+    portal.call.provenWithdrawals.mockResolvedValue([
+      Array(20).fill(0x1e),
+      45_252_320n,
+    ]);
+    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
+    networkStore.getLatestBlockTimestamp.mockResolvedValue(1_792_950_989n);
+    stubGameResolution({ resolvedAt: 0n, status: 0 });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      { readyAt: null, readyAtExact: false, stage: "proven_waiting" }
+    );
+  });
+
+  it("leaves out a game time off Dusk's clock", async () => {
+    const { networkStore, portal } = mockWithdrawalFinalization({
+      finalizePreflight: vi.fn(),
+    });
+    // Proven a day before the latest block.
+    portal.call.provenWithdrawals.mockResolvedValue([
+      Array(20).fill(0x1e),
+      1_792_864_589n,
+    ]);
+    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
+    networkStore.getLatestBlockTimestamp.mockResolvedValue(1_792_950_989n);
+    stubGameResolution({ resolvedAt: 46_807_020n, status: 2 });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      { readyAt: 1_793_469_389n, readyAtExact: false, stage: "proven_waiting" }
+    );
+  });
+
+  it("flags a rejected proof that has no replacement output yet", async () => {
+    mockWithdrawalFinalization({
+      finalizePreflight: vi
+        .fn()
+        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
+      gameStatus: 1,
+    });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      { proofRejected: true, readyAt: null, stage: "proven_waiting" }
     );
   });
 

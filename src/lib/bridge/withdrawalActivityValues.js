@@ -18,6 +18,7 @@ const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
  * @property {number | null} lastCheckedAt
  * @property {"finalize" | "prove" | null} pendingAction
  * @property {string | null} pendingTransactionHash
+ * @property {boolean} [proofRejected]
  * @property {string | null} proofSubmitter
  * @property {string | null} readyAt
  * @property {boolean} [readyAtExact]

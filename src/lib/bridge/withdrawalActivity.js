@@ -63,6 +63,7 @@ export function mergeWithdrawalActivity(remembered, indexed) {
             lastCheckedAt: local.lastCheckedAt,
             pendingAction: local.pendingAction,
             pendingTransactionHash: local.pendingTransactionHash,
+            proofRejected: local.proofRejected,
             proofSubmitter: local.proofSubmitter,
             readyAt: local.readyAt,
             readyAtExact: local.readyAtExact,

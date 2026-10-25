@@ -31,6 +31,7 @@ function statusPatch(status) {
 
   for (const key of [
     "blockNumber",
+    "proofRejected",
     "proofSubmitter",
     "readyAt",
     "readyAtExact",

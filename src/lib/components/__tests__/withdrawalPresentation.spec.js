@@ -60,6 +60,20 @@ describe("withdrawal presentation", () => {
     ).toBe("Claim in about 7 days.");
   });
 
+  it("says a rejected proof must be proved again", () => {
+    expect(
+      stageMessage(
+        waiting({
+          proofRejected: true,
+          readyAt: String((now + 6 * day) / 1_000),
+        }),
+        now
+      )
+    ).toBe(
+      "The proof was rejected. Prove again once DuskEVM reports a new output."
+    );
+  });
+
   it("leaves the other stages' lines to the lifecycle", () => {
     expect(stageMessage({ stage: "finalized" }, now)).toBe("");
     expect(

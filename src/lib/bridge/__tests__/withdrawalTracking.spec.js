@@ -85,6 +85,23 @@ describe("DuskEVM withdrawal tracking", () => {
     );
   });
 
+  it("remembers a rejected proof", async () => {
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      ...readyToProveStatus(),
+      proofRejected: true,
+      proofSubmitter: account,
+      readyAt: null,
+      readyAtExact: false,
+      stage: "proven_waiting",
+    });
+
+    await refreshWithdrawalTransaction(transactionHash);
+
+    expect(getRememberedWithdrawalTransaction(transactionHash)).toEqual(
+      expect.objectContaining({ proofRejected: true, stage: "proven_waiting" })
+    );
+  });
+
   it("keeps a submitted proof pending until Dusk execution is reflected", async () => {
     updateWithdrawalTransaction(transactionHash, {
       pendingAction: "prove",

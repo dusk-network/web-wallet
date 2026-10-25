@@ -86,12 +86,16 @@ export function formatClaimTime(milliseconds, locale) {
 
 /**
  * The claim time once Dusk knows it, otherwise the time left: estimated from
- * the proof, or the usual waiting period.
+ * the proof, or the usual waiting period. A rejected proof can't be claimed.
  *
  * @param {any} item
  * @param {number} now
  */
 function waitingPeriodMessage(item, now) {
+  if (item.proofRejected) {
+    return "The proof was rejected. Prove again once DuskEVM reports a new output.";
+  }
+
   const claimAt = item.readyAt
     ? Number(item.readyAt) * 1_000
     : Date.parse(item.challengePeriodEnd ?? "");
