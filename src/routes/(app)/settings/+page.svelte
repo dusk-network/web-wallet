@@ -21,7 +21,10 @@
   import { currencies } from "$lib/dusk/currency";
   import { createNumberFormatter } from "$lib/dusk/number";
   import { gasStore, settingsStore, walletStore } from "$lib/stores";
-  import { areValidGasSettings } from "$lib/contracts";
+  import {
+    HIGHEST_DEFAULT_GAS_LIMIT,
+    areValidGasSettings,
+  } from "$lib/contracts";
   import { logout } from "$lib/navigation";
   import loginInfoStorage from "$lib/services/loginInfoStorage";
 
@@ -49,6 +52,20 @@
     }
   }
 
+  /**
+   * A custom gas limit replaces the default of every operation. It starts
+   * from the highest default, which suits every operation.
+   *
+   * @param {CustomEvent<boolean>} event
+   */
+  function handleCustomGasLimitChange(event) {
+    settingsStore.update((store) => ({
+      ...store,
+      customGasLimit: event.detail ? HIGHEST_DEFAULT_GAS_LIMIT : null,
+    }));
+    isGasValid = areValidGasSettings(gasPrice, HIGHEST_DEFAULT_GAS_LIMIT);
+  }
+
   function handleResetWalletClick() {
     // eslint-disable-next-line no-alert
     if (confirm(confirmResetWalletMessage)) {
@@ -70,12 +87,13 @@
   $: ({ syncStatus } = $walletStore);
   $: ({
     currency,
+    customGasLimit,
     darkMode,
-    gasLimit,
     gasPrice,
     language,
     walletCreationBlockHeight,
   } = $settingsStore);
+  $: hasCustomGasLimit = customGasLimit !== null;
   $: numberFormatter = createNumberFormatter(language);
 </script>
 
@@ -91,6 +109,17 @@
         <h3 class="h4 settings-group__heading">Gas</h3>
       </header>
       <div class="settings-group__multi-control-content">
+        <label
+          class="settings-group__control settings-group__control--switch"
+          for={undefined}
+        >
+          <span>Custom gas limit</span>
+          <Switch
+            aria-label="Custom gas limit"
+            on:change={handleCustomGasLimitChange}
+            value={hasCustomGasLimit}
+          />
+        </label>
         <GasControls
           on:gasSettings={(event) => {
             const { limit, price } = event.detail;
@@ -99,15 +128,16 @@
 
             settingsStore.update((store) => ({
               ...store,
-              gasLimit: limit,
+              customGasLimit: hasCustomGasLimit ? limit : null,
               gasPrice: price,
             }));
           }}
-          limit={gasLimit}
+          limit={customGasLimit ?? HIGHEST_DEFAULT_GAS_LIMIT}
           limitLower={gasLimitLower}
           limitUpper={gasLimitUpper}
           price={gasPrice}
           priceLower={gasPriceLower}
+          showLimit={hasCustomGasLimit}
         />
         <Button
           on:click={handleResetGasSettingsClick}

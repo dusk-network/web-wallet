@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { areValidGasSettings } from "..";
+import { areValidGasSettings, getGasLimits } from "..";
 import { get } from "svelte/store";
 import { gasStore } from "$lib/stores";
 
@@ -56,5 +56,16 @@ describe("areValidGasSettings", () => {
 
     // @ts-ignore
     expect(areValidGasSettings(realStore.gasPriceLower, "")).toBe(false);
+  });
+
+  it("should validate against the bounds of an operation when given", () => {
+    const stakeLimits = getGasLimits("stake", realStore);
+
+    expect(areValidGasSettings(1n, 30_000_000n)).toBe(true);
+    expect(areValidGasSettings(1n, 30_000_000n, stakeLimits)).toBe(false);
+    expect(areValidGasSettings(1n, 35_000_000n, stakeLimits)).toBe(true);
+    expect(
+      areValidGasSettings(1n, realStore.gasLimitUpper + 1n, stakeLimits)
+    ).toBe(false);
   });
 });

@@ -43,6 +43,7 @@ exports[`GasControls > should render the \`GasControls\` component 1`] = `
     
     <!---->
   </label>
+  <!---->
   
 </body>
 `;

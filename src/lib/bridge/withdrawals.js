@@ -16,8 +16,16 @@ import {
   serializeOutputRootProofForDuskAbi,
   serializeWithdrawalForDuskAbi,
 } from "@dusk/evm-sdk";
+import { Gas } from "@dusk/w3sper";
+import { get } from "svelte/store";
 
-import { networkStore, walletStore } from "$lib/stores";
+import { WITHDRAWAL_GAS_LIMIT } from "$lib/contracts/gasDefaults";
+import {
+  gasStore,
+  networkStore,
+  settingsStore,
+  walletStore,
+} from "$lib/stores";
 import { duskEvm } from "$lib/web3/walletConnection";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -1308,6 +1316,29 @@ export async function loadDuskTransactionExecution(txHash) {
 }
 
 /**
+ * The gas to prove or finalize a withdrawal with. The Portal hands the gas it
+ * has left to the withdrawal's own call, so finalizing adds the gas the
+ * withdrawal asks for. A withdrawal that needs more than the wallet's upper
+ * gas bound isn't sent: less gas could leave its call short, and finalizing
+ * can consume the withdrawal even when that call fails.
+ *
+ * @param {bigint} [withdrawalGasLimit]
+ * @returns {Gas}
+ */
+export function withdrawalGas(withdrawalGasLimit = 0n) {
+  const { gasLimitUpper } = get(gasStore);
+  const limit = WITHDRAWAL_GAS_LIMIT + withdrawalGasLimit;
+
+  if (limit > gasLimitUpper) {
+    throw new Error(
+      "This withdrawal needs more gas than the wallet allows, so it wasn't sent."
+    );
+  }
+
+  return new Gas({ limit, price: get(settingsStore).gasPrice });
+}
+
+/**
  * @param {`0x${string}`} txHash
  */
 export async function proveWithdrawal(txHash) {
@@ -1327,7 +1358,8 @@ export async function proveWithdrawal(txHash) {
       bigIntToU256(proof.disputeGameIndex),
       outputRootProofToDriverInput(proof.outputRootProof),
       proof.withdrawalProof.map((node) => hexToArray(node, undefined)),
-    ]
+    ],
+    withdrawalGas()
   );
 
   return response.hash;
@@ -1348,7 +1380,8 @@ export async function finalizeWithdrawal(txHash) {
   const response = await walletStore.finalizeDuskEvmWithdrawal(
     config.optimismPortalContractId,
     config.optimismPortalDataDriverUrl,
-    withdrawalToDriverInput(status.withdrawal)
+    withdrawalToDriverInput(status.withdrawal),
+    withdrawalGas(status.withdrawal.gasLimit)
   );
 
   return response.hash;

@@ -9,13 +9,11 @@
     walletStore,
   } from "$lib/stores";
   import { ContractOperations, Stake, Unstake } from "$lib/components";
+  import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { mdiDatabaseArrowDownOutline, mdiGiftOpenOutline } from "@mdi/js";
 
   /** @type {ContractDescriptor} */
   export let descriptor;
-
-  /** @type {ContractGasSettings} */
-  export let gasSettings;
 
   /** @type {StakeInfo} */
   export let stakeInfo;
@@ -26,7 +24,6 @@
   /** @type {ContractOperation[]} */
   let operations;
 
-  const gasLimits = $gasStore;
   const { hideStakingNotice } = $settingsStore;
 
   /** @type {Record<string, (info: StakeInfo) => boolean>} */
@@ -89,6 +86,15 @@
     operations = getOperations();
   }
   $: ({ currentOperation } = $operationsStore);
+
+  /** @type {GasOperation} */
+  $: gasOperation =
+    currentOperation === "unstake" || currentOperation === "claim-rewards"
+      ? currentOperation
+      : "stake";
+  $: ({ customGasLimit, gasPrice } = $settingsStore);
+  $: gasSettings = getGasSettings(gasOperation, { customGasLimit, gasPrice });
+  $: gasLimits = getGasLimits(gasOperation, $gasStore);
   $: ({ balance, minimumStake, syncStatus } = $walletStore);
   $: isSyncOK = !(syncStatus.isInProgress || !!syncStatus.error);
   $: if (!isSyncOK) {

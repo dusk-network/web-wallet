@@ -9,7 +9,7 @@ import { createCurrencyFormatter } from "$lib/dusk/currency";
 describe("GasSettings", () => {
   const settings = get(settingsStore);
   const duskFormatter = createCurrencyFormatter(settings.language, "DUSK", 9);
-  const fee = settings.gasPrice * settings.gasLimit;
+  const fee = settings.gasPrice * 100_000_000n;
 
   const baseProps = {
     fee: fee,
@@ -42,6 +42,15 @@ describe("GasSettings", () => {
     await fireEvent.click(next);
 
     expect(container.firstElementChild).toMatchSnapshot();
+  });
+
+  it("opens when the limit is below its lower bound", () => {
+    const { getAllByRole } = render(GasSettings, {
+      ...baseOptions,
+      props: { ...baseProps, limitLower: baseProps.limit + 1n },
+    });
+
+    expect(getAllByRole("textbox")).toHaveLength(2);
   });
 
   it('checks "gasSettings" event is dispatched on click with the correct event data', async () => {

@@ -9,6 +9,7 @@ import {
 } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
+import { HIGHEST_DEFAULT_GAS_LIMIT } from "$lib/contracts/gasDefaults";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import * as navigation from "$lib/navigation";
 import {
@@ -62,6 +63,7 @@ describe("Settings", () => {
   afterEach(() => {
     cleanup();
     logoutSpy.mockClear();
+    settingsStore.resetGasSettings();
   });
 
   afterAll(() => {
@@ -79,8 +81,10 @@ describe("Settings", () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
-  it("should label its controls without colons, keep the gas reset button quiet, and link the wallet's issues", () => {
+  it("should label its controls without colons, keep the gas reset button quiet, and link the wallet's issues", async () => {
     const { getByRole, getByText } = render(Settings, {});
+
+    await fireEvent.click(getByRole("switch", { name: "Custom gas limit" }));
 
     expect(getByText("Price (lux)")).toBeInTheDocument();
     expect(getByText("Gas limit")).toBeInTheDocument();
@@ -134,13 +138,16 @@ describe("Settings", () => {
     const { gasLimitLower, gasLimitUpper, gasPriceLower } = get(gasStore);
     const { getByLabelText, getByRole } = render(Settings, {});
     const priceInput = asInput(getByLabelText(/price/i));
-    const limitInput = asInput(getByLabelText(/limit/i));
     const backButton = getByRole("link", { name: /back/i });
 
     await fireInput(priceInput, String(gasPriceLower - 1n));
     expect(backButton).toHaveAttribute("aria-disabled", "true");
     await fireInput(priceInput, gasPriceLower.toString());
     expect(backButton).toHaveAttribute("aria-disabled", "false");
+
+    await fireEvent.click(getByRole("switch", { name: "Custom gas limit" }));
+
+    const limitInput = asInput(getByLabelText(/^gas limit$/i));
 
     await fireInput(limitInput, String(gasLimitLower - 1n));
     expect(backButton).toHaveAttribute("aria-disabled", "true");
@@ -150,6 +157,52 @@ describe("Settings", () => {
     expect(backButton).toHaveAttribute("aria-disabled", "true");
     await fireInput(limitInput, gasLimitUpper.toString());
     expect(backButton).toHaveAttribute("aria-disabled", "false");
+  });
+
+  it("should leave the gas limit to each operation unless a custom one is set", async () => {
+    const { getByLabelText, getByRole, queryByLabelText } = render(Settings);
+    const customGasLimit = getByRole("switch", { name: "Custom gas limit" });
+    const limitLabel = /^gas limit$/i;
+
+    expect(customGasLimit).toHaveAttribute("aria-checked", "false");
+    expect(queryByLabelText(limitLabel)).toBeNull();
+    expect(get(settingsStore).customGasLimit).toBeNull();
+
+    await fireEvent.click(customGasLimit);
+
+    const limitInput = asInput(getByLabelText(limitLabel));
+
+    expect(limitInput.value).toBe(HIGHEST_DEFAULT_GAS_LIMIT.toString());
+    expect(get(settingsStore).customGasLimit).toBe(HIGHEST_DEFAULT_GAS_LIMIT);
+
+    await fireInput(limitInput, "3000000");
+
+    expect(get(settingsStore).customGasLimit).toBe(3_000_000n);
+
+    await fireEvent.click(customGasLimit);
+
+    expect(queryByLabelText(limitLabel)).toBeNull();
+    expect(get(settingsStore).customGasLimit).toBeNull();
+  });
+
+  it("should show a stored custom gas limit until the gas settings are reset", async () => {
+    settingsStore.update((settings) => ({
+      ...settings,
+      customGasLimit: 70_000_000n,
+    }));
+
+    const { getByLabelText, getByRole, queryByLabelText } = render(Settings);
+    const limitLabel = /^gas limit$/i;
+
+    expect(getByRole("switch", { name: "Custom gas limit" })).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(asInput(getByLabelText(limitLabel)).value).toBe("70000000");
+
+    await act(() => settingsStore.resetGasSettings());
+
+    expect(queryByLabelText(limitLabel)).toBeNull();
   });
 
   it("should reset wallet store and navigate to landing page on clicking the Lock Wallet button", async () => {

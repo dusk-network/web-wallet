@@ -45,6 +45,24 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
         class="settings-group__multi-control-content"
       >
         <label
+          class="settings-group__control settings-group__control--switch"
+        >
+          <span>
+            Custom gas limit
+          </span>
+           
+          <div
+            aria-checked="false"
+            aria-disabled="false"
+            aria-label="Custom gas limit"
+            class="dusk-switch"
+            role="switch"
+            tabindex="0"
+          />
+          <!---->
+        </label>
+         
+        <label
           class="gas-control svelte-p462n7"
         >
           <span
@@ -65,26 +83,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           <!---->
         </label>
          
-        <label
-          class="gas-control svelte-p462n7"
-        >
-          <span
-            class="gas-control__label svelte-p462n7"
-          >
-            Gas limit
-          </span>
-           
-          <!---->
-          <input
-            class="dusk-textbox dusk-textbox-text gas-control__input"
-            inputmode="numeric"
-            pattern="\\d+"
-            required=""
-            type="text"
-          />
-          
-          <!---->
-        </label>
+        <!---->
         <!---->
          
         <button
@@ -590,6 +589,24 @@ exports[`Settings > should render the settings page displaying the status of the
         class="settings-group__multi-control-content"
       >
         <label
+          class="settings-group__control settings-group__control--switch"
+        >
+          <span>
+            Custom gas limit
+          </span>
+           
+          <div
+            aria-checked="false"
+            aria-disabled="false"
+            aria-label="Custom gas limit"
+            class="dusk-switch"
+            role="switch"
+            tabindex="0"
+          />
+          <!---->
+        </label>
+         
+        <label
           class="gas-control svelte-p462n7"
         >
           <span
@@ -610,26 +627,7 @@ exports[`Settings > should render the settings page displaying the status of the
           <!---->
         </label>
          
-        <label
-          class="gas-control svelte-p462n7"
-        >
-          <span
-            class="gas-control__label svelte-p462n7"
-          >
-            Gas limit
-          </span>
-           
-          <!---->
-          <input
-            class="dusk-textbox dusk-textbox-text gas-control__input"
-            inputmode="numeric"
-            pattern="\\d+"
-            required=""
-            type="text"
-          />
-          
-          <!---->
-        </label>
+        <!---->
         <!---->
          
         <button
@@ -1118,6 +1116,24 @@ exports[`Settings > should render the settings page displaying the status of the
         class="settings-group__multi-control-content"
       >
         <label
+          class="settings-group__control settings-group__control--switch"
+        >
+          <span>
+            Custom gas limit
+          </span>
+           
+          <div
+            aria-checked="false"
+            aria-disabled="false"
+            aria-label="Custom gas limit"
+            class="dusk-switch"
+            role="switch"
+            tabindex="0"
+          />
+          <!---->
+        </label>
+         
+        <label
           class="gas-control svelte-p462n7"
         >
           <span
@@ -1138,26 +1154,7 @@ exports[`Settings > should render the settings page displaying the status of the
           <!---->
         </label>
          
-        <label
-          class="gas-control svelte-p462n7"
-        >
-          <span
-            class="gas-control__label svelte-p462n7"
-          >
-            Gas limit
-          </span>
-           
-          <!---->
-          <input
-            class="dusk-textbox dusk-textbox-text gas-control__input"
-            inputmode="numeric"
-            pattern="\\d+"
-            required=""
-            type="text"
-          />
-          
-          <!---->
-        </label>
+        <!---->
         <!---->
          
         <button
@@ -1646,6 +1643,24 @@ exports[`Settings > should show the wallet creation block height if it's greater
         class="settings-group__multi-control-content"
       >
         <label
+          class="settings-group__control settings-group__control--switch"
+        >
+          <span>
+            Custom gas limit
+          </span>
+           
+          <div
+            aria-checked="false"
+            aria-disabled="false"
+            aria-label="Custom gas limit"
+            class="dusk-switch"
+            role="switch"
+            tabindex="0"
+          />
+          <!---->
+        </label>
+         
+        <label
           class="gas-control svelte-p462n7"
         >
           <span
@@ -1666,26 +1681,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
           <!---->
         </label>
          
-        <label
-          class="gas-control svelte-p462n7"
-        >
-          <span
-            class="gas-control__label svelte-p462n7"
-          >
-            Gas limit
-          </span>
-           
-          <!---->
-          <input
-            class="dusk-textbox dusk-textbox-text gas-control__input"
-            inputmode="numeric"
-            pattern="\\d+"
-            required=""
-            type="text"
-          />
-          
-          <!---->
-        </label>
+        <!---->
         <!---->
          
         <button

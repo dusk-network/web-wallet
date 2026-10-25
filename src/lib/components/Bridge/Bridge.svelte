@@ -272,7 +272,7 @@
   $: isBalanceSufficient = isDepositing ? hasEnoughUnshielded : hasEnoughEvm;
   $: isNextButtonDisabled =
     amountLux === 0n || (isDepositing && !isGasValid) || !isBalanceSufficient;
-  $: isGasValid = areValidGasSettings(gasPrice, gasLimit);
+  $: isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   $: ({ address } = $account);
 
   onMount(() => {

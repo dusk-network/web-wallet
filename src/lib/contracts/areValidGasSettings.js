@@ -5,18 +5,18 @@ import { get } from "svelte/store";
  *
  * @param {bigint} price
  * @param {bigint} limit
+ * @param {GasStoreContent} [bounds] The operation's bounds, see `getGasLimits`; the global ones by default.
  * @returns {Boolean}
  */
-const areValidGasSettings = (price, limit) => {
-  const gasLimits = get(gasStore);
+const areValidGasSettings = (price, limit, bounds = get(gasStore)) => {
   let isValidPrice = false;
   let isValidLimit = false;
   let isGasValid = false;
 
   if ([price, limit].every((value) => typeof value === "bigint")) {
-    isValidPrice = price >= gasLimits.gasPriceLower && price <= limit;
+    isValidPrice = price >= bounds.gasPriceLower && price <= limit;
     isValidLimit =
-      limit >= gasLimits.gasLimitLower && limit <= gasLimits.gasLimitUpper;
+      limit >= bounds.gasLimitLower && limit <= bounds.gasLimitUpper;
     isGasValid = isValidPrice && isValidLimit;
   }
 

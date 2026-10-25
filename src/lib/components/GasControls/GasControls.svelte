@@ -19,6 +19,9 @@
   /** @type {bigint} */
   export let priceLower;
 
+  /** @type {boolean} */
+  export let showLimit = true;
+
   const dispatch = createEventDispatcher();
 
   function dispatchGasLimits() {
@@ -45,17 +48,19 @@
   />
 </label>
 
-<label for={undefined} class="gas-control">
-  <span class="gas-control__label">Gas limit</span>
-  <BigIntInput
-    bind:value={limit}
-    className="gas-control__input"
-    maxValue={limitUpper}
-    minValue={limitLower}
-    on:change={dispatchGasLimits}
-    required
-  />
-</label>
+{#if showLimit}
+  <label for={undefined} class="gas-control">
+    <span class="gas-control__label">Gas limit</span>
+    <BigIntInput
+      bind:value={limit}
+      className="gas-control__input"
+      maxValue={limitUpper}
+      minValue={limitLower}
+      on:change={dispatchGasLimits}
+      required
+    />
+  </label>
+{/if}
 
 <style lang="postcss">
   .gas-control {

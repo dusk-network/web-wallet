@@ -3,19 +3,13 @@
 <script>
   import { createCurrencyFormatter } from "$lib/dusk/currency";
   import { gasStore, settingsStore, walletStore } from "$lib/stores";
+  import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { Allocate } from "$lib/components";
 
-  /**
-   * @param {SettingsStoreContent} settings
-   * @returns {[ContractGasSettings, string]}
-   */
-  const collectSettings = ({ gasLimit, gasPrice, language }) => [
-    { gasLimit, gasPrice },
-    language,
-  ];
-  const gasLimits = $gasStore;
+  const gasLimits = getGasLimits("allocate", $gasStore);
 
-  $: [gasSettings, language] = collectSettings($settingsStore);
+  $: ({ customGasLimit, gasPrice, language } = $settingsStore);
+  $: gasSettings = getGasSettings("allocate", { customGasLimit, gasPrice });
   $: ({ balance, currentProfile } = $walletStore);
   $: shieldedAddress = currentProfile ? currentProfile.address.toString() : "";
   $: unshieldedAddress = currentProfile

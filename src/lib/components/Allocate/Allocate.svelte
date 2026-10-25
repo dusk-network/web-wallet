@@ -93,7 +93,7 @@
   }
 
   onMount(() => {
-    isGasValid = areValidGasSettings(gasPrice, gasLimit);
+    isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
 
     const resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -282,7 +282,8 @@
           on:gasSettings={(event) => {
             isGasValid = areValidGasSettings(
               event.detail.price,
-              event.detail.limit
+              event.detail.limit,
+              gasLimits
             );
 
             if (isGasValid) {

@@ -189,6 +189,33 @@ describe("Send", () => {
   });
 
   describe("Amount step", () => {
+    it("should start over from the gas settings it gets in the address step", async () => {
+      const { container, getByRole, rerender } = render(Send, baseProps);
+      const maxFee = () =>
+        container.querySelector(".gas-fee__amount-value")?.textContent;
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: shieldedAddress },
+      });
+      await rerender({
+        gasLimits: { ...baseProps.gasLimits, gasLimitLower: 30_000_000n },
+        gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      expect(maxFee()).toBe(formatter(luxToDusk(50_000_000n)));
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+
+      await fireEvent.click(getByRole("button", { name: "Back" }));
+      await rerender({
+        gasLimits: { ...baseProps.gasLimits, gasLimitLower: 60_000_000n },
+        gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+    });
+
     it("should render the Send component Amount step", async () => {
       const { container, getByRole } = render(Send, baseProps);
 
@@ -545,6 +572,48 @@ describe("Send", () => {
       ).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
+    });
+
+    it("should perform the transfer with the gas limit the user sets", async () => {
+      const { getByLabelText, getByRole } = render(Send, baseProps);
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: shieldedAddress },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "EDIT" }));
+      await fireEvent.input(getByLabelText(/gas limit/i), {
+        target: { value: "30000000" },
+      });
+      await tick();
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "SEND" }));
+
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        shieldedAddress,
+        duskToLux(1),
+        "",
+        baseProps.gasSettings.gasPrice,
+        30_000_000n
+      );
+    });
+
+    it("should not send again when new gas settings arrive after sending", async () => {
+      const { getByRole, rerender } = render(Send, baseProps);
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: shieldedAddress },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await vi.advanceTimersToNextTimerAsync();
+      await rerender({ gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n } });
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(baseProps.execute).toHaveBeenCalledTimes(1);
     });
 
     it("should perform a transfer for the desired amount, with a memo, give a success message and supply a link to see the transaction in the explorer", async () => {

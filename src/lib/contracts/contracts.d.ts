@@ -10,6 +10,17 @@ type ContractGasSettings = {
   gasPrice: bigint;
 };
 
+type GasOperation =
+  | "allocate"
+  | "bridge"
+  | "claim-rewards"
+  | "public-transfer"
+  | "shield"
+  | "shielded-transfer"
+  | "stake"
+  | "unshield"
+  | "unstake";
+
 type ContractOperation = {
   disabled: boolean;
   id: string;

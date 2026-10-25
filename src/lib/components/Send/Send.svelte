@@ -142,7 +142,7 @@
   const dispatch = createEventDispatcher();
 
   onMount(() => {
-    isGasValid = areValidGasSettings(gasPrice, gasLimit);
+    isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
 
   function setMaxAmount() {
@@ -328,6 +328,17 @@
   };
 
   let activeStep = 0;
+
+  // The gas settings depend on the recipient (public or shielded), chosen in
+  // the address step: start over from new ones there, and only there, as the
+  // last step sends again when the gas changes.
+  let currentGasSettings = gasSettings;
+
+  $: if (activeStep === 0 && gasSettings !== currentGasSettings) {
+    currentGasSettings = gasSettings;
+    ({ gasLimit, gasPrice } = gasSettings);
+    isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
+  }
 
   $: sendAmountInLux = sendAmount ? duskToLux(sendAmount) : 0n;
 
@@ -687,7 +698,8 @@
           on:gasSettings={(event) => {
             isGasValid = areValidGasSettings(
               event.detail.price,
-              event.detail.limit
+              event.detail.limit,
+              gasLimits
             );
 
             if (isGasValid) {

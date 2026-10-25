@@ -63,8 +63,6 @@ VITE_FEATURE_MIGRATE=true
 VITE_FEATURE_STAKE=true
 VITE_FEATURE_TRANSFER=true
 VITE_FEATURE_TRANSACTION_HISTORY=true
-VITE_GAS_LIMIT_DEFAULT=100000000
-VITE_GAS_LIMIT_LOWER=10000000
 VITE_GAS_LIMIT_UPPER=1000000000
 VITE_GAS_PRICE_DEFAULT=1
 VITE_GAS_PRICE_LOWER=1
@@ -73,6 +71,10 @@ VITE_MODE_MAINTENANCE=false
 VITE_REOWN_PROJECT_ID="" # the ID of the EVM project (as on Reown Cloud)
 VITE_NODE_URL="" # connect to a specific node
 ```
+
+Each operation has its own default gas limit and minimum, defined in
+`src/lib/contracts/gasDefaults.js`. `VITE_GAS_LIMIT_UPPER` caps the gas limit
+for all of them.
 
 For the DuskEVM bridge, `VITE_BRIDGE_CONTRACT_ID` is the Dusk L1
 `L1StandardBridge` contract id used for DuskDS -> DuskEVM deposits.
