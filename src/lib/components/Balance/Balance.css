@@ -125,3 +125,17 @@
     font-size: clamp(1.65rem, 7vw, 2rem);
   }
 }
+
+/* Narrow, the percentage goes under its balance's name, by the icon. */
+@media (max-width: 32rem) {
+  .dusk-balance__percentage {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    justify-items: start;
+    row-gap: 0;
+  }
+
+  .dusk-balance__percentage > :first-child {
+    grid-row: span 2;
+  }
+}

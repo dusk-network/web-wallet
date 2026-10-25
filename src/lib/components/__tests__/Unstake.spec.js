@@ -8,10 +8,21 @@ import {
   vi,
 } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import { createCurrencyFormatter } from "$lib/dusk/currency";
+import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
 
 import { Unstake } from "..";
 import { mdiDatabaseArrowDownOutline, mdiGiftOpenOutline } from "@mdi/js";
+
+/**
+ * The Review step's amounts, as their labels and values.
+ *
+ * @param {HTMLElement} container
+ */
+const getReviewAmounts = (container) =>
+  Array.from(container.querySelectorAll(".review-amount"), (row) => [
+    row.querySelector("dt")?.textContent,
+    row.querySelector("dd")?.textContent?.trim(),
+  ]);
 
 vi.mock("$lib/dusk/string", async (importOriginal) => {
   /** @type {typeof import("$lib/dusk/string")} */
@@ -80,6 +91,28 @@ describe("Unstake", () => {
 
       expect(nextButton).toBeEnabled();
       expect(container.firstElementChild).toMatchSnapshot();
+    });
+
+    it("should show the amount and the network fee on the review step, and no total", async () => {
+      const { container, getByRole } = render(Unstake, {
+        ...baseProps,
+        ...unstakeProps,
+      });
+      const fee =
+        baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
+
+      await vi.advanceTimersToNextTimerAsync();
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      expect(getReviewAmounts(container)).toStrictEqual([
+        [
+          "Unstake Amount",
+          formatter(luxToDusk(unstakeProps.maxWithdrawAmount)),
+        ],
+        ["Network fee (max)", formatter(luxToDusk(fee))],
+      ]);
+      expect(container.querySelector("dt .dusk-icon")).toBeNull();
+      expect(container.querySelector(".gas-fee")).toBeNull();
     });
 
     it("should perform an ustake, give a success message and supply a link to see the transaction in the explorer", async () => {

@@ -67,8 +67,7 @@ exports[`Allocate > should render the allocation page 1`] = `
           class="operation__allocate svelte-1w73wy7"
         >
           <p>
-            Edit the value to change the allocation of your Dusk between your
-          public and shielded accounts.
+            Move DUSK between your public and shielded accounts.
           </p>
            
           <fieldset
@@ -209,27 +208,17 @@ exports[`Allocate > should render the allocation page 1`] = `
                 class="gas-fee svelte-9uj43"
               >
                 <span>
-                  Fee:
+                  Network fee (max)
                 </span>
                  
                 <div
                   class="gas-fee__amount svelte-9uj43"
                 >
-                  <div
+                  <span
                     class="gas-fee__amount-value svelte-9uj43"
                   >
-                    <span
-                      class="svelte-9uj43"
-                    >
-                      max
-                    </span>
-                     
-                    <span
-                      class="svelte-9uj43"
-                    >
-                      0.100000000
-                    </span>
-                  </div>
+                    0.100000000
+                  </span>
                    
                   <!---->
                   <svg

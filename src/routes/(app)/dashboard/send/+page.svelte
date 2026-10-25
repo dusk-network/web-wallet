@@ -23,7 +23,7 @@
         : balanceInfo.unshielded.value;
     const statuses = [
       {
-        label: "Spendable",
+        label: `Spendable (${source === "shielded" ? "shielded" : "public"})`,
         value: duskFormatter(luxToDusk(spendable)),
       },
     ];

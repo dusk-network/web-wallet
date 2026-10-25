@@ -51,7 +51,7 @@ exports[`Stake > should render the Stake component 1`] = `
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -150,27 +150,17 @@ exports[`Stake > should render the Stake component 1`] = `
           class="gas-fee svelte-9uj43"
         >
           <span>
-            Fee:
+            Network fee (max)
           </span>
            
           <div
             class="gas-fee__amount svelte-9uj43"
           >
-            <div
+            <span
               class="gas-fee__amount-value svelte-9uj43"
             >
-              <span
-                class="svelte-9uj43"
-              >
-                max
-              </span>
-               
-              <span
-                class="svelte-9uj43"
-              >
-                0.020000000
-              </span>
-            </div>
+              0.020000000
+            </span>
              
             <!---->
             <svg
@@ -362,7 +352,7 @@ exports[`Stake > should render the Stake notice 1`] = `
           class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -395,14 +385,6 @@ exports[`Stake > should render the Stake notice 1`] = `
     <!---->
     <!---->
      
-    <!---->
-     
-    <!---->
-    <span
-      class="dusk-badge dusk-badge--variant-warning"
-    >
-      WARNING
-    </span>
     <!---->
      
     <!---->
@@ -509,7 +491,6 @@ exports[`Stake > should render the Stake notice 1`] = `
       
     </div>
     
-    <!---->
     <!---->
      
     <!---->
@@ -632,7 +613,7 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           class="dusk-stepper__step-label"
           id="step-some-generated-id"
         >
-          Overview
+          Review
         </span>
         <span
           aria-labelledby="step-some-generated-id"
@@ -676,52 +657,27 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
     <div
       class="operation__stake svelte-19xjhab"
     >
-      <span
-        class="dusk-badge dusk-badge--variant-warning"
-      >
-        REVIEW TRANSACTION
-      </span>
-      <!---->
-       
       <dl
-        class="stake-overview svelte-md57kw"
+        class="review-amount svelte-1dytdvp"
       >
-        <dt
-          class="stake-overview__label"
-        >
-          <!---->
-          <svg
-            class="dusk-icon dusk-icon--size--default"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M12,17L7,12H10V8H14V12H17L12,17M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"
-            />
-          </svg>
-          
-          <!---->
-           
-          <span>
-            Amount:
-          </span>
+        <dt>
+          Amount
         </dt>
          
         <dd
-          class="stake-overview__value svelte-md57kw"
+          class="review-amount__value svelte-1dytdvp"
         >
-          <span
-            class="svelte-md57kw"
-          >
+          <span>
             1,234.000000000
           </span>
            
           <!---->
           <svg
-            class="dusk-icon dusk-icon--size--default stake-overview__icon"
+            aria-label="DUSK"
+            class="dusk-icon dusk-icon--size--default review-amount__icon"
             data-tooltip-id="main-tooltip"
             data-tooltip-text="DUSK"
-            role="graphics-symbol"
+            role="img"
             viewBox="0 0 24 24"
           >
             <path
@@ -734,38 +690,27 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
       </dl>
       <!---->
        
-      <div
-        class="gas-fee svelte-9uj43"
+      <dl
+        class="review-amount svelte-1dytdvp"
       >
-        <span>
-          Fee:
-        </span>
+        <dt>
+          Network fee (max)
+        </dt>
          
-        <div
-          class="gas-fee__amount svelte-9uj43"
+        <dd
+          class="review-amount__value svelte-1dytdvp"
         >
-          <div
-            class="gas-fee__amount-value svelte-9uj43"
-          >
-            <span
-              class="svelte-9uj43"
-            >
-              max
-            </span>
-             
-            <span
-              class="svelte-9uj43"
-            >
-              0.020000000
-            </span>
-          </div>
+          <span>
+            0.020000000
+          </span>
            
           <!---->
           <svg
-            class="dusk-icon dusk-icon--size--default dusk-amount__icon"
+            aria-label="DUSK"
+            class="dusk-icon dusk-icon--size--default review-amount__icon"
             data-tooltip-id="main-tooltip"
             data-tooltip-text="DUSK"
-            role="graphics-symbol"
+            role="img"
             viewBox="0 0 24 24"
           >
             <path
@@ -774,8 +719,41 @@ exports[`Stake > should render the review step of the Stake component 1`] = `
           </svg>
           
           <!---->
-        </div>
-      </div>
+        </dd>
+      </dl>
+      <!---->
+       
+      <dl
+        class="review-amount svelte-1dytdvp"
+      >
+        <dt>
+          Total (max)
+        </dt>
+         
+        <dd
+          class="review-amount__value svelte-1dytdvp"
+        >
+          <span>
+            1,234.020000000
+          </span>
+           
+          <!---->
+          <svg
+            aria-label="DUSK"
+            class="dusk-icon dusk-icon--size--default review-amount__icon"
+            data-tooltip-id="main-tooltip"
+            data-tooltip-text="DUSK"
+            role="img"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
+            />
+          </svg>
+          
+          <!---->
+        </dd>
+      </dl>
       <!---->
     </div>
     <!---->

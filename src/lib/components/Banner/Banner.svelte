@@ -43,8 +43,7 @@
   />
   <div>
     <strong class="banner__title">{title}</strong>
-    <slot>
-      <p>No banner content provided.</p>
-    </slot>
+    <!-- Without content, the title alone is the message. -->
+    <slot />
   </div>
 </div>

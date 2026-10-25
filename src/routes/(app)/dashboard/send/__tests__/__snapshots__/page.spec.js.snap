@@ -59,7 +59,7 @@ exports[`Send page > should render the send page 1`] = `
         <dt
           class="contract-statuses__label svelte-193vool"
         >
-          Spendable
+          Spendable (public)
         </dt>
          
         <dd
@@ -159,7 +159,7 @@ exports[`Send page > should render the send page 1`] = `
               class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
               id="step-some-generated-id"
             >
-              Overview
+              Review
             </span>
             <span
               aria-labelledby="step-some-generated-id"
@@ -204,18 +204,6 @@ exports[`Send page > should render the send page 1`] = `
               Address or .dusk name
             </p>
              
-            <button
-              class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
-              disabled=""
-              type="button"
-            >
-              <span
-                class="dusk-button__text"
-              >
-                SCAN QR
-              </span>
-              <!---->
-            </button>
             <!---->
           </div>
            
@@ -226,8 +214,6 @@ exports[`Send page > should render the send page 1`] = `
             required=""
           />
           
-          <!---->
-           
           <!---->
            
           <!---->

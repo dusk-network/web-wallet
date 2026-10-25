@@ -23,6 +23,34 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
   };
 });
 
+// No camera, as in jsdom, unless a test finds one.
+const { hasCamera } = vi.hoisted(() => ({
+  hasCamera: vi.fn(() => Promise.resolve(false)),
+}));
+
+vi.mock("qr-scanner", () => ({
+  default: class {
+    static hasCamera = hasCamera;
+
+    destroy() {}
+
+    start() {}
+
+    stop() {}
+  },
+}));
+
+/**
+ * The Review step's amounts, as their labels and values.
+ *
+ * @param {HTMLElement} container
+ */
+const getReviewAmounts = (container) =>
+  Array.from(container.querySelectorAll(".review-amount"), (row) => [
+    row.querySelector("dt")?.textContent,
+    row.querySelector("dd")?.textContent?.trim(),
+  ]);
+
 describe("Send", () => {
   const formatter = createCurrencyFormatter("en", "DUSK", 9);
   const lastTxId = "some-id";
@@ -58,6 +86,7 @@ describe("Send", () => {
     cleanup();
     baseProps.execute.mockClear();
     baseProps.resolveName.mockReset();
+    hasCamera.mockClear();
   });
 
   describe("Address step", () => {
@@ -89,7 +118,26 @@ describe("Send", () => {
       expect(nextButton).toBeDisabled();
     });
 
-    it("should display a warning if the address input is a public account", async () => {
+    it("should offer no QR scan without a camera", async () => {
+      const { queryByRole } = render(Send, baseProps);
+
+      expect(hasCamera).toHaveBeenCalledOnce();
+
+      await hasCamera.mock.results[0].value;
+      await tick();
+
+      expect(queryByRole("button", { name: "SCAN QR" })).toBeNull();
+    });
+
+    it("should offer a QR scan with a camera", async () => {
+      hasCamera.mockResolvedValueOnce(true);
+
+      const { findByRole } = render(Send, baseProps);
+
+      expect(await findByRole("button", { name: "SCAN QR" })).toBeEnabled();
+    });
+
+    it("should show no banner for a public account, as the page's spendable balance says which one pays", async () => {
       const { container, getByRole } = render(Send, baseProps);
       const sendToAddress =
         "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
@@ -100,10 +148,12 @@ describe("Send", () => {
       });
 
       expect(addressInput).toHaveValue(sendToAddress);
+      expect(container.querySelector(".banner")).toBeNull();
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
       expect(container.firstElementChild).toMatchSnapshot();
     });
 
-    it("should display a warning if the address input is self-referential", async () => {
+    it("should display only a one-line warning if the address input is the user's own public account", async () => {
       const { container, getByRole } = render(Send, baseProps);
       const addressInput = getByRole("textbox");
 
@@ -111,12 +161,17 @@ describe("Send", () => {
         target: { value: publicAddress },
       });
 
+      const banners = container.querySelectorAll(".banner");
+
       expect(addressInput).toHaveValue(publicAddress);
+      expect(banners).toHaveLength(1);
+      expect(banners[0]).toHaveClass("banner--warning");
+      expect(banners[0]).toHaveTextContent(/^This is your own address\.$/);
       expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should display a notice if the address input is the BEP20 bridge address", async () => {
-      const { getByRole, findByText } = render(Send, baseProps);
+      const { getByRole, findByText, getByText } = render(Send, baseProps);
       const addressInput = getByRole("textbox");
 
       await fireEvent.input(addressInput, {
@@ -124,8 +179,11 @@ describe("Send", () => {
       });
 
       expect(addressInput).toHaveValue(bep20BridgeAddress);
+      expect(await findByText("BEP20 bridge address")).toBeInTheDocument();
       expect(
-        await findByText("BEP20 bridge operation detected")
+        getByText(
+          "In the memo, enter the EVM address that receives the tokens."
+        )
       ).toBeInTheDocument();
     });
   });
@@ -148,7 +206,7 @@ describe("Send", () => {
           gasPrice: 40000000n,
         },
       };
-      const { getByRole } = render(Send, props);
+      const { getByRole, getByText } = render(Send, props);
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
@@ -157,6 +215,12 @@ describe("Send", () => {
       await tick();
 
       expect(next).toBeDisabled();
+      expect(
+        getByText("Insufficient balance for gas fees")
+      ).toBeInTheDocument();
+      expect(
+        getByText("Add funds or lower the gas limit.")
+      ).toBeInTheDocument();
     });
 
     it("should set the max amount in the textbox if the user clicks the related button", async () => {
@@ -222,7 +286,7 @@ describe("Send", () => {
     });
 
     it("should disable the next button if the user enters an invalid amount", async () => {
-      const { getByRole } = render(Send, baseProps);
+      const { getByRole, getByText } = render(Send, baseProps);
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
@@ -235,6 +299,14 @@ describe("Send", () => {
 
       expect(amountInput).toHaveValue(0);
       expect(nextButton).toBeDisabled();
+
+      await fireEvent.input(amountInput, { target: { value: 1000 } });
+
+      expect(nextButton).toBeDisabled();
+      expect(getByText("Amount exceeds available balance")).toBeInTheDocument();
+      expect(
+        getByText("Lower the amount to leave room for the fee.")
+      ).toBeInTheDocument();
     });
 
     it("should require a valid EVM address in memo if sending to BEP20 bridge", async () => {
@@ -260,6 +332,9 @@ describe("Send", () => {
       expect(
         await findByText("Memo required for bridge operation")
       ).toBeInTheDocument();
+      expect(
+        await findByText("Enter the EVM address that receives the tokens.")
+      ).toBeInTheDocument();
       expect(nextButtonAmountStep).toBeDisabled();
 
       // Enter an invalid EVM address as memo
@@ -268,6 +343,11 @@ describe("Send", () => {
 
       expect(
         await findByText("Invalid EVM address format")
+      ).toBeInTheDocument();
+      expect(
+        await findByText(
+          'EVM addresses are 40 hexadecimal characters, optionally prefixed with "0x".'
+        )
       ).toBeInTheDocument();
       expect(nextButtonAmountStep).toBeDisabled();
 
@@ -336,7 +416,10 @@ describe("Send", () => {
   describe("Review step", () => {
     it("should render the Send component Review step", async () => {
       const amount = 2345;
-      const { container, getByRole } = render(Send, baseProps);
+      const { container, getAllByRole, getByRole, queryByText } = render(
+        Send,
+        baseProps
+      );
       const addressInput = getByRole("textbox");
 
       await fireEvent.input(addressInput, {
@@ -355,23 +438,40 @@ describe("Send", () => {
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      const value = getAsHTMLElement(
-        container,
-        ".operation__review-amount span"
-      );
+      const fee =
+        baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
       const key = getAsHTMLElement(
         container,
         ".operation__review-address span"
       );
       const memo = getAsHTMLElement(container, ".operation__review-memo span");
 
-      expect(value.textContent).toBe(baseProps.formatter(amount));
+      expect(getReviewAmounts(container)).toStrictEqual([
+        ["Amount", formatter(amount)],
+        ["Network fee (max)", formatter(luxToDusk(fee))],
+        ["Total (max)", formatter(luxToDusk(duskToLux(amount) + fee))],
+      ]);
+      expect(container.querySelector("dt .dusk-icon")).toBeNull();
+      expect(getAllByRole("img", { name: "DUSK" })).toHaveLength(3);
+      expect(container.querySelector(".gas-fee")).toBeNull();
       expect(key.textContent).toBe(shieldedAddress);
       expect(key.parentElement).not.toHaveClass(
         "operation__review-address--with-name"
       );
       expect(container.querySelector(".operation__review-name")).toBeNull();
       expect(memo.textContent).toBe("abc-example-memo");
+
+      // The stepper names the step: no banner repeats it.
+      expect(
+        getAsHTMLElement(
+          container,
+          ".dusk-stepper__step-label:not(.dusk-stepper__step-label--invisible)"
+        )
+      ).toHaveTextContent(/^Review$/);
+      expect(queryByText("REVIEW TRANSACTION")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".dusk-badge--variant-warning")
+      ).toBeNull();
       expect(container.firstElementChild).toMatchSnapshot();
     });
 
@@ -440,6 +540,9 @@ describe("Send", () => {
       const explorerLink = getByRole("link", { name: /explorer/i });
 
       expect(getByText("Transaction created")).toBeInTheDocument();
+      expect(
+        getByText("Waiting for confirmation. The wallet updates automatically.")
+      ).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
     });
@@ -613,8 +716,8 @@ describe("Send", () => {
 
     /**
      * Checks that a name's one address shows as the two do, in an option
-     * card, but picked and with no radio, and with no full address or
-     * banner besides.
+     * card, but picked and with no radio or radio mark, and with no full
+     * address or banner besides.
      *
      * @param {HTMLElement} container
      * @param {string} title
@@ -627,7 +730,11 @@ describe("Send", () => {
       expect(
         container.querySelectorAll(".operation__name-option")
       ).toHaveLength(1);
-      expect(option).toHaveClass("operation__name-option--picked");
+      expect(option).toHaveClass(
+        "operation__name-option--picked",
+        "operation__name-option--single"
+      );
+      expect(option.querySelector(".operation__name-option-mark")).toBeNull();
       expect(option).toHaveTextContent(
         `${title} ${shortenAddress(address)} ${address} ${line}`
       );
@@ -806,6 +913,13 @@ describe("Send", () => {
 
       expect(options).toContainElement(publicOption);
       expect(options).toContainElement(shieldedOption);
+      // A choice: each option has its radio mark.
+      expect(
+        options.querySelectorAll(".operation__name-option-mark")
+      ).toHaveLength(2);
+      expect(
+        options.querySelector(".operation__name-option--single")
+      ).toBeNull();
       expect(publicOption).toHaveAttribute("aria-checked", "true");
       expect(publicOption).toHaveTextContent(shortenAddress(nameAccount));
       expect(getAsHTMLElement(publicOption, "samp")).toHaveAttribute(
@@ -1080,27 +1194,52 @@ describe("Send", () => {
     });
 
     it.each([
-      ["expired", "alice.dusk has expired"],
-      ["invalid", "alice.dusk isn't a valid name"],
-      ["lookup-failed", "Couldn't look up alice.dusk"],
-      ["no-address", "alice.dusk has no address to send to"],
-      ["not-registered", "alice.dusk isn't registered"],
-      ["unsupported-network", ".dusk names aren't available on this network"],
+      [
+        "expired",
+        "alice.dusk has expired",
+        "An expired name can't receive DUSK.",
+      ],
+      [
+        "invalid",
+        "alice.dusk isn't a valid name",
+        "Names use only letters, digits and hyphens.",
+      ],
+      [
+        "lookup-failed",
+        "Couldn't look up alice.dusk",
+        "Check your connection.",
+      ],
+      [
+        "no-address",
+        "alice.dusk has no address to send to",
+        "Its owner needs to add one first.",
+      ],
+      [
+        "not-registered",
+        "alice.dusk isn't registered",
+        "Check the name, or paste the recipient's address instead.",
+      ],
+      [
+        "unsupported-network",
+        ".dusk names aren't available on this network",
+        "They work on mainnet and testnet. Paste the recipient's address instead.",
+      ],
     ])(
       "should explain the %s error inline and keep Next disabled",
-      async (error, title) => {
+      async (error, title, text) => {
         baseProps.resolveName.mockResolvedValueOnce({
           error,
           name: "alice.dusk",
         });
 
-        const { findByText, getByRole } = render(Send, baseProps);
+        const { findByText, getByRole, getByText } = render(Send, baseProps);
 
         await fireEvent.input(getByRole("textbox"), {
           target: { value: "alice.dusk" },
         });
 
         expect(await findByText(title)).toBeInTheDocument();
+        expect(getByText(text)).toBeInTheDocument();
         expect(getByRole("button", { name: "Next" })).toBeDisabled();
       }
     );

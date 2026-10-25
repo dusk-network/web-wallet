@@ -38,6 +38,10 @@
   /** @type {HTMLElement} */
   let figureElement;
 
+  // The QR code's widest, in CSS pixels: easy to scan, and leaving the
+  // fields under it close by.
+  const maxQrWidth = 240;
+
   let qrWidth = 0;
 
   // Whether the note on what the name reaches is shown.
@@ -90,7 +94,11 @@
 
 <div class="receive">
   <figure class="receive__address-qr-figure" bind:this={figureElement}>
-    <QrCode value={address} className="receive__qr" width={qrWidth} />
+    <QrCode
+      value={address}
+      className="receive__qr"
+      width={Math.min(qrWidth, maxQrWidth)}
+    />
 
     <!-- The name, when there is one to show with the address, and the
       address, shortened, each on one line with a button to copy it. -->
@@ -183,9 +191,10 @@
       width: 100%;
     }
 
+    /* As wide as its width attribute says, centered in the figure. */
     :global(&__qr) {
       border-radius: var(--control-border-radius-size);
-      width: 100%;
+      max-width: 100%;
       padding: 0.625em;
       background-color: var(--surface-soft-color);
       border: 1px solid var(--surface-border-color);

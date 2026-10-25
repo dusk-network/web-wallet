@@ -25,10 +25,9 @@
   import { logout } from "$lib/navigation";
   import loginInfoStorage from "$lib/services/loginInfoStorage";
 
-  const confirmResetGasMessage =
-    "Are you sure you want to reset the gas settings to their defaults?";
+  const confirmResetGasMessage = "Reset the gas settings to their defaults?";
   const confirmResetWalletMessage =
-    "Confirm you've saved your recovery phrase before resetting the wallet. Proceed?";
+    "Confirm you've saved your mnemonic phrase before resetting the wallet. Proceed?";
 
   const resetWallet = () =>
     walletStore
@@ -113,6 +112,7 @@
         <Button
           on:click={handleResetGasSettingsClick}
           text="Reset to defaults"
+          variant="tertiary"
         />
       </div>
     </article>
@@ -127,7 +127,7 @@
           class="settings-group__control settings-group__control--with-label"
           for={undefined}
         >
-          <span>Currency:</span>
+          <span>Currency</span>
           <Select
             className="settings-group__control settings-group__control--with-label"
             value={currency}
@@ -186,22 +186,22 @@
         <h3 class="h4 settings-group__heading">Support</h3>
       </header>
       <p>
-        Need help or have feedback? Explore the <Anchor
+        Read the <Anchor
           rel="noopener noreferrer"
           target="_blank"
           href="https://docs.dusk.network">Dusk Docs</Anchor
-        >
-        for detailed documentation, join the
+        >, ask on
         <Anchor
           rel="noopener noreferrer"
           target="_blank"
-          href="https://discord.gg/dusk-official">community Discord</Anchor
-        > for questions and discussions, and visit the
+          href="https://discord.gg/dusk-official">Discord</Anchor
+        >, or report issues on
         <Anchor
           rel="noopener noreferrer"
           target="_blank"
-          href="https://github.com/dusk-network/rusk">GitHub repository</Anchor
-        > to view known issues, report bugs, or share feedback.
+          href="https://github.com/dusk-network/web-wallet/issues"
+          >GitHub</Anchor
+        >.
       </p>
     </article>
     <hr />
@@ -212,14 +212,13 @@
       </header>
       <div class="settings-group__multi-control-content">
         <p>
-          Resetting your wallet clears the cache and restores default settings
-          without affecting your funds or transaction history. You’ll need your
-          mnemonic phrase to restore access, so ensure it’s securely stored
-          before proceeding.
+          Resetting clears the cache and settings, not your funds. You'll need
+          your mnemonic phrase to restore access, so make sure it's stored
+          securely.
         </p>
         <ErrorDetails
           error={resetError}
-          summary="An error occurred while resetting the wallet. Please try again."
+          summary="Couldn't reset the wallet. Try again."
         />
         <Button
           className="settings-group__button--state--danger"

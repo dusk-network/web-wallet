@@ -18,12 +18,12 @@ describe("GasFee", () => {
       fee: fee,
       formatter: duskFormatter,
     };
-    const { container } = render(GasFee, baseProps);
+    const { container, getByText } = render(GasFee, baseProps);
 
-    expect(
-      container.querySelector(".gas-fee__amount-value span:nth-child(2)")
-        ?.innerHTML
-    ).toBe(duskFormatter(luxToDusk(fee)));
+    expect(getByText("Network fee (max)")).toBeInTheDocument();
+    expect(container.querySelector(".gas-fee__amount-value")?.textContent).toBe(
+      duskFormatter(luxToDusk(fee))
+    );
 
     expect(container.firstElementChild).toMatchSnapshot();
   });

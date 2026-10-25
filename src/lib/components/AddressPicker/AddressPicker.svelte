@@ -121,7 +121,7 @@
   $: profileNumber = currentProfile ? profiles.indexOf(currentProfile) + 1 : 0;
 
   $: displayedAddress = currentProfile
-    ? `Profile ${profileNumber}${profileNumber === 1 ? " (Default)" : ""}`
+    ? `Profile ${profileNumber}`
     : "No profile selected";
 
   $: currentAccount = currentProfile ? currentProfile.account.toString() : "";

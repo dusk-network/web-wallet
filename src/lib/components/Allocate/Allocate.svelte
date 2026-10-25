@@ -22,7 +22,7 @@
     Wizard,
     WizardStep,
   } from "$lib/dusk/components";
-  import { GasFee, GasSettings, OperationResult } from "$lib/components";
+  import { GasSettings, OperationResult, ReviewAmount } from "$lib/components";
   import { walletStore } from "$lib/stores";
   import { Gas } from "@dusk/w3sper";
   import { MESSAGES } from "$lib/constants";
@@ -124,6 +124,7 @@
   $: unshieldedNumber = luxToDusk(unshielded);
 
   $: isShielding = difference > 0n;
+  $: amount = isShielding ? difference : -difference;
 
   $: fee = gasLimit * gasPrice;
   $: difference = shielded - initialShielded;
@@ -136,7 +137,7 @@
   $: fundsErrorMessage = hasEnoughFundsForFees
     ? ""
     : shielded < 0n || unshielded < 0n
-      ? "Not enough funds for the transaction."
+      ? "The amount is more than your balance."
       : "Your balance is too low to cover the allocation fees.";
 
   $: isNextButtonDisabled =
@@ -162,10 +163,7 @@
       nextButton={{ disabled: isNextButtonDisabled }}
     >
       <div in:fade|global class="operation__allocate">
-        <p>
-          Edit the value to change the allocation of your Dusk between your
-          public and shielded accounts.
-        </p>
+        <p>Move DUSK between your public and shielded accounts.</p>
 
         <fieldset class="operation__fieldset">
           <p class="operation__label">Public</p>
@@ -263,10 +261,7 @@
 
         {#if fundsErrorMessage}
           <Banner title="Insufficient Funds" variant="error">
-            <p>
-              {fundsErrorMessage} Please adjust your transaction or add more funds
-              to proceed.
-            </p>
+            <p>{fundsErrorMessage}</p>
           </Banner>
         {/if}
       </div>
@@ -286,28 +281,9 @@
           text="REVIEW TRANSACTION"
           variant="warning"
         />
+        <ReviewAmount label="Amount" value={formatter(luxToDusk(amount))} />
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">
-            <Icon path={mdiArrowUpBoldBoxOutline} />
-            <span>Amount:</span>
-          </dt>
-          <dd class="review-transaction__value operation__review-amount">
-            <span>
-              {`${formatter(luxToDusk(isShielding ? difference : -difference))} DUSK`}
-            </span>
-            <Icon
-              className="dusk-amount__icon"
-              path={logo}
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="DUSK"
-            />
-          </dd>
-        </dl>
-        <dl class="operation__review-transaction">
-          <dt class="review-transaction__label">
-            <Icon
-              path={isShielding ? mdiShieldLockOpenOutline : mdiShieldLock}
-            />
             <span>From</span>
           </dt>
           <dd class="operation__review-address">
@@ -318,9 +294,6 @@
         </dl>
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">
-            <Icon
-              path={isShielding ? mdiShieldLock : mdiShieldLockOpenOutline}
-            />
             <span>To</span>
           </dt>
           <dd class="operation__review-address">
@@ -329,14 +302,18 @@
             </span>
           </dd>
         </dl>
-        <GasFee {formatter} {fee} />
-        <Banner title="Fee Details" variant="info">
-          <p>
-            The fee will be deducted from your <b
-              >{isShielding ? "public" : "shielded"}</b
-            > balance.
-          </p>
-        </Banner>
+        <ReviewAmount
+          label="Network fee (max)"
+          value={formatter(luxToDusk(fee))}
+        />
+        <ReviewAmount
+          label="Total (max)"
+          value={formatter(luxToDusk(amount + fee))}
+        />
+        <Banner
+          title={`The fee is paid from your ${isShielding ? "public" : "shielded"} balance.`}
+          variant="info"
+        />
       </div>
     </WizardStep>
     <WizardStep step={2} {key} showNavigation={false}>
@@ -406,10 +383,6 @@
       gap: 0.625em;
     }
 
-    &__review-amount {
-      justify-content: flex-start;
-    }
-
     &__allocate {
       display: flex;
       flex-direction: column;
@@ -439,16 +412,10 @@
     }
   }
 
-  .review-transaction__label,
-  .review-transaction__value {
+  .review-transaction__label {
     display: inline-flex;
     align-items: center;
     gap: var(--small-gap);
-  }
-
-  .review-transaction__value {
-    font-family: var(--mono-font-family);
-    font-weight: 500;
   }
 
   .glyph {

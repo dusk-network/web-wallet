@@ -12,14 +12,24 @@
     mdiSync,
   } from "@mdi/js";
   import { AnchorButton, Icon } from "$lib/dusk/components";
-  import { DashboardNav, Transactions } from "$lib/components";
+  import { Balance, DashboardNav, Transactions } from "$lib/components";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import { contractDescriptors } from "$lib/contracts";
   import IconHeadingCard from "$lib/containers/Cards/IconHeadingCard.svelte";
   import { page } from "$app/stores";
 
-  const { dashboardTransactionLimit, language } = $settingsStore;
+  /** @type {import("./$types").PageData} */
+  export let data;
+
+  /** @type {number | undefined} */
+  let fiatPrice;
+
+  const { currency, dashboardTransactionLimit, language } = $settingsStore;
   const { networkName } = $networkStore;
+
+  data.currentPrice.then((prices) => {
+    fiatPrice = prices[currency.toLowerCase()];
+  });
 
   /** @param {string} contract */
   function getIconsForContract(contract) {
@@ -78,8 +88,17 @@
     label,
   }));
 
-  $: ({ syncStatus } = $walletStore);
+  $: ({ balance, syncStatus } = $walletStore);
 </script>
+
+<Balance
+  fiatCurrency={currency}
+  {fiatPrice}
+  locale={language}
+  tokenCurrency="DUSK"
+  shieldedAmount={balance.shielded.value}
+  unshieldedAmount={balance.unshielded.value}
+/>
 
 {#if enabledContracts.length}
   <DashboardNav items={dashboardNavItems} />
@@ -117,10 +136,7 @@
     icons={[mdiListBoxOutline]}
     heading="Transactions"
   >
-    <p>
-      Transaction history will be available in an upcoming release. Meanwhile,
-      you can check the status of your transactions on the Dusk Block Explorer.
-    </p>
+    <p>Transaction history isn't available here yet.</p>
 
     <AnchorButton
       variant="tertiary"

@@ -81,7 +81,7 @@
     ></div>
   {:else}
     <div class="scan__notice">
-      <span>An Error occurred while starting camera</span>
+      <span>Couldn't start the camera</span>
     </div>
   {/if}
 

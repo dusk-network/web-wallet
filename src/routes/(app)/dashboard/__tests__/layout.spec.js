@@ -8,10 +8,8 @@ import {
   vi,
 } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
-import { get } from "svelte/store";
 
 import { apiMarketData } from "$lib/mock-data";
-import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
@@ -149,47 +147,21 @@ describe("Dashboard Layout", () => {
     });
   });
 
-  const usdPrice = 0.5;
-  const expectedFiat =
-    (luxToDusk(get(mockedWalletStore).balance.shielded.value) +
-      luxToDusk(get(mockedWalletStore).balance.unshielded.value)) *
-    usdPrice;
-  const formatter = createCurrencyFormatter("en", "usd", 2);
-  const baseProps = {
-    data: { currentPrice: Promise.resolve({ usd: usdPrice }) },
-  };
-
   it("should render the dashboard layout", () => {
-    const { container } = render(Layout, baseProps);
+    const { container } = render(Layout);
 
     expect(getStatusWrapper(container, "success")).toBeTruthy();
     expect(container).toMatchSnapshot();
   });
 
-  it("should render the dashboard layout and show a throbber while balance is loading", async () => {
-    vi.useFakeTimers();
+  it("should leave the balance card to the dashboard page, out of the other pages", () => {
+    const { container } = render(Layout);
 
-    const { container } = render(Layout, baseProps);
-
-    expect(container.querySelector(".dusk-balance__fiat--visible")).toBeNull();
-
-    expect(container.firstElementChild).toMatchSnapshot();
-
-    await vi.runAllTimersAsync();
-
-    expect(
-      container.querySelector(".dusk-balance__fiat--visible")
-    ).toBeTruthy();
-
-    expect(container.querySelector(".dusk-balance__fiat")).toHaveTextContent(
-      formatter(expectedFiat)
-    );
-
-    vi.useRealTimers();
+    expect(container.querySelector(".dusk-balance")).toBeNull();
   });
 
   it("should render the dashboard layout in the sync state when no progress is reported", async () => {
-    const { container } = render(Layout, baseProps);
+    const { container } = render(Layout);
 
     expect(getStatusWrapper(container, "warning")).toBeNull();
 
@@ -217,7 +189,7 @@ describe("Dashboard Layout", () => {
   });
 
   it("should render the dashboard layout in the sync state with a progress indicator", async () => {
-    const { container } = render(Layout, baseProps);
+    const { container } = render(Layout);
 
     expect(getStatusWrapper(container, "warning")).toBeNull();
 
@@ -245,7 +217,7 @@ describe("Dashboard Layout", () => {
   });
 
   it("should render the dashboard layout in the error state", async () => {
-    const { container } = render(Layout, baseProps);
+    const { container } = render(Layout);
     const getRetryButton = () =>
       container.querySelector(".footer__actions-button--retry");
 
@@ -280,7 +252,7 @@ describe("Dashboard Layout", () => {
 
   it("should look no `.dusk` names up on a network without them", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
-    const { container } = render(Layout, baseProps);
+    const { container } = render(Layout);
 
     await fireEvent.click(
       getAsHTMLElement(container, ".address-picker__trigger")

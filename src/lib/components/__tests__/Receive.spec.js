@@ -208,6 +208,53 @@ describe("Receive", () => {
     }
   );
 
+  it.each([
+    [600, 240],
+    [200, 200],
+  ])(
+    "should show the QR code at most 240 pixels wide: in %d pixels of room, %d",
+    async (room, shown) => {
+      const { ResizeObserver } = globalThis;
+
+      // Reports the room the figure has as soon as it is observed.
+      globalThis.ResizeObserver = class {
+        /** @param {ResizeObserverCallback} callback */
+        constructor(callback) {
+          this.callback = callback;
+        }
+
+        disconnect() {}
+
+        observe() {
+          this.callback(
+            /** @type {ResizeObserverEntry[]} */ ([
+              { contentRect: { width: room } },
+            ]),
+            /** @type {ResizeObserver} */ (/** @type {unknown} */ (this))
+          );
+        }
+
+        unobserve() {}
+      };
+
+      try {
+        const { container } = render(Receive, { address });
+
+        await vi.waitFor(() =>
+          expect(
+            getAsHTMLElement(container, "img.receive__qr")
+          ).toHaveAttribute("width", String(shown))
+        );
+        expect(getAsHTMLElement(container, "img.receive__qr")).toHaveAttribute(
+          "height",
+          String(shown)
+        );
+      } finally {
+        globalThis.ResizeObserver = ResizeObserver;
+      }
+    }
+  );
+
   it("should have no Copy button besides the fields' own, and a Back link unless it's hidden", async () => {
     const { container, getByRole, queryByRole, rerender } = render(Receive, {
       address,

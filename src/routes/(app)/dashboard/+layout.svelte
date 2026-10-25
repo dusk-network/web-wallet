@@ -9,17 +9,9 @@
   } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import { getPrimaryName } from "$lib/dusk-domains";
-  import { networkStore, settingsStore, walletStore } from "$lib/stores";
-  import {
-    AddressPicker,
-    AppAnchorButton,
-    Balance,
-    SyncBar,
-  } from "$lib/components";
+  import { networkStore, walletStore } from "$lib/stores";
+  import { AddressPicker, AppAnchorButton, SyncBar } from "$lib/components";
   import { makeNodeUrl } from "$lib/url";
-
-  /** @type {import('./$types').LayoutData} */
-  export let data;
 
   /** @type {HTMLDivElement} */
   let scrollContainer;
@@ -32,15 +24,6 @@
 
   /** @type {string} */
   let iconVariant = "";
-
-  /** @type {number | undefined} */
-  let fiatPrice;
-
-  data.currentPrice.then((prices) => {
-    fiatPrice = prices[currency.toLowerCase()];
-  });
-
-  const { currency, language } = $settingsStore;
 
   const scrollToTop = () => {
     scrollContainer.scrollTo(0, 0);
@@ -59,7 +42,7 @@
   afterNavigate(scrollToTop);
 
   $: ({ networkName } = $networkStore);
-  $: ({ balance, currentProfile, profiles, syncStatus } = $walletStore);
+  $: ({ currentProfile, profiles, syncStatus } = $walletStore);
   $: if (syncStatus.isInProgress) {
     iconVariant = "warning";
     networkStatusIconPath = mdiTimerSand;
@@ -101,15 +84,6 @@
       getName={lookUpNamesOn(networkName)}
       {profiles}
       on:setCurrentProfile={(event) => setCurrentProfile(event.detail.profile)}
-    />
-
-    <Balance
-      fiatCurrency={currency}
-      {fiatPrice}
-      locale={language}
-      tokenCurrency="DUSK"
-      shieldedAmount={balance.shielded.value}
-      unshieldedAmount={balance.unshielded.value}
     />
 
     <slot />
