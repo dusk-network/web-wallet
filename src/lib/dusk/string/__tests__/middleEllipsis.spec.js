@@ -13,6 +13,11 @@ describe("middleEllipsis", () => {
     expect(middleEllipsis("abcdef", 2)).toStrictEqual("ab...ef");
   });
 
+  it("should put the ellipsis given in the middle", () => {
+    expect(middleEllipsis("HelloWorld", 3, "…")).toStrictEqual("Hel…rld");
+    expect(middleEllipsis("HelloWorld", 5, "…")).toStrictEqual("HelloWorld");
+  });
+
   it("should handle edge cases gracefully", () => {
     expect(middleEllipsis("", 2)).toStrictEqual("");
     expect(middleEllipsis("A", 0)).toStrictEqual("...");

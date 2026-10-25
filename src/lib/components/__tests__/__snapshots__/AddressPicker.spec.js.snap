@@ -5,6 +5,7 @@ exports[`AddressPicker > renders the AddressPicker component 1`] = `
   class="address-picker"
 >
   <div
+    aria-describedby="some-generated-id-current-profile"
     aria-expanded="false"
     aria-haspopup="menu"
     aria-label="Select address profile"
@@ -14,8 +15,33 @@ exports[`AddressPicker > renders the AddressPicker component 1`] = `
   >
     <span
       class="address-picker__current-profile"
+      id="some-generated-id-current-profile"
     >
-      Profile 1 (Default)
+      <span
+        class="address-picker__title"
+      >
+        Profile 1 (Default)
+      </span>
+       
+      <!---->
+      <span
+        class="address-picker__account"
+        title="bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J"
+      >
+        <span
+          aria-hidden="true"
+        >
+          bEjRbu…zGeJ8J
+        </span>
+         
+        <span
+          class="sr-only"
+        >
+          bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
+        </span>
+      </span>
+      
+      <!---->
     </span>
      
     <!---->
@@ -41,6 +67,7 @@ exports[`AddressPicker > should be able to render the component if the current p
   class="address-picker"
 >
   <div
+    aria-describedby="some-generated-id-current-profile"
     aria-expanded="false"
     aria-haspopup="menu"
     aria-label="Select address profile"
@@ -50,8 +77,15 @@ exports[`AddressPicker > should be able to render the component if the current p
   >
     <span
       class="address-picker__current-profile"
+      id="some-generated-id-current-profile"
     >
-      No profile selected
+      <span
+        class="address-picker__title"
+      >
+        No profile selected
+      </span>
+       
+      <!---->
     </span>
      
     <!---->

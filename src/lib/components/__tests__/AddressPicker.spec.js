@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
+import { Profile } from "@dusk/w3sper";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
+import { shortenAddress } from "$lib/dusk/string";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 
 import { AddressPicker } from "..";
@@ -12,7 +14,30 @@ vi.mock("$lib/dusk/components/Toast/store", () => ({
   toast: vi.fn(),
 }));
 
+vi.mock("$lib/dusk/string", async (importOriginal) => {
+  /** @type {typeof import("$lib/dusk/string")} */
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    randomUUID: () => "some-generated-id",
+  };
+});
+
 import { toast } from "$lib/dusk/components/Toast/store";
+
+/**
+ * The text an element shows, without what only screen readers get.
+ *
+ * @param {Element} element
+ */
+const getShownText = (element) => {
+  const shown = /** @type {Element} */ (element.cloneNode(true));
+
+  shown.querySelectorAll(".sr-only").forEach((node) => node.remove());
+
+  return shown.textContent?.trim() ?? "";
+};
 
 describe("AddressPicker", () => {
   const { currentProfile, profiles } = get(mockedWalletStore);
@@ -256,6 +281,10 @@ describe("AddressPicker", () => {
           ".address-picker__copy-button"
         );
         expect(copyButtons).toHaveLength(2);
+        expect(copyButtons[0]).toHaveAccessibleName("Copy public address");
+        expect(copyButtons[0]).toHaveTextContent("Public");
+        expect(copyButtons[1]).toHaveAccessibleName("Copy shielded address");
+        expect(copyButtons[1]).toHaveTextContent("Shielded");
       });
     });
 
@@ -401,27 +430,42 @@ describe("AddressPicker", () => {
       expect(profileHeaders[0]).toHaveTextContent("(Current)");
     });
 
-    it("should display both public and shielded addresses with proper labels", async () => {
-      const { container } = render(AddressPicker, props);
-
-      // Open dropdown
-      const trigger = container.querySelector(".address-picker__trigger");
-      expect(trigger).toBeTruthy();
-      if (trigger) {
-        await fireEvent.click(trigger);
-      }
-
-      // Check address labels
-      const publicLabels = container.querySelectorAll(
-        ".address-picker__address-label"
+    it("should list each profile on two lines, its label and its account shortened, with the account in full on hover and for screen readers", async () => {
+      const { container, getAllByRole, queryByText } = render(
+        AddressPicker,
+        props
       );
 
-      // Should have both Public and Shielded labels for each profile
-      const publicLabelTexts = Array.from(publicLabels).map(
-        (label) => label.textContent
+      await fireEvent.click(
+        getAsHTMLElement(container, ".address-picker__trigger")
       );
-      expect(publicLabelTexts).toContain("Public Account");
-      expect(publicLabelTexts).toContain("Shielded Account");
+
+      const items = getAllByRole("menuitem");
+
+      expect(items).toHaveLength(profiles.length);
+
+      items.forEach((item, index) => {
+        const account = profiles[index].account.toString();
+        const label = `Profile ${index + 1}${index === 0 ? " (Current)" : ""}`;
+        const accountLine = getAsHTMLElement(
+          item,
+          ".address-picker__address-value"
+        );
+
+        expect(Array.from(item.children, getShownText)).toStrictEqual([
+          label,
+          shortenAddress(account),
+        ]);
+        expect(accountLine).toHaveAttribute("title", account);
+        expect(item).toHaveAccessibleName(`${label} ${account}`);
+      });
+
+      // The profiles' shielded addresses are left to their copy buttons.
+      expect(queryByText("Public Account")).not.toBeInTheDocument();
+      expect(queryByText("Shielded Account")).not.toBeInTheDocument();
+      expect(
+        queryByText(profiles[0].address.toString(), { exact: false })
+      ).not.toBeInTheDocument();
     });
 
     it("should show current profile with proper display format", () => {
@@ -431,6 +475,9 @@ describe("AddressPicker", () => {
         ".address-picker__current-profile"
       );
       expect(currentProfileDisplay).toBeTruthy();
+      expect(
+        getAsHTMLElement(container, ".address-picker__account")
+      ).toHaveAttribute("title", currentProfile.account.toString());
 
       // Should show "Profile X (Default)" format for first profile or "Profile X" for others
       const profileIndex = profiles.indexOf(currentProfile) + 1;
@@ -453,6 +500,265 @@ describe("AddressPicker", () => {
       );
       expect(currentProfileDisplay).toBeTruthy();
       expect(currentProfileDisplay).toHaveTextContent("No profile selected");
+      expect(container.querySelector(".address-picker__account")).toBeNull();
+      expect(container.querySelector(".address-picker__name")).toBeNull();
+    });
+  });
+
+  describe("Dusk Domains names", () => {
+    // The mocked profiles share one account: these two don't.
+    const namedProfiles = [1, 2].map(
+      (byte) => new Profile(new Uint8Array(64 + 96).fill(byte))
+    );
+    const [firstAccount, secondAccount] = namedProfiles.map((profile) =>
+      profile.account.toString()
+    );
+    const namedProps = {
+      currentProfile: namedProfiles[0],
+      profiles: namedProfiles,
+    };
+
+    /** @param {HTMLElement} container */
+    const getTrigger = (container) =>
+      getAsHTMLElement(container, ".address-picker__trigger");
+
+    /** @param {Element} container */
+    const getTriggerName = (container) =>
+      container.querySelector(".address-picker__name");
+
+    /**
+     * The trigger's two lines, as shown: the profile's label, and its
+     * name or account.
+     *
+     * @param {Element} container
+     */
+    const getTriggerLines = (container) =>
+      Array.from(
+        container.querySelectorAll(".address-picker__current-profile > span"),
+        getShownText
+      );
+
+    /** Lets pending lookups settle. */
+    const settle = () => new Promise((resolve) => setTimeout(resolve));
+
+    it("should show the current profile's label with its name under it, looked up once the picker has rendered", async () => {
+      /** @type {Element | null} */
+      let renderedPicker = null;
+
+      const getName = vi.fn(() => {
+        renderedPicker = document.querySelector(".address-picker__trigger");
+
+        return Promise.resolve("alice.dusk");
+      });
+      const { container, findByText, queryByText } = render(AddressPicker, {
+        ...namedProps,
+        getName,
+      });
+
+      expect(await findByText("alice.dusk")).toBeInTheDocument();
+      expect(renderedPicker).toBeInstanceOf(HTMLElement);
+      expect(getName).toHaveBeenCalledExactlyOnceWith(firstAccount);
+      expect(getTriggerLines(container)).toStrictEqual([
+        "Profile 1 (Default)",
+        "alice.dusk",
+      ]);
+      expect(getTriggerName(container)).toHaveAttribute("title", "alice.dusk");
+      expect(getTrigger(container)).toHaveAccessibleName(
+        "Select address profile"
+      );
+      expect(getTrigger(container)).toHaveAccessibleDescription(
+        "Profile 1 (Default) alice.dusk"
+      );
+      expect(queryByText(firstAccount, { exact: false })).toBeNull();
+      expect(container.querySelector(".address-picker__account")).toBeNull();
+    });
+
+    it.each([
+      ["has none", () => Promise.resolve("")],
+      ["can't be looked up", () => Promise.reject(new Error("Lookup failed"))],
+      ["is being looked up", () => new Promise(() => {})],
+    ])(
+      "should show the current profile's label with its account shortened under it, and no name, when the profile's name %s",
+      async (_, lookUp) => {
+        const getName = vi.fn(lookUp);
+        const { container } = render(AddressPicker, {
+          ...namedProps,
+          getName,
+        });
+
+        await waitFor(() => expect(getName).toHaveBeenCalledOnce());
+        await settle();
+
+        expect(getTriggerName(container)).toBeNull();
+        expect(getTriggerLines(container)).toStrictEqual([
+          "Profile 1 (Default)",
+          shortenAddress(firstAccount),
+        ]);
+        expect(
+          getAsHTMLElement(container, ".address-picker__account")
+        ).toHaveAttribute("title", firstAccount);
+        expect(getTrigger(container)).toHaveAccessibleDescription(
+          `Profile 1 (Default) ${firstAccount}`
+        );
+      }
+    );
+
+    it("should look up the name of the profile switched to, and drop the previous one's", async () => {
+      /** @type {(name: string) => void} */
+      let finishLookup = () => {};
+
+      const getName = vi.fn((account) =>
+        account === firstAccount
+          ? Promise.resolve("alice.dusk")
+          : new Promise((resolve) => {
+              finishLookup = resolve;
+            })
+      );
+      const { container, findByText, rerender } = render(AddressPicker, {
+        ...namedProps,
+        getName,
+      });
+
+      expect(await findByText("alice.dusk")).toBeInTheDocument();
+
+      await rerender({ currentProfile: namedProfiles[1] });
+
+      expect(getTriggerName(container)).toBeNull();
+      expect(getTriggerLines(container)).toStrictEqual([
+        "Profile 2",
+        shortenAddress(secondAccount),
+      ]);
+      expect(getName).toHaveBeenLastCalledWith(secondAccount);
+
+      finishLookup("bob.dusk");
+
+      expect(await findByText("bob.dusk")).toBeInTheDocument();
+      expect(getTriggerLines(container)).toStrictEqual([
+        "Profile 2",
+        "bob.dusk",
+      ]);
+    });
+
+    it("should look the name up again with a new lookup, as on another network", async () => {
+      const { container, findByText, queryByText, rerender } = render(
+        AddressPicker,
+        {
+          ...namedProps,
+          getName: vi.fn().mockResolvedValue("alice.dusk"),
+        }
+      );
+
+      expect(await findByText("alice.dusk")).toBeInTheDocument();
+
+      const getName = vi.fn().mockResolvedValue("");
+
+      await rerender({ getName });
+      await settle();
+
+      expect(queryByText("alice.dusk")).not.toBeInTheDocument();
+      expect(getName).toHaveBeenCalledExactlyOnceWith(firstAccount);
+      expect(getTriggerLines(container)).toStrictEqual([
+        "Profile 1 (Default)",
+        shortenAddress(firstAccount),
+      ]);
+    });
+
+    it("should list each profile with its name under its label, or its account shortened while it has none, looked up when the list opens", async () => {
+      const getName = vi.fn((account) =>
+        Promise.resolve(account === secondAccount ? "bob.dusk" : "")
+      );
+      const { container, findByText, getAllByRole } = render(AddressPicker, {
+        ...namedProps,
+        getName,
+      });
+
+      await waitFor(() => expect(getName).toHaveBeenCalledOnce());
+      await fireEvent.click(getTrigger(container));
+
+      const name = await findByText("bob.dusk");
+      const [firstItem, secondItem] = getAllByRole("menuitem");
+
+      expect(getName).toHaveBeenCalledTimes(3);
+      expect(getName).toHaveBeenLastCalledWith(secondAccount);
+      expect(secondItem).toContainElement(name);
+      expect(name).toHaveClass("address-picker__address-name");
+      expect(name).toHaveAttribute("title", "bob.dusk");
+      expect(Array.from(secondItem.children, getShownText)).toStrictEqual([
+        "Profile 2",
+        "bob.dusk",
+      ]);
+      expect(secondItem).toHaveAccessibleName("Profile 2 bob.dusk");
+      expect(secondItem).not.toHaveTextContent(secondAccount);
+      expect(Array.from(firstItem.children, getShownText)).toStrictEqual([
+        "Profile 1 (Current)",
+        shortenAddress(firstAccount),
+      ]);
+      expect(firstItem).toHaveAccessibleName(
+        `Profile 1 (Current) ${firstAccount}`
+      );
+      expect(
+        container.querySelectorAll(".address-picker__address-name")
+      ).toHaveLength(1);
+      expect(getTriggerName(container)).toBeNull();
+    });
+
+    it.each([
+      ["can't be looked up", () => Promise.reject(new Error("Lookup failed"))],
+      ["is being looked up", () => new Promise(() => {})],
+    ])(
+      "should list a profile with its account shortened, and no name, while its name %s",
+      async (_, lookUp) => {
+        const getName = vi.fn(lookUp);
+        const { container, getAllByRole } = render(AddressPicker, {
+          ...namedProps,
+          getName,
+        });
+
+        await fireEvent.click(getTrigger(container));
+        await settle();
+
+        const items = getAllByRole("menuitem");
+
+        expect(getName).toHaveBeenCalledTimes(3);
+        expect(
+          container.querySelector(".address-picker__address-name")
+        ).toBeNull();
+        expect(items.map((item) => getShownText(item.children[1]))).toEqual([
+          shortenAddress(firstAccount),
+          shortenAddress(secondAccount),
+        ]);
+      }
+    );
+
+    it("should keep both copy buttons of a profile with a name, copying its full public and shielded addresses", async () => {
+      const { container, findAllByText, getAllByRole } = render(AddressPicker, {
+        ...namedProps,
+        getName: vi.fn().mockResolvedValue("alice.dusk"),
+      });
+
+      await fireEvent.click(getTrigger(container));
+      await findAllByText("alice.dusk", {
+        selector: ".address-picker__address-name",
+      });
+
+      const [copyPublic] = getAllByRole("button", {
+        name: "Copy public address",
+      });
+      const [copyShielded] = getAllByRole("button", {
+        name: "Copy shielded address",
+      });
+
+      await fireEvent.click(copyPublic);
+      await fireEvent.click(copyShielded);
+
+      expect(navigator.clipboard.writeText).toHaveBeenNthCalledWith(
+        1,
+        firstAccount
+      );
+      expect(navigator.clipboard.writeText).toHaveBeenNthCalledWith(
+        2,
+        namedProfiles[0].address.toString()
+      );
     });
   });
 });

@@ -201,7 +201,7 @@ exports[`Send page > should render the send page 1`] = `
             class="operation__address-wrapper svelte-x7e9dl"
           >
             <p>
-              Address
+              Address or .dusk name
             </p>
              
             <button
@@ -221,11 +221,13 @@ exports[`Send page > should render the send page 1`] = `
            
           <!---->
           <textarea
-            aria-label="Recipient address"
+            aria-label="Recipient address or .dusk name"
             class="dusk-textbox dusk-textbox-multiline operation__send-address"
             required=""
           />
           
+          <!---->
+           
           <!---->
            
           <!---->

@@ -1,12 +1,8 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { createEventDispatcher } from "svelte";
-  import {
-    calculateAdaptiveCharCount,
-    makeClassName,
-    middleEllipsis,
-  } from "$lib/dusk/string";
+  import { createEventDispatcher, onMount } from "svelte";
+  import { makeClassName, randomUUID, shortenAddress } from "$lib/dusk/string";
   import { mdiAlertOutline, mdiChevronDown, mdiContentCopy } from "@mdi/js";
   import { Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
@@ -22,13 +18,26 @@
   /** @type {Profile[]} */
   export let profiles;
 
+  /**
+   * Looks up the verified `.dusk` name of a public account: "" for none.
+   *
+   * @type {(account: string) => Promise<string>}
+   */
+  export let getName = () => Promise.resolve("");
+
   /** @type {string|undefined} */
   export let className = undefined;
 
   const dispatch = createEventDispatcher();
 
   let expanded = false;
-  let innerWidth = 0;
+  let isMounted = false;
+
+  const currentProfileId = `${randomUUID()}-current-profile`;
+
+  onMount(() => {
+    isMounted = true;
+  });
 
   /** @type {HTMLMenuElement} */
   let addressOptionsMenu;
@@ -109,19 +118,24 @@
     addressOptionsMenu.scrollTo(0, 0);
   }
 
+  $: profileNumber = currentProfile ? profiles.indexOf(currentProfile) + 1 : 0;
+
   $: displayedAddress = currentProfile
-    ? `Profile ${profiles.indexOf(currentProfile) + 1}${profiles.indexOf(currentProfile) === 0 ? " (Default)" : ""}`
+    ? `Profile ${profileNumber}${profileNumber === 1 ? " (Default)" : ""}`
     : "No profile selected";
 
-  // Calculate adaptive character count based on screen width
-  $: charCount = calculateAdaptiveCharCount(innerWidth);
+  $: currentAccount = currentProfile ? currentProfile.account.toString() : "";
+
+  // The current profile's name, looked up once the picker has rendered:
+  // "" for none, as when the lookup fails. The profiles listed look theirs
+  // up when the list opens.
+  $: currentName =
+    isMounted && currentAccount ? getName(currentAccount).catch(() => "") : "";
 </script>
 
 {#if expanded}
   <Overlay />
 {/if}
-
-<svelte:window bind:innerWidth />
 
 <div
   use:handlePageClick={{
@@ -138,10 +152,32 @@
     aria-haspopup="menu"
     aria-expanded={expanded}
     aria-label="Select address profile"
+    aria-describedby={currentProfileId}
     on:click={handleTriggerClick}
     on:keydown={handleTriggerKeyDown}
   >
-    <span class="address-picker__current-profile">{displayedAddress}</span>
+    <!-- The profile's label, with its name under it, or its account,
+      shortened, while it has none. -->
+    <span class="address-picker__current-profile" id={currentProfileId}>
+      <span class="address-picker__title">{displayedAddress}</span>
+      {#if currentAccount}
+        {#snippet currentAccountLine()}
+          <span class="address-picker__account" title={currentAccount}>
+            <span aria-hidden="true">{shortenAddress(currentAccount)}</span>
+            <span class="sr-only">{currentAccount}</span>
+          </span>
+        {/snippet}
+        {#await currentName}
+          {@render currentAccountLine()}
+        {:then name}
+          {#if name}
+            <span class="address-picker__name" title={name}>{name}</span>
+          {:else}
+            {@render currentAccountLine()}
+          {/if}
+        {/await}
+      {/if}
+    </span>
     <Icon path={mdiChevronDown} className="address-picker__chevron" />
   </div>
 
@@ -154,6 +190,7 @@
         aria-label="Profile selection"
       >
         {#each profiles as profile (profile)}
+          {@const account = profile.account.toString()}
           <li
             class="address-picker__profile"
             class:address-picker__profile--selected={profile === currentProfile}
@@ -169,55 +206,56 @@
                 on:click={() => handleProfileSelect(profile)}
                 on:keydown={(event) => handleProfileKeyDown(event, profile)}
               >
-                <div class="address-picker__profile-header">
+                <!-- The profile, with its name under it, or its account,
+                  shortened, while it has none. -->
+                <span class="address-picker__profile-header">
                   Profile {profiles.indexOf(profile) + 1}
                   {#if profile === currentProfile}
                     <span class="address-picker__current-indicator"
                       >(Current)</span
                     >
                   {/if}
-                </div>
-                <div class="address-picker__addresses">
-                  <div class="address-picker__address-row">
-                    <span class="address-picker__address-label"
-                      >Public Account</span
+                </span>
+                {#snippet accountLine()}
+                  <span class="address-picker__address-value" title={account}>
+                    <span aria-hidden="true">{shortenAddress(account)}</span>
+                    <span class="sr-only">{account}</span>
+                  </span>
+                {/snippet}
+                {#await getName(account)}
+                  {@render accountLine()}
+                {:then name}
+                  {#if name}
+                    <span class="address-picker__address-name" title={name}
+                      >{name}</span
                     >
-                    <span class="address-picker__address-value"
-                      >{middleEllipsis(
-                        profile.account.toString(),
-                        charCount
-                      )}</span
-                    >
-                  </div>
-                  <div class="address-picker__address-row">
-                    <span class="address-picker__address-label"
-                      >Shielded Account</span
-                    >
-                    <span class="address-picker__address-value"
-                      >{middleEllipsis(
-                        profile.address.toString(),
-                        charCount
-                      )}</span
-                    >
-                  </div>
-                </div>
+                  {:else}
+                    {@render accountLine()}
+                  {/if}
+                {:catch}
+                  {@render accountLine()}
+                {/await}
               </button>
               <div class="address-picker__copy-buttons">
                 <button
+                  aria-label="Copy public address"
                   class="address-picker__copy-button"
                   type="button"
                   title="Copy public address"
-                  on:click={() => handleCopyAddress(profile.account.toString())}
+                  on:click={() => handleCopyAddress(account)}
                 >
-                  <Icon path={mdiContentCopy} size="small" />
+                  <Icon path={mdiContentCopy} />
+                  <span>Public</span>
                 </button>
                 <button
+                  aria-label="Copy shielded address"
                   class="address-picker__copy-button"
                   type="button"
                   title="Copy shielded address"
                   on:click={() => handleCopyAddress(profile.address.toString())}
                 >
-                  <Icon path={mdiContentCopy} size="small" />
+                  <Icon path={mdiContentCopy} />
+                  <span>Shielded</span>
                 </button>
               </div>
             </div>

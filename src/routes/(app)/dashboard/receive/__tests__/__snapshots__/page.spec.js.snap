@@ -114,11 +114,56 @@ exports[`Receive > should render the receive page with a choice to switch from p
         <!---->
          
         <figcaption
-          class="receive__address svelte-hh88gv"
+          class="receive__fields svelte-hh88gv"
         >
-          <samp>
-            bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
-          </samp>
+          <!---->
+          
+          <!---->
+           
+          <div
+            class="receive__field svelte-hh88gv"
+          >
+            <samp
+              class="receive__address svelte-hh88gv"
+              title="bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J"
+            >
+              <span
+                aria-hidden="true"
+              >
+                bEjRbu…zGeJ8J
+              </span>
+               
+              <span
+                class="sr-only"
+              >
+                bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
+              </span>
+            </samp>
+             
+            <button
+              aria-label="Copy address"
+              class="receive__icon-button receive__copy-button svelte-hh88gv"
+              title="Copy address"
+              type="button"
+            >
+              <!---->
+              <svg
+                class="dusk-icon dusk-icon--size--default"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"
+                />
+              </svg>
+              
+              <!---->
+            </button>
+          </div>
+           
+          <!---->
+          
+          <!---->
         </figcaption>
       </figure>
        
@@ -155,35 +200,8 @@ exports[`Receive > should render the receive page with a choice to switch from p
           <!---->
         </a>
         <!---->
-         
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled receive__button"
-          type="button"
-        >
-          <!---->
-          <!---->
-          <svg
-            class="dusk-icon dusk-icon--size--default dusk-button__icon"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"
-            />
-          </svg>
-          
-          <!---->
-           
-          <span
-            class="dusk-button__text"
-          >
-            Copy
-          </span>
-          <!---->
-          <!---->
-        </button>
-        <!---->
       </div>
+      <!---->
     </div>
     <!---->
     
@@ -310,11 +328,56 @@ exports[`Receive > should show the shielded address when the user makes such cho
         <!---->
          
         <figcaption
-          class="receive__address svelte-hh88gv"
+          class="receive__fields svelte-hh88gv"
         >
-          <samp>
-            2zFZwXf4JEvD2Vmd4kqx5tHDv73LkRr2Ydb84Knr2gmFJJoEEpZPtTbuQCrojM85QDHAvosxoZdnpLPSNRqzqmai
-          </samp>
+          <!---->
+          
+          <!---->
+           
+          <div
+            class="receive__field svelte-hh88gv"
+          >
+            <samp
+              class="receive__address svelte-hh88gv"
+              title="2zFZwXf4JEvD2Vmd4kqx5tHDv73LkRr2Ydb84Knr2gmFJJoEEpZPtTbuQCrojM85QDHAvosxoZdnpLPSNRqzqmai"
+            >
+              <span
+                aria-hidden="true"
+              >
+                2zFZwX…qzqmai
+              </span>
+               
+              <span
+                class="sr-only"
+              >
+                2zFZwXf4JEvD2Vmd4kqx5tHDv73LkRr2Ydb84Knr2gmFJJoEEpZPtTbuQCrojM85QDHAvosxoZdnpLPSNRqzqmai
+              </span>
+            </samp>
+             
+            <button
+              aria-label="Copy address"
+              class="receive__icon-button receive__copy-button svelte-hh88gv"
+              title="Copy address"
+              type="button"
+            >
+              <!---->
+              <svg
+                class="dusk-icon dusk-icon--size--default"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"
+                />
+              </svg>
+              
+              <!---->
+            </button>
+          </div>
+           
+          <!---->
+          
+          <!---->
         </figcaption>
       </figure>
        
@@ -351,35 +414,8 @@ exports[`Receive > should show the shielded address when the user makes such cho
           <!---->
         </a>
         <!---->
-         
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled receive__button"
-          type="button"
-        >
-          <!---->
-          <!---->
-          <svg
-            class="dusk-icon dusk-icon--size--default dusk-button__icon"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"
-            />
-          </svg>
-          
-          <!---->
-           
-          <span
-            class="dusk-button__text"
-          >
-            Copy
-          </span>
-          <!---->
-          <!---->
-        </button>
-        <!---->
       </div>
+      <!---->
     </div>
     <!---->
     
