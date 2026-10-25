@@ -99,6 +99,8 @@ exports[`Send > Address step > should display a warning if the address input is 
      
     <!---->
     <!---->
+     
+    <!---->
     <!---->
     <!---->
      
@@ -399,6 +401,8 @@ exports[`Send > Address step > should display a warning if the address input is 
     <!---->
      
     <!---->
+    <!---->
+     
     <!---->
     <!---->
     <!---->
@@ -733,6 +737,8 @@ exports[`Send > Address step > should render the Send component Address step 1`]
      
     <!---->
     <!---->
+     
+    <!---->
     <!---->
     <!---->
      
@@ -1001,6 +1007,8 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
     <!---->
      
     <!---->
+    <!---->
+     
     <!---->
     
     <!---->
@@ -1339,6 +1347,8 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
     <!---->
      
     <!---->
+    <!---->
+     
     <!---->
     
     <!---->

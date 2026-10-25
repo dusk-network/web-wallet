@@ -387,6 +387,36 @@ describe("Send", () => {
       expect(getByRole("button", { name: "SEND" })).toBeDisabled();
     });
 
+    it("should say why on Amount and Review if shielded transactions pause there", async () => {
+      const { getByRole, getByText, queryByText, rerender } = render(
+        Send,
+        baseProps
+      );
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: shieldedRecipient },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.input(getByRole("spinbutton"), { target: { value: 5 } });
+
+      expect(queryByText(pausedMessage)).not.toBeInTheDocument();
+
+      await rerender({ isShieldedPaused: true });
+
+      expect(getByText(pausedMessage)).toBeInTheDocument();
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+      await rerender({ isShieldedPaused: false });
+
+      expect(queryByText(pausedMessage)).not.toBeInTheDocument();
+
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await rerender({ isShieldedPaused: true });
+
+      expect(getByText(pausedMessage)).toBeInTheDocument();
+      expect(getByRole("button", { name: "SEND" })).toBeDisabled();
+    });
+
     it("should let a shielded address through once shielded transactions are back", async () => {
       const { getByRole, queryByText, rerender } = render(Send, pausedProps);
 

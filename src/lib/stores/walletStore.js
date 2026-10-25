@@ -118,13 +118,21 @@ const passThruWithEffects = (fn) => (a) => {
 };
 
 /**
- * Checks with the node, and refuses a shielded
- * transaction while shielded transactions are paused.
+ * Checks with the node, and refuses a shielded transaction while shielded
+ * transactions are paused, or if the wallet resets or changes profile
+ * while the node answers.
  *
  * @returns {Promise<void>}
  */
 async function refuseIfShieldedPaused() {
+  const session = walletSession;
+  const profile = getCurrentProfile();
+
   await shieldedStatusStore.refresh();
+
+  if (session !== walletSession || profile !== getCurrentProfile()) {
+    throw new Error("Transaction aborted");
+  }
 
   if (get(shieldedStatusStore).isPaused) {
     throw new Error(getShieldedPausedMessage(get(networkStore).networkName));
@@ -339,13 +347,17 @@ async function setCurrentProfile(profile) {
 /** @type {WalletStoreServices["shield"]} */
 const shield = async (amount, gas) =>
   sync()
-    .then(refuseIfShieldedPaused)
     .then(networkStore.connect)
-    .then((network) =>
-      network.execute(
-        bookkeeper.as(unsafeGetCurrentProfile()).shield(amount).gas(gas)
-      )
-    )
+    .then(async (network) => {
+      const tx = bookkeeper
+        .as(unsafeGetCurrentProfile())
+        .shield(amount)
+        .gas(gas);
+
+      await refuseIfShieldedPaused();
+
+      return await network.execute(tx);
+    })
     .then(updateCacheAfterTransaction)
     .then(passThruWithEffects(observeTxRemoval));
 
@@ -576,13 +588,17 @@ const depositEvmFunctionCall = async (
 /** @type {WalletStoreServices["unshield"]} */
 const unshield = async (amount, gas) =>
   sync()
-    .then(refuseIfShieldedPaused)
     .then(networkStore.connect)
-    .then((network) =>
-      network.execute(
-        bookkeeper.as(unsafeGetCurrentProfile()).unshield(amount).gas(gas)
-      )
-    )
+    .then(async (network) => {
+      const tx = bookkeeper
+        .as(unsafeGetCurrentProfile())
+        .unshield(amount)
+        .gas(gas);
+
+      await refuseIfShieldedPaused();
+
+      return await network.execute(tx);
+    })
     .then(updateCacheAfterTransaction)
     .then(passThruWithEffects(observeTxRemoval));
 

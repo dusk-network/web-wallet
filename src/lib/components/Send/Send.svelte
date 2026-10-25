@@ -223,6 +223,10 @@
     <div slot="stepper">
       <Stepper {activeStep} {steps} />
     </div>
+    <!-- Says why Amount and Review can't go on if the pause starts there. -->
+    {#if isShieldedSendPaused && (activeStep === 1 || activeStep === 2)}
+      <ShieldedPausedNotice mentionBalance={false} />
+    {/if}
     <!-- Address Step -->
     <WizardStep
       step={0}

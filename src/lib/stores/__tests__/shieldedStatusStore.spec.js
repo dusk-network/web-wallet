@@ -93,6 +93,54 @@ describe("Shielded status store", () => {
     });
   });
 
+  it("should not let an older refresh replace the answer of a newer one", async () => {
+    /** @type {PromiseWithResolvers<Record<string, unknown>>} */
+    const older = Promise.withResolvers();
+    const paused = { isKnown: true, isPaused: true };
+
+    getNodeFeaturesSpy
+      .mockReturnValueOnce(older.promise)
+      .mockResolvedValueOnce({ DISABLE_PHOENIX: 1 });
+
+    const olderRefresh = shieldedStatusStore.refresh();
+
+    await shieldedStatusStore.refresh();
+
+    expect(get(shieldedStatusStore)).toStrictEqual(paused);
+
+    older.resolve({});
+    await olderRefresh;
+
+    expect(get(shieldedStatusStore)).toStrictEqual(paused);
+  });
+
+  it("should apply an older refresh that answers first, until the newer one answers", async () => {
+    /** @type {PromiseWithResolvers<Record<string, unknown>>} */
+    const newer = Promise.withResolvers();
+
+    getNodeFeaturesSpy
+      .mockResolvedValueOnce({ DISABLE_PHOENIX: 1 })
+      .mockReturnValueOnce(newer.promise);
+
+    const olderRefresh = shieldedStatusStore.refresh();
+    const newerRefresh = shieldedStatusStore.refresh();
+
+    await olderRefresh;
+
+    expect(get(shieldedStatusStore)).toStrictEqual({
+      isKnown: true,
+      isPaused: true,
+    });
+
+    newer.resolve({});
+    await newerRefresh;
+
+    expect(get(shieldedStatusStore)).toStrictEqual({
+      isKnown: true,
+      isPaused: false,
+    });
+  });
+
   it("should keep what it knew when the node can't tell", async () => {
     const paused = { isKnown: true, isPaused: true };
 

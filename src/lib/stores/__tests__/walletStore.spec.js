@@ -944,6 +944,79 @@ describe("Wallet store", async () => {
       });
     });
 
+    describe("While the node says if shielded transactions are paused", () => {
+      const shieldedMethods = /** @type {const} */ ([
+        ["shield", [amount, gas]],
+        ["unshield", [amount, gas]],
+        ["transfer", [toPhoenix, amount, memo, gas]],
+      ]);
+
+      /** @type {PromiseWithResolvers<Record<string, unknown>>} */
+      let answer;
+
+      /** @type {import("vitest").MockInstance<NetworkStore["getNodeFeatures"]>} */
+      let getNodeFeaturesSpy;
+
+      /**
+       * Starts the transaction and waits for its check with
+       * the node, after the one at the start of the sync.
+       *
+       * @param {(typeof shieldedMethods)[number][0]} method
+       * @param {(typeof shieldedMethods)[number][1]} args
+       * @returns {Promise<{ result: Promise<unknown> }>}
+       */
+      async function startAndWaitForTheCheck(method, args) {
+        // @ts-ignore here args can't be inferred apparently
+        const result = walletStore[method](...args).catch((error) => error);
+
+        await vi.waitUntil(() => getNodeFeaturesSpy.mock.calls.length === 2);
+
+        return { result };
+      }
+
+      beforeEach(() => {
+        answer = Promise.withResolvers();
+        getNodeFeaturesSpy = vi
+          .spyOn(networkStore, "getNodeFeatures")
+          .mockResolvedValueOnce({})
+          .mockReturnValueOnce(answer.promise);
+      });
+
+      afterEach(() => {
+        getNodeFeaturesSpy.mockRestore();
+      });
+
+      it.each(shieldedMethods)(
+        "should not %s if the wallet resets meanwhile",
+        async (method, args) => {
+          vi.useRealTimers();
+
+          const { result } = await startAndWaitForTheCheck(method, args);
+
+          walletStore.reset();
+          answer.resolve({});
+
+          expect(await result).toEqual(new Error("Transaction aborted"));
+          expect(executeSpy).not.toHaveBeenCalled();
+        }
+      );
+
+      it.each(shieldedMethods)(
+        "should not %s if the profile changes meanwhile",
+        async (method, args) => {
+          vi.useRealTimers();
+
+          const { result } = await startAndWaitForTheCheck(method, args);
+
+          await walletStore.setCurrentProfile(get(walletStore).profiles[1]);
+          answer.resolve({});
+
+          expect(await result).toEqual(new Error("Transaction aborted"));
+          expect(executeSpy).not.toHaveBeenCalled();
+        }
+      );
+    });
+
     /* eslint-enable vitest/expect-expect */
   });
 
