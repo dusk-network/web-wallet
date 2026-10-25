@@ -20,15 +20,7 @@
   import { AppAnchorButton, Bridge } from "$lib/components";
   import { createCurrencyFormatter } from "$lib/dusk/currency";
   import { gasStore, settingsStore, walletStore } from "$lib/stores";
-
-  /**
-   * @param {SettingsStoreContent} settings
-   * @returns {[ContractGasSettings, string]}
-   */
-  const collectSettings = ({ gasLimit, gasPrice, language }) => [
-    { gasLimit, gasPrice },
-    language,
-  ];
+  import { getGasLimits, getGasSettings } from "$lib/contracts";
 
   /**
    * @typedef { import("@wagmi/core").GetBalanceReturnType } GetBalanceReturnType
@@ -78,8 +70,9 @@
 
   $: ({ isConnected } = $account);
   $: ({ balance, currentProfile } = $walletStore);
-  $: [gasSettings, language] = collectSettings($settingsStore);
-  $: gasLimits = $gasStore;
+  $: ({ customGasLimit, gasPrice, language } = $settingsStore);
+  $: gasSettings = getGasSettings("bridge", { customGasLimit, gasPrice });
+  $: gasLimits = getGasLimits("bridge", $gasStore);
   $: unshieldedAddress = currentProfile
     ? currentProfile.account.toString()
     : "";

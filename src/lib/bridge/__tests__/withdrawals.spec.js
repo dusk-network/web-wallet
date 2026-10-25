@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readable } from "svelte/store";
 import { toRlp } from "viem";
 
 import {
@@ -7,6 +8,7 @@ import {
   parseGameSearchDepth,
   parseWithdrawalReceipt,
   proofRequiresReplacement,
+  withdrawalGas,
   withdrawalStorageKey,
 } from "$lib/bridge/withdrawals";
 
@@ -40,6 +42,14 @@ describe("DuskEVM withdrawal helpers", () => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+  });
+
+  it("proves and finalizes withdrawals with a large gas limit, within the global bound", () => {
+    expect(withdrawalGas()).toMatchObject({ limit: 50_000_000n, price: 1n });
+    expect(withdrawalGas(519_542n)).toMatchObject({ limit: 50_519_542n });
+    expect(withdrawalGas(2_000_000_000n)).toMatchObject({
+      limit: 1_000_000_000n,
+    });
   });
 
   it("falls back to a positive game search depth for invalid env values", () => {
@@ -395,8 +405,11 @@ describe("DuskEVM withdrawal helpers", () => {
       "finalize-hash"
     );
 
-    const [, , withdrawal] =
+    const [, , withdrawal, gas] =
       walletStore.finalizeDuskEvmWithdrawal.mock.calls[0];
+
+    // The withdrawal gas limit plus the gas the withdrawal asks for.
+    expect(gas).toMatchObject({ limit: 50_519_542n, price: 2n });
 
     expect(withdrawal).toMatchObject({
       data: expect.any(Array),
@@ -483,7 +496,13 @@ function mockWithdrawalFinalization({
   };
 
   vi.doMock("$lib/stores", () => ({
+    gasStore: readable({
+      gasLimitLower: 2_000_000n,
+      gasLimitUpper: 1_000_000_000n,
+      gasPriceLower: 1n,
+    }),
     networkStore,
+    settingsStore: readable({ customGasLimit: null, gasPrice: 2n }),
     walletStore,
   }));
   vi.doMock("$lib/web3/walletConnection", () => ({

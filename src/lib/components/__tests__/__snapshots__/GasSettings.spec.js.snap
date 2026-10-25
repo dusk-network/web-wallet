@@ -164,6 +164,7 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
       <!---->
     </label>
     <!---->
+    <!---->
   </div>
   <!---->
 </div>

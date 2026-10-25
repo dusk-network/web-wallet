@@ -75,7 +75,11 @@
    * @param {{detail: {price: bigint, limit: bigint}}} event
    */
   const setGasValues = (event) => {
-    isGasValid = areValidGasSettings(event.detail.price, event.detail.limit);
+    isGasValid = areValidGasSettings(
+      event.detail.price,
+      event.detail.limit,
+      gasLimits
+    );
 
     if (isGasValid) {
       gasPrice = event.detail.price;
@@ -113,7 +117,7 @@
   }
 
   onMount(() => {
-    isGasValid = areValidGasSettings(gasPrice, gasLimit);
+    isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
 
   $: stakeAmountInLux = stakeAmount ? duskToLux(stakeAmount) : 0n;

@@ -30,7 +30,13 @@
   let isExpanded = false;
 
   onMount(() => {
-    if (!areValidGasSettings(price, limit)) {
+    const bounds = {
+      gasLimitLower: limitLower,
+      gasLimitUpper: limitUpper,
+      gasPriceLower: priceLower,
+    };
+
+    if (!areValidGasSettings(price, limit, bounds)) {
       isExpanded = true;
     }
   });

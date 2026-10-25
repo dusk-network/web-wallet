@@ -27,18 +27,49 @@ const browserDefaults = browser
       language: "en",
     };
 
+/**
+ * The one gas limit used before each operation had its own default.
+ */
+const LEGACY_DEFAULT_GAS_LIMIT = 100_000_000n;
+
 /** @type {SettingsStoreContent} */
 const initialState = {
   ...browserDefaults,
   currency: "USD",
+
+  // A gas limit the user set for every operation, or `null` for each
+  // operation's own default: see `getGasSettings`.
+  customGasLimit: null,
   dashboardTransactionLimit: 5,
-  gasLimit: BigInt(import.meta.env.VITE_GAS_LIMIT_DEFAULT ?? 100_000_000),
+
+  // The gas limit of older versions, kept so that they can still read these
+  // settings.
+  gasLimit: LEGACY_DEFAULT_GAS_LIMIT,
   gasPrice: BigInt(import.meta.env.VITE_GAS_PRICE_DEFAULT ?? 1),
   hideBalances: false,
   hideStakingNotice: false,
   userId: "",
   walletCreationBlockHeight: 0n,
 };
+
+/**
+ * Settings from older versions have no custom gas limit: their gas limit
+ * becomes one, unless it is the old default.
+ *
+ * @param {any} settings The stored settings, possibly from an older version.
+ * @returns {SettingsStoreContent}
+ */
+const migrateGasLimit = (settings) =>
+  "customGasLimit" in settings
+    ? settings
+    : {
+        ...settings,
+        customGasLimit:
+          typeof settings.gasLimit === "bigint" &&
+          settings.gasLimit !== LEGACY_DEFAULT_GAS_LIMIT
+            ? settings.gasLimit
+            : null,
+      };
 
 const createPersistedStore = (
   /** @type {string} */ key,
@@ -49,7 +80,9 @@ const createPersistedStore = (
       return initialValue;
     }
     const storedValue = localStorage.getItem(key);
-    return storedValue ? deserializeProperty(storedValue) : initialValue;
+    return storedValue
+      ? migrateGasLimit(deserializeProperty(storedValue))
+      : initialValue;
   };
 
   const store = writable(load());
@@ -77,7 +110,7 @@ const reset = () => set(initialState);
 const resetGasSettings = () =>
   update((current) => ({
     ...current,
-    gasLimit: initialState.gasLimit,
+    customGasLimit: initialState.customGasLimit,
     gasPrice: initialState.gasPrice,
   }));
 

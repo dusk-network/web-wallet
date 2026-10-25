@@ -12,6 +12,7 @@ type GasStore = Readable<GasStoreContent>;
 
 type SettingsStoreContent = {
   currency: string;
+  customGasLimit: bigint | null;
   darkMode: boolean;
   dashboardTransactionLimit: number;
   gasLimit: bigint;

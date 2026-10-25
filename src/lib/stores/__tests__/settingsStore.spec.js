@@ -106,6 +106,7 @@ describe("Settings store", () => {
 
       const expectedSettings = {
         ...settingsStoreContent,
+        customGasLimit: null,
         darkMode: false,
         gasLimit: `${settingsStoreContent.gasLimit}n`,
         gasPrice: `${settingsStoreContent.gasPrice}n`,
@@ -128,6 +129,74 @@ describe("Settings store", () => {
       reloadedStore.reset();
 
       expect(get(reloadedStore).hideBalances).toBe(false);
+    });
+
+    describe("Gas limit", () => {
+      const key = `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`;
+
+      /**
+       * Stores settings as a version without a custom gas limit did.
+       *
+       * @param {bigint} gasLimit
+       */
+      const storeOldSettings = (gasLimit) =>
+        localStorage.setItem(
+          key,
+          serializeProperty(
+            Object.fromEntries(
+              Object.entries({ ...settingsStoreContent, gasLimit }).filter(
+                ([name]) => name !== "customGasLimit"
+              )
+            )
+          )
+        );
+
+      const loadSettings = async () => {
+        vi.resetModules();
+
+        return get((await import("../settingsStore")).default);
+      };
+
+      it("should have no custom gas limit, and the old default one, by default", () => {
+        expect(settingsStoreContent.customGasLimit).toBeNull();
+        expect(settingsStoreContent.gasLimit).toBe(100_000_000n);
+      });
+
+      it("should not make the old default gas limit a custom one", async () => {
+        storeOldSettings(100_000_000n);
+
+        const settings = await loadSettings();
+
+        expect(settings.customGasLimit).toBeNull();
+        expect(settings.gasLimit).toBe(100_000_000n);
+        expect(deserializeProperty(localStorage.getItem(key) ?? "")).toEqual(
+          expect.objectContaining({
+            customGasLimit: null,
+            gasLimit: 100_000_000n,
+          })
+        );
+      });
+
+      it("should keep a gas limit the user chose as the custom one", async () => {
+        storeOldSettings(200_000_000n);
+
+        const settings = await loadSettings();
+
+        expect(settings.customGasLimit).toBe(200_000_000n);
+        expect(settings.gasLimit).toBe(200_000_000n);
+      });
+
+      it("should keep a custom gas limit equal to the old default", async () => {
+        localStorage.setItem(
+          key,
+          serializeProperty({
+            ...settingsStoreContent,
+            customGasLimit: 100_000_000n,
+          })
+        );
+
+        expect((await loadSettings()).customGasLimit).toBe(100_000_000n);
+      });
     });
 
     it("should expose a method to reset the store to its initial state", () => {
@@ -160,7 +229,8 @@ describe("Settings store", () => {
       };
       const newState = {
         ...newStateWithoutGas,
-        gasLimit: settingsStoreContent.gasLimit * 2n,
+        customGasLimit: 200_000_000n,
+        gasLimit: settingsStoreContent.gasLimit,
         gasPrice: settingsStoreContent.gasPrice * 15n,
       };
       const expectedState = {
@@ -182,6 +252,7 @@ describe("Settings store", () => {
         )
       ).toStrictEqual({
         ...expectedState,
+        customGasLimit: null,
         gasLimit: `${expectedState.gasLimit}n`,
         gasPrice: `${expectedState.gasPrice}n`,
         walletCreationBlockHeight: "123n",

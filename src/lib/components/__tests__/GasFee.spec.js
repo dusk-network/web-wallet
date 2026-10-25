@@ -9,7 +9,7 @@ import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
 describe("GasFee", () => {
   const settings = get(settingsStore);
   const duskFormatter = createCurrencyFormatter(settings.language, "DUSK", 9);
-  const fee = settings.gasPrice * settings.gasLimit;
+  const fee = settings.gasPrice * 100_000_000n;
 
   afterEach(cleanup);
 

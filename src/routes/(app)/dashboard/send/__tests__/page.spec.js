@@ -1,8 +1,9 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
+import { getGasSettings } from "$lib/contracts";
 import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
 import { settingsStore } from "$lib/stores";
 
@@ -128,7 +129,10 @@ describe("Send page", () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     const { container, getByRole } = render(SendPage);
-    const { gasLimit, gasPrice } = get(settingsStore);
+    const { gasLimit, gasPrice } = getGasSettings(
+      "public-transfer",
+      get(settingsStore)
+    );
     const fee = gasLimit * gasPrice;
     const maxAmount = luxToDusk(balance.unshielded.value - fee);
     const spendable = container.querySelector(".contract-statuses__value");
@@ -166,5 +170,46 @@ describe("Send page", () => {
       formattedUnshielded,
     ]);
     expect(spendable).toHaveTextContent(/^•••• hidden$/);
+  });
+
+  it("should start a transfer from the default gas limit of its recipient", async () => {
+    const { container, getByRole } = render(SendPage);
+    const maxFee = () =>
+      container.querySelector(".gas-fee__amount-value")?.textContent;
+
+    await fireEvent.input(getByRole("textbox"), {
+      target: { value: currentProfile.account.toString() },
+    });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(maxFee()).toBe(formatter(luxToDusk(2_500_000n)));
+
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+    await fireEvent.input(getByRole("textbox"), {
+      target: { value: currentProfile.address.toString() },
+    });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(maxFee()).toBe(formatter(luxToDusk(50_000_000n)));
+  });
+
+  it("should keep the user's gas limit when other settings change", async () => {
+    const { container, getByLabelText, getByRole } = render(SendPage);
+
+    await fireEvent.input(getByRole("textbox"), {
+      target: { value: currentProfile.account.toString() },
+    });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "EDIT" }));
+    await fireEvent.input(getByLabelText(/gas limit/i), {
+      target: { value: "3000000" },
+    });
+    await act(() =>
+      settingsStore.update((settings) => ({ ...settings, userId: "someone" }))
+    );
+
+    expect(container.querySelector(".gas-fee__amount-value")?.textContent).toBe(
+      formatter(luxToDusk(3_000_000n))
+    );
   });
 });

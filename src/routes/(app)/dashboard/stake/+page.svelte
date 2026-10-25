@@ -29,15 +29,6 @@
     updateOperation("");
   });
 
-  /**
-   * @param {SettingsStoreContent} settings
-   * @returns {[ContractGasSettings, string]}
-   */
-  const collectSettings = ({ gasLimit, gasPrice, language }) => [
-    { gasLimit, gasPrice },
-    language,
-  ];
-
   networkStore.getCurrentBlockHeight().then((blockHeight) => {
     currentBlockHeight = blockHeight;
   });
@@ -46,7 +37,7 @@
   $: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
 
   $: ({ balance, stakeInfo } = $walletStore);
-  $: [gasSettings, language] = collectSettings($settingsStore);
+  $: ({ language } = $settingsStore);
 
   /** @returns {ContractStatus[]} */
   $: statuses = [
@@ -93,7 +84,6 @@
       {/if}
     </ContractStatusesList>
     <StakeContract
-      {gasSettings}
       {stakeInfo}
       formatter={duskFormatter}
       descriptor={contractDescriptors[2]}

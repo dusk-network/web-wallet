@@ -4,7 +4,7 @@
   import { mdiArrowTopRight } from "@mdi/js";
   import { ContractStatusesList, Send } from "$lib/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
-  import { executeSend } from "$lib/contracts";
+  import { executeSend, getGasLimits, getGasSettings } from "$lib/contracts";
   import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
   import { resolveDuskName } from "$lib/dusk-domains";
   import {
@@ -30,16 +30,6 @@
 
     return [spendable, statuses];
   }
-
-  /**
-   * @param {SettingsStoreContent} settings
-   * @returns {[ContractGasSettings, string]}
-   */
-  const collectSettings = ({ gasLimit, gasPrice, language }) => [
-    { gasLimit, gasPrice },
-    language,
-  ];
-  const gasLimits = $gasStore;
 
   /** @type {"shielded" | "unshielded"} */
   let spendableSource = "unshielded";
@@ -71,7 +61,18 @@
   const resolveName = (name) =>
     resolveDuskName(name, networkName, makeNodeUrl().origin);
 
-  $: [gasSettings, language] = collectSettings($settingsStore);
+  /** @type {GasOperation} */
+  $: transferOperation =
+    spendableSource === "shielded" ? "shielded-transfer" : "public-transfer";
+  $: ({ customGasLimit, gasPrice, language } = $settingsStore);
+
+  // `Send` starts over from new gas settings: make new ones only when the
+  // operation or the stored gas values change.
+  $: gasSettings = getGasSettings(transferOperation, {
+    customGasLimit,
+    gasPrice,
+  });
+  $: gasLimits = getGasLimits(transferOperation, $gasStore);
   $: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
   $: ({ balance, currentProfile } = $walletStore);
   $: [spendable, statuses] = getContractInfo(spendableSource, balance);
