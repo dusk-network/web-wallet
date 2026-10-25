@@ -185,7 +185,7 @@ describe("Network store", async () => {
       await expect(store.getCurrentBlockHeight()).resolves.toBe(blockHeight);
     });
 
-    it("should expose a service method to read the node's features afresh each time", async () => {
+    it("should expose a service method to read the node's features afresh each time, and reject an answer without them", async () => {
       const fetchMock = vi.mocked(fetch);
       const features = { BLOB: 1814090, DISABLE_PHOENIX: 4000000 };
 
@@ -199,7 +199,9 @@ describe("Network store", async () => {
         .mockResolvedValueOnce(Response.json({ chain_id: 2 }));
 
       await expect(store.getNodeFeatures()).resolves.toStrictEqual(features);
-      await expect(store.getNodeFeatures()).resolves.toStrictEqual({});
+      await expect(store.getNodeFeatures()).rejects.toThrow(
+        "Node info has no features"
+      );
 
       expect(fetchMock).toHaveBeenCalledTimes(2);
 

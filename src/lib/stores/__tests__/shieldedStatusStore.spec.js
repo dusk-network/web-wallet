@@ -141,6 +141,32 @@ describe("Shielded status store", () => {
     });
   });
 
+  it("should keep a pause when the node answers with an error, or without its features", async () => {
+    const fetchMock = vi.mocked(fetch);
+    const paused = { isKnown: true, isPaused: true };
+
+    fetchMock.mockResolvedValueOnce(
+      // eslint-disable-next-line camelcase
+      Response.json({ vm_config: { features: { DISABLE_PHOENIX: 1 } } })
+    );
+    await shieldedStatusStore.refresh();
+
+    expect(get(shieldedStatusStore)).toStrictEqual(paused);
+
+    const answers = [
+      Response.json({ error: "Service unavailable" }, { status: 503 }),
+      Response.json({ error: "Service unavailable" }),
+      new Response("Bad gateway"),
+    ];
+
+    for (const answer of answers) {
+      fetchMock.mockResolvedValueOnce(answer);
+      await shieldedStatusStore.refresh();
+
+      expect(get(shieldedStatusStore)).toStrictEqual(paused);
+    }
+  });
+
   it("should keep what it knew when the node can't tell", async () => {
     const paused = { isKnown: true, isPaused: true };
 

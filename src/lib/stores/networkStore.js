@@ -111,15 +111,25 @@ const getLastFinalizedBlockHeight = () =>
 /**
  * Reads the features in the node's info afresh,
  * as `network.node.info` keeps the first info it gets.
+ * Rejects unless the node answers with them.
  *
  * @type {NetworkStoreServices["getNodeFeatures"]}
  */
 async function getNodeFeatures() {
   /** @type {Response} */
   const response = await network.rues.scope("node").call.info();
-  const info = await response.json();
 
-  return info?.vm_config?.features ?? {};
+  if (!response.ok) {
+    throw new Error(`Node info failed with status ${response.status}`);
+  }
+
+  const features = (await response.json())?.vm_config?.features;
+
+  if (!features || typeof features !== "object" || Array.isArray(features)) {
+    throw new Error("Node info has no features");
+  }
+
+  return features;
 }
 
 /** @type {NetworkStoreServices["init"]} */
