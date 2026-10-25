@@ -356,6 +356,142 @@ describe("DuskEVM withdrawal helpers", () => {
     expect(dgf.call.gameCount).not.toHaveBeenCalled();
   });
 
+  it("estimates the claim time from the proof while its game is in progress", async () => {
+    const { portal } = mockWithdrawalFinalization({
+      finalizePreflight: vi.fn(),
+    });
+    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
+    stubGameResolution({ resolvedAt: 0n, status: 0 });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    // Proven at 100, so the proof matures at 604_900.
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      {
+        proofRejected: false,
+        readyAt: 604_900n,
+        readyAtExact: false,
+        stage: "proven_waiting",
+      }
+    );
+    expect(portal.call.checkWithdrawal).not.toHaveBeenCalled();
+  });
+
+  it("gives the exact claim time once the proven game has resolved", async () => {
+    const { portal } = mockWithdrawalFinalization({
+      finalizePreflight: vi.fn(),
+    });
+    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
+    stubGameResolution({ resolvedAt: 400_000n, status: 2 });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    // The game is final at 400_000 + 302_400, after the proof matures.
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      { readyAt: 702_400n, readyAtExact: true, stage: "proven_waiting" }
+    );
+  });
+
+  it("flags a proof whose game the challenger won before it matured", async () => {
+    const { portal } = mockWithdrawalFinalization({
+      finalizePreflight: vi.fn(),
+    });
+    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
+    stubGameResolution({ resolvedAt: 400_000n, status: 1 });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      {
+        proofRejected: true,
+        readyAt: null,
+        readyAtExact: false,
+        stage: "proven_waiting",
+      }
+    );
+  });
+
+  it("estimates the claim time from the finality delay after the proof matures", async () => {
+    mockWithdrawalFinalization({
+      finalizePreflight: vi
+        .fn()
+        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
+    });
+    stubGameResolution({ resolvedAt: 0n, status: 0 });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    // The latest block is at 200; the game can't be final before 200 + 302_400.
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      { readyAt: 302_600n, readyAtExact: false, stage: "proven_waiting" }
+    );
+  });
+
+  it("gives no claim time from a proof time off Dusk's clock", async () => {
+    const { networkStore, portal } = mockWithdrawalFinalization({
+      finalizePreflight: vi
+        .fn()
+        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
+    });
+    // Older deployments count block height × 10 seconds.
+    portal.call.provenWithdrawals.mockResolvedValue([
+      Array(20).fill(0x1e),
+      45_252_320n,
+    ]);
+    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
+    networkStore.getLatestBlockTimestamp.mockResolvedValue(1_792_950_989n);
+    stubGameResolution({ resolvedAt: 0n, status: 0 });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      { readyAt: null, readyAtExact: false, stage: "proven_waiting" }
+    );
+  });
+
+  it("leaves out a game time off Dusk's clock", async () => {
+    const { networkStore, portal } = mockWithdrawalFinalization({
+      finalizePreflight: vi.fn(),
+    });
+    // Proven a day before the latest block.
+    portal.call.provenWithdrawals.mockResolvedValue([
+      Array(20).fill(0x1e),
+      1_792_864_589n,
+    ]);
+    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
+    networkStore.getLatestBlockTimestamp.mockResolvedValue(1_792_950_989n);
+    stubGameResolution({ resolvedAt: 46_807_020n, status: 2 });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      { readyAt: 1_793_469_389n, readyAtExact: false, stage: "proven_waiting" }
+    );
+  });
+
+  it("flags a rejected proof that has no replacement output yet", async () => {
+    mockWithdrawalFinalization({
+      finalizePreflight: vi
+        .fn()
+        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
+      gameStatus: 1,
+    });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      { proofRejected: true, readyAt: null, stage: "proven_waiting" }
+    );
+  });
+
+  it("reads the waiting period from the portal, or nothing", async () => {
+    const { portal, walletStore } = mockWithdrawalFinalization({
+      finalizePreflight: vi.fn(),
+    });
+    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
+    const { loadWithdrawalWaitingPeriod } =
+      await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalWaitingPeriod()).resolves.toBe(604_800n);
+
+    walletStore.useContract.mockRejectedValue(new Error("offline"));
+
+    await expect(loadWithdrawalWaitingPeriod()).resolves.toBeNull();
+  });
+
   it("checks readiness for the wallet submitter rather than a third party", async () => {
     const { portal, walletStore } = mockWithdrawalFinalization({
       finalizePreflight: vi.fn().mockResolvedValue(undefined),
@@ -491,6 +627,7 @@ function mockWithdrawalFinalization({
     call: {
       checkWithdrawal: finalizePreflight,
       disputeGameBlacklist: vi.fn().mockResolvedValue(isGameBlacklisted),
+      disputeGameFinalityDelaySeconds: vi.fn().mockResolvedValue(u256(302_400)),
       finalizedWithdrawals: vi.fn().mockResolvedValue(finalized),
       numProofSubmitters: vi.fn().mockResolvedValue(u256(1)),
       proofMaturityDelaySeconds: vi.fn().mockResolvedValue(u256(0)),
@@ -566,4 +703,38 @@ function mockWithdrawalFinalization({
   );
 
   return { dgf, networkStore, portal, walletStore };
+}
+
+/**
+ * Answers the proven game's status and resolution time over the L1 RPC, and
+ * leaves the other requests to the stub in place.
+ *
+ * @param {{ resolvedAt: bigint, status: number }} game
+ */
+function stubGameResolution({ resolvedAt, status }) {
+  const fetch = globalThis.fetch;
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url, request) => {
+      const body = JSON.parse(request.body);
+      // The `resolvedAt()` and `status()` selectors.
+      const selector = body.method === "eth_call" ? body.params[0].data : "";
+      const answer =
+        selector === "0x19effeb4"
+          ? resolvedAt
+          : selector === "0x200d2ed2"
+            ? BigInt(status)
+            : null;
+
+      return answer === null
+        ? await fetch(url, request)
+        : {
+            json: async () => ({
+              result: `0x${answer.toString(16).padStart(64, "0")}`,
+            }),
+            ok: true,
+          };
+    })
+  );
 }

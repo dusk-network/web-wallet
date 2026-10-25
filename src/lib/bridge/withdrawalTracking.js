@@ -31,8 +31,10 @@ function statusPatch(status) {
 
   for (const key of [
     "blockNumber",
+    "proofRejected",
     "proofSubmitter",
     "readyAt",
+    "readyAtExact",
     "statusMessage",
     "withdrawalHash",
   ]) {
@@ -104,11 +106,13 @@ async function reconcilePendingSubmission(remembered, status) {
     };
   }
 
-  return {
-    actionError: `${action === "prove" ? "Proof" : "Finalization"} transaction failed: ${execution.error}`,
-    pending: false,
-    status,
-  };
+  const actionError = `${action === "prove" ? "Proof" : "Finalization"} transaction failed: ${execution.error}`;
+
+  // The card shows a short line; the raw error stays in the console.
+  // eslint-disable-next-line no-console
+  console.error(actionError);
+
+  return { actionError, pending: false, status };
 }
 
 /**

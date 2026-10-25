@@ -285,6 +285,9 @@
         hash: submittedHash,
       });
     } catch (error) {
+      // The card shows a short line; the raw error stays in the console.
+      // eslint-disable-next-line no-console
+      console.error(`Withdrawal ${actionName} failed`, error);
       statusError = getErrorMessage(error);
     } finally {
       isSubmitting = false;

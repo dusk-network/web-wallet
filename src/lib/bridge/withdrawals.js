@@ -19,6 +19,7 @@ import {
 import { Gas } from "@dusk/w3sper";
 import { get } from "svelte/store";
 
+import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { WITHDRAWAL_GAS_LIMIT } from "$lib/contracts/gasDefaults";
 import {
   gasStore,
@@ -63,6 +64,23 @@ const GAME_STATUS_ABI = Object.freeze([
     type: "function",
   },
 ]);
+const GAME_RESOLUTION_ABI = Object.freeze([
+  ...GAME_STATUS_ABI,
+  {
+    inputs: [],
+    name: "resolvedAt",
+    outputs: [{ type: "uint64" }],
+    stateMutability: "view",
+    type: "function",
+  },
+]);
+/**
+ * Proof and game times on Dusk's clock are within days of the latest block.
+ * Older DuskEVM deployments count block height × 10 seconds instead, decades
+ * behind it, so their times give no claim time.
+ */
+const DUSK_CLOCK_WINDOW_SECONDS = 31_536_000n;
+const NO_CLAIM_TIME = Object.freeze({ readyAt: null, readyAtExact: false });
 
 /** @param {unknown} value */
 export function parseGameSearchDepth(value) {
@@ -1056,11 +1074,13 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
   return {
     ...event,
     disputeGameProxy: provenWithdrawal.disputeGameProxy,
+    proofRejected: gameStatus.proofRejected ?? false,
     proofSubmitter,
     provenAt: provenWithdrawal.timestamp,
+    readyAt: gameStatus.readyAt ?? null,
+    readyAtExact: gameStatus.readyAtExact ?? false,
     stage: gameStatus.stage,
     statusMessage: gameStatus.statusMessage,
-    ...("readyAt" in gameStatus ? { readyAt: gameStatus.readyAt } : {}),
   };
 }
 
@@ -1071,6 +1091,7 @@ async function provenWithdrawalStatus(event, portal, proofSubmitter) {
  * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
  * @param {bigint} provenWithdrawal.timestamp
  * @param {`0x${string}`} proofSubmitter
+ * @returns {Promise<{ proofRejected?: boolean, readyAt?: bigint | null, readyAtExact?: boolean, stage: string, statusMessage: string }>}
  */
 async function provenWithdrawalGameStatus(
   event,
@@ -1083,10 +1104,12 @@ async function provenWithdrawalGameStatus(
     readLatestL1Timestamp(),
   ]);
   const readyAt = provenWithdrawal.timestamp + proofMaturityDelay;
+  const claim = () =>
+    claimTime(portal, provenWithdrawal, proofMaturityDelay, latestTimestamp);
 
   if (latestTimestamp < readyAt) {
     return {
-      readyAt,
+      ...(await claim()),
       stage: "proven_waiting",
       statusMessage: "The proof maturity delay has not elapsed yet.",
     };
@@ -1099,7 +1122,12 @@ async function provenWithdrawalGameStatus(
       proofSubmitter
     );
   } catch {
-    return await classifyRejectedProofStatus(event, portal, provenWithdrawal);
+    return await classifyRejectedProofStatus(
+      event,
+      portal,
+      provenWithdrawal,
+      claim
+    );
   }
 
   return {
@@ -1113,6 +1141,111 @@ async function provenWithdrawalGameStatus(
  */
 async function readProofMaturityDelaySeconds(portal) {
   return u256ToBigInt(await portal.call.proofMaturityDelaySeconds());
+}
+
+/**
+ * Dusk's proof maturity delay, which sets how long a proven withdrawal waits,
+ * or `null` when it can't be read.
+ */
+export async function loadWithdrawalWaitingPeriod() {
+  try {
+    return await readProofMaturityDelaySeconds(await optimismPortalContract());
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {import("@dusk/w3sper").Contract} portal
+ */
+async function readDisputeGameFinalityDelaySeconds(portal) {
+  return u256ToBigInt(await portal.call.disputeGameFinalityDelaySeconds());
+}
+
+/**
+ * The dispute game's status, or when it resolved (0 while in progress).
+ *
+ * @param {`0x${string}`} disputeGameProxy
+ * @param {"resolvedAt" | "status"} functionName
+ */
+async function readGameResolution(disputeGameProxy, functionName) {
+  const data = await callL1Contract(
+    disputeGameProxy,
+    encodeFunctionData({ abi: GAME_RESOLUTION_ABI, functionName })
+  );
+
+  return BigInt(
+    /** @type {bigint | number} */ (
+      decodeFunctionResult({ abi: GAME_RESOLUTION_ABI, data, functionName })
+    )
+  );
+}
+
+/**
+ * Whether a proof or game time is on Dusk's clock, near the latest block.
+ *
+ * @param {bigint} time
+ * @param {bigint} latestTimestamp
+ */
+function onDuskClock(time, latestTimestamp) {
+  const distance =
+    time > latestTimestamp ? time - latestTimestamp : latestTimestamp - time;
+
+  return distance < DUSK_CLOCK_WINDOW_SECONDS;
+}
+
+/**
+ * When a proven withdrawal can be claimed: once its proof has matured and its
+ * dispute game has resolved for the proposal and become final. The time is
+ * exact once the game has resolved. Until then the game needs at least its
+ * finality delay, which makes an estimate. A proof time off Dusk's clock
+ * gives no claim time, and a game time off it is left out.
+ *
+ * @param {import("@dusk/w3sper").Contract} portal
+ * @param {object} provenWithdrawal
+ * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
+ * @param {bigint} provenWithdrawal.timestamp
+ * @param {bigint} proofMaturityDelay
+ * @param {bigint} latestTimestamp
+ */
+async function claimTime(
+  portal,
+  provenWithdrawal,
+  proofMaturityDelay,
+  latestTimestamp
+) {
+  if (!onDuskClock(provenWithdrawal.timestamp, latestTimestamp)) {
+    return NO_CLAIM_TIME;
+  }
+
+  const maturedAt = provenWithdrawal.timestamp + proofMaturityDelay;
+  let claimAt = maturedAt;
+  let exact = false;
+
+  try {
+    const [status, resolvedAt, finalityDelay] = await Promise.all([
+      readGameResolution(provenWithdrawal.disputeGameProxy, "status"),
+      readGameResolution(provenWithdrawal.disputeGameProxy, "resolvedAt"),
+      readDisputeGameFinalityDelaySeconds(portal),
+    ]);
+    const resolved = Number(status) === GAME_STATUS.DEFENDER_WINS;
+    const finalAt = (resolved ? resolvedAt : latestTimestamp) + finalityDelay;
+
+    if (Number(status) === GAME_STATUS.CHALLENGER_WINS) {
+      return { ...NO_CLAIM_TIME, proofRejected: true };
+    }
+
+    if (!resolved || onDuskClock(resolvedAt, latestTimestamp)) {
+      exact = resolved;
+      claimAt = finalAt > maturedAt ? finalAt : maturedAt;
+    }
+  } catch {
+    // The proof's maturity alone still gives an estimate.
+  }
+
+  return claimAt > latestTimestamp
+    ? { readyAt: claimAt, readyAtExact: exact }
+    : NO_CLAIM_TIME;
 }
 
 async function readLatestL1Timestamp() {
@@ -1177,8 +1310,14 @@ export function proofRequiresReplacement(disposition) {
  * @param {import("@dusk/w3sper").Contract} portal
  * @param {object} provenWithdrawal
  * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
+ * @param {() => Promise<{ proofRejected?: boolean, readyAt: bigint | null, readyAtExact: boolean }>} claim
  */
-async function classifyRejectedProofStatus(event, portal, provenWithdrawal) {
+async function classifyRejectedProofStatus(
+  event,
+  portal,
+  provenWithdrawal,
+  claim
+) {
   try {
     const disposition = await readProvenGameDisposition(
       portal,
@@ -1187,6 +1326,7 @@ async function classifyRejectedProofStatus(event, portal, provenWithdrawal) {
 
     if (!proofRequiresReplacement(disposition)) {
       return {
+        ...(await claim()),
         stage: "proven_waiting",
         statusMessage:
           disposition.gameStatus === GAME_STATUS.IN_PROGRESS
@@ -1220,6 +1360,7 @@ async function classifyRejectedProofStatus(event, portal, provenWithdrawal) {
   }
 
   return {
+    proofRejected: true,
     stage: "proven_waiting",
     statusMessage:
       "The existing proof was rejected, but no replacement output proposal is available yet.",
@@ -1330,9 +1471,7 @@ export function withdrawalGas(withdrawalGasLimit = 0n) {
   const limit = WITHDRAWAL_GAS_LIMIT + withdrawalGasLimit;
 
   if (limit > gasLimitUpper) {
-    throw new Error(
-      "This withdrawal needs more gas than the wallet allows, so it wasn't sent."
-    );
+    throw new Error(WITHDRAWAL_GAS_REFUSAL);
   }
 
   return new Gas({ limit, price: get(settingsStore).gasPrice });

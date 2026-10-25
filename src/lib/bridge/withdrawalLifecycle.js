@@ -6,6 +6,24 @@
  * @property {number} progress
  */
 
+/**
+ * How long DuskEVM usually takes to report a withdrawal to Dusk. Outputs are
+ * proposed about every half hour, a little behind the DuskEVM chain.
+ */
+export const WITHDRAWAL_REPORT_SECONDS = 3_600;
+
+/**
+ * The waiting period after the proof, for when Dusk's own value isn't known:
+ * the proof maturity delay on DuskEVM mainnet and testnet.
+ */
+export const WITHDRAWAL_WAITING_PERIOD_SECONDS = 604_800;
+
+/**
+ * Why a proof or claim that needs more gas than the wallet allows isn't sent.
+ */
+export const WITHDRAWAL_GAS_REFUSAL =
+  "This withdrawal needs more gas than the wallet allows, so it wasn't sent.";
+
 const UNKNOWN_STAGE = /** @type {StageMetadata} */ ({
   badge: "neutral",
   label: "Status unavailable",
@@ -19,9 +37,8 @@ const STAGES = new Map([
     "submitted",
     {
       badge: "warning",
-      label: "Confirming",
-      message:
-        "Waiting for the DuskEVM transaction to be confirmed and indexed.",
+      label: "Processing",
+      message: "",
       progress: 0,
     },
   ],
@@ -29,8 +46,8 @@ const STAGES = new Map([
     "waiting_for_output",
     {
       badge: "warning",
-      label: "Waiting for output",
-      message: "The withdrawal is confirmed. Waiting for an output proposal.",
+      label: "Not on Dusk yet",
+      message: `Usually within ${roughDuration(WITHDRAWAL_REPORT_SECONDS)}.`,
       progress: 1,
     },
   ],
@@ -38,8 +55,8 @@ const STAGES = new Map([
     "ready_to_prove",
     {
       badge: "success",
-      label: "Ready to prove",
-      message: "The output is available. Submit the proof on Dusk.",
+      label: "Prove on Dusk",
+      message: "Step 1 of 2. Fee from your public account.",
       progress: 2,
     },
   ],
@@ -47,8 +64,8 @@ const STAGES = new Map([
     "prove_submitted",
     {
       badge: "warning",
-      label: "Proof submitted",
-      message: "The proof transaction was submitted on Dusk.",
+      label: "Proof sent",
+      message: "",
       progress: 2,
     },
   ],
@@ -56,8 +73,8 @@ const STAGES = new Map([
     "proven_waiting",
     {
       badge: "warning",
-      label: "Challenge period",
-      message: "The proof is accepted. The challenge period is still active.",
+      label: "Waiting period",
+      message: "",
       progress: 3,
     },
   ],
@@ -65,9 +82,8 @@ const STAGES = new Map([
     "ready_to_finalize",
     {
       badge: "success",
-      label: "Ready to finalize",
-      message:
-        "The challenge period is complete. Finalize the withdrawal on Dusk.",
+      label: "Claim on Dusk",
+      message: "Step 2 of 2. Fee from your public account.",
       progress: 4,
     },
   ],
@@ -75,8 +91,8 @@ const STAGES = new Map([
     "finalize_submitted",
     {
       badge: "warning",
-      label: "Finalization submitted",
-      message: "The finalization transaction was submitted on Dusk.",
+      label: "Claim sent",
+      message: "",
       progress: 4,
     },
   ],
@@ -84,8 +100,8 @@ const STAGES = new Map([
     "finalized",
     {
       badge: "success",
-      label: "Finalized",
-      message: "The withdrawal has been finalized on Dusk.",
+      label: "Done",
+      message: "",
       progress: 5,
     },
   ],
@@ -94,18 +110,18 @@ const STAGES = new Map([
     {
       badge: "error",
       label: "Failed",
-      message: "The withdrawal transaction failed on DuskEVM.",
+      message: "Your DUSK is still on DuskEVM.",
       progress: 0,
     },
   ],
 ]);
 
 export const WITHDRAWAL_TIMELINE_STEPS = Object.freeze([
-  "Initiated",
-  "Output available",
-  "Prove withdrawal",
-  "Challenge period",
-  "Finalized",
+  "Sent",
+  "Reported to Dusk",
+  "Proved",
+  "Waiting period",
+  "Claimed",
 ]);
 
 /**
@@ -141,4 +157,60 @@ export function withdrawalStageDefaultMessage(stage) {
  */
 export function withdrawalStageProgress(stage) {
   return stageMetadata(stage).progress;
+}
+
+/**
+ * The line shown when the proof or the claim couldn't be sent, at the stage
+ * that offers to send it again. The gas refusal keeps its own line, since
+ * trying again would be refused too.
+ *
+ * @param {string} stage
+ * @param {string} [error]
+ */
+export function withdrawalActionFailure(stage, error = "") {
+  switch (stage) {
+    case "ready_to_prove":
+      return error === WITHDRAWAL_GAS_REFUSAL
+        ? error
+        : "The proof wasn't sent. Try again.";
+    case "ready_to_finalize":
+      return error === WITHDRAWAL_GAS_REFUSAL
+        ? error
+        : "The claim wasn't sent. Try again.";
+    default:
+      return "";
+  }
+}
+
+/**
+ * @param {bigint | null} [waitingPeriodSeconds] Dusk's proof maturity delay
+ */
+export function withdrawalSentMessage(waitingPeriodSeconds = null) {
+  const total =
+    WITHDRAWAL_REPORT_SECONDS +
+    Number(waitingPeriodSeconds ?? WITHDRAWAL_WAITING_PERIOD_SECONDS);
+
+  return `Two steps on Dusk, about ${roughDuration(total)} in total.`;
+}
+
+/**
+ * A duration in words, rounded for "about" and "within": "a minute",
+ * "an hour", "7 days".
+ *
+ * @param {number} seconds
+ */
+export function roughDuration(seconds) {
+  const minutes = Math.max(1, Math.round(seconds / 60));
+
+  if (minutes < 60) {
+    return minutes === 1 ? "a minute" : `${minutes} minutes`;
+  }
+
+  const hours = Math.round(minutes / 60);
+
+  if (hours < 48) {
+    return hours === 1 ? "an hour" : `${hours} hours`;
+  }
+
+  return `${Math.round(hours / 24)} days`;
 }

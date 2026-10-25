@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Shorten and clarify the withdrawal statuses in the Bridge [#973]
 - Migrate DuskEVM bridge flows to the current contracts and the published
   `@dusk/evm-sdk` beta [#946], [#948]
 - Show each profile's `.dusk` name, or its shortened public account, under its label in the profile bar and switcher [#965]
@@ -694,6 +695,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#966]: https://github.com/dusk-network/web-wallet/issues/966
 [#968]: https://github.com/dusk-network/web-wallet/issues/968
 [#969]: https://github.com/dusk-network/web-wallet/issues/969
+[#973]: https://github.com/dusk-network/web-wallet/pull/973
 
 <!-- VERSIONS -->
 

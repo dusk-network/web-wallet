@@ -1,6 +1,8 @@
 import { formatUnits } from "viem";
 
 import {
+  WITHDRAWAL_WAITING_PERIOD_SECONDS,
+  roughDuration,
   withdrawalStageDefaultMessage,
   withdrawalStageProgress,
 } from "$lib/bridge/withdrawalLifecycle";
@@ -68,87 +70,52 @@ export function timelineState(step, stage, stepCount) {
 }
 
 /**
- * @param {number | bigint | string | undefined} unixTimestamp
+ * "31 Oct, 14:20", in the user's locale and time zone.
+ *
+ * @param {number} milliseconds
+ * @param {string} [locale]
  */
-function remainingUntilUnix(unixTimestamp) {
-  return unixTimestamp === undefined
-    ? null
-    : remainingUntil(Number(unixTimestamp) * 1_000);
+export function formatClaimTime(milliseconds, locale) {
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+  }).format(milliseconds);
 }
 
 /**
- * @param {string | null | undefined} timestamp
- */
-function remainingUntilTimestamp(timestamp) {
-  if (!timestamp) {
-    return null;
-  }
-
-  const time = new Date(timestamp).getTime();
-
-  return Number.isNaN(time) ? null : remainingUntil(time);
-}
-
-/**
- * @param {number} timestamp
- */
-function remainingUntil(timestamp) {
-  const remainingSeconds = Math.max(
-    0,
-    Math.ceil((timestamp - Date.now()) / 1_000)
-  );
-
-  if (remainingSeconds === 0) {
-    return "available now";
-  }
-
-  if (remainingSeconds < 60) {
-    return `in ${remainingSeconds} seconds`;
-  }
-
-  const minutes = Math.ceil(remainingSeconds / 60);
-
-  if (minutes < 60) {
-    return `in ${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
-  }
-
-  const hours = Math.ceil(minutes / 60);
-
-  if (hours < 48) {
-    return `in ${hours} ${hours === 1 ? "hour" : "hours"}`;
-  }
-
-  const days = Math.ceil(hours / 24);
-
-  return `in ${days} ${days === 1 ? "day" : "days"}`;
-}
-
-/**
+ * The claim time once Dusk knows it, otherwise the time left: estimated from
+ * the proof, or the usual waiting period. A rejected proof can't be claimed.
+ *
  * @param {any} item
+ * @param {number} now
  */
-function provenWaitingMessage(item) {
+function waitingPeriodMessage(item, now) {
+  if (item.proofRejected) {
+    return "The proof was rejected. Prove again once DuskEVM reports a new output.";
+  }
+
+  const claimAt = item.readyAt
+    ? Number(item.readyAt) * 1_000
+    : Date.parse(item.challengePeriodEnd ?? "");
+
+  if (item.readyAt && item.readyAtExact) {
+    return `Claim from ${formatClaimTime(claimAt)}.`;
+  }
+
   const remaining =
-    remainingUntilUnix(item.readyAt) ??
-    remainingUntilTimestamp(item.challengePeriodEnd);
+    claimAt > now ? (claimAt - now) / 1_000 : WITHDRAWAL_WAITING_PERIOD_SECONDS;
 
-  if (item.statusMessage) {
-    return `${item.statusMessage}${remaining ? ` Finalization is ${remaining}.` : ""}`;
-  }
-
-  return `The proof is accepted.${remaining ? ` Finalization is ${remaining}.` : " The challenge period is still active."}`;
+  return `Claim in about ${roughDuration(remaining)}.`;
 }
 
 /**
  * @param {any} item
+ * @param {number} [now]
  */
-export function stageMessage(item) {
-  if (item?.stage === "proven_waiting") {
-    return provenWaitingMessage(item);
-  }
-
-  if (item?.stage === "ready_to_prove" && item.statusMessage) {
-    return item.statusMessage;
-  }
-
-  return withdrawalStageDefaultMessage(item?.stage);
+export function stageMessage(item, now = Date.now()) {
+  return item?.stage === "proven_waiting"
+    ? waitingPeriodMessage(item, now)
+    : withdrawalStageDefaultMessage(item?.stage);
 }

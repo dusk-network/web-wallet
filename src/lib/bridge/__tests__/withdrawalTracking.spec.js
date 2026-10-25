@@ -59,6 +59,7 @@ describe("DuskEVM withdrawal tracking", () => {
       ...readyToProveStatus(),
       proofSubmitter: account,
       readyAt: 1_784_193_700n,
+      readyAtExact: true,
       stage: "proven_waiting",
       statusMessage: "The proof is accepted.",
     });
@@ -70,6 +71,7 @@ describe("DuskEVM withdrawal tracking", () => {
         blockNumber: "4421",
         proofSubmitter: account,
         readyAt: "1784193700",
+        readyAtExact: true,
         stage: "proven_waiting",
         trackingError: null,
         withdrawalHash,
@@ -80,6 +82,23 @@ describe("DuskEVM withdrawal tracking", () => {
         stage: "proven_waiting",
         statusMessage: "The proof is accepted.",
       })
+    );
+  });
+
+  it("remembers a rejected proof", async () => {
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      ...readyToProveStatus(),
+      proofRejected: true,
+      proofSubmitter: account,
+      readyAt: null,
+      readyAtExact: false,
+      stage: "proven_waiting",
+    });
+
+    await refreshWithdrawalTransaction(transactionHash);
+
+    expect(getRememberedWithdrawalTransaction(transactionHash)).toEqual(
+      expect.objectContaining({ proofRejected: true, stage: "proven_waiting" })
     );
   });
 
@@ -104,6 +123,10 @@ describe("DuskEVM withdrawal tracking", () => {
   });
 
   it("restores the prove action when the Dusk proof transaction fails", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
     updateWithdrawalTransaction(transactionHash, {
       pendingAction: "prove",
       pendingTransactionHash: duskTransactionHash,
@@ -125,6 +148,12 @@ describe("DuskEVM withdrawal tracking", () => {
         stage: "ready_to_prove",
       })
     );
+    // The card shows a short line, so the raw error goes to the console.
+    expect(consoleError).toHaveBeenCalledWith(
+      "Proof transaction failed: contract execution failed"
+    );
+
+    consoleError.mockRestore();
   });
 
   it("clears the submitted proof once portal state reflects it", async () => {
