@@ -5,6 +5,7 @@ import {
   dayLabel,
   describeRow,
   groupByDay,
+  isStakingRow,
   matchesFilters,
   toCsv,
 } from "../present";
@@ -178,6 +179,47 @@ describe("describeRow", () => {
         context
       ).title
     ).toBe("From DuskEVM");
+  });
+
+  it("names a stake with Sozu and an unstake from it as staking, and no other contract's calls of the same name", () => {
+    const pool =
+      "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
+    const call = {
+      contractId: pool,
+      kind: /** @type {const} */ ("contract_call"),
+      to: undefined,
+    };
+    const staked = row({ ...call, fnName: "sozu_stake" });
+    const unstaked = row({ ...call, direction: "in", fnName: "sozu_unstake" });
+    const lookalike = row({
+      ...call,
+      contractId: "cd".repeat(32),
+      fnName: "sozu_stake",
+    });
+
+    expect(describeRow(staked, context)).toMatchObject({
+      amount: { sign: "−", text: "25" },
+      category: "staking",
+      icon: "staking",
+      line: "Liquid staking",
+      title: "Staked with Sozu",
+    });
+    expect(describeRow(unstaked, context)).toMatchObject({
+      amount: { sign: "+" },
+      category: "staking",
+      title: "Unstaked from Sozu",
+    });
+    expect(describeRow(lookalike, context)).toMatchObject({
+      category: "sent",
+      icon: "call",
+      title: "Called sozu_stake",
+    });
+    expect([staked, unstaked, lookalike].map(isStakingRow)).toStrictEqual([
+      true,
+      true,
+      false,
+    ]);
+    expect(isStakingRow(row({ kind: "unstake" }))).toBe(true);
   });
 
   it("says a shielded row is shielded", () => {

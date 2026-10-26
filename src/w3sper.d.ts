@@ -572,6 +572,23 @@ declare module "@dusk/w3sper" {
     payload(p: ContractPayload): ContractTransferBuilder;
   };
 
+  /** Data drivers: JSON to a contract's arguments, and its replies to JSON. */
+  namespace dataDrivers {
+    type LoadedDriver = {
+      decodeEvent(eventName: string, bytes: Uint8Array): unknown;
+      decodeInputFn(fnName: string, bytes: Uint8Array): unknown;
+      decodeOutputFn(fnName: string, bytes: Uint8Array): unknown;
+      encodeInputFn(fnName: string, json: string): Uint8Array<ArrayBuffer>;
+      getSchema(): unknown;
+      getVersion(): string;
+
+      /** Must be called once, before any of the others. */
+      init(): void;
+    };
+
+    function load(bytes: Uint8Array | ArrayBuffer): Promise<LoadedDriver>;
+  }
+
   type ContractConstructorParams = Readonly<{
     contractId: string | Uint8Array<ArrayBuffer>;
     driver: ContractDriver | Promise<ContractDriver>;

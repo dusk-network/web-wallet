@@ -149,6 +149,13 @@ type WalletStoreServices = {
 
   stake: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
 
+  /** Stakes `amount` with Sozu, through its pool `poolId`. */
+  stakeWithSozu: (
+    poolId: string,
+    amount: bigint,
+    gas: Gas
+  ) => Promise<TransactionInfo>;
+
   /** The current profile's history, started on first use; none while it is turned off. */
   startHistory: () => import("$lib/activity").ActivitySession | null;
 
@@ -166,7 +173,17 @@ type WalletStoreServices = {
 
   unshield: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
 
+  /** Adds `amount` to the stake there is. */
+  topUpStake: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
+
   unstake: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
+
+  /** Unstakes `amount` from Sozu, through its pool `poolId`. */
+  unstakeFromSozu: (
+    poolId: string,
+    amount: bigint,
+    gas: Gas
+  ) => Promise<TransactionInfo>;
 };
 
 type WalletStore = Readable<WalletStoreContent> & WalletStoreServices;

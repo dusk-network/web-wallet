@@ -14,6 +14,7 @@ type GasOperation =
   | "allocate"
   | "bridge"
   | "claim-rewards"
+  | "liquid-staking"
   | "public-transfer"
   | "shield"
   | "shielded-transfer"

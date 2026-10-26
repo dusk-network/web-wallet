@@ -11,6 +11,8 @@ import {
   formatFee,
 } from "$lib/dusk/currency/formatDusk";
 
+import { SOZU_FN, isSozuCall } from "$lib/sozu/config";
+
 import { TX_KIND } from "./constants";
 
 /**
@@ -117,6 +119,10 @@ function classify(row, bridgeContracts) {
       break;
   }
 
+  if (isSozuCall(row)) {
+    return { category: "staking", icon: "staking" };
+  }
+
   if (isBridge(row, bridgeContracts)) {
     return { category: "bridge", icon: "bridge" };
   }
@@ -192,6 +198,17 @@ function titleOf(row, icon, contactNames) {
     return { title: kindTitle[0], titleIsAddress: false, verb: kindTitle[1] };
   }
 
+  if (icon === "staking") {
+    return {
+      title:
+        row.fnName === SOZU_FN.STAKE
+          ? "Staked with Sozu"
+          : "Unstaked from Sozu",
+      titleIsAddress: false,
+      verb: "Liquid staking",
+    };
+  }
+
   if (icon === "bridge") {
     return { title: bridgeTitle(row), titleIsAddress: false, verb: "Bridge" };
   }
@@ -238,6 +255,14 @@ function counterpartyTitle(row, icon, contactNames) {
     ? { title: shortAddress(counterparty), titleIsAddress: true, verb }
     : { title: verb, titleIsAddress: false, verb };
 }
+
+/**
+ * Whether a row is staking: natively, or with Sozu.
+ *
+ * @param {ActivityRow} row
+ */
+export const isStakingRow = (row) =>
+  classify(row, undefined).category === "staking";
 
 /**
  * The status a row shows: only while it isn't final, or when it failed.
