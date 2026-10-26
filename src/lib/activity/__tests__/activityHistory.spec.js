@@ -460,10 +460,34 @@ describe("syncActivity", () => {
     expect(await kept(A)).toHaveLength(4);
   });
 
-  it("starts over when the node's chain is another one", async () => {
+  it("starts over when the node's chain is another one, forgetting all kept of the old one", async () => {
     const node = fakeArchive();
 
     await sync(A);
+    await sync(B);
+
+    // What else the old chain left: a send, a shielded history and the note
+    // tree's heights; and a send on another network.
+    const ownerKey = store.activityOwnerKey("testnet", A);
+    const elsewhere = store.activityOwnerKey("devnet", A);
+    const send = {
+      amount: "1",
+      hash: "ab".repeat(32),
+      kind: /** @type {const} */ ("transfer"),
+      privacy: /** @type {const} */ ("public"),
+      status: /** @type {const} */ ("submitted"),
+      submittedAt: 1,
+    };
+
+    await store.putLocalTransaction(ownerKey, send);
+    await store.putLocalTransaction(elsewhere, send);
+    await store.putShieldedHistoryRecord("testnet::the-address", {
+      decoys: [],
+      entries: [],
+      fingerprint: "f",
+    });
+    await store.putNoteHeightPool("testnet", [1, 2, 3], 3);
+
     node.genesis = "ff".repeat(32);
     node.finalized = 4_656_000;
     await sync(A);
@@ -471,6 +495,16 @@ describe("syncActivity", () => {
     const rows = await kept(A);
 
     expect(rows.map((r) => r.blockHeight)).toEqual([4655845]);
+    expect(await kept(B)).toEqual([]);
+    expect(
+      await store.getActivityMeta(store.activityOwnerKey("testnet", B))
+    ).toBeNull();
+    expect(await store.listLocalTransactions(ownerKey)).toEqual([]);
+    expect(await store.listLocalTransactions(elsewhere)).toHaveLength(1);
+    expect(
+      await store.getShieldedHistoryRecord("testnet::the-address")
+    ).toBeNull();
+    expect(await store.getNoteHeightPool("testnet")).toBeNull();
   });
 });
 

@@ -204,20 +204,32 @@ export async function listActivityEntries(
 }
 
 /**
- * Forget an account's kept history on one network: entries and sync state.
+ * Forget all that is kept of a network's chain, for another chain under the
+ * same name (a reset devnet or local node): every account's history and
+ * sync state, the wallet's own records, the shielded histories and the note
+ * tree's heights.
  *
- * @param {string} ownerKey
+ * @param {string} network
  * @param {number} [epoch] getActivityEpoch when the work began
  */
-export async function clearActivity(ownerKey, epoch) {
-  await guardedWrite(["entries"], epoch, async () => {
-    await db.table("meta").delete(ownerKey);
-    await db
-      .table("entries")
-      .where("[ownerKey+blockHeight]")
-      .between([ownerKey, Dexie.minKey], [ownerKey, Dexie.maxKey])
-      .delete();
-  });
+export async function clearChainActivity(network, epoch) {
+  const prefix = `${network}::`;
+
+  await guardedWrite(
+    ["entries", "local", "pools", "shielded"],
+    epoch,
+    async () => {
+      await db.table("meta").where("ownerKey").startsWith(prefix).delete();
+      await db
+        .table("entries")
+        .where("[ownerKey+blockHeight]")
+        .between([prefix, Dexie.minKey], [`${prefix}\uffff`, Dexie.maxKey])
+        .delete();
+      await db.table("local").where("ownerKey").startsWith(prefix).delete();
+      await db.table("shielded").where("ownerKey").startsWith(prefix).delete();
+      await db.table("pools").delete(network);
+    }
+  );
 }
 
 /**
