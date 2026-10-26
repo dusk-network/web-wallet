@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hide all balances behind •••• with an eye button next to the total balance, and remember the choice [#968]
 - Follow each transaction on the Done screen until it completes or fails, with its hash, a copy button and the fee it was charged
 - Say when the recipient entered isn't a valid address
+- Lock a wallet with a password after 5 or 15 minutes without activity, or never, as set in Settings
+- Warn while a gas price or limit is typed outside its bounds
 
 ### Changed
 
@@ -31,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Give each operation its own default and minimum gas limit, replacing
   `VITE_GAS_LIMIT_DEFAULT` and `VITE_GAS_LIMIT_LOWER` [#969]
 - Show fees in DUSK, and before sending as the most they can cost
+- Use the node's gas price by default, with one Custom gas switch for the price and the limit
+- Open Settings with the preferences, and fold gas and the wallet creation block height under Advanced
 
 ### Removed
 

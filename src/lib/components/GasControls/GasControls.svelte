@@ -3,6 +3,9 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import { BigIntInput } from "$lib/components";
+  import { createNumberFormatter } from "$lib/dusk/number";
+  import { randomUUID } from "$lib/dusk/string";
+  import { settingsStore } from "$lib/stores";
 
   /** @type {bigint} */
   export let limit;
@@ -23,6 +26,7 @@
   export let showLimit = true;
 
   const dispatch = createEventDispatcher();
+  const id = randomUUID();
 
   function dispatchGasLimits() {
     dispatch("gasSettings", {
@@ -34,32 +38,62 @@
   onMount(() => {
     dispatchGasLimits();
   });
+
+  $: formatGas = createNumberFormatter($settingsStore.language);
+
+  // What is wrong with each value, said while it is typed.
+  $: priceMessage =
+    price < priceLower
+      ? `The minimum is ${formatGas(priceLower)} LUX.`
+      : price > limit
+        ? "It can't be higher than the gas limit."
+        : "";
+  $: limitMessage =
+    limit < limitLower
+      ? `The minimum is ${formatGas(limitLower)}.`
+      : limit > limitUpper
+        ? `The maximum is ${formatGas(limitUpper)}.`
+        : "";
 </script>
 
-<label for={undefined} class="gas-control">
-  <span class="gas-control__label">Price (lux)</span>
+<div class="gas-control">
+  <label class="gas-control__label" for="{id}-price">Gas price (LUX)</label>
   <BigIntInput
+    aria-describedby={priceMessage ? `${id}-price-message` : undefined}
+    aria-invalid={Boolean(priceMessage)}
     bind:value={price}
     className="gas-control__input"
+    id="{id}-price"
     maxValue={limit}
     minValue={priceLower}
     on:change={dispatchGasLimits}
     required
   />
-</label>
+  {#if priceMessage}
+    <p class="gas-control__message" id="{id}-price-message">{priceMessage}</p>
+  {/if}
+</div>
 
 {#if showLimit}
-  <label for={undefined} class="gas-control">
-    <span class="gas-control__label">Gas limit</span>
+  <div class="gas-control">
+    <label class="gas-control__label" for="{id}-limit">Gas limit</label>
     <BigIntInput
+      aria-describedby={limitMessage ? `${id}-limit-message` : undefined}
+      aria-invalid={Boolean(limitMessage)}
       bind:value={limit}
       className="gas-control__input"
+      id="{id}-limit"
       maxValue={limitUpper}
       minValue={limitLower}
       on:change={dispatchGasLimits}
       required
     />
-  </label>
+    {#if limitMessage}
+      <p class="gas-control__message" id="{id}-limit-message">
+        {limitMessage}
+      </p>
+    {/if}
+  </div>
 {/if}
 
 <style lang="postcss">
@@ -78,6 +112,12 @@
       letter-spacing: 0.1em;
       line-height: 140%;
       text-transform: uppercase;
+    }
+
+    &__message {
+      color: var(--badge-error-color);
+      font-size: 0.875em;
+      line-height: 1.4;
     }
   }
 </style>

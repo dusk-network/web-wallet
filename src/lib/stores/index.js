@@ -1,3 +1,4 @@
+export { default as gasPriceStore } from "./gasPriceStore";
 export { default as gasStore } from "./gasStore";
 export { default as operationsStore } from "./operationsStore";
 export { default as mnemonicPhraseResetStore } from "./mnemonicPhraseResetStore";

@@ -5,9 +5,9 @@
     mdiAccountQuestionOutline,
     mdiApplicationCogOutline,
     mdiArrowLeft,
-    mdiCubeOutline,
-    mdiGasStationOutline,
+    mdiChevronDown,
     mdiRestoreAlert,
+    mdiTuneVariant,
   } from "@mdi/js";
   import {
     Anchor,
@@ -18,9 +18,19 @@
     Switch,
   } from "$lib/dusk/components";
   import { AppAnchorButton, CopyField, GasControls } from "$lib/components";
-  import { currencies } from "$lib/dusk/currency";
+  import {
+    createCurrencyFormatter,
+    currencies,
+    luxToDusk,
+  } from "$lib/dusk/currency";
   import { createNumberFormatter } from "$lib/dusk/number";
-  import { gasStore, settingsStore, walletStore } from "$lib/stores";
+  import {
+    gasPriceStore,
+    gasStore,
+    settingsStore,
+    walletStore,
+  } from "$lib/stores";
+  import { AUTO_LOCK_MINUTES } from "$lib/stores/settingsStore";
   import {
     HIGHEST_DEFAULT_GAS_LIMIT,
     areValidGasSettings,
@@ -28,9 +38,8 @@
   import { logout } from "$lib/navigation";
   import loginInfoStorage from "$lib/services/loginInfoStorage";
 
-  const confirmResetGasMessage = "Reset the gas settings to their defaults?";
   const confirmResetWalletMessage =
-    "Confirm you've saved your mnemonic phrase before resetting the wallet. Proceed?";
+    "Confirm you've saved your recovery phrase before resetting the wallet. Proceed?";
 
   const resetWallet = () =>
     walletStore
@@ -44,26 +53,19 @@
         resetError = err;
       });
 
-  function handleResetGasSettingsClick() {
-    // eslint-disable-next-line no-alert
-    if (confirm(confirmResetGasMessage)) {
-      settingsStore.resetGasSettings();
-      isGasValid = true;
-    }
-  }
-
   /**
-   * A custom gas limit replaces the default of every operation. It starts
-   * from the highest default, which suits every operation.
+   * Custom gas sets a gas limit and a gas price for every operation. They
+   * start from the highest default limit, which suits every operation, and
+   * from the node's price.
    *
    * @param {CustomEvent<boolean>} event
    */
-  function handleCustomGasLimitChange(event) {
+  function handleCustomGasChange(event) {
     settingsStore.update((store) => ({
       ...store,
       customGasLimit: event.detail ? HIGHEST_DEFAULT_GAS_LIMIT : null,
+      customGasPrice: event.detail ? $gasPriceStore : null,
     }));
-    isGasValid = areValidGasSettings(gasPrice, HIGHEST_DEFAULT_GAS_LIMIT);
   }
 
   function handleResetWalletClick() {
@@ -79,22 +81,46 @@
     items.map(({ code, currency }) => ({ label: currency, value: code }));
   const { gasLimitLower, gasLimitUpper, gasPriceLower } = $gasStore;
 
-  let isGasValid = false;
+  /** @type {SelectOption[]} */
+  const autoLockOptions = [
+    ...AUTO_LOCK_MINUTES.map((minutes) => ({
+      label: `After ${minutes} minutes`,
+      value: String(minutes),
+    })),
+    { label: "Off", value: "0" },
+  ];
+
+  // Auto-lock is for a wallet with a password: one without always locks.
+  const hasPassword = loginInfoStorage.get() !== null;
+
+  let isAdvancedOpen = false;
 
   /** @type {Error | null} */
   let resetError = null;
 
   $: ({ syncStatus } = $walletStore);
   $: ({
+    autoLockMinutes,
     currency,
     customGasLimit,
+    customGasPrice,
     darkMode,
-    gasPrice,
     language,
     walletCreationBlockHeight,
   } = $settingsStore);
-  $: hasCustomGasLimit = customGasLimit !== null;
+  $: hasCustomGas = customGasLimit !== null && customGasPrice !== null;
+  $: isGasValid =
+    customGasLimit !== null && customGasPrice !== null
+      ? areValidGasSettings(customGasPrice, customGasLimit)
+      : true;
+
+  // The gas values can't be folded away while they need fixing.
+  $: if (!isGasValid) {
+    isAdvancedOpen = true;
+  }
+
   $: numberFormatter = createNumberFormatter(language);
+  $: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
 </script>
 
 <section class="settings">
@@ -103,50 +129,6 @@
   </header>
 
   <div class="settings__content">
-    <article class="settings-group">
-      <header class="settings-group__header">
-        <Icon path={mdiGasStationOutline} />
-        <h3 class="h4 settings-group__heading">Gas</h3>
-      </header>
-      <div class="settings-group__multi-control-content">
-        <label
-          class="settings-group__control settings-group__control--switch"
-          for={undefined}
-        >
-          <span>Custom gas limit</span>
-          <Switch
-            aria-label="Custom gas limit"
-            on:change={handleCustomGasLimitChange}
-            value={hasCustomGasLimit}
-          />
-        </label>
-        <GasControls
-          on:gasSettings={(event) => {
-            const { limit, price } = event.detail;
-
-            isGasValid = areValidGasSettings(price, limit);
-
-            settingsStore.update((store) => ({
-              ...store,
-              customGasLimit: hasCustomGasLimit ? limit : null,
-              gasPrice: price,
-            }));
-          }}
-          limit={customGasLimit ?? HIGHEST_DEFAULT_GAS_LIMIT}
-          limitLower={gasLimitLower}
-          limitUpper={gasLimitUpper}
-          price={gasPrice}
-          priceLower={gasPriceLower}
-          showLimit={hasCustomGasLimit}
-        />
-        <Button
-          on:click={handleResetGasSettingsClick}
-          text="Reset to defaults"
-          variant="tertiary"
-        />
-      </div>
-    </article>
-    <hr />
     <article class="settings-group">
       <header class="settings-group__header">
         <Icon path={mdiApplicationCogOutline} />
@@ -190,26 +172,109 @@
             value={darkMode}
           />
         </label>
+        {#if hasPassword}
+          <label
+            class="settings-group__control settings-group__control--with-label"
+            for={undefined}
+          >
+            <span>Lock when inactive</span>
+            <Select
+              className="settings-group__control settings-group__control--with-label"
+              value={String(autoLockMinutes)}
+              on:change={(evt) => {
+                const option = /** @type {HTMLSelectElement} */ (evt.target);
+
+                settingsStore.update((store) => ({
+                  ...store,
+                  autoLockMinutes: Number(option.value),
+                }));
+              }}
+              options={autoLockOptions}
+            />
+          </label>
+        {/if}
       </div>
     </article>
     <hr />
-    {#if walletCreationBlockHeight}
-      <article class="settings-group">
-        <header class="settings-group__header">
-          <Icon path={mdiCubeOutline} />
-          <h3 class="h4 settings-group__heading">
-            Wallet Creation Block Height
-          </h3>
-        </header>
-        <CopyField
-          className="settings-group__control"
-          displayValue={numberFormatter(walletCreationBlockHeight)}
-          name="Block Height"
-          rawValue={String(walletCreationBlockHeight)}
-        />
-      </article>
-      <hr />
-    {/if}
+    <article class="settings-group">
+      <h3 class="h4 settings-group__heading">
+        <button
+          aria-controls="settings-advanced"
+          aria-expanded={isAdvancedOpen}
+          class="settings-group__header settings-group__toggle"
+          on:click={() => {
+            isAdvancedOpen = isGasValid ? !isAdvancedOpen : true;
+          }}
+          type="button"
+        >
+          <Icon path={mdiTuneVariant} />
+          <span>Advanced</span>
+          <Icon className="settings-group__toggle-icon" path={mdiChevronDown} />
+        </button>
+      </h3>
+      {#if isAdvancedOpen}
+        <div
+          class="settings-group__multi-control-content"
+          id="settings-advanced"
+        >
+          <label
+            class="settings-group__control settings-group__control--switch"
+            for={undefined}
+          >
+            <span>Custom gas</span>
+            <Switch
+              aria-label="Custom gas"
+              on:change={handleCustomGasChange}
+              value={hasCustomGas}
+            />
+          </label>
+          {#if customGasLimit !== null && customGasPrice !== null}
+            <GasControls
+              on:gasSettings={(event) => {
+                const { limit, price } = event.detail;
+
+                settingsStore.update((store) => ({
+                  ...store,
+                  customGasLimit: limit,
+                  customGasPrice: price,
+                }));
+              }}
+              limit={customGasLimit}
+              limitLower={gasLimitLower}
+              limitUpper={gasLimitUpper}
+              price={customGasPrice}
+              priceLower={gasPriceLower}
+            />
+            {#if isGasValid}
+              <p class="settings-group__note">
+                Each transaction costs at most {duskFormatter(
+                  luxToDusk(customGasLimit * customGasPrice)
+                )} DUSK.
+              </p>
+            {/if}
+          {:else}
+            <p class="settings-group__note">
+              The wallet uses the network's gas price, and a gas limit that
+              suits each transaction.
+            </p>
+          {/if}
+          {#if walletCreationBlockHeight}
+            <div
+              class="settings-group__control settings-group__control--with-label"
+            >
+              <span>Wallet creation block height</span>
+              <CopyField
+                className="settings-group__control"
+                displayValue={numberFormatter(walletCreationBlockHeight)}
+                name="Block Height"
+                rawValue={String(walletCreationBlockHeight)}
+              />
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </article>
+    <hr />
     <article class="settings-group">
       <header class="settings-group__header">
         <Icon path={mdiAccountQuestionOutline} />
@@ -243,7 +308,7 @@
       <div class="settings-group__multi-control-content">
         <p>
           Resetting clears the cache and settings, not your funds. You'll need
-          your mnemonic phrase to restore access, so make sure it's stored
+          your recovery phrase to restore access, so make sure it's stored
           securely.
         </p>
         <ErrorDetails
@@ -378,6 +443,34 @@
         flex-direction: column;
         gap: var(--default-gap);
         width: 100%;
+      }
+
+      &__toggle {
+        /* A 44 px tap, in the space of the other sections' headers. */
+        min-height: 44px;
+        margin-block: calc((1.05rem - 44px) / 2);
+        padding: 0;
+        border: none;
+        background: none;
+        color: inherit;
+        font: inherit;
+        letter-spacing: inherit;
+        text-transform: inherit;
+        cursor: pointer;
+
+        & > .dusk-icon:first-child {
+          color: var(--secondary-color-variant-dark);
+        }
+      }
+
+      &__toggle[aria-expanded="true"] .settings-group__toggle-icon {
+        transform: rotate(180deg);
+      }
+
+      &__note {
+        color: var(--muted-color);
+        font-size: 0.875em;
+        line-height: 1.4;
       }
 
       &:last-of-type {

@@ -6,6 +6,16 @@ import { get } from "svelte/store";
 import { settingsStore } from "$lib/stores";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 
+vi.mock("$lib/dusk/string", async (importOriginal) => {
+  /** @type {typeof import("$lib/dusk/string")} */
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    randomUUID: () => "some-generated-id",
+  };
+});
+
 describe("GasSettings", () => {
   const settings = get(settingsStore);
   const duskFormatter = createCurrencyFormatter(settings.language, "DUSK", 9);

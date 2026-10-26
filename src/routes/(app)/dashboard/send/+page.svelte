@@ -8,6 +8,7 @@
   import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
   import { resolveDuskName } from "$lib/dusk-domains";
   import {
+    gasPriceStore,
     gasStore,
     networkStore,
     settingsStore,
@@ -64,14 +65,15 @@
   /** @type {GasOperation} */
   $: transferOperation =
     spendableSource === "shielded" ? "shielded-transfer" : "public-transfer";
-  $: ({ customGasLimit, gasPrice, language } = $settingsStore);
+  $: ({ customGasLimit, customGasPrice, language } = $settingsStore);
 
   // `Send` starts over from new gas settings: make new ones only when the
-  // operation or the stored gas values change.
-  $: gasSettings = getGasSettings(transferOperation, {
-    customGasLimit,
-    gasPrice,
-  });
+  // operation, the stored gas values or the node's price change.
+  $: gasSettings = getGasSettings(
+    transferOperation,
+    { customGasLimit, customGasPrice },
+    $gasPriceStore
+  );
   $: gasLimits = getGasLimits(transferOperation, $gasStore);
   $: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
   $: ({ balance, currentProfile } = $walletStore);

@@ -10,9 +10,16 @@ type GasStoreContent = {
 
 type GasStore = Readable<GasStoreContent>;
 
+type GasPriceStore = Readable<bigint> & {
+  refresh: () => Promise<void>;
+  startRefreshing: () => () => void;
+};
+
 type SettingsStoreContent = {
+  autoLockMinutes: number;
   currency: string;
   customGasLimit: bigint | null;
+  customGasPrice: bigint | null;
   darkMode: boolean;
   dashboardTransactionLimit: number;
   gasLimit: bigint;

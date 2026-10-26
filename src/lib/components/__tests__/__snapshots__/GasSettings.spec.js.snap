@@ -94,18 +94,21 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
     class="gas-settings svelte-1wfde5f"
     style=""
   >
-    <label
+    <div
       class="gas-control svelte-p462n7"
     >
-      <span
+      <label
         class="gas-control__label svelte-p462n7"
+        for="some-generated-id-price"
       >
-        Price (lux)
-      </span>
+        Gas price (LUX)
+      </label>
        
       <!---->
       <input
+        aria-invalid="false"
         class="dusk-textbox dusk-textbox-text gas-control__input"
+        id="some-generated-id-price"
         inputmode="numeric"
         pattern="\\d+"
         required=""
@@ -113,20 +116,25 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
       />
       
       <!---->
-    </label>
+       
+      <!---->
+    </div>
      
-    <label
+    <div
       class="gas-control svelte-p462n7"
     >
-      <span
+      <label
         class="gas-control__label svelte-p462n7"
+        for="some-generated-id-limit"
       >
         Gas limit
-      </span>
+      </label>
        
       <!---->
       <input
+        aria-invalid="false"
         class="dusk-textbox dusk-textbox-text gas-control__input"
+        id="some-generated-id-limit"
         inputmode="numeric"
         pattern="\\d+"
         required=""
@@ -134,7 +142,9 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
       />
       
       <!---->
-    </label>
+       
+      <!---->
+    </div>
     <!---->
     <!---->
   </div>

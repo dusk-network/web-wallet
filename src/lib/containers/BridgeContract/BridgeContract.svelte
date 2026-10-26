@@ -19,7 +19,12 @@
   } from "$lib/web3/walletConnection";
   import { AppAnchorButton, Bridge } from "$lib/components";
   import { createCurrencyFormatter } from "$lib/dusk/currency";
-  import { gasStore, settingsStore, walletStore } from "$lib/stores";
+  import {
+    gasPriceStore,
+    gasStore,
+    settingsStore,
+    walletStore,
+  } from "$lib/stores";
   import { getGasLimits, getGasSettings } from "$lib/contracts";
 
   /**
@@ -70,8 +75,12 @@
 
   $: ({ isConnected } = $account);
   $: ({ balance, currentProfile } = $walletStore);
-  $: ({ customGasLimit, gasPrice, language } = $settingsStore);
-  $: gasSettings = getGasSettings("bridge", { customGasLimit, gasPrice });
+  $: ({ customGasLimit, customGasPrice, language } = $settingsStore);
+  $: gasSettings = getGasSettings(
+    "bridge",
+    { customGasLimit, customGasPrice },
+    $gasPriceStore
+  );
   $: gasLimits = getGasLimits("bridge", $gasStore);
   $: unshieldedAddress = currentProfile
     ? currentProfile.account.toString()

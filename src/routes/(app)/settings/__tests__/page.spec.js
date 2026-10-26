@@ -13,6 +13,7 @@ import { HIGHEST_DEFAULT_GAS_LIMIT } from "$lib/contracts/gasDefaults";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import * as navigation from "$lib/navigation";
 import {
+  gasPriceStore,
   gasStore,
   networkStore,
   settingsStore,
@@ -32,6 +33,24 @@ const fireInput = (input, value) =>
 
 /** @param {HTMLElement} element */
 const asInput = (element) => /** @type {HTMLInputElement} */ (element);
+
+/**
+ * Opens the Advanced section.
+ *
+ * @param {import("@testing-library/svelte").RenderResult<any>} rendered
+ */
+const openAdvanced = (rendered) =>
+  fireEvent.click(rendered.getByRole("button", { name: "Advanced" }));
+
+/**
+ * Opens the Advanced section and turns custom gas on.
+ *
+ * @param {import("@testing-library/svelte").RenderResult<any>} rendered
+ */
+const setCustomGas = async (rendered) => {
+  await openAdvanced(rendered);
+  await fireEvent.click(rendered.getByRole("switch", { name: "Custom gas" }));
+};
 
 vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {WalletStore} */
@@ -81,34 +100,64 @@ describe("Settings", () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
-  it("should label its controls without colons, keep the gas reset button quiet, and link the wallet's issues", async () => {
-    const { getByRole, getByText } = render(Settings, {});
+  it("should label its controls without colons, and link the wallet's issues", async () => {
+    const rendered = render(Settings, {});
+    const { getByLabelText, getByRole, getByText } = rendered;
 
-    await fireEvent.click(getByRole("switch", { name: "Custom gas limit" }));
+    await setCustomGas(rendered);
 
-    expect(getByText("Price (lux)")).toBeInTheDocument();
-    expect(getByText("Gas limit")).toBeInTheDocument();
+    expect(getByLabelText("Gas price (LUX)")).toBeInTheDocument();
+    expect(getByLabelText("Gas limit")).toBeInTheDocument();
     expect(getByText("Currency")).toBeInTheDocument();
-    expect(getByRole("button", { name: "Reset to defaults" })).toHaveClass(
-      "dusk-button--variant--tertiary"
-    );
     expect(getByRole("link", { name: "GitHub" })).toHaveAttribute(
       "href",
       "https://github.com/dusk-network/web-wallet/issues"
     );
   });
 
-  it("should show the wallet creation block height if it's greater than zero", () => {
+  it("should open with the preferences, and keep gas under Advanced, folded", async () => {
+    const rendered = render(Settings, {});
+    const { container, getByRole, queryByRole } = rendered;
+    const headings = Array.from(
+      container.querySelectorAll(".settings-group__heading"),
+      (heading) => heading.textContent?.trim()
+    );
+    const advanced = getByRole("button", { name: "Advanced" });
+
+    expect(headings).toStrictEqual([
+      "Preferences",
+      "Advanced",
+      "Support",
+      "Reset wallet",
+    ]);
+    expect(advanced).toHaveAttribute("aria-expanded", "false");
+    expect(queryByRole("switch", { name: "Custom gas" })).toBeNull();
+
+    await openAdvanced(rendered);
+
+    expect(advanced).toHaveAttribute("aria-expanded", "true");
+    expect(advanced).toHaveAttribute("aria-controls", "settings-advanced");
+    expect(getByRole("switch", { name: "Custom gas" })).toBeInTheDocument();
+
+    await fireEvent.click(advanced);
+
+    expect(queryByRole("switch", { name: "Custom gas" })).toBeNull();
+  });
+
+  it("should show the wallet creation block height under Advanced if it's greater than zero", async () => {
     settingsStore.update((settings) => ({
       ...settings,
       walletCreationBlockHeight: 123n,
     }));
 
-    const { container, getByDisplayValue } = render(Settings, {});
-    const creationBlockInput = getByDisplayValue("123");
+    const rendered = render(Settings, {});
 
-    expect(creationBlockInput).toBeInTheDocument();
-    expect(container.firstElementChild).toMatchSnapshot();
+    expect(rendered.queryByDisplayValue("123")).toBeNull();
+
+    await openAdvanced(rendered);
+
+    expect(rendered.getByDisplayValue("123")).toBeInTheDocument();
+    expect(rendered.container.firstElementChild).toMatchSnapshot();
 
     settingsStore.reset();
   });
@@ -134,18 +183,28 @@ describe("Settings", () => {
     expect(resetButton).toHaveAttribute("data-tooltip-disabled", "false");
   });
 
-  it('should disable the "Back" button if invalid gas limit or price are introduced', async () => {
+  it('should disable the "Back" button if invalid gas limit or price are introduced, and keep them in view', async () => {
     const { gasLimitLower, gasLimitUpper, gasPriceLower } = get(gasStore);
-    const { getByLabelText, getByRole } = render(Settings, {});
-    const priceInput = asInput(getByLabelText(/price/i));
+    const rendered = render(Settings, {});
+    const { getByLabelText, getByRole } = rendered;
     const backButton = getByRole("link", { name: /back/i });
+
+    expect(backButton).toHaveAttribute("aria-disabled", "false");
+
+    await setCustomGas(rendered);
+
+    const priceInput = asInput(getByLabelText(/price/i));
+    const advanced = getByRole("button", { name: "Advanced" });
 
     await fireInput(priceInput, String(gasPriceLower - 1n));
     expect(backButton).toHaveAttribute("aria-disabled", "true");
+
+    await fireEvent.click(advanced);
+
+    expect(advanced).toHaveAttribute("aria-expanded", "true");
+
     await fireInput(priceInput, gasPriceLower.toString());
     expect(backButton).toHaveAttribute("aria-disabled", "false");
-
-    await fireEvent.click(getByRole("switch", { name: "Custom gas limit" }));
 
     const limitInput = asInput(getByLabelText(/^gas limit$/i));
 
@@ -159,50 +218,144 @@ describe("Settings", () => {
     expect(backButton).toHaveAttribute("aria-disabled", "false");
   });
 
-  it("should leave the gas limit to each operation unless a custom one is set", async () => {
-    const { getByLabelText, getByRole, queryByLabelText } = render(Settings);
-    const customGasLimit = getByRole("switch", { name: "Custom gas limit" });
+  it("should leave the gas limit to each operation, and the price to the node, unless custom gas is set", async () => {
+    const rendered = render(Settings);
+    const { getByLabelText, getByRole, getByText, queryByLabelText } = rendered;
+
+    await openAdvanced(rendered);
+
+    const customGas = getByRole("switch", { name: "Custom gas" });
     const limitLabel = /^gas limit$/i;
 
-    expect(customGasLimit).toHaveAttribute("aria-checked", "false");
+    expect(customGas).toHaveAttribute("aria-checked", "false");
     expect(queryByLabelText(limitLabel)).toBeNull();
+    expect(
+      getByText(
+        "The wallet uses the network's gas price, and a gas limit that suits each transaction."
+      )
+    ).toBeInTheDocument();
     expect(get(settingsStore).customGasLimit).toBeNull();
+    expect(get(settingsStore).customGasPrice).toBeNull();
 
-    await fireEvent.click(customGasLimit);
+    await fireEvent.click(customGas);
 
     const limitInput = asInput(getByLabelText(limitLabel));
+    const priceInput = asInput(getByLabelText("Gas price (LUX)"));
 
     expect(limitInput.value).toBe(HIGHEST_DEFAULT_GAS_LIMIT.toString());
+    expect(priceInput.value).toBe(get(gasPriceStore).toString());
     expect(get(settingsStore).customGasLimit).toBe(HIGHEST_DEFAULT_GAS_LIMIT);
+    expect(get(settingsStore).customGasPrice).toBe(get(gasPriceStore));
+
+    await fireInput(limitInput, "3000000");
+    await fireInput(priceInput, "2");
+
+    expect(get(settingsStore).customGasLimit).toBe(3_000_000n);
+    expect(get(settingsStore).customGasPrice).toBe(2n);
+
+    await fireEvent.click(customGas);
+
+    expect(queryByLabelText(limitLabel)).toBeNull();
+    expect(get(settingsStore).customGasLimit).toBeNull();
+    expect(get(settingsStore).customGasPrice).toBeNull();
+  });
+
+  it("should say what custom gas costs at most in DUSK, and warn under the minimum gas limit while it is typed", async () => {
+    const rendered = render(Settings);
+    const { getByLabelText, getByText, queryByText } = rendered;
+
+    await setCustomGas(rendered);
+
+    const limitInput = asInput(getByLabelText(/^gas limit$/i));
+
+    expect(
+      getByText("Each transaction costs at most 0.050000000 DUSK.")
+    ).toBeInTheDocument();
+
+    await fireInput(limitInput, "1500000");
+
+    expect(getByText("The minimum is 2,000,000.")).toBeInTheDocument();
+    expect(limitInput).toHaveAccessibleDescription("The minimum is 2,000,000.");
+    expect(queryByText(/^Each transaction costs at most/)).toBeNull();
 
     await fireInput(limitInput, "3000000");
 
-    expect(get(settingsStore).customGasLimit).toBe(3_000_000n);
-
-    await fireEvent.click(customGasLimit);
-
-    expect(queryByLabelText(limitLabel)).toBeNull();
-    expect(get(settingsStore).customGasLimit).toBeNull();
+    expect(queryByText("The minimum is 2,000,000.")).toBeNull();
+    expect(
+      getByText("Each transaction costs at most 0.003000000 DUSK.")
+    ).toBeInTheDocument();
   });
 
-  it("should show a stored custom gas limit until the gas settings are reset", async () => {
+  it("should show stored custom gas until the gas settings are reset", async () => {
     settingsStore.update((settings) => ({
       ...settings,
       customGasLimit: 70_000_000n,
+      customGasPrice: 2n,
     }));
 
-    const { getByLabelText, getByRole, queryByLabelText } = render(Settings);
+    const rendered = render(Settings);
+    const { getByLabelText, getByRole, queryByLabelText } = rendered;
     const limitLabel = /^gas limit$/i;
 
-    expect(getByRole("switch", { name: "Custom gas limit" })).toHaveAttribute(
+    await openAdvanced(rendered);
+
+    expect(getByRole("switch", { name: "Custom gas" })).toHaveAttribute(
       "aria-checked",
       "true"
     );
     expect(asInput(getByLabelText(limitLabel)).value).toBe("70000000");
+    expect(asInput(getByLabelText("Gas price (LUX)")).value).toBe("2");
 
     await act(() => settingsStore.resetGasSettings());
 
     expect(queryByLabelText(limitLabel)).toBeNull();
+  });
+
+  describe("Auto-lock", () => {
+    const loginInfoSpy = vi.spyOn(loginInfoStorage, "get");
+
+    afterEach(() => {
+      loginInfoSpy.mockReset();
+      settingsStore.reset();
+    });
+
+    afterAll(() => {
+      loginInfoSpy.mockRestore();
+    });
+
+    it("should offer no auto-lock for a wallet without a password, which always locks", () => {
+      loginInfoSpy.mockReturnValue(null);
+
+      const { queryByLabelText } = render(Settings);
+
+      expect(queryByLabelText("Lock when inactive")).toBeNull();
+    });
+
+    it("should let a wallet with a password lock after 5 or 15 minutes, 15 by default, or never", async () => {
+      loginInfoSpy.mockReturnValue({
+        data: new Uint8Array(),
+        iv: new Uint8Array(),
+        salt: new Uint8Array(),
+      });
+
+      const { getByLabelText } = render(Settings);
+      const select = /** @type {HTMLSelectElement} */ (
+        getByLabelText("Lock when inactive")
+      );
+
+      expect(Array.from(select.options, (option) => option.text)).toStrictEqual(
+        ["After 5 minutes", "After 15 minutes", "Off"]
+      );
+      expect(select.value).toBe("15");
+
+      await fireEvent.change(select, { target: { value: "5" } });
+
+      expect(get(settingsStore).autoLockMinutes).toBe(5);
+
+      await fireEvent.change(select, { target: { value: "0" } });
+
+      expect(get(settingsStore).autoLockMinutes).toBe(0);
+    });
   });
 
   it("should reset wallet store and navigate to landing page on clicking the Lock Wallet button", async () => {

@@ -655,13 +655,15 @@ function mockWithdrawalFinalization({
   };
 
   vi.doMock("$lib/stores", () => ({
+    // The node's gas price, as no custom one is set.
+    gasPriceStore: readable(2n),
     gasStore: readable({
       gasLimitLower: 2_000_000n,
       gasLimitUpper,
       gasPriceLower: 1n,
     }),
     networkStore,
-    settingsStore: readable({ customGasLimit: null, gasPrice: 2n }),
+    settingsStore: readable({ customGasLimit: null, customGasPrice: null }),
     walletStore,
   }));
   vi.doMock("$lib/web3/walletConnection", () => ({

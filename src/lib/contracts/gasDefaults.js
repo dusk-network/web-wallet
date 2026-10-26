@@ -55,16 +55,22 @@ export const HIGHEST_DEFAULT_GAS_LIMIT = entries.reduce(
 );
 
 /**
- * The gas settings an operation starts from: the user's custom gas limit if
- * they set one, otherwise the operation's default.
+ * The gas settings an operation starts from: the user's custom gas limit
+ * and price if they set them, otherwise the operation's default limit and
+ * the node's price.
  *
  * @param {GasOperation} operation
- * @param {Pick<SettingsStoreContent, "customGasLimit" | "gasPrice">} settings
+ * @param {Pick<SettingsStoreContent, "customGasLimit" | "customGasPrice">} settings
+ * @param {bigint} nodeGasPrice The node's gas price, see `gasPriceStore`.
  * @returns {ContractGasSettings}
  */
-export const getGasSettings = (operation, { customGasLimit, gasPrice }) => ({
+export const getGasSettings = (
+  operation,
+  { customGasLimit, customGasPrice },
+  nodeGasPrice
+) => ({
   gasLimit: customGasLimit ?? GAS_DEFAULTS[operation].limit,
-  gasPrice,
+  gasPrice: customGasPrice ?? nodeGasPrice,
 });
 
 /**
