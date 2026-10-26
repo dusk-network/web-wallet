@@ -4,7 +4,7 @@
   import { fade } from "svelte/transition";
   import { createEventDispatcher, onMount, tick } from "svelte";
   import { mdiAlertOutline, mdiArrowUpBoldBoxOutline } from "@mdi/js";
-  import { areValidGasSettings } from "$lib/contracts";
+  import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { isDuskName } from "$lib/dusk-domains";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
@@ -353,13 +353,17 @@
   let activeStep = 0;
 
   // The gas settings depend on the recipient (public or shielded), chosen in
-  // the address step: start over from new ones there, and only there, as the
-  // last step sends again when the gas changes.
-  let currentGasSettings = gasSettings;
+  // the address step: start over from new ones there. On the amount step,
+  // where the gas can be edited, take new ones, as the node's price, unless
+  // the gas was edited there. The review keeps the gas it shows.
+  let defaultGas = gasSettings;
 
-  $: if (activeStep === 0 && gasSettings !== currentGasSettings) {
-    currentGasSettings = gasSettings;
-    ({ gasLimit, gasPrice } = gasSettings);
+  $: if (activeStep <= 1 && gasSettings !== defaultGas) {
+    ({ gasLimit, gasPrice } =
+      activeStep === 0
+        ? gasSettings
+        : followDefaultGas({ gasLimit, gasPrice }, defaultGas, gasSettings));
+    defaultGas = gasSettings;
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
 
@@ -742,10 +746,10 @@
         <GasSettings
           {formatter}
           fee={maxGasFee}
-          limit={gasSettings.gasLimit}
+          limit={gasLimit}
           limitLower={gasLimits.gasLimitLower}
           limitUpper={gasLimits.gasLimitUpper}
-          price={gasSettings.gasPrice}
+          price={gasPrice}
           priceLower={gasLimits.gasPriceLower}
           on:gasSettings={(event) => {
             isGasValid = areValidGasSettings(
