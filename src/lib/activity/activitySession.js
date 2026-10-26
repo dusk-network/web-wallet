@@ -207,11 +207,13 @@ export class ActivitySession {
       nodeUrl,
     });
 
+    // A lookup that failed leaves the name kept, and is made again by the
+    // next run.
     for (const c of due) {
       if (names.has(c)) {
         this.#names.set(c, /** @type {string | null} */ (names.get(c)));
       } else {
-        this.#names.delete(c);
+        this.#checked.delete(c);
       }
     }
 

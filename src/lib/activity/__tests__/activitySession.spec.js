@@ -170,6 +170,46 @@ describe("ActivitySession", () => {
     await vi.waitFor(() => expect(shielded).toHaveBeenCalledTimes(4));
   });
 
+  it("keeps a counterparty's kept name when checking it fails, and checks it again next run", async () => {
+    fakeArchive();
+
+    const sender = entryOfA(4657992).events[0].data.sender;
+
+    // Kept from an earlier visit: the history, and the sender's name.
+    await (
+      await import("../activityHistory")
+    ).syncActivity({ account: A, nodeUrl: NODE });
+    await store.putCounterpartyNames(
+      "testnet",
+      new Map([[sender, "faucet.dusk"]]),
+      { epoch: await store.getActivityEpoch() }
+    );
+
+    // The lens is out of reach: the lookup leaves the account out.
+    mocks.lookupCounterpartyNames.mockResolvedValue(new Map());
+
+    const session = sessionFor();
+
+    await session.start();
+
+    expect(
+      session.state.rows.find((r) => r.blockHeight === 4657992)
+    ).toMatchObject({ counterpartyName: "faucet.dusk" });
+
+    const asked = () =>
+      mocks.lookupCounterpartyNames.mock.calls.filter((call) =>
+        /** @type {string[][]} */ (/** @type {unknown} */ (call))[0].includes(
+          sender
+        )
+      ).length;
+
+    expect(asked()).toBe(1);
+
+    await session.refresh();
+
+    expect(asked()).toBe(2);
+  });
+
   it("shows the wallet's own send at once, and the chain's row instead once the archive has it", async () => {
     const node = fakeArchive({ finalized: 4_658_000 });
     const hash = entryOfA(4658012).origin;
