@@ -190,30 +190,39 @@ const passThruWithEffects = (fn) => (a) => {
   return a;
 };
 
-/** @type {(txInfo: TransactionInfo) => Promise<TransactionInfo>} */
-const updateCacheAfterTransaction = async (txInfo) => {
-  // we did a phoenix transaction
-  if ("nullifiers" in txInfo) {
-    /**
-     * For now we ignore the possible error while
-     * writing the pending notes info, as we'll
-     * change soon how they are handled (probably by w3sper directly).
-     */
-    await treasury
-      .updateCachedPendingNotes(txInfo.nullifiers, txInfo.hash)
-      .catch(() => {});
-  } else {
-    const profile = getCurrentProfile();
+/**
+ * Keeps what a transaction changed in the cache until the sync sees it: the
+ * notes it spent, or the nonce it used, so that a transaction made before
+ * then isn't refused. Taken as the transaction begins: the nonce is the
+ * sending profile's, and after a lock or a reset since, the cache is left
+ * alone.
+ *
+ * @returns {(txInfo: TransactionInfo) => Promise<TransactionInfo>}
+ */
+const updateCacheAfterTransaction = () => {
+  const session = walletSession;
+  const profile = getCurrentProfile();
 
-    /**
-     * We update the stored `nonce` so that if a transaction is made
-     * before the sync gives us an updated one, the transaction
-     * won't be rejected by reusing the old value.
-     */
-    profile && (await treasury.updateCachedNonce(profile, txInfo.nonce));
-  }
+  return async (txInfo) => {
+    if (session !== walletSession) {
+      return txInfo;
+    }
 
-  return txInfo;
+    if ("nullifiers" in txInfo) {
+      /**
+       * For now we ignore the possible error while
+       * writing the pending notes info, as we'll
+       * change soon how they are handled (probably by w3sper directly).
+       */
+      await treasury
+        .updateCachedPendingNotes(txInfo.nullifiers, txInfo.hash)
+        .catch(() => {});
+    } else if (profile) {
+      await treasury.updateCachedNonce(profile, txInfo.nonce);
+    }
+
+    return txInfo;
+  };
 };
 
 /** @type {() => Promise<void>} */
@@ -321,7 +330,7 @@ const claimRewards = async (amount, gas) =>
         bookkeeper.as(unsafeGetCurrentProfile()).withdraw(amount).gas(gas)
       )
     )
-    .then(updateCacheAfterTransaction)
+    .then(updateCacheAfterTransaction())
     .then(passThruWithEffects(observeTxRemoval))
     .then(
       passThruWithEffects(
@@ -428,7 +437,7 @@ const shield = async (amount, gas) =>
         bookkeeper.as(unsafeGetCurrentProfile()).shield(amount).gas(gas)
       )
     )
-    .then(updateCacheAfterTransaction)
+    .then(updateCacheAfterTransaction())
     .then(passThruWithEffects(observeTxRemoval))
     .then(
       passThruWithEffects(
@@ -450,7 +459,7 @@ const stake = async (amount, gas) =>
         bookkeeper.as(unsafeGetCurrentProfile()).stake(amount).gas(gas)
       )
     )
-    .then(updateCacheAfterTransaction)
+    .then(updateCacheAfterTransaction())
     .then(passThruWithEffects(observeTxRemoval))
     .then(
       passThruWithEffects(
@@ -634,7 +643,7 @@ const transfer = async (to, amount, memo, gas, { toName } = {}) =>
 
       return await network.execute(tx);
     })
-    .then(updateCacheAfterTransaction)
+    .then(updateCacheAfterTransaction())
     .then(passThruWithEffects(observeTxRemoval))
     .then(
       passThruWithEffects(
@@ -683,7 +692,7 @@ const depositEvmFunctionCall = async (
         builder.to(profile.account).deposit(BigInt(amount)).gas(gas)
       );
     })
-    .then(updateCacheAfterTransaction)
+    .then(updateCacheAfterTransaction())
     .then(passThruWithEffects(observeTxRemoval))
     .then(
       passThruWithEffects(
@@ -706,7 +715,7 @@ const unshield = async (amount, gas) =>
         bookkeeper.as(unsafeGetCurrentProfile()).unshield(amount).gas(gas)
       )
     )
-    .then(updateCacheAfterTransaction)
+    .then(updateCacheAfterTransaction())
     .then(passThruWithEffects(observeTxRemoval))
     .then(
       passThruWithEffects(
@@ -728,7 +737,7 @@ const unstake = async (amount, gas) =>
         bookkeeper.as(unsafeGetCurrentProfile()).unstake(amount).gas(gas)
       )
     )
-    .then(updateCacheAfterTransaction)
+    .then(updateCacheAfterTransaction())
     .then(passThruWithEffects(observeTxRemoval))
     .then(
       passThruWithEffects(
@@ -795,7 +804,7 @@ const executeContractFunction = async (
 
       return await network.execute(tx);
     })
-    .then(updateCacheAfterTransaction)
+    .then(updateCacheAfterTransaction())
     .then(passThruWithEffects(observeTxRemoval))
     .then(
       passThruWithEffects(

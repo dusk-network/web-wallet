@@ -787,6 +787,35 @@ describe("Wallet store", async () => {
           ])
       ).toStrictEqual([[String(payer?.account), 0]]);
 
+      // The nonce it used is the paying profile's too.
+      expect(updateNonceSpy).toHaveBeenCalledExactlyOnceWith(payer, 1n);
+
+      vi.useFakeTimers();
+    });
+
+    it("should leave the cache alone when the wallet is reset while a send goes out", async () => {
+      vi.useRealTimers();
+
+      const sent = Promise.withResolvers();
+
+      executeSpy.mockReturnValueOnce(sent.promise);
+      updateNonceSpy.mockClear();
+      updateCachedPendingNotesSpy.mockClear();
+
+      const sending = walletStore.transfer(toMoonlight, amount, memo, gas);
+
+      await vi.waitUntil(() => executeSpy.mock.calls.length === 1);
+      walletStore.reset();
+      sent.resolve({
+        buffer: new Uint8Array(),
+        hash: phoenixTxResult.hash,
+        nonce: 1n,
+      });
+      await sending.catch(() => {});
+
+      expect(updateNonceSpy).not.toHaveBeenCalled();
+      expect(updateCachedPendingNotesSpy).not.toHaveBeenCalled();
+
       vi.useFakeTimers();
     });
 
