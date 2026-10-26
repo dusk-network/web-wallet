@@ -1,22 +1,28 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
 import Shell from "../Shell.svelte";
 
-const mocks = vi.hoisted(() => ({ startHistory: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any> | null} */
+  network: null,
+  startHistory: vi.fn(),
+}));
 
 vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {typeof import("$lib/stores")} */
   const original = await importOriginal();
-  const { readable } = await import("svelte/store");
+  const { writable } = await import("svelte/store");
+
+  mocks.network = writable({ connected: true, networkName: "testnet" });
 
   return {
     ...original,
     networkStore: {
       ...original.networkStore,
-      ...readable({ connected: true, networkName: "testnet" }),
+      subscribe: mocks.network.subscribe,
     },
     walletStore: {
       ...original.walletStore,
@@ -49,6 +55,28 @@ describe("Shell", () => {
     );
 
     expect(queryByRole("dialog", { name: "Search" })).toBeNull();
+  });
+
+  it("says at the top that test DUSK has no value, on a test network only", async () => {
+    const { container, getByRole, queryByRole } = render(Shell);
+
+    expect(getByRole("note")).toHaveTextContent(
+      "Testnet · Test DUSK has no value"
+    );
+    // At the top, above the top bar.
+    expect(
+      container.querySelector(".shell__header > .testnet-strip + .top-bar")
+    ).toBeInTheDocument();
+
+    await act(() =>
+      mocks.network?.set({ connected: true, networkName: "mainnet" })
+    );
+
+    expect(queryByRole("note")).toBeNull();
+
+    await act(() =>
+      mocks.network?.set({ connected: true, networkName: "testnet" })
+    );
   });
 
   it("keeps the current profile's history going", () => {

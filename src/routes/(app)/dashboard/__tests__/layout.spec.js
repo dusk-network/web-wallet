@@ -26,12 +26,24 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
   };
 });
 
+const network = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any> | null} */
+  store: null,
+}));
+
 vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {typeof import("$lib/stores")} */
   const original = await importOriginal();
+  const { writable } = await import("svelte/store");
+
+  network.store = writable({ connected: true, networkName: "mainnet" });
 
   return {
     ...original,
+    networkStore: {
+      ...original.networkStore,
+      subscribe: network.store.subscribe,
+    },
     walletStore: { ...original.walletStore, ...mockedWalletStore },
   };
 });
@@ -115,6 +127,17 @@ describe("Dashboard Layout", () => {
       );
 
       await expect(result.currentPrice).resolves.toStrictEqual({});
+    });
+
+    it("should ask for no market data off mainnet, as test DUSK has no value", async () => {
+      network.store?.set({ connected: true, networkName: "testnet" });
+
+      const result = /** @type {Record<string, any>} */ (await loadData());
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      await expect(result.currentPrice).resolves.toStrictEqual({});
+
+      network.store?.set({ connected: true, networkName: "mainnet" });
     });
 
     it("should return a promise that resolves with an empty object if the fetch fails or the Response contains invalid JSON", async () => {

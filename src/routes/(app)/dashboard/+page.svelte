@@ -15,7 +15,7 @@
     HomeBalance,
   } from "$lib/containers/Home";
   import { addBasePath } from "$lib/navigation";
-  import { settingsStore, walletStore } from "$lib/stores";
+  import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
   /** @type {import("./$types").PageData} */
   export let data;
@@ -77,6 +77,8 @@
   ]);
 
   $: ({ balance, minimumStake, stakeInfo } = $walletStore);
+  // Test DUSK has no value: no money value off mainnet.
+  $: ({ networkName } = $networkStore);
   $: staked = stakeInfo.amount
     ? stakeInfo.amount.value + stakeInfo.amount.locked
     : null;
@@ -89,7 +91,7 @@
   <div class="home__main">
     <HomeBalance
       fiatCurrency={currency}
-      {fiatPrice}
+      fiatPrice={networkName === "mainnet" ? fiatPrice : undefined}
       locale={language}
       shielded={balance.shielded.value}
       unshielded={balance.unshielded.value}
@@ -174,14 +176,14 @@
   .home__side {
     grid-area: side;
     position: sticky;
-    top: var(--top-bar-height);
+    top: var(--header-height);
     align-self: start;
-    max-height: calc(100vh - var(--top-bar-height));
+    max-height: calc(100vh - var(--header-height));
     overflow-y: auto;
     padding: 1.5rem 1.5rem 2rem;
     border-left: 1px solid var(--calm-line);
     background: var(--calm-panel);
-    min-height: calc(100vh - var(--top-bar-height));
+    min-height: calc(100vh - var(--header-height));
   }
 
   .home__side-title {

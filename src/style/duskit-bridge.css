@@ -23,6 +23,11 @@
   --calm-focus: #0b66d6;
   --calm-scrim: rgb(20 20 22 / 0.4);
 
+  /* Violet is a test network, as on the bridge. */
+  --calm-test: #5b4bc4;
+  --calm-test-bg: #eeebfb;
+  --calm-test-line: rgb(91 75 196 / 0.25);
+
   /* Addresses and hashes: the system code font, evenly spaced. */
   --code-font-family:
     ui-monospace, "SF Mono", sfmono-regular, menlo, "Cascadia Mono", consolas,
@@ -197,6 +202,9 @@
   --calm-on-pill: #141416;
   --calm-focus: #71b1ff;
   --calm-scrim: rgb(5 5 6 / 0.66);
+  --calm-test: #b9aeff;
+  --calm-test-bg: #1b1830;
+  --calm-test-line: rgb(185 174 255 / 0.28);
 
   --focus-ring-color: rgb(113 177 255 / 0.35);
 }

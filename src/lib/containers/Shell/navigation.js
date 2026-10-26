@@ -62,3 +62,23 @@ export function tabOf(tabs, pathname) {
 
   return tabs.find((tab) => tab.href === path)?.id ?? null;
 }
+
+/**
+ * A network's name as the wallet shows it, or "Connecting" until it is
+ * known.
+ *
+ * @param {string} name
+ */
+export const networkLabel = (name) =>
+  name && name !== "unknown"
+    ? `${name.charAt(0).toUpperCase()}${name.slice(1)}`
+    : "Connecting";
+
+/**
+ * Whether a network is a test network, whose DUSK has no value: any known
+ * network but mainnet.
+ *
+ * @param {string} name
+ */
+export const isTestNetwork = (name) =>
+  Boolean(name) && name !== "unknown" && name !== "mainnet";

@@ -146,6 +146,10 @@ html:has(.shell) {
   scroll-padding-bottom: 7rem;
 }
 
+html:has(.shell--test) {
+  scroll-padding-top: 6.75rem;
+}
+
 @media (max-width: 500px), (max-height: 500px) {
   body {
     padding: 0;

@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show the latest activity beside the balance on Home, with filters
 - Say what the public, shielded and staking balances are on Home
 - Add a tab bar and a row of round actions on phones
+- Say at the top of a test network that test DUSK has no value
 
 ### Changed
 
@@ -58,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Give the wallet a calm look: neutral surfaces, pill buttons and sentence-case labels, without bracketed headings
 - Call Allocate Shield
 - Show addresses and hashes in the system's code font
+- Show no money values or market data off mainnet
 
 ### Removed
 

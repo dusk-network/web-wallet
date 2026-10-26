@@ -507,9 +507,9 @@
 
   .history__detail {
     position: sticky;
-    top: var(--top-bar-height);
+    top: var(--header-height);
     align-self: start;
-    height: calc(100vh - var(--top-bar-height));
+    height: calc(100vh - var(--header-height));
     overflow-y: auto;
     border-left: 1px solid var(--calm-line2);
     background: var(--calm-panel);
@@ -523,7 +523,7 @@
 
     .history__detail {
       position: fixed;
-      inset: var(--top-bar-height) 0 0;
+      inset: var(--header-height) 0 0;
       z-index: 11;
       max-height: none;
       border-left: 0 none;

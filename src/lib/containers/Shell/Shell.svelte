@@ -2,13 +2,14 @@
   import { page } from "$app/stores";
   import { isHistoryEnabled } from "$lib/activity";
   import { contractDescriptors } from "$lib/contracts";
-  import { walletStore } from "$lib/stores";
+  import { networkStore, walletStore } from "$lib/stores";
 
   import CommandBar from "./CommandBar.svelte";
   import TabBar from "./TabBar.svelte";
+  import TestnetStrip from "./TestnetStrip.svelte";
   import TopBar from "./TopBar.svelte";
   import keyboardInset from "./keyboardInset";
-  import { appPath, shellTabs, tabOf } from "./navigation";
+  import { appPath, isTestNetwork, shellTabs, tabOf } from "./navigation";
 
   /** @param {string} id */
   const isEnabled = (id) =>
@@ -83,6 +84,8 @@
   $: if ($walletStore.currentProfile) {
     walletStore.startHistory();
   }
+
+  $: ({ networkName } = $networkStore);
 </script>
 
 <svelte:window on:keydown={handleShortcut} />
@@ -90,6 +93,7 @@
 <div
   class="shell"
   class:shell--flow={activeTab === null}
+  class:shell--test={isTestNetwork(networkName)}
   class:shell--typing={typing}
   on:focusin={handleFocusIn}
   on:focusout={() => {
@@ -98,14 +102,17 @@
   use:keyboardInset
 >
   <a class="shell__skip" href="#shell-main">Skip to content</a>
-  <TopBar
-    {activeTab}
-    on:search={() => {
-      searchOpen = true;
-    }}
-    {settingsOpen}
-    {tabs}
-  />
+  <div class="shell__header">
+    <TestnetStrip />
+    <TopBar
+      {activeTab}
+      on:search={() => {
+        searchOpen = true;
+      }}
+      {settingsOpen}
+      {tabs}
+    />
+  </div>
   <div class="shell__main" id="shell-main" tabindex="-1">
     <slot />
   </div>
@@ -125,12 +132,26 @@
     --top-bar-height: 3.75rem;
     --tab-bar-height: 4.5rem;
 
+    /* What sticks to the top: the top bar, and on a test network its strip. */
+    --strip-height: 0px;
+    --header-height: calc(var(--top-bar-height) + var(--strip-height));
+
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
     background: var(--calm-s0);
     color: var(--calm-text);
+  }
+
+  .shell--test {
+    --strip-height: 2.1875rem;
+  }
+
+  .shell__header {
+    position: sticky;
+    top: 0;
+    z-index: 12;
   }
 
   .shell__skip {

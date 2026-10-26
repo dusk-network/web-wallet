@@ -1,6 +1,7 @@
 <script>
   import { Button, ErrorDetails, Throbber } from "$lib/dusk/components";
   import { AppImage, Banner } from "$lib/components";
+  import { TestnetStrip } from "$lib/containers/Shell";
   import { networkStore, settingsStore } from "$lib/stores";
 
   const { darkMode } = $settingsStore;
@@ -14,6 +15,8 @@
     retryKey ^= 1;
   }
 </script>
+
+<div class="welcome-layout__strip"><TestnetStrip /></div>
 
 <header class="welcome-layout__header">
   <AppImage

@@ -98,9 +98,6 @@
 
 <style lang="postcss">
   .top-bar {
-    position: sticky;
-    top: 0;
-    z-index: 12;
     display: flex;
     align-items: center;
     gap: 0.5rem;

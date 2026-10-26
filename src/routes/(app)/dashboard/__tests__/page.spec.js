@@ -11,12 +11,24 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(() => Promise.resolve()),
 }));
 
+const network = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any> | null} */
+  store: null,
+}));
+
 vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {typeof import("$lib/stores")} */
   const original = await importOriginal();
+  const { writable } = await import("svelte/store");
+
+  network.store = writable({ connected: true, networkName: "mainnet" });
 
   return {
     ...original,
+    networkStore: {
+      ...original.networkStore,
+      subscribe: network.store.subscribe,
+    },
     walletStore: {
       ...mockedWalletStore,
       startHistory: () => ({ refresh: mocks.refresh }),
@@ -146,6 +158,19 @@ describe("Dashboard", () => {
         "≈ $1,758.75"
       )
     );
+  });
+
+  it("shows no value in money off mainnet, as test DUSK has none", async () => {
+    network.store?.set({ connected: true, networkName: "testnet" });
+
+    const { container } = render(Dashboard, props);
+
+    await props.data.currentPrice;
+    await act(() => {});
+
+    expect(container.querySelector(".home-balance__fiat")).toBeNull();
+
+    network.store?.set({ connected: true, networkName: "mainnet" });
   });
 
   it("says what each balance means, and that nothing is staked right now", async () => {

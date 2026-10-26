@@ -5,13 +5,9 @@
   import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
   import { networkStore, walletStore } from "$lib/stores";
 
-  let open = false;
+  import { networkLabel } from "./navigation";
 
-  /** @param {string} name */
-  const networkLabel = (name) =>
-    name && name !== "unknown"
-      ? `${name.charAt(0).toUpperCase()}${name.slice(1)}`
-      : "Connecting";
+  let open = false;
 
   $: ({ networkName } = $networkStore);
   $: ({ syncStatus } = $walletStore);
