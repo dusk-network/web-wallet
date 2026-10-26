@@ -303,6 +303,32 @@ describe("Dashboard", () => {
     );
   });
 
+  it("reads Sozu for an account that called a pool its hub may have named", async () => {
+    sozu.load.mockClear();
+    render(Dashboard, props);
+
+    await setHistory({
+      rows: [
+        {
+          amount: "1000000000",
+          blockHeight: 4_687_000,
+          contractId: "ef".repeat(32),
+          direction: "out",
+          fnName: "sozu_stake",
+          hash: "e6".repeat(32),
+          kind: "contract_call",
+          privacy: "public",
+          source: "archive",
+          status: "executed",
+          success: true,
+          timestamp: NOW,
+        },
+      ],
+    });
+
+    expect(sozu.load).toHaveBeenCalled();
+  });
+
   it("shows what is staked and its rewards", () => {
     const { container } = render(Dashboard, props);
 

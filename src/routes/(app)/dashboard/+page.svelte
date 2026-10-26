@@ -16,7 +16,7 @@
     HomeBalance,
   } from "$lib/containers/Home";
   import { addBasePath } from "$lib/navigation";
-  import { isSozuCall, sozuContractsFor, sozuStore } from "$lib/sozu";
+  import { isSozuFunction, sozuContractsFor, sozuStore } from "$lib/sozu";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
   /** @type {import("./$types").PageData} */
@@ -80,8 +80,9 @@
   $: ({ rows } = $activityState);
   $: hasPastStaking = rows.some(isStakingRow);
 
-  // What is staked with Sozu, read only for an account that used it.
-  $: if (rows.some(isSozuCall) && networkName && currentProfile) {
+  // What is staked with Sozu, read only for an account that called a pool
+  // of its: read, a pool its hub named is known from then on.
+  $: if (rows.some(isSozuFunction) && networkName && currentProfile) {
     void sozuStore.load();
   }
   $: ({ account: sozuAccount, status: sozuStatus } = $sozuStore);

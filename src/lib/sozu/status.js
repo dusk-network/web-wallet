@@ -9,6 +9,7 @@ import { createMulticallFetch } from "$lib/activity/multicallFetch";
 import { addBasePath } from "$lib/navigation";
 
 import { parsePool, readLux } from "./amounts";
+import { noteSozuPool } from "./config";
 
 /** @typedef {"sozu_hub" | "sozu_pool" | "sozu_staked_dusk"} SozuDriverName */
 
@@ -187,6 +188,9 @@ export async function readSozuStatus({
   ]);
   const named = await discover(reader, hub, contracts.hub);
   const poolId = named.pool ?? contracts.pool;
+
+  // The history names this pool's calls too, from now on.
+  noteSozuPool(poolId);
   const [rate, balance, stDusk] = await Promise.all([
     read(reader, pool, poolId, "exchange_rate"),
     read(reader, pool, poolId, "balance_of", account),

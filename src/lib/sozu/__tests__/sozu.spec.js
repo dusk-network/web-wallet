@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { dataDrivers } from "@dusk/w3sper";
@@ -8,6 +8,7 @@ import {
   duskPerStDusk,
   encodeU64,
   isSozuCall,
+  noteSozuPool,
   parsePool,
   readSozuStatus,
   sozuContractsFor,
@@ -76,11 +77,34 @@ describe("Sozu amounts", () => {
 });
 
 describe("Sozu's contracts", () => {
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   it("has a hub and a pool on mainnet and testnet only", () => {
     expect(sozuContractsFor("testnet")).toStrictEqual({ hub: HUB, pool: POOL });
     expect(sozuContractsFor("mainnet")?.pool).toMatch(/^[0-9a-f]{64}$/);
     expect(sozuContractsFor("devnet")).toBeNull();
     expect(sozuContractsFor("toString")).toBeNull();
+  });
+
+  it("names the calls of a pool its hub named, from then on and on this device", async () => {
+    const pool = "ef".repeat(32);
+    const call = { contractId: pool, fnName: "sozu_stake" };
+
+    expect(isSozuCall(call)).toBe(false);
+
+    noteSozuPool(`0x${pool.toUpperCase()}`);
+
+    expect(isSozuCall(call)).toBe(true);
+
+    // Kept for the next visit.
+    vi.resetModules();
+
+    const again = await import("../config");
+
+    expect(again.isSozuCall(call)).toBe(true);
+    expect(again.isSozuCall({ ...call, fnName: "balance_of" })).toBe(false);
   });
 
   it("knows its pools' calls", () => {
@@ -204,6 +228,10 @@ describe("readSozuStatus", () => {
       pool: parsePool(RATE),
       position: { balance: 1_500_000_000_000n, stDusk: 487_000_000_000n },
     });
+    // The history names the calls of the pool the hub named.
+    expect(isSozuCall({ contractId: NEW_POOL, fnName: "sozu_stake" })).toBe(
+      true
+    );
     expect(node.spy.mock.calls.map(([url]) => url)).toStrictEqual([
       `https://one.example/on/contracts:${HUB}/contract`,
       `https://one.example/on/contracts:${HUB}/contract`,
