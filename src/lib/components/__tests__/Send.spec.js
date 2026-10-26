@@ -1440,6 +1440,41 @@ describe("Send", () => {
       expect(fieldsOf(getByRole).send()).toBeEnabled();
     });
 
+    it("should take a .dusk name's contact of the kind of address picked, and ask when that one moved", async () => {
+      // A name with a contact for each address, the shielded one moved since.
+      saveContact({
+        address: nameAccount,
+        duskName: "alice.dusk",
+        name: "Alice",
+      });
+      saveContact({
+        address: shieldedAddress,
+        duskName: "alice.dusk",
+        name: "Alice (shielded)",
+      });
+      baseProps.resolveName.mockResolvedValue({
+        account: nameAccount,
+        address: otherShielded,
+        name: "alice.dusk",
+      });
+
+      const { findByRole, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), { target: { value: "alice.dusk" } });
+      await fireEvent.click(
+        await findByRole("radio", { name: "Shielded address" })
+      );
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "alice.dusk now points to a different address from the one saved for Alice (shielded)."
+      );
+
+      await fireEvent.click(getByRole("button", { name: "The saved address" }));
+
+      expect(fields.to()).toHaveValue(shieldedAddress);
+    });
+
     it("should ask before it sends to a new address of a contact's .dusk name", async () => {
       const alice = saveContact({
         address: otherAccount,

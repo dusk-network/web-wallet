@@ -388,19 +388,23 @@
 
   /**
    * The contact a transfer goes to: the one saved with the address it goes
-   * to, or else with the `.dusk` name entered, whose address is then
-   * compared with the one the name points to now.
+   * to, or else with the `.dusk` name entered and the kind of address
+   * picked of it, whose address is then compared with the one the name
+   * points to now.
    *
    * @param {Contact[]} contacts
    * @param {string} name
    * @param {string} address
+   * @param {"account" | "address"} type The kind of address picked
    * @returns {Contact | null}
    */
-  const contactFor = (contacts, name, address) =>
+  const contactFor = (contacts, name, address, type) =>
     contacts.find((contact) => address && contact.address === address) ??
     (name
-      ? (contacts.find((contact) => contact.duskName === name.toLowerCase()) ??
-        null)
+      ? (contacts.find(
+          (contact) =>
+            contact.duskName === name.toLowerCase() && contact.type === type
+        ) ?? null)
       : null);
 
   function saveRecipient() {
@@ -569,7 +573,12 @@
   }
 
   $: contacts = $contactsStore;
-  $: contact = contactFor(contacts, recipientName, recipientAddress);
+  $: contact = contactFor(
+    contacts,
+    recipientName,
+    recipientAddress,
+    nameAddressType
+  );
 
   // The address the contact's name points to now, of the kind the contact
   // keeps.
