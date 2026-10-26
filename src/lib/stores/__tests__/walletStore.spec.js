@@ -17,6 +17,12 @@ import {
 } from "@dusk/w3sper";
 
 import { stakeInfo } from "$lib/mock-data";
+import {
+  activityFor,
+  asTransactions,
+  clearActivityStore,
+  stopActivity,
+} from "$lib/activity";
 import { buildDepositETHToWithValuePayload } from "$lib/bridge/deposit";
 import {
   getVerifiedName,
@@ -29,6 +35,24 @@ import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 import { networkStore, settingsStore, walletStore } from "..";
 
 const VITE_SYNC_INTERVAL = import.meta.env.VITE_SYNC_INTERVAL;
+
+const history = vi.hoisted(() => ({
+  session: {
+    recordSent: vi.fn(async () => {}),
+
+    /** @type {ActivityRow[]} */
+    rows: [],
+    start: vi.fn(async () => {}),
+  },
+}));
+
+vi.mock("$lib/activity", async (importOriginal) => ({
+  .../** @type {typeof import("$lib/activity")} */ (await importOriginal()),
+  activityFor: vi.fn(() => history.session),
+  clearActivityStore: vi.fn(async () => {}),
+  getShieldedHistory: vi.fn(async () => ({ entries: [] })),
+  stopActivity: vi.fn(),
+}));
 
 describe("Wallet store", async () => {
   const AUTO_SYNC_INTERVAL = !isNaN(Number(VITE_SYNC_INTERVAL))
@@ -502,6 +526,16 @@ describe("Wallet store", async () => {
      * @typedef { "claimRewards" | "shield" | "stake" | "transfer" | "unshield" | "unstake" } TransferMethod
      */
 
+    /** @type {Record<TransferMethod, ActivityKind>} */
+    const SENT_KINDS = {
+      claimRewards: "withdraw_reward",
+      shield: "shield",
+      stake: "stake",
+      transfer: "transfer",
+      unshield: "unshield",
+      unstake: "unstake",
+    };
+
     /**
      * @template {TransferMethod} M
      * @param {M} method
@@ -556,6 +590,19 @@ describe("Wallet store", async () => {
 
       // @ts-ignore here args can't be inferred apparently
       await walletStore[method](...args);
+
+      // The history shows what was sent until the archive has it.
+      expect(history.session.recordSent).toHaveBeenCalledTimes(1);
+      expect(history.session.recordSent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: String(amount),
+          hash: phoenixTxResult.hash,
+          kind: SENT_KINDS[method],
+          privacy:
+            isPhoenixTransfer || method === "unshield" ? "shielded" : "public",
+          ...(method === "transfer" ? { to: args[0] } : {}),
+        })
+      );
 
       expect(executeSpy).toHaveBeenCalledTimes(1);
       expect(executeSpy.mock.calls[0][0].attributes).toStrictEqual(expectedTx);
@@ -1035,7 +1082,58 @@ describe("Wallet store", async () => {
       await walletStore.clearLocalData();
       expect(cacheClearSpy).toHaveBeenCalledTimes(1);
       expect(getVerifiedName("testnet", "some-account")).toBe("");
+
+      // The history kept in the browser goes too, and its work stops.
+      expect(stopActivity).toHaveBeenCalled();
+      expect(clearActivityStore).toHaveBeenCalledTimes(1);
       vi.useFakeTimers();
+    });
+
+    it("should stop the history when the wallet locks", () => {
+      vi.mocked(stopActivity).mockClear();
+
+      walletStore.reset();
+
+      expect(stopActivity).toHaveBeenCalledTimes(1);
+      expect(clearActivityStore).not.toHaveBeenCalled();
+    });
+
+    it("should give the current profile's history, from the archive, as its transactions", async () => {
+      const { currentProfile } = get(walletStore);
+
+      /** @type {ActivityRow[]} */
+      const rows = [
+        {
+          amount: "1100000000000",
+          blockHeight: 4655845,
+          direction: "in",
+          hash: "8e".repeat(32),
+          kind: "transfer",
+          source: "archive",
+          status: "executed",
+        },
+        {
+          amount: "5000000000",
+          direction: "out",
+          hash: "aa".repeat(32),
+          kind: "transfer",
+          source: "local",
+          status: "submitted",
+        },
+      ];
+
+      history.session.rows = rows;
+
+      await expect(walletStore.getTransactionsHistory()).resolves.toEqual(
+        asTransactions(rows)
+      );
+      expect(activityFor).toHaveBeenCalledWith(
+        expect.objectContaining({
+          account: String(currentProfile?.account),
+          profileIndex: 0,
+        })
+      );
+      expect(history.session.start).toHaveBeenCalled();
     });
 
     it("should expose a method to clear local data and init the wallet", async () => {

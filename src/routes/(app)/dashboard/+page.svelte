@@ -122,7 +122,7 @@
 
 <slot />
 
-{#if import.meta.env.VITE_FEATURE_TRANSACTION_HISTORY === "true"}
+{#if import.meta.env.VITE_FEATURE_TRANSACTION_HISTORY !== "false"}
   <Transactions
     items={walletStore.getTransactionsHistory()}
     {language}

@@ -136,7 +136,7 @@ type WalletStoreServices = {
 
   useContract: (contractId: string, wasmPath: string) => Promise<Contract>;
 
-  getTransactionsHistory: () => Promise<any>;
+  getTransactionsHistory: () => Promise<Transaction[]>;
 
   init: (
     profileGenerator: ProfileGenerator,

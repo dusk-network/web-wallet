@@ -72,6 +72,12 @@ VITE_REOWN_PROJECT_ID="" # the ID of the EVM project (as on Reown Cloud)
 VITE_NODE_URL="" # connect to a specific node
 ```
 
+The transaction history is on unless `VITE_FEATURE_TRANSACTION_HISTORY` is
+`false`. It reads the public account's history from the node's archive
+(`moonlightHistory` over GraphQL) by block height, and the shielded history
+from the notes the wallet has synced. Both are kept in the browser, so a
+refresh only asks for what is new, and are cleared when the wallet is reset.
+
 Each operation has its own default gas limit and minimum, defined in
 `src/lib/contracts/gasDefaults.js`. `VITE_GAS_LIMIT_UPPER` caps the gas limit
 for all of them.

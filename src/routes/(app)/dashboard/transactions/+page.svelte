@@ -11,7 +11,7 @@
 
 <div class="transactions">
   <h2 class="sr-only">Transactions</h2>
-  {#if import.meta.env.VITE_FEATURE_TRANSACTION_HISTORY === "true"}
+  {#if import.meta.env.VITE_FEATURE_TRANSACTION_HISTORY !== "false"}
     <Transactions
       items={walletStore.getTransactionsHistory()}
       {language}
