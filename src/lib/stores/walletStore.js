@@ -12,6 +12,7 @@ import {
   activityFor,
   asTransactions,
   clearActivityStore,
+  currentActivity,
   getShieldedHistory,
   stopActivity,
 } from "$lib/activity";
@@ -535,6 +536,9 @@ async function sync(fromBlock) {
           ...currentStore,
           syncStatus: initialState.syncStatus,
         }));
+
+        // The notes are synced: the history can have the shielded side now.
+        currentActivity()?.notesSynced();
       })
       .then(() => {
         if (session !== walletSession) {

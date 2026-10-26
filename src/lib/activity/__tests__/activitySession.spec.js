@@ -131,6 +131,43 @@ describe("ActivitySession", () => {
     });
   });
 
+  it("asks for a shielded history it couldn't have yet again once the notes are synced, or a minute later", async () => {
+    fakeArchive();
+
+    const shielded = vi
+      .fn()
+      .mockResolvedValueOnce({ entries: [], pending: true })
+      .mockResolvedValueOnce({ entries: [], pending: true })
+      .mockResolvedValue({ entries: [shieldedRow] });
+    const session = sessionFor({ shielded });
+
+    await session.start();
+    await vi.waitFor(() => expect(shielded).toHaveBeenCalledTimes(1));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    try {
+      // The wallet's sync completes: asked again at once.
+      session.notesSynced();
+      await vi.waitFor(() => expect(shielded).toHaveBeenCalledTimes(2));
+
+      // Still pending: asked again a minute later, with no run or sync.
+      await vi.advanceTimersByTimeAsync(sessions.SHIELDED_RETRY_MS);
+      await vi.waitFor(() => expect(shielded).toHaveBeenCalledTimes(3));
+    } finally {
+      vi.useRealTimers();
+    }
+
+    await vi.waitFor(() =>
+      expect(session.state.rows.at(-1)?.privacy).toBe("shielded")
+    );
+
+    // Had: not asked again.
+    session.notesSynced();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(shielded).toHaveBeenCalledTimes(3);
+  });
+
   it("shows the wallet's own send at once, and the chain's row instead once the archive has it", async () => {
     const node = fakeArchive({ finalized: 4_658_000 });
     const hash = entryOfA(4658012).origin;

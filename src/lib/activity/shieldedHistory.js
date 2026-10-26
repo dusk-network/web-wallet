@@ -213,8 +213,9 @@ async function build(options, key, rows, kept, epoch) {
 
   const asked = await heightsToAsk(options, notes, kept, epoch);
 
-  // Without other heights to ask among, the node isn't asked at all.
-  if (!asked) {
+  // Without other heights to ask among, the node isn't asked at all: it
+  // would name the profile's own.
+  if (!asked?.decoys.length) {
     return { entries: kept?.entries ?? [], pending: true };
   }
 
@@ -286,19 +287,24 @@ async function readShieldedHistory(options, key) {
   const epoch = await getActivityEpoch();
   const rows = await cachedNotes(String(options.profile.address));
 
+  // Notes still being discovered aren't the history yet: what is known
+  // shows, marked pending, and is asked for again once they are.
+  /** @param {ActivityRow[]} entries */
+  const snapshot = (entries) =>
+    options.synced ? { entries } : { entries, pending: true };
+
   if (!rows.length) {
-    return { entries: [] };
+    return snapshot([]);
   }
 
   const kept = await getShieldedHistoryRecord(key).catch(() => null);
 
   if (kept?.fingerprint === fingerprintOf(rows)) {
-    return { entries: kept.entries };
+    return snapshot(kept.entries);
   }
 
-  // Notes still being discovered aren't the history yet.
   if (!options.synced) {
-    return { entries: kept?.entries ?? [], pending: true };
+    return snapshot(kept?.entries ?? []);
   }
 
   return build(options, key, rows, kept, epoch);

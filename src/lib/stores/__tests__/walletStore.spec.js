@@ -38,6 +38,7 @@ const VITE_SYNC_INTERVAL = import.meta.env.VITE_SYNC_INTERVAL;
 
 const history = vi.hoisted(() => ({
   session: {
+    notesSynced: vi.fn(),
     recordSent: vi.fn(async () => {}),
 
     /** @type {ActivityRow[]} */
@@ -50,6 +51,7 @@ vi.mock("$lib/activity", async (importOriginal) => ({
   .../** @type {typeof import("$lib/activity")} */ (await importOriginal()),
   activityFor: vi.fn(() => history.session),
   clearActivityStore: vi.fn(async () => {}),
+  currentActivity: vi.fn(() => history.session),
   getShieldedHistory: vi.fn(async () => ({ entries: [] })),
   stopActivity: vi.fn(),
 }));
@@ -193,6 +195,8 @@ describe("Wallet store", async () => {
 
   describe("Initialization and sync", () => {
     it("should expose a method to initialize the store with a `ProfileGenerator` instance", async () => {
+      history.session.notesSynced.mockClear();
+
       await walletStore.init(profileGenerator);
 
       const state = get(walletStore);
@@ -238,6 +242,9 @@ describe("Wallet store", async () => {
 
       // Check that we still have exactly 2 profiles
       expect(finalState.profiles).toHaveLength(2);
+
+      // The notes are synced: the history is told, for its shielded side.
+      expect(history.session.notesSynced).toHaveBeenCalledTimes(1);
       expect(finalState.profiles[0]).toBe(defaultProfile);
       expect(finalState.profiles[1]).toBeDefined();
 

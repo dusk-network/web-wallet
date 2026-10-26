@@ -48,6 +48,9 @@ export const LOCAL_PENDING_MS = 15 * 60_000;
 /** Blocks come about every 10 seconds. */
 const BLOCK_MS = 10_000;
 
+/** How long a session waits to ask again for a shielded history it couldn't have yet. */
+export const SHIELDED_RETRY_MS = 60_000;
+
 /**
  * @typedef {{
  *   account: string,
@@ -113,6 +116,9 @@ export class ActivitySession {
   #shielded = [];
 
   #shieldedAsked = false;
+
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  #shieldedTimer;
 
   #stale = false;
 
@@ -223,28 +229,40 @@ export class ActivitySession {
     }
   }
 
-  /** The profile's shielded history, once the public one is shown. */
+  /**
+   * The profile's shielded history, once the public one is shown. One the
+   * wallet couldn't give yet, as while its notes sync, is asked for again
+   * once they are synced, or a minute later.
+   */
   async #loadShielded() {
-    if (this.#shieldedAsked || !this.options.shielded) {
+    if (this.#shieldedAsked || !this.options.shielded || this.#stopped) {
       return;
     }
 
     this.#shieldedAsked = true;
+    clearTimeout(this.#shieldedTimer);
 
     try {
       const result = await this.options.shielded();
 
       this.#shielded = result.entries;
 
-      // Notes still syncing: asked again by the next run.
       if (result.pending) {
-        this.#shieldedAsked = false;
+        this.#askShieldedAgain();
       }
 
       this.#emit();
     } catch {
-      this.#shieldedAsked = false;
+      this.#askShieldedAgain();
     }
+  }
+
+  #askShieldedAgain() {
+    this.#shieldedAsked = false;
+    clearTimeout(this.#shieldedTimer);
+    this.#shieldedTimer = setTimeout(() => {
+      void this.#loadShielded();
+    }, SHIELDED_RETRY_MS);
   }
 
   async #reload() {
@@ -474,6 +492,16 @@ export class ActivitySession {
     }, delayMs);
   }
 
+  /**
+   * The wallet's notes are synced: a shielded history the session couldn't
+   * have yet is asked for again now. A run under way asks for it anyway.
+   */
+  notesSynced() {
+    if (this.loaded && !this.syncing) {
+      void this.#loadShielded();
+    }
+  }
+
   /** The next page of kept history, and a sync run for older history when the kept history runs out. */
   async showMore() {
     this.#limit += ACTIVITY_PAGE;
@@ -530,6 +558,7 @@ export class ActivitySession {
   stop() {
     this.#stopped = true;
     clearTimeout(this.#refreshTimer);
+    clearTimeout(this.#shieldedTimer);
     this.#listeners.clear();
   }
 

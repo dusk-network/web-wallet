@@ -263,6 +263,65 @@ describe("getShieldedHistory", () => {
     expect(queries).toEqual([]);
   });
 
+  it("marks a kept or an empty history pending while the notes sync", async () => {
+    const { network } = fakeNetwork();
+    const options = {
+      isCurrent: () => true,
+      network: async () => network,
+      nodeUrl: NODE,
+      profile,
+      synced: true,
+    };
+    const { entries } = await shieldedHistory.getShieldedHistory(options);
+
+    // The same notes, kept: while a sync runs, more can come.
+    await expect(
+      shieldedHistory.getShieldedHistory({ ...options, synced: false })
+    ).resolves.toEqual({ entries, pending: true });
+
+    // No notes yet.
+    const { default: walletCache } = await import("$lib/wallet-cache");
+
+    vi.mocked(walletCache.getUnspentNotes).mockResolvedValue([]);
+
+    await expect(
+      shieldedHistory.getShieldedHistory({ ...options, synced: false })
+    ).resolves.toEqual({ entries: [], pending: true });
+    await expect(shieldedHistory.getShieldedHistory(options)).resolves.toEqual({
+      entries: [],
+    });
+  });
+
+  it("asks nothing without a decoy to ask among: the heights would be the profile's own", async () => {
+    // A tree whose only heights are the notes': leaves 0 to 492 made up at
+    // the unshield's height.
+    const { network } = fakeNetwork([
+      ...Array.from({ length: 493 }, (_, i) => {
+        const leaf = FIRST[5].slice();
+        const view = new DataView(leaf.buffer);
+
+        view.setBigUint64(LEAF_POS_OFFSET, BigInt(i), true);
+        view.setBigUint64(LEAF_HEIGHT_OFFSET, 3_602_438n, true);
+
+        return leaf;
+      }),
+      L493,
+      L494,
+      L495,
+    ]);
+
+    await expect(
+      shieldedHistory.getShieldedHistory({
+        isCurrent: () => true,
+        network: async () => network,
+        nodeUrl: NODE,
+        profile,
+        synced: true,
+      })
+    ).resolves.toEqual({ entries: [], pending: true });
+    expect(queries).toEqual([]);
+  });
+
   it("keeps nothing when the wallet changed while it was worked out", async () => {
     const { network } = fakeNetwork();
     let current = true;
