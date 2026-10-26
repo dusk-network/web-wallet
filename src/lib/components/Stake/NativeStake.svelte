@@ -122,6 +122,10 @@
   $: isBelowMinimum = minimum > 0n && maxStake < minimum;
   $: canStake = check.ok && isGasValid;
   $: shownAmount = amount !== null && check.ok ? amount : 0n;
+
+  // What is typed shows in the summary, muted while it can't be staked.
+  $: typedAmount = amount ?? 0n;
+  $: isTypedOff = Boolean(check.error);
   $: minimumText = formatDusk(minimumStake, language);
   $: liquidText = `Less than ${minimumText} DUSK? Use liquid staking (Sozu, third party)`;
 </script>
@@ -271,7 +275,9 @@
       <dl class="stake-flow__rows">
         <div>
           <dt>{hasStake ? "Add to stake" : "Stake"}</dt>
-          <dd>{formatDuskExact(shownAmount, language)} DUSK</dd>
+          <dd class:stake-flow__muted={isTypedOff}>
+            {formatDuskExact(typedAmount, language)} DUSK
+          </dd>
         </div>
         {#if !hasStake}
           <div>
@@ -307,8 +313,8 @@
       <dl class="stake-flow__rows stake-flow__rows--total">
         <div>
           <dt>Total</dt>
-          <dd>
-            Up to {formatFee(shownAmount + maxGasFee, language, {
+          <dd class:stake-flow__muted={isTypedOff}>
+            Up to {formatFee(typedAmount + maxGasFee, language, {
               max: true,
             })} DUSK
           </dd>

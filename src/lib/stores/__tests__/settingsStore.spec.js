@@ -290,7 +290,6 @@ describe("Settings store", () => {
         dashboardTransactionLimit:
           settingsStoreContent.dashboardTransactionLimit + 1,
         hideBalances: !settingsStoreContent.hideBalances,
-        hideStakingNotice: !settingsStoreContent.hideStakingNotice,
         language: "FAKE LANGUAGE",
         userId: "FAKE USER ID",
         walletCreationBlockHeight: 123n,

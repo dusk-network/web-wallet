@@ -148,6 +148,34 @@ describe("NativeStake", () => {
     );
   });
 
+  it("shows the amount typed in the summary, muted, while it can't be staked", async () => {
+    const { container, getByLabelText, getByRole } = render(
+      NativeStake,
+      baseProps
+    );
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+
+    const [stake] = container.querySelectorAll(".stake-flow__rows dd");
+    const total = container.querySelector(".stake-flow__rows--total dd");
+
+    expect(stake).toHaveTextContent("100 DUSK");
+    expect(stake).toHaveClass("stake-flow__muted");
+    expect(total).toHaveTextContent("Up to 100.05 DUSK");
+    expect(total).toHaveClass("stake-flow__muted");
+    expect(getByRole("button", { name: "Stake" })).toBeDisabled();
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1000" },
+    });
+
+    expect(stake).toHaveTextContent("1,000 DUSK");
+    expect(stake).not.toHaveClass("stake-flow__muted");
+    expect(total).not.toHaveClass("stake-flow__muted");
+  });
+
   it("adds to a stake there is: no minimum, and the lock on what is added", async () => {
     const { container, getByLabelText, getByRole, queryByRole } = render(
       NativeStake,

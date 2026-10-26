@@ -170,7 +170,10 @@
   $: shownAmount = amount !== null && check.ok ? amount : 0n;
   $: estimate =
     isStake && check.ok ? stDuskFor(shownAmount, status?.pool ?? null) : null;
-  $: total = isStake ? shownAmount + maxGasFee : maxGasFee;
+  // What is typed shows in the summary, muted while it can't be sent.
+  $: typedAmount = amount ?? 0n;
+  $: isTypedOff = Boolean(check.error);
+  $: total = isStake ? typedAmount + maxGasFee : maxGasFee;
 </script>
 
 {#if sent}
@@ -371,7 +374,9 @@
       <dl class="stake-flow__rows">
         <div>
           <dt>{isStake ? "Stake with Sozu" : "Unstake from Sozu"}</dt>
-          <dd>{formatDuskExact(shownAmount, language)} DUSK</dd>
+          <dd class:stake-flow__muted={isTypedOff}>
+            {formatDuskExact(typedAmount, language)} DUSK
+          </dd>
         </div>
         {#if isStake}
           <div>
@@ -414,7 +419,9 @@
       <dl class="stake-flow__rows stake-flow__rows--total">
         <div>
           <dt>Total</dt>
-          <dd>Up to {formatFee(total, language, { max: true })} DUSK</dd>
+          <dd class:stake-flow__muted={isTypedOff}>
+            Up to {formatFee(total, language, { max: true })} DUSK
+          </dd>
         </div>
       </dl>
       <Button

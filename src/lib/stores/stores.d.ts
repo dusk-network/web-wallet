@@ -25,7 +25,6 @@ type SettingsStoreContent = {
   gasLimit: bigint;
   gasPrice: bigint;
   hideBalances: boolean;
-  hideStakingNotice: boolean;
   language: string;
   userId: string;
   walletCreationBlockHeight: bigint;

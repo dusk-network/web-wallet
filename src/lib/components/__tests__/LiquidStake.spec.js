@@ -110,6 +110,12 @@ describe("LiquidStake", () => {
       "That's 0.01 DUSK more than the public balance, with the network fee."
     );
     expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
+
+    // What is typed shows in the summary, muted.
+    const [stake] = container.querySelectorAll(".stake-flow__rows dd");
+
+    expect(stake).toHaveTextContent("172 DUSK");
+    expect(stake).toHaveClass("stake-flow__muted");
   });
 
   it("unstakes up to what is staked with Sozu, back to the public balance", async () => {

@@ -156,6 +156,11 @@
     font-weight: 500;
   }
 
+  /* An amount typed that can't go ahead, as the form says. */
+  .stake-flow__summary :global(.stake-flow__rows dd.stake-flow__muted) {
+    color: var(--calm-muted);
+  }
+
   .stake-flow__summary :global(.stake-flow__send),
   .stake-flow__summary :global(.stake-flow__back-button) {
     width: 100%;

@@ -56,7 +56,6 @@ const initialState = {
   gasLimit: LEGACY_DEFAULT_GAS_LIMIT,
   gasPrice: BigInt(import.meta.env.VITE_GAS_PRICE_DEFAULT ?? 1),
   hideBalances: false,
-  hideStakingNotice: false,
   userId: "",
   walletCreationBlockHeight: 0n,
 };
