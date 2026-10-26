@@ -1,4 +1,5 @@
 <script>
+  import { contactNamesOf, contactsStore } from "$lib/contacts";
   import { mdiChevronRight } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import {
@@ -38,7 +39,11 @@
   /** @type {import("$lib/activity/present").ActivityKindFilter} */
   let kind = "all";
 
-  $: context = { bridgeContracts, locale };
+  $: context = {
+    bridgeContracts,
+    contactNames: contactNamesOf($contactsStore),
+    locale,
+  };
   $: described = state.rows.map((row) => ({
     presentation: describeRow(row, context),
     row,

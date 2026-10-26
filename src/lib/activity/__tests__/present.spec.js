@@ -37,6 +37,29 @@ const row = (fields) => ({
 });
 
 describe("describeRow", () => {
+  it("names a counterparty saved as a contact by the contact's name, its .dusk name second", () => {
+    const contactNames = new Map([[ACCOUNT, "Alice"]]);
+
+    expect(
+      describeRow(row({ counterpartyName: "alice-shop.dusk" }), {
+        ...context,
+        contactNames,
+      })
+    ).toMatchObject({
+      title: "Alice · alice-shop.dusk",
+      titleIsAddress: false,
+    });
+    expect(describeRow(row({}), { ...context, contactNames }).title).toBe(
+      "Alice"
+    );
+    expect(
+      describeRow(row({ direction: "in", from: ACCOUNT, to: undefined }), {
+        ...context,
+        contactNames,
+      })
+    ).toMatchObject({ line: "Received", title: "Alice" });
+  });
+
   it("shows an amount in the one format, and in full for a hover", () => {
     expect(
       describeRow(row({ amount: "1234567891234" }), context).amount

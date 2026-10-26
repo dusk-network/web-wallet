@@ -1,4 +1,5 @@
 <script>
+  import { contactNamesOf, contactsStore } from "$lib/contacts";
   import { createEventDispatcher } from "svelte";
   import { mdiTrayArrowDown } from "@mdi/js";
   import { Button, Icon, Select } from "$lib/dusk/components";
@@ -85,7 +86,11 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  $: context = { bridgeContracts, locale };
+  $: context = {
+    bridgeContracts,
+    contactNames: contactNamesOf($contactsStore),
+    locale,
+  };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;
   $: described = state.rows.map((row) => ({
     presentation: describeRow(row, context),

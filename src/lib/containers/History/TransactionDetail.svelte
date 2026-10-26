@@ -9,12 +9,13 @@
     mdiSendOutline,
     mdiTimerSand,
   } from "@mdi/js";
-  import { AnchorButton, Icon } from "$lib/dusk/components";
+  import { AnchorButton, Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { BalanceValue } from "$lib/components";
   import { fullDateTime, rowTime } from "$lib/activity/present";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { addBasePath } from "$lib/navigation";
+  import { addressType, contactsStore, saveContact } from "$lib/contacts";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
 
@@ -31,6 +32,24 @@
 
   /** @type {HTMLButtonElement} */
   let closeButton;
+
+  /** Whether the counterparty is being saved to the contacts, and as what. */
+  let isSavingContact = false;
+  let contactName = "";
+
+  function saveCounterparty() {
+    const name = contactName.trim();
+
+    if (name && p.counterparty) {
+      saveContact({
+        address: p.counterparty,
+        duskName: duskName?.endsWith(".dusk") ? duskName : null,
+        name,
+      });
+      isSavingContact = false;
+      contactName = "";
+    }
+  }
 
   /**
    * An address or hash in full, its first and last six characters set
@@ -80,6 +99,13 @@
       ? `${row.direction === "in" ? "Received from" : "Sent to"} ${p.title}`
       : p.title;
   $: counterpartyLabel = row.direction === "in" ? "From" : "To";
+  $: duskName = row.counterpartyName ?? row.toName;
+  $: contact =
+    $contactsStore.find((saved) => saved.address === p.counterparty) ?? null;
+  $: canSave =
+    !contact &&
+    Boolean(p.counterparty) &&
+    addressType(String(p.counterparty)) !== "unknown";
   $: canSendAgain =
     p.icon === "sent" && !!p.counterparty && row.kind === "transfer";
   $: gasUsed =
@@ -133,9 +159,11 @@
         <div class="tx-detail__wide">
           <dt>{counterpartyLabel}</dt>
           <dd>
-            {#if row.counterpartyName ?? row.toName}
+            {#if contact || duskName}
               <span class="tx-detail__name"
-                >{row.counterpartyName ?? row.toName}</span
+                >{contact && duskName
+                  ? `${contact.name} · ${duskName}`
+                  : (contact?.name ?? duskName)}</span
               >
             {/if}
             <span class="tx-detail__code"
@@ -145,6 +173,48 @@
                   class="tx-detail__tail">{tail}</b
                 >{/each}</span
             >
+            {#if canSave && !isSavingContact}
+              <Button
+                className="tx-detail__save"
+                on:click={() => {
+                  isSavingContact = true;
+                }}
+                size="small"
+                text="Save to contacts"
+                variant="tertiary"
+              />
+            {:else if isSavingContact}
+              <form
+                class="tx-detail__save-form"
+                on:submit|preventDefault={saveCounterparty}
+              >
+                <label for="tx-detail-contact-name">Contact name</label>
+                <div class="tx-detail__save-row">
+                  <Textbox
+                    bind:value={contactName}
+                    id="tx-detail-contact-name"
+                    maxlength={40}
+                    type="text"
+                  />
+                  <Button
+                    on:click={() => {
+                      isSavingContact = false;
+                    }}
+                    size="small"
+                    text="Cancel"
+                    variant="secondary"
+                  />
+                  <Button
+                    disabled={!contactName.trim()}
+                    size="small"
+                    text="Save"
+                    type="submit"
+                    variant="primary"
+                  />
+                </div>
+                <p class="tx-detail__note">Saved only on this device.</p>
+              </form>
+            {/if}
           </dd>
         </div>
       {/if}
@@ -389,6 +459,39 @@
   .tx-detail__name {
     display: block;
     font-weight: 500;
+  }
+
+  .tx-detail__list :global(.tx-detail__save) {
+    align-self: flex-start;
+    margin-top: 0.375rem;
+  }
+
+  .tx-detail__save-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+
+    & label {
+      color: var(--calm-muted);
+      font-size: 0.8125rem;
+    }
+  }
+
+  .tx-detail__save-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+
+    & > :global(input) {
+      flex: 1 1 8rem;
+      min-width: 0;
+    }
+  }
+
+  .tx-detail__note {
+    color: var(--calm-muted);
+    font-size: 0.78125rem;
   }
 
   .tx-detail__code {

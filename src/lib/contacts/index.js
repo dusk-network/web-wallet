@@ -1,5 +1,6 @@
 export {
   addressType,
+  contactNamesOf,
   contactsStore,
   findContact,
   getContact,

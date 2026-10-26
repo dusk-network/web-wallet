@@ -12,6 +12,8 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { FullAddress } from "$lib/components";
   import {
+    contactNamesOf,
+    contactsStore,
     findContact,
     markContactNameChecked,
     saveContact,
@@ -143,6 +145,7 @@
 
   $: activity = activityWith(rows, contact.address, {
     bridgeContracts,
+    contactNames: contactNamesOf($contactsStore),
     locale,
   }).slice(0, 5);
   $: kind = contact.type === "address" ? "Shielded" : "Public";

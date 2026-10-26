@@ -21,6 +21,7 @@ import { TX_KIND } from "./constants";
  *
  * @typedef {{
  *   bridgeContracts?: Set<string>,
+ *   contactNames?: Map<string, string>,
  *   locale: string,
  *   ownAccount?: string,
  * }} PresentContext
@@ -176,13 +177,15 @@ function bridgeTitle(row) {
 }
 
 /**
- * A row's title and the first part of its line.
+ * A row's title and the first part of its line. A counterparty saved as a
+ * contact goes by the contact's name, with its `.dusk` name after it.
  *
  * @param {ActivityRow} row
  * @param {ActivityIcon} icon
+ * @param {Map<string, string>} [contactNames] Contact names by address
  * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
  */
-function titleOf(row, icon) {
+function titleOf(row, icon, contactNames) {
   const kindTitle = row.kind ? KIND_TITLES.get(row.kind) : undefined;
 
   if (kindTitle) {
@@ -197,12 +200,30 @@ function titleOf(row, icon) {
     return { title: "To yourself", titleIsAddress: false, verb: "Sent" };
   }
 
+  return counterpartyTitle(row, icon, contactNames);
+}
+
+/**
+ * The title of a row with someone on the other side: the contact's name,
+ * the verified `.dusk` name, the call, or the short address.
+ *
+ * @param {ActivityRow} row
+ * @param {ActivityIcon} icon
+ * @param {Map<string, string>} [contactNames] Contact names by address
+ * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
+ */
+function counterpartyTitle(row, icon, contactNames) {
   const name = row.counterpartyName ?? row.toName;
   const counterparty = counterpartyOf(row);
   const verb = row.direction === "in" ? "Received" : "Sent";
+  const contact = counterparty ? contactNames?.get(counterparty) : undefined;
 
-  if (name) {
-    return { title: name, titleIsAddress: false, verb };
+  if (contact || name) {
+    return {
+      title: contact && name ? `${contact} · ${name}` : (contact ?? name ?? ""),
+      titleIsAddress: false,
+      verb,
+    };
   }
 
   if (icon === "call") {
@@ -250,9 +271,9 @@ function shownStatus(row) {
  * @param {PresentContext} context
  * @returns {ActivityPresentation}
  */
-export function describeRow(row, { bridgeContracts, locale }) {
+export function describeRow(row, { bridgeContracts, contactNames, locale }) {
   const { category, icon } = classify(row, bridgeContracts);
-  const { title, titleIsAddress, verb } = titleOf(row, icon);
+  const { title, titleIsAddress, verb } = titleOf(row, icon, contactNames);
   const status = shownStatus(row);
   const lux = toLux(row.amount);
   const failed = status === "failed";
