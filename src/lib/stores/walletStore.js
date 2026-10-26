@@ -145,12 +145,12 @@ function historyOf(profile) {
  * it: in the history of the profile that sends it, taken as the send
  * begins, which keeps nothing after a reset since (activityStore's epoch).
  *
- * @param {Omit<ActivityLocalRecord, "hash" | "id" | "ownerKey" | "status" | "submittedAt">} details
+ * @param {Profile} profile
+ * @param {SentDetails} details
  * @returns {(txInfo: TransactionInfo) => void}
  */
-const recordInHistory = (details) => {
-  const profile = getCurrentProfile();
-  const history = profile ? historyOf(profile) : null;
+const recordInHistory = (profile, details) => {
+  const history = historyOf(profile);
 
   return (txInfo) => {
     history?.recordSent({ ...details, hash: txInfo.hash }).catch(() => {});
@@ -158,18 +158,13 @@ const recordInHistory = (details) => {
 };
 
 /**
- * Whether an address or account is the current profile's own.
+ * Whether an address or account is the profile's own.
  *
  * @param {string} to
+ * @param {Profile} profile
  */
-const isOwn = (to) => {
-  const profile = getCurrentProfile();
-
-  return (
-    Boolean(profile) &&
-    (to === String(profile?.account) || to === String(profile?.address))
-  );
-};
+const isOwn = (to, profile) =>
+  to === String(profile.account) || to === String(profile.address);
 
 /** @type {(txInfo: TransactionInfo) => void} */
 const observeTxRemoval = (txInfo) => {
@@ -197,11 +192,11 @@ const passThruWithEffects = (fn) => (a) => {
  * sending profile's, and after a lock or a reset since, the cache is left
  * alone.
  *
+ * @param {Profile} profile
  * @returns {(txInfo: TransactionInfo) => Promise<TransactionInfo>}
  */
-const updateCacheAfterTransaction = () => {
+const updateCacheAfterTransaction = (profile) => {
   const session = walletSession;
-  const profile = getCurrentProfile();
 
   return async (txInfo) => {
     if (session !== walletSession) {
@@ -217,12 +212,34 @@ const updateCacheAfterTransaction = () => {
       await treasury
         .updateCachedPendingNotes(txInfo.nullifiers, txInfo.hash)
         .catch(() => {});
-    } else if (profile) {
+    } else {
       await treasury.updateCachedNonce(profile, txInfo.nonce);
     }
 
     return txInfo;
   };
+};
+
+/**
+ * Sends a transaction as `profile`, taken once as the send begins: it is
+ * built, kept in the cache and recorded in the history as that profile,
+ * whichever one is chosen while the wallet syncs before it goes out.
+ *
+ * @param {Profile} profile
+ * @param {SentDetails} details What the history shows of it
+ * @param {(network: import("@dusk/w3sper").Network) => Promise<TransactionInfo>} execute
+ * @returns {Promise<TransactionInfo>}
+ */
+const sendAs = (profile, details, execute) => {
+  const keepInCache = updateCacheAfterTransaction(profile);
+  const record = recordInHistory(profile, details);
+
+  return sync()
+    .then(networkStore.connect)
+    .then(execute)
+    .then(keepInCache)
+    .then(passThruWithEffects(observeTxRemoval))
+    .then(passThruWithEffects(record));
 };
 
 /** @type {() => Promise<void>} */
@@ -322,26 +339,21 @@ const clearLocalDataAndInit = async (profileGenerator, syncFromBlock) => {
 };
 
 /** @type {WalletStoreServices["claimRewards"]} */
-const claimRewards = async (amount, gas) =>
-  sync()
-    .then(networkStore.connect)
-    .then((network) =>
-      network.execute(
-        bookkeeper.as(unsafeGetCurrentProfile()).withdraw(amount).gas(gas)
-      )
-    )
-    .then(updateCacheAfterTransaction())
-    .then(passThruWithEffects(observeTxRemoval))
-    .then(
-      passThruWithEffects(
-        recordInHistory({
-          amount: String(amount),
-          direction: "in",
-          kind: TX_KIND.WITHDRAW_REWARD,
-          privacy: "public",
-        })
-      )
-    );
+const claimRewards = async (amount, gas) => {
+  const profile = unsafeGetCurrentProfile();
+
+  return sendAs(
+    profile,
+    {
+      amount: String(amount),
+      direction: "in",
+      kind: TX_KIND.WITHDRAW_REWARD,
+      privacy: "public",
+    },
+    (network) =>
+      network.execute(bookkeeper.as(profile).withdraw(amount).gas(gas))
+  );
+};
 
 /** @type {WalletStoreServices["getTransactionsHistory"]} */
 const getTransactionsHistory = async () => {
@@ -429,48 +441,36 @@ async function setCurrentProfile(profile) {
 }
 
 /** @type {WalletStoreServices["shield"]} */
-const shield = async (amount, gas) =>
-  sync()
-    .then(networkStore.connect)
-    .then((network) =>
-      network.execute(
-        bookkeeper.as(unsafeGetCurrentProfile()).shield(amount).gas(gas)
-      )
-    )
-    .then(updateCacheAfterTransaction())
-    .then(passThruWithEffects(observeTxRemoval))
-    .then(
-      passThruWithEffects(
-        recordInHistory({
-          amount: String(amount),
-          direction: "out",
-          kind: TX_KIND.SHIELD,
-          privacy: "public",
-        })
-      )
-    );
+const shield = async (amount, gas) => {
+  const profile = unsafeGetCurrentProfile();
+
+  return sendAs(
+    profile,
+    {
+      amount: String(amount),
+      direction: "out",
+      kind: TX_KIND.SHIELD,
+      privacy: "public",
+    },
+    (network) => network.execute(bookkeeper.as(profile).shield(amount).gas(gas))
+  );
+};
 
 /** @type {WalletStoreServices["stake"]} */
-const stake = async (amount, gas) =>
-  sync()
-    .then(networkStore.connect)
-    .then((network) =>
-      network.execute(
-        bookkeeper.as(unsafeGetCurrentProfile()).stake(amount).gas(gas)
-      )
-    )
-    .then(updateCacheAfterTransaction())
-    .then(passThruWithEffects(observeTxRemoval))
-    .then(
-      passThruWithEffects(
-        recordInHistory({
-          amount: String(amount),
-          direction: "out",
-          kind: TX_KIND.STAKE,
-          privacy: "public",
-        })
-      )
-    );
+const stake = async (amount, gas) => {
+  const profile = unsafeGetCurrentProfile();
+
+  return sendAs(
+    profile,
+    {
+      amount: String(amount),
+      direction: "out",
+      kind: TX_KIND.STAKE,
+      privacy: "public",
+    },
+    (network) => network.execute(bookkeeper.as(profile).stake(amount).gas(gas))
+  );
+};
 
 /** @type {WalletStoreServices["sync"]} */
 async function sync(fromBlock) {
@@ -625,40 +625,38 @@ async function sync(fromBlock) {
 }
 
 /** @type {WalletStoreServices["transfer"]} */
-const transfer = async (to, amount, memo, gas, { toName } = {}) =>
-  sync()
-    .then(networkStore.connect)
-    .then(async (network) => {
+const transfer = async (to, amount, memo, gas, { toName } = {}) => {
+  const profile = unsafeGetCurrentProfile();
+  const isShielded = ProfileGenerator.typeOf(to) === "address";
+
+  return sendAs(
+    profile,
+    {
+      amount: String(amount),
+      direction: isOwn(to, profile) ? "self" : "out",
+      kind: TX_KIND.TRANSFER,
+      memo: memo || undefined,
+      privacy: isShielded ? "shielded" : "public",
+      to,
+      toName: toName || undefined,
+    },
+    async (network) => {
       const tx = bookkeeper
-        .as(unsafeGetCurrentProfile())
+        .as(profile)
         .transfer(amount)
         .to(to)
         .memo(memo)
         .gas(gas);
 
-      if (ProfileGenerator.typeOf(to) === "address") {
+      if (isShielded) {
         // @ts-ignore
         tx.obfuscated();
       }
 
       return await network.execute(tx);
-    })
-    .then(updateCacheAfterTransaction())
-    .then(passThruWithEffects(observeTxRemoval))
-    .then(
-      passThruWithEffects(
-        recordInHistory({
-          amount: String(amount),
-          direction: isOwn(to) ? "self" : "out",
-          kind: TX_KIND.TRANSFER,
-          memo: memo || undefined,
-          privacy:
-            ProfileGenerator.typeOf(to) === "address" ? "shielded" : "public",
-          to,
-          toName: toName || undefined,
-        })
-      )
-    );
+    }
+  );
+};
 
 /** @type {WalletStoreServices["depositEvmFunctionCall"]} */
 const depositEvmFunctionCall = async (
@@ -671,12 +669,17 @@ const depositEvmFunctionCall = async (
   } = {}
 ) => {
   const bridgeContractId = getBridgeContractId();
+  const profile = unsafeGetCurrentProfile();
 
-  return sync()
-    .then(networkStore.connect)
-    .then(async (network) => {
-      const profile = unsafeGetCurrentProfile();
-      const bookentry = bookkeeper.as(profile);
+  return sendAs(
+    profile,
+    {
+      amount: String(amount),
+      direction: "out",
+      kind: TX_KIND.CONTRACT_CALL,
+      privacy: "public",
+    },
+    async (network) => {
       const payload = buildDepositETHToWithValuePayload({
         amountLux: amount,
         contractId: bridgeContractId,
@@ -684,71 +687,50 @@ const depositEvmFunctionCall = async (
         minGasLimit,
         to: address,
       });
-      const builder = /** @type {any} */ (bookentry.transfer(0n)).payload(
-        payload
-      );
+      const builder = /** @type {any} */ (
+        bookkeeper.as(profile).transfer(0n)
+      ).payload(payload);
 
       return await network.execute(
         builder.to(profile.account).deposit(BigInt(amount)).gas(gas)
       );
-    })
-    .then(updateCacheAfterTransaction())
-    .then(passThruWithEffects(observeTxRemoval))
-    .then(
-      passThruWithEffects(
-        recordInHistory({
-          amount: String(amount),
-          direction: "out",
-          kind: TX_KIND.CONTRACT_CALL,
-          privacy: "public",
-        })
-      )
-    );
+    }
+  );
 };
 
 /** @type {WalletStoreServices["unshield"]} */
-const unshield = async (amount, gas) =>
-  sync()
-    .then(networkStore.connect)
-    .then((network) =>
-      network.execute(
-        bookkeeper.as(unsafeGetCurrentProfile()).unshield(amount).gas(gas)
-      )
-    )
-    .then(updateCacheAfterTransaction())
-    .then(passThruWithEffects(observeTxRemoval))
-    .then(
-      passThruWithEffects(
-        recordInHistory({
-          amount: String(amount),
-          direction: "in",
-          kind: TX_KIND.UNSHIELD,
-          privacy: "shielded",
-        })
-      )
-    );
+const unshield = async (amount, gas) => {
+  const profile = unsafeGetCurrentProfile();
+
+  return sendAs(
+    profile,
+    {
+      amount: String(amount),
+      direction: "in",
+      kind: TX_KIND.UNSHIELD,
+      privacy: "shielded",
+    },
+    (network) =>
+      network.execute(bookkeeper.as(profile).unshield(amount).gas(gas))
+  );
+};
 
 /** @type {WalletStoreServices["unstake"]} */
-const unstake = async (amount, gas) =>
-  sync()
-    .then(networkStore.connect)
-    .then((network) =>
-      network.execute(
-        bookkeeper.as(unsafeGetCurrentProfile()).unstake(amount).gas(gas)
-      )
-    )
-    .then(updateCacheAfterTransaction())
-    .then(passThruWithEffects(observeTxRemoval))
-    .then(
-      passThruWithEffects(
-        recordInHistory({
-          amount: String(amount),
-          direction: "in",
-          kind: TX_KIND.UNSTAKE,
-          privacy: "public",
-        })
-      )
-    );
+const unstake = async (amount, gas) => {
+  const profile = unsafeGetCurrentProfile();
+
+  return sendAs(
+    profile,
+    {
+      amount: String(amount),
+      direction: "in",
+      kind: TX_KIND.UNSTAKE,
+      privacy: "public",
+    },
+    (network) =>
+      network.execute(bookkeeper.as(profile).unstake(amount).gas(gas))
+  );
+};
 
 /** @type {WalletStoreServices["useContract"]} */
 const useContract = async (contractId, wasmPath) =>
@@ -777,15 +759,22 @@ const executeContractFunction = async (
   fnName,
   args,
   gas
-) =>
-  sync()
-    .then(networkStore.connect)
-    .then(async (network) => {
+) => {
+  const profile = unsafeGetCurrentProfile();
+
+  return sendAs(
+    profile,
+    {
+      amount: "0",
+      direction: "out",
+      kind: TX_KIND.CONTRACT_CALL,
+      privacy: "public",
+    },
+    async (network) => {
       network.dataDrivers.register(contractId, () =>
         fetch(wasmPath).then((r) => r.arrayBuffer())
       );
 
-      const profile = unsafeGetCurrentProfile();
       const contract = bookkeeper.as(profile).contract(contractId, network);
       const contractFunction = contract.tx?.[fnName];
 
@@ -803,19 +792,9 @@ const executeContractFunction = async (
       }
 
       return await network.execute(tx);
-    })
-    .then(updateCacheAfterTransaction())
-    .then(passThruWithEffects(observeTxRemoval))
-    .then(
-      passThruWithEffects(
-        recordInHistory({
-          amount: "0",
-          direction: "out",
-          kind: TX_KIND.CONTRACT_CALL,
-          privacy: "public",
-        })
-      )
-    );
+    }
+  );
+};
 
 /** @type {WalletStoreServices["finalizeDuskEvmWithdrawal"]} */
 const finalizeDuskEvmWithdrawal = async (

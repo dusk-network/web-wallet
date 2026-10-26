@@ -170,3 +170,9 @@ type ShieldedBlock = {
   timestamp: number | null;
   txs: Map<string, any>;
 };
+
+/** What the wallet records of a transaction it sends, for its history. */
+type SentDetails = Omit<
+  ActivityLocalRecord,
+  "hash" | "id" | "ownerKey" | "status" | "submittedAt"
+>;

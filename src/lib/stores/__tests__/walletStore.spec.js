@@ -793,6 +793,39 @@ describe("Wallet store", async () => {
       vi.useFakeTimers();
     });
 
+    it("should build, cache and record a send as the profile it began with, though another one is chosen while the wallet syncs", async () => {
+      vi.useRealTimers();
+
+      const { currentProfile: payer, profiles } = get(walletStore);
+      const held = Promise.withResolvers();
+
+      // The sync before the send waits, and another profile is chosen.
+      treasuryUpdateSpy.mockImplementationOnce(() => held.promise);
+      vi.mocked(activityFor).mockClear();
+      history.session.recordSent.mockClear();
+      executeSpy.mockResolvedValueOnce({
+        buffer: new Uint8Array(),
+        hash: phoenixTxResult.hash,
+        nonce: 7n,
+      });
+
+      const sending = walletStore.transfer(toMoonlight, amount, memo, gas);
+
+      await vi.waitUntil(() => treasuryUpdateSpy.mock.calls.length === 1);
+      await walletStore.setCurrentProfile(profiles[1]);
+      held.resolve(undefined);
+      await sending;
+
+      expect(executeSpy.mock.calls[0][0].bookentry.profile).toBe(payer);
+      expect(updateNonceSpy).toHaveBeenCalledExactlyOnceWith(payer, 7n);
+      expect(
+        vi.mocked(activityFor).mock.calls.map(([options]) => options.account)
+      ).toStrictEqual([String(payer?.account)]);
+      expect(history.session.recordSent).toHaveBeenCalledOnce();
+
+      vi.useFakeTimers();
+    });
+
     it("should leave the cache alone when the wallet is reset while a send goes out", async () => {
       vi.useRealTimers();
 
