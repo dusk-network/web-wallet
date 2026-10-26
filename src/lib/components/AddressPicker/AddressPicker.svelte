@@ -25,6 +25,14 @@
    */
   export let getName = () => Promise.resolve("");
 
+  /**
+   * The name last verified for a public account, shown while its lookup is
+   * pending or when it fails, as when the node can't be reached: "" for none.
+   *
+   * @type {(account: string) => string}
+   */
+  export let getKnownName = () => "";
+
   /** @type {string|undefined} */
   export let className = undefined;
 
@@ -127,10 +135,12 @@
   $: currentAccount = currentProfile ? currentProfile.account.toString() : "";
 
   // The current profile's name, looked up once the picker has rendered:
-  // "" for none, as when the lookup fails. The profiles listed look theirs
-  // up when the list opens.
+  // "" for none, or the name last verified when the lookup fails. The
+  // profiles listed look theirs up when the list opens.
   $: currentName =
-    isMounted && currentAccount ? getName(currentAccount).catch(() => "") : "";
+    isMounted && currentAccount
+      ? getName(currentAccount).catch(() => getKnownName(currentAccount))
+      : "";
 </script>
 
 {#if expanded}
@@ -161,20 +171,20 @@
     <span class="address-picker__current-profile" id={currentProfileId}>
       <span class="address-picker__title">{displayedAddress}</span>
       {#if currentAccount}
-        {#snippet currentAccountLine()}
-          <span class="address-picker__account" title={currentAccount}>
-            <span aria-hidden="true">{shortenAddress(currentAccount)}</span>
-            <span class="sr-only">{currentAccount}</span>
-          </span>
-        {/snippet}
-        {#await currentName}
-          {@render currentAccountLine()}
-        {:then name}
+        {#snippet currentNameLine(/** @type {string} */ name)}
           {#if name}
             <span class="address-picker__name" title={name}>{name}</span>
           {:else}
-            {@render currentAccountLine()}
+            <span class="address-picker__account" title={currentAccount}>
+              <span aria-hidden="true">{shortenAddress(currentAccount)}</span>
+              <span class="sr-only">{currentAccount}</span>
+            </span>
           {/if}
+        {/snippet}
+        {#await currentName}
+          {@render currentNameLine(getKnownName(currentAccount))}
+        {:then name}
+          {@render currentNameLine(name)}
         {/await}
       {/if}
     </span>
@@ -216,24 +226,24 @@
                     >
                   {/if}
                 </span>
-                {#snippet accountLine()}
-                  <span class="address-picker__address-value" title={account}>
-                    <span aria-hidden="true">{shortenAddress(account)}</span>
-                    <span class="sr-only">{account}</span>
-                  </span>
-                {/snippet}
-                {#await getName(account)}
-                  {@render accountLine()}
-                {:then name}
+                {#snippet nameLine(/** @type {string} */ name)}
                   {#if name}
                     <span class="address-picker__address-name" title={name}
                       >{name}</span
                     >
                   {:else}
-                    {@render accountLine()}
+                    <span class="address-picker__address-value" title={account}>
+                      <span aria-hidden="true">{shortenAddress(account)}</span>
+                      <span class="sr-only">{account}</span>
+                    </span>
                   {/if}
+                {/snippet}
+                {#await getName(account)}
+                  {@render nameLine(getKnownName(account))}
+                {:then name}
+                  {@render nameLine(name)}
                 {:catch}
-                  {@render accountLine()}
+                  {@render nameLine(getKnownName(account))}
                 {/await}
               </button>
               <div class="address-picker__copy-buttons">

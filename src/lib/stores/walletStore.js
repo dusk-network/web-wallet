@@ -7,6 +7,7 @@ import {
   BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
   buildDepositETHToWithValuePayload,
 } from "$lib/bridge/deposit";
+import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
 import WalletTreasury from "$lib/wallet-treasury";
 
 import { transactions } from "$lib/mock-data";
@@ -219,6 +220,7 @@ const abortSync = () => {
 /** @type {WalletStoreServices["clearLocalData"]} */
 const clearLocalData = async () => {
   abortSync();
+  forgetVerifiedNames();
 
   await treasury.clearCache();
 };

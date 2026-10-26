@@ -60,6 +60,7 @@ describe("getPrimaryName", () => {
 
   afterEach(() => {
     createLensReader.mockReset();
+    localStorage.clear();
     vi.useRealTimers();
   });
 
@@ -113,6 +114,33 @@ describe("getPrimaryName", () => {
     await getPrimaryName(account, "testnet", nodeUrl);
 
     expect(testnetReader.verifyPrimary).toHaveBeenCalledTimes(3);
+  });
+
+  it("should keep the outcome of a public account's lookup that worked, until another one works", async () => {
+    const { getVerifiedName } = await import("..");
+    const reader = readerWith("alice.dusk");
+
+    vi.useFakeTimers();
+    createLensReader.mockResolvedValue(reader);
+
+    expect(getVerifiedName("testnet", account)).toBe("");
+
+    await getPrimaryName(account, "testnet", nodeUrl);
+
+    expect(getVerifiedName("testnet", account)).toBe("alice.dusk");
+    expect(getVerifiedName("mainnet", account)).toBe("");
+    expect(getVerifiedName("testnet", otherAccount)).toBe("");
+
+    reader.verifyPrimary.mockRejectedValueOnce(new Error("Node unreachable"));
+    vi.advanceTimersByTime(60_000);
+
+    await expect(getPrimaryName(account, "testnet", nodeUrl)).rejects.toThrow();
+    expect(getVerifiedName("testnet", account)).toBe("alice.dusk");
+
+    reader.verifyPrimary.mockResolvedValueOnce(null);
+
+    await expect(getPrimaryName(account, "testnet", nodeUrl)).resolves.toBe("");
+    expect(getVerifiedName("testnet", account)).toBe("");
   });
 
   it("should look a name up again after a lookup failed", async () => {

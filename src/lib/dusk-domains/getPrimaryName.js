@@ -1,5 +1,6 @@
 import getLensReader from "./getLensReader";
 import resolveDuskName from "./resolveDuskName";
+import { keepVerifiedName } from "./verifiedNames";
 
 /** How long a lookup is reused, in milliseconds: a minute. */
 const MAX_AGE = 60_000;
@@ -41,7 +42,8 @@ function reuse(key, lookUp) {
  * name's `phoenix_payment_endpoint` record is that address, so a name is never
  * shown with an address it doesn't pay to. A lookup is reused for a minute,
  * per network and address; one that fails rejects, and is made again the next
- * time.
+ * time. The outcome of a public account's lookup is kept, see
+ * `getVerifiedName`.
  *
  * @param {string} account The public account, in Base58.
  * @param {string} network The network the wallet is connected to.
@@ -87,7 +89,10 @@ export default function getPrimaryName(
     const primary = await reader.verifyPrimary(
       Array.from(decodeBase58(account) ?? [])
     );
+    const name = primary?.primary.spelling ?? "";
 
-    return primary?.primary.spelling ?? "";
+    keepVerifiedName(network, account, name);
+
+    return name;
   });
 }

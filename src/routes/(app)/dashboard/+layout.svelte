@@ -8,7 +8,7 @@
     mdiTimerSand,
   } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
-  import { getPrimaryName } from "$lib/dusk-domains";
+  import { getPrimaryName, getVerifiedName } from "$lib/dusk-domains";
   import { networkStore, walletStore } from "$lib/stores";
   import { AddressPicker, AppAnchorButton, SyncBar } from "$lib/components";
   import { makeNodeUrl } from "$lib/url";
@@ -81,6 +81,7 @@
 
     <AddressPicker
       {currentProfile}
+      getKnownName={(account) => getVerifiedName(networkName, account)}
       getName={lookUpNamesOn(networkName)}
       {profiles}
       on:setCurrentProfile={(event) => setCurrentProfile(event.detail.profile)}
