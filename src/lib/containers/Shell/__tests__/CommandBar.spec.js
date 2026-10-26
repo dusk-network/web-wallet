@@ -120,6 +120,33 @@ describe("CommandBar", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the focus in the search with Tab, between the input and its close button", async () => {
+    const close = vi.fn();
+    const { getByRole } = render(CommandBar, {
+      events: { close },
+      props: { pages },
+    });
+    const input = getByRole("combobox");
+    const closeButton = getByRole("button", { name: "Close search" });
+
+    await vi.waitFor(() => expect(input).toHaveFocus());
+    await fireEvent.keyDown(input, { key: "Tab" });
+
+    expect(closeButton).toHaveFocus();
+
+    await fireEvent.keyDown(closeButton, { key: "Tab", shiftKey: true });
+
+    expect(input).toHaveFocus();
+
+    await fireEvent.keyDown(input, { key: "Tab", shiftKey: true });
+
+    expect(closeButton).toHaveFocus();
+
+    await fireEvent.keyDown(closeButton, { key: "Escape" });
+
+    expect(close).toHaveBeenCalledOnce();
+  });
+
   it("closes on Escape", async () => {
     const close = vi.fn();
     const { getByRole } = render(CommandBar, {

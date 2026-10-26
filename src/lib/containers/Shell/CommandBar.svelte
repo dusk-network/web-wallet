@@ -21,6 +21,9 @@
   /** @type {HTMLInputElement} */
   let input;
 
+  /** @type {HTMLButtonElement | undefined} */
+  let closeButton;
+
   let query = "";
   let active = 0;
 
@@ -212,6 +215,28 @@
     };
   }
 
+  /**
+   * Tab and Shift+Tab move between the dialog's two controls, the input and
+   * its close button: focus stays in the dialog.
+   *
+   * @param {KeyboardEvent} event
+   * @param {HTMLElement | undefined} next
+   */
+  function cycleFocus(event, next) {
+    event.preventDefault();
+    next?.focus();
+  }
+
+  /** @param {KeyboardEvent} event */
+  function handleCloseKeydown(event) {
+    if (event.key === "Tab") {
+      cycleFocus(event, input);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+    }
+  }
+
   /** @param {KeyboardEvent} event */
   function handleKeydown(event) {
     switch (event.key) {
@@ -240,8 +265,7 @@
 
         break;
       case "Tab":
-        // Focus stays in the dialog: the input and its close button.
-        event.preventDefault();
+        cycleFocus(event, closeButton);
         break;
       default:
         break;
@@ -291,8 +315,10 @@
     />
     <button
       aria-label="Close search"
+      bind:this={closeButton}
       class="command-bar__close"
       on:click={close}
+      on:keydown={handleCloseKeydown}
       type="button"
     >
       <Icon path={mdiClose} />
