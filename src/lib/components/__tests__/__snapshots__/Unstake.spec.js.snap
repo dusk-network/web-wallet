@@ -159,7 +159,7 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
             <span
               class="gas-fee__amount-value"
             >
-              0.020000000
+              0.02
             </span>
              DUSK
           </span>
@@ -429,7 +429,7 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
             <span
               class="gas-fee__amount-value"
             >
-              0.020000000
+              0.02
             </span>
              DUSK
           </span>

@@ -54,7 +54,10 @@
     <span
       class="activity-row__amount"
       class:activity-row__amount--muted={failed}
-      >{p.amount.sign}<BalanceValue value={p.amount.text} />
+      >{p.amount.sign}<BalanceValue
+        exact={p.amount.exact}
+        value={p.amount.text}
+      />
       <span class="activity-row__unit">DUSK</span></span
     >
     {#if p.status && STATUS_WORDS[p.status]}

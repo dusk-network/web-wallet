@@ -4,9 +4,14 @@
  * the CSV an export holds. Pure functions of the rows.
  */
 
-import { TX_KIND } from "./constants";
+import {
+  formatDusk,
+  formatDuskExact,
+  formatDuskPlain,
+  formatFee,
+} from "$lib/dusk/currency/formatDusk";
 
-const LUX_PER_DUSK = 1_000_000_000n;
+import { TX_KIND } from "./constants";
 
 /**
  * @typedef {"all" | "bridge" | "received" | "sent" | "staking"} ActivityKindFilter
@@ -21,7 +26,7 @@ const LUX_PER_DUSK = 1_000_000_000n;
  * }} PresentContext
  *
  * @typedef {{
- *   amount: { muted: boolean, sign: "" | "+" | "−", text: string },
+ *   amount: { exact: string, muted: boolean, sign: "" | "+" | "−", text: string },
  *   category: Exclude<ActivityKindFilter, "all"> | "other",
  *   counterparty: string | null,
  *   icon: ActivityIcon,
@@ -58,30 +63,6 @@ export function configuredBridgeContracts() {
       .map(normalizeContractId)
       .filter(Boolean)
   );
-}
-
-/**
- * An amount of LUX as DUSK, exactly: at least two decimals unless told
- * otherwise, at most nine.
- *
- * @param {bigint} lux
- * @param {string} locale
- * @param {{ minimumFractionDigits?: number }} [options]
- */
-export function formatLux(lux, locale, { minimumFractionDigits = 2 } = {}) {
-  const negative = lux < 0n;
-  const abs = negative ? -lux : lux;
-  const whole = new Intl.NumberFormat(locale).format(abs / LUX_PER_DUSK);
-  const decimal =
-    new Intl.NumberFormat(locale)
-      .formatToParts(1.5)
-      .find((part) => part.type === "decimal")?.value ?? ".";
-  const fraction = String(abs % LUX_PER_DUSK)
-    .padStart(9, "0")
-    .replace(/0+$/, "")
-    .padEnd(minimumFractionDigits, "0");
-
-  return `${negative ? "−" : ""}${whole}${fraction ? `${decimal}${fraction}` : ""}`;
 }
 
 /** @param {string | undefined} value */
@@ -277,15 +258,16 @@ export function describeRow(row, { bridgeContracts, locale }) {
   const failed = status === "failed";
   const moved = icon === "shield" || icon === "self";
   const fee = row.feePaid
-    ? `fee ${formatLux(toLux(row.feePaid), locale)} DUSK paid`
+    ? `fee ${formatFee(toLux(row.feePaid), locale)} DUSK paid`
     : "no fee";
 
   return {
     amount: {
+      exact: formatDuskExact(lux, locale),
       muted: failed,
       sign:
         failed || moved || lux === 0n ? "" : row.direction === "in" ? "+" : "−",
-      text: formatLux(lux, locale),
+      text: formatDusk(lux, locale),
     },
     category,
     counterparty: counterpartyOf(row),
@@ -498,15 +480,6 @@ const STATUS_WORDS = {
 };
 
 /**
- * An amount of LUX as plain DUSK, for a spreadsheet: no group separators,
- * a "-" for a negative one.
- *
- * @param {bigint} lux
- */
-const plainDusk = (lux) =>
-  formatLux(lux, "en").replaceAll(",", "").replace("−", "-");
-
-/**
  * One row as a CSV line.
  *
  * @param {ActivityRow} row
@@ -531,8 +504,8 @@ function csvLine(row, context) {
     csvText(p.titleIsAddress ? p.line : `${p.title} (${p.line})`),
     csvText(row.counterpartyName ?? row.toName ?? ""),
     csvField(p.counterparty ?? ""),
-    csvField(plainDusk(signed)),
-    csvField(row.feePaid ? plainDusk(toLux(row.feePaid)) : ""),
+    csvField(formatDuskPlain(signed)),
+    csvField(row.feePaid ? formatDuskPlain(toLux(row.feePaid)) : ""),
     csvText(row.memo ?? ""),
     csvField(STATUS_WORDS[row.status] ?? ""),
   ].join(",");

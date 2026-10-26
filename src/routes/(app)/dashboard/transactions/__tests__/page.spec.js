@@ -182,11 +182,11 @@ describe("History", () => {
       /^Today · /
     );
     expect(shownRows(container)).toEqual([
-      expect.stringMatching(/^alice-shop\.dusk Sent Public .+ −25\.00 DUSK$/),
+      expect.stringMatching(/^alice-shop\.dusk Sent Public .+ −25 DUSK$/),
       expect.stringMatching(
-        /^wallet-both\.dusk Received Shielded .+ \+50\.00 DUSK$/
+        /^wallet-both\.dusk Received Shielded .+ \+50 DUSK$/
       ),
-      expect.stringMatching(/^Staked Staking Public .+ −1,000\.00 DUSK$/),
+      expect.stringMatching(/^Staked Staking Public .+ −1,000 DUSK$/),
     ]);
   });
 

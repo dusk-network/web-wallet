@@ -7,7 +7,14 @@
 
   import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { duskToLux, luxToDusk } from "$lib/dusk/currency";
+  import { settingsStore } from "$lib/stores";
+  import {
+    duskToLux,
+    formatDusk,
+    formatDuskExact,
+    formatFee,
+    luxToDusk,
+  } from "$lib/dusk/currency";
 
   import {
     Agreement,
@@ -32,9 +39,6 @@
 
   /** @type {(...args: any[]) => Promise<string>} */
   export let execute;
-
-  /** @type {(amount: number) => string} */
-  export let formatter;
 
   /** @type {GasStoreContent} */
   export let gasLimits;
@@ -170,6 +174,8 @@
     isTotalAmountWithinAvailableBalance &&
     isBalanceSufficientForGas
   );
+
+  $: ({ language } = $settingsStore);
 </script>
 
 <div class="operation">
@@ -267,7 +273,6 @@
       </div>
 
       <GasSettings
-        {formatter}
         fee={maxGasFee}
         limit={gasLimit}
         limitLower={gasLimits.gasLimitLower}
@@ -284,7 +289,7 @@
       {:else if stakeAmountInLux < minStakeRequirement}
         <Banner variant="error" title="Stake amount below minimum requirement">
           <p>
-            The minimum is {luxToDusk(minStakeRequirement).toLocaleString()} DUSK.
+            The minimum is {formatDusk(minStakeRequirement, language)} DUSK.
           </p>
         </Banner>
       {:else if stakeAmountInLux > maxSpendableAmount}
@@ -313,14 +318,17 @@
       }}
     >
       <div in:fade|global class="operation__stake">
-        <ReviewAmount label="Amount" value={formatter(stakeAmount)} />
+        <ReviewAmount
+          label="Amount"
+          value={formatDuskExact(stakeAmountInLux, language)}
+        />
         <ReviewAmount
           label="Network fee (at most)"
-          value={formatter(luxToDusk(maxGasFee))}
+          value={formatFee(maxGasFee, language, { max: true })}
         />
         <ReviewAmount
           label="Total (at most)"
-          value={formatter(luxToDusk(totalAmount))}
+          value={formatFee(totalAmount, language, { max: true })}
         />
       </div>
     </WizardStep>
@@ -328,7 +336,6 @@
     <!-- OPERATION RESULT STEP  -->
     <WizardStep step={hideStakingNotice ? 2 : 3} {key} showNavigation={false}>
       <TransactionResult
-        {formatter}
         maxFee={maxGasFee}
         onBeforeLeave={resetOperation}
         operation={execute(stakeAmountInLux, gasPrice, gasLimit)}

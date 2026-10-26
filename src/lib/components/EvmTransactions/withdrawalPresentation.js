@@ -1,4 +1,4 @@
-import { formatUnits } from "viem";
+import { get } from "svelte/store";
 
 import {
   WITHDRAWAL_WAITING_PERIOD_SECONDS,
@@ -6,7 +6,9 @@ import {
   withdrawalStageDefaultMessage,
   withdrawalStageProgress,
 } from "$lib/bridge/withdrawalLifecycle";
+import { formatDusk } from "$lib/dusk/currency";
 import { middleEllipsis } from "$lib/dusk/string";
+import { settingsStore } from "$lib/stores";
 
 /**
  * @param {string} value
@@ -34,6 +36,8 @@ export function formatTimestamp(value) {
 }
 
 /**
+ * An amount in wei, in the wallet's one number format.
+ *
  * @param {string | null | undefined} value
  */
 function formatAmount(value) {
@@ -41,10 +45,7 @@ function formatAmount(value) {
     return null;
   }
 
-  const [whole, decimals = ""] = formatUnits(BigInt(value), 18).split(".");
-  const fraction = decimals.slice(0, 6).replace(/0+$/u, "");
-
-  return `${whole}${fraction ? `.${fraction}` : ""} DUSK`;
+  return `${formatDusk(BigInt(value) / 10n ** 9n, get(settingsStore).language)} DUSK`;
 }
 
 /**

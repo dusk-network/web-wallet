@@ -7,7 +7,7 @@
   } from "@mdi/js";
   import { Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
-  import { formatLux } from "$lib/activity/present";
+  import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { addBasePath } from "$lib/navigation";
 
   /** @type {bigint} */
@@ -42,7 +42,10 @@
   <li class="explainer-card">
     <p class="explainer-card__key"><Icon path={mdiEyeOutline} />Public</p>
     <p class="explainer-card__value">
-      <BalanceValue value={formatLux(unshielded, locale)} />
+      <BalanceValue
+        exact={formatDuskExact(unshielded, locale)}
+        value={formatDusk(unshielded, locale)}
+      />
       <span class="explainer-card__unit">DUSK</span>
     </p>
     <p class="explainer-card__text">
@@ -54,7 +57,10 @@
       <Icon path={mdiEyeOffOutline} />Shielded
     </p>
     <p class="explainer-card__value">
-      <BalanceValue value={formatLux(shielded, locale)} />
+      <BalanceValue
+        exact={formatDuskExact(shielded, locale)}
+        value={formatDusk(shielded, locale)}
+      />
       <span class="explainer-card__unit">DUSK</span>
     </p>
     <p class="explainer-card__text">
@@ -68,18 +74,24 @@
       </p>
       {#if staked}
         <p class="explainer-card__value">
-          <BalanceValue value={formatLux(staked, locale)} />
+          <BalanceValue
+            exact={formatDuskExact(staked, locale)}
+            value={formatDusk(staked, locale)}
+          />
           <span class="explainer-card__unit">DUSK staked</span>
         </p>
         <p class="explainer-card__text">
-          Rewards: <BalanceValue value={formatLux(reward, locale)} /> DUSK
+          Rewards: <BalanceValue
+            exact={formatDuskExact(reward, locale)}
+            value={formatDusk(reward, locale)}
+          /> DUSK
         </p>
       {:else}
         <p class="explainer-card__value explainer-card__value--text">
           Nothing staked right now
         </p>
         <p class="explainer-card__text">
-          From {formatLux(minimumStake, locale, { minimumFractionDigits: 0 })}
+          From {formatDusk(minimumStake, locale)}
           DUSK with your own node.
         </p>
         {#if hasPastStaking}

@@ -67,7 +67,7 @@ exports[`Staking > should render the staking page 1`] = `
         >
           <span>
             <!---->
-            0.000000000
+            0
             
             <!---->
           </span>
@@ -99,7 +99,7 @@ exports[`Staking > should render the staking page 1`] = `
         >
           <span>
             <!---->
-            0.000000000
+            0
             
             <!---->
           </span>

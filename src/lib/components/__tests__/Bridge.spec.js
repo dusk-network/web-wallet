@@ -1,11 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { tick } from "svelte";
-import {
-  createCurrencyFormatter,
-  duskToLux,
-  luxToDusk,
-} from "$lib/dusk/currency";
+
+import { formatFee } from "$lib/dusk/currency";
 import { settingsStore } from "$lib/stores";
 
 import { Bridge } from "..";
@@ -70,7 +67,6 @@ const getReviewAmounts = (container) =>
   ]);
 
 describe("Bridge", () => {
-  const formatter = createCurrencyFormatter("en", "DUSK", 9);
   const baseProps = {
     evmDuskBalance: {
       decimals: 18,
@@ -78,7 +74,6 @@ describe("Bridge", () => {
       symbol: "DUSK",
       value: 3_000_000_000_000_000_000n,
     },
-    formatter,
     gasLimits: {
       gasLimitLower: 10000000n,
       gasLimitUpper: 2900000000n,
@@ -93,7 +88,6 @@ describe("Bridge", () => {
       "zTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE4FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff",
     unshieldedBalance: 1_000_000_000_000n,
   };
-  const fee = baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
 
   // A withdrawal's gas and the DuskEVM gas price, as on testnet.
   const withdrawalGas = 138_463n;
@@ -136,7 +130,7 @@ describe("Bridge", () => {
     const amount = getByLabelText("Amount");
 
     expect(amount).toHaveAccessibleDescription(
-      "Available on DuskDS: 1,000.000000000 DUSK"
+      "Available on DuskDS: 1,000 DUSK"
     );
     expect(getByText(/^Available on DuskDS:/)).toBeInTheDocument();
 
@@ -152,7 +146,7 @@ describe("Bridge", () => {
     await withdraw(container);
 
     expect(getByLabelText("Amount")).toHaveAccessibleDescription(
-      "Available on DuskEVM: 3.000000000 DUSK"
+      "Available on DuskEVM: 3 DUSK"
     );
 
     await fireEvent.click(getByRole("button", { name: "Use max" }));
@@ -244,8 +238,8 @@ describe("Bridge", () => {
 
     await vi.waitFor(() =>
       expect(getReviewAmounts(container)).toStrictEqual([
-        ["Amount", `${formatter(2.5)} DUSK`],
-        ["Network fee (about)", "0.001384768 DUSK"],
+        ["Amount", "2.5 DUSK"],
+        ["Network fee (about)", "0.0014 DUSK"],
       ])
     );
     expect(
@@ -265,9 +259,9 @@ describe("Bridge", () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", `${formatter(2.5)} DUSK`],
-      ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
-      ["Total (at most)", `${formatter(luxToDusk(duskToLux(2.5) + fee))} DUSK`],
+      ["Amount", "2.5 DUSK"],
+      ["Network fee (at most)", "0.02 DUSK"],
+      ["Total (at most)", "2.52 DUSK"],
     ]);
     expect(container.querySelector("dt .dusk-icon")).toBeNull();
     expect(container.querySelector(".gas-fee")).toBeNull();
@@ -283,7 +277,7 @@ describe("Bridge", () => {
 
     expect(getReviewAmounts(container)[1]).toStrictEqual([
       "Network fee (at most)",
-      `${formatter(luxToDusk(gasLimit * 3n))} DUSK`,
+      "0.06 DUSK",
     ]);
 
     // Not while reviewing: the fee reviewed is the fee sent.
@@ -291,7 +285,7 @@ describe("Bridge", () => {
 
     expect(getReviewAmounts(container)[1]).toStrictEqual([
       "Network fee (at most)",
-      `${formatter(luxToDusk(gasLimit * 3n))} DUSK`,
+      "0.06 DUSK",
     ]);
   });
 
@@ -316,7 +310,7 @@ describe("Bridge", () => {
     };
     const feeOf = (/** @type {bigint} */ gas) => [
       "Network fee (about)",
-      `${formatter(luxToDusk((gas * evmGasPrice) / 1_000_000_000n))} DUSK`,
+      `${formatFee((gas * evmGasPrice) / 1_000_000_000n, "en")} DUSK`,
     ];
 
     await withdraw(container);
@@ -355,9 +349,7 @@ describe("Bridge", () => {
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", `${formatter(2.5)} DUSK`],
-    ]);
+    expect(getReviewAmounts(container)).toStrictEqual([["Amount", "2.5 DUSK"]]);
   });
 
   it("should hide the DuskDS and DuskEVM balances while balances are hidden, but not the Review amounts", async () => {
@@ -383,9 +375,9 @@ describe("Bridge", () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", `${formatter(2.5)} DUSK`],
-      ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
-      ["Total (at most)", `${formatter(luxToDusk(duskToLux(2.5) + fee))} DUSK`],
+      ["Amount", "2.5 DUSK"],
+      ["Network fee (at most)", "0.02 DUSK"],
+      ["Total (at most)", "2.52 DUSK"],
     ]);
   });
 });

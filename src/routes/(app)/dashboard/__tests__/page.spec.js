@@ -134,10 +134,10 @@ describe("Dashboard", () => {
     const { container, getByRole } = render(Dashboard, props);
 
     expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
-      "3,517.50"
+      "3,517.5"
     );
     expect(container.querySelector(".home-balance__legend")).toHaveTextContent(
-      "Public 1,172.50 Shielded 2,345.00"
+      "Public 1,172.5 Shielded 2,345"
     );
 
     for (const [name, href] of [
@@ -210,7 +210,7 @@ describe("Dashboard", () => {
     const { container } = render(Dashboard, props);
 
     expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
-      "Staking 1,000.00 DUSK staked Rewards: 11,022.842680864 DUSK Open staking"
+      "Staking 1,000 DUSK staked Rewards: 11,022.8426 DUSK Open staking"
     );
   });
 
@@ -225,12 +225,12 @@ describe("Dashboard", () => {
 
     expect(items()).toEqual([
       expect.stringMatching(
-        /^alice-shop\.dusk Sent · .+ · Public −5\.00 DUSK Pending$/
+        /^alice-shop\.dusk Sent · .+ · Public −5 DUSK Pending$/
       ),
       expect.stringMatching(
-        /^wallet-both\.dusk Received · .+ · Public \+50\.00 DUSK$/
+        /^wallet-both\.dusk Received · .+ · Public \+50 DUSK$/
       ),
-      `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid · Public 200.00 DUSK`,
+      `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid · Public 200 DUSK`,
     ]);
     expect(container.querySelector(".activity-row")).toHaveAttribute(
       "href",

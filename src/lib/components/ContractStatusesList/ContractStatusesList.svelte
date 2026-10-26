@@ -6,7 +6,7 @@
   /** @type {ContractStatus[]} */
   export let statuses;
 
-  /** @type {(status: ContractStatus) => status is { label: string, value: string }} */
+  /** @type {(status: ContractStatus) => status is ContractStatus & { value: string }} */
   const hasValue = (status) => status.value !== null;
 </script>
 
@@ -17,7 +17,7 @@
         {status.label}
       </dt>
       <dd class="contract-statuses__value">
-        <span><BalanceValue value={status.value} /></span>
+        <span><BalanceValue exact={status.exact} value={status.value} /></span>
         <DuskIcon className="contract-statuses__icon" />
       </dd>
     {/each}

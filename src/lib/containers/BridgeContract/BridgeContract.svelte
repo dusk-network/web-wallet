@@ -18,7 +18,6 @@
     wagmiConfig,
   } from "$lib/web3/walletConnection";
   import { AppAnchorButton, Bridge } from "$lib/components";
-  import { createCurrencyFormatter } from "$lib/dusk/currency";
   import {
     gasPriceStore,
     gasStore,
@@ -75,7 +74,7 @@
 
   $: ({ isConnected } = $account);
   $: ({ balance, currentProfile } = $walletStore);
-  $: ({ customGasLimit, customGasPrice, language } = $settingsStore);
+  $: ({ customGasLimit, customGasPrice } = $settingsStore);
   $: gasSettings = getGasSettings(
     "bridge",
     { customGasLimit, customGasPrice },
@@ -86,7 +85,6 @@
     ? currentProfile.account.toString()
     : "";
   $: unshieldedAccount = currentProfile ? currentProfile.account : null;
-  $: formatter = createCurrencyFormatter(language, "DUSK", 9);
 </script>
 
 {#if !isConnected}
@@ -110,7 +108,6 @@
     {unshieldedAccount}
     {evmDuskBalance}
     unshieldedBalance={balance.unshielded.value}
-    {formatter}
     {gasLimits}
     {gasSettings}
     on:operationChange

@@ -18,11 +18,7 @@
     Switch,
   } from "$lib/dusk/components";
   import { AppAnchorButton, CopyField, GasControls } from "$lib/components";
-  import {
-    createCurrencyFormatter,
-    currencies,
-    luxToDusk,
-  } from "$lib/dusk/currency";
+  import { currencies, formatFee } from "$lib/dusk/currency";
   import { createNumberFormatter } from "$lib/dusk/number";
   import {
     gasPriceStore,
@@ -120,7 +116,6 @@
   }
 
   $: numberFormatter = createNumberFormatter(language);
-  $: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
 </script>
 
 <section class="settings">
@@ -247,8 +242,10 @@
             />
             {#if isGasValid}
               <p class="settings-group__note">
-                Each transaction costs at most {duskFormatter(
-                  luxToDusk(customGasLimit * customGasPrice)
+                Each transaction costs at most {formatFee(
+                  customGasLimit * customGasPrice,
+                  language,
+                  { max: true }
                 )} DUSK.
               </p>
             {/if}

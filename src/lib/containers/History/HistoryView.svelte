@@ -219,7 +219,10 @@
                   <span
                     class="history__amount"
                     class:history__amount--muted={p.status === "failed"}
-                    >{p.amount.sign}<BalanceValue value={p.amount.text} />
+                    >{p.amount.sign}<BalanceValue
+                      exact={p.amount.exact}
+                      value={p.amount.text}
+                    />
                     <span class="history__unit">DUSK</span></span
                   >
                   {#if p.status && STATUS_WORDS[p.status]}

@@ -9,8 +9,9 @@ import {
 } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 import {
-  createCurrencyFormatter,
   duskToLux,
+  formatDuskExact,
+  formatFee,
   luxToDusk,
 } from "$lib/dusk/currency";
 import { shortenAddress } from "$lib/dusk/string";
@@ -70,7 +71,6 @@ const getReviewAmounts = (container) =>
   ]);
 
 describe("Send", () => {
-  const formatter = createCurrencyFormatter("en", "DUSK", 9);
   const lastTxId =
     "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
   const publicAddress =
@@ -82,7 +82,6 @@ describe("Send", () => {
     availableBalance: 1_000_000_000_000n,
     bep20BridgeAddress,
     execute: vi.fn().mockResolvedValue(lastTxId),
-    formatter,
     gasLimits: {
       gasLimitLower: 10000000n,
       gasLimitUpper: 2900000000n,
@@ -314,7 +313,7 @@ describe("Send", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      expect(maxFee()).toBe(formatter(luxToDusk(50_000_000n)));
+      expect(maxFee()).toBe("0.05");
       expect(getByRole("button", { name: "Next" })).toBeEnabled();
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
@@ -632,11 +631,14 @@ describe("Send", () => {
       const memo = getAsHTMLElement(container, ".operation__review-memo span");
 
       expect(getReviewAmounts(container)).toStrictEqual([
-        ["Amount", `${formatter(amount)} DUSK`],
-        ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
+        ["Amount", `${formatDuskExact(duskToLux(amount), "en")} DUSK`],
+        [
+          "Network fee (at most)",
+          `${formatFee(fee, "en", { max: true })} DUSK`,
+        ],
         [
           "Total (at most)",
-          `${formatter(luxToDusk(duskToLux(amount) + fee))} DUSK`,
+          `${formatFee(duskToLux(amount) + fee, "en", { max: true })} DUSK`,
         ],
       ]);
       expect(container.querySelector("dt .dusk-icon")).toBeNull();
@@ -760,7 +762,7 @@ describe("Send", () => {
       expect(getByRole("status")).toHaveTextContent(/^Sent Pending/);
       expect(getByText("Network fee (at most)")).toBeInTheDocument();
       expect(
-        getByText(`${formatter(luxToDusk(fee))} DUSK`)
+        getByText(`${formatFee(fee, "en", { max: true })} DUSK`)
       ).toBeInTheDocument();
       expect(
         getByRole("button", { name: "Copy transaction hash" })
@@ -777,7 +779,8 @@ describe("Send", () => {
         "Completed In block 4,687,200."
       );
       expect(getByText("Network fee")).toBeInTheDocument();
-      expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
+      // The fee charged, to the nearest of four decimals.
+      expect(getByText("0.0019 DUSK")).toBeInTheDocument();
     });
 
     it("should perform the transfer with the gas limit the user sets", async () => {

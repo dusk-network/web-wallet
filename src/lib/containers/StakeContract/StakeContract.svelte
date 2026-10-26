@@ -19,9 +19,6 @@
   /** @type {StakeInfo} */
   export let stakeInfo;
 
-  /** @type {(value: number | bigint) => string} */
-  export let formatter;
-
   /** @type {ContractOperation[]} */
   let operations;
 
@@ -111,7 +108,6 @@
   {#if currentOperation === "stake"}
     <Stake
       execute={executeOperations[currentOperation]}
-      {formatter}
       {gasLimits}
       {gasSettings}
       minStakeRequirement={minimumStake}
@@ -123,7 +119,6 @@
   {:else if currentOperation === "unstake" || currentOperation === "claim-rewards"}
     <Unstake
       execute={executeOperations[currentOperation]}
-      {formatter}
       {gasLimits}
       {gasSettings}
       on:operationChange

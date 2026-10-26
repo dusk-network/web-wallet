@@ -29,6 +29,8 @@ type ContractOperation = {
 };
 
 type ContractStatus = {
+  /** The value in full, shown on hover where `value` shortens it. */
+  exact?: string;
   label: string;
   value: string | null;
 };

@@ -2,8 +2,12 @@
   import { mdiEyeOffOutline, mdiEyeOutline } from "@mdi/js";
   import { Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
-  import { formatLux } from "$lib/activity/present";
-  import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
+  import {
+    createCurrencyFormatter,
+    formatDusk,
+    formatDuskExact,
+    luxToDusk,
+  } from "$lib/dusk/currency";
   import { settingsStore } from "$lib/stores";
 
   /** @type {bigint} */
@@ -59,7 +63,10 @@
   </div>
   <p class="home-balance__total">
     <span class="home-balance__amount"
-      ><BalanceValue value={formatLux(total, locale)} /></span
+      ><BalanceValue
+        exact={formatDuskExact(total, locale)}
+        value={formatDusk(total, locale)}
+      /></span
     >
     <span class="home-balance__unit">DUSK</span>
   </p>
@@ -74,11 +81,21 @@
   <p class="home-balance__legend">
     <span
       ><i class="home-balance__key home-balance__key--public"></i>Public
-      <b><BalanceValue value={formatLux(unshielded, locale)} /></b></span
+      <b
+        ><BalanceValue
+          exact={formatDuskExact(unshielded, locale)}
+          value={formatDusk(unshielded, locale)}
+        /></b
+      ></span
     >
     <span
       ><i class="home-balance__key home-balance__key--shielded"></i>Shielded
-      <b><BalanceValue value={formatLux(shielded, locale)} /></b></span
+      <b
+        ><BalanceValue
+          exact={formatDuskExact(shielded, locale)}
+          value={formatDusk(shielded, locale)}
+        /></b
+      ></span
     >
   </p>
 </section>

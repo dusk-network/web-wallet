@@ -8,19 +8,17 @@
     mdiTimerSand,
   } from "@mdi/js";
 
-  import { luxToDusk } from "$lib/dusk/currency";
+  import { formatFee } from "$lib/dusk/currency";
   import {
     AnchorButton,
     Button,
     ErrorDetails,
     Icon,
   } from "$lib/dusk/components";
+  import { settingsStore } from "$lib/stores";
   import { followTransaction } from "$lib/transactions";
 
   import WithdrawalHash from "../EvmTransactions/WithdrawalHash.svelte";
-
-  /** @type {(amount: number) => string} */
-  export let formatter;
 
   /**
    * The hash of the transaction sent, if there is one to follow.
@@ -77,10 +75,7 @@
       });
   }
 
-  /**
-   * @param {bigint} lux
-   */
-  const formatDusk = (lux) => `${formatter(luxToDusk(lux))} DUSK`;
+  $: ({ language } = $settingsStore);
 
   onMount(() => {
     if (hash) {
@@ -117,10 +112,10 @@
       </dd>
       {#if outcome}
         <dt>Network fee</dt>
-        <dd>{formatDusk(outcome.fee)}</dd>
+        <dd>{formatFee(outcome.fee, language)} DUSK</dd>
       {:else}
         <dt>Network fee (at most)</dt>
-        <dd>{formatDusk(maxFee)}</dd>
+        <dd>{formatFee(maxFee, language, { max: true })} DUSK</dd>
       {/if}
     </dl>
     {#if outcome?.error}

@@ -269,7 +269,7 @@ describe("Settings", () => {
     const limitInput = asInput(getByLabelText(/^gas limit$/i));
 
     expect(
-      getByText("Each transaction costs at most 0.050000000 DUSK.")
+      getByText("Each transaction costs at most 0.05 DUSK.")
     ).toBeInTheDocument();
 
     await fireInput(limitInput, "1500000");
@@ -282,7 +282,7 @@ describe("Settings", () => {
 
     expect(queryByText("The minimum is 2,000,000.")).toBeNull();
     expect(
-      getByText("Each transaction costs at most 0.003000000 DUSK.")
+      getByText("Each transaction costs at most 0.003 DUSK.")
     ).toBeInTheDocument();
   });
 

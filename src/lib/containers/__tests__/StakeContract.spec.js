@@ -3,7 +3,7 @@ import { cleanup, render } from "@testing-library/svelte";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { contractDescriptors } from "$lib/contracts";
-import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
+
 import { operationsStore, settingsStore } from "$lib/stores";
 
 import { StakeContract } from "..";
@@ -19,10 +19,8 @@ vi.mock("$lib/stores", async (importOriginal) => {
 });
 
 describe("StakeContract", () => {
-  const formatter = createCurrencyFormatter("en", "DUSK", 9);
   const props = {
     descriptor: contractDescriptors[2],
-    formatter,
     stakeInfo: mockedWalletStore.getMockedStoreValue().stakeInfo,
   };
 
@@ -58,7 +56,7 @@ describe("StakeContract", () => {
     (operation) => {
       const { container } = renderOperation(operation);
 
-      expect(getMaxFee(container)).toBe(formatter(luxToDusk(50_000_000n)));
+      expect(getMaxFee(container)).toBe("0.05");
     }
   );
 
@@ -82,6 +80,6 @@ describe("StakeContract", () => {
     const { container, queryAllByRole } = renderOperation("claim-rewards");
 
     expect(queryAllByRole("textbox")).toHaveLength(0);
-    expect(getMaxFee(container)).toBe(formatter(luxToDusk(35_000_000n)));
+    expect(getMaxFee(container)).toBe("0.035");
   });
 });

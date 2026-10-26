@@ -1002,7 +1002,7 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
               <span
                 class="gas-fee__amount-value"
               >
-                0.020000000
+                0.02
               </span>
                DUSK
             </span>
@@ -1238,7 +1238,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
         <dd
           class="review-amount__value svelte-1dytdvp"
         >
-          2,345.000000000 DUSK
+          2,345 DUSK
         </dd>
       </dl>
       <!---->
@@ -1325,7 +1325,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
         <dd
           class="review-amount__value svelte-1dytdvp"
         >
-          0.020000000 DUSK
+          0.02 DUSK
         </dd>
       </dl>
       <!---->
@@ -1340,7 +1340,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
         <dd
           class="review-amount__value svelte-1dytdvp"
         >
-          2,345.020000000 DUSK
+          2,345.02 DUSK
         </dd>
       </dl>
       <!---->

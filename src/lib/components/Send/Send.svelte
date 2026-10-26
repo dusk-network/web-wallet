@@ -8,7 +8,13 @@
   import { isDuskName } from "$lib/dusk-domains";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
-  import { duskToLux, luxToDusk } from "$lib/dusk/currency";
+  import { settingsStore } from "$lib/stores";
+  import {
+    duskToLux,
+    formatDuskExact,
+    formatFee,
+    luxToDusk,
+  } from "$lib/dusk/currency";
   import {
     isValidEvmAddress,
     makeClassName,
@@ -37,9 +43,6 @@
 
   /** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint, toName?: string) => Promise<string>} */
   export let execute;
-
-  /** @type {(amount: number) => string} */
-  export let formatter;
 
   /** @type {(name: string) => Promise<DuskNameResolution>} */
   export let resolveName;
@@ -518,6 +521,8 @@
     "operation__send-memo": true,
     "operation__send-memo--invalid": isMemoValid === false,
   });
+
+  $: ({ language } = $settingsStore);
 </script>
 
 <div class="operation">
@@ -769,7 +774,6 @@
         {/if}
 
         <GasSettings
-          {formatter}
           fee={maxGasFee}
           limit={gasLimit}
           limitLower={gasLimits.gasLimitLower}
@@ -820,7 +824,10 @@
       }}
     >
       <div in:fade|global class="operation__send">
-        <ReviewAmount label="Amount" value={formatter(sendAmount)} />
+        <ReviewAmount
+          label="Amount"
+          value={formatDuskExact(sendAmountInLux, language)}
+        />
 
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">
@@ -867,21 +874,17 @@
 
         <ReviewAmount
           label="Network fee (at most)"
-          value={formatter(luxToDusk(maxGasFee))}
+          value={formatFee(maxGasFee, language, { max: true })}
         />
         <ReviewAmount
           label="Total (at most)"
-          value={formatter(luxToDusk(totalAmount))}
+          value={formatFee(totalAmount, language, { max: true })}
         />
       </div>
     </WizardStep>
     <!-- Result Step -->
     <WizardStep step={3} {key} showNavigation={false}>
-      <TransactionResult
-        {formatter}
-        maxFee={maxGasFee}
-        operation={sendTransfer()}
-      />
+      <TransactionResult maxFee={maxGasFee} operation={sendTransfer()} />
     </WizardStep>
   </Wizard>
 </div>

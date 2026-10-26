@@ -60,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Call Allocate Shield
 - Show addresses and hashes in the system's code font
 - Show no money values or market data off mainnet
+- Show amounts in one format, at most four decimals, and in full on hover, under review and in a transaction's details
+- Round a fee up to four decimals when it is the most it can cost, and to the nearest when it was paid
 
 ### Removed
 

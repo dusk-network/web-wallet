@@ -12,7 +12,8 @@
   import { AnchorButton, Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { BalanceValue } from "$lib/components";
-  import { formatLux, fullDateTime, rowTime } from "$lib/activity/present";
+  import { fullDateTime, rowTime } from "$lib/activity/present";
+  import { formatDuskExact } from "$lib/dusk/currency";
   import { addBasePath } from "$lib/navigation";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
@@ -119,7 +120,7 @@
     </div>
 
     <p class="tx-detail__amount" class:tx-detail__amount--muted={failed}>
-      {p.amount.sign}<BalanceValue value={p.amount.text} />
+      {p.amount.sign}<BalanceValue value={p.amount.exact} />
       <span class="tx-detail__unit">DUSK</span>
     </p>
 
@@ -161,7 +162,7 @@
         <dt>Network fee paid</dt>
         <dd>
           {row.feePaid
-            ? `${formatLux(lux(row.feePaid), locale)} DUSK`
+            ? `${formatDuskExact(lux(row.feePaid), locale)} DUSK`
             : p.icon === "received"
               ? "Paid by the sender"
               : "Not known yet"}

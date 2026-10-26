@@ -8,7 +8,7 @@ import {
   vi,
 } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
+import { luxToDusk } from "$lib/dusk/currency";
 import { settingsStore } from "$lib/stores";
 
 import { Unstake } from "..";
@@ -46,13 +46,11 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
 });
 
 describe("Unstake", () => {
-  const formatter = createCurrencyFormatter("en", "DUSK", 9);
   const lastTxId =
     "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
 
   const baseProps = {
     execute: vi.fn().mockResolvedValue(lastTxId),
-    formatter,
     gasLimits: {
       gasLimitLower: 10000000n,
       gasLimitUpper: 2900000000n,
@@ -111,18 +109,13 @@ describe("Unstake", () => {
         ...baseProps,
         ...unstakeProps,
       });
-      const fee =
-        baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
 
       await vi.advanceTimersToNextTimerAsync();
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
       expect(getReviewAmounts(container)).toStrictEqual([
-        [
-          "Unstake Amount",
-          `${formatter(luxToDusk(unstakeProps.maxWithdrawAmount))} DUSK`,
-        ],
-        ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
+        ["Unstake Amount", "278 DUSK"],
+        ["Network fee (at most)", "0.02 DUSK"],
       ]);
       expect(container.querySelector("dt .dusk-icon")).toBeNull();
       expect(container.querySelector(".gas-fee")).toBeNull();
@@ -148,7 +141,7 @@ describe("Unstake", () => {
 
       expect(getReviewAmounts(container)[0]).toStrictEqual([
         "Unstake Amount",
-        `${formatter(luxToDusk(unstakeProps.maxWithdrawAmount))} DUSK`,
+        "278 DUSK",
       ]);
     });
 
@@ -187,7 +180,7 @@ describe("Unstake", () => {
 
       expect(getReviewAmounts(container)[1]).toStrictEqual([
         "Network fee (at most)",
-        `${formatter(luxToDusk(gasLimit * 3n))} DUSK`,
+        "0.06 DUSK",
       ]);
     });
 

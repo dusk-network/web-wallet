@@ -34,6 +34,7 @@
   } from "$lib/dusk/components";
   import { logo } from "$lib/dusk/icons";
   import { settingsStore, walletStore } from "$lib/stores";
+  import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import {
     account,
     modal,
@@ -46,6 +47,8 @@
   export let migrationNetwork;
 
   const { darkMode } = $settingsStore;
+
+  $: ({ language } = $settingsStore);
   $: ({ isConnected, address } = $account);
 
   /**
@@ -76,6 +79,13 @@
   const minAmount = "0.000000001";
 
   const ercDecimals = 18;
+
+  /**
+   * An amount of the token in LUX, the unit amounts are shown from.
+   *
+   * @param {bigint | undefined} amount
+   */
+  const tokenLux = (amount) => (amount ?? 0n) / 10n ** BigInt(ercDecimals - 9);
 
   /** @type {TokenNames} */
   let selectedChain = erc20.name;
@@ -256,9 +266,11 @@
         {:else}
           <span
             ><BalanceValue
-              value={slashDecimals(
-                formatUnits(connectedWalletBalance ?? 0n, ercDecimals)
+              exact={formatDuskExact(
+                tokenLux(connectedWalletBalance),
+                language
               )}
+              value={formatDusk(tokenLux(connectedWalletBalance), language)}
             />
             {selectedChain} DUSK</span
           >

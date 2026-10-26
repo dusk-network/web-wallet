@@ -4,7 +4,6 @@ import {
   CSV_COLUMNS,
   dayLabel,
   describeRow,
-  formatLux,
   groupByDay,
   matchesFilters,
   toCsv,
@@ -37,26 +36,18 @@ const row = (fields) => ({
   ...fields,
 });
 
-describe("formatLux", () => {
-  it("gives DUSK exactly, with two decimals at least and nine at most", () => {
-    expect(formatLux(25_000_000_000n, "en")).toBe("25.00");
-    expect(formatLux(100_000_000n, "en")).toBe("0.10");
-    expect(formatLux(1_854_786n, "en")).toBe("0.001854786");
-    expect(formatLux(1_483_920_000_000n, "en")).toBe("1,483.92");
-    expect(formatLux(-1_000_000_000n, "en")).toBe("−1.00");
-    expect(formatLux(1_234_500_000_000n, "de")).toBe("1.234,50");
-    expect(
-      formatLux(1_000_000_000_000n, "en", { minimumFractionDigits: 0 })
-    ).toBe("1,000");
-  });
-});
-
 describe("describeRow", () => {
+  it("shows an amount in the one format, and in full for a hover", () => {
+    expect(
+      describeRow(row({ amount: "1234567891234" }), context).amount
+    ).toMatchObject({ exact: "1,234.567891234", text: "1,234.5678" });
+  });
+
   it("names a transfer by its counterparty's verified name, or its short address", () => {
     expect(
       describeRow(row({ counterpartyName: "alice-shop.dusk" }), context)
     ).toMatchObject({
-      amount: { muted: false, sign: "−", text: "25.00" },
+      amount: { exact: "25", muted: false, sign: "−", text: "25" },
       category: "sent",
       icon: "sent",
       line: "Sent",
@@ -89,10 +80,18 @@ describe("describeRow", () => {
         context
       )
     ).toMatchObject({
-      amount: { muted: true, sign: "", text: "25.00" },
+      amount: { muted: true, sign: "", text: "25" },
       line: "Failed · nothing sent · fee 0.0037 DUSK paid",
       status: "failed",
     });
+
+    // A fee paid rounds to the nearest of four decimals.
+    expect(
+      describeRow(
+        row({ feePaid: "1853542", status: "failed", success: false }),
+        context
+      ).line
+    ).toBe("Failed · nothing sent · fee 0.0019 DUSK paid");
     expect(
       describeRow(
         row({ source: "local", status: "failed", success: undefined }),
@@ -225,6 +224,15 @@ describe("dayLabel and groupByDay", () => {
 });
 
 describe("toCsv", () => {
+  it("keeps every decimal, without grouping", () => {
+    const [, line] = toCsv(
+      [row({ amount: "1234567891234", feePaid: "1853542" })],
+      context
+    ).split("\r\n");
+
+    expect(line).toContain(",-1234.567891234,0.001853542,");
+  });
+
   it("holds a line per row, failed ones with nothing moved and the fee on its own", () => {
     const csv = toCsv(
       [
@@ -244,10 +252,10 @@ describe("toCsv", () => {
     expect(csv[1]).toContain(`2026-10-26T13:32:00.000Z`);
     expect(csv[1]).toContain(`,${"aa".repeat(32)},out,Public,`);
     expect(csv[1]).toContain(
-      `,alice-shop.dusk,${ACCOUNT},-25.00,,Order 1042,Completed`
+      `,alice-shop.dusk,${ACCOUNT},-25,,Order 1042,Completed`
     );
 
     // A memo is never read as a formula.
-    expect(csv[2]).toContain(`,0.00,0.0037,'=HYPERLINK(1),Failed`);
+    expect(csv[2]).toContain(`,0,0.0037,'=HYPERLINK(1),Failed`);
   });
 });

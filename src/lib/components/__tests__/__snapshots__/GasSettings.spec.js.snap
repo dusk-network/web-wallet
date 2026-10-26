@@ -20,7 +20,7 @@ exports[`GasSettings > renders the GasSettings component closed 1`] = `
         <span
           class="gas-fee__amount-value"
         >
-          0.100000000
+          0.1
         </span>
          DUSK
       </span>
@@ -67,7 +67,7 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
         <span
           class="gas-fee__amount-value"
         >
-          0.100000000
+          0.1
         </span>
          DUSK
       </span>
