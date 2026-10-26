@@ -6,10 +6,20 @@
   /** Pages laid out across the window; the others are one column. */
   const WIDE = new Set(["/dashboard", "/dashboard/transactions"]);
 
-  // A new page, or a flow's next step, starts at the top.
   const scrollToTop = () => window.scrollTo(0, 0);
 
-  afterNavigate(scrollToTop);
+  // A new page, or a flow's next step, starts at the top. A panel opened or
+  // closed on the page, a query of its own, keeps the place in its list:
+  // only the page's path, or the flow it shows, makes it a new page.
+  afterNavigate(({ from, to }) => {
+    const isSamePage =
+      from?.url.pathname === to?.url.pathname &&
+      from?.url.searchParams.get("flow") === to?.url.searchParams.get("flow");
+
+    if (!isSamePage) {
+      scrollToTop();
+    }
+  });
 
   $: ({ url } = $page);
 </script>

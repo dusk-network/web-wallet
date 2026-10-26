@@ -26,6 +26,18 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
   };
 });
 
+const navigation = vi.hoisted(() => ({
+  /** @type {((navigation: any) => void) | null} */
+  afterNavigate: null,
+}));
+
+vi.mock("$app/navigation", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  afterNavigate: (/** @type {(navigation: any) => void} */ callback) => {
+    navigation.afterNavigate = callback;
+  },
+}));
+
 const network = vi.hoisted(() => ({
   /** @type {import("svelte/store").Writable<any> | null} */
   store: null,
@@ -58,6 +70,7 @@ describe("Dashboard Layout", () => {
   afterEach(cleanup);
 
   afterAll(() => {
+    vi.doUnmock("$app/navigation");
     vi.doUnmock("$lib/dusk/string");
     vi.doUnmock("$lib/stores");
   });
@@ -160,6 +173,33 @@ describe("Dashboard Layout", () => {
       await expect(result1.currentPrice).resolves.toStrictEqual({});
       await expect(result2.currentPrice).resolves.toStrictEqual({});
     });
+  });
+
+  it("should start a new page at the top, and keep the place when a panel opens or closes on the same page", () => {
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const go = (/** @type {string} */ from, /** @type {string} */ to) =>
+      navigation.afterNavigate?.({
+        from: { url: new URL(`http://localhost${from}`) },
+        to: { url: new URL(`http://localhost${to}`) },
+      });
+
+    render(Layout);
+
+    go("/dashboard/transactions", "/dashboard/transactions?tx=ab");
+    go("/dashboard/transactions?tx=ab", "/dashboard/transactions");
+    go("/dashboard/contacts", "/dashboard/contacts?contact=1&edit=1");
+
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    go("/dashboard", "/dashboard/transactions");
+
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+
+    go("/dashboard/stake", "/dashboard/stake?flow=native");
+
+    expect(scrollTo).toHaveBeenCalledTimes(2);
+
+    scrollTo.mockRestore();
   });
 
   it("should hold the dashboard's pages, and leave the balance and the network to them and the top bar", () => {
