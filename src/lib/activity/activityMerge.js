@@ -34,6 +34,28 @@ const statusOf = (success) =>
   success === true ? "executed" : success === false ? "failed" : "unknown";
 
 /**
+ * What an entry reads as. A call this account made reads as a transfer until
+ * its call data comes with its details, and then as the call: its value sent
+ * to its own account moved nothing.
+ *
+ * @param {ActivityEntry} entry
+ * @returns {{ amount: string, direction: ActivityDirection, kind: ActivityKind }}
+ */
+function readAs(entry) {
+  const isCall =
+    entry.kind === TX_KIND.TRANSFER &&
+    entry.direction !== "in" &&
+    Boolean(entry.contractId && entry.fnName);
+  const isSelf = isCall && entry.direction === "self";
+
+  return {
+    amount: isSelf ? "0" : entry.value.toString(),
+    direction: isSelf ? "out" : entry.direction,
+    kind: isCall ? TX_KIND.CONTRACT_CALL : entry.kind,
+  };
+}
+
+/**
  * A synced history entry as a row, in the shape of the wallet's own records
  * (`amount`, `to`, `status`, …).
  *
@@ -41,8 +63,8 @@ const statusOf = (success) =>
  * @returns {ActivityRow}
  */
 export function historyRow(entry) {
-  const amount = entry.value.toString();
-  const call = entry.kind === TX_KIND.CONTRACT_CALL;
+  const { amount, direction, kind } = readAs(entry);
+  const call = kind === TX_KIND.CONTRACT_CALL;
   const counterparty = entry.counterparty ?? undefined;
 
   return {
@@ -53,16 +75,16 @@ export function historyRow(entry) {
     counterparty: entry.counterparty ?? null,
     deposit: call && amount !== "0" ? amount : undefined,
     detailsAt: entry.detailsAt,
-    direction: entry.direction,
+    direction,
     error: entry.success === false ? entry.error : undefined,
     feePaid: entry.fee === null ? undefined : entry.fee.toString(),
     fnName: entry.fnName,
-    from: entry.direction === "in" ? counterparty : undefined,
+    from: direction === "in" ? counterparty : undefined,
     gasLimit: entry.gasLimit,
     gasPrice: entry.gasPrice,
     gasSpent: entry.gasSpent,
     hash: lower(entry.hash),
-    kind: entry.kind,
+    kind,
     memo: entry.memo || undefined,
     privacy: "public",
     source: "archive",
@@ -70,9 +92,20 @@ export function historyRow(entry) {
     status: statusOf(entry.success),
     success: entry.success,
     timestamp: entry.timestamp ?? undefined,
-    to: entry.direction === "out" && !call ? counterparty : undefined,
+    to: direction === "out" && !call ? counterparty : undefined,
   };
 }
+
+/**
+ * Whether the chain's outcome of a row is known: until it is, the wallet's
+ * own status stands. A shielded history row's outcome is the chain's.
+ *
+ * @param {ActivityRow} known
+ */
+const isOutcomeKnown = (known) =>
+  typeof known.success === "boolean" ||
+  (known.source === "shielded" &&
+    (known.status === "executed" || known.status === "failed"));
 
 /**
  * A row both the wallet and the chain know: the chain's, with what the
@@ -87,15 +120,22 @@ function mergeLocal(known, tx) {
     LOCAL_ONLY.filter((k) => tx[k] !== undefined).map((k) => [k, tx[k]])
   );
 
-  // Until the chain's outcome is known, the wallet's own status stands.
-  const outcome =
-    typeof known.success === "boolean"
-      ? { error: known.error, status: known.status }
-      : { error: tx.error, status: tx.status ?? known.status };
+  const isFinal = isOutcomeKnown(known);
+  const outcome = isFinal
+    ? { error: known.error, status: known.status }
+    : { error: tx.error, status: tx.status ?? known.status };
+
+  // Unless it went through, its value didn't move on chain: the amount it
+  // was sent with shows what stayed in the wallet.
+  const intent =
+    (isFinal && known.status === "executed") || tx.amount === undefined
+      ? {}
+      : { amount: tx.amount };
 
   return {
     ...known,
     ...extra,
+    ...intent,
     ...outcome,
     contractId: known.contractId ?? tx.contractId,
     fnName: known.fnName ?? tx.fnName,

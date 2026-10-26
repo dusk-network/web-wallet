@@ -737,6 +737,41 @@ describe("Wallet store", async () => {
       updateCachedPendingNotesSpy.mockRestore();
     });
 
+    it("should record a send in the history of the profile that sent it, though another one shows when it goes through", async () => {
+      vi.useRealTimers();
+
+      const { currentProfile: payer, profiles } = get(walletStore);
+      const sent = Promise.withResolvers();
+
+      executeSpy.mockReturnValueOnce(sent.promise);
+      vi.mocked(activityFor).mockClear();
+      history.session.recordSent.mockClear();
+
+      const sending = walletStore.transfer(toMoonlight, amount, memo, gas);
+
+      await vi.waitUntil(() => executeSpy.mock.calls.length === 1);
+      await walletStore.setCurrentProfile(profiles[1]);
+      sent.resolve({
+        buffer: new Uint8Array(),
+        hash: phoenixTxResult.hash,
+        nonce: 1n,
+      });
+      await sending;
+
+      // The history asked for is the paying profile's, as the send began.
+      expect(history.session.recordSent).toHaveBeenCalledOnce();
+      expect(
+        vi
+          .mocked(activityFor)
+          .mock.calls.map(([options]) => [
+            options.account,
+            options.profileIndex,
+          ])
+      ).toStrictEqual([[String(payer?.account), 0]]);
+
+      vi.useFakeTimers();
+    });
+
     it.each(
       /** @type {const} */ (["getCachedSyncInfo", "clearCache", "update"])
     )(

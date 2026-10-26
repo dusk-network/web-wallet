@@ -207,9 +207,10 @@ export async function listActivityEntries(
  * Forget an account's kept history on one network: entries and sync state.
  *
  * @param {string} ownerKey
+ * @param {number} [epoch] getActivityEpoch when the work began
  */
-export async function clearActivity(ownerKey) {
-  await db.transaction("rw", ["entries", "meta"], async () => {
+export async function clearActivity(ownerKey, epoch) {
+  await guardedWrite(["entries"], epoch, async () => {
     await db.table("meta").delete(ownerKey);
     await db
       .table("entries")

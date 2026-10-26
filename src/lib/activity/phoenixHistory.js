@@ -81,14 +81,18 @@ function concat(a, b) {
 
 /**
  * A pass-through for the note-tree stream (`leaves_from_pos` from position
- * 0) that notes each leaf's height on the way, for the decoy heights.
- * `stream()` makes the transform; `heights(total)` gives the distinct heights
- * of the first `total` leaves once all of them passed in order, else null.
- * It never changes or stops the stream, whatever it reads.
+ * `from`, 0 by default) that notes each leaf's height on the way, for the
+ * decoy heights. `stream()` makes the transform; `heights(total)` gives the
+ * distinct heights of the leaves from `from` up to `total` once all of them
+ * passed in order, else null. It never changes or stops the stream, whatever
+ * it reads.
+ *
+ * @param {{ from?: bigint }} [options]
  */
-export function createLeafHeightTap() {
+export function createLeafHeightTap({ from = 0n } = {}) {
+  const start = BigInt(from);
   let rest = new Uint8Array(0);
-  let next = 0n;
+  let next = start;
   let broken = false;
 
   /** @type {number[]} */
@@ -116,7 +120,7 @@ export function createLeafHeightTap() {
   return {
     /** @param {number | bigint} total */
     heights(total) {
-      const n = Number(total);
+      const n = Number(total) - Number(start);
 
       if (broken || !Number.isSafeInteger(n) || n <= 0 || heights.length < n) {
         return null;
@@ -145,19 +149,24 @@ export function createLeafHeightTap() {
 }
 
 /**
- * The note tree's heights from one stream of every leaf.
+ * The note tree's heights from one stream of its leaves, from position
+ * `from`.
  *
  * @param {any} network A w3sper Network
  * @param {bigint} total The tree's size (num_notes)
+ * @param {{ from?: bigint }} [options]
  * @returns {Promise<number[] | null>}
  */
-export async function readNoteHeights(network, total) {
-  const tap = createLeafHeightTap();
+export async function readNoteHeights(network, total, { from = 0n } = {}) {
+  const tap = createLeafHeightTap({ from });
+  const position = new Uint8Array(8);
+
+  new DataView(position.buffer).setBigUint64(0, BigInt(from), true);
+
   const response =
-    await network.contracts.transferContract.call.leaves_from_pos(
-      new Uint8Array(8),
-      { headers: { "Rusk-Feeder": "true" } }
-    );
+    await network.contracts.transferContract.call.leaves_from_pos(position, {
+      headers: { "Rusk-Feeder": "true" },
+    });
 
   if (!response?.body) {
     throw new Error("The node sent no note tree");

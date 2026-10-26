@@ -134,19 +134,19 @@ function historyOf(profile) {
 
 /**
  * Shows a transaction the wallet sent in the history until the archive has
- * it.
+ * it: in the history of the profile that sends it, taken as the send
+ * begins, which keeps nothing after a reset since (activityStore's epoch).
  *
  * @param {Omit<ActivityLocalRecord, "hash" | "id" | "ownerKey" | "status" | "submittedAt">} details
  * @returns {(txInfo: TransactionInfo) => void}
  */
-const recordInHistory = (details) => (txInfo) => {
+const recordInHistory = (details) => {
   const profile = getCurrentProfile();
+  const history = profile ? historyOf(profile) : null;
 
-  if (profile) {
-    historyOf(profile)
-      .recordSent({ ...details, hash: txInfo.hash })
-      .catch(() => {});
-  }
+  return (txInfo) => {
+    history?.recordSent({ ...details, hash: txInfo.hash }).catch(() => {});
+  };
 };
 
 /** @type {(txInfo: TransactionInfo) => void} */

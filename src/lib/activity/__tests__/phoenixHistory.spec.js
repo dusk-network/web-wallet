@@ -138,6 +138,35 @@ describe("createLeafHeightTap", () => {
   });
 });
 
+describe("readNoteHeights from a position", () => {
+  /** @param {Uint8Array[]} leaves */
+  const body = (leaves) => Uint8Array.from(leaves.flatMap((leaf) => [...leaf]));
+
+  it("reads the leaves added since a position, for a tree that grew", async () => {
+    const call = vi.fn(
+      /** @type {(...args: any[]) => Promise<Response>} */ (
+        async () => new Response(body([L492, L493, L494, L495]))
+      )
+    );
+    const network = {
+      // eslint-disable-next-line camelcase
+      contracts: { transferContract: { call: { leaves_from_pos: call } } },
+    };
+
+    await expect(
+      readNoteHeights(network, 496n, { from: 492n })
+    ).resolves.toEqual([3577762, 3602438, 3861643]);
+    expect(Array.from(call.mock.calls[0][0])).toEqual([
+      236, 1, 0, 0, 0, 0, 0, 0,
+    ]);
+
+    // A stream that doesn't start there gives nothing.
+    await expect(
+      readNoteHeights(network, 497n, { from: 491n })
+    ).resolves.toBeNull();
+  });
+});
+
 describe("pickHeights", () => {
   // A fixed sequence of 32-bit numbers in place of crypto.getRandomValues.
   const seq = () => {

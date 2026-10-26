@@ -48,7 +48,9 @@ async function noteTreeSize(network) {
 }
 
 /**
- * The note tree's heights on this network: kept, or read once from the tree.
+ * The note tree's heights on this network: kept, read once from the tree,
+ * and extended with the leaves added since (the tree keeps growing). Null
+ * while the tree can't be read.
  *
  * @param {any} network A w3sper Network
  * @param {string} nodeUrl
@@ -58,22 +60,30 @@ async function noteTreeSize(network) {
 async function noteHeightPool(network, nodeUrl, epoch) {
   const key = activityNetworkKey(nodeUrl);
   const kept = await getNoteHeightPool(key).catch(() => null);
-
-  if (kept?.heights?.length) {
-    return kept.heights;
-  }
-
+  const have =
+    kept?.heights?.length && Number.isSafeInteger(kept.notes)
+      ? BigInt(kept.notes)
+      : 0n;
   const total = await noteTreeSize(network);
 
   if (!total) {
     return null;
   }
 
-  const heights = await readNoteHeights(network, total);
-
-  if (heights) {
-    await putNoteHeightPool(key, heights, Number(total), epoch).catch(() => {});
+  if (have && kept && total <= have) {
+    return kept.heights;
   }
+
+  const added = await readNoteHeights(network, total, { from: have });
+
+  if (!added) {
+    return null;
+  }
+
+  const heights =
+    have && kept ? [...new Set([...kept.heights, ...added])] : added;
+
+  await putNoteHeightPool(key, heights, Number(total), epoch).catch(() => {});
 
   return heights;
 }
@@ -238,11 +248,14 @@ async function heightsToAsk(options, notes, kept, epoch) {
 
   assertCurrent(options.isCurrent);
 
-  if (!pool) {
+  const real = [...new Set(notes.map((n) => leafInfo(n.leaf).height))];
+  const inTree = new Set(pool ?? []);
+
+  // Not for a height the tree as read doesn't have either: no decoy could
+  // be one.
+  if (!pool || real.some((height) => !inTree.has(height))) {
     return null;
   }
-
-  const real = [...new Set(notes.map((n) => leafInfo(n.leaf).height))];
 
   return pickHeights(pool, real, { keep: kept?.decoys ?? [] });
 }

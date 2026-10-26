@@ -89,6 +89,37 @@ describe("historyRow", () => {
       status: "failed",
     });
   });
+
+  it("reads a call that sent its value to its own account as the call it was, once its call data came", () => {
+    // Derived: A's register call as it would read had it sent 5 DUSK to itself.
+    const call = activityEntry(
+      /** @type {ActivityStoredEntry} */ (
+        /** @type {unknown} */ ({
+          ...registered(),
+          counterparty: A,
+          direction: "self",
+          kind: "transfer",
+          payer: true,
+          value: "5000000000",
+        })
+      )
+    );
+
+    expect(historyRow(call)).toMatchObject({
+      amount: "0",
+      contractId: STORE,
+      direction: "out",
+      fnName: "register",
+      kind: "contract_call",
+    });
+    expect(historyRow(call).to).toBeUndefined();
+    expect(historyRow(call).deposit).toBeUndefined();
+
+    // Before its details, it is the transfer it reads as.
+    expect(
+      historyRow({ ...call, contractId: undefined, fnName: undefined })
+    ).toMatchObject({ direction: "self", kind: "transfer" });
+  });
 });
 
 describe("mergeActivity", () => {
@@ -143,6 +174,78 @@ describe("mergeActivity", () => {
         status,
       });
     }
+  });
+
+  it("takes a shielded row's outcome over the wallet's own that stopped waiting", () => {
+    const hash = "ab".repeat(32);
+    const local = {
+      amount: "5",
+      hash,
+      kind: /** @type {const} */ ("transfer"),
+      profileIndex: 0,
+      status: /** @type {const} */ ("unknown"),
+    };
+
+    for (const [status, error] of /** @type {const} */ ([
+      ["executed", undefined],
+      ["failed", "Panic: out of gas"],
+    ])) {
+      /** @type {ActivityRow[]} */
+      const shielded = [
+        {
+          amount: "5",
+          blockHeight: 9,
+          direction: "out",
+          error,
+          feePaid: "1",
+          hash,
+          kind: "transfer",
+          privacy: "shielded",
+          source: "shielded",
+          status,
+        },
+      ];
+      const [row] = mergeActivity({
+        local: [local],
+        profileIndex: 0,
+        shielded,
+      });
+
+      expect(row).toMatchObject({ error, source: "both", status });
+    }
+  });
+
+  it("keeps the amount a send meant to move when it didn't go through, and the chain's when it did", () => {
+    // B's call that failed on chain: what it sent with it never moved.
+    const failed = entry(B, 3407780);
+    const local = {
+      amount: "2000000000",
+      hash: failed.hash,
+      kind: /** @type {const} */ ("contract_call"),
+      profileIndex: 0,
+      status: /** @type {const} */ ("failed"),
+    };
+    const [row] = mergeActivity({
+      history: [failed],
+      local: [local],
+      profileIndex: 0,
+    });
+
+    expect(row).toMatchObject({
+      amount: "2000000000",
+      source: "both",
+      status: "failed",
+    });
+
+    // A's register went through: the chain's amount stands.
+    const done = registered();
+    const [ok] = mergeActivity({
+      history: [done],
+      local: [{ ...local, amount: "1", hash: done.hash }],
+      profileIndex: 0,
+    });
+
+    expect(ok).toMatchObject({ amount: "100000000000", status: "executed" });
   });
 
   it("gives an unshield the fee its shielded side paid", () => {

@@ -1104,13 +1104,15 @@ class HistorySync {
     );
     const target = finalized - FINALITY_MARGIN;
 
-    // Another chain under the same name (a reset devnet or local node): start over.
+    // Another chain under the same name (a reset devnet or local node): start
+    // over, still as this run's work: a reset meanwhile refuses both
+    // (StaleActivityError).
     if (this.isOtherChain(genesis)) {
-      await this.store.clearActivity(this.ownerKey);
+      await this.store.clearActivity(this.ownerKey, this.epoch);
 
       return syncOnce({
         ...this.options,
-        epoch: undefined,
+        epoch: this.epoch,
         maxRequests: this.budget.left + 1,
       });
     }
