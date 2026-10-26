@@ -467,11 +467,11 @@
           </dl>
           {#if isDepositing}
             <ReviewAmount
-              label="Network fee (max)"
+              label="Network fee (at most)"
               value={formatter(luxToDusk(fee))}
             />
             <ReviewAmount
-              label="Total (max)"
+              label="Total (at most)"
               value={formatter(luxToDusk(totalDepositLux))}
             />
           {/if}

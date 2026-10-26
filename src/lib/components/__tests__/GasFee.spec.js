@@ -20,9 +20,12 @@ describe("GasFee", () => {
     };
     const { container, getByText } = render(GasFee, baseProps);
 
-    expect(getByText("Network fee (max)")).toBeInTheDocument();
+    expect(getByText("Network fee (at most)")).toBeInTheDocument();
     expect(container.querySelector(".gas-fee__amount-value")?.textContent).toBe(
       duskFormatter(luxToDusk(fee))
+    );
+    expect(container.querySelector(".gas-fee__amount")).toHaveTextContent(
+      `${duskFormatter(luxToDusk(fee))} DUSK`
     );
 
     expect(container.firstElementChild).toMatchSnapshot();

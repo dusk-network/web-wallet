@@ -58,9 +58,9 @@ describe("Allocate", () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", formatter(500)],
-      ["Network fee (max)", formatter(luxToDusk(fee))],
-      ["Total (max)", formatter(luxToDusk(duskToLux(500) + fee))],
+      ["Amount", `${formatter(500)} DUSK`],
+      ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
+      ["Total (at most)", `${formatter(luxToDusk(duskToLux(500) + fee))} DUSK`],
     ]);
     expect(container.querySelector("dt .dusk-icon")).toBeNull();
     expect(container.querySelector(".gas-fee")).toBeNull();
@@ -103,9 +103,9 @@ describe("Allocate", () => {
     await fireEvent.click(nextButton);
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", formatter(500)],
-      ["Network fee (max)", formatter(luxToDusk(fee))],
-      ["Total (max)", formatter(luxToDusk(duskToLux(500) + fee))],
+      ["Amount", `${formatter(500)} DUSK`],
+      ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
+      ["Total (at most)", `${formatter(luxToDusk(duskToLux(500) + fee))} DUSK`],
     ]);
   });
 });

@@ -1,0 +1,192 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { FOLLOW_INTERVAL, FOLLOW_TIMEOUT, followTransaction } from "..";
+
+const { connect } = vi.hoisted(() => ({ connect: vi.fn() }));
+
+vi.mock("$lib/stores", () => ({ networkStore: { connect } }));
+
+const hash = "8dcf6f8a".padEnd(64, "0");
+const blockHash = "bc5176b5".padEnd(64, "1");
+
+/**
+ * A transaction as the node's GraphQL returns it.
+ *
+ * @param {Record<string, any>} [fields]
+ */
+const spentTx = (fields = {}) => ({
+  tx: {
+    blockHash,
+    blockHeight: 4_687_200,
+    err: null,
+    gasSpent: 1_854_795,
+    tx: { gasPrice: 1 },
+    ...fields,
+  },
+});
+
+/** @param {string} status */
+const blockWith = (status) => ({ block: { status: { [status]: 1 } } });
+
+describe("followTransaction", () => {
+  /** @type {PromiseWithResolvers<any>} */
+  let executed;
+
+  const query = vi.fn();
+  const executedWatcher = vi.fn();
+  const withId = vi.fn(() => ({ once: { executed: executedWatcher } }));
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+
+    executed = Promise.withResolvers();
+    executedWatcher.mockImplementation(({ signal }) => {
+      signal.addEventListener("abort", () => executed.reject(new Error()));
+      return executed.promise;
+    });
+    query.mockReset();
+    connect.mockResolvedValue({ query, transactions: { withId } });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    connect.mockReset();
+    executedWatcher.mockReset();
+    withId.mockClear();
+  });
+
+  it("should resolve with the fee charged once the transaction's block is final", async () => {
+    query
+      .mockResolvedValueOnce({ tx: null })
+      .mockResolvedValueOnce(spentTx())
+      .mockResolvedValueOnce(blockWith("Attested"))
+      .mockResolvedValueOnce(spentTx())
+      .mockResolvedValueOnce(blockWith("Final"));
+
+    const result = followTransaction(hash);
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL * 3);
+
+    await expect(result).resolves.toStrictEqual({
+      blockHeight: 4_687_200n,
+      error: null,
+      fee: 1_854_795n,
+    });
+    expect(withId).toHaveBeenCalledWith(hash);
+    expect(query).toHaveBeenCalledTimes(5);
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      `tx(hash: "${hash}") { blockHash blockHeight err gasSpent tx { gasPrice } }`
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      3,
+      `block(hash: "${blockHash}") { status }`
+    );
+  });
+
+  it("should give the error of a transaction that failed, with the fee it was charged", async () => {
+    query
+      .mockResolvedValueOnce(
+        spentTx({ err: "Panic: out of gas", gasSpent: 2_500_000 })
+      )
+      .mockResolvedValueOnce(blockWith("Final"));
+
+    const result = followTransaction(hash);
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL);
+
+    await expect(result).resolves.toStrictEqual({
+      blockHeight: 4_687_200n,
+      error: "Panic: out of gas",
+      fee: 2_500_000n,
+    });
+  });
+
+  it("should check right away when the node says a block took the transaction", async () => {
+    query
+      .mockResolvedValueOnce(spentTx({ tx: { gasPrice: 2 } }))
+      .mockResolvedValueOnce(blockWith("Final"));
+
+    const result = followTransaction(hash);
+
+    await vi.advanceTimersByTimeAsync(1);
+    executed.resolve({});
+    await vi.advanceTimersByTimeAsync(1);
+
+    await expect(result).resolves.toStrictEqual({
+      blockHeight: 4_687_200n,
+      error: null,
+      fee: 3_709_590n,
+    });
+  });
+
+  it("should check again after a check fails", async () => {
+    query
+      .mockRejectedValueOnce(new Error("Network error"))
+      .mockResolvedValueOnce(spentTx())
+      .mockResolvedValueOnce(blockWith("Final"));
+
+    const result = followTransaction(hash);
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL * 2);
+
+    await expect(result).resolves.toMatchObject({ fee: 1_854_795n });
+  });
+
+  it("should still follow the transaction without the node's event", async () => {
+    executedWatcher.mockImplementation(() => {
+      throw new TypeError("No event");
+    });
+    query
+      .mockResolvedValueOnce(spentTx())
+      .mockResolvedValueOnce(blockWith("Final"));
+
+    const result = followTransaction(hash);
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL);
+
+    await expect(result).resolves.toMatchObject({ fee: 1_854_795n });
+  });
+
+  it("should resolve with `null`, and stop listening, if the block isn't final before the timeout", async () => {
+    query.mockResolvedValue({ tx: null });
+
+    const result = followTransaction(hash);
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_TIMEOUT);
+
+    await expect(result).resolves.toBeNull();
+    await expect(executed.promise).rejects.toThrow();
+
+    const checks = query.mock.calls.length;
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL * 2);
+
+    expect(query).toHaveBeenCalledTimes(checks);
+  });
+
+  it("should resolve with `null`, and stop checking, once the signal aborts", async () => {
+    const controller = new AbortController();
+
+    query.mockResolvedValue({ tx: null });
+
+    const result = followTransaction(hash, { signal: controller.signal });
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL);
+    controller.abort();
+
+    await expect(result).resolves.toBeNull();
+    await expect(executed.promise).rejects.toThrow();
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL * 2);
+
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it("should refuse a hash that isn't one", async () => {
+    await expect(
+      followTransaction('") { id } block(height: 1')
+    ).rejects.toThrow("Invalid transaction hash");
+    expect(connect).not.toHaveBeenCalled();
+  });
+});

@@ -35,6 +35,16 @@ const getReviewAmounts = (container) =>
     row.querySelector("dd")?.textContent?.trim(),
   ]);
 
+// The transaction sent stays pending.
+const { followTransaction } = vi.hoisted(() => ({
+  followTransaction: vi.fn(() => new Promise(() => {})),
+}));
+
+vi.mock("$lib/transactions", async (importOriginal) => ({
+  ...(await importOriginal()),
+  followTransaction,
+}));
+
 vi.mock("$lib/dusk/string", async (importOriginal) => {
   /** @type {typeof import("$lib/dusk/string")} */
   const original = await importOriginal();
@@ -47,7 +57,8 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
 
 describe("Stake", () => {
   const formatter = createCurrencyFormatter("en", "DUSK", 9);
-  const lastTxId = "some-id";
+  const lastTxId =
+    "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
 
   const baseProps = {
     availableBalance: 10_000_000_000_000n,
@@ -198,11 +209,11 @@ describe("Stake", () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", formatter(luxToDusk(baseProps.minStakeRequirement))],
-      ["Network fee (max)", formatter(luxToDusk(fee))],
+      ["Amount", `${formatter(luxToDusk(baseProps.minStakeRequirement))} DUSK`],
+      ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
       [
-        "Total (max)",
-        formatter(luxToDusk(baseProps.minStakeRequirement + fee)),
+        "Total (at most)",
+        `${formatter(luxToDusk(baseProps.minStakeRequirement + fee))} DUSK`,
       ],
     ]);
     expect(container.querySelector("dt .dusk-icon")).toBeNull();
@@ -248,7 +259,12 @@ describe("Stake", () => {
 
       const explorerLink = getByRole("link", { name: /explorer/i });
 
-      expect(getByText("Transaction created")).toBeInTheDocument();
+      expect(getByRole("status")).toHaveTextContent(/^Sent Pending/);
+      expect(followTransaction).toHaveBeenCalledWith(
+        lastTxId,
+        expect.anything()
+      );
+      expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
     });
@@ -294,7 +310,7 @@ describe("Stake", () => {
         baseProps.gasSettings.gasPrice,
         baseProps.gasSettings.gasLimit
       );
-      expect(getByText("Transaction created")).toBeInTheDocument();
+      expect(getByText("Sent")).toBeInTheDocument();
       expect(() => getByRole("link", { name: /explorer/i })).toThrow();
     });
   });

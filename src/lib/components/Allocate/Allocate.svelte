@@ -19,7 +19,6 @@
   } from "$lib/dusk/string";
   import { logo } from "$lib/dusk/icons";
   import {
-    AnchorButton,
     Badge,
     Icon,
     Textbox,
@@ -29,12 +28,12 @@
   import {
     BalanceValue,
     GasSettings,
-    OperationResult,
     ReviewAmount,
+    TransactionResult,
   } from "$lib/components";
   import { settingsStore, walletStore } from "$lib/stores";
   import { Gas } from "@dusk/w3sper";
-  import { BALANCE_MASK, MESSAGES } from "$lib/constants";
+  import { BALANCE_MASK } from "$lib/constants";
   import Banner from "../Banner/Banner.svelte";
 
   /** @type {(amount: number) => string} */
@@ -337,11 +336,11 @@
           </dd>
         </dl>
         <ReviewAmount
-          label="Network fee (max)"
+          label="Network fee (at most)"
           value={formatter(luxToDusk(fee))}
         />
         <ReviewAmount
-          label="Total (max)"
+          label="Total (at most)"
           value={formatter(luxToDusk(amount + fee))}
         />
         <Banner
@@ -351,24 +350,7 @@
       </div>
     </WizardStep>
     <WizardStep step={2} {key} showNavigation={false}>
-      <OperationResult
-        errorMessage="Transaction failed"
-        operation={allocate()}
-        pendingMessage="Processing transaction"
-        successMessage="Transaction created"
-      >
-        <svelte:fragment slot="success-content" let:result={hash}>
-          <p>{MESSAGES.TRANSACTION_CREATED}</p>
-          {#if hash}
-            <AnchorButton
-              href={`/explorer/transactions/transaction?id=${hash}`}
-              text="VIEW ON BLOCK EXPLORER"
-              rel="noopener noreferrer"
-              target="_blank"
-            />
-          {/if}
-        </svelte:fragment>
-      </OperationResult>
+      <TransactionResult {formatter} maxFee={fee} operation={allocate()} />
     </WizardStep>
   </Wizard>
 </div>
@@ -437,12 +419,6 @@
 
     :global(&__review-notice) {
       text-align: center;
-    }
-
-    :global(.dusk-amount__icon) {
-      width: 1em;
-      height: 1em;
-      flex-shrink: 0;
     }
   }
 

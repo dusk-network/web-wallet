@@ -28,5 +28,7 @@ export { default as ScanQR } from "./ScanQR/ScanQR.svelte";
 export { default as Stake } from "./Stake/Stake.svelte";
 export { default as StakeMaturityInfo } from "./StakeMaturityInfo/StakeMaturityInfo.svelte";
 export { default as SyncBar } from "./SyncBar/SyncBar.svelte";
+export { default as TransactionResult } from "./TransactionResult/TransactionResult.svelte";
+export { default as TransactionStatus } from "./TransactionStatus/TransactionStatus.svelte";
 export { default as Transactions } from "./Transactions/Transactions.svelte";
 export { default as Unstake } from "./Stake/Unstake.svelte";

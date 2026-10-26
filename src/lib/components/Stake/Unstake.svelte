@@ -4,14 +4,13 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { fade } from "svelte/transition";
 
-  import { BALANCE_MASK, MESSAGES } from "$lib/constants";
+  import { BALANCE_MASK } from "$lib/constants";
   import { areValidGasSettings } from "$lib/contracts";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
   import { randomUUID } from "$lib/dusk/string";
   import { settingsStore } from "$lib/stores";
 
   import {
-    AnchorButton,
     Button,
     Icon,
     Stepper,
@@ -22,8 +21,8 @@
   import {
     Banner,
     GasSettings,
-    OperationResult,
     ReviewAmount,
+    TransactionResult,
   } from "$lib/components";
 
   import { logo } from "$lib/dusk/icons";
@@ -274,7 +273,7 @@
           value={formatter(withdrawAmount)}
         />
         <ReviewAmount
-          label="Network fee (max)"
+          label="Network fee (at most)"
           value={formatter(luxToDusk(maxGasFee))}
         />
       </div>
@@ -282,26 +281,12 @@
 
     <!-- OPERATION RESULT STEP  -->
     <WizardStep step={2} {key} showNavigation={false}>
-      <OperationResult
-        errorMessage="Transaction failed"
+      <TransactionResult
+        {formatter}
+        maxFee={maxGasFee}
         onBeforeLeave={resetOperation}
         operation={execute(withdrawAmountInLux, gasPrice, gasLimit)}
-        pendingMessage="Processing transaction"
-        successMessage="Transaction created"
-      >
-        <svelte:fragment slot="success-content" let:result={hash}>
-          <p>{MESSAGES.TRANSACTION_CREATED}</p>
-          {#if hash}
-            <AnchorButton
-              href={`/explorer/transactions/transaction?id=${hash}`}
-              on:click={resetOperation}
-              text="VIEW ON BLOCK EXPLORER"
-              rel="noopener noreferrer"
-              target="_blank"
-            />
-          {/if}
-        </svelte:fragment>
-      </OperationResult>
+      />
     </WizardStep>
   </Wizard>
 </div>

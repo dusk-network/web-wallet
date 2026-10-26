@@ -17,7 +17,6 @@
   } from "$lib/dusk/string";
   import { logo } from "$lib/dusk/icons";
   import {
-    AnchorButton,
     Badge,
     Button,
     Icon,
@@ -32,11 +31,10 @@
     AppAnchor,
     Banner,
     GasSettings,
-    OperationResult,
     ReviewAmount,
     ScanQR,
+    TransactionResult,
   } from "$lib/components";
-  import { MESSAGES } from "$lib/constants";
 
   /** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint) => Promise<string>} */
   export let execute;
@@ -844,19 +842,20 @@
         {/if}
 
         <ReviewAmount
-          label="Network fee (max)"
+          label="Network fee (at most)"
           value={formatter(luxToDusk(maxGasFee))}
         />
         <ReviewAmount
-          label="Total (max)"
+          label="Total (at most)"
           value={formatter(luxToDusk(totalAmount))}
         />
       </div>
     </WizardStep>
     <!-- Result Step -->
     <WizardStep step={3} {key} showNavigation={false}>
-      <OperationResult
-        errorMessage="Transaction failed"
+      <TransactionResult
+        {formatter}
+        maxFee={maxGasFee}
         operation={execute(
           recipientAddress,
           sendAmountInLux,
@@ -864,21 +863,7 @@
           gasPrice,
           gasLimit
         )}
-        pendingMessage="Processing transaction"
-        successMessage="Transaction created"
-      >
-        <svelte:fragment slot="success-content" let:result={hash}>
-          <p>{MESSAGES.TRANSACTION_CREATED}</p>
-          {#if hash}
-            <AnchorButton
-              href={`/explorer/transactions/transaction?id=${hash}`}
-              text="VIEW ON BLOCK EXPLORER"
-              rel="noopener noreferrer"
-              target="_blank"
-            />
-          {/if}
-        </svelte:fragment>
-      </OperationResult>
+      />
     </WizardStep>
   </Wizard>
 </div>
@@ -1033,12 +1018,6 @@
     /* A name's one address has no radio mark to pass. */
     &__name-option--single &__name-hint {
       padding-left: 1rem;
-    }
-
-    :global(.dusk-amount__icon) {
-      width: 1em;
-      height: 1em;
-      flex-shrink: 0;
     }
   }
 

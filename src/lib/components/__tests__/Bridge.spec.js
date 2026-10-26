@@ -89,9 +89,9 @@ describe("Bridge", () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", formatter(2.5)],
-      ["Network fee (max)", formatter(luxToDusk(fee))],
-      ["Total (max)", formatter(luxToDusk(duskToLux(2.5) + fee))],
+      ["Amount", `${formatter(2.5)} DUSK`],
+      ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
+      ["Total (at most)", `${formatter(luxToDusk(duskToLux(2.5) + fee))} DUSK`],
     ]);
     expect(container.querySelector("dt .dusk-icon")).toBeNull();
     expect(container.querySelector(".gas-fee")).toBeNull();
@@ -108,7 +108,7 @@ describe("Bridge", () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", formatter(2.5)],
+      ["Amount", `${formatter(2.5)} DUSK`],
     ]);
   });
 
@@ -128,9 +128,9 @@ describe("Bridge", () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", formatter(2.5)],
-      ["Network fee (max)", formatter(luxToDusk(fee))],
-      ["Total (max)", formatter(luxToDusk(duskToLux(2.5) + fee))],
+      ["Amount", `${formatter(2.5)} DUSK`],
+      ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
+      ["Total (at most)", `${formatter(luxToDusk(duskToLux(2.5) + fee))} DUSK`],
     ]);
   });
 });

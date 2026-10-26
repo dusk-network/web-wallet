@@ -1,4 +1,12 @@
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 import {
   createCurrencyFormatter,
@@ -22,6 +30,16 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
     randomUUID: () => "some-generated-id",
   };
 });
+
+// The transaction sent stays pending, unless a test ends it.
+const { followTransaction } = vi.hoisted(() => ({
+  followTransaction: vi.fn(),
+}));
+
+vi.mock("$lib/transactions", async (importOriginal) => ({
+  ...(await importOriginal()),
+  followTransaction,
+}));
 
 // No camera, as in jsdom, unless a test finds one.
 const { hasCamera } = vi.hoisted(() => ({
@@ -53,7 +71,8 @@ const getReviewAmounts = (container) =>
 
 describe("Send", () => {
   const formatter = createCurrencyFormatter("en", "DUSK", 9);
-  const lastTxId = "some-id";
+  const lastTxId =
+    "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
   const publicAddress =
     "zTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE4FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
   const shieldedAddress =
@@ -82,10 +101,15 @@ describe("Send", () => {
   const invalidAddress =
     "aB5rL7yC2zK9eV3xH1gQ6fP4jD8sM0iU2oX7wG9nZ8lT3hU4jP5mK8nS6qJ3wF4aA9bB2cC5dD8eE7";
 
+  beforeEach(() => {
+    followTransaction.mockReturnValue(new Promise(() => {}));
+  });
+
   afterEach(() => {
     cleanup();
     baseProps.execute.mockClear();
     baseProps.resolveName.mockReset();
+    followTransaction.mockReset();
     hasCamera.mockClear();
   });
 
@@ -530,10 +554,7 @@ describe("Send", () => {
   describe("Review step", () => {
     it("should render the Send component Review step", async () => {
       const amount = 2345;
-      const { container, getAllByRole, getByRole, queryByText } = render(
-        Send,
-        baseProps
-      );
+      const { container, getByRole, queryByText } = render(Send, baseProps);
       const addressInput = getByRole("textbox");
 
       await fireEvent.input(addressInput, {
@@ -561,12 +582,14 @@ describe("Send", () => {
       const memo = getAsHTMLElement(container, ".operation__review-memo span");
 
       expect(getReviewAmounts(container)).toStrictEqual([
-        ["Amount", formatter(amount)],
-        ["Network fee (max)", formatter(luxToDusk(fee))],
-        ["Total (max)", formatter(luxToDusk(duskToLux(amount) + fee))],
+        ["Amount", `${formatter(amount)} DUSK`],
+        ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
+        [
+          "Total (at most)",
+          `${formatter(luxToDusk(duskToLux(amount) + fee))} DUSK`,
+        ],
       ]);
       expect(container.querySelector("dt .dusk-icon")).toBeNull();
-      expect(getAllByRole("img", { name: "DUSK" })).toHaveLength(3);
       expect(container.querySelector(".gas-fee")).toBeNull();
       expect(key.textContent).toBe(shieldedAddress);
       expect(key.parentElement).not.toHaveClass(
@@ -653,12 +676,58 @@ describe("Send", () => {
 
       const explorerLink = getByRole("link", { name: /explorer/i });
 
-      expect(getByText("Transaction created")).toBeInTheDocument();
-      expect(
-        getByText("Waiting for confirmation. The wallet updates automatically.")
-      ).toBeInTheDocument();
+      expect(getByRole("status")).toHaveTextContent(
+        "Sent Pending. This usually takes under a minute."
+      );
+      expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
+      expect(followTransaction).toHaveBeenCalledWith(
+        lastTxId,
+        expect.anything()
+      );
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
+    });
+
+    it("should follow the transaction until its block is final, then show it completed with the fee it was charged", async () => {
+      /** @type {PromiseWithResolvers<any>} */
+      const following = Promise.withResolvers();
+
+      followTransaction.mockReturnValue(following.promise);
+
+      const { getByRole, getByText } = render(Send, baseProps);
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: shieldedAddress },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await vi.advanceTimersToNextTimerAsync();
+
+      const fee =
+        baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
+
+      expect(getByRole("status")).toHaveTextContent(/^Sent Pending/);
+      expect(getByText("Network fee (at most)")).toBeInTheDocument();
+      expect(
+        getByText(`${formatter(luxToDusk(fee))} DUSK`)
+      ).toBeInTheDocument();
+      expect(
+        getByRole("button", { name: "Copy transaction hash" })
+      ).toBeInTheDocument();
+
+      following.resolve({
+        blockHeight: 4_687_200n,
+        error: null,
+        fee: 1_854_795n,
+      });
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(getByRole("status")).toHaveTextContent(
+        "Completed In block 4,687,200."
+      );
+      expect(getByText("Network fee")).toBeInTheDocument();
+      expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
     });
 
     it("should perform the transfer with the gas limit the user sets", async () => {
@@ -738,7 +807,7 @@ describe("Send", () => {
 
       const explorerLink = getByRole("link", { name: /explorer/i });
 
-      expect(getByText("Transaction created")).toBeInTheDocument();
+      expect(getByText("Sent")).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
     });
@@ -839,7 +908,8 @@ describe("Send", () => {
         baseProps.gasSettings.gasPrice,
         baseProps.gasSettings.gasLimit
       );
-      expect(getByText("Transaction created")).toBeInTheDocument();
+      expect(getByText("Sent")).toBeInTheDocument();
+      expect(followTransaction).not.toHaveBeenCalled();
       expect(() => getByRole("link", { name: /explorer/i })).toThrow();
     });
   });
