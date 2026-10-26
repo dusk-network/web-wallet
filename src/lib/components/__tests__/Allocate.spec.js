@@ -66,6 +66,36 @@ describe("Allocate", () => {
     expect(container.querySelector(".gas-fee")).toBeNull();
   });
 
+  it("should take new default gas, as the node's price, until the review, and again once back", async () => {
+    const { container, getByRole, rerender } = render(Allocate, baseProps);
+    const { gasLimit } = baseProps.gasSettings;
+
+    /** @param {bigint} price */
+    const feeRow = (price) => [
+      "Network fee (at most)",
+      `${formatter(luxToDusk(gasLimit * price))} DUSK`,
+    ];
+
+    await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
+    await fireEvent.input(
+      getByRole("spinbutton", { name: "Shielded amount" }),
+      { target: { value: "2500" } }
+    );
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(getReviewAmounts(container)[1]).toStrictEqual(feeRow(3n));
+
+    // Not while reviewing: the fee reviewed is the fee sent.
+    await rerender({ gasSettings: { gasLimit, gasPrice: 5n } });
+
+    expect(getReviewAmounts(container)[1]).toStrictEqual(feeRow(3n));
+
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(getReviewAmounts(container)[1]).toStrictEqual(feeRow(5n));
+  });
+
   it("should hide the balances while they're hidden, and show what the user types, checked against them", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 

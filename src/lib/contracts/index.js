@@ -5,6 +5,7 @@ export {
   GAS_DEFAULTS,
   HIGHEST_DEFAULT_GAS_LIMIT,
   LOWEST_GAS_LIMIT_MINIMUM,
+  followDefaultGas,
   getGasLimits,
   getGasSettings,
 } from "./gasDefaults";

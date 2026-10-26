@@ -74,6 +74,21 @@ export const getGasSettings = (
 });
 
 /**
+ * The gas a form uses once its default gas changes, as when the node's price
+ * arrives after the form opened: the new default, unless the gas was edited
+ * in the form, which keeps its own.
+ *
+ * @param {ContractGasSettings} gas The gas the form uses.
+ * @param {ContractGasSettings} previous The default gas the form had.
+ * @param {ContractGasSettings} next The new default gas.
+ * @returns {ContractGasSettings}
+ */
+export const followDefaultGas = (gas, previous, next) =>
+  gas.gasLimit === previous.gasLimit && gas.gasPrice === previous.gasPrice
+    ? { gasLimit: next.gasLimit, gasPrice: next.gasPrice }
+    : gas;
+
+/**
  * The gas bounds of an operation: its own minimum, and the global bounds for
  * the rest.
  *

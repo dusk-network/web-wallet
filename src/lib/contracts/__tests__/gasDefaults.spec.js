@@ -8,6 +8,7 @@ import {
   HIGHEST_DEFAULT_GAS_LIMIT,
   LOWEST_GAS_LIMIT_MINIMUM,
   areValidGasSettings,
+  followDefaultGas,
   getGasLimits,
   getGasSettings,
 } from "..";
@@ -83,6 +84,19 @@ describe("gas defaults", () => {
         1n
       )
     ).toStrictEqual({ gasLimit: 70_000_000n, gasPrice: 2n });
+  });
+
+  it("should follow new default gas in a form, unless the gas was edited there", () => {
+    const previous = { gasLimit: 50_000_000n, gasPrice: 1n };
+    const next = { gasLimit: 50_000_000n, gasPrice: 3n };
+
+    expect(followDefaultGas({ ...previous }, previous, next)).toStrictEqual(
+      next
+    );
+
+    const edited = { gasLimit: 50_000_000n, gasPrice: 2n };
+
+    expect(followDefaultGas(edited, previous, next)).toBe(edited);
   });
 
   it("should give an operation its own minimum and keep the global bounds", () => {
