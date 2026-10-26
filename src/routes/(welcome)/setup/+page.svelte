@@ -81,7 +81,7 @@
 
   .setup-footer {
     color: var(--muted-color);
-    font-family: var(--mono-font-family);
+    font-variant-numeric: tabular-nums;
     font-size: 0.75em;
     letter-spacing: 0.08em;
   }

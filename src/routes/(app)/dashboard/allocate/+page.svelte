@@ -13,7 +13,7 @@
 </script>
 
 {#if import.meta.env.VITE_FEATURE_ALLOCATE || false}
-  <IconHeadingCard heading="Allocate" icons={[mdiSync]}>
+  <IconHeadingCard heading="Shield" icons={[mdiSync]}>
     <AllocateContract
       on:operationChange={({ detail }) => updateOperation(detail)}
     />

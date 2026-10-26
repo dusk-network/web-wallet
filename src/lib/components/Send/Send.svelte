@@ -552,7 +552,7 @@
               on:click={() => {
                 scanQrComponent.startScan();
               }}
-              text="SCAN QR"
+              text="Scan QR"
             />
           {/if}
         </div>
@@ -668,7 +668,7 @@
                 size="small"
                 variant="tertiary"
                 on:click={() => lookUpName(recipientName)}
-                text="TRY AGAIN"
+                text="Try again"
               />
             {/if}
           </Banner>
@@ -718,7 +718,7 @@
             size="small"
             variant="tertiary"
             on:click={setMaxAmount}
-            text="USE MAX"
+            text="Use max"
           />
         </div>
 
@@ -815,7 +815,7 @@
         action: () => activeStep++,
         disabled: isRecipientBlocklisted,
         icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-        label: "SEND",
+        label: "Send",
         variant: "primary",
       }}
     >
@@ -845,10 +845,10 @@
           </dt>
           <dd class="operation__review-type">
             {#if addressInfo.type === "address"}
-              <Badge text="SHIELDED" />
+              <Badge text="Shielded" />
               <span>Private</span>
             {:else}
-              <Badge text="PUBLIC" />
+              <Badge text="Public" />
               <span>Visible on chain</span>
             {/if}
           </dd>
@@ -898,7 +898,7 @@
       background-color: var(--surface-soft-color);
       border: 1px solid var(--surface-border-color);
       border-radius: var(--control-border-radius-size);
-      font-family: var(--mono-font-family);
+      font-variant-numeric: tabular-nums;
       font-size: 0.875rem;
       padding: 0.75em 1em;
       width: 100%;

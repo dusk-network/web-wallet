@@ -93,7 +93,7 @@
   {/if}
   {#if (isLoading || !data || error) && !migrationHash}
     <Button
-      text={`${error ? "RETRY" : "EXECUTE"}  MIGRATION`}
+      text={`${error ? "Retry" : "Execute"} migration`}
       disabled={!!isLoading}
       on:click={() => migrationStore.getData(chainId)}
     />

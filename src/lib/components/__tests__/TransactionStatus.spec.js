@@ -61,7 +61,7 @@ describe("TransactionStatus", () => {
     expect(getByText("Network fee (at most)")).toBeInTheDocument();
     expect(getByText("0.002500000 DUSK")).toBeInTheDocument();
     expect(
-      getByRole("link", { name: "VIEW ON BLOCK EXPLORER" })
+      getByRole("link", { name: "View in Dusk explorer" })
     ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${hash}`);
     expect(container.firstElementChild).toMatchSnapshot();
   });
@@ -129,13 +129,13 @@ describe("TransactionStatus", () => {
 
     const again = followNext();
 
-    await fireEvent.click(getByRole("button", { name: "CHECK AGAIN" }));
+    await fireEvent.click(getByRole("button", { name: "Check again" }));
 
     expect(followTransaction).toHaveBeenCalledTimes(2);
     expect(getByRole("status")).toHaveTextContent(
       "Sent Pending. This usually takes under a minute."
     );
-    expect(queryByRole("button", { name: "CHECK AGAIN" })).toBeNull();
+    expect(queryByRole("button", { name: "Check again" })).toBeNull();
 
     again.resolve({ blockHeight: 1n, error: null, fee: 1n });
     await vi.waitFor(() =>

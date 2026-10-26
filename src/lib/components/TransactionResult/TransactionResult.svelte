@@ -47,7 +47,7 @@
       className="transaction-result__button"
       href="/dashboard"
       on:click={handleGoHomeClick}
-      text="HOME"
+      text="Home"
       variant="tertiary"
     />
   </svelte:fragment>
@@ -56,7 +56,7 @@
     href="/dashboard"
     on:click={handleGoHomeClick}
     slot="error-extra-content"
-    text="HOME"
+    text="Home"
     variant="tertiary"
   />
 </Suspense>

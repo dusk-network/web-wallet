@@ -158,7 +158,7 @@ exports[`Staking > should render the staking page 1`] = `
           <span
             class="dusk-button__text"
           >
-            stake
+            Stake
           </span>
           <!---->
           <!---->
@@ -190,7 +190,7 @@ exports[`Staking > should render the staking page 1`] = `
           <span
             class="dusk-button__text"
           >
-            unstake
+            Unstake
           </span>
           <!---->
           <!---->
@@ -222,7 +222,7 @@ exports[`Staking > should render the staking page 1`] = `
           <span
             class="dusk-button__text"
           >
-            claim rewards
+            Claim rewards
           </span>
           <!---->
           <!---->

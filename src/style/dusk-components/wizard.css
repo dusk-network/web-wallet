@@ -24,3 +24,27 @@
 .dusk-wizard__step-navigation a {
   flex: 1;
 }
+
+/*
+ * In the wallet a flow's buttons stay in view: at the bottom of the window,
+ * above a phone's keyboard, and above the tab bar where there is one.
+ */
+.shell .dusk-wizard__step-navigation {
+  position: sticky;
+  bottom: var(--keyboard-inset, 0px);
+  z-index: 3;
+  margin-top: auto;
+  padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+  background: var(--calm-s0);
+  box-shadow: 0 -1px 0 var(--calm-line);
+}
+
+.shell .dusk-card .dusk-wizard__step-navigation {
+  background: var(--calm-s1);
+}
+
+@media (max-width: 47.99rem) {
+  .shell:not(.shell--flow):not(.shell--typing) .dusk-wizard__step-navigation {
+    bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom));
+  }
+}

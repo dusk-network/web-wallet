@@ -101,7 +101,7 @@
       />
     </header>
     <div class="bridge-wallet__connect">
-      <Button text="CONNECT WEB3 WALLET" on:click={() => modal.open()} />
+      <Button text="Connect Web3 wallet" on:click={() => modal.open()} />
     </div>
   </article>
 {:else}
@@ -118,13 +118,11 @@
 {/if}
 
 <style lang="postcss">
+  /* A page of its own: no card around it. */
   .bridge-wallet {
-    background: var(--surface-color);
-    border-radius: 1.25em;
     display: flex;
     flex-direction: column;
     gap: var(--default-gap);
-    padding: 1.25em;
 
     &__header {
       align-items: center;
@@ -132,12 +130,16 @@
       flex-wrap: wrap;
       gap: 0.75rem;
       justify-content: space-between;
+
+      & h3 {
+        font-size: 1.75rem;
+      }
     }
 
     &__connect {
       align-items: center;
-      border: 1px solid var(--surface-border-color);
-      border-radius: var(--fieldset-border-radius);
+      background: var(--calm-s1);
+      border-radius: 1rem;
       display: flex;
       justify-content: center;
       min-height: 10rem;

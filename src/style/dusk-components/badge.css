@@ -1,37 +1,34 @@
 .dusk-badge {
-  padding: 0.35em 0.8em;
-  border-radius: var(--control-border-radius-size);
-  font-family: var(--mono-font-family);
-  font-size: 0.75em;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3em 0.75em;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.8125em;
   font-weight: 500;
-  letter-spacing: 0.12em;
-  line-height: 1;
-  text-transform: uppercase;
-  border-style: solid;
-  border-width: 0.0625em;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: none;
+  border: 0 none;
   text-align: center;
+  background-color: var(--calm-s2);
+  color: var(--calm-muted);
 }
 
 .dusk-badge--variant-neutral {
-  background-color: transparent;
-  border-color: var(--on-background-color);
-  color: var(--on-background-color);
+  background-color: var(--calm-s2);
+  color: var(--calm-text);
 }
 
+/* Status words carry their colour on a neutral chip. */
 .dusk-badge--variant-warning {
-  background-color: var(--status-warning-bg-color);
-  border-color: var(--badge-warning-color);
-  color: var(--badge-warning-color);
+  color: var(--calm-pending);
 }
 
 .dusk-badge--variant-error {
-  background-color: var(--status-error-bg-color);
-  border-color: var(--badge-error-color);
-  color: var(--badge-error-color);
+  color: var(--calm-danger);
 }
 
 .dusk-badge--variant-success {
-  background-color: var(--status-success-bg-color);
-  border-color: var(--badge-success-color);
-  color: var(--badge-success-color);
+  color: var(--calm-online);
 }

@@ -28,7 +28,7 @@
   {#await networkStore.connect().then(() => networkStore.init())}
     <div class="welcome-layout__loading">
       <Throbber />
-      <strong>CONNECTING TO THE NETWORK</strong>
+      <strong>Connecting to the network</strong>
     </div>
   {:then}
     <slot />

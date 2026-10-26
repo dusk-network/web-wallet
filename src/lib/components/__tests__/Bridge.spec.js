@@ -140,7 +140,7 @@ describe("Bridge", () => {
     );
     expect(getByText(/^Available on DuskDS:/)).toBeInTheDocument();
 
-    await fireEvent.click(getByRole("button", { name: "USE MAX" }));
+    await fireEvent.click(getByRole("button", { name: "Use max" }));
 
     // The public balance, past the deposit's fee.
     expect(amount).toHaveValue("999.98");
@@ -155,7 +155,7 @@ describe("Bridge", () => {
       "Available on DuskEVM: 3.000000000 DUSK"
     );
 
-    await fireEvent.click(getByRole("button", { name: "USE MAX" }));
+    await fireEvent.click(getByRole("button", { name: "Use max" }));
     await vi.waitFor(() =>
       // 3 DUSK, less twice the estimated fee.
       expect(getByLabelText("Amount")).toHaveValue("2.997230463")

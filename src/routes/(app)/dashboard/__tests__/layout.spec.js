@@ -7,10 +7,9 @@ import {
   it,
   vi,
 } from "vitest";
-import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, render } from "@testing-library/svelte";
 
 import { apiMarketData } from "$lib/mock-data";
-import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
@@ -38,13 +37,6 @@ vi.mock("$lib/stores", async (importOriginal) => {
 });
 
 describe("Dashboard Layout", () => {
-  /**
-   * @param {Element} container
-   * @param {"error" | "success" | "warning"} status
-   * @returns
-   */
-  const getStatusWrapper = (container, status) =>
-    container.querySelector(`.footer__network-status-icon--${status}`);
   const initialState = mockedWalletStore.getMockedStoreValue();
 
   beforeEach(() => {
@@ -147,125 +139,12 @@ describe("Dashboard Layout", () => {
     });
   });
 
-  it("should render the dashboard layout", () => {
+  it("should hold the dashboard's pages, and leave the balance and the network to them and the top bar", () => {
     const { container } = render(Layout);
 
-    expect(getStatusWrapper(container, "success")).toBeTruthy();
-    expect(container).toMatchSnapshot();
-  });
-
-  it("should leave the balance card to the dashboard page, out of the other pages", () => {
-    const { container } = render(Layout);
-
+    expect(container.querySelector("section.dashboard")).toBeTruthy();
     expect(container.querySelector(".dusk-balance")).toBeNull();
-  });
-
-  it("should render the dashboard layout in the sync state when no progress is reported", async () => {
-    const { container } = render(Layout);
-
-    expect(getStatusWrapper(container, "warning")).toBeNull();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue({
-        ...initialState,
-        syncStatus: {
-          error: null,
-          from: 0n,
-          isInProgress: true,
-          last: 0n,
-          progress: 0,
-        },
-      });
-    });
-
-    expect(getStatusWrapper(container, "warning")).toBeTruthy();
-    expect(container.firstElementChild).toMatchSnapshot();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue(initialState);
-    });
-
-    expect(getStatusWrapper(container, "warning")).toBeNull();
-  });
-
-  it("should render the dashboard layout in the sync state with a progress indicator", async () => {
-    const { container } = render(Layout);
-
-    expect(getStatusWrapper(container, "warning")).toBeNull();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue({
-        ...initialState,
-        syncStatus: {
-          error: null,
-          from: 100n,
-          isInProgress: true,
-          last: 200n,
-          progress: 0.5,
-        },
-      });
-    });
-
-    expect(getStatusWrapper(container, "warning")).toBeTruthy();
-    expect(container).toMatchSnapshot();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue(initialState);
-    });
-
-    expect(getStatusWrapper(container, "warning")).toBeNull();
-  });
-
-  it("should render the dashboard layout in the error state", async () => {
-    const { container } = render(Layout);
-    const getRetryButton = () =>
-      container.querySelector(".footer__actions-button--retry");
-
-    expect(getStatusWrapper(container, "error")).toBeNull();
-    expect(getRetryButton()).toBeNull();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue({
-        ...initialState,
-        syncStatus: {
-          error: new Error(),
-          from: 0n,
-          isInProgress: false,
-          last: 0n,
-          progress: 0,
-        },
-      });
-    });
-
-    expect(getStatusWrapper(container, "error")).toBeTruthy();
-    expect(getRetryButton()).toBeTruthy();
-    expect(container).toMatchSnapshot();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue(initialState);
-    });
-
-    expect(getStatusWrapper(container, "error")).toBeNull();
-    expect(getRetryButton()).toBeNull();
-    expect(getStatusWrapper(container, "success")).toBeTruthy();
-  });
-
-  it("should look no `.dusk` names up on a network without them", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
-    const { container } = render(Layout);
-
-    await fireEvent.click(
-      getAsHTMLElement(container, ".address-picker__trigger")
-    );
-    await new Promise((resolve) => setTimeout(resolve));
-
-    expect(
-      container.querySelector(
-        ".address-picker__name, .address-picker__address-name"
-      )
-    ).toBeNull();
-    expect(fetchSpy).not.toHaveBeenCalled();
-
-    fetchSpy.mockRestore();
+    expect(container.querySelector(".footer")).toBeNull();
+    expect(container.querySelector(".address-picker")).toBeNull();
   });
 });

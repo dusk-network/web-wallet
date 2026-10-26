@@ -249,7 +249,7 @@
           size="small"
           variant="tertiary"
           on:click={setMaxAmount}
-          text="USE MAX"
+          text="Use max"
         />
       </div>
 

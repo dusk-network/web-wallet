@@ -1,22 +1,21 @@
-<svelte:options immutable={true} />
-
 <script>
   import {
-    mdiArrowBottomLeft,
-    mdiArrowTopRight,
-    mdiBridge,
-    mdiContain,
-    mdiDatabaseOutline,
-    mdiListBoxOutline,
+    mdiEyeOffOutline,
+    mdiLayersOutline,
+    mdiSendOutline,
     mdiSwapHorizontal,
-    mdiSync,
+    mdiTrayArrowDown,
   } from "@mdi/js";
-  import { AnchorButton, Icon } from "$lib/dusk/components";
-  import { Balance, DashboardNav, Transactions } from "$lib/components";
-  import { networkStore, settingsStore, walletStore } from "$lib/stores";
+  import { TX_KIND, activityState, isHistoryEnabled } from "$lib/activity";
   import { contractDescriptors } from "$lib/contracts";
-  import IconHeadingCard from "$lib/containers/Cards/IconHeadingCard.svelte";
-  import { page } from "$app/stores";
+  import {
+    ActivityPanel,
+    ExplainerCards,
+    HomeActions,
+    HomeBalance,
+  } from "$lib/containers/Home";
+  import { addBasePath } from "$lib/navigation";
+  import { settingsStore, walletStore } from "$lib/stores";
 
   /** @type {import("./$types").PageData} */
   export let data;
@@ -24,153 +23,229 @@
   /** @type {number | undefined} */
   let fiatPrice;
 
-  const { currency, dashboardTransactionLimit, language } = $settingsStore;
-  const { networkName } = $networkStore;
+  const { currency, language } = $settingsStore;
 
   data.currentPrice.then((prices) => {
     fiatPrice = prices[currency.toLowerCase()];
   });
 
-  /** @param {string} contract */
-  function getIconsForContract(contract) {
-    /** @type {Array.<DashboardNavItemIconProp>} */
-    let icons = [{ path: "" }];
+  /** @param {string} id */
+  const isEnabled = (id) =>
+    contractDescriptors.some(
+      (contract) => contract.id === id && contract.enabled === true
+    );
 
-    switch (contract) {
-      case "allocate":
-        icons = [{ path: mdiSync }];
-        break;
-      case "migrate":
-        icons = [{ path: mdiSwapHorizontal }];
-        break;
-      case "bridge":
-        icons = [{ path: mdiBridge }];
-        break;
-      case "receive":
-        icons = [{ path: mdiArrowBottomLeft }];
-        break;
-      case "send":
-        icons = [{ path: mdiArrowTopRight }];
-        break;
-      case "stake":
-        icons = [{ path: mdiDatabaseOutline }];
-        break;
-      default:
-        break;
-    }
+  const actions = [
+    {
+      href: "/dashboard/send",
+      icon: mdiSendOutline,
+      id: "send",
+      label: "Send",
+      primary: true,
+    },
+    {
+      href: "/dashboard/receive",
+      icon: mdiTrayArrowDown,
+      id: "receive",
+      label: "Receive",
+    },
+    {
+      href: "/dashboard/allocate",
+      icon: mdiEyeOffOutline,
+      id: "allocate",
+      label: "Shield",
+    },
+    {
+      href: "/dashboard/stake",
+      icon: mdiLayersOutline,
+      id: "stake",
+      label: "Stake",
+    },
+    {
+      href: "/dashboard/bridge",
+      icon: mdiSwapHorizontal,
+      id: "bridge",
+      label: "Bridge",
+    },
+  ].filter(({ id }) => isEnabled(id));
 
-    return icons;
-  }
+  /** @type {Set<string | undefined>} */
+  const STAKING_KINDS = new Set([
+    TX_KIND.STAKE,
+    TX_KIND.UNSTAKE,
+    TX_KIND.WITHDRAW_REWARD,
+  ]);
 
-  function getExplorerPath() {
-    const isStaging = $page.url.href.includes("staging");
-    const baseUrl = isStaging ? "https://apps.staging" : "https://apps";
-
-    switch (networkName) {
-      case "devnet":
-        return `${baseUrl}.devnet.dusk.network/explorer`;
-      case "testnet":
-        return `${baseUrl}.testnet.dusk.network/explorer`;
-      default:
-        return `${baseUrl}.dusk.network/explorer`;
-    }
-  }
-
-  /** @type {ContractDescriptor[]} */
-  const enabledContracts = contractDescriptors.filter(
-    (contract) => contract.enabled === true
+  $: ({ balance, minimumStake, stakeInfo } = $walletStore);
+  $: staked = stakeInfo.amount
+    ? stakeInfo.amount.value + stakeInfo.amount.locked
+    : null;
+  $: hasPastStaking = $activityState.rows.some((row) =>
+    STAKING_KINDS.has(row.kind)
   );
-
-  const dashboardNavItems = enabledContracts.map(({ id, label }) => ({
-    href: id,
-    icons: getIconsForContract(id),
-    id,
-    label,
-  }));
-
-  $: ({ balance, syncStatus } = $walletStore);
 </script>
 
-<Balance
-  fiatCurrency={currency}
-  {fiatPrice}
-  locale={language}
-  tokenCurrency="DUSK"
-  shieldedAmount={balance.shielded.value}
-  unshieldedAmount={balance.unshielded.value}
-/>
+<div class="home">
+  <div class="home__main">
+    <HomeBalance
+      fiatCurrency={currency}
+      {fiatPrice}
+      locale={language}
+      shielded={balance.shielded.value}
+      unshielded={balance.unshielded.value}
+    />
 
-{#if enabledContracts.length}
-  <DashboardNav items={dashboardNavItems} />
-{:else}
-  <div class="no-contracts">
-    <Icon path={mdiContain} size="large" />
-    <h3>No Contracts Enabled</h3>
-    <p>
-      It appears that no contracts are currently enabled. To access the full
-      range of functionalities, enabling contracts is essential.
-    </p>
-    {#if import.meta.env.MODE === "development"}
-      <h4>For Developers:</h4>
-      <p>
-        No contracts are currently enabled. Please check the environment
-        variables.
+    {#if actions.length}
+      <HomeActions {actions} />
+    {:else}
+      <p class="home__note">Nothing can be sent from this wallet right now.</p>
+    {/if}
+
+    {#if isEnabled("migrate")}
+      <p class="home__note">
+        Have DUSK on Ethereum or BNB Smart Chain?
+        <a href={addBasePath("/dashboard/migrate")}>Migrate it to Dusk</a>
       </p>
     {/if}
   </div>
-{/if}
 
-<slot />
-
-{#if import.meta.env.VITE_FEATURE_TRANSACTION_HISTORY !== "false"}
-  <Transactions
-    items={walletStore.getTransactionsHistory()}
-    {language}
-    limit={dashboardTransactionLimit}
-    isSyncing={syncStatus.isInProgress}
-    syncError={syncStatus.error}
-  />
-{:else}
-  <IconHeadingCard
-    gap="medium"
-    icons={[mdiListBoxOutline]}
-    heading="Transactions"
-  >
-    <p>Transaction history isn't available here yet.</p>
-
-    <AnchorButton
-      variant="tertiary"
-      href={getExplorerPath()}
-      text="Block Explorer"
-      rel="noopener noreferrer"
-      target="_blank"
+  <div class="home__cards">
+    <ExplainerCards
+      {hasPastStaking}
+      locale={language}
+      {minimumStake}
+      reward={stakeInfo.reward}
+      shielded={balance.shielded.value}
+      stakeEnabled={isEnabled("stake")}
+      {staked}
+      unshielded={balance.unshielded.value}
     />
-  </IconHeadingCard>
-{/if}
+  </div>
+
+  <aside class="home__side">
+    {#if isHistoryEnabled()}
+      <ActivityPanel
+        locale={language}
+        onRetry={() => {
+          walletStore
+            .startHistory()
+            ?.refresh()
+            .catch(() => {});
+        }}
+        state={$activityState}
+      />
+    {:else}
+      <h2 class="home__side-title">Activity</h2>
+      <p class="home__note home__note--side">
+        Transaction history isn't available here yet. The Dusk explorer has your
+        transactions.
+      </p>
+    {/if}
+  </aside>
+</div>
 
 <style lang="postcss">
-  .no-contracts {
+  .home {
+    display: grid;
+    grid-template-areas:
+      "main side"
+      "cards side";
+    grid-template-columns: minmax(0, 1fr) 25rem;
+    grid-template-rows: auto 1fr;
+    flex: 1;
+    width: 100%;
+  }
+
+  .home__main {
+    grid-area: main;
     display: flex;
     flex-direction: column;
-    background-color: var(--surface-color);
-    padding: 1rem 1.375rem;
-    border-radius: var(--control-border-radius-size);
+    gap: 1.75rem;
+    min-width: 0;
+    padding: 2.25rem 3rem 0;
+  }
 
-    & h3 {
-      text-align: center;
-      margin-bottom: 1em;
+  .home__cards {
+    grid-area: cards;
+    min-width: 0;
+    padding: 2rem 3rem 3rem;
+  }
+
+  .home__side {
+    grid-area: side;
+    position: sticky;
+    top: var(--top-bar-height);
+    align-self: start;
+    max-height: calc(100vh - var(--top-bar-height));
+    overflow-y: auto;
+    padding: 1.5rem 1.5rem 2rem;
+    border-left: 1px solid var(--calm-line);
+    background: var(--calm-panel);
+    min-height: calc(100vh - var(--top-bar-height));
+  }
+
+  .home__side-title {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .home__note--side {
+    margin-top: 0.75rem;
+  }
+
+  .home__note {
+    margin-top: -0.75rem;
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+
+    & a {
+      color: var(--calm-text);
+      text-underline-offset: 3px;
+    }
+  }
+
+  /* One column: the activity right under the actions. */
+  @media (max-width: 63.99rem) {
+    .home {
+      grid-template-areas:
+        "main"
+        "side"
+        "cards";
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto;
     }
 
-    & p:not(:last-child) {
-      margin-bottom: 1em;
-    }
-    h4 {
-      margin-bottom: 0.5em;
+    .home__main {
+      padding: 1.75rem 1.5rem 0.5rem;
     }
 
-    :global(.dusk-icon) {
-      align-self: center;
-      margin-bottom: 0.5rem;
+    .home__cards {
+      padding: 0.5rem 1.5rem 2rem;
+    }
+
+    .home__side {
+      position: static;
+      max-height: none;
+      min-height: 0;
+      overflow: visible;
+      border-left: 0 none;
+      background: none;
+      padding: 0.5rem 1.5rem 2rem;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .home__main {
+      gap: 1.5rem;
+      padding: 1rem 1rem 0.5rem;
+    }
+
+    .home__side {
+      padding: 0.5rem 1rem 1rem;
+    }
+
+    .home__cards {
+      padding: 0.5rem 1rem 1.5rem;
     }
   }
 </style>

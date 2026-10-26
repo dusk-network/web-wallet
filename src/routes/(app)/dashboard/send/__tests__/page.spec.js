@@ -155,7 +155,7 @@ describe("Send page", () => {
 
     expect(amountInput).toHaveValue(10);
 
-    await fireEvent.click(getByRole("button", { name: "USE MAX" }));
+    await fireEvent.click(getByRole("button", { name: "Use max" }));
 
     expect(amountInput).toHaveValue(maxAmount);
 
@@ -201,7 +201,7 @@ describe("Send page", () => {
       target: { value: currentProfile.account.toString() },
     });
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "EDIT" }));
+    await fireEvent.click(getByRole("button", { name: "Edit" }));
     await fireEvent.input(getByLabelText(/gas limit/i), {
       target: { value: "3000000" },
     });

@@ -140,7 +140,7 @@ describe("Stake", () => {
 
   it("should set the max amount in the textbox if the user clicks the related button", async () => {
     const { getByRole } = render(Stake, baseOptions);
-    const useMaxButton = getByRole("button", { name: "USE MAX" });
+    const useMaxButton = getByRole("button", { name: "Use max" });
 
     await fireEvent.click(useMaxButton);
 
@@ -157,7 +157,7 @@ describe("Stake", () => {
 
     const { getByRole } = render(Stake, props);
 
-    const useMaxButton = getByRole("button", { name: "USE MAX" });
+    const useMaxButton = getByRole("button", { name: "Use max" });
     const amountInput = getByRole("spinbutton");
 
     expect(amountInput).toHaveValue(luxToDusk(baseProps.minStakeRequirement));
@@ -178,7 +178,7 @@ describe("Stake", () => {
     };
 
     const { getByRole } = render(Stake, props);
-    const useMaxButton = getByRole("button", { name: "USE MAX" });
+    const useMaxButton = getByRole("button", { name: "Use max" });
     const amountInput = getByRole("spinbutton");
 
     expect(amountInput).toHaveValue(luxToDusk(baseProps.minStakeRequirement));
@@ -272,7 +272,7 @@ describe("Stake", () => {
         ".dusk-stepper__step-label:not(.dusk-stepper__step-label--invisible)"
       )
     ).toHaveTextContent(/^Review$/);
-    expect(queryByText("REVIEW TRANSACTION")).not.toBeInTheDocument();
+    expect(queryByText("Review transaction")).not.toBeInTheDocument();
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
@@ -346,7 +346,7 @@ describe("Stake", () => {
 
       const { getByRole, getByText } = render(Stake, baseProps);
 
-      await fireEvent.click(getByRole("button", { name: "USE MAX" }));
+      await fireEvent.click(getByRole("button", { name: "Use max" }));
       await fireEvent.click(getByRole("button", { name: "Next" }));
       await fireEvent.click(getByRole("button", { name: "Stake" }));
 

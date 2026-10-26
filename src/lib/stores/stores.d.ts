@@ -136,8 +136,6 @@ type WalletStoreServices = {
 
   useContract: (contractId: string, wasmPath: string) => Promise<Contract>;
 
-  getTransactionsHistory: () => Promise<Transaction[]>;
-
   init: (
     profileGenerator: ProfileGenerator,
     syncFromBlock?: bigint
@@ -150,6 +148,9 @@ type WalletStoreServices = {
   shield: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
 
   stake: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
+
+  /** The current profile's history, started on first use; none while it is turned off. */
+  startHistory: () => import("$lib/activity").ActivitySession | null;
 
   /** Rejects on sync failure or cancellation; syncStatus also records current-session errors. */
   sync: (fromBlock?: bigint) => Promise<void>;

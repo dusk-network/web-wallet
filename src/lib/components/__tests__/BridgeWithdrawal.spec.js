@@ -97,7 +97,7 @@ describe("Bridge withdrawal", () => {
       target: { value: "1" },
     });
     await fireEvent.click(rendered.getByRole("button", { name: "Next" }));
-    await fireEvent.click(rendered.getByRole("button", { name: "SEND" }));
+    await fireEvent.click(rendered.getByRole("button", { name: "Send" }));
 
     return rendered;
   }

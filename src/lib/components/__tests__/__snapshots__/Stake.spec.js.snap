@@ -102,7 +102,7 @@ exports[`Stake > should render the Stake component 1`] = `
         <span
           class="dusk-button__text"
         >
-          USE MAX
+          Use max
         </span>
         <!---->
       </button>
@@ -175,7 +175,7 @@ exports[`Stake > should render the Stake component 1`] = `
             <span
               class="dusk-button__text"
             >
-              EDIT
+              Edit
             </span>
             <!---->
           </button>

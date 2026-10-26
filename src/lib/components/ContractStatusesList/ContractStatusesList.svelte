@@ -54,19 +54,16 @@
     &__label {
       align-self: center;
       color: var(--muted-color);
-      font-family: var(--mono-font-family);
-      font-size: 0.75rem;
-      letter-spacing: 0.12em;
+      font-size: 0.875rem;
       padding-left: 0.5rem;
       padding-right: 0.75rem;
-      text-transform: uppercase;
     }
 
     &__value {
       display: inline-flex;
       align-items: center;
       gap: var(--small-gap);
-      font-family: var(--mono-font-family);
+      font-variant-numeric: tabular-nums;
       font-size: 0.9375rem;
       font-weight: 500;
       justify-content: end;

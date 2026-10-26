@@ -295,7 +295,7 @@
           on:click={() => {
             amount = formatUnits(connectedWalletBalance ?? 0n, ercDecimals);
           }}
-          text="USE MAX"
+          text="Use max"
           disabled={isInputDisabled}
         />
       </div>
@@ -354,14 +354,14 @@
   {#if !isConnected}
     <Button
       icon={{ path: mdiWalletOutline }}
-      text={`CONNECT TO ${selectedChain === tokens[network]["ERC-20"].name ? "ETHEREUM" : "BSC"}`}
+      text={`Connect to ${selectedChain === tokens[network]["ERC-20"].name ? "Ethereum" : "BSC"}`}
       on:click={() => modal.open()}
     />
   {:else if connectedWalletBalance === 0n}
     <Banner variant="warning" title="The connected wallet has no DUSK." />
   {:else if !isMigrationInitialized && address}
     <Button
-      text="INITIALIZE MIGRATION"
+      text="Initialize migration"
       on:click={() => {
         isMigrationInitialized = true;
       }}

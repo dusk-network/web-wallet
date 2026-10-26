@@ -135,9 +135,8 @@
 
       & > div > p {
         color: var(--secondary-text-color);
-        font-size: 0.75rem;
+        font-size: 0.8125rem;
         margin: 0 0 0.25rem;
-        text-transform: uppercase;
       }
     }
 

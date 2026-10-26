@@ -24,7 +24,7 @@ exports[`ScanQR > renders the ScanQR component 1`] = `
     <span
       class="dusk-button__text"
     >
-      CLOSE
+      Close
     </span>
     <!---->
   </button>

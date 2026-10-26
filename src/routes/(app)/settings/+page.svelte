@@ -348,13 +348,12 @@
 <style lang="postcss">
   :global {
     .settings {
-      overflow-y: hidden;
-      background-color: var(--surface-color);
-      border: 1px solid var(--surface-border-color);
-      border-radius: var(--control-border-radius-size);
+      width: min(100%, 44rem);
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
 
       & > * {
-        padding: 1em 1em 0 1em;
+        padding: 0;
       }
 
       &,
@@ -370,20 +369,8 @@
       }
 
       &__header h2 {
-        font-family: var(--mono-font-family);
-        font-size: 0.75rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
-      &__header h2::before {
-        content: "[ ";
-        color: var(--secondary-color);
-      }
-
-      &__header h2::after {
-        content: " ]";
-        color: var(--secondary-color);
+        font-size: 1.75rem;
+        font-weight: 500;
       }
     }
 
@@ -396,20 +383,17 @@
       margin-bottom: 0.5em;
 
       &__header {
-        text-transform: capitalize;
         display: flex;
         align-items: center;
         gap: 0.75em;
-        color: var(--secondary-color-variant-dark);
+        color: var(--calm-muted);
       }
 
       &__heading {
         color: var(--on-background-color);
-        font-family: var(--mono-font-family);
-        font-size: 0.75rem;
-        letter-spacing: 0.12em;
+        font-size: 1rem;
+        font-weight: 500;
         line-height: 140%;
-        text-transform: uppercase;
       }
 
       &__control {
@@ -431,10 +415,9 @@
         }
 
         &--switch {
-          background-color: var(--surface-soft-color);
-          border: 1px solid var(--surface-border-color);
-          padding: 0.625em 0.75em 0.625em 0.75em;
-          border-radius: var(--control-border-radius-size);
+          background-color: var(--calm-s1);
+          padding: 0.625em 0.875em;
+          border-radius: 0.875rem;
         }
       }
 
@@ -459,7 +442,7 @@
         cursor: pointer;
 
         & > .dusk-icon:first-child {
-          color: var(--secondary-color-variant-dark);
+          color: var(--calm-muted);
         }
       }
 

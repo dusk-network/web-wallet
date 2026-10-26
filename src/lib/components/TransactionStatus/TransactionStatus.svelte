@@ -135,13 +135,13 @@
       href={`/explorer/transactions/transaction?id=${hash}`}
       rel="noopener noreferrer"
       target="_blank"
-      text="VIEW ON BLOCK EXPLORER"
+      text="View in Dusk explorer"
     />
     {#if status === "late"}
       <Button
         className="transaction-status__button"
         on:click={follow}
-        text="CHECK AGAIN"
+        text="Check again"
         variant="secondary"
       />
     {/if}

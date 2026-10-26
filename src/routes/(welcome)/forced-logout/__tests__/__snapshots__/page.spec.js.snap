@@ -83,7 +83,7 @@ exports[`Forced logout page > should render the page alert the user about the fo
     <span
       class="dusk-anchor-button__text"
     >
-      HOME
+      Home
     </span>
     
     <!---->

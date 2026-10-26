@@ -119,7 +119,7 @@
   {/if}
 
   <Button
-    text={error ? "RETRY APPROVAL" : "APPROVE MIGRATION"}
+    text={error ? "Retry approval" : "Approve migration"}
     disabled={!!isLoading}
     on:click={approvalTxStore.getData}
   />

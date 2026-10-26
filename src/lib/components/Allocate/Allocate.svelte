@@ -324,14 +324,14 @@
       }}
       nextButton={{
         icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-        label: "SEND",
+        label: "Send",
         variant: "primary",
       }}
     >
       <div in:fade|global class="operation__allocate">
         <Badge
           className="operation__review-notice"
-          text="REVIEW TRANSACTION"
+          text="Review transaction"
           variant="warning"
         />
         <ReviewAmount label="Amount" value={formatter(luxToDusk(amount))} />
@@ -426,7 +426,7 @@
     }
 
     &__label {
-      font-family: var(--mono-font-family);
+      font-variant-numeric: tabular-nums;
     }
 
     &__input-wrapper {

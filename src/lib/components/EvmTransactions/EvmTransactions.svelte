@@ -444,7 +444,7 @@
 
       & p {
         color: var(--secondary-text-color);
-        font-family: var(--mono-font-family);
+        font-variant-numeric: tabular-nums;
         font-size: 0.8125rem;
         margin-top: 0.25rem;
       }

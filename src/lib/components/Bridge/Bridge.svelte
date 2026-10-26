@@ -560,7 +560,7 @@
                 disabled={isWithdrawing && !evmDuskBalance}
                 on:click={setMaxAmount}
                 size="small"
-                text="USE MAX"
+                text="Use max"
                 variant="tertiary"
               />
             </div>
@@ -644,14 +644,14 @@
         nextButton={{
           disabled: isNextButtonDisabled,
           icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-          label: "SEND",
+          label: "Send",
           variant: "primary",
         }}
       >
         <div in:fade|global class="operation__bridge">
           <Badge
             className="operation__review-notice"
-            text="REVIEW TRANSACTION"
+            text="Review transaction"
             variant="warning"
           />
           <ReviewAmount
@@ -727,13 +727,13 @@
               {#if hash}
                 <AnchorButton
                   href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}
-                  text="VIEW ON BLOCK EXPLORER"
+                  text="View in Dusk explorer"
                   rel="noopener noreferrer"
                   target="_blank"
                 />
                 <AppAnchorButton
                   href={withdrawalStatusHref(hash)}
-                  text="TRACK WITHDRAWAL"
+                  text="Track withdrawal"
                   variant="tertiary"
                 />
               {/if}

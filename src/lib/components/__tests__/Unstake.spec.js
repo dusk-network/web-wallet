@@ -167,7 +167,7 @@ describe("Unstake", () => {
       expect(amountInput).toHaveValue(100);
       expect(amountInput).not.toHaveAccessibleDescription();
 
-      await fireEvent.click(getByRole("button", { name: "USE MAX" }));
+      await fireEvent.click(getByRole("button", { name: "Use max" }));
 
       expect(amountInput).toHaveValue(
         luxToDusk(unstakeProps.maxWithdrawAmount)

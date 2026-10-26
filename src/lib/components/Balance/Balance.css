@@ -86,24 +86,11 @@
 }
 
 .dusk-balance__label {
-  color: var(--on-background-color);
-  font-family: var(--mono-font-family);
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
+  color: var(--calm-muted);
+  font-size: 0.875rem;
+  font-weight: 400;
   line-height: 1.2;
   margin: 0;
-  text-transform: uppercase;
-}
-
-.dusk-balance__label::before {
-  content: "[ ";
-  color: var(--secondary-color);
-}
-
-.dusk-balance__label::after {
-  content: " ]";
-  color: var(--secondary-color);
 }
 
 .dusk-balance__usage-details {
@@ -136,7 +123,7 @@
 
 .dusk-balance__fiat {
   margin: 0;
-  font-family: var(--mono-font-family);
+  font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
   font-weight: 400;
   line-height: 1.2;
@@ -150,7 +137,7 @@
 }
 
 .dusk-balance__value {
-  font-family: var(--mono-font-family);
+  font-variant-numeric: tabular-nums;
   font-size: 0.9375rem;
   justify-content: end;
   color: var(--on-background-color);

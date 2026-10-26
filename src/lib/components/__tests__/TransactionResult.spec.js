@@ -61,7 +61,7 @@ describe("TransactionResult", () => {
     expect(await findByRole("status")).toHaveTextContent(/^Sent Pending/);
     expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything());
 
-    await clickLink(getByRole("link", { name: "HOME" }));
+    await clickLink(getByRole("link", { name: "Home" }));
 
     expect(onBeforeLeave).toHaveBeenCalledTimes(1);
   });
@@ -75,7 +75,7 @@ describe("TransactionResult", () => {
     expect(await findByText("Transaction failed")).toBeInTheDocument();
     expect(followTransaction).not.toHaveBeenCalled();
 
-    await clickLink(getByRole("link", { name: "HOME" }));
+    await clickLink(getByRole("link", { name: "Home" }));
 
     expect(onBeforeLeave).toHaveBeenCalledTimes(1);
   });

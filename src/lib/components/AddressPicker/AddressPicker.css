@@ -166,7 +166,7 @@
 }
 
 .address-picker__current-indicator {
-  color: var(--secondary-color);
+  color: var(--calm-muted);
   font-weight: normal;
   font-size: 0.85em;
 }
@@ -214,7 +214,7 @@
 }
 
 .address-picker__profile--selected .address-picker__profile-header {
-  color: var(--secondary-color);
+  color: var(--calm-text);
 }
 
 .address-picker--expanded {
@@ -235,5 +235,81 @@
   .address-picker__trigger,
   .address-picker__copy-button {
     min-height: 44px;
+  }
+}
+
+/* The top bar's pill, with the profiles in a popover under it. */
+.address-picker--compact {
+  padding: 0;
+  border: 0 none;
+  border-radius: 999px;
+  background: none;
+  z-index: 15;
+}
+
+.address-picker--compact .address-picker__trigger {
+  gap: 0.5rem;
+  height: 2.375rem;
+  min-width: 44px;
+  padding: 0 0.625rem 0 0.3125rem;
+  border-radius: 999px;
+  background: var(--calm-s1);
+  color: var(--calm-text);
+}
+
+.address-picker--compact .address-picker__trigger:hover {
+  background: var(--calm-s2);
+  color: var(--calm-text);
+}
+
+.address-picker--compact .address-picker__chevron {
+  position: static;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--calm-muted);
+}
+
+.address-picker__avatar {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--calm-s3);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  flex: 0 0 auto;
+}
+
+.address-picker__compact-name {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+.address-picker--compact .address-picker__drop-down {
+  left: auto;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  width: min(20rem, calc(100vw - 2rem));
+  border: 1px solid var(--calm-line2);
+  border-radius: 1rem;
+  background: var(--calm-s1);
+}
+
+.address-picker--compact.address-picker--expanded {
+  border-radius: 999px;
+}
+
+@media (max-width: 47.99rem) {
+  .address-picker--compact .address-picker__compact-name,
+  .address-picker--compact .address-picker__chevron {
+    display: none;
+  }
+
+  .address-picker--compact .address-picker__trigger {
+    padding: 0 0.3125rem;
   }
 }

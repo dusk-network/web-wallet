@@ -83,13 +83,13 @@ fieldset {
   *[role="menuitem"]
 ):focus,
 .dusk-exclusive-choice:focus-within {
-  border-color: var(--secondary-color-variant-dark);
+  border-color: var(--calm-focus);
   box-shadow: 0 0 0 2px var(--focus-ring-color);
   outline: 0 none;
 }
 
 .dusk-checkbox:enabled:focus {
-  border-color: var(--secondary-color-variant-dark);
+  border-color: var(--calm-focus);
   outline: 0 none;
 }
 
@@ -102,6 +102,48 @@ fieldset {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   border: 0;
+}
+
+/*
+ * The wallet itself fills the window, and the document scrolls: its top
+ * bar and its primary buttons stick to the window's edges.
+ */
+html:has(.shell),
+html:has(.shell) body {
+  height: auto;
+  min-height: 100%;
+}
+
+body:has(.shell) {
+  display: block;
+  padding: 0;
+  background-color: var(--calm-s0);
+}
+
+#outer-container:has(.shell) {
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  max-height: none;
+  border: 0 none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  background-color: var(--calm-s0);
+}
+
+body:has(.shell) .app {
+  height: auto;
+  min-height: 100%;
+  padding: 0;
+  gap: 0;
+  overflow: visible;
+}
+
+/* A focused field scrolls clear of what sticks to the bottom. */
+html:has(.shell) {
+  scroll-padding-top: 4.5rem;
+  scroll-padding-bottom: 7rem;
 }
 
 @media (max-width: 500px), (max-height: 500px) {

@@ -47,7 +47,7 @@ describe("GasSettings", () => {
   it("renders the GasSettings component opened", async () => {
     const { container, getByRole } = render(GasSettings, baseOptions);
 
-    const next = getByRole("button", { name: "EDIT" });
+    const next = getByRole("button", { name: "Edit" });
 
     await fireEvent.click(next);
 
@@ -69,7 +69,7 @@ describe("GasSettings", () => {
       ...baseOptions,
       events: { gasSettings: eventHandler },
     });
-    const editButton = getByRole("button", { name: "EDIT" });
+    const editButton = getByRole("button", { name: "Edit" });
 
     expect(() => getAllByRole("textbox")).toThrow();
 

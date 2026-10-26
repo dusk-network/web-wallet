@@ -45,6 +45,7 @@ exports[`AddressPicker > renders the AddressPicker component 1`] = `
       
       <!---->
     </span>
+    <!---->
      
     <!---->
     <svg
@@ -89,6 +90,7 @@ exports[`AddressPicker > should be able to render the component if the current p
        
       <!---->
     </span>
+    <!---->
      
     <!---->
     <svg

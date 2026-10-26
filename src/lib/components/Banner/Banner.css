@@ -2,28 +2,22 @@
   width: 100%;
   display: flex;
   align-items: center;
-  padding: 1em 1.25em;
-  background-color: var(--surface-soft-color);
-  border-radius: var(--control-border-radius-size);
+  padding: 0.875em 1.125em;
+  background-color: var(--calm-s1);
+  border-radius: 0.875rem;
   font-size: 0.875em;
-  border-style: solid;
-  border-width: 1px;
+  border: 0 none;
   line-height: 1.5;
+  color: var(--calm-text);
 }
 
-.banner--info {
-  border-color: var(--banner-info-color);
-  background-color: var(--surface-hover-color);
+/* Colour marks what the message is, on the icon and the title only. */
+.banner--warning .banner__title {
+  color: var(--banner-warning-color);
 }
 
-.banner--warning {
-  border-color: var(--banner-warning-color);
-  background-color: var(--status-warning-bg-color);
-}
-
-.banner--error {
-  border-color: var(--banner-error-color);
-  background-color: var(--status-error-bg-color);
+.banner--error .banner__title {
+  color: var(--banner-error-color);
 }
 
 .banner__title {

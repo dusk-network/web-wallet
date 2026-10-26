@@ -55,7 +55,7 @@ exports[`OperationResult > should accept a custom message for the failure state 
     <span
       class="dusk-anchor-button__text"
     >
-      HOME
+      Home
     </span>
     
     <!---->
@@ -141,7 +141,7 @@ exports[`OperationResult > should accept a custom message for the successful sta
     <span
       class="dusk-anchor-button__text"
     >
-      HOME
+      Home
     </span>
     
     <!---->
@@ -246,7 +246,7 @@ exports[`OperationResult > should be able to render the \`OperationResult\` in a
     <span
       class="dusk-anchor-button__text"
     >
-      HOME
+      Home
     </span>
     
     <!---->
@@ -293,7 +293,7 @@ exports[`OperationResult > should be able to render the \`OperationResult\` in a
     <span
       class="dusk-anchor-button__text"
     >
-      HOME
+      Home
     </span>
     
     <!---->

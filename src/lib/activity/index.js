@@ -1,7 +1,6 @@
 import { writable } from "svelte/store";
 
 import { ACTIVITY_PAGE, ActivitySession } from "./activitySession";
-import { luxToDusk } from "$lib/dusk/currency";
 
 export { clearActivityStore } from "./activityStore";
 export { getShieldedHistory } from "./shieldedHistory";
@@ -70,32 +69,4 @@ export function stopActivity() {
   current = null;
   unsubscribe = null;
   state.set(emptyState);
-}
-
-/**
- * The rows as the transactions list shows them: the transactions on chain,
- * with the amount as it changed the balance, in DUSK.
- *
- * @param {ActivityRow[]} rows
- * @returns {Transaction[]}
- */
-export function asTransactions(rows) {
-  return rows
-    .filter((row) => Number.isSafeInteger(row.blockHeight))
-    .map((row) => {
-      // A failed transaction moved nothing but its fee.
-      const amount =
-        row.status === "failed" ? 0 : luxToDusk(BigInt(row.amount ?? 0));
-
-      return {
-        amount: row.direction === "in" || !amount ? amount : -amount,
-        // eslint-disable-next-line camelcase
-        block_height: Number(row.blockHeight),
-        direction: row.direction === "in" ? "In" : "Out",
-        fee: luxToDusk(BigInt(row.feePaid ?? 0)),
-        id: row.hash,
-        // eslint-disable-next-line camelcase
-        tx_type: String(row.kind ?? "transfer").toUpperCase(),
-      };
-    });
 }
