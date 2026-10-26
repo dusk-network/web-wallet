@@ -7,6 +7,7 @@
   const WIDE = new Set([
     "/dashboard",
     "/dashboard/contacts",
+    "/dashboard/send",
     "/dashboard/transactions",
   ]);
 

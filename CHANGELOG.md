@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add a tab bar and a row of round actions on phones
 - Say at the top of a test network that test DUSK has no value
 - Add Contacts, kept on this device: a name for an address or a `.dusk` name, the last payment and Send, with a check that a contact's `.dusk` name still points to its address
+- Ask before sending to a contact's `.dusk` name when it points to another address now
+- Save a recipient to the contacts from Send, pick a contact there, and take "Did you mean …?" for a mistyped name the wallet knows
 
 ### Changed
 
@@ -61,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Call Allocate Shield
 - Show addresses and hashes in the system's code font
 - Show no money values or market data off mainnet
+- Send from one page, with the summary beside the form, a review on phones, and a button that says what it sends
 - Show amounts in one format, at most four decimals, and in full on hover, under review and in a transaction's details
 - Round a fee up to four decimals when it is the most it can cost, and to the nearest when it was paid
 

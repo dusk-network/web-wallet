@@ -1,16 +1,27 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { fade } from "svelte/transition";
   import { createEventDispatcher, onMount, tick } from "svelte";
-  import { mdiAlertOutline, mdiArrowUpBoldBoxOutline } from "@mdi/js";
+  import {
+    mdiAlertOutline,
+    mdiArrowLeft,
+    mdiCheckCircleOutline,
+    mdiQrcodeScan,
+  } from "@mdi/js";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
+  import {
+    closeDuskName,
+    contactsStore,
+    markContactNameChecked,
+    saveContact,
+  } from "$lib/contacts";
   import { isDuskName } from "$lib/dusk-domains";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
   import {
     duskToLux,
+    formatDusk,
     formatDuskExact,
     formatFee,
     luxToDusk,
@@ -21,22 +32,14 @@
     randomUUID,
     shortenAddress,
   } from "$lib/dusk/string";
-  import {
-    Badge,
-    Button,
-    Stepper,
-    Switch,
-    Textbox,
-    Wizard,
-    WizardStep,
-  } from "$lib/dusk/components";
+  import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     AppAnchor,
+    BalanceValue,
     Banner,
-    DuskIcon,
+    FullAddress,
     GasSettings,
-    ReviewAmount,
     ScanQR,
     TransactionResult,
   } from "$lib/components";
@@ -76,11 +79,22 @@
   /** @type {undefined | string} */
   export let bep20BridgeAddress = undefined;
 
+  /** The recipient the page starts with, as from Send again. */
+  export let initialRecipient = "";
+
+  /**
+   * `.dusk` names of past counterparties, for "Did you mean …?" along with
+   * the contacts' names.
+   *
+   * @type {string[]}
+   */
+  export let knownNames = [];
+
   /** @type {number} */
   let sendAmount = 1;
 
   /** @type {string} */
-  let sendToAddress = "";
+  let sendToAddress = initialRecipient;
 
   /** @type {string} */
   let memo = "";
@@ -91,8 +105,19 @@
   /** @type {import("..").ScanQR} */
   let scanQrComponent;
 
-  /** @type {import("$lib/dusk/components").WizardStep} */
-  let addressStep;
+  /**
+   * Where the transfer is: the form, its review (phones only), or sent.
+   *
+   * @type {"done" | "form" | "review"}
+   */
+  let step = "form";
+
+  /**
+   * The transfer once sent, and the most it can cost.
+   *
+   * @type {{ maxFee: bigint, operation: Promise<string> } | null}
+   */
+  let sent = null;
 
   /**
    * Whether a recipient that isn't valid is pointed out: once it is pasted,
@@ -101,12 +126,6 @@
    * @type {boolean}
    */
   let isRecipientChecked = false;
-
-  /** @type {boolean} */
-  let isMemoShown = false;
-
-  /** @type {boolean} */
-  let isNextButtonDisabled = false;
 
   /** @type {boolean} */
   let isGasValid = false;
@@ -120,12 +139,28 @@
   /**
    * The address the user picked for each `.dusk` name with both a public
    * account and a shielded address. A pick stays with its name, through
-   * lookups of the same name and steps back, until the user makes another;
-   * any other name starts at its public account.
+   * lookups of the same name, until the user makes another; any other name
+   * starts at its public account.
    *
    * @type {Record<string, "account" | "address">}
    */
   let namePicks = {};
+
+  /**
+   * Names the user chose to send to although a contact keeps another
+   * address for them, with the address chosen.
+   *
+   * @type {Record<string, string>}
+   */
+  let newAddressTaken = {};
+
+  /** The lookup a contact's name was last noted checked for. */
+  /** @type {DuskNameResolution | null} */
+  let checkedLookup = null;
+
+  /** Whether the recipient is being saved to the contacts, and as what. */
+  let isSavingContact = false;
+  let contactName = "";
 
   /**
    * The options shown for a `.dusk` name with both addresses, by type,
@@ -135,23 +170,17 @@
    */
   const nameOptionElements = {};
 
-  const nameOptionsId = randomUUID();
-
-  const invalidRecipientId = `${randomUUID()}-invalid-recipient`;
+  const id = randomUUID();
+  const invalidRecipientId = `${id}-invalid-recipient`;
 
   // Without the allocation page there is nowhere to link to for shielding.
   const canShield = import.meta.env.VITE_FEATURE_ALLOCATE === "true";
 
   let { gasLimit, gasPrice } = gasSettings;
+  let defaultGas = gasSettings;
 
   const minAmount = 0.000000001;
 
-  const steps = [
-    { label: "Address" },
-    { label: "Amount" },
-    { label: "Review" },
-    { label: "Done" },
-  ];
   const dispatch = createEventDispatcher();
 
   onMount(() => {
@@ -177,7 +206,8 @@
   }
 
   /**
-   * Enter moves on as Next does: no address or name has a line break.
+   * Enter checks the recipient and moves on to the amount: no address or
+   * name has a line break.
    *
    * @param {KeyboardEvent} event
    */
@@ -185,7 +215,10 @@
     if (event.key === "Enter" && !event.isComposing) {
       event.preventDefault();
       isRecipientChecked = true;
-      addressStep.next(event);
+
+      if (addressInfo.isValid) {
+        document.getElementById(`${id}-amount`)?.focus();
+      }
     }
   }
 
@@ -262,7 +295,7 @@
         disabled: !canPayShielded,
         title: "Shielded address",
         type: "address",
-        visibility: "Private",
+        visibility: "Not shown on the public chain",
       },
     ];
 
@@ -353,44 +386,76 @@
     ],
   };
 
-  let activeStep = 0;
+  /**
+   * The contact a transfer goes to: the one saved with the address it goes
+   * to, or else with the `.dusk` name entered, whose address is then
+   * compared with the one the name points to now.
+   *
+   * @param {Contact[]} contacts
+   * @param {string} name
+   * @param {string} address
+   * @returns {Contact | null}
+   */
+  const contactFor = (contacts, name, address) =>
+    contacts.find((contact) => address && contact.address === address) ??
+    (name
+      ? (contacts.find((contact) => contact.duskName === name.toLowerCase()) ??
+        null)
+      : null);
+
+  function saveRecipient() {
+    const name = contactName.trim();
+
+    if (name) {
+      saveContact({
+        address: recipientAddress,
+        checkedAt: recipientName ? Date.now() : null,
+        duskName: recipientName || null,
+        name,
+      });
+      isSavingContact = false;
+      contactName = "";
+    }
+  }
 
   /**
    * Sends the transfer, with the `.dusk` name it goes to, as the lookup
    * gives it, for the history.
    */
-  function sendTransfer() {
+  function send() {
     const toName = recipientName ? nameLookup?.name : undefined;
 
-    return toName
-      ? execute(
-          recipientAddress,
-          sendAmountInLux,
-          transactionMemo,
-          gasPrice,
-          gasLimit,
-          toName
-        )
-      : execute(
-          recipientAddress,
-          sendAmountInLux,
-          transactionMemo,
-          gasPrice,
-          gasLimit
-        );
+    sent = {
+      maxFee: maxGasFee,
+      operation: toName
+        ? execute(
+            recipientAddress,
+            sendAmountInLux,
+            transactionMemo,
+            gasPrice,
+            gasLimit,
+            toName
+          )
+        : execute(
+            recipientAddress,
+            sendAmountInLux,
+            transactionMemo,
+            gasPrice,
+            gasLimit
+          ),
+    };
+    step = "done";
   }
 
-  // The gas settings depend on the recipient (public or shielded), chosen in
-  // the address step: start over from new ones there. On the amount step,
-  // where the gas can be edited, take new ones, as the node's price, unless
-  // the gas was edited there. The review keeps the gas it shows.
-  let defaultGas = gasSettings;
-
-  $: if (activeStep <= 1 && gasSettings !== defaultGas) {
-    ({ gasLimit, gasPrice } =
-      activeStep === 0
-        ? gasSettings
-        : followDefaultGas({ gasLimit, gasPrice }, defaultGas, gasSettings));
+  // The gas settings depend on the recipient (public or shielded): the
+  // form takes new ones while it shows, unless the gas was edited here, and
+  // the review keeps the gas it shows.
+  $: if (step === "form" && gasSettings !== defaultGas) {
+    ({ gasLimit, gasPrice } = followDefaultGas(
+      { gasLimit, gasPrice },
+      defaultGas,
+      gasSettings
+    ));
     defaultGas = gasSettings;
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
@@ -400,8 +465,8 @@
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
 
-  // A balance can pay for a transfer if it covers the smallest amount the
-  // amount step takes plus the maximum gas fee, which that step requires.
+  // A balance can pay for a transfer if it covers the smallest amount
+  // plus the maximum gas fee.
   $: canPayFromShieldedBalance =
     shieldedBalance >= maxGasFee + duskToLux(minAmount);
 
@@ -434,14 +499,12 @@
   $: isMemoValidForBridge =
     !isSendingToBep20Bridge || (transactionMemo !== "" && isMemoValid);
 
-  $: isNextButtonDisabled = !(
+  $: isAmountReady =
     isSendAmountValid &&
     isGasValid &&
     isTotalAmountWithinAvailableBalance &&
     isBalanceSufficientForGas &&
-    isMemoValidForBridge &&
-    !isRecipientBlocklisted
-  );
+    isMemoValidForBridge;
 
   // A pasted recipient often brings spaces or line breaks, which no address
   // or name has.
@@ -493,10 +556,6 @@
 
   $: isSendingToBep20Bridge = recipientAddress.trim() === bep20BridgeAddress;
 
-  $: if (isSendingToBep20Bridge) {
-    isMemoShown = true;
-  }
-
   $: {
     if (isSendingToBep20Bridge && transactionMemo !== "") {
       // If sending to the BEP20 bridge and a memo is provided,
@@ -509,176 +568,359 @@
     }
   }
 
+  $: contacts = $contactsStore;
+  $: contact = contactFor(contacts, recipientName, recipientAddress);
+
+  // The address the contact's name points to now, of the kind the contact
+  // keeps.
+  $: namePointsTo =
+    contact && recipientName && nameLookup && !nameLookup.error
+      ? ((contact.type === "address"
+          ? nameLookup.address
+          : nameLookup.account) ?? "")
+      : null;
+
+  // A contact's name that points elsewhere now: Send asks before it uses
+  // the new address.
+  $: isContactMoved =
+    namePointsTo !== null &&
+    namePointsTo !== contact?.address &&
+    newAddressTaken[recipientName.toLowerCase()] !== recipientAddress;
+
+  // Still the contact's address: noted, once a lookup.
+  $: if (
+    contact &&
+    namePointsTo === contact.address &&
+    nameLookup !== checkedLookup
+  ) {
+    checkedLookup = nameLookup;
+    markContactNameChecked(contact);
+  }
+
+  $: suggestion =
+    nameLookup?.error === "not-registered"
+      ? closeDuskName(recipientName, [
+          ...contacts.flatMap((c) => (c.duskName ? [c.duskName] : [])),
+          ...knownNames,
+        ])
+      : null;
+
+  $: isRecipientReady =
+    addressInfo.isValid &&
+    !isRecipientBlocklisted &&
+    !isNameUnpayable &&
+    !isContactMoved;
+
+  $: canSend = isRecipientReady && isAmountReady;
+
   $: sendToAddressTextboxClasses = makeClassName({
-    "operation__send-address": true,
-    "operation__send-address--blocked": isRecipientBlocklisted,
-    "operation__send-address--invalid": recipientName
+    "send__to-input": true,
+    "send__to-input--blocked": isRecipientBlocklisted,
+    "send__to-input--invalid": recipientName
       ? nameLookup?.error
       : sendToAddress && !addressInfo.isValid,
   });
 
-  $: sendMemoTextboxClasses = makeClassName({
-    "operation__send-memo": true,
-    "operation__send-memo--invalid": isMemoValid === false,
-  });
+  // A name as the lookup gives it, once it has: in its canonical form.
+  $: shownName = nameLookup?.name ?? recipientName;
 
   $: ({ language } = $settingsStore);
+  $: amountText = formatDuskExact(sendAmountInLux, language);
+  $: isShielded = addressInfo.type === "address";
 </script>
 
-<div class="operation">
-  <Wizard steps={steps.length} let:key>
-    <div slot="stepper">
-      <Stepper {activeStep} {steps} />
-    </div>
-    <!-- Address Step -->
-    <WizardStep
-      bind:this={addressStep}
-      step={0}
-      {key}
-      backButton={{
-        disabled: false,
-        href: "/dashboard",
-        isAnchor: true,
-      }}
-      nextButton={{
-        action: () => activeStep++,
-        disabled:
-          !addressInfo.isValid || isRecipientBlocklisted || isNameUnpayable,
-      }}
-    >
-      <div in:fade|global class="operation__send">
-        <div class="operation__address-wrapper">
-          <p>Address or .dusk name</p>
+{#if step === "done" && sent}
+  <TransactionResult maxFee={sent.maxFee} operation={sent.operation} />
+{:else}
+  <div class="send" class:send--review={step === "review"}>
+    <section aria-labelledby="{id}-title" class="send__form">
+      <h2 class="send__title" id="{id}-title">Send</h2>
+
+      <div class="send__field">
+        <label class="send__label" for="{id}-to">To</label>
+        <div class="send__to">
+          <Textbox
+            aria-describedby={isRecipientInvalid
+              ? invalidRecipientId
+              : undefined}
+            aria-invalid={isRecipientInvalid}
+            autocomplete="off"
+            bind:value={sendToAddress}
+            className={sendToAddressTextboxClasses}
+            id="{id}-to"
+            on:blur={() => {
+              isRecipientChecked = true;
+            }}
+            on:keydown={handleRecipientKeyDown}
+            on:paste={() => {
+              isRecipientChecked = true;
+            }}
+            placeholder="Address or .dusk name"
+            spellcheck="false"
+            type="text"
+          />
+          {#if recipientName && nameLookup?.[nameAddressType]}
+            <span class="send__verified"
+              ><Icon path={mdiCheckCircleOutline} />Verified name</span
+            >
+          {/if}
           <!-- Only with a camera, which ScanQR looks for without asking
             for permission. -->
           {#if scanner}
-            <Button
-              size="small"
+            <button
+              aria-label="Scan a QR code"
+              class="send__icon-button"
               on:click={() => {
                 scanQrComponent.startScan();
               }}
-              text="Scan QR"
-            />
+              title="Scan a QR code"
+              type="button"><Icon path={mdiQrcodeScan} /></button
+            >
           {/if}
         </div>
-        <Textbox
-          required
-          className={sendToAddressTextboxClasses}
-          aria-describedby={isRecipientInvalid ? invalidRecipientId : undefined}
-          aria-invalid={isRecipientInvalid}
-          aria-label="Recipient address or .dusk name"
-          type="multiline"
-          bind:value={sendToAddress}
-          on:blur={() => {
-            isRecipientChecked = true;
-          }}
-          on:keydown={handleRecipientKeyDown}
-          on:paste={() => {
-            isRecipientChecked = true;
-          }}
-        />
 
-        {#if isRecipientInvalid}
-          <Banner
-            id={invalidRecipientId}
-            title="Not a valid address"
-            variant="error"
+        {#if contacts.length}
+          <select
+            aria-label="Send to a contact"
+            class="send__contacts"
+            id="{id}-contacts"
+            on:change={(event) => {
+              const picked = contacts.find(
+                (c) => c.id === event.currentTarget.value
+              );
+
+              if (picked) {
+                sendToAddress = picked.address;
+                isRecipientChecked = true;
+              }
+
+              event.currentTarget.value = "";
+            }}
           >
-            <p>Check it, or paste it again.</p>
-          </Banner>
+            <option value="">Choose a contact…</option>
+            {#each contacts as option (option.id)}
+              <option value={option.id}
+                >{option.name} · {option.duskName ??
+                  shortenAddress(option.address)}</option
+              >
+            {/each}
+          </select>
         {/if}
 
-        {#if nameLookup?.[nameAddressType]}
-          {@const isChoice = nameOptions.length > 1}
-          <p id="{nameOptionsId}-label">{nameLookup.name} points to</p>
-          <!-- Radios only when there is a choice: a name's one address shows
-            in the same card as plain text, with no radio mark. -->
-          <div
-            aria-labelledby={isChoice ? `${nameOptionsId}-label` : undefined}
-            class="operation__name-options"
-            role={isChoice ? "radiogroup" : undefined}
-          >
-            {#each nameOptions as option (option.type)}
-              {@const id = `${nameOptionsId}-${option.type}`}
-              {@const isPicked = option.type === nameAddressType}
-              {#snippet optionText()}
-                {#if isChoice}
-                  <span class="operation__name-option-mark"></span>
-                {/if}
-                <span class="operation__name-option-text">
-                  <span class="operation__name-option-title">
-                    <strong id="{id}-title">{option.title}</strong>
-                    <samp id="{id}-address" title={option.address}>
-                      <span aria-hidden="true"
-                        >{shortenAddress(option.address)}</span
-                      >
-                      <span class="sr-only">{option.address}</span>
-                    </samp>
-                  </span>
-                  {#if !option.disabled}
-                    <span id="{id}-text">{option.visibility}</span>
-                  {/if}
-                </span>
-              {/snippet}
-              <div
-                class="operation__name-option"
-                class:operation__name-option--disabled={option.disabled}
-                class:operation__name-option--picked={isPicked}
-                class:operation__name-option--single={!isChoice}
-              >
-                {#if isChoice}
-                  <div
-                    aria-checked={isPicked}
-                    aria-describedby={option.disabled
-                      ? `${id}-hint ${id}-address`
-                      : `${id}-text ${id}-address`}
-                    aria-disabled={option.disabled}
-                    aria-labelledby="{id}-title"
-                    bind:this={nameOptionElements[option.type]}
-                    class="operation__name-option-body"
-                    on:click={() => pickNameAddress(option.type)}
-                    on:keydown={(event) =>
-                      handleNameOptionKeyDown(event, option.type)}
-                    role="radio"
-                    tabindex={isPicked ? 0 : -1}
-                  >
-                    {@render optionText()}
-                  </div>
-                {:else}
-                  <div class="operation__name-option-body">
-                    {@render optionText()}
-                  </div>
-                {/if}
-                {#if option.disabled}
-                  <p class="operation__name-hint" id="{id}-hint">
-                    Not enough shielded DUSK ·
-                    {#if canShield}
-                      <AppAnchor href="/dashboard/allocate"
-                        >Shield first</AppAnchor
-                      >
-                    {:else}
-                      Shield first
-                    {/if}
-                  </p>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        {:else if nameLookup?.error}
+        {#if isRecipientInvalid}
+          <p class="send__error" id={invalidRecipientId} role="alert">
+            <strong>Not a valid address.</strong> Check it, or paste it again.
+          </p>
+        {/if}
+
+        {#if nameLookup?.error}
           {@const [title, text] = nameErrors[nameLookup.error](nameLookup.name)}
-          <Banner variant="error" {title}>
-            <p>{text}</p>
+          <div class="send__error" role="alert">
+            <p><strong>{title}.</strong> {text}</p>
+            {#if suggestion}
+              <button
+                class="send__link"
+                on:click={() => {
+                  sendToAddress = suggestion ?? sendToAddress;
+                }}
+                type="button">Did you mean {suggestion}?</button
+              >
+            {/if}
             {#if nameLookup.error === "lookup-failed"}
               <Button
-                size="small"
-                variant="tertiary"
                 on:click={() => lookUpName(recipientName)}
+                size="small"
                 text="Try again"
+                variant="secondary"
               />
             {/if}
-          </Banner>
-        {:else if nameLookup}
-          <p>Looking up {nameLookup.name}…</p>
+          </div>
+        {:else if recipientName && nameLookup && !nameLookup[nameAddressType]}
+          <p class="send__hint">Looking up {nameLookup.name}…</p>
+        {/if}
+
+        {#if isContactMoved && contact}
+          <div class="send__warning" role="alert">
+            <p>
+              {#if namePointsTo}
+                <strong
+                  >{shownName} now points to a different address from the one saved
+                  for {contact.name}.</strong
+                >
+                Which do you want to send to?
+              {:else}
+                <strong
+                  >{shownName} no longer points to the kind of address saved for
+                  {contact.name}.</strong
+                >
+              {/if}
+            </p>
+            <div class="send__choices">
+              <Button
+                on:click={() => {
+                  sendToAddress = contact?.address ?? sendToAddress;
+                }}
+                text="The saved address"
+                variant="secondary"
+              />
+              {#if namePointsTo}
+                <Button
+                  on:click={() => {
+                    newAddressTaken = {
+                      ...newAddressTaken,
+                      [recipientName.toLowerCase()]: recipientAddress,
+                    };
+                  }}
+                  text="The new address"
+                  variant="secondary"
+                />
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        {#if addressInfo.isValid && !isContactMoved}
+          {@const isChoice = recipientName !== "" && nameOptions.length > 1}
+          <div class="send__card">
+            <p class="send__card-title" id="{id}-points">
+              {#if contact}
+                {contact.name}{recipientName ? ` · ${shownName}` : ""}
+              {:else if recipientName}
+                {shownName} points to {isChoice
+                  ? "two addresses"
+                  : isShielded
+                    ? "a shielded address"
+                    : "a public account"}
+              {:else}
+                {isShielded ? "A shielded address" : "A public account"}
+              {/if}
+            </p>
+
+            {#if isChoice}
+              <!-- Radios only when there is a choice. -->
+              <div
+                aria-labelledby="{id}-points"
+                class="send__name-options"
+                role="radiogroup"
+              >
+                {#each nameOptions as option (option.type)}
+                  {@const optionId = `${id}-${option.type}`}
+                  {@const isPicked = option.type === nameAddressType}
+                  <div
+                    class="send__name-option"
+                    class:send__name-option--disabled={option.disabled}
+                    class:send__name-option--picked={isPicked}
+                  >
+                    <div
+                      aria-checked={isPicked}
+                      aria-describedby={option.disabled
+                        ? `${optionId}-hint ${optionId}-address`
+                        : `${optionId}-text ${optionId}-address`}
+                      aria-disabled={option.disabled}
+                      aria-labelledby="{optionId}-title"
+                      bind:this={nameOptionElements[option.type]}
+                      class="send__name-option-body"
+                      on:click={() => pickNameAddress(option.type)}
+                      on:keydown={(event) =>
+                        handleNameOptionKeyDown(event, option.type)}
+                      role="radio"
+                      tabindex={isPicked ? 0 : -1}
+                    >
+                      <span class="send__name-option-mark"></span>
+                      <span class="send__name-option-text">
+                        <strong id="{optionId}-title">{option.title}</strong>
+                        <samp id="{optionId}-address" title={option.address}
+                          ><span aria-hidden="true"
+                            >{shortenAddress(option.address)}</span
+                          ><span class="sr-only">{option.address}</span></samp
+                        >
+                        {#if !option.disabled}
+                          <span id="{optionId}-text">{option.visibility}</span>
+                        {/if}
+                      </span>
+                    </div>
+                    {#if option.disabled}
+                      <p class="send__name-hint" id="{optionId}-hint">
+                        Not enough shielded DUSK ·
+                        {#if canShield}
+                          <AppAnchor href="/dashboard/allocate"
+                            >Shield first</AppAnchor
+                          >
+                        {:else}
+                          Shield first
+                        {/if}
+                      </p>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/if}
+
+            <p class="send__card-address">
+              <FullAddress address={recipientAddress} />
+            </p>
+            {#if isNameUnpayable}
+              <p class="send__name-hint">
+                Not enough shielded DUSK ·
+                {#if canShield}
+                  <AppAnchor href="/dashboard/allocate">Shield first</AppAnchor>
+                {:else}
+                  Shield first
+                {/if}
+              </p>
+            {/if}
+
+            <div class="send__card-footer">
+              <p class="send__privacy">
+                {#if isShielded}
+                  Shielded: not shown on the public chain. The person you pay
+                  sees what you send them.
+                {:else}
+                  Public: the amount and both accounts are visible on chain.
+                {/if}
+              </p>
+              {#if !contact && !isSavingContact}
+                <Button
+                  on:click={() => {
+                    isSavingContact = true;
+                  }}
+                  size="small"
+                  text="Save to contacts"
+                  variant="tertiary"
+                />
+              {/if}
+            </div>
+
+            {#if isSavingContact}
+              <form class="send__save" on:submit|preventDefault={saveRecipient}>
+                <label class="send__label" for="{id}-contact-name"
+                  >Contact name</label
+                >
+                <div class="send__save-row">
+                  <Textbox
+                    bind:value={contactName}
+                    id="{id}-contact-name"
+                    maxlength={40}
+                    type="text"
+                  />
+                  <Button
+                    on:click={() => {
+                      isSavingContact = false;
+                    }}
+                    text="Cancel"
+                    variant="secondary"
+                  />
+                  <Button
+                    disabled={!contactName.trim()}
+                    text="Save"
+                    type="submit"
+                    variant="primary"
+                  />
+                </div>
+                <p class="send__hint">Saved only on this device.</p>
+              </form>
+            {/if}
+          </div>
         {/if}
 
         {#if isRecipientBlocklisted}
@@ -703,374 +945,588 @@
           </Banner>
         {/if}
       </div>
-    </WizardStep>
-    <!-- Amount Step -->
-    <WizardStep
-      step={1}
-      {key}
-      backButton={{
-        action: () => activeStep--,
-      }}
-      nextButton={{
-        action: () => activeStep++,
-        disabled: isNextButtonDisabled,
-      }}
-    >
-      <div in:fade|global class="operation__send">
-        <div class="operation__amount-wrapper">
-          <p>Amount</p>
-          <Button
-            size="small"
-            variant="tertiary"
-            on:click={setMaxAmount}
-            text="Use max"
-          />
-        </div>
 
-        <div class="operation__input-wrapper">
+      <div class="send__field">
+        <label class="send__label" for="{id}-amount">Amount</label>
+        <div class="send__amount">
           <Textbox
-            className="operation__input-field"
             bind:value={sendAmount}
-            aria-label="Amount"
-            required
-            type="number"
-            min={minAmount}
+            className="send__amount-input"
+            id="{id}-amount"
             max={luxToDusk(maxSpendableAmount)}
-            step="0.000000001"
-          />
-          <DuskIcon />
-        </div>
-
-        <div class="operation__input-wrapper">
-          <p>Memo{isSendingToBep20Bridge ? "" : " (optional)"}</p>
-          <Switch
-            aria-label="Include memo"
-            on:change={() => {
-              if (!isMemoShown) {
-                memo = "";
-              }
-            }}
-            onSurface
-            bind:value={isMemoShown}
-          />
-        </div>
-        {#if isMemoShown}
-          <Textbox
+            min={minAmount}
             required
-            className={sendMemoTextboxClasses}
-            aria-label="Memo"
-            type="multiline"
-            bind:value={memo}
+            step="0.000000001"
+            type="number"
           />
-
-          {#if isMemoValid === false}
-            <Banner variant="error" title="Invalid EVM address format">
-              <p>
-                EVM addresses are 40 hexadecimal characters, optionally prefixed
-                with "0x".
-              </p>
-            </Banner>
-          {/if}
-        {/if}
-
-        <GasSettings
-          fee={maxGasFee}
-          limit={gasLimit}
-          limitLower={gasLimits.gasLimitLower}
-          limitUpper={gasLimits.gasLimitUpper}
-          price={gasPrice}
-          priceLower={gasLimits.gasPriceLower}
-          on:gasSettings={(event) => {
-            isGasValid = areValidGasSettings(
-              event.detail.price,
-              event.detail.limit,
-              gasLimits
-            );
-
-            if (isGasValid) {
-              gasPrice = event.detail.price;
-              gasLimit = event.detail.limit;
-            }
-          }}
-        />
+          <span aria-hidden="true" class="send__unit">DUSK</span>
+          <Button
+            on:click={setMaxAmount}
+            size="small"
+            text="Max"
+            variant="secondary"
+          />
+        </div>
+        <p class="send__hint">
+          Available <BalanceValue
+            exact={formatDuskExact(availableBalance, language)}
+            value={formatDusk(availableBalance, language)}
+          /> DUSK from your {isShielded ? "shielded" : "public"} balance
+        </p>
         {#if !isBalanceSufficientForGas}
-          <Banner variant="error" title="Insufficient balance for gas fees">
-            <p>Add funds or lower the gas limit.</p>
-          </Banner>
+          <p class="send__error" role="alert">
+            <strong>Not enough for the network fee.</strong> Add funds or lower the
+            gas limit.
+          </p>
         {:else if sendAmountInLux > maxSpendableAmount}
-          <Banner variant="error" title="Amount exceeds available balance">
-            <p>Lower the amount to leave room for the fee.</p>
-          </Banner>
-        {:else if isSendingToBep20Bridge && memo.trim() === ""}
-          <Banner variant="error" title="Memo required for bridge operation">
-            <p>Enter the EVM address that receives the tokens.</p>
-          </Banner>
+          <p class="send__error" role="alert">
+            <strong>More than you have.</strong> Lower the amount to leave room for
+            the fee.
+          </p>
         {/if}
       </div>
-    </WizardStep>
-    <!-- Review Step -->
-    <WizardStep
-      step={2}
-      {key}
-      backButton={{
-        action: () => activeStep--,
-      }}
-      nextButton={{
-        action: () => activeStep++,
-        disabled: isRecipientBlocklisted,
-        icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-        label: "Send",
-        variant: "primary",
-      }}
-    >
-      <div in:fade|global class="operation__send">
-        <ReviewAmount
-          label="Amount"
-          value={formatDuskExact(sendAmountInLux, language)}
+
+      <div class="send__field">
+        <label class="send__label" for="{id}-memo"
+          >Memo{isSendingToBep20Bridge ? "" : " (optional)"}</label
+        >
+        <Textbox
+          bind:value={memo}
+          className={makeClassName({
+            "send__memo-input": true,
+            "send__memo-input--invalid": isMemoValid === false,
+          })}
+          id="{id}-memo"
+          type="multiline"
         />
+        {#if isMemoValid === false}
+          <p class="send__error" role="alert">
+            <strong>Not an EVM address.</strong> EVM addresses are 40 hexadecimal
+            characters, optionally prefixed with "0x".
+          </p>
+        {:else if isSendingToBep20Bridge && memo.trim() === ""}
+          <p class="send__error" role="alert">
+            <strong>Enter the EVM address that receives the tokens.</strong>
+          </p>
+        {:else}
+          <p class="send__hint">
+            Visible on chain, for good: don't put personal details in it.
+          </p>
+        {/if}
+      </div>
+    </section>
 
-        <dl class="operation__review-transaction">
-          <dt class="review-transaction__label">
-            <span>To</span>
-          </dt>
-          {#if nameLookup?.[nameAddressType]}
-            <dd class="operation__review-name">{nameLookup.name}</dd>
-          {/if}
-          <dd
-            class="operation__review-address"
-            class:operation__review-address--with-name={nameLookup?.[
-              nameAddressType
-            ]}
-          >
-            <span>{recipientAddress}</span>
-          </dd>
-        </dl>
-
-        <dl class="operation__review-transaction">
-          <dt class="review-transaction__label">
-            <span>Type</span>
-          </dt>
-          <dd class="operation__review-type">
-            {#if addressInfo.type === "address"}
-              <Badge text="Shielded" />
-              <span>Private</span>
+    <aside aria-labelledby="{id}-summary" class="send__summary">
+      <h2 class="send__summary-title" id="{id}-summary">Summary</h2>
+      <dl class="send__rows">
+        <div>
+          <dt>To</dt>
+          <dd>
+            {#if !addressInfo.isValid}
+              <span class="send__muted">Not set</span>
             {:else}
-              <Badge text="Public" />
-              <span>Visible on chain</span>
+              {#if contact || recipientName}
+                <span class="send__summary-name"
+                  >{contact?.name ?? shownName}</span
+                >
+              {/if}
+              <span class="send__summary-code"
+                >{shortenAddress(recipientAddress)}</span
+              >
             {/if}
           </dd>
-        </dl>
-
+        </div>
+        <div>
+          <dt>Amount</dt>
+          <dd>{amountText} DUSK</dd>
+        </div>
         {#if transactionMemo}
-          <dl class="operation__review-transaction">
-            <dt class="review-transaction__label">
-              <span>Memo</span>
-            </dt>
-            <dd class="operation__review-memo">
-              <span>{transactionMemo}</span>
-            </dd>
-          </dl>
+          <div>
+            <dt>Memo</dt>
+            <dd class="send__summary-memo">{transactionMemo}</dd>
+          </div>
         {/if}
+      </dl>
+      <GasSettings
+        fee={maxGasFee}
+        limit={gasLimit}
+        limitLower={gasLimits.gasLimitLower}
+        limitUpper={gasLimits.gasLimitUpper}
+        on:gasSettings={(event) => {
+          isGasValid = areValidGasSettings(
+            event.detail.price,
+            event.detail.limit,
+            gasLimits
+          );
 
-        <ReviewAmount
-          label="Network fee (at most)"
-          value={formatFee(maxGasFee, language, { max: true })}
+          if (isGasValid) {
+            gasPrice = event.detail.price;
+            gasLimit = event.detail.limit;
+          }
+        }}
+        price={gasPrice}
+        priceLower={gasLimits.gasPriceLower}
+      />
+      <dl class="send__rows send__rows--total">
+        <div>
+          <dt>Total</dt>
+          <dd>Up to {formatFee(totalAmount, language, { max: true })} DUSK</dd>
+        </div>
+      </dl>
+      <Button
+        className="send__send"
+        disabled={!canSend}
+        on:click={send}
+        text={sendAmountInLux > 0n ? `Send ${amountText} DUSK` : "Send"}
+        variant="primary"
+      />
+      <p class="send__final">Sends can't be undone.</p>
+      {#if step === "review"}
+        <Button
+          className="send__back"
+          icon={{ path: mdiArrowLeft }}
+          on:click={() => {
+            step = "form";
+          }}
+          text="Back"
+          variant="secondary"
         />
-        <ReviewAmount
-          label="Total (at most)"
-          value={formatFee(totalAmount, language, { max: true })}
+      {/if}
+    </aside>
+
+    <!-- Phones review before they send: the summary takes the page. -->
+    {#if step === "form"}
+      <div class="send__phone-bar">
+        <Button
+          className="send__review"
+          disabled={!canSend}
+          on:click={() => {
+            step = "review";
+            window.scrollTo(0, 0);
+          }}
+          text="Review"
+          variant="primary"
         />
       </div>
-    </WizardStep>
-    <!-- Result Step -->
-    <WizardStep step={3} {key} showNavigation={false}>
-      <TransactionResult maxFee={maxGasFee} operation={sendTransfer()} />
-    </WizardStep>
-  </Wizard>
-</div>
+    {/if}
+  </div>
+{/if}
 
 <style lang="postcss">
-  .operation {
-    &__send {
-      display: flex;
-      flex-direction: column;
-      gap: 1.2em;
-    }
-    &__review-address,
-    &__review-memo {
-      background-color: var(--surface-soft-color);
-      border: 1px solid var(--surface-border-color);
-      border-radius: var(--control-border-radius-size);
-      font-variant-numeric: tabular-nums;
-      font-size: 0.875rem;
-      padding: 0.75em 1em;
-      width: 100%;
-      line-break: anywhere;
-    }
+  .send {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    align-items: start;
+    gap: 2.5rem;
+    width: 100%;
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 2.25rem 3rem 3rem;
+  }
 
-    /* Shown with a name, the address gives way to it. */
-    &__review-address--with-name {
-      color: var(--muted-color);
-      font-size: 0.8125rem;
-    }
+  .send__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 0;
+  }
 
-    &__review-name {
-      font-size: 1.125rem;
-      font-weight: 500;
-      overflow-wrap: anywhere;
-    }
+  .send__title {
+    font-size: 1.75rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
 
-    &__address-wrapper,
-    &__amount-wrapper,
-    &__input-wrapper {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-    }
+  .send__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 
-    &__input-wrapper {
-      column-gap: var(--default-gap);
-    }
+  .send__label {
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+  }
 
-    &__review-transaction {
-      display: flex;
-      flex-direction: column;
-      gap: 0.625em;
-    }
+  .send__to {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 
-    &__review-type {
-      display: flex;
-      align-items: baseline;
-      gap: var(--small-gap);
-      font-size: 0.875em;
-      line-height: 1.4;
-    }
-
-    &__name-options {
-      display: flex;
-      flex-direction: column;
-      gap: 0.625em;
-    }
-
-    &__name-option {
-      border: 1px solid var(--surface-border-color);
-      border-radius: var(--control-border-radius-size);
-
-      &:focus-within {
-        box-shadow: 0 0 0 2px var(--focus-ring-color);
-      }
-    }
-
-    &__name-option--picked {
-      border-color: var(--primary-color);
-      background-color: var(--non-button-control-bg-color);
-    }
-
-    &__name-option-body {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-      padding: 0.75rem 1rem;
-      outline: none;
-
-      &[role="radio"] {
-        cursor: pointer;
-      }
-    }
-
-    &__name-option--disabled &__name-option-body {
-      opacity: 0.5;
-      /* Its hint, below, stands in for its line. */
-      padding-bottom: 0;
-
-      &[role="radio"] {
-        cursor: not-allowed;
-      }
-    }
-
-    &__name-option-mark {
-      flex-shrink: 0;
-      width: 1rem;
-      height: 1rem;
-      margin-top: 0.2rem;
-      border: 0.125rem solid var(--checkbox-control-border-color);
-      border-radius: 50%;
-    }
-
-    &__name-option--picked &__name-option-mark {
-      background-color: var(--checkbox-control-checked-bg-color);
-      box-shadow: inset 0 0 0 0.15rem var(--non-button-control-bg-color);
-    }
-
-    &__name-option-text {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25em;
+    & :global(.send__to-input) {
+      flex: 1;
       min-width: 0;
-      font-size: 0.875em;
-      line-height: 1.4;
-    }
-
-    &__name-option-title {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      column-gap: 0.5em;
+      height: 3.25rem;
       font-size: 1rem;
-
-      & samp {
-        color: var(--muted-color);
-        font-family: var(--mono-font-family);
-        font-size: 0.75rem;
-      }
-    }
-
-    &__name-hint {
-      font-size: 0.875em;
-      line-height: 1.4;
-    }
-
-    &__name-option &__name-hint {
-      /* In line with the option's text, past its radio mark. */
-      padding: 0.25em 1rem 0.75rem 2.75rem;
-    }
-
-    /* A name's one address has no radio mark to pass. */
-    &__name-option--single &__name-hint {
-      padding-left: 1rem;
     }
   }
 
-  .review-transaction__label {
+  :global(.dusk-textbox.send__to-input--invalid) {
+    color: var(--calm-danger);
+  }
+
+  :global(.dusk-textbox.send__to-input--blocked) {
+    color: var(--calm-danger);
+    border-color: var(--calm-danger);
+  }
+
+  .send__verified {
     display: inline-flex;
     align-items: center;
-    gap: var(--small-gap);
+    gap: 0.25rem;
+    padding: 0 0.5rem;
+    color: var(--calm-text);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+
+    & :global(.dusk-icon) {
+      width: 1rem;
+      height: 1rem;
+      color: var(--calm-online);
+    }
   }
 
-  :global(
-    .dusk-textbox.operation__send-address,
-    .dusk-textbox.operation__send-memo
-  ) {
+  .send__icon-button {
+    all: unset;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: var(--calm-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--calm-text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--calm-focus);
+    }
+  }
+
+  .send__contacts {
+    align-self: flex-start;
+    min-height: 2.25rem;
+    padding: 0 0.75rem;
+    border: 0 none;
+    border-radius: 0.625rem;
+    background-color: var(--calm-s1);
+    color: var(--calm-text);
+    font-size: 0.875rem;
+  }
+
+  .send__card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 1rem 1.125rem;
+    border-radius: 0.875rem;
+    background: var(--calm-s1);
+    font-size: 0.875rem;
+  }
+
+  .send__card-title {
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  .send__card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .send__privacy {
+    color: var(--calm-text);
+  }
+
+  .send__save {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .send__save-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+
+    & > :global(input) {
+      flex: 1 1 10rem;
+    }
+  }
+
+  .send__name-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .send__name-option {
+    border: 1px solid var(--calm-line2);
+    border-radius: 0.75rem;
+
+    &:focus-within {
+      box-shadow: 0 0 0 2px var(--calm-focus);
+    }
+  }
+
+  .send__name-option--picked {
+    border-color: var(--calm-text);
+  }
+
+  .send__name-option-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .send__name-option--disabled .send__name-option-body {
+    opacity: 0.5;
+    padding-bottom: 0;
+    cursor: not-allowed;
+  }
+
+  .send__name-option-mark {
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.2rem;
+    border: 0.125rem solid var(--calm-muted);
+    border-radius: 50%;
+  }
+
+  .send__name-option--picked .send__name-option-mark {
+    border-color: var(--calm-text);
+    background: var(--calm-text);
+    box-shadow: inset 0 0 0 0.15rem var(--calm-s1);
+  }
+
+  .send__name-option-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+
+    & samp {
+      color: var(--calm-muted);
+      font-family: var(--code-font-family);
+      font-size: 0.75rem;
+    }
+  }
+
+  .send__name-hint {
+    padding: 0.25rem 1rem 0.75rem 2.75rem;
+    font-size: 0.875rem;
+  }
+
+  .send__amount {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    & :global(.send__amount-input) {
+      flex: 1;
+      min-width: 0;
+      height: 3.25rem;
+      font-size: 1.25rem;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .send__unit {
+    color: var(--calm-muted);
+  }
+
+  :global(.dusk-textbox.send__memo-input) {
     resize: vertical;
-    min-height: 5em;
+    min-height: 3.25rem;
     max-height: 10em;
   }
 
-  :global(.dusk-textbox.operation__send-address--invalid) {
-    color: var(--badge-error-color);
+  :global(.dusk-textbox.send__memo-input--invalid) {
+    border-color: var(--calm-danger);
   }
 
-  :global(.dusk-textbox.operation__send-address--blocked) {
-    color: var(--badge-error-color);
-    border-color: var(--badge-error-color);
+  .send__hint {
+    color: var(--calm-muted);
+    font-size: 0.84375rem;
   }
 
-  :global(.dusk-textbox.operation__send-memo--invalid) {
-    border-color: var(--badge-error-color);
+  .send__error {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.375rem;
+    color: var(--calm-danger);
+    font-size: 0.875rem;
+
+    & p {
+      color: var(--calm-text);
+    }
+
+    & strong {
+      color: var(--calm-danger);
+    }
   }
 
-  :global(.allocate-button) {
+  .send__warning {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--calm-pending);
+    border-radius: 0.875rem;
+    font-size: 0.875rem;
+  }
+
+  .send__choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .send__link {
+    all: unset;
+    color: var(--calm-text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--calm-focus);
+    }
+  }
+
+  .send__summary {
+    position: sticky;
+    top: calc(var(--header-height, 0px) + 1.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    background: var(--calm-s1);
+  }
+
+  .send__summary-title {
+    font-size: 1.0625rem;
+    font-weight: 500;
+  }
+
+  .send__rows {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+
+    & > div {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.625rem 0;
+      border-top: 1px solid var(--calm-line);
+      font-size: 0.875rem;
+    }
+
+    & dt {
+      color: var(--calm-muted);
+    }
+
+    & dd {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin: 0;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      min-width: 0;
+    }
+  }
+
+  .send__rows--total dd {
+    font-weight: 500;
+  }
+
+  .send__summary-name {
+    overflow-wrap: anywhere;
+  }
+
+  .send__summary-code {
+    color: var(--calm-muted);
+    font-family: var(--code-font-family);
+    font-size: 0.75rem;
+  }
+
+  .send__summary-memo {
+    overflow-wrap: anywhere;
+  }
+
+  .send__muted {
+    color: var(--calm-muted);
+  }
+
+  .send__final {
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
+    text-align: center;
+  }
+
+  .send__summary :global(.send__send),
+  .send__summary :global(.send__back) {
     width: 100%;
+  }
+
+  .send__phone-bar {
+    display: none;
+  }
+
+  /* Phones: the form, then a review of it before it is sent. */
+  @media (max-width: 63.99rem) {
+    .send {
+      padding: 1.75rem 1.5rem 2rem;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .send {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.5rem;
+      padding: 1rem 1rem 0;
+    }
+
+    .send__summary {
+      position: static;
+      display: none;
+    }
+
+    .send--review .send__form {
+      display: none;
+    }
+
+    .send--review .send__summary {
+      display: flex;
+    }
+
+    .send__phone-bar {
+      position: sticky;
+      bottom: var(--keyboard-inset, 0px);
+      z-index: 3;
+      display: block;
+      padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+      background: var(--calm-s0);
+      box-shadow: 0 -1px 0 var(--calm-line);
+
+      & :global(.send__review) {
+        width: 100%;
+      }
+    }
   }
 </style>
