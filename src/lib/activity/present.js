@@ -335,7 +335,14 @@ export function dayLabel(time, { full = false, locale, now = Date.now() }) {
     weekday: "short",
   }).format(time);
   const today = dayKey(now);
-  const yesterday = dayKey(now - 86_400_000);
+
+  // The calendar's day before, not 24 hours before: a day the clocks change
+  // is 23 or 25 hours long.
+  const before = new Date(now);
+
+  before.setDate(before.getDate() - 1);
+
+  const yesterday = dayKey(before.getTime());
   const key = dayKey(time);
   const relative =
     key === today ? "Today" : key === yesterday ? "Yesterday" : "";

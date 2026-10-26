@@ -206,6 +206,37 @@ describe("dayLabel and groupByDay", () => {
     ).toBe("Today · Mon, Oct 26");
   });
 
+  it("names yesterday from the calendar, across a clock change", () => {
+    const zone = process.env.TZ;
+
+    // The clocks went forward on Sunday 29 March 2026: 24 hours before
+    // Monday 00:30 is Saturday 23:30.
+    process.env.TZ = "Europe/Amsterdam";
+
+    try {
+      const monday = new Date(2026, 2, 30, 0, 30).getTime();
+
+      expect(
+        dayLabel(new Date(2026, 2, 29, 12).getTime(), {
+          locale: "en",
+          now: monday,
+        })
+      ).toBe("Yesterday");
+      expect(
+        dayLabel(new Date(2026, 2, 28, 23, 45).getTime(), {
+          locale: "en",
+          now: monday,
+        })
+      ).toBe("Sat, Mar 28");
+    } finally {
+      if (zone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = zone;
+      }
+    }
+  });
+
   it("groups rows by day as they come, and rows without a time last", () => {
     const times = [
       new Date(2026, 9, 26, 14).getTime(),
