@@ -8,12 +8,10 @@
   import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { areValidGasSettings } from "$lib/contracts";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
-  import { logo } from "$lib/dusk/icons";
 
   import {
     Agreement,
     Button,
-    Icon,
     Stepper,
     Textbox,
     Wizard,
@@ -22,6 +20,7 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     AppAnchor,
+    DuskIcon,
     GasSettings,
     ReviewAmount,
     TransactionResult,
@@ -247,11 +246,7 @@
           required
           step="0.000000001"
         />
-        <Icon
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="DUSK"
-          path={logo}
-        />
+        <DuskIcon />
       </div>
 
       <GasSettings

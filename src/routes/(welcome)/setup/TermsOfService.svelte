@@ -10,12 +10,19 @@
 <section>
   <IconHeadingCard heading="Terms &amp; Privacy Policy">
     <p>
-      Our <AppAnchor
+      Your keys stay in this browser, and only you hold them: Dusk can't recover
+      them. The wallet has no analytics, and gets the DUSK price from CoinGecko.
+    </p>
+    <p>
+      Accepting means you agree to the <AppAnchor
+        href="https://dusk.network/terms-of-use/"
+        rel="noopener noreferrer"
+        target="_blank">Terms of Use</AppAnchor
+      > and the <AppAnchor
         href="https://dusk.network/privacy-policy/"
         rel="noopener noreferrer"
-        target="_blank">Terms &amp; Privacy Policy</AppAnchor
-      > govern your use of our services, including data handling and user responsibilities.
-      Your privacy and security are our top priorities.
+        target="_blank">Privacy Policy</AppAnchor
+      >.
     </p>
     <div class="actions">
       <AppAnchorButton

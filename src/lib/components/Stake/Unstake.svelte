@@ -12,7 +12,6 @@
 
   import {
     Button,
-    Icon,
     Stepper,
     Textbox,
     Wizard,
@@ -20,12 +19,12 @@
   } from "$lib/dusk/components";
   import {
     Banner,
+    DuskIcon,
     GasSettings,
     ReviewAmount,
     TransactionResult,
   } from "$lib/components";
 
-  import { logo } from "$lib/dusk/icons";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { mdiAlertOutline } from "@mdi/js";
 
@@ -206,11 +205,7 @@
           required
           step="0.000000001"
         />
-        <Icon
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="DUSK"
-          path={logo}
-        />
+        <DuskIcon />
         {#if isAmountHidden}
           <span hidden id={hiddenNoteId}>hidden</span>
         {/if}

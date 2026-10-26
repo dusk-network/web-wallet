@@ -21,7 +21,6 @@ exports[`Dashboard > should render a card when there is an error getting transac
          
         <button
           aria-label="Hide balances"
-          aria-pressed="false"
           class="dusk-balance__toggle"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="Hide balances"
@@ -110,10 +109,11 @@ exports[`Dashboard > should render a card when there is an error getting transac
           <!---->
           <!---->
           <svg
+            aria-label="DUSK"
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
             data-tooltip-text="DUSK"
-            role="graphics-symbol"
+            role="img"
             viewBox="0 0 24 24"
           >
             <path
@@ -163,10 +163,11 @@ exports[`Dashboard > should render a card when there is an error getting transac
           <!---->
           <!---->
           <svg
+            aria-label="DUSK"
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
             data-tooltip-text="DUSK"
-            role="graphics-symbol"
+            role="img"
             viewBox="0 0 24 24"
           >
             <path
@@ -494,7 +495,6 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
          
         <button
           aria-label="Hide balances"
-          aria-pressed="false"
           class="dusk-balance__toggle"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="Hide balances"
@@ -583,10 +583,11 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <!---->
           <!---->
           <svg
+            aria-label="DUSK"
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
             data-tooltip-text="DUSK"
-            role="graphics-symbol"
+            role="img"
             viewBox="0 0 24 24"
           >
             <path
@@ -636,10 +637,11 @@ exports[`Dashboard > should render the dashboard page with the transactions afte
           <!---->
           <!---->
           <svg
+            aria-label="DUSK"
             class="dusk-icon dusk-icon--size--default"
             data-tooltip-id="main-tooltip"
             data-tooltip-text="DUSK"
-            role="graphics-symbol"
+            role="img"
             viewBox="0 0 24 24"
           >
             <path

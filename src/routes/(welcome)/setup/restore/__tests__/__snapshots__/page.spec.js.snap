@@ -51,7 +51,7 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
         <p>
           Initializing a new wallet will replace your existing local wallet cache,
       erasing any stored data. Ensure you have securely backed up your current
-      wallet's mnemonic phrase to prevent loss. Proceeding without a backup can
+      wallet's recovery phrase to prevent loss. Proceeding without a backup can
       lead to irreversible loss of access to your assets.
         </p>
          
@@ -119,7 +119,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
     <br />
      
     <mark>
-      Mnemonic Phrase
+      Recovery Phrase
     </mark>
   </h2>
   <!---->
@@ -205,7 +205,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
           <h3
             class="h4"
           >
-            Enter your Mnemonic Phrase
+            Enter your recovery phrase
           </h3>
            
           <!---->
@@ -246,7 +246,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
             <span
               class="dusk-button__text"
             >
-              Paste mnemonic phrase
+              Paste recovery phrase
             </span>
             <!---->
             <!---->
@@ -509,7 +509,25 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
       >
         <!---->
         <p>
-          Our 
+          Your keys stay in this browser, and only you hold them: Dusk can't recover
+      them. The wallet has no analytics, and gets the DUSK price from CoinGecko.
+        </p>
+         
+        <p>
+          Accepting means you agree to the 
+          <a
+            class="dusk-anchor dusk-anchor--on-surface"
+            href="https://dusk.network/terms-of-use/"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            <!---->
+            Terms of Use
+            
+            <!---->
+          </a>
+          <!---->
+           and the 
           <a
             class="dusk-anchor dusk-anchor--on-surface"
             href="https://dusk.network/privacy-policy/"
@@ -517,13 +535,12 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
             target="_blank"
           >
             <!---->
-            Terms & Privacy Policy
+            Privacy Policy
             
             <!---->
           </a>
           <!---->
-           govern your use of our services, including data handling and user responsibilities.
-      Your privacy and security are our top priorities.
+          .
         </p>
          
         <div

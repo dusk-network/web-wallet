@@ -121,7 +121,7 @@
         const words = sanitizedData.trim().split(/\s+/);
 
         if (words.length !== 12) {
-          throw Error("Mnemonic phrase is not valid");
+          throw Error("Recovery phrase is not valid");
         }
 
         currentIndex = 0;
@@ -169,7 +169,7 @@
       {#if type === "authenticate" && shouldShowPaste}
         <Button
           icon={{ path: mdiContentPaste }}
-          text="Paste mnemonic phrase"
+          text="Paste recovery phrase"
           variant="tertiary"
           on:click={pasteMnemonic}
         />

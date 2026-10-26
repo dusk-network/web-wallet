@@ -40,7 +40,7 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
             <h3
               class="h4"
             >
-              Mnemonic phrase
+              Recovery phrase
             </h3>
              
             <div
@@ -75,12 +75,12 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
         >
           <!---->
           <input
-            aria-label="Mnemonic phrase"
+            aria-label="Recovery phrase"
             autocomplete="current-password"
             autofocus=""
             class="dusk-textbox dusk-textbox-password"
-            name="Mnemonic phrase"
-            placeholder="Mnemonic phrase"
+            name="Recovery phrase"
+            placeholder="Recovery phrase"
             required=""
             type="password"
           />

@@ -18,7 +18,6 @@ exports[`Balance > renders the Balance component 1`] = `
        
       <button
         aria-label="Hide balances"
-        aria-pressed="false"
         class="dusk-balance__toggle"
         data-tooltip-id="main-tooltip"
         data-tooltip-text="Hide balances"
@@ -107,10 +106,11 @@ exports[`Balance > renders the Balance component 1`] = `
         <!---->
         <!---->
         <svg
+          aria-label="DUSK"
           class="dusk-icon dusk-icon--size--default"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
-          role="graphics-symbol"
+          role="img"
           viewBox="0 0 24 24"
         >
           <path
@@ -160,10 +160,11 @@ exports[`Balance > renders the Balance component 1`] = `
         <!---->
         <!---->
         <svg
+          aria-label="DUSK"
           class="dusk-icon dusk-icon--size--default"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
-          role="graphics-symbol"
+          role="img"
           viewBox="0 0 24 24"
         >
           <path
@@ -196,7 +197,6 @@ exports[`Balance > should not display the fiat value if the fiat price is \`unde
        
       <button
         aria-label="Hide balances"
-        aria-pressed="false"
         class="dusk-balance__toggle"
         data-tooltip-id="main-tooltip"
         data-tooltip-text="Hide balances"
@@ -285,10 +285,11 @@ exports[`Balance > should not display the fiat value if the fiat price is \`unde
         <!---->
         <!---->
         <svg
+          aria-label="DUSK"
           class="dusk-icon dusk-icon--size--default"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
-          role="graphics-symbol"
+          role="img"
           viewBox="0 0 24 24"
         >
           <path
@@ -338,10 +339,11 @@ exports[`Balance > should not display the fiat value if the fiat price is \`unde
         <!---->
         <!---->
         <svg
+          aria-label="DUSK"
           class="dusk-icon dusk-icon--size--default"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
-          role="graphics-symbol"
+          role="img"
           viewBox="0 0 24 24"
         >
           <path
@@ -374,7 +376,6 @@ exports[`Balance > should update the Balance component when the props change 1`]
        
       <button
         aria-label="Hide balances"
-        aria-pressed="false"
         class="dusk-balance__toggle"
         data-tooltip-id="main-tooltip"
         data-tooltip-text="Hide balances"
@@ -463,10 +464,11 @@ exports[`Balance > should update the Balance component when the props change 1`]
         <!---->
         <!---->
         <svg
+          aria-label="DUSK"
           class="dusk-icon dusk-icon--size--default"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
-          role="graphics-symbol"
+          role="img"
           viewBox="0 0 24 24"
         >
           <path
@@ -516,10 +518,11 @@ exports[`Balance > should update the Balance component when the props change 1`]
         <!---->
         <!---->
         <svg
+          aria-label="DUSK"
           class="dusk-icon dusk-icon--size--default"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
-          role="graphics-symbol"
+          role="img"
           viewBox="0 0 24 24"
         >
           <path
@@ -552,7 +555,6 @@ exports[`Balance > should update the Balance component when the props change 2`]
        
       <button
         aria-label="Hide balances"
-        aria-pressed="false"
         class="dusk-balance__toggle"
         data-tooltip-id="main-tooltip"
         data-tooltip-text="Hide balances"
@@ -641,10 +643,11 @@ exports[`Balance > should update the Balance component when the props change 2`]
         <!---->
         <!---->
         <svg
+          aria-label="DUSK"
           class="dusk-icon dusk-icon--size--default"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
-          role="graphics-symbol"
+          role="img"
           viewBox="0 0 24 24"
         >
           <path
@@ -694,10 +697,11 @@ exports[`Balance > should update the Balance component when the props change 2`]
         <!---->
         <!---->
         <svg
+          aria-label="DUSK"
           class="dusk-icon dusk-icon--size--default"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
-          role="graphics-symbol"
+          role="img"
           viewBox="0 0 24 24"
         >
           <path

@@ -157,7 +157,7 @@ describe("Unlock Wallet", async () => {
       );
 
       expect(initSpy).not.toHaveBeenCalled();
-      expect(errorElement?.textContent).toMatch("Invalid mnemonic phrase");
+      expect(errorElement?.textContent).toMatch("Invalid recovery phrase");
       expect(textInput).toHaveFocus();
       expect(selectedText).toBe(textInput.value);
     });

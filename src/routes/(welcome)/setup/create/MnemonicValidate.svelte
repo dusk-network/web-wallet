@@ -20,17 +20,15 @@
 </script>
 
 <IconHeadingCard heading="Verification" gap="medium">
-  <p>Ensure you have backed up the Mnemonic phrase.</p>
+  <p>Tap the words in the order you wrote them down.</p>
   <Mnemonic
     bind:enteredMnemonicPhrase
     mnemonicPhrase={shuffleArray(mnemonicPhrase)}
     type="validate"
   />
   {#if filteredMnemonic.size === 12 && !isValid}
-    <Banner title="Mnemonic does not match." variant="error">
-      <p>
-        Please ensure you have entered the mnemonic phrase in the correct order.
-      </p>
+    <Banner title="The words don't match." variant="error">
+      <p>Undo, and tap them in the order you wrote them down.</p>
     </Banner>
   {/if}
 </IconHeadingCard>

@@ -57,7 +57,7 @@
     );
 
   const loginInfo = loginInfoStorage.get();
-  const modeLabel = loginInfo ? "Password" : "Mnemonic phrase";
+  const modeLabel = loginInfo ? "Password" : "Recovery phrase";
 
   /** @type {Textbox} */
   let fldSecret;
@@ -162,9 +162,9 @@
           autofocus
         />
         {#if error instanceof InvalidMnemonicError}
-          <Banner title="Invalid mnemonic phrase" variant="error">
+          <Banner title="Invalid recovery phrase" variant="error">
             <p>
-              Please ensure you have entered your 12-word mnemonic phrase, with
+              Please ensure you have entered your 12-word recovery phrase, with
               a space separating each word.
             </p>
           </Banner>

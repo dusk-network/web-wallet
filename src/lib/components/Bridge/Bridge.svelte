@@ -13,7 +13,6 @@
   import {
     AnchorButton,
     Badge,
-    Icon,
     Select,
     Textbox,
     Throbber,
@@ -25,12 +24,12 @@
     BalanceValue,
     Banner,
     DepositResult,
+    DuskIcon,
     GasSettings,
     OperationResult,
     ReviewAmount,
   } from "$lib/components";
   import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
-  import { logo } from "$lib/dusk/icons";
   import { BRIDGE_DEPOSIT_MIN_GAS_LIMIT } from "$lib/bridge/deposit";
   import {
     depositActivityStore,
@@ -379,11 +378,7 @@
                 name="destination-amount"
                 bind:value={amount}
               />
-              <Icon
-                data-tooltip-id="main-tooltip"
-                data-tooltip-text="DUSK"
-                path={logo}
-              />
+              <DuskIcon />
             </div>
 
             {#if amount !== ""}

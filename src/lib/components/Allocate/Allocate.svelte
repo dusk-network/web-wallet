@@ -17,7 +17,6 @@
     middleEllipsis,
     randomUUID,
   } from "$lib/dusk/string";
-  import { logo } from "$lib/dusk/icons";
   import {
     Badge,
     Icon,
@@ -27,6 +26,7 @@
   } from "$lib/dusk/components";
   import {
     BalanceValue,
+    DuskIcon,
     GasSettings,
     ReviewAmount,
     TransactionResult,
@@ -216,11 +216,7 @@
               name="unshielded-amount"
               aria-label="Public amount"
             />
-            <Icon
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="DUSK"
-              path={logo}
-            />
+            <DuskIcon />
           </div>
 
           <hr class="glyph" />
@@ -259,11 +255,7 @@
               name="shielded-amount"
               aria-label="Shielded amount"
             />
-            <Icon
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="DUSK"
-              path={logo}
-            />
+            <DuskIcon />
           </div>
           {#if hideBalances}
             <span hidden id={hiddenNoteId}>hidden</span>

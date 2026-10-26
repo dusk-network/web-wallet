@@ -135,21 +135,22 @@ describe("Balance", () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
-  it("should hide and show the balances with the eye button by the heading", async () => {
+  it("should hide and show the balances with the eye button by the heading, named for what it does next", async () => {
     const { container, getByRole } = render(Balance, baseOptions);
     const toggle = getByRole("button", { name: "Hide balances" });
     const getIconPath = () => toggle.querySelector("path")?.getAttribute("d");
     const getTotal = () => container.querySelector(".dusk-balance__dusk");
 
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(toggle).toHaveAttribute("data-tooltip-text", "Hide balances");
+    expect(toggle).not.toHaveAttribute("aria-pressed");
     expect(getIconPath()).toBe(mdiEyeOutline);
     expect(getTotal()).toHaveTextContent("0.003000000 DUSK");
 
     await fireEvent.click(toggle);
 
     expect(get(settingsStore).hideBalances).toBe(true);
-    expect(toggle).toHaveAccessibleName("Hide balances");
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(toggle).toHaveAccessibleName("Show balances");
+    expect(toggle).toHaveAttribute("data-tooltip-text", "Show balances");
     expect(getIconPath()).toBe(mdiEyeOffOutline);
     expect(getTotal()).toHaveTextContent("•••• hidden DUSK");
 
@@ -157,8 +158,14 @@ describe("Balance", () => {
 
     expect(get(settingsStore).hideBalances).toBe(false);
     expect(toggle).toHaveAccessibleName("Hide balances");
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(toggle).toHaveAttribute("data-tooltip-text", "Hide balances");
     expect(getTotal()).toHaveTextContent("0.003000000 DUSK");
+  });
+
+  it("should name the DUSK unit of each balance for screen readers", () => {
+    const { getAllByRole } = render(Balance, baseOptions);
+
+    expect(getAllByRole("img", { name: "DUSK" })).toHaveLength(2);
   });
 
   it("should show each value as dots, which screen readers read as hidden, while balances are hidden", () => {

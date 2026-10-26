@@ -20,10 +20,10 @@
     enteredMnemonicPhrase.filter((word) => word !== "").length === wordLimit &&
     !isValid
   ) {
-    toast("error", "Invalid mnemonic phrase", mdiAlertOutline);
+    toast("error", "Invalid recovery phrase", mdiAlertOutline);
   }
 </script>
 
-<IconHeadingCard gap="medium" heading="Enter your Mnemonic Phrase">
+<IconHeadingCard gap="medium" heading="Enter your recovery phrase">
   <Mnemonic bind:enteredMnemonicPhrase {wordLimit} type="authenticate" />
 </IconHeadingCard>

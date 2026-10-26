@@ -10,9 +10,8 @@
     mdiShieldLock,
     mdiShieldLockOpenOutline,
   } from "@mdi/js";
-  import { logo } from "$lib/dusk/icons";
   import { createNumberFormatter } from "$lib/dusk/number";
-  import { BalanceValue } from "$lib/components";
+  import { BalanceValue, DuskIcon } from "$lib/components";
   import { settingsStore } from "$lib/stores";
 
   import "./Balance.css";
@@ -54,6 +53,7 @@
   $: classes = makeClassName(["dusk-balance", className]);
 
   $: hideBalances = $settingsStore.hideBalances === true;
+  $: toggleLabel = hideBalances ? "Show balances" : "Hide balances";
 
   function toggleBalances() {
     settingsStore.update((store) => ({
@@ -71,12 +71,13 @@
   <header class="dusk-balance__header">
     <div class="dusk-balance__heading">
       <h2 class="dusk-balance__label">Total balance</h2>
+      <!-- Named for what it does next, so it shows balances while they
+        are hidden. -->
       <button
-        aria-label="Hide balances"
-        aria-pressed={hideBalances}
+        aria-label={toggleLabel}
         class="dusk-balance__toggle"
         data-tooltip-id="main-tooltip"
-        data-tooltip-text="Hide balances"
+        data-tooltip-text={toggleLabel}
         on:click={toggleBalances}
         type="button"
       >
@@ -111,11 +112,7 @@
       <span class="dusk-balance__value"
         ><BalanceValue
           value={duskFormatter(luxToDusk(unshieldedAmount))}
-        /><Icon
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="DUSK"
-          path={logo}
-        /></span
+        /><DuskIcon /></span
       >
     </div>
     <div class="dusk-balance__account">
@@ -127,11 +124,9 @@
         ></span
       >
       <span class="dusk-balance__value"
-        ><BalanceValue value={duskFormatter(luxToDusk(shieldedAmount))} /><Icon
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="DUSK"
-          path={logo}
-        /></span
+        ><BalanceValue
+          value={duskFormatter(luxToDusk(shieldedAmount))}
+        /><DuskIcon /></span
       >
     </div>
   </div>

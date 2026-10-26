@@ -106,7 +106,7 @@ describe("Restore", async () => {
     expect(nextButton).toBeDisabled();
 
     await fireEvent.click(
-      getByRole("button", { name: "Paste mnemonic phrase" })
+      getByRole("button", { name: "Paste recovery phrase" })
     );
 
     await tick();
@@ -117,7 +117,7 @@ describe("Restore", async () => {
     const { getByRole, getByPlaceholderText } = render(Restore);
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(
-      getByRole("button", { name: "Paste mnemonic phrase" })
+      getByRole("button", { name: "Paste recovery phrase" })
     );
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Back" }));
@@ -126,7 +126,7 @@ describe("Restore", async () => {
     expect(getByPlaceholderText("Enter word 12")).toBeInTheDocument();
     expect(getByRole("button", { name: "Next" })).toBeDisabled();
     await fireEvent.click(
-      getByRole("button", { name: "Paste mnemonic phrase" })
+      getByRole("button", { name: "Paste recovery phrase" })
     );
     expect(getByRole("button", { name: "Next" })).toBeEnabled();
   });
@@ -145,7 +145,7 @@ describe("Restore", async () => {
     expect(get(toastList).length).toBe(0);
 
     await fireEvent.click(
-      getByRole("button", { name: "Paste mnemonic phrase" })
+      getByRole("button", { name: "Paste recovery phrase" })
     );
     await tick();
 
@@ -167,7 +167,7 @@ describe("Restore", async () => {
     expect(nextButton).toBeDisabled();
 
     await fireEvent.click(
-      getByRole("button", { name: "Paste mnemonic phrase" })
+      getByRole("button", { name: "Paste recovery phrase" })
     );
 
     expect(nextButton).toBeEnabled();
@@ -218,7 +218,7 @@ describe("Restore", async () => {
     expect(nextButton).toBeDisabled();
 
     await fireEvent.click(
-      getByRole("button", { name: "Paste mnemonic phrase" })
+      getByRole("button", { name: "Paste recovery phrase" })
     );
     await tick();
     expect(nextButton).toBeEnabled();

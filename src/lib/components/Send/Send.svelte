@@ -15,11 +15,9 @@
     randomUUID,
     shortenAddress,
   } from "$lib/dusk/string";
-  import { logo } from "$lib/dusk/icons";
   import {
     Badge,
     Button,
-    Icon,
     Stepper,
     Switch,
     Textbox,
@@ -30,6 +28,7 @@
   import {
     AppAnchor,
     Banner,
+    DuskIcon,
     GasSettings,
     ReviewAmount,
     ScanQR,
@@ -705,11 +704,7 @@
             max={luxToDusk(maxSpendableAmount)}
             step="0.000000001"
           />
-          <Icon
-            data-tooltip-id="main-tooltip"
-            data-tooltip-text="DUSK"
-            path={logo}
-          />
+          <DuskIcon />
         </div>
 
         <div class="operation__input-wrapper">
