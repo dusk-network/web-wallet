@@ -73,6 +73,34 @@ describe("searchLocally", () => {
   });
 });
 
+describe("searchLocally with contacts", () => {
+  it("finds contacts by name, .dusk name or address, and shows a saved person as the contact only", () => {
+    /** @type {Contact} */
+    const contact = {
+      address: ALICE,
+      createdAt: 1,
+      duskName: "alice.dusk",
+      id: "alice",
+      name: "Alice",
+      type: "account",
+      updatedAt: 1,
+    };
+    const withContacts = { ...index, contacts: [contact] };
+
+    expect(searchLocally("alice", withContacts)).toEqual([
+      expect.objectContaining({
+        detail: "alice.dusk",
+        group: "Contacts",
+        href: "/dashboard/contacts?contact=alice",
+        label: "Alice",
+      }),
+    ]);
+    expect(searchLocally(ALICE.slice(4, 14), withContacts)).toEqual([
+      expect.objectContaining({ group: "Contacts", label: "Alice" }),
+    ]);
+  });
+});
+
 describe("lookupKind", () => {
   it("tells what a query can be looked up as on the network", () => {
     expect(lookupKind("alise.dusk")).toBe("name");

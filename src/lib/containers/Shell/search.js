@@ -1,7 +1,7 @@
 /**
  * What the search finds on this device: the wallet's pages and actions, its
- * profiles, the people in its history and its transactions. Nothing here
- * asks the network.
+ * profiles, its contacts, the people in its history and its transactions.
+ * Nothing here asks the network.
  */
 
 import { ProfileGenerator } from "@dusk/w3sper";
@@ -13,7 +13,7 @@ import { describeRow, shortAddress } from "$lib/activity/present";
  *   detail?: string,
  *   detailIsCode?: boolean,
  *   external?: boolean,
- *   group: "Pages" | "People" | "Transactions" | "Your profiles",
+ *   group: "Contacts" | "Pages" | "People" | "Transactions" | "Your profiles",
  *   href?: string,
  *   id: string,
  *   label: string,
@@ -22,6 +22,7 @@ import { describeRow, shortAddress } from "$lib/activity/present";
  * }} SearchResult
  *
  * @typedef {{
+ *   contacts?: Contact[],
  *   history: ActivityRow[],
  *   locale: string,
  *   pages: { href: string, keywords?: string, label: string }[],
@@ -74,7 +75,10 @@ function peopleOf(history, locale) {
  * @param {SearchIndex} index
  * @returns {SearchResult[]}
  */
-export function searchLocally(query, { history, locale, pages, profiles }) {
+export function searchLocally(
+  query,
+  { contacts = [], history, locale, pages, profiles }
+) {
   const q = query.trim().toLowerCase();
 
   /** @type {SearchResult[]} */
@@ -117,7 +121,24 @@ export function searchLocally(query, { history, locale, pages, profiles }) {
       }))
   );
   add(
+    contacts
+      .filter((c) => has(`${c.name} ${c.duskName ?? ""} ${c.address}`, q))
+      .map((contact) => ({
+        detail: contact.duskName ?? shortAddress(contact.address),
+        detailIsCode: !contact.duskName,
+        group: "Contacts",
+        href: `/dashboard/contacts?contact=${encodeURIComponent(contact.id)}`,
+        id: `contact:${contact.id}`,
+        label: contact.name,
+      }))
+  );
+
+  // People saved as contacts show as contacts.
+  const saved = new Set(contacts.map((contact) => contact.address));
+
+  add(
     peopleOf(history, locale)
+      .filter((person) => !saved.has(person.address))
       .filter((person) => has(`${person.name} ${person.address}`, q))
       .map((person) => ({
         detail: person.name ? shortAddress(person.address) : undefined,

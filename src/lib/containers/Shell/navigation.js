@@ -1,5 +1,10 @@
 import { base } from "$app/paths";
-import { mdiHistory, mdiHomeOutline, mdiLayersOutline } from "@mdi/js";
+import {
+  mdiContactsOutline,
+  mdiHistory,
+  mdiHomeOutline,
+  mdiLayersOutline,
+} from "@mdi/js";
 
 /**
  * @typedef {{ href: string, icon: string, id: string, label: string }} ShellTab
@@ -7,7 +12,7 @@ import { mdiHistory, mdiHomeOutline, mdiLayersOutline } from "@mdi/js";
 
 /**
  * The wallet's pages, as the top bar and the phone's tab bar show them.
- * History and Staking are there when they are on.
+ * History and Staking are there when they are on; Contacts always is.
  *
  * @param {{ history?: boolean, stake: boolean }} features
  * @returns {ShellTab[]}
@@ -35,6 +40,12 @@ export function shellTabs({ history = true, stake }) {
           },
         ]
       : []),
+    {
+      href: "/dashboard/contacts",
+      icon: mdiContactsOutline,
+      id: "contacts",
+      label: "Contacts",
+    },
   ];
 }
 

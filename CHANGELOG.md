@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say what the public, shielded and staking balances are on Home
 - Add a tab bar and a row of round actions on phones
 - Say at the top of a test network that test DUSK has no value
+- Add Contacts, kept on this device: a name for an address or a `.dusk` name, the last payment and Send, with a check that a contact's `.dusk` name still points to its address
 
 ### Changed
 

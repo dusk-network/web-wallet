@@ -11,6 +11,7 @@
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import { makeNodeUrl } from "$lib/url";
 
+  import { contactsStore } from "$lib/contacts";
   import { lookupKind, searchLocally } from "./search";
 
   /** @type {{ href: string, keywords?: string, label: string }[]} */
@@ -43,6 +44,7 @@
   $: ({ profiles } = $walletStore);
   $: ({ language } = $settingsStore);
   $: index = {
+    contacts: $contactsStore,
     history: $activityState.rows,
     locale: language,
     pages,

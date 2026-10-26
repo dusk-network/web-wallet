@@ -4,7 +4,11 @@
   import { appPath } from "$lib/containers/Shell";
 
   /** Pages laid out across the window; the others are one column. */
-  const WIDE = new Set(["/dashboard", "/dashboard/transactions"]);
+  const WIDE = new Set([
+    "/dashboard",
+    "/dashboard/contacts",
+    "/dashboard/transactions",
+  ]);
 
   const scrollToTop = () => window.scrollTo(0, 0);
 

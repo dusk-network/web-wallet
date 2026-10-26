@@ -3,15 +3,17 @@ import { describe, expect, it } from "vitest";
 import { appPath, shellTabs, tabOf } from "../navigation";
 
 describe("shell navigation", () => {
-  it("lists Home and History, and Staking when staking is on", () => {
+  it("lists Home, History and Contacts, and Staking when staking is on", () => {
     expect(shellTabs({ stake: false }).map((tab) => tab.label)).toEqual([
       "Home",
       "History",
+      "Contacts",
     ]);
     expect(shellTabs({ stake: true }).map((tab) => tab.label)).toEqual([
       "Home",
       "History",
       "Staking",
+      "Contacts",
     ]);
   });
 
@@ -24,6 +26,7 @@ describe("shell navigation", () => {
       "history"
     );
     expect(tabOf(tabs, "/some-base-path/dashboard/stake")).toBe("staking");
+    expect(tabOf(tabs, "/some-base-path/dashboard/contacts")).toBe("contacts");
     expect(tabOf(tabs, "/some-base-path/dashboard/send")).toBeNull();
     expect(tabOf(tabs, "/some-base-path/settings")).toBeNull();
   });
