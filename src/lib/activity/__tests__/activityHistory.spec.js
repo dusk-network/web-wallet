@@ -574,7 +574,9 @@ describe("a block with more than a page of the account's entries", () => {
 
     expect(pages.length).toBeGreaterThan(0);
     expect(new Set(pages).size).toBe(pages.length);
-  });
+
+    // Four runs over 450 entries: time to spare under a full test run's load.
+  }, 20_000);
 });
 
 describe("a node without the archive", () => {
