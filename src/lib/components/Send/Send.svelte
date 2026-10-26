@@ -91,6 +91,17 @@
   /** @type {import("..").ScanQR} */
   let scanQrComponent;
 
+  /** @type {import("$lib/dusk/components").WizardStep} */
+  let addressStep;
+
+  /**
+   * Whether a recipient that isn't valid is pointed out: once it is pasted,
+   * left or confirmed with Enter, not while it is being typed.
+   *
+   * @type {boolean}
+   */
+  let isRecipientChecked = false;
+
   /** @type {boolean} */
   let isMemoShown = false;
 
@@ -125,6 +136,8 @@
   const nameOptionElements = {};
 
   const nameOptionsId = randomUUID();
+
+  const invalidRecipientId = `${randomUUID()}-invalid-recipient`;
 
   // Without the allocation page there is nowhere to link to for shielding.
   const canShield = import.meta.env.VITE_FEATURE_ALLOCATE === "true";
@@ -161,6 +174,19 @@
     }
 
     sendAmount = luxToDusk(maxSpendableAmount);
+  }
+
+  /**
+   * Enter moves on as Next does: no address or name has a line break.
+   *
+   * @param {KeyboardEvent} event
+   */
+  function handleRecipientKeyDown(event) {
+    if (event.key === "Enter" && !event.isComposing) {
+      event.preventDefault();
+      isRecipientChecked = true;
+      addressStep.next(event);
+    }
   }
 
   /**
@@ -388,6 +414,16 @@
     !isRecipientBlocklisted
   );
 
+  // A pasted recipient often brings spaces or line breaks, which no address
+  // or name has.
+  $: if (/\s/.test(sendToAddress)) {
+    sendToAddress = sendToAddress.replace(/\s+/g, "");
+  }
+
+  $: if (!sendToAddress) {
+    isRecipientChecked = false;
+  }
+
   $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";
 
   $: lookUpName(recipientName);
@@ -414,6 +450,9 @@
     shieldedAddress,
     publicAddress
   );
+
+  $: isRecipientInvalid =
+    isRecipientChecked && !recipientName && !addressInfo.isValid;
 
   $: blocklistedRecipient = getBlocklistedRecipient(recipientAddress);
   $: isRecipientBlocklisted = Boolean(blocklistedRecipient);
@@ -462,6 +501,7 @@
     </div>
     <!-- Address Step -->
     <WizardStep
+      bind:this={addressStep}
       step={0}
       {key}
       backButton={{
@@ -493,10 +533,29 @@
         <Textbox
           required
           className={sendToAddressTextboxClasses}
+          aria-describedby={isRecipientInvalid ? invalidRecipientId : undefined}
+          aria-invalid={isRecipientInvalid}
           aria-label="Recipient address or .dusk name"
           type="multiline"
           bind:value={sendToAddress}
+          on:blur={() => {
+            isRecipientChecked = true;
+          }}
+          on:keydown={handleRecipientKeyDown}
+          on:paste={() => {
+            isRecipientChecked = true;
+          }}
         />
+
+        {#if isRecipientInvalid}
+          <Banner
+            id={invalidRecipientId}
+            title="Not a valid address"
+            variant="error"
+          >
+            <p>Check it, or paste it again.</p>
+          </Banner>
+        {/if}
 
         {#if nameLookup?.[nameAddressType]}
           {@const isChoice = nameOptions.length > 1}

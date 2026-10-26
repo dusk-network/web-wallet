@@ -119,11 +119,14 @@ exports[`Send > Address step > should display only a one-line warning if the add
        
       <!---->
       <textarea
+        aria-invalid="false"
         aria-label="Recipient address or .dusk name"
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
       
+      <!---->
+       
       <!---->
        
       <!---->
@@ -399,11 +402,14 @@ exports[`Send > Address step > should render the Send component Address step 1`]
        
       <!---->
       <textarea
+        aria-invalid="false"
         aria-label="Recipient address or .dusk name"
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
       
+      <!---->
+       
       <!---->
        
       <!---->
@@ -654,11 +660,14 @@ exports[`Send > Address step > should show no banner for a public account, as th
        
       <!---->
       <textarea
+        aria-invalid="false"
         aria-label="Recipient address or .dusk name"
         class="dusk-textbox dusk-textbox-multiline operation__send-address"
         required=""
       />
       
+      <!---->
+       
       <!---->
        
       <!---->

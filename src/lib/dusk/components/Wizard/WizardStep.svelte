@@ -57,6 +57,21 @@
   }
 
   /**
+   * Moves on as the Next button does, unless it is disabled or a link.
+   *
+   * @param {Event} evt An event on an element of the step.
+   */
+  export function next(evt) {
+    if (
+      step === currentStep &&
+      !nextButton?.isAnchor &&
+      !getButtonProps(nextButton, "Next", mdiArrowRight, true).disabled
+    ) {
+      handleNext(evt);
+    }
+  }
+
+  /**
    * Returns the icon for the wizard button
    * It can be:
    * – The default icon for the

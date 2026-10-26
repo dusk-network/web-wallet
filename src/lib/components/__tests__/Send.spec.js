@@ -118,6 +118,93 @@ describe("Send", () => {
       expect(nextButton).toBeDisabled();
     });
 
+    it("should take Enter after an address as Next, instead of adding a line break", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const addressInput = getByRole("textbox");
+
+      await fireEvent.input(addressInput, {
+        target: { value: shieldedAddress },
+      });
+
+      const enter = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key: "Enter",
+      });
+
+      addressInput.dispatchEvent(enter);
+      await tick();
+
+      expect(enter.defaultPrevented).toBe(true);
+      expect(getByRole("spinbutton", { name: "Amount" })).toBeInTheDocument();
+    });
+
+    it("should stay on the address step on Enter while the address is invalid, and say why", async () => {
+      const { getByRole, getByText } = render(Send, baseProps);
+      const addressInput = getByRole("textbox");
+
+      await fireEvent.input(addressInput, {
+        target: { value: invalidAddress },
+      });
+      await fireEvent.keyDown(addressInput, { key: "Enter" });
+
+      expect(addressInput).toHaveValue(invalidAddress);
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+      expect(getByText("Not a valid address")).toBeInTheDocument();
+      expect(addressInput).toHaveAccessibleDescription(
+        "Not a valid address Check it, or paste it again."
+      );
+      expect(addressInput).toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("should remove the spaces and line breaks a pasted address brings", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const addressInput = getByRole("textbox");
+
+      await fireEvent.paste(addressInput);
+      await fireEvent.input(addressInput, {
+        target: {
+          value: ` ${shieldedAddress.slice(0, 40)}\n${shieldedAddress.slice(40)}\n`,
+        },
+      });
+
+      expect(addressInput).toHaveValue(shieldedAddress);
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+    });
+
+    it("should point out an invalid address once it is pasted or left, not while it is typed", async () => {
+      const { getByRole, queryByText } = render(Send, baseProps);
+      const addressInput = getByRole("textbox");
+
+      await fireEvent.input(addressInput, {
+        target: { value: invalidAddress.slice(0, 20) },
+      });
+
+      expect(queryByText("Not a valid address")).toBeNull();
+      expect(addressInput).toHaveAttribute("aria-invalid", "false");
+
+      await fireEvent.blur(addressInput);
+
+      expect(queryByText("Not a valid address")).toBeInTheDocument();
+
+      await fireEvent.input(addressInput, { target: { value: "" } });
+
+      expect(queryByText("Not a valid address")).toBeNull();
+
+      await fireEvent.paste(addressInput);
+      await fireEvent.input(addressInput, {
+        target: { value: invalidAddress },
+      });
+
+      expect(queryByText("Not a valid address")).toBeInTheDocument();
+
+      await fireEvent.input(addressInput, {
+        target: { value: shieldedAddress },
+      });
+
+      expect(queryByText("Not a valid address")).toBeNull();
+    });
+
     it("should offer no QR scan without a camera", async () => {
       const { queryByRole } = render(Send, baseProps);
 

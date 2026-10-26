@@ -212,11 +212,14 @@ exports[`Send page > should render the send page 1`] = `
            
           <!---->
           <textarea
+            aria-invalid="false"
             aria-label="Recipient address or .dusk name"
             class="dusk-textbox dusk-textbox-multiline operation__send-address"
             required=""
           />
           
+          <!---->
+           
           <!---->
            
           <!---->
