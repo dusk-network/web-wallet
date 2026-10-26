@@ -174,6 +174,30 @@ describe("ContactsView", () => {
     await rerender({ contacts: get(contactsStore) });
   });
 
+  it("keeps a contact's address when the new one its .dusk name points to is another contact's", async () => {
+    const bob = saveContact({ address: OTHER, name: "Bob" });
+
+    resolveName.mockResolvedValueOnce({
+      account: OTHER,
+      name: "alice-shop.dusk",
+    });
+
+    const { findByRole, getByRole, getByText } = show({
+      contacts: get(contactsStore),
+      selected: shop.id,
+    });
+
+    await findByRole("alert");
+    await fireEvent.click(getByRole("button", { name: "See the new address" }));
+    await fireEvent.click(getByRole("button", { name: "Use the new address" }));
+
+    expect(
+      getByText("This address is already saved as Bob.")
+    ).toBeInTheDocument();
+    expect(getContact(shop.id)?.address).toBe(ACCOUNT);
+    expect(getContact(bob.id)?.address).toBe(OTHER);
+  });
+
   it("saves a new contact from a .dusk name, with the address it points to", async () => {
     const select = vi.fn();
     const { findByText, getByRole } = render(ContactsView, {

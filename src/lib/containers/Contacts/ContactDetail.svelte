@@ -11,7 +11,11 @@
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { FullAddress } from "$lib/components";
-  import { markContactNameChecked, saveContact } from "$lib/contacts";
+  import {
+    findContact,
+    markContactNameChecked,
+    saveContact,
+  } from "$lib/contacts";
   import { addBasePath } from "$lib/navigation";
 
   import ActivityRowItem from "../Home/ActivityRowItem.svelte";
@@ -47,6 +51,9 @@
   /** Whether the user asked to take the address the name points to now. */
   let isTakingNew = false;
 
+  /** The contact that has the new address already, if the user tried it. */
+  let takenBy = "";
+
   /**
    * What makes a contact the one checked: not when it was checked.
    *
@@ -69,6 +76,7 @@
 
     check = { state: "checking" };
     isTakingNew = false;
+    takenBy = "";
 
     const resolution = await resolveName(checked.duskName).catch(() => null);
 
@@ -101,8 +109,21 @@
     return { address: pointed ?? "", state: "moved" };
   }
 
-  /** @param {string} address */
+  /**
+   * Takes the address the contact's name points to now, unless another
+   * contact has it: one address, one contact.
+   *
+   * @param {string} address
+   */
   function takeNewAddress(address) {
+    const other = findContact(address);
+
+    if (other && other.id !== contact.id) {
+      takenBy = other.name;
+
+      return;
+    }
+
     saveContact({ ...contact, address, checkedAt: Date.now() });
     toast(
       "success",
@@ -238,6 +259,11 @@
                   variant="primary"
                 />
               </div>
+              {#if takenBy}
+                <p class="contact-detail__taken">
+                  This address is already saved as {takenBy}.
+                </p>
+              {/if}
             {:else}
               <button
                 class="contact-detail__link"
@@ -429,6 +455,10 @@
     border: 1px solid var(--calm-pending);
     border-radius: 0.75rem;
     font-size: 0.875rem;
+  }
+
+  .contact-detail__taken {
+    color: var(--calm-danger);
   }
 
   .contact-detail__confirm {
