@@ -139,6 +139,9 @@
    */
   let withdrawalFeeWei = null;
 
+  /** How many times the maximum was asked for: only the last one applies. */
+  let maxRequests = 0;
+
   /**
    * The DuskEVM gas price. `getGasPrice` throws rather than rejects for a
    * chain it doesn't know, which would leave the gas estimate unhandled.
@@ -214,7 +217,18 @@
       return;
     }
 
+    maxRequests += 1;
+
+    const request = maxRequests;
+    const scope = maxScope;
     const feeWei = await estimateWithdrawalFee(1n).catch(() => null);
+
+    // The amount, the direction or a wallet changed while the fee was
+    // estimated, or the maximum was asked for again: this one is dropped.
+    if (request !== maxRequests || scope !== maxScope || !evmDuskBalance) {
+      return;
+    }
+
     const reserveWei = feeWei ? feeWei * 2n : WITHDRAWAL_FEE_RESERVE_WEI;
 
     amount = toAmountText(
@@ -369,6 +383,11 @@
     originNetwork === "duskDs" && destinationNetwork === "duskEvm";
   $: isWithdrawing =
     originNetwork === "duskEvm" && destinationNetwork === "duskDs";
+  $: ({ address: evmAddress } = $account);
+
+  // What the maximum is asked for: new whenever the amount, the direction
+  // or a wallet changes, so that an answer for an older one is dropped.
+  $: maxScope = { amount, evmAddress, isWithdrawing, unshieldedAccount };
   $: incomingDepositLux = pendingDepositAmountLux(
     $account.address,
     $depositActivityStore

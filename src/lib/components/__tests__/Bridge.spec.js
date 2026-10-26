@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { tick } from "svelte";
 import {
   createCurrencyFormatter,
   duskToLux,
@@ -159,6 +160,50 @@ describe("Bridge", () => {
       // 3 DUSK, less twice the estimated fee.
       expect(getByLabelText("Amount")).toHaveValue("2.997230463")
     );
+  });
+
+  it("should drop a withdrawal's maximum that comes back after the amount, the profile or the direction changed", async () => {
+    const { container, getByLabelText, getByRole, rerender } = render(
+      Bridge,
+      baseProps
+    );
+    const amount = getByLabelText("Amount");
+
+    /**
+     * Asks for the maximum, does something else while its fee is
+     * estimated, and gives the estimate after.
+     *
+     * @param {() => Promise<unknown>} meanwhile
+     */
+    const askMaxThen = async (meanwhile) => {
+      /** @type {PromiseWithResolvers<bigint>} */
+      const estimate = Promise.withResolvers();
+
+      estimateGas.mockReturnValueOnce(estimate.promise);
+      await fireEvent.click(getByRole("button", { name: /^use max$/i }));
+      await meanwhile();
+      estimate.resolve(withdrawalGas);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await tick();
+    };
+
+    await withdraw(container);
+    await askMaxThen(() =>
+      fireEvent.input(amount, { target: { value: "1.5" } })
+    );
+
+    expect(amount).toHaveValue("1.5");
+
+    await askMaxThen(() => rerender({ unshieldedAccount: {} }));
+
+    expect(amount).toHaveValue("1.5");
+
+    await askMaxThen(() =>
+      fireEvent.click(getByRole("button", { name: "Swap the direction" }))
+    );
+
+    expect(getDirection(container)).toStrictEqual(["duskDs", "duskEvm"]);
+    expect(amount).toHaveValue("1.5");
   });
 
   it("should swap the direction with a button between From and To", async () => {
