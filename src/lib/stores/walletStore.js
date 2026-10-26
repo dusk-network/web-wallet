@@ -150,6 +150,20 @@ const recordInHistory = (details) => {
   };
 };
 
+/**
+ * Whether an address or account is the current profile's own.
+ *
+ * @param {string} to
+ */
+const isOwn = (to) => {
+  const profile = getCurrentProfile();
+
+  return (
+    Boolean(profile) &&
+    (to === String(profile?.account) || to === String(profile?.address))
+  );
+};
+
 /** @type {(txInfo: TransactionInfo) => void} */
 const observeTxRemoval = (txInfo) => {
   networkStore.connect().then((network) =>
@@ -306,6 +320,7 @@ const claimRewards = async (amount, gas) =>
       passThruWithEffects(
         recordInHistory({
           amount: String(amount),
+          direction: "in",
           kind: TX_KIND.WITHDRAW_REWARD,
           privacy: "public",
         })
@@ -408,6 +423,7 @@ const shield = async (amount, gas) =>
       passThruWithEffects(
         recordInHistory({
           amount: String(amount),
+          direction: "out",
           kind: TX_KIND.SHIELD,
           privacy: "public",
         })
@@ -429,6 +445,7 @@ const stake = async (amount, gas) =>
       passThruWithEffects(
         recordInHistory({
           amount: String(amount),
+          direction: "out",
           kind: TX_KIND.STAKE,
           privacy: "public",
         })
@@ -588,7 +605,7 @@ async function sync(fromBlock) {
 }
 
 /** @type {WalletStoreServices["transfer"]} */
-const transfer = async (to, amount, memo, gas) =>
+const transfer = async (to, amount, memo, gas, { toName } = {}) =>
   sync()
     .then(networkStore.connect)
     .then(async (network) => {
@@ -612,11 +629,13 @@ const transfer = async (to, amount, memo, gas) =>
       passThruWithEffects(
         recordInHistory({
           amount: String(amount),
+          direction: isOwn(to) ? "self" : "out",
           kind: TX_KIND.TRANSFER,
           memo: memo || undefined,
           privacy:
             ProfileGenerator.typeOf(to) === "address" ? "shielded" : "public",
           to,
+          toName: toName || undefined,
         })
       )
     );
@@ -659,6 +678,7 @@ const depositEvmFunctionCall = async (
       passThruWithEffects(
         recordInHistory({
           amount: String(amount),
+          direction: "out",
           kind: TX_KIND.CONTRACT_CALL,
           privacy: "public",
         })
@@ -681,6 +701,7 @@ const unshield = async (amount, gas) =>
       passThruWithEffects(
         recordInHistory({
           amount: String(amount),
+          direction: "in",
           kind: TX_KIND.UNSHIELD,
           privacy: "shielded",
         })
@@ -702,6 +723,7 @@ const unstake = async (amount, gas) =>
       passThruWithEffects(
         recordInHistory({
           amount: String(amount),
+          direction: "in",
           kind: TX_KIND.UNSTAKE,
           privacy: "public",
         })
@@ -768,6 +790,7 @@ const executeContractFunction = async (
       passThruWithEffects(
         recordInHistory({
           amount: "0",
+          direction: "out",
           kind: TX_KIND.CONTRACT_CALL,
           privacy: "public",
         })

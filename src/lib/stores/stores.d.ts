@@ -154,11 +154,13 @@ type WalletStoreServices = {
   /** Rejects on sync failure or cancellation; syncStatus also records current-session errors. */
   sync: (fromBlock?: bigint) => Promise<void>;
 
+  /** `toName` is the `.dusk` name typed for `to`, kept in the history. */
   transfer: (
     to: string,
     amount: bigint,
     memo: string,
-    gas: Gas
+    gas: Gas,
+    options?: { toName?: string }
   ) => Promise<TransactionInfo>;
 
   unshield: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;

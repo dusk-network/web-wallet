@@ -143,6 +143,8 @@ function mergeLocal(known, tx) {
     gasPrice: known.gasPrice ?? tx.gasPrice,
     // What the wallet sent, when the chain names it less closely.
     kind: tx.kind || known.kind,
+    // A shielded row carries no memo: the one sent with it.
+    memo: known.memo ?? tx.memo,
     privacy: tx.privacy ?? known.privacy,
     profileIndex: tx.profileIndex,
     source: "both",
@@ -193,7 +195,9 @@ function addLocal(rows, local, profileIndex) {
       profileIndex !== undefined &&
       Number(idx) !== Number(profileIndex);
 
-    if (otherProfile || !hash) {
+    // A record kept only for what the chain's row lacks shows with that
+    // row, not on its own.
+    if (otherProfile || !hash || (tx.settled && !known)) {
       continue;
     }
 

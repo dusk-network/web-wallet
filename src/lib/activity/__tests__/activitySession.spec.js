@@ -161,11 +161,13 @@ describe("ActivitySession", () => {
       expect(session.state.rows.at(-1)?.privacy).toBe("shielded")
     );
 
-    // Had: not asked again.
-    session.notesSynced();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Had: asked again only when the notes synced again, for new ones.
+    await session.refresh();
 
     expect(shielded).toHaveBeenCalledTimes(3);
+
+    session.notesSynced();
+    await vi.waitFor(() => expect(shielded).toHaveBeenCalledTimes(4));
   });
 
   it("shows the wallet's own send at once, and the chain's row instead once the archive has it", async () => {
@@ -199,6 +201,88 @@ describe("ActivitySession", () => {
     expect(
       await store.listLocalTransactions(store.activityOwnerKey("testnet", A))
     ).toEqual([]);
+  });
+
+  it("keeps the name typed for a send with the chain's row, once the archive has it", async () => {
+    const node = fakeArchive({ finalized: 4_658_000 });
+    const hash = entryOfA(4658012).origin;
+    const session = sessionFor();
+
+    await session.start();
+    await session.recordSent({
+      amount: "100000000000",
+      hash,
+      kind: "contract_call",
+      privacy: "public",
+      toName: "alice.dusk",
+    });
+    node.finalized = FINALIZED;
+    await session.refresh();
+
+    expect(session.state.rows[0]).toMatchObject({
+      hash,
+      source: "both",
+      status: "executed",
+      toName: "alice.dusk",
+    });
+    expect(
+      await store.listLocalTransactions(store.activityOwnerKey("testnet", A))
+    ).toEqual([expect.objectContaining({ hash, settled: true })]);
+  });
+
+  it("settles a shielded send against the shielded history, keeping its memo, and stops waiting for the archive", async () => {
+    fakeArchive();
+
+    const hash = shieldedRow.hash;
+    const shielded = vi
+      .fn()
+      .mockResolvedValueOnce({ entries: [] })
+      .mockResolvedValue({
+        entries: [{ ...shieldedRow, direction: "out", kind: "transfer" }],
+      });
+    const session = sessionFor({ shielded });
+
+    await session.start();
+    await vi.waitFor(() => expect(shielded).toHaveBeenCalledTimes(1));
+
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    try {
+      await session.recordSent({
+        amount: "2000000000",
+        hash,
+        kind: "transfer",
+        memo: "Invoice 42",
+        privacy: "shielded",
+        to: B,
+      });
+
+      // The notes synced after the send: the shielded history has it, the
+      // record settles, and no refresh is asked for any more.
+      session.notesSynced();
+      await vi.waitFor(() => expect(shielded).toHaveBeenCalledTimes(2));
+      await vi.waitFor(async () =>
+        expect(
+          await store.listLocalTransactions(
+            store.activityOwnerKey("testnet", A)
+          )
+        ).toEqual([expect.objectContaining({ hash, settled: true })])
+      );
+
+      // The refresh the send asked for runs, and asks for no other.
+      await vi.advanceTimersByTimeAsync(sessions.AFTER_TX_MS);
+      await vi.waitFor(() => expect(session.state.syncing).toBe(false));
+
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(session.state.rows.find((r) => r.hash === hash)).toMatchObject({
+      memo: "Invoice 42",
+      source: "both",
+      status: "executed",
+    });
   });
 
   it("says the outcome of a send the archive never had is unknown, after a while", async () => {

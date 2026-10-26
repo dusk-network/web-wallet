@@ -215,6 +215,58 @@ describe("mergeActivity", () => {
     }
   });
 
+  it("keeps the memo and the name the wallet sent a shielded transfer with", () => {
+    const hash = "ab".repeat(32);
+    const [row] = mergeActivity({
+      local: [
+        {
+          amount: "5",
+          hash,
+          kind: "transfer",
+          memo: "Invoice 42",
+          privacy: "shielded",
+          profileIndex: 0,
+          status: "submitted",
+          toName: "alice.dusk",
+        },
+      ],
+      profileIndex: 0,
+      shielded: [
+        {
+          amount: "5",
+          blockHeight: 9,
+          direction: "out",
+          hash,
+          kind: "transfer",
+          privacy: "shielded",
+          source: "shielded",
+          status: "executed",
+        },
+      ],
+    });
+
+    expect(row).toMatchObject({
+      memo: "Invoice 42",
+      source: "both",
+      status: "executed",
+      toName: "alice.dusk",
+    });
+  });
+
+  it("shows a settled record only with the chain's row of it", () => {
+    const settled = {
+      amount: "5",
+      hash: "cd".repeat(32),
+      kind: /** @type {const} */ ("transfer"),
+      profileIndex: 0,
+      settled: true,
+      status: /** @type {const} */ ("submitted"),
+      toName: "alice.dusk",
+    };
+
+    expect(mergeActivity({ local: [settled], profileIndex: 0 })).toEqual([]);
+  });
+
   it("keeps the amount a send meant to move when it didn't go through, and the chain's when it did", () => {
     // B's call that failed on chain: what it sent with it never moved.
     const failed = entry(B, 3407780);

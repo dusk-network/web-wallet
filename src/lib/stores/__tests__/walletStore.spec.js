@@ -533,6 +533,16 @@ describe("Wallet store", async () => {
      * @typedef { "claimRewards" | "shield" | "stake" | "transfer" | "unshield" | "unstake" } TransferMethod
      */
 
+    /** @type {Record<TransferMethod, ActivityDirection>} */
+    const SENT_DIRECTIONS = {
+      claimRewards: "in",
+      shield: "out",
+      stake: "out",
+      transfer: "out",
+      unshield: "in",
+      unstake: "in",
+    };
+
     /** @type {Record<TransferMethod, ActivityKind>} */
     const SENT_KINDS = {
       claimRewards: "withdraw_reward",
@@ -603,6 +613,7 @@ describe("Wallet store", async () => {
       expect(history.session.recordSent).toHaveBeenCalledWith(
         expect.objectContaining({
           amount: String(amount),
+          direction: SENT_DIRECTIONS[method],
           hash: phoenixTxResult.hash,
           kind: SENT_KINDS[method],
           privacy:
@@ -850,6 +861,36 @@ describe("Wallet store", async () => {
     });
 
     /* eslint-disable vitest/expect-expect */
+
+    it("should record the .dusk name typed for a recipient, and a transfer to the profile's own account as to itself", async () => {
+      vi.useRealTimers();
+
+      const own = String(defaultProfile.account);
+
+      for (const [to, options, expected] of /** @type {const} */ ([
+        [
+          toMoonlight,
+          { toName: "alice.dusk" },
+          { direction: "out", toName: "alice.dusk" },
+        ],
+        [own, undefined, { direction: "self", toName: undefined }],
+      ])) {
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: phoenixTxResult.hash,
+          nonce: 1n,
+        });
+        history.session.recordSent.mockClear();
+
+        await walletStore.transfer(to, amount, memo, gas, options);
+
+        expect(history.session.recordSent).toHaveBeenCalledWith(
+          expect.objectContaining({ to, ...expected })
+        );
+      }
+
+      vi.useFakeTimers();
+    });
 
     it("should expose a method to claim the rewards", async () => {
       await walletStoreTransferCheck("claimRewards", [amount, gas]);

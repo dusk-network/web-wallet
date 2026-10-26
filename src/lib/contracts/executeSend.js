@@ -3,8 +3,14 @@ import { Gas } from "@dusk/w3sper";
 import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
 import { walletStore } from "$lib/stores";
 
-/** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint) => Promise<string>} */
-const executeSend = (to, amount, memo, gasPrice, gasLimit) => {
+/**
+ * Sends a transfer, with the `.dusk` name it goes to, if any, for the
+ * history.
+ *
+ * @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint, toName?: string) => Promise<string>}
+ */
+const executeSend = (...args) => {
+  const [to, amount, memo, gasPrice, gasLimit, toName] = args;
   const blocked = getBlocklistedRecipient(to);
 
   if (blocked) {
@@ -19,7 +25,8 @@ const executeSend = (to, amount, memo, gasPrice, gasLimit) => {
       new Gas({
         limit: gasLimit,
         price: gasPrice,
-      })
+      }),
+      { toName }
     )
     .then(({ hash }) => hash);
 };

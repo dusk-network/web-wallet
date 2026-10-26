@@ -92,6 +92,9 @@ type ActivityMeta = {
 /** One of the wallet's own transactions, kept until the archive has it. */
 type ActivityLocalRecord = {
   amount?: string;
+
+  /** Which way the amount went, as the chain will say. */
+  direction?: ActivityDirection;
   error?: string;
   feePaid?: string;
   hash: string;
@@ -100,6 +103,12 @@ type ActivityLocalRecord = {
   memo?: string;
   ownerKey: string;
   privacy: "public" | "shielded";
+
+  /**
+   * Whether the chain's row has its outcome: kept only for what that row
+   * lacks, as the name typed for the recipient.
+   */
+  settled?: boolean;
   status: ActivityStatus;
   submittedAt: number;
   to?: string;

@@ -70,6 +70,15 @@ export const SHIELDED_RETRY_MS = 60_000;
  * }} ActivityState
  */
 
+/**
+ * Whether one of the wallet's own records has what the chain's row of it
+ * lacks: the `.dusk` name typed for the recipient, or a shielded send's memo.
+ *
+ * @param {ActivityLocalRecord} record
+ */
+const addsToChainRow = (record) =>
+  Boolean(record.toName || (record.privacy === "shielded" && record.memo));
+
 /** One account's history on one node, while it is shown. */
 export class ActivitySession {
   /** @type {Set<string>} */
@@ -251,6 +260,7 @@ export class ActivitySession {
         this.#askShieldedAgain();
       }
 
+      await this.#settleLocal();
       this.#emit();
     } catch {
       this.#askShieldedAgain();
@@ -280,21 +290,36 @@ export class ActivitySession {
   }
 
   /**
-   * Forget the wallet's own records the archive has an outcome for: the
-   * chain's row says it all now.
+   * Settles the wallet's own records the chain has an outcome for, in the
+   * archive or in the shielded history: the chain's row says it all now.
+   * A record with what that row lacks, as the name typed for the recipient
+   * or a shielded send's memo, stays with it; the others go.
    */
   async #settleLocal() {
-    const settled = new Set(
-      this.#entries.filter((e) => e.success !== null).map((e) => e.hash)
-    );
-    const done = this.#local
-      .map((r) => r.hash)
-      .filter((hash) => settled.has(hash));
+    const settled = new Set([
+      ...this.#entries.filter((e) => e.success !== null).map((e) => e.hash),
+      ...this.#shielded
+        .filter((r) => r.status === "executed" || r.status === "failed")
+        .map((r) => r.hash),
+    ]);
+    const done = this.#local.filter((r) => !r.settled && settled.has(r.hash));
 
-    if (done.length) {
-      await deleteLocalTransactions(this.ownerKey, done).catch(() => {});
-      this.#local = this.#local.filter((r) => !done.includes(r.hash));
+    if (!done.length) {
+      return;
     }
+
+    const kept = done.filter(addsToChainRow);
+    const gone = done.filter((r) => !addsToChainRow(r)).map((r) => r.hash);
+    const epoch = await this.#epoch;
+
+    await deleteLocalTransactions(this.ownerKey, gone).catch(() => {});
+
+    for (const record of kept) {
+      record.settled = true;
+      await putLocalTransaction(this.ownerKey, record, epoch).catch(() => {});
+    }
+
+    this.#local = this.#local.filter((r) => !gone.includes(r.hash));
   }
 
   /** Whether one of the wallet's own sends still waits for the archive. */
@@ -302,7 +327,10 @@ export class ActivitySession {
     const now = Date.now();
 
     return this.#local.some(
-      (r) => r.status === "submitted" && now - r.submittedAt < LOCAL_PENDING_MS
+      (r) =>
+        r.status === "submitted" &&
+        !r.settled &&
+        now - r.submittedAt < LOCAL_PENDING_MS
     );
   }
 
@@ -401,7 +429,9 @@ export class ActivitySession {
 
     // A send the archive hasn't had for a while: its outcome is unknown.
     const local = this.#local.map((r) =>
-      r.status === "submitted" && now - r.submittedAt >= LOCAL_PENDING_MS
+      r.status === "submitted" &&
+      !r.settled &&
+      now - r.submittedAt >= LOCAL_PENDING_MS
         ? { ...r, status: /** @type {ActivityStatus} */ ("unknown") }
         : r
     );
@@ -493,10 +523,13 @@ export class ActivitySession {
   }
 
   /**
-   * The wallet's notes are synced: a shielded history the session couldn't
-   * have yet is asked for again now. A run under way asks for it anyway.
+   * The wallet's notes are synced, and can be new, as after a send: the
+   * shielded history is asked for again, kept unless they changed. A run
+   * under way asks for it anyway.
    */
   notesSynced() {
+    this.#shieldedAsked = false;
+
     if (this.loaded && !this.syncing) {
       void this.#loadShielded();
     }
