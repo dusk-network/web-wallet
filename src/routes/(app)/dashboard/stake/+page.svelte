@@ -1,90 +1,204 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { onDestroy } from "svelte";
-  import { mdiDatabaseOutline } from "@mdi/js";
-  import { StakeContract } from "$lib/containers";
-  import { IconHeadingCard } from "$lib/containers/Cards";
-  import { contractDescriptors, updateOperation } from "$lib/contracts";
-  import { networkStore, settingsStore, walletStore } from "$lib/stores";
-  import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
-  import { ContractStatusesList, StakeMaturityInfo } from "$lib/components";
-  import { createNumberFormatter } from "$lib/dusk/number";
+  import { onMount } from "svelte";
+  import { page } from "$app/stores";
+  import { Gas } from "@dusk/w3sper";
+  import {
+    mdiDatabaseArrowDownOutline,
+    mdiDatabaseOutline,
+    mdiGiftOpenOutline,
+  } from "@mdi/js";
 
-  /** @type {bigint} */
-  let currentBlockHeight;
+  import { activityState, isHistoryEnabled } from "$lib/activity";
+  import { isStakingRow } from "$lib/activity/present";
+  import { LiquidStake, NativeStake, Unstake } from "$lib/components";
+  import { StakingOverview } from "$lib/containers";
+  import { IconHeadingCard } from "$lib/containers/Cards";
+  import { getGasLimits, getGasSettings } from "$lib/contracts";
+  import { goto } from "$lib/navigation";
+  import { sozuStore } from "$lib/sozu";
+  import {
+    gasPriceStore,
+    gasStore,
+    networkStore,
+    settingsStore,
+    walletStore,
+  } from "$lib/stores";
+
+  /** @type {Record<"claim" | "unstake", (amount: bigint, gasPrice: bigint, gasLimit: bigint) => Promise<string>>} */
+  const withdrawals = {
+    claim: (amount, gasPrice, gasLimit) =>
+      walletStore
+        .claimRewards(amount, new Gas({ limit: gasLimit, price: gasPrice }))
+        .then(({ hash }) => hash),
+    unstake: (amount, gasPrice, gasLimit) =>
+      walletStore
+        .unstake(amount, new Gas({ limit: gasLimit, price: gasPrice }))
+        .then(({ hash }) => hash),
+  };
 
   /**
-   * @param {keyof SettingsStoreContent} property
-   * @param {any} value
+   * @param {bigint} amount
+   * @param {bigint} gasPrice
+   * @param {bigint} gasLimit
    */
-  function updateSetting(property, value) {
-    settingsStore.update((store) => ({
-      ...store,
-      [property]: value,
-    }));
+  const stakeNatively = (amount, gasPrice, gasLimit) =>
+    walletStore[hasStake ? "topUpStake" : "stake"](
+      amount,
+      new Gas({ limit: gasLimit, price: gasPrice })
+    ).then(({ hash }) => hash);
+
+  /**
+   * @param {"stake" | "unstake"} action
+   * @param {string} poolId
+   * @param {bigint} amount
+   * @param {bigint} gasPrice
+   * @param {bigint} gasLimit
+   */
+  const stakeLiquid = (action, poolId, amount, gasPrice, gasLimit) =>
+    walletStore[action === "stake" ? "stakeWithSozu" : "unstakeFromSozu"](
+      poolId,
+      amount,
+      new Gas({ limit: gasLimit, price: gasPrice })
+    ).then(({ hash }) => hash);
+
+  /** @type {bigint | undefined} */
+  let blockHeight;
+
+  onMount(() => {
+    networkStore
+      .getCurrentBlockHeight()
+      .then((height) => {
+        blockHeight = height;
+      })
+      .catch(() => {});
+  });
+
+  /**
+   * What liquid staking opens on: a stake, or an unstake.
+   *
+   * @param {URL} pageUrl
+   * @returns {"stake" | "unstake"}
+   */
+  const actionOf = (pageUrl) =>
+    pageUrl.searchParams.get("action") === "unstake" ? "unstake" : "stake";
+
+  /**
+   * The gas an operation starts from, and its bounds.
+   *
+   * @param {GasOperation} operation
+   * @param {Pick<SettingsStoreContent, "customGasLimit" | "customGasPrice">} custom
+   * @param {GasStoreContent} bounds
+   * @param {bigint} nodePrice
+   */
+  const gasFor = (operation, custom, bounds, nodePrice) => ({
+    limits: getGasLimits(operation, bounds),
+    settings: getGasSettings(operation, custom, nodePrice),
+  });
+
+  $: ({ url } = $page);
+  $: flow = url.searchParams.get("flow");
+  $: liquidAction = actionOf(url);
+  $: ({ customGasLimit, customGasPrice, language } = $settingsStore);
+  $: ({ balance, currentProfile, minimumStake, profiles, stakeInfo } =
+    $walletStore);
+  $: ({ networkName } = $networkStore);
+  $: hasStake = stakeInfo.amount !== null;
+  $: publicBalance = balance.unshielded.value;
+  $: hasPastStaking = $activityState.rows.some(isStakingRow);
+
+  // Sozu, read again for the overview each time it shows, as after a stake.
+  $: if (flow === null && networkName && currentProfile) {
+    void sozuStore.load({ force: true });
+  } else if (flow === "liquid" && networkName && currentProfile) {
+    void sozuStore.load();
   }
 
-  onDestroy(() => {
-    updateOperation("");
-  });
-
-  networkStore.getCurrentBlockHeight().then((blockHeight) => {
-    currentBlockHeight = blockHeight;
-  });
-
-  $: numberFormatter = createNumberFormatter(language);
-
-  /**
-   * A status of an amount, in the one number format and in full on hover.
-   *
-   * @param {string} label
-   * @param {bigint | undefined} lux
-   * @param {string} locale
-   * @returns {ContractStatus}
-   */
-  const amountStatus = (label, lux, locale) => ({
-    exact: lux === undefined ? undefined : formatDuskExact(lux, locale),
-    label,
-    value: lux === undefined ? null : formatDusk(lux, locale),
-  });
-
-  $: ({ balance, stakeInfo } = $walletStore);
-  $: ({ language } = $settingsStore);
-
-  /** @returns {ContractStatus[]} */
-  $: statuses = [
-    amountStatus("Spendable", balance.unshielded.value, language),
-    amountStatus("Active Stake", stakeInfo.amount?.value, language),
-    amountStatus("Penalized Stake", stakeInfo.amount?.locked, language),
-    amountStatus("Rewards", stakeInfo.reward, language),
-  ];
-
-  $: shouldShowStakeEligibility = stakeInfo.amount && currentBlockHeight;
+  $: custom = { customGasLimit, customGasPrice };
+  $: unstakeGas = gasFor(
+    flow === "claim" ? "claim-rewards" : "unstake",
+    custom,
+    $gasStore,
+    $gasPriceStore
+  );
+  $: stakeGas = gasFor("stake", custom, $gasStore, $gasPriceStore);
+  $: liquidGas = gasFor("liquid-staking", custom, $gasStore, $gasPriceStore);
+  $: ({ available: isSozuAvailable } = $sozuStore);
 </script>
 
 {#if import.meta.env.VITE_FEATURE_STAKE || false}
-  <IconHeadingCard
-    gap="large"
-    heading="Stake"
-    icons={[mdiDatabaseOutline]}
-    reverse
-  >
-    <ContractStatusesList {statuses}>
-      {#if shouldShowStakeEligibility}
-        <StakeMaturityInfo
-          isParticipatingInConsensus={stakeInfo?.amount?.eligibility !==
-            undefined && currentBlockHeight > stakeInfo.amount.eligibility}
-          eligibility={stakeInfo?.amount?.eligibility ?? 0n}
-          formatter={numberFormatter}
-        />
-      {/if}
-    </ContractStatusesList>
-    <StakeContract
-      {stakeInfo}
-      descriptor={contractDescriptors[2]}
-      on:operationChange={({ detail }) => updateOperation(detail)}
-      on:suppressStakingNotice={() => updateSetting("hideStakingNotice", true)}
+  {#if flow === "native"}
+    <NativeStake
+      availableBalance={publicBalance}
+      execute={stakeNatively}
+      gasLimits={stakeGas.limits}
+      gasSettings={stakeGas.settings}
+      {hasStake}
+      liquidHref={isSozuAvailable ? "/dashboard/stake?flow=liquid" : undefined}
+      {minimumStake}
+      profileName={currentProfile
+        ? `Profile ${profiles.indexOf(currentProfile) + 1}`
+        : "This profile"}
     />
-  </IconHeadingCard>
+  {:else if flow === "liquid" && isSozuAvailable}
+    {#key liquidAction}
+      <LiquidStake
+        action={liquidAction}
+        availableBalance={publicBalance}
+        execute={stakeLiquid}
+        gasLimits={liquidGas.limits}
+        gasSettings={liquidGas.settings}
+        onRetry={() => sozuStore.load({ force: true })}
+        sozu={$sozuStore}
+      />
+    {/key}
+  {:else if flow === "unstake" || flow === "claim"}
+    <!-- A flow of its own, laid out as the other one-column flows. -->
+    <div class="dashboard--column">
+      <IconHeadingCard
+        gap="large"
+        heading={flow === "unstake" ? "Unstake" : "Claim rewards"}
+        icons={[mdiDatabaseOutline]}
+        reverse
+      >
+        <Unstake
+          availableBalance={publicBalance}
+          execute={withdrawals[flow]}
+          gasLimits={unstakeGas.limits}
+          gasSettings={unstakeGas.settings}
+          maxWithdrawAmount={flow === "unstake"
+            ? (stakeInfo.amount?.total ?? 0n)
+            : stakeInfo.reward}
+          minStakeRequirement={flow === "unstake" ? minimumStake : undefined}
+          on:operationChange={() => goto("/dashboard/stake")}
+          operationCtaIconPath={flow === "unstake"
+            ? mdiDatabaseArrowDownOutline
+            : mdiGiftOpenOutline}
+          operationCtaLabel={flow === "unstake" ? "Unstake" : "Claim rewards"}
+          operationOverviewLabel={flow === "unstake"
+            ? "Amount to unstake"
+            : "Rewards to claim"}
+        />
+      </IconHeadingCard>
+    </div>
+  {:else}
+    <StakingOverview
+      activity={isHistoryEnabled() ? $activityState : null}
+      {blockHeight}
+      {hasPastStaking}
+      locale={language}
+      maxFee={unstakeGas.settings.gasLimit * unstakeGas.settings.gasPrice}
+      {minimumStake}
+      onRetryHistory={() => {
+        walletStore
+          .startHistory()
+          ?.refresh()
+          .catch(() => {});
+      }}
+      {publicBalance}
+      sozu={$sozuStore}
+      {stakeInfo}
+    />
+  {/if}
 {/if}

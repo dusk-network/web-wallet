@@ -294,6 +294,8 @@
     <!-- OPERATION RESULT STEP  -->
     <WizardStep step={2} {key} showNavigation={false}>
       <TransactionResult
+        leaveHref="/dashboard/stake"
+        leaveText="Back to staking"
         maxFee={maxGasFee}
         onBeforeLeave={resetOperation}
         operation={execute(withdrawAmountInLux, gasPrice, gasLimit)}

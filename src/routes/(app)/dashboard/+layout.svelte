@@ -8,6 +8,7 @@
     "/dashboard",
     "/dashboard/contacts",
     "/dashboard/send",
+    "/dashboard/stake",
     "/dashboard/transactions",
   ]);
 

@@ -58,6 +58,35 @@ vi.mock("$lib/activity", async (importOriginal) => {
   return { ...original, activityState: history.state };
 });
 
+const sozu = vi.hoisted(() => ({
+  load: vi.fn(() => Promise.resolve()),
+  /** @type {import("svelte/store").Writable<any> | null} */
+  store: null,
+}));
+
+vi.mock("$lib/sozu", async (importOriginal) => {
+  /** @type {typeof import("$lib/sozu")} */
+  const original = await importOriginal();
+  const { writable } = await import("svelte/store");
+
+  sozu.store = writable({
+    account: "",
+    available: true,
+    error: null,
+    loading: false,
+    status: null,
+  });
+
+  return {
+    ...original,
+    sozuStore: {
+      load: sozu.load,
+      reset: () => {},
+      subscribe: sozu.store.subscribe,
+    },
+  };
+});
+
 const ALICE =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
 const NOW = Date.now();
@@ -128,6 +157,7 @@ describe("Dashboard", () => {
   afterAll(() => {
     vi.doUnmock("$lib/stores");
     vi.doUnmock("$lib/activity");
+    vi.doUnmock("$lib/sozu");
   });
 
   it("shows the total balance, its public and shielded parts, and every action", async () => {
@@ -189,7 +219,9 @@ describe("Dashboard", () => {
     ).toBeInTheDocument();
     expect(getByText("Nothing staked right now")).toBeInTheDocument();
     expect(
-      getByText("From 1,000 DUSK with your own node.")
+      getByText(
+        "From 1,000 DUSK with your own node, or any amount with Sozu (third party)."
+      )
     ).toBeInTheDocument();
     expect(queryByRole("link", { name: "Past staking" })).toBeNull();
 
@@ -203,6 +235,71 @@ describe("Dashboard", () => {
     expect(queryByRole("link", { name: "Past staking" })).toHaveAttribute(
       "href",
       "/some-base-path/dashboard/transactions?kind=staking"
+    );
+  });
+
+  it("counts staking with Sozu as staking, and shows what is staked there", async () => {
+    const { currentProfile } = initialStore;
+
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      stakeInfo: { ...initialStore.stakeInfo, amount: null },
+    });
+    sozu.load.mockClear();
+
+    const { container, queryByRole } = render(Dashboard, props);
+
+    expect(sozu.load).not.toHaveBeenCalled();
+
+    await setHistory({
+      rows: [
+        {
+          amount: "1500000000000",
+          blockHeight: 4_687_000,
+          contractId:
+            "6fdfdc713a18fc6ca2ad20eb2b4a3305a935ef47d6a872d9a4df8bc9fd9d169e",
+          direction: "out",
+          fnName: "sozu_stake",
+          hash: "e5".repeat(32),
+          kind: "contract_call",
+          privacy: "public",
+          source: "archive",
+          status: "executed",
+          success: true,
+          timestamp: NOW,
+        },
+      ],
+    });
+
+    // Staked before, with Sozu: a way to it, and Sozu read for what is there.
+    expect(queryByRole("link", { name: "Past staking" })).toBeInTheDocument();
+    expect(sozu.load).toHaveBeenCalled();
+
+    await act(() =>
+      sozu.store?.set({
+        account: String(currentProfile.account),
+        available: true,
+        error: null,
+        loading: false,
+        status: {
+          contracts: {},
+          pool: { stake: 3n, supply: 1n },
+          position: { balance: 1_500_000_000_000n, stDusk: 487_000_000_000n },
+        },
+      })
+    );
+
+    expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
+      "Staking 1,500 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking"
+    );
+
+    // Another profile's position isn't this one's.
+    await act(() =>
+      sozu.store?.update((state) => ({ ...state, account: "another" }))
+    );
+
+    expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
+      "Nothing staked right now"
     );
   });
 

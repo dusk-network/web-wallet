@@ -32,6 +32,12 @@
   /** Whether the history holds staking: an empty stake then isn't "yet". */
   export let hasPastStaking = false;
 
+  /** What is staked with Sozu, as far as known. */
+  export let liquid = 0n;
+
+  /** Whether this network has Sozu, for staking any amount. */
+  export let sozuAvailable = false;
+
   export let stakeEnabled = true;
 
   /** @type {string} */
@@ -86,13 +92,34 @@
             value={formatDusk(reward, locale)}
           /> DUSK
         </p>
+        {#if liquid > 0n}
+          <p class="explainer-card__text">
+            With Sozu: <BalanceValue
+              exact={formatDuskExact(liquid, locale)}
+              value={formatDusk(liquid, locale)}
+            /> DUSK
+          </p>
+        {/if}
+      {:else if liquid > 0n}
+        <p class="explainer-card__value">
+          <BalanceValue
+            exact={formatDuskExact(liquid, locale)}
+            value={formatDusk(liquid, locale)}
+          />
+          <span class="explainer-card__unit">DUSK with Sozu</span>
+        </p>
+        <p class="explainer-card__text">
+          Liquid staking through Sozu, a third party.
+        </p>
       {:else}
         <p class="explainer-card__value explainer-card__value--text">
           Nothing staked right now
         </p>
         <p class="explainer-card__text">
           From {formatDusk(minimumStake, locale)}
-          DUSK with your own node.
+          DUSK with your own node{sozuAvailable
+            ? ", or any amount with Sozu (third party)"
+            : ""}.
         </p>
         {#if hasPastStaking}
           <a

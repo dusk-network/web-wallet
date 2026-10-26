@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ask before sending to a contact's `.dusk` name when it points to another address now
 - Show a saved contact's name in the activity and the history, with its `.dusk` name second, and save a counterparty to the contacts from a transaction's details
 - Save a recipient to the contacts from Send, pick a contact there, and take "Did you mean …?" for a mistyped name the wallet knows
+- Stake any amount with Sozu, a third party's liquid staking, and unstake from it, with the stDUSK a stake gets and what is staked there
+- Compare native and liquid staking side by side on the Staking page, with neither picked
+- Add to a stake with Stake more
 
 ### Changed
 
@@ -67,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Send from one page, with the summary beside the form, a review on phones, and a button that says what it sends
 - Show amounts in one format, at most four decimals, and in full on hover, under review and in a transaction's details
 - Round a fee up to four decimals when it is the most it can cost, and to the nearest when it was paid
+- Show what is staked, its rewards and what can be staked on the Staking page, and why Unstake or Claim rewards can't be pressed
+- Stake natively from one page with the minimum up front and nothing filled in, without the node notice step, and offer liquid staking under the minimum
 
 ### Removed
 

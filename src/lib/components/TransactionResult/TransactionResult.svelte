@@ -19,6 +19,10 @@
   /** @type {Function | undefined} */
   export let onBeforeLeave = undefined;
 
+  /** Where the link under the result leads, and what it says. */
+  export let leaveHref = "/dashboard";
+  export let leaveText = "Home";
+
   /**
    * Sends the transaction, resolving with its hash.
    *
@@ -42,18 +46,18 @@
     <TransactionStatus {hash} {maxFee} />
     <AppAnchorButton
       className="transaction-result__button"
-      href="/dashboard"
+      href={leaveHref}
       on:click={handleGoHomeClick}
-      text="Home"
+      text={leaveText}
       variant="tertiary"
     />
   </svelte:fragment>
   <AppAnchorButton
     className="transaction-result__button"
-    href="/dashboard"
+    href={leaveHref}
     on:click={handleGoHomeClick}
     slot="error-extra-content"
-    text="Home"
+    text={leaveText}
     variant="tertiary"
   />
 </Suspense>
