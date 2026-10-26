@@ -28,6 +28,17 @@ const spentTx = (fields = {}) => ({
 /** @param {string} status */
 const blockWith = (status) => ({ block: { status: { [status]: 1 } } });
 
+/**
+ * What the promise settled with, or "pending" if it hasn't.
+ *
+ * @param {Promise<any>} promise
+ */
+const settled = (promise) =>
+  Promise.race([promise, Promise.resolve("pending")]);
+
+/** A query that never answers. */
+const unanswered = () => new Promise(() => {});
+
 describe("followTransaction", () => {
   /** @type {PromiseWithResolvers<any>} */
   let executed;
@@ -76,11 +87,13 @@ describe("followTransaction", () => {
     expect(query).toHaveBeenCalledTimes(5);
     expect(query).toHaveBeenNthCalledWith(
       2,
-      `tx(hash: "${hash}") { blockHash blockHeight err gasSpent tx { gasPrice } }`
+      `tx(hash: "${hash}") { blockHash blockHeight err gasSpent tx { gasPrice } }`,
+      { signal: expect.any(AbortSignal) }
     );
     expect(query).toHaveBeenNthCalledWith(
       3,
-      `block(hash: "${blockHash}") { status }`
+      `block(hash: "${blockHash}") { status }`,
+      { signal: expect.any(AbortSignal) }
     );
   });
 
@@ -181,6 +194,44 @@ describe("followTransaction", () => {
     await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL * 2);
 
     expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it("should resolve with `null` at the timeout while a check never answers", async () => {
+    query.mockImplementation(unanswered);
+
+    const result = followTransaction(hash);
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_TIMEOUT);
+
+    expect(await settled(result)).toBeNull();
+    expect(query.mock.calls.at(-1)?.[1].signal.aborted).toBe(true);
+  });
+
+  it("should resolve with `null`, and cancel the check, once the signal aborts during one", async () => {
+    const controller = new AbortController();
+
+    query.mockImplementation(unanswered);
+
+    const result = followTransaction(hash, { signal: controller.signal });
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL);
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(await settled(result)).toBeNull();
+    expect(query).toHaveBeenCalledOnce();
+    expect(query.mock.calls[0][1].signal.aborted).toBe(true);
+  });
+
+  it("should not check once the last pause ends at the timeout", async () => {
+    query.mockResolvedValue({ tx: null });
+
+    const result = followTransaction(hash, { timeout: FOLLOW_INTERVAL / 2 });
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL);
+
+    await expect(result).resolves.toBeNull();
+    expect(query).not.toHaveBeenCalled();
   });
 
   it("should refuse a hash that isn't one", async () => {

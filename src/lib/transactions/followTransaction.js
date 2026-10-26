@@ -20,11 +20,13 @@ export const FOLLOW_TIMEOUT = 180_000;
  *
  * @param {Network} network
  * @param {string} hash
+ * @param {AbortSignal} signal Cancels the queries.
  * @returns {Promise<FinalTransaction | null>}
  */
-async function getFinalTransaction(network, hash) {
+async function getFinalTransaction(network, hash, signal) {
   const { tx } = await network.query(
-    `tx(hash: "${hash}") { blockHash blockHeight err gasSpent tx { gasPrice } }`
+    `tx(hash: "${hash}") { blockHash blockHeight err gasSpent tx { gasPrice } }`,
+    { signal }
   );
 
   if (!tx) {
@@ -32,7 +34,8 @@ async function getFinalTransaction(network, hash) {
   }
 
   const { block } = await network.query(
-    `block(hash: "${tx.blockHash}") { status }`
+    `block(hash: "${tx.blockHash}") { status }`,
+    { signal }
   );
 
   if (!Object.hasOwn(block?.status ?? {}, "Final")) {
@@ -44,6 +47,39 @@ async function getFinalTransaction(network, hash) {
     error: tx.err || null,
     fee: BigInt(tx.gasSpent) * BigInt(tx.tx.gasPrice),
   };
+}
+
+/**
+ * One check, which gives up with `null` once the deadline passes or the
+ * signal aborts, and cancels its queries: a node that doesn't answer never
+ * holds the follow past its end. A check that fails gives `null` too.
+ *
+ * @param {Network} network
+ * @param {string} hash
+ * @param {{ deadline: number, signal: AbortSignal }} options
+ * @returns {Promise<FinalTransaction | null>}
+ */
+function checkBefore(network, hash, { deadline, signal }) {
+  const check = new AbortController();
+  const stop = () => check.abort();
+  const timer = window.setTimeout(stop, deadline - Date.now());
+
+  signal.addEventListener("abort", stop, { once: true });
+
+  /** @type {Promise<FinalTransaction | null>} */
+  const outcome = new Promise((resolve) => {
+    check.signal.addEventListener("abort", () => resolve(null), {
+      once: true,
+    });
+    getFinalTransaction(network, hash, check.signal).then(resolve, () =>
+      resolve(null)
+    );
+  });
+
+  return outcome.finally(() => {
+    window.clearTimeout(timer);
+    signal.removeEventListener("abort", stop);
+  });
 }
 
 /**
@@ -122,9 +158,12 @@ async function checkUntilFinal(
   while (!signal.aborted && Date.now() < deadline) {
     await pauses.pause(Math.min(interval, deadline - Date.now()));
 
-    const final = signal.aborted
-      ? null
-      : await getFinalTransaction(network, hash).catch(() => null);
+    // The pause can end at the deadline, or because the signal aborted.
+    if (signal.aborted || Date.now() >= deadline) {
+      break;
+    }
+
+    const final = await checkBefore(network, hash, { deadline, signal });
 
     if (final) {
       return final;
