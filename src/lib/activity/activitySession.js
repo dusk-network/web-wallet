@@ -1,0 +1,546 @@
+/**
+ * One account's history while the wallet shows it: the kept history from
+ * this browser, then sync runs with the archive by block height
+ * (activityHistory.js), its counterparties' verified .dusk names, its
+ * shielded history, and the wallet's own transactions, merged into rows.
+ *
+ * The kept history paints at once. A run follows when the session starts,
+ * and others after a transaction of this wallet goes through; nothing polls
+ * otherwise. What a session keeps is tied to the store's epoch when it
+ * started: after a wallet reset since, nothing more is kept. Stopping it,
+ * for a lock or another profile, drops whatever its work brings back.
+ */
+
+import { ProfileGenerator } from "@dusk/w3sper";
+
+import {
+  activityNetworkKey,
+  fillActivityDetails,
+  noteActivityUnavailable,
+  readActivity,
+  syncActivity,
+} from "./activityHistory";
+import {
+  StaleActivityError,
+  activityOwnerKey,
+  deleteLocalTransactions,
+  getActivityEpoch,
+  getCounterpartyNames,
+  listLocalTransactions,
+  putCounterpartyNames,
+  putLocalTransaction,
+} from "./activityStore";
+import {
+  NAME_CHECK_TTL_MS,
+  lookupCounterpartyNames,
+} from "./counterpartyNames";
+import { mergeActivity } from "./activityMerge";
+
+/** Rows read at first, and how many more `showMore` adds. */
+export const ACTIVITY_PAGE = 50;
+
+/** The wait after a transaction went through before the archive is asked for it. */
+export const AFTER_TX_MS = 20_000;
+
+/** How long the wallet waits for the archive to have one of its sends. */
+export const LOCAL_PENDING_MS = 15 * 60_000;
+
+/** Blocks come about every 10 seconds. */
+const BLOCK_MS = 10_000;
+
+/**
+ * @typedef {{
+ *   account: string,
+ *   namesNetwork: string,
+ *   nodeUrl: string,
+ *   profileIndex: number,
+ *   shielded?: () => Promise<{ entries: ActivityRow[], pending?: boolean }>,
+ * }} ActivitySessionOptions
+ *
+ * @typedef {{
+ *   complete: boolean,
+ *   error: string | null,
+ *   hasMore: boolean,
+ *   loaded: boolean,
+ *   rows: ActivityRow[],
+ *   syncing: boolean,
+ * }} ActivityState
+ */
+
+/** One account's history on one node, while it is shown. */
+export class ActivitySession {
+  /** @type {Set<string>} */
+  #checked = new Set();
+
+  complete = false;
+
+  /** @type {ActivityEntry[]} */
+  #entries = [];
+
+  /** @type {Promise<number | undefined>} */
+  #epoch;
+
+  error = /** @type {string | null} */ (null);
+
+  key;
+
+  #limit = ACTIVITY_PAGE;
+
+  /** @type {Set<(state: ActivityState) => void>} */
+  #listeners = new Set();
+
+  loaded = false;
+
+  /** @type {ActivityLocalRecord[]} */
+  #local = [];
+
+  /** @type {ActivityMeta | null} */
+  #meta = null;
+
+  /** @type {Map<string, string | null>} */
+  #names = new Map();
+
+  options;
+
+  ownerKey;
+
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  #refreshTimer;
+
+  #runAgain = false;
+
+  /** @type {ActivityRow[]} */
+  #shielded = [];
+
+  #shieldedAsked = false;
+
+  #stale = false;
+
+  /** @type {Promise<void> | null} */
+  #started = null;
+
+  #stopped = false;
+
+  syncing = false;
+
+  /** @param {ActivitySessionOptions} options */
+  constructor(options) {
+    this.options = options;
+    this.key = `${options.nodeUrl}\n${options.account}`;
+    this.ownerKey = activityOwnerKey(
+      activityNetworkKey(options.nodeUrl),
+      options.account
+    );
+
+    // The store's epoch now; undefined when it can't be read.
+    this.#epoch = getActivityEpoch().catch(() => undefined);
+  }
+
+  /** The counterparties of the shown entries that can have a name. */
+  #counterparties() {
+    return [
+      ...new Set(
+        this.#entries
+          .slice(0, this.#limit)
+          .map((e) => e.counterparty)
+          .filter(
+            (c) =>
+              typeof c === "string" &&
+              c !== this.options.account &&
+              ProfileGenerator.typeOf(c) === "account"
+          )
+      ),
+    ].map(String);
+  }
+
+  /** Names kept from a check in the last ten minutes. */
+  async #keptNames() {
+    const accounts = this.#counterparties();
+
+    if (!accounts.length) {
+      return;
+    }
+
+    const now = Date.now();
+    const kept = await getCounterpartyNames(
+      this.options.namesNetwork,
+      accounts
+    );
+
+    for (const [account, { at, name }] of kept) {
+      if (now - at >= 0 && now - at < NAME_CHECK_TTL_MS) {
+        this.#names.set(account, name);
+      }
+    }
+  }
+
+  /** The shown counterparties' names, checked again: one Multicall query for up to 32. */
+  async #checkNames() {
+    const due = this.#counterparties().filter((c) => !this.#checked.has(c));
+
+    if (!due.length) {
+      return;
+    }
+
+    for (const c of due) {
+      this.#checked.add(c);
+    }
+
+    const { namesNetwork, nodeUrl } = this.options;
+    const names = await lookupCounterpartyNames(due, {
+      network: namesNetwork,
+      nodeUrl,
+    });
+
+    for (const c of due) {
+      if (names.has(c)) {
+        this.#names.set(c, /** @type {string | null} */ (names.get(c)));
+      } else {
+        this.#names.delete(c);
+      }
+    }
+
+    const epoch = await this.#epoch;
+
+    if (epoch !== undefined) {
+      await putCounterpartyNames(namesNetwork, names, { epoch }).catch(
+        () => {}
+      );
+    }
+
+    this.#emit();
+  }
+
+  #emit() {
+    if (this.#stopped) {
+      return;
+    }
+
+    const state = this.state;
+
+    for (const listener of this.#listeners) {
+      listener(state);
+    }
+  }
+
+  /** The profile's shielded history, once the public one is shown. */
+  async #loadShielded() {
+    if (this.#shieldedAsked || !this.options.shielded) {
+      return;
+    }
+
+    this.#shieldedAsked = true;
+
+    try {
+      const result = await this.options.shielded();
+
+      this.#shielded = result.entries;
+
+      // Notes still syncing: asked again by the next run.
+      if (result.pending) {
+        this.#shieldedAsked = false;
+      }
+
+      this.#emit();
+    } catch {
+      this.#shieldedAsked = false;
+    }
+  }
+
+  async #reload() {
+    const { account, nodeUrl } = this.options;
+    const [read, local] = await Promise.all([
+      readActivity({ account, limit: this.#limit, nodeUrl }),
+      listLocalTransactions(this.ownerKey),
+    ]);
+
+    this.#entries = read.entries;
+    this.#meta = read.meta;
+    this.complete = read.complete;
+    this.#local = local;
+    this.loaded = true;
+  }
+
+  /**
+   * Forget the wallet's own records the archive has an outcome for: the
+   * chain's row says it all now.
+   */
+  async #settleLocal() {
+    const settled = new Set(
+      this.#entries.filter((e) => e.success !== null).map((e) => e.hash)
+    );
+    const done = this.#local
+      .map((r) => r.hash)
+      .filter((hash) => settled.has(hash));
+
+    if (done.length) {
+      await deleteLocalTransactions(this.ownerKey, done).catch(() => {});
+      this.#local = this.#local.filter((r) => !done.includes(r.hash));
+    }
+  }
+
+  /** Whether one of the wallet's own sends still waits for the archive. */
+  #waitsForArchive() {
+    const now = Date.now();
+
+    return this.#local.some(
+      (r) => r.status === "submitted" && now - r.submittedAt < LOCAL_PENDING_MS
+    );
+  }
+
+  async #sync() {
+    const epoch = await this.#epoch;
+
+    if (epoch === undefined) {
+      throw new Error("The activity store is out of reach");
+    }
+
+    const { account, nodeUrl } = this.options;
+
+    await syncActivity({
+      account,
+      epoch,
+      nodeUrl,
+      onStep: () => {
+        this.#reload()
+          .then(() => this.#emit())
+          .catch(() => {});
+      },
+    });
+  }
+
+  /** A sync run, its error kept for the state. */
+  async #syncAndNote() {
+    try {
+      await this.#sync();
+      this.error = null;
+    } catch (error) {
+      if (error instanceof StaleActivityError) {
+        this.#stale = true;
+      } else {
+        this.error = /** @type {any} */ (error)?.message ?? String(error);
+        noteActivityUnavailable(error);
+      }
+    }
+  }
+
+  async #run() {
+    // The wallet was reset since this session started.
+    if (this.#stale || this.#stopped) {
+      return;
+    }
+
+    if (this.syncing) {
+      this.#runAgain = true;
+
+      return;
+    }
+
+    this.syncing = true;
+    this.#emit();
+    await this.#syncAndNote();
+    this.syncing = false;
+    await this.#afterRun();
+  }
+
+  async #afterRun() {
+    // Another profile's now, or reset: nothing more for this one.
+    if (this.#stopped || this.#stale) {
+      return;
+    }
+
+    await this.#reload().catch(() => {});
+    await this.#settleLocal();
+    this.#emit();
+    await this.#checkNames().catch(() => {});
+    void this.#loadShielded();
+
+    if (this.#runAgain) {
+      this.#runAgain = false;
+      await this.#run();
+    } else if (this.#waitsForArchive()) {
+      this.refreshSoon();
+    }
+  }
+
+  /**
+   * The time a block of that height was made, about: for sorting entries
+   * not looked up yet.
+   *
+   * @param {number} height
+   */
+  #estimateTime(height) {
+    const meta = this.#meta;
+
+    return meta?.headAt
+      ? meta.headAt - Math.max(0, Number(meta.finalized) - height) * BLOCK_MS
+      : undefined;
+  }
+
+  /** The rows, newest first. */
+  get rows() {
+    const now = Date.now();
+
+    // A send the archive hasn't had for a while: its outcome is unknown.
+    const local = this.#local.map((r) =>
+      r.status === "submitted" && now - r.submittedAt >= LOCAL_PENDING_MS
+        ? { ...r, status: /** @type {ActivityStatus} */ ("unknown") }
+        : r
+    );
+
+    return mergeActivity({
+      estimateTime: (height) => this.#estimateTime(height),
+      history: this.#entries,
+      local,
+      names: this.#names,
+      shielded: this.#shielded,
+    });
+  }
+
+  /** @returns {ActivityState} */
+  get state() {
+    return {
+      complete: this.complete,
+      error: this.error,
+      hasMore:
+        this.loaded && (!this.complete || this.#entries.length >= this.#limit),
+      loaded: this.loaded,
+      rows: this.rows,
+      syncing: this.syncing,
+    };
+  }
+
+  /**
+   * The time, outcome and fee of one synced entry, for its details, when no
+   * sync looked them up yet: one request.
+   *
+   * @param {string} hash
+   */
+  async loadDetail(hash) {
+    const entry = this.#entries.find((e) => e.hash === hash);
+    const epoch = await this.#epoch;
+
+    if (!entry || entry.detailsAt || epoch === undefined) {
+      return;
+    }
+
+    const { account, nodeUrl } = this.options;
+
+    await fillActivityDetails({ account, entries: [entry], epoch, nodeUrl });
+    await this.#reload();
+    this.#emit();
+  }
+
+  /**
+   * Keep one of the wallet's own transactions, shown until the archive has
+   * it, and look for it once it went through.
+   *
+   * @param {Omit<ActivityLocalRecord, "id" | "ownerKey" | "status" | "submittedAt">} record
+   */
+  async recordSent(record) {
+    const epoch = await this.#epoch;
+
+    await putLocalTransaction(
+      this.ownerKey,
+      { ...record, status: "submitted", submittedAt: Date.now() },
+      epoch
+    );
+    await this.#reload();
+    this.#emit();
+    this.refreshSoon();
+  }
+
+  /**
+   * A sync run now, for what is new on chain.
+   *
+   * @returns {Promise<void>}
+   */
+  refresh() {
+    clearTimeout(this.#refreshTimer);
+
+    return this.#run();
+  }
+
+  /**
+   * One more sync run, after a transaction of this wallet went through: the
+   * archive has it once its block is final.
+   *
+   * @param {number} [delayMs]
+   */
+  refreshSoon(delayMs = AFTER_TX_MS) {
+    clearTimeout(this.#refreshTimer);
+    this.#refreshTimer = setTimeout(() => {
+      void this.refresh();
+    }, delayMs);
+  }
+
+  /** The next page of kept history, and a sync run for older history when the kept history runs out. */
+  async showMore() {
+    this.#limit += ACTIVITY_PAGE;
+    await this.#reload().catch(() => {});
+    this.#emit();
+
+    const missing = this.#entries.filter((e) => !e.detailsAt);
+    const epoch = await this.#epoch;
+
+    if (missing.length && epoch !== undefined) {
+      const { account, nodeUrl } = this.options;
+
+      await fillActivityDetails({
+        account,
+        entries: missing,
+        epoch,
+        nodeUrl,
+      }).catch(() => {});
+      await this.#reload().catch(() => {});
+      this.#emit();
+    }
+
+    await this.#checkNames().catch(() => {});
+
+    if (!this.complete && this.#entries.length < this.#limit) {
+      await this.#run();
+    }
+  }
+
+  async #start() {
+    try {
+      await this.#reload();
+      await this.#keptNames();
+    } catch {
+      // No store here: the archive's answer comes after the sync.
+    }
+
+    this.#emit();
+    await this.#run();
+  }
+
+  /**
+   * Paints the kept history, then makes a sync run, once. Resolves after it.
+   *
+   * @returns {Promise<void>}
+   */
+  start() {
+    this.#started ??= this.#start();
+
+    return this.#started;
+  }
+
+  /** Drops the session: whatever its work brings back is ignored. */
+  stop() {
+    this.#stopped = true;
+    clearTimeout(this.#refreshTimer);
+    this.#listeners.clear();
+  }
+
+  /**
+   * @param {(state: ActivityState) => void} listener
+   * @returns {() => void} Unsubscribes
+   */
+  subscribe(listener) {
+    this.#listeners.add(listener);
+    listener(this.state);
+
+    return () => this.#listeners.delete(listener);
+  }
+}
