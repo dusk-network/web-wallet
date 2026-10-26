@@ -12,19 +12,31 @@ import SendPage from "../+page.svelte";
 const { resolveDuskName } = vi.hoisted(() => ({ resolveDuskName: vi.fn() }));
 
 const page = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<{ url: URL }> | null} */
+  store: null,
   url: new URL("http://localhost/some-base-path/dashboard/send"),
 }));
 
 vi.mock("$app/stores", async () => {
-  const { readable } = await import("svelte/store");
+  const { writable } = await import("svelte/store");
+
+  page.store = writable({ url: page.url });
 
   return {
     page: {
       subscribe: (/** @type {(value: any) => void} */ run) =>
-        readable({ url: page.url }).subscribe(run),
+        /** @type {NonNullable<typeof page.store>} */ (page.store).subscribe(
+          run
+        ),
     },
   };
 });
+
+/** @param {URL} url */
+const openAt = (url) => {
+  page.url = url;
+  page.store?.set({ url });
+};
 
 vi.mock("$lib/dusk-domains", async (importOriginal) => ({
   .../** @type {typeof import("$lib/dusk-domains")} */ (await importOriginal()),
@@ -64,7 +76,7 @@ describe("Send page", () => {
     cleanup();
     resolveDuskName.mockReset();
     settingsStore.reset();
-    page.url = new URL("http://localhost/some-base-path/dashboard/send");
+    openAt(new URL("http://localhost/some-base-path/dashboard/send"));
   });
 
   afterAll(() => {
@@ -211,12 +223,29 @@ describe("Send page", () => {
   });
 
   it("should open with the recipient in the address, as from Send again or a contact", () => {
-    page.url = new URL(
-      `http://localhost/some-base-path/dashboard/send?to=${OTHER}`
+    openAt(
+      new URL(`http://localhost/some-base-path/dashboard/send?to=${OTHER}`)
     );
 
     const { getByRole } = render(SendPage);
 
     expect(getByRole("textbox", { name: "To" })).toHaveValue(OTHER);
+  });
+
+  it("should start again with another recipient the address asks for while the page shows", async () => {
+    openAt(
+      new URL(`http://localhost/some-base-path/dashboard/send?to=${OTHER}`)
+    );
+
+    const { getByRole } = render(SendPage);
+    const self = String(currentProfile?.account);
+
+    await act(() =>
+      openAt(
+        new URL(`http://localhost/some-base-path/dashboard/send?to=${self}`)
+      )
+    );
+
+    expect(getByRole("textbox", { name: "To" })).toHaveValue(self);
   });
 });

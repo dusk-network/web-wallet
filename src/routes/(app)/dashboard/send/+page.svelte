@@ -53,8 +53,10 @@
 
   const { networkName } = $networkStore;
 
-  // The recipient the page opens with, as from Send again or a contact.
-  const initialRecipient = $page.url.searchParams.get("to") ?? "";
+  // The recipient the page opens with, as from Send again or a contact; the
+  // form starts again with another one, as from the search while it shows.
+  $: ({ url } = $page);
+  $: initialRecipient = url.searchParams.get("to") ?? "";
 
   /**
    * Names resolve through the wallet's own node: the origin of its
@@ -88,17 +90,19 @@
   $: knownNames = pastNames($activityState.rows);
 </script>
 
-<Send
-  availableBalance={spendable}
-  bep20BridgeAddress={BEP20_BRIDGE_ADDRESS}
-  execute={executeSend}
-  {gasLimits}
-  {gasSettings}
-  {initialRecipient}
-  {knownNames}
-  on:keyChange={keyChangeHandler}
-  {publicAddress}
-  {resolveName}
-  shieldedBalance={balance.shielded.spendable}
-  {shieldedAddress}
-/>
+{#key initialRecipient}
+  <Send
+    availableBalance={spendable}
+    bep20BridgeAddress={BEP20_BRIDGE_ADDRESS}
+    execute={executeSend}
+    {gasLimits}
+    {gasSettings}
+    {initialRecipient}
+    {knownNames}
+    on:keyChange={keyChangeHandler}
+    {publicAddress}
+    {resolveName}
+    shieldedBalance={balance.shielded.spendable}
+    {shieldedAddress}
+  />
+{/key}
