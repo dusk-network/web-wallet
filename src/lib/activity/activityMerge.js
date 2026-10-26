@@ -97,8 +97,8 @@ export function historyRow(entry) {
 }
 
 /**
- * Whether the chain's outcome of a row is known: until it is, the wallet's
- * own status stands. A shielded history row's outcome is the chain's.
+ * Whether the chain's outcome of a row is known. A shielded history row's
+ * outcome is the chain's.
  *
  * @param {ActivityRow} known
  */
@@ -106,6 +106,27 @@ const isOutcomeKnown = (known) =>
   typeof known.success === "boolean" ||
   (known.source === "shielded" &&
     (known.status === "executed" || known.status === "failed"));
+
+/**
+ * The outcome of a row both the wallet and the chain know. A row the chain
+ * has is in a finalized block: its outcome is the chain's, or the one the
+ * wallet saw it end with, else unknown until its details come; never
+ * pending.
+ *
+ * @param {ActivityRow} known
+ * @param {Record<string, any>} tx
+ * @param {boolean} isFinal Whether the chain's outcome is known
+ * @returns {{ error: string | undefined, status: ActivityStatus }}
+ */
+function outcomeOf(known, tx, isFinal) {
+  if (isFinal) {
+    return { error: known.error, status: known.status };
+  }
+
+  return tx.status === "executed" || tx.status === "failed"
+    ? { error: tx.error, status: tx.status }
+    : { error: undefined, status: "unknown" };
+}
 
 /**
  * A row both the wallet and the chain know: the chain's, with what the
@@ -121,9 +142,7 @@ function mergeLocal(known, tx) {
   );
 
   const isFinal = isOutcomeKnown(known);
-  const outcome = isFinal
-    ? { error: known.error, status: known.status }
-    : { error: tx.error, status: tx.status ?? known.status };
+  const outcome = outcomeOf(known, tx, isFinal);
 
   // Unless it went through, its value didn't move on chain: the amount it
   // was sent with shows what stayed in the wallet.
