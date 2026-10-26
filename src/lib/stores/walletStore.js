@@ -14,6 +14,7 @@ import {
   clearActivityStore,
   currentActivity,
   getShieldedHistory,
+  isHistoryEnabled,
   stopActivity,
 } from "$lib/activity";
 import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
@@ -106,11 +107,17 @@ function getBridgeContractId() {
 }
 
 /**
- * The history of the current profile's account, started on first use.
+ * The history of the current profile's account, started on first use; none
+ * while the history is turned off, when nothing about it runs or is kept.
  *
  * @param {Profile} profile
+ * @returns {import("$lib/activity").ActivitySession | null}
  */
 function historyOf(profile) {
+  if (!isHistoryEnabled()) {
+    return null;
+  }
+
   const session = walletSession;
   const nodeUrl = makeNodeUrl().origin;
 
@@ -330,6 +337,10 @@ const claimRewards = async (amount, gas) =>
 /** @type {WalletStoreServices["getTransactionsHistory"]} */
 const getTransactionsHistory = async () => {
   const history = historyOf(unsafeGetCurrentProfile());
+
+  if (!history) {
+    return [];
+  }
 
   await history.start();
 

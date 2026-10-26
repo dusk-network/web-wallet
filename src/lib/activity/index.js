@@ -53,6 +53,13 @@ export function activityFor(options) {
   return session;
 }
 
+/**
+ * Whether the history is on: it is unless VITE_FEATURE_TRANSACTION_HISTORY
+ * is "false".
+ */
+export const isHistoryEnabled = () =>
+  import.meta.env.VITE_FEATURE_TRANSACTION_HISTORY !== "false";
+
 /** The running history session, if any. */
 export const currentActivity = () => current;
 

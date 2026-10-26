@@ -862,6 +862,26 @@ describe("Wallet store", async () => {
 
     /* eslint-disable vitest/expect-expect */
 
+    it("should neither start nor record a history while it is turned off", async () => {
+      vi.useRealTimers();
+      vi.stubEnv("VITE_FEATURE_TRANSACTION_HISTORY", "false");
+      vi.mocked(activityFor).mockClear();
+      history.session.recordSent.mockClear();
+      executeSpy.mockResolvedValueOnce({
+        buffer: new Uint8Array(),
+        hash: phoenixTxResult.hash,
+        nonce: 1n,
+      });
+
+      await walletStore.transfer(toMoonlight, amount, memo, gas);
+
+      expect(await walletStore.getTransactionsHistory()).toEqual([]);
+      expect(activityFor).not.toHaveBeenCalled();
+      expect(history.session.recordSent).not.toHaveBeenCalled();
+
+      vi.useFakeTimers();
+    });
+
     it("should record the .dusk name typed for a recipient, and a transfer to the profile's own account as to itself", async () => {
       vi.useRealTimers();
 
