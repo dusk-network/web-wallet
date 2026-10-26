@@ -6,13 +6,19 @@
   import { fade } from "svelte/transition";
   import { mdiArrowUpBoldBoxOutline, mdiListStatus } from "@mdi/js";
   import { DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT } from "@dusk/evm-sdk";
-  import { parseUnits } from "viem";
-  import { sendTransaction, switchChain } from "@wagmi/core";
+  import { formatUnits, parseUnits } from "viem";
+  import {
+    estimateGas,
+    getGasPrice,
+    sendTransaction,
+    switchChain,
+  } from "@wagmi/core";
   import { Gas } from "@dusk/w3sper";
 
   import {
     AnchorButton,
     Badge,
+    Button,
     Select,
     Textbox,
     Throbber,
@@ -29,7 +35,12 @@
     OperationResult,
     ReviewAmount,
   } from "$lib/components";
-  import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
+  import {
+    account,
+    duskEvm,
+    modal,
+    wagmiConfig,
+  } from "$lib/web3/walletConnection";
   import { BRIDGE_DEPOSIT_MIN_GAS_LIMIT } from "$lib/bridge/deposit";
   import {
     depositActivityStore,
@@ -48,7 +59,7 @@
   import { loadWithdrawalWaitingPeriod } from "$lib/bridge/withdrawals";
   import { luxToDusk } from "$lib/dusk/currency";
   import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
-  import { cleanNumberString } from "$lib/dusk/string";
+  import { cleanNumberString, shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { walletStore } from "$lib/stores";
 
@@ -60,6 +71,12 @@
   const EVM_TO_LUX_SCALE_FACTOR =
     10n ** BigInt(duskEvm.nativeCurrency.decimals - 9);
   const LAST_WITHDRAWAL_TX_HASH_KEY = "dusk-evm:last-withdrawal-tx-hash";
+
+  /**
+   * What Max leaves on DuskEVM for the withdrawal's fee while it can't be
+   * estimated: 0.01 DUSK, several times a usual one.
+   */
+  const WITHDRAWAL_FEE_RESERVE_WEI = 10n ** 16n;
   const WITHDRAWAL_TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
   /** @type {(amount: bigint|number) => string} */
@@ -115,6 +132,96 @@
 
   let defaultGas = gasSettings;
 
+  /**
+   * The DuskEVM fee of the withdrawal, estimated for its review, in wei.
+   *
+   * @type {bigint | null}
+   */
+  let withdrawalFeeWei = null;
+
+  /**
+   * The DuskEVM gas price. `getGasPrice` throws rather than rejects for a
+   * chain it doesn't know, which would leave the gas estimate unhandled.
+   */
+  const loadEvmGasPrice = async () =>
+    getGasPrice(wagmiConfig, { chainId: duskEvm.id });
+
+  /**
+   * Estimates the DuskEVM fee of a withdrawal of the given amount: the gas it
+   * needs at the current gas price. The EVM wallet sets the fee it pays.
+   *
+   * @param {bigint} value The amount, in wei.
+   * @returns {Promise<bigint>}
+   */
+  async function estimateWithdrawalFee(value) {
+    const call = prepareNativeDuskWithdrawalCall({
+      accountPublicKey: unshieldedAccount,
+      amountWei: value,
+      evmRecipient: /** @type {string} */ ($account.address),
+      minGasLimit: DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT,
+    });
+    const [gas, price] = await Promise.all([
+      estimateGas(wagmiConfig, {
+        account: $account.address,
+        chainId: duskEvm.id,
+        data: call.data,
+        to: call.to,
+        value: call.value,
+      }),
+      loadEvmGasPrice(),
+    ]);
+
+    return gas * price;
+  }
+
+  /** Gets the fee and the waiting period a withdrawal's review shows. */
+  function prepareWithdrawalReview() {
+    const value = amountWei;
+
+    withdrawalFeeWei = null;
+    estimateWithdrawalFee(value)
+      .then((feeWei) => {
+        if (value === amountWei) {
+          withdrawalFeeWei = feeWei;
+        }
+      })
+      .catch(() => {});
+    void loadWithdrawalWaitingPeriod().then((seconds) => {
+      withdrawalWaitingPeriod = seconds;
+    });
+  }
+
+  /**
+   * The amount to bridge, as the amount field shows it.
+   *
+   * @param {bigint} lux
+   */
+  const toAmountText = (lux) =>
+    formatUnits(lux > 0n ? lux : 0n, 9).replace(".", getDecimalSeparator());
+
+  /**
+   * Bridges all it can: on DuskDS what the public balance holds past the
+   * fee, on DuskEVM what is left after the withdrawal's estimated fee, with
+   * room for it to change.
+   */
+  async function setMaxAmount() {
+    if (isDepositing) {
+      amount = toAmountText(unshieldedBalance - fee);
+      return;
+    }
+
+    if (!evmDuskBalance) {
+      return;
+    }
+
+    const feeWei = await estimateWithdrawalFee(1n).catch(() => null);
+    const reserveWei = feeWei ? feeWei * 2n : WITHDRAWAL_FEE_RESERVE_WEI;
+
+    amount = toAmountText(
+      (evmDuskBalance.value - reserveWei) / EVM_TO_LUX_SCALE_FACTOR
+    );
+  }
+
   async function submitNativeWithdrawal() {
     if (!unshieldedAccount) {
       throw new Error("Dusk account is not available.");
@@ -129,11 +236,6 @@
       amountWei,
       evmRecipient: $account.address,
       minGasLimit: DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT,
-    });
-
-    // Read it while the EVM wallet asks to confirm, for the sent message.
-    void loadWithdrawalWaitingPeriod().then((seconds) => {
-      withdrawalWaitingPeriod = seconds;
     });
 
     await switchChain(wagmiConfig, { chainId: duskEvm.id });
@@ -348,6 +450,21 @@
           </small>
         {/if}
       </dd>
+      {#if address}
+        <dt class="balances__token">DuskEVM account</dt>
+        <dd class="balances__balance">
+          <!-- Opens the connection's account view, to disconnect it. -->
+          <button
+            aria-label={`DuskEVM account ${address}: disconnect or change wallet`}
+            class="balances__account"
+            data-tooltip-id="main-tooltip"
+            data-tooltip-text="Disconnect or change wallet"
+            on:click={() => modal.open()}
+            title={address}
+            type="button">{shortenAddress(address)}</button
+          >
+        </dd>
+      {/if}
     </dl>
   </aside>
 
@@ -364,6 +481,10 @@
         nextButton={{
           action: () => {
             isEditing = false;
+
+            if (isWithdrawing) {
+              prepareWithdrawalReview();
+            }
           },
           disabled: isNextButtonDisabled,
         }}
@@ -380,7 +501,18 @@
               />
             </div>
 
-            <hr class="glyph" />
+            <div class="operation__swap">
+              <button
+                aria-label="Swap the direction"
+                class="operation__swap-button"
+                data-tooltip-id="main-tooltip"
+                data-tooltip-text="Swap the direction"
+                on:click={() => {
+                  originNetwork = destinationNetwork;
+                }}
+                type="button">↑↓</button
+              >
+            </div>
 
             <p class="operation__label">To</p>
 
@@ -392,8 +524,22 @@
               />
             </div>
 
+            <div class="operation__amount-wrapper">
+              <label class="operation__label" for="destination-amount"
+                >Amount</label
+              >
+              <Button
+                disabled={isWithdrawing && !evmDuskBalance}
+                on:click={setMaxAmount}
+                size="small"
+                text="USE MAX"
+                variant="tertiary"
+              />
+            </div>
+
             <div class="operation__input-wrapper">
               <Textbox
+                aria-describedby="destination-amount-available"
                 className="operation__input-field"
                 required
                 type="text"
@@ -403,6 +549,22 @@
               />
               <DuskIcon />
             </div>
+
+            <p class="operation__available" id="destination-amount-available">
+              Available on {isWithdrawing ? "DuskEVM" : "DuskDS"}:
+              {#if !isWithdrawing}
+                <BalanceValue value={formatter(luxToDusk(unshieldedBalance))} />
+                DUSK
+              {:else if evmDuskBalance}
+                <BalanceValue
+                  value={formatter(
+                    luxToDusk(evmDuskBalance.value / EVM_TO_LUX_SCALE_FACTOR)
+                  )}
+                /> DUSK
+              {:else}
+                checking
+              {/if}
+            </p>
 
             {#if amount !== ""}
               {#if isDepositing && !hasEnoughUnshielded}
@@ -497,11 +659,29 @@
               label="Total (at most)"
               value={formatter(luxToDusk(totalDepositLux))}
             />
+            <Banner
+              title="The fee is paid from your public balance."
+              variant="info"
+            />
+          {:else}
+            {#if withdrawalFeeWei !== null}
+              <ReviewAmount
+                label="Network fee (about)"
+                value={formatter(
+                  luxToDusk(withdrawalFeeWei / EVM_TO_LUX_SCALE_FACTOR)
+                )}
+              />
+            {/if}
+            <Banner
+              title={withdrawalSentMessage(withdrawalWaitingPeriod)}
+              variant="info"
+            >
+              <p>
+                This fee is paid from your DuskEVM balance. Each step on Dusk
+                takes a small fee from your public balance.
+              </p>
+            </Banner>
           {/if}
-          <Banner
-            title={`The fee is paid from your ${isDepositing ? "public" : "DuskEVM"} balance.`}
-            variant="info"
-          />
         </div>
       </WizardStep>
       <WizardStep step={2} {key} showNavigation={false}>
@@ -660,20 +840,75 @@
     }
   }
 
-  .glyph {
+  .operation__swap {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    border-top: 1px solid var(--divider-color-primary);
     margin: var(--default-gap) 0;
     height: 1px;
   }
 
-  .glyph:after {
-    content: "↑↓";
-    display: inline-block;
+  .operation__swap-button {
     position: relative;
-    top: -1.2em;
-    color: var(--divider-border-color);
-    border: 1px solid var(--divider-border-color);
+    top: -1.4em;
+    min-height: 44px;
+    padding: 0 1.25em;
+    border: 1px solid var(--control-secondary-border-color);
     border-radius: 2em;
-    padding: 0.5em 1.25em;
     background-color: var(--divider-background-color);
+    color: var(--on-surface-color);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+
+    &:hover {
+      border-color: var(--control-secondary-border-color-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--secondary-color);
+      outline-offset: 2px;
+    }
+  }
+
+  .operation__amount-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .operation__available {
+    color: var(--muted-color);
+    font-size: 0.875em;
+  }
+
+  .balances__account {
+    all: unset;
+    position: relative;
+    cursor: pointer;
+    font-family: var(--mono-font-family);
+    font-size: 0.875em;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+
+    &:focus-visible {
+      outline: 2px solid var(--secondary-color);
+      outline-offset: 2px;
+    }
+  }
+
+  /* A larger tap area on phones, as for the other small controls. */
+  @media (max-width: 30rem) {
+    .balances__account::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
   }
 </style>
