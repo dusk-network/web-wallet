@@ -142,6 +142,9 @@
   /** How many times the maximum was asked for: only the last one applies. */
   let maxRequests = 0;
 
+  /** How many times a review's fee was asked for: only the last one applies. */
+  let reviewRequests = 0;
+
   /**
    * The DuskEVM gas price. `getGasPrice` throws rather than rejects for a
    * chain it doesn't know, which would leave the gas estimate unhandled.
@@ -179,12 +182,17 @@
 
   /** Gets the fee and the waiting period a withdrawal's review shows. */
   function prepareWithdrawalReview() {
-    const value = amountWei;
+    reviewRequests += 1;
+
+    const request = reviewRequests;
+    const scope = maxScope;
 
     withdrawalFeeWei = null;
-    estimateWithdrawalFee(value)
+    estimateWithdrawalFee(amountWei)
       .then((feeWei) => {
-        if (value === amountWei) {
+        // Only for the review asked for last, of the amount, the direction
+        // and the wallets it was asked for.
+        if (request === reviewRequests && scope === maxScope) {
           withdrawalFeeWei = feeWei;
         }
       })
@@ -385,8 +393,9 @@
     originNetwork === "duskEvm" && destinationNetwork === "duskDs";
   $: ({ address: evmAddress } = $account);
 
-  // What the maximum is asked for: new whenever the amount, the direction
-  // or a wallet changes, so that an answer for an older one is dropped.
+  // What the maximum and a review's fee are asked for: new whenever the
+  // amount, the direction or a wallet changes, so that an answer for an
+  // older one is dropped.
   $: maxScope = { amount, evmAddress, isWithdrawing, unshieldedAccount };
   $: incomingDepositLux = pendingDepositAmountLux(
     $account.address,

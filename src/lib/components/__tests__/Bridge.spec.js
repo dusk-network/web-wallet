@@ -295,6 +295,54 @@ describe("Bridge", () => {
     ]);
   });
 
+  it("should show the fee of the withdrawal reviewed last, whichever estimate comes back last", async () => {
+    const { container, getByRole, rerender } = render(Bridge, baseProps);
+
+    /** @type {PromiseWithResolvers<bigint>[]} */
+    const estimates = [];
+
+    estimateGas.mockImplementation(() => {
+      /** @type {PromiseWithResolvers<bigint>} */
+      const estimate = Promise.withResolvers();
+
+      estimates.push(estimate);
+
+      return estimate.promise;
+    });
+
+    const settle = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await tick();
+    };
+    const feeOf = (/** @type {bigint} */ gas) => [
+      "Network fee (about)",
+      `${formatter(luxToDusk((gas * evmGasPrice) / 1_000_000_000n))} DUSK`,
+    ];
+
+    await withdraw(container);
+    await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
+
+    // The same amount reviewed twice: the first estimate comes back last.
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    estimates[1].resolve(200_000n);
+    await settle();
+    estimates[0].resolve(100_000n);
+    await settle();
+
+    expect(getReviewAmounts(container)[1]).toStrictEqual(feeOf(200_000n));
+
+    // Another profile while the estimate runs: the fee isn't its.
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await rerender({ unshieldedAccount: {} });
+    estimates[2].resolve(300_000n);
+    await settle();
+
+    expect(getReviewAmounts(container)[1]).not.toStrictEqual(feeOf(300_000n));
+  });
+
   it("should show only the amount when reviewing a withdrawal whose fee can't be estimated", async () => {
     estimateGas.mockRejectedValue(new Error("RPC unavailable"));
     getGasPrice.mockImplementation(() => {
