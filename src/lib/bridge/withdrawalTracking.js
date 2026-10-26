@@ -11,6 +11,7 @@ import {
 } from "$lib/bridge/withdrawalActivityValues";
 import {
   loadDuskTransactionExecution,
+  loadL2BlockTime,
   loadWithdrawalStatus,
 } from "$lib/bridge/withdrawals";
 
@@ -45,7 +46,32 @@ function statusPatch(status) {
     }
   }
 
+  // The amount, which a withdrawal found by its hash only has from here.
+  if (typeof status.withdrawal?.value === "bigint") {
+    patch.amountWei = status.withdrawal.value;
+  }
+
   return patch;
+}
+
+/**
+ * When a withdrawal was sent: the time of its DuskEVM block, read once. A
+ * withdrawal found by its hash would otherwise show when it was looked up.
+ *
+ * @param {any} remembered
+ * @param {any} status
+ */
+async function sentAtPatch(remembered, status) {
+  if (remembered.sentAt || status.blockNumber === undefined) {
+    return {};
+  }
+
+  try {
+    return { sentAt: await loadL2BlockTime(BigInt(status.blockNumber)) };
+  } catch {
+    // Read again at the next refresh.
+    return {};
+  }
 }
 
 /**
@@ -137,6 +163,7 @@ export async function refreshWithdrawalTransaction(transactionHash) {
     );
     const patch = {
       ...statusPatch(reconciliation.status),
+      ...(await sentAtPatch(remembered, loadedStatus)),
       ...(reconciliation.actionError !== undefined
         ? { actionError: reconciliation.actionError }
         : {}),

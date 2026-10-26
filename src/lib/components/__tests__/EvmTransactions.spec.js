@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 
 import { EvmTransactions } from "..";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
+import { formatTimestamp } from "../EvmTransactions/withdrawalPresentation";
 
 const mocks = vi.hoisted(() => {
   const configuredFinalizationConfig = () =>
@@ -394,6 +395,66 @@ describe("EvmTransactions", () => {
     await waitFor(() => {
       expect(item).toHaveAttribute("aria-expanded", "false");
     });
+  });
+
+  it("names a withdrawal by its amount and when it was sent, gives its status once, and says DuskEVM", async () => {
+    const txHash = `0x${"5a".repeat(32)}`;
+    const sentAt = "2026-09-25T11:51:09.000Z";
+
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+    mocks.loadWithdrawalActivity.mockResolvedValue({
+      error: null,
+      items: [
+        {
+          ...activityItem(txHash, "ready_to_prove"),
+          amountWei: "10000000000000000000",
+          blockNumber: "2580123",
+          createdAt: Date.parse("2026-10-26T01:10:00Z"),
+          sentAt,
+          timestamp: "2026-10-26T01:10:00.000Z",
+        },
+      ],
+      sourceUnavailable: false,
+    });
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      blockNumber: 2580123n,
+      stage: "ready_to_prove",
+      transactionHash: txHash,
+      withdrawalHash: `0x${"ea".repeat(32)}`,
+    });
+
+    const { container, findByRole, getAllByText, getByRole, queryByText } =
+      render(EvmTransactions, { target: document.body });
+    const item = await findByRole("button", {
+      name: /^10 DUSK.*Ready to prove/,
+    });
+
+    expect(item).toHaveTextContent(formatTimestamp(sentAt));
+    expect(item).not.toHaveTextContent(
+      formatTimestamp("2026-10-26T01:10:00.000Z")
+    );
+
+    await fireEvent.click(item);
+
+    expect(
+      Array.from(container.querySelectorAll(".withdrawal-details dt"), (term) =>
+        term.textContent?.trim()
+      )
+    ).toStrictEqual([
+      "Sent",
+      "DuskEVM block",
+      "DuskEVM transaction",
+      "Withdrawal hash",
+    ]);
+    expect(container.querySelector(".withdrawal-details dd")).toHaveTextContent(
+      formatTimestamp(sentAt)
+    );
+    expect(getAllByText("Ready to prove")).toHaveLength(1);
+    expect(getByRole("button", { name: "Prove on Dusk" })).toBeInTheDocument();
+    expect(
+      getByRole("button", { name: "Copy duskevm transaction hash" })
+    ).toBeInTheDocument();
+    expect(queryByText(/Initiated|L2 /)).toBeNull();
   });
 
   it("shows the complete journey and prove action when ready", async () => {

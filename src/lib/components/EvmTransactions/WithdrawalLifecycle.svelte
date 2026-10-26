@@ -6,17 +6,14 @@
   import {
     WITHDRAWAL_TIMELINE_STEPS,
     withdrawalActionFailure,
-    withdrawalStageBadge,
-    withdrawalStageLabel,
     withdrawalStageProgress,
   } from "$lib/bridge/withdrawalLifecycle";
-  import { Badge, Button, Icon } from "$lib/dusk/components";
+  import { Button, Icon } from "$lib/dusk/components";
 
   import Banner from "../Banner/Banner.svelte";
   import BridgeTimeline from "./BridgeTimeline.svelte";
   import WithdrawalHash from "./WithdrawalHash.svelte";
   import {
-    activityAmount,
     formatTimestamp,
     shortened,
     stageMessage,
@@ -60,17 +57,7 @@
   bind:this={element}
 >
   {#if selectedWithdrawal}
-    <header class="status-header">
-      <div>
-        <p>Withdrawal</p>
-        <h4>{activityAmount(selectedWithdrawal) ?? "DUSK withdrawal"}</h4>
-      </div>
-      <Badge
-        text={withdrawalStageLabel(selectedStage)}
-        variant={withdrawalStageBadge(selectedStage)}
-      />
-    </header>
-
+    <!-- The row above names the withdrawal and its status. -->
     <BridgeTimeline
       currentMessage={selectedStageMessage}
       progress={withdrawalStageProgress(selectedStage)}
@@ -121,17 +108,21 @@
     {/if}
 
     <dl class="withdrawal-details">
-      <dt>Initiated</dt>
-      <dd>{formatTimestamp(selectedWithdrawal.timestamp)}</dd>
+      <dt>Sent</dt>
+      <dd>
+        {formatTimestamp(
+          selectedWithdrawal.sentAt ?? selectedWithdrawal.timestamp
+        )}
+      </dd>
       {#if selectedWithdrawal.blockNumber !== null && selectedWithdrawal.blockNumber !== undefined}
-        <dt>L2 block</dt>
+        <dt>DuskEVM block</dt>
         <dd>{selectedWithdrawal.blockNumber.toString()}</dd>
       {/if}
-      <dt>L2 transaction</dt>
+      <dt>DuskEVM transaction</dt>
       <dd>
         <WithdrawalHash
           href={selectedExplorerUrl}
-          name="L2 transaction hash"
+          name="DuskEVM transaction hash"
           explorerName="Blockscout"
           value={selectedWithdrawal.transactionHash}
         />
@@ -165,25 +156,6 @@
     gap: 1rem;
     min-width: 0;
     padding: 1.25rem;
-  }
-
-  .status-header {
-    align-items: flex-start;
-    display: flex;
-    gap: 1rem;
-    justify-content: space-between;
-
-    & h4,
-    & p {
-      margin: 0;
-    }
-
-    & > div > p {
-      color: var(--secondary-text-color);
-      font-size: 0.75rem;
-      margin: 0 0 0.25rem;
-      text-transform: uppercase;
-    }
   }
 
   .status-actions {

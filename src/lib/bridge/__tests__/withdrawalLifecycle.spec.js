@@ -16,14 +16,14 @@ describe("DuskEVM withdrawal lifecycle", () => {
     ["waiting_for_output", "Not on Dusk yet", "Usually within an hour."],
     [
       "ready_to_prove",
-      "Prove on Dusk",
+      "Ready to prove",
       "Step 1 of 2. Fee from your public account.",
     ],
     ["prove_submitted", "Proof sent", ""],
     ["proven_waiting", "Waiting period", ""],
     [
       "ready_to_finalize",
-      "Claim on Dusk",
+      "Ready to claim",
       "Step 2 of 2. Fee from your public account.",
     ],
     ["finalize_submitted", "Claim sent", ""],
