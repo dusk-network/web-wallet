@@ -1,14 +1,14 @@
 /**
  * What an account has with Sozu: the pool and the stDUSK token the hub
- * names, the pool's rate, and the account's balances there. The reads go
- * through Multicall for Dusk, a query for all those made at once.
+ * names, the pool's rate, Sozu's fees, and the account's balances there. The
+ * reads go through Multicall for Dusk, a query for all those made at once.
  */
 
 import { dataDrivers } from "@dusk/w3sper";
 import { createMulticallFetch } from "$lib/activity/multicallFetch";
 import { addBasePath } from "$lib/navigation";
 
-import { parsePool, readLux } from "./amounts";
+import { parseFeeRate, parsePool, readLux } from "./amounts";
 import { noteSozuPool } from "./config";
 
 /** @typedef {"sozu_hub" | "sozu_pool" | "sozu_staked_dusk"} SozuDriverName */
@@ -122,8 +122,59 @@ const contractIdOf = (id) =>
     ? id.toLowerCase()
     : null;
 
-/** @type {Map<string, Promise<{ pool: string | null, stDusk: string | null }>>} */
+/**
+ * Sozu's substrate, read by hand: the wallet bundles no driver for it, and
+ * the one read it makes of it needs none. `stake_fee_rate` takes the fee's
+ * kind as its enum, one byte (Deposit 0, Reward 1), and gives its rate.
+ *
+ * @type {SozuDriver}
+ */
+const SUBSTRATE = Object.freeze({
+  decodeOutputFn: (_fnName, bytes) => parseFeeRate(bytes),
+  encodeInputFn: (_fnName, json) =>
+    Uint8Array.of(JSON.parse(json) === "reward" ? 1 : 0),
+});
+
+/** @type {Map<string, Promise<{ pool: string | null, stDusk: string | null, substrate: string | null }>>} */
 const found = new Map();
+
+/** @type {Map<string, Promise<SozuFees>>} */
+const feesFound = new Map();
+
+/**
+ * Sozu's fees, read once a node and substrate, as the contracts the hub
+ * names are; one that failed is read again next time, and is no fees.
+ *
+ * @param {SozuReader} reader
+ * @param {string} substrate
+ * @returns {Promise<SozuFees | null>}
+ */
+function feesOf(reader, substrate) {
+  const key = `${reader.nodeUrl}\n${substrate}`;
+  let fees = feesFound.get(key);
+
+  if (!fees) {
+    // Both in the task the status reads in: one query with them.
+    fees = Promise.all([
+      read(reader, SUBSTRATE, substrate, "stake_fee_rate", "deposit"),
+      read(reader, SUBSTRATE, substrate, "stake_fee_rate", "reward"),
+    ]).then(([deposit, reward]) => ({
+      deposit: /** @type {SozuFeeRate} */ (deposit),
+      reward: /** @type {SozuFeeRate} */ (reward),
+    }));
+
+    const kept = fees;
+
+    feesFound.set(key, kept);
+    kept.catch(() => {
+      if (feesFound.get(key) === kept) {
+        feesFound.delete(key);
+      }
+    });
+  }
+
+  return fees.catch(() => null);
+}
 
 /**
  * The pool and the stDUSK token the hub names, read once a node and hub.
@@ -140,9 +191,11 @@ function discover(reader, hub, hubId) {
     named = Promise.all([
       read(reader, hub, hubId, "contract", "pool"),
       read(reader, hub, hubId, "contract", "staked-dusk"),
-    ]).then(([pool, stDusk]) => ({
+      read(reader, hub, hubId, "contract", "substrate"),
+    ]).then(([pool, stDusk, substrate]) => ({
       pool: contractIdOf(pool),
       stDusk: contractIdOf(stDusk),
+      substrate: contractIdOf(substrate),
     }));
 
     const kept = named;
@@ -191,16 +244,18 @@ export async function readSozuStatus({
 
   // The history names this pool's calls too, from now on.
   noteSozuPool(poolId);
-  const [rate, balance, stDusk] = await Promise.all([
+  const [rate, balance, stDusk, fees] = await Promise.all([
     read(reader, pool, poolId, "exchange_rate"),
     read(reader, pool, poolId, "balance_of", account),
     named.stDusk
       ? read(reader, token, named.stDusk, "balance_of", account)
       : "0",
+    named.substrate ? feesOf(reader, named.substrate) : null,
   ]);
 
   return {
     contracts: { hub: contracts.hub, pool: poolId, stDusk: named.stDusk },
+    fees,
     pool: parsePool(rate),
     position: { balance: readLux(balance), stDusk: readLux(stDusk) },
   };

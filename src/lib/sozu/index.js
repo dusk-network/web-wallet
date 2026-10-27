@@ -11,8 +11,11 @@ export {
 export {
   duskPerStDusk,
   encodeU64,
+  feePercent,
   leastSozuStake,
+  parseFeeRate,
   parsePool,
+  sozuFee,
   stDuskFor,
 } from "./amounts";
 export { loadSozuDriver, readSozuStatus } from "./status";

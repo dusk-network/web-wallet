@@ -7,7 +7,7 @@
   import { AppAnchorButton, BalanceValue } from "$lib/components";
   import { goto } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
-  import { duskPerStDusk } from "$lib/sozu/amounts";
+  import { duskPerStDusk, feePercent } from "$lib/sozu/amounts";
 
   import ActivityPanel from "../Home/ActivityPanel.svelte";
   import { stakeActions } from "./stakeActions";
@@ -74,6 +74,8 @@
   $: hasLiquid =
     position !== null && (position.balance > 0n || position.stDusk > 0n);
   $: rate = duskPerStDusk(sozu.status?.pool ?? null);
+  // Sozu's fees, as its substrate gives them, where they could be read.
+  $: fees = sozu.status?.fees ?? null;
 
   /** @type {{ label: string, lux: bigint, stDusk?: bigint, sub?: string }[]} */
   // What is staked comes first, natively and with Sozu.
@@ -266,6 +268,18 @@
             </td>
           {/if}
         </tr>
+        {#if sozu.available && fees}
+          <tr>
+            <th scope="row">Fees</th>
+            <td data-way="Native staking">Network fee only</td>
+            <td data-way="Liquid staking (Sozu, third party)">
+              Sozu keeps {feePercent(fees.reward, locale)} of rewards · {feePercent(
+                fees.deposit,
+                locale
+              )} on deposits
+            </td>
+          </tr>
+        {/if}
         <tr>
           <th scope="row">Unstake</th>
           <td data-way="Native staking">Any time, with no waiting period</td>

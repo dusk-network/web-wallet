@@ -10,9 +10,23 @@ type SozuPool = {
   supply: bigint;
 };
 
+/** A fee rate as Sozu's substrate gives it: the numerator over the denominator. */
+type SozuFeeRate = {
+  denominator: bigint;
+  numerator: bigint;
+};
+
+/** Sozu's fees: on each deposit, and on the rewards. */
+type SozuFees = {
+  deposit: SozuFeeRate;
+  reward: SozuFeeRate;
+};
+
 /** What an account has with Sozu, read from its pool and its token. */
 type SozuStatus = {
   contracts: SozuContracts & { stDusk: string | null };
+  /** Sozu's fees, where they could be read. */
+  fees?: SozuFees | null;
   pool: SozuPool;
   position: {
     /** The DUSK the account has staked with Sozu, as the pool counts it. */

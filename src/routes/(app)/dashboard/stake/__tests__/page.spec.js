@@ -68,9 +68,13 @@ vi.mock("$lib/activity", async (importOriginal) => {
 
 const POOL = "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
 
-/** Sozu as read on testnet: about 3.0751 DUSK a stDUSK. */
+/** Sozu as read on testnet: about 3.0751 DUSK a stDUSK, and its fees. */
 const SOZU_STATUS = {
   contracts: { hub: "bae8".padEnd(64, "0"), pool: POOL, stDusk: null },
+  fees: {
+    deposit: { denominator: 10_000n, numerator: 25n },
+    reward: { denominator: 100n, numerator: 10n },
+  },
   pool: { stake: 8_142_876_697_294_578n, supply: 2_647_997_731_233_173n },
   position: { balance: 0n, stDusk: 0n },
 };
@@ -258,6 +262,12 @@ describe("Staking", () => {
     expect(textOf(table.tBodies[0].rows[2].cells[2])).toBe(
       "You get stDUSK. Each is worth 3.0751 DUSK now, as Sozu's contract gives it, and follows Sozu's pool."
     );
+    // And Sozu's fees, as its contract gives them on this network.
+    expect(Array.from(table.tBodies[0].rows[3].cells, textOf)).toStrictEqual([
+      "Fees",
+      "Network fee only",
+      "Sozu keeps 10% of rewards · 0.25% on deposits",
+    ]);
   });
 
   it("shows only native staking where Sozu isn't", async () => {
@@ -414,8 +424,9 @@ describe("Staking", () => {
       target: { value: "100" },
     });
 
+    // For what's left once testnet's 0.25% deposit fee is off it.
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.5191 stDUSK, at the rate Sozu's contract gives now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
+      "You get about 32.4378 stDUSK, at the rate Sozu's contract gives now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
     );
     expect(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })
