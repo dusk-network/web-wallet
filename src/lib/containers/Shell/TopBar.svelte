@@ -8,6 +8,7 @@
   import { networkStore, walletStore } from "$lib/stores";
   import { nodeBaseUrl } from "$lib/url";
 
+  import DuskGlyph from "./DuskGlyph.svelte";
   import DuskWordmark from "./DuskWordmark.svelte";
   import NetworkPill from "./NetworkPill.svelte";
 
@@ -42,6 +43,7 @@
     class="top-bar__brand"
     href={addBasePath("/dashboard")}
   >
+    <DuskGlyph />
     <DuskWordmark />
     <span aria-hidden="true" class="top-bar__divider"></span>
     <span class="top-bar__app">Wallet</span>
@@ -106,9 +108,21 @@
     padding: 0 1.25rem 0 1.5rem;
     border-bottom: 1px solid var(--calm-line);
     background: var(--calm-s0);
+
+    /* Nothing in the bar shrinks under its content to make room. */
+    & > :global(*) {
+      flex-shrink: 0;
+    }
   }
 
-  /* The wordmark, a thin line and WALLET in the ledger's type. */
+  /*
+   * The wordmark, a thin line and WALLET in the ledger's type; the round
+   * mark alone where the wordmark doesn't fit, below 374 px.
+   */
+  .top-bar__brand :global(.dusk-glyph) {
+    display: none;
+  }
+
   .top-bar__brand {
     display: flex;
     align-items: center;
@@ -174,7 +188,6 @@
   .top-bar__search {
     all: unset;
     box-sizing: border-box;
-    flex: 0 0 auto;
     display: flex;
     align-items: center;
     gap: 0.625rem;
@@ -216,7 +229,6 @@
   }
 
   .top-bar__settings {
-    flex: 0 0 auto;
     display: grid;
     place-items: center;
     width: 2.375rem;
@@ -242,19 +254,19 @@
   }
 
   /*
-   * What fits beside the tabs and the longest profile name: WALLET with
-   * the search's field from 1376 px, the field from 1296 px (a search
-   * button below), and the profile's name from 960 px, as AddressPicker
-   * shows it. Nothing in the bar shrinks to make room.
+   * What fits beside the tabs, the longest profile name and the network
+   * pill's longest label (Connecting): WALLET with the search's field from
+   * 1400 px, the field from 1320 px (a search button below), and the
+   * profile's name from 976 px, as AddressPicker shows it.
    */
-  @media (max-width: 85.99rem) {
+  @media (max-width: 87.49rem) {
     .top-bar__divider,
     .top-bar__app {
       display: none;
     }
   }
 
-  @media (max-width: 80.99rem) {
+  @media (max-width: 82.49rem) {
     .top-bar__search {
       width: 2.375rem;
       padding: 0;
@@ -293,6 +305,16 @@
     .top-bar__settings {
       width: 44px;
       height: 44px;
+    }
+  }
+
+  @media (max-width: 23.37rem) {
+    .top-bar__brand :global(.dusk-glyph) {
+      display: block;
+    }
+
+    .top-bar__brand :global(.dusk-wordmark) {
+      display: none;
     }
   }
 </style>

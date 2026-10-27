@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { readFileSync } from "node:fs";
+import { parse } from "svelte/compiler";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
@@ -20,6 +22,52 @@ vi.mock("$lib/stores", async (importOriginal) => {
     walletStore: { ...original.walletStore, ...mockedWalletStore },
   };
 });
+
+/**
+ * A component's style rules, as written: each one's selector and
+ * declarations, and the media query it sits in ("" for none).
+ *
+ * @param {string} file The component, from this folder
+ */
+function styleRules(file) {
+  const source = readFileSync(new URL(file, import.meta.url), "utf8");
+  const { css } = parse(source, { modern: true });
+  /** @type {{ declarations: Record<string, string>, media: string, selector: string }[]} */
+  const rules = [];
+
+  /**
+   * @param {any[]} nodes
+   * @param {string} media
+   */
+  const walk = (nodes, media) => {
+    for (const node of nodes) {
+      if (node.type === "Atrule" && node.name === "media") {
+        walk(node.block.children, node.prelude);
+      } else if (node.type === "Rule") {
+        rules.push({
+          declarations: Object.fromEntries(
+            node.block.children
+              .filter(
+                (/** @type {any} */ child) => child.type === "Declaration"
+              )
+              .map((/** @type {any} */ child) => [child.property, child.value])
+          ),
+          media,
+          selector: source.slice(node.prelude.start, node.prelude.end),
+        });
+        walk(node.block.children, media);
+      }
+    }
+  };
+
+  walk(css?.children ?? [], "");
+
+  return rules;
+}
+
+/** @param {string} media A query, as "(max-width: 23.37rem)" */
+const maxWidthPx = (media) =>
+  Number(/max-width: ([\d.]+)rem/.exec(media)?.[1] ?? 0) * 16;
 
 describe("TopBar", () => {
   const tabs = shellTabs({ stake: true });
@@ -63,6 +111,53 @@ describe("TopBar", () => {
       "true"
     );
     expect(brand).toHaveTextContent(/^Wallet$/);
+  });
+
+  it("fits a 320 px phone: the round mark alone, and the network pill's dot, where the wordmark and the name don't fit", () => {
+    const { getByRole } = render(TopBar, { activeTab: "home", tabs });
+    const brand = getByRole("link", { name: "Dusk Wallet, home" });
+
+    expect(brand.querySelector("svg.dusk-glyph")).toHaveAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+    const bar = styleRules("../TopBar.svelte");
+    const ruleOf = (/** @type {string} */ selector, media = "") =>
+      bar.find((rule) => rule.selector === selector && rule.media === media);
+    const narrow =
+      bar.find(
+        (rule) =>
+          rule.selector === ".top-bar__brand :global(.dusk-wordmark)" &&
+          rule.declarations.display === "none"
+      )?.media ?? "";
+
+    // The wordmark takes 370 px beside the phone's controls and the
+    // network pill's longest label, Connecting: the round mark below that.
+    expect(maxWidthPx(narrow)).toBeGreaterThanOrEqual(370.1);
+    expect(
+      ruleOf(".top-bar__brand :global(.dusk-glyph)")?.declarations.display
+    ).toBe("none");
+    expect(
+      ruleOf(".top-bar__brand :global(.dusk-glyph)", narrow)?.declarations
+        .display
+    ).toBe("block");
+    // Nothing shrinks under its content to make room.
+    expect(
+      bar.find((rule) => rule.selector === "& > :global(*)")?.declarations[
+        "flex-shrink"
+      ]
+    ).toBe("0");
+
+    // The round mark beside the pill takes 339 px: its dot alone below,
+    // with the network's name still there for screen readers.
+    const name = styleRules("../NetworkPill.svelte").find(
+      (rule) => rule.selector === ".network-pill__name" && rule.media
+    );
+
+    expect(maxWidthPx(name?.media ?? "")).toBeGreaterThanOrEqual(339.2);
+    expect(name?.declarations).toMatchObject({ position: "absolute" });
+    expect(name?.declarations.display).toBeUndefined();
   });
 
   it("opens the search", async () => {

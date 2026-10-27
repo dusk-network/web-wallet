@@ -98,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show Bridge and Migrate as one card: From and To with their networks, the amount, what arrives, the route and one button, before an EVM wallet connects, with a way back Home
 - Call the chains Migrate takes DUSK from Ethereum and BNB Smart Chain
 - Set section heads in small Söhne Mono capitals between grey brackets, and labels and column heads in the same type
-- Show the DUSK wordmark in the top bar, with WALLET from 1376 px
+- Show the DUSK wordmark in the top bar, with WALLET on wide screens
 - Show links in blue, and the focus ring in the same blue
 - Shorten the Staking page's Choose how to stake to Stake
 - Say on the Staking page that the rewards shown are the native stake's, and that what is staked with Sozu includes its rewards
@@ -119,7 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Give controls on phones a tap area of at least 44 px
 - Date a withdrawal found by its hash by its DuskEVM block, not by the lookup
 - Say Nothing to unstake or claim beside the native stake, not under Unstake from Sozu
-- Keep the top bar inside the window at every width, with the search as a button below 1296 px and the profile's avatar alone below 960 px
+- Keep the top bar inside the window at every width from 320 px
 
 ## [1.8.0] - 2026-03-25
 
