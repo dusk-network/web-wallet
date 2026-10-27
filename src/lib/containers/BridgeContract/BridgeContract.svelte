@@ -39,12 +39,18 @@
    * only while one is connected: without one there is nothing to read, and
    * no block to ask for.
    *
-   * @param {boolean} isConnected
+   * The watch names its chain and starts over when the wallet's chain
+   * changes: without a chain, wagmi swaps in a new watch on a chain change
+   * that stopping the first one leaves running.
+   *
+   * @param {number | undefined} chainId The connected wallet's chain, if
+   *   one the page knows.
    */
-  function watchBalance(isConnected) {
+  function watchBalance(chainId) {
     unwatchBalance();
-    unwatchBalance = isConnected
+    unwatchBalance = chainId
       ? watchBlocks(wagmiConfig, {
+          chainId,
           async onBlock() {
             if ($account.isConnected && $account.chainId && $account.address) {
               try {
@@ -83,8 +89,8 @@
     unwatchBalance();
   });
 
-  $: isConnected = Boolean($account.isConnected);
-  $: watchBalance(isConnected);
+  $: balanceChainId = $account.isConnected ? $account.chain?.id : undefined;
+  $: watchBalance(balanceChainId);
   $: ({ balance, currentProfile } = $walletStore);
   $: ({ customGasLimit, customGasPrice } = $settingsStore);
   $: gasSettings = getGasSettings(
