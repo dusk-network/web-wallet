@@ -2,6 +2,7 @@
 
 <script>
   import { onDestroy } from "svelte";
+  import { WalletConnectionGate } from "$lib/components";
   import { MigrateContract } from "$lib/containers";
   import { networkStore, operationsStore } from "$lib/stores";
 
@@ -21,5 +22,7 @@
 </script>
 
 {#if ["mainnet", "testnet"].includes(networkName)}
-  <MigrateContract migrationNetwork={networkName} />
+  <WalletConnectionGate>
+    <MigrateContract migrationNetwork={networkName} />
+  </WalletConnectionGate>
 {/if}

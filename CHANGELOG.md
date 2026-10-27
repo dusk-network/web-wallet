@@ -77,6 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Send nothing to Reown, WalletConnect or Coinbase until the Bridge or Migrate page opens, and leave out the Coinbase wallet SDKs and their telemetry
 - Stop transaction attempts when prerequisite synchronization fails or is cancelled [#953].
 - Prevent pending login migration or password setup from restoring reset wallet credentials [#953].
 - Show the public spendable balance on Send while no valid recipient is entered [#965]
