@@ -56,9 +56,12 @@ describe("searchLocally", () => {
         value: OWN,
       }),
     ]);
+    // Enter sends to a person; Shift+Enter copies the address.
     expect(searchLocally("alice", index)).toEqual([
       expect.objectContaining({
         group: "People",
+        hint: "Send",
+        href: `/dashboard/send?to=${ALICE}`,
         label: "alice.dusk",
         value: ALICE,
       }),

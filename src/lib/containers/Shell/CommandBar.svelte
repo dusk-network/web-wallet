@@ -80,9 +80,17 @@
     }
   }
 
-  /** @param {import("./search").SearchResult} result */
-  function activate(result) {
-    if (result.external && result.href) {
+  /**
+   * Opens a result: its page, or Send for a person. With Shift, a result
+   * that has an address copies it instead.
+   *
+   * @param {import("./search").SearchResult} result
+   * @param {{ copyOnly?: boolean }} [options]
+   */
+  function activate(result, { copyOnly = false } = {}) {
+    if (copyOnly && result.value) {
+      copy(result.value);
+    } else if (result.external && result.href) {
       window.open(result.href, "_blank", "noopener,noreferrer");
     } else if (result.href) {
       close();
@@ -258,7 +266,7 @@
         if (query.trim() && !found.length && lookup?.query !== query.trim()) {
           lookUp(query.trim());
         } else if (results[active]) {
-          activate(results[active]);
+          activate(results[active], { copyOnly: event.shiftKey });
         }
 
         break;
@@ -355,7 +363,9 @@
             class:command-bar__code={result.detailIsCode}>{result.detail}</span
           >
         {/if}
-        {#if !result.href && result.value}
+        {#if result.hint}
+          <span class="command-bar__hint">{result.hint}</span>
+        {:else if !result.href && result.value}
           <span class="command-bar__hint">Copy</span>
         {/if}
       </li>
@@ -371,8 +381,9 @@
   {/if}
 
   <p class="command-bar__note">
-    Searches this wallet on this device. Enter looks a .dusk name or a
-    transaction ID up on the network.
+    Searches this wallet on this device. Press Enter to open a result or send to
+    a person, Shift+Enter to copy an address, or Enter to look a .dusk name or
+    transaction up on the network.
   </p>
 </div>
 

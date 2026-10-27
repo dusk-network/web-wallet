@@ -51,6 +51,14 @@
   /** @type {(name: string) => Promise<DuskNameResolution>} */
   export let resolveName;
 
+  /**
+   * The wallet's own public accounts and shielded addresses, with how the
+   * wallet names their profile: never offered as contacts.
+   *
+   * @type {{ address: string, label: string }[]}
+   */
+  export let ownAccounts = [];
+
   /** @type {ContractGasSettings} */
   export let gasSettings;
 
@@ -609,6 +617,9 @@
     }
   }
 
+  $: own = ownAccounts.find(
+    (account) => recipientAddress && account.address === recipientAddress
+  );
   $: contacts = $contactsStore;
   $: contact = contactFor(
     contacts,
@@ -844,6 +855,8 @@
             <p class="send__card-title" id="{id}-points">
               {#if contact}
                 {contact.name}{recipientName ? ` · ${shownName}` : ""}
+              {:else if own && !recipientName}
+                Your {own.label}
               {:else if recipientName}
                 {shownName} points to {isChoice
                   ? "two addresses"
@@ -938,7 +951,7 @@
                   Public: the amount and both accounts are visible on chain.
                 {/if}
               </p>
-              {#if !contact && !isSavingContact}
+              {#if !contact && !own && !isSavingContact}
                 <Button
                   on:click={() => {
                     isSavingContact = true;

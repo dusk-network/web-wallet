@@ -63,7 +63,7 @@ describe("CommandBar", () => {
     );
     expect(
       getByText(
-        "Searches this wallet on this device. Enter looks a .dusk name or a transaction ID up on the network."
+        "Searches this wallet on this device. Press Enter to open a result or send to a person, Shift+Enter to copy an address, or Enter to look a .dusk name or transaction up on the network."
       )
     ).toBeInTheDocument();
 

@@ -1392,6 +1392,24 @@ describe("Send", () => {
       expect(title()).toBe("Alice · alice.dusk");
     });
 
+    it("should name one of the wallet's own accounts, and not offer to save it as a contact", async () => {
+      const { container, getByRole, queryByRole } = render(Send, {
+        ...baseProps,
+        ownAccounts: [
+          { address: otherAccount, label: "Profile 2 · wallet-both.dusk" },
+        ],
+      });
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: otherAccount },
+      });
+
+      expect(
+        getAsHTMLElement(container, ".send__card-title")
+      ).toHaveTextContent("Your Profile 2 · wallet-both.dusk");
+      expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
+    });
+
     it("should send to a contact picked from the list", async () => {
       saveContact({ address: otherAccount, name: "Cold storage" });
 
