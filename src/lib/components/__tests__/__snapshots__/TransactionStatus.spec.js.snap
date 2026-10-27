@@ -27,6 +27,8 @@ exports[`TransactionStatus > should say a transaction it follows is sent and pen
       Sent
     </b>
      
+    <!---->
+     
     <p
       class="svelte-1gjqv8n"
     >
@@ -38,6 +40,8 @@ exports[`TransactionStatus > should say a transaction it follows is sent and pen
   <dl
     class="transaction-status__details svelte-1gjqv8n"
   >
+    <!---->
+     
     <dt
       class="svelte-1gjqv8n"
     >

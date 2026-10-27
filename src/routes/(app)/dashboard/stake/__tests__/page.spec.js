@@ -171,10 +171,11 @@ describe("Staking", () => {
   it("says why Unstake and Claim rewards are off, without contradicting the history", async () => {
     withoutStake();
 
-    const { container, getByRole } = render(Staking);
+    const { container, queryByRole } = render(Staking);
 
-    expect(getByRole("button", { name: "Unstake" })).toBeDisabled();
-    expect(getByRole("button", { name: "Claim rewards" })).toBeDisabled();
+    // Nothing staked natively: no Unstake or Claim to grey out.
+    expect(queryByRole("button", { name: "Unstake" })).toBeNull();
+    expect(queryByRole("button", { name: "Claim rewards" })).toBeNull();
     expect(textOf(container.querySelector(".staking__actions"))).toContain(
       "Nothing staked yet, so there's nothing to unstake or claim."
     );
@@ -283,9 +284,22 @@ describe("Staking", () => {
 
     const { container, getByRole } = render(Staking);
 
+    // Next to what is staked natively, first.
     expect(
-      textOf(container.querySelectorAll(".staking__figures > div")[3])
+      Array.from(container.querySelectorAll(".staking__figures > div"), textOf)
+        .slice(0, 2)
+        .map((text) => text?.split(" ")[0])
+    ).toStrictEqual(["Staked", "With"]);
+    expect(
+      textOf(container.querySelectorAll(".staking__figures > div")[1])
     ).toBe("With Sozu 1,500 DUSK 487.8 stDUSK");
+    expect(
+      textOf(container.querySelectorAll(".staking__figures > div")[0])
+    ).toMatch(/^Staked natively /);
+    // The ways to stake come before their comparison.
+    expect(
+      Array.from(container.querySelectorAll(".staking__start a"), textOf)
+    ).toStrictEqual(["Stake more", "Stake with Sozu"]);
     expect(getByRole("link", { name: "Unstake from Sozu" })).toHaveAttribute(
       "href",
       "/some-base-path/dashboard/stake?flow=liquid&action=unstake"

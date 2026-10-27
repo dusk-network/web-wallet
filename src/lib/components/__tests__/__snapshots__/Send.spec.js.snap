@@ -8,6 +8,25 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
     aria-labelledby="some-generated-id-title"
     class="send__form svelte-x7e9dl"
   >
+    <a
+      class="send__back svelte-x7e9dl"
+      href="/some-base-path/dashboard"
+    >
+      <!---->
+      <svg
+        class="dusk-icon dusk-icon--size--default"
+        role="graphics-symbol"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
+        />
+      </svg>
+      
+      <!---->
+      Home
+    </a>
+     
     <h2
       class="send__title svelte-x7e9dl"
       id="some-generated-id-title"

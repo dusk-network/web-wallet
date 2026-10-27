@@ -84,6 +84,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Close a transaction's details with Escape, back on its row
 - Say in Send's summary which account it sends from, and on Receive what sharing an address shows
 - Darken the hint grey to meet the contrast minimum
+- Say on the Done screen what was sent to whom, with a link to its row in History, in a column with margins
+- Show what is staked with Sozu next to what is staked natively, the ways to stake before their comparison, and Unstake and Claim only once something is staked
+- Keep a contact's Save above a phone's keyboard, give Send a way back Home, and make phone tap targets 44 px
 - Offer Unlock first when a wallet is kept in this browser
 - Show amounts in one format, at most four decimals, and in full on hover, under review and in a transaction's details
 - Round a fee up to four decimals when it is the most it can cost, and to the nearest when it was paid

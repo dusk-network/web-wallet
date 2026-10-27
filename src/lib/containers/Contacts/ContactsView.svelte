@@ -553,9 +553,11 @@
       grid-template-columns: minmax(0, 1fr);
     }
 
+    /* Above a phone's keyboard, so that the form's buttons can be reached. */
     .contacts__panel {
       position: fixed;
-      inset: var(--header-height) 0 0;
+      inset: var(--header-height) 0 var(--keyboard-inset, 0px);
+      align-self: stretch;
       z-index: 11;
       height: auto;
       border-left: 0 none;

@@ -349,6 +349,17 @@
     gap: 0.625rem;
   }
 
+  /* On a phone, the buttons stay in view as the form scrolls. */
+  @media (max-width: 63.99rem) {
+    .contact-form__buttons {
+      position: sticky;
+      bottom: 0;
+      z-index: 1;
+      padding: 0.75rem 0;
+      background: var(--calm-panel);
+    }
+  }
+
   .contact-form__spacer {
     flex: 1;
   }

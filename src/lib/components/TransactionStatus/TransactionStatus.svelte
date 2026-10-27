@@ -34,6 +34,12 @@
    */
   export let maxFee;
 
+  /** What was sent and to whom, as "0.5 DUSK to Alice (alice.dusk)". */
+  export let what = "";
+
+  /** The memo it was sent with. */
+  export let memo = "";
+
   /**
    * Pending until the block with the transaction is final, or late
    * once the wallet stops following it.
@@ -92,6 +98,9 @@
   <div class="transaction-status__summary" role="status">
     <Icon className="transaction-status__icon" path={icon} size="large" />
     <b class="transaction-status__title">{title}</b>
+    {#if what}
+      <p class="transaction-status__what">{what}</p>
+    {/if}
     {#if !hash}
       <p>The wallet updates automatically.</p>
     {:else if status === "pending"}
@@ -106,6 +115,10 @@
   </div>
   {#if hash}
     <dl class="transaction-status__details">
+      {#if memo}
+        <dt>Memo</dt>
+        <dd class="transaction-status__memo">{memo}</dd>
+      {/if}
       <dt>Transaction</dt>
       <dd>
         <WithdrawalHash name="Transaction hash" value={hash} />
@@ -160,6 +173,17 @@
       & p {
         margin: 0;
       }
+    }
+
+    &__what {
+      font-size: 1.125rem;
+      font-weight: 500;
+      overflow-wrap: anywhere;
+    }
+
+    & &__memo {
+      font-family: inherit;
+      font-weight: 400;
     }
 
     &--completed :global(.transaction-status__icon) {

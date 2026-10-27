@@ -144,7 +144,12 @@ describe("Send", () => {
 
   describe("Recipient", () => {
     it("should render the one-page Send form, with its summary", () => {
-      const { container } = render(Send, baseProps);
+      const { container, getByRole } = render(Send, baseProps);
+
+      expect(getByRole("link", { name: "Home" })).toHaveAttribute(
+        "href",
+        "/some-base-path/dashboard"
+      );
 
       expect(container.firstElementChild).toMatchSnapshot();
     });
@@ -633,8 +638,13 @@ describe("Send", () => {
 
       const explorerLink = getByRole("link", { name: /explorer/i });
 
+      // What went to whom, and where the history has it.
       expect(getByRole("status")).toHaveTextContent(
-        "Sent Pending. This usually takes under a minute."
+        `Sent 567 DUSK to ${shortenAddress(shieldedAddress)} Pending. This usually takes under a minute.`
+      );
+      expect(getByRole("link", { name: "See in History" })).toHaveAttribute(
+        "href",
+        `/some-base-path/dashboard/transactions?tx=${lastTxId}`
       );
       expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
       expect(followTransaction).toHaveBeenCalledWith(
@@ -677,7 +687,9 @@ describe("Send", () => {
 
       await sendWith(getByRole);
 
-      expect(getByRole("status")).toHaveTextContent(/^Sent Pending/);
+      expect(getByRole("status")).toHaveTextContent(
+        /^Sent 567 DUSK to .+ Pending/
+      );
       expect(getByText("Network fee (at most)")).toBeInTheDocument();
       expect(getByText("0.02 DUSK")).toBeInTheDocument();
 
@@ -689,7 +701,7 @@ describe("Send", () => {
       await vi.advanceTimersToNextTimerAsync();
 
       expect(getByRole("status")).toHaveTextContent(
-        "Completed In block 4,687,200."
+        /^Completed 567 DUSK to .+ In block 4,687,200\.$/
       );
       // The fee charged, to the nearest of four decimals.
       expect(getByText("0.0019 DUSK")).toBeInTheDocument();

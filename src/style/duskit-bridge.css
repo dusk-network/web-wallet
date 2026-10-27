@@ -208,3 +208,28 @@
 
   --focus-ring-color: rgb(113 177 255 / 0.35);
 }
+
+/*
+ * Phones: everything that is tapped is at least 44 px tall, and the small
+ * round buttons 44 px wide.
+ */
+@media (max-width: 47.99rem) {
+  .dusk-button,
+  .dusk-anchor-button,
+  .dusk-select,
+  .network-pill__button,
+  .tx-detail__copy,
+  .swap-mini {
+    min-height: 44px;
+  }
+
+  .liquid-stake__tab {
+    min-height: 44px;
+  }
+
+  .home-balance__toggle,
+  .top-bar__brand {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

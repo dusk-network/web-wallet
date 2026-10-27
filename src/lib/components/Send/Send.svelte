@@ -17,6 +17,7 @@
     saveContact,
   } from "$lib/contacts";
   import { isDuskName } from "$lib/dusk-domains";
+  import { addBasePath } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
@@ -124,7 +125,7 @@
   /**
    * The transfer once sent, and the most it can cost.
    *
-   * @type {{ maxFee: bigint, operation: Promise<string> } | null}
+   * @type {{ maxFee: bigint, memo: string, operation: Promise<string>, what: string } | null}
    */
   let sent = null;
 
@@ -510,6 +511,7 @@
 
     sent = {
       maxFee: maxGasFee,
+      memo: transactionMemo,
       operation: toName
         ? execute(
             recipientAddress,
@@ -526,6 +528,7 @@
             gasPrice,
             gasLimit
           ),
+      what: `${amountText} DUSK to ${recipientLabel}`,
     };
     step = "done";
   }
@@ -657,6 +660,16 @@
   $: fromLabel =
     ownAccounts.find((account) => account.address === from)?.label ??
     (isShielded ? "Your shielded balance" : "Your public account");
+  // Who the transfer goes to, as the Done screen says it.
+  $: recipientLabel = contact
+    ? recipientName
+      ? `${contact.name} (${shownName})`
+      : contact.name
+    : own && !recipientName
+      ? `your ${own.label}`
+      : recipientName
+        ? shownName
+        : shortenAddress(recipientAddress);
   $: own = ownAccounts.find(
     (account) => recipientAddress && account.address === recipientAddress
   );
@@ -732,10 +745,18 @@
 </script>
 
 {#if step === "done" && sent}
-  <TransactionResult maxFee={sent.maxFee} operation={sent.operation} />
+  <TransactionResult
+    maxFee={sent.maxFee}
+    memo={sent.memo}
+    operation={sent.operation}
+    what={sent.what}
+  />
 {:else}
   <div class="send" class:send--review={step === "review"}>
     <section aria-labelledby="{id}-title" class="send__form">
+      <a class="send__back" href={addBasePath("/dashboard")}
+        ><Icon path={mdiArrowLeft} />Home</a
+      >
       <h2 class="send__title" id="{id}-title">Send</h2>
 
       <div class="send__field">
@@ -1253,6 +1274,27 @@
     flex-direction: column;
     gap: 1.5rem;
     min-width: 0;
+  }
+
+  .send__back {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 0.375rem;
+    min-height: 44px;
+    margin-bottom: -1rem;
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+    text-decoration: none;
+
+    &:hover {
+      color: var(--calm-text);
+    }
+
+    & :global(.dusk-icon) {
+      width: 1rem;
+      height: 1rem;
+    }
   }
 
   .send__title {

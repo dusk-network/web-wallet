@@ -71,7 +71,7 @@
   let defaultGas = gasSettings;
   let isGasValid = false;
 
-  /** @type {{ maxFee: bigint, operation: Promise<string> } | null} */
+  /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
   let sent = null;
 
   /** @param {"stake" | "unstake"} next */
@@ -123,6 +123,9 @@
           gasPrice,
           gasLimit
         ),
+        what: isStake
+          ? `${formatDuskExact(amount, language)} DUSK to Sozu`
+          : `${formatDuskExact(amount, language)} DUSK unstaked from Sozu`,
       };
     }
   }
@@ -185,6 +188,7 @@
       leaveText="Back to staking"
       maxFee={sent.maxFee}
       operation={sent.operation}
+      what={sent.what}
     />
   </div>
 {:else}

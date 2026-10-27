@@ -115,7 +115,7 @@ describe("NativeStake", () => {
   });
 
   it("stakes the amount typed, with the gas shown, and shows the result", async () => {
-    const { getByLabelText, getByRole, container } = render(
+    const { container, findByText, getByLabelText, getByRole } = render(
       NativeStake,
       baseProps
     );
@@ -146,6 +146,7 @@ describe("NativeStake", () => {
       "href",
       "/some-base-path/dashboard/stake"
     );
+    expect(await findByText("1,200.5 DUSK to your stake")).toBeInTheDocument();
   });
 
   it("shows the amount typed in the summary, muted, while it can't be staked", async () => {
