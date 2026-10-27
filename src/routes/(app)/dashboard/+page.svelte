@@ -9,6 +9,7 @@
   import { activityState, isHistoryEnabled } from "$lib/activity";
   import { isStakingRow } from "$lib/activity/present";
   import { contractDescriptors } from "$lib/contracts";
+  import { SectionHead } from "$lib/components";
   import {
     ActivityPanel,
     ExplainerCards,
@@ -116,7 +117,9 @@
     {#if isEnabled("migrate")}
       <p class="home__note">
         Have DUSK on Ethereum or BNB Smart Chain?
-        <a href={addBasePath("/dashboard/migrate")}>Migrate it to Dusk</a>
+        <a class="text-link" href={addBasePath("/dashboard/migrate")}
+          >Migrate it to Dusk</a
+        >
       </p>
     {/if}
   </div>
@@ -149,7 +152,7 @@
         state={$activityState}
       />
     {:else}
-      <h2 class="home__side-title">Activity</h2>
+      <SectionHead>Activity</SectionHead>
       <p class="home__note home__note--side">
         Transaction history isn't available here yet. The Dusk explorer has your
         transactions.
@@ -198,11 +201,6 @@
     min-height: calc(100vh - var(--header-height));
   }
 
-  .home__side-title {
-    font-size: 1rem;
-    font-weight: 500;
-  }
-
   .home__note--side {
     margin-top: 0.75rem;
   }
@@ -213,7 +211,6 @@
     font-size: 0.875rem;
 
     & a {
-      color: var(--calm-text);
       text-underline-offset: 3px;
     }
   }

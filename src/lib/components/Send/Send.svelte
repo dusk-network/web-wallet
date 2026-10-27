@@ -47,6 +47,7 @@
     FullAddress,
     GasSettings,
     ScanQR,
+    SectionHead,
     TransactionResult,
   } from "$lib/components";
 
@@ -996,8 +997,9 @@
                       <p class="send__name-hint" id="{optionId}-hint">
                         Not enough shielded DUSK ·
                         {#if canShield}
-                          <AppAnchor href="/dashboard/allocate"
-                            >Shield first</AppAnchor
+                          <AppAnchor
+                            className="text-link"
+                            href="/dashboard/allocate">Shield first</AppAnchor
                           >
                         {:else}
                           Shield first
@@ -1016,7 +1018,9 @@
               <p class="send__name-hint">
                 Not enough shielded DUSK ·
                 {#if canShield}
-                  <AppAnchor href="/dashboard/allocate">Shield first</AppAnchor>
+                  <AppAnchor className="text-link" href="/dashboard/allocate"
+                    >Shield first</AppAnchor
+                  >
                 {:else}
                   Shield first
                 {/if}
@@ -1171,7 +1175,7 @@
     </section>
 
     <aside aria-labelledby="{id}-summary" class="send__summary">
-      <h2 class="send__summary-title" id="{id}-summary">Summary</h2>
+      <SectionHead id="{id}-summary">Summary</SectionHead>
       <dl class="send__rows">
         <div>
           <dt>From</dt>
@@ -1601,11 +1605,6 @@
     padding: 1.5rem;
     border-radius: 1rem;
     background: var(--calm-s1);
-  }
-
-  .send__summary-title {
-    font-size: 1.0625rem;
-    font-weight: 500;
   }
 
   .send__rows {

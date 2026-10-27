@@ -173,7 +173,9 @@
             <p>
               Please ensure the password entered matches the one you have set up
               while setting up the wallet. If you have forgotten your password,
-              you can <AppAnchor href="/setup/restore">restore</AppAnchor> your wallet.
+              you can <AppAnchor className="text-link" href="/setup/restore"
+                >restore</AppAnchor
+              > your wallet.
             </p>
           </Banner>
         {:else if error}

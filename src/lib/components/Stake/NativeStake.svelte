@@ -202,8 +202,9 @@
             <div>
               <p><strong>{check.error}</strong></p>
               {#if check.isMinimum && liquidHref}
-                <a class="native-stake__link" href={addBasePath(liquidHref)}
-                  >{liquidText}</a
+                <a
+                  class="native-stake__link text-link"
+                  href={addBasePath(liquidHref)}>{liquidText}</a
                 >
               {/if}
             </div>
@@ -215,8 +216,9 @@
               the network fee.
             </p>
             {#if liquidHref}
-              <a class="native-stake__link" href={addBasePath(liquidHref)}
-                >{liquidText}</a
+              <a
+                class="native-stake__link text-link"
+                href={addBasePath(liquidHref)}>{liquidText}</a
               >
             {/if}
           </div>
@@ -233,7 +235,7 @@
             A computer that runs Dusk's node software and stays online, with {profileName}'s
             consensus key from this recovery phrase.
             <a
-              class="native-stake__link"
+              class="native-stake__link text-link"
               href={DOCUMENTATION_LINKS.STAKING_BASICS}
               rel="noopener noreferrer"
               target="_blank"
@@ -424,7 +426,6 @@
   }
 
   .native-stake__link {
-    color: var(--calm-text);
     text-decoration: underline;
     text-underline-offset: 2px;
 

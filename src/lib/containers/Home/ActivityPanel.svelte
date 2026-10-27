@@ -3,6 +3,7 @@
   import { sozuPools } from "$lib/sozu";
   import { mdiChevronRight } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
+  import { SectionHead } from "$lib/components";
   import {
     claimedWithdrawals,
     configuredBridgeContracts,
@@ -75,9 +76,9 @@
 
 <section aria-labelledby="activity-panel-title" class="activity-panel">
   <header class="activity-panel__header">
-    <h2 id="activity-panel-title">{title}</h2>
+    <SectionHead id="activity-panel-title">{title}</SectionHead>
     <a
-      class="activity-panel__more"
+      class="activity-panel__more text-link"
       href={addBasePath(
         `/dashboard/transactions${only ? `?kind=${only}` : ""}`
       )}>History <Icon path={mdiChevronRight} /></a
@@ -138,11 +139,6 @@
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-
-    & h2 {
-      font-size: 1rem;
-      font-weight: 500;
-    }
   }
 
   .activity-panel__more {
@@ -150,17 +146,12 @@
     align-items: center;
     gap: 0.125rem;
     min-height: 44px;
-    color: var(--calm-muted);
     font-size: 0.84375rem;
     text-decoration: none;
 
     & :global(.dusk-icon) {
       width: 0.9375rem;
       height: 0.9375rem;
-    }
-
-    &:hover {
-      color: var(--calm-text);
     }
   }
 

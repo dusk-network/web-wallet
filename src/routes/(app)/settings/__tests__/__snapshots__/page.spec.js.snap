@@ -390,7 +390,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
       <p>
         Read the 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://docs.dusk.network"
           rel="noopener noreferrer"
           target="_blank"
@@ -401,7 +401,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
         <!---->
         , ask on 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://discord.gg/dusk-official"
           rel="noopener noreferrer"
           target="_blank"
@@ -412,7 +412,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
         <!---->
         , or report issues on 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://github.com/dusk-network/web-wallet/issues"
           rel="noopener noreferrer"
           target="_blank"
@@ -895,7 +895,7 @@ exports[`Settings > should render the settings page displaying the status of the
       <p>
         Read the 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://docs.dusk.network"
           rel="noopener noreferrer"
           target="_blank"
@@ -906,7 +906,7 @@ exports[`Settings > should render the settings page displaying the status of the
         <!---->
         , ask on 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://discord.gg/dusk-official"
           rel="noopener noreferrer"
           target="_blank"
@@ -917,7 +917,7 @@ exports[`Settings > should render the settings page displaying the status of the
         <!---->
         , or report issues on 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://github.com/dusk-network/web-wallet/issues"
           rel="noopener noreferrer"
           target="_blank"
@@ -1383,7 +1383,7 @@ exports[`Settings > should render the settings page displaying the status of the
       <p>
         Read the 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://docs.dusk.network"
           rel="noopener noreferrer"
           target="_blank"
@@ -1394,7 +1394,7 @@ exports[`Settings > should render the settings page displaying the status of the
         <!---->
         , ask on 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://discord.gg/dusk-official"
           rel="noopener noreferrer"
           target="_blank"
@@ -1405,7 +1405,7 @@ exports[`Settings > should render the settings page displaying the status of the
         <!---->
         , or report issues on 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://github.com/dusk-network/web-wallet/issues"
           rel="noopener noreferrer"
           target="_blank"
@@ -1951,7 +1951,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
       <p>
         Read the 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://docs.dusk.network"
           rel="noopener noreferrer"
           target="_blank"
@@ -1962,7 +1962,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
         <!---->
         , ask on 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://discord.gg/dusk-official"
           rel="noopener noreferrer"
           target="_blank"
@@ -1973,7 +1973,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
         <!---->
         , or report issues on 
         <a
-          class="dusk-anchor dusk-anchor--on-surface"
+          class="dusk-anchor dusk-anchor--on-surface text-link"
           href="https://github.com/dusk-network/web-wallet/issues"
           rel="noopener noreferrer"
           target="_blank"

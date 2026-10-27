@@ -27,6 +27,7 @@ export { default as Receive } from "./Receive/Receive.svelte";
 export { default as ReviewAmount } from "./ReviewAmount/ReviewAmount.svelte";
 export { default as Send } from "./Send/Send.svelte";
 export { default as ScanQR } from "./ScanQR/ScanQR.svelte";
+export { default as SectionHead } from "./SectionHead/SectionHead.svelte";
 export { default as SyncBar } from "./SyncBar/SyncBar.svelte";
 export { default as TransactionResult } from "./TransactionResult/TransactionResult.svelte";
 export { default as TransactionStatus } from "./TransactionStatus/TransactionStatus.svelte";

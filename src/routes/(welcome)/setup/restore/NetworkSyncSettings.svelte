@@ -82,6 +82,7 @@
   <p>
     Doing so can significantly reduce sync times. However, setting a wrong block
     can lead to wrong balance or missing transactions. Find out more in our <AppAnchor
+      className="text-link"
       href={DOCUMENTATION_LINKS.RESTORE_BLOCK_HEIGHT}
       rel="noopener noreferrer"
       target="_blank">documentation</AppAnchor

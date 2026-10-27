@@ -1,0 +1,63 @@
+/*
+ * The ledger's type: labels and column heads in small capitals in Söhne
+ * Mono, a little apart; section heads a size up, between brackets that are
+ * drawn, not read (see SectionHead). A page's title stays in Söhne.
+ */
+.ledger-label {
+  font-family: var(--code-font-family);
+  font-size: var(--ledger-font-size);
+  font-weight: 400;
+  letter-spacing: var(--ledger-letter-spacing);
+  text-transform: uppercase;
+}
+
+.section-head {
+  font-family: var(--code-font-family);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: var(--ledger-letter-spacing);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.section-head__bracket {
+  color: var(--calm-muted);
+  font-weight: 400;
+}
+
+.section-head__bracket--open {
+  margin-right: 0.6em;
+}
+
+.section-head__bracket--close {
+  margin-left: 0.6em;
+}
+
+/*
+ * Phones: the opening bracket and its space hang left of the content's
+ * edge, 12 px wide, so that the head's word lines up with what is under it
+ * and the bracket keeps 4 px from the screen's edge.
+ */
+@media (max-width: 47.99rem) {
+  .section-head__bracket--open {
+    display: inline-block;
+    width: 0.75rem;
+    margin-right: 0;
+    margin-left: -0.75rem;
+  }
+}
+
+/*
+ * A text link, or a link to a chain object: in the chain's blue, which no
+ * button, amount or row has, and underlined under the pointer.
+ */
+a.text-link,
+a.text-link:visited,
+a.text-link:hover,
+a.text-link:active {
+  color: var(--chain-blue);
+}
+
+a.text-link:hover {
+  text-decoration-line: underline;
+}

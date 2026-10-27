@@ -224,7 +224,7 @@
       <p>
         Sozu, not Dusk, holds the DUSK you stake here and returns it under
         Sozu's own rules: <a
-          class="liquid-stake__link"
+          class="liquid-stake__link text-link"
           href={SOZU_URL}
           rel="noopener noreferrer"
           target="_blank">sozu.fi</a
@@ -501,7 +501,6 @@
   }
 
   .liquid-stake__link {
-    color: var(--calm-text);
     text-decoration: underline;
     text-underline-offset: 2px;
   }

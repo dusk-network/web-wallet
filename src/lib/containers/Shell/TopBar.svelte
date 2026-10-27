@@ -8,7 +8,7 @@
   import { networkStore, walletStore } from "$lib/stores";
   import { nodeBaseUrl } from "$lib/url";
 
-  import DuskGlyph from "./DuskGlyph.svelte";
+  import DuskWordmark from "./DuskWordmark.svelte";
   import NetworkPill from "./NetworkPill.svelte";
 
   /** @type {import("./navigation").ShellTab[]} */
@@ -42,8 +42,9 @@
     class="top-bar__brand"
     href={addBasePath("/dashboard")}
   >
-    <DuskGlyph />
-    <span class="top-bar__brand-name">Dusk Wallet</span>
+    <DuskWordmark />
+    <span aria-hidden="true" class="top-bar__divider"></span>
+    <span class="top-bar__app">Wallet</span>
   </a>
 
   <nav aria-label="Wallet pages" class="top-bar__tabs">
@@ -107,17 +108,32 @@
     background: var(--calm-s0);
   }
 
+  /* The wordmark, a thin line and WALLET in the ledger's type. */
   .top-bar__brand {
     display: flex;
     align-items: center;
-    gap: 0.625rem;
+    gap: 0.75rem;
     margin-right: 1.375rem;
     min-height: 44px;
     color: var(--calm-text);
-    font-size: 0.96875rem;
-    font-weight: 500;
     text-decoration: none;
     white-space: nowrap;
+  }
+
+  .top-bar__divider {
+    width: 1px;
+    height: 1rem;
+    background-color: color-mix(in oklab, var(--calm-text), transparent 72%);
+    flex: 0 0 auto;
+  }
+
+  .top-bar__app {
+    font-family: var(--code-font-family);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    line-height: 1;
+    text-transform: uppercase;
   }
 
   .top-bar__tabs {
@@ -223,6 +239,17 @@
     }
   }
 
+  /*
+   * The wordmark alone below 1280 px: WALLET fits beside the tabs, the
+   * search and the longest profile name only from there.
+   */
+  @media (max-width: 79.99rem) {
+    .top-bar__divider,
+    .top-bar__app {
+      display: none;
+    }
+  }
+
   /* Narrow screens: a search button, then the phone's bar. */
   @media (max-width: 63.99rem) {
     .top-bar__search {
@@ -255,7 +282,6 @@
       margin-right: 0;
     }
 
-    .top-bar__brand-name,
     .top-bar__tabs {
       display: none;
     }

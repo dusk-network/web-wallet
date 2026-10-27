@@ -81,6 +81,7 @@
       <Icon path={mdiTimerSand} size="large" />
       <span>Confirming the migration…</span>
       <AppAnchor
+        className="text-link"
         href={`${chain.blockExplorers.default.url}/tx/${migrationHash}`}
         target="_blank"
         rel="noopener noreferrer">Track the transaction</AppAnchor

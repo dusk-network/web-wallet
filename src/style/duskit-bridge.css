@@ -20,19 +20,29 @@
   --calm-online: #1e8e4e;
   --calm-pill: #141416;
   --calm-on-pill: #f6f5f2;
-  --calm-focus: #0b66d6;
   --calm-scrim: rgb(20 20 22 / 0.4);
+
+  /*
+   * The chain's blue, for links to chain objects, text links and the focus
+   * ring, and nothing else: 5.47:1 on the light page, 8.55:1 on the dark.
+   */
+  --chain-blue: #005ed1;
+  --calm-focus: var(--chain-blue);
 
   /* Violet is a test network, as on the bridge. */
   --calm-test: #5b4bc4;
   --calm-test-bg: #eeebfb;
   --calm-test-line: rgb(91 75 196 / 0.25);
 
-  /* Addresses and hashes: the system code font, evenly spaced. */
+  /* Addresses, hashes, IDs and heights: Söhne Mono, evenly spaced. */
   --code-font-family:
-    ui-monospace, "SF Mono", sfmono-regular, menlo, "Cascadia Mono", consolas,
-    "Ubuntu Sans Mono", "Ubuntu Mono", monospace;
+    "Soehne Mono", ui-monospace, "SF Mono", sfmono-regular, menlo,
+    "Cascadia Mono", consolas, "Ubuntu Sans Mono", "Ubuntu Mono", monospace;
   --mono-font-family: var(--code-font-family);
+
+  /* The ledger's type: small capitals in Söhne Mono, a little apart. */
+  --ledger-font-size: 0.6875rem;
+  --ledger-letter-spacing: 0.08em;
 
   /*
    * Compatibility bridge for app-local components that still consume the
@@ -87,7 +97,7 @@
   --surface-border-color-subtle: var(--calm-line);
   --surface-hover-color: var(--calm-s2);
   --surface-soft-color: var(--calm-s2);
-  --focus-ring-color: rgb(11 102 214 / 0.3);
+  --focus-ring-color: color-mix(in srgb, var(--chain-blue) 35%, transparent);
   --progress-bg-color-muted: var(--calm-s3);
   --status-error-bg-color: var(--calm-s1);
   --status-success-bg-color: var(--calm-s1);
@@ -200,13 +210,15 @@
   --calm-online: #3fb871;
   --calm-pill: #f2f0eb;
   --calm-on-pill: #141416;
-  --calm-focus: #71b1ff;
   --calm-scrim: rgb(5 5 6 / 0.66);
   --calm-test: #b9aeff;
   --calm-test-bg: #1b1830;
   --calm-test-line: rgb(185 174 255 / 0.28);
 
-  --focus-ring-color: rgb(113 177 255 / 0.35);
+  --chain-blue: #71b1ff;
+
+  /* Over Duskit's own ring for the dark theme. */
+  --focus-ring-color: color-mix(in srgb, var(--chain-blue) 35%, transparent);
 }
 
 /*

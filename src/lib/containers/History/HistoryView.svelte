@@ -219,10 +219,10 @@
       <table class="history__table">
         <thead>
           <tr>
-            <th scope="col">Transaction</th>
-            <th class="history__col-type" scope="col">Type</th>
-            <th class="history__col-time" scope="col">Time</th>
-            <th class="history__col-amount" scope="col">Amount</th>
+            <th class="ledger-label" scope="col">Transaction</th>
+            <th class="history__col-type ledger-label" scope="col">Type</th>
+            <th class="history__col-time ledger-label" scope="col">Time</th>
+            <th class="history__col-amount ledger-label" scope="col">Amount</th>
           </tr>
         </thead>
         {#each groups as group (group.key)}
@@ -444,8 +444,6 @@
       padding: 0 1rem 0.625rem;
       border-bottom: 1px solid var(--calm-line2);
       color: var(--calm-subtle);
-      font-size: 0.78125rem;
-      font-weight: 400;
       text-align: left;
     }
   }

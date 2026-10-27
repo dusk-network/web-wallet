@@ -516,7 +516,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
         <p>
           Accepting means you agree to the 
           <a
-            class="dusk-anchor dusk-anchor--on-surface"
+            class="dusk-anchor dusk-anchor--on-surface text-link"
             href="https://dusk.network/terms-of-use/"
             rel="noopener noreferrer"
             target="_blank"
@@ -529,7 +529,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
           <!---->
            and the 
           <a
-            class="dusk-anchor dusk-anchor--on-surface"
+            class="dusk-anchor dusk-anchor--on-surface text-link"
             href="https://dusk.network/privacy-policy/"
             rel="noopener noreferrer"
             target="_blank"

@@ -2,7 +2,7 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { mdiClose, mdiInformationOutline } from "@mdi/js";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
-  import { FullAddress } from "$lib/components";
+  import { FullAddress, SectionHead } from "$lib/components";
   import { addressType, findContact, saveContact } from "$lib/contacts";
   import { isDuskName } from "$lib/dusk-domains";
 
@@ -112,7 +112,9 @@
   bind:this={form}
 >
   <header class="contact-form__header">
-    <h2 id="contact-form-title">{contact ? "Edit contact" : "New contact"}</h2>
+    <SectionHead id="contact-form-title"
+      >{contact ? "Edit contact" : "New contact"}</SectionHead
+    >
     <button
       aria-label="Close without saving"
       class="contact-form__close"
@@ -252,11 +254,6 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    & h2 {
-      font-size: 1.25rem;
-      font-weight: 500;
-    }
   }
 
   .contact-form__close {

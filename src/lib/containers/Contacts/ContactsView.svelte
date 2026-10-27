@@ -8,7 +8,7 @@
     mdiSendOutline,
   } from "@mdi/js";
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
-  import { BalanceValue } from "$lib/components";
+  import { BalanceValue, SectionHead } from "$lib/components";
   import { removeContact } from "$lib/contacts";
   import { sozuPools } from "$lib/sozu";
   import {
@@ -122,9 +122,11 @@
       </p>
       {#if paid.length}
         <section aria-labelledby="contacts-paid" class="contacts__paid">
-          <h3 class="contacts__paid-title" id="contacts-paid">
-            People you've paid
-          </h3>
+          <SectionHead
+            className="contacts__paid-title"
+            id="contacts-paid"
+            level={3}>People you've paid</SectionHead
+          >
           <ul>
             {#each paid as person (person.address)}
               {@const who = person.duskName ?? shortAddress(person.address)}
@@ -167,11 +169,17 @@
       <table class="contacts__table">
         <thead>
           <tr>
-            <th scope="col">Name</th>
-            <th class="contacts__col-dusk" scope="col">.dusk name</th>
-            <th class="contacts__col-type" scope="col">Type</th>
-            <th class="contacts__col-address" scope="col">Address</th>
-            <th class="contacts__col-last" scope="col">Last activity</th>
+            <th class="ledger-label" scope="col">Name</th>
+            <th class="contacts__col-dusk ledger-label" scope="col"
+              >.dusk name</th
+            >
+            <th class="contacts__col-type ledger-label" scope="col">Type</th>
+            <th class="contacts__col-address ledger-label" scope="col"
+              >Address</th
+            >
+            <th class="contacts__col-last ledger-label" scope="col"
+              >Last activity</th
+            >
             <th class="contacts__col-send" scope="col"
               ><span class="sr-only">Send</span></th
             >
@@ -396,7 +404,6 @@
       padding: 0.625rem 0.75rem;
       border-bottom: 1px solid var(--calm-line2);
       color: var(--calm-muted);
-      font-weight: 400;
       text-align: left;
     }
 
@@ -485,10 +492,8 @@
     }
   }
 
-  .contacts__paid-title {
+  .contacts__paid :global(.contacts__paid-title) {
     margin: 0 0 0.5rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
   }
 
   .contacts__person {

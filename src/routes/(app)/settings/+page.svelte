@@ -279,16 +279,19 @@
       </header>
       <p>
         Read the <Anchor
+          className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://docs.dusk.network">Dusk Docs</Anchor
         >, ask on
         <Anchor
+          className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://discord.gg/dusk-official">Discord</Anchor
         >, or report issues on
         <Anchor
+          className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://github.com/dusk-network/web-wallet/issues"

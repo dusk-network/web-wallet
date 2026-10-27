@@ -48,7 +48,7 @@
 
 <section aria-labelledby="home-balance-label" class="home-balance">
   <div class="home-balance__label">
-    <h2 id="home-balance-label">Total balance</h2>
+    <h2 class="ledger-label" id="home-balance-label">Total balance</h2>
     <!-- Named for what it does next. -->
     <button
       aria-label={toggleLabel}
@@ -80,7 +80,9 @@
   </div>
   <p class="home-balance__legend">
     <span
-      ><i class="home-balance__key home-balance__key--public"></i>Public
+      ><i class="home-balance__key home-balance__key--public"></i><span
+        class="ledger-label">Public</span
+      >
       <b
         ><BalanceValue
           exact={formatDuskExact(unshielded, locale)}
@@ -89,7 +91,9 @@
       ></span
     >
     <span
-      ><i class="home-balance__key home-balance__key--shielded"></i>Shielded
+      ><i class="home-balance__key home-balance__key--shielded"></i><span
+        class="ledger-label">Shielded</span
+      >
       <b
         ><BalanceValue
           exact={formatDuskExact(shielded, locale)}
@@ -106,11 +110,6 @@
     align-items: center;
     gap: 0.25rem;
     color: var(--calm-muted);
-
-    & h2 {
-      font-size: 0.875rem;
-      font-weight: 400;
-    }
   }
 
   .home-balance__toggle {

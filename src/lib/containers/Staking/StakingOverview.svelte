@@ -4,7 +4,7 @@
   import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { Button, Icon } from "$lib/dusk/components";
-  import { AppAnchorButton, BalanceValue } from "$lib/components";
+  import { AppAnchorButton, BalanceValue, SectionHead } from "$lib/components";
   import { goto } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
   import { duskPerStDusk, feePercent } from "$lib/sozu/amounts";
@@ -114,7 +114,7 @@
         <dl class="staking__figures">
           {#each figures as figure (figure.label)}
             <div>
-              <dt>{figure.label}</dt>
+              <dt class="ledger-label">{figure.label}</dt>
               <dd>
                 <span class="staking__amount"
                   ><span class="staking__figure"
@@ -177,7 +177,7 @@
       {/if}
     </div>
 
-    <h3 class="staking__choose">Choose how to stake</h3>
+    <SectionHead className="staking__choose" level={3}>Stake</SectionHead>
 
     <div class="staking__start">
       <AppAnchorButton
@@ -243,7 +243,7 @@
             Needs your own Dusk node: a computer that runs Dusk's node software
             and stays online.
             <a
-              class="compare__link"
+              class="compare__link text-link"
               href={DOCUMENTATION_LINKS.STAKING_BASICS}
               rel="noopener noreferrer"
               target="_blank">What's a node? <Icon path={mdiOpenInNew} /></a
@@ -301,7 +301,7 @@
             <td data-way="Liquid staking (Sozu, third party)">
               Sozu's contract and rules apply:
               <a
-                class="compare__link"
+                class="compare__link text-link"
                 href={SOZU_URL}
                 rel="noopener noreferrer"
                 target="_blank">sozu.fi <Icon path={mdiOpenInNew} /></a
@@ -324,7 +324,7 @@
         title="Staking activity"
       />
     {:else}
-      <h2 class="staking__side-title">Staking activity</h2>
+      <SectionHead>Staking activity</SectionHead>
       <p class="staking__reason">
         Transaction history isn't available here yet. The Dusk explorer has your
         transactions.
@@ -377,7 +377,6 @@
 
     & dt {
       color: var(--calm-muted);
-      font-size: 0.875rem;
     }
 
     & dd {
@@ -447,10 +446,8 @@
     font-size: 0.875rem;
   }
 
-  .staking__choose {
+  .staking__main :global(.staking__choose) {
     margin: 2rem 0 0.75rem;
-    font-size: 1.0625rem;
-    font-weight: 500;
   }
 
   .compare {
@@ -523,7 +520,6 @@
   }
 
   .compare__link {
-    color: var(--calm-text);
     text-decoration: underline;
     text-underline-offset: 2px;
     white-space: nowrap;
@@ -558,11 +554,6 @@
     padding: 1.5rem 1.5rem 2rem;
     border-left: 1px solid var(--calm-line);
     background: var(--calm-panel);
-  }
-
-  .staking__side-title {
-    font-size: 1rem;
-    font-weight: 500;
   }
 
   @media (max-width: 79.99rem) {

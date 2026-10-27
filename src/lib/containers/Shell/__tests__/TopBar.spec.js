@@ -50,6 +50,21 @@ describe("TopBar", () => {
     );
   });
 
+  it("shows the DUSK wordmark, a line and WALLET, named for screen readers", () => {
+    const { getByRole } = render(TopBar, { activeTab: "home", tabs });
+    const brand = getByRole("link", { name: "Dusk Wallet, home" });
+
+    expect(brand.querySelector("svg.dusk-wordmark")).toHaveAttribute(
+      "aria-hidden",
+      "true"
+    );
+    expect(brand.querySelector(".top-bar__divider")).toHaveAttribute(
+      "aria-hidden",
+      "true"
+    );
+    expect(brand).toHaveTextContent(/^Wallet$/);
+  });
+
   it("opens the search", async () => {
     const search = vi.fn();
     const { getByRole } = render(TopBar, {
