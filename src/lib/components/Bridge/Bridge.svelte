@@ -519,6 +519,12 @@
     askWaitingPeriod();
   }
 
+  // A review needs its EVM wallet: without one, back to the form, which
+  // offers to connect it.
+  $: if (step === "review" && !isConnected) {
+    edit();
+  }
+
   $: withdrawalTime = roughDuration(
     WITHDRAWAL_REPORT_SECONDS +
       Number(withdrawalWaitingPeriod ?? WITHDRAWAL_WAITING_PERIOD_SECONDS)
@@ -845,7 +851,7 @@
           variant="secondary"
         />
         <Button
-          disabled={isNextButtonDisabled}
+          disabled={isNextButtonDisabled || !isConnected}
           icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
           on:click={send}
           text="Send"

@@ -453,4 +453,23 @@ describe("Bridge", () => {
       getByRole("button", { name: "From: DuskEVM. Choose the network" })
     ).toBeInTheDocument();
   });
+
+  it("should leave the review for the form when the EVM wallet disconnects", async () => {
+    const { getByRole, queryByRole } = render(Bridge, baseProps);
+
+    await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
+    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+
+    expect(getByRole("button", { name: "Send" })).toBeEnabled();
+
+    /** @type {import("svelte/store").Writable<any>} */ (account).set({
+      isConnected: false,
+    });
+    await tick();
+
+    expect(queryByRole("button", { name: "Send" })).toBeNull();
+    expect(
+      getByRole("button", { name: "Connect a DuskEVM wallet" })
+    ).toBeEnabled();
+  });
 });

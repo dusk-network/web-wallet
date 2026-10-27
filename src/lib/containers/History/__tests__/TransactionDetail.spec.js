@@ -148,4 +148,67 @@ describe("TransactionDetail", () => {
       `/explorer/blocks/block?id=${"bb".repeat(32)}`
     );
   });
+
+  it("should show a nonce only for the public, final row shown, never one from before", async () => {
+    /** @type {Map<string, PromiseWithResolvers<string | null>>} */
+    const lookups = new Map();
+    const loadNonce = vi.fn((/** @type {string} */ hash) => {
+      /** @type {PromiseWithResolvers<string | null>} */
+      const lookup = Promise.withResolvers();
+
+      lookups.set(hash, lookup);
+
+      return lookup.promise;
+    });
+    const transfer = {
+      blockHash: undefined,
+      contractId: undefined,
+      kind: /** @type {const} */ ("transfer"),
+      to: "3".repeat(60),
+    };
+    const publicRow = row({ ...transfer, hash: "a1".repeat(32) });
+    const shieldedRow = row({
+      ...transfer,
+      hash: "a2".repeat(32),
+      privacy: "shielded",
+      source: "shielded",
+    });
+    const pending = row({
+      ...transfer,
+      hash: "a3".repeat(32),
+      source: "local",
+    });
+    const shown = (/** @type {ActivityRow} */ next) => ({
+      presentation: describeRow(next, context),
+      row: next,
+    });
+    const { queryByText, rerender } = show(publicRow, {}, { loadNonce });
+    const answer = async (/** @type {string} */ hash, value = "110") => {
+      lookups.get(hash)?.resolve(value);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    };
+
+    await answer(publicRow.hash);
+
+    expect(queryByText("110")).toBeInTheDocument();
+
+    // A shielded row has none: the one shown before goes.
+    await rerender(shown(shieldedRow));
+
+    expect(queryByText("Nonce")).toBeNull();
+
+    // An answer that comes after its row was left is dropped.
+    await rerender(shown(publicRow));
+    await rerender(shown(pending));
+    await answer(publicRow.hash, "111");
+
+    expect(queryByText("Nonce")).toBeNull();
+    expect(loadNonce).not.toHaveBeenCalledWith(pending.hash);
+
+    // The same row, once final, is looked up.
+    await rerender(shown({ ...pending, source: "archive" }));
+    await answer(pending.hash, "112");
+
+    expect(queryByText("112")).toBeInTheDocument();
+  });
 });

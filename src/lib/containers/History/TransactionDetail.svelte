@@ -93,20 +93,33 @@
     }
   }
 
-  /** The transaction the nonce shown is of. */
+  /**
+   * The row the nonce shown is of, with whether it can have one: a new row,
+   * or the same one become public and final, starts over, and an answer for
+   * a row shown before is dropped.
+   */
   let nonceOf = "";
 
   /** @type {string | null} */
   let nonce = null;
 
-  /** @param {string} hash */
-  async function showNonce(hash) {
-    nonceOf = hash;
+  /**
+   * @param {string} hash
+   * @param {boolean} canHaveOne Whether the row is public and final
+   */
+  async function showNonce(hash, canHaveOne) {
+    const key = `${hash} ${canHaveOne}`;
+
+    nonceOf = key;
     nonce = null;
+
+    if (!canHaveOne) {
+      return;
+    }
 
     const found = await loadNonce(hash).catch(() => null);
 
-    if (nonceOf === hash) {
+    if (nonceOf === key) {
       nonce = found;
     }
   }
@@ -151,12 +164,9 @@
     addressType(String(p.counterparty)) !== "unknown";
   $: canSendAgain =
     p.icon === "sent" && !!p.counterparty && row.kind === "transfer";
-  $: if (
-    row.hash !== nonceOf &&
-    row.privacy !== "shielded" &&
-    row.source !== "local"
-  ) {
-    showNonce(row.hash);
+  $: hasNonce = row.privacy !== "shielded" && row.source !== "local";
+  $: if (`${row.hash} ${hasNonce}` !== nonceOf) {
+    showNonce(row.hash, hasNonce);
   }
   $: known = p.counterparty ? contractLabel(p.counterparty, network) : "";
   $: isSent = row.direction !== "in" && p.icon !== "received";
