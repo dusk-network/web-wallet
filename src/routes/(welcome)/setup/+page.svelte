@@ -16,27 +16,29 @@
     <h2 class="h1 setup-heading">Dusk Web Wallet</h2>
 
     <div class="setup-content__options">
+      <!-- Coming back, unlocking comes first; a new wallet comes second. -->
       <div class="setup-content__options-group">
+        {#if userId}
+          <AppAnchorButton
+            href="/unlock"
+            text="Unlock"
+            icon={{ path: mdiKeyOutline }}
+          />
+        {/if}
         <AppAnchorButton
           href="/setup/create"
+          variant={userId ? "tertiary" : "primary"}
           text="Create new wallet"
           icon={{ path: mdiWalletOutline }}
         />
         <AppAnchorButton
           href="/setup/restore/"
           variant="tertiary"
-          text="Restore Wallet"
+          text="Restore wallet"
           icon={{ path: mdiRestore }}
         />
       </div>
       <Animation />
-      {#if userId}
-        <AppAnchorButton
-          href="/unlock"
-          text="Unlock Wallet"
-          icon={{ path: mdiKeyOutline }}
-        />
-      {/if}
     </div>
   </div>
 </section>

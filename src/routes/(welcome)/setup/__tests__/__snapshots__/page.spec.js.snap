@@ -19,6 +19,8 @@ exports[`Setup > should render the Setup page 1`] = `
       <div
         class="setup-content__options-group svelte-r2q2pe"
       >
+        <!---->
+         
         <a
           aria-disabled="false"
           class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default dusk-icon-button--labeled"
@@ -73,7 +75,7 @@ exports[`Setup > should render the Setup page 1`] = `
           <span
             class="dusk-anchor-button__text"
           >
-            Restore Wallet
+            Restore wallet
           </span>
           <!---->
           
@@ -119,8 +121,6 @@ exports[`Setup > should render the Setup page 1`] = `
     }
         </style>
       </css-doodle>
-      <!---->
-       
       <!---->
     </div>
   </div>

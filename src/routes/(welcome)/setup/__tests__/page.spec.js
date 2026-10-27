@@ -26,18 +26,24 @@ describe("Setup", () => {
   it("should offer a first-time visitor to create or restore a wallet, and nothing to unlock", () => {
     const { getByRole, queryByRole } = render(Setup, {});
 
-    expect(getByRole("link", { name: "Create new wallet" })).toBeVisible();
-    expect(getByRole("link", { name: "Restore Wallet" })).toBeVisible();
-    expect(queryByRole("link", { name: "Unlock Wallet" })).toBeNull();
+    expect(getByRole("link", { name: "Create new wallet" })).toHaveClass(
+      "dusk-anchor-button--variant--primary"
+    );
+    expect(getByRole("link", { name: "Restore wallet" })).toBeVisible();
+    expect(queryByRole("link", { name: "Unlock" })).toBeNull();
   });
 
-  it("should offer to unlock the wallet kept in this browser", () => {
+  it("should offer to unlock the wallet kept in this browser first, and a new one second", () => {
     settingsStore.update((settings) => ({ ...settings, userId: "some-id" }));
 
-    const { getByRole } = render(Setup, {});
+    const { getAllByRole, getByRole } = render(Setup, {});
+    const unlock = getByRole("link", { name: "Unlock" });
 
-    expect(
-      getByRole("link", { name: "Unlock Wallet" }).getAttribute("href")
-    ).toMatch(/\/unlock$/);
+    expect(unlock.getAttribute("href")).toMatch(/\/unlock$/);
+    expect(getAllByRole("link")[0]).toBe(unlock);
+    expect(unlock).toHaveClass("dusk-anchor-button--variant--primary");
+    expect(getByRole("link", { name: "Create new wallet" })).toHaveClass(
+      "dusk-anchor-button--variant--tertiary"
+    );
   });
 });

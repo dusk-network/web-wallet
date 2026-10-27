@@ -84,6 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Close a transaction's details with Escape, back on its row
 - Say in Send's summary which account it sends from, and on Receive what sharing an address shows
 - Darken the hint grey to meet the contrast minimum
+- Offer Unlock first when a wallet is kept in this browser
 - Show amounts in one format, at most four decimals, and in full on hover, under review and in a transaction's details
 - Round a fee up to four decimals when it is the most it can cost, and to the nearest when it was paid
 - Show what is staked, its rewards and what can be staked on the Staking page, and why Unstake or Claim rewards can't be pressed
