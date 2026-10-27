@@ -1526,6 +1526,51 @@ describe("Send", () => {
       ]);
     });
 
+    it("should note nothing when the network has no names to check a picked contact's against", async () => {
+      const tdi = saveContact({
+        address: nameAccount,
+        duskName: "tdi.dusk",
+        name: "TDI",
+      });
+
+      baseProps.resolveName.mockResolvedValueOnce({
+        error: "unsupported-network",
+        name: "tdi.dusk",
+      });
+
+      const { getByRole, queryByRole } = render(Send, baseProps);
+
+      await fireEvent.change(
+        getByRole("combobox", { name: "Send to a contact" }),
+        { target: { value: tdi.id } }
+      );
+      await waitFor(() =>
+        expect(baseProps.resolveName).toHaveBeenCalledWith("tdi.dusk")
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(getContact(tdi.id)).not.toHaveProperty("movedTo");
+      expect(queryByRole("status")).toBeNull();
+    });
+
+    it("should close the contact form when the recipient becomes one of the wallet's own accounts", async () => {
+      const { getByRole, queryByRole } = render(Send, {
+        ...baseProps,
+        ownAccounts: [{ address: otherAccount, label: "Profile 2" }],
+      });
+      const to = fieldsOf(getByRole).to();
+
+      await fireEvent.input(to, { target: { value: nameAccount } });
+      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "Mine" },
+      });
+      await fireEvent.input(to, { target: { value: otherAccount } });
+
+      expect(queryByRole("textbox", { name: "Contact name" })).toBeNull();
+      expect(listContacts()).toStrictEqual([]);
+    });
+
     it("should send to a contact picked from the list", async () => {
       saveContact({ address: otherAccount, name: "Cold storage" });
 
@@ -1662,6 +1707,8 @@ describe("Send", () => {
       );
       expect(fields.send()).toBeDisabled();
       expect(container.querySelector(".send__card")).toBeNull();
+      // Noted on the contact, for Contacts and the list here.
+      expect(getContact(alice.id)?.movedTo).toBe(nameAccount);
 
       await fireEvent.click(getByRole("button", { name: "The new address" }));
 

@@ -193,7 +193,12 @@
 
     const resolution = await resolveName(saved.duskName).catch(() => null);
 
-    if (!resolution || resolution.error === "lookup-failed") {
+    // A lookup that failed, or a network without names, checked nothing.
+    if (
+      !resolution ||
+      resolution.error === "lookup-failed" ||
+      resolution.error === "unsupported-network"
+    ) {
       return;
     }
 
@@ -494,7 +499,8 @@
   function saveRecipient() {
     const name = contactName.trim();
 
-    if (name) {
+    // Never one of the wallet's own accounts.
+    if (name && !own) {
       saveContact({
         address: recipientAddress,
         checkedAt: recipientName ? Date.now() : null,
@@ -708,14 +714,22 @@
     checkSavedName(contact);
   }
 
-  // Still the contact's address: noted, once a lookup.
-  $: if (
-    contact &&
-    namePointsTo === contact.address &&
-    nameLookup !== checkedLookup
-  ) {
+  // What a lookup of the contact's name found: noted on the contact, still
+  // its address or moved, once a lookup.
+  $: if (contact && namePointsTo !== null && nameLookup !== checkedLookup) {
     checkedLookup = nameLookup;
-    markContactNameChecked(contact);
+
+    if (namePointsTo === contact.address) {
+      markContactNameChecked(contact);
+    } else {
+      markContactNameMoved(contact, namePointsTo);
+    }
+  }
+
+  // One of the wallet's own accounts is never saved as a contact.
+  $: if (own && isSavingContact) {
+    isSavingContact = false;
+    contactName = "";
   }
 
   $: suggestion =

@@ -248,6 +248,24 @@ describe("ContactsView", () => {
     ).toHaveTextContent(/^Sent .* Public/);
   });
 
+  it("notes nothing when the network has no names to check a contact's against", async () => {
+    resolveName.mockResolvedValueOnce({
+      // @ts-ignore: a lookup this network can't run
+      error: "unsupported-network",
+      name: "alice-shop.dusk",
+    });
+
+    const { container } = show({ selected: shop.id });
+
+    await vi.waitFor(() =>
+      expect(resolveName).toHaveBeenCalledWith("alice-shop.dusk")
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getContact(shop.id)).not.toHaveProperty("movedTo");
+    expect(container).not.toHaveTextContent("now points to another address");
+  });
+
   it("says when a contact's .dusk name points elsewhere, and takes the new address only when asked", async () => {
     resolveName.mockResolvedValueOnce({
       account: OTHER,

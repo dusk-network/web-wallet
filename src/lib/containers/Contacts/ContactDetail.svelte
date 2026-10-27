@@ -92,15 +92,20 @@
   }
 
   /**
-   * What a check found, noted on the contact when its name still points to
-   * its address.
+   * What a check found, noted on the contact: still its address, or moved.
+   * Null when the network has no names to check.
    *
    * @param {Contact} checked
    * @param {DuskNameResolution | null} resolution
-   * @returns {NonNullable<typeof check>}
+   * @returns {typeof check}
    */
   function checkOutcome(checked, resolution) {
     const pointed = resolution ? pointedAddress(checked, resolution) : null;
+
+    // No names on this network: nothing was checked, and nothing is noted.
+    if (resolution?.error === "unsupported-network") {
+      return null;
+    }
 
     if (!resolution || resolution.error === "lookup-failed") {
       return { state: "failed" };
