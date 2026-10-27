@@ -125,7 +125,7 @@
           <SectionHead
             className="contacts__paid-title"
             id="contacts-paid"
-            level={3}>People you've paid</SectionHead
+            level={3}>Paid before</SectionHead
           >
           <ul>
             {#each paid as person (person.address)}

@@ -174,6 +174,7 @@
   .top-bar__search {
     all: unset;
     box-sizing: border-box;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     gap: 0.625rem;
@@ -215,6 +216,7 @@
   }
 
   .top-bar__settings {
+    flex: 0 0 auto;
     display: grid;
     place-items: center;
     width: 2.375rem;
@@ -240,18 +242,19 @@
   }
 
   /*
-   * The wordmark alone below 1280 px: WALLET fits beside the tabs, the
-   * search and the longest profile name only from there.
+   * What fits beside the tabs and the longest profile name: WALLET with
+   * the search's field from 1376 px, the field from 1296 px (a search
+   * button below), and the profile's name from 960 px, as AddressPicker
+   * shows it. Nothing in the bar shrinks to make room.
    */
-  @media (max-width: 79.99rem) {
+  @media (max-width: 85.99rem) {
     .top-bar__divider,
     .top-bar__app {
       display: none;
     }
   }
 
-  /* Narrow screens: a search button, then the phone's bar. */
-  @media (max-width: 63.99rem) {
+  @media (max-width: 80.99rem) {
     .top-bar__search {
       width: 2.375rem;
       padding: 0;

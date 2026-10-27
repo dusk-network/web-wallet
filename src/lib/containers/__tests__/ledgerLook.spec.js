@@ -206,9 +206,9 @@ describe("The ledger look", () => {
     });
 
     expectPlainTitle(paid.container, "contacts-title");
-    expect(
-      paid.getByRole("heading", { name: "People you've paid" })
-    ).toHaveClass("section-head");
+    expect(paid.getByRole("heading", { name: "Paid before" })).toHaveClass(
+      "section-head"
+    );
     expectLedgerLook(paid.container);
     cleanup();
 

@@ -303,7 +303,8 @@
   border-radius: 999px;
 }
 
-@media (max-width: 47.99rem) {
+/* The avatar alone where the top bar has no room for the name: below 960 px. */
+@media (max-width: 59.99rem) {
   .address-picker--compact .address-picker__compact-name,
   .address-picker--compact .address-picker__chevron {
     display: none;

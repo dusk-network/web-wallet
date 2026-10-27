@@ -181,7 +181,7 @@ describe("ContactsView", () => {
       rows: [...rows, own],
     });
 
-    expect(getByText("People you've paid")).toBeInTheDocument();
+    expect(getByText("Paid before")).toBeInTheDocument();
     expect(
       Array.from(container.querySelectorAll(".contacts__person"), (item) =>
         item.textContent?.replace(/\s+/g, " ").trim()

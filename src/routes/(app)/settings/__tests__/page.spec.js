@@ -117,19 +117,22 @@ describe("Settings", () => {
 
   it("should open with the preferences, and keep gas under Advanced, folded", async () => {
     const rendered = render(Settings, {});
-    const { container, getByRole, queryByRole } = rendered;
-    const headings = Array.from(
-      container.querySelectorAll(".settings-group__heading"),
-      (heading) => heading.textContent?.trim()
-    );
+    const { getAllByRole, getByRole, queryByRole } = rendered;
     const advanced = getByRole("button", { name: "Advanced" });
 
-    expect(headings).toStrictEqual([
-      "Preferences",
-      "Advanced",
-      "Support",
-      "Reset wallet",
+    // The sections' heads between brackets; Advanced a plain button.
+    expect(
+      getAllByRole("heading", { level: 3 }).map((heading) => [
+        heading.textContent?.trim(),
+        heading.classList.contains("section-head"),
+      ])
+    ).toStrictEqual([
+      ["[Preferences]", true],
+      ["Advanced", false],
+      ["[Support]", true],
+      ["[Reset wallet]", true],
     ]);
+    expect(advanced.closest("h3")).not.toHaveClass("section-head");
     expect(advanced).toHaveAttribute("aria-expanded", "false");
     expect(queryByRole("switch", { name: "Custom gas" })).toBeNull();
 
