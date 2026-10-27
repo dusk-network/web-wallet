@@ -12,10 +12,13 @@
   import { AnchorButton, Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { BalanceValue } from "$lib/components";
+  import { fetchTxNonce } from "$lib/activity/activityHistory";
+  import { contractLabel } from "$lib/activity/knownContracts";
   import { fullDateTime, rowTime } from "$lib/activity/present";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { addBasePath } from "$lib/navigation";
   import { addressType, contactsStore, saveContact } from "$lib/contacts";
+  import { nodeBaseUrl } from "$lib/url";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
 
@@ -27,6 +30,17 @@
 
   /** @type {string} */
   export let locale;
+
+  /** The network's name, for the contracts the wallet names. */
+  export let network = "";
+
+  /** The account the history is of, and how the wallet names it. */
+  /** @type {{ address: string, label: string } | null} */
+  export let account = null;
+
+  /** Looks a public transaction's nonce up. */
+  /** @type {(hash: string) => Promise<string | null>} */
+  export let loadNonce = (hash) => fetchTxNonce(nodeBaseUrl(), hash);
 
   const dispatch = createEventDispatcher();
 
@@ -62,13 +76,38 @@
       ? [value.slice(0, 6), value.slice(6, -6), value.slice(-6)]
       : ["", value, ""];
 
-  /** @param {string} value */
-  async function copy(value) {
+  /**
+   * @param {string} value
+   * @param {string} [what]
+   */
+  async function copy(value, what = "transaction ID") {
     try {
       await navigator.clipboard.writeText(value);
-      toast("success", "Transaction ID copied", mdiContentCopy);
+      toast(
+        "success",
+        `${what[0].toUpperCase()}${what.slice(1)} copied`,
+        mdiContentCopy
+      );
     } catch {
-      toast("error", "Couldn't copy the transaction ID", mdiAlertCircleOutline);
+      toast("error", `Couldn't copy the ${what}`, mdiAlertCircleOutline);
+    }
+  }
+
+  /** The transaction the nonce shown is of. */
+  let nonceOf = "";
+
+  /** @type {string | null} */
+  let nonce = null;
+
+  /** @param {string} hash */
+  async function showNonce(hash) {
+    nonceOf = hash;
+    nonce = null;
+
+    const found = await loadNonce(hash).catch(() => null);
+
+    if (nonceOf === hash) {
+      nonce = found;
     }
   }
 
@@ -112,6 +151,15 @@
     addressType(String(p.counterparty)) !== "unknown";
   $: canSendAgain =
     p.icon === "sent" && !!p.counterparty && row.kind === "transfer";
+  $: if (
+    row.hash !== nonceOf &&
+    row.privacy !== "shielded" &&
+    row.source !== "local"
+  ) {
+    showNonce(row.hash);
+  }
+  $: known = p.counterparty ? contractLabel(p.counterparty, network) : "";
+  $: isSent = row.direction !== "in" && p.icon !== "received";
   $: gasUsed =
     row.gasSpent && row.gasLimit
       ? `${Number(row.gasSpent).toLocaleString(locale)} of ${Number(row.gasLimit).toLocaleString(locale)}`
@@ -165,6 +213,8 @@
           <dd>
             {#if row.bridge?.kind === "deposit"}
               <span class="tx-detail__name">DuskEVM address</span>
+            {:else if known}
+              <span class="tx-detail__name">{known}</span>
             {:else if contact || duskName}
               <span class="tx-detail__name"
                 >{contact && duskName
@@ -178,6 +228,11 @@
                 ><span class="tx-detail__middle">{middle}</span><b
                   class="tx-detail__tail">{tail}</b
                 >{/each}</span
+            >
+            <button
+              class="tx-detail__copy"
+              on:click={() => copy(String(p.counterparty), "address")}
+              type="button"><Icon path={mdiContentCopy} />Copy</button
             >
             {#if canSave && !isSavingContact}
               <Button
@@ -243,6 +298,27 @@
           </dd>
         </div>
       {/if}
+      {#if account && isSent}
+        <div class="tx-detail__wide">
+          <dt>From</dt>
+          <dd>
+            <span class="tx-detail__name"
+              >{account.label}, {p.privacy === "Shielded"
+                ? "shielded balance"
+                : "public balance"}</span
+            >
+            {#if p.privacy !== "Shielded"}
+              <span class="tx-detail__code"
+                >{#each [parts(account.address)] as [head, middle, tail] (tail)}<b
+                    >{head}</b
+                  ><span class="tx-detail__middle">{middle}</span><b
+                    class="tx-detail__tail">{tail}</b
+                  >{/each}</span
+              >
+            {/if}
+          </dd>
+        </div>
+      {/if}
       <div>
         <dt>Type</dt>
         <dd>{p.privacy}</dd>
@@ -288,15 +364,38 @@
         <div>
           <dt>Block height</dt>
           <dd>
-            {row.blockHeight === undefined
-              ? "Not in a block yet"
-              : row.blockHeight.toLocaleString(locale)}
+            {#if row.blockHeight === undefined}
+              Not in a block yet
+            {:else if row.blockHash}
+              <a
+                href={`/explorer/blocks/block?id=${row.blockHash}`}
+                rel="noopener noreferrer"
+                target="_blank"
+                >{row.blockHeight.toLocaleString(locale)}<span class="sr-only">
+                  (opens the block in the Dusk explorer)</span
+                ></a
+              >
+            {:else}
+              {row.blockHeight.toLocaleString(locale)}
+            {/if}
           </dd>
         </div>
         {#if gasUsed}
           <div>
             <dt>Gas used</dt>
             <dd>{gasUsed}</dd>
+          </div>
+        {/if}
+        {#if row.gasPrice}
+          <div>
+            <dt>Gas price</dt>
+            <dd>{Number(row.gasPrice).toLocaleString(locale)} LUX</dd>
+          </div>
+        {/if}
+        {#if nonce !== null}
+          <div>
+            <dt>Nonce</dt>
+            <dd>{nonce}</dd>
           </div>
         {/if}
         <div>
@@ -545,6 +644,11 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.75rem;
+  }
+
+  .tx-detail__list a {
+    color: inherit;
+    text-underline-offset: 2px;
   }
 
   .tx-detail__copy {

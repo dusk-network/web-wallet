@@ -182,6 +182,29 @@ describe("describeRow", () => {
     ).toBe("From DuskEVM");
   });
 
+  it("names a call to Dusk Domains by what it did", () => {
+    const store =
+      "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199";
+
+    expect(
+      describeRow(
+        row({
+          amount: "10000000000",
+          contractId: store,
+          fnName: "register",
+          kind: "contract_call",
+          to: undefined,
+        }),
+        { ...context, network: "testnet" }
+      )
+    ).toMatchObject({
+      amount: { sign: "−", text: "10" },
+      icon: "call",
+      line: "Dusk Domains",
+      title: "Registered a .dusk name",
+    });
+  });
+
   it("says where a bridge row's DUSK went: the DuskEVM address, or the withdrawal and its next step", () => {
     const evm = "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A";
     const withdrawal = "0001".padEnd(64, "0");

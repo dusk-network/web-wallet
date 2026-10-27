@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 
 import { claimedWithdrawals, describeRow } from "$lib/activity/present";
@@ -34,11 +34,13 @@ const row = (fields) => ({
  * @param {ActivityRow} shown
  * @param {Partial<import("$lib/activity/present").PresentContext>} [extra]
  */
-const show = (shown, extra = {}) =>
+const show = (shown, extra = {}, props = {}) =>
   render(TransactionDetail, {
+    loadNonce: async () => null,
     locale: "en",
     presentation: describeRow(shown, { ...context, ...extra }),
     row: shown,
+    ...props,
   });
 
 describe("TransactionDetail", () => {
@@ -92,5 +94,58 @@ describe("TransactionDetail", () => {
 
     expect(done.getByText("Proved · claimed")).toBeTruthy();
     expect(done.queryByText("Next step")).toBeNull();
+  });
+
+  it("should name the contract a call went to, with a way to copy it", () => {
+    const store =
+      "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199";
+    const { container, getAllByRole, getByText } = show(
+      row({
+        amount: "10000000000",
+        contractId: store,
+        counterparty: store,
+        fnName: "register",
+      }),
+      { network: "testnet" },
+      { network: "testnet" }
+    );
+
+    expect(container.querySelector("#tx-detail-title")).toBeTruthy();
+    expect(getByText("Registered a .dusk name")).toBeInTheDocument();
+    expect(getByText("Dusk Domains")).toBeInTheDocument();
+    expect(container.textContent).toContain(store.slice(-6));
+    expect(getAllByRole("button", { name: "Copy" })).toHaveLength(2);
+  });
+
+  it("should say which account sent it, and its gas price, nonce and block", async () => {
+    const account = "2".repeat(60);
+    const loadNonce = vi.fn(async () => "110");
+    const { findByText, getByRole, getByText } = show(
+      row({
+        amount: "1000000000",
+        blockHash: "bb".repeat(32),
+        contractId: undefined,
+        gasLimit: "2500000",
+        gasPrice: "1",
+        gasSpent: "1856487",
+        kind: "transfer",
+        to: "3".repeat(60),
+      }),
+      {},
+      {
+        account: { address: account, label: "Profile 1 · wallet-both.dusk" },
+        loadNonce,
+      }
+    );
+
+    expect(
+      getByText("Profile 1 · wallet-both.dusk, public balance")
+    ).toBeInTheDocument();
+    expect(getByText("1 LUX")).toBeInTheDocument();
+    expect(await findByText("110")).toBeInTheDocument();
+    expect(loadNonce).toHaveBeenCalledWith("aa".repeat(32));
+    expect(getByRole("link", { name: /^4,687,000/ }).getAttribute("href")).toBe(
+      `/explorer/blocks/block?id=${"bb".repeat(32)}`
+    );
   });
 });

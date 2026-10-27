@@ -26,8 +26,12 @@
   /** @type {string} */
   export let locale;
 
-  /** The network's name, for the export's file name. */
+  /** The network's name, for the export's file name and known contracts. */
   export let network = "";
+
+  /** The account the history is of, and how the wallet names it. */
+  /** @type {{ address: string, label: string } | null} */
+  export let account = null;
 
   /** @type {string | null} */
   export let selected = null;
@@ -93,6 +97,7 @@
     claimed: claimedWithdrawals(state.rows),
     contactNames: contactNamesOf($contactsStore),
     locale,
+    network,
     sozuPools: $sozuPools,
   };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;
@@ -262,7 +267,9 @@
   {#if open}
     <div class="history__detail">
       <TransactionDetail
+        {account}
         {locale}
+        {network}
         on:close={() => dispatch("select", null)}
         presentation={open.presentation}
         row={open.row}

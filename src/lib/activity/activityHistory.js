@@ -1446,6 +1446,35 @@ export async function fetchTxDetails(url, hashes) {
 }
 
 /**
+ * A public transaction's nonce, from its JSON: null for a shielded one, or
+ * one the node doesn't have.
+ *
+ * @param {string} url
+ * @param {string} hash
+ * @returns {Promise<string | null>}
+ */
+export async function fetchTxNonce(url, hash) {
+  if (!HASH.test(hash)) {
+    return null;
+  }
+
+  const data = await archiveQuery(
+    url,
+    `query { tx(hash: "${hash}") { tx { json } } }`
+  );
+
+  try {
+    const { nonce } = JSON.parse(String(dig(data, "tx", "tx", "json") ?? ""));
+
+    return typeof nonce === "number" || typeof nonce === "string"
+      ? String(nonce)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Details for the newest kept entries that have none, a batch per request.
  *
  * @param {{

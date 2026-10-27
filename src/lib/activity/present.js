@@ -14,6 +14,8 @@ import {
 import { SOZU_FN, isSozuCall } from "$lib/sozu/config";
 import { WITHDRAWAL_WAITING_PERIOD_SECONDS } from "$lib/bridge/withdrawalLifecycle";
 
+import { knownCall } from "./knownContracts";
+
 import { TX_KIND } from "./constants";
 
 /**
@@ -27,6 +29,7 @@ import { TX_KIND } from "./constants";
  *   claimed?: Set<string>,
  *   contactNames?: Map<string, string>,
  *   locale: string,
+ *   network?: string,
  *   now?: number,
  *   ownAccount?: string,
  *   sozuPools?: Set<string>,
@@ -201,14 +204,16 @@ function bridgeTitle(row) {
 
 /**
  * A row's title and the first part of its line. A counterparty saved as a
- * contact goes by the contact's name, with its `.dusk` name after it.
+ * contact goes by the contact's name, with its `.dusk` name after it, and a
+ * call to a contract the wallet knows by what it did.
  *
  * @param {ActivityRow} row
  * @param {ActivityIcon} icon
  * @param {Map<string, string>} [contactNames] Contact names by address
+ * @param {string} [network] The network's name
  * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
  */
-function titleOf(row, icon, contactNames) {
+function titleOf(row, icon, contactNames, network) {
   const kindTitle = row.kind ? KIND_TITLES.get(row.kind) : undefined;
 
   if (kindTitle) {
@@ -232,6 +237,12 @@ function titleOf(row, icon, contactNames) {
 
   if (icon === "self") {
     return { title: "To yourself", titleIsAddress: false, verb: "Sent" };
+  }
+
+  const named = icon === "call" ? knownCall(row, network) : null;
+
+  if (named) {
+    return { title: named.label, titleIsAddress: false, verb: named.app };
   }
 
   return counterpartyTitle(row, icon, contactNames);
@@ -315,9 +326,15 @@ function shownStatus(row) {
  * @returns {ActivityPresentation}
  */
 export function describeRow(row, context) {
-  const { bridgeContracts, contactNames, locale, sozuPools } = context;
+  const { bridgeContracts, contactNames, locale, network, sozuPools } =
+    context;
   const { category, icon } = classify(row, bridgeContracts, sozuPools);
-  const { title, titleIsAddress, verb } = titleOf(row, icon, contactNames);
+  const { title, titleIsAddress, verb } = titleOf(
+    row,
+    icon,
+    contactNames,
+    network
+  );
   const status = shownStatus(row);
   const failed = status === "failed";
   const bridge = icon === "bridge" && !failed ? bridgeOf(row, context) : null;
