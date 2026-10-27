@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CSV_COLUMNS,
+  CSV_CONTACT_COLUMN,
   claimedWithdrawals,
   dayLabel,
   describeRow,
@@ -467,5 +468,39 @@ describe("toCsv", () => {
 
     // A memo is never read as a formula.
     expect(csv[2]).toContain(`,0,0.0037,'=HYPERLINK(1),Failed`);
+  });
+
+  it("keeps the user's contact names out, unless asked, and then in their own column", () => {
+    const rows = [row({ counterpartyName: "alice-shop.dusk" })];
+    const withNames = {
+      ...context,
+      contactNames: new Map([[ACCOUNT, "Alice (landlord, private)"]]),
+    };
+    const plain = toCsv(rows, withNames);
+    const asked = toCsv(rows, withNames, { withContacts: true }).split("\r\n");
+
+    expect(plain).not.toContain("landlord");
+    expect(plain).toContain(",alice-shop.dusk (Sent),");
+    expect(asked[0]).toBe([...CSV_COLUMNS, CSV_CONTACT_COLUMN].join(","));
+    expect(asked[1]).toContain(",alice-shop.dusk (Sent),");
+    expect(asked[1]).toMatch(/,Completed,"Alice \(landlord, private\)"$/);
+  });
+
+  it("marks a row not looked up yet, and leaves an undated one out of a range of days", () => {
+    const pending = row({
+      status: "unknown",
+      success: null,
+      timestamp: undefined,
+    });
+    const [, line] = toCsv([pending], context).split("\r\n");
+
+    expect(line).toMatch(/^,,4687000,/);
+    expect(line).toMatch(/,Not looked up yet$/);
+    expect(
+      matchesFilters(describeRow(pending, context), pending, { since: 0 })
+    ).toBe(false);
+    expect(matchesFilters(describeRow(pending, context), pending, {})).toBe(
+      true
+    );
   });
 });

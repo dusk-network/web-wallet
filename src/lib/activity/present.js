@@ -326,8 +326,7 @@ function shownStatus(row) {
  * @returns {ActivityPresentation}
  */
 export function describeRow(row, context) {
-  const { bridgeContracts, contactNames, locale, network, sozuPools } =
-    context;
+  const { bridgeContracts, contactNames, locale, network, sozuPools } = context;
   const { category, icon } = classify(row, bridgeContracts, sozuPools);
   const { title, titleIsAddress, verb } = titleOf(
     row,
@@ -506,7 +505,8 @@ export function matchesFilters(
   return (
     (kind === "all" || presentation.category === kind) &&
     (privacy === "all" || presentation.privacy.toLowerCase() === privacy) &&
-    (since === null || time === null || time >= since)
+    // A row with no time yet isn't in a range of days.
+    (since === null || (time !== null && time >= since))
   );
 }
 
@@ -676,6 +676,9 @@ export const CSV_COLUMNS = Object.freeze([
   "Status",
 ]);
 
+/** The column an export adds with the user's own contact names. */
+export const CSV_CONTACT_COLUMN = "Your contact name";
+
 /** @type {Record<string, string>} */
 const STATUS_WORDS = {
   executed: "Completed",
@@ -687,13 +690,26 @@ const STATUS_WORDS = {
 };
 
 /**
- * One row as a CSV line.
+ * Whether a row's time, fee and outcome are still to be looked up: a row
+ * with no time, or one from the chain whose outcome isn't looked up yet.
+ *
+ * @param {ActivityRow} row
+ */
+export const isRowIncomplete = (row) =>
+  rowTime(row) === null ||
+  ((row.source === "archive" || row.source === "both") &&
+    typeof row.success !== "boolean");
+
+/**
+ * One row as a CSV line. Its words never use the user's contact names:
+ * those go in their own column, when asked for.
  *
  * @param {ActivityRow} row
  * @param {PresentContext} context
+ * @param {boolean} withContacts
  */
-function csvLine(row, context) {
-  const p = describeRow(row, context);
+function csvLine(row, context, withContacts) {
+  const p = describeRow(row, { ...context, contactNames: undefined });
   const time = rowTime(row);
   const amount = p.status === "failed" ? 0n : toLux(row.amount);
   const signed = row.direction === "out" && amount ? -amount : amount;
@@ -714,20 +730,44 @@ function csvLine(row, context) {
     csvField(formatDuskPlain(signed)),
     csvField(row.feePaid ? formatDuskPlain(toLux(row.feePaid)) : ""),
     csvText(row.memo ?? ""),
-    csvField(STATUS_WORDS[row.status] ?? ""),
+    csvField(csvStatus(row)),
+    ...(withContacts ? [csvText(contactOf(p, context))] : []),
   ].join(",");
 }
 
 /**
- * The rows as CSV, one line each with the columns of CSV_COLUMNS. Amounts
+ * A row's status in an export, or that it isn't looked up yet.
+ *
+ * @param {ActivityRow} row
+ */
+const csvStatus = (row) =>
+  isRowIncomplete(row) ? "Not looked up yet" : (STATUS_WORDS[row.status] ?? "");
+
+/**
+ * The user's own name for a row's counterparty, if it is a contact.
+ *
+ * @param {ActivityPresentation} p
+ * @param {PresentContext} context
+ */
+const contactOf = (p, context) =>
+  (p.counterparty && context.contactNames?.get(p.counterparty)) || "";
+
+/**
+ * The rows as CSV, one line each with the columns of CSV_COLUMNS, and the
+ * user's contact names in CSV_CONTACT_COLUMN only `withContacts`. Amounts
  * are exact, with a minus for what left the account; a failed transaction
- * moved nothing, so its amount is 0 and its fee stands on its own.
+ * moved nothing, so its amount is 0 and its fee stands on its own. A row
+ * not looked up yet says so in its status.
  *
  * @param {ActivityRow[]} rows
  * @param {PresentContext} context
+ * @param {{ withContacts?: boolean }} [options]
  */
-export function toCsv(rows, context) {
-  const lines = rows.map((row) => csvLine(row, context));
+export function toCsv(rows, context, { withContacts = false } = {}) {
+  const lines = rows.map((row) => csvLine(row, context, withContacts));
+  const columns = withContacts
+    ? [...CSV_COLUMNS, CSV_CONTACT_COLUMN]
+    : CSV_COLUMNS;
 
-  return [CSV_COLUMNS.map(csvField).join(","), ...lines].join("\r\n");
+  return [columns.map(csvField).join(","), ...lines].join("\r\n");
 }

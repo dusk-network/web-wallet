@@ -571,6 +571,7 @@ describe("Send", () => {
       });
 
       expect(getSummary(container)).toStrictEqual([
+        ["From", "Your shielded balance"],
         ["To", shortenAddress(shieldedAddress)],
         ["Amount", "2,345.5 DUSK"],
         ["Memo", "abc-example-memo"],
@@ -853,12 +854,12 @@ describe("Send", () => {
       expect(
         await findByText("alice.dusk points to a public account")
       ).toBeInTheDocument();
-      expect(getByText("Verified name")).toBeInTheDocument();
+      expect(getByText("Name found")).toBeInTheDocument();
       expect(container.querySelector("[role='radiogroup']")).toBeNull();
       expect(
         getAsHTMLElement(container, ".send__card .full-address")
       ).toHaveTextContent(nameAccount);
-      expect(getSummary(container)[0]).toStrictEqual([
+      expect(getSummary(container)[1]).toStrictEqual([
         "To",
         `alice.dusk ${shortenAddress(nameAccount)}`,
       ]);
@@ -1471,6 +1472,20 @@ describe("Send", () => {
       expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
     });
 
+    it("should say which account it sends from", async () => {
+      const { container } = render(Send, {
+        ...baseProps,
+        ownAccounts: [
+          { address: publicAddress, label: "Profile 1 · wallet-both.dusk" },
+        ],
+      });
+
+      expect(getSummary(container)[0]).toStrictEqual([
+        "From",
+        `Profile 1 · wallet-both.dusk ${shortenAddress(publicAddress)}`,
+      ]);
+    });
+
     it("should send to a contact picked from the list", async () => {
       saveContact({ address: otherAccount, name: "Cold storage" });
 
@@ -1485,7 +1500,7 @@ describe("Send", () => {
       expect(
         getAsHTMLElement(container, ".send__card-title")
       ).toHaveTextContent("Cold storage");
-      expect(getSummary(container)[0]).toStrictEqual([
+      expect(getSummary(container)[1]).toStrictEqual([
         "To",
         `Cold storage ${shortenAddress(otherAccount)}`,
       ]);

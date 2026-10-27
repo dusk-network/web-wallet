@@ -170,7 +170,17 @@
   });
 </script>
 
-<aside aria-labelledby="tx-detail-title" class="tx-detail">
+<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+<aside
+  aria-labelledby="tx-detail-title"
+  class="tx-detail"
+  on:keydown={(event) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      dispatch("close");
+    }
+  }}
+>
   <header class="tx-detail__header">
     <h2 id="tx-detail-title">Transaction</h2>
     <button

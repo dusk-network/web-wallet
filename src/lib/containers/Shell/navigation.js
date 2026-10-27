@@ -61,6 +61,29 @@ export function appPath(pathname) {
   return path.replace(/\/+$/, "") || "/";
 }
 
+/** The pages' names, for their titles and headings. */
+const PAGE_NAMES = new Map([
+  ["/dashboard", "Home"],
+  ["/dashboard/allocate", "Shield"],
+  ["/dashboard/bridge", "Bridge"],
+  ["/dashboard/bridge/transactions", "Bridge activity"],
+  ["/dashboard/contacts", "Contacts"],
+  ["/dashboard/migrate", "Migrate"],
+  ["/dashboard/receive", "Receive"],
+  ["/dashboard/send", "Send"],
+  ["/dashboard/stake", "Staking"],
+  ["/dashboard/transactions", "History"],
+  ["/settings", "Settings"],
+]);
+
+/**
+ * A page's name, as its title says it, or "" for one without, as the
+ * welcome pages.
+ *
+ * @param {string} pathname
+ */
+export const pageName = (pathname) => PAGE_NAMES.get(appPath(pathname)) ?? "";
+
 /**
  * The tab a path is on, or null for a flow, as Send or Settings.
  *

@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { fullDateTime, timeLabel } from "$lib/activity/present";
 
@@ -70,6 +70,47 @@ describe("HistoryView", () => {
       `· ${timeLabel(WINTER, "en")} · Public`,
       `· ${timeLabel(SUMMER, "en")} · Public`,
     ]);
+  });
+
+  it("should close the details on Escape, and give the focus back to their row", async () => {
+    const select = vi.fn();
+    const { container, getByRole, rerender } = render(HistoryView, {
+      locale: "en",
+      state,
+    });
+    const first = /** @type {HTMLButtonElement} */ (
+      container.querySelector(".history__open")
+    );
+
+    // The page selects what the row dispatches.
+    await rerender({ selected: state.rows[0].hash });
+
+    const close = getByRole("button", { name: "Close the details" });
+
+    expect(close).toHaveFocus();
+
+    container.addEventListener("select", select);
+    await fireEvent.keyDown(close, { key: "Escape" });
+
+    expect(first).toHaveFocus();
+  });
+
+  it("should say when rows aren't looked up yet, and that an export marks them", () => {
+    const { getByRole } = render(HistoryView, {
+      locale: "en",
+      state: {
+        ...state,
+        error: "Couldn't reach",
+        rows: [{ ...state.rows[0], status: "unknown", success: null }],
+      },
+    });
+
+    expect(getByRole("status")).toHaveTextContent(
+      "Couldn't reach the network's history. A row has no date or fee yet. An export marks it \"Not looked up yet\"."
+    );
+    expect(
+      getByRole("checkbox", { name: /Include my contact names/ })
+    ).not.toBeChecked();
   });
 
   it("should name each row's button with its amount and date", () => {

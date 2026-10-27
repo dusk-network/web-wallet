@@ -149,6 +149,11 @@
           <Icon path={mdiContentCopy} />
         </button>
       </div>
+      <p class="receive__reveal">
+        {addressType === "account"
+          ? "Anyone with this address, or a name that points to it, can see its balance and every public payment to and from it."
+          : "Payments to this shielded address don't show on chain who receives them or how much. Whoever pays you sees what they send."}
+      </p>
       {#await name then shownName}
         {#if shownName}
           <p class="receive__note" hidden={!isNoteShown} id={noteId}>
@@ -275,6 +280,14 @@
         width: 44px;
         height: 44px;
       }
+    }
+
+    &__reveal {
+      margin: 0;
+      color: var(--calm-muted);
+      font-size: 0.8125rem;
+      line-height: 1.45;
+      text-align: center;
     }
 
     &__note {

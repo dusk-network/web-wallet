@@ -205,6 +205,33 @@ exports[`Send page > should render the send page 1`] = `
         <dt
           class="svelte-x7e9dl"
         >
+          From
+        </dt>
+         
+        <dd
+          class="svelte-x7e9dl"
+        >
+          <span
+            class="send__summary-name svelte-x7e9dl"
+          >
+            Profile 1
+          </span>
+           
+          <span
+            class="send__summary-code svelte-x7e9dl"
+          >
+            bEjRbu…zGeJ8J
+          </span>
+          <!---->
+        </dd>
+      </div>
+       
+      <div
+        class="svelte-x7e9dl"
+      >
+        <dt
+          class="svelte-x7e9dl"
+        >
           To
         </dt>
          

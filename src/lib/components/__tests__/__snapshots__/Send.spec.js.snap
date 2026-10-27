@@ -205,6 +205,33 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
         <dt
           class="svelte-x7e9dl"
         >
+          From
+        </dt>
+         
+        <dd
+          class="svelte-x7e9dl"
+        >
+          <span
+            class="send__summary-name svelte-x7e9dl"
+          >
+            Your public account
+          </span>
+           
+          <span
+            class="send__summary-code svelte-x7e9dl"
+          >
+            zTsZq8…oHybff
+          </span>
+          <!---->
+        </dd>
+      </div>
+       
+      <div
+        class="svelte-x7e9dl"
+      >
+        <dt
+          class="svelte-x7e9dl"
+        >
           To
         </dt>
          

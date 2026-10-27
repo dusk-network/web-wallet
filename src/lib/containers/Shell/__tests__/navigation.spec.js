@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { appPath, shellTabs, tabOf } from "../navigation";
+import { appPath, pageName, shellTabs, tabOf } from "../navigation";
 
 describe("shell navigation", () => {
   it("lists Home, History and Contacts, and Staking when staking is on", () => {
@@ -29,5 +29,15 @@ describe("shell navigation", () => {
     expect(tabOf(tabs, "/some-base-path/dashboard/contacts")).toBe("contacts");
     expect(tabOf(tabs, "/some-base-path/dashboard/send")).toBeNull();
     expect(tabOf(tabs, "/some-base-path/settings")).toBeNull();
+  });
+});
+
+describe("pageName", () => {
+  it("should name each page, as its title says it, and no welcome page", () => {
+    expect(pageName("/dashboard")).toBe("Home");
+    expect(pageName("/dashboard/transactions/")).toBe("History");
+    expect(pageName("/dashboard/send")).toBe("Send");
+    expect(pageName("/settings")).toBe("Settings");
+    expect(pageName("/setup")).toBe("");
   });
 });

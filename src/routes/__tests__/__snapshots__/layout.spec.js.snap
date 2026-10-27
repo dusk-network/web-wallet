@@ -8,7 +8,7 @@ exports[`Main layout > should render the main layout 1`] = `
     <h1
       class="sr-only"
     >
-      Dusk Web Wallet
+      Dusk Wallet
     </h1>
      
     <!---->

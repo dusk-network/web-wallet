@@ -41,7 +41,6 @@
   class:dashboard--column={!WIDE.has(appPath(url.pathname))}
   on:wizardstepchange={scrollToTop}
 >
-  <h2 class="sr-only">Dashboard</h2>
   <slot />
 </section>
 

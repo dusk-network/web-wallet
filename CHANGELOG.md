@@ -77,6 +77,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show a Total at Max that never reads more than the balance
 - Say times are in your local time, with each one's own offset on hover, and keep a row's time and Public or Shielded on phones
 - List a contact's activity by day
+- Keep contact names out of the CSV export unless asked, and then in their own column
+- Mark the rows not looked up yet in the export, say so above it, and leave undated rows out of a range of days
+- Say Name found for a .dusk name, not Verified name
+- Give each page its own title
+- Close a transaction's details with Escape, back on its row
+- Say in Send's summary which account it sends from, and on Receive what sharing an address shows
+- Darken the hint grey to meet the contrast minimum
 - Show amounts in one format, at most four decimals, and in full on hover, under review and in a transaction's details
 - Round a fee up to four decimals when it is the most it can cost, and to the nearest when it was paid
 - Show what is staked, its rewards and what can be staked on the Staking page, and why Unstake or Claim rewards can't be pressed

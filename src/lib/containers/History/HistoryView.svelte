@@ -11,6 +11,7 @@
     describeRow,
     fullDateTime,
     groupByDay,
+    isRowIncomplete,
     matchesFilters,
     rowTime,
     timeLabel,
@@ -71,6 +72,9 @@
   let privacy = "all";
   let range = "all";
 
+  /** Whether an export holds the user's own contact names. */
+  let withContacts = false;
+
   /** @param {ActivityRow} row */
   function select(row) {
     dispatch("select", row.hash === selected ? null : row.hash);
@@ -79,7 +83,8 @@
   function exportCsv() {
     const csv = toCsv(
       shown.map(({ row }) => row),
-      context
+      context,
+      { withContacts }
     );
     const url = URL.createObjectURL(
       new Blob([csv], { type: "text/csv;charset=utf-8" })
@@ -120,6 +125,27 @@
     locale,
   });
   $: open = described.find(({ row }) => row.hash === selected) ?? null;
+  $: incomplete = shown.filter(({ row }) => isRowIncomplete(row)).length;
+  $: incompleteText = [
+    state.error ? "Couldn't reach the network's history." : "",
+    incomplete === 1
+      ? 'A row has no date or fee yet. An export marks it "Not looked up yet".'
+      : `${incomplete} rows have no date or fee yet. An export marks them "Not looked up yet".`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  /**
+   * Closes the details, and gives the focus back to the row they were of.
+   *
+   * @param {string} hash
+   */
+  function closeDetail(hash) {
+    dispatch("select", null);
+    /** @type {HTMLElement | null} */ (
+      document.querySelector(`.history__open[data-hash="${hash}"]`)
+    )?.focus();
+  }
 </script>
 
 <div class="history" class:history--open={open}>
@@ -137,8 +163,17 @@
     </header>
     <p class="history__note">
       Times in your local time. An export holds the rows shown, with memos and
-      names, and dates in UTC and your local time.
+      .dusk names, and dates in UTC and your local time.
     </p>
+    <label class="history__option">
+      <input bind:checked={withContacts} type="checkbox" />
+      Include my contact names in the export, in their own column
+    </label>
+    {#if incomplete}
+      <p class="history__incomplete" role="status">
+        {incompleteText}
+      </p>
+    {/if}
 
     <div class="history__filters">
       <div aria-label="Show" class="history__kinds" role="group">
@@ -286,7 +321,7 @@
         {account}
         {locale}
         {network}
-        on:close={() => dispatch("select", null)}
+        on:close={() => closeDetail(open?.row.hash ?? "")}
         presentation={open.presentation}
         row={open.row}
       />
@@ -327,6 +362,22 @@
   .history__note {
     margin-top: 0.375rem;
     color: var(--calm-muted);
+    font-size: 0.8125rem;
+  }
+
+  .history__option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
+    cursor: pointer;
+  }
+
+  .history__incomplete {
+    margin: 0 0 0.5rem;
+    color: var(--calm-pending);
     font-size: 0.8125rem;
   }
 

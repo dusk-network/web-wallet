@@ -652,6 +652,11 @@
     }
   }
 
+  // The account the transfer goes from, as the wallet names it.
+  $: from = isShielded ? shieldedAddress : publicAddress;
+  $: fromLabel =
+    ownAccounts.find((account) => account.address === from)?.label ??
+    (isShielded ? "Your shielded balance" : "Your public account");
   $: own = ownAccounts.find(
     (account) => recipientAddress && account.address === recipientAddress
   );
@@ -758,7 +763,7 @@
           />
           {#if recipientName && nameLookup?.[nameAddressType]}
             <span class="send__verified"
-              ><Icon path={mdiCheckCircleOutline} />Verified name</span
+              ><Icon path={mdiCheckCircleOutline} />Name found</span
             >
           {/if}
           <!-- Only with a camera, which ScanQR looks for without asking
@@ -1127,6 +1132,15 @@
     <aside aria-labelledby="{id}-summary" class="send__summary">
       <h2 class="send__summary-title" id="{id}-summary">Summary</h2>
       <dl class="send__rows">
+        <div>
+          <dt>From</dt>
+          <dd>
+            <span class="send__summary-name">{fromLabel}</span>
+            {#if !isShielded && from}
+              <span class="send__summary-code">{shortenAddress(from)}</span>
+            {/if}
+          </dd>
+        </div>
         <div>
           <dt>To</dt>
           <dd>

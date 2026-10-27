@@ -1,4 +1,6 @@
 <script>
+  import { page } from "$app/stores";
+  import { pageName } from "$lib/containers/Shell/navigation";
   import { settingsStore } from "$lib/stores";
   import { logout } from "$lib/navigation";
   import { Toast, Tooltip } from "$lib/dusk/components";
@@ -10,6 +12,10 @@
   });
 
   let invalidating = false;
+
+  // Each page's own name, for its title and the screen reader's
+  // announcement of it.
+  $: name = pageName($page.url.pathname);
 
   /** @param {StorageEvent} event */
   function handleStorageChange({ key, oldValue, newValue, storageArea }) {
@@ -41,8 +47,12 @@
 
 <svelte:window on:storage={handleStorageChange} />
 
+<svelte:head>
+  <title>{name ? `${name} · Dusk Wallet` : "Dusk Wallet"}</title>
+</svelte:head>
+
 <main class="app">
-  <h1 class="sr-only">Dusk Web Wallet</h1>
+  <h1 class="sr-only">{name || "Dusk Wallet"}</h1>
   <slot />
 </main>
 
