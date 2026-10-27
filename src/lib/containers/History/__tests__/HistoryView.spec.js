@@ -121,4 +121,38 @@ describe("HistoryView", () => {
       `${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)}, Sent, −0.1 DUSK, ${fullDateTime(WINTER, "en")}, Public`
     );
   });
+
+  it("should grey a withdrawal's amount until it arrives, as a failed one's", () => {
+    const bridge = "ab".repeat(32);
+    const proved = {
+      ...row("b1".repeat(32), WINTER),
+      amount: "0",
+      bridge: /** @type {const} */ ({
+        amount: "1008000000000",
+        kind: "prove",
+        withdrawal: "0001".padEnd(64, "0"),
+      }),
+      contractId: bridge,
+      fnName: "proveWithdrawalTransaction",
+      kind: /** @type {const} */ ("contract_call"),
+      to: undefined,
+    };
+
+    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridge);
+
+    try {
+      const { container } = render(HistoryView, {
+        locale: "en",
+        state: { ...state, rows: [proved, state.rows[0]] },
+      });
+      const amounts = Array.from(
+        container.querySelectorAll(".history__amount"),
+        (amount) => amount.classList.contains("history__amount--muted")
+      );
+
+      expect(amounts).toStrictEqual([true, false]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });

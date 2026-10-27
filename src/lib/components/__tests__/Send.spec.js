@@ -405,6 +405,34 @@ describe("Send", () => {
       expect(getByText("Not enough for the network fee.")).toBeInTheDocument();
     });
 
+    it("should take an amount typed with a decimal comma, or with its thousands grouped", async () => {
+      const { container, getByRole, queryByRole } = render(Send, {
+        ...baseProps,
+        initialRecipient: shieldedAddress,
+      });
+      const fields = fieldsOf(getByRole);
+      const amount = () =>
+        getSummary(container).find(([label]) => label === "Amount")?.[1];
+
+      await fireEvent.input(fields.amount(), { target: { value: "1,5" } });
+
+      expect(amount()).toBe("1.5 DUSK");
+      expect(fields.send()).toBeEnabled();
+      expect(queryByRole("alert")).toBeNull();
+
+      await fireEvent.input(fields.amount(), { target: { value: "1,000" } });
+
+      expect(amount()).toBe("1,000 DUSK");
+
+      await fireEvent.input(fields.amount(), {
+        target: { value: "0,0000000001" },
+      });
+
+      expect(getByRole("alert")).toHaveTextContent(
+        "DUSK has 9 decimals at most."
+      );
+    });
+
     it("should set the most it can send with Max, leaving room for the fee", async () => {
       const { getByRole } = render(Send, {
         ...baseProps,

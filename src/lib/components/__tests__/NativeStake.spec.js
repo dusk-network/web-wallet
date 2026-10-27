@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { NativeStake } from "..";
-import { checkAmount, parseDuskInput } from "../Stake/stakeAmount";
+import {
+  checkAmount,
+  normalizeDuskInput,
+  parseDuskInput,
+} from "../Stake/stakeAmount";
 
 // The transaction sent stays pending.
 const { followTransaction } = vi.hoisted(() => ({
@@ -40,6 +44,27 @@ describe("parseDuskInput", () => {
 
     for (const text of ["", "1,000", "1e3", "-1", "1.0000000001", "abc"]) {
       expect(parseDuskInput(text)).toBeNull();
+    }
+  });
+});
+
+describe("normalizeDuskInput", () => {
+  it("reads a decimal comma as a point, and leaves digit grouping out where it can't be decimals", () => {
+    expect(normalizeDuskInput("1,5")).toBe("1.5");
+    expect(normalizeDuskInput(" 0,25 ")).toBe("0.25");
+    expect(normalizeDuskInput("0,123")).toBe("0.123");
+    expect(normalizeDuskInput("1.000,5")).toBe("1000.5");
+    expect(normalizeDuskInput("1,000.5")).toBe("1000.5");
+    expect(normalizeDuskInput("1,000,000")).toBe("1000000");
+
+    // A lone comma before three digits groups them, unless the language
+    // writes decimals with a comma.
+    expect(normalizeDuskInput("1,000")).toBe("1000");
+    expect(normalizeDuskInput("1,000", ",")).toBe("1.000");
+
+    // Anything else stays as typed, for the parser to refuse.
+    for (const text of ["1,00,0", "1e3", "1.2.3", "abc", "1,5,"]) {
+      expect(normalizeDuskInput(text)).toBe(text);
     }
   });
 });

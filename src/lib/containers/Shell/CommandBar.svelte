@@ -164,6 +164,7 @@
           href: `/dashboard/send?to=${encodeURIComponent(resolved.name)}`,
           id: `lookup:${resolved.name}`,
           label: `Send to ${resolved.name}`,
+          value: address,
         }),
       ],
     };
@@ -216,6 +217,7 @@
           href: `/dashboard/send?to=${encodeURIComponent(address)}`,
           id: `lookup:${address}`,
           label: "Send to this address",
+          value: address,
         }),
       ],
     };

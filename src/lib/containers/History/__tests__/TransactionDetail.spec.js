@@ -75,6 +75,10 @@ describe("TransactionDetail", () => {
     expect(
       container.querySelector(".tx-detail__amount")?.textContent
     ).toContain("1,008");
+    // Not arrived yet: greyed.
+    expect(container.querySelector(".tx-detail__amount")).toHaveClass(
+      "tx-detail__amount--muted"
+    );
     expect(getByText(/^Claim it on Dusk from about/)).toBeTruthy();
     expect(
       getByRole("link", { name: "Open withdrawals" }).getAttribute("href")

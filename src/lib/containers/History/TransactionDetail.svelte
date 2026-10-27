@@ -135,7 +135,6 @@
 
   $: p = presentation;
   $: time = rowTime(row);
-  $: failed = p.status === "failed";
   $: outcome =
     p.status === "failed"
       ? { icon: mdiAlertCircleOutline, text: "Failed · nothing sent" }
@@ -217,7 +216,10 @@
       </div>
     </div>
 
-    <p class="tx-detail__amount" class:tx-detail__amount--muted={failed}>
+    <p
+      class="tx-detail__amount"
+      class:tx-detail__amount--muted={p.amount.muted}
+    >
       {p.amount.sign}<BalanceValue value={p.amount.exact} />
       <span class="tx-detail__unit">DUSK</span>
     </p>

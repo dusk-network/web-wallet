@@ -73,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show addresses and hashes in the system's code font
 - Show no money values or market data off mainnet
 - Send from one page, with the summary beside the form, a review on phones, and a button that says what it sends
-- Start Send with no amount, take one with at most 9 decimals as typed, and say what's wrong with it
+- Start Send with no amount, take one with at most 9 decimals as typed, with a decimal point or comma, and say what's wrong with it
 - Show a Total at Max that never reads more than the balance
 - Say times are in your local time, with each one's own offset on hover, and keep a row's time and Public or Shielded on phones
 - List a contact's activity by day

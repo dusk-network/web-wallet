@@ -27,7 +27,11 @@
     formatDuskPlain,
     formatTotal,
   } from "$lib/dusk/currency";
-  import { parseDuskInput } from "$lib/components/Stake/stakeAmount";
+  import {
+    normalizeDuskInput,
+    parseDuskInput,
+  } from "$lib/components/Stake/stakeAmount";
+  import { getDecimalSeparator } from "$lib/dusk/number";
   import {
     isValidEvmAddress,
     makeClassName,
@@ -546,9 +550,11 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
 
-  $: parsedAmount = parseDuskInput(sendAmount);
+  // A comma keyboard's "1,5" and digit grouping read as the amount meant.
+  $: typedAmount = normalizeDuskInput(sendAmount, getDecimalSeparator());
+  $: parsedAmount = parseDuskInput(typedAmount);
   $: sendAmountInLux = parsedAmount ?? 0n;
-  $: amountError = amountErrorOf(sendAmount, parsedAmount);
+  $: amountError = amountErrorOf(typedAmount, parsedAmount);
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;

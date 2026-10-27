@@ -67,7 +67,7 @@
   <span class="activity-row__right">
     <span
       class="activity-row__amount"
-      class:activity-row__amount--muted={failed}
+      class:activity-row__amount--muted={p.amount.muted}
       >{p.amount.sign}<BalanceValue
         exact={p.amount.exact}
         value={p.amount.text}

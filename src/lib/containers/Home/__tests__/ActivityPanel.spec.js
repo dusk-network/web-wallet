@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 import { tick } from "svelte";
 
@@ -52,5 +52,44 @@ describe("ActivityPanel", () => {
 
     expect(container).toHaveTextContent("Staked with Sozu");
     expect(container).not.toHaveTextContent("Called sozu_stake");
+  });
+
+  it("should grey a withdrawal's amount until it arrives", () => {
+    const bridge = "ab".repeat(32);
+
+    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridge);
+
+    try {
+      const { container } = render(ActivityPanel, {
+        locale: "en",
+        state: {
+          complete: true,
+          error: null,
+          hasMore: false,
+          loaded: true,
+          rows: [
+            {
+              ...stake,
+              amount: "0",
+              bridge: {
+                amount: "1008000000000",
+                kind: "prove",
+                withdrawal: "0001".padEnd(64, "0"),
+              },
+              contractId: bridge,
+              deposit: undefined,
+              fnName: "proveWithdrawalTransaction",
+            },
+          ],
+          syncing: false,
+        },
+      });
+
+      expect(container.querySelector(".activity-row__amount")).toHaveClass(
+        "activity-row__amount--muted"
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

@@ -283,7 +283,7 @@
                 <td class="history__col-amount">
                   <span
                     class="history__amount"
-                    class:history__amount--muted={p.status === "failed"}
+                    class:history__amount--muted={p.amount.muted}
                     >{p.amount.sign}<BalanceValue
                       exact={p.amount.exact}
                       value={p.amount.text}
