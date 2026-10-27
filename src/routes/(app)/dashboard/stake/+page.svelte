@@ -17,7 +17,7 @@
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { goto } from "$lib/navigation";
-  import { sozuStore } from "$lib/sozu";
+  import { sozuPools, sozuStore } from "$lib/sozu";
   import {
     gasPriceStore,
     gasStore,
@@ -106,7 +106,9 @@
   $: ({ networkName } = $networkStore);
   $: hasStake = stakeInfo.amount !== null;
   $: publicBalance = balance.unshielded.value;
-  $: hasPastStaking = $activityState.rows.some(isStakingRow);
+  $: hasPastStaking = $activityState.rows.some((row) =>
+    isStakingRow(row, $sozuPools)
+  );
 
   // Sozu, read again for the overview each time it shows, as after a stake.
   $: if (flow === null && networkName && currentProfile) {

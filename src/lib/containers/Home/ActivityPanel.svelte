@@ -1,5 +1,6 @@
 <script>
   import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import { sozuPools } from "$lib/sozu";
   import { mdiChevronRight } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import {
@@ -59,6 +60,7 @@
     claimed: claimedWithdrawals(state.rows),
     contactNames: contactNamesOf($contactsStore),
     locale,
+    sozuPools: $sozuPools,
   };
   $: described = state.rows.map((row) => ({
     presentation: describeRow(row, context),

@@ -299,12 +299,18 @@ describe("describeRow", () => {
       icon: "call",
       title: "Called sozu_stake",
     });
-    expect([staked, unstaked, lookalike].map(isStakingRow)).toStrictEqual([
-      true,
-      true,
-      false,
-    ]);
+    expect(
+      [staked, unstaked, lookalike].map((one) => isStakingRow(one))
+    ).toStrictEqual([true, true, false]);
     expect(isStakingRow(row({ kind: "unstake" }))).toBe(true);
+
+    // A pool Sozu's hub named, as a view that follows them passes it.
+    const named = new Set([lookalike.contractId ?? ""]);
+
+    expect(isStakingRow(lookalike, named)).toBe(true);
+    expect(
+      describeRow(lookalike, { ...context, sozuPools: named })
+    ).toMatchObject({ category: "staking", title: "Staked with Sozu" });
   });
 
   it("says a shielded row is shielded", () => {

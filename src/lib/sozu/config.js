@@ -114,12 +114,15 @@ export const isSozuFunction = ({ fnName }) =>
 
 /**
  * Whether a transaction is a stake or an unstake with Sozu: a call of one
- * of its pools, known here or named by its hub.
+ * of its pools, known here or named by its hub. A view passes the pools it
+ * subscribed to (sozuPools), so that it reads its rows again when the hub
+ * names another one.
  *
  * @param {{ contractId?: string | null, fnName?: string }} call
+ * @param {Set<string>} [pools] The pools the hub named
  */
-export const isSozuCall = (call) => {
+export const isSozuCall = (call, pools = get(found)) => {
   const pool = contractIdOf(call.contractId);
 
-  return isSozuFunction(call) && (SOZU_POOLS.has(pool) || get(found).has(pool));
+  return isSozuFunction(call) && (SOZU_POOLS.has(pool) || pools.has(pool));
 };

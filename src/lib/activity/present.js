@@ -29,9 +29,11 @@ import { TX_KIND } from "./constants";
  *   locale: string,
  *   now?: number,
  *   ownAccount?: string,
+ *   sozuPools?: Set<string>,
  * }} PresentContext
  *
- * `claimed` holds the withdrawals the rows claim (claimedWithdrawals).
+ * `claimed` holds the withdrawals the rows claim (claimedWithdrawals), and
+ * `sozuPools` the pools Sozu's hub named (sozuPools in $lib/sozu).
  *
  * @typedef {{ claimFrom: number, claimed: boolean, ready: boolean }} WithdrawalStep
  *   Where a proved withdrawal is: claimed, or when it can be claimed, at the
@@ -114,9 +116,10 @@ const isBridge = (row, bridgeContracts) =>
  *
  * @param {ActivityRow} row
  * @param {Set<string> | undefined} bridgeContracts
+ * @param {Set<string>} [sozuPools]
  * @returns {{ category: ActivityPresentation["category"], icon: ActivityIcon }}
  */
-function classify(row, bridgeContracts) {
+function classify(row, bridgeContracts, sozuPools) {
   switch (row.kind) {
     case TX_KIND.STAKE:
     case TX_KIND.UNSTAKE:
@@ -129,7 +132,7 @@ function classify(row, bridgeContracts) {
       break;
   }
 
-  if (isSozuCall(row)) {
+  if (isSozuCall(row, sozuPools)) {
     return { category: "staking", icon: "staking" };
   }
 
@@ -274,9 +277,10 @@ function counterpartyTitle(row, icon, contactNames) {
  * Whether a row is staking: natively, or with Sozu.
  *
  * @param {ActivityRow} row
+ * @param {Set<string>} [sozuPools] The pools Sozu's hub named
  */
-export const isStakingRow = (row) =>
-  classify(row, undefined).category === "staking";
+export const isStakingRow = (row, sozuPools) =>
+  classify(row, undefined, sozuPools).category === "staking";
 
 /**
  * The status a row shows: only while it isn't final, or when it failed.
@@ -311,8 +315,8 @@ function shownStatus(row) {
  * @returns {ActivityPresentation}
  */
 export function describeRow(row, context) {
-  const { bridgeContracts, contactNames, locale } = context;
-  const { category, icon } = classify(row, bridgeContracts);
+  const { bridgeContracts, contactNames, locale, sozuPools } = context;
+  const { category, icon } = classify(row, bridgeContracts, sozuPools);
   const { title, titleIsAddress, verb } = titleOf(row, icon, contactNames);
   const status = shownStatus(row);
   const failed = status === "failed";

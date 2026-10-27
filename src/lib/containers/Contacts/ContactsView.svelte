@@ -9,6 +9,7 @@
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
   import { removeContact } from "$lib/contacts";
+  import { sozuPools } from "$lib/sozu";
   import {
     configuredBridgeContracts,
     shortAddress,
@@ -64,7 +65,11 @@
         )
       )
     : contacts;
-  $: payments = lastPayments(rows, { bridgeContracts, locale });
+  $: payments = lastPayments(rows, {
+    bridgeContracts,
+    locale,
+    sozuPools: $sozuPools,
+  });
   $: open = contacts.find((contact) => contact.id === selected) ?? null;
   $: panel =
     selected === "new" ? "new" : open ? (editing ? "edit" : "detail") : null;

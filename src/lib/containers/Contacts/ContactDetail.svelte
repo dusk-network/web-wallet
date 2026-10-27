@@ -18,6 +18,7 @@
     markContactNameChecked,
     saveContact,
   } from "$lib/contacts";
+  import { sozuPools } from "$lib/sozu";
   import { addBasePath } from "$lib/navigation";
 
   import ActivityRowItem from "../Home/ActivityRowItem.svelte";
@@ -147,6 +148,7 @@
     bridgeContracts,
     contactNames: contactNamesOf($contactsStore),
     locale,
+    sozuPools: $sozuPools,
   }).slice(0, 5);
   $: kind = contact.type === "address" ? "Shielded" : "Public";
   $: checkedAt = contact.checkedAt;
