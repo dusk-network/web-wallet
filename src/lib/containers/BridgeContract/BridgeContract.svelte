@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import {
     getBalance,
     switchChain,
@@ -31,6 +31,38 @@
     await switchChain(wagmiConfig, { chainId: id });
   }
 
+  /** Stops reading the balance on each block. */
+  let unwatchBalance = () => {};
+
+  /**
+   * Reads the connected EVM wallet's balance on each new block of its chain,
+   * only while one is connected: without one there is nothing to read, and
+   * no block to ask for.
+   *
+   * @param {boolean} isConnected
+   */
+  function watchBalance(isConnected) {
+    unwatchBalance();
+    unwatchBalance = isConnected
+      ? watchBlocks(wagmiConfig, {
+          async onBlock() {
+            if ($account.isConnected && $account.chainId && $account.address) {
+              try {
+                evmDuskBalance = await getBalance(wagmiConfig, {
+                  address: $account.address,
+                  chainId: $account.chainId,
+                });
+              } catch (e) {
+                // eslint-disable-next-line no-console
+                console.error("getBalance failed", e);
+                evmDuskBalance = undefined;
+              }
+            }
+          },
+        })
+      : () => {};
+  }
+
   onMount(() => {
     if ($account.isConnected && $account.chainId !== duskEvm.id) {
       switchChainHandler(duskEvm.id);
@@ -41,29 +73,18 @@
         await switchChainHandler(duskEvm.id);
       },
     });
-    const unwatchBalance = watchBlocks(wagmiConfig, {
-      async onBlock() {
-        if ($account.isConnected && $account.chainId && $account.address) {
-          try {
-            evmDuskBalance = await getBalance(wagmiConfig, {
-              address: $account.address,
-              chainId: $account.chainId,
-            });
-          } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error("getBalance failed", e);
-            evmDuskBalance = undefined;
-          }
-        }
-      },
-    });
 
     return () => {
       unwatchChain();
-      unwatchBalance();
     };
   });
 
+  onDestroy(() => {
+    unwatchBalance();
+  });
+
+  $: isConnected = Boolean($account.isConnected);
+  $: watchBalance(isConnected);
   $: ({ balance, currentProfile } = $walletStore);
   $: ({ customGasLimit, customGasPrice } = $settingsStore);
   $: gasSettings = getGasSettings(
