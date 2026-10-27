@@ -178,13 +178,29 @@
     if ($account.isConnecting) {
       walletDisconnect();
     }
-
-    // Workaround for when the user navigates
-    // back to the page from the dashboard
-    if ($account.isConnected) {
-      switchToSelectedChain();
-    }
   });
+
+  /** The account the balance shown is read for. */
+  let balanceOf = "";
+
+  /**
+   * Reads the balance of an account that is connected, or came back, while
+   * the page shows, once an account; forgets it once none is.
+   *
+   * @param {boolean} connected
+   * @param {string | undefined} connectedAddress
+   */
+  function followAccount(connected, connectedAddress) {
+    if (connected && connectedAddress && connectedAddress !== balanceOf) {
+      balanceOf = connectedAddress;
+      switchToSelectedChain();
+    } else if (!connected && balanceOf) {
+      balanceOf = "";
+      connectedWalletBalance = undefined;
+    }
+  }
+
+  $: followAccount(isConnected, address);
 
   /**
    * Handles modal state changes.

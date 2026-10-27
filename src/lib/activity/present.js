@@ -38,9 +38,10 @@ import { TX_KIND } from "./constants";
  * `claimed` holds the withdrawals the rows claim (claimedWithdrawals), and
  * `sozuPools` the pools Sozu's hub named (sozuPools in $lib/sozu).
  *
- * @typedef {{ claimFrom: number, claimed: boolean, ready: boolean }} WithdrawalStep
- *   Where a proved withdrawal is: claimed, or when it can be claimed, at the
- *   earliest, and whether that time has come
+ * @typedef {{ claimFrom: number, claimed: boolean }} WithdrawalStep
+ *   Where a proved withdrawal is: claimed, or about when it can be claimed.
+ *   That time is an estimate: the bridge's withdrawals page says when the
+ *   claim can be sent.
  *
  * @typedef {{
  *   amount: { exact: string, muted: boolean, sign: "" | "+" | "−", text: string },
@@ -428,7 +429,7 @@ const dayAndTime = (time, locale) =>
  * @param {PresentContext} context
  * @returns {{ amount?: bigint, line?: string, to?: string, withdrawal?: WithdrawalStep } | null}
  */
-function bridgeOf(row, { claimed, locale, now = Date.now() }) {
+function bridgeOf(row, { claimed, locale }) {
   const call = row.bridge;
 
   if (!call) {
@@ -446,19 +447,18 @@ function bridgeOf(row, { claimed, locale, now = Date.now() }) {
     return { amount };
   }
 
+  // Only an estimate, from the usual waiting period after the proof: the
+  // claim also waits for its dispute game, which only the bridge follows.
   const withdrawal = {
     claimed: Boolean(claimed?.has(call.withdrawal)),
     claimFrom,
-    ready: now >= claimFrom,
   };
 
   return {
     amount,
     line: withdrawal.claimed
       ? "claimed"
-      : withdrawal.ready
-        ? "ready to claim"
-        : `claim from about ${dayAndTime(claimFrom, locale)}`,
+      : `claim from about ${dayAndTime(claimFrom, locale)}`,
     withdrawal,
   };
 }

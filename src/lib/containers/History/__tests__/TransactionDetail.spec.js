@@ -121,6 +121,25 @@ describe("TransactionDetail", () => {
     expect(getAllByRole("button", { name: "Copy" })).toHaveLength(2);
   });
 
+  it("should name the contract of a call that moved no DUSK, which has no counterparty", () => {
+    const store =
+      "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199";
+    const { container, getByText } = show(
+      row({
+        amount: "0",
+        contractId: store,
+        counterparty: null,
+        fnName: "commit",
+      }),
+      { network: "testnet" },
+      { network: "testnet" }
+    );
+
+    expect(getByText("Reserved a .dusk name")).toBeInTheDocument();
+    expect(getByText("Dusk Domains")).toBeInTheDocument();
+    expect(container.textContent).toContain(store.slice(-6));
+  });
+
   it("should say which account sent it, and its gas price, nonce and block", async () => {
     const account = "2".repeat(60);
     const loadNonce = vi.fn(async () => "110");

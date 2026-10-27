@@ -69,6 +69,12 @@ export const account = { subscribe: accountStore.subscribe };
 let starting = null;
 
 /**
+ * The longest the pages wait for a wallet connected before to reconnect:
+ * they then show the account as it is, and follow it as it changes.
+ */
+const RECONNECT_WAIT_MS = 5_000;
+
+/**
  * Starts the connection, once, for the pages that need it.
  *
  * @returns {Promise<void>}
@@ -124,8 +130,13 @@ async function start() {
 
   accountStore.set(getAccount(wagmiConfig));
   watchAccount(wagmiConfig, { onChange: (next) => accountStore.set(next) });
-  reconnect(wagmiConfig);
   window.addEventListener("beforeunload", walletDisconnect);
+
+  // A wallet connected before comes back before the pages use it.
+  await Promise.race([
+    reconnect(wagmiConfig).catch(() => {}),
+    new Promise((resolve) => setTimeout(resolve, RECONNECT_WAIT_MS)),
+  ]);
 }
 
 export async function walletDisconnect() {

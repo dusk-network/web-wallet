@@ -254,15 +254,18 @@ describe("describeRow", () => {
       withdrawal: {
         claimed: false,
         claimFrom: Number(proved.timestamp) + week,
-        ready: false,
       },
     });
     expect(waiting.line).toMatch(
       /^Bridge · claim from about Nov 2, \d\d:32 [AP]M$/
     );
+
+    // The time is an estimate: once it passed, the row still says about when,
+    // never that the claim is ready, which only the bridge can tell.
     expect(
       describeRow(proved, { ...context, now: Number(proved.timestamp) + week })
-    ).toMatchObject({ line: "Bridge · ready to claim" });
+        .line
+    ).toMatch(/^Bridge · claim from about Nov 2, /);
 
     const claimed = claimedWithdrawals([claim, proved]);
 

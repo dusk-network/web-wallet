@@ -167,7 +167,15 @@
   $: if (`${row.hash} ${hasNonce}` !== nonceOf) {
     showNonce(row.hash, hasNonce);
   }
-  $: known = p.counterparty ? contractLabel(p.counterparty, network) : "";
+  // Who it went to: the contract a call went to, as one that moved no
+  // DUSK has no counterparty, and a deposit's DuskEVM address.
+  $: target =
+    row.kind === "contract_call" &&
+    row.contractId &&
+    row.bridge?.kind !== "deposit"
+      ? row.contractId
+      : p.counterparty;
+  $: known = target ? contractLabel(target, network) : "";
   $: isSent = row.direction !== "in" && p.icon !== "received";
   $: gasUsed =
     row.gasSpent && row.gasLimit
@@ -229,7 +237,7 @@
         <dt>Date</dt>
         <dd>{time === null ? "Not known yet" : fullDateTime(time, locale)}</dd>
       </div>
-      {#if p.counterparty && p.icon !== "shield"}
+      {#if target && p.icon !== "shield"}
         <div class="tx-detail__wide">
           <dt>{counterpartyLabel}</dt>
           <dd>
@@ -245,7 +253,7 @@
               >
             {/if}
             <span class="tx-detail__code"
-              >{#each [parts(p.counterparty)] as [head, middle, tail] (tail)}<b
+              >{#each [parts(target)] as [head, middle, tail] (tail)}<b
                   >{head}</b
                 ><span class="tx-detail__middle">{middle}</span><b
                   class="tx-detail__tail">{tail}</b
@@ -253,7 +261,7 @@
             >
             <button
               class="tx-detail__copy"
-              on:click={() => copy(String(p.counterparty), "address")}
+              on:click={() => copy(String(target), "address")}
               type="button"><Icon path={mdiContentCopy} />Copy</button
             >
             {#if canSave && !isSavingContact}
@@ -305,9 +313,10 @@
         <div class="tx-detail__wide">
           <dt>Next step</dt>
           <dd>
-            {p.withdrawal.ready
-              ? "Claim it on Dusk: it's ready."
-              : `Claim it on Dusk from about ${fullDateTime(p.withdrawal.claimFrom, locale)}.`}
+            Claim it on Dusk from about {fullDateTime(
+              p.withdrawal.claimFrom,
+              locale
+            )}. The withdrawals page says when it can be sent.
             <AnchorButton
               className="tx-detail__next"
               href={addBasePath(
