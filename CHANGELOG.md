@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stake any amount with Sozu, a third party's liquid staking, and unstake from it, with the stDUSK a stake gets and what is staked there
 - Compare native and liquid staking side by side on the Staking page, with neither picked
 - Add to a stake with Stake more
+- Show in the history the DuskEVM address a bridge deposit went to, and a withdrawal's amount and when it can be claimed
 
 ### Changed
 

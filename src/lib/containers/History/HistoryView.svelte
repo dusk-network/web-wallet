@@ -5,6 +5,7 @@
   import { Button, Icon, Select } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
   import {
+    claimedWithdrawals,
     configuredBridgeContracts,
     describeRow,
     groupByDay,
@@ -88,6 +89,7 @@
 
   $: context = {
     bridgeContracts,
+    claimed: claimedWithdrawals(state.rows),
     contactNames: contactNamesOf($contactsStore),
     locale,
   };

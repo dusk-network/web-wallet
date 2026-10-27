@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import bridgeCalls from "../../bridge/__tests__/fixtures/bridge-calls-testnet.json";
 import fixture from "./fixtures/activity-testnet.json";
 import { fakeArchive } from "./fixtures/fakeArchive";
 
@@ -749,6 +750,75 @@ describe("fetchTxDetails", () => {
 
     // A transaction the node doesn't have gets no details.
     expect(details.has("00".repeat(32))).toBe(false);
+  });
+
+  it("reads what a call to the bridge did from its arguments, and looks again at one read before", async () => {
+    const { bridge, portal } = bridgeCalls.contracts;
+    const args = (/** @type {string} */ name) =>
+      bridgeCalls.calls.find((c) => c.name === name)?.args;
+    const prove = "c1".repeat(32);
+    const deposit = "c2".repeat(32);
+    const ok =
+      "8e247a33967153b229ce4f45f61e0f14808d8a417c4a4b37eabb269a8eb08e34";
+    /** @type {Record<string, any>} */
+    const details = fixture.details;
+    /**
+     * @param {string} contractId
+     * @param {string} fnName
+     * @param {string | undefined} data
+     */
+    const tx = (contractId, fnName, data) => ({
+      ...details[ok],
+      tx: { ...details[ok].tx, callData: { contractId, data, fnName } },
+    });
+
+    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridge);
+    vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", `0x${portal}`);
+    details[prove] = tx(
+      portal,
+      "proveWithdrawalTransaction",
+      args("prove-account")
+    );
+    details[deposit] = tx(
+      bridge,
+      "depositETHToWithValue",
+      args("deposit-shoot")
+    );
+
+    try {
+      const node = fakeArchive();
+      const read = await history.fetchTxDetails(NODE, [prove, deposit, ok]);
+
+      expect(node.detailQueries()[0].query).toContain(
+        "callData { contractId fnName data }"
+      );
+      expect(read.get(prove)?.bridge).toMatchObject({
+        amount: "1008000000000",
+        kind: "prove",
+      });
+      expect(read.get(deposit)?.bridge).toEqual({
+        amount: "100000000",
+        kind: "deposit",
+        to: "0x96BA8D18dBa0a9B933c2e733EA07F47767dc893e",
+      });
+      expect(read.get(ok)?.bridge).toBeUndefined();
+
+      // A bridge call looked up before is looked up again, once.
+      expect(history.needsDetails({ contractId: portal, detailsAt: 1 })).toBe(
+        true
+      );
+      expect(
+        history.needsDetails({ bridge: null, contractId: portal, detailsAt: 1 })
+      ).toBe(false);
+      expect(
+        history.needsDetails({ contractId: "ab".repeat(32), detailsAt: 1 })
+      ).toBe(false);
+      expect(history.needsDetails({ contractId: portal })).toBe(true);
+    } finally {
+      delete details[prove];
+      delete details[deposit];
+      vi.unstubAllEnvs();
+    }
   });
 });
 

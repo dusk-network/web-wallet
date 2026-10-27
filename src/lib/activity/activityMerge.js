@@ -71,6 +71,7 @@ export function historyRow(entry) {
     amount,
     blockHash: entry.blockHash,
     blockHeight: entry.blockHeight,
+    bridge: entry.bridge,
     contractId: entry.contractId ?? (call ? counterparty : undefined),
     counterparty: entry.counterparty ?? null,
     deposit: call && amount !== "0" ? amount : undefined,

@@ -16,6 +16,7 @@ import { ProfileGenerator } from "@dusk/w3sper";
 import {
   activityNetworkKey,
   fillActivityDetails,
+  needsDetails,
   noteActivityUnavailable,
   readActivity,
   syncActivity,
@@ -470,7 +471,7 @@ export class ActivitySession {
     const entry = this.#entries.find((e) => e.hash === hash);
     const epoch = await this.#epoch;
 
-    if (!entry || entry.detailsAt || epoch === undefined) {
+    if (!entry || !needsDetails(entry) || epoch === undefined) {
       return;
     }
 
@@ -543,7 +544,7 @@ export class ActivitySession {
     await this.#reload().catch(() => {});
     this.#emit();
 
-    const missing = this.#entries.filter((e) => !e.detailsAt);
+    const missing = this.#entries.filter(needsDetails);
     const epoch = await this.#epoch;
 
     if (missing.length && epoch !== undefined) {

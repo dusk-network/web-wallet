@@ -91,9 +91,13 @@
         ? { icon: mdiTimerSand, text: "Pending" }
         : p.status === "unknown"
           ? { icon: mdiTimerSand, text: "Not confirmed by the network" }
-          : row.success === true || row.status === "executed"
-            ? { icon: mdiCheck, text: "Completed" }
-            : { icon: mdiTimerSand, text: "Checking the outcome…" };
+          : p.withdrawal
+            ? p.withdrawal.claimed
+              ? { icon: mdiCheck, text: "Proved · claimed" }
+              : { icon: mdiTimerSand, text: "Proved · not claimed yet" }
+            : row.success === true || row.status === "executed"
+              ? { icon: mdiCheck, text: "Completed" }
+              : { icon: mdiTimerSand, text: "Checking the outcome…" };
   $: headline =
     p.titleIsAddress || p.icon === "sent" || p.icon === "received"
       ? `${row.direction === "in" ? "Received from" : "Sent to"} ${p.title}`
@@ -159,7 +163,9 @@
         <div class="tx-detail__wide">
           <dt>{counterpartyLabel}</dt>
           <dd>
-            {#if contact || duskName}
+            {#if row.bridge?.kind === "deposit"}
+              <span class="tx-detail__name">DuskEVM address</span>
+            {:else if contact || duskName}
               <span class="tx-detail__name"
                 >{contact && duskName
                   ? `${contact.name} · ${duskName}`
@@ -215,6 +221,25 @@
                 <p class="tx-detail__note">Saved only on this device.</p>
               </form>
             {/if}
+          </dd>
+        </div>
+      {/if}
+      {#if p.withdrawal && !p.withdrawal.claimed}
+        <div class="tx-detail__wide">
+          <dt>Next step</dt>
+          <dd>
+            {p.withdrawal.ready
+              ? "Claim it on Dusk: it's ready."
+              : `Claim it on Dusk from about ${fullDateTime(p.withdrawal.claimFrom, locale)}.`}
+            <AnchorButton
+              className="tx-detail__next"
+              href={addBasePath(
+                "/dashboard/bridge/transactions?view=withdrawals"
+              )}
+              size="small"
+              text="Open withdrawals"
+              variant="secondary"
+            />
           </dd>
         </div>
       {/if}

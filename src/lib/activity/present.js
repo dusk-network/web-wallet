@@ -12,6 +12,7 @@ import {
 } from "$lib/dusk/currency/formatDusk";
 
 import { SOZU_FN, isSozuCall } from "$lib/sozu/config";
+import { WITHDRAWAL_WAITING_PERIOD_SECONDS } from "$lib/bridge/withdrawalLifecycle";
 
 import { TX_KIND } from "./constants";
 
@@ -23,10 +24,18 @@ import { TX_KIND } from "./constants";
  *
  * @typedef {{
  *   bridgeContracts?: Set<string>,
+ *   claimed?: Set<string>,
  *   contactNames?: Map<string, string>,
  *   locale: string,
+ *   now?: number,
  *   ownAccount?: string,
  * }} PresentContext
+ *
+ * `claimed` holds the withdrawals the rows claim (claimedWithdrawals).
+ *
+ * @typedef {{ claimFrom: number, claimed: boolean, ready: boolean }} WithdrawalStep
+ *   Where a proved withdrawal is: claimed, or when it can be claimed, at the
+ *   earliest, and whether that time has come
  *
  * @typedef {{
  *   amount: { exact: string, muted: boolean, sign: "" | "+" | "−", text: string },
@@ -38,6 +47,7 @@ import { TX_KIND } from "./constants";
  *   status: ActivityShownStatus,
  *   title: string,
  *   titleIsAddress: boolean,
+ *   withdrawal: WithdrawalStep | null,
  * }} ActivityPresentation
  */
 
@@ -173,6 +183,10 @@ function bridgeTitle(row) {
     return "To DuskEVM";
   }
 
+  if (row.bridge?.kind === "deposit") {
+    return "To DuskEVM";
+  }
+
   const fn = String(row.fnName ?? "").toLowerCase();
 
   return fn.includes("prove")
@@ -296,34 +310,153 @@ function shownStatus(row) {
  * @param {PresentContext} context
  * @returns {ActivityPresentation}
  */
-export function describeRow(row, { bridgeContracts, contactNames, locale }) {
+export function describeRow(row, context) {
+  const { bridgeContracts, contactNames, locale } = context;
   const { category, icon } = classify(row, bridgeContracts);
   const { title, titleIsAddress, verb } = titleOf(row, icon, contactNames);
   const status = shownStatus(row);
-  const lux = toLux(row.amount);
   const failed = status === "failed";
-  const moved = icon === "shield" || icon === "self";
-  const fee = row.feePaid
-    ? `fee ${formatFee(toLux(row.feePaid), locale)} DUSK paid`
-    : "no fee";
+  const bridge = icon === "bridge" && !failed ? bridgeOf(row, context) : null;
 
   return {
-    amount: {
-      exact: formatDuskExact(lux, locale),
-      muted: failed,
-      sign:
-        failed || moved || lux === 0n ? "" : row.direction === "in" ? "+" : "−",
-      text: formatDusk(lux, locale),
-    },
+    amount: amountOf(row, { bridge, failed, icon, locale }),
     category,
-    counterparty: counterpartyOf(row),
+    counterparty: bridge?.to ?? counterpartyOf(row),
     icon,
-    line: failed ? `Failed · nothing sent · ${fee}` : verb,
+    line: failed
+      ? `Failed · nothing sent · ${feeText(row, locale)}`
+      : bridge?.line
+        ? `${verb} · ${bridge.line}`
+        : verb,
     privacy: row.privacy === "shielded" ? "Shielded" : "Public",
     status,
     title,
     titleIsAddress,
+    withdrawal: bridge?.withdrawal ?? null,
   };
+}
+
+/**
+ * The fee a row's sender paid, for its line.
+ *
+ * @param {ActivityRow} row
+ * @param {string} locale
+ */
+const feeText = (row, locale) =>
+  row.feePaid
+    ? `fee ${formatFee(toLux(row.feePaid), locale)} DUSK paid`
+    : "no fee";
+
+/**
+ * A row's amount: what it moved, signed by its direction, or what a bridge
+ * call was for, unsigned. A failed transaction and a withdrawal not claimed
+ * yet show theirs muted.
+ *
+ * @param {ActivityRow} row
+ * @param {{ bridge: ReturnType<typeof bridgeOf>, failed: boolean, icon: ActivityIcon, locale: string }} options
+ * @returns {ActivityPresentation["amount"]}
+ */
+function amountOf(row, { bridge, failed, icon, locale }) {
+  const lux = bridge?.amount ?? toLux(row.amount);
+  const unsigned =
+    failed ||
+    icon === "shield" ||
+    icon === "self" ||
+    bridge?.amount !== undefined ||
+    lux === 0n;
+
+  return {
+    exact: formatDuskExact(lux, locale),
+    muted: failed || bridge?.withdrawal?.claimed === false,
+    sign: unsigned ? "" : row.direction === "in" ? "+" : "−",
+    text: formatDusk(lux, locale),
+  };
+}
+
+/**
+ * When a proved withdrawal can be claimed, at the earliest: its proof's
+ * time and the waiting period after it.
+ *
+ * @param {ActivityRow} row
+ */
+const claimFromOf = (row) => {
+  const time = rowTime(row);
+
+  return time === null ? null : time + WITHDRAWAL_WAITING_PERIOD_SECONDS * 1000;
+};
+
+/**
+ * "3 Nov, 14:20", in the user's locale and time zone.
+ *
+ * @param {number} time
+ * @param {string} locale
+ */
+const dayAndTime = (time, locale) =>
+  new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+  }).format(time);
+
+/**
+ * What a bridge call adds to its row: the DuskEVM address a deposit went
+ * to, or the amount a withdrawal's proof or claim is for (only where the
+ * transaction itself moved none of it), and where a proved withdrawal is.
+ *
+ * @param {ActivityRow} row
+ * @param {PresentContext} context
+ * @returns {{ amount?: bigint, line?: string, to?: string, withdrawal?: WithdrawalStep } | null}
+ */
+function bridgeOf(row, { claimed, locale, now = Date.now() }) {
+  const call = row.bridge;
+
+  if (!call) {
+    return null;
+  }
+
+  if (call.kind === "deposit") {
+    return { line: `to ${shortAddress(call.to)}`, to: call.to };
+  }
+
+  const amount = toLux(row.amount) === 0n ? toLux(call.amount) : undefined;
+  const claimFrom = call.kind === "prove" ? claimFromOf(row) : null;
+
+  if (claimFrom === null) {
+    return { amount };
+  }
+
+  const withdrawal = {
+    claimed: Boolean(claimed?.has(call.withdrawal)),
+    claimFrom,
+    ready: now >= claimFrom,
+  };
+
+  return {
+    amount,
+    line: withdrawal.claimed
+      ? "claimed"
+      : withdrawal.ready
+        ? "ready to claim"
+        : `claim from about ${dayAndTime(claimFrom, locale)}`,
+    withdrawal,
+  };
+}
+
+/**
+ * The withdrawals the rows claim, for the proofs before them.
+ *
+ * @param {ActivityRow[]} rows
+ * @returns {Set<string>}
+ */
+export function claimedWithdrawals(rows) {
+  return new Set(
+    rows.flatMap((row) =>
+      row.bridge?.kind === "claim" && row.status !== "failed"
+        ? [row.bridge.withdrawal]
+        : []
+    )
+  );
 }
 
 /**

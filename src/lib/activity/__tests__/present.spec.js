@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CSV_COLUMNS,
+  claimedWithdrawals,
   dayLabel,
   describeRow,
   groupByDay,
@@ -179,6 +180,90 @@ describe("describeRow", () => {
         context
       ).title
     ).toBe("From DuskEVM");
+  });
+
+  it("says where a bridge row's DUSK went: the DuskEVM address, or the withdrawal and its next step", () => {
+    const evm = "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A";
+    const withdrawal = "0001".padEnd(64, "0");
+    const proved = row({
+      amount: "0",
+      bridge: { amount: "1008000000000", kind: "prove", withdrawal },
+      contractId: BRIDGE,
+      fnName: "proveWithdrawalTransaction",
+      kind: "contract_call",
+      to: undefined,
+    });
+    const claim = row({
+      amount: "0",
+      bridge: { amount: "1008000000000", kind: "claim", withdrawal },
+      contractId: BRIDGE,
+      fnName: "finalizeWithdrawalTransaction",
+      hash: "bb".repeat(32),
+      kind: "contract_call",
+      to: undefined,
+    });
+    const week = 7 * 86_400_000;
+
+    expect(
+      describeRow(
+        row({
+          bridge: { amount: "25000000000", kind: "deposit", to: evm },
+          contractId: BRIDGE,
+          kind: "contract_call",
+          to: undefined,
+        }),
+        context
+      )
+    ).toMatchObject({
+      amount: { sign: "−", text: "25" },
+      counterparty: evm,
+      line: "Bridge · to 0x19E7…DAff2A",
+      title: "To DuskEVM",
+    });
+
+    // Proved, not claimed: the amount on its way, muted, and when it can be claimed.
+    const waiting = describeRow(proved, { ...context, now: proved.timestamp });
+
+    expect(waiting).toMatchObject({
+      amount: { muted: true, sign: "", text: "1,008" },
+      title: "Withdrawal proved",
+      withdrawal: {
+        claimed: false,
+        claimFrom: Number(proved.timestamp) + week,
+        ready: false,
+      },
+    });
+    expect(waiting.line).toMatch(
+      /^Bridge · claim from about Nov 2, \d\d:32 [AP]M$/
+    );
+    expect(
+      describeRow(proved, { ...context, now: Number(proved.timestamp) + week })
+    ).toMatchObject({ line: "Bridge · ready to claim" });
+
+    const claimed = claimedWithdrawals([claim, proved]);
+
+    expect(
+      describeRow(proved, { ...context, claimed, now: proved.timestamp })
+    ).toMatchObject({
+      amount: { muted: false, text: "1,008" },
+      line: "Bridge · claimed",
+      withdrawal: { claimed: true },
+    });
+    expect(describeRow(claim, context)).toMatchObject({
+      amount: { text: "1,008" },
+      title: "Withdrawal claimed",
+      withdrawal: null,
+    });
+    expect(
+      claimedWithdrawals([{ ...claim, status: "failed", success: false }])
+    ).toEqual(new Set());
+
+    // A call to the bridge that didn't read as one of its calls reads as before.
+    expect(describeRow({ ...proved, bridge: null }, context)).toMatchObject({
+      amount: { text: "0" },
+      line: "Bridge",
+      withdrawal: null,
+    });
   });
 
   it("names a stake with Sozu and an unstake from it as staking, and no other contract's calls of the same name", () => {

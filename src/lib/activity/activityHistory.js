@@ -18,6 +18,8 @@
  * entries. The shielded history is phoenixHistory.js's.
  */
 
+import { decodeBridgeCall, isBridgeContract } from "$lib/bridge/bridgeCalls";
+
 import * as defaultStore from "./activityStore";
 import { STAKE_CONTRACT, TRANSFER_CONTRACT, TX_KIND } from "./constants";
 
@@ -1366,6 +1368,17 @@ export const errorText = (err) =>
 const textOrUndefined = (value) => (value ? String(value) : undefined);
 
 /**
+ * Whether an entry's details are still to look up: it has none, or it is a
+ * call to the bridge looked up before the history read what bridge calls
+ * do.
+ *
+ * @param {{ bridge?: unknown, contractId?: string, detailsAt?: number }} entry
+ */
+export const needsDetails = (entry) =>
+  !entry.detailsAt ||
+  (entry.bridge === undefined && isBridgeContract(entry.contractId));
+
+/**
  * @param {any} tx
  * @returns {ActivityDetails}
  */
@@ -1375,14 +1388,18 @@ function detailsOf(tx) {
   const seconds = Number(tx.blockTimestamp);
   const err = errorText(tx.err);
   const blockHash = String(tx.blockHash ?? "");
+  const contractId = textOrUndefined(dig(tx, "tx", "callData", "contractId"));
+  const fnName = textOrUndefined(dig(tx, "tx", "callData", "fnName"));
+  const data = dig(tx, "tx", "callData", "data");
 
   return {
     blockHash: HASH.test(blockHash) ? blockHash : undefined,
-    contractId: textOrUndefined(dig(tx, "tx", "callData", "contractId")),
+    bridge: decodeBridgeCall({ contractId, data, fnName }),
+    contractId,
     detailsAt: Date.now(),
     error: err || undefined,
     fee: (gasSpent * gasPrice).toString(),
-    fnName: textOrUndefined(dig(tx, "tx", "callData", "fnName")),
+    fnName,
     gasLimit: u64(dig(tx, "tx", "gasLimit")).toString(),
     gasPrice: gasPrice.toString(),
     gasSpent: gasSpent.toString(),
@@ -1411,7 +1428,7 @@ export async function fetchTxDetails(url, hashes) {
 
   const fields = list.map(
     (hash, i) =>
-      `t${i}: tx(hash: "${hash}") { err gasSpent blockHash blockTimestamp tx { gasPrice gasLimit callData { contractId fnName } } }`
+      `t${i}: tx(hash: "${hash}") { err gasSpent blockHash blockTimestamp tx { gasPrice gasLimit callData { contractId fnName data } } }`
   );
   const data = await archiveQuery(url, `query { ${fields.join(" ")} }`);
 
@@ -1460,7 +1477,7 @@ async function fillDetails({
       limit: DETAILS_BATCH * requests,
     }))
   )
-    .filter((e) => !e.detailsAt)
+    .filter(needsDetails)
     .map((e) => e.hash);
 
   for (let i = 0; i < missing.length && requests > 0; i += DETAILS_BATCH) {
@@ -1499,7 +1516,7 @@ export async function fillActivityDetails({
 }) {
   const url = historyArchiverUrl({ archiverUrl, nodeUrl });
   const ownerKey = store.activityOwnerKey(activityNetworkKey(nodeUrl), account);
-  const missing = entries.filter((e) => !e.detailsAt);
+  const missing = entries.filter(needsDetails);
 
   await fillDetails({
     entries: missing,
@@ -1525,6 +1542,7 @@ export function activityEntry(row) {
   return {
     blockHash: row.blockHash,
     blockHeight: row.blockHeight,
+    bridge: row.bridge,
     contractId: row.contractId,
     counterparty: row.counterparty ?? null,
     detailsAt: row.detailsAt,
