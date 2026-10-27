@@ -114,7 +114,7 @@
     {:else if !shown.length}
       <p class="activity-panel__note">{emptyText}</p>
     {:else}
-      <p class="activity-panel__zone">Times in your local time</p>
+      <p class="activity-panel__zone">Shown in your local time</p>
       {#each groups as group (group.key)}
         <h3 class="activity-panel__day">{group.label}</h3>
         {#each group.items as item (item.row.hash)}

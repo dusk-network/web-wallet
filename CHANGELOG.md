@@ -101,6 +101,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show the DUSK wordmark in the top bar, with WALLET from 1280 px
 - Show links in blue, and the focus ring in the same blue
 - Shorten the Staking page's Choose how to stake to Stake
+- Say on the Staking page that the rewards shown are the native stake's, and that what is staked with Sozu includes its rewards
+- Say plainly what a stDUSK is worth and how it grows
+- Say Shown in your local time, not Times in your local time
 
 ### Removed
 
@@ -115,6 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Name the DUSK unit after amounts for screen readers
 - Give controls on phones a tap area of at least 44 px
 - Date a withdrawal found by its hash by its DuskEVM block, not by the lookup
+- Say Nothing to unstake or claim beside the native stake, not under Unstake from Sozu
 
 ## [1.8.0] - 2026-03-25
 

@@ -78,9 +78,16 @@
   $: fees = sozu.status?.fees ?? null;
 
   /** @type {{ label: string, lux: bigint, stDusk?: bigint, sub?: string }[]} */
-  // What is staked comes first, natively and with Sozu.
+  // What is staked comes first, natively and with Sozu. With nothing
+  // natively staked, the native stake says there's nothing to unstake or
+  // claim, away from Unstake from Sozu; its rewards are the native stake's,
+  // as Sozu's are in what is staked there.
   $: figures = [
-    { label: hasLiquid ? "Staked natively" : "Staked", lux: staked },
+    {
+      label: hasLiquid ? "Staked natively" : "Staked",
+      lux: staked,
+      sub: hasNative ? undefined : "Nothing to unstake or claim",
+    },
     ...(hasLiquid && position
       ? [
           {
@@ -90,7 +97,7 @@
           },
         ]
       : []),
-    { label: "Rewards", lux: stakeInfo.reward },
+    { label: hasLiquid ? "Native rewards" : "Rewards", lux: stakeInfo.reward },
     {
       label: "Available to stake",
       lux: publicBalance,
@@ -125,7 +132,8 @@
                   <span class="staking__sub">{figure.sub}</span>
                 {:else if figure.stDusk !== undefined}
                   <span class="staking__sub"
-                    ><BalanceValue {...amountOf(figure.stDusk)} /> stDUSK</span
+                    ><BalanceValue {...amountOf(figure.stDusk)} /> stDUSK, rewards
+                    included</span
                   >
                 {/if}
               </dd>
@@ -133,34 +141,36 @@
           {/each}
         </dl>
 
-        <div class="staking__actions">
-          <div class="staking__buttons">
-            {#if hasNative}
-              <Button
-                disabled={!actions.canUnstake}
-                on:click={() => goto("/dashboard/stake?flow=unstake")}
-                text="Unstake"
-                variant="secondary"
-              />
-              <Button
-                disabled={!actions.canClaim}
-                on:click={() => goto("/dashboard/stake?flow=claim")}
-                text="Claim rewards"
-                variant="secondary"
-              />
-            {/if}
-            {#if hasLiquid}
-              <AppAnchorButton
-                href="/dashboard/stake?flow=liquid&action=unstake"
-                text="Unstake from Sozu"
-                variant="secondary"
-              />
-            {/if}
+        {#if hasNative || hasLiquid}
+          <div class="staking__actions">
+            <div class="staking__buttons">
+              {#if hasNative}
+                <Button
+                  disabled={!actions.canUnstake}
+                  on:click={() => goto("/dashboard/stake?flow=unstake")}
+                  text="Unstake"
+                  variant="secondary"
+                />
+                <Button
+                  disabled={!actions.canClaim}
+                  on:click={() => goto("/dashboard/stake?flow=claim")}
+                  text="Claim rewards"
+                  variant="secondary"
+                />
+              {/if}
+              {#if hasLiquid}
+                <AppAnchorButton
+                  href="/dashboard/stake?flow=liquid&action=unstake"
+                  text="Unstake from Sozu"
+                  variant="secondary"
+                />
+              {/if}
+            </div>
+            {#each actions.reasons as reason (reason)}
+              <p class="staking__reason">{reason}</p>
+            {/each}
           </div>
-          {#each actions.reasons as reason (reason)}
-            <p class="staking__reason">{reason}</p>
-          {/each}
-        </div>
+        {/if}
       </div>
 
       {#if isMaturing}
@@ -260,10 +270,10 @@
             <td data-way="Liquid staking (Sozu, third party)">
               {#if rate}
                 You get stDUSK. Each is worth {formatDusk(rate, locale)} DUSK now,
-                as Sozu's contract gives it, and follows Sozu's pool.
+                and more as Sozu's pool earns rewards.
               {:else}
-                You get stDUSK, a token for your share of Sozu's pool. Its DUSK
-                value follows the pool.
+                You get stDUSK, a token for your share of Sozu's pool. Each is
+                worth more DUSK as the pool earns rewards.
               {/if}
             </td>
           {/if}

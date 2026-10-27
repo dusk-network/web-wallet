@@ -13,24 +13,27 @@ describe("stakeActions", () => {
     staked: 0n,
   };
 
-  it("says once why neither can be pressed with nothing staked", () => {
+  it("gives no reasons with nothing staked natively: no button shows to explain", () => {
     expect(stakeActions(base)).toStrictEqual({
       canClaim: false,
       canUnstake: false,
-      reasons: ["Nothing staked yet, so there's nothing to unstake or claim."],
+      reasons: [],
     });
     expect(
-      stakeActions({ ...base, hasPastStaking: true }).reasons
-    ).toStrictEqual([
-      "Nothing staked right now, so there's nothing to unstake or claim.",
-    ]);
+      stakeActions({ ...base, hasLiquid: true, hasPastStaking: true }).reasons
+    ).toStrictEqual([]);
   });
 
   it("says it of native staking when something is staked with Sozu", () => {
     expect(
-      stakeActions({ ...base, hasLiquid: true, hasPastStaking: true }).reasons
+      stakeActions({
+        ...base,
+        hasLiquid: true,
+        hasPastStaking: true,
+        reward: DUSK,
+      }).reasons
     ).toStrictEqual([
-      "Nothing staked natively, so there's nothing to unstake or claim.",
+      "Nothing staked natively, so there's nothing to unstake.",
     ]);
   });
 

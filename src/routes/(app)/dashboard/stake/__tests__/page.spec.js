@@ -177,11 +177,13 @@ describe("Staking", () => {
 
     const { container, queryByRole } = render(Staking);
 
-    // Nothing staked natively: no Unstake or Claim to grey out.
+    // Nothing staked natively: no Unstake or Claim to grey out, and the
+    // stake says there's nothing to unstake or claim.
     expect(queryByRole("button", { name: "Unstake" })).toBeNull();
     expect(queryByRole("button", { name: "Claim rewards" })).toBeNull();
-    expect(textOf(container.querySelector(".staking__actions"))).toContain(
-      "Nothing staked yet, so there's nothing to unstake or claim."
+    expect(container.querySelector(".staking__actions")).toBeNull();
+    expect(textOf(container.querySelector(".staking__figures > div"))).toBe(
+      "Staked 0 DUSK Nothing to unstake or claim"
     );
 
     await act(() =>
@@ -200,8 +202,8 @@ describe("Staking", () => {
       }))
     );
 
-    expect(textOf(container.querySelector(".staking__actions"))).toContain(
-      "Nothing staked right now, so there's nothing to unstake or claim."
+    expect(textOf(container.querySelector(".staking__figures > div"))).toBe(
+      "Staked 0 DUSK Nothing to unstake or claim"
     );
     expect(
       textOf(container.querySelector(".staking__side .activity-row"))
@@ -238,7 +240,7 @@ describe("Staking", () => {
       "If your node misses its turn, part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost)."
     );
     expect(rows[2][2]).toBe(
-      "You get stDUSK, a token for your share of Sozu's pool. Its DUSK value follows the pool."
+      "You get stDUSK, a token for your share of Sozu's pool. Each is worth more DUSK as the pool earns rewards."
     );
 
     // Nothing picked: two ways to go, neither one chosen.
@@ -260,7 +262,7 @@ describe("Staking", () => {
     await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
 
     expect(textOf(table.tBodies[0].rows[2].cells[2])).toBe(
-      "You get stDUSK. Each is worth 3.0751 DUSK now, as Sozu's contract gives it, and follows Sozu's pool."
+      "You get stDUSK. Each is worth 3.0751 DUSK now, and more as Sozu's pool earns rewards."
     );
     // And Sozu's fees, as its contract gives them on this network.
     expect(Array.from(table.tBodies[0].rows[3].cells, textOf)).toStrictEqual([
@@ -302,10 +304,14 @@ describe("Staking", () => {
     ).toStrictEqual(["Staked", "With"]);
     expect(
       textOf(container.querySelectorAll(".staking__figures > div")[1])
-    ).toBe("With Sozu 1,500 DUSK 487.8 stDUSK");
+    ).toBe("With Sozu 1,500 DUSK 487.8 stDUSK, rewards included");
     expect(
       textOf(container.querySelectorAll(".staking__figures > div")[0])
     ).toMatch(/^Staked natively /);
+    // The rewards shown are the native stake's: Sozu's are in its value.
+    expect(
+      textOf(container.querySelectorAll(".staking__figures > div")[2])
+    ).toBe("Native rewards 11,022.8426 DUSK");
     // The ways to stake come before their comparison.
     expect(
       Array.from(container.querySelectorAll(".staking__start a"), textOf)
@@ -314,6 +320,36 @@ describe("Staking", () => {
       "href",
       "/some-base-path/dashboard/stake?flow=liquid&action=unstake"
     );
+  });
+
+  it("says with the native stake, not under Unstake from Sozu, that there's nothing to unstake or claim", async () => {
+    withoutStake();
+    await act(() =>
+      sozu.store?.update((s) => ({
+        ...s,
+        status: {
+          ...SOZU_STATUS,
+          position: { balance: 499_949_044n, stDusk: 162_189_471n },
+        },
+      }))
+    );
+
+    const { container, getByRole } = render(Staking);
+    const figures = Array.from(
+      container.querySelectorAll(".staking__figures > div"),
+      textOf
+    );
+
+    expect(figures.slice(0, 3)).toStrictEqual([
+      "Staked natively 0 DUSK Nothing to unstake or claim",
+      "With Sozu 0.4999 DUSK 0.1621 stDUSK, rewards included",
+      "Native rewards 0 DUSK",
+    ]);
+    // Beside Unstake from Sozu, nothing that reads as its answer.
+    expect(textOf(container.querySelector(".staking__actions"))).toBe(
+      "Unstake from Sozu"
+    );
+    expect(getByRole("link", { name: "Unstake from Sozu" })).toBeVisible();
   });
 
   it("hides the amounts while balances are hidden", () => {

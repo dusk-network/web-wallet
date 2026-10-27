@@ -162,8 +162,8 @@
       />
     </header>
     <p class="history__note">
-      Times in your local time. An export holds the rows shown, with memos and
-      .dusk names, and dates in UTC and your local time.
+      Shown in your local time. An export holds the rows listed, with memos and
+      .dusk names, and dates in UTC and local time.
     </p>
     <label class="history__option">
       <input bind:checked={withContacts} type="checkbox" />
