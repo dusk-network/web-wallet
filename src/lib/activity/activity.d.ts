@@ -96,6 +96,9 @@ type ActivityMeta = {
 /** One of the wallet's own transactions, kept until the archive has it. */
 type ActivityLocalRecord = {
   amount?: string;
+
+  /** What a call to the bridge does, as the wallet sent it. */
+  bridge?: import("$lib/bridge/bridgeCalls").BridgeCall;
   contractId?: string;
 
   /** Which way the amount went, as the chain will say. */

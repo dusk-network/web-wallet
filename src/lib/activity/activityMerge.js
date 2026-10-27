@@ -157,6 +157,7 @@ function mergeLocal(known, tx) {
     ...extra,
     ...intent,
     ...outcome,
+    bridge: known.bridge ?? tx.bridge,
     contractId: known.contractId ?? tx.contractId,
     fnName: known.fnName ?? tx.fnName,
     gasLimit: known.gasLimit ?? tx.gasLimit,

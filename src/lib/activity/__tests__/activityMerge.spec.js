@@ -150,6 +150,38 @@ describe("mergeActivity", () => {
     });
   });
 
+  it("keeps what the wallet knows of a bridge call until the chain's row reads it", () => {
+    const bridge = /** @type {const} */ ({
+      amount: "100000000000",
+      kind: "deposit",
+      to: "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+    });
+    const pending = {
+      bridge,
+      contractId: "2257".padEnd(64, "0"),
+      fnName: "depositETHToWithValue",
+      hash: registered().hash,
+      kind: "contract_call",
+      profileIndex: 0,
+      status: "submitted",
+      submittedAt: 1_792_687_500_000,
+    };
+    const [alone] = mergeActivity({ local: [pending], profileIndex: 0 });
+    const [both] = mergeActivity({
+      history: [{ ...registered(), bridge: undefined }],
+      local: [pending],
+      profileIndex: 0,
+    });
+
+    expect(alone).toMatchObject({
+      bridge,
+      contractId: pending.contractId,
+      fnName: pending.fnName,
+      source: "local",
+    });
+    expect(both).toMatchObject({ bridge, source: "both" });
+  });
+
   it("takes a row the archive has as final: the outcome the wallet saw, else unknown until its details come", () => {
     const unknown = { ...registered(), detailsAt: undefined, success: null };
 

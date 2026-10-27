@@ -11,6 +11,7 @@ import { get } from "svelte/store";
 import {
   Bookkeeper,
   Bookmark,
+  Contract,
   Gas,
   Network,
   ProfileGenerator,
@@ -1042,10 +1043,23 @@ describe("Wallet store", async () => {
       });
 
       vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridgeContractId);
+      history.session.recordSent.mockClear();
 
       await walletStore.depositEvmFunctionCall(address, amount, gas, {
         extraData,
         minGasLimit,
+      });
+
+      // Shown as the bridge's, with its DuskEVM address, until the archive has it.
+      expect(history.session.recordSent).toHaveBeenCalledWith({
+        amount: String(amount),
+        bridge: { amount: String(amount), kind: "deposit", to: address },
+        contractId: bridgeContractId,
+        direction: "out",
+        fnName: "depositETHToWithValue",
+        hash: phoenixTxResult.hash,
+        kind: "contract_call",
+        privacy: "public",
       });
 
       expect(executeSpy).toHaveBeenCalledTimes(1);
@@ -1116,6 +1130,63 @@ describe("Wallet store", async () => {
           kind: "contract_call",
           privacy: "public",
         });
+      }
+    );
+
+    it.each([
+      ["proveDuskEvmWithdrawal", "proveWithdrawalTransaction"],
+      ["finalizeDuskEvmWithdrawal", "finalizeWithdrawalTransaction"],
+    ])(
+      "should record %s as the bridge's call until the archive has it",
+      async (method, fnName) => {
+        vi.useRealTimers();
+
+        const portalId = "14".repeat(32);
+        const currentlyCachedBalance =
+          await new WalletTreasury().getCachedBalance(defaultProfile);
+        const sent = { gas: () => sent };
+        const tx = vi.spyOn(Contract.prototype, "tx", "get").mockReturnValue(
+          /** @type {any} */ ({
+            [fnName]: async () => ({ to: () => sent }),
+          })
+        );
+        const realFetch = globalThis.fetch;
+
+        // The portal's driver isn't needed here: it never loads.
+        vi.stubGlobal(
+          "fetch",
+          vi.fn((/** @type {any} */ input, /** @type {any} */ init) =>
+            String(input).endsWith("/portal.wasm")
+              ? new Promise(() => {})
+              : realFetch(input, init)
+          )
+        );
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: phoenixTxResult.hash,
+          nonce: currentlyCachedBalance.unshielded.nonce + 1n,
+        });
+        history.session.recordSent.mockClear();
+
+        await walletStore[
+          /** @type {"finalizeDuskEvmWithdrawal" | "proveDuskEvmWithdrawal"} */ (
+            method
+          )
+        ](portalId, "/portal.wasm", {}, gas);
+
+        expect(history.session.recordSent).toHaveBeenCalledWith({
+          amount: "0",
+          contractId: portalId,
+          direction: "out",
+          fnName,
+          hash: phoenixTxResult.hash,
+          kind: "contract_call",
+          privacy: "public",
+        });
+
+        tx.mockRestore();
+        vi.unstubAllGlobals();
       }
     );
 

@@ -3,6 +3,7 @@ import { compressedDuskBlsPublicKeyToRaw } from "@dusk/evm-sdk";
 import { Bookkeeper, Bookmark, ProfileGenerator } from "@dusk/w3sper";
 import { keccak256 } from "viem";
 
+import { BRIDGE_FUNCTIONS } from "$lib/bridge/bridgeCalls";
 import {
   BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
   buildDepositETHToWithValuePayload,
@@ -726,7 +727,10 @@ const depositEvmFunctionCall = async (
     profile,
     {
       amount: String(amount),
+      bridge: { amount: String(amount), kind: "deposit", to: address },
+      contractId: bridgeContractId,
       direction: "out",
+      fnName: BRIDGE_FUNCTIONS.deposit,
       kind: TX_KIND.CONTRACT_CALL,
       privacy: "public",
     },
@@ -817,7 +821,9 @@ const executeContractFunction = async (
     profile,
     {
       amount: "0",
+      contractId,
       direction: "out",
+      fnName,
       kind: TX_KIND.CONTRACT_CALL,
       privacy: "public",
     },
