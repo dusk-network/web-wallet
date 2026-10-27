@@ -229,4 +229,27 @@ describe("NativeStake", () => {
       "stake-flow--review"
     );
   });
+
+  it("keeps the gas a review shows when the node's price changes, and takes it after", async () => {
+    const { container, getByLabelText, getByRole, rerender } = render(
+      NativeStake,
+      { ...baseProps, execute: vi.fn().mockResolvedValue(HASH) }
+    );
+    const total = () =>
+      Array.from(container.querySelectorAll(".stake-flow__rows > div"), (row) =>
+        row.textContent?.replace(/\s+/g, " ").trim()
+      ).find((text) => text?.startsWith("Total"));
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1000" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await rerender({ gasSettings: { gasLimit: 50_000_000n, gasPrice: 3n } });
+
+    expect(total()).toBe("Total Up to 1,000.05 DUSK");
+
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+
+    expect(total()).toBe("Total Up to 1,000.15 DUSK");
+  });
 });

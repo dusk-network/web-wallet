@@ -198,4 +198,29 @@ describe("LiquidStake", () => {
 
     expect(baseProps.onRetry).toHaveBeenCalledOnce();
   });
+
+  it("keeps the gas a review shows when the node's price changes", async () => {
+    const execute = vi.fn().mockResolvedValue(HASH);
+    const { getByLabelText, getByRole, rerender } = render(LiquidStake, {
+      ...baseProps,
+      execute,
+    });
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await rerender({ gasSettings: { gasLimit: 10_000_000n, gasPrice: 3n } });
+    await fireEvent.click(
+      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+    );
+
+    expect(execute).toHaveBeenCalledExactlyOnceWith(
+      "stake",
+      POOL,
+      100n * DUSK,
+      1n,
+      10_000_000n
+    );
+  });
 });

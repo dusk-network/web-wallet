@@ -131,7 +131,7 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
 
-  $: if (!sent && gasSettings !== defaultGas) {
+  $: if (!sent && !isReviewing && gasSettings !== defaultGas) {
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,

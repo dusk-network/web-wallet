@@ -92,8 +92,9 @@
   });
 
   // The default gas can change while the page shows, as when the node's
-  // price arrives: the page takes it unless its gas was edited here.
-  $: if (!sent && gasSettings !== defaultGas) {
+  // price arrives: the page takes it unless its gas was edited here, and
+  // keeps the gas a review shows.
+  $: if (!sent && !isReviewing && gasSettings !== defaultGas) {
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
