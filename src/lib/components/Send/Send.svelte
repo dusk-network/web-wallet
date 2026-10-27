@@ -13,6 +13,7 @@
     closeDuskName,
     contactsStore,
     markContactNameChecked,
+    markContactNameMoved,
     saveContact,
   } from "$lib/contacts";
   import { isDuskName } from "$lib/dusk-domains";
@@ -157,6 +158,42 @@
   /** The lookup a contact's name was last noted checked for. */
   /** @type {DuskNameResolution | null} */
   let checkedLookup = null;
+
+  /** The contact whose `.dusk` name was last checked as its address was picked. */
+  let savedNameChecked = "";
+
+  /**
+   * Checks that a contact's `.dusk` name still points to the address saved
+   * for it, as Send goes to that address: noted on the contact, moved or
+   * not, so that Send and Contacts can say so. Once a contact.
+   *
+   * @param {Contact} saved
+   */
+  async function checkSavedName(saved) {
+    const key = [saved.id, saved.address, saved.duskName].join("\n");
+
+    if (!saved.duskName || savedNameChecked === key) {
+      return;
+    }
+
+    savedNameChecked = key;
+
+    const resolution = await resolveName(saved.duskName).catch(() => null);
+
+    if (!resolution || resolution.error === "lookup-failed") {
+      return;
+    }
+
+    const pointsTo =
+      (saved.type === "address" ? resolution.address : resolution.account) ??
+      "";
+
+    if (pointsTo === saved.address) {
+      markContactNameChecked(saved);
+    } else {
+      markContactNameMoved(saved, pointsTo);
+    }
+  }
 
   /** Whether the recipient is being saved to the contacts, and as what. */
   let isSavingContact = false;
@@ -596,6 +633,11 @@
     namePointsTo !== contact?.address &&
     newAddressTaken[recipientName.toLowerCase()] !== recipientAddress;
 
+  // A contact's saved address, entered or picked: its name is checked.
+  $: if (contact && !recipientName && addressInfo.isValid) {
+    checkSavedName(contact);
+  }
+
   // Still the contact's address: noted, once a lookup.
   $: if (
     contact &&
@@ -709,8 +751,9 @@
             <option value="">Choose a contact…</option>
             {#each contacts as option (option.id)}
               <option value={option.id}
-                >{option.name} · {option.duskName ??
-                  shortenAddress(option.address)}</option
+                >{option.name} · {option.movedTo === undefined
+                  ? (option.duskName ?? shortenAddress(option.address))
+                  : shortenAddress(option.address)}</option
               >
             {/each}
           </select>
@@ -786,6 +829,13 @@
               {/if}
             </div>
           </div>
+        {/if}
+
+        {#if contact?.duskName && !recipientName && contact.movedTo !== undefined}
+          <p class="send__hint" role="status">
+            {contact.duskName} now points to a different address. You're sending to
+            the address saved for {contact.name}.
+          </p>
         {/if}
 
         {#if addressInfo.isValid && !isContactMoved}

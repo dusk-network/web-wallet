@@ -6,6 +6,7 @@ export {
   getContact,
   listContacts,
   markContactNameChecked,
+  markContactNameMoved,
   removeContact,
   saveContact,
 } from "./contacts";

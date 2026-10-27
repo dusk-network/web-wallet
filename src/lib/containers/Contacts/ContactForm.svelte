@@ -13,15 +13,20 @@
    */
   export let contact = null;
 
+  /** What a new contact starts with, as a person from the history. */
+  /** @type {{ name: string, recipient: string } | null} */
+  export let prefill = null;
+
   /** @type {(name: string) => Promise<DuskNameResolution>} */
   export let resolveName;
 
   const dispatch = createEventDispatcher();
 
-  let name = contact?.name ?? "";
+  let name = contact?.name ?? prefill?.name ?? "";
 
   /** The address or `.dusk` name entered. */
-  let recipient = contact?.duskName ?? contact?.address ?? "";
+  let recipient =
+    contact?.duskName ?? contact?.address ?? prefill?.recipient ?? "";
 
   /**
    * The `.dusk` name looked up, and what it resolved to once it has.

@@ -16,6 +16,7 @@
     contactsStore,
     findContact,
     markContactNameChecked,
+    markContactNameMoved,
     saveContact,
   } from "$lib/contacts";
   import { sozuPools } from "$lib/sozu";
@@ -108,6 +109,8 @@
 
       return { state: "same" };
     }
+
+    markContactNameMoved(checked, pointed ?? "");
 
     return { address: pointed ?? "", state: "moved" };
   }

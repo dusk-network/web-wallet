@@ -6,6 +6,8 @@ import {
   contactsStore,
   getContact,
   listContacts,
+  markContactNameChecked,
+  markContactNameMoved,
   removeContact,
   saveContact,
 } from "$lib/contacts";
@@ -107,6 +109,64 @@ describe("ContactsView", () => {
       "href",
       `/some-base-path/dashboard/send?to=${ACCOUNT}`
     );
+  });
+
+  it("marks a .dusk name that moved in the table, in place of its tick", async () => {
+    markContactNameChecked(shop);
+
+    const { container, rerender } = show({ contacts: get(contactsStore) });
+    const dusk = () =>
+      container.querySelector(".contacts__row .contacts__col-dusk");
+
+    expect(container.querySelector("th.contacts__col-last")).toHaveTextContent(
+      "Last activity"
+    );
+    expect(dusk()?.querySelector(".contacts__checked")).not.toBeNull();
+
+    markContactNameMoved(shop, OTHER);
+    await rerender({ contacts: get(contactsStore) });
+
+    expect(dusk()?.querySelector(".contacts__checked")).toBeNull();
+    expect(dusk()).toHaveTextContent("alice-shop.dusk moved");
+    expect(dusk()?.querySelector(".contacts__moved")).toHaveAttribute(
+      "title",
+      "Points to another address now"
+    );
+  });
+
+  it("offers the people paid when there are no contacts yet, never the wallet's own", async () => {
+    for (const contact of listContacts()) {
+      removeContact(contact.id);
+    }
+
+    const own = { ...rows[0], hash: "a2".repeat(32), to: OTHER };
+    const { container, getByRole, getByText, queryByText, rerender } = show({
+      contacts: [],
+      own: [OTHER],
+      rows: [...rows, own],
+    });
+
+    expect(getByText("People you've paid")).toBeInTheDocument();
+    expect(
+      Array.from(container.querySelectorAll(".contacts__person"), (item) =>
+        item.textContent?.replace(/\s+/g, " ").trim()
+      )
+    ).toStrictEqual([
+      `${ACCOUNT.slice(0, 1).toUpperCase()} ${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)} Sent 40 DUSK · Today Save`,
+    ]);
+    expect(queryByText(`${OTHER.slice(0, 6)}…${OTHER.slice(-6)}`)).toBeNull();
+
+    await fireEvent.click(
+      getByRole("button", {
+        name: `Save ${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)} to contacts`,
+      })
+    );
+    // The page opens the new contact's form.
+    await rerender({ contacts: [], selected: "new" });
+
+    expect(
+      getByRole("textbox", { name: /address or \.dusk name/i })
+    ).toHaveValue(ACCOUNT);
   });
 
   it("finds contacts by name, .dusk name or address", async () => {

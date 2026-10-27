@@ -1412,6 +1412,34 @@ describe("Send", () => {
       ]);
     });
 
+    it("should say when a picked contact's .dusk name points elsewhere now, and send to the saved address", async () => {
+      const tdi = saveContact({
+        address: nameAccount,
+        duskName: "tdi.dusk",
+        name: "TDI",
+      });
+
+      baseProps.resolveName.mockResolvedValueOnce({
+        account: otherAccount,
+        name: "tdi.dusk",
+      });
+
+      const { findByRole, getByRole } = render(Send, baseProps);
+      const picker = getByRole("combobox", { name: "Send to a contact" });
+
+      expect(picker).toHaveTextContent("TDI · tdi.dusk");
+
+      await fireEvent.change(picker, { target: { value: tdi.id } });
+
+      expect(await findByRole("status")).toHaveTextContent(
+        "tdi.dusk now points to a different address. You're sending to the address saved for TDI."
+      );
+      expect(baseProps.resolveName).toHaveBeenCalledWith("tdi.dusk");
+      expect(getContact(tdi.id)?.movedTo).toBe(otherAccount);
+      expect(fieldsOf(getByRole).to()).toHaveValue(nameAccount);
+      expect(picker).toHaveTextContent(`TDI · ${shortenAddress(nameAccount)}`);
+    });
+
     it("should note a contact's .dusk name still points to the address saved", async () => {
       const alice = saveContact({
         address: nameAccount,

@@ -188,6 +188,19 @@ export function saveContact(entry) {
 }
 
 /**
+ * Whether a contact is still the one a check of its `.dusk` name was for.
+ *
+ * @param {Contact | undefined} current The contact as saved now
+ * @param {Contact} checked The contact as the check found it
+ * @returns {current is Contact}
+ */
+const isStillAsChecked = (current, checked) =>
+  Boolean(current?.duskName) &&
+  current?.name === checked.name &&
+  current?.address === checked.address &&
+  current?.duskName === checked.duskName;
+
+/**
  * Notes that a contact's `.dusk` name still points to its address, on the
  * contact as saved now and only while it's the one checked: a contact
  * changed or deleted during the check stays as it is.
@@ -200,16 +213,38 @@ export function markContactNameChecked(checked, checkedAt = Date.now()) {
   const all = read();
   const current = all[checked.id];
 
-  if (
-    !current?.duskName ||
-    current.name !== checked.name ||
-    current.address !== checked.address ||
-    current.duskName !== checked.duskName
-  ) {
+  if (!isStillAsChecked(current, checked)) {
     return null;
   }
 
+  // It points here again: no longer moved.
   const contact = { ...current, checkedAt };
+
+  delete contact.movedTo;
+
+  write({ ...all, [contact.id]: contact });
+
+  return contact;
+}
+
+/**
+ * Notes that a contact's `.dusk` name points to another address now, or to
+ * none of the contact's kind (""), on the contact as saved now and only
+ * while it's the one checked. The contact keeps its address.
+ *
+ * @param {Contact} checked The contact as the check found it
+ * @param {string} pointsTo The address the name points to now
+ * @returns {Contact | null} The contact, or null when it changed
+ */
+export function markContactNameMoved(checked, pointsTo) {
+  const all = read();
+  const current = all[checked.id];
+
+  if (!isStillAsChecked(current, checked)) {
+    return null;
+  }
+
+  const contact = { ...current, movedTo: pointsTo };
 
   write({ ...all, [contact.id]: contact });
 

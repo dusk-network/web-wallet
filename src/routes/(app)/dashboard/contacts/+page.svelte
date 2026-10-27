@@ -6,7 +6,7 @@
   import { appPath } from "$lib/containers/Shell";
   import { resolveDuskName } from "$lib/dusk-domains";
   import { goto } from "$lib/navigation";
-  import { networkStore, settingsStore } from "$lib/stores";
+  import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import { nodeBaseUrl } from "$lib/url";
 
   const { networkName } = $networkStore;
@@ -48,6 +48,10 @@
   $: ({ url } = $page);
   $: ({ language } = $settingsStore);
   $: ({ rows } = $activityState);
+  $: own = $walletStore.profiles.flatMap((profile) => [
+    String(profile.account),
+    String(profile.address),
+  ]);
 </script>
 
 <ContactsView
@@ -55,6 +59,7 @@
   editing={url.searchParams.get("edit") === "1"}
   locale={language}
   on:select={select}
+  {own}
   {resolveName}
   {rows}
   selected={url.searchParams.get("contact")}

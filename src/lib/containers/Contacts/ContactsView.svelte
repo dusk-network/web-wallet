@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import {
     mdiAccountPlusOutline,
+    mdiAlertCircleOutline,
     mdiCheckCircleOutline,
     mdiMagnify,
     mdiSendOutline,
@@ -18,7 +19,7 @@
 
   import ContactDetail from "./ContactDetail.svelte";
   import ContactForm from "./ContactForm.svelte";
-  import { initialOf, lastPayments } from "./contactPresent";
+  import { initialOf, lastPayments, peopleYouPaid } from "./contactPresent";
 
   /** @type {Contact[]} */
   export let contacts;
@@ -42,10 +43,18 @@
   /** @type {(name: string) => Promise<DuskNameResolution>} */
   export let resolveName;
 
+  /** The wallet's own accounts and addresses, never offered as contacts. */
+  /** @type {string[]} */
+  export let own = [];
+
   const dispatch = createEventDispatcher();
   const bridgeContracts = configuredBridgeContracts();
 
   let query = "";
+
+  /** What a new contact starts with: a person from the history. */
+  /** @type {{ name: string, recipient: string } | null} */
+  let prefill = null;
 
   /**
    * @param {string | null} id
@@ -70,6 +79,12 @@
     locale,
     sozuPools: $sozuPools,
   });
+  $: paid = contacts.length
+    ? []
+    : peopleYouPaid(rows, {
+        context: { bridgeContracts, locale, sozuPools: $sozuPools },
+        saved: new Set(own),
+      });
   $: open = contacts.find((contact) => contact.id === selected) ?? null;
   $: panel =
     selected === "new" ? "new" : open ? (editing ? "edit" : "detail") : null;
@@ -105,6 +120,47 @@
         No contacts yet. Save one here, or from Send once a recipient is
         entered.
       </p>
+      {#if paid.length}
+        <section aria-labelledby="contacts-paid" class="contacts__paid">
+          <h3 class="contacts__paid-title" id="contacts-paid">
+            People you've paid
+          </h3>
+          <ul>
+            {#each paid as person (person.address)}
+              {@const who = person.duskName ?? shortAddress(person.address)}
+              <li class="contacts__person">
+                <span aria-hidden="true" class="contacts__avatar"
+                  >{initialOf(who)}</span
+                >
+                <span class="contacts__who">
+                  <span class="contacts__name" title={person.address}
+                    >{who}</span
+                  >
+                  <span class="contacts__sub"
+                    >Sent <BalanceValue
+                      exact={person.amount.exact}
+                      value={person.amount.text}
+                    /> DUSK · {person.day}</span
+                  >
+                </span>
+                <Button
+                  aria-label="Save {who} to contacts"
+                  on:click={() => {
+                    prefill = {
+                      name: "",
+                      recipient: person.duskName ?? person.address,
+                    };
+                    select("new");
+                  }}
+                  size="small"
+                  text="Save"
+                  variant="secondary"
+                />
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
     {:else if !shown.length}
       <p class="contacts__empty">No contact has "{query.trim()}".</p>
     {:else}
@@ -115,7 +171,7 @@
             <th class="contacts__col-dusk" scope="col">.dusk name</th>
             <th class="contacts__col-type" scope="col">Type</th>
             <th class="contacts__col-address" scope="col">Address</th>
-            <th class="contacts__col-last" scope="col">Last payment</th>
+            <th class="contacts__col-last" scope="col">Last activity</th>
             <th class="contacts__col-send" scope="col"
               ><span class="sr-only">Send</span></th
             >
@@ -159,7 +215,13 @@
                 {#if contact.duskName}
                   <span class="contacts__dusk"
                     >{contact.duskName}
-                    {#if contact.checkedAt}
+                    {#if contact.movedTo !== undefined}
+                      <span
+                        class="contacts__moved"
+                        title="Points to another address now"
+                        ><Icon path={mdiAlertCircleOutline} />moved</span
+                      >
+                    {:else if contact.checkedAt}
                       <span
                         class="contacts__checked"
                         title="Pointed to this address when last checked"
@@ -212,8 +274,15 @@
   {#if panel === "new"}
     <div class="contacts__panel">
       <ContactForm
-        on:cancel={() => select(null)}
-        on:saved={(event) => select(event.detail.id)}
+        on:cancel={() => {
+          prefill = null;
+          select(null);
+        }}
+        on:saved={(event) => {
+          prefill = null;
+          select(event.detail.id);
+        }}
+        {prefill}
         {resolveName}
       />
     </div>
@@ -389,6 +458,50 @@
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
+  }
+
+  .contacts__moved {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--calm-pending);
+    font-size: 0.8125rem;
+  }
+
+  .contacts__moved :global(.dusk-icon) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .contacts__paid {
+    margin-top: 1.5rem;
+
+    & ul {
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+  }
+
+  .contacts__paid-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .contacts__person {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3.5rem;
+    border-top: 1px solid var(--calm-line);
+
+    & .contacts__who {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
   }
 
   .contacts__checked :global(.dusk-icon) {
