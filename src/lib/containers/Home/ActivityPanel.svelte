@@ -10,7 +10,6 @@
     groupByDay,
     matchesFilters,
     rowTime,
-    zoneLabel,
   } from "$lib/activity/present";
   import { addBasePath } from "$lib/navigation";
 
@@ -72,7 +71,6 @@
     )
     .slice(0, limit);
   $: groups = groupByDay(shown, ({ row }) => rowTime(row), { locale });
-  $: zone = zoneLabel(Date.now(), locale);
 </script>
 
 <section aria-labelledby="activity-panel-title" class="activity-panel">
@@ -115,7 +113,7 @@
     {:else if !shown.length}
       <p class="activity-panel__note">{emptyText}</p>
     {:else}
-      <p class="activity-panel__zone">Times in {zone}</p>
+      <p class="activity-panel__zone">Times in your local time</p>
       {#each groups as group (group.key)}
         <h3 class="activity-panel__day">{group.label}</h3>
         {#each group.items as item (item.row.hash)}

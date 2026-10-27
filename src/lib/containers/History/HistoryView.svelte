@@ -9,12 +9,12 @@
     claimedWithdrawals,
     configuredBridgeContracts,
     describeRow,
+    fullDateTime,
     groupByDay,
     matchesFilters,
     rowTime,
     timeLabel,
     toCsv,
-    zoneLabel,
   } from "$lib/activity/present";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
@@ -119,7 +119,6 @@
     full: true,
     locale,
   });
-  $: zone = zoneLabel(Date.now(), locale);
   $: open = described.find(({ row }) => row.hash === selected) ?? null;
 </script>
 
@@ -137,8 +136,8 @@
       />
     </header>
     <p class="history__note">
-      Times in {zone}. An export holds the rows shown, with memos and names, and
-      dates in UTC and {zone}.
+      Times in your local time. An export holds the rows shown, with memos and
+      names, and dates in UTC and your local time.
     </p>
 
     <div class="history__filters">
@@ -187,7 +186,7 @@
           <tr>
             <th scope="col">Transaction</th>
             <th class="history__col-type" scope="col">Type</th>
-            <th class="history__col-time" scope="col">Time ({zone})</th>
+            <th class="history__col-time" scope="col">Time</th>
             <th class="history__col-amount" scope="col">Amount</th>
           </tr>
         </thead>
@@ -205,7 +204,17 @@
                 <td>
                   <button
                     aria-expanded={row.hash === selected}
+                    aria-label={[
+                      p.title,
+                      p.line,
+                      `${p.amount.sign}${p.amount.text} DUSK`,
+                      time === null ? "" : fullDateTime(time, locale),
+                      p.privacy,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
                     class="history__open"
+                    data-hash={row.hash}
                     on:click={() => select(row)}
                     type="button"
                   >
@@ -220,13 +229,20 @@
                       <span
                         class="history__line"
                         class:history__line--failed={p.status === "failed"}
-                        >{p.line}</span
+                        >{p.line}<span class="history__phone-meta"
+                          >{time === null
+                            ? ""
+                            : ` · ${timeLabel(time, locale)}`}
+                          · {p.privacy}</span
+                        ></span
                       >
                     </span>
                   </button>
                 </td>
                 <td class="history__col-type">{p.privacy}</td>
-                <td class="history__col-time"
+                <td
+                  class="history__col-time"
+                  title={time === null ? undefined : fullDateTime(time, locale)}
                   >{time === null ? "" : timeLabel(time, locale)}</td
                 >
                 <td class="history__col-amount">
@@ -401,6 +417,12 @@
       font-size: 0.875rem;
     }
 
+    /* The row's words take the room left, and are cut to fit it. */
+    & td:first-child {
+      width: 100%;
+      max-width: 0;
+    }
+
     &--selected {
       background: var(--calm-s2);
     }
@@ -535,6 +557,10 @@
   }
 
   /* Narrow screens: the details over the list, as a page of their own. */
+  .history__phone-meta {
+    display: none;
+  }
+
   @media (max-width: 63.99rem) {
     .history--open {
       grid-template-columns: minmax(0, 1fr);
@@ -562,6 +588,10 @@
     .history__col-type,
     .history__col-time {
       display: none;
+    }
+
+    .history__phone-meta {
+      display: inline;
     }
 
     .history__row td,

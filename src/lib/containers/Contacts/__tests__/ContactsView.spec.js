@@ -134,6 +134,41 @@ describe("ContactsView", () => {
     );
   });
 
+  it("lists a contact's activity by day, saying what happened rather than who with", async () => {
+    const yesterday = new Date(NOW);
+
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const older = {
+      ...rows[0],
+      amount: "250000000",
+      direction: /** @type {const} */ ("in"),
+      from: ACCOUNT,
+      hash: "a3".repeat(32),
+      timestamp: yesterday.getTime(),
+      to: undefined,
+    };
+    const { container } = show({
+      rows: [...rows, older],
+      selected: shop.id,
+    });
+    const activity = /** @type {HTMLElement} */ (
+      container.querySelector(".contact-detail__activity")
+    );
+
+    expect(
+      Array.from(activity.querySelectorAll(".contact-detail__day"), (day) =>
+        day.textContent?.trim()
+      )
+    ).toStrictEqual(["Today", "Yesterday"]);
+    expect(
+      Array.from(activity.querySelectorAll(".activity-row__title"), (title) =>
+        title.textContent?.trim()
+      )
+    ).toStrictEqual(["Sent", "Received"]);
+    expect(activity).not.toHaveTextContent("Alice's shop ·");
+  });
+
   it("offers the people paid when there are no contacts yet, never the wallet's own", async () => {
     for (const contact of listContacts()) {
       removeContact(contact.id);
@@ -207,10 +242,10 @@ describe("ContactsView", () => {
       shop.checkedAt ?? 0
     );
 
-    // Its payments, from the history, under the contact's name.
+    // Its payments, from the history, by what happened.
     expect(
       container.querySelector(".contact-detail__activity .activity-row")
-    ).toHaveTextContent(/^Alice's shop Sent/);
+    ).toHaveTextContent(/^Sent .* Public/);
   });
 
   it("says when a contact's .dusk name points elsewhere, and takes the new address only when asked", async () => {

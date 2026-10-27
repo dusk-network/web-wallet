@@ -157,9 +157,16 @@ const shownRows = (container) =>
       ".history__col-time",
       ".history__amount",
     ]
-      .map((selector) =>
-        row.querySelector(selector)?.textContent?.replace(/\s+/g, " ").trim()
-      )
+      .map((selector) => {
+        const cell = row.querySelector(selector);
+        // A line's own text: its time and type repeat in it for phones only.
+        const text =
+          selector === ".history__line"
+            ? cell?.firstChild?.textContent
+            : cell?.textContent;
+
+        return text?.replace(/\s+/g, " ").trim();
+      })
       .join(" ")
   );
 
@@ -178,12 +185,10 @@ describe("History", () => {
     }
   });
 
-  it("lists the history by day, with each row's type, time in its zone and amount", () => {
+  it("lists the history by day, with each row's type, local time and amount", () => {
     const { container, getByRole } = render(History);
 
-    expect(
-      getByRole("columnheader", { name: /^Time \(.+\)$/ })
-    ).toBeInTheDocument();
+    expect(getByRole("columnheader", { name: "Time" })).toBeInTheDocument();
     expect(container.querySelector(".history__day")).toHaveTextContent(
       /^Today · /
     );

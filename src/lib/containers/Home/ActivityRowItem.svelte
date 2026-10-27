@@ -3,7 +3,7 @@
 <script>
   import { Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
-  import { rowTime, timeLabel } from "$lib/activity/present";
+  import { fullDateTime, rowTime, timeLabel } from "$lib/activity/present";
   import { addBasePath } from "$lib/navigation";
 
   import { ACTIVITY_ICONS } from "./activityIcons";
@@ -17,6 +17,12 @@
   /** @type {string} */
   export let locale;
 
+  /**
+   * Whether the row is in a list about its counterparty, as a contact's:
+   * it then says what happened, not who with.
+   */
+  export let withoutCounterparty = false;
+
   const SEPARATOR = " · ";
 
   /** @type {Record<string, string>} */
@@ -28,9 +34,14 @@
   $: p = presentation;
   $: time = rowTime(row);
   $: failed = p.status === "failed";
+  $: title = withoutCounterparty && !failed ? p.line : p.title;
   $: details = failed
     ? [p.privacy]
-    : [p.line, time === null ? "" : timeLabel(time, locale), p.privacy];
+    : [
+        withoutCounterparty ? "" : p.line,
+        time === null ? "" : timeLabel(time, locale),
+        p.privacy,
+      ];
 </script>
 
 <a
@@ -43,9 +54,12 @@
   <span class="activity-row__main">
     <span
       class="activity-row__title"
-      class:activity-row__code={p.titleIsAddress}>{p.title}</span
+      class:activity-row__code={p.titleIsAddress && title === p.title}
+      >{title}</span
     >
-    <span class="activity-row__line"
+    <span
+      class="activity-row__line"
+      title={time === null ? undefined : fullDateTime(time, locale)}
       >{#if failed}<span class="activity-row__failed">{p.line}</span
         >{SEPARATOR}{/if}{details.filter(Boolean).join(SEPARATOR)}</span
     >
