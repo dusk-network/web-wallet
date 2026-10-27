@@ -235,11 +235,11 @@
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
               {#if rate}
-                You get stDUSK. Each stDUSK is worth {formatDusk(rate, locale)}
-                DUSK and grows as rewards come in.
+                You get stDUSK. Each is worth {formatDusk(rate, locale)} DUSK now,
+                as Sozu's contract gives it, and follows Sozu's pool.
               {:else}
                 You get stDUSK, a token for your share of Sozu's pool. Its DUSK
-                value grows as rewards come in.
+                value follows the pool.
               {/if}
             </td>
           {/if}

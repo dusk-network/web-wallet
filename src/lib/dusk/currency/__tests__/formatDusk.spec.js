@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDusk, formatDuskExact, formatDuskPlain, formatFee } from "..";
+import {
+  formatDusk,
+  formatDuskExact,
+  formatDuskPlain,
+  formatFee,
+  formatTotal,
+} from "..";
 
 describe("formatDusk", () => {
   it("shows amounts in one format: at most 4 decimals, no trailing zeros, thousands grouped", () => {
@@ -30,6 +36,21 @@ describe("formatDuskExact", () => {
     expect(formatDuskExact("1234567891234", "en")).toBe("1,234.567891234");
     expect(formatDuskExact("100000000", "en")).toBe("0.1");
     expect(formatDuskExact(25_000_000_000n, "de")).toBe("25");
+  });
+});
+
+describe("formatTotal", () => {
+  it("rounds a total up as fees are, but never past the balance as it shows", () => {
+    // 173.901884001 DUSK shows as 173.9018: a total at Max is shown exactly.
+    expect(formatTotal(173_901_884_001n, 173_901_884_001n, "en")).toBe(
+      "173.901884001"
+    );
+    expect(
+      formatTotal(173_899_384_001n + 2_500_000n, 173_901_884_001n, "en")
+    ).toBe("173.901884001");
+    expect(formatTotal(1_002_500_000n, 173_901_884_001n, "en")).toBe("1.0025");
+    expect(formatTotal(1_000_000_001n, 173_901_884_001n, "en")).toBe("1.0001");
+    expect(formatTotal(0n, 0n, "en")).toBe("0");
   });
 });
 

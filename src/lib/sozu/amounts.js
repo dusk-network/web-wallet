@@ -64,6 +64,18 @@ export const stDuskFor = (amount, pool) =>
     : null;
 
 /**
+ * The least a stake gets any stDUSK for at the rate now, in lux: 1 without
+ * a rate.
+ *
+ * @param {SozuPool | null} pool
+ * @returns {bigint}
+ */
+export const leastSozuStake = (pool) =>
+  pool && pool.stake > 0n && pool.supply > 0n
+    ? (pool.stake + pool.supply - 1n) / pool.supply
+    : 1n;
+
+/**
  * What one stDUSK is worth now, in lux; null without a rate.
  *
  * @param {SozuPool | null} pool

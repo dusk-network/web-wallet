@@ -14,13 +14,13 @@
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
-    formatFee,
+    formatTotal,
   } from "$lib/dusk/currency";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { SOZU_URL } from "$lib/sozu/config";
-  import { stDuskFor } from "$lib/sozu/amounts";
+  import { leastSozuStake, stDuskFor } from "$lib/sozu/amounts";
   import { settingsStore } from "$lib/stores";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
@@ -158,6 +158,8 @@
     available: availableBalance,
     fee: maxGasFee,
     locale: language,
+    // Less than this gets no stDUSK at the rate now.
+    minimum: isStake ? leastSozuStake(status?.pool ?? null) : 0n,
     most: isStake
       ? undefined
       : {
@@ -325,14 +327,12 @@
           {:else if estimate !== null}
             <div class="liquid-stake__estimate">
               <p>
-                You get about {formatDusk(estimate, language)} stDUSK, worth {formatDuskExact(
-                  shownAmount,
-                  language
-                )} DUSK now.
+                You get about {formatDusk(estimate, language)} stDUSK, at the rate
+                Sozu's contract gives now.
               </p>
               <p>
-                stDUSK is Sozu's token for your share; its DUSK value grows as
-                rewards come in.
+                stDUSK is Sozu's token for your share. Its DUSK value follows
+                Sozu's pool, its rewards and its fees.
               </p>
             </div>
           {/if}
@@ -385,6 +385,14 @@
               {estimate === null ? "—" : formatDusk(estimate, language)} stDUSK
             </dd>
           </div>
+          <div>
+            <dt>Sozu's fee</dt>
+            <dd>Taken from the deposit</dd>
+          </div>
+          <div>
+            <dt>Getting it back</dt>
+            <dd>Unstake from Sozu, under Sozu's rules</dd>
+          </div>
         {:else}
           <div>
             <dt>Back to</dt>
@@ -420,7 +428,7 @@
         <div>
           <dt>Total</dt>
           <dd class:stake-flow__muted={isTypedOff}>
-            Up to {formatFee(total, language, { max: true })} DUSK
+            Up to {formatTotal(total, availableBalance, language)} DUSK
           </dd>
         </div>
       </dl>

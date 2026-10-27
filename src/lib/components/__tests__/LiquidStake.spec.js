@@ -72,13 +72,15 @@ describe("LiquidStake", () => {
     });
 
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.5191 stDUSK, worth 100 DUSK now. stDUSK is Sozu's token for your share; its DUSK value grows as rewards come in."
+      "You get about 32.5191 stDUSK, at the rate Sozu's contract gives now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
     );
     expect(
       Array.from(container.querySelectorAll(".stake-flow__rows > div"), textOf)
     ).toStrictEqual([
       "Stake with Sozu 100 DUSK",
       "You get about 32.5191 stDUSK",
+      "Sozu's fee Taken from the deposit",
+      "Getting it back Unstake from Sozu, under Sozu's rules",
       "Fee paid from Public balance",
       "Total Up to 100.01 DUSK",
     ]);
@@ -94,6 +96,27 @@ describe("LiquidStake", () => {
       1n,
       10_000_000n
     );
+  });
+
+  it("refuses a stake too small to get any stDUSK, saying the least", async () => {
+    const { getByLabelText, getByRole } = render(LiquidStake, baseProps);
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "0.000000001" },
+    });
+
+    expect(getByRole("alert")).toHaveTextContent(
+      "The minimum stake is 0.000000004 DUSK."
+    );
+    expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "0.000000004" },
+    });
+
+    expect(
+      getByRole("button", { name: "Stake 0.000000004 DUSK with Sozu" })
+    ).toBeEnabled();
   });
 
   it("says when a stake is more than the public balance, with the fee", async () => {

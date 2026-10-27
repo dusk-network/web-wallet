@@ -60,7 +60,12 @@
     withdrawalSentMessage,
   } from "$lib/bridge/withdrawalLifecycle";
   import { loadWithdrawalWaitingPeriod } from "$lib/bridge/withdrawals";
-  import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
+  import {
+    formatDusk,
+    formatDuskExact,
+    formatFee,
+    formatTotal,
+  } from "$lib/dusk/currency";
   import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
   import { cleanNumberString, shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
@@ -806,7 +811,7 @@
         />
         <ReviewAmount
           label="Total (at most)"
-          value={formatFee(totalDepositLux, language, { max: true })}
+          value={formatTotal(totalDepositLux, unshieldedBalance, language)}
         />
         <Banner
           title="The fee is paid from your public balance."

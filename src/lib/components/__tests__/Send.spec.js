@@ -9,7 +9,11 @@ import {
 } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 import { tick } from "svelte";
-import { duskToLux, luxToDusk } from "$lib/dusk/currency";
+import {
+  duskToLux,
+  formatDuskExact,
+  formatDuskPlain,
+} from "$lib/dusk/currency";
 import { shortenAddress } from "$lib/dusk/string";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import { addBasePath } from "$lib/navigation";
@@ -115,7 +119,7 @@ describe("Send", () => {
 
   /** @param {(role: string, options: object) => HTMLElement} getByRole */
   const fieldsOf = (getByRole) => ({
-    amount: () => getByRole("spinbutton", { name: "Amount" }),
+    amount: () => getByRole("textbox", { name: "Amount" }),
     memo: () => getByRole("textbox", { name: /^Memo/ }),
     review: () => getByRole("button", { name: "Review" }),
     send: () => getByRole("button", { name: /^Send/ }),
@@ -212,6 +216,9 @@ describe("Send", () => {
       });
 
       expect(fields.to()).toHaveValue(shieldedAddress);
+      await fireEvent.input(fieldsOf(getByRole).amount(), {
+        target: { value: "1" },
+      });
       expect(fields.send()).toBeEnabled();
     });
 
@@ -365,6 +372,9 @@ describe("Send", () => {
       });
 
       expect(maxFee()).toBe("0.05");
+      await fireEvent.input(fieldsOf(getByRole).amount(), {
+        target: { value: "1" },
+      });
       expect(fieldsOf(getByRole).send()).toBeEnabled();
 
       await fireEvent.click(getByRole("button", { name: "Edit" }));
@@ -400,9 +410,25 @@ describe("Send", () => {
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       expect(fields.amount()).toHaveValue(
-        luxToDusk(baseProps.availableBalance - fee)
+        formatDuskPlain(baseProps.availableBalance - fee)
       );
       expect(fields.send()).toBeEnabled();
+    });
+
+    it("should never show a Total at Max that reads more than the balance", async () => {
+      const availableBalance = 173_901_884_001n;
+      const { container, getByRole } = render(Send, {
+        ...baseProps,
+        availableBalance,
+        initialRecipient: shieldedAddress,
+      });
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(getSummary(container).at(-1)).toStrictEqual([
+        "Total",
+        "Up to 173.901884001 DUSK",
+      ]);
     });
 
     it.each([
@@ -415,11 +441,10 @@ describe("Send", () => {
       const { getByRole } = render(Send, { ...baseProps, ...props });
       const fields = fieldsOf(getByRole);
 
-      expect(fields.amount()).toHaveValue(1);
-
+      await fireEvent.input(fields.amount(), { target: { value: "1" } });
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(fields.amount()).toHaveValue(1);
+      expect(fields.amount()).toHaveValue("1");
     });
 
     it("should keep Send disabled for an amount that isn't valid, and say when it's more than there is", async () => {
@@ -429,16 +454,43 @@ describe("Send", () => {
       });
       const fields = fieldsOf(getByRole);
 
+      // Nothing is filled in: the button offers only what is typed.
+      expect(fields.amount()).toHaveValue("");
+      expect(fields.send()).toBeDisabled();
+      expect(fields.send()).toHaveAccessibleName("Send");
+
+      await fireEvent.input(fields.amount(), { target: { value: "1" } });
+
       expect(fields.send()).toBeEnabled();
 
-      await fireEvent.input(fields.amount(), { target: { value: 0 } });
+      await fireEvent.input(fields.amount(), { target: { value: "0" } });
 
       expect(fields.send()).toBeDisabled();
+      expect(getByText("Enter an amount greater than 0.")).toBeInTheDocument();
 
-      await fireEvent.input(fields.amount(), { target: { value: 1000 } });
+      // Below one LUX: kept as typed, and refused.
+      await fireEvent.input(fields.amount(), {
+        target: { value: "0.0000000001" },
+      });
+
+      expect(fields.amount()).toHaveValue("0.0000000001");
+      expect(fields.send()).toBeDisabled();
+      expect(getByText("DUSK has 9 decimals at most.")).toBeInTheDocument();
+
+      await fireEvent.input(fields.amount(), { target: { value: "1e2" } });
+
+      expect(
+        getByText("Enter an amount such as 10 or 10.5.")
+      ).toBeInTheDocument();
+
+      await fireEvent.input(fields.amount(), { target: { value: "100000" } });
 
       expect(fields.send()).toBeDisabled();
-      expect(getByText("More than you have.")).toBeInTheDocument();
+      expect(
+        getByText(
+          `More than your ${formatDuskExact(baseProps.availableBalance, "en")} DUSK.`
+        )
+      ).toBeInTheDocument();
     });
 
     it("should require a valid EVM address in memo if sending to BEP20 bridge", async () => {
@@ -494,6 +546,9 @@ describe("Send", () => {
         )
       ).toBeInTheDocument();
       expect(queryByText("Not an EVM address.")).not.toBeInTheDocument();
+      await fireEvent.input(fieldsOf(getByRole).amount(), {
+        target: { value: "1" },
+      });
       expect(fields.send()).toBeEnabled();
     });
   });
@@ -980,6 +1035,9 @@ describe("Send", () => {
 
       expect(publicOption).toBeChecked();
       expect(shieldedOption).not.toBeChecked();
+      await fireEvent.input(fieldsOf(getByRole).amount(), {
+        target: { value: "1" },
+      });
       expect(fieldsOf(getByRole).send()).toBeEnabled();
     });
 
@@ -1001,7 +1059,7 @@ describe("Send", () => {
 
       await fireEvent.click(shieldedOption);
       await fireEvent.input(fieldsOf(getByRole).amount(), {
-        target: { value: 0.000000001 },
+        target: { value: "0.000000001" },
       });
       await rerender({ availableBalance: maxGasFee + 1n });
 
@@ -1227,6 +1285,9 @@ describe("Send", () => {
       expect(
         await findByText("alice.dusk points to a public account")
       ).toBeInTheDocument();
+      await fireEvent.input(fieldsOf(getByRole).amount(), {
+        target: { value: "1" },
+      });
       expect(fieldsOf(getByRole).send()).toBeEnabled();
     });
 
@@ -1483,6 +1544,9 @@ describe("Send", () => {
         )
       );
       expect(getContact(alice.id)?.checkedAt).toBeGreaterThan(1);
+      await fireEvent.input(fieldsOf(getByRole).amount(), {
+        target: { value: "1" },
+      });
       expect(fieldsOf(getByRole).send()).toBeEnabled();
     });
 
@@ -1546,6 +1610,9 @@ describe("Send", () => {
 
       await fireEvent.click(getByRole("button", { name: "The new address" }));
 
+      await fireEvent.input(fieldsOf(getByRole).amount(), {
+        target: { value: "1" },
+      });
       expect(fields.send()).toBeEnabled();
       expect(
         getAsHTMLElement(container, ".send__card .full-address")
@@ -1568,6 +1635,11 @@ describe("Send", () => {
       expect(
         getAsHTMLElement(again.container, ".send__card-title")
       ).toHaveTextContent("Alice");
+
+      await fireEvent.input(fieldsOf(again.getByRole).amount(), {
+        target: { value: "1" },
+      });
+
       expect(fieldsOf(again.getByRole).send()).toBeEnabled();
     });
   });

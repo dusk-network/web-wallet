@@ -21,12 +21,12 @@
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
   import {
-    duskToLux,
     formatDusk,
     formatDuskExact,
-    formatFee,
-    luxToDusk,
+    formatDuskPlain,
+    formatTotal,
   } from "$lib/dusk/currency";
+  import { parseDuskInput } from "$lib/components/Stake/stakeAmount";
   import {
     isValidEvmAddress,
     makeClassName,
@@ -99,8 +99,8 @@
    */
   export let knownNames = [];
 
-  /** @type {number} */
-  let sendAmount = 1;
+  /** The amount as typed, in DUSK: nothing until it is. */
+  let sendAmount = "";
 
   /** @type {string} */
   let sendToAddress = initialRecipient;
@@ -203,6 +203,39 @@
     }
   }
 
+  /**
+   * What is wrong with the amount typed, in the words the page shows: ""
+   * for nothing typed yet, or an amount that can go.
+   *
+   * @param {string} text
+   * @param {bigint | null} amount
+   */
+  function amountErrorOf(text, amount) {
+    const typed = text.trim();
+
+    if (!typed) {
+      return "";
+    }
+
+    if (amount === null) {
+      return /^\d*\.\d{10,}$/.test(typed)
+        ? "DUSK has 9 decimals at most."
+        : "Enter an amount such as 10 or 10.5.";
+    }
+
+    if (amount === 0n) {
+      return "Enter an amount greater than 0.";
+    }
+
+    if (amount > availableBalance) {
+      return `More than your ${formatDuskExact(availableBalance, language)} DUSK.`;
+    }
+
+    return amount > maxSpendableAmount
+      ? `That leaves too little for the network fee: send up to ${formatDuskExact(maxSpendableAmount, language)} DUSK.`
+      : "";
+  }
+
   /** Whether the recipient is being saved to the contacts, and as what. */
   let isSavingContact = false;
   let contactName = "";
@@ -224,7 +257,8 @@
   let { gasLimit, gasPrice } = gasSettings;
   let defaultGas = gasSettings;
 
-  const minAmount = 0.000000001;
+  /** The least a transfer sends: one LUX. */
+  const minAmount = 1n;
 
   const dispatch = createEventDispatcher();
 
@@ -247,7 +281,7 @@
       return;
     }
 
-    sendAmount = luxToDusk(maxSpendableAmount);
+    sendAmount = formatDuskPlain(maxSpendableAmount);
   }
 
   /**
@@ -509,15 +543,16 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
 
-  $: sendAmountInLux = sendAmount ? duskToLux(sendAmount) : 0n;
+  $: parsedAmount = parseDuskInput(sendAmount);
+  $: sendAmountInLux = parsedAmount ?? 0n;
+  $: amountError = amountErrorOf(sendAmount, parsedAmount);
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
 
   // A balance can pay for a transfer if it covers the smallest amount
   // plus the maximum gas fee.
-  $: canPayFromShieldedBalance =
-    shieldedBalance >= maxGasFee + duskToLux(minAmount);
+  $: canPayFromShieldedBalance = shieldedBalance >= maxGasFee + minAmount;
 
   // Check if the available balance is sufficient to cover the max gas fee.
   // This is a prerequisite for any transaction.
@@ -1022,14 +1057,16 @@
         <label class="send__label" for="{id}-amount">Amount</label>
         <div class="send__amount">
           <Textbox
+            aria-describedby="{id}-amount-error"
+            aria-invalid={amountError ? "true" : undefined}
+            autocomplete="off"
             bind:value={sendAmount}
             className="send__amount-input"
             id="{id}-amount"
-            max={luxToDusk(maxSpendableAmount)}
-            min={minAmount}
+            inputmode="decimal"
+            placeholder="0"
             required
-            step="0.000000001"
-            type="number"
+            type="text"
           />
           <span aria-hidden="true" class="send__unit">DUSK</span>
           <Button
@@ -1050,10 +1087,9 @@
             <strong>Not enough for the network fee.</strong> Add funds or lower the
             gas limit.
           </p>
-        {:else if sendAmountInLux > maxSpendableAmount}
-          <p class="send__error" role="alert">
-            <strong>More than you have.</strong> Lower the amount to leave room for
-            the fee.
+        {:else if amountError}
+          <p class="send__error" id="{id}-amount-error" role="alert">
+            {amountError}
           </p>
         {/if}
       </div>
@@ -1142,7 +1178,9 @@
       <dl class="send__rows send__rows--total">
         <div>
           <dt>Total</dt>
-          <dd>Up to {formatFee(totalAmount, language, { max: true })} DUSK</dd>
+          <dd>
+            Up to {formatTotal(totalAmount, availableBalance, language)} DUSK
+          </dd>
         </div>
       </dl>
       <Button

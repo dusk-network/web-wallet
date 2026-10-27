@@ -9,5 +9,6 @@ export {
   formatDuskExact,
   formatDuskPlain,
   formatFee,
+  formatTotal,
 } from "./formatDusk";
 export { default as luxToDusk } from "./luxToDusk";

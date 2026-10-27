@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ask before sending to a contact's `.dusk` name when it points to another address now
 - Show a saved contact's name in the activity and the history, with its `.dusk` name second, and save a counterparty to the contacts from a transaction's details
 - Save a recipient to the contacts from Send, pick a contact there, and take "Did you mean …?" for a mistyped name the wallet knows
-- Stake any amount with Sozu, a third party's liquid staking, and unstake from it, with the stDUSK a stake gets and what is staked there
+- Stake with Sozu, a third party's liquid staking, from the least amount that gets stDUSK, and unstake from it, with the stDUSK a stake gets, Sozu's deposit fee and what is staked there
 - Compare native and liquid staking side by side on the Staking page, with neither picked
 - Add to a stake with Stake more
 - Show in the history the DuskEVM address a bridge deposit went to, and a withdrawal's amount and when it can be claimed
@@ -73,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show addresses and hashes in the system's code font
 - Show no money values or market data off mainnet
 - Send from one page, with the summary beside the form, a review on phones, and a button that says what it sends
+- Start Send with no amount, take one with at most 9 decimals as typed, and say what's wrong with it
+- Show a Total at Max that never reads more than the balance
 - Show amounts in one format, at most four decimals, and in full on hover, under review and in a transaction's details
 - Round a fee up to four decimals when it is the most it can cost, and to the nearest when it was paid
 - Show what is staked, its rewards and what can be staked on the Staking page, and why Unstake or Claim rewards can't be pressed

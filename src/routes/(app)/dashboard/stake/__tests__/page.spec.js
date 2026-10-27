@@ -233,7 +233,7 @@ describe("Staking", () => {
       "If your node misses its turn, part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost)."
     );
     expect(rows[2][2]).toBe(
-      "You get stDUSK, a token for your share of Sozu's pool. Its DUSK value grows as rewards come in."
+      "You get stDUSK, a token for your share of Sozu's pool. Its DUSK value follows the pool."
     );
 
     // Nothing picked: two ways to go, neither one chosen.
@@ -255,7 +255,7 @@ describe("Staking", () => {
     await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
 
     expect(textOf(table.tBodies[0].rows[2].cells[2])).toBe(
-      "You get stDUSK. Each stDUSK is worth 3.0751 DUSK and grows as rewards come in."
+      "You get stDUSK. Each is worth 3.0751 DUSK now, as Sozu's contract gives it, and follows Sozu's pool."
     );
   });
 
@@ -401,7 +401,7 @@ describe("Staking", () => {
     });
 
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.5191 stDUSK, worth 100 DUSK now. stDUSK is Sozu's token for your share; its DUSK value grows as rewards come in."
+      "You get about 32.5191 stDUSK, at the rate Sozu's contract gives now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
     );
     expect(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })

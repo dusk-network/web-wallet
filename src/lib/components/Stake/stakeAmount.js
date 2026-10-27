@@ -71,7 +71,7 @@ export function checkAmount({
 
   if (amount === null) {
     return fail(
-      minimum > 0n
+      minimum >= 1_000_000_000n
         ? "Enter an amount such as 1000 or 1000.5."
         : "Enter an amount such as 10 or 10.5."
     );

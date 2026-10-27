@@ -16,7 +16,7 @@
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
-    formatFee,
+    formatTotal,
   } from "$lib/dusk/currency";
   import { randomUUID } from "$lib/dusk/string";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
@@ -315,9 +315,11 @@
         <div>
           <dt>Total</dt>
           <dd class:stake-flow__muted={isTypedOff}>
-            Up to {formatFee(typedAmount + maxGasFee, language, {
-              max: true,
-            })} DUSK
+            Up to {formatTotal(
+              typedAmount + maxGasFee,
+              availableBalance,
+              language
+            )} DUSK
           </dd>
         </div>
       </dl>
