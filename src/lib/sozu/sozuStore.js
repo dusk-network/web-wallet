@@ -1,6 +1,6 @@
 import { get, writable } from "svelte/store";
 import { networkStore, walletStore } from "$lib/stores";
-import { makeNodeUrl } from "$lib/url";
+import { nodeBaseUrl } from "$lib/url";
 
 import { sozuContractsFor } from "./config";
 import { readSozuStatus } from "./status";
@@ -89,7 +89,7 @@ function read(account, contracts, nodeUrl) {
 function load({ force = false } = {}) {
   const account = String(get(walletStore).currentProfile?.account ?? "");
   const contracts = sozuContractsFor(get(networkStore).networkName);
-  const nodeUrl = makeNodeUrl().origin;
+  const nodeUrl = nodeBaseUrl();
   const key = `${nodeUrl}\n${account}`;
 
   if (!account || !contracts) {

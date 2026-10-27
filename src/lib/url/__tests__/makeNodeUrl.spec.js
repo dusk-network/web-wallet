@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeNodeUrl } from "..";
+import { makeNodeUrl, nodeBaseUrl } from "..";
 
 const protocol = "https://";
 
@@ -64,5 +64,20 @@ describe("makeNodeUrl", () => {
     const hostname = "apps.dusk.network";
     vi.stubGlobal("location", { hostname, protocol });
     expect(makeNodeUrl().hostname).toBe("nodes.dusk.network");
+  });
+});
+
+describe("nodeBaseUrl", () => {
+  it("should keep the base path the node is configured with, without a trailing slash", () => {
+    vi.stubEnv("VITE_NODE_URL", "https://node.example/");
+    vi.stubEnv("VITE_RUSK_PATH", "rusk");
+    expect(nodeBaseUrl()).toBe("https://node.example/rusk");
+
+    vi.stubEnv("VITE_NODE_URL", "https://node.example/rusk/");
+    vi.stubEnv("VITE_RUSK_PATH", "");
+    expect(nodeBaseUrl()).toBe("https://node.example/rusk");
+
+    vi.stubEnv("VITE_NODE_URL", "https://node.example");
+    expect(nodeBaseUrl()).toBe("https://node.example");
   });
 });

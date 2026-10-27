@@ -842,3 +842,31 @@ describe("historyArchiverUrl", () => {
     expect(history.historyArchiverUrl({ nodeUrl: testnet })).toBe(testnet);
   });
 });
+
+describe("a node under a base path", () => {
+  it("asks the archive under the node's base path, and keeps its history apart from other paths", async () => {
+    const fetch = vi.fn(
+      async () => new Response(JSON.stringify({ data: { ok: true } }))
+    );
+
+    vi.stubGlobal("fetch", fetch);
+
+    await history.archiveQuery("https://node.example/rusk/", "query { ok }");
+
+    expect(String(/** @type {any[]} */ (fetch.mock.calls[0])[0])).toBe(
+      "https://node.example/rusk/on/graphql/query"
+    );
+    expect(history.activityNetworkKey("https://node.example/rusk")).toBe(
+      "https://node.example/rusk"
+    );
+    expect(history.activityNetworkKey("https://node.example/rusk/")).toBe(
+      history.activityNetworkKey("https://node.example/rusk")
+    );
+    expect(history.activityNetworkKey("https://node.example/other")).not.toBe(
+      history.activityNetworkKey("https://node.example/rusk")
+    );
+    expect(
+      history.activityNetworkKey("https://testnet.nodes.dusk.network")
+    ).toBe("testnet");
+  });
+});

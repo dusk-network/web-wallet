@@ -19,7 +19,7 @@ import {
 import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
 import { sozuCall } from "$lib/sozu/calls";
 import { SOZU_FN } from "$lib/sozu/config";
-import { makeNodeUrl } from "$lib/url";
+import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
 
 import networkStore from "./networkStore";
@@ -120,7 +120,7 @@ function historyOf(profile) {
   }
 
   const session = walletSession;
-  const nodeUrl = makeNodeUrl().origin;
+  const nodeUrl = nodeBaseUrl();
 
   return activityFor({
     account: String(profile.account),

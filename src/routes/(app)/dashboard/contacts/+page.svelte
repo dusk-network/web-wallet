@@ -7,7 +7,7 @@
   import { resolveDuskName } from "$lib/dusk-domains";
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore } from "$lib/stores";
-  import { makeNodeUrl } from "$lib/url";
+  import { nodeBaseUrl } from "$lib/url";
 
   const { networkName } = $networkStore;
 
@@ -17,7 +17,7 @@
    * @param {string} name
    */
   const resolveName = (name) =>
-    resolveDuskName(name, networkName, makeNodeUrl().origin);
+    resolveDuskName(name, networkName, nodeBaseUrl());
 
   /**
    * Opens a contact, its form or a new one, or closes it, in the address.

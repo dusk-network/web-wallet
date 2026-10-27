@@ -9,7 +9,7 @@
   import { getVerifiedName, resolveDuskName } from "$lib/dusk-domains";
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
-  import { makeNodeUrl } from "$lib/url";
+  import { nodeBaseUrl } from "$lib/url";
 
   import { contactsStore } from "$lib/contacts";
   import { lookupKind, searchLocally } from "./search";
@@ -133,11 +133,7 @@
 
   /** @param {string} q */
   async function lookUpName(q) {
-    const resolved = await resolveDuskName(
-      q,
-      networkName,
-      makeNodeUrl().origin
-    );
+    const resolved = await resolveDuskName(q, networkName, nodeBaseUrl());
     const address = resolved.account ?? resolved.address;
 
     if (!address) {
@@ -168,7 +164,7 @@
   /** @param {string} q */
   async function lookUpTransaction(q) {
     const hash = q.replace(/^0x/i, "").toLowerCase();
-    const details = await fetchTxDetails(makeNodeUrl().origin, [hash]).catch(
+    const details = await fetchTxDetails(nodeBaseUrl(), [hash]).catch(
       () => null
     );
 

@@ -13,7 +13,7 @@
     settingsStore,
     walletStore,
   } from "$lib/stores";
-  import { makeNodeUrl } from "$lib/url";
+  import { nodeBaseUrl } from "$lib/url";
 
   /** @type {"shielded" | "unshielded"} */
   let spendableSource = "unshielded";
@@ -65,7 +65,7 @@
    * @param {string} name
    */
   const resolveName = (name) =>
-    resolveDuskName(name, networkName, makeNodeUrl().origin);
+    resolveDuskName(name, networkName, nodeBaseUrl());
 
   /** @type {GasOperation} */
   $: transferOperation =

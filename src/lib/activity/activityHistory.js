@@ -121,7 +121,7 @@ export function historyArchiverUrl({ archiverUrl, nodeUrl } = {}) {
 
 /**
  * The network a history belongs to: Mainnet and Testnet by name, any other
- * node by its origin.
+ * node by its base URL, with its path.
  *
  * @param {string} nodeUrl
  */
@@ -133,7 +133,9 @@ export function activityNetworkKey(nodeUrl) {
   }
 
   try {
-    return new URL(String(nodeUrl)).origin;
+    const url = new URL(String(nodeUrl));
+
+    return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
   } catch {
     return String(nodeUrl ?? "");
   }
@@ -213,7 +215,7 @@ export async function archiveQuery(
   { timeoutMs = REQUEST_TIMEOUT_MS } = {}
 ) {
   const res = await fetchWithTimeout(
-    new URL("/on/graphql/query", baseUrl).toString(),
+    `${String(baseUrl).replace(/\/+$/, "")}/on/graphql/query`,
     { body: query, headers: { "Content-Type": "text/plain" }, method: "POST" },
     timeoutMs
   );
