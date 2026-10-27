@@ -5,7 +5,6 @@ import {
   WITHDRAWAL_TIMELINE_STEPS,
   roughDuration,
   withdrawalActionFailure,
-  withdrawalSentMessage,
   withdrawalStageDefaultMessage,
   withdrawalStageLabel,
 } from "$lib/bridge/withdrawalLifecycle";
@@ -52,18 +51,6 @@ describe("DuskEVM withdrawal lifecycle", () => {
     expect(roughDuration(47 * 3_600)).toBe("47 hours");
     expect(roughDuration(84 * 3_600)).toBe("4 days");
     expect(roughDuration(7 * 86_400 + 3_600)).toBe("7 days");
-  });
-
-  it("gives the total time when a withdrawal is sent, from Dusk's waiting period", () => {
-    expect(withdrawalSentMessage()).toBe(
-      "Two steps on Dusk, about 7 days in total."
-    );
-    expect(withdrawalSentMessage(604_800n)).toBe(
-      "Two steps on Dusk, about 7 days in total."
-    );
-    expect(withdrawalSentMessage(10_800n)).toBe(
-      "Two steps on Dusk, about 4 hours in total."
-    );
   });
 
   it("says which step wasn't sent, only where it can be sent again", () => {

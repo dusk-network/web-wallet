@@ -53,13 +53,14 @@
     trackWithdrawalTransaction,
   } from "$lib/bridge/withdrawalActivity";
   import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
+  import bridgeTimes from "$lib/bridge/bridgeTimes";
   import {
-    WITHDRAWAL_REPORT_SECONDS,
-    WITHDRAWAL_WAITING_PERIOD_SECONDS,
-    roughDuration,
-    withdrawalSentMessage,
-  } from "$lib/bridge/withdrawalLifecycle";
-  import { loadWithdrawalWaitingPeriod } from "$lib/bridge/withdrawals";
+    DEPOSIT,
+    WITHDRAWAL,
+    aboutTime,
+    routeTime,
+    routeTimeText,
+  } from "$lib/bridge/routeTimes";
   import {
     formatDusk,
     formatDuskExact,
@@ -114,9 +115,6 @@
 
   /** @type {string} */
   let lastWithdrawalTxHash = "";
-
-  /** @type {bigint | null} */
-  let withdrawalWaitingPeriod = null;
 
   /** @type {bigint} */
   let amountLux = 0n;
@@ -186,7 +184,7 @@
     return gas * price;
   }
 
-  /** Gets the fee and the waiting period a withdrawal's review shows. */
+  /** Gets the fee a withdrawal's review shows. */
   function prepareWithdrawalReview() {
     reviewRequests += 1;
 
@@ -203,9 +201,6 @@
         }
       })
       .catch(() => {});
-    void loadWithdrawalWaitingPeriod().then((seconds) => {
-      withdrawalWaitingPeriod = seconds;
-    });
   }
 
   /**
@@ -372,19 +367,21 @@
     { id: "duskEvm", name: "DuskEVM" },
   ];
 
-  /** Where DUSK goes from each network, for the To list. */
-  const ARRIVES = {
-    duskDs: "Two steps on Dusk, after a waiting period",
-    duskEvm: "Usually within a minute",
-  };
-
   /** @param {string} id */
   const otherThan = (id) => (id === "duskDs" ? "duskEvm" : "duskDs");
 
-  const toChoices = NETWORKS.map((network) => ({
-    ...network,
-    note: /** @type {Record<string, string>} */ (ARRIVES)[network.id],
-  }));
+  /**
+   * A route in one line, its time on this network first where it's known:
+   * the route row and the To list say the same.
+   *
+   * @param {RouteTime | null} time
+   * @param {string[]} rest
+   */
+  const routeLineOf = (time, rest) => {
+    const line = [routeTimeText(time), ...rest].filter(Boolean).join(" · ");
+
+    return `${line.charAt(0).toUpperCase()}${line.slice(1)}`;
+  };
 
   // Default origin
   let originNetwork = "duskDs";
@@ -396,19 +393,6 @@
   /** What Send started: shown once the card moves on to it. */
   /** @type {Promise<string>} */
   let operation = Promise.resolve("");
-
-  /** Whether Dusk's waiting period for withdrawals was asked for. */
-  let isWaitingPeriodAsked = false;
-
-  /** Asks Dusk for its waiting period for withdrawals, once. */
-  function askWaitingPeriod() {
-    if (!isWaitingPeriodAsked) {
-      isWaitingPeriodAsked = true;
-      void loadWithdrawalWaitingPeriod().then((seconds) => {
-        withdrawalWaitingPeriod = seconds;
-      });
-    }
-  }
 
   function review() {
     isEditing = false;
@@ -514,26 +498,32 @@
           ? { label: "Check the network fee", ready: false }
           : { label: "Review bridge", ready: true };
 
-  // A withdrawal's route says how long it waits: Dusk's waiting period.
-  $: if (isWithdrawing) {
-    askWaitingPeriod();
-  }
-
   // A review needs its EVM wallet: without one, back to the form, which
   // offers to connect it.
   $: if (step === "review" && !isConnected) {
     edit();
   }
 
-  $: withdrawalTime = roughDuration(
-    WITHDRAWAL_REPORT_SECONDS +
-      Number(withdrawalWaitingPeriod ?? WITHDRAWAL_WAITING_PERIOD_SECONDS)
-  );
-  $: routeLine = isDepositing
-    ? `About a minute · fee up to ${formatFee(fee, language, { max: true })} DUSK`
-    : `Two steps on Dusk · about ${withdrawalTime}`;
+  // How long each way takes on this network: what its chains said, or none.
+  $: depositTime = routeTime(DEPOSIT, $bridgeTimes);
+  $: withdrawalTime = routeTime(WITHDRAWAL, $bridgeTimes);
+  $: depositLine = routeLineOf(depositTime, [
+    `fee up to ${formatFee(fee, language, { max: true })} DUSK`,
+  ]);
+  $: withdrawalLine = routeLineOf(withdrawalTime, ["two steps on Dusk"]);
+  $: routeLine = isDepositing ? depositLine : withdrawalLine;
+  $: toChoices = NETWORKS.map((network) => ({
+    ...network,
+    note: network.id === "duskDs" ? withdrawalLine : depositLine,
+  }));
+
+  // What's left once a withdrawal is sent: the proof, then the claim.
+  $: withdrawalNext = withdrawalTime
+    ? `Prove it on Dusk in ${aboutTime(withdrawalTime.report ?? 0)}, then claim it ${aboutTime(withdrawalTime.wait ?? 0)} later.`
+    : "Prove it on Dusk, then claim it.";
 
   onMount(() => {
+    void bridgeTimes.load();
     lastWithdrawalTxHash =
       localStorage.getItem(LAST_WITHDRAWAL_TX_HASH_KEY) ?? "";
 
@@ -562,10 +552,6 @@
   </div>
 
   {#if step === "form"}
-    <p class="swap-lead">
-      Moves DUSK between your public balance on Dusk and DuskEVM.
-    </p>
-
     <div class="swap-panel">
       <div class="swap-panel__head">
         <span class="swap-panel__label">From</span>
@@ -691,10 +677,10 @@
           >
         {/if}
       </div>
-      <p class="swap-recipient">
-        {#if isWithdrawing}
-          to your public balance on Dusk
-        {:else if evmAddress}
+      {#if isWithdrawing}
+        <p class="swap-recipient">to your public balance on Dusk</p>
+      {:else if evmAddress}
+        <p class="swap-recipient">
           to your DuskEVM account <b title={evmAddress}
             >{shortenAddress(evmAddress)}</b
           >
@@ -705,10 +691,8 @@
             on:click={() => modal.open()}
             type="button">Change</button
           >
-        {:else}
-          to the DuskEVM account you connect
-        {/if}
-      </p>
+        </p>
+      {/if}
     </div>
 
     <details class="swap-route">
@@ -723,10 +707,6 @@
           <div>
             <dt>Steps</dt>
             <dd>One, in this wallet</dd>
-          </div>
-          <div>
-            <dt>Arrives</dt>
-            <dd>usually within a minute</dd>
           </div>
           <div>
             <dt>Leaves your public balance</dt>
@@ -745,10 +725,6 @@
               On DuskEVM, as your EVM wallet shows, and a small fee for each
               step on Dusk
             </dd>
-          </div>
-          <div>
-            <dt>Arrives</dt>
-            <dd>after about {withdrawalTime}</dd>
           </div>
         {/if}
       </dl>
@@ -769,9 +745,8 @@
         </div>
       {/if}
       <p class="swap-route__note">
-        <b>Public on both networks, and linked.</b> Your public account, the DuskEVM
-        account and the amount can be seen on Dusk and DuskEVM, linked to each other.
-        The bridge works with public balances only.
+        <b>Public on Dusk and DuskEVM, and linked:</b> your public account, the DuskEVM
+        account and the amount.
       </p>
     </details>
 
@@ -819,10 +794,6 @@
           label="Total (at most)"
           value={formatTotal(totalDepositLux, unshieldedBalance, language)}
         />
-        <Banner
-          title="The fee is paid from your public balance."
-          variant="info"
-        />
       {:else}
         {#if withdrawalFeeWei !== null}
           <ReviewAmount
@@ -833,14 +804,8 @@
             )}
           />
         {/if}
-        <Banner
-          title={withdrawalSentMessage(withdrawalWaitingPeriod)}
-          variant="info"
-        >
-          <p>
-            This fee is paid from your DuskEVM balance. Each step on Dusk takes
-            a small fee from your public balance.
-          </p>
+        <Banner title={withdrawalNext} variant="info">
+          <p>Each step on Dusk takes a small fee from your public balance.</p>
         </Banner>
       {/if}
       <div class="bridge-review__actions">
@@ -872,7 +837,7 @@
         successMessage="Withdrawal sent"
       >
         <svelte:fragment slot="success-content" let:result={hash}>
-          <p>{withdrawalSentMessage(withdrawalWaitingPeriod)}</p>
+          <p>{withdrawalNext}</p>
           {#if hash}
             <AnchorButton
               href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}

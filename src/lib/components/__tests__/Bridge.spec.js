@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { tick } from "svelte";
 
+import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { formatFee } from "$lib/dusk/currency";
 import { settingsStore } from "$lib/stores";
 import { account } from "$lib/web3/walletConnection";
@@ -46,6 +47,33 @@ vi.mock("$lib/bridge/depositActivity", async (importOriginal) => ({
   ),
   pendingDepositAmountLux,
 }));
+
+/** What DuskEVM testnet's chains said on 27 Oct 2026. */
+const TESTNET_TIMES = {
+  chain: {
+    deposit: { at: 1, lagSeconds: 35 },
+    withdrawal: {
+      at: 1,
+      finalitySeconds: 302_400,
+      maturitySeconds: 604_800,
+      outputSeconds: 1_700,
+    },
+  },
+  network: "testnet",
+};
+
+vi.mock("$lib/bridge/bridgeTimes", async () => {
+  const { writable } = await import("svelte/store");
+  const times = writable({});
+
+  return {
+    default: { load: vi.fn(), set: times.set, subscribe: times.subscribe },
+  };
+});
+
+/** The network and what its chains said, as the Bridge reads them. */
+const setTimes = (/** @type {any} */ times) =>
+  /** @type {any} */ (bridgeTimes).set(times);
 
 vi.mock("$lib/web3/walletConnection", async () => {
   const { writable } = await import("svelte/store");
@@ -119,6 +147,7 @@ describe("Bridge", () => {
   beforeEach(() => {
     estimateGas.mockResolvedValue(withdrawalGas);
     getGasPrice.mockResolvedValue(evmGasPrice);
+    setTimes(TESTNET_TIMES);
   });
 
   afterEach(() => {
@@ -252,12 +281,10 @@ describe("Bridge", () => {
       ])
     );
     expect(
-      getByText("Two steps on Dusk, about 7 days in total.")
+      getByText("Prove it on Dusk in ~1 hour, then claim it ~7 days later.")
     ).toBeInTheDocument();
     expect(
-      getByText(
-        "This fee is paid from your DuskEVM balance. Each step on Dusk takes a small fee from your public balance."
-      )
+      getByText("Each step on Dusk takes a small fee from your public balance.")
     ).toBeInTheDocument();
   });
 
@@ -391,22 +418,21 @@ describe("Bridge", () => {
       isConnected: false,
     });
 
-    const { container, getByRole, getByText } = render(Bridge, {
+    const { container, getByRole, queryByText } = render(Bridge, {
       ...baseProps,
       evmDuskBalance: undefined,
     });
 
-    expect(
-      getByText("Moves DUSK between your public balance on Dusk and DuskEVM.")
-    ).toBeInTheDocument();
+    // No line saying what the card is, nor where it goes before a wallet says.
+    expect(queryByText(/^Moves DUSK/)).toBeNull();
+    expect(container.querySelector(".swap-recipient")).toBeNull();
     expect(getByRole("link", { name: "Home" })).toHaveAttribute(
       "href",
       expect.stringMatching(/\/dashboard$/)
     );
     expect(getDirection(container)).toStrictEqual(["duskDs", "duskEvm"]);
-    expect(getByText("to the DuskEVM account you connect")).toBeInTheDocument();
     expect(container.querySelector(".swap-route summary")).toHaveTextContent(
-      "About a minute · fee up to 0.02 DUSK"
+      "~1 min · fee up to 0.02 DUSK"
     );
 
     await fireEvent.click(
@@ -418,7 +444,7 @@ describe("Bridge", () => {
     await withdraw(container);
 
     expect(container.querySelector(".swap-route summary")).toHaveTextContent(
-      "Two steps on Dusk · about 7 days"
+      "~7 days · two steps on Dusk"
     );
   });
 
@@ -446,12 +472,83 @@ describe("Bridge", () => {
     await fireEvent.click(
       getByRole("button", { name: "To: DuskEVM. Choose the network" })
     );
-    await fireEvent.click(getByRole("option", { name: /^Dusk Two steps/ }));
+    await fireEvent.click(getByRole("option", { name: /^Dusk ~7 days/ }));
 
     expect(getDirection(container)).toStrictEqual(["duskEvm", "duskDs"]);
     expect(
       getByRole("button", { name: "From: DuskEVM. Choose the network" })
     ).toBeInTheDocument();
+  });
+
+  it("should say each way's time on this network the same in the route row, the To list, the review and once sent", async () => {
+    const { container, getByRole, getByText } = render(Bridge, baseProps);
+    const summary = () =>
+      container.querySelector(".swap-route summary")?.textContent?.trim();
+    const notes = async () => {
+      await fireEvent.click(
+        getByRole("button", { name: /^To: .*Choose the network/ })
+      );
+
+      const listed = Array.from(
+        container.querySelectorAll("[role=option]"),
+        (option) => option.textContent?.replace(/\s+/g, " ").trim()
+      );
+
+      await fireEvent.keyDown(
+        container.querySelector("[role=listbox]") ?? container,
+        {
+          key: "Escape",
+        }
+      );
+
+      return listed;
+    };
+
+    expect(summary()).toBe("~1 min · fee up to 0.02 DUSK");
+    expect(await notes()).toStrictEqual([
+      "Dusk ~7 days · two steps on Dusk",
+      "EVM DuskEVM ~1 min · fee up to 0.02 DUSK",
+    ]);
+
+    await withdraw(container);
+
+    expect(summary()).toBe("~7 days · two steps on Dusk");
+
+    await fireEvent.input(getByRole("textbox"), { target: { value: "1" } });
+    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+
+    expect(
+      getByText("Prove it on Dusk in ~1 hour, then claim it ~7 days later.")
+    ).toBeInTheDocument();
+  });
+
+  it("should take what the chain says over the network's own time, and show none where neither is known", async () => {
+    setTimes({
+      chain: { deposit: { at: 1, lagSeconds: 290 } },
+      network: "testnet",
+    });
+
+    const { container, getByRole, getByText } = render(Bridge, baseProps);
+    const summary = () =>
+      container.querySelector(".swap-route summary")?.textContent?.trim();
+
+    // DuskEVM trailing Dusk by five minutes: the deposit says so.
+    expect(summary()).toBe("~5 min · fee up to 0.02 DUSK");
+
+    // Mainnet has no DuskEVM yet: nothing is known, and no time is shown.
+    setTimes({ chain: null, network: "mainnet" });
+    await tick();
+
+    expect(summary()).toBe("Fee up to 0.02 DUSK");
+
+    await withdraw(container);
+
+    expect(summary()).toBe("Two steps on Dusk");
+
+    await fireEvent.input(getByRole("textbox"), { target: { value: "1" } });
+    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+
+    expect(getByText("Prove it on Dusk, then claim it.")).toBeInTheDocument();
   });
 
   it("should leave the review for the form when the EVM wallet disconnects", async () => {

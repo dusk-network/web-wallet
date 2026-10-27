@@ -16,8 +16,11 @@ import {
   serializeOutputRootProofForDuskAbi,
   serializeWithdrawalForDuskAbi,
 } from "@dusk/evm-sdk";
-import { Gas } from "@dusk/w3sper";
+import { Gas, dataDrivers } from "@dusk/w3sper";
 import { get } from "svelte/store";
+
+import { createMulticallFetch } from "$lib/activity/multicallFetch";
+import { nodeBaseUrl } from "$lib/url";
 
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { WITHDRAWAL_GAS_LIMIT } from "$lib/contracts/gasDefaults";
@@ -81,6 +84,9 @@ const GAME_RESOLUTION_ABI = Object.freeze([
  * behind it, so their times give no claim time.
  */
 const DUSK_CLOCK_WINDOW_SECONDS = 31_536_000n;
+
+/** The latest games read for how often outputs come: five gaps. */
+const OUTPUT_SAMPLE = 6n;
 const NO_CLAIM_TIME = Object.freeze({ readyAt: null, readyAtExact: false });
 
 /** @param {unknown} value */
@@ -1155,16 +1161,160 @@ async function readProofMaturityDelaySeconds(portal) {
   return u256ToBigInt(await portal.call.proofMaturityDelaySeconds());
 }
 
+/** @type {Map<string, Promise<BridgeDriver>>} */
+const timingDrivers = new Map();
+
 /**
- * Dusk's proof maturity delay, which sets how long a proven withdrawal waits,
- * or `null` when it can't be read.
+ * A bridge contract's data driver, fetched and started once; one that failed
+ * to load is loaded again by the next read.
+ *
+ * @param {string} url
+ * @returns {Promise<BridgeDriver>}
  */
-export async function loadWithdrawalWaitingPeriod() {
-  try {
-    return await readProofMaturityDelaySeconds(await optimismPortalContract());
-  } catch {
-    return null;
+function loadTimingDriver(url) {
+  let driver = timingDrivers.get(url);
+
+  if (!driver) {
+    driver = fetch(url)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Couldn't load the data driver at ${url}`);
+        }
+
+        return res.arrayBuffer();
+      })
+      .then((bytes) => dataDrivers.load(new Uint8Array(bytes)))
+      .then((loaded) => {
+        loaded.init();
+
+        return loaded;
+      });
+
+    const kept = driver;
+
+    timingDrivers.set(url, kept);
+    kept.catch(() => {
+      if (timingDrivers.get(url) === kept) {
+        timingDrivers.delete(url);
+      }
+    });
   }
+
+  return driver;
+}
+
+/** @type {Map<string, typeof fetch>} */
+const batchedFetches = new Map();
+
+/**
+ * The node's batched fetch: the reads of one task go to it as one Multicall
+ * for Dusk query.
+ *
+ * @param {string} nodeUrl
+ */
+function batchedFetch(nodeUrl) {
+  let batched = batchedFetches.get(nodeUrl);
+
+  if (!batched) {
+    batched = createMulticallFetch({ nodeUrl });
+    batchedFetches.set(nodeUrl, batched);
+  }
+
+  return batched;
+}
+
+/**
+ * How long a withdrawal takes on this network, as Dusk says: the Portal's
+ * proof maturity and dispute game finality delays, and how often outputs
+ * come, the middle gap between the latest games of the type the Portal
+ * takes. The reads go through Multicall for Dusk: the delays with the game
+ * count in one query, then the games.
+ *
+ * @param {{
+ *   fetch?: typeof fetch,
+ *   loadDriver?: (url: string) => Promise<BridgeDriver>,
+ *   nodeUrl?: string,
+ * }} [options]
+ */
+export async function loadWithdrawalTiming({
+  fetch: fetchFn,
+  loadDriver = loadTimingDriver,
+  nodeUrl = nodeBaseUrl(),
+} = {}) {
+  const config = requireWithdrawalFinalizationConfig();
+  const send = fetchFn ?? batchedFetch(nodeUrl);
+  const [portal, dgf] = await Promise.all([
+    loadDriver(config.optimismPortalDataDriverUrl),
+    loadDriver(config.disputeGameFactoryDataDriverUrl),
+  ]);
+
+  /**
+   * @param {BridgeDriver} driver
+   * @param {string} contractId
+   * @param {string} fnName
+   * @param {unknown} [args]
+   */
+  const read = async (driver, contractId, fnName, args) => {
+    const res = await send(`${nodeUrl}/on/contracts:${contractId}/${fnName}`, {
+      body: /** @type {BodyInit} */ (
+        driver.encodeInputFn(
+          fnName,
+          args === undefined ? "null" : JSON.stringify(args)
+        )
+      ),
+      headers: { "Content-Type": "application/octet-stream" },
+      method: "POST",
+    });
+
+    if (!res.ok) {
+      throw new Error(`The ${fnName} read failed: ${res.status}`);
+    }
+
+    return driver.decodeOutputFn(
+      fnName,
+      new Uint8Array(await res.arrayBuffer())
+    );
+  };
+  const [maturity, finality, gameType, count] = await Promise.all([
+    read(portal, config.optimismPortalContractId, "proofMaturityDelaySeconds"),
+    read(
+      portal,
+      config.optimismPortalContractId,
+      "disputeGameFinalityDelaySeconds"
+    ),
+    read(portal, config.optimismPortalContractId, "respectedGameType"),
+    read(dgf, config.disputeGameFactoryContractId, "gameCount"),
+  ]);
+  const total = u256ToBigInt(count);
+  const games =
+    total > 1n
+      ? /** @type {unknown[]} */ (
+          await read(
+            dgf,
+            config.disputeGameFactoryContractId,
+            "findLatestGames",
+            [
+              Number(gameType),
+              bigIntToU256(total - 1n),
+              bigIntToU256(total < OUTPUT_SAMPLE ? total : OUTPUT_SAMPLE),
+            ]
+          )
+        )
+      : [];
+  const times = games
+    .map((game) => Number(tupleValue(game, "timestamp", 2)))
+    .sort((a, b) => b - a);
+  const gaps = times
+    .slice(1)
+    .map((time, index) => times[index] - time)
+    .filter((gap) => gap > 0)
+    .sort((a, b) => a - b);
+
+  return {
+    finalitySeconds: Number(u256ToBigInt(finality)),
+    maturitySeconds: Number(u256ToBigInt(maturity)),
+    outputSeconds: gaps.length ? gaps[Math.floor(gaps.length / 2)] : null,
+  };
 }
 
 /**

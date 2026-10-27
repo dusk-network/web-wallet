@@ -183,17 +183,6 @@ export function withdrawalActionFailure(stage, error = "") {
 }
 
 /**
- * @param {bigint | null} [waitingPeriodSeconds] Dusk's proof maturity delay
- */
-export function withdrawalSentMessage(waitingPeriodSeconds = null) {
-  const total =
-    WITHDRAWAL_REPORT_SECONDS +
-    Number(waitingPeriodSeconds ?? WITHDRAWAL_WAITING_PERIOD_SECONDS);
-
-  return `Two steps on Dusk, about ${roughDuration(total)} in total.`;
-}
-
-/**
  * A duration in words, rounded for "about" and "within": "a minute",
  * "an hour", "7 days".
  *

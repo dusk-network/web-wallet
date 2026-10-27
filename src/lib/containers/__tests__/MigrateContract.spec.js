@@ -58,14 +58,13 @@ describe("MigrateContract", () => {
   });
 
   it("should say what a migration does, from Ethereum or BNB Smart Chain, with one button", async () => {
-    const { container, getByLabelText, getByRole, getByText, queryByText } =
-      render(MigrateContract, { migrationNetwork: "testnet" });
+    const { container, getByLabelText, getByRole, queryByText } = render(
+      MigrateContract,
+      { migrationNetwork: "testnet" }
+    );
 
-    expect(
-      getByText(
-        "Moves DUSK from Ethereum or BNB Smart Chain to your public balance on Dusk."
-      )
-    ).toBeInTheDocument();
+    // No line saying what the card is.
+    expect(queryByText(/^Moves DUSK/)).toBeNull();
     expect(queryByText(/ERC-20|BEP-20/)).toBeNull();
     expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
 
@@ -92,6 +91,37 @@ describe("MigrateContract", () => {
       getByRole("button", { name: "From: BNB Smart Chain. Choose the network" })
     ).toBeInTheDocument();
     expect(getByLabelText("Amount")).toHaveValue("");
+  });
+
+  it("should say how long a migration takes from each chain on its network, and nothing where that isn't known", async () => {
+    const summary = (/** @type {HTMLElement} */ container) =>
+      container.querySelector(".swap-route summary")?.textContent?.trim();
+    const mainnet = render(MigrateContract, { migrationNetwork: "mainnet" });
+
+    expect(summary(mainnet.container)).toBe(
+      "~70 min · approve, then migrate, in your Ethereum wallet"
+    );
+
+    await fireEvent.click(
+      mainnet.getByRole("button", {
+        name: "From: Ethereum. Choose the network",
+      })
+    );
+    await fireEvent.click(
+      mainnet.getByRole("option", { name: /BNB Smart Chain/ })
+    );
+
+    expect(summary(mainnet.container)).toBe(
+      "~1 hour · approve, then migrate, in your BNB Smart Chain wallet"
+    );
+    expect(mainnet.queryByText(/a while|a few minutes/)).toBeNull();
+    cleanup();
+
+    const testnet = render(MigrateContract, { migrationNetwork: "testnet" });
+
+    expect(summary(testnet.container)).toBe(
+      "Approve, then migrate, in your Ethereum wallet"
+    );
   });
 
   it("should read the balance of a wallet that connects, or comes back, while it shows", async () => {

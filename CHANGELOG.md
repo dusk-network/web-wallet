@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Show each Bridge and Migrate route's time for this network: DuskEVM's from its chains, migrations' as measured, and none where none is known
+- Cut the Bridge and Migrate cards, reviews and results to what is needed to act
 - Shorten and clarify the withdrawal statuses in the Bridge [#973]
 - Migrate DuskEVM bridge flows to the current contracts and the published
   `@dusk/evm-sdk` beta [#946], [#948]

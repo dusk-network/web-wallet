@@ -1,14 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 
 import { Bridge } from "..";
 
 const mocks = vi.hoisted(() => ({
-  loadWithdrawalWaitingPeriod: vi.fn(),
   sendTransaction: vi.fn(),
   switchChain: vi.fn(),
 }));
+
+vi.mock("$lib/bridge/bridgeTimes", async () => {
+  const { writable } = await import("svelte/store");
+  const times = writable({});
+
+  return {
+    default: { load: vi.fn(), set: times.set, subscribe: times.subscribe },
+  };
+});
 
 vi.mock("$lib/web3/walletConnection", async () => {
   const { readable } = await import("svelte/store");
@@ -49,11 +58,6 @@ vi.mock("$lib/bridge/withdrawalInitiation", () => ({
     to: "0x4200000000000000000000000000000000000010",
     value: 1_000_000_000_000_000_000n,
   }),
-}));
-
-vi.mock("$lib/bridge/withdrawals", async (importOriginal) => ({
-  .../** @type {object} */ (await importOriginal()),
-  loadWithdrawalWaitingPeriod: mocks.loadWithdrawalWaitingPeriod,
 }));
 
 describe("Bridge withdrawal", () => {
@@ -103,14 +107,29 @@ describe("Bridge withdrawal", () => {
     return rendered;
   }
 
+  /** @param {number | null} maturitySeconds */
+  const timesFor = (maturitySeconds) => ({
+    chain: maturitySeconds
+      ? {
+          withdrawal: {
+            at: 1,
+            finalitySeconds: 0,
+            maturitySeconds,
+            outputSeconds: 1_700,
+          },
+        }
+      : null,
+    network: "testnet",
+  });
+
   it.each([
-    [604_800n, "Two steps on Dusk, about 7 days in total."],
-    [10_800n, "Two steps on Dusk, about 4 hours in total."],
-    [null, "Two steps on Dusk, about 7 days in total."],
+    [604_800, "Prove it on Dusk in ~1 hour, then claim it ~7 days later."],
+    [10_800, "Prove it on Dusk in ~1 hour, then claim it ~3 hours later."],
+    [null, "Prove it on Dusk, then claim it."],
   ])(
-    "says what's left on Dusk once sent, for a waiting period of %s seconds",
-    async (waitingPeriod, line) => {
-      mocks.loadWithdrawalWaitingPeriod.mockResolvedValue(waitingPeriod);
+    "says what's left on Dusk once sent, for a proof maturity of %s seconds",
+    async (maturitySeconds, line) => {
+      /** @type {any} */ (bridgeTimes).set(timesFor(maturitySeconds));
 
       const { findByText } = await sendWithdrawal();
 

@@ -32,6 +32,11 @@
     walletDisconnect,
   } from "$lib/web3/walletConnection";
   import { getBalanceOfCoin } from "$lib/web3/migration";
+  import {
+    migrationRoute,
+    routeTime,
+    routeTimeText,
+  } from "$lib/bridge/routeTimes";
 
   /** @type {string} */
   export let migrationNetwork;
@@ -214,6 +219,16 @@
   };
 
   $: chain = CHAINS.find((c) => c.token === selectedChain) ?? CHAINS[0];
+
+  // How long a migration from this chain takes on this network, or none.
+  $: time = routeTime(migrationRoute(chain.id), { network });
+  $: routeLine = [
+    routeTimeText(time),
+    `approve, then migrate, in your ${chain.name} wallet`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+    .replace(/^./, (first) => first.toUpperCase());
   $: primary = !isConnected
     ? { label: `Connect to ${chain.name}`, ready: true }
     : connectedWalletBalance === undefined
@@ -242,10 +257,6 @@
   <div class="swap-top" slot="top">
     <h2 class="migrate__title">Migrate</h2>
   </div>
-
-  <p class="swap-lead">
-    Moves DUSK from Ethereum or BNB Smart Chain to your public balance on Dusk.
-  </p>
 
   <div class="swap-panel">
     <div class="swap-panel__head">
@@ -337,27 +348,20 @@
 
   <details class="swap-route">
     <summary
-      ><Icon path={mdiClockOutline} /><span
-        >Two steps in your {chain.name} wallet: approve, then migrate</span
-      ><Icon className="swap-route__chevron" path={mdiChevronDown} /></summary
+      ><Icon path={mdiClockOutline} /><span>{routeLine}</span><Icon
+        className="swap-route__chevron"
+        path={mdiChevronDown}
+      /></summary
     >
     <dl>
-      <div>
-        <dt>Steps</dt>
-        <dd>Approve the amount, then migrate it</dd>
-      </div>
       <div>
         <dt>Network fees</dt>
         <dd>On {chain.name}, as your wallet shows</dd>
       </div>
-      <div>
-        <dt>Arrives</dt>
-        <dd>once the migration is processed, which can take a while</dd>
-      </div>
     </dl>
     <p class="swap-route__note">
-      <b>Public and linked.</b> The migration records your public account on {chain.name},
-      so anyone can link your {chain.name} address to it.
+      <b>Public on {chain.name} and Dusk, and linked:</b> your {chain.name} address,
+      your public account and the amount.
     </p>
   </details>
 
@@ -387,11 +391,13 @@
       {:else}
         <div class="migrate__done">
           <Icon path={mdiCheckDecagramOutline} size="large" />
-          <p>Migration request accepted.</p>
-          <Banner
-            title="Your DUSK can take a while to arrive."
-            variant="info"
-          />
+          <p>Migration sent.</p>
+          {#if time}
+            <Banner
+              title={`Arrives on Dusk in ${routeTimeText(time)}.`}
+              variant="info"
+            />
+          {/if}
         </div>
       {/if}
     </div>
