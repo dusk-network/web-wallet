@@ -88,15 +88,16 @@ describe("Bridge withdrawal", () => {
 
   async function sendWithdrawal() {
     const rendered = render(Bridge, props);
-    const origin = /** @type {HTMLSelectElement} */ (
-      rendered.container.querySelector("select[name='origin-network']")
-    );
 
-    await fireEvent.change(origin, { target: { value: "duskEvm" } });
+    await fireEvent.click(
+      rendered.getByRole("button", { name: "Swap From and To" })
+    );
     await fireEvent.input(rendered.getByRole("textbox"), {
       target: { value: "1" },
     });
-    await fireEvent.click(rendered.getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      rendered.getByRole("button", { name: "Review bridge" })
+    );
     await fireEvent.click(rendered.getByRole("button", { name: "Send" }));
 
     return rendered;

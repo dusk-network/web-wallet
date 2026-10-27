@@ -8,16 +8,8 @@
     watchBlocks,
     watchChainId,
   } from "@wagmi/core";
-  import { mdiListStatus } from "@mdi/js";
-
-  import { Button } from "$lib/dusk/components";
-  import {
-    account,
-    duskEvm,
-    modal,
-    wagmiConfig,
-  } from "$lib/web3/walletConnection";
-  import { AppAnchorButton, Bridge } from "$lib/components";
+  import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
+  import { Bridge } from "$lib/components";
   import {
     gasPriceStore,
     gasStore,
@@ -72,7 +64,6 @@
     };
   });
 
-  $: ({ isConnected } = $account);
   $: ({ balance, currentProfile } = $walletStore);
   $: ({ customGasLimit, customGasPrice } = $settingsStore);
   $: gasSettings = getGasSettings(
@@ -87,60 +78,12 @@
   $: unshieldedAccount = currentProfile ? currentProfile.account : null;
 </script>
 
-{#if !isConnected}
-  <article class="bridge-wallet">
-    <header class="bridge-wallet__header">
-      <h3 class="h4">Bridge</h3>
-      <AppAnchorButton
-        href="/dashboard/bridge/transactions"
-        text="Activity"
-        variant="tertiary"
-        icon={{ path: mdiListStatus }}
-      />
-    </header>
-    <div class="bridge-wallet__connect">
-      <Button text="Connect Web3 wallet" on:click={() => modal.open()} />
-    </div>
-  </article>
-{:else}
-  <Bridge
-    {unshieldedAddress}
-    {unshieldedAccount}
-    {evmDuskBalance}
-    unshieldedBalance={balance.unshielded.value}
-    {gasLimits}
-    {gasSettings}
-    on:operationChange
-  />
-{/if}
-
-<style lang="postcss">
-  /* A page of its own: no card around it. */
-  .bridge-wallet {
-    display: flex;
-    flex-direction: column;
-    gap: var(--default-gap);
-
-    &__header {
-      align-items: center;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      justify-content: space-between;
-
-      & h3 {
-        font-size: 1.75rem;
-      }
-    }
-
-    &__connect {
-      align-items: center;
-      background: var(--calm-s1);
-      border-radius: 1rem;
-      display: flex;
-      justify-content: center;
-      min-height: 10rem;
-      padding: 1rem;
-    }
-  }
-</style>
+<Bridge
+  {unshieldedAddress}
+  {unshieldedAccount}
+  {evmDuskBalance}
+  unshieldedBalance={balance.unshielded.value}
+  {gasLimits}
+  {gasSettings}
+  on:operationChange
+/>

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { settingsStore } from "$lib/stores";
 
 import { MigrateContract } from "..";
@@ -42,9 +42,46 @@ describe("MigrateContract", () => {
     });
 
     await vi.waitFor(() =>
-      expect(
-        container.querySelector(".migrate__token-balance")
-      ).toHaveTextContent("Balance: •••• hidden ERC-20 DUSK")
+      expect(container.querySelector("#migrate-balance")).toHaveTextContent(
+        "•••• hidden DUSK"
+      )
     );
+  });
+
+  it("should say what a migration does, from Ethereum or BNB Smart Chain, with one button", async () => {
+    const { container, getByLabelText, getByRole, getByText, queryByText } =
+      render(MigrateContract, { migrationNetwork: "testnet" });
+
+    expect(
+      getByText(
+        "Moves DUSK from Ethereum or BNB Smart Chain to your public balance on Dusk."
+      )
+    ).toBeInTheDocument();
+    expect(queryByText(/ERC-20|BEP-20/)).toBeNull();
+    expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
+
+    await vi.waitFor(() =>
+      expect(getByLabelText("Amount")).toHaveAccessibleDescription(
+        "Balance on Ethereum: 5 DUSK"
+      )
+    );
+    expect(getByRole("button", { name: "Enter an amount" })).toBeDisabled();
+
+    await fireEvent.input(getByLabelText("Amount"), {
+      target: { value: "2" },
+    });
+
+    expect(container.querySelector("output")).toHaveTextContent("2");
+    expect(getByRole("button", { name: "Start the migration" })).toBeEnabled();
+
+    await fireEvent.click(
+      getByRole("button", { name: "From: Ethereum. Choose the network" })
+    );
+    await fireEvent.click(getByRole("option", { name: /BNB Smart Chain/ }));
+
+    expect(
+      getByRole("button", { name: "From: BNB Smart Chain. Choose the network" })
+    ).toBeInTheDocument();
+    expect(getByLabelText("Amount")).toHaveValue("");
   });
 });

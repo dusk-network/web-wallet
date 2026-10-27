@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offer Unlock only once a wallet is kept in the browser
 - Name the eye button Show balances while balances are hidden
 - Title each withdrawal with its amount, show its status once, and say DuskEVM instead of L2
-- Swap the bridge direction with the ↑↓ button
+- Swap the bridge direction with the arrow between From and To
 - Offer only wallets when connecting to DuskEVM
 - Turn the transaction history on unless `VITE_FEATURE_TRANSACTION_HISTORY` is `false`
 - Fill the window instead of a fixed card, with a flow's buttons kept in view, above a phone's keyboard
@@ -73,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Round a fee up to four decimals when it is the most it can cost, and to the nearest when it was paid
 - Show what is staked, its rewards and what can be staked on the Staking page, and why Unstake or Claim rewards can't be pressed
 - Stake natively from one page with the minimum up front and nothing filled in, without the node notice step, and offer liquid staking under the minimum
+- Show Bridge and Migrate as one card: From and To with their networks, the amount, what arrives, the route and one button, before an EVM wallet connects, with a way back Home
+- Call the chains Migrate takes DUSK from Ethereum and BNB Smart Chain
 
 ### Removed
 
