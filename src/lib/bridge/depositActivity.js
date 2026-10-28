@@ -12,6 +12,7 @@ import {
   rememberDepositTransaction,
   updateDepositTransaction,
 } from "$lib/bridge/depositActivityStorage";
+import { findDepositArrival } from "$lib/bridge/depositArrival";
 import { isDepositTerminal } from "$lib/bridge/depositLifecycle";
 import { normalizedTxHash } from "$lib/bridge/withdrawalActivityValues";
 import { errorMessage } from "$lib/dusk/error";
@@ -186,6 +187,36 @@ function failedObservationPatch(remembered, error) {
   });
 }
 
+/**
+ * A deposit that DuskEVM's adapter can't follow, found arrived on DuskEVM's
+ * explorer: completed, with the DuskEVM transaction that paid it. Null while
+ * it isn't there, or the explorer can't be read.
+ *
+ * @param {any} remembered
+ */
+async function arrivedOnExplorer(remembered) {
+  const arrival = await findDepositArrival(
+    remembered,
+    hydrateDepositActivity()
+  ).catch(() => null);
+
+  if (!arrival) return null;
+
+  const updatedAt = Date.now();
+
+  return updateDepositTransaction(remembered.transactionHash, {
+    failureLayer: null,
+    l1ConfirmedAt: remembered.l1ConfirmedAt ?? updatedAt,
+    l2BlockNumber: arrival.blockNumber,
+    l2TransactionHash: arrival.hash,
+    lastCheckedAt: updatedAt,
+    stage: "completed",
+    statusMessage: null,
+    trackingError: null,
+    updatedAt,
+  });
+}
+
 /** @param {string} transactionHash */
 export async function refreshDepositTransaction(transactionHash) {
   const remembered = getRememberedDepositTransaction(transactionHash);
@@ -195,7 +226,13 @@ export async function refreshDepositTransaction(transactionHash) {
   try {
     const l1TransactionHash = await resolveL1TransactionHash(remembered);
 
-    if (!l1TransactionHash) return pendingObservationPatch(remembered);
+    // The adapter doesn't know it (yet): DuskEVM's explorer may.
+    if (!l1TransactionHash) {
+      return (
+        (await arrivedOnExplorer(remembered)) ??
+        pendingObservationPatch(remembered)
+      );
+    }
 
     const status = await observeDepositStatus({
       ...trackingClients(),
@@ -214,7 +251,14 @@ export async function refreshDepositTransaction(transactionHash) {
       observationPatch(remembered, status, metadata)
     );
   } catch (error) {
-    return failedObservationPatch(remembered, error);
+    // The adapter can't say, as when it doesn't have the method: DuskEVM's
+    // explorer can. A deposit that failed on Dusk didn't arrive.
+    const arrived =
+      error instanceof DuskDepositExecutionError
+        ? null
+        : await arrivedOnExplorer(remembered);
+
+    return arrived ?? failedObservationPatch(remembered, error);
   }
 }
 

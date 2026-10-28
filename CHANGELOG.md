@@ -180,6 +180,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Give the export's box, a contact's choice and the Bridge's Max a tap area of 44 px on phones
 - Take amounts on the Shield page with your language's decimal separator
 - Offer Claim on a DuskEVM withdrawal only once its claim date has come
+- Show a deposit to DuskEVM as arrived once DuskEVM's explorer has its payment, where DuskEVM's adapter can't say
 
 ## [1.8.0] - 2026-03-25
 
