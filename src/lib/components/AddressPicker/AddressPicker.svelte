@@ -151,6 +151,41 @@
     isMounted && currentAccount
       ? getName(currentAccount).catch(() => getKnownName(currentAccount))
       : "";
+
+  /**
+   * The current profile's name as the pill shows it and says it: the name
+   * last verified while it's looked up, then what the lookup finds.
+   */
+  let shownName = "";
+
+  /**
+   * @param {Promise<string> | string} lookup
+   * @param {string} account
+   */
+  function followName(lookup, account) {
+    shownName = account ? getKnownName(account) : "";
+
+    if (typeof lookup !== "string") {
+      lookup.then((name) => {
+        if (lookup === currentName) {
+          shownName = name;
+        }
+      });
+    }
+  }
+
+  $: followName(currentName, currentAccount);
+
+  // The pill's name: "Profile: alice.dusk (Profile 1)", or the profile's
+  // label while it has no name.
+  $: triggerLabel = currentProfile
+    ? `Profile: ${shownName ? `${shownName} (${displayedAddress})` : displayedAddress}`
+    : "Profile: none selected";
+
+  // A .dusk name without its ending, for where there's little room.
+  $: shortName = shownName.endsWith(".dusk")
+    ? shownName.slice(0, -".dusk".length)
+    : shownName;
 </script>
 
 {#if expanded && !compact}
@@ -167,27 +202,38 @@
 >
   <div
     class="address-picker__trigger"
+    class:address-picker__trigger--named={compact && Boolean(shownName)}
     role="button"
     tabindex="0"
     aria-haspopup="menu"
     aria-expanded={expanded}
-    aria-label="Select address profile"
-    aria-describedby={currentProfileId}
+    aria-label={triggerLabel}
+    aria-describedby={compact ? undefined : currentProfileId}
     on:click={handleTriggerClick}
     on:keydown={handleTriggerKeyDown}
   >
     {#if compact}
-      <!-- The profile's number, and its name or label. -->
+      <!-- The profile's number, and its name or label: on a narrow screen
+        its .dusk name without the ending, and no label. -->
       <span aria-hidden="true" class="address-picker__avatar"
         >{profileNumber || "–"}</span
       >
-      <span class="address-picker__compact-name" id={currentProfileId}>
-        {#await currentName}
-          {(currentAccount && getKnownName(currentAccount)) || displayedAddress}
-        {:then name}
-          {name || displayedAddress}
-        {/await}
-      </span>
+      {#if shownName}
+        <span
+          aria-hidden="true"
+          class="address-picker__compact-name"
+          title={shownName}
+          >{shortName}<span class="address-picker__tld"
+            >{shownName.slice(shortName.length)}</span
+          ></span
+        >
+      {:else}
+        <span
+          aria-hidden="true"
+          class="address-picker__compact-name address-picker__compact-name--label"
+          >{displayedAddress}</span
+        >
+      {/if}
     {:else}
       <!-- The profile's label, with its name under it, or its account,
         shortened, while it has none. -->

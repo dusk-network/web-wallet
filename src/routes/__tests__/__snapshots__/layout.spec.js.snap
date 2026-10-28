@@ -2,17 +2,22 @@
 
 exports[`Main layout > should render the main layout 1`] = `
 <div>
+  <!---->
   <main
     class="app svelte-12qhfyh"
   >
+    <!---->
     <h1
       class="sr-only"
     >
       Dusk Wallet
     </h1>
+    <!---->
      
     <!---->
+    
   </main>
+  <!---->
    
   <div
     aria-hidden="true"

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
+import { timeLabel } from "$lib/activity/present";
+
 import { TransactionStatus } from "..";
 
 const { followTransaction } = vi.hoisted(() => ({
@@ -37,7 +39,7 @@ describe("TransactionStatus", () => {
     followTransaction.mockReset();
   });
 
-  it("should say a transaction it follows is sent and pending, with its hash and the most it can cost", async () => {
+  it("should say a transaction it follows is being sent, with its hash and the most it can cost", async () => {
     followNext();
 
     const { container, getByRole, getByText } = render(
@@ -48,8 +50,9 @@ describe("TransactionStatus", () => {
     expect(followTransaction).toHaveBeenCalledExactlyOnceWith(hash, {
       signal: expect.any(AbortSignal),
     });
+    // Not sent, nor pending, twice over: sending, until a block has it.
     expect(getByRole("status")).toHaveTextContent(
-      "Sent Pending. This usually takes under a minute."
+      "Sending… This usually takes under a minute."
     );
     expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
     expect(
@@ -63,21 +66,24 @@ describe("TransactionStatus", () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
-  it("should show the transaction as completed once its block is final, with the fee it was charged", async () => {
+  it("should say when the transaction was sent once its block is final, with the fee it was charged", async () => {
     const following = followNext();
     const { getByRole, getByText, queryByText } = render(
       TransactionStatus,
       baseProps
     );
+    const blockTime = Date.UTC(2026, 9, 28, 0, 34);
 
     following.resolve({
       blockHeight: 4_687_200n,
       error: null,
       fee: 1_854_795n,
+      timestamp: blockTime,
     });
+    // At its block's time.
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        "Completed In block 4,687,200."
+        `Sent at ${timeLabel(blockTime, "en")} In block 4,687,200.`
       )
     );
 
@@ -120,7 +126,7 @@ describe("TransactionStatus", () => {
     following.resolve(null);
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        "Sent Still pending. See its status in the explorer."
+        "Sending… Still pending. See its status in the explorer."
       )
     );
 
@@ -130,14 +136,19 @@ describe("TransactionStatus", () => {
 
     expect(followTransaction).toHaveBeenCalledTimes(2);
     expect(getByRole("status")).toHaveTextContent(
-      "Sent Pending. This usually takes under a minute."
+      "Sending… This usually takes under a minute."
     );
     expect(queryByRole("button", { name: "Check again" })).toBeNull();
 
-    again.resolve({ blockHeight: 1n, error: null, fee: 1n });
+    // A block the node gives no time for: when the wallet saw it final.
+    vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2026, 9, 28, 1, 2));
+    again.resolve({ blockHeight: 1n, error: null, fee: 1n, timestamp: null });
     await vi.waitFor(() =>
-      expect(getByRole("status")).toHaveTextContent("Completed In block 1.")
+      expect(getByRole("status")).toHaveTextContent(
+        `Sent at ${timeLabel(Date.UTC(2026, 9, 28, 1, 2), "en")} In block 1.`
+      )
     );
+    vi.restoreAllMocks();
   });
 
   it("should say a transaction is still pending if it can't be followed", async () => {
@@ -147,7 +158,7 @@ describe("TransactionStatus", () => {
 
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        "Sent Still pending. See its status in the explorer."
+        "Sending… Still pending. See its status in the explorer."
       )
     );
   });

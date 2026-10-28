@@ -43,13 +43,26 @@ describe("NetworkPill", () => {
     sync.mockClear();
   });
 
-  it("names the network in words, on a phone too, and says it is in sync", () => {
+  it("names the network in words, on a phone too, and says it is in sync", async () => {
     const { container, getByRole } = render(NetworkPill);
 
+    // A screen reader hears what the button is, then the network and its sync.
     expect(
-      getByRole("button", { name: "Testnet , In sync" })
+      getByRole("button", { name: "Network: Testnet, in sync" })
     ).toBeInTheDocument();
     expect(container.querySelector(".network-pill__dot--synced")).toBeTruthy();
+
+    await setSync({ isInProgress: true, progress: 0.25 });
+
+    expect(
+      getByRole("button", { name: "Network: Testnet, syncing 25%" })
+    ).toBeInTheDocument();
+
+    await setSync({ error: new Error("The node is out of reach") });
+
+    expect(
+      getByRole("button", { name: "Network: Testnet, sync failed" })
+    ).toBeInTheDocument();
   });
 
   it("shows the sync's progress while it runs", async () => {

@@ -19,6 +19,7 @@
   import { formatDuskExact } from "$lib/dusk/currency";
   import { addBasePath } from "$lib/navigation";
   import { addressType, contactsStore, saveContact } from "$lib/contacts";
+  import { SOZU_FN, stDuskReceived } from "$lib/sozu";
   import { nodeBaseUrl } from "$lib/url";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
@@ -42,6 +43,10 @@
   /** Looks a public transaction's nonce up. */
   /** @type {(hash: string) => Promise<string | null>} */
   export let loadNonce = (hash) => fetchTxNonce(nodeBaseUrl(), hash);
+
+  /** Looks up the stDUSK a stake with Sozu got. */
+  /** @type {(stake: ActivityRow) => Promise<bigint | null>} */
+  export let loadStDusk = (stake) => stDuskReceived(nodeBaseUrl(), stake);
 
   const dispatch = createEventDispatcher();
 
@@ -126,6 +131,36 @@
   }
 
   /**
+   * The stake the stDUSK shown is for, with whether it got any: as for the
+   * nonce, a new row starts over, and an answer for another is dropped.
+   */
+  let stDuskOf = "";
+
+  /** @type {bigint | null} */
+  let stDusk = null;
+
+  /**
+   * @param {ActivityRow} stake
+   * @param {boolean} gotSome Whether it's a stake with Sozu that went through
+   */
+  async function showStDusk(stake, gotSome) {
+    const key = `${stake.hash} ${gotSome}`;
+
+    stDuskOf = key;
+    stDusk = null;
+
+    if (!gotSome) {
+      return;
+    }
+
+    const found = await loadStDusk(stake).catch(() => null);
+
+    if (stDuskOf === key) {
+      stDusk = found;
+    }
+  }
+
+  /**
    * What a proved withdrawal waits for, as a sentence: nothing once it's
    * claimed; otherwise that it can be claimed now, that its proof must be
    * made again, or from when it can be claimed, as the chain says.
@@ -206,15 +241,24 @@
   $: if (`${row.hash} ${hasNonce}` !== nonceOf) {
     showNonce(row.hash, hasNonce);
   }
-  // Who it went to: the contract a call went to, as one that moved no
-  // DUSK has no counterparty, and a deposit's DuskEVM address.
+  // The contract a call went to, under Technical details, by its name
+  // where the wallet knows it.
+  $: contract =
+    row.kind === "contract_call" && row.contractId ? row.contractId : "";
+  $: contractName = contract ? contractLabel(contract, network) : "";
+  // Who it went to: the person or account, or a deposit's DuskEVM address;
+  // not a call's contract.
   $: target =
-    row.kind === "contract_call" &&
-    row.contractId &&
-    row.bridge?.kind !== "deposit"
-      ? row.contractId
-      : p.counterparty;
+    contract && row.bridge?.kind !== "deposit" ? null : p.counterparty;
   $: known = target ? contractLabel(target, network) : "";
+  $: gotStDusk =
+    p.icon === "staking" &&
+    row.fnName === SOZU_FN.STAKE &&
+    p.status !== "failed" &&
+    (row.success === true || row.status === "executed");
+  $: if (`${row.hash} ${gotStDusk}` !== stDuskOf) {
+    showStDusk(row, gotStDusk);
+  }
   $: isSent = row.direction !== "in" && p.icon !== "received";
   $: gasUsed =
     row.gasSpent && row.gasLimit
@@ -276,6 +320,14 @@
         <dt>Date</dt>
         <dd>{time === null ? "Not known yet" : fullDateTime(time, locale)}</dd>
       </div>
+      {#if stDusk !== null}
+        <div>
+          <dt>You got</dt>
+          <dd>
+            <BalanceValue value={formatDuskExact(stDusk, locale)} /> stDUSK
+          </dd>
+        </div>
+      {/if}
       {#if target && p.icon !== "shield"}
         <div class="tx-detail__wide">
           <dt>{counterpartyLabel}</dt>
@@ -428,6 +480,30 @@
     <details class="tx-detail__tech">
       <summary>Technical details</summary>
       <dl class="tx-detail__list tx-detail__list--tech">
+        {#if contract}
+          <div class="tx-detail__wide">
+            <dt>Contract</dt>
+            <dd class="tx-detail__id">
+              <span>
+                {#if contractName}
+                  <span class="tx-detail__name">{contractName}</span>
+                {/if}
+                <span class="tx-detail__code"
+                  >{#each [parts(contract)] as [head, middle, tail] (tail)}<b
+                      >{head}</b
+                    ><span class="tx-detail__middle">{middle}</span><b
+                      class="tx-detail__tail">{tail}</b
+                    >{/each}</span
+                >
+              </span>
+              <button
+                class="tx-detail__copy"
+                on:click={() => copy(contract, "contract ID")}
+                type="button"><Icon path={mdiContentCopy} />Copy</button
+              >
+            </dd>
+          </div>
+        {/if}
         <div>
           <dt>Block height</dt>
           <dd>

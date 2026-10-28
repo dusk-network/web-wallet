@@ -44,6 +44,9 @@ type ActivityDetails = {
   gasLimit: string;
   gasPrice: string;
   gasSpent: string;
+
+  /** The `.dusk` name a registration registered: null when it didn't read as one. */
+  registeredName?: string | null;
   success: boolean;
   timestamp: number | null;
 };
@@ -74,6 +77,7 @@ type ActivityEntry = {
   hash: string;
   kind: ActivityKind;
   memo: string;
+  registeredName?: string | null;
   success: boolean | null;
   timestamp: number | null;
   value: bigint;
@@ -148,6 +152,7 @@ type ActivityRow = {
   memo?: string;
   privacy?: "public" | "shielded";
   profileIndex?: number;
+  registeredName?: string | null;
   source: "archive" | "both" | "local" | "shielded";
   status: ActivityStatus;
   submittedAt?: number;

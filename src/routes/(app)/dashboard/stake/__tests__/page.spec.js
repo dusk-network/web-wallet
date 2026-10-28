@@ -247,8 +247,9 @@ describe("Staking", () => {
     expect(rows[4][1]).toBe(
       "If your node misses its turn, part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost)."
     );
+    // stDUSK's worth isn't promised to rise: a penalty can lower it.
     expect(rows[2][2]).toBe(
-      "You get stDUSK, a token for your share of Sozu's pool. Each is worth more DUSK as the pool earns rewards."
+      "You get stDUSK, a token for your share of Sozu's pool. Its worth usually rises with rewards, but can fall with a penalty."
     );
 
     // Nothing picked: two ways to go, neither one chosen.
@@ -270,7 +271,7 @@ describe("Staking", () => {
     await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
 
     expect(textOf(table.tBodies[0].rows[2].cells[2])).toBe(
-      "You get stDUSK. Each is worth 3.0751 DUSK now, and more as Sozu's pool earns rewards."
+      "You get stDUSK. Each is worth 3.0751 DUSK now. It usually rises with rewards, but can fall with a penalty."
     );
     // And Sozu's fees, as its contract gives them on this network.
     expect(Array.from(table.tBodies[0].rows[3].cells, textOf)).toStrictEqual([

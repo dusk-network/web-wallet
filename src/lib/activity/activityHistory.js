@@ -22,6 +22,7 @@ import { decodeBridgeCall, isBridgeContract } from "$lib/bridge/bridgeCalls";
 
 import * as defaultStore from "./activityStore";
 import { STAKE_CONTRACT, TRANSFER_CONTRACT, TX_KIND } from "./constants";
+import { isNameRegistration, registeredNameOf } from "./knownContracts";
 
 export { STAKE_CONTRACT, TRANSFER_CONTRACT };
 
@@ -1373,15 +1374,17 @@ const textOrUndefined = (value) => (value ? String(value) : undefined);
  * Whether an entry's details are still to look up: it has none, or it is a
  * call to the bridge looked up before the history read what bridge calls
  * do, or a withdrawal's proof or claim read before the history kept the
- * withdrawal's hash, which its claim date is read by.
+ * withdrawal's hash, which its claim date is read by, or a `.dusk` name's
+ * registration read before the history read which name it was.
  *
- * @param {{ bridge?: import("$lib/bridge/bridgeCalls").BridgeCall | null, contractId?: string, detailsAt?: number }} entry
+ * @param {{ bridge?: import("$lib/bridge/bridgeCalls").BridgeCall | null, contractId?: string, detailsAt?: number, fnName?: string, registeredName?: string | null }} entry
  */
 export const needsDetails = (entry) =>
   !entry.detailsAt ||
   (entry.bridge === undefined && isBridgeContract(entry.contractId)) ||
   ((entry.bridge?.kind === "prove" || entry.bridge?.kind === "claim") &&
-    !entry.bridge.hash);
+    !entry.bridge.hash) ||
+  (entry.registeredName === undefined && isNameRegistration(entry));
 
 /**
  * @param {any} tx
@@ -1397,6 +1400,8 @@ function detailsOf(tx) {
   const fnName = textOrUndefined(dig(tx, "tx", "callData", "fnName"));
   const data = dig(tx, "tx", "callData", "data");
 
+  const registeredName = registeredNameOf({ contractId, data, fnName });
+
   return {
     blockHash: HASH.test(blockHash) ? blockHash : undefined,
     bridge: decodeBridgeCall({ contractId, data, fnName }),
@@ -1408,6 +1413,7 @@ function detailsOf(tx) {
     gasLimit: u64(dig(tx, "tx", "gasLimit")).toString(),
     gasPrice: gasPrice.toString(),
     gasSpent: gasSpent.toString(),
+    ...(registeredName === undefined ? {} : { registeredName }),
     success: !err,
     timestamp: Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null,
   };
@@ -1594,6 +1600,7 @@ export function activityEntry(row) {
     hash: row.hash,
     kind: row.kind,
     memo: row.memo ?? "",
+    registeredName: row.registeredName,
     success: row.success ?? null,
     timestamp: row.timestamp ?? null,
     value: u64(row.value),

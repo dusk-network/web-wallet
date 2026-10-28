@@ -17,7 +17,7 @@
     saveContact,
   } from "$lib/contacts";
   import { asDuskName, isDuskName } from "$lib/dusk-domains";
-  import { addBasePath } from "$lib/navigation";
+  import { addBasePath, pageTitle } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
@@ -782,7 +782,9 @@
       <a class="send__back" href={addBasePath("/dashboard")}
         ><Icon path={mdiArrowLeft} />Home</a
       >
-      <h2 class="send__title" id="{id}-title">Send</h2>
+      <h1 class="send__title" id="{id}-title" use:pageTitle={step !== "review"}>
+        Send
+      </h1>
 
       <div class="send__field">
         <label class="send__label" for="{id}-to">To</label>
@@ -1345,6 +1347,7 @@
     font-size: 1.75rem;
     font-weight: 500;
     letter-spacing: -0.01em;
+    line-height: 1.15;
   }
 
   .send__field {

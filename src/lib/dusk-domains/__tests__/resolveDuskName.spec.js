@@ -142,18 +142,43 @@ describe("resolveDuskName", () => {
     });
   });
 
-  it("should report failed lookups, and retry a reader that failed to load", async () => {
-    const reader = readerResolving({ moonlight: account, status: "Active" });
+  it("should look a name up once more before saying the lookup failed, as while the reader is still loading", async () => {
+    const reader = readerResolving({ status: "Absent" });
 
-    reader.resolve.mockRejectedValueOnce(
-      new Error("The lens reader took over 15000 ms")
-    );
+    // The reader failing to load, then its first read failing.
     createLensReader
       .mockRejectedValueOnce(new Error("The lens driver did not load"))
       .mockResolvedValue(reader);
 
+    await expect(
+      resolveDuskName("zz-nobody-123.dusk", "testnet", nodeUrl)
+    ).resolves.toStrictEqual({
+      error: "not-registered",
+      name: "zz-nobody-123.dusk",
+    });
+
+    reader.resolve.mockRejectedValueOnce(
+      new Error("The lens reader took over 15000 ms")
+    );
+
+    await expect(
+      resolveDuskName("zz-nobody-123.dusk", "testnet", nodeUrl)
+    ).resolves.toStrictEqual({
+      error: "not-registered",
+      name: "zz-nobody-123.dusk",
+    });
+    expect(createLensReader).toHaveBeenCalledTimes(2);
+  });
+
+  it("should report a lookup that failed twice, and keep a reader whose read failed", async () => {
+    const reader = readerResolving({ moonlight: account, status: "Active" });
+
+    reader.resolve
+      .mockRejectedValueOnce(new Error("The lens reader took over 15000 ms"))
+      .mockRejectedValueOnce(new Error("The lens reader took over 15000 ms"));
+    createLensReader.mockResolvedValue(reader);
+
     for (const expected of [
-      { error: "lookup-failed", name: "alice.dusk" },
       { error: "lookup-failed", name: "alice.dusk" },
       { account, name: "alice.dusk" },
     ]) {
@@ -162,8 +187,9 @@ describe("resolveDuskName", () => {
       ).resolves.toStrictEqual(expected);
     }
 
-    // A failed read keeps the reader: only the failed creation is retried.
-    expect(createLensReader).toHaveBeenCalledTimes(2);
+    // A failed read keeps the reader: only a failed creation is made again.
+    expect(createLensReader).toHaveBeenCalledOnce();
+    expect(reader.resolve).toHaveBeenCalledTimes(3);
   });
 
   it.each([

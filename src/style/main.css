@@ -141,10 +141,13 @@ body:has(.shell) .app {
   overflow: visible;
 }
 
-/* A focused field scrolls clear of what sticks to the bottom. */
+/*
+ * A focused field scrolls clear of what sticks to the bottom, and of a
+ * phone's keyboard (keyboardInset).
+ */
 html:has(.shell) {
   scroll-padding-top: 4.5rem;
-  scroll-padding-bottom: 7rem;
+  scroll-padding-bottom: calc(7rem + var(--keyboard-inset, 0px));
 }
 
 html:has(.shell--test) {

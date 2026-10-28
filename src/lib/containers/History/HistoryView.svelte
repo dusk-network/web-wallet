@@ -6,6 +6,7 @@
   import { mdiTrayArrowDown } from "@mdi/js";
   import { Button, Icon, Select } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
+  import { pageTitle } from "$lib/navigation";
   import {
     claimedWithdrawals,
     configuredBridgeContracts,
@@ -155,7 +156,7 @@
 <div class="history" class:history--open={open}>
   <section aria-labelledby="history-title" class="history__main">
     <header class="history__header">
-      <h2 class="history__title" id="history-title">History</h2>
+      <h1 class="history__title" id="history-title" use:pageTitle>History</h1>
       <Button
         disabled={!shown.length}
         icon={{ path: mdiTrayArrowDown }}
@@ -366,6 +367,7 @@
     font-size: 1.75rem;
     font-weight: 500;
     letter-spacing: -0.01em;
+    line-height: 1.15;
   }
 
   .history__note {

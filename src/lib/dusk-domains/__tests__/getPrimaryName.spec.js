@@ -208,9 +208,10 @@ describe("getPrimaryName", () => {
   it("should check the shielded address again after its lookup failed", async () => {
     const reader = readerWith("alice.dusk", shieldedAddress);
 
-    reader.resolve.mockRejectedValueOnce(
-      new Error("Lens resolve query failed")
-    );
+    // Failed, and failed again when tried once more.
+    reader.resolve
+      .mockRejectedValueOnce(new Error("Lens resolve query failed"))
+      .mockRejectedValueOnce(new Error("Lens resolve query failed"));
     createLensReader.mockResolvedValue(reader);
 
     await expect(
@@ -219,7 +220,7 @@ describe("getPrimaryName", () => {
     await expect(
       getPrimaryName(account, "testnet", nodeUrl, shieldedAddress)
     ).resolves.toBe("alice.dusk");
-    expect(reader.resolve).toHaveBeenCalledTimes(2);
+    expect(reader.resolve).toHaveBeenCalledTimes(3);
     expect(reader.verifyPrimary).toHaveBeenCalledTimes(1);
   });
 });

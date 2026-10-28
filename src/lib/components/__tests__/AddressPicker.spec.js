@@ -562,8 +562,9 @@ describe("AddressPicker", () => {
         "alice.dusk",
       ]);
       expect(getTriggerName(container)).toHaveAttribute("title", "alice.dusk");
+      // What the button is, then the profile chosen.
       expect(getTrigger(container)).toHaveAccessibleName(
-        "Select address profile"
+        "Profile: alice.dusk (Profile 1)"
       );
       expect(getTrigger(container)).toHaveAccessibleDescription(
         "Profile 1 alice.dusk"
@@ -706,6 +707,89 @@ describe("AddressPicker", () => {
         "Profile 1",
         shortenAddress(firstAccount),
       ]);
+    });
+
+    it("should show the .dusk name in the top bar's pill, its ending apart for narrow screens, and say it with the profile", async () => {
+      const { container, findByText } = render(AddressPicker, {
+        ...namedProps,
+        compact: true,
+        getName: vi.fn().mockResolvedValue("wallet-both.dusk"),
+      });
+      const trigger = getTrigger(container);
+
+      expect(await findByText(".dusk")).toHaveClass("address-picker__tld");
+
+      const name = getAsHTMLElement(container, ".address-picker__compact-name");
+
+      expect(name).toHaveTextContent("wallet-both.dusk");
+      expect(name).toHaveAttribute("title", "wallet-both.dusk");
+      expect(name.firstChild?.textContent).toBe("wallet-both");
+      expect(trigger).toHaveClass("address-picker__trigger--named");
+      expect(trigger).toHaveAccessibleName(
+        "Profile: wallet-both.dusk (Profile 1)"
+      );
+    });
+
+    it.each([
+      ["has none", () => Promise.resolve("")],
+      ["is being looked up", () => new Promise(() => {})],
+    ])(
+      "should show the label in the top bar's pill, for wide screens only, while the profile's name %s",
+      async (_, lookUp) => {
+        const getName = vi.fn(lookUp);
+        const { container } = render(AddressPicker, {
+          ...namedProps,
+          compact: true,
+          getName,
+        });
+
+        await waitFor(() => expect(getName).toHaveBeenCalledOnce());
+        await settle();
+
+        expect(
+          container.querySelector(".address-picker__compact-name")
+        ).toHaveClass("address-picker__compact-name--label");
+        expect(
+          container.querySelector(".address-picker__compact-name")
+        ).toHaveTextContent("Profile 1");
+        expect(getTrigger(container)).not.toHaveClass(
+          "address-picker__trigger--named"
+        );
+        expect(getTrigger(container)).toHaveAccessibleName(
+          "Profile: Profile 1"
+        );
+      }
+    );
+
+    it("should say the profile switched to in the top bar's pill, never the previous one's name", async () => {
+      /** @type {(name: string) => void} */
+      let finishLookup = () => {};
+
+      const getName = vi.fn((account) =>
+        account === firstAccount
+          ? Promise.resolve("alice.dusk")
+          : new Promise((resolve) => {
+              finishLookup = resolve;
+            })
+      );
+      const { container, findByText, rerender } = render(AddressPicker, {
+        ...namedProps,
+        compact: true,
+        getName,
+      });
+
+      expect(await findByText("alice")).toBeInTheDocument();
+
+      await rerender({ currentProfile: namedProfiles[1] });
+
+      expect(getTrigger(container)).toHaveAccessibleName("Profile: Profile 2");
+
+      finishLookup("bob.dusk");
+
+      expect(await findByText("bob")).toBeInTheDocument();
+      expect(getTrigger(container)).toHaveAccessibleName(
+        "Profile: bob.dusk (Profile 2)"
+      );
     });
 
     it("should list each profile with its name under its label, or its account shortened while it has none, looked up when the list opens", async () => {

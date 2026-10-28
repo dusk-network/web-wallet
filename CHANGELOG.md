@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say in liquid staking when Sozu has paused deposits or they can't be checked, and that a stake or an unstake can fail while it updates its pool
 - Read Sozu's terms again before a stake is sent, and show them for another confirmation when they changed
 - Show Sozu's fees in liquid staking: on deposits, on rewards, and none to unstake
+- Say which `.dusk` name a registration registered, in the history and its details
+- Say in a stake with Sozu's details what stDUSK it got
+- Link the Terms of Use and the Privacy Policy under Settings › Support
+- Show under the total balance what is staked, natively and with Sozu
 
 ### Changed
 
@@ -121,6 +125,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show what a stake with Sozu is worth now, once its deposit fee is off
 - Give a stake with Sozu a gas limit of 5,000,000 and an unstake 10,000,000, and say that a failed call is charged its whole limit
 - Leave a deposit's call on DuskEVM 200,000 gas, the DuskEVM SDK's default
+- Show the contract a call went to under Technical details only
+- Say that a stDUSK's worth usually rises with rewards, but can fall with a penalty
+- Show the profile's `.dusk` name in the top bar below 976 px too, without `.dusk`, cut short where it doesn't fit
+- Shorten the search's help to "Enter: open · Shift+Enter: copy"
+- Say Sending… on the Done screen until the block is final, then when it was sent
+- Name the network and profile buttons with what they show, for screen readers
 
 ### Removed
 
@@ -141,6 +151,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Forget the EVM wallets connected here on Reset, so none comes back and Bridge loads nothing from Reown after it
 - Keep the labels in a staking summary on one line
 - Say that no stake gets stDUSK while Sozu's deposit fee is 100%
+- Keep the field typed in clear of a flow's buttons when the window or a phone's keyboard changes its height
+- Give each page one heading with its name, and keep the top bar and the navigation out of its main content
+- Look a `.dusk` name up once more before saying it couldn't be looked up
+- Give the export's box, a contact's choice and the Bridge's Max a tap area of 44 px on phones
 
 ## [1.8.0] - 2026-03-25
 

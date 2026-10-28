@@ -15,7 +15,7 @@
     configuredBridgeContracts,
     shortAddress,
   } from "$lib/activity/present";
-  import { addBasePath } from "$lib/navigation";
+  import { addBasePath, pageTitle } from "$lib/navigation";
 
   import ContactDetail from "./ContactDetail.svelte";
   import ContactForm from "./ContactForm.svelte";
@@ -93,7 +93,9 @@
 <div class="contacts" class:contacts--open={panel}>
   <section aria-labelledby="contacts-title" class="contacts__main">
     <header class="contacts__header">
-      <h2 class="contacts__title" id="contacts-title">Contacts</h2>
+      <h1 class="contacts__title" id="contacts-title" use:pageTitle>
+        Contacts
+      </h1>
       <Button
         icon={{ path: mdiAccountPlusOutline }}
         on:click={() => select("new")}
@@ -122,10 +124,8 @@
       </p>
       {#if paid.length}
         <section aria-labelledby="contacts-paid" class="contacts__paid">
-          <SectionHead
-            className="contacts__paid-title"
-            id="contacts-paid"
-            level={3}>Paid before</SectionHead
+          <SectionHead className="contacts__paid-title" id="contacts-paid"
+            >Paid before</SectionHead
           >
           <ul>
             {#each paid as person (person.address)}
@@ -352,6 +352,7 @@
     font-size: 1.75rem;
     font-weight: 500;
     letter-spacing: -0.01em;
+    line-height: 1.15;
   }
 
   .contacts__note {

@@ -16,6 +16,7 @@
     GasControls,
     SectionHead,
   } from "$lib/components";
+  import { LEGAL_LINKS } from "$lib/constants";
   import { currencies, formatFee } from "$lib/dusk/currency";
   import { createNumberFormatter } from "$lib/dusk/number";
   import {
@@ -31,7 +32,7 @@
   } from "$lib/contracts";
   import { deleteContacts } from "$lib/contacts";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
-  import { logout } from "$lib/navigation";
+  import { logout, pageTitle } from "$lib/navigation";
   import loginInfoStorage from "$lib/services/loginInfoStorage";
 
   const confirmResetWalletMessage =
@@ -122,12 +123,12 @@
 
 <section class="settings">
   <header class="settings__header">
-    <h2>Settings</h2>
+    <h1 use:pageTitle>Settings</h1>
   </header>
 
   <div class="settings__content">
     <article class="settings-group">
-      <SectionHead level={3}>Preferences</SectionHead>
+      <SectionHead>Preferences</SectionHead>
       <div class="settings-group__multi-control-content">
         <label
           class="settings-group__control settings-group__control--with-label"
@@ -191,7 +192,7 @@
     </article>
     <hr />
     <article class="settings-group">
-      <h3 class="h4 settings-group__heading">
+      <h2 class="h4 settings-group__heading">
         <button
           aria-controls="settings-advanced"
           aria-expanded={isAdvancedOpen}
@@ -204,7 +205,7 @@
           <span>Advanced</span>
           <Icon className="settings-group__toggle-icon" path={mdiChevronDown} />
         </button>
-      </h3>
+      </h2>
       {#if isAdvancedOpen}
         <div
           class="settings-group__multi-control-content"
@@ -271,7 +272,7 @@
     </article>
     <hr />
     <article class="settings-group">
-      <SectionHead level={3}>Support</SectionHead>
+      <SectionHead>Support</SectionHead>
       <p>
         Read the <Anchor
           className="text-link"
@@ -293,10 +294,25 @@
           >GitHub</Anchor
         >.
       </p>
+      <p>
+        <Anchor
+          className="text-link"
+          href={LEGAL_LINKS.TERMS_OF_USE}
+          rel="noopener noreferrer"
+          target="_blank">Terms of Use</Anchor
+        >
+        ·
+        <Anchor
+          className="text-link"
+          href={LEGAL_LINKS.PRIVACY_POLICY}
+          rel="noopener noreferrer"
+          target="_blank">Privacy Policy</Anchor
+        >
+      </p>
     </article>
     <hr />
     <article class="settings-group">
-      <SectionHead level={3}>Reset wallet</SectionHead>
+      <SectionHead>Reset wallet</SectionHead>
       <div class="settings-group__multi-control-content">
         <p>
           Resetting clears the cache, settings, contacts and connected EVM
@@ -360,9 +376,10 @@
         scrollbar-color: var(--surface-border-color) transparent;
       }
 
-      &__header h2 {
+      &__header h1 {
         font-size: 1.75rem;
         font-weight: 500;
+        line-height: 1.15;
       }
     }
 

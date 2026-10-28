@@ -67,6 +67,10 @@ describe("historyRow", () => {
       kind: "contract_call",
       to: undefined,
     });
+    // With the name it registered, once that's read.
+    expect(
+      historyRow({ ...registered(), registeredName: "alice.dusk" })
+    ).toMatchObject({ registeredName: "alice.dusk" });
   });
 
   it("leaves an entry whose outcome isn't looked up yet unknown, not executed", () => {

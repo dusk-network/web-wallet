@@ -329,6 +329,65 @@ describe("Dashboard", () => {
     expect(sozu.load).toHaveBeenCalled();
   });
 
+  it("says under the total what is staked, natively and with Sozu, and nothing while none is", async () => {
+    const { currentProfile } = initialStore;
+    const staked = () =>
+      document.querySelector(".home-balance__staked")?.textContent?.trim();
+    /** @param {bigint} balance */
+    const withSozu = (balance) =>
+      act(() =>
+        sozu.store?.set({
+          account: String(currentProfile.account),
+          available: true,
+          error: null,
+          loading: false,
+          status: {
+            contracts: {},
+            pool: { stake: 3n, supply: 1n },
+            position: { balance, stDusk: balance / 3n },
+          },
+        })
+      );
+
+    // Natively: 1,000 DUSK.
+    render(Dashboard, props);
+
+    expect(staked()).toMatch(/^Staked\s+1,000\s+DUSK$/);
+
+    // And 0.5002 DUSK with Sozu: both counted.
+    await withSozu(500_200_000n);
+
+    expect(staked()).toMatch(/^Staked\s+1,000.5002\s+DUSK$/);
+
+    // Hidden with the other balances.
+    await act(() =>
+      settingsStore.update((settings) => ({ ...settings, hideBalances: true }))
+    );
+
+    expect(staked()).toMatch(/^Staked\s+••••\s+hidden\s+DUSK$/);
+
+    cleanup();
+    settingsStore.reset();
+    await withSozu(0n);
+
+    // With Sozu alone, then nothing staked at all: no line.
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      stakeInfo: { ...initialStore.stakeInfo, amount: null },
+    });
+    render(Dashboard, props);
+
+    expect(staked()).toBeUndefined();
+
+    await withSozu(500_200_000n);
+
+    expect(staked()).toMatch(/^Staked\s+0.5002\s+DUSK$/);
+
+    await act(() =>
+      sozu.store?.update((state) => ({ ...state, status: null }))
+    );
+  });
+
   it("shows what is staked and its rewards", () => {
     const { container } = render(Dashboard, props);
 

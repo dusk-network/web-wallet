@@ -27,7 +27,7 @@
   color: var(--calm-muted);
 }
 
-.dusk-card__heading-container h3 {
+.dusk-card__heading-container :is(h1, h3) {
   font-size: 1rem;
   font-weight: 500;
   line-height: 1.3;

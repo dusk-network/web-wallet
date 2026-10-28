@@ -109,9 +109,16 @@
     border-bottom: 1px solid var(--calm-line);
     background: var(--calm-s0);
 
-    /* Nothing in the bar shrinks under its content to make room. */
+    /*
+     * Nothing in the bar shrinks under its content to make room, but the
+     * profile's name, which is cut short where it doesn't fit.
+     */
     & > :global(*) {
       flex-shrink: 0;
+    }
+
+    & > :global(.address-picker--compact) {
+      flex-shrink: 1;
     }
   }
 
@@ -188,6 +195,7 @@
   .top-bar__search {
     all: unset;
     box-sizing: border-box;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: 0.625rem;
@@ -257,7 +265,8 @@
    * What fits beside the tabs, the longest profile name and the network
    * pill's longest label (Connecting): WALLET with the search's field from
    * 1400 px, the field from 1320 px (a search button below), and the
-   * profile's name from 976 px, as AddressPicker shows it.
+   * profile's name in full from 976 px, as AddressPicker shows it; below,
+   * its .dusk name without the ending, cut short where it doesn't fit.
    */
   @media (max-width: 87.49rem) {
     .top-bar__divider,
@@ -290,7 +299,7 @@
   @media (max-width: 47.99rem) {
     .top-bar {
       padding: 0 0.75rem 0 1rem;
-      gap: 0.375rem;
+      gap: 0.25rem;
     }
 
     .top-bar__brand {

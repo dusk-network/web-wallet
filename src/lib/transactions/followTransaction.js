@@ -11,7 +11,10 @@ export const FOLLOW_TIMEOUT = 180_000;
  *   blockHeight: bigint,
  *   error: string | null,
  *   fee: bigint,
+ *   timestamp: number | null,
  * }} FinalTransaction
+ *   `timestamp` is its block's time, in milliseconds: null where the node
+ *   doesn't give it.
  */
 
 /**
@@ -25,7 +28,7 @@ export const FOLLOW_TIMEOUT = 180_000;
  */
 async function getFinalTransaction(network, hash, signal) {
   const { tx } = await network.query(
-    `tx(hash: "${hash}") { blockHash blockHeight err gasSpent tx { gasPrice } }`,
+    `tx(hash: "${hash}") { blockHash blockHeight blockTimestamp err gasSpent tx { gasPrice } }`,
     { signal }
   );
 
@@ -42,10 +45,13 @@ async function getFinalTransaction(network, hash, signal) {
     return null;
   }
 
+  const seconds = Number(tx.blockTimestamp);
+
   return {
     blockHeight: BigInt(tx.blockHeight),
     error: tx.err || null,
     fee: BigInt(tx.gasSpent) * BigInt(tx.tx.gasPrice),
+    timestamp: Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null,
   };
 }
 

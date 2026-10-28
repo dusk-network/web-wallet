@@ -384,11 +384,7 @@
     </p>
   {/if}
 
-  <p class="command-bar__note">
-    Searches this wallet on this device. Press Enter to open a result or send to
-    a person, Shift+Enter to copy an address, or Enter to look a .dusk name or
-    transaction up on the network.
-  </p>
+  <p class="command-bar__note">Enter: open · Shift+Enter: copy</p>
 </div>
 
 <style lang="postcss">
