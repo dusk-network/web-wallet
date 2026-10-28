@@ -175,6 +175,50 @@ describe("CommandBar", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens a block by its height in the network's explorer, at the hash the node gives for it", async () => {
+    const { networks } = await import("@dusk-network/networks");
+    const { setNodeNetwork } = await import("$lib/stores/nodeNetwork");
+    const hash = "b1".repeat(32);
+    const tab = { close: vi.fn(), location: { href: "" }, opener: {} };
+    const open = vi
+      .spyOn(window, "open")
+      .mockReturnValue(/** @type {any} */ (tab));
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ block: { header: { hash } } }))
+      );
+
+    setNodeNetwork(networks.testnet);
+
+    try {
+      const { getByRole } = render(CommandBar, { pages });
+      const input = getByRole("combobox");
+
+      await fireEvent.input(input, { target: { value: "4704959" } });
+      await fireEvent.keyDown(input, { key: "Enter" });
+
+      expect(
+        getByRole("option", { name: /Open block 4,704,959 in the explorer/ })
+      ).toBeInTheDocument();
+      // The tab opens on the key press, so no popup blocker stops it.
+      expect(open).toHaveBeenCalledWith("", "_blank");
+      await vi.waitFor(() =>
+        expect(tab.location.href).toBe(
+          `https://apps.testnet.dusk.network/explorer/blocks/block?id=${hash}`
+        )
+      );
+      expect(tab.opener).toBeNull();
+      expect(String(fetch.mock.calls[0][1]?.body)).toBe(
+        "query { block(height: 4704959) { header { hash } } }"
+      );
+    } finally {
+      open.mockRestore();
+      fetch.mockRestore();
+      setNodeNetwork(null);
+    }
+  });
+
   it("keeps the focus in the search with Tab, between the input and its close button", async () => {
     const close = vi.fn();
     const { getByRole } = render(CommandBar, {

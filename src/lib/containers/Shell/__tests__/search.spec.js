@@ -76,6 +76,68 @@ describe("searchLocally", () => {
   });
 });
 
+describe("searchLocally for a block, a memo or a label", () => {
+  const SOZU_POOL =
+    "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
+
+  /** @type {import("../search").SearchIndex} */
+  const withMore = {
+    ...index,
+    history: [
+      ...index.history,
+      {
+        amount: "1000000000",
+        contractId: SOZU_POOL,
+        direction: "out",
+        fnName: "stake",
+        hash: "5d".repeat(32),
+        kind: "contract_call",
+        source: "archive",
+        status: "executed",
+      },
+      {
+        amount: "2000000000",
+        counterparty: ALICE,
+        direction: "out",
+        hash: "e1".repeat(32),
+        kind: "transfer",
+        memo: "Rent for October",
+        source: "archive",
+        status: "executed",
+      },
+    ],
+    network: "testnet",
+  };
+
+  it("offers a block height, digits only, as a block to open in the explorer", () => {
+    expect(searchLocally("4704959", withMore)).toEqual([
+      expect.objectContaining({
+        block: "4704959",
+        group: "Blocks",
+        label: "Open block 4,704,959 in the explorer",
+      }),
+    ]);
+    expect(
+      searchLocally("4704959x", withMore).filter(
+        ({ group }) => group === "Blocks"
+      )
+    ).toEqual([]);
+  });
+
+  it("finds the history's transactions by memo, and by the label of their contract or account", () => {
+    expect(
+      searchLocally("sozu", withMore).map(({ group, href }) => [group, href])
+    ).toEqual([
+      ["Transactions", `/dashboard/transactions?tx=${"5d".repeat(32)}`],
+    ]);
+    expect(
+      searchLocally("october", withMore).map(({ group, href }) => [group, href])
+    ).toEqual([
+      ["Transactions", `/dashboard/transactions?tx=${"e1".repeat(32)}`],
+    ]);
+  });
+});
+
 describe("searchLocally with contacts", () => {
   it("finds contacts by name, .dusk name or address, and shows a saved person as the contact only", () => {
     /** @type {Contact} */

@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Send DUSK to BNB Smart Chain from the Bridge card, to the connected wallet's address, less the 1 DUSK bridge fee
 - Say when a route isn't running on this network
 - List migrations and transfers to BNB Smart Chain in Bridge › Activity, until they're paid
+- Keep History's filters in its address
+- Open a block by its height from the search
+- Find transactions in the search by memo, and by the label of their contract or account
 
 ### Changed
 

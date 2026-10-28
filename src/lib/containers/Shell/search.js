@@ -1,20 +1,24 @@
 /**
  * What the search finds on this device: the wallet's pages and actions, its
- * profiles, its contacts, the people in its history and its transactions.
- * Nothing here asks the network.
+ * profiles, its contacts, the people in its history and its transactions,
+ * by hash, memo or the label of their contract or account, and a block by
+ * its height. Nothing here asks the network.
  */
 
 import { ProfileGenerator } from "@dusk/w3sper";
+import { labelFor, networks } from "@dusk-network/networks";
 
+import { contractLabel } from "$lib/activity/knownContracts";
 import { describeRow, shortAddress } from "$lib/activity/present";
 import { asDuskName, isDuskName } from "$lib/dusk-domains";
 
 /**
  * @typedef {{
+ *   block?: string,
  *   detail?: string,
  *   detailIsCode?: boolean,
  *   external?: boolean,
- *   group: "Contacts" | "Pages" | "People" | "Transactions" | "Your profiles",
+ *   group: "Blocks" | "Contacts" | "Pages" | "People" | "Transactions" | "Your profiles",
  *   hint?: string,
  *   href?: string,
  *   id: string,
@@ -27,9 +31,11 @@ import { asDuskName, isDuskName } from "$lib/dusk-domains";
  *   contacts?: Contact[],
  *   history: ActivityRow[],
  *   locale: string,
+ *   network?: string,
  *   pages: { href: string, keywords?: string, label: string }[],
  *   profiles: { account: string, address: string, label: string, name: string }[],
  * }} SearchIndex
+ *   `block` a block's height, which the explorer is opened at.
  */
 
 /** The most results a group shows. */
@@ -40,6 +46,27 @@ export const GROUP_LIMIT = 5;
  * @param {string} needle Lower case
  */
 const has = (haystack, needle) => haystack.toLowerCase().includes(needle);
+
+/**
+ * What a row is known by besides its hash: its memo, and the labels of its
+ * contract and its counterparty, as the network's file names them.
+ *
+ * @param {ActivityRow} row
+ * @param {string} network
+ */
+function knownBy(row, network) {
+  const net = Object.hasOwn(networks, network)
+    ? networks[/** @type {keyof typeof networks} */ (network)]
+    : null;
+
+  return [
+    row.memo,
+    contractLabel(row.contractId, network),
+    net && row.counterparty ? labelFor(net, row.counterparty) : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 /**
  * The people of the history: the counterparties, with their names, most
@@ -79,7 +106,7 @@ function peopleOf(history, locale) {
  */
 export function searchLocally(
   query,
-  { contacts = [], history, locale, pages, profiles }
+  { contacts = [], history, locale, network = "", pages, profiles }
 ) {
   const q = query.trim().toLowerCase();
 
@@ -156,7 +183,11 @@ export function searchLocally(
   );
   add(
     history
-      .filter((row) => q.length >= 4 && row.hash.includes(q))
+      .filter(
+        (row) =>
+          (q.length >= 4 && row.hash.includes(q)) ||
+          (q.length >= 3 && has(knownBy(row, network), q))
+      )
       .map((row) => ({
         detail: describeRow(row, { locale }).title,
         group: "Transactions",
@@ -166,6 +197,19 @@ export function searchLocally(
         labelIsCode: true,
       }))
   );
+
+  // A block, by its height.
+  if (/^\d{1,15}$/.test(q)) {
+    const height = BigInt(q).toString();
+
+    results.push({
+      block: height,
+      external: true,
+      group: "Blocks",
+      id: `block:${height}`,
+      label: `Open block ${BigInt(height).toLocaleString(locale)} in the explorer`,
+    });
+  }
 
   return results;
 }
