@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 
 import { tick } from "svelte";
+import { get } from "svelte/store";
 
 import { EvmTransactions } from "..";
 import WithdrawalLifecycle from "../EvmTransactions/WithdrawalLifecycle.svelte";
@@ -10,6 +11,7 @@ import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { formatTimestamp } from "../EvmTransactions/withdrawalPresentation";
 import { networks } from "@dusk-network/networks";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { walletStore } from "$lib/stores";
 
 const mocks = vi.hoisted(() => {
   const configuredFinalizationConfig = () =>
@@ -200,6 +202,19 @@ const mocks = vi.hoisted(() => {
     trackWithdrawalTransaction: vi.fn(() => Promise.resolve(null)),
     withdrawalActivityStore,
     withdrawalItems: () => withdrawalItems,
+  };
+});
+
+// A wallet with its profiles: the first is the one shown.
+vi.mock("$lib/stores", async (importOriginal) => {
+  /** @type {typeof import("$lib/stores")} */
+  const original = await importOriginal();
+  const { default: mockedWalletStore } =
+    await import("$lib/mocks/mockedWalletStore");
+
+  return {
+    ...original,
+    walletStore: { ...original.walletStore, ...mockedWalletStore },
   };
 });
 
@@ -558,32 +573,77 @@ describe("EvmTransactions", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens the migration its link names", async () => {
+  it("opens the migration its link names, one this browser sent to the profile shown", async () => {
+    const { currentProfile } = get(walletStore);
+    /** @param {string} hash @param {string} recipient */
+    const sent = (hash, recipient) => ({
+      amountLux: "2500000000",
+      createdAt: Date.now(),
+      hash,
+      recipient,
+      routeId: "bsc-to-dusk",
+      sender: accountAddress,
+    });
+
     setNodeNetwork(networks.mainnet);
     localStorage.setItem(
       "web-wallet-migrations",
       JSON.stringify([
-        {
-          amountLux: "2500000000",
-          createdAt: Date.now(),
-          hash: `0x${"bb".repeat(32)}`,
-          recipient: accountAddress,
-          routeId: "bsc-to-dusk",
-          sender: accountAddress,
-        },
+        sent(`0x${"bb".repeat(32)}`, String(currentProfile?.account)),
+        // Sent to another wallet's account: not this profile's.
+        sent(`0x${"cc".repeat(32)}`, "an-earlier-wallets-account"),
       ])
     );
     mocks.setPageSearch(`?tx=0x${"bb".repeat(32)}`);
 
-    const { findByRole } = render(EvmTransactions, { target: document.body });
+    const { findByRole, getAllByRole } = render(EvmTransactions, {
+      target: document.body,
+    });
 
     expect(
       await findByRole("button", { name: /^BNB Smart Chain to Dusk Sent/ })
     ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      getAllByRole("button", { name: /^BNB Smart Chain to Dusk/ })
+    ).toHaveLength(1);
     // Not looked up as a withdrawal.
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
     localStorage.clear();
     (await import("$lib/bridge/migrationActivity")).hydrateMigrations();
+  });
+
+  it("reads nothing of DuskEVM, nor says it can't, on a network without it as an EVM wallet connects", async () => {
+    setNodeNetwork(networks.mainnet);
+    mocks.finalizationConfig = {
+      ...mocks.configuredFinalizationConfig(),
+      configured: false,
+      disputeGameFactoryContractId: undefined,
+      missing: ["VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID"],
+      optimismPortalContractId: undefined,
+    };
+    // What DuskEVM's reads say where there's no DuskEVM.
+    mocks.loadWithdrawalActivity.mockResolvedValue({
+      error: "The DuskEVM bridge isn't configured.",
+      items: [],
+    });
+    mocks.rememberHistoryWithdrawals.mockRejectedValue(
+      new Error("The DuskEVM bridge isn't configured.")
+    );
+
+    const { queryByText } = render(EvmTransactions, {
+      target: document.body,
+    });
+
+    // Connected for a migration.
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+    await tick();
+    await tick();
+
+    expect(mocks.loadWithdrawalActivity).not.toHaveBeenCalled();
+    expect(mocks.rememberHistoryWithdrawals).not.toHaveBeenCalled();
+    expect(mocks.resumeWithdrawalTracking).not.toHaveBeenCalled();
+    expect(mocks.resumeDepositTracking).not.toHaveBeenCalled();
+    expect(queryByText(/DuskEVM's explorer can't be read/)).toBeNull();
   });
 
   it("reads nothing again while nothing is under way", async () => {

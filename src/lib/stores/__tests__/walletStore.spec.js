@@ -26,6 +26,10 @@ import {
 } from "$lib/dusk-domains/verifiedNames";
 
 import WalletTreasury from "$lib/wallet-treasury";
+import {
+  keptMigrations,
+  rememberMigration,
+} from "$lib/bridge/migrationActivity";
 import { listContacts, saveContact } from "$lib/contacts";
 import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 
@@ -1412,10 +1416,20 @@ describe("Wallet store", async () => {
     it("should expose a method to clear local data", async () => {
       vi.useRealTimers();
       keepVerifiedName("testnet", "some-account", "alice.dusk");
+      rememberMigration({
+        amountLux: "1000000000",
+        createdAt: 1,
+        hash: `0x${"a6".repeat(32)}`,
+        recipient: "some-account",
+        routeId: "bsc-to-dusk",
+        sender: `0x${"11".repeat(20)}`,
+      });
 
       await walletStore.clearLocalData();
       expect(cacheClearSpy).toHaveBeenCalledTimes(1);
       expect(getVerifiedName("testnet", "some-account")).toBe("");
+      // The migrations this browser followed go with the wallet.
+      expect(get(keptMigrations)).toStrictEqual([]);
 
       // The history kept in the browser goes too, and its work stops.
       expect(stopActivity).toHaveBeenCalled();

@@ -66,6 +66,16 @@ describe("DuskEVM", () => {
     );
   });
 
+  it("finds its adapter at /l1 on the RPC it uses: the one set, with or without a network file", async () => {
+    vi.stubEnv("VITE_EVM_BRIDGE_RPC_URL", "https://l2.example.test/");
+
+    for (const net of [networks.testnet, null]) {
+      const { duskEvmAdapterUrl } = await on(net);
+
+      expect(duskEvmAdapterUrl()).toBe("https://l2.example.test/l1");
+    }
+  });
+
   it("is none on a network without it, nor on a chain without a file", async () => {
     for (const net of [networks.mainnet, null]) {
       const { duskEvm, duskEvmAdapterUrl, duskEvmContractId, duskEvmNetwork } =

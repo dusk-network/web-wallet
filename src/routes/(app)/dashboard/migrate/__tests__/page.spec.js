@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { networks } from "@dusk-network/networks";
+import { base } from "$app/paths";
 
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
@@ -24,8 +25,9 @@ describe("Migrate", () => {
   it("opens the Bridge on the first migration into Dusk that's running, BNB Smart Chain's on mainnet", () => {
     setNodeNetwork(networks.mainnet);
 
+    // Within the app, as deployed under its base path.
     expect(sentTo()).toMatchObject({
-      location: "/dashboard/bridge?route=bsc-to-dusk",
+      location: `${base}/dashboard/bridge?route=bsc-to-dusk`,
       status: 307,
     });
   });
@@ -34,10 +36,10 @@ describe("Migrate", () => {
     // Testnet's, from Sepolia, isn't running.
     setNodeNetwork(networks.testnet);
 
-    expect(sentTo()?.location).toBe("/dashboard/bridge");
+    expect(sentTo()?.location).toBe(`${base}/dashboard/bridge`);
 
     setNodeNetwork(networks.devnet);
 
-    expect(sentTo()?.location).toBe("/dashboard/bridge");
+    expect(sentTo()?.location).toBe(`${base}/dashboard/bridge`);
   });
 });

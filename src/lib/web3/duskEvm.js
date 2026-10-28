@@ -50,14 +50,14 @@ const rpcUrl = () =>
 
 /**
  * DuskEVM's adapter, which says what a Dusk deposit became on DuskEVM
- * (`duskevm_getTransactionHashByDuskHash`): at `/l1` on its RPC's host,
- * or as set.
+ * (`duskevm_getTransactionHashByDuskHash`): as set, else at `/l1` on the
+ * RPC DuskEVM is read from, set or the network's.
  *
  * @returns {string | undefined}
  */
 export function duskEvmAdapterUrl() {
   const set = setting(import.meta.env.VITE_EVM_L1_BRIDGE_RPC_URL);
-  const rpc = duskEvmNetwork()?.rpcUrl;
+  const rpc = rpcUrl();
 
   return set ?? (rpc ? `${rpc.replace(/\/+$/, "")}/l1` : undefined);
 }

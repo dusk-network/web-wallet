@@ -66,9 +66,9 @@ describe("migrations into Dusk", () => {
 
     const sent = get(activity.keptMigrations);
 
-    expect(activity.migrationTransfers([], sent, ROUTES)).toMatchObject([
-      { hash: MIGRATION, kind: "migration", stage: "sending" },
-    ]);
+    expect(
+      activity.migrationTransfers([], sent, ROUTES, ACCOUNT)
+    ).toMatchObject([{ hash: MIGRATION, kind: "migration", stage: "sending" }]);
 
     // Anyone can send a transfer with that memo: only the payout account's,
     // of exactly the amount, pays it.
@@ -80,12 +80,15 @@ describe("migrations into Dusk", () => {
     });
 
     expect(
-      activity.migrationTransfers([elsewhere, less], sent, ROUTES)[0].stage
+      activity.migrationTransfers([elsewhere, less], sent, ROUTES, ACCOUNT)[0]
+        .stage
     ).toBe("sending");
 
     const payout = row({ counterparty: BSC.payoutAccount, memo: MIGRATION });
 
-    expect(activity.migrationTransfers([payout], sent, ROUTES)).toMatchObject([
+    expect(
+      activity.migrationTransfers([payout], sent, ROUTES, ACCOUNT)
+    ).toMatchObject([
       {
         paidAt: payout.timestamp,
         payout: payout.hash,
@@ -95,15 +98,46 @@ describe("migrations into Dusk", () => {
     ]);
   });
 
+  it("list only those that pay the account the wallet shows, and are forgotten with the wallet", () => {
+    const other = `${ACCOUNT.slice(0, -4)}Zzzz`;
+
+    activity.rememberMigration({
+      amountLux: String(DUSK),
+      createdAt: 1,
+      hash: MIGRATION,
+      recipient: other,
+      routeId: "bsc-to-dusk",
+      sender: EVM,
+    });
+    activity.keepArrival("dd".repeat(32), { scanFrom: "1" });
+
+    const sent = get(activity.keptMigrations);
+
+    expect(
+      activity.migrationTransfers([], sent, ROUTES, ACCOUNT)
+    ).toStrictEqual([]);
+    expect(activity.migrationTransfers([], sent, ROUTES, other)).toHaveLength(
+      1
+    );
+
+    // Settings › Reset: nothing of it stays in this browser.
+    activity.forgetRouteTransfers();
+
+    expect(get(activity.keptMigrations)).toStrictEqual([]);
+    expect(get(activity.transferArrivals)).toStrictEqual({});
+    expect(localStorage.getItem("web-wallet-migrations")).toBeNull();
+    expect(localStorage.getItem("web-wallet-transfer-arrivals")).toBeNull();
+  });
+
   it("include the payouts in the history of migrations sent elsewhere, and keep the ones that failed as failed", () => {
     const payout = row({
       counterparty: BSC.payoutAccount,
       memo: `0x${"c3".repeat(32)}`,
     });
 
-    expect(activity.migrationTransfers([payout], [], ROUTES)).toMatchObject([
-      { hash: `0x${"c3".repeat(32)}`, stage: "paid" },
-    ]);
+    expect(
+      activity.migrationTransfers([payout], [], ROUTES, ACCOUNT)
+    ).toMatchObject([{ hash: `0x${"c3".repeat(32)}`, stage: "paid" }]);
 
     activity.rememberMigration({
       amountLux: String(DUSK),
@@ -116,7 +150,12 @@ describe("migrations into Dusk", () => {
     activity.markMigrationFailed(MIGRATION);
 
     expect(
-      activity.migrationTransfers([], get(activity.keptMigrations), ROUTES)
+      activity.migrationTransfers(
+        [],
+        get(activity.keptMigrations),
+        ROUTES,
+        ACCOUNT
+      )
     ).toMatchObject([{ stage: "failed" }]);
   });
 
@@ -133,7 +172,8 @@ describe("migrations into Dusk", () => {
     const [transfer] = activity.migrationTransfers(
       [],
       get(activity.keptMigrations),
-      ROUTES
+      ROUTES,
+      ACCOUNT
     );
 
     await expect(
@@ -144,7 +184,12 @@ describe("migrations into Dusk", () => {
     ).resolves.toBe(true);
     // In a block, it's sent, and waits for its payout.
     expect(
-      activity.migrationTransfers([], get(activity.keptMigrations), ROUTES)
+      activity.migrationTransfers(
+        [],
+        get(activity.keptMigrations),
+        ROUTES,
+        ACCOUNT
+      )
     ).toMatchObject([{ stage: "sent" }]);
     await expect(
       tracking.checkMigration(transfer, async () => ({ status: "0x0" }))
@@ -188,7 +233,12 @@ describe("following transfers to and from other chains", () => {
       memo: EVM,
     });
     const transfers = () => [
-      ...activity.migrationTransfers([], get(activity.keptMigrations), ROUTES),
+      ...activity.migrationTransfers(
+        [],
+        get(activity.keptMigrations),
+        ROUTES,
+        ACCOUNT
+      ),
       ...activity.serviceTransfers(
         [sentOut, { ...sentOut, hash: "ee".repeat(32), memo: "alice" }],
         get(activity.transferArrivals),

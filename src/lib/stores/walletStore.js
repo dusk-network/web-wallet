@@ -19,6 +19,7 @@ import {
 } from "$lib/activity";
 import { closeContacts, openContacts } from "$lib/contacts";
 import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
+import { forgetRouteTransfers } from "$lib/bridge/migrationActivity";
 import { SOZU_FN, sozuCall } from "@dusk-network/networks/sozu";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
@@ -323,6 +324,7 @@ const abortSync = () => {
 const clearLocalData = async () => {
   abortSync();
   forgetVerifiedNames();
+  forgetRouteTransfers();
   stopActivity();
 
   await treasury.clearCache();

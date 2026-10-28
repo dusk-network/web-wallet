@@ -23,7 +23,7 @@
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { errorMessage } from "$lib/dusk/error";
   import { addBasePath } from "$lib/navigation";
-  import { settingsStore } from "$lib/stores";
+  import { settingsStore, walletStore } from "$lib/stores";
   import {
     finalizeWithdrawal,
     getWithdrawalFinalizationConfig,
@@ -311,6 +311,11 @@
    * @param {ActivityRow[]} rows
    */
   async function showHistoryWithdrawals(rows) {
+    // A network without DuskEVM has no withdrawals from it.
+    if (!hasDuskEvm) {
+      return;
+    }
+
     const known = historyWithdrawals(rows);
 
     historyHashes = new Set(known.map(({ hash }) => hash));
@@ -378,6 +383,10 @@
   }
 
   async function refreshActivity() {
+    if (!hasDuskEvm) {
+      return;
+    }
+
     const request = ++activityRequest;
     const requestedAccount = currentAccount;
     isActivityLoading = true;
@@ -619,7 +628,7 @@
       currentAccount = value.address?.toLowerCase() ?? null;
       filterDeposits();
 
-      if (currentAccount) {
+      if (currentAccount && hasDuskEvm) {
         resumeDepositTracking(currentAccount);
       }
 
@@ -631,8 +640,11 @@
         txHash = "";
         indexedActivity = [];
         rebuildActivity();
-        resumeWithdrawalTracking(currentAccount);
-        void refreshActivity();
+
+        if (hasDuskEvm) {
+          resumeWithdrawalTracking(currentAccount);
+          void refreshActivity();
+        }
       }
     });
 
@@ -674,8 +686,15 @@
   $: canCheck = finalizationConfig.configured && !isChecking && !isSubmitting;
   $: ({ language } = $settingsStore);
   $: routeList = cardRoutes($nodeNetwork);
+  // The public account the wallet shows: the migrations listed pay it.
+  $: duskAccount = $walletStore.currentProfile?.account.toString() ?? "";
   $: transfers = [
-    ...migrationTransfers($activityState.rows, $keptMigrations, routeList),
+    ...migrationTransfers(
+      $activityState.rows,
+      $keptMigrations,
+      routeList,
+      duskAccount
+    ),
     ...serviceTransfers($activityState.rows, $transferArrivals, routeList),
   ];
   // Followed as soon as one is under way, as the history or this browser
@@ -697,7 +716,7 @@
     linkedTransfer = null;
     linkedDeposit = null;
   }
-  // DuskEVM's parts: only on a network that has it.
+  // DuskEVM's parts, and its reads: only on a network that has it.
   $: hasDuskEvm =
     Boolean($nodeNetwork?.duskEvm) || finalizationConfig.configured;
   $: groups = groupBridgeActivity([
@@ -777,7 +796,7 @@
       </Banner>
     {/if}
 
-    {#if activityError || historyError}
+    {#if hasDuskEvm && (activityError || historyError)}
       <p class="bridge-activity__note" role="status">
         DuskEVM's explorer can't be read: {activityError || historyError} The withdrawals
         remembered here are still listed.

@@ -1,7 +1,7 @@
-import { redirect } from "@sveltejs/kit";
 import { get } from "svelte/store";
 
 import { cardRoutes, migrationRoutes } from "$lib/bridge/cardRoutes";
+import { redirect } from "$lib/navigation";
 import nodeNetwork from "$lib/stores/nodeNetwork";
 
 /**

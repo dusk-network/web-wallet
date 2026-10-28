@@ -244,15 +244,17 @@ function paidMigration(row, migrations) {
 }
 
 /**
- * The migrations into Dusk: those this browser sent, and the payouts in the
- * history of migrations sent elsewhere, each once.
+ * The migrations into Dusk: those this browser sent to the account the
+ * wallet shows, and the payouts in its history of migrations sent
+ * elsewhere, each once.
  *
  * @param {ActivityRow[]} rows The history
  * @param {KeptMigration[]} sent The migrations this browser sent
  * @param {import("./cardRoutes").CardRoute[]} routes The network's
+ * @param {string} account The public account the wallet shows
  * @returns {RouteTransfer[]}
  */
-export function migrationTransfers(rows, sent, routes) {
+export function migrationTransfers(rows, sent, routes, account) {
   const migrations =
     /** @type {(import("./cardRoutes").CardRoute & { kind: "migration" })[]} */ (
       routes.filter(({ kind }) => kind === "migration")
@@ -263,7 +265,7 @@ export function migrationTransfers(rows, sent, routes) {
   for (const item of sent) {
     const route = migrations.find(({ id }) => id === item.routeId);
 
-    if (route) {
+    if (route && item.recipient === account) {
       byHash.set(item.hash, sentMigration(item, rows, route));
     }
   }
@@ -323,6 +325,22 @@ export function keepArrival(hash, found) {
     localStorage.setItem(ARRIVALS_KEY, JSON.stringify(next));
   } catch {
     // Kept for this visit only.
+  }
+}
+
+/**
+ * Forgets the migrations and transfers out this browser follows, as
+ * Settings › Reset forgets the wallet they're for.
+ */
+export function forgetRouteTransfers() {
+  kept.set([]);
+  arrivals.set({});
+
+  try {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(ARRIVALS_KEY);
+  } catch {
+    // Nothing was kept.
   }
 }
 
