@@ -32,7 +32,6 @@ const baseProps = {
   gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n },
   liquidHref: "/dashboard/stake?flow=liquid",
   minimumStake: 1_000n * DUSK,
-  profileName: "Profile 1",
 };
 
 describe("parseDuskInput", () => {
@@ -125,7 +124,7 @@ describe("NativeStake", () => {
     baseProps.execute.mockClear();
   });
 
-  it("states what native staking takes, the lock and the burn in plain words", () => {
+  it("states what native staking takes, the lock and the burn in plain words, with no consensus key", () => {
     const { container } = render(NativeStake, baseProps);
     const facts = Array.from(
       container.querySelectorAll(".native-stake__facts li"),
@@ -133,7 +132,7 @@ describe("NativeStake", () => {
     );
 
     expect(facts).toStrictEqual([
-      "Needs your own Dusk node A computer that runs Dusk's node software and stays online, with Profile 1's consensus key from this recovery phrase. How native staking works",
+      "Needs your own Dusk node A computer that runs Dusk's node software and stays online. It needs keys made from this wallet's recovery phrase. What's a node?",
       "Rewards start in about 6 to 12 hours Unstake any time, with no waiting period.",
       "If your node misses its turn Part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost).",
     ]);

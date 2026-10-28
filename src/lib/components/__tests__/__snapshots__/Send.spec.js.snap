@@ -302,6 +302,8 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
       <!---->
     </dl>
      
+    <!---->
+     
     <div
       class="gas-settings svelte-1wfde5f"
     >

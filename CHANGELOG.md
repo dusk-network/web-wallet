@@ -41,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Compare native and liquid staking side by side on the Staking page, with neither picked
 - Add to a stake with Stake more
 - Show in the history the DuskEVM address a bridge deposit went to, and a withdrawal's amount and when it can be claimed
+- Say in Send's summary what a public send shows everyone, also on a phone's review
+- Open the search with /, as with Ctrl K, unless typing in a field
+- Offer alice.dusk for alice, or alice.dusk. with a dot after it, in Send and the search
 
 ### Changed
 
@@ -105,6 +108,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say plainly what a stDUSK is worth and how it grows
 - Say Shown in your local time, not Times in your local time
 - Keep contacts encrypted, for the wallet that saved them only, and delete them on Reset
+- Say plainly that a node for native staking needs keys made from this wallet's recovery phrase
+- Give a withdrawal's claim date a line of its own in the activity, and in the history on phones
 
 ### Removed
 
@@ -121,6 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Date a withdrawal found by its hash by its DuskEVM block, not by the lookup
 - Say Nothing to unstake or claim beside the native stake, not under Unstake from Sozu
 - Keep the top bar inside the window at every width from 320 px
+- Open the network and profile menus inside the window on phones
 
 ## [1.8.0] - 2026-03-25
 

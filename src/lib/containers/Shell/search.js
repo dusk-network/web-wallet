@@ -7,6 +7,7 @@
 import { ProfileGenerator } from "@dusk/w3sper";
 
 import { describeRow, shortAddress } from "$lib/activity/present";
+import { asDuskName, isDuskName } from "$lib/dusk-domains";
 
 /**
  * @typedef {{
@@ -170,7 +171,8 @@ export function searchLocally(
 }
 
 /**
- * What a query that found nothing here can be looked up as, on Enter.
+ * What a query that found nothing here can be looked up as, on Enter: a
+ * name typed without .dusk, as "alice", is looked up as alice.dusk.
  *
  * @param {string} query
  * @returns {"address" | "name" | "transaction" | null}
@@ -186,5 +188,19 @@ export function lookupKind(query) {
     return "transaction";
   }
 
-  return ProfileGenerator.typeOf(q) === "undefined" ? null : "address";
+  if (ProfileGenerator.typeOf(q) !== "undefined") {
+    return "address";
+  }
+
+  return asDuskName(q) ? "name" : null;
 }
+
+/**
+ * The `.dusk` name a query is looked up as: the one typed, or the one a
+ * name typed without .dusk means.
+ *
+ * @param {string} query
+ * @returns {string}
+ */
+export const lookupName = (query) =>
+  (isDuskName(query) ? null : asDuskName(query)) ?? query.trim();

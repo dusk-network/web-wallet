@@ -108,6 +108,17 @@ describe("ActivityPanel", () => {
       expect(container.querySelector(".activity-row__amount")).toHaveClass(
         "activity-row__amount--muted"
       );
+
+      // Its claim date on a line of its own, under the type, time and privacy.
+      const lines = Array.from(
+        container.querySelectorAll(".activity-row__line"),
+        (line) => line.textContent?.trim()
+      );
+
+      expect(lines).toHaveLength(2);
+      expect(lines[0]).toMatch(/^Bridge · .+ · Public$/);
+      expect(lines[0]).not.toContain("claim");
+      expect(lines[1]).toMatch(/^Claim from about /);
     } finally {
       vi.unstubAllEnvs();
     }

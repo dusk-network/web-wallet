@@ -49,12 +49,16 @@ import { TX_KIND } from "./constants";
  *   counterparty: string | null,
  *   icon: ActivityIcon,
  *   line: string,
+ *   note: string | null,
  *   privacy: "Public" | "Shielded",
+ *   shortLine: string,
  *   status: ActivityShownStatus,
  *   title: string,
  *   titleIsAddress: boolean,
  *   withdrawal: WithdrawalStep | null,
  * }} ActivityPresentation
+ *   `note` is a proved withdrawal's claim date, as `line` ends, for a line
+ *   of its own where a row is narrow; `shortLine` is `line` without it.
  */
 
 /**
@@ -338,24 +342,40 @@ export function describeRow(row, context) {
   const status = shownStatus(row);
   const failed = status === "failed";
   const bridge = icon === "bridge" && !failed ? bridgeOf(row, context) : null;
+  const line = failed
+    ? `Failed · nothing sent · ${feeText(row, locale)}`
+    : bridge?.line
+      ? `${verb} · ${bridge.line}`
+      : verb;
+  const note = claimNoteOf(bridge);
 
   return {
     amount: amountOf(row, { bridge, failed, icon, locale }),
     category,
     counterparty: bridge?.to ?? counterpartyOf(row),
     icon,
-    line: failed
-      ? `Failed · nothing sent · ${feeText(row, locale)}`
-      : bridge?.line
-        ? `${verb} · ${bridge.line}`
-        : verb,
+    line,
+    note,
     privacy: row.privacy === "shielded" ? "Shielded" : "Public",
+    shortLine: note ? verb : line,
     status,
     title,
     titleIsAddress,
     withdrawal: bridge?.withdrawal ?? null,
   };
 }
+
+/**
+ * A proved withdrawal's claim date, as its line ends, for a line of its
+ * own: "Claim from about 2 Nov, 04:20". None for any other row.
+ *
+ * @param {ReturnType<typeof bridgeOf>} bridge
+ * @returns {string | null}
+ */
+const claimNoteOf = (bridge) =>
+  bridge?.line && bridge.withdrawal && !bridge.withdrawal.claimed
+    ? `${bridge.line.charAt(0).toUpperCase()}${bridge.line.slice(1)}`
+    : null;
 
 /**
  * The fee a row's sender paid, for its line.

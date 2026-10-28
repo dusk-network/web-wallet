@@ -16,7 +16,7 @@
     markContactNameMoved,
     saveContact,
   } from "$lib/contacts";
-  import { isDuskName } from "$lib/dusk-domains";
+  import { asDuskName, isDuskName } from "$lib/dusk-domains";
   import { addBasePath } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
@@ -646,6 +646,10 @@
   $: isRecipientInvalid =
     isRecipientChecked && !recipientName && !addressInfo.isValid;
 
+  // A name typed without .dusk, as "alice": Send offers alice.dusk, and
+  // looks it up once taken.
+  $: bareName = isRecipientInvalid ? asDuskName(sendToAddress) : null;
+
   $: blocklistedRecipient = getBlocklistedRecipient(recipientAddress);
   $: isRecipientBlocklisted = Boolean(blocklistedRecipient);
 
@@ -856,6 +860,15 @@
           <p class="send__error" id={invalidRecipientId} role="alert">
             <strong>Not a valid address.</strong> Check it, or paste it again.
           </p>
+          {#if bareName}
+            <button
+              class="send__link"
+              on:click={() => {
+                sendToAddress = bareName ?? sendToAddress;
+              }}
+              type="button">Did you mean {bareName}?</button
+            >
+          {/if}
         {/if}
 
         {#if nameLookup?.error}
@@ -1214,6 +1227,13 @@
           </div>
         {/if}
       </dl>
+      {#if addressInfo.isValid && !isShielded}
+        <p class="send__visible">
+          {transactionMemo
+            ? "Visible to everyone: the amount, both accounts and the memo."
+            : "Visible to everyone: the amount and both accounts."}
+        </p>
+      {/if}
       <GasSettings
         fee={maxGasFee}
         limit={gasLimit}
@@ -1662,6 +1682,14 @@
     color: var(--calm-muted);
     font-size: 0.8125rem;
     text-align: center;
+  }
+
+  .send__visible {
+    margin-top: -0.875rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--calm-line);
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
   }
 
   .send__summary :global(.send__send),

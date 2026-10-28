@@ -264,13 +264,18 @@
                       <span
                         class="history__line"
                         class:history__line--failed={p.status === "failed"}
-                        >{p.line}<span class="history__phone-meta"
+                        >{#if p.note}<span class="history__wide">{p.line}</span
+                          ><span class="history__narrow">{p.shortLine}</span
+                          >{:else}{p.line}{/if}<span class="history__phone-meta"
                           >{time === null
                             ? ""
                             : ` · ${timeLabel(time, locale)}`}
                           · {p.privacy}</span
                         ></span
                       >
+                      {#if p.note}
+                        <span class="history__claim">{p.note}</span>
+                      {/if}
                     </span>
                   </button>
                 </td>
@@ -605,11 +610,22 @@
     background: var(--calm-panel);
   }
 
-  /* Narrow screens: the details over the list, as a page of their own. */
-  .history__phone-meta {
+  /* Phones only: the time and privacy after the line, a claim date under it. */
+  .history__phone-meta,
+  .history__narrow,
+  .history__claim {
     display: none;
   }
 
+  .history__claim {
+    overflow: hidden;
+    color: var(--calm-muted);
+    font-size: 0.78125rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Narrow screens: the details over the list, as a page of their own. */
   @media (max-width: 63.99rem) {
     .history--open {
       grid-template-columns: minmax(0, 1fr);
@@ -639,8 +655,18 @@
       display: none;
     }
 
-    .history__phone-meta {
+    .history__phone-meta,
+    .history__narrow {
       display: inline;
+    }
+
+    /* A withdrawal's claim date on a line of its own: it doesn't fit after. */
+    .history__wide {
+      display: none;
+    }
+
+    .history__claim {
+      display: block;
     }
 
     .history__row td,

@@ -55,12 +55,43 @@
     { href: "/settings", keywords: "gas lock password", label: "Settings" },
   ];
 
+  /** The fields one types in. */
+  const TYPING_FIELDS =
+    "textarea, select, [contenteditable]:not([contenteditable=false]), input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit])";
+
   let searchOpen = false;
   let typing = false;
 
-  /** @param {KeyboardEvent} event */
+  /**
+   * Whether an event's target is a field one types in, also inside another
+   * component's shadow root, as the EVM wallets' dialog.
+   *
+   * @param {Event} event
+   */
+  const isInField = (event) =>
+    Boolean(
+      /** @type {HTMLElement | undefined} */ (
+        event.composedPath()[0]
+      )?.matches?.(TYPING_FIELDS)
+    );
+
+  /**
+   * Ctrl K, or "/" unless one is typing in a field, opens the search.
+   *
+   * @param {KeyboardEvent} event
+   */
   function handleShortcut(event) {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+    const isSlash =
+      event.key === "/" &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      !isInField(event);
+
+    if (
+      isSlash ||
+      ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k")
+    ) {
       event.preventDefault();
       searchOpen = true;
     }
@@ -68,13 +99,7 @@
 
   /** @param {FocusEvent} event */
   function handleFocusIn(event) {
-    const target = /** @type {HTMLElement | null} */ (event.target);
-
-    typing = Boolean(
-      target?.matches?.(
-        "textarea, select, input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit])"
-      )
-    );
+    typing = isInField(event);
   }
 
   $: ({ url } = $page);

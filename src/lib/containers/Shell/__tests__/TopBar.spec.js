@@ -1,9 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import { readFileSync } from "node:fs";
-import { parse } from "svelte/compiler";
-
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
+import readStyleRules from "$lib/dusk/test-helpers/styleRules";
 
 import TopBar from "../TopBar.svelte";
 import { shellTabs } from "../navigation";
@@ -23,47 +21,8 @@ vi.mock("$lib/stores", async (importOriginal) => {
   };
 });
 
-/**
- * A component's style rules, as written: each one's selector and
- * declarations, and the media query it sits in ("" for none).
- *
- * @param {string} file The component, from this folder
- */
-function styleRules(file) {
-  const source = readFileSync(new URL(file, import.meta.url), "utf8");
-  const { css } = parse(source, { modern: true });
-  /** @type {{ declarations: Record<string, string>, media: string, selector: string }[]} */
-  const rules = [];
-
-  /**
-   * @param {any[]} nodes
-   * @param {string} media
-   */
-  const walk = (nodes, media) => {
-    for (const node of nodes) {
-      if (node.type === "Atrule" && node.name === "media") {
-        walk(node.block.children, node.prelude);
-      } else if (node.type === "Rule") {
-        rules.push({
-          declarations: Object.fromEntries(
-            node.block.children
-              .filter(
-                (/** @type {any} */ child) => child.type === "Declaration"
-              )
-              .map((/** @type {any} */ child) => [child.property, child.value])
-          ),
-          media,
-          selector: source.slice(node.prelude.start, node.prelude.end),
-        });
-        walk(node.block.children, media);
-      }
-    }
-  };
-
-  walk(css?.children ?? [], "");
-
-  return rules;
-}
+/** @param {string} file The component or its style sheet, from this folder */
+const styleRules = (file) => readStyleRules(file, import.meta.url);
 
 /** @param {string} media A query, as "(max-width: 23.37rem)" */
 const maxWidthPx = (media) =>
@@ -158,6 +117,39 @@ describe("TopBar", () => {
     expect(maxWidthPx(name?.media ?? "")).toBeGreaterThanOrEqual(339.2);
     expect(name?.declarations).toMatchObject({ position: "absolute" });
     expect(name?.declarations.display).toBeUndefined();
+  });
+
+  it("opens the network's and the profiles' popovers inside a phone's window, under the top bar", () => {
+    const onPhones = (/** @type {string} */ media) =>
+      maxWidthPx(media) >= 767.8;
+    const pill = styleRules("../NetworkPill.svelte");
+    const picker = styleRules(
+      "../../../components/AddressPicker/AddressPicker.css"
+    );
+    const popovers = [
+      [pill, ".network-pill__popover"],
+      [picker, ".address-picker--compact .address-picker__drop-down"],
+    ];
+
+    for (const [rules, selector] of popovers) {
+      const [always, phones] = ["", "phones"].map((media) =>
+        /** @type {typeof pill} */ (rules).find(
+          (rule) =>
+            rule.selector === selector &&
+            (media ? onPhones(rule.media) : !rule.media)
+        )
+      );
+
+      // At most the window less 1 rem a side, 1 rem from its right edge.
+      expect(always?.declarations.width).toMatch(
+        /^min\(\d+rem, calc\(100vw - 2rem\)\)$/
+      );
+      expect(phones?.declarations).toMatchObject({
+        position: "fixed",
+        right: "1rem",
+        top: "calc(var(--header-height, 3.75rem) + 0.5rem)",
+      });
+    }
   });
 
   it("opens the search", async () => {

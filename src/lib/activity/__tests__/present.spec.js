@@ -242,6 +242,8 @@ describe("describeRow", () => {
       amount: { sign: "−", text: "25" },
       counterparty: evm,
       line: "Bridge · to 0x19E7…DAff2A",
+      note: null,
+      shortLine: "Bridge · to 0x19E7…DAff2A",
       title: "To DuskEVM",
     });
 
@@ -260,6 +262,10 @@ describe("describeRow", () => {
       /^Bridge · claim from about Nov 2, \d\d:32 [AP]M$/
     );
 
+    // Where a row is narrow, the claim date gets a line of its own.
+    expect(waiting.note).toMatch(/^Claim from about Nov 2, \d\d:32 [AP]M$/);
+    expect(waiting.shortLine).toBe("Bridge");
+
     // The time is an estimate: once it passed, the row still says about when,
     // never that the claim is ready, which only the bridge can tell.
     expect(
@@ -274,6 +280,8 @@ describe("describeRow", () => {
     ).toMatchObject({
       amount: { muted: false, text: "1,008" },
       line: "Bridge · claimed",
+      note: null,
+      shortLine: "Bridge · claimed",
       withdrawal: { claimed: true },
     });
     expect(describeRow(claim, context)).toMatchObject({

@@ -12,7 +12,7 @@
   import { nodeBaseUrl } from "$lib/url";
 
   import { contactsStore } from "$lib/contacts";
-  import { lookupKind, searchLocally } from "./search";
+  import { lookupKind, lookupName, searchLocally } from "./search";
 
   /** @type {{ href: string, keywords?: string, label: string }[]} */
   export let pages;
@@ -129,7 +129,7 @@
     };
 
     const done = await (kind === "name"
-      ? lookUpName(q)
+      ? lookUpName(lookupName(q))
       : kind === "transaction"
         ? lookUpTransaction(q)
         : lookUpAddress(q));
@@ -378,7 +378,9 @@
     <p class="command-bar__message" role="status">{lookup.message}</p>
   {:else if query.trim() && !results.length}
     <p class="command-bar__message">
-      Nothing on this device. Press Enter to look it up on the network.
+      {lookupKind(query) === "name"
+        ? `Nothing on this device. Press Enter to look up ${lookupName(query)} on the network.`
+        : "Nothing on this device. Press Enter to look it up on the network."}
     </p>
   {/if}
 

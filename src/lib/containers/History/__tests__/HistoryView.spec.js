@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { fullDateTime, timeLabel } from "$lib/activity/present";
+import styleRules from "$lib/dusk/test-helpers/styleRules";
 
 import HistoryView from "../HistoryView.svelte";
 
@@ -152,6 +153,79 @@ describe("HistoryView", () => {
       );
 
       expect(amounts).toStrictEqual([true, false]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("should give a withdrawal's claim date a line of its own on phones, as it doesn't fit after", () => {
+    const bridge = "ab".repeat(32);
+    const proved = {
+      ...row("b1".repeat(32), WINTER),
+      amount: "0",
+      bridge: /** @type {const} */ ({
+        amount: "1008000000000",
+        kind: "prove",
+        withdrawal: "0001".padEnd(64, "0"),
+      }),
+      contractId: bridge,
+      fnName: "proveWithdrawalTransaction",
+      kind: /** @type {const} */ ("contract_call"),
+      to: undefined,
+    };
+
+    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridge);
+
+    try {
+      const { container } = render(HistoryView, {
+        locale: "en",
+        state: { ...state, rows: [proved, state.rows[0]] },
+      });
+      const [withdrawal, sent] = Array.from(
+        container.querySelectorAll(".history__who"),
+        (who) => ({
+          narrow: who.querySelector(".history__narrow")?.textContent,
+          note: who.querySelector(".history__claim")?.textContent?.trim(),
+          wide: who.querySelector(".history__wide")?.textContent,
+        })
+      );
+
+      // A desktop's line keeps the date; a phone's has it under the line.
+      expect(withdrawal.wide).toMatch(/^Bridge · claim from about Nov 2, /);
+      expect(withdrawal.narrow).toBe("Bridge");
+      expect(withdrawal.note).toMatch(/^Claim from about Nov 2, /);
+      expect(sent).toStrictEqual({
+        narrow: undefined,
+        note: undefined,
+        wide: undefined,
+      });
+
+      // On phones only, and nothing else of the page hidden with it, as the
+      // note above the table.
+      const rules = styleRules("../HistoryView.svelte", import.meta.url);
+      const phone = "(max-width: 47.99rem)";
+      const ruleOf = (/** @type {string} */ selector, media = "") =>
+        rules.find(
+          (rule) =>
+            rule.media === media &&
+            rule.selector.split(",").some((part) => part.trim() === selector)
+        );
+
+      expect(ruleOf(".history__claim")?.declarations.display).toBe("none");
+      expect(ruleOf(".history__claim", phone)?.declarations.display).toBe(
+        "block"
+      );
+      expect(ruleOf(".history__wide", phone)?.declarations.display).toBe(
+        "none"
+      );
+      expect(
+        rules.filter(
+          (rule) =>
+            rule.selector.includes(".history__note") &&
+            (rule.declarations.display === "none" ||
+              rule.declarations["white-space"] === "nowrap")
+        )
+      ).toStrictEqual([]);
     } finally {
       vi.unstubAllEnvs();
     }

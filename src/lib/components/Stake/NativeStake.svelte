@@ -54,9 +54,6 @@
   /** @type {ContractGasSettings} */
   export let gasSettings;
 
-  /** The profile that stakes, as the wallet names it. */
-  export let profileName = "This profile";
-
   /** Where liquid staking is, when this network has it. */
   /** @type {string | undefined} */
   export let liquidHref = undefined;
@@ -232,14 +229,13 @@
         <div>
           <p class="native-stake__fact">Needs your own Dusk node</p>
           <p>
-            A computer that runs Dusk's node software and stays online, with {profileName}'s
-            consensus key from this recovery phrase.
+            A computer that runs Dusk's node software and stays online. It needs
+            keys made from this wallet's recovery phrase.
             <a
               class="native-stake__link text-link"
               href={DOCUMENTATION_LINKS.STAKING_BASICS}
               rel="noopener noreferrer"
-              target="_blank"
-              >How native staking works <Icon path={mdiOpenInNew} /></a
+              target="_blank">What's a node? <Icon path={mdiOpenInNew} /></a
             >
           </p>
         </div>

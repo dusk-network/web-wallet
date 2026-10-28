@@ -302,6 +302,8 @@ exports[`Send page > should render the send page 1`] = `
       <!---->
     </dl>
      
+    <!---->
+     
     <div
       class="gas-settings svelte-1wfde5f"
     >
