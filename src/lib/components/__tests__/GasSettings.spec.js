@@ -54,6 +54,23 @@ describe("GasSettings", () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
+  it("gives the most it can cost exactly, as text to copy, once its limit and price show", async () => {
+    const { getByRole, getByText, queryByText } = render(GasSettings, {
+      ...baseOptions,
+      props: { ...baseProps, fee: 2_151_569n },
+    });
+
+    // Rounded up beside Edit, as everywhere.
+    expect(getByText("0.0022")).toBeInTheDocument();
+    expect(queryByText("The most it can cost, exactly")).toBeNull();
+
+    await fireEvent.click(getByRole("button", { name: "Edit" }));
+
+    expect(
+      getByText("The most it can cost, exactly").nextElementSibling
+    ).toHaveTextContent("0.002151569 DUSK");
+  });
+
   it("opens when the limit is below its lower bound", () => {
     const { getAllByRole } = render(GasSettings, {
       ...baseOptions,

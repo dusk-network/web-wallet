@@ -2,6 +2,7 @@
 
 <script>
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import { page } from "$app/stores";
   import { Gas } from "@dusk/w3sper";
   import {
@@ -18,6 +19,8 @@
   import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { goto } from "$lib/navigation";
   import { sozuPools, sozuStore } from "$lib/sozu";
+  import { readNativeRewardRate } from "$lib/staking/rewardRate";
+  import { nodeBaseUrl } from "$lib/url";
   import {
     gasPriceStore,
     gasStore,
@@ -66,6 +69,10 @@
   /** @type {bigint | undefined} */
   let blockHeight;
 
+  /** About what native staking pays a year, read once a day. */
+  /** @type {number | null | undefined} */
+  let nativeRate;
+
   onMount(() => {
     networkStore
       .getCurrentBlockHeight()
@@ -73,6 +80,13 @@
         blockHeight = height;
       })
       .catch(() => {});
+    void readNativeRewardRate({
+      network: String(get(networkStore).networkName ?? ""),
+      nodeUrl: nodeBaseUrl(),
+      tipHeight: () => networkStore.getCurrentBlockHeight(),
+    }).then((rate) => {
+      nativeRate = rate;
+    });
   });
 
   /**
@@ -189,6 +203,7 @@
       activity={isHistoryEnabled() ? $activityState : null}
       {blockHeight}
       {hasPastStaking}
+      {nativeRate}
       locale={language}
       maxFee={unstakeGas.settings.gasLimit * unstakeGas.settings.gasPrice}
       {minimumStake}

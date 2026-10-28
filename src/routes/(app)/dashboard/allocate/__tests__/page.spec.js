@@ -14,11 +14,9 @@ describe("Allocate", () => {
 
     await vi.advanceTimersToNextTimerAsync();
 
+    expect(getByRole("textbox", { name: "Public amount" })).toBeInTheDocument();
     expect(
-      getByRole("spinbutton", { name: "Public amount" })
-    ).toBeInTheDocument();
-    expect(
-      getByRole("spinbutton", { name: "Shielded amount" })
+      getByRole("textbox", { name: "Shielded amount" })
     ).toBeInTheDocument();
     expect(container.firstElementChild).toMatchSnapshot();
   });

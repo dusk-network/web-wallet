@@ -66,6 +66,16 @@ vi.mock("$lib/activity", async (importOriginal) => {
   return { ...original, activityState: history.state };
 });
 
+/** About what native staking pays a year, as the node's provisioners say. */
+const rates = vi.hoisted(() => ({
+  native: /** @type {number | null} */ (null),
+}));
+
+vi.mock("$lib/staking/rewardRate", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  readNativeRewardRate: async () => rates.native,
+}));
+
 const POOL = "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
 
 /** Sozu as read on testnet: about 3.0751 DUSK a stDUSK, and its fees. */
@@ -279,6 +289,37 @@ describe("Staking", () => {
       "Network fee only",
       "Sozu keeps 10% of rewards · 0.25% on deposits · no unstake fee",
     ]);
+  });
+
+  it("says about what each way pays a year where the choice is made: natively across the network, and with Sozu after its fee", async () => {
+    rates.native = 0.235;
+
+    try {
+      const { container } = render(Staking);
+      const rewards = () =>
+        Array.from(
+          /** @type {HTMLTableElement} */ (
+            container.querySelector("table.compare")
+          ).tBodies[0].rows[2].cells,
+          textOf
+        );
+
+      await act(() =>
+        sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS }))
+      );
+      await vi.waitFor(() =>
+        expect(rewards()[1]).toBe(
+          "About 24% a year lately, across the network. Not promised. Start in about 6 to 12 hours"
+        )
+      );
+      // Testnet's Sozu keeps 10% of rewards: 23.5% less 10% of it.
+      expect(rewards()[2]).toMatch(
+        /^About 21% a year after Sozu's 10%\. You get stDUSK/
+      );
+      expect(container).not.toHaveTextContent(/\bEarn\b/);
+    } finally {
+      rates.native = null;
+    }
   });
 
   it("says so while Sozu has paused deposits", async () => {

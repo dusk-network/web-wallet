@@ -1,3 +1,4 @@
+import { formatTime } from "@dusk-network/networks/format";
 import { get } from "svelte/store";
 
 import {
@@ -33,12 +34,7 @@ export function formatTimestamp(value) {
 
   const date = new Date(value);
 
-  return Number.isNaN(date.getTime())
-    ? "Pending"
-    : new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(date);
+  return Number.isNaN(date.getTime()) ? "Pending" : formatTime(date);
 }
 
 /**

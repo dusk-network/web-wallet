@@ -3,6 +3,8 @@
   import { Button } from "$lib/dusk/components";
   import { GasControls, GasFee } from "$lib/components";
   import { areValidGasSettings } from "$lib/contracts";
+  import { formatDuskExact } from "$lib/dusk/currency";
+  import { settingsStore } from "$lib/stores";
   import { onMount } from "svelte";
 
   /** @type {bigint} */
@@ -25,6 +27,8 @@
 
   /** @type {boolean} */
   let isExpanded = false;
+
+  $: ({ language } = $settingsStore);
 
   onMount(() => {
     const bounds = {
@@ -63,6 +67,10 @@
         {price}
         {priceLower}
       />
+      <dl class="gas-settings__exact">
+        <dt>The most it can cost, exactly</dt>
+        <dd>{formatDuskExact(fee, language)} DUSK</dd>
+      </dl>
     </div>
   {/if}
 </div>
@@ -78,5 +86,25 @@
     display: flex;
     flex-direction: row;
     justify-content: space-between;
+  }
+
+  /* The gas limit times its price, to copy. */
+  .gas-settings__exact {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25em 1em;
+    margin: 0;
+    font-size: 0.875rem;
+
+    & dt {
+      color: var(--muted-color);
+    }
+
+    & dd {
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+      user-select: text;
+    }
   }
 </style>

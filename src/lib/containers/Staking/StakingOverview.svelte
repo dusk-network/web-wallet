@@ -8,6 +8,8 @@
   import { goto, pageTitle } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
   import { duskPerStDusk, feePercent } from "@dusk-network/networks/sozu";
+  import { sozuRateEstimate } from "@dusk-network/networks/rates";
+  import { ratePercent } from "$lib/staking/rewardRate";
 
   import ActivityPanel from "../Home/ActivityPanel.svelte";
   import { stakeActions } from "./stakeActions";
@@ -53,6 +55,14 @@
   /** @type {bigint | undefined} */
   export let blockHeight = undefined;
 
+  /**
+   * About what native staking pays a year across the network lately, as a
+   * fraction; null or undefined while it isn't known.
+   *
+   * @type {number | null | undefined}
+   */
+  export let nativeRate = undefined;
+
   /** @param {bigint} lux */
   const amountOf = (lux) => ({
     exact: formatDuskExact(lux, locale),
@@ -76,6 +86,8 @@
   $: rate = duskPerStDusk(sozu.status?.pool ?? null);
   // Sozu's fees, as its substrate gives them, where they could be read.
   $: fees = sozu.status?.fees ?? null;
+  // What Sozu pays a year, once its fee on rewards is off.
+  $: sozuRate = sozuRateEstimate(nativeRate ?? null, fees?.reward ?? null);
   // No deposits while Sozu is under maintenance, or while that can't be
   // checked.
   $: sozuMaintenance = sozu.status?.flags?.maintenance;
@@ -278,9 +290,25 @@
         </tr>
         <tr>
           <th scope="row">Rewards</th>
-          <td data-way="Native staking">Start in about 6 to 12 hours</td>
+          <td data-way="Native staking">
+            {#if nativeRate}
+              <span class="compare__rate"
+                >About {ratePercent(nativeRate, locale)} a year lately, across the
+                network. Not promised.</span
+              >
+            {/if}
+            Start in about 6 to 12 hours
+          </td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
+              {#if sozuRate && fees}
+                <span class="compare__rate"
+                  >About {ratePercent(sozuRate, locale)} a year after Sozu's {feePercent(
+                    fees.reward,
+                    locale
+                  )}.</span
+                >
+              {/if}
               {#if rate}
                 You get stDUSK. Each is worth {formatDusk(rate, locale)} DUSK now.
                 It usually rises with rewards, but can fall with a penalty.
@@ -540,6 +568,12 @@
     background: var(--calm-s2);
     font-size: 0.8125rem;
     font-weight: 400;
+  }
+
+  .compare__rate {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--calm-text);
   }
 
   .compare__link {

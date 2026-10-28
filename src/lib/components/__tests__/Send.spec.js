@@ -464,9 +464,14 @@ describe("Send", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
+      // Not "Up to 173.901884001 DUSK" beside "Available 173.9018 DUSK":
+      // the balance as it shows there, rounded down.
+      expect(container.querySelector(".send__hint")).toHaveTextContent(
+        /^Available 173\.9018 DUSK/
+      );
       expect(getSummary(container).at(-1)).toStrictEqual([
         "Total",
-        "Up to 173.901884001 DUSK",
+        "Up to 173.9018 DUSK",
       ]);
     });
 
@@ -712,7 +717,7 @@ describe("Send", () => {
         "href",
         `/some-base-path/dashboard/transactions?tx=${lastTxId}`
       );
-      expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
+      expect(getByText("8dcf6f8a…993db55e")).toBeInTheDocument();
       expect(followTransaction).toHaveBeenCalledWith(
         lastTxId,
         expect.anything()

@@ -11,12 +11,12 @@
 
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
-    duskToLux,
     formatDusk,
     formatDuskExact,
+    formatDuskPlain,
     formatFee,
-    luxToDusk,
   } from "$lib/dusk/currency";
+  import { getDecimalSeparator } from "$lib/dusk/number";
   import {
     calculateAdaptiveCharCount,
     middleEllipsis,
@@ -40,6 +40,7 @@
   import { Gas } from "@dusk/w3sper";
   import { BALANCE_MASK } from "$lib/constants";
   import Banner from "../Banner/Banner.svelte";
+  import { normalizeDuskInput, parseDuskInput } from "../Stake/stakeAmount";
 
   /** @type {ContractGasSettings} */
   export let gasSettings;
@@ -59,22 +60,49 @@
   /** @type {bigint} */
   export let unshieldedBalance;
 
-  // @ts-ignore
-  function handleBalanceChange(event) {
-    const value = parseFloat(event.target.value);
+  /**
+   * An amount as its field shows it: every decimal, with the language's
+   * decimal separator and no grouping.
+   *
+   * @param {bigint} lux
+   */
+  const fieldText = (lux) =>
+    formatDuskPlain(lux).replace(".", getDecimalSeparator());
 
-    if (isNaN(value) || value < 0) {
+  /**
+   * Takes the amount typed in one field, with a decimal point or comma, and
+   * shows what's left in the other.
+   *
+   * @param {Event} event
+   */
+  function handleBalanceChange(event) {
+    const { name, value } = /** @type {HTMLInputElement} */ (event.target);
+    const lux = parseDuskInput(
+      normalizeDuskInput(value, getDecimalSeparator())
+    );
+    const isShieldedAmount = name === "shielded-amount";
+
+    typedAmount = name;
+
+    if (isShieldedAmount) {
+      shieldedText = value;
+    } else {
+      unshieldedText = value;
+    }
+
+    if (lux === null) {
       hasInvalidInput = true;
       return;
     }
 
     hasInvalidInput = false;
-    typedAmount = event.target.name;
+    shielded = isShieldedAmount ? lux : totalBalance - lux;
 
-    const isShieldedAmount = event.target.name === "shielded-amount";
-    shielded = isShieldedAmount
-      ? duskToLux(value)
-      : totalBalance - duskToLux(value);
+    if (isShieldedAmount) {
+      unshieldedText = fieldText(totalBalance - lux);
+    } else {
+      shieldedText = fieldText(totalBalance - lux);
+    }
   }
 
   async function allocate() {
@@ -146,9 +174,10 @@
   let shielded = shieldedBalance.spendable;
   $: unshielded = totalBalance - shielded;
 
-  // Derived number states for UI Inputs
-  $: shieldedNumber = luxToDusk(shielded);
-  $: unshieldedNumber = luxToDusk(unshielded);
+  // What each field shows: as typed in the one typed in, what's left in the
+  // other.
+  let shieldedText = fieldText(shielded);
+  let unshieldedText = fieldText(totalBalance - shielded);
 
   $: ({ hideBalances, language } = $settingsStore);
   $: isShieldedHidden = hideBalances && typedAmount !== "shielded-amount";
@@ -228,14 +257,13 @@
           <div class="operation__input-wrapper">
             <Textbox
               className="operation__input-field"
-              value={isUnshieldedHidden ? "" : unshieldedNumber}
+              value={isUnshieldedHidden ? "" : unshieldedText}
               placeholder={isUnshieldedHidden ? BALANCE_MASK : undefined}
               aria-describedby={isUnshieldedHidden ? hiddenNoteId : undefined}
+              autocomplete="off"
               required
-              type="number"
-              max={luxToDusk(totalBalance)}
-              min="0"
-              step="0.000000001"
+              type="text"
+              inputmode="decimal"
               id="unshielded-amount"
               on:input={handleBalanceChange}
               name="unshielded-amount"
@@ -272,14 +300,13 @@
           <div class="operation__input-wrapper">
             <Textbox
               className="operation__input-field"
-              value={isShieldedHidden ? "" : shieldedNumber}
+              value={isShieldedHidden ? "" : shieldedText}
               placeholder={isShieldedHidden ? BALANCE_MASK : undefined}
               aria-describedby={isShieldedHidden ? hiddenNoteId : undefined}
+              autocomplete="off"
               required
-              type="number"
-              step="0.000000001"
-              max={luxToDusk(totalBalance)}
-              min="0"
+              type="text"
+              inputmode="decimal"
               on:input={handleBalanceChange}
               name="shielded-amount"
               aria-label="Shielded amount"

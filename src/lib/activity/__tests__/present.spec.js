@@ -8,9 +8,11 @@ import {
   claimedWithdrawals,
   dayLabel,
   describeRow,
+  fullDateTime,
   groupByDay,
   isStakingRow,
   matchesFilters,
+  timeLabel,
   toCsv,
 } from "../present";
 
@@ -452,14 +454,31 @@ describe("dayLabel and groupByDay", () => {
     ).toBe("Yesterday");
     expect(
       dayLabel(new Date(2026, 9, 24, 9).getTime(), { locale: "en", now })
-    ).toBe("Sat, Oct 24");
+    ).toBe("Sat 24 Oct");
     expect(
       dayLabel(new Date(2026, 9, 26, 9).getTime(), {
         full: true,
         locale: "en",
         now,
       })
-    ).toBe("Today · Mon, Oct 26");
+    ).toBe("Today · Mon 26 Oct");
+  });
+
+  it("writes days and times in English, on the locale's clock and in its digits", () => {
+    const at = new Date(2026, 9, 28, 14, 5).getTime();
+
+    // Not "Today · wo 28 okt".
+    expect(dayLabel(at, { full: true, locale: "nl-NL", now: at })).toBe(
+      "Today · Wed 28 Oct"
+    );
+    expect(timeLabel(at, "nl-NL")).toBe("14:05");
+    expect(timeLabel(at, "en-US")).toBe("2:05 PM");
+    // A 12-hour clock in another language says PM in English.
+    expect(timeLabel(at, "ko-KR")).toBe("2:05 PM");
+    expect(dayLabel(at, { locale: "ar-EG", now: at + 4 * 86_400_000 })).toBe(
+      "Wed ٢٨ Oct"
+    );
+    expect(fullDateTime(at, "nl-NL")).toMatch(/^Wed 28 Oct 2026, 14:05 \S+$/);
   });
 
   it("names yesterday from the calendar, across a clock change", () => {
@@ -483,7 +502,7 @@ describe("dayLabel and groupByDay", () => {
           locale: "en",
           now: monday,
         })
-      ).toBe("Sat, Mar 28");
+      ).toBe("Sat 28 Mar");
     } finally {
       if (zone === undefined) {
         delete process.env.TZ;
@@ -504,7 +523,7 @@ describe("dayLabel and groupByDay", () => {
 
     expect(groups.map((g) => [g.label, g.items.length])).toEqual([
       ["Today", 2],
-      ["Sat, Oct 24", 1],
+      ["Sat 24 Oct", 1],
       ["Time not known yet", 1],
     ]);
   });

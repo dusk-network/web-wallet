@@ -220,11 +220,9 @@ describe("HistoryView", () => {
       );
 
       // A desktop's line keeps the date; a phone's has it under the line.
-      expect(withdrawal.wide).toMatch(
-        /^Bridge · claim from about Mon, Nov 2, /
-      );
+      expect(withdrawal.wide).toMatch(/^Bridge · claim from about 2 Nov, /);
       expect(withdrawal.narrow).toBe("Bridge");
-      expect(withdrawal.note).toMatch(/^Claim from about Mon, Nov 2, /);
+      expect(withdrawal.note).toMatch(/^Claim from about 2 Nov, /);
       expect(sent).toStrictEqual({
         narrow: undefined,
         note: undefined,

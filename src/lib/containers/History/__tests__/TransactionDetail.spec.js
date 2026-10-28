@@ -289,6 +289,14 @@ describe("TransactionDetail", () => {
     expect(container.textContent).toContain(store.slice(-6));
   });
 
+  it("should round the fee paid in its list, and give it exactly under Technical details", () => {
+    const { container } = show(row({ feePaid: "4419010" }));
+
+    expect(mainList(container)).toMatch(/Network fee paid\s*0\.0044 DUSK/);
+    expect(mainList(container)).not.toContain("0.00441901");
+    expect(techList(container)).toMatch(/Fee paid, exactly\s*0\.00441901 DUSK/);
+  });
+
   it("should say which account sent it, and its gas price, nonce and block", async () => {
     const account = "2".repeat(60);
     const loadNonce = vi.fn(async () => "110");

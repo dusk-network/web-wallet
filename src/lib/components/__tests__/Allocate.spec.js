@@ -1,9 +1,17 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { formatFee } from "$lib/dusk/currency";
 import { settingsStore } from "$lib/stores";
 
 import { Allocate } from "..";
+
+/** The language's decimal separator, as the browser gives it. */
+const separator = vi.hoisted(() => ({ value: "." }));
+
+vi.mock("$lib/dusk/number", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  getDecimalSeparator: () => separator.value,
+}));
 
 /**
  * The Review step's amounts, as their labels and values.
@@ -41,11 +49,44 @@ describe("Allocate", () => {
   afterEach(() => {
     cleanup();
     settingsStore.reset();
+    separator.value = ".";
+  });
+
+  it("should write the amounts with the language's decimal separator, and take a comma or a point", async () => {
+    separator.value = ",";
+
+    const { container, getByRole } = render(Allocate, {
+      ...baseProps,
+      unshieldedBalance: 1_000_500_000_000n,
+    });
+    const publicInput = getByRole("textbox", { name: "Public amount" });
+    const shieldedInput = getByRole("textbox", { name: "Shielded amount" });
+
+    // Not "1000.5" in a field of a language that writes 1000,5.
+    expect(publicInput).toHaveValue("1000,5");
+    expect(shieldedInput).toHaveValue("2000");
+
+    await fireEvent.input(shieldedInput, { target: { value: "2500,25" } });
+
+    expect(shieldedInput).toHaveValue("2500,25");
+    expect(publicInput).toHaveValue("500,25");
+
+    await fireEvent.input(publicInput, { target: { value: "0.5" } });
+
+    expect(publicInput).toHaveValue("0.5");
+    expect(shieldedInput).toHaveValue("3000");
+
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(getReviewAmounts(container)[0]).toStrictEqual([
+      "Amount",
+      "1,000 DUSK",
+    ]);
   });
 
   it("should show the amount, the network fee and the total on the review step", async () => {
     const { container, getByRole } = render(Allocate, baseProps);
-    const shieldedInput = getByRole("spinbutton", { name: "Shielded amount" });
+    const shieldedInput = getByRole("textbox", { name: "Shielded amount" });
 
     await fireEvent.input(shieldedInput, { target: { value: "2500" } });
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -70,10 +111,9 @@ describe("Allocate", () => {
     ];
 
     await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
-    await fireEvent.input(
-      getByRole("spinbutton", { name: "Shielded amount" }),
-      { target: { value: "2500" } }
-    );
+    await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
+      target: { value: "2500" },
+    });
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getReviewAmounts(container)[1]).toStrictEqual(feeRow(3n));
@@ -93,15 +133,15 @@ describe("Allocate", () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     const { container, getByRole, getByText } = render(Allocate, baseProps);
-    const publicInput = getByRole("spinbutton", { name: "Public amount" });
-    const shieldedInput = getByRole("spinbutton", { name: "Shielded amount" });
+    const publicInput = getByRole("textbox", { name: "Public amount" });
+    const shieldedInput = getByRole("textbox", { name: "Shielded amount" });
     const nextButton = getByRole("button", { name: "Next" });
 
     expect(
       container.querySelector(".operation__label small")
     ).toHaveTextContent("(•••• hidden spendable out of •••• hidden total)");
-    expect(publicInput).toHaveValue(null);
-    expect(shieldedInput).toHaveValue(null);
+    expect(publicInput).toHaveValue("");
+    expect(shieldedInput).toHaveValue("");
     expect(publicInput).toHaveAttribute("placeholder", "••••");
     expect(shieldedInput).toHaveAttribute("placeholder", "••••");
     expect(publicInput).toHaveAccessibleDescription("hidden");
@@ -109,9 +149,9 @@ describe("Allocate", () => {
 
     await fireEvent.input(publicInput, { target: { value: "3500" } });
 
-    expect(publicInput).toHaveValue(3500);
+    expect(publicInput).toHaveValue("3500");
     expect(publicInput).not.toHaveAccessibleDescription();
-    expect(shieldedInput).toHaveValue(null);
+    expect(shieldedInput).toHaveValue("");
     expect(nextButton).toBeDisabled();
     expect(
       getByText("The amount is more than your balance.")
@@ -119,8 +159,8 @@ describe("Allocate", () => {
 
     await fireEvent.input(shieldedInput, { target: { value: "2500" } });
 
-    expect(shieldedInput).toHaveValue(2500);
-    expect(publicInput).toHaveValue(null);
+    expect(shieldedInput).toHaveValue("2500");
+    expect(publicInput).toHaveValue("");
     expect(nextButton).toBeEnabled();
 
     await fireEvent.click(nextButton);
