@@ -69,6 +69,59 @@ describe("bridgeReads", () => {
     ).toThrow(RangeError);
   });
 
+  it("reads the anchor state registry raw: a game's address in, yes or no out", () => {
+    const { GAME_REGISTRY_DRIVER } = reads;
+    const game = Array(20).fill(0x1e);
+
+    expect(
+      GAME_REGISTRY_DRIVER.encodeInputFn("isGameProper", JSON.stringify(game))
+    ).toStrictEqual(Uint8Array.from(game));
+    expect(
+      GAME_REGISTRY_DRIVER.encodeInputFn("respectedGameTypeUpdatedAt", "null")
+    ).toHaveLength(0);
+    // As testnet's registry answered on 28 Oct 2026: set at height 3,907,068.
+    expect(
+      GAME_REGISTRY_DRIVER.decodeOutputFn(
+        "respectedGameTypeUpdatedAt",
+        Uint8Array.of(0xd8, 0x2b, 0x54, 0x02, 0, 0, 0, 0)
+      )
+    ).toBe(39_070_680n);
+    expect(
+      GAME_REGISTRY_DRIVER.decodeOutputFn("isGameProper", Uint8Array.of(1))
+    ).toBe(true);
+    expect(
+      GAME_REGISTRY_DRIVER.decodeOutputFn("isGameRespected", Uint8Array.of(0))
+    ).toBe(false);
+    expect(() =>
+      GAME_REGISTRY_DRIVER.decodeOutputFn("isGameProper", Uint8Array.of(2))
+    ).toThrow(RangeError);
+    expect(() =>
+      GAME_REGISTRY_DRIVER.decodeOutputFn("isGameProper", new Uint8Array(0))
+    ).toThrow(RangeError);
+  });
+
+  it("reads the registry only where it's known", () => {
+    const config = {
+      disputeGameFactoryContractId: "22".repeat(32),
+      disputeGameFactoryDataDriverUrl: "/dgf.wasm",
+      optimismPortalContractId: "11".repeat(32),
+      optimismPortalDataDriverUrl: "/portal.wasm",
+    };
+    const options = {
+      fetch: vi.fn(),
+      loadDriver: vi.fn(),
+      nodeUrl: "https://node.example.test",
+    };
+
+    expect(reads.bridgeReads({ config, ...options }).registry).toBeNull();
+    expect(
+      reads.bridgeReads({
+        config: { ...config, anchorStateRegistryContractId: "17".repeat(32) },
+        ...options,
+      }).registry
+    ).toStrictEqual({ call: expect.any(Object) });
+  });
+
   it("reads each game's hub and each hub's clock limit once a node, and keeps a hub once read", async () => {
     const { dgf, hub, reads: fake } = fakeReads();
     const game = `0x${"1e".repeat(20)}`;

@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 
+import { tick } from "svelte";
+
 import { EvmTransactions } from "..";
+import WithdrawalLifecycle from "../EvmTransactions/WithdrawalLifecycle.svelte";
 import { claimDay } from "$lib/bridge/claimDate";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { formatTimestamp } from "../EvmTransactions/withdrawalPresentation";
@@ -176,6 +179,7 @@ vi.mock("$lib/bridge/withdrawals", () => ({
   loadDuskTransactionExecution: mocks.loadDuskTransactionExecution,
   loadProveNowClaim: mocks.loadProveNowClaim,
   loadWithdrawalStatus: mocks.loadWithdrawalStatus,
+  PREPARED_PROOF_MS: 120_000,
   proveWithdrawal: mocks.proveWithdrawal,
 }));
 
@@ -1046,5 +1050,130 @@ describe("EvmTransactions", () => {
         "Claim 7 days after you prove. You can prove about 30 minutes after sending."
       )
     ).toBeInTheDocument();
+  });
+});
+
+describe("a withdrawal ready to prove: when it can be claimed if it's proved now", () => {
+  const READY = {
+    blockNumber: 13_700n,
+    stage: "ready_to_prove",
+    transactionHash: `0x${"7a".repeat(32)}`,
+    withdrawalHash: `0x${"7b".repeat(32)}`,
+  };
+  const LATER = CLAIM_AT + 3_600_000;
+
+  /** @param {number} at */
+  const claimAt = (at) => ({ at, exact: true, overdue: false });
+
+  /** The date the card says, if any. */
+  const said = () =>
+    /If you prove now, you can claim from ([^.]+)\./u.exec(
+      document.body.textContent ?? ""
+    )?.[1] ?? null;
+
+  const flush = async () => {
+    await vi.advanceTimersByTimeAsync(0);
+    await tick();
+  };
+
+  /** @param {ReturnType<typeof vi.fn>} loadProveNow */
+  const renderCard = (loadProveNow) =>
+    render(WithdrawalLifecycle, {
+      isChecking: false,
+      isSubmitting: false,
+      loadProveNow: /** @type {any} */ (loadProveNow),
+      selectedWithdrawal: READY,
+      statusError: "",
+      submittedHash: "",
+    });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("reads it again before the proof it's for expires, and stops once the card goes", async () => {
+    const loadProveNow = vi
+      .fn()
+      .mockResolvedValueOnce(claimAt(CLAIM_AT))
+      .mockResolvedValue(claimAt(LATER));
+    const { unmount } = renderCard(loadProveNow);
+
+    await flush();
+
+    expect(said()).toBe(claimDay(CLAIM_AT, "en"));
+
+    // 20 s before the two minutes a prepared proof is kept.
+    await vi.advanceTimersByTimeAsync(99_999);
+
+    expect(loadProveNow).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(1);
+    await tick();
+
+    expect(loadProveNow).toHaveBeenCalledTimes(2);
+    expect(said()).toBe(claimDay(LATER, "en"));
+
+    unmount();
+    await vi.advanceTimersByTimeAsync(600_000);
+
+    expect(loadProveNow).toHaveBeenCalledTimes(2);
+  });
+
+  it("tries a failed read again, each time after longer", async () => {
+    const loadProveNow = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(claimAt(CLAIM_AT));
+
+    renderCard(loadProveNow);
+    await flush();
+
+    expect(said()).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(4_999);
+
+    expect(loadProveNow).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(loadProveNow).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(9_999);
+
+    expect(loadProveNow).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await tick();
+
+    expect(loadProveNow).toHaveBeenCalledTimes(3);
+    expect(said()).toBe(claimDay(CLAIM_AT, "en"));
+  });
+
+  it("stops saying a date once the proof it's for has expired, while it can't be read again", async () => {
+    const loadProveNow = vi
+      .fn()
+      .mockResolvedValueOnce(claimAt(CLAIM_AT))
+      .mockRejectedValue(new Error("offline"));
+
+    renderCard(loadProveNow);
+    await flush();
+    // The refresh at 100 s fails, and its retries at 105 s and 115 s.
+    await vi.advanceTimersByTimeAsync(115_000);
+    await tick();
+
+    expect(loadProveNow).toHaveBeenCalledTimes(4);
+    expect(said()).toBe(claimDay(CLAIM_AT, "en"));
+
+    // Past two minutes: the proof it was for is no longer the one sent.
+    await vi.advanceTimersByTimeAsync(20_000);
+    await tick();
+
+    expect(said()).toBeNull();
   });
 });

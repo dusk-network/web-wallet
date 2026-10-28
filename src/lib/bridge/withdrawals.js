@@ -32,6 +32,7 @@ import {
   readGame,
   settle,
 } from "$lib/bridge/bridgeReads";
+import { MAX_BATCH } from "$lib/activity/multicallFetch";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { WITHDRAWAL_GAS_LIMIT } from "$lib/contracts/gasDefaults";
 import {
@@ -46,9 +47,11 @@ import { duskEvm } from "$lib/web3/walletConnection";
 /**
  * @typedef {import("$lib/bridge/bridgeReads").BridgeReads} BridgeReads
  * @typedef {import("$lib/bridge/claimDate").ClaimDate} ClaimDate
- * @typedef {ClaimDate & { claimed: boolean, ready: boolean }} WithdrawalClaim
+ * @typedef {ClaimDate & { claimed: boolean, ready: boolean, reprove: boolean }} WithdrawalClaim
  *   When a proved withdrawal can be claimed, as the chain says, and whether
- *   it's claimed already or can be claimed now.
+ *   it's claimed already or can be claimed now. `reprove` when its proof
+ *   must be made again, as its game was blacklisted or the challenger won:
+ *   it has no date then.
  */
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const ZERO_HASH = /** @type {`0x${string}`} */ (
@@ -63,6 +66,19 @@ const VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID = import.meta.env
   .VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID;
 const VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL = import.meta.env
   .VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL;
+/**
+ * The anchor state registry the Portal asks whether a dispute game is
+ * proper and respected: with it, a proof goes against a game that has
+ * already resolved, so its claim date is exact. `none` leaves it out.
+ */
+const VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID = import.meta.env
+  .VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID;
+
+/** DuskEVM testnet, and its anchor state registry (its address book, testnet/l1-addresses.json). */
+const DUSKEVM_TESTNET_CHAIN_ID = 745;
+const TESTNET_ANCHOR_STATE_REGISTRY_CONTRACT_ID =
+  "1735498c11978854e390894502850916f4ba619e3f4b88c10ef758c5026619cc";
+
 const VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH = parseGameSearchDepth(
   import.meta.env.VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH
 );
@@ -76,6 +92,9 @@ const OUTPUT_SAMPLE = 6n;
 /** Games searched for one already resolved, a page at a time, at most three pages. */
 const RESOLVED_PAGE = 32n;
 const RESOLVED_PAGES = 3;
+
+/** Three reads a game: as many games as one Multicall for Dusk query holds. */
+const CHECKED_PER_QUERY = Math.floor(MAX_BATCH / 3);
 
 /** How far past a game's earliest resolution its resolver is usually done: 205 blocks at p90. */
 const RESOLVER_LAG_SECONDS = 3_600n;
@@ -146,6 +165,26 @@ export function isWithdrawalTxHash(value) {
   return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
 }
 
+/**
+ * The anchor state registry's contract ID: the one set, testnet's by default
+ * on DuskEVM testnet, or "" with `none`, or where it isn't known.
+ */
+function anchorStateRegistryContractId() {
+  const set = String(VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID ?? "").trim();
+
+  if (set.toLowerCase() === "none") {
+    return "";
+  }
+
+  if (isContractId(set)) {
+    return normalizeContractId(set);
+  }
+
+  return duskEvm.id === DUSKEVM_TESTNET_CHAIN_ID
+    ? TESTNET_ANCHOR_STATE_REGISTRY_CONTRACT_ID
+    : "";
+}
+
 export function getWithdrawalFinalizationConfig() {
   const missing = [];
   const optimismPortalDataDriverUrl = dataDriverUrl(
@@ -174,6 +213,7 @@ export function getWithdrawalFinalizationConfig() {
   }
 
   return Object.freeze({
+    anchorStateRegistryContractId: anchorStateRegistryContractId(),
     configured: missing.length === 0,
     disputeGameFactoryContractId: isContractId(
       VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID
@@ -216,6 +256,7 @@ function requireWithdrawalFinalizationConfig() {
   }
 
   return Object.freeze({
+    anchorStateRegistryContractId: config.anchorStateRegistryContractId,
     disputeGameFactoryContractId: /** @type {string} */ (
       config.disputeGameFactoryContractId
     ),
@@ -917,38 +958,16 @@ function searchedGame(result) {
 }
 
 /**
- * The first of `games` that covers the withdrawal, has resolved for its
- * proposal and isn't blacklisted, with the withdrawal's proof against it.
- * Their statuses and blacklistings go in one query. `stop` when DuskEVM no
- * longer gives a block's proof: an older game's won't come either.
+ * The withdrawal's proof against the first of `games` it matches: its output
+ * root is the game's root claim. `stop` when DuskEVM no longer gives a
+ * block's proof: an older game's won't come either.
  *
  * @param {ReturnType<typeof searchedGame>[]} games
- * @param {{ hubId: string, reads: BridgeReads, withdrawalBlockNumber: bigint, withdrawalHash: `0x${string}` }} options
+ * @param {`0x${string}`} withdrawalHash
  * @returns {Promise<{ proof?: any, stop?: boolean }>}
  */
-async function resolvedProofIn(
-  games,
-  { hubId, reads, withdrawalBlockNumber, withdrawalHash }
-) {
-  const checks = await Promise.all(
-    games.flatMap((game) => [
-      reads
-        .hub(hubId)
-        .call.statusForGame(hexToArray(game.proxy, 20))
-        .then(Number, () => null),
-      reads.portal.call
-        .disputeGameBlacklist(hexToArray(game.proxy, 20))
-        .then(Boolean, () => null),
-    ])
-  );
-  const usable = games.filter(
-    (game, at) =>
-      checks[2 * at] === GAME_STATUS.DEFENDER_WINS &&
-      checks[2 * at + 1] === false &&
-      game.l2BlockNumber >= withdrawalBlockNumber
-  );
-
-  for (const game of usable) {
+async function proofAgainst(games, withdrawalHash) {
+  for (const game of games) {
     try {
       const proof = await buildWithdrawalOutputProof(
         withdrawalHash,
@@ -967,6 +986,66 @@ async function resolvedProofIn(
       }
     } catch {
       return { stop: true };
+    }
+  }
+
+  return {};
+}
+
+/**
+ * The first of `games` that covers the withdrawal, has resolved for its
+ * proposal, and that the Portal would take a proof against, with the
+ * withdrawal's proof against it. The Portal asks the anchor state registry:
+ * the game must be proper (registered, not blacklisted, not retired) and
+ * respected. Games created at or before the respected game type last
+ * changed are passed over too. Each game's status and the registry's two
+ * answers go to the node a query at a time, newest first, until one passes.
+ *
+ * @param {ReturnType<typeof searchedGame>[]} games
+ * @param {{ hubId: string, reads: BridgeReads, updatedAt: bigint, withdrawalBlockNumber: bigint, withdrawalHash: `0x${string}` }} options
+ * @returns {Promise<{ proof?: any, stop?: boolean }>}
+ */
+async function resolvedProofIn(
+  games,
+  { hubId, reads, updatedAt, withdrawalBlockNumber, withdrawalHash }
+) {
+  const registry =
+    /** @type {import("$lib/bridge/bridgeReads").ContractReads} */ (
+      reads.registry
+    );
+  const candidates = games.filter(
+    (game) =>
+      game.l2BlockNumber >= withdrawalBlockNumber && game.createdAt > updatedAt
+  );
+
+  for (let from = 0; from < candidates.length; from += CHECKED_PER_QUERY) {
+    const batch = candidates.slice(from, from + CHECKED_PER_QUERY);
+    const checks = await Promise.all(
+      batch.flatMap((game) => {
+        const address = hexToArray(game.proxy, 20);
+
+        return [
+          reads
+            .hub(hubId)
+            .call.statusForGame(address)
+            .then(Number, () => null),
+          registry.call.isGameProper(address).then(Boolean, () => null),
+          registry.call.isGameRespected(address).then(Boolean, () => null),
+        ];
+      })
+    );
+    const found = await proofAgainst(
+      batch.filter(
+        (_game, at) =>
+          checks[3 * at] === GAME_STATUS.DEFENDER_WINS &&
+          checks[3 * at + 1] === true &&
+          checks[3 * at + 2] === true
+      ),
+      withdrawalHash
+    );
+
+    if (found.proof || found.stop) {
+      return found;
     }
   }
 
@@ -996,10 +1075,12 @@ function resolvedSearchStart(newest, cutoff) {
 
 /**
  * A game covering the withdrawal that has already resolved for its
- * proposal: a proof against it can be claimed exactly its maturity delay
- * later. Games come at a steady pace, so the search starts about where games
- * are old enough to have resolved, and goes back a few pages. Null when none
- * covers the withdrawal yet, or none of them has resolved.
+ * proposal, and that the Portal would take a proof against: a proof against
+ * it can be claimed exactly its maturity delay later. Games come at a steady
+ * pace, so the search starts about where games are old enough to have
+ * resolved, and goes back a few pages. Null when none covers the withdrawal
+ * yet, none of them has resolved and passes, or the anchor state registry
+ * isn't known.
  *
  * @param {{
  *   gameCount: bigint,
@@ -1018,14 +1099,22 @@ async function findResolvedProof({
   withdrawalBlockNumber,
   withdrawalHash,
 }) {
+  // Without the registry the Portal asks, which games it takes can't be
+  // told: the proof then goes against the newest game covering the
+  // withdrawal.
+  if (!reads.registry) {
+    return null;
+  }
+
   /** @param {bigint} from */
   const page = async (from) =>
     /** @type {any[]} */ (
       await readLatestGames(reads.dgf, gameType, from, RESOLVED_PAGE)
     ).map(searchedGame);
-  const [hubId, newest] = await Promise.all([
+  const [hubId, newest, updatedAt] = await Promise.all([
     hubOfType(reads, gameType),
     page(gameCount - 1n),
+    reads.registry.call.respectedGameTypeUpdatedAt().then(BigInt),
   ]);
 
   if (newest.length < 2) {
@@ -1042,6 +1131,7 @@ async function findResolvedProof({
     cutoff,
     hubId,
     reads,
+    updatedAt,
     withdrawalBlockNumber,
     withdrawalHash,
   });
@@ -1053,7 +1143,7 @@ async function findResolvedProof({
  *
  * @param {(from: bigint) => Promise<ReturnType<typeof searchedGame>[]>} page
  * @param {bigint} from
- * @param {{ cutoff: bigint, hubId: string, reads: BridgeReads, withdrawalBlockNumber: bigint, withdrawalHash: `0x${string}` }} options
+ * @param {{ cutoff: bigint, hubId: string, reads: BridgeReads, updatedAt: bigint, withdrawalBlockNumber: bigint, withdrawalHash: `0x${string}` }} options
  */
 async function searchResolvedPages(page, from, { cutoff, ...options }) {
   let start = from;
@@ -1579,8 +1669,9 @@ const readClaimRecord = (reads, hash, account) => {
 };
 
 /**
- * The games of the proofs still waiting, each on its hub, in one query; the
- * hubs are read once a session. A game that can't be read is null.
+ * The games of the proofs still waiting, each on its hub, with whether the
+ * Portal blacklisted it, in one query; the hubs are read once a session. A
+ * game that can't be read is null.
  *
  * @param {BridgeReads} reads
  * @param {Awaited<ReturnType<typeof readClaimRecord>>[]} records
@@ -1605,7 +1696,16 @@ async function readProofGames(reads, records) {
     proxies.map((proxy, at) => {
       const hubId = hubs[at];
 
-      return hubId ? readGame(reads, hubId, proxy).catch(() => null) : null;
+      return hubId
+        ? Promise.all([
+            readGame(reads, hubId, proxy),
+            reads.portal.call
+              .disputeGameBlacklist(hexToArray(proxy, 20))
+              .then(Boolean),
+          ])
+            .then(([game, blacklisted]) => ({ ...game, blacklisted }))
+            .catch(() => null)
+        : null;
     })
   );
 
@@ -1617,7 +1717,8 @@ async function readProofGames(reads, records) {
  * as the chain says: each one's record on the Portal and the Portal's check
  * of a claim now in one query, the proofs' games in the next. A withdrawal
  * claimed already says so; one the account has no proof of, or whose game
- * can't be read, has no date.
+ * can't be read, has no date, and one whose proof must be made again says
+ * that instead.
  *
  * @param {`0x${string}`[]} hashes
  * @param {{ reads?: BridgeReads, submitter: `0x${string}` }} options
@@ -1645,8 +1746,14 @@ export async function readWithdrawalClaims(
     hashes.map((hash, at) => {
       const record = records[at];
       const game = record.claimed ? null : (games.get(record.proxy) ?? null);
+      // The Portal takes no claim of a proof whose game was blacklisted, or
+      // that the challenger won: it must be made again.
+      const reprove = Boolean(
+        game &&
+        (game.blacklisted || game.status === GAME_STATUS.CHALLENGER_WINS)
+      );
       const claim =
-        game && latest
+        game && latest && !reprove
           ? claimFrom({
               game,
               network: { clock: contractClock(record.provenAt, latest) },
@@ -1661,7 +1768,8 @@ export async function readWithdrawalClaims(
         {
           ...claim,
           claimed: record.claimed,
-          ready: !record.claimed && record.ready,
+          ready: !record.claimed && !reprove && record.ready,
+          reprove,
         },
       ];
     })
@@ -1716,6 +1824,8 @@ export function withdrawalGas(withdrawalGasLimit = 0n) {
     price: get(settingsStore).customGasPrice ?? get(gasPriceStore),
   });
 }
+
+export { PREPARED_PROOF_MS };
 
 /**
  * Proofs whose claim date was shown, by withdrawal transaction, for a short

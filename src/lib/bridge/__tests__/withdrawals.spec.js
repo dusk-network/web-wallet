@@ -169,6 +169,28 @@ describe("DuskEVM withdrawal helpers", () => {
     expect(config.missing).toEqual([]);
   });
 
+  it.each([
+    ["DuskEVM testnet's own by default", "745", "", "1735498c"],
+    ["the one set", "745", `0x${"ab".repeat(32)}`, "abababab"],
+    ["none with `none`", "745", "none", ""],
+    ["none elsewhere unless set", "744", "", ""],
+  ])(
+    "knows the anchor state registry the Portal asks: %s",
+    async (_what, chainId, set, starts) => {
+      vi.resetModules();
+      vi.stubEnv("VITE_EVM_CHAIN_ID", chainId);
+      vi.stubEnv("VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID", set);
+
+      const { getWithdrawalFinalizationConfig } =
+        await import("$lib/bridge/withdrawals");
+      const id =
+        getWithdrawalFinalizationConfig().anchorStateRegistryContractId;
+
+      expect(id.slice(0, 8)).toBe(starts);
+      expect(id).toMatch(starts ? /^[0-9a-f]{64}$/u : /^$/u);
+    }
+  );
+
   it("loads a submitted Dusk transaction execution from Rusk", async () => {
     vi.resetModules();
     const query = vi.fn().mockResolvedValue({
@@ -797,6 +819,7 @@ describe("DuskEVM withdrawal helpers", () => {
       exact: false,
       overdue: false,
       ready: false,
+      reprove: false,
     });
     expect(claims.get(hash(0xd))).toMatchObject({ at: null, ready: false });
     // The account's own proofs: its submitter's.
@@ -804,6 +827,57 @@ describe("DuskEVM withdrawal helpers", () => {
       expect.any(Array),
       Array(20).fill(0x2c),
     ]);
+  });
+
+  it("gives no claim date for a proof whose game was blacklisted, or that the challenger won, but that it must be made again", async () => {
+    const { hub, portal } = mockWithdrawalReads({ maturity: 604_800 });
+    const hash = (/** @type {number} */ byte) =>
+      /** @type {`0x${string}`} */ (`0x${byte.toString(16).repeat(64)}`);
+    // Each proof's game: 0x1e… blacklisted, 0x2f… the challenger won, 0x3a… waiting.
+    const games = {
+      [hash(0xa)]: Array(20).fill(0x1e),
+      [hash(0xb)]: Array(20).fill(0x2f),
+      [hash(0xc)]: Array(20).fill(0x3a),
+    };
+
+    portal.call.provenWithdrawals.mockImplementation(
+      async (/** @type {any[]} */ [id]) => [
+        games[
+          `0x${Array.from(id, (b) => b.toString(16).padStart(2, "0")).join("")}`
+        ],
+        100,
+      ]
+    );
+    portal.call.checkWithdrawal.mockRejectedValue(
+      new Error("OptimismPortal: invalid dispute game")
+    );
+    portal.call.disputeGameBlacklist.mockImplementation(
+      async (/** @type {number[]} */ address) => address[0] === 0x1e
+    );
+    hub.statusForGame.mockImplementation(async (/** @type {number[]} */ a) =>
+      a[0] === 0x2f ? 1 : 0
+    );
+
+    const { readWithdrawalClaims } = await import("$lib/bridge/withdrawals");
+    const claims = await readWithdrawalClaims(
+      [hash(0xa), hash(0xb), hash(0xc)],
+      { submitter: `0x${"2c".repeat(20)}` }
+    );
+    const again = {
+      at: null,
+      claimed: false,
+      exact: false,
+      overdue: false,
+      ready: false,
+      reprove: true,
+    };
+
+    expect(claims.get(hash(0xa))).toStrictEqual(again);
+    expect(claims.get(hash(0xb))).toStrictEqual(again);
+    expect(claims.get(hash(0xc))).toMatchObject({
+      at: 604_901_000,
+      reprove: false,
+    });
   });
 
   describe("reads through Multicall for Dusk", () => {
@@ -899,14 +973,17 @@ describe("DuskEVM withdrawal helpers", () => {
       });
     }
 
-    it("check a waiting withdrawal in one query once its game's hub is known", async () => {
+    /**
+     * The bridge's reads through Multicall for Dusk, from a node that
+     * answers each read as `answer` does, and each query's reads.
+     */
+    async function batchedReads() {
       mockWithdrawalReads({ tip: TESTNET_TIP });
       vi.doUnmock("$lib/bridge/bridgeReads");
 
       const { MULTICALL_CONTRACT_ID, createMulticallFetch } =
         await import("$lib/activity/multicallFetch");
       const { bridgeReads } = await import("$lib/bridge/bridgeReads");
-      const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
       const AGGREGATE = `${NODE}/on/contracts:${MULTICALL_CONTRACT_ID}/aggregate`;
       /** @type {string[][]} */
       const queries = [];
@@ -944,6 +1021,19 @@ describe("DuskEVM withdrawal helpers", () => {
         nodeUrl: NODE,
       });
 
+      return {
+        queries,
+        reads,
+        withdrawals: await import("$lib/bridge/withdrawals"),
+      };
+    }
+
+    it("check a waiting withdrawal in one query once its game's hub is known", async () => {
+      const {
+        queries,
+        reads,
+        withdrawals: { loadWithdrawalStatus },
+      } = await batchedReads();
       const first = await loadWithdrawalStatus(withdrawalTxHash, { reads });
 
       expect(first).toMatchObject({
@@ -994,6 +1084,44 @@ describe("DuskEVM withdrawal helpers", () => {
         ],
       ]);
     });
+
+    it("read the history's claim dates with each proof's game and whether it was blacklisted, in one query", async () => {
+      const {
+        queries,
+        reads,
+        withdrawals: { readWithdrawalClaims },
+      } = await batchedReads();
+      const hash = /** @type {`0x${string}`} */ (`0x${"ec".repeat(32)}`);
+
+      const claims = await readWithdrawalClaims([hash], {
+        reads,
+        submitter: `0x${"2c".repeat(20)}`,
+      });
+
+      expect(claims.get(hash)).toMatchObject({
+        at: Date.UTC(2026, 10, 2, 3, 20, 39),
+        reprove: false,
+      });
+      // The Portal's record, then the game's hub, then the game with its
+      // blacklisting.
+      expect(queries).toStrictEqual([
+        [
+          "proofMaturityDelaySeconds",
+          "disputeGameFinalityDelaySeconds",
+          "finalizedWithdrawals",
+          "provenWithdrawals",
+          "checkWithdrawal",
+        ],
+        ["gameContractId"],
+        [
+          "createdAtForGame",
+          "resolvedAtForGame",
+          "statusForGame",
+          "maxClockDuration",
+          "disputeGameBlacklist",
+        ],
+      ]);
+    });
   });
 
   describe("proving", () => {
@@ -1024,14 +1152,29 @@ describe("DuskEVM withdrawal helpers", () => {
     };
     const STORAGE_HASH = `0x${"b3".repeat(32)}`;
 
+    /** Games old enough have resolved: their clock ran out, and their resolver's lag passed. */
+    const OLD = (/** @type {number} */ index) =>
+      created(index) <= 2_000_000 - 302_400 - 3_600;
+
     /**
-     * @param {{ resolved: (index: number) => boolean }} options
+     * @param {{
+     *   proper?: (index: number) => boolean,
+     *   resolved: (index: number) => boolean,
+     *   respected?: (index: number) => boolean,
+     *   updatedAt?: number,
+     * }} options What the games' hub and the anchor state registry say
      */
-    async function proving({ resolved }) {
-      const { dgf, hub, portal, walletStore } = mockWithdrawalReads({
-        maturity: 604_800,
-        tip: TIP,
-      });
+    async function proving({
+      proper = () => true,
+      resolved,
+      respected = () => true,
+      updatedAt = 0,
+    }) {
+      const { dgf, hub, portal, reads, registry, walletStore } =
+        mockWithdrawalReads({
+          maturity: 604_800,
+          tip: TIP,
+        });
       const { hashOutputRootProof } = await import("$lib/bridge/withdrawals");
       const rootClaim = hexToBytes(
         hashOutputRootProof({
@@ -1102,15 +1245,29 @@ describe("DuskEVM withdrawal helpers", () => {
         async (/** @type {number[]} */ a) =>
           resolved(byProxy(a)) ? BigInt(created(byProxy(a)) + 303_000) : 0n
       );
+      registry.call.isGameProper.mockImplementation(
+        async (/** @type {number[]} */ a) => proper(byProxy(a))
+      );
+      registry.call.isGameRespected.mockImplementation(
+        async (/** @type {number[]} */ a) => respected(byProxy(a))
+      );
+      registry.call.respectedGameTypeUpdatedAt.mockResolvedValue(
+        BigInt(updatedAt)
+      );
       stubL2Proofs();
 
-      return { walletStore, ...(await import("$lib/bridge/withdrawals")) };
+      return {
+        reads,
+        registry,
+        walletStore,
+        ...(await import("$lib/bridge/withdrawals")),
+      };
     }
 
     it("proves against a covering game that has already resolved, so the claim date is exact", async () => {
       // Games old enough have resolved.
       const { prepareProof, proveWithdrawal, walletStore } = await proving({
-        resolved: (index) => created(index) <= 2_000_000 - 302_400 - 3_600,
+        resolved: OLD,
       });
 
       const prepared = await prepareProof(withdrawalTxHash);
@@ -1140,6 +1297,75 @@ describe("DuskEVM withdrawal helpers", () => {
       expect(prepared.proof).toMatchObject({ disputeGameIndex: 399n });
       expect(prepared.claim).toMatchObject({ exact: false });
     });
+
+    it("passes over resolved games the Portal wouldn't take: improper or unrespected, as the registry it asks says", async () => {
+      const { prepareProof, registry } = await proving({
+        // Blacklisted or retired.
+        proper: (index) => index !== 229,
+        resolved: OLD,
+        // Of a game type no longer respected.
+        respected: (index) => index !== 228,
+      });
+
+      const prepared = await prepareProof(withdrawalTxHash);
+
+      expect(prepared.proof).toMatchObject({ disputeGameIndex: 227n });
+      expect(prepared.claim).toMatchObject({ exact: true });
+      // Asked of each game by its address.
+      expect(registry.call.isGameProper).toHaveBeenCalledWith(proxyOf(229));
+      expect(registry.call.isGameRespected).toHaveBeenCalledWith(proxyOf(228));
+    });
+
+    it("passes over games made at or before the respected game type last changed", async () => {
+      const after = await proving({
+        resolved: OLD,
+        updatedAt: created(229) - 1,
+      });
+
+      expect((await after.prepareProof(withdrawalTxHash)).proof).toMatchObject({
+        disputeGameIndex: 229n,
+      });
+
+      // Made when it changed, or before: none old enough is left.
+      const at = await proving({ resolved: OLD, updatedAt: created(229) });
+
+      expect((await at.prepareProof(withdrawalTxHash)).proof).toMatchObject({
+        disputeGameIndex: 399n,
+      });
+    });
+
+    it("asks the registry about ten games a query, newest first, until one passes", async () => {
+      const { prepareProof, registry } = await proving({
+        proper: (index) => index < 220,
+        resolved: OLD,
+      });
+
+      const prepared = await prepareProof(withdrawalTxHash);
+
+      expect(prepared.proof).toMatchObject({ disputeGameIndex: 219n });
+      // 229 to 220, then 219 to 210: no more.
+      expect(registry.call.isGameProper).toHaveBeenCalledTimes(20);
+      expect(registry.call.respectedGameTypeUpdatedAt).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+      ["no resolved game passes", { proper: () => false, resolved: OLD }],
+      ["the anchor state registry isn't known", { resolved: OLD }],
+    ])(
+      "proves against the newest covering game when %s, its date the earliest",
+      async (_when, options) => {
+        const { prepareProof, reads } = await proving(options);
+
+        if (!("proper" in options)) {
+          reads.registry = null;
+        }
+
+        const prepared = await prepareProof(withdrawalTxHash);
+
+        expect(prepared.proof).toMatchObject({ disputeGameIndex: 399n });
+        expect(prepared.claim).toMatchObject({ exact: false });
+      }
+    );
   });
 });
 
@@ -1241,6 +1467,16 @@ function mockWithdrawalReads({
   };
   /** @type {string[]} */
   const hubs = [];
+  // The anchor state registry: every game proper and respected, the
+  // respected game type set before any of them.
+  const registry = {
+    call: {
+      isGameProper: vi.fn().mockResolvedValue(true),
+      isGameRespected: vi.fn().mockResolvedValue(true),
+      respectedGameTypeUpdatedAt: vi.fn().mockResolvedValue(0n),
+    },
+  };
+  /** @type {any} */
   const reads = {
     dgf,
     hub: (/** @type {string} */ id) => {
@@ -1250,6 +1486,7 @@ function mockWithdrawalReads({
     },
     nodeUrl: "https://node.example.test",
     portal,
+    registry,
   };
   const walletStore = {
     finalizeDuskEvmWithdrawal: vi
@@ -1303,7 +1540,16 @@ function mockWithdrawalReads({
     }))
   );
 
-  return { dgf, hub, hubs, networkStore, portal, reads, walletStore };
+  return {
+    dgf,
+    hub,
+    hubs,
+    networkStore,
+    portal,
+    reads,
+    registry,
+    walletStore,
+  };
 }
 
 /**

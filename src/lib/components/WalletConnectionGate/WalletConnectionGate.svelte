@@ -1,6 +1,7 @@
 <script>
   import { Button } from "$lib/dusk/components";
   import {
+    connectionBlocked,
     connectionFailed,
     startWalletConnection,
     wasConnectedBefore,
@@ -30,7 +31,20 @@
   }
 </script>
 
-{#if $connectionFailed}
+{#if $connectionBlocked}
+  <div class="wallet-connection-gate" role="alert">
+    <p>
+      Reset is still clearing the last EVM wallet connection. Reload the page to
+      connect a wallet again.
+    </p>
+    <Button
+      on:click={() => window.location.reload()}
+      size="small"
+      text="Reload page"
+      variant="secondary"
+    />
+  </div>
+{:else if $connectionFailed}
   <div class="wallet-connection-gate" role="alert">
     <p>Couldn't load the EVM wallet connection. Check your connection.</p>
     <Button

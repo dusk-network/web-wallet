@@ -114,9 +114,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep contacts encrypted, for the wallet that saved them only, and delete them on Reset
 - Say plainly that a node for native staking needs keys made from this wallet's recovery phrase
 - Give a withdrawal's claim date a line of its own in the activity, and in the history on phones
-- Date a withdrawal's claim from its proof and its dispute game, in History, its details and Bridge › Activity, exact once the game has resolved, and say when the game is late
+- Date a withdrawal's claim from its proof and its dispute game, in History, its details and Bridge › Activity, exact once the game has resolved, and say when the game is late or the proof must be made again
 - Say before a proof how long after it a withdrawal can be claimed, and on one ready to prove from when it could be claimed if proved now
-- Prove a withdrawal against a dispute game that has already resolved, where one covers it, so its claim date is exact
+- Prove a withdrawal against a dispute game that has already resolved and that the Portal takes, where one covers it, so its claim date is exact
 - Say that unstaking from Sozu pays the DUSK back in the same transaction, with no fee and no waiting
 - Show what a stake with Sozu is worth now, once its deposit fee is off
 - Give a stake with Sozu a gas limit of 5,000,000 and an unstake 10,000,000, and say that a failed call is charged its whole limit

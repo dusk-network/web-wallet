@@ -15,7 +15,7 @@ import {
   reconnect,
   watchAccount,
 } from "@wagmi/core";
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 import { duskEvm } from "./duskEvm";
 
@@ -60,6 +60,15 @@ const failure = writable(false);
 /** Whether the connection failed to load, the last time it was asked for. */
 export const connectionFailed = { subscribe: failure.subscribe };
 
+const blocked = writable(false);
+
+/**
+ * Whether connecting a wallet was refused as Reset's delete of the last
+ * connection's database waits: on this page's own handle on it, which only
+ * a reload closes. A session written meanwhile would go with the delete.
+ */
+export const connectionBlocked = { subscribe: blocked.subscribe };
+
 /**
  * The EVM wallets' dialog. Opening it starts the connection first, if it
  * isn't yet: a failure to load shows as `connectionFailed`.
@@ -67,6 +76,7 @@ export const connectionFailed = { subscribe: failure.subscribe };
 export const modal = {
   async open() {
     try {
+      await afterCleanup();
       await startWalletConnection();
     } catch {
       return;
@@ -134,10 +144,14 @@ export function startWalletConnection() {
 
   if (!starting) {
     failure.set(false);
-    starting = start();
+    starting = afterCleanup().then(start);
     starting.catch(() => {
       starting = null;
-      failure.set(true);
+
+      // Refused while Reset's delete waits, which `connectionBlocked` says.
+      if (!get(blocked)) {
+        failure.set(true);
+      }
     });
   }
 
@@ -241,22 +255,26 @@ const CONNECTION_DATABASES = Object.freeze(["WALLET_CONNECT_V2_INDEXED_DB"]);
 const FORGET_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-evm-wallets-forgotten`;
 
 /**
- * Deletes a database: true once it's gone, false while a connection holds
- * it open, when the request ends with the page.
+ * Deletes a database: true once it's gone, false when that failed. A delete
+ * that a connection holds up isn't over: it goes through once the handles
+ * on the database close, as they do with the page, and `onBlocked` says it
+ * waits meanwhile.
  *
  * @param {string} name
+ * @param {() => void} onBlocked
  * @returns {Promise<boolean>}
  */
-const deleteDatabase = (name) =>
+const deleteDatabase = (name, onBlocked) =>
   new Promise((resolve) => {
     try {
       const request = indexedDB.deleteDatabase(name);
 
       request.onsuccess = () => resolve(true);
       request.onerror = () => resolve(false);
-      request.onblocked = () => resolve(false);
+      request.onblocked = onBlocked;
     } catch {
-      resolve(false);
+      // No databases kept here.
+      resolve(true);
     }
   });
 
@@ -300,33 +318,98 @@ const emptyDatabase = (name) =>
     }
   });
 
+/** The longest a wallet's connecting waits for Reset's delete to be done. */
+const CLEANUP_WAIT_MS = 3_000;
+
+/**
+ * Reset's delete of the connection's databases while it runs: when it's
+ * done, and whether it waits on a handle on them this page keeps.
+ *
+ * @type {{ done: Promise<void>, isWaiting: boolean, waiting: Promise<void> } | null}
+ */
+let cleanup = null;
+
 /**
  * Deletes the connection's databases, each emptied first, as can be done
  * while a connection holds it open. One held open goes as the page closes,
  * and until then it can't be opened again, so nothing should wait on this.
- *
- * @returns {Promise<void>}
+ * No wallet connects meanwhile (afterCleanup).
  */
-async function deleteConnectionDatabases() {
+function deleteConnectionDatabases() {
   localStorage.setItem(FORGET_KEY, "1");
 
-  const deleted = await Promise.all(
+  const previous = cleanup;
+  /** @type {() => void} */
+  let markWaiting = () => {};
+  const entry = {
+    done: Promise.resolve(),
+    isWaiting: false,
+    waiting: new Promise((resolve) => {
+      markWaiting = () => resolve(undefined);
+    }),
+  };
+  const onBlocked = () => {
+    entry.isWaiting = true;
+    markWaiting();
+  };
+
+  // One that waits holds up this one too: it can't start before it's done.
+  void previous?.waiting.then(onBlocked);
+
+  entry.done = Promise.all(
     CONNECTION_DATABASES.map(async (name) => {
       await emptyDatabase(name);
 
-      return deleteDatabase(name);
+      return deleteDatabase(name, onBlocked);
     })
-  );
+  )
+    .then((deleted) => {
+      if (deleted.every(Boolean)) {
+        localStorage.removeItem(FORGET_KEY);
+      }
+    })
+    .finally(() => {
+      if (cleanup === entry) {
+        cleanup = null;
+        blocked.set(false);
+      }
+    });
+  cleanup = entry;
+}
 
-  if (deleted.every(Boolean)) {
-    localStorage.removeItem(FORGET_KEY);
+/**
+ * Waits for Reset's delete of the last connection's database before a
+ * wallet connects: a session written before it's done would go with it.
+ * Refused, as `connectionBlocked` says, while the delete waits on this
+ * page's own handle, which only a reload closes.
+ *
+ * @returns {Promise<void>}
+ */
+async function afterCleanup() {
+  const entry = cleanup;
+
+  if (!entry) {
+    return;
+  }
+
+  const waits = await Promise.race([
+    entry.done.then(() => false),
+    entry.waiting.then(() => true),
+    // Neither, as when another tab holds the database: it waits too.
+    new Promise((resolve) => setTimeout(() => resolve(true), CLEANUP_WAIT_MS)),
+  ]);
+
+  if (waits) {
+    blocked.set(true);
+
+    throw new Error("Reload the page to connect a wallet again.");
   }
 }
 
 // What Reset forgot in a page that held the connection's database open goes
 // now, before any wallet connects.
 if (typeof localStorage !== "undefined" && localStorage.getItem(FORGET_KEY)) {
-  void deleteConnectionDatabases();
+  deleteConnectionDatabases();
 }
 
 /**
@@ -349,7 +432,7 @@ export async function forgetEvmWallets() {
     }
   }
 
-  void deleteConnectionDatabases();
+  deleteConnectionDatabases();
 }
 
 export async function walletDisconnect() {

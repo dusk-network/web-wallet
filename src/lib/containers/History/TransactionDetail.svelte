@@ -127,8 +127,8 @@
 
   /**
    * What a proved withdrawal waits for, as a sentence: nothing once it's
-   * claimed; otherwise that it can be claimed now, or from when, as the
-   * chain says.
+   * claimed; otherwise that it can be claimed now, that its proof must be
+   * made again, or from when it can be claimed, as the chain says.
    *
    * @param {import("$lib/activity/present").WithdrawalStep | null} withdrawal
    * @param {string} lang
@@ -140,6 +140,10 @@
 
     if (withdrawal.ready) {
       return "Ready to claim on Dusk.";
+    }
+
+    if (withdrawal.reprove) {
+      return "Its proof was rejected, so it can't be claimed. Prove it again on Dusk.";
     }
 
     const text = claimText(withdrawal.claim, (ms) => fullDateTime(ms, lang));
@@ -174,7 +178,12 @@
               ? { icon: mdiCheck, text: "Proved · claimed" }
               : p.withdrawal.ready
                 ? { icon: mdiCheck, text: "Proved · ready to claim" }
-                : { icon: mdiTimerSand, text: "Proved · not claimed yet" }
+                : p.withdrawal.reprove
+                  ? {
+                      icon: mdiAlertCircleOutline,
+                      text: "Proof rejected · prove it again",
+                    }
+                  : { icon: mdiTimerSand, text: "Proved · not claimed yet" }
             : row.success === true || row.status === "executed"
               ? { icon: mdiCheck, text: "Completed" }
               : { icon: mdiTimerSand, text: "Checking the outcome…" };

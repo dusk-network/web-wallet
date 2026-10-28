@@ -1,11 +1,14 @@
 <script>
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import { mdiContain } from "@mdi/js";
 
   import bridgeTimes from "$lib/bridge/bridgeTimes";
   import { WITHDRAWAL, routeTime } from "$lib/bridge/routeTimes";
   import { withdrawalExplorerUrl } from "$lib/bridge/withdrawalActivity";
-  import { loadProveNowClaim } from "$lib/bridge/withdrawals";
+  import {
+    PREPARED_PROOF_MS,
+    loadProveNowClaim,
+  } from "$lib/bridge/withdrawals";
   import {
     WITHDRAWAL_TIMELINE_STEPS,
     withdrawalActionFailure,
@@ -51,27 +54,87 @@
   /** The withdrawal `proveNow` is for, or is being read for. */
   let proveNowOf = "";
 
-  /**
-   * Reads when the withdrawal can be claimed if it's proved now, once each
-   * time it's shown ready to prove: the proof "Prove on Dusk" sends is the
-   * one this date is for.
-   *
-   * @param {any} withdrawal
-   */
-  async function readProveNow(withdrawal) {
-    const hash = withdrawal?.transactionHash ?? "";
+  /** When the date shown was read: its proof is the one sent until it expires. */
+  let proveNowAt = 0;
 
-    if (withdrawal?.stage !== "ready_to_prove" || hash === proveNowOf) {
+  /** The reads that failed in a row. */
+  let proveNowFailures = 0;
+
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let proveNowTimer;
+
+  /** The date is read again a while before the proof it's for expires. */
+  const PROVE_NOW_REFRESH_MS = PREPARED_PROOF_MS - 20_000;
+
+  /** A failed read is tried again in 5 s, then twice as long each time, up to a minute. */
+  const RETRY_FIRST_MS = 5_000;
+  const RETRY_MOST_MS = 60_000;
+
+  /**
+   * Follows when the withdrawal shown ready to prove can be claimed if it's
+   * proved now: the proof "Prove on Dusk" sends is the one this date is for.
+   *
+   * @param {string} hash Its transaction while it's ready to prove, or ""
+   */
+  function followProveNow(hash) {
+    if (hash === proveNowOf) {
       return;
     }
 
+    clearTimeout(proveNowTimer);
     proveNowOf = hash;
     proveNow = null;
+    proveNowAt = 0;
+    proveNowFailures = 0;
 
-    const claim = await loadProveNow(hash).catch(() => null);
+    if (hash) {
+      void readProveNow(hash);
+    }
+  }
 
-    if (proveNowOf === hash) {
+  /**
+   * Reads the date: again before the proof it's for expires, as a proof is
+   * kept two minutes and a new one can be against another game; after a
+   * failure, again each time after longer, and a date whose proof has
+   * expired isn't shown meanwhile.
+   *
+   * @param {string} hash
+   */
+  async function readProveNow(hash) {
+    const claim = await loadProveNow(/** @type {`0x${string}`} */ (hash)).catch(
+      () => null
+    );
+
+    if (proveNowOf !== hash) {
+      return;
+    }
+
+    if (claim) {
       proveNow = claim;
+      proveNowAt = Date.now();
+      proveNowFailures = 0;
+      proveNowTimer = setTimeout(
+        () => readProveNow(hash),
+        PROVE_NOW_REFRESH_MS
+      );
+
+      return;
+    }
+
+    proveNowFailures += 1;
+    forgetExpiredProveNow();
+    proveNowTimer = setTimeout(
+      () => {
+        forgetExpiredProveNow();
+        void readProveNow(hash);
+      },
+      Math.min(RETRY_FIRST_MS * 2 ** (proveNowFailures - 1), RETRY_MOST_MS)
+    );
+  }
+
+  function forgetExpiredProveNow() {
+    if (Date.now() - proveNowAt >= PREPARED_PROOF_MS) {
+      proveNow = null;
     }
   }
 
@@ -79,11 +142,20 @@
     void bridgeTimes.load();
   });
 
+  onDestroy(() => {
+    clearTimeout(proveNowTimer);
+    proveNowOf = "";
+  });
+
   $: selectedStage = selectedWithdrawal?.stage ?? "submitted";
   $: selectedExplorerUrl = selectedWithdrawal
     ? withdrawalExplorerUrl(selectedWithdrawal.transactionHash)
     : null;
-  $: void readProveNow(selectedWithdrawal);
+  $: followProveNow(
+    selectedWithdrawal?.stage === "ready_to_prove"
+      ? (selectedWithdrawal.transactionHash ?? "")
+      : ""
+  );
   $: selectedStageMessage = stageMessage(selectedWithdrawal, {
     proveNow:
       proveNowOf === selectedWithdrawal?.transactionHash ? proveNow : null,

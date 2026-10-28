@@ -1,7 +1,8 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { onMount, tick } from "svelte";
+  import { onDestroy, onMount, tick } from "svelte";
+  import { get } from "svelte/store";
   import {
     mdiAlertCircleOutline,
     mdiContentCopy,
@@ -27,7 +28,7 @@
     sozuFee,
     sozuStake,
   } from "$lib/sozu/amounts";
-  import { settingsStore } from "$lib/stores";
+  import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
@@ -99,6 +100,13 @@
   /** They couldn't be read again: nothing was sent. */
   let termsError = "";
   let isChecking = false;
+
+  /**
+   * Counts what the summary showed being left or changed: a stake whose
+   * terms are read meanwhile isn't sent.
+   */
+  let draftEpoch = 0;
+  let isGone = false;
 
   /** @param {"stake" | "unstake"} next */
   async function pick(next) {
@@ -188,12 +196,38 @@
     return changed ? "changed" : now;
   }
 
+  /** The network and the profile a stake goes from. */
+  const whereFrom = () => ({
+    network: String(get(networkStore).networkName ?? ""),
+    profile: String(get(walletStore).currentProfile?.account ?? ""),
+  });
+
+  /**
+   * Whether the stake about to be sent is still the one the summary shows:
+   * the page still open, its amount, action and gas as they were, and the
+   * same network and profile.
+   *
+   * @param {{ action: "stake" | "unstake", epoch: number, lux: bigint, network: string, profile: string }} order
+   */
+  function isStillShown(order) {
+    const from = whereFrom();
+
+    return (
+      !isGone &&
+      draftEpoch === order.epoch &&
+      amount === order.lux &&
+      action === order.action &&
+      from.network === order.network &&
+      from.profile === order.profile
+    );
+  }
+
   /**
    * Reads Sozu's terms again for the stake about to be sent: the pool to
    * send it to, or null when nothing goes, as the terms changed, couldn't be
-   * read, or the amount or the action changed meanwhile.
+   * read, or what the summary showed was left or changed meanwhile.
    *
-   * @param {{ action: "stake" | "unstake", lux: bigint }} order
+   * @param {{ action: "stake" | "unstake", epoch: number, lux: bigint, network: string, profile: string }} order
    * @param {SozuStatus} shown The status the summary showed
    * @returns {Promise<string | null>}
    */
@@ -205,7 +239,7 @@
 
     isChecking = false;
 
-    if (amount !== order.lux || action !== order.action) {
+    if (!isStillShown(order)) {
       return null;
     }
 
@@ -223,10 +257,12 @@
 
     const order = {
       action,
+      epoch: draftEpoch,
       gasLimit,
       gasPrice,
       lux: amount,
       maxFee: maxGasFee,
+      ...whereFrom(),
     };
     // A stake goes ahead on Sozu's terms as they are when it's sent: read
     // them again first, and if anything the summary shows changed, show the
@@ -254,14 +290,22 @@
     }
   }
 
-  /** What the summary shows follows the amount and the action again. */
+  /**
+   * What the summary shows follows the amount, the action and the gas
+   * again: a stake whose terms are being read isn't sent.
+   */
   function forgetTerms() {
     termsChanged = false;
     termsError = "";
+    draftEpoch += 1;
   }
 
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
+  });
+
+  onDestroy(() => {
+    isGone = true;
   });
 
   // Each action's own gas: a tab's, or the node's price once it's read,
@@ -351,6 +395,7 @@
     {isReviewing}
     on:back={() => {
       isReviewing = false;
+      forgetTerms();
     }}
     on:review={() => {
       isReviewing = true;
@@ -618,6 +663,13 @@
         limitLower={gasLimits.gasLimitLower}
         limitUpper={gasLimits.gasLimitUpper}
         on:gasSettings={(event) => {
+          if (
+            event.detail.limit !== gasLimit ||
+            event.detail.price !== gasPrice
+          ) {
+            forgetTerms();
+          }
+
           isGasValid = areValidGasSettings(
             event.detail.price,
             event.detail.limit,

@@ -56,6 +56,7 @@ VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID=""
 VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL="/drivers/optimism_portal_dd_opt.wasm"
 VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID=""
 VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL="/drivers/dispute_game_factory_dd_opt.wasm"
+VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID=""
 VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH=64
 VITE_FEATURE_ALLOCATE=true
 VITE_FEATURE_BRIDGE=true
@@ -113,7 +114,12 @@ Reown/Wagmi is only used for the DuskEVM/L2 side. The wallet uses
 status getters through w3sper. It uses
 `VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID` and its data-driver URL to find a
 dispute game/output proposal that covers the L2 withdrawal block. The respected
-dispute game type is read from the portal at runtime. This flow requires Rusk
+dispute game type is read from the portal at runtime. With
+`VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID`, the anchor state registry the
+portal asks whether a game is proper and respected, a proof goes against a
+covering game that has already resolved and passes those checks, so its claim
+date is exact; otherwise against the newest covering game. DuskEVM testnet's
+registry (chain 745) is known by default, and `none` leaves it out. This flow requires Rusk
 1.7.1 or later so read-only contract queries execute at the current chain tip
 and can evaluate proof maturity correctly.
 The data-driver URLs must point to browser-loadable Forge data-driver WASM

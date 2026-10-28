@@ -25,6 +25,9 @@ let readAt = new Map();
 
 let isReading = false;
 
+/** @type {ActivityRow[] | null} The rows of the last load that came while one was reading. */
+let queued = null;
+
 /**
  * The withdrawals the rows prove and no row claims: their hashes.
  *
@@ -80,12 +83,45 @@ function submitterNow() {
 
 /**
  * Reads when the rows' proved withdrawals can be claimed, those not read in
- * the last minute; the store follows.
+ * the last minute; the store follows. A load that comes while one reads,
+ * with other rows or for another account, runs once that read is done: the
+ * last one only.
  *
  * @param {ActivityRow[]} rows
  * @returns {Promise<void>}
  */
 async function load(rows) {
+  if (isReading) {
+    queued = rows;
+
+    return;
+  }
+
+  isReading = true;
+
+  try {
+    await readDue(rows);
+  } finally {
+    isReading = false;
+  }
+
+  const next = queued;
+
+  queued = null;
+
+  if (next) {
+    await load(next);
+  }
+}
+
+/**
+ * Reads the rows' proved withdrawals not read in the last minute, for the
+ * account they're the proofs of.
+ *
+ * @param {ActivityRow[]} rows
+ * @returns {Promise<void>}
+ */
+async function readDue(rows) {
   const submitter = submitterNow();
   const now = Date.now();
   const due = submitter
@@ -94,11 +130,10 @@ async function load(rows) {
       )
     : [];
 
-  if (!submitter || isReading || !due.length) {
+  if (!submitter || !due.length) {
     return;
   }
 
-  isReading = true;
   due.forEach((hash) => readAt.set(hash, now));
 
   try {
@@ -110,8 +145,6 @@ async function load(rows) {
   } catch {
     // Read again the next time the history shows them.
     due.forEach((hash) => readAt.delete(hash));
-  } finally {
-    isReading = false;
   }
 }
 

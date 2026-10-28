@@ -243,6 +243,7 @@ describe("describeRow", () => {
             exact: false,
             overdue: false,
             ready: false,
+            reprove: false,
             ...read,
           },
         ],
@@ -303,6 +304,18 @@ describe("describeRow", () => {
       line: "Bridge · ready to claim",
       note: "Ready to claim",
       withdrawal: { ready: true },
+    });
+    // Its proof's game blacklisted, or the challenger won: no date, but
+    // that the proof must be made again.
+    expect(
+      describeRow(proved, {
+        ...context,
+        claims: claims({ at: null, reprove: true }),
+      })
+    ).toMatchObject({
+      line: "Bridge · proof rejected · prove it again",
+      note: "Proof rejected · prove it again",
+      withdrawal: { claim: null, reprove: true },
     });
 
     // Claimed: by a row of this history, or as the Portal says.

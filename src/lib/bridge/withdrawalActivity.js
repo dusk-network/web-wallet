@@ -161,11 +161,26 @@ export async function rememberHistoryWithdrawals(known) {
     return [];
   }
 
+  // Stamped as the lookup starts, so that another doesn't ask again
+  // meanwhile; a lookup that fails is tried again the next time.
   for (const { nonce } of missing) {
     lookedUp.set(String(nonce), now);
   }
 
-  const found = await findWithdrawalsByNonce(missing.map(({ nonce }) => nonce));
+  /** @type {Awaited<ReturnType<typeof findWithdrawalsByNonce>>} */
+  let found;
+
+  try {
+    found = await findWithdrawalsByNonce(missing.map(({ nonce }) => nonce));
+  } catch (error) {
+    for (const { nonce } of missing) {
+      if (lookedUp.get(String(nonce)) === now) {
+        lookedUp.delete(String(nonce));
+      }
+    }
+
+    throw error;
+  }
 
   return missing.flatMap(({ hash, nonce }) => {
     const item = found.get(String(nonce));

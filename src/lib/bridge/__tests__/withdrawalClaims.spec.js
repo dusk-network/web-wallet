@@ -109,6 +109,36 @@ describe("withdrawalClaims", () => {
     expect(get(withdrawalClaims).size).toBe(2);
   });
 
+  it("keeps a load that comes while one reads, and reads the last of them once it's done", async () => {
+    /** @type {() => void} */
+    let finish = () => {};
+
+    mocks.readWithdrawalClaims.mockImplementationOnce(
+      (hashes) =>
+        new Promise((resolve) => {
+          finish = () => resolve(answer(hashes));
+        })
+    );
+
+    const first = withdrawalClaims.load([row("prove", 0xa)]);
+
+    // While it reads: new rows, then another account's.
+    void withdrawalClaims.load([row("prove", 0xa), row("prove", 0xd)]);
+    mocks.submitter = `0x${"3d".repeat(20)}`;
+    void withdrawalClaims.load([row("prove", 0xe)]);
+
+    expect(mocks.readWithdrawalClaims).toHaveBeenCalledOnce();
+
+    finish();
+    await first;
+
+    expect(mocks.readWithdrawalClaims).toHaveBeenCalledTimes(2);
+    expect(mocks.readWithdrawalClaims).toHaveBeenLastCalledWith([hashOf(0xe)], {
+      submitter: `0x${"3d".repeat(20)}`,
+    });
+    expect([...get(withdrawalClaims).keys()]).toStrictEqual([hashOf(0xe)]);
+  });
+
   it("starts over for another account, and reads again what couldn't be read", async () => {
     await withdrawalClaims.load([row("prove", 0xa)]);
 

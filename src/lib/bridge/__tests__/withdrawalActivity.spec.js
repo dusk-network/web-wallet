@@ -440,5 +440,29 @@ describe("DuskEVM withdrawal activity", () => {
       );
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
+
+    it("are asked for again at once when the explorer couldn't be read", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(new Response("Bad gateway", { status: 502 }))
+        .mockResolvedValue(
+          jsonResponse({ items: [listed(13)], ["next_page_params"]: null })
+        );
+
+      vi.stubGlobal("fetch", fetchMock);
+
+      const missing = [{ hash: hashOf(13), nonce: nonceOf(13) }];
+
+      await expect(rememberHistoryWithdrawals(missing)).rejects.toThrow(
+        "HTTP 502"
+      );
+
+      const found = await rememberHistoryWithdrawals(missing);
+
+      expect(found.map((item) => item.transactionHash)).toStrictEqual([
+        txOf(13),
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
   });
 });

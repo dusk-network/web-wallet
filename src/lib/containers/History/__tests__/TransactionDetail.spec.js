@@ -28,6 +28,7 @@ const claims = (read) =>
         exact: false,
         overdue: false,
         ready: false,
+        reprove: false,
         ...read,
       },
     ],
@@ -120,6 +121,21 @@ describe("TransactionDetail", () => {
 
     expect(ready.getByText("Proved · ready to claim")).toBeTruthy();
     expect(ready.getByText("Ready to claim on Dusk.")).toBeTruthy();
+
+    cleanup();
+
+    // Its proof's game blacklisted: no date, but that it must be proved again.
+    const again = show(proved, {
+      claims: claims({ at: null, reprove: true }),
+    });
+
+    expect(again.getByText("Proof rejected · prove it again")).toBeTruthy();
+    expect(
+      again.getByText(
+        "Its proof was rejected, so it can't be claimed. Prove it again on Dusk."
+      )
+    ).toBeTruthy();
+    expect(again.queryByText(/Claim from/)).toBeNull();
 
     cleanup();
 

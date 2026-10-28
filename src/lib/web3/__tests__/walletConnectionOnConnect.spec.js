@@ -121,9 +121,10 @@ describe("the EVM wallet connection, on Connect", () => {
     expect(wasConnectedBefore()).toBe(true);
   });
 
-  it("should forget the wallets connected here, as Reset does: none comes back until Connect is pressed", async () => {
+  it("should forget the wallets connected here, as Reset does: none comes back, nor connects until the page reloads", async () => {
     const appKit = stubAppKit();
     const {
+      connectionBlocked,
       forgetEvmWallets,
       modal,
       startWalletConnection,
@@ -199,23 +200,34 @@ describe("the EVM wallet connection, on Connect", () => {
     // A second Reset in the page doesn't wait on the database it can't open.
     await forgetEvmWallets();
 
-    // Pressing Connect does.
+    // Nor does a wallet connect while the delete waits on this page's own
+    // handle: a session written now would go with it. A reload it takes.
+    expect(get(connectionBlocked)).toBe(false);
+
     await modal.open();
 
-    expect(wasConnectedBefore()).toBe(true);
-    expect(appKit.open).toHaveBeenCalledOnce();
+    expect(appKit.open).not.toHaveBeenCalled();
+    expect(wasConnectedBefore()).toBe(false);
+    expect(get(connectionBlocked)).toBe(true);
 
-    // The next page, where nothing holds the database open.
+    // The next page, where nothing holds the database open: the delete is
+    // done, and then Connect connects.
     held.close();
-    await load();
-    await vi.waitFor(async () => {
-      expect(
-        (await indexedDB.databases()).map(({ name }) => name)
-      ).not.toContain("WALLET_CONNECT_V2_INDEXED_DB");
+
+    const next = await load();
+
+    await next.modal.open();
+
+    expect(appKit.open).toHaveBeenCalledOnce();
+    expect(get(next.connectionBlocked)).toBe(false);
+    expect((await indexedDB.databases()).map(({ name }) => name)).not.toContain(
+      "WALLET_CONNECT_V2_INDEXED_DB"
+    );
+    await vi.waitFor(() =>
       expect(
         localStorage.getItem("web-wallet-evm-wallets-forgotten")
-      ).toBeNull();
-    });
+      ).toBeNull()
+    );
   });
 
   it("should delete as a page opens the database Reset left to it, and only then", async () => {

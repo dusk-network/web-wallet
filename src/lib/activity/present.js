@@ -45,9 +45,11 @@ import { TX_KIND } from "./constants";
  *   claim: import("$lib/bridge/claimDate").ClaimDate | null,
  *   claimed: boolean,
  *   ready: boolean,
+ *   reprove: boolean,
  * }} WithdrawalStep
  *   Where a proved withdrawal is: claimed, ready to claim, or when it can
- *   be claimed, as the chain says; no date until that has been read.
+ *   be claimed, as the chain says; no date until that has been read, nor
+ *   when its proof must be made again (`reprove`).
  *
  * @typedef {{
  *   amount: { exact: string, muted: boolean, sign: "" | "+" | "−", text: string },
@@ -421,9 +423,9 @@ function amountOf(row, { bridge, failed, icon, locale }) {
 }
 
 /**
- * A proved withdrawal's line: claimed, ready to claim, or when it can be,
- * as the chain says ("claim from about Mon 2 Nov, 04:20"); none until
- * that has been read.
+ * A proved withdrawal's line: claimed, ready to claim, its proof to make
+ * again, or when it can be claimed, as the chain says ("claim from about
+ * Mon 2 Nov, 04:20"); none until that has been read.
  *
  * @param {WithdrawalStep} withdrawal
  * @param {string} locale
@@ -435,6 +437,10 @@ function withdrawalLine(withdrawal, locale) {
 
   if (withdrawal.ready) {
     return "ready to claim";
+  }
+
+  if (withdrawal.reprove) {
+    return "proof rejected · prove it again";
   }
 
   const text = claimText(withdrawal.claim, (ms) => claimDay(ms, locale));
@@ -477,6 +483,7 @@ function bridgeOf(row, { claimed, claims, locale }) {
       : null,
     claimed: Boolean(claimed?.has(call.withdrawal) || read?.claimed),
     ready: Boolean(read?.ready),
+    reprove: Boolean(read?.reprove),
   };
 
   return { amount, line: withdrawalLine(withdrawal, locale), withdrawal };

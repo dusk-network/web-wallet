@@ -2,9 +2,9 @@
  * Reads of the DuskEVM bridge's contracts on Dusk, through Multicall for
  * Dusk: the reads one task starts go to the node as one query. The Portal
  * and the dispute game factory are read with their bundled data drivers; a
- * dispute game's hub, for which none is bundled, raw. What a deployment
- * doesn't change is read once a session: each proven game's hub, each game
- * type's hub, and each hub's clock limit.
+ * dispute game's hub and the anchor state registry, for which none is
+ * bundled, raw. What a deployment doesn't change is read once a session:
+ * each proven game's hub, each game type's hub, and each hub's clock limit.
  */
 
 import { bytesToHex } from "viem";
@@ -21,8 +21,11 @@ import { nodeBaseUrl } from "$lib/url";
  *   hub: (contractId: string) => ContractReads,
  *   nodeUrl: string,
  *   portal: ContractReads,
+ *   registry?: ContractReads | null,
  * }} BridgeReads
+ *   `registry`, the anchor state registry, where it's known.
  * @typedef {{
+ *   anchorStateRegistryContractId?: string,
  *   disputeGameFactoryContractId: string,
  *   disputeGameFactoryDataDriverUrl: string,
  *   optimismPortalContractId: string,
@@ -158,6 +161,41 @@ export const GAME_HUB_DRIVER = Object.freeze({
 });
 
 /**
+ * The anchor state registry's views, read raw like the hubs: the Portal asks
+ * it whether a game is proper (registered, not blacklisted, not retired) and
+ * respected. A game's 20-byte address goes in, and yes or no comes out;
+ * `respectedGameTypeUpdatedAt` takes nothing and gives a u64.
+ *
+ * @type {BridgeDriver}
+ */
+export const GAME_REGISTRY_DRIVER = Object.freeze({
+  /**
+   * @param {string} fnName
+   * @param {Uint8Array} bytes
+   */
+  decodeOutputFn(fnName, bytes) {
+    if (fnName === "respectedGameTypeUpdatedAt") {
+      return readU64Le(bytes);
+    }
+
+    if (bytes.length !== 1 || bytes[0] > 1) {
+      throw new RangeError(`Expected ${fnName}'s yes or no`);
+    }
+
+    return bytes[0] === 1;
+  },
+
+  /**
+   * @param {string} fnName
+   * @param {string} json
+   */
+  encodeInputFn: (fnName, json) =>
+    fnName === "respectedGameTypeUpdatedAt"
+      ? new Uint8Array(0)
+      : Uint8Array.from(JSON.parse(json)),
+});
+
+/**
  * The bridge's contracts on Dusk, read through the node's Multicall for Dusk
  * batcher. Both drivers load before any read goes out, so the reads one task
  * starts go together.
@@ -235,6 +273,12 @@ export function bridgeReads({
     hub: (contractId) => contract(() => GAME_HUB_DRIVER, contractId),
     nodeUrl,
     portal: contract(([portal]) => portal, config.optimismPortalContractId),
+    registry: config.anchorStateRegistryContractId
+      ? contract(
+          () => GAME_REGISTRY_DRIVER,
+          config.anchorStateRegistryContractId
+        )
+      : null,
   };
 }
 

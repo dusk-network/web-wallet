@@ -581,6 +581,128 @@ describe("LiquidStake", () => {
     );
   });
 
+  describe("while Sozu's terms are read again before a stake goes", () => {
+    /** A read of Sozu's terms that answers when `answer` is called: as they were. */
+    function slowRecheck() {
+      /** @type {() => void} */
+      let answer = () => {};
+      const recheck = vi.fn(
+        () =>
+          new Promise((resolve) => {
+            answer = () => resolve(statusWith());
+          })
+      );
+
+      return { answer: () => answer(), recheck };
+    }
+
+    const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    it("sends nothing once the page is left", async () => {
+      const { answer, recheck } = slowRecheck();
+      const { getByLabelText, getByRole, unmount } = render(LiquidStake, {
+        ...baseProps,
+        recheck,
+      });
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+      await fireEvent.click(
+        getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+      );
+      unmount();
+      answer();
+      await settled();
+
+      expect(recheck).toHaveBeenCalledOnce();
+      expect(baseProps.execute).not.toHaveBeenCalled();
+    });
+
+    it("sends nothing once the review is left", async () => {
+      const { answer, recheck } = slowRecheck();
+      const { getByLabelText, getByRole } = render(LiquidStake, {
+        ...baseProps,
+        recheck,
+      });
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+      await fireEvent.click(
+        getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+      );
+      await fireEvent.click(getByRole("button", { name: "Back" }));
+      answer();
+      await settled();
+
+      expect(baseProps.execute).not.toHaveBeenCalled();
+    });
+
+    it("sends nothing when the amount changed meanwhile, and the new one once confirmed", async () => {
+      const { answer, recheck } = slowRecheck();
+      const { container, getByLabelText, getByRole } = render(LiquidStake, {
+        ...baseProps,
+        recheck,
+      });
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+      await fireEvent.click(
+        getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+      );
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "50" },
+      });
+      answer();
+      await settled();
+
+      expect(baseProps.execute).not.toHaveBeenCalled();
+      expect(container.querySelector(".liquid-stake__changed")).toBeNull();
+
+      recheck.mockResolvedValue(statusWith());
+      await fireEvent.click(
+        getByRole("button", { name: "Stake 50 DUSK with Sozu" })
+      );
+
+      await vi.waitFor(() =>
+        expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
+          "stake",
+          POOL,
+          50n * DUSK,
+          1n,
+          5_000_000n
+        )
+      );
+    });
+
+    it("keeps the button off, so that a double click sends one stake", async () => {
+      const { answer, recheck } = slowRecheck();
+      const { getByLabelText, getByRole } = render(LiquidStake, {
+        ...baseProps,
+        recheck,
+      });
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+
+      const button = getByRole("button", { name: "Stake 100 DUSK with Sozu" });
+
+      await fireEvent.click(button);
+
+      expect(button).toBeDisabled();
+
+      await fireEvent.click(button);
+      answer();
+
+      await vi.waitFor(() => expect(baseProps.execute).toHaveBeenCalledOnce());
+      expect(recheck).toHaveBeenCalledOnce();
+    });
+  });
+
   it("keeps staking off while Sozu's deposits can't be checked, not unstaking", async () => {
     const { getByLabelText, getByRole, getByText } = render(LiquidStake, {
       ...baseProps,
