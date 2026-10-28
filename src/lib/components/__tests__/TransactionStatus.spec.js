@@ -54,7 +54,7 @@ describe("TransactionStatus", () => {
     expect(getByRole("status")).toHaveTextContent(
       "Sending… This usually takes under a minute."
     );
-    expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
+    expect(getByText("8dcf6f8a…993db55e")).toBeInTheDocument();
     expect(
       getByRole("button", { name: "Copy transaction hash" })
     ).toBeInTheDocument();

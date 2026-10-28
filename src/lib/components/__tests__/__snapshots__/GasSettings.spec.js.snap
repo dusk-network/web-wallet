@@ -147,6 +147,22 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
     </div>
     <!---->
     <!---->
+     
+    <dl
+      class="gas-settings__exact svelte-1wfde5f"
+    >
+      <dt
+        class="svelte-1wfde5f"
+      >
+        The most it can cost, exactly
+      </dt>
+       
+      <dd
+        class="svelte-1wfde5f"
+      >
+        0.1 DUSK
+      </dd>
+    </dl>
   </div>
   <!---->
 </div>

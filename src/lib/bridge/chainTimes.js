@@ -4,8 +4,6 @@
  * browser for a day, so a page shows it at once on the next visit.
  */
 
-const L1_BLOCK = "0x4200000000000000000000000000000000000015";
-
 /** `number()` on DuskEVM's L1Block predeploy: the Dusk block it last took in. */
 const L1_BLOCK_NUMBER = "0x8381f58a";
 
@@ -20,16 +18,17 @@ const MAX_AGE_MS = 86_400_000;
  *
  * @param {{
  *   blockTime: (height: bigint) => Promise<bigint | number | string | null | undefined>,
+ *   l1Block: string,
  *   l2Batch: (calls: { method: string, params: unknown[] }[]) => Promise<any[]>,
- * }} deps
+ * }} deps `l1Block`: DuskEVM's L1Block predeploy, as its network's file gives it
  * @returns {Promise<number>}
  */
-export async function readDepositLag({ blockTime, l2Batch }) {
+export async function readDepositLag({ blockTime, l1Block, l2Batch }) {
   const [head, origin] = await l2Batch([
     { method: "eth_getBlockByNumber", params: ["latest", false] },
     {
       method: "eth_call",
-      params: [{ data: L1_BLOCK_NUMBER, to: L1_BLOCK }, "latest"],
+      params: [{ data: L1_BLOCK_NUMBER, to: l1Block }, "latest"],
     },
   ]);
 

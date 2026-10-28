@@ -82,9 +82,9 @@ describe("When a withdrawal can be claimed", () => {
     expect(resolvedAfter(161n).exact).toBe(true);
 
     // As History said it, but now from the chain.
-    expect(claimText(now, when)).toBe("Claim from about Mon 2 Nov, 04:20");
+    expect(claimText(now, when)).toBe("Claim from about 2 Nov, 04:20 CET");
     expect(claimText(resolvedAfter(161n), when)).toBe(
-      "Claim from Mon 2 Nov, 04:24"
+      "Claim from 2 Nov, 04:24 CET"
     );
   });
 
@@ -113,7 +113,7 @@ describe("When a withdrawal can be claimed", () => {
     );
     // The tip is 28 Oct, 03:09:49 UTC.
     expect(proveNowText(proveNow, when)).toBe(
-      "If you prove now, you can claim from Wed 4 Nov, 04:09"
+      "If you prove now, you can claim from 4 Nov, 04:09 CET"
     );
   });
 
@@ -189,7 +189,7 @@ describe("When a withdrawal can be claimed", () => {
       Number(at(361n).timestamp + TIMING.finalitySeconds) * 1_000
     );
     expect(claimText(overdue, when)).toBe(
-      "Waiting for DuskEVM to settle this proof. Claim from Mon 2 Nov, 04:57 at the soonest."
+      "Waiting for DuskEVM to settle this proof. Claim from 2 Nov, 04:57 CET at the soonest."
     );
   });
 

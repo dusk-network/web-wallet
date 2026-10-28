@@ -13,7 +13,6 @@
   import CopyField from "./CopyField.svelte";
   import DashboardNavs from "./DashboardNavs.svelte";
   import ExclusiveChoices from "./ExclusiveChoices.svelte";
-  import MigrateContract from "./MigrateContract.svelte";
   import ProgressBars from "./ProgressBars.svelte";
   import Selects from "./Selects.svelte";
   import Steppers from "./Steppers.svelte";
@@ -37,7 +36,6 @@
     "Copy Field": CopyField,
     "Dashboard Navs": DashboardNavs,
     "Exclusive Choices": ExclusiveChoices,
-    "Migrate Contract": MigrateContract,
     "Progress bars": ProgressBars,
     Selects: Selects,
     Steppers: Steppers,

@@ -52,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say in a stake with Sozu's details what stDUSK it got
 - Link the Terms of Use and the Privacy Policy under Settings › Support
 - Show under the total balance what is staked, natively and with Sozu
+- Show the exact most a transaction can cost beside its gas limit and price
+- Say about what native staking and Sozu pay a year where you choose how to stake
+- Migrate DUSK from BNB Smart Chain and Ethereum in the Bridge card
+- Send DUSK to BNB Smart Chain from the Bridge card, to the connected wallet's address, less the 1 DUSK bridge fee
+- Say when a route isn't running on this network
+- List migrations and transfers to BNB Smart Chain in Bridge › Activity, until they're paid
 
 ### Changed
 
@@ -88,7 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show no money values or market data off mainnet
 - Send from one page, with the summary beside the form, a review on phones, and a button that says what it sends
 - Start Send with no amount, take one with at most 9 decimals as typed, with a decimal point or comma, and say what's wrong with it
-- Show a Total at Max that never reads more than the balance
+- Show a Total at Max as the balance shows, rounded down, never more
 - Say times are in your local time, with each one's own offset on hover, and keep a row's time and Public or Shielded on phones
 - List a contact's activity by day
 - Keep contact names out of the CSV export unless asked, and then in their own column
@@ -132,8 +138,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say Sending… on the Done screen until the block is final, then when it was sent
 - Name the network and profile buttons with what they show, for screen readers
 - List deposits and withdrawals together in Bridge › Activity, what needs you first, each with its route, amount, date or claim date, and state
+- Know the network by the chain ID its node gives, so a custom node gets that network's contracts, names and history
+- Offer only the network's own chains when connecting an EVM wallet
+- Name each contract in a transaction's details: Sozu pool, Sozu hub, DuskEVM bridge portal and the others
+- Write dates in English, on your language's clock and with its digits
+- Show amounts under 0.01 DUSK to two significant digits
+- Shorten addresses and hashes with one ellipsis character
+- Round the network fee paid in a transaction's details, with the exact fee under Technical details
+- Open the Bridge on BNB Smart Chain's migration from Home's Migrate it to Dusk, shown only where a migration is running
 
 ### Removed
+
+- Remove the Migrate page, whose address now opens the Bridge
+- Remove testnet's BEP-20 migration on Sepolia
 
 ### Fixed
 
@@ -156,6 +173,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Give each page one heading with its name, and keep the top bar and the navigation out of its main content
 - Look a `.dusk` name up once more before saying it couldn't be looked up
 - Give the export's box, a contact's choice and the Bridge's Max a tap area of 44 px on phones
+- Take amounts on the Shield page with your language's decimal separator
 
 ## [1.8.0] - 2026-03-25
 

@@ -2,7 +2,7 @@ import { observeDepositStatus } from "@dusk/evm-sdk";
 import { createPublicClient, http } from "viem";
 
 import { networkStore } from "$lib/stores";
-import { duskEvm } from "$lib/web3/duskEvm";
+import { duskEvm, duskEvmAdapterUrl } from "$lib/web3/duskEvm";
 import {
   depositActivityStore,
   getRememberedDepositActivity,
@@ -14,8 +14,8 @@ import {
 } from "$lib/bridge/depositActivityStorage";
 import { isDepositTerminal } from "$lib/bridge/depositLifecycle";
 import { normalizedTxHash } from "$lib/bridge/withdrawalActivityValues";
+import { errorMessage } from "$lib/dusk/error";
 
-const L1_RPC_URL = import.meta.env.VITE_EVM_L1_BRIDGE_RPC_URL;
 const ACTIVE_POLL_INTERVAL_MS = 5_000;
 const BACKGROUND_POLL_INTERVAL_MS = 30_000;
 const MAX_POLL_INTERVAL_MS = 300_000;
@@ -37,7 +37,9 @@ export {
 };
 
 function trackingClients() {
-  if (!L1_RPC_URL) {
+  const adapterUrl = duskEvmAdapterUrl();
+
+  if (!adapterUrl) {
     throw new Error("DuskEVM L1 bridge RPC is not configured.");
   }
 
@@ -47,7 +49,7 @@ function trackingClients() {
     throw new Error("DuskEVM RPC is not configured.");
   }
 
-  l1Client ??= createPublicClient({ transport: http(L1_RPC_URL) });
+  l1Client ??= createPublicClient({ transport: http(adapterUrl) });
   l2Client ??= createPublicClient({
     chain: /** @type {import("viem").Chain} */ (duskEvm),
     transport: http(l2RpcUrl),
@@ -111,11 +113,6 @@ async function resolveL1TransactionHash(remembered) {
     l1TransactionHash: hash,
   });
   return hash;
-}
-
-/** @param {unknown} error */
-function errorMessage(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /** @param {any} metadata */

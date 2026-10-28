@@ -27,7 +27,7 @@
     leastSozuStake,
     sozuFee,
     sozuStake,
-  } from "$lib/sozu/amounts";
+  } from "@dusk-network/networks/sozu";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";

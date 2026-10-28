@@ -18,8 +18,9 @@ describe("formatDusk", () => {
     expect(formatDusk(100_000_000n, "en")).toBe("0.1");
     expect(formatDusk(-25_000_000_000n, "en")).toBe("−25");
 
-    // Too small to show at 4 decimals: in full, never as zero.
+    // Under 0.01: two significant digits, never zero.
     expect(formatDusk("40000", "en")).toBe("0.00004");
+    expect(formatDusk("2151569", "en")).toBe("0.0021");
     expect(formatDusk("0", "en")).toBe("0");
   });
 
@@ -41,15 +42,23 @@ describe("formatDuskExact", () => {
 
 describe("formatTotal", () => {
   it("rounds a total up as fees are, but never past the balance as it shows", () => {
-    // 173.901884001 DUSK shows as 173.9018: a total at Max is shown exactly.
+    // 173.901884001 DUSK shows as 173.9018, rounded down as balances are:
+    // a total at Max, or just under it, reads the same, not more.
     expect(formatTotal(173_901_884_001n, 173_901_884_001n, "en")).toBe(
-      "173.901884001"
+      "173.9018"
     );
     expect(
       formatTotal(173_899_384_001n + 2_500_000n, 173_901_884_001n, "en")
-    ).toBe("173.901884001");
+    ).toBe("173.9018");
+    expect(formatTotal(173_901_800_001n, 173_901_884_001n, "en")).toBe(
+      "173.9018"
+    );
     expect(formatTotal(1_002_500_000n, 173_901_884_001n, "en")).toBe("1.0025");
     expect(formatTotal(1_000_000_001n, 173_901_884_001n, "en")).toBe("1.0001");
+    // More than there is reads more.
+    expect(formatTotal(173_901_884_002n, 173_901_884_001n, "en")).toBe(
+      "173.9019"
+    );
     expect(formatTotal(0n, 0n, "en")).toBe("0");
   });
 });
@@ -72,9 +81,9 @@ describe("formatFee", () => {
     expect(formatFee("50000000", "en")).toBe("0.05");
     expect(formatFee("1500000000000", "en")).toBe("1,500");
 
-    // Too small for 4 decimals: paid, in full; a maximum, up to the
-    // smallest step.
-    expect(both("40000")).toEqual(["0.00004", "0.0001"]);
+    // Under 0.01: two significant digits, a maximum rounded up.
+    expect(both("40000")).toEqual(["0.00004", "0.00004"]);
+    expect(both("1234")).toEqual(["0.0000012", "0.0000013"]);
     expect(formatFee("0", "en", { max: true })).toBe("0");
   });
 });

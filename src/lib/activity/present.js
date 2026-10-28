@@ -11,12 +11,15 @@ import {
   formatFee,
 } from "$lib/dusk/currency/formatDusk";
 
+import { formatTime } from "@dusk-network/networks/format";
+
 import { SOZU_FN, isSozuCall } from "$lib/sozu/config";
 import { claimDay, claimText } from "$lib/bridge/claimDate";
 
 import { knownCall } from "./knownContracts";
 
 import { TX_KIND } from "./constants";
+import { configuredBridge } from "$lib/bridge/bridgeCalls";
 
 /**
  * @typedef {"all" | "bridge" | "received" | "sent" | "staking"} ActivityKindFilter
@@ -80,20 +83,15 @@ export const normalizeContractId = (id) =>
     .replace(/^0x/, "");
 
 /**
- * The bridge's contracts on Dusk, from the configuration: the deposit
- * bridge and the withdrawal portal.
+ * The bridge's contracts on Dusk: the deposit bridge and the withdrawal
+ * portal.
  *
  * @returns {Set<string>}
  */
 export function configuredBridgeContracts() {
-  return new Set(
-    [
-      import.meta.env.VITE_BRIDGE_CONTRACT_ID,
-      import.meta.env.VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID,
-    ]
-      .map(normalizeContractId)
-      .filter(Boolean)
-  );
+  const { bridge, portal } = configuredBridge();
+
+  return new Set([bridge, portal].filter(Boolean));
 }
 
 /** @param {string | undefined} value */
@@ -548,18 +546,39 @@ const dayKey = (time) => {
 };
 
 /**
- * The heading of a day: "Today", "Yesterday", or its date, as "Sat, 24 Oct".
- * With `full`, today and yesterday show their date too.
+ * How the locale tells the time and writes its digits.
+ *
+ * @param {string} locale
+ */
+function clockOf(locale) {
+  const resolved = new Intl.DateTimeFormat(locale || undefined, {
+    hour: "numeric",
+  }).resolvedOptions();
+
+  return {
+    english: /^en(-|$)/i.test(resolved.locale),
+    hourCycle: resolved.hourCycle ?? (resolved.hour12 ? "h12" : "h23"),
+    numberingSystem: resolved.numberingSystem,
+  };
+}
+
+/**
+ * The heading of a day, in English with the locale's digits: "Today",
+ * "Yesterday", or its date, as "Sat 24 Oct". With `full`, today and
+ * yesterday show their date too.
  *
  * @param {number} time
  * @param {{ full?: boolean, locale: string, now?: number }} options
  */
 export function dayLabel(time, { full = false, locale, now = Date.now() }) {
-  const date = new Intl.DateTimeFormat(locale, {
+  const date = new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
+    numberingSystem: clockOf(locale).numberingSystem,
     weekday: "short",
-  }).format(time);
+  })
+    .format(time)
+    .replace(",", "");
   const today = dayKey(now);
 
   // The calendar's day before, not 24 hours before: a day the clocks change
@@ -619,47 +638,33 @@ export function groupByDay(items, timeOf, options) {
 }
 
 /**
- * The time of day, as "14:32".
+ * The time of day, on the locale's clock, with English words: "14:32", or
+ * "2:32 PM".
  *
  * @param {number} time
  * @param {string} locale
  */
-export const timeLabel = (time, locale) =>
-  new Intl.DateTimeFormat(locale, {
-    hour: "2-digit",
+export function timeLabel(time, locale) {
+  const { english, hourCycle, numberingSystem } = clockOf(locale);
+  const h24 = hourCycle === "h23" || hourCycle === "h24";
+
+  return new Intl.DateTimeFormat(english ? locale : "en-US", {
+    hour: h24 ? "2-digit" : "numeric",
+    hourCycle,
     minute: "2-digit",
+    numberingSystem,
   }).format(time);
-
-/**
- * The short name of this browser's time zone at a time, as "CET".
- *
- * @param {number} time
- * @param {string} locale
- */
-export function zoneLabel(time, locale) {
-  const parts = new Intl.DateTimeFormat(locale, {
-    timeZoneName: "short",
-  }).formatToParts(time);
-
-  return parts.find((part) => part.type === "timeZoneName")?.value ?? "";
 }
 
 /**
- * A full date and time with its time zone, as "Mon, 26 Oct 2026, 14:32 CET".
+ * A full date and time with its time zone, in English on the locale's
+ * clock: "Mon 26 Oct 2026, 14:32 CET".
  *
  * @param {number} time
  * @param {string} locale
  */
 export const fullDateTime = (time, locale) =>
-  new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-    timeZoneName: "short",
-    weekday: "short",
-    year: "numeric",
-  }).format(time);
+  formatTime(time, { date: "full", locale: locale || undefined });
 
 /**
  * A field of a CSV line, quoted when it holds a separator, a quote or a

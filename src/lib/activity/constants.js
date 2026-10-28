@@ -1,8 +1,11 @@
-/** The transfer contract, whose events say what moved. */
-export const TRANSFER_CONTRACT = `01${"00".repeat(31)}`;
+import { networks } from "@dusk-network/networks";
 
-/** The stake contract. */
-export const STAKE_CONTRACT = `02${"00".repeat(31)}`;
+/**
+ * The transfer contract, whose events say what moved, and the stake
+ * contract: the same on every Dusk network, as each network's file has them.
+ */
+export const { stake: STAKE_CONTRACT, transfer: TRANSFER_CONTRACT } =
+  networks.mainnet.contracts;
 
 /** What a transaction did, as the history names it. */
 export const TX_KIND = Object.freeze(

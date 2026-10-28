@@ -8,6 +8,8 @@ import { settingsStore } from "$lib/stores";
 import { account } from "$lib/web3/walletConnection";
 
 import { Bridge } from "..";
+import { networks } from "@dusk-network/networks";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 const {
   CONNECTED,
@@ -145,6 +147,8 @@ describe("Bridge", () => {
     );
 
   beforeEach(() => {
+    // A testnet node: Dusk and DuskEVM, both ways.
+    setNodeNetwork(networks.testnet);
     estimateGas.mockResolvedValue(withdrawalGas);
     getGasPrice.mockResolvedValue(evmGasPrice);
     setTimes(TESTNET_TIMES);
@@ -468,17 +472,24 @@ describe("Bridge", () => {
     expect(getByRole("button", { name: "Review bridge" })).toBeEnabled();
   });
 
-  it("should pick the networks from lists, Dusk and DuskEVM", async () => {
+  it("should pick the networks from lists, as the network's routes go", async () => {
     const { container, getByRole } = render(Bridge, baseProps);
 
     await fireEvent.click(
-      getByRole("button", { name: "To: DuskEVM. Choose the network" })
+      getByRole("button", { name: "From: Dusk. Choose the network" })
     );
-    await fireEvent.click(getByRole("option", { name: /^Dusk ~7 days/ }));
+
+    // Testnet's Sepolia route isn't running: listed, and not picked.
+    expect(getByRole("option", { name: /^Sepolia/ })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
+
+    await fireEvent.click(getByRole("option", { name: /DuskEVM/ }));
 
     expect(getDirection(container)).toStrictEqual(["duskEvm", "duskDs"]);
     expect(
-      getByRole("button", { name: "From: DuskEVM. Choose the network" })
+      getByRole("button", { name: "To: Dusk. Choose the network" })
     ).toBeInTheDocument();
   });
 
@@ -508,13 +519,19 @@ describe("Bridge", () => {
 
     expect(summary()).toBe("~1 min · fee up to 0.02 DUSK");
     expect(await notes()).toStrictEqual([
-      "Dusk ~7 days · two steps on Dusk",
+      "Sepolia Not running on testnet right now",
+      "Dusk It's where it comes from",
       "EVM DuskEVM ~1 min · fee up to 0.02 DUSK",
     ]);
 
     await withdraw(container);
 
     expect(summary()).toBe("~7 days · two steps on Dusk");
+    expect(await notes()).toStrictEqual([
+      "Sepolia No route from DuskEVM",
+      "Dusk ~7 days · two steps on Dusk",
+      "EVM DuskEVM It's where it comes from",
+    ]);
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "1" } });
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));

@@ -21,8 +21,9 @@
   } from "$lib/bridge/depositActivity";
   import { DEPOSIT, WITHDRAWAL, routeTime } from "$lib/bridge/routeTimes";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
+  import { errorMessage } from "$lib/dusk/error";
   import { addBasePath } from "$lib/navigation";
-  import { settingsStore } from "$lib/stores";
+  import { settingsStore, walletStore } from "$lib/stores";
   import {
     finalizeWithdrawal,
     getWithdrawalFinalizationConfig,
@@ -44,14 +45,27 @@
   } from "$lib/bridge/withdrawalActivity";
   import { account, modal } from "$lib/web3/walletConnection";
 
+  import nodeNetwork from "$lib/stores/nodeNetwork";
+  import { cardRoutes } from "$lib/bridge/cardRoutes";
+  import {
+    hydrateMigrations,
+    keptMigrations,
+    migrationTransfers,
+    serviceTransfers,
+    transferArrivals,
+  } from "$lib/bridge/migrationActivity";
+  import { followTransfers, toFollow } from "$lib/bridge/routeTracking";
+
   import Banner from "../Banner/Banner.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
   import SwapCard from "../SwapCard/SwapCard.svelte";
   import DepositLifecycle from "./DepositLifecycle.svelte";
+  import RouteTransferDetails from "./RouteTransferDetails.svelte";
   import WithdrawalLifecycle from "./WithdrawalLifecycle.svelte";
   import {
     depositRow,
     groupBridgeActivity,
+    routeTransferRow,
     withdrawalRow,
   } from "./bridgeActivity";
   import { formatTimestamp, shortened } from "./withdrawalPresentation";
@@ -143,6 +157,17 @@
   let openDeposit = null;
 
   /**
+   * The migration or transfer out shown open, as its row's ID; or one a
+   * link names, to open once the history has it.
+   *
+   * @type {string | null}
+   */
+  let openTransfer = null;
+
+  /** @type {string | null} */
+  let linkedTransfer = null;
+
+  /**
    * The transfer a link names (`?tx=`) while no deposit listed is it: a
    * deposit of an account that isn't connected yet opens once it is,
    * unless a row was opened or a hash checked since.
@@ -174,12 +199,14 @@
     }
 
     linkedDeposit = null;
+    linkedTransfer = null;
     statusRequest += 1;
     isChecking = false;
     selectedTransactionHash = null;
     txHash = "";
     hashError = "";
     statusError = "";
+    openTransfer = null;
     openDeposit = found.transactionHash;
   }
 
@@ -187,17 +214,22 @@
   const isOpen = (row) =>
     row.kind === "withdrawal"
       ? selectedTransactionHash === row.hash
-      : openDeposit === row.hash;
+      : row.kind === "deposit"
+        ? openDeposit === row.hash
+        : openTransfer === row.id;
 
-  // A withdrawal opened from its row, its hash or a link closes the deposit.
-  $: if (selectedTransactionHash) openDeposit = null;
+  // A withdrawal opened from its row, its hash or a link closes the others.
+  $: if (selectedTransactionHash) {
+    openDeposit = null;
+    openTransfer = null;
+  }
 
-  // The row shown open, for the list to follow: a withdrawal or a deposit.
+  // The row shown open, for the list to follow.
   $: openId = selectedTransactionHash
     ? `withdrawal:${selectedTransactionHash}`
     : openDeposit
       ? `deposit:${openDeposit}`
-      : null;
+      : openTransfer;
 
   /**
    * Opens a row to its steps, or closes it: one row is open at a time.
@@ -206,19 +238,27 @@
    */
   function toggleRow(row) {
     linkedDeposit = null;
+    linkedTransfer = null;
 
-    if (row.kind === "deposit") {
-      if (selectedTransactionHash) {
-        void selectActivity({ transactionHash: selectedTransactionHash });
-      }
-
-      openDeposit = openDeposit === row.hash ? null : row.hash;
+    if (row.kind === "withdrawal") {
+      openDeposit = null;
+      openTransfer = null;
+      void selectActivity(row.item);
 
       return;
     }
 
-    openDeposit = null;
-    void selectActivity(row.item);
+    if (selectedTransactionHash) {
+      void selectActivity({ transactionHash: selectedTransactionHash });
+    }
+
+    if (row.kind === "deposit") {
+      openTransfer = null;
+      openDeposit = openDeposit === row.hash ? null : row.hash;
+    } else {
+      openDeposit = null;
+      openTransfer = openTransfer === row.id ? null : row.id;
+    }
   }
 
   /**
@@ -240,13 +280,6 @@
     );
 
     send?.focus();
-  }
-
-  /**
-   * @param {unknown} error
-   */
-  function getErrorMessage(error) {
-    return error instanceof Error ? error.message : String(error);
   }
 
   /**
@@ -278,6 +311,11 @@
    * @param {ActivityRow[]} rows
    */
   async function showHistoryWithdrawals(rows) {
+    // A network without DuskEVM has no withdrawals from it.
+    if (!hasDuskEvm) {
+      return;
+    }
+
     const known = historyWithdrawals(rows);
 
     historyHashes = new Set(known.map(({ hash }) => hash));
@@ -296,7 +334,7 @@
 
       historyError = "";
     } catch (error) {
-      historyError = getErrorMessage(error);
+      historyError = errorMessage(error);
     }
   }
 
@@ -322,7 +360,33 @@
     }
   }
 
+  /** Whether a DuskEVM withdrawal or deposit listed is under way. */
+  const isDuskEvmUnderWay = () =>
+    activity.some(({ stage }) => stage !== "finalized" && stage !== "failed") ||
+    deposits.some(({ stage }) => stage !== "completed" && stage !== "failed");
+
+  /** Whether the transfers to and from other chains are being followed. */
+  let following = false;
+
+  async function follow() {
+    if (following) {
+      return;
+    }
+
+    following = true;
+
+    try {
+      await followTransfers(transfers, $transferArrivals);
+    } finally {
+      following = false;
+    }
+  }
+
   async function refreshActivity() {
+    if (!hasDuskEvm) {
+      return;
+    }
+
     const request = ++activityRequest;
     const requestedAccount = currentAccount;
     isActivityLoading = true;
@@ -421,7 +485,7 @@
       }
     } catch (error) {
       if (request === statusRequest) {
-        statusError = getErrorMessage(error);
+        statusError = errorMessage(error);
       }
     } finally {
       if (request === statusRequest) {
@@ -469,7 +533,7 @@
       // The card shows a short line; the raw error stays in the console.
       // eslint-disable-next-line no-console
       console.error(`Withdrawal ${actionName} failed`, error);
-      statusError = getErrorMessage(error);
+      statusError = errorMessage(error);
     } finally {
       isSubmitting = false;
     }
@@ -484,8 +548,34 @@
   }
 
   /**
-   * Opens the transfer the page's link names (`?tx=`): a deposit kept here,
-   * or else a withdrawal, which is checked.
+   * Checks a link that names no deposit or transfer here as a withdrawal's
+   * hash.
+   *
+   * @param {string} linked
+   */
+  function checkLinkedWithdrawal(linked) {
+    // A withdrawal's hash names no deposit: none is waited for.
+    if (isWithdrawalTxHash(linked)) {
+      linkedDeposit = null;
+    }
+
+    txHash = linked;
+
+    const remembered = isWithdrawalTxHash(linked)
+      ? rememberWithdrawalTransaction(linked, { account: currentAccount })
+      : null;
+
+    if (remembered) {
+      selectedTransactionHash = remembered.transactionHash;
+    }
+
+    void checkStatus();
+  }
+
+  /**
+   * Opens the transfer the page's link names (`?tx=`): a deposit, a
+   * migration or a transfer out once it's listed, or else a withdrawal,
+   * which is checked.
    */
   function openLinked() {
     const linked = $page.url.searchParams.get("tx");
@@ -501,24 +591,18 @@
       return;
     }
 
-    // A withdrawal's hash names no deposit: none is waited for.
-    if (isWithdrawalTxHash(linked)) {
-      linkedDeposit = null;
+    // A migration, or a transfer out, the history or this browser has. A
+    // Dusk hash may name a deposit too: whichever is listed first opens.
+    if (
+      $keptMigrations.some(({ hash }) => hash === linkedDeposit) ||
+      /^[0-9a-f]{64}$/i.test(linked)
+    ) {
+      linkedTransfer = linkedDeposit;
+
+      return;
     }
 
-    txHash = linked;
-
-    const remembered = isWithdrawalTxHash(linked)
-      ? rememberWithdrawalTransaction(/** @type {`0x${string}`} */ (linked), {
-          account: currentAccount,
-        })
-      : null;
-
-    if (remembered) {
-      selectedTransactionHash = remembered.transactionHash;
-    }
-
-    void checkStatus();
+    checkLinkedWithdrawal(linked);
   }
 
   onMount(() => {
@@ -526,6 +610,7 @@
     rememberedActivity = hydrateWithdrawalActivity();
     rebuildActivity();
     keptDeposits = hydrateDepositActivity();
+    hydrateMigrations();
 
     const unsubscribeDeposits = depositActivityStore.subscribe((items) => {
       keptDeposits = items;
@@ -543,7 +628,7 @@
       currentAccount = value.address?.toLowerCase() ?? null;
       filterDeposits();
 
-      if (currentAccount) {
+      if (currentAccount && hasDuskEvm) {
         resumeDepositTracking(currentAccount);
       }
 
@@ -555,17 +640,27 @@
         txHash = "";
         indexedActivity = [];
         rebuildActivity();
-        resumeWithdrawalTracking(currentAccount);
-        void refreshActivity();
+
+        if (hasDuskEvm) {
+          resumeWithdrawalTracking(currentAccount);
+          void refreshActivity();
+        }
       }
     });
 
     openLinked();
 
+    // Nothing is read again while nothing is under way.
     const timer = window.setInterval(() => {
-      if (document.visibilityState !== "hidden") {
+      if (document.visibilityState === "hidden") {
+        return;
+      }
+
+      if (isDuskEvmUnderWay()) {
         void refreshActivity();
       }
+
+      void follow();
     }, POLL_INTERVAL_MS);
 
     return () => {
@@ -590,7 +685,47 @@
   }
   $: canCheck = finalizationConfig.configured && !isChecking && !isSubmitting;
   $: ({ language } = $settingsStore);
+  $: routeList = cardRoutes($nodeNetwork);
+  // The public account the wallet shows: the migrations listed pay it.
+  $: duskAccount = $walletStore.currentProfile?.account.toString() ?? "";
+  $: transfers = [
+    ...migrationTransfers(
+      $activityState.rows,
+      $keptMigrations,
+      routeList,
+      duskAccount
+    ),
+    ...serviceTransfers($activityState.rows, $transferArrivals, routeList),
+  ];
+  // Followed as soon as one is under way, as the history or this browser
+  // gives it, then on the timer.
+  $: underWay = toFollow(transfers)
+    .map(({ hash }) => hash)
+    .join(" ");
+  $: if (underWay) {
+    void follow();
+  }
+  $: if (
+    linkedTransfer &&
+    transfers.some(({ hash }) => hash === linkedTransfer)
+  ) {
+    const found = transfers.find(({ hash }) => hash === linkedTransfer);
+
+    openTransfer = found ? `${found.kind}:${found.hash}` : null;
+    openDeposit = null;
+    linkedTransfer = null;
+    linkedDeposit = null;
+  }
+  // DuskEVM's parts, and its reads: only on a network that has it.
+  $: hasDuskEvm =
+    Boolean($nodeNetwork?.duskEvm) || finalizationConfig.configured;
   $: groups = groupBridgeActivity([
+    ...transfers.map((transfer) =>
+      routeTransferRow(transfer, {
+        locale: language,
+        time: routeTime(transfer.route, { net: $nodeNetwork }),
+      })
+    ),
     ...activity.map((item) =>
       withdrawalRow(item, {
         locale: language,
@@ -627,8 +762,12 @@
 
   <div class="bridge-activity" in:fade|global>
     <p class="bridge-activity__lede">
-      Transfers between Dusk and DuskEVM{#if currentAccount}, for DuskEVM
-        account <b>{shortened(currentAccount)}</b>{/if}.
+      {#if hasDuskEvm}
+        Transfers between Dusk and other chains{#if currentAccount}, for DuskEVM
+          account <b>{shortened(currentAccount)}</b>{/if}.
+      {:else}
+        Transfers between Dusk and other chains.
+      {/if}
       {#if lastCheckedAt}
         <span class="bridge-activity__checked"
           >Updated {formatTimestamp(lastCheckedAt.toISOString())}</span
@@ -636,7 +775,7 @@
       {/if}
     </p>
 
-    {#if !currentAccount}
+    {#if hasDuskEvm && !currentAccount}
       <div class="bridge-activity__connect">
         <p>
           Connect DuskEVM wallet to list its deposits and other withdrawals.
@@ -651,13 +790,13 @@
       </div>
     {/if}
 
-    {#if !finalizationConfig.configured}
+    {#if hasDuskEvm && !finalizationConfig.configured}
       <Banner title="Finalization not configured" variant="warning">
         <p>Missing {finalizationConfig.missing.join(", ")}.</p>
       </Banner>
     {/if}
 
-    {#if activityError || historyError}
+    {#if hasDuskEvm && (activityError || historyError)}
       <p class="bridge-activity__note" role="status">
         DuskEVM's explorer can't be read: {activityError || historyError} The withdrawals
         remembered here are still listed.
@@ -730,8 +869,10 @@
                       on:finalize={submitFinalization}
                       on:prove={submitProof}
                     />
-                  {:else}
+                  {:else if row.kind === "deposit"}
                     <DepositLifecycle deposit={row.item} titled={false} />
+                  {:else}
+                    <RouteTransferDetails transfer={row.item} />
                   {/if}
                 </div>
               {/if}
@@ -741,43 +882,48 @@
       </section>
     {/each}
 
-    <form
-      class="bridge-activity__lookup"
-      on:submit|preventDefault={() => {
-        linkedDeposit = null;
-        void checkStatus(txHash);
-      }}
-    >
-      <label for="withdrawal-tx-hash">Find by transaction hash</label>
-      <div class="bridge-activity__lookup-row">
-        <Textbox
-          aria-describedby={hashError ? "withdrawal-tx-hash-error" : undefined}
-          aria-invalid={hashError ? "true" : undefined}
-          bind:value={txHash}
-          id="withdrawal-tx-hash"
-          name="withdrawal-tx-hash"
-          on:blur={validateHashInput}
-          on:input={() => {
-            if (isWithdrawalTxHash(txHash.trim())) hashError = "";
-          }}
-          placeholder="0x…"
-        />
-        <Button
-          disabled={!canCheck}
-          text={isChecking ? "Checking" : "Check"}
-          type="submit"
-          variant="secondary"
-        />
-      </div>
-      <p class="bridge-activity__hint">
-        A withdrawal's DuskEVM transaction, as its wallet shows it.
-      </p>
-      {#if hashError}
-        <p class="field-error" id="withdrawal-tx-hash-error" role="alert">
-          {hashError}
+    {#if hasDuskEvm}
+      <form
+        class="bridge-activity__lookup"
+        on:submit|preventDefault={() => {
+          linkedDeposit = null;
+          linkedTransfer = null;
+          void checkStatus(txHash);
+        }}
+      >
+        <label for="withdrawal-tx-hash">Find by transaction hash</label>
+        <div class="bridge-activity__lookup-row">
+          <Textbox
+            aria-describedby={hashError
+              ? "withdrawal-tx-hash-error"
+              : undefined}
+            aria-invalid={hashError ? "true" : undefined}
+            bind:value={txHash}
+            id="withdrawal-tx-hash"
+            name="withdrawal-tx-hash"
+            on:blur={validateHashInput}
+            on:input={() => {
+              if (isWithdrawalTxHash(txHash.trim())) hashError = "";
+            }}
+            placeholder="0x…"
+          />
+          <Button
+            disabled={!canCheck}
+            text={isChecking ? "Checking" : "Check"}
+            type="submit"
+            variant="secondary"
+          />
+        </div>
+        <p class="bridge-activity__hint">
+          A withdrawal's DuskEVM transaction, as its wallet shows it.
         </p>
-      {/if}
-    </form>
+        {#if hashError}
+          <p class="field-error" id="withdrawal-tx-hash-error" role="alert">
+            {hashError}
+          </p>
+        {/if}
+      </form>
+    {/if}
   </div>
 </SwapCard>
 

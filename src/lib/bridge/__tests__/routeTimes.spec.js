@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { networks, routes } from "@dusk-network/networks";
 
 import { depositStageMessage } from "$lib/bridge/depositLifecycle";
 import {
@@ -22,8 +23,8 @@ const CHAIN = {
 };
 
 /**
- * @param {RouteTimeRoute} route
- * @param {{ chain?: ChainTimes | null, network?: string }} [timing]
+ * @param {RouteTimeRoute | import("@dusk-network/networks").Route} route
+ * @param {{ chain?: ChainTimes | null, net?: import("@dusk-network/networks").Network | null }} [timing]
  */
 const text = (route, timing) => routeTimeText(routeTime(route, timing));
 
@@ -48,30 +49,39 @@ describe("route times", () => {
     ]);
   });
 
-  it("are each network's own, and another network's never stands in", () => {
-    // Mainnet: Ethereum's migrations as measured, BSC's as the docs say.
-    expect(text(migrationRoute("ethereum"), { network: "mainnet" })).toBe(
-      "~70 min"
-    );
-    expect(text(migrationRoute("bsc"), { network: "mainnet" })).toBe("~1 hour");
-    // Testnet: its deposits as configured; its migrations have no time.
-    expect(text(DEPOSIT, { network: "testnet" })).toBe("~1 min");
-    expect(text(migrationRoute("ethereum"), { network: "testnet" })).toBe("");
-    expect(text(migrationRoute("bsc"), { network: "testnet" })).toBe("");
-    // DuskEVM on mainnet, and any network not known here: only what its chains say.
-    expect(text(DEPOSIT, { network: "mainnet" })).toBe("");
-    expect(text(DEPOSIT, { network: "devnet" })).toBe("");
-    expect(text(WITHDRAWAL, { network: "testnet" })).toBe("");
+  it("are each network's own, as its file says, and another network's never stands in", () => {
+    const { mainnet, testnet } = networks;
+
+    // Mainnet: its migrations' and its transfer to BNB Smart Chain's.
+    expect(text(migrationRoute("ethereum"), { net: mainnet })).toBe("~70 min");
+    expect(text(migrationRoute("bsc"), { net: mainnet })).toBe("~1 hour");
+    expect(
+      routes(mainnet).map((route) => [route.id, text(route, { net: mainnet })])
+    ).toStrictEqual([
+      ["bsc-to-dusk", "~1 hour"],
+      ["ethereum-to-dusk", "~70 min"],
+      ["dusk-to-bsc", "~10 hours"],
+    ]);
+    // Testnet: its deposits'; its migrations have no time.
+    expect(text(DEPOSIT, { net: testnet })).toBe("~1 min");
+    expect(text(migrationRoute("ethereum"), { net: testnet })).toBe("");
+    expect(text(migrationRoute("bsc"), { net: testnet })).toBe("");
+    // DuskEVM on mainnet, and a network without a file: only what its chains say.
+    expect(text(DEPOSIT, { net: mainnet })).toBe("");
+    expect(text(DEPOSIT, { net: null })).toBe("");
+    expect(text(WITHDRAWAL, { net: testnet })).toBe("");
   });
 
   it("take what the chain says over the configured time", () => {
     expect(
       routeTime(DEPOSIT, {
         chain: { deposit: { at: 1, lagSeconds: 290 } },
-        network: "testnet",
+        net: networks.testnet,
       })
     ).toStrictEqual({ seconds: 300, source: "chain" });
-    expect(text(DEPOSIT, { chain: CHAIN, network: "mainnet" })).toBe("~1 min");
+    expect(text(DEPOSIT, { chain: CHAIN, net: networks.mainnet })).toBe(
+      "~1 min"
+    );
     // The Portal's wait after a proof, and about when it can be proved: an
     // output after it's sent, for "Claim 7 days after you prove. You can
     // prove about 30 minutes after sending."
@@ -98,7 +108,7 @@ describe("route times", () => {
 
     expect(
       depositStageMessage(deposit, {
-        time: routeTime(DEPOSIT, { network: "testnet" }),
+        time: routeTime(DEPOSIT, { net: networks.testnet }),
       })
     ).toBe(
       "Finalized on DuskDS. Arrives on DuskEVM in ~1 min. Don't send it again."

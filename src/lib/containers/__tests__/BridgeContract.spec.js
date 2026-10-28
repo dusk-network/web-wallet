@@ -11,6 +11,8 @@ import {
 import { account } from "$lib/web3/walletConnection";
 
 import { BridgeContract } from "..";
+import { networks } from "@dusk-network/networks";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 const { CONNECTED, DISCONNECTED, evm, SEPOLIA } = vi.hoisted(() => {
   /** The chains the stand-in config knows: DuskEVM and Sepolia. */
@@ -158,6 +160,9 @@ const setAccount = (next) =>
   /** @type {import("svelte/store").Writable<any>} */ (account).set(next);
 
 describe("BridgeContract", () => {
+  // A testnet node: the card opens on DuskEVM.
+  setNodeNetwork(networks.testnet);
+
   afterEach(() => {
     cleanup();
     setAccount(DISCONNECTED);

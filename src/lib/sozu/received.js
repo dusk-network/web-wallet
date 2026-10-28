@@ -7,7 +7,7 @@
 
 import { archiveQuery } from "$lib/activity/activityHistory";
 
-import { stDuskFor } from "./amounts";
+import { stDuskFor } from "@dusk-network/networks/sozu";
 import { loadSozuDriver } from "./status";
 
 const ID = /^[0-9a-f]{64}$/;

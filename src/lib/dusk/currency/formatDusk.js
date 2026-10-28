@@ -1,62 +1,26 @@
 /**
- * DUSK as the wallet shows it: the one number format of the extension.
- * Amounts show at most four decimals, without trailing zeros and with the
- * thousands grouped; an amount under review shows every decimal it has. A
- * fee rounds to four decimals: up for the most it can cost, to the nearest
- * for what it cost. Full precision stays in details, on hover and in an
+ * DUSK as the wallet shows it, as `@dusk-network/networks/format` writes
+ * it for every Dusk app: at most four decimals, but two significant digits
+ * under 0.01, without trailing zeros and with the thousands grouped in the
+ * language's way; an amount under review shows every decimal it has.
+ * Balances round down and fees up, so neither reads more there is, or less
+ * than it can cost. Full precision stays in details, on hover and in an
  * export.
  *
  * Every function takes LUX, as a bigint or anything `BigInt` reads, and a
  * BCP 47 language tag; a negative amount takes a minus sign.
  */
 
-/** Decimals an amount shows. */
+import {
+  formatDusk as format,
+  formatDuskPlain as plain,
+} from "@dusk-network/networks/format";
+
+/** Decimals an amount shows, from 0.01 DUSK. */
 export const DUSK_DISPLAY_DECIMALS = 4;
 
-const LUX_DECIMALS = 9;
-const LUX_PER_DUSK = 10n ** BigInt(LUX_DECIMALS);
-const STEP = 10n ** BigInt(LUX_DECIMALS - DUSK_DISPLAY_DECIMALS);
-
-/**
- * @typedef {{ decimal: string, digits: string[], whole: Intl.NumberFormat }} LocaleParts
- */
-
-/** @type {Map<string, LocaleParts>} */
-const byLocale = new Map();
-
-/**
- * How a locale writes a number: its decimal separator, its digits from 0 to
- * 9 and its grouping of whole numbers.
- *
- * @param {string | undefined} locale
- * @returns {LocaleParts}
- */
-function localeParts(locale) {
-  const key = locale ?? "";
-  const known = byLocale.get(key);
-
-  if (known) {
-    return known;
-  }
-
-  const plain = new Intl.NumberFormat(locale || undefined, {
-    useGrouping: false,
-  });
-  const ninesToZero = Array.from(plain.format(1234567890));
-  const parts = {
-    decimal:
-      plain.formatToParts(1.5).find((part) => part.type === "decimal")?.value ??
-      ".",
-    digits: [ninesToZero[9], ...ninesToZero.slice(0, 9)],
-    whole: new Intl.NumberFormat(locale || undefined, {
-      maximumFractionDigits: 0,
-    }),
-  };
-
-  byLocale.set(key, parts);
-
-  return parts;
-}
+/** 0.01 DUSK: under it, an amount shows two significant digits. */
+const SMALL = 10_000_000n;
 
 /** @param {bigint | number | string} value */
 const toLux = (value) => {
@@ -68,67 +32,21 @@ const toLux = (value) => {
 };
 
 /**
- * Whole DUSK and the digits after the point, in the locale's writing.
- *
- * @param {boolean} negative
- * @param {bigint} whole
- * @param {string} fraction Latin digits
+ * @param {bigint | number | string} value LUX
  * @param {string | undefined} locale
+ * @param {"down" | "up" | "nearest"} round
  */
-function written(negative, whole, fraction, locale) {
-  const { decimal, digits, whole: grouped } = localeParts(locale);
-  const decimals = Array.from(fraction, (d) => digits[Number(d)]).join("");
-
-  return `${negative ? "−" : ""}${grouped.format(whole)}${decimals ? `${decimal}${decimals}` : ""}`;
-}
+const short = (value, locale, round) =>
+  format(toLux(value), { locale: locale || undefined, round }).text;
 
 /**
- * LUX as whole DUSK and its nine decimals, trailing zeros trimmed.
- *
- * @param {bigint} lux Not negative
- */
-const exactParts = (lux) => ({
-  fraction: (lux % LUX_PER_DUSK)
-    .toString()
-    .padStart(LUX_DECIMALS, "0")
-    .replace(/0+$/, ""),
-  whole: lux / LUX_PER_DUSK,
-});
-
-/**
- * Units of the smallest step shown, as whole DUSK and its decimals.
- *
- * @param {bigint} units
- */
-const stepParts = (units) => ({
-  fraction: (units % (LUX_PER_DUSK / STEP))
-    .toString()
-    .padStart(DUSK_DISPLAY_DECIMALS, "0")
-    .replace(/0+$/, ""),
-  whole: units / (LUX_PER_DUSK / STEP),
-});
-
-/**
- * An amount: at most four decimals, the rest cut, trailing zeros trimmed,
- * thousands grouped. One that would show as zero shows in full.
+ * An amount, as a balance shows: at most four decimals, the rest cut.
  *
  * @param {bigint | number | string} value LUX
  * @param {string} [locale]
  * @returns {string}
  */
-export function formatDusk(value, locale) {
-  const lux = toLux(value);
-  const abs = lux < 0n ? -lux : lux;
-  const units = abs / STEP;
-
-  if (units === 0n && abs !== 0n) {
-    return formatDuskExact(lux, locale);
-  }
-
-  const { fraction, whole } = stepParts(units);
-
-  return written(lux < 0n, whole, fraction, locale);
-}
+export const formatDusk = (value, locale) => short(value, locale, "down");
 
 /**
  * An amount exactly: every decimal it has, thousands grouped.
@@ -137,47 +55,41 @@ export function formatDusk(value, locale) {
  * @param {string} [locale]
  * @returns {string}
  */
-export function formatDuskExact(value, locale) {
-  const lux = toLux(value);
-  const { fraction, whole } = exactParts(lux < 0n ? -lux : lux);
-
-  return written(lux < 0n, whole, fraction, locale);
-}
+export const formatDuskExact = (value, locale) =>
+  format(toLux(value), { locale: locale || undefined, mode: "exact" }).text;
 
 /**
- * A fee: exact up to four decimals. Past them, the most it can cost
- * (`max`) rounds up, so it never reads lower than it can be, and what it
- * cost rounds to the nearest, half up. A fee too small for four decimals
- * shows in full, and its maximum as the smallest step.
+ * A fee: the most it can cost (`max`) rounds up, so it never reads lower
+ * than it can be, and what it cost rounds to the nearest, half up.
  *
  * @param {bigint | number | string} value LUX
  * @param {string} [locale]
  * @param {{ max?: boolean }} [options]
  * @returns {string}
  */
-export function formatFee(value, locale, { max = false } = {}) {
-  const lux = toLux(value);
+export const formatFee = (value, locale, { max = false } = {}) =>
+  short(toLux(value) > 0n ? value : 0n, locale, max ? "up" : "nearest");
 
-  if (lux <= 0n) {
-    return written(false, 0n, "", locale);
-  }
+/**
+ * LUX as the short format shows them, rounded `up` or down: to four
+ * decimals, or two significant digits under 0.01 DUSK.
+ *
+ * @param {bigint} lux Not negative
+ * @param {boolean} up
+ */
+function shown(lux, up) {
+  const step =
+    lux >= SMALL
+      ? 100_000n
+      : 10n ** BigInt(Math.max(lux.toString().length - 2, 0));
 
-  const units = max ? (lux + STEP - 1n) / STEP : (lux + STEP / 2n) / STEP;
-
-  if (units === 0n) {
-    return formatDuskExact(lux, locale);
-  }
-
-  const { fraction, whole } = stepParts(units);
-
-  return written(false, whole, fraction, locale);
+  return (up ? (lux + step - 1n) / step : lux / step) * step;
 }
 
 /**
- * The most a transaction can take from a balance, as a summary's Total: up
- * to four decimals rounded up, as fees are, unless that would read more
- * than the balance as it shows, cut to four; then exactly, so that a Total
- * at Max never reads more than there is.
+ * The most a transaction can take from a balance, as a summary's Total:
+ * rounded up, as fees are, but never reading more than the balance as it
+ * shows when it's no more than that: at Max, the balance as it shows.
  *
  * @param {bigint | number | string} total LUX
  * @param {bigint | number | string} available LUX, the balance it's paid from
@@ -186,24 +98,18 @@ export function formatFee(value, locale, { max = false } = {}) {
  */
 export function formatTotal(total, available, locale) {
   const lux = toLux(total);
-  const roundedUp = ((lux + STEP - 1n) / STEP) * STEP;
-  const shown = (toLux(available) / STEP) * STEP;
+  const balance = toLux(available);
 
-  return lux > 0n && roundedUp > shown
-    ? formatDuskExact(lux, locale)
+  return lux > 0n && lux <= balance && shown(lux, true) > shown(balance, false)
+    ? formatDusk(balance, locale)
     : formatFee(lux, locale, { max: true });
 }
 
 /**
- * An amount for a file, such as a CSV export: every decimal, a point and no
- * grouping, whatever the language.
+ * An amount for a file or a field, such as a CSV export: every decimal, a
+ * point and no grouping, whatever the language.
  *
  * @param {bigint | number | string} value LUX
  * @returns {string}
  */
-export function formatDuskPlain(value) {
-  const lux = toLux(value);
-  const { fraction, whole } = exactParts(lux < 0n ? -lux : lux);
-
-  return `${lux < 0n ? "-" : ""}${whole}${fraction ? `.${fraction}` : ""}`;
-}
+export const formatDuskPlain = (value) => plain(toLux(value));

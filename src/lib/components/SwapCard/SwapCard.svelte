@@ -264,6 +264,12 @@
     font-weight: 600;
   }
 
+  /* The From panel's account line, last, clears the flip button below it. */
+  .swap-card
+    :global(.swap-panel:has(+ .swap-flip) > .swap-recipient:last-child) {
+    margin-bottom: 0.75rem;
+  }
+
   .swap-card :global(.swap-flip) {
     position: relative;
     z-index: 2;

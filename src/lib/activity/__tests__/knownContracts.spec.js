@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { namehashHex } from "@duskdomains/sdk";
+import { networks } from "@dusk-network/networks";
 
 import releases from "$lib/dusk-domains/dusk-domains-releases.json";
 import { SOZU_POOLS } from "$lib/sozu/config";
@@ -81,16 +82,26 @@ describe("knownCall", () => {
     }
   });
 
-  it("should name the contracts the wallet knows", () => {
+  it("should name the contracts the wallet knows, as their network's file does", () => {
+    const portal = networks.testnet.duskEvm?.contracts.optimism_portal;
+
+    expect(contractLabel(STORE, "testnet")).toBe("Dusk Domains");
+    expect(contractLabel(portal?.contractId, "testnet")).toBe(
+      "DuskEVM bridge portal"
+    );
+    expect(contractLabel(networks.mainnet.sozu?.hub, "mainnet")).toBe(
+      "Sozu hub"
+    );
+    expect(contractLabel([...SOZU_POOLS][0])).toBe("Sozu pool");
+    expect(contractLabel("ab".repeat(32))).toBe("");
+    expect(contractLabel("")).toBe("");
+
+    // The bridge's contracts set for local work.
     vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", "cd".repeat(32));
     vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", "ef".repeat(32));
 
-    expect(contractLabel(STORE, "testnet")).toBe("Dusk Domains");
     expect(contractLabel(`0x${"CD".repeat(32)}`)).toBe("DuskEVM bridge");
     expect(contractLabel("ef".repeat(32))).toBe("DuskEVM bridge");
-    expect(contractLabel([...SOZU_POOLS][0])).toBe("Sozu");
-    expect(contractLabel("ab".repeat(32))).toBe("");
-    expect(contractLabel("")).toBe("");
   });
 });
 

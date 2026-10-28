@@ -19,7 +19,7 @@ import { timeLabel } from "$lib/activity/present";
 import { shortenAddress } from "$lib/dusk/string";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import { addBasePath } from "$lib/navigation";
-import { DEFAULT_BLOCKLISTED_ADDRESSES } from "$lib/security/addressBlocklist";
+import { networks } from "@dusk-network/networks";
 import {
   getContact,
   listContacts,
@@ -464,9 +464,14 @@ describe("Send", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
+      // Not "Up to 173.901884001 DUSK" beside "Available 173.9018 DUSK":
+      // the balance as it shows there, rounded down.
+      expect(container.querySelector(".send__hint")).toHaveTextContent(
+        /^Available 173\.9018 DUSK/
+      );
       expect(getSummary(container).at(-1)).toStrictEqual([
         "Total",
-        "Up to 173.901884001 DUSK",
+        "Up to 173.9018 DUSK",
       ]);
     });
 
@@ -712,7 +717,7 @@ describe("Send", () => {
         "href",
         `/some-base-path/dashboard/transactions?tx=${lastTxId}`
       );
-      expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
+      expect(getByText("8dcf6f8a…993db55e")).toBeInTheDocument();
       expect(followTransaction).toHaveBeenCalledWith(
         lastTxId,
         expect.anything()
@@ -1403,7 +1408,7 @@ describe("Send", () => {
 
     it("should block a name that resolves to a blocked address", async () => {
       baseProps.resolveName.mockResolvedValueOnce({
-        account: DEFAULT_BLOCKLISTED_ADDRESSES[0].address,
+        account: networks.mainnet.display.blocklist[0].account,
         name: "alice.dusk",
       });
 

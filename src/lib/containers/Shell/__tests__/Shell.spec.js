@@ -52,6 +52,23 @@ describe("Shell", () => {
     mocks.url = new URL("http://localhost");
   });
 
+  it("finds the Bridge by Migrate, with no page of its own for it", async () => {
+    const { container, getByRole } = render(Shell);
+
+    await fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
+    await fireEvent.input(getByRole("combobox"), {
+      target: { value: "migrate" },
+    });
+
+    const labels = Array.from(
+      container.querySelectorAll("[role=option] .command-bar__label"),
+      (label) => label.textContent?.trim()
+    );
+
+    expect(labels).toContain("Bridge");
+    expect(labels).not.toContain("Migrate");
+  });
+
   it("opens the search with Ctrl K, and closes it with Escape", async () => {
     const { container, queryByRole } = render(Shell);
 

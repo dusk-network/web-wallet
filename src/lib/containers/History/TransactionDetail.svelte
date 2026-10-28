@@ -16,7 +16,7 @@
   import { claimText } from "$lib/bridge/claimDate";
   import { contractLabel } from "$lib/activity/knownContracts";
   import { fullDateTime, rowTime } from "$lib/activity/present";
-  import { formatDuskExact } from "$lib/dusk/currency";
+  import { formatDuskExact, formatFee } from "$lib/dusk/currency";
   import { addBasePath } from "$lib/navigation";
   import { addressType, contactsStore, saveContact } from "$lib/contacts";
   import { SOZU_FN, stDuskReceived } from "$lib/sozu";
@@ -450,7 +450,7 @@
         <dt>Network fee paid</dt>
         <dd>
           {row.feePaid
-            ? `${formatDuskExact(lux(row.feePaid), locale)} DUSK`
+            ? `${formatFee(lux(row.feePaid), locale)} DUSK`
             : p.icon === "received"
               ? "Paid by the sender"
               : "Not known yet"}
@@ -532,6 +532,12 @@
           <div>
             <dt>Gas price</dt>
             <dd>{Number(row.gasPrice).toLocaleString(locale)} LUX</dd>
+          </div>
+        {/if}
+        {#if row.feePaid}
+          <div>
+            <dt>Fee paid, exactly</dt>
+            <dd>{formatDuskExact(lux(row.feePaid), locale)} DUSK</dd>
           </div>
         {/if}
         {#if nonce !== null}

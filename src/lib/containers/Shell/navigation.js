@@ -68,7 +68,6 @@ const PAGE_NAMES = new Map([
   ["/dashboard/bridge", "Bridge"],
   ["/dashboard/bridge/transactions", "Bridge activity"],
   ["/dashboard/contacts", "Contacts"],
-  ["/dashboard/migrate", "Migrate"],
   ["/dashboard/receive", "Receive"],
   ["/dashboard/send", "Send"],
   ["/dashboard/stake", "Staking"],

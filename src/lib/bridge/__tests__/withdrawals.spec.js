@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readable } from "svelte/store";
 import { hexToBytes, toRlp } from "viem";
+import { networks } from "@dusk-network/networks";
 
 import {
   hashWithdrawal,
@@ -70,8 +71,18 @@ function reply(results) {
   return out;
 }
 
+/**
+ * Puts the node on a network, as its chain ID names it.
+ *
+ * @param {import("@dusk-network/networks").Network} net
+ */
+function onNetwork(net) {
+  vi.doMock("$lib/stores/nodeNetwork", () => ({ default: readable(net) }));
+}
+
 describe("DuskEVM withdrawal helpers", () => {
   afterEach(() => {
+    vi.doUnmock("$lib/stores/nodeNetwork");
     vi.doUnmock("$lib/bridge/bridgeReads");
     vi.doUnmock("$lib/stores");
     vi.doUnmock("$lib/web3/walletConnection");
@@ -127,25 +138,35 @@ describe("DuskEVM withdrawal helpers", () => {
     ]);
   });
 
-  it("uses bundled Portal and DGF data-driver URLs when env URLs are blank", async () => {
+  it("takes the Portal, the dispute game factory and their drivers from the node's network", async () => {
     vi.resetModules();
-    vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", "11".repeat(32));
-    vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL", "");
-    vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", "22".repeat(32));
-    vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL", "");
+    onNetwork(networks.testnet);
 
     const { getWithdrawalFinalizationConfig } =
       await import("$lib/bridge/withdrawals");
     const config = getWithdrawalFinalizationConfig();
+    const contracts = networks.testnet.duskEvm?.contracts;
 
-    expect(config.configured).toBe(true);
-    expect(config.missing).toEqual([]);
-    expect(config.optimismPortalDataDriverUrl).toBe(
-      "/drivers/optimism_portal_dd_opt.wasm"
-    );
-    expect(config.disputeGameFactoryDataDriverUrl).toBe(
-      "/drivers/dispute_game_factory_dd_opt.wasm"
-    );
+    expect(config).toMatchObject({
+      configured: true,
+      disputeGameFactoryContractId: contracts?.dispute_game_factory.contractId,
+      disputeGameFactoryDataDriverUrl:
+        "/drivers/dispute_game_factory_dd_opt.wasm",
+      missing: [],
+      optimismPortalContractId: contracts?.optimism_portal.contractId,
+      optimismPortalDataDriverUrl: "/drivers/optimism_portal_dd_opt.wasm",
+    });
+
+    // A network without DuskEVM has none, unless set.
+    vi.resetModules();
+    onNetwork(networks.mainnet);
+
+    const again = await import("$lib/bridge/withdrawals");
+
+    expect(again.getWithdrawalFinalizationConfig()).toMatchObject({
+      configured: false,
+      optimismPortalContractId: "",
+    });
   });
 
   it("accepts relative and http data-driver URLs", async () => {
@@ -170,15 +191,15 @@ describe("DuskEVM withdrawal helpers", () => {
   });
 
   it.each([
-    ["DuskEVM testnet's own by default", "745", "", "1735498c"],
-    ["the one set", "745", `0x${"ab".repeat(32)}`, "abababab"],
-    ["none with `none`", "745", "none", ""],
-    ["none elsewhere unless set", "744", "", ""],
+    ["the network's by default", networks.testnet, "", "1735498c"],
+    ["the one set", networks.testnet, `0x${"ab".repeat(32)}`, "abababab"],
+    ["none with `none`", networks.testnet, "none", ""],
+    ["none on a network without DuskEVM, unless set", networks.mainnet, "", ""],
   ])(
     "knows the anchor state registry the Portal asks: %s",
-    async (_what, chainId, set, starts) => {
+    async (_what, net, set, starts) => {
       vi.resetModules();
-      vi.stubEnv("VITE_EVM_CHAIN_ID", chainId);
+      onNetwork(net);
       vi.stubEnv("VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID", set);
 
       const { getWithdrawalFinalizationConfig } =
@@ -606,6 +627,8 @@ describe("DuskEVM withdrawal helpers", () => {
 
     async function timingModule() {
       vi.resetModules();
+      // DuskEVM testnet's drivers, and the contracts set.
+      onNetwork(networks.testnet);
       vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", PORTAL);
       vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", DGF);
 
@@ -1455,9 +1478,15 @@ function mockWithdrawalReads({
 } = {}) {
   vi.resetModules();
   vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", "11".repeat(32));
-  vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL", "");
+  vi.stubEnv(
+    "VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL",
+    "/drivers/optimism_portal_dd_opt.wasm"
+  );
   vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", "22".repeat(32));
-  vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL", "");
+  vi.stubEnv(
+    "VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL",
+    "/drivers/dispute_game_factory_dd_opt.wasm"
+  );
 
   const proofSubmitter = Array(20).fill(0x2c);
   const portal = {

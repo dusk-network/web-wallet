@@ -15,6 +15,7 @@
  */
 
 import { aboutTime } from "./routeTimes";
+import { formatTime } from "@dusk-network/networks/format";
 
 /** A dispute game's status, as its hub gives it. */
 export const GAME_STATUS = Object.freeze({
@@ -274,19 +275,12 @@ export function proveNowText(claim, when) {
 }
 
 /**
- * A claim date as the wallet writes it, in the user's locale and time zone:
- * "Mon 2 Nov, 04:24".
+ * A claim date as the wallet writes it, in English on the locale's clock and
+ * in the user's time zone: "2 Nov, 04:24 CET", or "Today, 04:24 CET".
  *
  * @param {number} ms
  * @param {string} [locale]
  * @param {string} [timeZone]
  */
 export const claimDay = (ms, locale, timeZone) =>
-  new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-    timeZone,
-    weekday: "short",
-  }).format(ms);
+  formatTime(ms, { locale: locale || undefined, timeZone });

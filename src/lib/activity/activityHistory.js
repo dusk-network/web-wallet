@@ -18,7 +18,10 @@
  * entries. The shielded history is phoenixHistory.js's.
  */
 
+import { get } from "svelte/store";
+
 import { decodeBridgeCall, isBridgeContract } from "$lib/bridge/bridgeCalls";
+import nodeNetwork from "$lib/stores/nodeNetwork";
 
 import * as defaultStore from "./activityStore";
 import { STAKE_CONTRACT, TRANSFER_CONTRACT, TX_KIND } from "./constants";
@@ -61,76 +64,29 @@ const HASH = /^[0-9a-f]{64}$/;
 // Endpoints
 // ---------------------------------------------------------------------------
 
-const PRESETS = new Set(["devnet", "local", "mainnet", "testnet"]);
-
 /**
- * The network a node URL is on, by its host name: one of the known ones, or
- * "custom".
- *
- * @param {string} nodeUrl
- */
-export function networkOfNodeUrl(nodeUrl) {
-  try {
-    const host = new URL(nodeUrl).hostname.toLowerCase();
-
-    if (["0.0.0.0", "127.0.0.1", "localhost"].includes(host)) {
-      return "local";
-    }
-
-    if (host.includes("testnet")) {
-      return "testnet";
-    }
-
-    if (host.includes("devnet")) {
-      return "devnet";
-    }
-
-    if (host === "nodes.dusk.network") {
-      return "mainnet";
-    }
-  } catch {
-    // not a URL
-  }
-
-  return "custom";
-}
-
-/**
- * The archive to read a network's history from: the configured archiver, or
- * the node when the archiver is on another known network.
+ * The archive to read a network's history from: the archiver given, else
+ * the node, which keeps it on Dusk's own networks.
  *
  * @param {{ archiverUrl?: string, nodeUrl?: string }} urls
  * @returns {string}
  */
 export function historyArchiverUrl({ archiverUrl, nodeUrl } = {}) {
-  const node = String(nodeUrl ?? "").trim();
-  const archiver = String(archiverUrl ?? "").trim();
-
-  if (!archiver) {
-    return node;
-  }
-
-  const nodeNet = networkOfNodeUrl(node);
-  const archiverNet = networkOfNodeUrl(archiver);
-
-  return PRESETS.has(nodeNet) &&
-    PRESETS.has(archiverNet) &&
-    nodeNet !== archiverNet
-    ? node
-    : archiver;
+  return String(archiverUrl ?? "").trim() || String(nodeUrl ?? "").trim();
 }
 
 /**
- * The network a history belongs to: Mainnet and Testnet by name, any other
- * node by its base URL, with its path.
+ * The network a history belongs to: Mainnet and Testnet by name, as the
+ * chain ID the node gives names them, so a custom node of a network shares
+ * its history; any other node by its base URL, with its path.
  *
  * @param {string} nodeUrl
  */
 export function activityNetworkKey(nodeUrl) {
-  const preset = networkOfNodeUrl(String(nodeUrl ?? ""));
+  const name = get(nodeNetwork)?.name;
 
-  if (preset === "mainnet" || preset === "testnet") {
-    return preset;
+  if (name === "mainnet" || name === "testnet") {
+    return name;
   }
 
   try {
@@ -1642,45 +1598,4 @@ export async function readActivity({
       : rows.filter((row) => row.blockHeight >= downTo).map(activityEntry);
 
   return { complete: downTo === 0, coveredTo: downTo, entries, meta };
-}
-
-/**
- * The newest `limit` entries of `account`'s public history, newest first:
- * from this browser, after a sync run asks the archive for what is new (and
- * carries on an older sync). When the archive is unreachable, the kept
- * entries, and a warning in the console once.
- *
- * @param {{
- *   account: string,
- *   archiverUrl?: string,
- *   before?: number,
- *   limit?: number,
- *   nodeUrl?: string,
- *   store?: ActivityStoreModule,
- * }} options
- * @returns {Promise<ActivityEntry[]>}
- */
-export async function fetchRecentActivity({
-  account,
-  archiverUrl,
-  before,
-  limit = 20,
-  nodeUrl,
-  store = defaultStore,
-}) {
-  const node = nodeUrl ?? archiverUrl ?? "";
-
-  try {
-    await syncActivity({ account, archiverUrl, nodeUrl: node, store });
-  } catch (error) {
-    noteActivityUnavailable(error);
-  }
-
-  try {
-    return (
-      await readActivity({ account, before, limit, nodeUrl: node, store })
-    ).entries;
-  } catch {
-    return [];
-  }
 }

@@ -85,14 +85,13 @@ exports[`Allocate > should render the allocation page 1`] = `
               <!---->
               <input
                 aria-label="Public amount"
-                class="dusk-textbox dusk-textbox-number operation__input-field"
+                autocomplete="off"
+                class="dusk-textbox dusk-textbox-text operation__input-field"
                 id="unshielded-amount"
-                max="0"
-                min="0"
+                inputmode="decimal"
                 name="unshielded-amount"
                 required=""
-                step="0.000000001"
-                type="number"
+                type="text"
               />
               
               <!---->
@@ -163,13 +162,12 @@ exports[`Allocate > should render the allocation page 1`] = `
               <!---->
               <input
                 aria-label="Shielded amount"
-                class="dusk-textbox dusk-textbox-number operation__input-field"
-                max="0"
-                min="0"
+                autocomplete="off"
+                class="dusk-textbox dusk-textbox-text operation__input-field"
+                inputmode="decimal"
                 name="shielded-amount"
                 required=""
-                step="0.000000001"
-                type="number"
+                type="text"
               />
               
               <!---->

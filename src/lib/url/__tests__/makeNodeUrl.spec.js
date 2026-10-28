@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { networks } from "@dusk-network/networks";
+
 import { activityNetworkKey } from "$lib/activity/activityHistory";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { makeNodeUrl, nodeBaseUrl } from "..";
 
@@ -124,11 +127,14 @@ describe("nodeBaseUrl", () => {
 
     expect(activityNetworkKey(nodeBaseUrl())).toBe(`${origin}/rusk`);
 
+    // Testnet's hosted node, which gives testnet's chain ID.
     vi.stubGlobal("location", {
       hostname: "apps.testnet.dusk.network",
       protocol,
     });
+    setNodeNetwork(networks.testnet);
 
     expect(activityNetworkKey(nodeBaseUrl())).toBe("testnet");
+    setNodeNetwork(null);
   });
 });

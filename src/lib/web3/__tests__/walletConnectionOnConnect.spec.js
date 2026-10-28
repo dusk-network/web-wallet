@@ -23,11 +23,19 @@ function stubAppKit() {
   return appKit;
 }
 
-/** The connection, as a page that opens loads it: started by nothing. */
+/**
+ * The connection, as a page that opens loads it, on a testnet node:
+ * started by nothing.
+ */
 const load = async () => {
   vi.resetModules();
 
-  return import("../walletConnection");
+  const connection = await import("../walletConnection");
+  const { networks } = await import("@dusk-network/networks");
+
+  (await import("$lib/stores/nodeNetwork")).setNodeNetwork(networks.testnet);
+
+  return connection;
 };
 
 /**

@@ -69,6 +69,10 @@ beforeEach(async () => {
   store = await import("../activityStore");
   await store.activityDatabase.delete({ disableAutoOpen: false });
   sessions = await import("../activitySession");
+  // On a testnet node: the recordings' network.
+  (await import("$lib/stores/nodeNetwork")).setNodeNetwork(
+    (await import("@dusk-network/networks")).networks.testnet
+  );
   mocks.lookupCounterpartyNames.mockReset();
   mocks.lookupCounterpartyNames.mockResolvedValue(new Map());
 });

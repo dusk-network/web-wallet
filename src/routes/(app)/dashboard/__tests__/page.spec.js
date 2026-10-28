@@ -6,6 +6,7 @@ import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore } from "$lib/stores";
 
 import Dashboard from "../+page.svelte";
+import { networks } from "@dusk-network/networks";
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(() => Promise.resolve()),
@@ -20,8 +21,13 @@ vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {typeof import("$lib/stores")} */
   const original = await importOriginal();
   const { writable } = await import("svelte/store");
+  const { networks: files } = await import("@dusk-network/networks");
 
-  network.store = writable({ connected: true, networkName: "mainnet" });
+  network.store = writable({
+    connected: true,
+    net: files.mainnet,
+    networkName: "mainnet",
+  });
 
   return {
     ...original,
@@ -190,8 +196,40 @@ describe("Dashboard", () => {
     );
   });
 
+  it("offers whoever holds DUSK on Ethereum or BNB Smart Chain a migration, only where one is running: BNB Smart Chain's on mainnet", async () => {
+    const { getByRole, unmount } = render(Dashboard, props);
+
+    expect(getByRole("link", { name: "Migrate it to Dusk" })).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard/bridge?route=bsc-to-dusk"
+    );
+    unmount();
+
+    // Testnet's migration, from Sepolia, isn't running: no line.
+    network.store?.set({
+      connected: true,
+      net: networks.testnet,
+      networkName: "testnet",
+    });
+
+    const { container, queryByRole } = render(Dashboard, props);
+
+    expect(queryByRole("link", { name: "Migrate it to Dusk" })).toBeNull();
+    expect(container).not.toHaveTextContent("Have DUSK on Ethereum");
+
+    network.store?.set({
+      connected: true,
+      net: networks.mainnet,
+      networkName: "mainnet",
+    });
+  });
+
   it("shows no value in money off mainnet, as test DUSK has none", async () => {
-    network.store?.set({ connected: true, networkName: "testnet" });
+    network.store?.set({
+      connected: true,
+      net: networks.testnet,
+      networkName: "testnet",
+    });
 
     const { container } = render(Dashboard, props);
 
@@ -200,7 +238,11 @@ describe("Dashboard", () => {
 
     expect(container.querySelector(".home-balance__fiat")).toBeNull();
 
-    network.store?.set({ connected: true, networkName: "mainnet" });
+    network.store?.set({
+      connected: true,
+      net: networks.mainnet,
+      networkName: "mainnet",
+    });
   });
 
   it("says what each balance means, and that nothing is staked right now", async () => {

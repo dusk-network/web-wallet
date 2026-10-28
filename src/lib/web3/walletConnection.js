@@ -15,22 +15,70 @@ import {
   reconnect,
   watchAccount,
 } from "@wagmi/core";
+import { routes } from "@dusk-network/networks";
 import { get, writable } from "svelte/store";
+
+import nodeNetwork from "$lib/stores/nodeNetwork";
 
 import { duskEvm } from "./duskEvm";
 
 export { duskEvm };
 
 /**
- * @constant {string} projectId - The ID of the project, sourced from an environment variable.
+ * An EVM chain as AppKit and viem take it, from what a network's file says
+ * of it.
  *
- * @description
- * This constant retrieves the project ID from the environment variable `VITE_REOWN_PROJECT_ID`.
- * If the environment variable is not set, it defaults to an empty string. This behavior is not ideal
- * because an empty `projectId` will cause the modal initialization to fail.
- *
- * When the `projectId` is missing, the "migrate" and "bridge" functionality isn't accessible in the UI.
+ * @param {{ chainId: number, currency: { decimals: number, name: string, symbol: string }, explorerUrl: string, name: string, rpcUrl: string }} chain
+ * @returns {import("@reown/appkit/networks").AppKitNetwork}
  */
+const appKitChain = (chain) =>
+  /** @type {import("@reown/appkit/networks").AppKitNetwork} */ ({
+    blockExplorers: {
+      default: { name: `${chain.name} explorer`, url: chain.explorerUrl },
+    },
+    caipNetworkId: `eip155:${chain.chainId}`,
+    chainNamespace: "eip155",
+    id: chain.chainId,
+    name: chain.name,
+    nativeCurrency: chain.currency,
+    rpcUrls: { default: { http: [chain.rpcUrl] } },
+  });
+
+/**
+ * The EVM chains the node's network's routes reach, each once: DuskEVM
+ * first where the network has it, as set for local work or as its file
+ * gives it, then the chains its migrations and transfers go to.
+ *
+ * @returns {import("@reown/appkit/networks").AppKitNetwork[]}
+ */
+export function evmChains() {
+  const net = get(nodeNetwork);
+  /** @type {Map<number, import("@reown/appkit/networks").AppKitNetwork>} */
+  const chains = new Map();
+
+  if (duskEvm.id) {
+    chains.set(
+      duskEvm.id,
+      appKitChain({
+        chainId: duskEvm.id,
+        currency: duskEvm.nativeCurrency,
+        explorerUrl: String(duskEvm.blockExplorers.default.url ?? ""),
+        name: duskEvm.name,
+        rpcUrl: duskEvm.rpcUrls.default.http[0],
+      })
+    );
+  }
+
+  for (const { chain } of net ? routes(net) : []) {
+    if (!chains.has(chain.chainId)) {
+      chains.set(chain.chainId, appKitChain(chain));
+    }
+  }
+
+  return [...chains.values()];
+}
+
+/** Reown's project ID: without one, the Bridge isn't offered. */
 const VITE_REOWN_PROJECT_ID = import.meta.env.VITE_REOWN_PROJECT_ID || "";
 
 /**
@@ -207,32 +255,38 @@ export function wasConnectedBefore() {
  * @param {number} reset Reset's count as the connection started
  */
 async function start(reset) {
-  const [{ createAppKit }, { WagmiAdapter }, { bsc, mainnet, sepolia }] =
-    await Promise.all([
-      import("@reown/appkit"),
-      import("@reown/appkit-adapter-wagmi"),
-      import("@reown/appkit/networks"),
-    ]);
+  const [{ createAppKit }, { WagmiAdapter }] = await Promise.all([
+    import("@reown/appkit"),
+    import("@reown/appkit-adapter-wagmi"),
+  ]);
 
   // Reset forgot the wallets as AppKit loaded: none of it starts.
   if (reset !== resets) {
     throw new Error("The EVM wallets were forgotten.");
   }
 
-  /** @type {[import("@reown/appkit/networks").AppKitNetwork, ...import("@reown/appkit/networks").AppKitNetwork[]]} */
-  const networks = [sepolia, bsc, mainnet, duskEvm];
+  const chains = evmChains();
+
+  if (!chains.length) {
+    throw new Error("This network's bridge reaches no EVM chain.");
+  }
+
+  const networks =
+    /** @type {[import("@reown/appkit/networks").AppKitNetwork, ...import("@reown/appkit/networks").AppKitNetwork[]]} */ (
+      chains
+    );
   const wagmiAdapter = new WagmiAdapter({
     networks,
     projectId: VITE_REOWN_PROJECT_ID,
-    transports: {
-      [duskEvm.id]: http(duskEvm.rpcUrls.default.http[0]),
-    },
+    transports: Object.fromEntries(
+      chains.map((chain) => [chain.id, http(chain.rpcUrls.default.http[0])])
+    ),
   });
 
   wagmiConfig = wagmiAdapter.wagmiConfig;
   appKit = createAppKit({
     adapters: [wagmiAdapter],
-    defaultNetwork: duskEvm,
+    defaultNetwork: networks[0],
     // The Coinbase and Base Account SDKs send their own telemetry.
     enableBaseAccount: false,
     enableCoinbase: false,

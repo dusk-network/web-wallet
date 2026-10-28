@@ -1,45 +1,20 @@
 /**
- * How long a bridge or migration route takes on this network: the one
- * answer the Bridge and Migrate cards, their reviews and their results give.
- * Each time comes from the most direct source there is, on this network
- * only, and where none is known there is no time, never another network's:
+ * How long a bridge route takes on this network: the one answer the Bridge
+ * card, its reviews and its results, and Bridge › Activity give. Each time
+ * comes from the most direct source there is, on this network only, and
+ * where none is known there is no time, never another network's:
  * - a withdrawal from DuskEVM: the Portal's proof maturity and dispute game
  *   finality delays, and how often DuskEVM's outputs reach Dusk (chain);
  * - a deposit to DuskEVM: how far DuskEVM trails Dusk (chain), or else the
- *   network's value below;
- * - a migration: the network's value below.
+ *   route's typical time in the network's file;
+ * - a migration or a transfer to another chain: the route's typical time in
+ *   the network's file (`@dusk-network/networks`).
  */
+
+import { routes } from "@dusk-network/networks";
 
 /** Dusk makes a block every 10 seconds: a deposit waits for one. */
 const DUSK_BLOCK_SECONDS = 10;
-
-/**
- * What a route takes on each network where the chain doesn't say, in
- * seconds, and where each number comes from. null: not known, no time.
- */
-const CONFIGURED = Object.freeze({
-  mainnet: Object.freeze({
-    // DuskEVM isn't on mainnet yet: its chains will say, once it is.
-    deposit: null,
-    migration: Object.freeze({
-      // "Around one hour", as the docs' migration guide says. Not measured:
-      // the payouts of the 200 days to 27 Oct 2026 were all for Ethereum.
-      bsc: 3_600,
-      // 66 to 67 minutes from the migration's block to its payout on Dusk,
-      // for each of the 15 migrations of 28 Sep to 24 Oct 2026.
-      ethereum: 4_000,
-    }),
-  }),
-  testnet: Object.freeze({
-    // Its 40 deposits of 1 Sep to 27 Oct 2026 took 25 to 39 s from their
-    // Dusk block (Dusk's own time) to their DuskEVM block, plus up to a Dusk
-    // block to be included.
-    deposit: 60,
-    // No time: the testnet migrations are paid out only at times (one payout
-    // since January 2025).
-    migration: Object.freeze({ bsc: null, ethereum: null }),
-  }),
-});
 
 /** A deposit from Dusk to DuskEVM. */
 export const DEPOSIT = Object.freeze({ kind: "deposit" });
@@ -86,48 +61,61 @@ function withdrawalTime(read) {
 }
 
 /**
- * What a route takes on `network` as configured above, or null.
+ * A route's typical time in the network's file, in seconds, or null: the
+ * route itself when it's one of the file's, else the file's route of its
+ * kind.
  *
- * @param {RouteTimeRoute} route
- * @param {string} network
+ * @param {RouteTimeRoute | import("@dusk-network/networks").Route} route
+ * @param {import("@dusk-network/networks").Network | null} net
  */
-function configured(route, network) {
-  if (!Object.hasOwn(CONFIGURED, network)) {
-    return null;
+function typicalSeconds(route, net) {
+  if ("typicalSeconds" in route) {
+    return route.typicalSeconds ?? null;
   }
 
-  const values = CONFIGURED[/** @type {keyof typeof CONFIGURED} */ (network)];
+  const kind =
+    route.kind === "deposit"
+      ? "duskevm-deposit"
+      : route.kind === "migration"
+        ? "migration"
+        : null;
+  const found = net
+    ? routes(net).find(
+        (each) =>
+          each.kind === kind &&
+          (kind !== "migration" || each.from === route.from)
+      )
+    : null;
 
-  return route.kind === "deposit"
-    ? values.deposit
-    : (values.migration[
-        /** @type {"bsc" | "ethereum"} */ (route.from ?? "ethereum")
-      ] ?? null);
+  return found?.typicalSeconds ?? null;
 }
 
 /**
- * How long `route` usually takes on `network`, or null when nothing says. A
- * withdrawal also gives its parts, as `withdrawalTime` says.
+ * How long `route` usually takes on the network, or null when nothing says.
+ * A withdrawal also gives its parts, as `withdrawalTime` says.
  *
- * @param {RouteTimeRoute} route
- * @param {{ chain?: ChainTimes | null, network?: string }} [timing]
+ * @param {RouteTimeRoute | import("@dusk-network/networks").Route} route
+ * @param {{ chain?: ChainTimes | null, net?: import("@dusk-network/networks").Network | null }} [timing]
  * @returns {RouteTime | null}
  */
-export function routeTime(route, { chain = null, network = "" } = {}) {
-  if (route.kind === "withdrawal") {
+export function routeTime(route, { chain = null, net = null } = {}) {
+  if (route.kind === "withdrawal" || route.kind === "duskevm-withdrawal") {
     return withdrawalTime(chain?.withdrawal);
   }
 
-  if (route.kind === "deposit" && chain?.deposit) {
+  if (
+    (route.kind === "deposit" || route.kind === "duskevm-deposit") &&
+    chain?.deposit
+  ) {
     return {
       seconds: chain.deposit.lagSeconds + DUSK_BLOCK_SECONDS,
       source: "chain",
     };
   }
 
-  const seconds = configured(route, network);
+  const seconds = typicalSeconds(route, net);
 
-  return seconds ? { seconds, source: "config" } : null;
+  return seconds ? { seconds, source: "network" } : null;
 }
 
 /**

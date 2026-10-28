@@ -88,7 +88,7 @@ function read(account, contracts, nodeUrl) {
  */
 function load({ force = false } = {}) {
   const account = String(get(walletStore).currentProfile?.account ?? "");
-  const contracts = sozuContractsFor(get(networkStore).networkName);
+  const contracts = sozuContractsFor(get(networkStore).net);
   const nodeUrl = nodeBaseUrl();
   const key = `${nodeUrl}\n${account}`;
 

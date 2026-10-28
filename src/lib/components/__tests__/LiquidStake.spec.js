@@ -28,16 +28,23 @@ const OPEN = { maintenance: false, synchronization: false };
 /**
  * @param {Partial<SozuStatus["position"]>} position
  * @param {SozuFees | null} [fees]
- * @param {SozuFlags | null} [flags]
+ * @param {SozuFlags} [flags]
  * @param {string} [pool]
  * @returns {SozuStatus}
  */
 const statusWith = (position = {}, fees = FEES, flags = OPEN, pool = POOL) => ({
-  contracts: { hub: "aa".repeat(32), pool, stDusk: "dd".repeat(32) },
+  contracts: {
+    hub: "aa".repeat(32),
+    pool,
+    stDusk: "dd".repeat(32),
+    substrate: "cc".repeat(32),
+  },
+  error: "",
   fees,
   flags,
   pool: { stake: 8_142_876_697_294_578n, supply: 2_647_997_731_233_173n },
   position: { balance: 0n, stDusk: 0n, ...position },
+  source: "hub",
 });
 
 /**

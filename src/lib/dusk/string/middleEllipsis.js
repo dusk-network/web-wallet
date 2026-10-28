@@ -2,10 +2,10 @@
  * Used to shorten a string by replacing the middle with an ellipsis.
  * @param {String} originalString
  * @param {Number} charactersToDisplay
- * @param {String} [ellipsis="..."] What replaces the middle.
+ * @param {String} [ellipsis="…"] What replaces the middle.
  * @returns {String}
  */
-function middleEllipsis(originalString, charactersToDisplay, ellipsis = "...") {
+function middleEllipsis(originalString, charactersToDisplay, ellipsis = "…") {
   if (originalString.length <= 2 * charactersToDisplay) {
     return originalString;
   }

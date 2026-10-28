@@ -8,7 +8,7 @@
     watchBlocks,
     watchChainId,
   } from "@wagmi/core";
-  import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
+  import { account, wagmiConfig } from "$lib/web3/walletConnection";
   import { Bridge } from "$lib/components";
   import {
     gasPriceStore,
@@ -17,6 +17,10 @@
     walletStore,
   } from "$lib/stores";
   import { getGasLimits, getGasSettings } from "$lib/contracts";
+
+  /** The route a link names (`?route=bsc-to-dusk`), or none. */
+  /** @type {string | null} */
+  export let linkedRoute = null;
 
   /**
    * @typedef { import("@wagmi/core").GetBalanceReturnType } GetBalanceReturnType
@@ -69,46 +73,56 @@
       : () => {};
   }
 
-  /** Stops keeping the wallet on DuskEVM. */
+  /** Stops keeping the wallet on its chain. */
   let unwatchChain = () => {};
 
-  /** Whether a wallet is kept on DuskEVM. */
-  let isKeptOnDuskEvm = false;
+  /** The chain a wallet is kept on, or none. */
+  /** @type {number | undefined} */
+  let keptOn;
 
   /**
-   * Keeps a connected wallet on DuskEVM, moving it back when it changes
-   * chain: none to keep, nor a connection to ask, while none is connected.
+   * Keeps a connected wallet on the chain the route picked uses (DuskEVM's,
+   * or a migration's), moving it back when it changes chain: none to keep,
+   * nor a connection to ask, while none is connected or the route needs no
+   * chain.
    *
    * @param {boolean} connected
+   * @param {number | undefined} chainId
    */
-  function keepOnDuskEvm(connected) {
-    if (connected === isKeptOnDuskEvm) {
+  function keepOnChain(connected, chainId) {
+    const target = connected ? chainId : undefined;
+
+    if (target === keptOn) {
       return;
     }
 
-    isKeptOnDuskEvm = connected;
+    keptOn = target;
     unwatchChain();
     unwatchChain = () => {};
 
-    if (connected) {
-      if ($account.chainId !== duskEvm.id) {
-        switchChainHandler(duskEvm.id);
+    if (target) {
+      if ($account.chainId !== target) {
+        switchChainHandler(target).catch(() => {});
       }
 
       unwatchChain = watchChainId(wagmiConfig, {
         async onChange() {
-          await switchChainHandler(duskEvm.id);
+          await switchChainHandler(target).catch(() => {});
         },
       });
     }
   }
+
+  /** The chain the route picked uses, as the card says. */
+  /** @type {number | undefined} */
+  let evmChainId;
 
   onDestroy(() => {
     unwatchChain();
     unwatchBalance();
   });
 
-  $: keepOnDuskEvm($account.isConnected);
+  $: keepOnChain($account.isConnected, evmChainId);
 
   $: balanceChainId = $account.isConnected ? $account.chain?.id : undefined;
   $: watchBalance(balanceChainId);
@@ -120,6 +134,12 @@
     $gasPriceStore
   );
   $: gasLimits = getGasLimits("bridge", $gasStore);
+  $: transferGasSettings = getGasSettings(
+    "public-transfer",
+    { customGasLimit, customGasPrice },
+    $gasPriceStore
+  );
+  $: transferGasLimits = getGasLimits("public-transfer", $gasStore);
   $: unshieldedAddress = currentProfile
     ? currentProfile.account.toString()
     : "";
@@ -127,11 +147,15 @@
 </script>
 
 <Bridge
+  bind:evmChainId
   {unshieldedAddress}
   {unshieldedAccount}
   {evmDuskBalance}
   unshieldedBalance={balance.unshielded.value}
   {gasLimits}
   {gasSettings}
+  {linkedRoute}
+  {transferGasLimits}
+  {transferGasSettings}
   on:operationChange
 />

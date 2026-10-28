@@ -6,9 +6,9 @@ import {
 } from "$lib/bridge/withdrawalActivityStorage";
 import {
   MAX_ACTIVITY_ITEMS,
-  errorMessage,
   stringValue,
 } from "$lib/bridge/withdrawalActivityValues";
+import { errorMessage } from "$lib/dusk/error";
 import {
   loadDuskTransactionExecution,
   loadL2BlockTime,
