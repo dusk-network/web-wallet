@@ -1,153 +1,20 @@
 /**
- * When a DuskEVM withdrawal can be claimed on Dusk, worked out from the chain
- * the way the Portal checks a claim:
- * - the proof has matured: `proofMaturityDelaySeconds` after it was made;
- * - its dispute game has resolved for the proposal and is final:
- *   `disputeGameFinalityDelaySeconds` after it resolved.
- * It's exact once the game has resolved. Before that, the game resolves no
- * sooner than its clock runs out (`maxClockDuration` after it was created),
- * which gives the earliest date, an estimate.
- *
- * The times are the contracts' own. The deployed testnet contracts count Dusk
- * block height × 10; the others count block time and compare strictly, so a
- * claim there comes a second later. The rule, its test vectors and its words
- * are the bridge's (`claim-date.js`).
+ * A DuskEVM withdrawal's claim date in words, as the wallet writes it. The
+ * date itself, and whether a claim can be made now, are worked out the way
+ * the Portal checks a claim by `@dusk-network/networks/duskevm`
+ * (`claimFrom`, `claimReadiness`); the words are the bridge's.
  */
 
 import { aboutTime } from "./routeTimes";
 import { formatTime } from "@dusk-network/networks/format";
 
-/** A dispute game's status, as its hub gives it. */
-export const GAME_STATUS = Object.freeze({
-  CHALLENGER_WINS: 1,
-  DEFENDER_WINS: 2,
-  IN_PROGRESS: 0,
-});
-
-/** A game still unresolved this long past the earliest it could resolve is overdue. */
-export const OVERDUE_SECONDS = 3_600n;
-
 /**
- * @typedef {{ height: bigint | number, timestamp: bigint | number }} DuskTip
- *   Dusk's latest block: its height, and its time in seconds.
- * @typedef {"height" | "timestamp"} ContractClock
- *   What a deployment's contracts count: Dusk block height × 10, or block time.
- * @typedef {{ createdAt: bigint | number, resolvedAt: bigint | number, status: number }} ClaimGame
- *   A dispute game, as its hub gives it.
- * @typedef {{ finalitySeconds: bigint | number, maturitySeconds: bigint | number, maxClockSeconds: bigint | number }} ClaimTiming
- *   The Portal's delays and the game's clock limit.
- * @typedef {{ at: number | null, exact: boolean, overdue: boolean }} ClaimDate
+ * @typedef {import("@dusk-network/networks/duskevm").ClaimDate} ClaimDate
  *   `at` in milliseconds; null when the game's challenger won, or the hub
  *   doesn't know the game.
+ * @typedef {import("@dusk-network/networks/duskevm").DuskTip} DuskTip
+ *   Dusk's latest block: its height, and its time in seconds.
  */
-
-/** @type {ClaimDate} */
-const NO_DATE = Object.freeze({ at: null, exact: false, overdue: false });
-
-/**
- * @param {bigint} a
- * @param {bigint} b
- */
-const distance = (a, b) => (a > b ? a - b : b - a);
-
-/**
- * @param {bigint} a
- * @param {bigint} b
- */
-const later = (a, b) => (a > b ? a : b);
-
-/**
- * The clock a deployment's contracts keep, read from one of their times:
- * "height" (Dusk block height × 10, as the deployed testnet contracts count)
- * or "timestamp" (block time). At the tip the two are decades apart, so a
- * time is on whichever it's nearer.
- *
- * @param {bigint | number} sample
- * @param {DuskTip} tip
- * @returns {ContractClock}
- */
-export function contractClock(sample, tip) {
-  const time = BigInt(sample);
-
-  return distance(time, 10n * BigInt(tip.height)) <
-    distance(time, BigInt(tip.timestamp))
-    ? "height"
-    : "timestamp";
-}
-
-/**
- * The contracts' time at the tip.
- *
- * @param {ContractClock} clock
- * @param {DuskTip} tip
- */
-export const contractNow = (clock, tip) =>
-  clock === "height" ? 10n * BigInt(tip.height) : BigInt(tip.timestamp);
-
-/**
- * A contract time as wall-clock milliseconds. On the height clock it's
- * counted from the tip, at Dusk's 10 seconds a block.
- *
- * @param {bigint | number} seconds
- * @param {ContractClock} clock
- * @param {DuskTip} tip
- */
-export function wallTime(seconds, clock, tip) {
-  const time = BigInt(seconds);
-  const wall =
-    clock === "height"
-      ? BigInt(tip.timestamp) + time - 10n * BigInt(tip.height)
-      : time;
-
-  return Number(wall) * 1_000;
-}
-
-/**
- * When a withdrawal can be claimed.
- *
- * @param {object} input
- * @param {ClaimGame | null | undefined} input.game Its dispute game, from the game's hub
- * @param {{ clock?: ContractClock }} [input.network] The deployment's clock,
- *   read from the game's own time when not given
- * @param {bigint | number | null} [input.provenAt] The Portal's proof time; none for a proof made now
- * @param {ClaimTiming} input.timing
- * @param {DuskTip} input.tip Dusk's latest block
- * @returns {ClaimDate}
- */
-export function claimFrom({
-  game,
-  network = {},
-  provenAt = null,
-  timing,
-  tip,
-}) {
-  if (!game) {
-    return NO_DATE;
-  }
-
-  const created = BigInt(game.createdAt);
-
-  if (created === 0n || Number(game.status) === GAME_STATUS.CHALLENGER_WINS) {
-    return NO_DATE;
-  }
-
-  const clock = network.clock ?? contractClock(created, tip);
-  const now = contractNow(clock, tip);
-  const strict = clock === "height" ? 0n : 1n;
-  const resolved = Number(game.status) === GAME_STATUS.DEFENDER_WINS;
-  // The earliest the game resolves: once its clock has run out, and not before now.
-  const settles = created + BigInt(timing.maxClockSeconds);
-  const resolvedAt = resolved ? BigInt(game.resolvedAt) : later(now, settles);
-  const matured =
-    (provenAt ? BigInt(provenAt) : now) + BigInt(timing.maturitySeconds);
-  const final = resolvedAt + BigInt(timing.finalitySeconds);
-
-  return {
-    at: wallTime(later(matured, final) + strict, clock, tip),
-    exact: resolved,
-    overdue: !resolved && now > settles + OVERDUE_SECONDS,
-  };
-}
 
 /**
  * @param {number} n

@@ -66,6 +66,26 @@ describe("DuskEVM", () => {
     );
   });
 
+  it("takes its adapter from the network's file, unless one is set", async () => {
+    const evm = /** @type {NonNullable<typeof networks.testnet.duskEvm>} */ (
+      networks.testnet.duskEvm
+    );
+    const net = {
+      ...networks.testnet,
+      duskEvm: { ...evm, l1AdapterUrl: "https://adapter.example.test/rpc" },
+    };
+
+    expect((await on(net)).duskEvmAdapterUrl()).toBe(
+      "https://adapter.example.test/rpc"
+    );
+
+    vi.stubEnv("VITE_EVM_L1_BRIDGE_RPC_URL", "https://local.example.test/l1");
+
+    expect((await on(net)).duskEvmAdapterUrl()).toBe(
+      "https://local.example.test/l1"
+    );
+  });
+
   it("finds its adapter at /l1 on the RPC it uses: the one set, with or without a network file", async () => {
     vi.stubEnv("VITE_EVM_BRIDGE_RPC_URL", "https://l2.example.test/");
 

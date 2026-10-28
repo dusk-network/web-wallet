@@ -48,18 +48,28 @@ export function duskEvmDriverUrl(name, env) {
 const rpcUrl = () =>
   setting(import.meta.env.VITE_EVM_BRIDGE_RPC_URL) ?? duskEvmNetwork()?.rpcUrl;
 
+/** @param {string | undefined} rpc */
+const adapterBeside = (rpc) =>
+  rpc ? `${rpc.replace(/\/+$/, "")}/l1` : undefined;
+
 /**
  * DuskEVM's adapter, which says what a Dusk deposit became on DuskEVM
- * (`duskevm_getTransactionHashByDuskHash`): as set, else at `/l1` on the
- * RPC DuskEVM is read from, set or the network's.
+ * (`duskevm_getTransactionHashByDuskHash`): as set; else at `/l1` on the
+ * RPC set for local work; else the network's, as its file gives it, or at
+ * `/l1` on its RPC.
  *
  * @returns {string | undefined}
  */
 export function duskEvmAdapterUrl() {
   const set = setting(import.meta.env.VITE_EVM_L1_BRIDGE_RPC_URL);
-  const rpc = rpcUrl();
+  const local = setting(import.meta.env.VITE_EVM_BRIDGE_RPC_URL);
 
-  return set ?? (rpc ? `${rpc.replace(/\/+$/, "")}/l1` : undefined);
+  return (
+    set ??
+    adapterBeside(local) ??
+    duskEvmNetwork()?.l1AdapterUrl ??
+    adapterBeside(rpcUrl())
+  );
 }
 
 /**

@@ -568,7 +568,10 @@ describe("DuskEVM withdrawal helpers", () => {
     );
   });
 
-  it("is ready to claim once the Portal takes the claim", async () => {
+  it("waits for the claim's date even when the Portal takes the claim", async () => {
+    // Final at 400 + 302,400, a second later on block time: after the
+    // latest block, at 200. A Portal whose check takes just the proof and
+    // its game says yes, and then refuses the claim itself.
     mockWithdrawalReads({
       game: { createdAt: 50n, resolvedAt: 400n, status: 2 },
     });
@@ -577,9 +580,46 @@ describe("DuskEVM withdrawal helpers", () => {
     await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
       {
         disputeGameProxy: `0x${"1e".repeat(20)}`,
+        readyAt: 302_801n,
         readyAtExact: true,
-        stage: "ready_to_finalize",
+        stage: "proven_waiting",
       }
+    );
+  });
+
+  it("is ready to claim once the Portal takes the claim and its date has come", async () => {
+    const date = { game: { createdAt: 50n, resolvedAt: 400n, status: 2 } };
+    /** @param {bigint} timestamp The latest block's time */
+    const stageAt = async (timestamp) => {
+      mockWithdrawalReads({ ...date, tip: { height: 1_000_000n, timestamp } });
+
+      return (await import("$lib/bridge/withdrawals")).loadWithdrawalStatus(
+        withdrawalTxHash
+      );
+    };
+
+    await expect(stageAt(302_800n)).resolves.toMatchObject({
+      stage: "proven_waiting",
+    });
+    await expect(stageAt(302_801n)).resolves.toMatchObject({
+      readyAt: 302_801n,
+      readyAtExact: true,
+      stage: "ready_to_finalize",
+    });
+  });
+
+  it("isn't overdue once ready to claim", async () => {
+    // Testnet's clock, block height × 10: the game, unresolved more than an
+    // hour past its clock, is overdue, and with no finality delay its claim
+    // is due now.
+    mockWithdrawalReads({
+      finality: 0,
+      tip: { height: 40_000n, timestamp: 1_793_000_000n },
+    });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      { claimOverdue: false, stage: "ready_to_finalize" }
     );
   });
 
@@ -753,6 +793,7 @@ describe("DuskEVM withdrawal helpers", () => {
 
   it("doesn't submit a finalization that needs more gas than the global bound", async () => {
     const { walletStore } = mockWithdrawalReads({
+      ...READY,
       gasLimitUpper: 50_000_000n,
     });
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
@@ -764,7 +805,7 @@ describe("DuskEVM withdrawal helpers", () => {
   });
 
   it("submits the SDK-serialized withdrawal through the Portal data driver", async () => {
-    const { walletStore } = mockWithdrawalReads();
+    const { walletStore } = mockWithdrawalReads(READY);
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
 
     await expect(finalizeWithdrawal(withdrawalTxHash)).resolves.toBe(
@@ -794,15 +835,21 @@ describe("DuskEVM withdrawal helpers", () => {
   });
 
   it("reads when the history's proved withdrawals can be claimed: claimed, ready, a date, or none", async () => {
-    const { portal } = mockWithdrawalReads({ maturity: 604_800 });
+    // Their game resolved at 100, final at 302,500; the latest block at 1,000,000.
+    const { portal } = mockWithdrawalReads({
+      game: { createdAt: 50n, resolvedAt: 100n, status: 2 },
+      maturity: 604_800,
+      tip: { height: 1_000_000n, timestamp: 1_000_000n },
+    });
     const hash = (/** @type {number} */ byte) =>
       /** @type {`0x${string}`} */ (`0x${byte.toString(16).repeat(64)}`);
     const proofs = {
       [hash(0xa)]: [Array(20).fill(0x1e), 100],
       [hash(0xb)]: [Array(20).fill(0x1e), 100],
-      [hash(0xc)]: [Array(20).fill(0x1e), 100],
+      [hash(0xc)]: [Array(20).fill(0x1e), 500_000],
       // Another account's proof only.
       [hash(0xd)]: [Array(20).fill(0), 0],
+      [hash(0xe)]: [Array(20).fill(0x1e), 500_000],
     };
 
     portal.call.finalizedWithdrawals.mockImplementation(
@@ -814,9 +861,10 @@ describe("DuskEVM withdrawal helpers", () => {
           `0x${Array.from(id, (b) => b.toString(16).padStart(2, "0")).join("")}`
         ]
     );
+    // The Portal takes the claims of 0xb… and 0xe….
     portal.call.checkWithdrawal.mockImplementation(
       async (/** @type {any[]} */ [id]) => {
-        if (id[0] !== 0xbb) {
+        if (id[0] !== 0xbb && id[0] !== 0xee) {
           throw new Error(
             "OptimismPortal: proven withdrawal has not matured yet"
           );
@@ -826,25 +874,32 @@ describe("DuskEVM withdrawal helpers", () => {
 
     const { readWithdrawalClaims } = await import("$lib/bridge/withdrawals");
     const claims = await readWithdrawalClaims(
-      [hash(0xa), hash(0xb), hash(0xc), hash(0xd)],
+      [hash(0xa), hash(0xb), hash(0xc), hash(0xd), hash(0xe)],
       { submitter: `0x${"2c".repeat(20)}` }
     );
 
     expect(claims.get(hash(0xa))).toMatchObject({ at: null, claimed: true });
+    // Proven at 100: matured at 604,900, a second later on block time.
     expect(claims.get(hash(0xb))).toMatchObject({
+      at: 604_901_000,
       claimed: false,
       ready: true,
     });
-    // Proven at 100: it matures at 604,900, a second later on block time.
+    // Proven at 500,000: it matures at 1,104,800.
     expect(claims.get(hash(0xc))).toStrictEqual({
-      at: 604_901_000,
+      at: 1_104_801_000,
       claimed: false,
-      exact: false,
+      exact: true,
       overdue: false,
       ready: false,
       reprove: false,
     });
     expect(claims.get(hash(0xd))).toMatchObject({ at: null, ready: false });
+    // The Portal takes its claim, but its date hasn't come: not ready yet.
+    expect(claims.get(hash(0xe))).toMatchObject({
+      at: 1_104_801_000,
+      ready: false,
+    });
     // The account's own proofs: its submitter's.
     expect(portal.call.provenWithdrawals).toHaveBeenCalledWith([
       expect.any(Array),
@@ -1442,6 +1497,15 @@ const TESTNET_TIP = Object.freeze({
 });
 
 /**
+ * A proof the Portal takes a claim of, whose date has come: its game
+ * resolved at 100, final at 302,500, and the latest block at 400,000.
+ */
+const READY = Object.freeze({
+  game: { createdAt: 50n, resolvedAt: 100n, status: 2 },
+  tip: { height: 1_000_000n, timestamp: 400_000n },
+});
+
+/**
  * A read the contract refuses, as the Portal refuses a claim.
  *
  * @param {string} message
@@ -1457,6 +1521,7 @@ const refusal = (message) => vi.fn().mockRejectedValue(new Error(message));
  * @param {object} [options]
  * @param {ReturnType<typeof vi.fn>} [options.check] The Portal's check of a claim now
  * @param {boolean} [options.finalized]
+ * @param {number} [options.finality] The Portal's dispute game finality delay
  * @param {{ createdAt: bigint, resolvedAt: bigint, status: number }} [options.game]
  * @param {boolean} [options.gameReadFails]
  * @param {bigint} [options.gasLimitUpper]
@@ -1467,6 +1532,7 @@ const refusal = (message) => vi.fn().mockRejectedValue(new Error(message));
  */
 function mockWithdrawalReads({
   check = vi.fn().mockResolvedValue(undefined),
+  finality = 302_400,
   finalized = false,
   game = { createdAt: 50n, resolvedAt: 0n, status: 0 },
   gameReadFails = false,
@@ -1493,7 +1559,9 @@ function mockWithdrawalReads({
     call: {
       checkWithdrawal: check,
       disputeGameBlacklist: vi.fn().mockResolvedValue(isGameBlacklisted),
-      disputeGameFinalityDelaySeconds: vi.fn().mockResolvedValue(u256(302_400)),
+      disputeGameFinalityDelaySeconds: vi
+        .fn()
+        .mockResolvedValue(u256(finality)),
       finalizedWithdrawals: vi.fn().mockResolvedValue(finalized),
       numProofSubmitters: vi.fn().mockResolvedValue(u256(1)),
       proofMaturityDelaySeconds: vi.fn().mockResolvedValue(u256(maturity)),

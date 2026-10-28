@@ -144,7 +144,7 @@ describe("bridgeReads", () => {
 
     expect(first).toStrictEqual({
       createdAt: 46_876_050n,
-      maxClock: 302_400n,
+      maxClockDuration: 302_400n,
       resolvedAt: 0n,
       status: 0,
     });

@@ -436,7 +436,7 @@ export const hubClock = (reads, hubId) =>
  * @param {BridgeReads} reads
  * @param {string} hubId
  * @param {string} proxy The game's address
- * @returns {Promise<{ createdAt: bigint, maxClock: bigint, resolvedAt: bigint, status: number }>}
+ * @returns {Promise<{ createdAt: bigint, maxClockDuration: bigint, resolvedAt: bigint, status: number }>}
  */
 export function readGame(reads, hubId, proxy) {
   const hub = reads.hub(hubId);
@@ -447,9 +447,9 @@ export function readGame(reads, hubId, proxy) {
     hub.call.resolvedAtForGame(address),
     hub.call.statusForGame(address),
     hubClock(reads, hubId),
-  ]).then(([createdAt, resolvedAt, status, maxClock]) => ({
+  ]).then(([createdAt, resolvedAt, status, maxClockDuration]) => ({
     createdAt: BigInt(createdAt),
-    maxClock,
+    maxClockDuration,
     resolvedAt: BigInt(resolvedAt),
     status: Number(status),
   }));
