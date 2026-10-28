@@ -1,6 +1,7 @@
 import {
   afterAll,
   afterEach,
+  beforeAll,
   beforeEach,
   describe,
   expect,
@@ -24,6 +25,7 @@ import {
   removeContact,
   saveContact,
 } from "$lib/contacts";
+import { openTestContacts } from "$lib/test-helpers";
 
 import { Send } from "..";
 
@@ -77,6 +79,9 @@ const getSummary = (container) =>
       row.querySelector("dd")?.textContent?.replace(/\s+/g, " ").trim(),
     ]
   );
+
+// The contacts open with a wallet, as when it unlocks.
+beforeAll(() => openTestContacts());
 
 describe("Send", () => {
   const lastTxId =

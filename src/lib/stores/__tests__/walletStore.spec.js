@@ -26,6 +26,7 @@ import {
 } from "$lib/dusk-domains/verifiedNames";
 
 import WalletTreasury from "$lib/wallet-treasury";
+import { listContacts, saveContact } from "$lib/contacts";
 import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 
 import { networkStore, settingsStore, walletStore } from "..";
@@ -328,6 +329,45 @@ describe("Wallet store", async () => {
         cachedSyncInfo.mockRestore();
         walletStore.reset();
       }
+    });
+
+    it("should open the wallet's contacts as it unlocks, and close them as it locks", async () => {
+      const account =
+        "zTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE4FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
+
+      /** Unlocks the wallet, and lets its sync end. */
+      const unlock = async (/** @type {any} */ generator) => {
+        await walletStore.init(generator);
+        await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+        vi.clearAllTimers();
+      };
+
+      await unlock(profileGenerator);
+
+      const shop = saveContact({ address: account, name: "Shop" });
+
+      walletStore.reset();
+
+      expect(listContacts()).toStrictEqual([]);
+      expect(() => saveContact({ address: account, name: "Bob" })).toThrow();
+
+      await unlock(profileGenerator);
+
+      expect(listContacts()).toStrictEqual([shop]);
+
+      // One that doesn't give its seed opens none, and unlocks all the same.
+      const noSeed = {
+        default: Promise.resolve(defaultProfile),
+        next: vi.fn().mockResolvedValue(defaultProfile),
+      };
+
+      await unlock(noSeed);
+
+      expect(get(walletStore).initialized).toBe(true);
+      expect(listContacts()).toStrictEqual([]);
+
+      walletStore.reset();
+      await vi.runOnlyPendingTimersAsync();
     });
 
     it("should not publish profiles from an initialization reset before it completes", async () => {

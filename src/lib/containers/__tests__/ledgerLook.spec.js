@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { contactsStore, removeContact, saveContact } from "$lib/contacts";
+import { openTestContacts } from "$lib/test-helpers";
 import { ContactsView } from "$lib/containers/Contacts";
 import { HistoryView } from "$lib/containers/History";
 import {
@@ -77,6 +78,9 @@ function expectPlainTitle(container, id) {
   expect(classesOf(title)).not.toContain("section-head");
   expect(title.textContent).not.toMatch(/[[\]]/);
 }
+
+// The contacts open with a wallet, as when it unlocks.
+beforeAll(() => openTestContacts());
 
 describe("The ledger look", () => {
   afterEach(() => {

@@ -104,6 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say on the Staking page that the rewards shown are the native stake's, and that what is staked with Sozu includes its rewards
 - Say plainly what a stDUSK is worth and how it grows
 - Say Shown in your local time, not Times in your local time
+- Keep contacts encrypted, for the wallet that saved them only, and delete them on Reset
 
 ### Removed
 
