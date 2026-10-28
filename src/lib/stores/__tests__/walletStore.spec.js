@@ -18,6 +18,10 @@ import {
 
 import { stakeInfo } from "$lib/mock-data";
 import { buildDepositETHToWithValuePayload } from "$lib/bridge/deposit";
+import {
+  getVerifiedName,
+  keepVerifiedName,
+} from "$lib/dusk-domains/verifiedNames";
 
 import WalletTreasury from "$lib/wallet-treasury";
 import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
@@ -1026,9 +1030,11 @@ describe("Wallet store", async () => {
 
     it("should expose a method to clear local data", async () => {
       vi.useRealTimers();
+      keepVerifiedName("testnet", "some-account", "alice.dusk");
 
       await walletStore.clearLocalData();
       expect(cacheClearSpy).toHaveBeenCalledTimes(1);
+      expect(getVerifiedName("testnet", "some-account")).toBe("");
       vi.useFakeTimers();
     });
 

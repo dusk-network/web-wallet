@@ -1,0 +1,131 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TransactionStatus > should say a transaction it follows is sent and pending, with its hash and the most it can cost 1`] = `
+<div
+  class="transaction-status transaction-status--pending svelte-1gjqv8n"
+>
+  <div
+    class="transaction-status__summary svelte-1gjqv8n"
+    role="status"
+  >
+    <!---->
+    <svg
+      class="dusk-icon dusk-icon--size--large transaction-status__icon"
+      role="graphics-symbol"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M6,2H18V8H18V8L14,12L18,16V16H18V22H6V16H6V16L10,12L6,8V8H6V2M16,16.5L12,12.5L8,16.5V20H16V16.5M12,11.5L16,7.5V4H8V7.5L12,11.5M10,6H14V6.75L12,8.75L10,6.75V6Z"
+      />
+    </svg>
+    
+    <!---->
+     
+    <b
+      class="transaction-status__title"
+    >
+      Sent
+    </b>
+     
+    <p
+      class="svelte-1gjqv8n"
+    >
+      Pending. This usually takes under a minute.
+    </p>
+    <!---->
+  </div>
+   
+  <dl
+    class="transaction-status__details svelte-1gjqv8n"
+  >
+    <dt
+      class="svelte-1gjqv8n"
+    >
+      Transaction
+    </dt>
+     
+    <dd
+      class="svelte-1gjqv8n"
+    >
+      <div
+        class="withdrawal-hash svelte-10wl9jh"
+      >
+        <code
+          class="svelte-10wl9jh"
+        >
+          8dcf6f8a...993db55e
+        </code>
+         
+        <span
+          class="withdrawal-hash__actions svelte-10wl9jh"
+        >
+          <button
+            aria-label="Copy transaction hash"
+            class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button"
+            data-tooltip-id="main-tooltip"
+            data-tooltip-text="Copy to clipboard"
+            type="button"
+          >
+            <!---->
+            <!---->
+            <svg
+              class="dusk-icon dusk-icon--size--default dusk-button__icon"
+              role="graphics-symbol"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"
+              />
+            </svg>
+            
+            <!---->
+             
+            <!---->
+            <!---->
+          </button>
+          <!---->
+           
+          <!---->
+        </span>
+      </div>
+      <!---->
+    </dd>
+     
+    <dt
+      class="svelte-1gjqv8n"
+    >
+      Network fee (at most)
+    </dt>
+     
+    <dd
+      class="svelte-1gjqv8n"
+    >
+      0.002500000 DUSK
+    </dd>
+    <!---->
+  </dl>
+   
+  <!---->
+   
+  <a
+    aria-disabled="false"
+    class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default transaction-status__button"
+    href="/explorer/transactions/transaction?id=8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <!---->
+    <span
+      class="dusk-anchor-button__text"
+    >
+      VIEW ON BLOCK EXPLORER
+    </span>
+    
+    <!---->
+  </a>
+  <!---->
+   
+  <!---->
+  <!---->
+</div>
+`;

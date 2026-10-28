@@ -25,6 +25,16 @@ const getReviewAmounts = (container) =>
     row.querySelector("dd")?.textContent?.trim(),
   ]);
 
+// The transaction sent stays pending.
+const { followTransaction } = vi.hoisted(() => ({
+  followTransaction: vi.fn(() => new Promise(() => {})),
+}));
+
+vi.mock("$lib/transactions", async (importOriginal) => ({
+  ...(await importOriginal()),
+  followTransaction,
+}));
+
 vi.mock("$lib/dusk/string", async (importOriginal) => {
   /** @type {typeof import("$lib/dusk/string")} */
   const original = await importOriginal();
@@ -37,7 +47,8 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
 
 describe("Unstake", () => {
   const formatter = createCurrencyFormatter("en", "DUSK", 9);
-  const lastTxId = "some-id";
+  const lastTxId =
+    "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
 
   const baseProps = {
     execute: vi.fn().mockResolvedValue(lastTxId),
@@ -109,9 +120,9 @@ describe("Unstake", () => {
       expect(getReviewAmounts(container)).toStrictEqual([
         [
           "Unstake Amount",
-          formatter(luxToDusk(unstakeProps.maxWithdrawAmount)),
+          `${formatter(luxToDusk(unstakeProps.maxWithdrawAmount))} DUSK`,
         ],
-        ["Network fee (max)", formatter(luxToDusk(fee))],
+        ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
       ]);
       expect(container.querySelector("dt .dusk-icon")).toBeNull();
       expect(container.querySelector(".gas-fee")).toBeNull();
@@ -137,7 +148,7 @@ describe("Unstake", () => {
 
       expect(getReviewAmounts(container)[0]).toStrictEqual([
         "Unstake Amount",
-        formatter(luxToDusk(unstakeProps.maxWithdrawAmount)),
+        `${formatter(luxToDusk(unstakeProps.maxWithdrawAmount))} DUSK`,
       ]);
     });
 
@@ -167,7 +178,7 @@ describe("Unstake", () => {
       /** @type {import("svelte").ComponentProps<Unstake>} */
       const props = { ...baseProps, ...unstakeProps };
 
-      const { getByRole, getByText } = render(Unstake, props);
+      const { findByRole, getByRole, getByText } = render(Unstake, props);
 
       await vi.advanceTimersToNextTimerAsync();
 
@@ -184,7 +195,8 @@ describe("Unstake", () => {
 
       const explorerLink = getByRole("link", { name: /explorer/i });
 
-      expect(getByText("Transaction created")).toBeInTheDocument();
+      expect(await findByRole("status")).toHaveTextContent(/^Sent Pending/);
+      expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
     });
@@ -247,7 +259,7 @@ describe("Unstake", () => {
       /** @type {import("svelte").ComponentProps<Unstake>} */
       const props = { ...baseProps, ...claimRewardsProps };
 
-      const { getByRole, getByText } = render(Unstake, props);
+      const { findByRole, getByRole, getByText } = render(Unstake, props);
 
       await vi.advanceTimersToNextTimerAsync();
 
@@ -264,7 +276,8 @@ describe("Unstake", () => {
 
       const explorerLink = getByRole("link", { name: /explorer/i });
 
-      expect(getByText("Transaction created")).toBeInTheDocument();
+      expect(await findByRole("status")).toHaveTextContent(/^Sent Pending/);
+      expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
     });

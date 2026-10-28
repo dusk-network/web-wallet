@@ -17,7 +17,6 @@
   } from "$lib/dusk/string";
   import { logo } from "$lib/dusk/icons";
   import {
-    AnchorButton,
     Badge,
     Button,
     Icon,
@@ -32,11 +31,10 @@
     AppAnchor,
     Banner,
     GasSettings,
-    OperationResult,
     ReviewAmount,
     ScanQR,
+    TransactionResult,
   } from "$lib/components";
-  import { MESSAGES } from "$lib/constants";
 
   /** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint) => Promise<string>} */
   export let execute;
@@ -91,6 +89,17 @@
   /** @type {import("..").ScanQR} */
   let scanQrComponent;
 
+  /** @type {import("$lib/dusk/components").WizardStep} */
+  let addressStep;
+
+  /**
+   * Whether a recipient that isn't valid is pointed out: once it is pasted,
+   * left or confirmed with Enter, not while it is being typed.
+   *
+   * @type {boolean}
+   */
+  let isRecipientChecked = false;
+
   /** @type {boolean} */
   let isMemoShown = false;
 
@@ -125,6 +134,8 @@
   const nameOptionElements = {};
 
   const nameOptionsId = randomUUID();
+
+  const invalidRecipientId = `${randomUUID()}-invalid-recipient`;
 
   // Without the allocation page there is nowhere to link to for shielding.
   const canShield = import.meta.env.VITE_FEATURE_ALLOCATE === "true";
@@ -161,6 +172,19 @@
     }
 
     sendAmount = luxToDusk(maxSpendableAmount);
+  }
+
+  /**
+   * Enter moves on as Next does: no address or name has a line break.
+   *
+   * @param {KeyboardEvent} event
+   */
+  function handleRecipientKeyDown(event) {
+    if (event.key === "Enter" && !event.isComposing) {
+      event.preventDefault();
+      isRecipientChecked = true;
+      addressStep.next(event);
+    }
   }
 
   /**
@@ -388,6 +412,16 @@
     !isRecipientBlocklisted
   );
 
+  // A pasted recipient often brings spaces or line breaks, which no address
+  // or name has.
+  $: if (/\s/.test(sendToAddress)) {
+    sendToAddress = sendToAddress.replace(/\s+/g, "");
+  }
+
+  $: if (!sendToAddress) {
+    isRecipientChecked = false;
+  }
+
   $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";
 
   $: lookUpName(recipientName);
@@ -414,6 +448,9 @@
     shieldedAddress,
     publicAddress
   );
+
+  $: isRecipientInvalid =
+    isRecipientChecked && !recipientName && !addressInfo.isValid;
 
   $: blocklistedRecipient = getBlocklistedRecipient(recipientAddress);
   $: isRecipientBlocklisted = Boolean(blocklistedRecipient);
@@ -462,6 +499,7 @@
     </div>
     <!-- Address Step -->
     <WizardStep
+      bind:this={addressStep}
       step={0}
       {key}
       backButton={{
@@ -493,10 +531,29 @@
         <Textbox
           required
           className={sendToAddressTextboxClasses}
+          aria-describedby={isRecipientInvalid ? invalidRecipientId : undefined}
+          aria-invalid={isRecipientInvalid}
           aria-label="Recipient address or .dusk name"
           type="multiline"
           bind:value={sendToAddress}
+          on:blur={() => {
+            isRecipientChecked = true;
+          }}
+          on:keydown={handleRecipientKeyDown}
+          on:paste={() => {
+            isRecipientChecked = true;
+          }}
         />
+
+        {#if isRecipientInvalid}
+          <Banner
+            id={invalidRecipientId}
+            title="Not a valid address"
+            variant="error"
+          >
+            <p>Check it, or paste it again.</p>
+          </Banner>
+        {/if}
 
         {#if nameLookup?.[nameAddressType]}
           {@const isChoice = nameOptions.length > 1}
@@ -785,19 +842,20 @@
         {/if}
 
         <ReviewAmount
-          label="Network fee (max)"
+          label="Network fee (at most)"
           value={formatter(luxToDusk(maxGasFee))}
         />
         <ReviewAmount
-          label="Total (max)"
+          label="Total (at most)"
           value={formatter(luxToDusk(totalAmount))}
         />
       </div>
     </WizardStep>
     <!-- Result Step -->
     <WizardStep step={3} {key} showNavigation={false}>
-      <OperationResult
-        errorMessage="Transaction failed"
+      <TransactionResult
+        {formatter}
+        maxFee={maxGasFee}
         operation={execute(
           recipientAddress,
           sendAmountInLux,
@@ -805,21 +863,7 @@
           gasPrice,
           gasLimit
         )}
-        pendingMessage="Processing transaction"
-        successMessage="Transaction created"
-      >
-        <svelte:fragment slot="success-content" let:result={hash}>
-          <p>{MESSAGES.TRANSACTION_CREATED}</p>
-          {#if hash}
-            <AnchorButton
-              href={`/explorer/transactions/transaction?id=${hash}`}
-              text="VIEW ON BLOCK EXPLORER"
-              rel="noopener noreferrer"
-              target="_blank"
-            />
-          {/if}
-        </svelte:fragment>
-      </OperationResult>
+      />
     </WizardStep>
   </Wizard>
 </div>
@@ -974,12 +1018,6 @@
     /* A name's one address has no radio mark to pass. */
     &__name-option--single &__name-hint {
       padding-left: 1rem;
-    }
-
-    :global(.dusk-amount__icon) {
-      width: 1em;
-      height: 1em;
-      flex-shrink: 0;
     }
   }
 

@@ -24,6 +24,7 @@ exports[`AddressPicker > renders the AddressPicker component 1`] = `
       </span>
        
       <!---->
+      <!---->
       <span
         class="address-picker__account"
         title="bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J"
@@ -40,6 +41,7 @@ exports[`AddressPicker > renders the AddressPicker component 1`] = `
           bEjRbupbXK9SFT43T4H46nvD2hC7hhsQM1BGKqM5sHxzBzATF4swNEbjJympWpiWufQ5qw9xPErsxnQcHicp8XKoYiYbGv1DFTK5zJV4yQ1VzMM8H3uXvqbZKiBwmzGeJ8J
         </span>
       </span>
+      
       
       <!---->
     </span>

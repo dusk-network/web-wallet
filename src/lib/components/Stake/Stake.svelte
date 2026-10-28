@@ -5,14 +5,13 @@
   import { fade } from "svelte/transition";
   import { mdiAlertOutline, mdiDatabaseOutline } from "@mdi/js";
 
-  import { DOCUMENTATION_LINKS, MESSAGES } from "$lib/constants";
+  import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { areValidGasSettings } from "$lib/contracts";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
   import { logo } from "$lib/dusk/icons";
 
   import {
     Agreement,
-    AnchorButton,
     Button,
     Icon,
     Stepper,
@@ -24,8 +23,8 @@
   import {
     AppAnchor,
     GasSettings,
-    OperationResult,
     ReviewAmount,
+    TransactionResult,
   } from "$lib/components";
 
   import { WarningCard } from "$lib/containers/Cards";
@@ -304,11 +303,11 @@
       <div in:fade|global class="operation__stake">
         <ReviewAmount label="Amount" value={formatter(stakeAmount)} />
         <ReviewAmount
-          label="Network fee (max)"
+          label="Network fee (at most)"
           value={formatter(luxToDusk(maxGasFee))}
         />
         <ReviewAmount
-          label="Total (max)"
+          label="Total (at most)"
           value={formatter(luxToDusk(totalAmount))}
         />
       </div>
@@ -316,26 +315,12 @@
 
     <!-- OPERATION RESULT STEP  -->
     <WizardStep step={hideStakingNotice ? 2 : 3} {key} showNavigation={false}>
-      <OperationResult
-        errorMessage="Transaction failed"
+      <TransactionResult
+        {formatter}
+        maxFee={maxGasFee}
         onBeforeLeave={resetOperation}
         operation={execute(stakeAmountInLux, gasPrice, gasLimit)}
-        pendingMessage="Processing transaction"
-        successMessage="Transaction created"
-      >
-        <svelte:fragment slot="success-content" let:result={hash}>
-          <p>{MESSAGES.TRANSACTION_CREATED}</p>
-          {#if hash}
-            <AnchorButton
-              href={`/explorer/transactions/transaction?id=${hash}`}
-              on:click={resetOperation}
-              text="VIEW ON BLOCK EXPLORER"
-              rel="noopener noreferrer"
-              target="_blank"
-            />
-          {/if}
-        </svelte:fragment>
-      </OperationResult>
+      />
     </WizardStep>
   </Wizard>
 </div>

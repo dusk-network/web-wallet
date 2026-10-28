@@ -602,6 +602,52 @@ describe("AddressPicker", () => {
       }
     );
 
+    it.each([
+      ["can't be looked up", () => Promise.reject(new Error("Lookup failed"))],
+      ["is being looked up", () => new Promise(() => {})],
+    ])(
+      "should show the name last verified for the current profile while its name %s",
+      async (_, lookUp) => {
+        const getName = vi.fn(lookUp);
+        const getKnownName = vi.fn((account) =>
+          account === firstAccount ? "alice.dusk" : ""
+        );
+        const { container } = render(AddressPicker, {
+          ...namedProps,
+          getKnownName,
+          getName,
+        });
+
+        await waitFor(() => expect(getName).toHaveBeenCalledOnce());
+        await settle();
+
+        expect(getKnownName).toHaveBeenCalledWith(firstAccount);
+        expect(getTriggerLines(container)).toStrictEqual([
+          "Profile 1",
+          "alice.dusk",
+        ]);
+        expect(getTrigger(container)).toHaveAccessibleDescription(
+          "Profile 1 alice.dusk"
+        );
+      }
+    );
+
+    it("should show what a lookup finds over the name last verified", async () => {
+      const { container } = render(AddressPicker, {
+        ...namedProps,
+        getKnownName: () => "alice.dusk",
+        getName: vi.fn().mockResolvedValue(""),
+      });
+
+      await settle();
+
+      expect(getTriggerName(container)).toBeNull();
+      expect(getTriggerLines(container)).toStrictEqual([
+        "Profile 1",
+        shortenAddress(firstAccount),
+      ]);
+    });
+
     it("should look up the name of the profile switched to, and drop the previous one's", async () => {
       /** @type {(name: string) => void} */
       let finishLookup = () => {};
@@ -728,6 +774,25 @@ describe("AddressPicker", () => {
         ]);
       }
     );
+
+    it("should list a profile with the name last verified for it while its name can't be looked up", async () => {
+      const { container, getAllByRole } = render(AddressPicker, {
+        ...namedProps,
+        getKnownName: (account) =>
+          account === secondAccount ? "bob.dusk" : "",
+        getName: vi.fn().mockRejectedValue(new Error("Lookup failed")),
+      });
+
+      await fireEvent.click(getTrigger(container));
+      await settle();
+
+      const items = getAllByRole("menuitem");
+
+      expect(items.map((item) => getShownText(item.children[1]))).toEqual([
+        shortenAddress(firstAccount),
+        "bob.dusk",
+      ]);
+    });
 
     it("should keep both copy buttons of a profile with a name, copying its full public and shielded addresses", async () => {
       const { container, findAllByText, getAllByRole } = render(AddressPicker, {

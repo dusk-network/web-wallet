@@ -165,9 +165,9 @@ describe("Send page", () => {
         value.textContent?.trim()
       )
     ).toStrictEqual([
-      formatter(maxAmount),
-      formatter(luxToDusk(fee)),
-      formattedUnshielded,
+      `${formatter(maxAmount)} DUSK`,
+      `${formatter(luxToDusk(fee))} DUSK`,
+      `${formattedUnshielded} DUSK`,
     ]);
     expect(spendable).toHaveTextContent(/^•••• hidden$/);
   });

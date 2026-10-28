@@ -49,7 +49,10 @@
     class={classes}
     bind:this={inputElement}
     bind:value
+    on:blur
     on:input
+    on:keydown
+    on:paste
   ></textarea>
 {:else}
   <input

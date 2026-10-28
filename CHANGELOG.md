@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show the profiles' verified `.dusk` names in the profile switcher and on the Receive page [#965]
 - Show on the Review step whether a transfer is public or shielded [#965]
 - Hide all balances behind •••• with an eye button next to the total balance, and remember the choice [#968]
+- Follow each transaction on the Done screen until it completes or fails, with its hash, a copy button and the fee it was charged
+- Say when the recipient entered isn't a valid address
 
 ### Changed
 
@@ -28,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - List the amount, network fee (max) and total (max) on Review in one style, without label icons [#966]
 - Give each operation its own default and minimum gas limit, replacing
   `VITE_GAS_LIMIT_DEFAULT` and `VITE_GAS_LIMIT_LOWER` [#969]
+- Show fees in DUSK, and before sending as the most they can cost
 
 ### Removed
 
@@ -36,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stop transaction attempts when prerequisite synchronization fails or is cancelled [#953].
 - Prevent pending login migration or password setup from restoring reset wallet credentials [#953].
 - Show the public spendable balance on Send while no valid recipient is entered [#965]
+- Take Enter in the recipient field as Next, and drop the spaces and line breaks a pasted recipient brings
+- Keep the last verified `.dusk` name in the profile switcher when looking it up fails
 
 ## [1.8.0] - 2026-03-25
 
