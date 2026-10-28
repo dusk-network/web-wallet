@@ -150,6 +150,49 @@ describe("Create", async () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
+  it("should sum up the terms, with their own links to the Terms of Use and the Privacy Policy", () => {
+    const { getByRole, getByText } = render(Create, baseOptions);
+
+    expect(
+      getByText(
+        "Your keys stay in this browser, and only you hold them: Dusk can't recover them. The wallet has no analytics, and gets the DUSK price from CoinGecko."
+      )
+    ).toBeInTheDocument();
+    expect(getByRole("link", { name: "Terms of Use" })).toHaveAttribute(
+      "href",
+      "https://dusk.network/terms-of-use/"
+    );
+    expect(getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
+      "href",
+      "https://dusk.network/privacy-policy/"
+    );
+  });
+
+  it("should call it the recovery phrase, and say how to check it", async () => {
+    const { container, getByRole, getAllByRole, getByText } = render(
+      Create,
+      baseOptions
+    );
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+
+    const agreementStep = container.textContent ?? "";
+
+    expect(agreementStep).toMatch(/Keep it safe/);
+    expect(agreementStep).toMatch(/my recovery phrase\./);
+    expect(agreementStep).not.toMatch(/mnemonic/i);
+
+    await fireEvent.click(getAllByRole("checkbox")[0]);
+    await fireEvent.click(getAllByRole("checkbox")[1]);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(
+      getByText("Tap the words in the order you wrote them down.")
+    ).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/mnemonic/i);
+  });
+
   it("should render the `Securely store your mnemonic phrase!` agreement step after the ToS", async () => {
     const { container, getByRole } = render(Create, baseOptions);
 
@@ -349,6 +392,80 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(container.firstElementChild).toMatchSnapshot();
+  });
+
+  it("should keep the block height out of the way, under Advanced, on the Network Syncing step", async () => {
+    const { container, getByRole, getAllByRole, getByText } = render(
+      Create,
+      baseOptions
+    );
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await fireEvent.click(getAllByRole("checkbox")[0]);
+    await fireEvent.click(getAllByRole("checkbox")[1]);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    for (const word of mnemonic.split(" ")) {
+      await fireEvent.click(getByRole("button", { name: word }));
+    }
+
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    const advanced = /** @type {HTMLDetailsElement} */ (
+      container.querySelector("details")
+    );
+
+    expect(
+      getByText(
+        "Next, the wallet syncs with the network. There is nothing to note."
+      )
+    ).toBeVisible();
+    expect(advanced.open).toBe(false);
+    expect(advanced.querySelector("summary")).toHaveTextContent("Advanced");
+    expect(advanced).toContainElement(getByRole("textbox", { hidden: true }));
+  });
+
+  it("should hint at how strong the password is once it is long enough", async () => {
+    const { container, getByRole, getAllByRole, getByPlaceholderText } = render(
+      Create,
+      baseOptions
+    );
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await fireEvent.click(getAllByRole("checkbox")[0]);
+    await fireEvent.click(getAllByRole("checkbox")[1]);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    for (const word of mnemonic.split(" ")) {
+      await fireEvent.click(getByRole("button", { name: word }));
+    }
+
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    const password = getByPlaceholderText("Set Password");
+    const hint = () => container.querySelector(".password-strength");
+
+    await fireInput(password, "pass");
+
+    expect(hint()).toBeNull();
+
+    await fireInput(password, "password");
+
+    expect(hint()).toHaveTextContent(
+      "Weak password: easy to guess. Make it longer, or use a few unrelated words."
+    );
+    expect(password).toHaveAccessibleDescription(hint()?.textContent?.trim());
+
+    await fireInput(password, "tulips4ever");
+
+    expect(hint()).toHaveTextContent("Fair password. Longer is safer.");
+
+    await fireInput(password, "correct horse battery");
+
+    expect(hint()).toHaveTextContent("Strong password.");
   });
 
   it("ensures the All Done step renders as expected", async () => {

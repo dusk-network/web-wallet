@@ -3,6 +3,7 @@
 <script>
   import { Gas } from "@dusk/w3sper";
   import {
+    gasPriceStore,
     gasStore,
     operationsStore,
     settingsStore,
@@ -92,8 +93,12 @@
     currentOperation === "unstake" || currentOperation === "claim-rewards"
       ? currentOperation
       : "stake";
-  $: ({ customGasLimit, gasPrice } = $settingsStore);
-  $: gasSettings = getGasSettings(gasOperation, { customGasLimit, gasPrice });
+  $: ({ customGasLimit, customGasPrice } = $settingsStore);
+  $: gasSettings = getGasSettings(
+    gasOperation,
+    { customGasLimit, customGasPrice },
+    $gasPriceStore
+  );
   $: gasLimits = getGasLimits(gasOperation, $gasStore);
   $: ({ balance, minimumStake, syncStatus } = $walletStore);
   $: isSyncOK = !(syncStatus.isInProgress || !!syncStatus.error);

@@ -107,6 +107,7 @@ describe("Settings store", () => {
       const expectedSettings = {
         ...settingsStoreContent,
         customGasLimit: null,
+        customGasPrice: null,
         darkMode: false,
         gasLimit: `${settingsStoreContent.gasLimit}n`,
         gasPrice: `${settingsStoreContent.gasPrice}n`,
@@ -186,6 +187,72 @@ describe("Settings store", () => {
         expect(settings.gasLimit).toBe(200_000_000n);
       });
 
+      it("should use the node's gas price, and lock after fifteen minutes, by default", () => {
+        expect(settingsStoreContent.customGasPrice).toBeNull();
+        expect(settingsStoreContent.autoLockMinutes).toBe(15);
+      });
+
+      it("should keep the gas price of stored settings with a custom gas limit as the custom one", async () => {
+        localStorage.setItem(
+          key,
+          serializeProperty(
+            Object.fromEntries(
+              Object.entries({
+                ...settingsStoreContent,
+                customGasLimit: 70_000_000n,
+                gasPrice: 2n,
+              }).filter(([name]) => name !== "customGasPrice")
+            )
+          )
+        );
+
+        const settings = await loadSettings();
+
+        expect(settings.customGasLimit).toBe(70_000_000n);
+        expect(settings.customGasPrice).toBe(2n);
+      });
+
+      it("should use the node's gas price for stored settings without a custom gas limit", async () => {
+        localStorage.setItem(
+          key,
+          serializeProperty(
+            Object.fromEntries(
+              Object.entries({
+                ...settingsStoreContent,
+                customGasLimit: null,
+                gasPrice: 2n,
+              }).filter(([name]) => name !== "customGasPrice")
+            )
+          )
+        );
+
+        expect((await loadSettings()).customGasPrice).toBeNull();
+      });
+
+      it.each([undefined, 1, 30, "15"])(
+        "should lock after fifteen minutes for a stored auto-lock time of %s",
+        async (autoLockMinutes) => {
+          localStorage.setItem(
+            key,
+            serializeProperty({ ...settingsStoreContent, autoLockMinutes })
+          );
+
+          expect((await loadSettings()).autoLockMinutes).toBe(15);
+        }
+      );
+
+      it.each([0, 5, 15])(
+        "should keep a stored auto-lock time of %s",
+        async (autoLockMinutes) => {
+          localStorage.setItem(
+            key,
+            serializeProperty({ ...settingsStoreContent, autoLockMinutes })
+          );
+
+          expect((await loadSettings()).autoLockMinutes).toBe(autoLockMinutes);
+        }
+      );
+
       it("should keep a custom gas limit equal to the old default", async () => {
         localStorage.setItem(
           key,
@@ -217,6 +284,7 @@ describe("Settings store", () => {
 
     it("should expose a method to reset the gas settings to their defaults", () => {
       const newStateWithoutGas = {
+        autoLockMinutes: 5,
         currency: "FAKE CURRENCY",
         darkMode: !settingsStoreContent.darkMode,
         dashboardTransactionLimit:
@@ -230,6 +298,7 @@ describe("Settings store", () => {
       const newState = {
         ...newStateWithoutGas,
         customGasLimit: 200_000_000n,
+        customGasPrice: 3n,
         gasLimit: settingsStoreContent.gasLimit,
         gasPrice: settingsStoreContent.gasPrice * 15n,
       };
@@ -253,6 +322,7 @@ describe("Settings store", () => {
       ).toStrictEqual({
         ...expectedState,
         customGasLimit: null,
+        customGasPrice: null,
         gasLimit: `${expectedState.gasLimit}n`,
         gasPrice: `${expectedState.gasPrice}n`,
         walletCreationBlockHeight: "123n",

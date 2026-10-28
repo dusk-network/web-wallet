@@ -5,7 +5,7 @@ import { get } from "svelte/store";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { getGasSettings } from "$lib/contracts";
 import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
-import { settingsStore } from "$lib/stores";
+import { gasPriceStore, settingsStore } from "$lib/stores";
 
 import SendPage from "../+page.svelte";
 
@@ -131,7 +131,8 @@ describe("Send page", () => {
     const { container, getByRole } = render(SendPage);
     const { gasLimit, gasPrice } = getGasSettings(
       "public-transfer",
-      get(settingsStore)
+      get(settingsStore),
+      get(gasPriceStore)
     );
     const fee = gasLimit * gasPrice;
     const maxAmount = luxToDusk(balance.unshielded.value - fee);

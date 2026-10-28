@@ -22,6 +22,7 @@ import { get } from "svelte/store";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { WITHDRAWAL_GAS_LIMIT } from "$lib/contracts/gasDefaults";
 import {
+  gasPriceStore,
   gasStore,
   networkStore,
   settingsStore,
@@ -1474,7 +1475,10 @@ export function withdrawalGas(withdrawalGasLimit = 0n) {
     throw new Error(WITHDRAWAL_GAS_REFUSAL);
   }
 
-  return new Gas({ limit, price: get(settingsStore).gasPrice });
+  return new Gas({
+    limit,
+    price: get(settingsStore).customGasPrice ?? get(gasPriceStore),
+  });
 }
 
 /**

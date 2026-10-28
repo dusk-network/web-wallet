@@ -229,3 +229,11 @@
   margin: 0;
   padding: 0.5rem;
 }
+
+/* On phones, taps of at least 44 px. */
+@media (max-width: 30rem) {
+  .address-picker__trigger,
+  .address-picker__copy-button {
+    min-height: 44px;
+  }
+}

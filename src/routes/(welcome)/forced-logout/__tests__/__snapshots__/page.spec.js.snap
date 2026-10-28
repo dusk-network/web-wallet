@@ -58,8 +58,8 @@ exports[`Forced logout page > should render the page alert the user about the fo
         <p
           class="svelte-1fm0dc9"
         >
-          When you log in again with the mnemonic you used in this session, you
-        will need to wait for a full sync.
+          When you log in again with the recovery phrase you used in this session,
+        you will need to wait for a full sync.
         </p>
       </div>
       

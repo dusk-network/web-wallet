@@ -8,6 +8,7 @@ import {
   HIGHEST_DEFAULT_GAS_LIMIT,
   LOWEST_GAS_LIMIT_MINIMUM,
   areValidGasSettings,
+  followDefaultGas,
   getGasLimits,
   getGasSettings,
 } from "..";
@@ -62,22 +63,40 @@ describe("gas defaults", () => {
     }
   });
 
-  it("should start an operation from its default without a custom gas limit", () => {
-    expect(
-      getGasSettings("public-transfer", { customGasLimit: null, gasPrice: 3n })
-    ).toStrictEqual({ gasLimit: 2_500_000n, gasPrice: 3n });
-    expect(
-      getGasSettings("shielded-transfer", {
-        customGasLimit: null,
-        gasPrice: 1n,
-      })
-    ).toStrictEqual({ gasLimit: 50_000_000n, gasPrice: 1n });
+  it("should start an operation from its default limit and the node's price without custom gas", () => {
+    const noCustomGas = { customGasLimit: null, customGasPrice: null };
+
+    expect(getGasSettings("public-transfer", noCustomGas, 3n)).toStrictEqual({
+      gasLimit: 2_500_000n,
+      gasPrice: 3n,
+    });
+    expect(getGasSettings("shielded-transfer", noCustomGas, 1n)).toStrictEqual({
+      gasLimit: 50_000_000n,
+      gasPrice: 1n,
+    });
   });
 
-  it("should start an operation from the custom gas limit if there is one", () => {
+  it("should start an operation from the custom gas limit and price if there are some", () => {
     expect(
-      getGasSettings("stake", { customGasLimit: 70_000_000n, gasPrice: 2n })
+      getGasSettings(
+        "stake",
+        { customGasLimit: 70_000_000n, customGasPrice: 2n },
+        1n
+      )
     ).toStrictEqual({ gasLimit: 70_000_000n, gasPrice: 2n });
+  });
+
+  it("should follow new default gas in a form, unless the gas was edited there", () => {
+    const previous = { gasLimit: 50_000_000n, gasPrice: 1n };
+    const next = { gasLimit: 50_000_000n, gasPrice: 3n };
+
+    expect(followDefaultGas({ ...previous }, previous, next)).toStrictEqual(
+      next
+    );
+
+    const edited = { gasLimit: 50_000_000n, gasPrice: 2n };
+
+    expect(followDefaultGas(edited, previous, next)).toBe(edited);
   });
 
   it("should give an operation its own minimum and keep the global bounds", () => {

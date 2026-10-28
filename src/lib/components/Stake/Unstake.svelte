@@ -5,14 +5,13 @@
   import { fade } from "svelte/transition";
 
   import { BALANCE_MASK } from "$lib/constants";
-  import { areValidGasSettings } from "$lib/contracts";
+  import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
   import { randomUUID } from "$lib/dusk/string";
   import { settingsStore } from "$lib/stores";
 
   import {
     Button,
-    Icon,
     Stepper,
     Textbox,
     Wizard,
@@ -20,12 +19,12 @@
   } from "$lib/dusk/components";
   import {
     Banner,
+    DuskIcon,
     GasSettings,
     ReviewAmount,
     TransactionResult,
   } from "$lib/components";
 
-  import { logo } from "$lib/dusk/icons";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { mdiAlertOutline } from "@mdi/js";
 
@@ -65,6 +64,7 @@
 
   let activeStep = 0;
   let { gasLimit, gasPrice } = gasSettings;
+  let defaultGas = gasSettings;
   let isGasValid = false;
 
   /**
@@ -141,6 +141,19 @@
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
 
+  // The default gas can change while the form is open, as when the node's
+  // price arrives: the form takes it while its gas can be edited, unless it
+  // was edited here, and keeps the gas a review shows.
+  $: if (activeStep === 0 && gasSettings !== defaultGas) {
+    ({ gasLimit, gasPrice } = followDefaultGas(
+      { gasLimit, gasPrice },
+      defaultGas,
+      gasSettings
+    ));
+    defaultGas = gasSettings;
+    isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
+  }
+
   // Check if the available balance is sufficient to cover the max gas fee.
   // This is a prerequisite for any transaction.
   $: isBalanceSufficientForGas = availableBalance >= maxGasFee;
@@ -206,11 +219,7 @@
           required
           step="0.000000001"
         />
-        <Icon
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="DUSK"
-          path={logo}
-        />
+        <DuskIcon />
         {#if isAmountHidden}
           <span hidden id={hiddenNoteId}>hidden</span>
         {/if}
@@ -219,10 +228,10 @@
       <GasSettings
         {formatter}
         fee={maxGasFee}
-        limit={gasSettings.gasLimit}
+        limit={gasLimit}
         limitLower={gasLimits.gasLimitLower}
         limitUpper={gasLimits.gasLimitUpper}
-        price={gasSettings.gasPrice}
+        price={gasPrice}
         priceLower={gasLimits.gasPriceLower}
         on:gasSettings={setGasValues}
       />

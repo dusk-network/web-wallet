@@ -1,9 +1,18 @@
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { act, cleanup, render } from "@testing-library/svelte";
 import { ProfileGenerator } from "@dusk/w3sper";
 
 import * as navigation from "$lib/navigation";
-import { walletStore } from "$lib/stores";
+import loginInfoStorage from "$lib/services/loginInfoStorage";
+import { settingsStore, walletStore } from "$lib/stores";
 
 import { load } from "../+layout";
 import Layout from "../+layout.svelte";
@@ -39,30 +48,100 @@ describe("App layout.js", () => {
 
 describe("App layout.svelte", () => {
   const logoutSpy = vi.spyOn(navigation, "logout").mockResolvedValue();
+  const loginInfoSpy = vi.spyOn(loginInfoStorage, "get");
+  const minute = 60_000;
+
+  /** @param {number} autoLockMinutes */
+  const setAutoLock = (autoLockMinutes) =>
+    settingsStore.update((settings) => ({ ...settings, autoLockMinutes }));
+
+  /** A password is set, as a login record is stored. */
+  const setPassword = () =>
+    loginInfoSpy.mockReturnValue({
+      data: new Uint8Array(),
+      iv: new Uint8Array(),
+      salt: new Uint8Array(),
+    });
+
+  beforeEach(() => {
+    walletStore.abortSync();
+    vi.useFakeTimers();
+  });
 
   afterEach(() => {
     cleanup();
+    walletStore.abortSync();
+    vi.useRealTimers();
     logoutSpy.mockClear();
+    loginInfoSpy.mockReset();
+    settingsStore.reset();
   });
 
   afterAll(() => {
     logoutSpy.mockRestore();
+    loginInfoSpy.mockRestore();
   });
 
   it("should logout the user after fifteen minutes without activity", async () => {
-    walletStore.abortSync();
-    vi.useFakeTimers();
+    render(Layout);
 
-    try {
-      render(Layout);
+    await vi.advanceTimersByTimeAsync(navigation.INACTIVITY_TIMEOUT);
 
-      await vi.advanceTimersByTimeAsync(navigation.INACTIVITY_TIMEOUT);
+    expect(logoutSpy).toHaveBeenCalledTimes(1);
+    expect(logoutSpy).toHaveBeenCalledWith(false);
+  });
 
-      expect(logoutSpy).toHaveBeenCalledTimes(1);
-      expect(logoutSpy).toHaveBeenCalledWith(false);
-    } finally {
-      walletStore.abortSync();
-      vi.useRealTimers();
-    }
+  it("should lock a wallet without a password after fifteen minutes, whatever the setting", async () => {
+    setAutoLock(0);
+    render(Layout);
+
+    await vi.advanceTimersByTimeAsync(15 * minute - 1);
+    expect(logoutSpy).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(logoutSpy).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it("should lock a wallet with a password after the minutes set", async () => {
+    setPassword();
+    setAutoLock(5);
+    render(Layout);
+
+    await vi.advanceTimersByTimeAsync(5 * minute - 1);
+    expect(logoutSpy).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(logoutSpy).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it("should never lock a wallet with a password when auto-lock is off", async () => {
+    setPassword();
+    setAutoLock(0);
+    render(Layout);
+
+    await vi.advanceTimersByTimeAsync(24 * 60 * minute);
+
+    expect(logoutSpy).not.toHaveBeenCalled();
+  });
+
+  it("should start over from a new auto-lock time, and only from a new one", async () => {
+    setPassword();
+    render(Layout);
+
+    await vi.advanceTimersByTimeAsync(10 * minute);
+    await act(() =>
+      settingsStore.update((settings) => ({ ...settings, hideBalances: true }))
+    );
+    await vi.advanceTimersByTimeAsync(5 * minute);
+
+    expect(logoutSpy).toHaveBeenCalledTimes(1);
+
+    logoutSpy.mockClear();
+    await act(() => setAutoLock(5));
+    await vi.advanceTimersByTimeAsync(5 * minute - 1);
+    expect(logoutSpy).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(logoutSpy).toHaveBeenCalledTimes(1);
   });
 });

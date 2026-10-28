@@ -948,10 +948,11 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
          
         <!---->
         <svg
+          aria-label="DUSK"
           class="dusk-icon dusk-icon--size--default"
           data-tooltip-id="main-tooltip"
           data-tooltip-text="DUSK"
-          role="graphics-symbol"
+          role="img"
           viewBox="0 0 24 24"
         >
           <path

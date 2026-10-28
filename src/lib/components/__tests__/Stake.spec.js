@@ -202,6 +202,54 @@ describe("Stake", () => {
     expect(nextButton).toBeDisabled();
   });
 
+  it("should take new default gas, as the node's price, until the review, and send the gas reviewed", async () => {
+    const { container, getByRole, rerender } = render(Stake, baseProps);
+    const { gasLimit } = baseProps.gasSettings;
+
+    await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(getReviewAmounts(container)[1]).toStrictEqual([
+      "Network fee (at most)",
+      `${formatter(luxToDusk(gasLimit * 3n))} DUSK`,
+    ]);
+
+    // Not while reviewing: the fee reviewed is the fee sent.
+    await rerender({ gasSettings: { gasLimit, gasPrice: 5n } });
+    await fireEvent.click(getByRole("button", { name: "Stake" }));
+
+    await vi.waitFor(() =>
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        baseProps.minStakeRequirement,
+        3n,
+        gasLimit
+      )
+    );
+  });
+
+  it("should keep the gas edited in the form when the default gas changes", async () => {
+    const { container, getByLabelText, getByRole, rerender } = render(
+      Stake,
+      baseProps
+    );
+    const { gasLimit } = baseProps.gasSettings;
+
+    await fireEvent.click(getByRole("button", { name: /^edit$/i }));
+    await fireEvent.input(getByLabelText("Gas price (LUX)"), {
+      target: { value: "2" },
+    });
+    await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
+
+    expect(getByLabelText("Gas price (LUX)")).toHaveValue("2");
+
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(getReviewAmounts(container)[1]).toStrictEqual([
+      "Network fee (at most)",
+      `${formatter(luxToDusk(gasLimit * 2n))} DUSK`,
+    ]);
+  });
+
   it("should render the review step of the Stake component", async () => {
     const { container, getByRole, queryByText } = render(Stake, baseOptions);
     const fee = baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;

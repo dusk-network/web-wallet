@@ -1,0 +1,55 @@
+/*
+ * On phones every control takes a tap across at least 44 × 44 px. A small
+ * control standing alone gets a larger tap area around it, which doesn't
+ * move it. Components with controls of their own see to them the same way.
+ */
+@media (max-width: 30rem) {
+  .dusk-button--size--default,
+  .dusk-anchor-button--size--default,
+  .dusk-exclusive-choice__label {
+    min-height: 44px;
+  }
+
+  .dusk-exclusive-choice__label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dusk-icon-button,
+  .dusk-button--size--small,
+  .dusk-anchor-button--size--small,
+  .dusk-switch {
+    position: relative;
+  }
+
+  .dusk-icon-button::before,
+  .dusk-button--size--small::before,
+  .dusk-anchor-button--size--small::before,
+  .dusk-switch::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
+  /* The whole row of an agreement ticks its box. */
+  .dusk-agreement {
+    position: relative;
+  }
+
+  .dusk-agreement__label::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
+
+  /* The box itself stays on top, for a tap right on it. */
+  .dusk-agreement .dusk-checkbox {
+    position: relative;
+    z-index: 1;
+  }
+}

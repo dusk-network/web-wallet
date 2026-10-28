@@ -83,14 +83,14 @@
     >
       <h2 class="h1" slot="heading">
         Backup<br />
-        <mark>Mnemonic Phrase</mark>
+        <mark>Recovery Phrase</mark>
       </h2>
       <MnemonicPreSetup bind:isValid={agreementAccepted} />
     </WizardStep>
     <WizardStep step={1} {key} showStepper={true}>
       <h2 class="h1" slot="heading">
         Backup<br />
-        <mark>Mnemonic Phrase</mark>
+        <mark>Recovery Phrase</mark>
       </h2>
       <MnemonicPhrase bind:mnemonicPhrase />
     </WizardStep>
@@ -109,7 +109,7 @@
     >
       <h2 class="h1" slot="heading">
         Backup<br />
-        <mark>Mnemonic Phrase</mark>
+        <mark>Recovery Phrase</mark>
       </h2>
       <MnemonicValidate
         bind:isValid={isValidMnemonic}

@@ -1,8 +1,10 @@
 <script>
   import { mdiKeyOutline } from "@mdi/js";
   import { Textbox } from "$lib/dusk/components";
+  import { randomUUID } from "$lib/dusk/string";
   import { ToggleableCard } from "$lib/containers/Cards";
   import { Banner } from "$lib/components";
+  import { getPasswordStrength } from "$lib/wallet";
 
   /** @type {string} */
   export let password = "";
@@ -15,6 +17,18 @@
 
   /** @type {string} */
   let confirmPassword = "";
+
+  const strengthId = `${randomUUID()}-password-strength`;
+
+  /** @type {Record<ReturnType<typeof getPasswordStrength>, string>} */
+  const strengthHints = {
+    fair: "Fair password. Longer is safer.",
+    strong: "Strong password.",
+    weak: "Weak password: easy to guess. Make it longer, or use a few unrelated words.",
+  };
+
+  // A hint at how hard the password is to guess, once it is long enough.
+  $: strength = password.length >= 8 ? getPasswordStrength(password) : null;
 
   $: isValid =
     !isToggled ||
@@ -31,12 +45,22 @@
 <ToggleableCard heading="Password" iconPath={mdiKeyOutline} bind:isToggled>
   <p>Please store your password safely.</p>
   <Textbox
+    aria-describedby={strength ? strengthId : undefined}
     className="password-input"
     type="password"
     autocomplete="new-password"
     bind:value={password}
     placeholder="Set Password"
   />
+  {#if strength}
+    <p
+      class="password-strength"
+      class:password-strength--weak={strength === "weak"}
+      id={strengthId}
+    >
+      {strengthHints[strength]}
+    </p>
+  {/if}
   <div class="confirm-password">
     <Textbox
       className="password-input"
@@ -63,9 +87,8 @@
   variant="info"
 >
   <p>
-    Without a password, you will need to input your full mnemonic each time to
-    access your wallet. This could expose your mnemonic to potential threats.
-    Setting a password is highly recommended for better wallet security.
+    Without a password, you need to enter your full recovery phrase each time
+    you open the wallet, which could expose it.
   </p>
 </Banner>
 
@@ -82,6 +105,17 @@
         color: var(--error-color);
         opacity: 1;
       }
+    }
+  }
+
+  .password-strength {
+    font-size: 0.75em;
+    margin: 0.8em 0 0 1em;
+    opacity: 0.5;
+
+    &--weak {
+      color: var(--banner-warning-color);
+      opacity: 1;
     }
   }
 

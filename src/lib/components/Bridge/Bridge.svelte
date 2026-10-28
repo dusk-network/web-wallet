@@ -13,7 +13,6 @@
   import {
     AnchorButton,
     Badge,
-    Icon,
     Select,
     Textbox,
     Throbber,
@@ -25,12 +24,12 @@
     BalanceValue,
     Banner,
     DepositResult,
+    DuskIcon,
     GasSettings,
     OperationResult,
     ReviewAmount,
   } from "$lib/components";
   import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
-  import { logo } from "$lib/dusk/icons";
   import { BRIDGE_DEPOSIT_MIN_GAS_LIMIT } from "$lib/bridge/deposit";
   import {
     depositActivityStore,
@@ -50,7 +49,7 @@
   import { luxToDusk } from "$lib/dusk/currency";
   import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
   import { cleanNumberString } from "$lib/dusk/string";
-  import { areValidGasSettings } from "$lib/contracts";
+  import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { walletStore } from "$lib/stores";
 
   /**
@@ -110,6 +109,11 @@
 
   /** @type {ContractGasSettings} */
   let { gasLimit, gasPrice } = gasSettings;
+
+  /** Whether the first step, where the gas can be edited, shows. */
+  let isEditing = true;
+
+  let defaultGas = gasSettings;
 
   async function submitNativeWithdrawal() {
     if (!unshieldedAccount) {
@@ -246,6 +250,19 @@
     destinationNetworkOptions.find((o) => !o.disabled)?.value ?? "";
   $: amount = slashDecimals(cleanNumberString(amount, getDecimalSeparator()));
   $: fee = gasLimit * gasPrice;
+
+  // The default gas can change while the form is open, as when the node's
+  // price arrives: the form takes it while its gas can be edited, unless it
+  // was edited here, and keeps the gas a review shows.
+  $: if (isEditing && gasSettings !== defaultGas) {
+    ({ gasLimit, gasPrice } = followDefaultGas(
+      { gasLimit, gasPrice },
+      defaultGas,
+      gasSettings
+    ));
+    defaultGas = gasSettings;
+  }
+
   $: isDepositing =
     originNetwork === "duskDs" && destinationNetwork === "duskEvm";
   $: isWithdrawing =
@@ -344,7 +361,12 @@
           href: "/dashboard",
           isAnchor: true,
         }}
-        nextButton={{ disabled: isNextButtonDisabled }}
+        nextButton={{
+          action: () => {
+            isEditing = false;
+          },
+          disabled: isNextButtonDisabled,
+        }}
       >
         <div in:fade|global class="operation__bridge">
           <fieldset class="operation__fieldset">
@@ -379,11 +401,7 @@
                 name="destination-amount"
                 bind:value={amount}
               />
-              <Icon
-                data-tooltip-id="main-tooltip"
-                data-tooltip-text="DUSK"
-                path={logo}
-              />
+              <DuskIcon />
             </div>
 
             {#if amount !== ""}
@@ -412,10 +430,10 @@
             <GasSettings
               {formatter}
               {fee}
-              limit={gasSettings.gasLimit}
+              limit={gasLimit}
               limitLower={gasLimits.gasLimitLower}
               limitUpper={gasLimits.gasLimitUpper}
-              price={gasSettings.gasPrice}
+              price={gasPrice}
               priceLower={gasLimits.gasPriceLower}
               on:gasSettings={(event) => {
                 gasPrice = event.detail.price;
@@ -428,6 +446,11 @@
       <WizardStep
         step={1}
         {key}
+        backButton={{
+          action: () => {
+            isEditing = true;
+          },
+        }}
         nextButton={{
           disabled: isNextButtonDisabled,
           icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },

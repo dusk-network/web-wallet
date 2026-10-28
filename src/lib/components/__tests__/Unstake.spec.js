@@ -174,6 +174,23 @@ describe("Unstake", () => {
       );
     });
 
+    it("should take new default gas, as the node's price, until the review", async () => {
+      const { container, getByRole, rerender } = render(Unstake, {
+        ...baseProps,
+        ...unstakeProps,
+      });
+      const { gasLimit } = baseProps.gasSettings;
+
+      await vi.advanceTimersToNextTimerAsync();
+      await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      expect(getReviewAmounts(container)[1]).toStrictEqual([
+        "Network fee (at most)",
+        `${formatter(luxToDusk(gasLimit * 3n))} DUSK`,
+      ]);
+    });
+
     it("should perform an ustake, give a success message and supply a link to see the transaction in the explorer", async () => {
       /** @type {import("svelte").ComponentProps<Unstake>} */
       const props = { ...baseProps, ...unstakeProps };

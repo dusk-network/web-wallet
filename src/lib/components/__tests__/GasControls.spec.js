@@ -2,6 +2,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { GasControls } from "..";
 
+vi.mock("$lib/dusk/string", async (importOriginal) => {
+  /** @type {typeof import("$lib/dusk/string")} */
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    randomUUID: () => "some-generated-id",
+  };
+});
+
 /**
  * @param {HTMLElement} input
  * @param {*} value
@@ -67,5 +77,53 @@ describe("GasControls", () => {
       price: 15n,
     });
     expect(BigInt(limitInput.value)).toBe(25n);
+  });
+
+  it("should name its inputs with their labels", () => {
+    const { getByLabelText } = render(GasControls, baseOptions);
+
+    expect(getByLabelText("Gas price (LUX)")).toHaveValue("10");
+    expect(getByLabelText("Gas limit")).toHaveValue("20");
+  });
+
+  it("should warn under the minimum gas limit, and over the maximum, while it is typed", async () => {
+    const { getByLabelText, getByText, queryByText } = render(
+      GasControls,
+      baseOptions
+    );
+    const limitInput = getByLabelText("Gas limit");
+
+    expect(limitInput).toHaveAttribute("aria-invalid", "false");
+
+    await fireInput(limitInput, 9);
+
+    expect(getByText("The minimum is 10.")).toBeInTheDocument();
+    expect(limitInput).toHaveAttribute("aria-invalid", "true");
+    expect(limitInput).toHaveAccessibleDescription("The minimum is 10.");
+
+    await fireInput(limitInput, 101);
+
+    expect(queryByText("The minimum is 10.")).toBeNull();
+    expect(limitInput).toHaveAccessibleDescription("The maximum is 100.");
+
+    await fireInput(limitInput, 50);
+
+    expect(limitInput).not.toHaveAccessibleDescription();
+    expect(limitInput).toHaveAttribute("aria-invalid", "false");
+  });
+
+  it("should warn under the lowest gas price while it is typed", async () => {
+    const { getByLabelText } = render(GasControls, baseOptions);
+    const priceInput = getByLabelText("Gas price (LUX)");
+
+    await fireInput(priceInput, 0);
+
+    expect(priceInput).toHaveAccessibleDescription("The minimum is 1 LUX.");
+
+    await fireInput(priceInput, 21);
+
+    expect(priceInput).toHaveAccessibleDescription(
+      "It can't be higher than the gas limit."
+    );
   });
 });

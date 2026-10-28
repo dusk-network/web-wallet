@@ -327,6 +327,56 @@ describe("Send", () => {
       expect(getByRole("button", { name: "Next" })).toBeDisabled();
     });
 
+    it("should take new default gas, as the node's price, on the amount step, unless the gas was edited there", async () => {
+      const { getByRole, rerender } = render(Send, baseProps);
+      const { gasLimit } = baseProps.gasSettings;
+
+      await fireEvent.input(getByRole("textbox"), {
+        target: { value: shieldedAddress },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        shieldedAddress,
+        duskToLux(1),
+        "",
+        3n,
+        gasLimit
+      );
+
+      cleanup();
+      baseProps.execute.mockClear();
+
+      // Edited here: the gas edited is the gas sent.
+      const edited = render(Send, baseProps);
+
+      await fireEvent.input(edited.getByRole("textbox"), {
+        target: { value: shieldedAddress },
+      });
+      await fireEvent.click(edited.getByRole("button", { name: "Next" }));
+      await fireEvent.click(edited.getByRole("button", { name: "EDIT" }));
+      await fireEvent.input(edited.getByLabelText(/gas limit/i), {
+        target: { value: "30000000" },
+      });
+      await tick();
+      await edited.rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
+      await fireEvent.click(edited.getByRole("button", { name: "Next" }));
+      await fireEvent.click(edited.getByRole("button", { name: "SEND" }));
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        shieldedAddress,
+        duskToLux(1),
+        "",
+        1n,
+        30_000_000n
+      );
+    });
+
     it("should render the Send component Amount step", async () => {
       const { container, getByRole } = render(Send, baseProps);
 

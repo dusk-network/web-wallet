@@ -1,9 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { Icon } from "$lib/dusk/components";
-  import { logo } from "$lib/dusk/icons";
-  import { BalanceValue } from "$lib/components";
+  import { BalanceValue, DuskIcon } from "$lib/components";
 
   /** @type {ContractStatus[]} */
   export let statuses;
@@ -20,12 +18,7 @@
       </dt>
       <dd class="contract-statuses__value">
         <span><BalanceValue value={status.value} /></span>
-        <Icon
-          className="contract-statuses__icon"
-          path={logo}
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="DUSK"
-        />
+        <DuskIcon className="contract-statuses__icon" />
       </dd>
     {/each}
   </dl>

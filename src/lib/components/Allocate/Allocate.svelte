@@ -10,14 +10,13 @@
   } from "@mdi/js";
   import { formatUnits } from "viem";
 
-  import { areValidGasSettings } from "$lib/contracts";
+  import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
   import {
     calculateAdaptiveCharCount,
     middleEllipsis,
     randomUUID,
   } from "$lib/dusk/string";
-  import { logo } from "$lib/dusk/icons";
   import {
     Badge,
     Icon,
@@ -27,6 +26,7 @@
   } from "$lib/dusk/components";
   import {
     BalanceValue,
+    DuskIcon,
     GasSettings,
     ReviewAmount,
     TransactionResult,
@@ -113,6 +113,11 @@
 
   let { gasLimit, gasPrice } = gasSettings;
 
+  /** Whether the first step, where the gas can be edited, shows. */
+  let isEditing = true;
+
+  let defaultGas = gasSettings;
+
   /** @type {number} */
   let screenWidth = window.innerWidth;
 
@@ -153,6 +158,19 @@
   $: fee = gasLimit * gasPrice;
   $: difference = shielded - initialShielded;
 
+  // The default gas can change while the form is open, as when the node's
+  // price arrives: the form takes it while its gas can be edited, unless it
+  // was edited here, and keeps the gas a review shows.
+  $: if (isEditing && gasSettings !== defaultGas) {
+    ({ gasLimit, gasPrice } = followDefaultGas(
+      { gasLimit, gasPrice },
+      defaultGas,
+      gasSettings
+    ));
+    defaultGas = gasSettings;
+    isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
+  }
+
   $: hasEnoughFundsForFees =
     difference === 0n ||
     (isShielding
@@ -184,7 +202,12 @@
         href: "/dashboard",
         isAnchor: true,
       }}
-      nextButton={{ disabled: isNextButtonDisabled }}
+      nextButton={{
+        action: () => {
+          isEditing = false;
+        },
+        disabled: isNextButtonDisabled,
+      }}
     >
       <div in:fade|global class="operation__allocate">
         <p>Move DUSK between your public and shielded accounts.</p>
@@ -216,11 +239,7 @@
               name="unshielded-amount"
               aria-label="Public amount"
             />
-            <Icon
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="DUSK"
-              path={logo}
-            />
+            <DuskIcon />
           </div>
 
           <hr class="glyph" />
@@ -259,11 +278,7 @@
               name="shielded-amount"
               aria-label="Shielded amount"
             />
-            <Icon
-              data-tooltip-id="main-tooltip"
-              data-tooltip-text="DUSK"
-              path={logo}
-            />
+            <DuskIcon />
           </div>
           {#if hideBalances}
             <span hidden id={hiddenNoteId}>hidden</span>
@@ -273,10 +288,10 @@
         <GasSettings
           {formatter}
           {fee}
-          limit={gasSettings.gasLimit}
+          limit={gasLimit}
           limitLower={gasLimits.gasLimitLower}
           limitUpper={gasLimits.gasLimitUpper}
-          price={gasSettings.gasPrice}
+          price={gasPrice}
           priceLower={gasLimits.gasPriceLower}
           on:gasSettings={(event) => {
             isGasValid = areValidGasSettings(
@@ -302,6 +317,11 @@
     <WizardStep
       step={1}
       {key}
+      backButton={{
+        action: () => {
+          isEditing = true;
+        },
+      }}
       nextButton={{
         icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
         label: "SEND",

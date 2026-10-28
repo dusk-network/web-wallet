@@ -55,6 +55,23 @@
   outline: 2px solid var(--secondary-color);
 }
 
+/* On phones, a tap of 44 px around the eye, which doesn't move it. */
+@media (max-width: 30rem) {
+  .dusk-balance__toggle {
+    position: relative;
+  }
+
+  .dusk-balance__toggle::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+
 .dusk-balance__account {
   display: flex;
   align-items: center;

@@ -4,7 +4,11 @@
   import "css-doodle";
   import Animation from "./Animation.svelte";
   import { AppAnchorButton } from "$lib/components";
+  import { settingsStore } from "$lib/stores";
   import { mdiKeyOutline, mdiRestore, mdiWalletOutline } from "@mdi/js";
+
+  // There is a wallet to unlock once one was created or restored here.
+  const { userId } = $settingsStore;
 </script>
 
 <section class="setup-content">
@@ -26,11 +30,13 @@
         />
       </div>
       <Animation />
-      <AppAnchorButton
-        href="/unlock"
-        text="Unlock Wallet"
-        icon={{ path: mdiKeyOutline }}
-      />
+      {#if userId}
+        <AppAnchorButton
+          href="/unlock"
+          text="Unlock Wallet"
+          icon={{ path: mdiKeyOutline }}
+        />
+      {/if}
     </div>
   </div>
 </section>

@@ -269,6 +269,14 @@
       margin-left: auto;
     }
 
+    /* On phones, taps of at least 44 px. */
+    @media (max-width: 30rem) {
+      &__icon-button {
+        width: 44px;
+        height: 44px;
+      }
+    }
+
     &__note {
       color: var(--muted-color);
       font-size: 0.8125rem;

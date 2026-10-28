@@ -97,6 +97,28 @@ describe("Bridge", () => {
     expect(container.querySelector(".gas-fee")).toBeNull();
   });
 
+  it("should take new default gas, as the node's price, until the review", async () => {
+    const { container, getByRole, rerender } = render(Bridge, baseProps);
+    const { gasLimit } = baseProps.gasSettings;
+
+    await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
+    await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(getReviewAmounts(container)[1]).toStrictEqual([
+      "Network fee (at most)",
+      `${formatter(luxToDusk(gasLimit * 3n))} DUSK`,
+    ]);
+
+    // Not while reviewing: the fee reviewed is the fee sent.
+    await rerender({ gasSettings: { gasLimit, gasPrice: 5n } });
+
+    expect(getReviewAmounts(container)[1]).toStrictEqual([
+      "Network fee (at most)",
+      `${formatter(luxToDusk(gasLimit * 3n))} DUSK`,
+    ]);
+  });
+
   it("should show only the amount when reviewing a withdrawal, whose fee the EVM wallet sets", async () => {
     const { container, getByRole } = render(Bridge, baseProps);
     const origin = /** @type {HTMLSelectElement} */ (

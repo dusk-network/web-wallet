@@ -6,14 +6,12 @@
   import { mdiAlertOutline, mdiDatabaseOutline } from "@mdi/js";
 
   import { DOCUMENTATION_LINKS } from "$lib/constants";
-  import { areValidGasSettings } from "$lib/contracts";
+  import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { duskToLux, luxToDusk } from "$lib/dusk/currency";
-  import { logo } from "$lib/dusk/icons";
 
   import {
     Agreement,
     Button,
-    Icon,
     Stepper,
     Textbox,
     Wizard,
@@ -22,6 +20,7 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     AppAnchor,
+    DuskIcon,
     GasSettings,
     ReviewAmount,
     TransactionResult,
@@ -54,6 +53,7 @@
 
   let activeStep = 0;
   let { gasLimit, gasPrice } = gasSettings;
+  let defaultGas = gasSettings;
   let hideStakingNoticeNextTime = false;
   let isGasValid = false;
 
@@ -123,6 +123,22 @@
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
+
+  // The default gas can change while the form is open, as when the node's
+  // price arrives: the form takes it while its gas can be edited, unless it
+  // was edited here, and keeps the gas a review shows.
+  $: if (
+    activeStep <= (hideStakingNotice ? 0 : 1) &&
+    gasSettings !== defaultGas
+  ) {
+    ({ gasLimit, gasPrice } = followDefaultGas(
+      { gasLimit, gasPrice },
+      defaultGas,
+      gasSettings
+    ));
+    defaultGas = gasSettings;
+    isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
+  }
 
   // Check if the available balance is sufficient to cover the max gas fee.
   // This is a prerequisite for any transaction.
@@ -247,20 +263,16 @@
           required
           step="0.000000001"
         />
-        <Icon
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="DUSK"
-          path={logo}
-        />
+        <DuskIcon />
       </div>
 
       <GasSettings
         {formatter}
         fee={maxGasFee}
-        limit={gasSettings.gasLimit}
+        limit={gasLimit}
         limitLower={gasLimits.gasLimitLower}
         limitUpper={gasLimits.gasLimitUpper}
-        price={gasSettings.gasPrice}
+        price={gasPrice}
         priceLower={gasLimits.gasPriceLower}
         on:gasSettings={setGasValues}
       />

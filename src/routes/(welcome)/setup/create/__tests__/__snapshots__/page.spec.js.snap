@@ -21,7 +21,7 @@ exports[`Create > correctly renders the Mnemonic Preview page 1`] = `
     <br />
      
     <mark>
-      Mnemonic Phrase
+      Recovery Phrase
     </mark>
   </h2>
   <!---->
@@ -336,7 +336,7 @@ exports[`Create > correctly renders the Mnemonic Verification page 1`] = `
     <br />
      
     <mark>
-      Mnemonic Phrase
+      Recovery Phrase
     </mark>
   </h2>
   <!---->
@@ -447,7 +447,7 @@ exports[`Create > correctly renders the Mnemonic Verification page 1`] = `
     >
       <!---->
       <p>
-        Ensure you have backed up the Mnemonic phrase.
+        Tap the words in the order you wrote them down.
       </p>
        
       <div
@@ -831,7 +831,7 @@ exports[`Create > doesn't let the user proceed if they have entered mismatching 
     <br />
      
     <mark>
-      Mnemonic Phrase
+      Recovery Phrase
     </mark>
   </h2>
   <!---->
@@ -942,7 +942,7 @@ exports[`Create > doesn't let the user proceed if they have entered mismatching 
     >
       <!---->
       <p>
-        Ensure you have backed up the Mnemonic phrase.
+        Tap the words in the order you wrote them down.
       </p>
        
       <div
@@ -1237,11 +1237,11 @@ exports[`Create > doesn't let the user proceed if they have entered mismatching 
           <strong
             class="banner__title"
           >
-            Mnemonic does not match.
+            The words don't match.
           </strong>
            
           <p>
-            Please ensure you have entered the mnemonic phrase in the correct order.
+            Undo, and tap them in the order you wrote them down.
           </p>
           <!---->
         </div>
@@ -1366,7 +1366,7 @@ exports[`Create > ensures that the Undo button on the Mnemonic Validate step wor
     <br />
      
     <mark>
-      Mnemonic Phrase
+      Recovery Phrase
     </mark>
   </h2>
   <!---->
@@ -1477,7 +1477,7 @@ exports[`Create > ensures that the Undo button on the Mnemonic Validate step wor
     >
       <!---->
       <p>
-        Ensure you have backed up the Mnemonic phrase.
+        Tap the words in the order you wrote them down.
       </p>
        
       <div
@@ -2182,7 +2182,7 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
           <h3
             class="h4"
           >
-            Block Height
+            Ready to sync
           </h3>
            
           <div
@@ -2213,67 +2213,85 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
     >
       <!---->
       <p>
-        Store the current block height in case you want to resync from it next time
-    you reset your wallet. This can significantly reduce the initial sync time.
+        Next, the wallet syncs with the network. There is nothing to note.
       </p>
        
-      <div
-        class="copy-field"
+      <details
+        class="network-sync__advanced svelte-1gt9h5u"
       >
-        <!---->
-        <input
-          aria-label="Block Height"
-          class="dusk-textbox dusk-textbox-text copy-field__content"
-          readonly=""
-          type="text"
-        />
-        
-        <!---->
-         
-        <button
-          aria-label="Copy Block Height"
-          class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="Copy to clipboard"
-          type="button"
+        <summary
+          class="svelte-1gt9h5u"
         >
-          <!---->
-          <!---->
-          <svg
-            class="dusk-icon dusk-icon--size--default dusk-button__icon"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
+          Advanced
+        </summary>
+         
+        <div
+          class="network-sync__advanced-content svelte-1gt9h5u"
+        >
+          <p>
+            The wallet starts at this block. Restoring it from here syncs faster.
+        Settings shows it too, under Advanced.
+          </p>
+           
+          <div
+            class="copy-field"
           >
-            <path
-              d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"
+            <!---->
+            <input
+              aria-label="Block Height"
+              class="dusk-textbox dusk-textbox-text copy-field__content"
+              readonly=""
+              type="text"
             />
-          </svg>
-          
+            
+            <!---->
+             
+            <button
+              aria-label="Copy Block Height"
+              class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
+              data-tooltip-id="main-tooltip"
+              data-tooltip-text="Copy to clipboard"
+              type="button"
+            >
+              <!---->
+              <!---->
+              <svg
+                class="dusk-icon dusk-icon--size--default dusk-button__icon"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"
+                />
+              </svg>
+              
+              <!---->
+               
+              <!---->
+              <!---->
+            </button>
+            <!---->
+          </div>
           <!---->
            
-          <!---->
-          <!---->
-        </button>
-        <!---->
-      </div>
-      <!---->
-       
-      <small>
-        This can later be retrieved from Settings. Find out more in our 
-        <a
-          class="dusk-anchor dusk-anchor--on-surface"
-          href="https://docs.dusk.network/learn/guides/restore-height"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          <!---->
-          documentation
-          
-          <!---->
-        </a>
-        <!---->
-        .
-      </small>
+          <small>
+            Find out more in our 
+            <a
+              class="dusk-anchor dusk-anchor--on-surface"
+              href="https://docs.dusk.network/learn/guides/restore-height"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <!---->
+              documentation
+              
+              <!---->
+            </a>
+            <!---->
+            .
+          </small>
+        </div>
+      </details>
       
       <!---->
     </div>
@@ -2534,6 +2552,8 @@ exports[`Create > ensures the Password step renders as expected 1`] = `
       
       <!---->
        
+      <!---->
+       
       <div
         class="confirm-password"
       >
@@ -2590,9 +2610,8 @@ exports[`Create > ensures the Password step renders as expected 1`] = `
       </strong>
        
       <p>
-        Without a password, you will need to input your full mnemonic each time to
-    access your wallet. This could expose your mnemonic to potential threats.
-    Setting a password is highly recommended for better wallet security.
+        Without a password, you need to enter your full recovery phrase each time
+    you open the wallet, which could expose it.
       </p>
       <!---->
     </div>
@@ -2867,9 +2886,8 @@ exports[`Create > ensures the Password step renders as expected 2`] = `
       </strong>
        
       <p>
-        Without a password, you will need to input your full mnemonic each time to
-    access your wallet. This could expose your mnemonic to potential threats.
-    Setting a password is highly recommended for better wallet security.
+        Without a password, you need to enter your full recovery phrase each time
+    you open the wallet, which could expose it.
       </p>
       <!---->
     </div>
@@ -2980,7 +2998,7 @@ exports[`Create > lets the user proceed if they have entered a matching Mnemonic
     <br />
      
     <mark>
-      Mnemonic Phrase
+      Recovery Phrase
     </mark>
   </h2>
   <!---->
@@ -3091,7 +3109,7 @@ exports[`Create > lets the user proceed if they have entered a matching Mnemonic
     >
       <!---->
       <p>
-        Ensure you have backed up the Mnemonic phrase.
+        Tap the words in the order you wrote them down.
       </p>
        
       <div
@@ -3477,7 +3495,7 @@ exports[`Create > should render the \`Securely store your mnemonic phrase!\` agr
     <br />
      
     <mark>
-      Mnemonic Phrase
+      Recovery Phrase
     </mark>
   </h2>
   <!---->
@@ -3574,7 +3592,7 @@ exports[`Create > should render the \`Securely store your mnemonic phrase!\` agr
           <h3
             class="h4"
           >
-            Securely store your mnemonic phrase!
+            Keep it safe
           </h3>
            
           <!---->
@@ -3605,7 +3623,7 @@ exports[`Create > should render the \`Securely store your mnemonic phrase!\` agr
           class="dusk-agreement__label"
           for="dusk-checkbox-16"
         >
-          I understand that without my mnemonic phrase I cannot access my wallet and its assets.
+          I understand that without my recovery phrase I cannot access my wallet and its assets.
         </label>
       </div>
       <!---->
@@ -3627,7 +3645,7 @@ exports[`Create > should render the \`Securely store your mnemonic phrase!\` agr
           for="dusk-checkbox-16"
         >
           I understand that securing my recovery phrase is my own responsibility.
-        Only I have access to my recovery phrase
+        Only I have access to my recovery phrase.
         </label>
       </div>
       <!---->
@@ -3662,7 +3680,7 @@ exports[`Create > should render the \`Securely store your mnemonic phrase!\` agr
       <strong
         class="banner__title"
       >
-        Dusk will not save and cannot retrieve your mnemonic phrase.
+        Dusk will not save and cannot retrieve your recovery phrase.
       </strong>
        
       <p>
@@ -3819,7 +3837,7 @@ exports[`Create > should render the Existing Wallet notice step of the Create fl
         <p>
           Initializing a new wallet will replace your existing local wallet cache,
       erasing any stored data. Ensure you have securely backed up your current
-      wallet's mnemonic phrase to prevent loss. Proceeding without a backup can
+      wallet's recovery phrase to prevent loss. Proceeding without a backup can
       lead to irreversible loss of access to your assets.
         </p>
          
@@ -3908,7 +3926,25 @@ exports[`Create > should render the Terms of Service step of the Create flow if 
       >
         <!---->
         <p>
-          Our 
+          Your keys stay in this browser, and only you hold them: Dusk can't recover
+      them. The wallet has no analytics, and gets the DUSK price from CoinGecko.
+        </p>
+         
+        <p>
+          Accepting means you agree to the 
+          <a
+            class="dusk-anchor dusk-anchor--on-surface"
+            href="https://dusk.network/terms-of-use/"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            <!---->
+            Terms of Use
+            
+            <!---->
+          </a>
+          <!---->
+           and the 
           <a
             class="dusk-anchor dusk-anchor--on-surface"
             href="https://dusk.network/privacy-policy/"
@@ -3916,13 +3952,12 @@ exports[`Create > should render the Terms of Service step of the Create flow if 
             target="_blank"
           >
             <!---->
-            Terms & Privacy Policy
+            Privacy Policy
             
             <!---->
           </a>
           <!---->
-           govern your use of our services, including data handling and user responsibilities.
-      Your privacy and security are our top priorities.
+          .
         </p>
          
         <div

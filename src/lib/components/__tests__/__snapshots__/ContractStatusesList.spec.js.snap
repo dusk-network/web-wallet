@@ -39,10 +39,11 @@ exports[`ContractStatusesList > should render the \`ContractStatusesList\` compo
        
       <!---->
       <svg
+        aria-label="DUSK"
         class="dusk-icon dusk-icon--size--default contract-statuses__icon"
         data-tooltip-id="main-tooltip"
         data-tooltip-text="DUSK"
-        role="graphics-symbol"
+        role="img"
         viewBox="0 0 24 24"
       >
         <path
@@ -70,10 +71,11 @@ exports[`ContractStatusesList > should render the \`ContractStatusesList\` compo
        
       <!---->
       <svg
+        aria-label="DUSK"
         class="dusk-icon dusk-icon--size--default contract-statuses__icon"
         data-tooltip-id="main-tooltip"
         data-tooltip-text="DUSK"
-        role="graphics-symbol"
+        role="img"
         viewBox="0 0 24 24"
       >
         <path
@@ -101,10 +103,11 @@ exports[`ContractStatusesList > should render the \`ContractStatusesList\` compo
        
       <!---->
       <svg
+        aria-label="DUSK"
         class="dusk-icon dusk-icon--size--default contract-statuses__icon"
         data-tooltip-id="main-tooltip"
         data-tooltip-text="DUSK"
-        role="graphics-symbol"
+        role="img"
         viewBox="0 0 24 24"
       >
         <path

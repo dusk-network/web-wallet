@@ -15,22 +15,22 @@
   $: isValid = agreementOneChecked && agreementTwoChecked;
 </script>
 
-<IconHeadingCard gap="medium" heading="Securely store your mnemonic phrase!">
+<IconHeadingCard gap="medium" heading="Keep it safe">
   <Agreement
     name="mnemonic_agreement_one"
     bind:checked={agreementOneChecked}
-    label="I understand that without my mnemonic phrase I cannot access my wallet and its assets."
+    label="I understand that without my recovery phrase I cannot access my wallet and its assets."
   />
   <Agreement
     name="mnemonic_agreement_two"
     bind:checked={agreementTwoChecked}
     label="I understand that securing my recovery phrase is my own responsibility.
-        Only I have access to my recovery phrase"
+        Only I have access to my recovery phrase."
   />
 </IconHeadingCard>
 
 <Banner
-  title="Dusk will not save and cannot retrieve your mnemonic phrase."
+  title="Dusk will not save and cannot retrieve your recovery phrase."
   variant="warning"
 >
   <p>To proceed, please check all the relevant boxes.</p>

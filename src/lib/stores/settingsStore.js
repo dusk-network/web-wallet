@@ -32,18 +32,27 @@ const browserDefaults = browser
  */
 const LEGACY_DEFAULT_GAS_LIMIT = 100_000_000n;
 
+/** Minutes without activity before a wallet with a password locks. */
+export const AUTO_LOCK_MINUTES = Object.freeze([5, 15]);
+
 /** @type {SettingsStoreContent} */
 const initialState = {
   ...browserDefaults,
+
+  // Minutes without activity before a wallet with a password locks, or 0
+  // to never lock it.
+  autoLockMinutes: 15,
   currency: "USD",
 
-  // A gas limit the user set for every operation, or `null` for each
-  // operation's own default: see `getGasSettings`.
+  // A gas limit and a gas price the user set for every operation, or `null`
+  // for each operation's own default limit and the node's price: see
+  // `getGasSettings`. The user sets both or neither.
   customGasLimit: null,
+  customGasPrice: null,
   dashboardTransactionLimit: 5,
 
-  // The gas limit of older versions, kept so that they can still read these
-  // settings.
+  // The gas limit and price of older versions, kept so that they can still
+  // read these settings.
   gasLimit: LEGACY_DEFAULT_GAS_LIMIT,
   gasPrice: BigInt(import.meta.env.VITE_GAS_PRICE_DEFAULT ?? 1),
   hideBalances: false,
@@ -57,7 +66,7 @@ const initialState = {
  * becomes one, unless it is the old default.
  *
  * @param {any} settings The stored settings, possibly from an older version.
- * @returns {SettingsStoreContent}
+ * @returns {any}
  */
 const migrateGasLimit = (settings) =>
   "customGasLimit" in settings
@@ -71,6 +80,39 @@ const migrateGasLimit = (settings) =>
             : null,
       };
 
+/**
+ * Settings from older versions have no custom gas price. With a custom gas
+ * limit, their gas price becomes the custom one, as the user sets both or
+ * neither; without one, the node's price replaces it.
+ *
+ * @param {any} settings The stored settings, possibly from an older version.
+ * @returns {any}
+ */
+const migrateGasPrice = (settings) =>
+  "customGasPrice" in settings
+    ? settings
+    : {
+        ...settings,
+        customGasPrice:
+          settings.customGasLimit !== null &&
+          typeof settings.gasPrice === "bigint"
+            ? settings.gasPrice
+            : null,
+      };
+
+/**
+ * @param {any} settings The stored settings, possibly from an older version.
+ * @returns {SettingsStoreContent}
+ */
+const migrate = (settings) => {
+  const migrated = migrateGasPrice(migrateGasLimit(settings));
+
+  return AUTO_LOCK_MINUTES.includes(migrated.autoLockMinutes) ||
+    migrated.autoLockMinutes === 0
+    ? migrated
+    : { ...migrated, autoLockMinutes: initialState.autoLockMinutes };
+};
+
 const createPersistedStore = (
   /** @type {string} */ key,
   /** @type {SettingsStoreContent} */ initialValue
@@ -81,7 +123,7 @@ const createPersistedStore = (
     }
     const storedValue = localStorage.getItem(key);
     return storedValue
-      ? migrateGasLimit(deserializeProperty(storedValue))
+      ? migrate(deserializeProperty(storedValue))
       : initialValue;
   };
 
@@ -111,6 +153,7 @@ const resetGasSettings = () =>
   update((current) => ({
     ...current,
     customGasLimit: initialState.customGasLimit,
+    customGasPrice: initialState.customGasPrice,
     gasPrice: initialState.gasPrice,
   }));
 

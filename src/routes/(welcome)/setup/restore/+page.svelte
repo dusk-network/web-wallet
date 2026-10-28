@@ -84,7 +84,7 @@
     >
       <h2 class="h1" slot="heading">
         Enter<br />
-        <mark>Mnemonic Phrase</mark>
+        <mark>Recovery Phrase</mark>
       </h2>
       <MnemonicAuthenticate
         bind:enteredMnemonicPhrase={mnemonicPhrase}

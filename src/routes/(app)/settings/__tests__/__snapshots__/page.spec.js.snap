@@ -28,94 +28,6 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           viewBox="0 0 24 24"
         >
           <path
-            d="M19.77,7.23L19.78,7.22L16.06,3.5L15,4.56L17.11,6.67C16.17,7.03 15.5,7.93 15.5,9A2.5,2.5 0 0,0 18,11.5C18.36,11.5 18.69,11.42 19,11.29V18.5A1,1 0 0,1 18,19.5A1,1 0 0,1 17,18.5V14A2,2 0 0,0 15,12H14V5A2,2 0 0,0 12,3H6A2,2 0 0,0 4,5V21H14V13.5H15.5V18.5A2.5,2.5 0 0,0 18,21A2.5,2.5 0 0,0 20.5,18.5V9C20.5,8.31 20.22,7.68 19.77,7.23M12,13.5V19H6V12H12V13.5M12,10H6V5H12V10M18,10A1,1 0 0,1 17,9A1,1 0 0,1 18,8A1,1 0 0,1 19,9A1,1 0 0,1 18,10Z"
-          />
-        </svg>
-        
-        <!---->
-         
-        <h3
-          class="h4 settings-group__heading"
-        >
-          Gas
-        </h3>
-      </header>
-       
-      <div
-        class="settings-group__multi-control-content"
-      >
-        <label
-          class="settings-group__control settings-group__control--switch"
-        >
-          <span>
-            Custom gas limit
-          </span>
-           
-          <div
-            aria-checked="false"
-            aria-disabled="false"
-            aria-label="Custom gas limit"
-            class="dusk-switch"
-            role="switch"
-            tabindex="0"
-          />
-          <!---->
-        </label>
-         
-        <label
-          class="gas-control svelte-p462n7"
-        >
-          <span
-            class="gas-control__label svelte-p462n7"
-          >
-            Price (lux)
-          </span>
-           
-          <!---->
-          <input
-            class="dusk-textbox dusk-textbox-text gas-control__input"
-            inputmode="numeric"
-            pattern="\\d+"
-            required=""
-            type="text"
-          />
-          
-          <!---->
-        </label>
-         
-        <!---->
-        <!---->
-         
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default"
-          type="button"
-        >
-          <span
-            class="dusk-button__text"
-          >
-            Reset to defaults
-          </span>
-          <!---->
-        </button>
-        <!---->
-      </div>
-    </article>
-     
-    <hr />
-     
-    <article
-      class="settings-group"
-    >
-      <header
-        class="settings-group__header"
-      >
-        <!---->
-        <svg
-          class="dusk-icon dusk-icon--size--default"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
             d="M21.7 18.6V17.6L22.8 16.8C22.9 16.7 23 16.6 22.9 16.5L21.9 14.8C21.9 14.7 21.7 14.7 21.6 14.7L20.4 15.2C20.1 15 19.8 14.8 19.5 14.7L19.3 13.4C19.3 13.3 19.2 13.2 19.1 13.2H17.1C16.9 13.2 16.8 13.3 16.8 13.4L16.6 14.7C16.3 14.9 16.1 15 15.8 15.2L14.6 14.7C14.5 14.7 14.4 14.7 14.3 14.8L13.3 16.5C13.3 16.6 13.3 16.7 13.4 16.8L14.5 17.6V18.6L13.4 19.4C13.3 19.5 13.2 19.6 13.3 19.7L14.3 21.4C14.4 21.5 14.5 21.5 14.6 21.5L15.8 21C16 21.2 16.3 21.4 16.6 21.5L16.8 22.8C16.9 22.9 17 23 17.1 23H19.1C19.2 23 19.3 22.9 19.3 22.8L19.5 21.5C19.8 21.3 20 21.2 20.3 21L21.5 21.4C21.6 21.4 21.7 21.4 21.8 21.3L22.8 19.6C22.9 19.5 22.9 19.4 22.8 19.4L21.7 18.6M18 19.5C17.2 19.5 16.5 18.8 16.5 18S17.2 16.5 18 16.5 19.5 17.2 19.5 18 18.8 19.5 18 19.5M12.3 22H3C1.9 22 1 21.1 1 20V4C1 2.9 1.9 2 3 2H21C22.1 2 23 2.9 23 4V13.1C22.4 12.5 21.7 12 21 11.7V6H3V20H11.3C11.5 20.7 11.8 21.4 12.3 22Z"
           />
         </svg>
@@ -393,12 +305,61 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           />
           <!---->
         </label>
+         
+        <!---->
       </div>
     </article>
      
     <hr />
      
-    <!---->
+    <article
+      class="settings-group"
+    >
+      <h3
+        class="h4 settings-group__heading"
+      >
+        <button
+          aria-controls="settings-advanced"
+          aria-expanded="false"
+          class="settings-group__header settings-group__toggle"
+          type="button"
+        >
+          <!---->
+          <svg
+            class="dusk-icon dusk-icon--size--default"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M8 13C6.14 13 4.59 14.28 4.14 16H2V18H4.14C4.59 19.72 6.14 21 8 21S11.41 19.72 11.86 18H22V16H11.86C11.41 14.28 9.86 13 8 13M8 19C6.9 19 6 18.1 6 17C6 15.9 6.9 15 8 15S10 15.9 10 17C10 18.1 9.1 19 8 19M19.86 6C19.41 4.28 17.86 3 16 3S12.59 4.28 12.14 6H2V8H12.14C12.59 9.72 14.14 11 16 11S19.41 9.72 19.86 8H22V6H19.86M16 9C14.9 9 14 8.1 14 7C14 5.9 14.9 5 16 5S18 5.9 18 7C18 8.1 17.1 9 16 9Z"
+            />
+          </svg>
+          
+          <!---->
+           
+          <span>
+            Advanced
+          </span>
+           
+          <!---->
+          <svg
+            class="dusk-icon dusk-icon--size--default settings-group__toggle-icon"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"
+            />
+          </svg>
+          
+          <!---->
+        </button>
+      </h3>
+       
+      <!---->
+    </article>
+     
+    <hr />
      
     <article
       class="settings-group"
@@ -497,7 +458,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
       >
         <p>
           Resetting clears the cache and settings, not your funds. You'll need
-          your mnemonic phrase to restore access, so make sure it's stored
+          your recovery phrase to restore access, so make sure it's stored
           securely.
         </p>
          
@@ -572,94 +533,6 @@ exports[`Settings > should render the settings page displaying the status of the
           viewBox="0 0 24 24"
         >
           <path
-            d="M19.77,7.23L19.78,7.22L16.06,3.5L15,4.56L17.11,6.67C16.17,7.03 15.5,7.93 15.5,9A2.5,2.5 0 0,0 18,11.5C18.36,11.5 18.69,11.42 19,11.29V18.5A1,1 0 0,1 18,19.5A1,1 0 0,1 17,18.5V14A2,2 0 0,0 15,12H14V5A2,2 0 0,0 12,3H6A2,2 0 0,0 4,5V21H14V13.5H15.5V18.5A2.5,2.5 0 0,0 18,21A2.5,2.5 0 0,0 20.5,18.5V9C20.5,8.31 20.22,7.68 19.77,7.23M12,13.5V19H6V12H12V13.5M12,10H6V5H12V10M18,10A1,1 0 0,1 17,9A1,1 0 0,1 18,8A1,1 0 0,1 19,9A1,1 0 0,1 18,10Z"
-          />
-        </svg>
-        
-        <!---->
-         
-        <h3
-          class="h4 settings-group__heading"
-        >
-          Gas
-        </h3>
-      </header>
-       
-      <div
-        class="settings-group__multi-control-content"
-      >
-        <label
-          class="settings-group__control settings-group__control--switch"
-        >
-          <span>
-            Custom gas limit
-          </span>
-           
-          <div
-            aria-checked="false"
-            aria-disabled="false"
-            aria-label="Custom gas limit"
-            class="dusk-switch"
-            role="switch"
-            tabindex="0"
-          />
-          <!---->
-        </label>
-         
-        <label
-          class="gas-control svelte-p462n7"
-        >
-          <span
-            class="gas-control__label svelte-p462n7"
-          >
-            Price (lux)
-          </span>
-           
-          <!---->
-          <input
-            class="dusk-textbox dusk-textbox-text gas-control__input"
-            inputmode="numeric"
-            pattern="\\d+"
-            required=""
-            type="text"
-          />
-          
-          <!---->
-        </label>
-         
-        <!---->
-        <!---->
-         
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default"
-          type="button"
-        >
-          <span
-            class="dusk-button__text"
-          >
-            Reset to defaults
-          </span>
-          <!---->
-        </button>
-        <!---->
-      </div>
-    </article>
-     
-    <hr />
-     
-    <article
-      class="settings-group"
-    >
-      <header
-        class="settings-group__header"
-      >
-        <!---->
-        <svg
-          class="dusk-icon dusk-icon--size--default"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
             d="M21.7 18.6V17.6L22.8 16.8C22.9 16.7 23 16.6 22.9 16.5L21.9 14.8C21.9 14.7 21.7 14.7 21.6 14.7L20.4 15.2C20.1 15 19.8 14.8 19.5 14.7L19.3 13.4C19.3 13.3 19.2 13.2 19.1 13.2H17.1C16.9 13.2 16.8 13.3 16.8 13.4L16.6 14.7C16.3 14.9 16.1 15 15.8 15.2L14.6 14.7C14.5 14.7 14.4 14.7 14.3 14.8L13.3 16.5C13.3 16.6 13.3 16.7 13.4 16.8L14.5 17.6V18.6L13.4 19.4C13.3 19.5 13.2 19.6 13.3 19.7L14.3 21.4C14.4 21.5 14.5 21.5 14.6 21.5L15.8 21C16 21.2 16.3 21.4 16.6 21.5L16.8 22.8C16.9 22.9 17 23 17.1 23H19.1C19.2 23 19.3 22.9 19.3 22.8L19.5 21.5C19.8 21.3 20 21.2 20.3 21L21.5 21.4C21.6 21.4 21.7 21.4 21.8 21.3L22.8 19.6C22.9 19.5 22.9 19.4 22.8 19.4L21.7 18.6M18 19.5C17.2 19.5 16.5 18.8 16.5 18S17.2 16.5 18 16.5 19.5 17.2 19.5 18 18.8 19.5 18 19.5M12.3 22H3C1.9 22 1 21.1 1 20V4C1 2.9 1.9 2 3 2H21C22.1 2 23 2.9 23 4V13.1C22.4 12.5 21.7 12 21 11.7V6H3V20H11.3C11.5 20.7 11.8 21.4 12.3 22Z"
           />
         </svg>
@@ -937,12 +810,61 @@ exports[`Settings > should render the settings page displaying the status of the
           />
           <!---->
         </label>
+         
+        <!---->
       </div>
     </article>
      
     <hr />
      
-    <!---->
+    <article
+      class="settings-group"
+    >
+      <h3
+        class="h4 settings-group__heading"
+      >
+        <button
+          aria-controls="settings-advanced"
+          aria-expanded="false"
+          class="settings-group__header settings-group__toggle"
+          type="button"
+        >
+          <!---->
+          <svg
+            class="dusk-icon dusk-icon--size--default"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M8 13C6.14 13 4.59 14.28 4.14 16H2V18H4.14C4.59 19.72 6.14 21 8 21S11.41 19.72 11.86 18H22V16H11.86C11.41 14.28 9.86 13 8 13M8 19C6.9 19 6 18.1 6 17C6 15.9 6.9 15 8 15S10 15.9 10 17C10 18.1 9.1 19 8 19M19.86 6C19.41 4.28 17.86 3 16 3S12.59 4.28 12.14 6H2V8H12.14C12.59 9.72 14.14 11 16 11S19.41 9.72 19.86 8H22V6H19.86M16 9C14.9 9 14 8.1 14 7C14 5.9 14.9 5 16 5S18 5.9 18 7C18 8.1 17.1 9 16 9Z"
+            />
+          </svg>
+          
+          <!---->
+           
+          <span>
+            Advanced
+          </span>
+           
+          <!---->
+          <svg
+            class="dusk-icon dusk-icon--size--default settings-group__toggle-icon"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"
+            />
+          </svg>
+          
+          <!---->
+        </button>
+      </h3>
+       
+      <!---->
+    </article>
+     
+    <hr />
      
     <article
       class="settings-group"
@@ -1041,7 +963,7 @@ exports[`Settings > should render the settings page displaying the status of the
       >
         <p>
           Resetting clears the cache and settings, not your funds. You'll need
-          your mnemonic phrase to restore access, so make sure it's stored
+          your recovery phrase to restore access, so make sure it's stored
           securely.
         </p>
          
@@ -1099,94 +1021,6 @@ exports[`Settings > should render the settings page displaying the status of the
           viewBox="0 0 24 24"
         >
           <path
-            d="M19.77,7.23L19.78,7.22L16.06,3.5L15,4.56L17.11,6.67C16.17,7.03 15.5,7.93 15.5,9A2.5,2.5 0 0,0 18,11.5C18.36,11.5 18.69,11.42 19,11.29V18.5A1,1 0 0,1 18,19.5A1,1 0 0,1 17,18.5V14A2,2 0 0,0 15,12H14V5A2,2 0 0,0 12,3H6A2,2 0 0,0 4,5V21H14V13.5H15.5V18.5A2.5,2.5 0 0,0 18,21A2.5,2.5 0 0,0 20.5,18.5V9C20.5,8.31 20.22,7.68 19.77,7.23M12,13.5V19H6V12H12V13.5M12,10H6V5H12V10M18,10A1,1 0 0,1 17,9A1,1 0 0,1 18,8A1,1 0 0,1 19,9A1,1 0 0,1 18,10Z"
-          />
-        </svg>
-        
-        <!---->
-         
-        <h3
-          class="h4 settings-group__heading"
-        >
-          Gas
-        </h3>
-      </header>
-       
-      <div
-        class="settings-group__multi-control-content"
-      >
-        <label
-          class="settings-group__control settings-group__control--switch"
-        >
-          <span>
-            Custom gas limit
-          </span>
-           
-          <div
-            aria-checked="false"
-            aria-disabled="false"
-            aria-label="Custom gas limit"
-            class="dusk-switch"
-            role="switch"
-            tabindex="0"
-          />
-          <!---->
-        </label>
-         
-        <label
-          class="gas-control svelte-p462n7"
-        >
-          <span
-            class="gas-control__label svelte-p462n7"
-          >
-            Price (lux)
-          </span>
-           
-          <!---->
-          <input
-            class="dusk-textbox dusk-textbox-text gas-control__input"
-            inputmode="numeric"
-            pattern="\\d+"
-            required=""
-            type="text"
-          />
-          
-          <!---->
-        </label>
-         
-        <!---->
-        <!---->
-         
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default"
-          type="button"
-        >
-          <span
-            class="dusk-button__text"
-          >
-            Reset to defaults
-          </span>
-          <!---->
-        </button>
-        <!---->
-      </div>
-    </article>
-     
-    <hr />
-     
-    <article
-      class="settings-group"
-    >
-      <header
-        class="settings-group__header"
-      >
-        <!---->
-        <svg
-          class="dusk-icon dusk-icon--size--default"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
             d="M21.7 18.6V17.6L22.8 16.8C22.9 16.7 23 16.6 22.9 16.5L21.9 14.8C21.9 14.7 21.7 14.7 21.6 14.7L20.4 15.2C20.1 15 19.8 14.8 19.5 14.7L19.3 13.4C19.3 13.3 19.2 13.2 19.1 13.2H17.1C16.9 13.2 16.8 13.3 16.8 13.4L16.6 14.7C16.3 14.9 16.1 15 15.8 15.2L14.6 14.7C14.5 14.7 14.4 14.7 14.3 14.8L13.3 16.5C13.3 16.6 13.3 16.7 13.4 16.8L14.5 17.6V18.6L13.4 19.4C13.3 19.5 13.2 19.6 13.3 19.7L14.3 21.4C14.4 21.5 14.5 21.5 14.6 21.5L15.8 21C16 21.2 16.3 21.4 16.6 21.5L16.8 22.8C16.9 22.9 17 23 17.1 23H19.1C19.2 23 19.3 22.9 19.3 22.8L19.5 21.5C19.8 21.3 20 21.2 20.3 21L21.5 21.4C21.6 21.4 21.7 21.4 21.8 21.3L22.8 19.6C22.9 19.5 22.9 19.4 22.8 19.4L21.7 18.6M18 19.5C17.2 19.5 16.5 18.8 16.5 18S17.2 16.5 18 16.5 19.5 17.2 19.5 18 18.8 19.5 18 19.5M12.3 22H3C1.9 22 1 21.1 1 20V4C1 2.9 1.9 2 3 2H21C22.1 2 23 2.9 23 4V13.1C22.4 12.5 21.7 12 21 11.7V6H3V20H11.3C11.5 20.7 11.8 21.4 12.3 22Z"
           />
         </svg>
@@ -1464,12 +1298,61 @@ exports[`Settings > should render the settings page displaying the status of the
           />
           <!---->
         </label>
+         
+        <!---->
       </div>
     </article>
      
     <hr />
      
-    <!---->
+    <article
+      class="settings-group"
+    >
+      <h3
+        class="h4 settings-group__heading"
+      >
+        <button
+          aria-controls="settings-advanced"
+          aria-expanded="false"
+          class="settings-group__header settings-group__toggle"
+          type="button"
+        >
+          <!---->
+          <svg
+            class="dusk-icon dusk-icon--size--default"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M8 13C6.14 13 4.59 14.28 4.14 16H2V18H4.14C4.59 19.72 6.14 21 8 21S11.41 19.72 11.86 18H22V16H11.86C11.41 14.28 9.86 13 8 13M8 19C6.9 19 6 18.1 6 17C6 15.9 6.9 15 8 15S10 15.9 10 17C10 18.1 9.1 19 8 19M19.86 6C19.41 4.28 17.86 3 16 3S12.59 4.28 12.14 6H2V8H12.14C12.59 9.72 14.14 11 16 11S19.41 9.72 19.86 8H22V6H19.86M16 9C14.9 9 14 8.1 14 7C14 5.9 14.9 5 16 5S18 5.9 18 7C18 8.1 17.1 9 16 9Z"
+            />
+          </svg>
+          
+          <!---->
+           
+          <span>
+            Advanced
+          </span>
+           
+          <!---->
+          <svg
+            class="dusk-icon dusk-icon--size--default settings-group__toggle-icon"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"
+            />
+          </svg>
+          
+          <!---->
+        </button>
+      </h3>
+       
+      <!---->
+    </article>
+     
+    <hr />
      
     <article
       class="settings-group"
@@ -1568,7 +1451,7 @@ exports[`Settings > should render the settings page displaying the status of the
       >
         <p>
           Resetting clears the cache and settings, not your funds. You'll need
-          your mnemonic phrase to restore access, so make sure it's stored
+          your recovery phrase to restore access, so make sure it's stored
           securely.
         </p>
          
@@ -1598,7 +1481,7 @@ exports[`Settings > should render the settings page displaying the status of the
 </section>
 `;
 
-exports[`Settings > should show the wallet creation block height if it's greater than zero 1`] = `
+exports[`Settings > should show the wallet creation block height under Advanced if it's greater than zero 1`] = `
 <section
   class="settings"
 >
@@ -1613,94 +1496,6 @@ exports[`Settings > should show the wallet creation block height if it's greater
   <div
     class="settings__content"
   >
-    <article
-      class="settings-group"
-    >
-      <header
-        class="settings-group__header"
-      >
-        <!---->
-        <svg
-          class="dusk-icon dusk-icon--size--default"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M19.77,7.23L19.78,7.22L16.06,3.5L15,4.56L17.11,6.67C16.17,7.03 15.5,7.93 15.5,9A2.5,2.5 0 0,0 18,11.5C18.36,11.5 18.69,11.42 19,11.29V18.5A1,1 0 0,1 18,19.5A1,1 0 0,1 17,18.5V14A2,2 0 0,0 15,12H14V5A2,2 0 0,0 12,3H6A2,2 0 0,0 4,5V21H14V13.5H15.5V18.5A2.5,2.5 0 0,0 18,21A2.5,2.5 0 0,0 20.5,18.5V9C20.5,8.31 20.22,7.68 19.77,7.23M12,13.5V19H6V12H12V13.5M12,10H6V5H12V10M18,10A1,1 0 0,1 17,9A1,1 0 0,1 18,8A1,1 0 0,1 19,9A1,1 0 0,1 18,10Z"
-          />
-        </svg>
-        
-        <!---->
-         
-        <h3
-          class="h4 settings-group__heading"
-        >
-          Gas
-        </h3>
-      </header>
-       
-      <div
-        class="settings-group__multi-control-content"
-      >
-        <label
-          class="settings-group__control settings-group__control--switch"
-        >
-          <span>
-            Custom gas limit
-          </span>
-           
-          <div
-            aria-checked="false"
-            aria-disabled="false"
-            aria-label="Custom gas limit"
-            class="dusk-switch"
-            role="switch"
-            tabindex="0"
-          />
-          <!---->
-        </label>
-         
-        <label
-          class="gas-control svelte-p462n7"
-        >
-          <span
-            class="gas-control__label svelte-p462n7"
-          >
-            Price (lux)
-          </span>
-           
-          <!---->
-          <input
-            class="dusk-textbox dusk-textbox-text gas-control__input"
-            inputmode="numeric"
-            pattern="\\d+"
-            required=""
-            type="text"
-          />
-          
-          <!---->
-        </label>
-         
-        <!---->
-        <!---->
-         
-        <button
-          class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default"
-          type="button"
-        >
-          <span
-            class="dusk-button__text"
-          >
-            Reset to defaults
-          </span>
-          <!---->
-        </button>
-        <!---->
-      </div>
-    </article>
-     
-    <hr />
-     
     <article
       class="settings-group"
     >
@@ -1991,6 +1786,8 @@ exports[`Settings > should show the wallet creation block height if it's greater
           />
           <!---->
         </label>
+         
+        <!---->
       </div>
     </article>
      
@@ -1999,73 +1796,131 @@ exports[`Settings > should show the wallet creation block height if it's greater
     <article
       class="settings-group"
     >
-      <header
-        class="settings-group__header"
+      <h3
+        class="h4 settings-group__heading"
       >
-        <!---->
-        <svg
-          class="dusk-icon dusk-icon--size--default"
-          role="graphics-symbol"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M21,16.5C21,16.88 20.79,17.21 20.47,17.38L12.57,21.82C12.41,21.94 12.21,22 12,22C11.79,22 11.59,21.94 11.43,21.82L3.53,17.38C3.21,17.21 3,16.88 3,16.5V7.5C3,7.12 3.21,6.79 3.53,6.62L11.43,2.18C11.59,2.06 11.79,2 12,2C12.21,2 12.41,2.06 12.57,2.18L20.47,6.62C20.79,6.79 21,7.12 21,7.5V16.5M12,4.15L6.04,7.5L12,10.85L17.96,7.5L12,4.15M5,15.91L11,19.29V12.58L5,9.21V15.91M19,15.91V9.21L13,12.58V19.29L19,15.91Z"
-          />
-        </svg>
-        
-        <!---->
-         
-        <h3
-          class="h4 settings-group__heading"
-        >
-          Wallet Creation Block Height
-        </h3>
-      </header>
-       
-      <div
-        class="copy-field settings-group__control"
-      >
-        <!---->
-        <input
-          aria-label="Block Height"
-          class="dusk-textbox dusk-textbox-text copy-field__content"
-          readonly=""
-          type="text"
-        />
-        
-        <!---->
-         
         <button
-          aria-label="Copy Block Height"
-          class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="Copy to clipboard"
+          aria-controls="settings-advanced"
+          aria-expanded="true"
+          class="settings-group__header settings-group__toggle"
           type="button"
         >
           <!---->
-          <!---->
           <svg
-            class="dusk-icon dusk-icon--size--default dusk-button__icon"
+            class="dusk-icon dusk-icon--size--default"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >
             <path
-              d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"
+              d="M8 13C6.14 13 4.59 14.28 4.14 16H2V18H4.14C4.59 19.72 6.14 21 8 21S11.41 19.72 11.86 18H22V16H11.86C11.41 14.28 9.86 13 8 13M8 19C6.9 19 6 18.1 6 17C6 15.9 6.9 15 8 15S10 15.9 10 17C10 18.1 9.1 19 8 19M19.86 6C19.41 4.28 17.86 3 16 3S12.59 4.28 12.14 6H2V8H12.14C12.59 9.72 14.14 11 16 11S19.41 9.72 19.86 8H22V6H19.86M16 9C14.9 9 14 8.1 14 7C14 5.9 14.9 5 16 5S18 5.9 18 7C18 8.1 17.1 9 16 9Z"
             />
           </svg>
           
           <!---->
            
+          <span>
+            Advanced
+          </span>
+           
           <!---->
+          <svg
+            class="dusk-icon dusk-icon--size--default settings-group__toggle-icon"
+            role="graphics-symbol"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"
+            />
+          </svg>
+          
           <!---->
         </button>
+      </h3>
+       
+      <div
+        class="settings-group__multi-control-content"
+        id="settings-advanced"
+      >
+        <label
+          class="settings-group__control settings-group__control--switch"
+        >
+          <span>
+            Custom gas
+          </span>
+           
+          <div
+            aria-checked="false"
+            aria-disabled="false"
+            aria-label="Custom gas"
+            class="dusk-switch"
+            role="switch"
+            tabindex="0"
+          />
+          <!---->
+        </label>
+         
+        <p
+          class="settings-group__note"
+        >
+          The wallet uses the network's gas price, and a gas limit that
+              suits each transaction.
+        </p>
+        <!---->
+         
+        <div
+          class="settings-group__control settings-group__control--with-label"
+        >
+          <span>
+            Wallet creation block height
+          </span>
+           
+          <div
+            class="copy-field settings-group__control"
+          >
+            <!---->
+            <input
+              aria-label="Block Height"
+              class="dusk-textbox dusk-textbox-text copy-field__content"
+              readonly=""
+              type="text"
+            />
+            
+            <!---->
+             
+            <button
+              aria-label="Copy Block Height"
+              class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
+              data-tooltip-id="main-tooltip"
+              data-tooltip-text="Copy to clipboard"
+              type="button"
+            >
+              <!---->
+              <!---->
+              <svg
+                class="dusk-icon dusk-icon--size--default dusk-button__icon"
+                role="graphics-symbol"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"
+                />
+              </svg>
+              
+              <!---->
+               
+              <!---->
+              <!---->
+            </button>
+            <!---->
+          </div>
+          <!---->
+        </div>
         <!---->
       </div>
       <!---->
     </article>
      
     <hr />
-    <!---->
      
     <article
       class="settings-group"
@@ -2164,7 +2019,7 @@ exports[`Settings > should show the wallet creation block height if it's greater
       >
         <p>
           Resetting clears the cache and settings, not your funds. You'll need
-          your mnemonic phrase to restore access, so make sure it's stored
+          your recovery phrase to restore access, so make sure it's stored
           securely.
         </p>
          

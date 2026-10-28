@@ -22,8 +22,8 @@
         cache.
       </p>
       <p>
-        When you log in again with the mnemonic you used in this session, you
-        will need to wait for a full sync.
+        When you log in again with the recovery phrase you used in this session,
+        you will need to wait for a full sync.
       </p>
     </div>
   </WarningCard>
