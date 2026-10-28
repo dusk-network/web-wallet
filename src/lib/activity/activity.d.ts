@@ -92,11 +92,13 @@ type ActivityMeta = {
 /** One of the wallet's own transactions, kept until the archive has it. */
 type ActivityLocalRecord = {
   amount?: string;
+  contractId?: string;
 
   /** Which way the amount went, as the chain will say. */
   direction?: ActivityDirection;
   error?: string;
   feePaid?: string;
+  fnName?: string;
   hash: string;
   id: string;
   kind: ActivityKind;

@@ -1,13 +1,14 @@
 /**
  * Default gas limit and client-side minimum for each operation, in gas units.
  * The Dusk Wallet extension uses the same numbers for the operations both
- * wallets have.
+ * wallets have, but sends liquid staking with its limit for any contract call.
  *
  * Only the gas a transaction uses is charged, but a failed transaction,
  * including one that runs out of gas, is charged its whole limit. On mainnet
  * and testnet (Rusk 1.7.1), public transfers spend at most 1.87M gas, bridge
  * deposits 1.99M, shielding 28.5M, stakes 31.3M, and unstakes and reward
- * claims 33.2M. The defaults are at least 1.3x that, and the minimums at
+ * claims 33.2M. On testnet, stakes with Sozu spend 2.14M and unstakes from
+ * it up to 3.71M. The defaults are at least 1.3x that, and the minimums at
  * least 5% above it. Shielded transfers and unshielding are Phoenix spends,
  * which Rusk's unreleased spend floor refuses below 24M gas.
  *
@@ -21,6 +22,10 @@ export const GAS_DEFAULTS = Object.freeze({
   bridge: Object.freeze({ limit: 5_000_000n, minimum: 2_500_000n }),
 
   "claim-rewards": Object.freeze({ limit: 50_000_000n, minimum: 35_000_000n }),
+
+  // Stakes with Sozu and unstakes from it: calls of its pool.
+  "liquid-staking": Object.freeze({ limit: 10_000_000n, minimum: 4_000_000n }),
+
   "public-transfer": Object.freeze({ limit: 2_500_000n, minimum: 2_000_000n }),
   shield: Object.freeze({ limit: 50_000_000n, minimum: 30_000_000n }),
   "shielded-transfer": Object.freeze({

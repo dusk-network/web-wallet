@@ -21,6 +21,7 @@ describe("gas defaults", () => {
       allocate: { limit: 50_000_000n, minimum: 30_000_000n },
       bridge: { limit: 5_000_000n, minimum: 2_500_000n },
       "claim-rewards": { limit: 50_000_000n, minimum: 35_000_000n },
+      "liquid-staking": { limit: 10_000_000n, minimum: 4_000_000n },
       "public-transfer": { limit: 2_500_000n, minimum: 2_000_000n },
       shield: { limit: 50_000_000n, minimum: 30_000_000n },
       "shielded-transfer": { limit: 50_000_000n, minimum: 30_000_000n },

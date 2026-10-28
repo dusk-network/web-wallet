@@ -17,6 +17,8 @@ import {
   stopActivity,
 } from "$lib/activity";
 import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
+import { sozuCall } from "$lib/sozu/calls";
+import { SOZU_FN } from "$lib/sozu/config";
 import { makeNodeUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
 
@@ -461,6 +463,66 @@ const stake = async (amount, gas) => {
   );
 };
 
+/**
+ * Calls Sozu's pool from the current profile's public account: a stake
+ * sends the amount to the pool, an unstake asks for it back.
+ *
+ * @param {string} poolId
+ * @param {typeof SOZU_FN[keyof typeof SOZU_FN]} fnName
+ * @param {bigint} amount
+ * @param {Gas} gas
+ * @returns {Promise<TransactionInfo>}
+ */
+const callSozu = async (poolId, fnName, amount, gas) => {
+  const profile = unsafeGetCurrentProfile();
+
+  return sendAs(
+    profile,
+    {
+      amount: String(amount),
+      contractId: poolId,
+      direction: fnName === SOZU_FN.STAKE ? "out" : "in",
+      fnName,
+      kind: TX_KIND.CONTRACT_CALL,
+      privacy: "public",
+    },
+    async (network) => {
+      const { deposit, payload } = sozuCall(poolId, fnName, amount);
+      const builder = /** @type {any} */ (
+        bookkeeper.as(profile).transfer(0n)
+      ).payload(payload);
+
+      return await network.execute(
+        builder.to(profile.account).deposit(deposit).gas(gas)
+      );
+    }
+  );
+};
+
+/** @type {WalletStoreServices["stakeWithSozu"]} */
+const stakeWithSozu = (poolId, amount, gas) =>
+  callSozu(poolId, SOZU_FN.STAKE, amount, gas);
+
+/** @type {WalletStoreServices["unstakeFromSozu"]} */
+const unstakeFromSozu = (poolId, amount, gas) =>
+  callSozu(poolId, SOZU_FN.UNSTAKE, amount, gas);
+
+/** @type {WalletStoreServices["topUpStake"]} */
+const topUpStake = async (amount, gas) => {
+  const profile = unsafeGetCurrentProfile();
+
+  return sendAs(
+    profile,
+    {
+      amount: String(amount),
+      direction: "out",
+      kind: TX_KIND.STAKE,
+      privacy: "public",
+    },
+    (network) => network.execute(bookkeeper.as(profile).topup(amount).gas(gas))
+  );
+};
+
 /** @type {WalletStoreServices["sync"]} */
 async function sync(fromBlock) {
   const session = walletSession;
@@ -825,11 +887,14 @@ export default {
   setCurrentProfile,
   shield,
   stake,
+  stakeWithSozu,
   startHistory,
   subscribe,
   sync,
+  topUpStake,
   transfer,
   unshield,
   unstake,
+  unstakeFromSozu,
   useContract,
 };

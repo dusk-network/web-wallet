@@ -1,4 +1,5 @@
 <script>
+  import { contactNamesOf, contactsStore } from "$lib/contacts";
   import { mdiChevronRight } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import {
@@ -25,6 +26,20 @@
   /** @type {() => void} */
   export let onRetry = () => {};
 
+  /** The panel's heading. */
+  export let title = "Activity";
+
+  /**
+   * The only rows the panel shows, of one kind and without the filters; or
+   * null for all, with them.
+   *
+   * @type {import("$lib/activity/present").ActivityKindFilter | null}
+   */
+  export let only = null;
+
+  /** What the panel says without a row to show. */
+  export let emptyText = "Nothing here yet.";
+
   /** @type {{ id: import("$lib/activity/present").ActivityKindFilter, label: string }[]} */
   const FILTERS = [
     { id: "all", label: "All" },
@@ -38,14 +53,18 @@
   /** @type {import("$lib/activity/present").ActivityKindFilter} */
   let kind = "all";
 
-  $: context = { bridgeContracts, locale };
+  $: context = {
+    bridgeContracts,
+    contactNames: contactNamesOf($contactsStore),
+    locale,
+  };
   $: described = state.rows.map((row) => ({
     presentation: describeRow(row, context),
     row,
   }));
   $: shown = described
     .filter(({ presentation, row }) =>
-      matchesFilters(presentation, row, { kind })
+      matchesFilters(presentation, row, { kind: only ?? kind })
     )
     .slice(0, limit);
   $: groups = groupByDay(shown, ({ row }) => rowTime(row), { locale });
@@ -54,27 +73,30 @@
 
 <section aria-labelledby="activity-panel-title" class="activity-panel">
   <header class="activity-panel__header">
-    <h2 id="activity-panel-title">Activity</h2>
+    <h2 id="activity-panel-title">{title}</h2>
     <a
       class="activity-panel__more"
-      href={addBasePath("/dashboard/transactions")}
-      >History <Icon path={mdiChevronRight} /></a
+      href={addBasePath(
+        `/dashboard/transactions${only ? `?kind=${only}` : ""}`
+      )}>History <Icon path={mdiChevronRight} /></a
     >
   </header>
 
-  <div aria-label="Show" class="activity-panel__filters" role="group">
-    {#each FILTERS as filter (filter.id)}
-      <button
-        aria-pressed={kind === filter.id}
-        class="activity-panel__filter"
-        class:activity-panel__filter--on={kind === filter.id}
-        on:click={() => {
-          kind = filter.id;
-        }}
-        type="button">{filter.label}</button
-      >
-    {/each}
-  </div>
+  {#if !only}
+    <div aria-label="Show" class="activity-panel__filters" role="group">
+      {#each FILTERS as filter (filter.id)}
+        <button
+          aria-pressed={kind === filter.id}
+          class="activity-panel__filter"
+          class:activity-panel__filter--on={kind === filter.id}
+          on:click={() => {
+            kind = filter.id;
+          }}
+          type="button">{filter.label}</button
+        >
+      {/each}
+    </div>
+  {/if}
 
   <div aria-busy={!state.loaded || state.syncing} aria-live="polite">
     {#if !state.loaded}
@@ -87,7 +109,7 @@
     {:else if !state.rows.length}
       <p class="activity-panel__note">No transactions yet.</p>
     {:else if !shown.length}
-      <p class="activity-panel__note">Nothing here yet.</p>
+      <p class="activity-panel__note">{emptyText}</p>
     {:else}
       <p class="activity-panel__zone">Times in {zone}</p>
       {#each groups as group (group.key)}

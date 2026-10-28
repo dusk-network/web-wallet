@@ -147,10 +147,10 @@ describe("ContactsView", () => {
       shop.checkedAt ?? 0
     );
 
-    // Its payments, from the history.
+    // Its payments, from the history, under the contact's name.
     expect(
-      container.querySelector(".contact-detail__activity")
-    ).toHaveTextContent("Sent");
+      container.querySelector(".contact-detail__activity .activity-row")
+    ).toHaveTextContent(/^Alice's shop Sent/);
   });
 
   it("says when a contact's .dusk name points elsewhere, and takes the new address only when asked", async () => {

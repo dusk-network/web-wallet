@@ -225,3 +225,12 @@ export function removeContact(id) {
     write(all);
   }
 }
+
+/**
+ * The contacts' names by address, for the history to show.
+ *
+ * @param {Contact[]} contacts
+ * @returns {Map<string, string>}
+ */
+export const contactNamesOf = (contacts) =>
+  new Map(contacts.map((contact) => [contact.address, contact.name]));

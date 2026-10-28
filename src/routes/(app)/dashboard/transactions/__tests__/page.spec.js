@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 
+import { listContacts, removeContact, saveContact } from "$lib/contacts";
+
 import History from "../+page.svelte";
 
 const mocks = vi.hoisted(() => ({
@@ -170,6 +172,10 @@ describe("History", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+
+    for (const contact of listContacts()) {
+      removeContact(contact.id);
+    }
   });
 
   it("lists the history by day, with each row's type, time in its zone and amount", () => {
@@ -246,6 +252,41 @@ describe("History", () => {
     await fireEvent.click(getByRole("button", { name: "Close the details" }));
 
     expect(queryByRole("button", { name: "Close the details" })).toBeNull();
+  });
+
+  it("names a saved contact by its name, with its .dusk name second, and saves a counterparty as a contact", async () => {
+    saveContact({ address: ALICE, name: "Alice's shop" });
+
+    const { container, getByRole, queryByRole } = render(History);
+
+    expect(shownRows(container)[0]).toMatch(
+      /^Alice's shop · alice-shop\.dusk Sent/
+    );
+
+    await fireEvent.click(
+      getByRole("button", { name: /^Alice's shop · alice-shop\.dusk/ })
+    );
+
+    expect(container.querySelector(".tx-detail")).toHaveTextContent(
+      "Sent to Alice's shop · alice-shop.dusk"
+    );
+    expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
+
+    await act(() => removeContact(listContacts()[0].id));
+    await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+    await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+      target: { value: "Shop" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Save" }));
+
+    expect(listContacts()).toStrictEqual([
+      expect.objectContaining({
+        address: ALICE,
+        duskName: "alice-shop.dusk",
+        name: "Shop",
+      }),
+    ]);
+    expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
   });
 
   it("says who paid the fee of what was received", async () => {

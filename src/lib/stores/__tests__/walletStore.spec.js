@@ -525,7 +525,7 @@ describe("Wallet store", async () => {
     );
 
     /**
-     * @typedef { "claimRewards" | "shield" | "stake" | "transfer" | "unshield" | "unstake" } TransferMethod
+     * @typedef { "claimRewards" | "shield" | "stake" | "topUpStake" | "transfer" | "unshield" | "unstake" } TransferMethod
      */
 
     /** @type {Record<TransferMethod, ActivityDirection>} */
@@ -533,6 +533,7 @@ describe("Wallet store", async () => {
       claimRewards: "in",
       shield: "out",
       stake: "out",
+      topUpStake: "out",
       transfer: "out",
       unshield: "in",
       unstake: "in",
@@ -543,6 +544,7 @@ describe("Wallet store", async () => {
       claimRewards: "withdraw_reward",
       shield: "shield",
       stake: "stake",
+      topUpStake: "stake",
       transfer: "transfer",
       unshield: "unshield",
       unstake: "unstake",
@@ -587,6 +589,10 @@ describe("Wallet store", async () => {
           switch (method) {
             case "stake":
               expectedTx = { amount, gas, topup: false };
+              break;
+
+            case "topUpStake":
+              expectedTx = { amount, gas, topup: true };
               break;
 
             case "unstake":
@@ -981,6 +987,10 @@ describe("Wallet store", async () => {
       await walletStoreTransferCheck("stake", [amount, gas]);
     });
 
+    it("should expose a method to add to the stake there is", async () => {
+      await walletStoreTransferCheck("topUpStake", [amount, gas]);
+    });
+
     it("should expose a method to execute a phoenix transfer, if the receiver is a phoenix address", async () => {
       await walletStoreTransferCheck("transfer", [
         toPhoenix,
@@ -1055,6 +1065,59 @@ describe("Wallet store", async () => {
       expect(updateNonceSpy).toHaveBeenCalledWith(defaultProfile, newNonce);
       expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
     });
+
+    it.each([
+      ["stakeWithSozu", "sozu_stake", amount, "out"],
+      ["unstakeFromSozu", "sozu_unstake", 0n, "in"],
+    ])(
+      "should call Sozu's pool for %s, sending along what a stake stakes",
+      async (method, fnName, deposit, direction) => {
+        vi.useRealTimers();
+
+        const poolId =
+          "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
+        const currentlyCachedBalance =
+          await new WalletTreasury().getCachedBalance(defaultProfile);
+        const newNonce = currentlyCachedBalance.unshielded.nonce + 1n;
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: phoenixTxResult.hash,
+          nonce: newNonce,
+        });
+        history.session.recordSent.mockClear();
+
+        await walletStore[
+          /** @type {"stakeWithSozu" | "unstakeFromSozu"} */ (method)
+        ](poolId, amount, gas);
+
+        expect(executeSpy).toHaveBeenCalledTimes(1);
+        expect(executeSpy.mock.calls[0][0].attributes).toStrictEqual({
+          amount: 0n,
+          deposit,
+          gas,
+          payload: {
+            contractId: Array.from(poolId.match(/../g) ?? [], (byte) =>
+              parseInt(byte, 16)
+            ),
+            // 150 DUSK in lux, little-endian
+            fnArgs: Uint8Array.of(0, 92, 178, 236, 34, 0, 0, 0),
+            fnName,
+          },
+          to: defaultProfile.account.toString(),
+        });
+        expect(updateNonceSpy).toHaveBeenCalledWith(defaultProfile, newNonce);
+        expect(history.session.recordSent).toHaveBeenCalledWith({
+          amount: String(amount),
+          contractId: poolId,
+          direction,
+          fnName,
+          hash: phoenixTxResult.hash,
+          kind: "contract_call",
+          privacy: "public",
+        });
+      }
+    );
 
     it("should reject DuskEVM bridge deposits when the bridge contract is not configured", async () => {
       vi.useRealTimers();

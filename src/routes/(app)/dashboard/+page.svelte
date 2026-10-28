@@ -6,7 +6,8 @@
     mdiSwapHorizontal,
     mdiTrayArrowDown,
   } from "@mdi/js";
-  import { TX_KIND, activityState, isHistoryEnabled } from "$lib/activity";
+  import { activityState, isHistoryEnabled } from "$lib/activity";
+  import { isStakingRow } from "$lib/activity/present";
   import { contractDescriptors } from "$lib/contracts";
   import {
     ActivityPanel,
@@ -15,6 +16,7 @@
     HomeBalance,
   } from "$lib/containers/Home";
   import { addBasePath } from "$lib/navigation";
+  import { isSozuFunction, sozuContractsFor, sozuStore } from "$lib/sozu";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
   /** @type {import("./$types").PageData} */
@@ -69,22 +71,25 @@
     },
   ].filter(({ id }) => isEnabled(id));
 
-  /** @type {Set<string | undefined>} */
-  const STAKING_KINDS = new Set([
-    TX_KIND.STAKE,
-    TX_KIND.UNSTAKE,
-    TX_KIND.WITHDRAW_REWARD,
-  ]);
-
-  $: ({ balance, minimumStake, stakeInfo } = $walletStore);
+  $: ({ balance, currentProfile, minimumStake, stakeInfo } = $walletStore);
   // Test DUSK has no value: no money value off mainnet.
   $: ({ networkName } = $networkStore);
   $: staked = stakeInfo.amount
     ? stakeInfo.amount.value + stakeInfo.amount.locked
     : null;
-  $: hasPastStaking = $activityState.rows.some((row) =>
-    STAKING_KINDS.has(row.kind)
-  );
+  $: ({ rows } = $activityState);
+  $: hasPastStaking = rows.some(isStakingRow);
+
+  // What is staked with Sozu, read only for an account that called a pool
+  // of its: read, a pool its hub named is known from then on.
+  $: if (rows.some(isSozuFunction) && networkName && currentProfile) {
+    void sozuStore.load();
+  }
+  $: ({ account: sozuAccount, status: sozuStatus } = $sozuStore);
+  $: liquid =
+    sozuStatus && sozuAccount === String(currentProfile?.account ?? "")
+      ? sozuStatus.position.balance
+      : 0n;
 </script>
 
 <div class="home">
@@ -114,10 +119,12 @@
   <div class="home__cards">
     <ExplainerCards
       {hasPastStaking}
+      {liquid}
       locale={language}
       {minimumStake}
       reward={stakeInfo.reward}
       shielded={balance.shielded.value}
+      sozuAvailable={sozuContractsFor(networkName) !== null}
       stakeEnabled={isEnabled("stake")}
       {staked}
       unshielded={balance.unshielded.value}

@@ -9,7 +9,19 @@ const mocks = vi.hoisted(() => ({
   /** @type {import("svelte/store").Writable<any> | null} */
   network: null,
   startHistory: vi.fn(),
+  url: new URL("http://localhost"),
 }));
+
+vi.mock("$app/stores", async () => {
+  const { readable } = await import("svelte/store");
+
+  return {
+    page: {
+      subscribe: (/** @type {(value: any) => void} */ run) =>
+        readable({ url: mocks.url }).subscribe(run),
+    },
+  };
+});
 
 vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {typeof import("$lib/stores")} */
@@ -36,6 +48,7 @@ describe("Shell", () => {
   afterEach(() => {
     cleanup();
     mocks.startHistory.mockClear();
+    mocks.url = new URL("http://localhost");
   });
 
   it("opens the search with Ctrl K, and closes it with Escape", async () => {
@@ -100,6 +113,31 @@ describe("Shell", () => {
     await fireEvent.focusOut(input);
 
     expect(shell).not.toHaveClass("shell--typing");
+  });
+
+  it("keeps Staking marked in a staking flow, which has the phone's bottom for its buttons", () => {
+    mocks.url = new URL("http://localhost/some-base-path/dashboard/stake");
+
+    const overview = render(Shell);
+    const staking = () =>
+      overview.getAllByRole("link", { name: /^\s*staking\s*$/i })[0];
+
+    expect(overview.container.querySelector(".shell")).not.toHaveClass(
+      "shell--flow"
+    );
+    expect(staking()).toHaveAttribute("aria-current", "page");
+
+    cleanup();
+    mocks.url = new URL(
+      "http://localhost/some-base-path/dashboard/stake?flow=native"
+    );
+
+    const flow = render(Shell);
+
+    expect(flow.container.querySelector(".shell")).toHaveClass("shell--flow");
+    expect(
+      flow.getAllByRole("link", { name: /^\s*staking\s*$/i })[0]
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("lets a keyboard skip to the page's content", () => {

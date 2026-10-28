@@ -77,8 +77,13 @@
     );
   }
 
-  $: activeTab = tabOf(tabs, $page.url.pathname);
-  $: settingsOpen = appPath($page.url.pathname) === "/settings";
+  $: ({ url } = $page);
+  $: activeTab = tabOf(tabs, url.pathname);
+
+  // A flow on a tab's page, as staking's, keeps the tab marked but has the
+  // phone's bottom for its own buttons.
+  $: isFlow = activeTab === null || url.searchParams.has("flow");
+  $: settingsOpen = appPath(url.pathname) === "/settings";
 
   // The current profile's history, kept in step with it.
   $: if ($walletStore.currentProfile) {
@@ -92,7 +97,7 @@
 
 <div
   class="shell"
-  class:shell--flow={activeTab === null}
+  class:shell--flow={isFlow}
   class:shell--test={isTestNetwork(networkName)}
   class:shell--typing={typing}
   on:focusin={handleFocusIn}

@@ -11,6 +11,8 @@ import {
   formatFee,
 } from "$lib/dusk/currency/formatDusk";
 
+import { SOZU_FN, isSozuCall } from "$lib/sozu/config";
+
 import { TX_KIND } from "./constants";
 
 /**
@@ -21,6 +23,7 @@ import { TX_KIND } from "./constants";
  *
  * @typedef {{
  *   bridgeContracts?: Set<string>,
+ *   contactNames?: Map<string, string>,
  *   locale: string,
  *   ownAccount?: string,
  * }} PresentContext
@@ -116,6 +119,10 @@ function classify(row, bridgeContracts) {
       break;
   }
 
+  if (isSozuCall(row)) {
+    return { category: "staking", icon: "staking" };
+  }
+
   if (isBridge(row, bridgeContracts)) {
     return { category: "bridge", icon: "bridge" };
   }
@@ -176,17 +183,30 @@ function bridgeTitle(row) {
 }
 
 /**
- * A row's title and the first part of its line.
+ * A row's title and the first part of its line. A counterparty saved as a
+ * contact goes by the contact's name, with its `.dusk` name after it.
  *
  * @param {ActivityRow} row
  * @param {ActivityIcon} icon
+ * @param {Map<string, string>} [contactNames] Contact names by address
  * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
  */
-function titleOf(row, icon) {
+function titleOf(row, icon, contactNames) {
   const kindTitle = row.kind ? KIND_TITLES.get(row.kind) : undefined;
 
   if (kindTitle) {
     return { title: kindTitle[0], titleIsAddress: false, verb: kindTitle[1] };
+  }
+
+  if (icon === "staking") {
+    return {
+      title:
+        row.fnName === SOZU_FN.STAKE
+          ? "Staked with Sozu"
+          : "Unstaked from Sozu",
+      titleIsAddress: false,
+      verb: "Liquid staking",
+    };
   }
 
   if (icon === "bridge") {
@@ -197,12 +217,30 @@ function titleOf(row, icon) {
     return { title: "To yourself", titleIsAddress: false, verb: "Sent" };
   }
 
+  return counterpartyTitle(row, icon, contactNames);
+}
+
+/**
+ * The title of a row with someone on the other side: the contact's name,
+ * the verified `.dusk` name, the call, or the short address.
+ *
+ * @param {ActivityRow} row
+ * @param {ActivityIcon} icon
+ * @param {Map<string, string>} [contactNames] Contact names by address
+ * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
+ */
+function counterpartyTitle(row, icon, contactNames) {
   const name = row.counterpartyName ?? row.toName;
   const counterparty = counterpartyOf(row);
   const verb = row.direction === "in" ? "Received" : "Sent";
+  const contact = counterparty ? contactNames?.get(counterparty) : undefined;
 
-  if (name) {
-    return { title: name, titleIsAddress: false, verb };
+  if (contact || name) {
+    return {
+      title: contact && name ? `${contact} · ${name}` : (contact ?? name ?? ""),
+      titleIsAddress: false,
+      verb,
+    };
   }
 
   if (icon === "call") {
@@ -217,6 +255,14 @@ function titleOf(row, icon) {
     ? { title: shortAddress(counterparty), titleIsAddress: true, verb }
     : { title: verb, titleIsAddress: false, verb };
 }
+
+/**
+ * Whether a row is staking: natively, or with Sozu.
+ *
+ * @param {ActivityRow} row
+ */
+export const isStakingRow = (row) =>
+  classify(row, undefined).category === "staking";
 
 /**
  * The status a row shows: only while it isn't final, or when it failed.
@@ -250,9 +296,9 @@ function shownStatus(row) {
  * @param {PresentContext} context
  * @returns {ActivityPresentation}
  */
-export function describeRow(row, { bridgeContracts, locale }) {
+export function describeRow(row, { bridgeContracts, contactNames, locale }) {
   const { category, icon } = classify(row, bridgeContracts);
-  const { title, titleIsAddress, verb } = titleOf(row, icon);
+  const { title, titleIsAddress, verb } = titleOf(row, icon, contactNames);
   const status = shownStatus(row);
   const lux = toLux(row.amount);
   const failed = status === "failed";
