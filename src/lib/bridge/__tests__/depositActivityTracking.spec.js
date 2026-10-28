@@ -2,7 +2,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   connect: vi.fn(),
-  getPublicClient: vi.fn(() => ({ chain: { id: 310 } })),
+  createPublicClient: vi.fn(),
+  http: vi.fn(),
   observeDepositStatus: vi.fn(),
   query: vi.fn(),
   request: vi.fn(),
@@ -12,22 +13,27 @@ vi.mock("@dusk/evm-sdk", () => ({
   observeDepositStatus: mocks.observeDepositStatus,
 }));
 
-vi.mock("@wagmi/core", () => ({
-  getPublicClient: mocks.getPublicClient,
-}));
-
 vi.mock("$lib/stores", () => ({
   networkStore: { connect: mocks.connect },
 }));
 
 vi.mock("viem", () => ({
-  createPublicClient: vi.fn(() => ({ request: mocks.request })),
-  http: vi.fn(() => ({})),
+  createPublicClient: mocks.createPublicClient,
+  http: mocks.http,
+}));
+
+// DuskEVM as configured, and no EVM wallet connection started: a deposit
+// is followed without one.
+vi.mock("$lib/web3/duskEvm", () => ({
+  duskEvm: {
+    id: 310,
+    rpcUrls: { default: { http: ["https://l2.example.test"] } },
+  },
 }));
 
 vi.mock("$lib/web3/walletConnection", () => ({
   duskEvm: { id: 310 },
-  wagmiConfig: {},
+  wagmiConfig: undefined,
 }));
 
 const duskTransactionHash = "44".repeat(32);
@@ -59,7 +65,11 @@ describe("DuskEVM deposit tracking", () => {
     localStorage.clear();
     mocks.connect.mockReset();
     mocks.connect.mockResolvedValue({ query: mocks.query });
-    mocks.getPublicClient.mockClear();
+    mocks.createPublicClient.mockImplementation(({ transport }) => ({
+      request: mocks.request,
+      transport,
+    }));
+    mocks.http.mockImplementation((url) => ({ url }));
     mocks.observeDepositStatus.mockReset();
     mocks.query.mockReset();
     mocks.request.mockReset();
@@ -110,6 +120,15 @@ describe("DuskEVM deposit tracking", () => {
         l2TransactionHash,
         stage: "completed",
         transactionHash: duskTransactionHash,
+      })
+    );
+
+    // DuskEVM's side is read from its own RPC, with no EVM wallet connected.
+    expect(mocks.observeDepositStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        l2Client: expect.objectContaining({
+          transport: { url: "https://l2.example.test" },
+        }),
       })
     );
   });

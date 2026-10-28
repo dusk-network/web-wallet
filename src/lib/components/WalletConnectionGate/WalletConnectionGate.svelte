@@ -1,34 +1,36 @@
 <script>
-  import { onMount } from "svelte";
   import { Button } from "$lib/dusk/components";
-  import { startWalletConnection } from "$lib/web3/walletConnection";
+  import {
+    connectionFailed,
+    startWalletConnection,
+    wasConnectedBefore,
+  } from "$lib/web3/walletConnection";
 
   /**
-   * The EVM wallet connection, started for the page inside: the Bridge and
-   * Migrate pages. Nothing of it runs on any other page.
-   *
-   * @type {"failed" | "ready" | "starting"}
+   * The page inside, the Bridge or Migrate page, with the EVM wallet
+   * connection: it starts when someone asks to connect a wallet, or as the
+   * page opens when one was connected before, which the page then waits
+   * for. Nothing of it runs on any other page.
    */
-  let state = "starting";
+  let isReconnecting = false;
 
   function start() {
-    state = "starting";
-    startWalletConnection().then(
-      () => {
-        state = "ready";
-      },
-      () => {
-        state = "failed";
-      }
-    );
+    isReconnecting = true;
+    startWalletConnection()
+      .catch(() => {})
+      .finally(() => {
+        isReconnecting = false;
+      });
   }
 
-  onMount(start);
+  // Decided before the page shows, which then waits only for a wallet to
+  // come back.
+  if (wasConnectedBefore()) {
+    start();
+  }
 </script>
 
-{#if state === "ready"}
-  <slot />
-{:else if state === "failed"}
+{#if $connectionFailed}
   <div class="wallet-connection-gate" role="alert">
     <p>Couldn't load the EVM wallet connection. Check your connection.</p>
     <Button
@@ -38,10 +40,12 @@
       variant="secondary"
     />
   </div>
-{:else}
+{:else if isReconnecting}
   <p class="wallet-connection-gate wallet-connection-gate--loading">
     Loading the EVM wallet connection…
   </p>
+{:else}
+  <slot />
 {/if}
 
 <style lang="postcss">

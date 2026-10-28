@@ -1,9 +1,8 @@
 import { observeDepositStatus } from "@dusk/evm-sdk";
-import { getPublicClient } from "@wagmi/core";
 import { createPublicClient, http } from "viem";
 
 import { networkStore } from "$lib/stores";
-import { duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
+import { duskEvm } from "$lib/web3/duskEvm";
 import {
   depositActivityStore,
   getRememberedDepositActivity,
@@ -24,6 +23,9 @@ const activeTrackers = new Map();
 
 let l1Client;
 
+/** DuskEVM's own RPC: a deposit is followed with no EVM wallet connected. */
+let l2Client;
+
 class DuskDepositExecutionError extends Error {}
 
 export {
@@ -39,12 +41,17 @@ function trackingClients() {
     throw new Error("DuskEVM L1 bridge RPC is not configured.");
   }
 
-  l1Client ??= createPublicClient({ transport: http(L1_RPC_URL) });
-  const l2Client = getPublicClient(wagmiConfig, { chainId: duskEvm.id });
+  const [l2RpcUrl] = duskEvm.rpcUrls.default.http;
 
-  if (!l2Client) {
+  if (!l2RpcUrl) {
     throw new Error("DuskEVM RPC is not configured.");
   }
+
+  l1Client ??= createPublicClient({ transport: http(L1_RPC_URL) });
+  l2Client ??= createPublicClient({
+    chain: /** @type {import("viem").Chain} */ (duskEvm),
+    transport: http(l2RpcUrl),
+  });
 
   return { l1Client, l2Client };
 }

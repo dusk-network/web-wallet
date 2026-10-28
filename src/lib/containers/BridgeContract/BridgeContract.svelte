@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy } from "svelte";
   import {
     getBalance,
     switchChain,
@@ -69,25 +69,46 @@
       : () => {};
   }
 
-  onMount(() => {
-    if ($account.isConnected && $account.chainId !== duskEvm.id) {
-      switchChainHandler(duskEvm.id);
+  /** Stops keeping the wallet on DuskEVM. */
+  let unwatchChain = () => {};
+
+  /** Whether a wallet is kept on DuskEVM. */
+  let isKeptOnDuskEvm = false;
+
+  /**
+   * Keeps a connected wallet on DuskEVM, moving it back when it changes
+   * chain: none to keep, nor a connection to ask, while none is connected.
+   *
+   * @param {boolean} connected
+   */
+  function keepOnDuskEvm(connected) {
+    if (connected === isKeptOnDuskEvm) {
+      return;
     }
 
-    const unwatchChain = watchChainId(wagmiConfig, {
-      async onChange() {
-        await switchChainHandler(duskEvm.id);
-      },
-    });
+    isKeptOnDuskEvm = connected;
+    unwatchChain();
+    unwatchChain = () => {};
 
-    return () => {
-      unwatchChain();
-    };
-  });
+    if (connected) {
+      if ($account.chainId !== duskEvm.id) {
+        switchChainHandler(duskEvm.id);
+      }
+
+      unwatchChain = watchChainId(wagmiConfig, {
+        async onChange() {
+          await switchChainHandler(duskEvm.id);
+        },
+      });
+    }
+  }
 
   onDestroy(() => {
+    unwatchChain();
     unwatchBalance();
   });
+
+  $: keepOnDuskEvm($account.isConnected);
 
   $: balanceChainId = $account.isConnected ? $account.chain?.id : undefined;
   $: watchBalance(balanceChainId);
