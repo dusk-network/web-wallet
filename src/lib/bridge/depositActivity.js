@@ -14,6 +14,7 @@ import {
 } from "$lib/bridge/depositActivityStorage";
 import { isDepositTerminal } from "$lib/bridge/depositLifecycle";
 import { normalizedTxHash } from "$lib/bridge/withdrawalActivityValues";
+import { errorMessage } from "$lib/dusk/error";
 
 const ACTIVE_POLL_INTERVAL_MS = 5_000;
 const BACKGROUND_POLL_INTERVAL_MS = 30_000;
@@ -112,11 +113,6 @@ async function resolveL1TransactionHash(remembered) {
     l1TransactionHash: hash,
   });
   return hash;
-}
-
-/** @param {unknown} error */
-function errorMessage(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /** @param {any} metadata */

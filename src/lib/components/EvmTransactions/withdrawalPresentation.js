@@ -9,10 +9,7 @@ import {
   durationWords,
   proveNowText,
 } from "$lib/bridge/claimDate";
-import {
-  withdrawalStageDefaultMessage,
-  withdrawalStageProgress,
-} from "$lib/bridge/withdrawalLifecycle";
+import { withdrawalStageDefaultMessage } from "$lib/bridge/withdrawalLifecycle";
 import { formatDusk } from "$lib/dusk/currency";
 import { middleEllipsis } from "$lib/dusk/string";
 import { settingsStore } from "$lib/stores";
@@ -55,21 +52,6 @@ function formatAmount(value) {
  */
 export function activityAmount(item) {
   return formatAmount(item?.amountWei);
-}
-
-/**
- * @param {number} step
- * @param {string} stage
- * @param {number} stepCount
- */
-export function timelineState(step, stage, stepCount) {
-  const progress = withdrawalStageProgress(stage);
-
-  if (progress === stepCount || step < progress) {
-    return "complete";
-  }
-
-  return step === progress ? "current" : "pending";
 }
 
 /**

@@ -21,6 +21,7 @@
   } from "$lib/bridge/depositActivity";
   import { DEPOSIT, WITHDRAWAL, routeTime } from "$lib/bridge/routeTimes";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
+  import { errorMessage } from "$lib/dusk/error";
   import { addBasePath } from "$lib/navigation";
   import { settingsStore } from "$lib/stores";
   import {
@@ -282,13 +283,6 @@
   }
 
   /**
-   * @param {unknown} error
-   */
-  function getErrorMessage(error) {
-    return error instanceof Error ? error.message : String(error);
-  }
-
-  /**
    * @returns {`0x${string}`}
    */
   function checkedStatusTxHash() {
@@ -335,7 +329,7 @@
 
       historyError = "";
     } catch (error) {
-      historyError = getErrorMessage(error);
+      historyError = errorMessage(error);
     }
   }
 
@@ -482,7 +476,7 @@
       }
     } catch (error) {
       if (request === statusRequest) {
-        statusError = getErrorMessage(error);
+        statusError = errorMessage(error);
       }
     } finally {
       if (request === statusRequest) {
@@ -530,7 +524,7 @@
       // The card shows a short line; the raw error stays in the console.
       // eslint-disable-next-line no-console
       console.error(`Withdrawal ${actionName} failed`, error);
-      statusError = getErrorMessage(error);
+      statusError = errorMessage(error);
     } finally {
       isSubmitting = false;
     }

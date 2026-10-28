@@ -78,16 +78,7 @@ export function evmChains() {
   return [...chains.values()];
 }
 
-/**
- * @constant {string} projectId - The ID of the project, sourced from an environment variable.
- *
- * @description
- * This constant retrieves the project ID from the environment variable `VITE_REOWN_PROJECT_ID`.
- * If the environment variable is not set, it defaults to an empty string. This behavior is not ideal
- * because an empty `projectId` will cause the modal initialization to fail.
- *
- * When the `projectId` is missing, the "migrate" and "bridge" functionality isn't accessible in the UI.
- */
+/** Reown's project ID: without one, the Bridge isn't offered. */
 const VITE_REOWN_PROJECT_ID = import.meta.env.VITE_REOWN_PROJECT_ID || "";
 
 /**

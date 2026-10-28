@@ -12,9 +12,9 @@ import {
 } from "$lib/bridge/withdrawalActivityStorage";
 import {
   MAX_ACTIVITY_ITEMS,
-  errorMessage,
   normalizedAddress,
 } from "$lib/bridge/withdrawalActivityValues";
+import { errorMessage } from "$lib/dusk/error";
 
 /** @typedef {import("./withdrawalActivityValues").WithdrawalActivityItem} WithdrawalActivityItem */
 

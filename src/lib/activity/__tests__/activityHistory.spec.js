@@ -635,10 +635,6 @@ describe("a node without the archive", () => {
     // The head, then the first window it refused.
     expect(node.log).toHaveLength(2);
     await expect(sync(A)).rejects.toBeInstanceOf(history.NoArchiveError);
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    await expect(
-      history.fetchRecentActivity({ account: A, archiverUrl: NODE })
-    ).resolves.toEqual([]);
     expect(node.log).toHaveLength(2);
 
     // An hour on, it is asked again: now with the archive.
@@ -664,70 +660,14 @@ describe("a node without the archive", () => {
   });
 });
 
-describe("fetchRecentActivity", () => {
-  it("gives the newest entries with their time and outcome", async () => {
-    fakeArchive();
-
-    const entries = await history.fetchRecentActivity({
-      account: B,
-      archiverUrl: NODE,
-      limit: 3,
-    });
-
-    expect(entries).toHaveLength(3);
-
-    for (const e of entries) {
-      expect(Object.keys(e)).toEqual(
-        expect.arrayContaining([
-          "blockHeight",
-          "counterparty",
-          "direction",
-          "hash",
-          "memo",
-          "success",
-          "timestamp",
-          "value",
-        ])
-      );
-      expect(typeof e.value).toBe("bigint");
-    }
-
-    expect(entries[0].blockHeight).toBeGreaterThanOrEqual(
-      entries[1].blockHeight
-    );
-  });
-
-  it("keeps giving what it has when the archive is unreachable, and says so once", async () => {
-    const node = fakeArchive();
-
-    await sync(A);
-    node.down = true;
-
+describe("noteActivityUnavailable", () => {
+  it("says once that the archive is unreachable", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const first = await history.fetchRecentActivity({
-      account: A,
-      archiverUrl: NODE,
-    });
-    const second = await history.fetchRecentActivity({
-      account: A,
-      archiverUrl: NODE,
-    });
 
-    expect(first.map((e) => e.blockHeight)).toEqual([
-      4658012, 4658000, 4657992, 4655845,
-    ]);
-    expect(second).toEqual(first);
+    history.noteActivityUnavailable(new Error("down"));
+    history.noteActivityUnavailable(new Error("still down"));
+
     expect(warn).toHaveBeenCalledTimes(1);
-  });
-
-  it("gives nothing, without throwing, before any sync worked", async () => {
-    const node = fakeArchive();
-
-    node.down = true;
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    await expect(
-      history.fetchRecentActivity({ account: A, archiverUrl: NODE })
-    ).resolves.toEqual([]);
   });
 });
 

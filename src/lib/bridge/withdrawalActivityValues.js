@@ -36,13 +36,6 @@ const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 /**
  * @param {unknown} value
  */
-export function errorMessage(value) {
-  return value instanceof Error ? value.message : String(value);
-}
-
-/**
- * @param {unknown} value
- */
 function addressHash(value) {
   if (typeof value === "string") {
     return value;

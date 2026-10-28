@@ -44,6 +44,8 @@ import {
 } from "$lib/stores";
 import { duskEvm } from "$lib/web3/walletConnection";
 import { duskEvmContractId, duskEvmDriverUrl } from "$lib/web3/duskEvm";
+import { errorMessage } from "$lib/dusk/error";
+import { normalizedTxHash } from "$lib/bridge/withdrawalActivityValues";
 
 /**
  * @typedef {import("$lib/bridge/bridgeReads").BridgeReads} BridgeReads
@@ -135,7 +137,7 @@ function normalizeContractId(value) {
  * @returns {value is `0x${string}`}
  */
 export function isWithdrawalTxHash(value) {
-  return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
+  return normalizedTxHash(value) !== null;
 }
 
 /**
@@ -205,13 +207,6 @@ export function getWithdrawalFinalizationConfig() {
     optimismPortalContractId: normalizeContractId(optimismPortalContractId),
     optimismPortalDataDriverUrl,
   });
-}
-
-/**
- * @param {unknown} error
- */
-function errorMessage(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /**
