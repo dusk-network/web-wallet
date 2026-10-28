@@ -229,13 +229,11 @@
         <div>
           <p class="native-stake__fact">Needs your own Dusk node</p>
           <p>
-            A computer that runs Dusk's node software and stays online. It needs
-            keys made from this wallet's recovery phrase.
             <a
               class="native-stake__link text-link"
-              href={DOCUMENTATION_LINKS.STAKING_BASICS}
+              href={DOCUMENTATION_LINKS.RUN_A_PROVISIONER}
               rel="noopener noreferrer"
-              target="_blank">What's a node? <Icon path={mdiOpenInNew} /></a
+              target="_blank">Run a node <Icon path={mdiOpenInNew} /></a
             >
           </p>
         </div>

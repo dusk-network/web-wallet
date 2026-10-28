@@ -191,9 +191,7 @@ describe("The ledger look", () => {
     expect(
       container.querySelectorAll(".staking__figures dt:not(.ledger-label)")
     ).toHaveLength(0);
-    expect(getByRole("link", { name: /What's a node/ })).toHaveClass(
-      "text-link"
-    );
+    expect(getByRole("link", { name: /Run a node/ })).toHaveClass("text-link");
     expectLedgerLook(container);
   });
 

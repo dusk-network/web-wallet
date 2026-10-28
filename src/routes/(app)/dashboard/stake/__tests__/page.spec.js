@@ -1,5 +1,11 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  within,
+} from "@testing-library/svelte";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore, walletStore } from "$lib/stores";
@@ -249,6 +255,17 @@ describe("Staking", () => {
       "If it goes wrong",
     ]);
     expect(rows[0].slice(1)).toStrictEqual(["1,000 DUSK", "Any amount"]);
+    // A node, and the docs on running one.
+    expect(rows[1].slice(1)).toStrictEqual([
+      "Needs your own Dusk node Run a node",
+      "Not needed",
+    ]);
+    expect(
+      within(table).getByRole("link", { name: "Run a node" })
+    ).toHaveAttribute(
+      "href",
+      "https://docs.dusk.network/operator/provisioner/"
+    );
     // Sozu pays an unstake out at once.
     expect(rows[3].slice(1)).toStrictEqual([
       "Any time, with no waiting period",
