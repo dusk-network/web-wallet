@@ -616,6 +616,58 @@ describe("EvmTransactions", () => {
     expect(mocks.rememberWithdrawalTransaction).not.toHaveBeenCalled();
   });
 
+  it("opens the deposit its link names once its account connects, and drops what checking it as a withdrawal said", async () => {
+    const depositHash = "cd".repeat(32);
+
+    mocks.setDepositItems([deposit(depositHash, { stage: "completed" })]);
+    mocks.setPageSearch(`?tx=${depositHash}`);
+
+    const { findByRole, getByLabelText, queryByRole } = render(
+      EvmTransactions,
+      { target: document.body }
+    );
+    const input = getByLabelText("Find by transaction hash");
+
+    // Its account isn't connected: the deposit isn't listed yet, and the
+    // link is checked as a withdrawal's hash, which it isn't.
+    await waitFor(() => expect(input).toHaveAttribute("aria-invalid", "true"));
+
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+
+    expect(
+      await findByRole("button", {
+        name: /^Dusk to DuskEVM Sent .+ 0\.25 DUSK$/,
+      })
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(queryByRole("alert")).toBeNull();
+    expect(input).not.toHaveAttribute("aria-invalid");
+    expect(input).toHaveValue("");
+    expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
+  });
+
+  it("leaves the linked deposit closed when a hash was checked before its account connects", async () => {
+    const depositHash = "cd".repeat(32);
+
+    mocks.setDepositItems([deposit(depositHash, { stage: "completed" })]);
+    mocks.setPageSearch(`?tx=${depositHash}`);
+
+    const { findByRole, getByLabelText, getByRole } = render(EvmTransactions, {
+      target: document.body,
+    });
+    const input = getByLabelText("Find by transaction hash");
+
+    await waitFor(() => expect(input).toHaveAttribute("aria-invalid", "true"));
+    await fireEvent.input(input, { target: { value: "0x1234" } });
+    await fireEvent.click(getByRole("button", { name: /^check$/i }));
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+
+    expect(
+      await findByRole("button", {
+        name: /^Dusk to DuskEVM Sent .+ 0\.25 DUSK$/,
+      })
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("shows inline validation for an invalid transaction hash", async () => {
     const { findByRole, getByLabelText, getByRole } = render(EvmTransactions, {
       target: document.body,

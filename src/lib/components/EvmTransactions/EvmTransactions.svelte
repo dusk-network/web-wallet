@@ -142,12 +142,45 @@
   /** @type {string | null} */
   let openDeposit = null;
 
+  /**
+   * The transfer a link names (`?tx=`) while no deposit listed is it: a
+   * deposit of an account that isn't connected yet opens once it is,
+   * unless a row was opened or a hash checked since.
+   *
+   * @type {string | null}
+   */
+  let linkedDeposit = null;
+
   function filterDeposits() {
     deposits = keptDeposits.filter(
       (item) =>
         item.account === null ||
         (currentAccount !== null && item.account === currentAccount)
     );
+    openLinkedDeposit();
+  }
+
+  /**
+   * Opens the deposit the link names once it's listed, and drops what
+   * checking the link as a withdrawal's hash said.
+   */
+  function openLinkedDeposit() {
+    const found = linkedDeposit
+      ? deposits.find((item) => item.transactionHash === linkedDeposit)
+      : null;
+
+    if (!found) {
+      return;
+    }
+
+    linkedDeposit = null;
+    statusRequest += 1;
+    isChecking = false;
+    selectedTransactionHash = null;
+    txHash = "";
+    hashError = "";
+    statusError = "";
+    openDeposit = found.transactionHash;
   }
 
   /** @param {import("./bridgeActivity").BridgeActivityRow} row */
@@ -172,6 +205,8 @@
    * @param {import("./bridgeActivity").BridgeActivityRow} row
    */
   function toggleRow(row) {
+    linkedDeposit = null;
+
     if (row.kind === "deposit") {
       if (selectedTransactionHash) {
         void selectActivity({ transactionHash: selectedTransactionHash });
@@ -454,18 +489,21 @@
    */
   function openLinked() {
     const linked = $page.url.searchParams.get("tx");
-    const deposit = deposits.find(
-      (item) => item.transactionHash === linked?.toLowerCase()
-    );
-
-    if (deposit) {
-      openDeposit = deposit.transactionHash;
-
-      return;
-    }
 
     if (!linked) {
       return;
+    }
+
+    linkedDeposit = linked.toLowerCase();
+    openLinkedDeposit();
+
+    if (!linkedDeposit) {
+      return;
+    }
+
+    // A withdrawal's hash names no deposit: none is waited for.
+    if (isWithdrawalTxHash(linked)) {
+      linkedDeposit = null;
     }
 
     txHash = linked;
@@ -705,7 +743,10 @@
 
     <form
       class="bridge-activity__lookup"
-      on:submit|preventDefault={() => checkStatus(txHash)}
+      on:submit|preventDefault={() => {
+        linkedDeposit = null;
+        void checkStatus(txHash);
+      }}
     >
       <label for="withdrawal-tx-hash">Find by transaction hash</label>
       <div class="bridge-activity__lookup-row">
