@@ -203,11 +203,15 @@
   });
 
   /**
+   * @typedef {{ action: "stake" | "unstake", epoch: number, gasLimit: bigint, gasPrice: bigint, lux: bigint, network: string, profile: string }} StakeOrder
+   */
+
+  /**
    * Whether the stake about to be sent is still the one the summary shows:
-   * the page still open, its amount, action and gas as they were, and the
-   * same network and profile.
+   * the page still open, its amount, action and gas as they were, as the
+   * node's price can come in meanwhile, and the same network and profile.
    *
-   * @param {{ action: "stake" | "unstake", epoch: number, lux: bigint, network: string, profile: string }} order
+   * @param {StakeOrder} order
    */
   function isStillShown(order) {
     const from = whereFrom();
@@ -217,6 +221,8 @@
       draftEpoch === order.epoch &&
       amount === order.lux &&
       action === order.action &&
+      gasLimit === order.gasLimit &&
+      gasPrice === order.gasPrice &&
       from.network === order.network &&
       from.profile === order.profile
     );
@@ -227,7 +233,7 @@
    * send it to, or null when nothing goes, as the terms changed, couldn't be
    * read, or what the summary showed was left or changed meanwhile.
    *
-   * @param {{ action: "stake" | "unstake", epoch: number, lux: bigint, network: string, profile: string }} order
+   * @param {StakeOrder} order
    * @param {SozuStatus} shown The status the summary showed
    * @returns {Promise<string | null>}
    */

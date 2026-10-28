@@ -135,6 +135,21 @@ const SUBSTRATE_KINDS = Object.freeze({
 });
 
 /**
+ * Whether a switch is on, as `is_feature_enabled` gives it: a bool, one
+ * byte, 0 or 1. Anything else is a switch that couldn't be read, not one
+ * that is off.
+ *
+ * @param {Uint8Array} bytes
+ */
+function parseSwitch(bytes) {
+  if (bytes.length !== 1 || bytes[0] > 1) {
+    throw new RangeError("A switch is one byte, 0 or 1");
+  }
+
+  return bytes[0] === 1;
+}
+
+/**
  * Sozu's substrate, read by hand: the wallet bundles no driver for it, and
  * the reads it makes of it need none. `stake_fee_rate` takes the fee's kind
  * (Deposit 0, Reward 1) and gives its rate; `is_feature_enabled` takes the
@@ -144,7 +159,7 @@ const SUBSTRATE_KINDS = Object.freeze({
  */
 const SUBSTRATE = Object.freeze({
   decodeOutputFn: (fnName, bytes) =>
-    fnName === "is_feature_enabled" ? bytes[0] === 1 : parseFeeRate(bytes),
+    fnName === "is_feature_enabled" ? parseSwitch(bytes) : parseFeeRate(bytes),
   encodeInputFn: (_fnName, json) =>
     Uint8Array.of(
       SUBSTRATE_KINDS[
@@ -250,18 +265,18 @@ function readFigures(reader, { pool, token }, ids, account) {
 
 /**
  * What the hub names now, kept as what it named last: a name it doesn't
- * have keeps the contract known before.
+ * have keeps the contract it named last, or at first the one known before.
  *
  * @param {string} key The node and the hub
  * @param {{ pool: string | null, stDusk: string | null, substrate: string | null }} named
- * @param {SozuNamed} known
+ * @param {SozuNamed} last
  * @returns {SozuNamed}
  */
-function keepNamed(key, named, known) {
+function keepNamed(key, named, last) {
   const now = {
-    pool: named.pool ?? known.pool,
-    stDusk: named.stDusk ?? known.stDusk,
-    substrate: named.substrate ?? known.substrate,
+    pool: named.pool ?? last.pool,
+    stDusk: named.stDusk ?? last.stDusk,
+    substrate: named.substrate ?? last.substrate,
   };
 
   namedLast.set(key, now);
@@ -317,7 +332,7 @@ export async function readSozuStatus({
   let ids = namedLast.get(key) ?? known;
   let figures = readFigures(reader, { pool, token }, ids, account);
   const named = await asked.catch(() => null);
-  const now = named ? keepNamed(key, named, known) : ids;
+  const now = named ? keepNamed(key, named, ids) : ids;
 
   // Read again only from others the hub names now.
   if (!sameContracts(now, ids)) {

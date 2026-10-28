@@ -1155,25 +1155,32 @@ describe("a withdrawal ready to prove: when it can be claimed if it's proved now
     expect(said()).toBe(claimDay(CLAIM_AT, "en"));
   });
 
-  it("stops saying a date once the proof it's for has expired, while it can't be read again", async () => {
-    const loadProveNow = vi
-      .fn()
-      .mockResolvedValueOnce(claimAt(CLAIM_AT))
-      .mockRejectedValue(new Error("offline"));
+  it.each([
+    // The refresh at 100 s fails, and its retries at 105 s and 115 s: the
+    // next is at 135 s.
+    ["can't be read again", () => Promise.reject(new Error("offline")), 4],
+    ["is still being read again", () => new Promise(() => {}), 2],
+  ])(
+    "stops saying a date as the proof it's for expires, while it %s",
+    async (_while, refresh, reads) => {
+      const loadProveNow = vi
+        .fn()
+        .mockResolvedValueOnce(claimAt(CLAIM_AT))
+        .mockImplementation(refresh);
 
-    renderCard(loadProveNow);
-    await flush();
-    // The refresh at 100 s fails, and its retries at 105 s and 115 s.
-    await vi.advanceTimersByTimeAsync(115_000);
-    await tick();
+      renderCard(loadProveNow);
+      await flush();
+      await vi.advanceTimersByTimeAsync(119_999);
+      await tick();
 
-    expect(loadProveNow).toHaveBeenCalledTimes(4);
-    expect(said()).toBe(claimDay(CLAIM_AT, "en"));
+      expect(loadProveNow).toHaveBeenCalledTimes(reads);
+      expect(said()).toBe(claimDay(CLAIM_AT, "en"));
 
-    // Past two minutes: the proof it was for is no longer the one sent.
-    await vi.advanceTimersByTimeAsync(20_000);
-    await tick();
+      // Two minutes on: the proof it was for is no longer the one sent.
+      await vi.advanceTimersByTimeAsync(1);
+      await tick();
 
-    expect(said()).toBeNull();
-  });
+      expect(said()).toBeNull();
+    }
+  );
 });

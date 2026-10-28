@@ -1289,6 +1289,34 @@ describe("DuskEVM withdrawal helpers", () => {
       expect(args[1]).toEqual(u256(229));
     });
 
+    it("keeps proving with the proof whose date is shown when a newer one's date can't be read", async () => {
+      let resolved = OLD;
+      const { prepareProof, proveWithdrawal, reads, walletStore } =
+        await proving({ resolved: (index) => resolved(index) });
+
+      expect((await prepareProof(withdrawalTxHash)).proof).toMatchObject({
+        disputeGameIndex: 229n,
+      });
+
+      // Read again, the proof goes against another game, whose date can't be read.
+      resolved = () => false;
+      reads.portal.call.proofMaturityDelaySeconds.mockRejectedValueOnce(
+        new Error("The Portal can't be read")
+      );
+
+      const again = await prepareProof(withdrawalTxHash);
+
+      expect(again.proof).toMatchObject({ disputeGameIndex: 399n });
+      expect(again.claim).toBeNull();
+
+      await proveWithdrawal(withdrawalTxHash);
+
+      const [, , args] = walletStore.proveDuskEvmWithdrawal.mock.calls[0];
+
+      // The proof of the date still shown.
+      expect(args[1]).toEqual(u256(229));
+    });
+
     it("proves against the newest covering game when none has resolved, its date the earliest", async () => {
       const { prepareProof } = await proving({ resolved: () => false });
 

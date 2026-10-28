@@ -75,14 +75,24 @@ export const connectionBlocked = { subscribe: blocked.subscribe };
  */
 export const modal = {
   async open() {
+    const reset = resets;
+
     try {
       await afterCleanup();
+
+      // Reset forgot the wallets since Connect was pressed: nothing opens.
+      if (reset !== resets) {
+        return;
+      }
+
       await startWalletConnection();
     } catch {
       return;
     }
 
-    await appKit?.open();
+    if (reset === resets) {
+      await appKit?.open();
+    }
   },
 
   /**
@@ -129,6 +139,12 @@ let starting = null;
 let forgotten = false;
 
 /**
+ * How many times Reset forgot the wallets: a start, or a dialog, asked for
+ * before one doesn't go on after it.
+ */
+let resets = 0;
+
+/**
  * The longest the pages wait for a wallet connected before to reconnect:
  * they then show the account as it is, and follow it as it changes.
  */
@@ -143,13 +159,16 @@ export function startWalletConnection() {
   forgotten = false;
 
   if (!starting) {
+    const reset = resets;
+
     failure.set(false);
-    starting = afterCleanup().then(start);
+    starting = afterCleanup().then(() => start(reset));
     starting.catch(() => {
       starting = null;
 
-      // Refused while Reset's delete waits, which `connectionBlocked` says.
-      if (!get(blocked)) {
+      // Refused while Reset's delete waits, which `connectionBlocked` says,
+      // or stopped by Reset.
+      if (!get(blocked) && reset === resets) {
         failure.set(true);
       }
     });
@@ -184,13 +203,21 @@ export function wasConnectedBefore() {
   }
 }
 
-async function start() {
+/**
+ * @param {number} reset Reset's count as the connection started
+ */
+async function start(reset) {
   const [{ createAppKit }, { WagmiAdapter }, { bsc, mainnet, sepolia }] =
     await Promise.all([
       import("@reown/appkit"),
       import("@reown/appkit-adapter-wagmi"),
       import("@reown/appkit/networks"),
     ]);
+
+  // Reset forgot the wallets as AppKit loaded: none of it starts.
+  if (reset !== resets) {
+    throw new Error("The EVM wallets were forgotten.");
+  }
 
   /** @type {[import("@reown/appkit/networks").AppKitNetwork, ...import("@reown/appkit/networks").AppKitNetwork[]]} */
   const networks = [sepolia, bsc, mainnet, duskEvm];
@@ -228,7 +255,21 @@ async function start() {
     }
   });
   accountStore.set(getAccount(wagmiConfig));
-  watchAccount(wagmiConfig, { onChange: (next) => accountStore.set(next) });
+  watchAccount(wagmiConfig, {
+    onChange: (next) => {
+      // A wallet that comes back after Reset, as a reconnect under way
+      // ends, goes again, until someone presses Connect.
+      if (reset !== resets && forgotten) {
+        if (!next.isDisconnected) {
+          void dropConnection();
+        }
+
+        return;
+      }
+
+      accountStore.set(next);
+    },
+  });
   window.addEventListener("beforeunload", walletDisconnect);
 
   // A wallet connected before comes back before the pages use it.
@@ -413,6 +454,21 @@ if (typeof localStorage !== "undefined" && localStorage.getItem(FORGET_KEY)) {
 }
 
 /**
+ * Disconnects a wallet connected now, and deletes what the connection keeps
+ * in localStorage.
+ */
+async function dropConnection() {
+  await walletDisconnect().catch(() => {});
+  accountStore.set(NO_ACCOUNT);
+
+  for (const key of Object.keys(localStorage)) {
+    if (CONNECTION_KEYS.test(key)) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
+/**
  * Forgets every EVM wallet connected here, as Reset does: disconnects one
  * connected now, and deletes what wagmi, AppKit and WalletConnect keep in
  * the browser. No page brings a wallet back after it, or loads the
@@ -423,15 +479,8 @@ if (typeof localStorage !== "undefined" && localStorage.getItem(FORGET_KEY)) {
  */
 export async function forgetEvmWallets() {
   forgotten = true;
-  await walletDisconnect().catch(() => {});
-  accountStore.set(NO_ACCOUNT);
-
-  for (const key of Object.keys(localStorage)) {
-    if (CONNECTION_KEYS.test(key)) {
-      localStorage.removeItem(key);
-    }
-  }
-
+  resets += 1;
+  await dropConnection();
   deleteConnectionDatabases();
 }
 
@@ -440,6 +489,19 @@ export async function walletDisconnect() {
     return;
   }
 
-  await disconnect(wagmiConfig);
+  /** @type {{ error: unknown } | null} */
+  let failed = null;
+
+  try {
+    await disconnect(wagmiConfig);
+  } catch (error) {
+    failed = { error };
+  }
+
+  // AppKit's session goes too, even when wagmi's disconnect failed.
   await appKit?.disconnect();
+
+  if (failed) {
+    throw failed.error;
+  }
 }

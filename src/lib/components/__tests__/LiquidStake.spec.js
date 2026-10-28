@@ -678,6 +678,42 @@ describe("LiquidStake", () => {
       );
     });
 
+    it("sends nothing when the node's gas price came in meanwhile, and the new gas once confirmed", async () => {
+      const { answer, recheck } = slowRecheck();
+      const { getByLabelText, getByRole, rerender } = render(LiquidStake, {
+        ...baseProps,
+        recheck,
+      });
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+      await fireEvent.click(
+        getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+      );
+      // The summary shows the fee at the node's price now.
+      await rerender({ gas: gasAt(3n) });
+      answer();
+      await settled();
+
+      expect(baseProps.execute).not.toHaveBeenCalled();
+
+      recheck.mockResolvedValue(statusWith());
+      await fireEvent.click(
+        getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+      );
+
+      await vi.waitFor(() =>
+        expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
+          "stake",
+          POOL,
+          100n * DUSK,
+          3n,
+          5_000_000n
+        )
+      );
+    });
+
     it("keeps the button off, so that a double click sends one stake", async () => {
       const { answer, recheck } = slowRecheck();
       const { getByLabelText, getByRole } = render(LiquidStake, {

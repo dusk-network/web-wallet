@@ -690,6 +690,34 @@ describe("readSozuStatus", () => {
     expect(node.queries[3][3]).toBe("eeeeeeee.exchange_rate");
   });
 
+  it("keeps the pool the hub named last when it names none later", async () => {
+    /** @type {Record<string, unknown>} */
+    const replies = {
+      [`${HUB}/contract/"pool"`]: NEW_POOL,
+      [`${HUB}/contract/"staked-dusk"`]: null,
+      [`${HUB}/contract/"substrate"`]: null,
+      [`${NEW_POOL}/balance_of/"${ACCOUNT}"`]: "1500000000000",
+      [`${NEW_POOL}/exchange_rate/null`]: RATE,
+    };
+    const node = fakeNode(replies);
+    const options = {
+      account: ACCOUNT,
+      contracts: { hub: HUB, pool: POOL },
+      fetch: node.fetch,
+      loadDriver: node.loadDriver,
+      nodeUrl: "https://nine.example",
+    };
+
+    await readSozuStatus(options);
+    replies[`${HUB}/contract/"pool"`] = null;
+
+    // Not the pool known before the hub named another.
+    await expect(readSozuStatus(options)).resolves.toMatchObject({
+      contracts: { pool: NEW_POOL },
+      position: { balance: 1_500_000_000_000n },
+    });
+  });
+
   it("uses the pool it knows when the hub names none, and asks the hub again on each refresh", async () => {
     const node = fakeNode({
       [`${HUB}/contract/"pool"`]: null,
@@ -776,6 +804,42 @@ describe("readSozuStatus", () => {
       synchronization: null,
     });
     expect(status.fees).not.toBeNull();
+  });
+
+  it.each([
+    ["nothing", Uint8Array.of()],
+    ["a byte other than 0 or 1", Uint8Array.of(2)],
+    ["more than one byte", Uint8Array.of(0, 0)],
+  ])("doesn't read a switch answered with %s as off", async (_what, answer) => {
+    const node = fakeNode({
+      [`${HUB}/contract/"pool"`]: POOL,
+      [`${HUB}/contract/"staked-dusk"`]: TOKEN,
+      [`${HUB}/contract/"substrate"`]: SUBSTRATE,
+      [`${POOL}/balance_of/"${ACCOUNT}"`]: "0",
+      [`${POOL}/exchange_rate/null`]: RATE,
+      [`${SUBSTRATE}/stake_fee_rate/#0`]: TESTNET_FEES.deposit,
+      [`${SUBSTRATE}/stake_fee_rate/#1`]: TESTNET_FEES.reward,
+      [`${SUBSTRATE}/is_feature_enabled/#0`]: answer,
+      [`${SUBSTRATE}/is_feature_enabled/#1`]: Uint8Array.of(0),
+      [`${TOKEN}/balance_of/"${ACCOUNT}"`]: "0",
+    });
+    const status = await readSozuStatus({
+      account: ACCOUNT,
+      contracts: {
+        hub: HUB,
+        pool: POOL,
+        stDusk: TOKEN,
+        substrate: SUBSTRATE,
+      },
+      fetch: node.fetch,
+      loadDriver: node.loadDriver,
+      nodeUrl: "https://ten.example",
+    });
+
+    expect(status.flags).toStrictEqual({
+      maintenance: null,
+      synchronization: false,
+    });
   });
 
   it("fails when the pool can't be read, and asks the hub again next time", async () => {

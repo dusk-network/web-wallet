@@ -54,14 +54,19 @@
   /** The withdrawal `proveNow` is for, or is being read for. */
   let proveNowOf = "";
 
-  /** When the date shown was read: its proof is the one sent until it expires. */
-  let proveNowAt = 0;
-
   /** The reads that failed in a row. */
   let proveNowFailures = 0;
 
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let proveNowTimer;
+
+  /**
+   * Ends the date shown as the proof it's for expires: that proof is the
+   * one sent until then.
+   *
+   * @type {ReturnType<typeof setTimeout> | undefined}
+   */
+  let proveNowExpiry;
 
   /** The date is read again a while before the proof it's for expires. */
   const PROVE_NOW_REFRESH_MS = PREPARED_PROOF_MS - 20_000;
@@ -82,9 +87,9 @@
     }
 
     clearTimeout(proveNowTimer);
+    clearTimeout(proveNowExpiry);
     proveNowOf = hash;
     proveNow = null;
-    proveNowAt = 0;
     proveNowFailures = 0;
 
     if (hash) {
@@ -95,8 +100,8 @@
   /**
    * Reads the date: again before the proof it's for expires, as a proof is
    * kept two minutes and a new one can be against another game; after a
-   * failure, again each time after longer, and a date whose proof has
-   * expired isn't shown meanwhile.
+   * failure, again each time after longer. A date goes as its proof
+   * expires, however long the reads take meanwhile.
    *
    * @param {string} hash
    */
@@ -111,8 +116,11 @@
 
     if (claim) {
       proveNow = claim;
-      proveNowAt = Date.now();
       proveNowFailures = 0;
+      clearTimeout(proveNowExpiry);
+      proveNowExpiry = setTimeout(() => {
+        proveNow = null;
+      }, PREPARED_PROOF_MS);
       proveNowTimer = setTimeout(
         () => readProveNow(hash),
         PROVE_NOW_REFRESH_MS
@@ -122,20 +130,10 @@
     }
 
     proveNowFailures += 1;
-    forgetExpiredProveNow();
     proveNowTimer = setTimeout(
-      () => {
-        forgetExpiredProveNow();
-        void readProveNow(hash);
-      },
+      () => readProveNow(hash),
       Math.min(RETRY_FIRST_MS * 2 ** (proveNowFailures - 1), RETRY_MOST_MS)
     );
-  }
-
-  function forgetExpiredProveNow() {
-    if (Date.now() - proveNowAt >= PREPARED_PROOF_MS) {
-      proveNow = null;
-    }
   }
 
   onMount(() => {
@@ -144,6 +142,7 @@
 
   onDestroy(() => {
     clearTimeout(proveNowTimer);
+    clearTimeout(proveNowExpiry);
     proveNowOf = "";
   });
 

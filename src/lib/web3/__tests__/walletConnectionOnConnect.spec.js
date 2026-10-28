@@ -30,6 +30,41 @@ const load = async () => {
   return import("../walletConnection");
 };
 
+/**
+ * A wallet as wagmi connects it, whose own disconnect does `disconnect`.
+ *
+ * @param {import("@wagmi/core").Config} config
+ * @param {() => Promise<void>} [disconnect]
+ */
+function connectWallet(config, disconnect = async () => {}) {
+  const connector = {
+    disconnect: vi.fn(disconnect),
+    emitter: { off: () => {}, on: () => {} },
+    id: "injected",
+    name: "A wallet",
+    type: "injected",
+    uid: "uid",
+  };
+
+  config.setState((state) => ({
+    ...state,
+    connections: new Map([
+      [
+        "uid",
+        /** @type {any} */ ({
+          accounts: [`0x${"1e".repeat(20)}`],
+          chainId: 1,
+          connector,
+        }),
+      ],
+    ]),
+    current: "uid",
+    status: "connected",
+  }));
+
+  return connector;
+}
+
 describe("the EVM wallet connection, on Connect", () => {
   beforeEach(() => {
     vi.mocked(createAppKit).mockReset();
@@ -261,5 +296,136 @@ describe("the EVM wallet connection, on Connect", () => {
         localStorage.getItem("web-wallet-evm-wallets-forgotten")
       ).toBeNull();
     });
+  });
+
+  it("should start nothing for a Connect that Reset came after, as AppKit loaded", async () => {
+    const appKit = stubAppKit();
+    /** @type {PromiseWithResolvers<void>} */
+    const asked = Promise.withResolvers();
+    /** @type {PromiseWithResolvers<void>} */
+    const loaded = Promise.withResolvers();
+
+    // AppKit takes a while to load.
+    vi.doMock("@reown/appkit-adapter-wagmi", async (importOriginal) => {
+      asked.resolve();
+      await loaded.promise;
+
+      return importOriginal();
+    });
+
+    try {
+      const { connectionFailed, forgetEvmWallets, modal, wasConnectedBefore } =
+        await load();
+      const opening = modal.open();
+
+      // Reset, while AppKit loads for Connect.
+      await asked.promise;
+      await forgetEvmWallets();
+      loaded.resolve();
+      await opening;
+
+      expect(createAppKit).not.toHaveBeenCalled();
+      expect(appKit.open).not.toHaveBeenCalled();
+      expect(get(connectionFailed)).toBe(false);
+      expect(wasConnectedBefore()).toBe(false);
+
+      // Connect, pressed after Reset, connects.
+      await modal.open();
+
+      expect(createAppKit).toHaveBeenCalledOnce();
+      expect(appKit.open).toHaveBeenCalledOnce();
+    } finally {
+      vi.doUnmock("@reown/appkit-adapter-wagmi");
+    }
+  });
+
+  it("should open no dialog for a Connect that Reset came after, as it waited", async () => {
+    const appKit = stubAppKit();
+    /** @type {{ promise: Promise<[]> }} */
+    const reconnected = { promise: Promise.resolve([]) };
+
+    vi.doMock("@wagmi/core", async (importOriginal) => ({
+      .../** @type {typeof import("@wagmi/core")} */ (await importOriginal()),
+      reconnect: () => reconnected.promise,
+    }));
+
+    try {
+      const { forgetEvmWallets, modal, wasConnectedBefore } = await load();
+
+      // Reset, as Connect waits for the last Reset's delete…
+      await forgetEvmWallets();
+
+      const afterDelete = modal.open();
+
+      await forgetEvmWallets();
+      await afterDelete;
+
+      expect(createAppKit).not.toHaveBeenCalled();
+      expect(wasConnectedBefore()).toBe(false);
+
+      // …or for a wallet connected before to reconnect.
+      /** @type {PromiseWithResolvers<[]>} */
+      const reconnecting = Promise.withResolvers();
+
+      reconnected.promise = reconnecting.promise;
+
+      const afterReconnect = modal.open();
+
+      await vi.waitFor(() => expect(createAppKit).toHaveBeenCalledOnce());
+      await forgetEvmWallets();
+      reconnecting.resolve([]);
+      await afterReconnect;
+
+      expect(appKit.open).not.toHaveBeenCalled();
+    } finally {
+      vi.doUnmock("@wagmi/core");
+    }
+  });
+
+  it("should drop a wallet that comes back after Reset, until Connect is pressed again", async () => {
+    const appKit = stubAppKit();
+    const connection = await load();
+
+    await connection.startWalletConnection();
+    await connection.forgetEvmWallets();
+
+    // A reconnect under way as Reset ran brings the wallet back.
+    const back = connectWallet(connection.wagmiConfig);
+
+    await vi.waitFor(() => expect(back.disconnect).toHaveBeenCalledOnce());
+    await vi.waitFor(() =>
+      expect(localStorage.getItem("wagmi.store")).toBeNull()
+    );
+    expect(get(connection.account).isConnected).toBe(false);
+    expect(appKit.disconnect).toHaveBeenCalledTimes(2);
+
+    // Connect, pressed after Reset: the wallet it connects stays.
+    await connection.modal.open();
+    connectWallet(connection.wagmiConfig);
+
+    expect(appKit.open).toHaveBeenCalledOnce();
+    expect(get(connection.account).isConnected).toBe(true);
+  });
+
+  it("should end AppKit's session on Reset even when wagmi's disconnect fails", async () => {
+    const appKit = stubAppKit();
+    const connection = await load();
+
+    await connection.startWalletConnection();
+
+    const stuck = connectWallet(connection.wagmiConfig, () =>
+      Promise.reject(new Error("The wallet didn't answer"))
+    );
+
+    await connection.forgetEvmWallets();
+
+    expect(stuck.disconnect).toHaveBeenCalledOnce();
+    expect(appKit.disconnect).toHaveBeenCalledOnce();
+
+    // The failure is still said, once both were tried.
+    await expect(connection.walletDisconnect()).rejects.toThrow(
+      "The wallet didn't answer"
+    );
+    expect(appKit.disconnect).toHaveBeenCalledTimes(2);
   });
 });

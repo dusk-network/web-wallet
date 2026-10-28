@@ -1886,7 +1886,11 @@ export async function prepareProof(txHash, { reads = contractReads() } = {}) {
     proof,
   };
 
-  preparedProofs.set(txHash.toLowerCase(), prepared);
+  // Kept only with a date: one read again without leaves in place the proof
+  // whose date is still shown.
+  if (prepared.claim) {
+    preparedProofs.set(txHash.toLowerCase(), prepared);
+  }
 
   return prepared;
 }
