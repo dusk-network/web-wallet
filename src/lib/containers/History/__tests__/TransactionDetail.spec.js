@@ -68,8 +68,94 @@ const show = (shown, extra = {}, props = {}) =>
     ...props,
   });
 
+/**
+ * The text of the details' list, and of Technical details.
+ *
+ * @param {HTMLElement} container
+ */
+const mainList = (container) =>
+  container.querySelector(".tx-detail__list:not(.tx-detail__list--tech)")
+    ?.textContent ?? "";
+
+/** @param {HTMLElement} container */
+const techList = (container) =>
+  container.querySelector(".tx-detail__list--tech")?.textContent ?? "";
+
+const STORE =
+  "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199";
+const SOZU_POOL =
+  "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
+
 describe("TransactionDetail", () => {
   afterEach(cleanup);
+
+  it("should say which .dusk name a registration registered, with Dusk Domains' contract under Technical details only", () => {
+    const { container, getByText } = show(
+      row({
+        amount: "10000000000",
+        contractId: STORE,
+        counterparty: STORE,
+        fnName: "register",
+        registeredName: "alice.dusk",
+      }),
+      { network: "testnet" },
+      { network: "testnet" }
+    );
+
+    expect(getByText("Registered alice.dusk")).toBeInTheDocument();
+    expect(container.querySelector(".tx-detail__headline")).toHaveTextContent(
+      "Registered alice.dusk"
+    );
+    expect(mainList(container)).not.toContain(STORE);
+    expect(mainList(container)).not.toContain("Dusk Domains");
+    expect(techList(container)).toContain("Dusk Domains");
+    expect(techList(container)).toContain(STORE);
+  });
+
+  it("should say what stDUSK a stake with Sozu got, read once, with Sozu's contract under Technical details", async () => {
+    const loadStDusk = vi.fn(async () => 162_189_471n);
+    const stake = row({
+      amount: "500000000",
+      blockHeight: 4_692_418,
+      contractId: SOZU_POOL,
+      counterparty: SOZU_POOL,
+      fnName: "sozu_stake",
+      hash: "a4bd169fd983e4812c1844d19c749a8f8246ab4b3b5820fcf756ec8d244a6205",
+    });
+    const { container, findByText, getByText } = show(
+      stake,
+      { network: "testnet" },
+      { loadStDusk, network: "testnet" }
+    );
+
+    expect(getByText("Staked with Sozu")).toBeInTheDocument();
+    expect(await findByText("You got")).toBeInTheDocument();
+    expect(mainList(container)).toContain("You got 0.162189471 stDUSK");
+    expect(loadStDusk).toHaveBeenCalledExactlyOnceWith(stake);
+    expect(mainList(container)).not.toContain(SOZU_POOL);
+    expect(techList(container)).toContain("Sozu");
+    expect(techList(container)).toContain(SOZU_POOL);
+  });
+
+  it("should not look up stDUSK for a stake with Sozu that failed, nor for an unstake", async () => {
+    const loadStDusk = vi.fn(async () => 1n);
+    const call = {
+      blockHeight: 4_692_418,
+      contractId: SOZU_POOL,
+      counterparty: SOZU_POOL,
+    };
+
+    show(
+      row({ ...call, fnName: "sozu_stake", status: "failed", success: false }),
+      {},
+      { loadStDusk }
+    );
+    cleanup();
+    show(row({ ...call, fnName: "sozu_unstake" }), {}, { loadStDusk });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(loadStDusk).not.toHaveBeenCalled();
+  });
 
   it("should name the DuskEVM address a deposit went to", () => {
     const { container, getByText } = show(
@@ -82,7 +168,9 @@ describe("TransactionDetail", () => {
 
     expect(getByText("DuskEVM address")).toBeTruthy();
     expect(container.textContent).toContain(EVM);
-    expect(container.textContent).not.toContain(BRIDGE);
+    // The bridge's contract only under Technical details.
+    expect(mainList(container)).not.toContain(BRIDGE);
+    expect(techList(container)).toContain(BRIDGE);
   });
 
   it("should show a proved withdrawal's amount and its next step until it is claimed", () => {
@@ -111,9 +199,10 @@ describe("TransactionDetail", () => {
     expect(
       getByText(`Claim from about ${fullDateTime(CLAIM_AT, "en")}.`)
     ).toBeTruthy();
-    expect(
-      getByRole("link", { name: "Open withdrawals" }).getAttribute("href")
-    ).toContain("/dashboard/bridge/transactions?view=withdrawals");
+    expect(getByRole("link", { name: "Open withdrawals" })).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard/bridge/transactions"
+    );
 
     cleanup();
 

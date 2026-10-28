@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import bridgeCalls from "../../bridge/__tests__/fixtures/bridge-calls-testnet.json";
 import fixture from "./fixtures/activity-testnet.json";
 import { fakeArchive } from "./fixtures/fakeArchive";
+import { calls as REGISTRATIONS } from "./fixtures/registrations-testnet.json";
 
 /*
  * Recorded on Testnet: A registered a .dusk name and received two transfers;
@@ -847,6 +848,106 @@ describe("fetchTxDetails", () => {
       delete details[deposit];
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe("a .dusk name's registration", () => {
+  it("is read for the name it registered, and one read before is read again, once", async () => {
+    const [alice] = REGISTRATIONS;
+    const registration = "d1".repeat(32);
+    const ok =
+      "8e247a33967153b229ce4f45f61e0f14808d8a417c4a4b37eabb269a8eb08e34";
+    /** @type {Record<string, any>} */
+    const details = fixture.details;
+
+    details[registration] = {
+      ...details[ok],
+      tx: {
+        ...details[ok].tx,
+        callData: {
+          contractId: alice.contractId,
+          data: alice.data,
+          fnName: alice.fnName,
+        },
+      },
+    };
+
+    try {
+      fakeArchive();
+
+      const read = await history.fetchTxDetails(NODE, [registration, ok]);
+
+      expect(read.get(registration)?.registeredName).toBe("alice.dusk");
+      expect(read.get(ok)).not.toHaveProperty("registeredName");
+    } finally {
+      delete details[registration];
+    }
+
+    const call = { contractId: STORE, detailsAt: 1, fnName: "register" };
+
+    expect(history.needsDetails(call)).toBe(true);
+    expect(history.needsDetails({ ...call, registeredName: null })).toBe(false);
+    expect(
+      history.needsDetails({ ...call, registeredName: "alice.dusk" })
+    ).toBe(false);
+    expect(history.needsDetails({ ...call, fnName: "commit" })).toBe(false);
+  });
+
+  it("keeps the name it registered through the store, for the history's rows", async () => {
+    const [alice] = REGISTRATIONS;
+    const ownerKey = store.activityOwnerKey("testnet", A);
+    const hash = "d2".repeat(32);
+
+    await store.commitActivityStep(
+      ownerKey,
+      [
+        {
+          blockHeight: 10,
+          counterparty: STORE,
+          direction: "out",
+          hash,
+          kind: "contract_call",
+          memo: "",
+          payer: true,
+          value: "10000000000",
+        },
+      ],
+      () => ({
+        account: A,
+        covered: [[10, 10]],
+        finalized: 10,
+        genesis: "",
+        headAt: 1,
+        target: 0,
+        updatedAt: 1,
+        window: 1,
+      })
+    );
+    await store.patchActivityEntries(
+      ownerKey,
+      new Map([
+        [
+          hash,
+          {
+            contractId: alice.contractId,
+            detailsAt: 1,
+            fee: "1",
+            fnName: "register",
+            gasLimit: "1",
+            gasPrice: "1",
+            gasSpent: "1",
+            registeredName: "alice.dusk",
+            success: true,
+            timestamp: 1,
+          },
+        ],
+      ])
+    );
+
+    const [entry] = (await kept(A)).map(history.activityEntry);
+
+    expect(entry.registeredName).toBe("alice.dusk");
+    expect(history.needsDetails(entry)).toBe(false);
   });
 });
 

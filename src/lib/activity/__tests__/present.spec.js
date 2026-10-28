@@ -206,6 +206,21 @@ describe("describeRow", () => {
       line: "Dusk Domains",
       title: "Registered a .dusk name",
     });
+
+    // Once the history has read which name it registered: that name.
+    expect(
+      describeRow(
+        row({
+          amount: "10000000000",
+          contractId: store,
+          fnName: "register",
+          kind: "contract_call",
+          registeredName: "alice.dusk",
+          to: undefined,
+        }),
+        { ...context, network: "testnet" }
+      )
+    ).toMatchObject({ line: "Dusk Domains", title: "Registered alice.dusk" });
   });
 
   it("says where a bridge row's DUSK went: the DuskEVM address, or the withdrawal and its next step", () => {

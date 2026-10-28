@@ -7,9 +7,9 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
   <header
     class="settings__header"
   >
-    <h2>
+    <h1>
       Settings
-    </h2>
+    </h1>
   </header>
    
   <div
@@ -19,7 +19,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -37,7 +37,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -315,7 +315,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
     <article
       class="settings-group"
     >
-      <h3
+      <h2
         class="h4 settings-group__heading"
       >
         <button
@@ -341,7 +341,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           
           <!---->
         </button>
-      </h3>
+      </h2>
        
       <!---->
     </article>
@@ -352,7 +352,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -370,7 +370,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -410,6 +410,30 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
         <!---->
         .
       </p>
+       
+      <p>
+        <a
+          class="dusk-anchor dusk-anchor--on-surface text-link"
+          href="https://dusk.network/terms-of-use/"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Terms of Use
+          <!---->
+        </a>
+        <!---->
+         · 
+        <a
+          class="dusk-anchor dusk-anchor--on-surface text-link"
+          href="https://dusk.network/privacy-policy/"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Privacy Policy
+          <!---->
+        </a>
+        <!---->
+      </p>
     </article>
      
     <hr />
@@ -418,7 +442,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -436,7 +460,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -499,9 +523,9 @@ exports[`Settings > should render the settings page displaying the status of the
   <header
     class="settings__header"
   >
-    <h2>
+    <h1>
       Settings
-    </h2>
+    </h1>
   </header>
    
   <div
@@ -511,7 +535,7 @@ exports[`Settings > should render the settings page displaying the status of the
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -529,7 +553,7 @@ exports[`Settings > should render the settings page displaying the status of the
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -807,7 +831,7 @@ exports[`Settings > should render the settings page displaying the status of the
     <article
       class="settings-group"
     >
-      <h3
+      <h2
         class="h4 settings-group__heading"
       >
         <button
@@ -833,7 +857,7 @@ exports[`Settings > should render the settings page displaying the status of the
           
           <!---->
         </button>
-      </h3>
+      </h2>
        
       <!---->
     </article>
@@ -844,7 +868,7 @@ exports[`Settings > should render the settings page displaying the status of the
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -862,7 +886,7 @@ exports[`Settings > should render the settings page displaying the status of the
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -902,6 +926,30 @@ exports[`Settings > should render the settings page displaying the status of the
         <!---->
         .
       </p>
+       
+      <p>
+        <a
+          class="dusk-anchor dusk-anchor--on-surface text-link"
+          href="https://dusk.network/terms-of-use/"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Terms of Use
+          <!---->
+        </a>
+        <!---->
+         · 
+        <a
+          class="dusk-anchor dusk-anchor--on-surface text-link"
+          href="https://dusk.network/privacy-policy/"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Privacy Policy
+          <!---->
+        </a>
+        <!---->
+      </p>
     </article>
      
     <hr />
@@ -910,7 +958,7 @@ exports[`Settings > should render the settings page displaying the status of the
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -928,7 +976,7 @@ exports[`Settings > should render the settings page displaying the status of the
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -974,9 +1022,9 @@ exports[`Settings > should render the settings page displaying the status of the
   <header
     class="settings__header"
   >
-    <h2>
+    <h1>
       Settings
-    </h2>
+    </h1>
   </header>
    
   <div
@@ -986,7 +1034,7 @@ exports[`Settings > should render the settings page displaying the status of the
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -1004,7 +1052,7 @@ exports[`Settings > should render the settings page displaying the status of the
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -1282,7 +1330,7 @@ exports[`Settings > should render the settings page displaying the status of the
     <article
       class="settings-group"
     >
-      <h3
+      <h2
         class="h4 settings-group__heading"
       >
         <button
@@ -1308,7 +1356,7 @@ exports[`Settings > should render the settings page displaying the status of the
           
           <!---->
         </button>
-      </h3>
+      </h2>
        
       <!---->
     </article>
@@ -1319,7 +1367,7 @@ exports[`Settings > should render the settings page displaying the status of the
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -1337,7 +1385,7 @@ exports[`Settings > should render the settings page displaying the status of the
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -1377,6 +1425,30 @@ exports[`Settings > should render the settings page displaying the status of the
         <!---->
         .
       </p>
+       
+      <p>
+        <a
+          class="dusk-anchor dusk-anchor--on-surface text-link"
+          href="https://dusk.network/terms-of-use/"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Terms of Use
+          <!---->
+        </a>
+        <!---->
+         · 
+        <a
+          class="dusk-anchor dusk-anchor--on-surface text-link"
+          href="https://dusk.network/privacy-policy/"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Privacy Policy
+          <!---->
+        </a>
+        <!---->
+      </p>
     </article>
      
     <hr />
@@ -1385,7 +1457,7 @@ exports[`Settings > should render the settings page displaying the status of the
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -1403,7 +1475,7 @@ exports[`Settings > should render the settings page displaying the status of the
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -1449,9 +1521,9 @@ exports[`Settings > should show the wallet creation block height under Advanced 
   <header
     class="settings__header"
   >
-    <h2>
+    <h1>
       Settings
-    </h2>
+    </h1>
   </header>
    
   <div
@@ -1461,7 +1533,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -1479,7 +1551,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -1757,7 +1829,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
     <article
       class="settings-group"
     >
-      <h3
+      <h2
         class="h4 settings-group__heading"
       >
         <button
@@ -1783,7 +1855,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
           
           <!---->
         </button>
-      </h3>
+      </h2>
        
       <div
         class="settings-group__multi-control-content"
@@ -1874,7 +1946,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -1892,7 +1964,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        
@@ -1932,6 +2004,30 @@ exports[`Settings > should show the wallet creation block height under Advanced 
         <!---->
         .
       </p>
+       
+      <p>
+        <a
+          class="dusk-anchor dusk-anchor--on-surface text-link"
+          href="https://dusk.network/terms-of-use/"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Terms of Use
+          <!---->
+        </a>
+        <!---->
+         · 
+        <a
+          class="dusk-anchor dusk-anchor--on-surface text-link"
+          href="https://dusk.network/privacy-policy/"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Privacy Policy
+          <!---->
+        </a>
+        <!---->
+      </p>
     </article>
      
     <hr />
@@ -1940,7 +2036,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
       class="settings-group"
     >
       <!---->
-      <h3
+      <h2
         class="section-head"
       >
         <span
@@ -1958,7 +2054,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
           ]
         </span>
         
-      </h3>
+      </h2>
       
       <!---->
        

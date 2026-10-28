@@ -58,7 +58,7 @@ describe("TransactionResult", () => {
       operation: Promise.resolve(hash),
     });
 
-    expect(await findByRole("status")).toHaveTextContent(/^Sent Pending/);
+    expect(await findByRole("status")).toHaveTextContent(/^Sending… /);
     expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything());
 
     await clickLink(getByRole("link", { name: "Home" }));

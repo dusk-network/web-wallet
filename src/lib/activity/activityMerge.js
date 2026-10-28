@@ -88,6 +88,7 @@ export function historyRow(entry) {
     kind,
     memo: entry.memo || undefined,
     privacy: "public",
+    registeredName: entry.registeredName,
     source: "archive",
     // Final on chain, but its outcome is unknown until its details come.
     status: statusOf(entry.success),

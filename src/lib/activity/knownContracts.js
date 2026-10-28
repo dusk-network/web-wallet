@@ -73,19 +73,93 @@ function isDuskDomains(contractId, network) {
 }
 
 /**
- * What a call to a contract the wallet knows did, in words, with its app;
- * null for any other contract.
+ * Whether a call registered a `.dusk` name.
  *
  * @param {{ contractId?: string | null, fnName?: string }} call
+ */
+export const isNameRegistration = ({ contractId, fnName }) =>
+  String(fnName ?? "").trim() === "register" && isDuskDomains(contractId);
+
+// A registration's arguments are rkyv: their root is their last 304 bytes,
+// and the name's label sits 32 bytes into it, in place when it has up to
+// 7 bytes, before the root when longer.
+const REGISTRATION_ROOT = 304;
+const LABEL_AT = 32;
+const LABEL_INLINE = 7;
+const CANONICAL_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/**
+ * An archived string's bytes at `at`, in place or before `root`, where the
+ * serializer puts a longer one; null where they don't lie as it puts them.
+ *
+ * @param {Uint8Array} args
+ * @param {number} at
+ * @param {number} root
+ * @returns {Uint8Array | null}
+ */
+function stringAt(args, at, root) {
+  const inlineLength = args[at + LABEL_INLINE];
+
+  if ((inlineLength & 0x80) === 0) {
+    return inlineLength <= LABEL_INLINE
+      ? args.subarray(at, at + inlineLength)
+      : null;
+  }
+
+  const view = new DataView(args.buffer, args.byteOffset, args.byteLength);
+  const length = view.getUint32(at, true);
+  const start = at + view.getInt32(at + 4, true);
+
+  return length > LABEL_INLINE && start >= 0 && start + length <= root
+    ? args.subarray(start, start + length)
+    : null;
+}
+
+/**
+ * The `.dusk` name a registration registered, read from its arguments:
+ * undefined for any other call, and null for one whose arguments don't
+ * read exactly, with a canonical label.
+ *
+ * @param {{ contractId?: string | null, data?: unknown, fnName?: string }} call
+ *   `data` the call's arguments in hex
+ * @returns {string | null | undefined}
+ */
+export function registeredNameOf({ contractId, data, fnName }) {
+  if (!isNameRegistration({ contractId, fnName })) {
+    return undefined;
+  }
+
+  const text = norm(data);
+  const args = /^(?:[0-9a-f]{2})+$/.test(text)
+    ? Uint8Array.from(text.match(/../g) ?? [], (b) => parseInt(b, 16))
+    : new Uint8Array();
+  const root = args.length - REGISTRATION_ROOT;
+  const label =
+    root >= 0 && root % 8 === 0 ? stringAt(args, root + LABEL_AT, root) : null;
+  const spelling = label ? String.fromCharCode(...label) : "";
+
+  return CANONICAL_LABEL.test(spelling) ? `${spelling}.dusk` : null;
+}
+
+/**
+ * What a call to a contract the wallet knows did, in words, with its app;
+ * null for any other contract. A registration says which name it was, once
+ * that has been read from it (`registeredNameOf`).
+ *
+ * @param {{ contractId?: string | null, fnName?: string, registeredName?: string | null }} call
  * @param {string} [network] The network's name
  * @returns {{ app: string, label: string } | null}
  */
-export function knownCall({ contractId, fnName }, network) {
+export function knownCall({ contractId, fnName, registeredName }, network) {
   if (!isDuskDomains(contractId, network)) {
     return null;
   }
 
   const fn = String(fnName ?? "").trim();
+
+  if (fn === "register" && registeredName) {
+    return { app: "Dusk Domains", label: `Registered ${registeredName}` };
+  }
 
   return { app: "Dusk Domains", label: NAME_CALLS.get(fn) ?? "Dusk Domains" };
 }

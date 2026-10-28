@@ -27,12 +27,12 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
       Home
     </a>
      
-    <h2
+    <h1
       class="send__title svelte-x7e9dl"
       id="some-generated-id-title"
     >
       Send
-    </h2>
+    </h1>
      
     <div
       class="send__field svelte-x7e9dl"

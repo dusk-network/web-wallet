@@ -19,14 +19,16 @@
   .dusk-icon-button,
   .dusk-button--size--small,
   .dusk-anchor-button--size--small,
-  .dusk-switch {
+  .dusk-switch,
+  .swap-mini {
     position: relative;
   }
 
   .dusk-icon-button::before,
   .dusk-button--size--small::before,
   .dusk-anchor-button--size--small::before,
-  .dusk-switch::before {
+  .dusk-switch::before,
+  .swap-mini::before {
     content: "";
     position: absolute;
     top: 50%;
@@ -51,5 +53,21 @@
   .dusk-agreement .dusk-checkbox {
     position: relative;
     z-index: 1;
+  }
+
+  /*
+   * A box or a choice at the start of its label: larger, and the label,
+   * which takes the tap, reaches past it on the left as well.
+   */
+  label:has(> input:is([type="checkbox"], [type="radio"]):first-child) {
+    min-height: 44px;
+    margin-left: -0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  label > input:is([type="checkbox"], [type="radio"]):first-child {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
   }
 }

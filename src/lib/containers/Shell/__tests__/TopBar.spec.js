@@ -178,9 +178,7 @@ describe("TopBar", () => {
       container.querySelector(".address-picker__compact-name")
     ).toHaveTextContent("Profile 1");
 
-    await fireEvent.click(
-      getByRole("button", { name: "Select address profile" })
-    );
+    await fireEvent.click(getByRole("button", { name: "Profile: Profile 1" }));
     await new Promise((resolve) => setTimeout(resolve));
 
     expect(container.querySelector(".address-picker__address-name")).toBeNull();

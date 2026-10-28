@@ -41,6 +41,7 @@
   <button
     aria-expanded={open}
     aria-haspopup="dialog"
+    aria-label={`Network: ${label}, ${stateText.toLowerCase()}`}
     class="network-pill__button"
     on:click={() => {
       open = !open;
@@ -57,7 +58,6 @@
       class="network-pill__dot network-pill__dot--{state}"
     ></span>
     <span class="network-pill__name">{label}</span>
-    <span class="sr-only">, {stateText}</span>
     <Icon className="network-pill__chevron" path={mdiChevronDown} />
   </button>
   {#if open}
@@ -136,6 +136,11 @@
    * with the network's name still there for screen readers.
    */
   @media (max-width: 47.99rem) {
+    .network-pill__button {
+      gap: 0.375rem;
+      padding: 0 0.625rem;
+    }
+
     .network-pill__button :global(.network-pill__chevron) {
       display: none;
     }

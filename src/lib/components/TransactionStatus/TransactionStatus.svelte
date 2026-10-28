@@ -8,6 +8,7 @@
     mdiTimerSand,
   } from "@mdi/js";
 
+  import { timeLabel } from "$lib/activity/present";
   import { formatFee } from "$lib/dusk/currency";
   import {
     AnchorButton,
@@ -53,15 +54,23 @@
   /** @type {import("$lib/transactions/followTransaction").FinalTransaction | null} */
   let outcome = null;
 
+  /** When the wallet saw the outcome, for a block whose time isn't known. */
+  let outcomeAt = 0;
+
   /** @type {AbortController | undefined} */
   let controller;
 
-  /** @type {Record<Status, { icon: string, title: string }>} */
+  /**
+   * Sending while it isn't in a final block, then when it was sent, or
+   * that it failed.
+   *
+   * @type {Record<Status, { icon: string, title: string }>}
+   */
   const headings = {
-    completed: { icon: mdiCheckDecagramOutline, title: "Completed" },
+    completed: { icon: mdiCheckDecagramOutline, title: "Sent" },
     failed: { icon: mdiAlertDecagramOutline, title: "Failed" },
-    late: { icon: mdiTimerSand, title: "Sent" },
-    pending: { icon: mdiTimerSand, title: "Sent" },
+    late: { icon: mdiTimerSand, title: "Sending…" },
+    pending: { icon: mdiTimerSand, title: "Sending…" },
   };
 
   function follow() {
@@ -76,6 +85,7 @@
       .then((result) => {
         if (!signal.aborted) {
           outcome = result;
+          outcomeAt = Date.now();
           status = result ? (result.error ? "failed" : "completed") : "late";
         }
       });
@@ -91,7 +101,13 @@
     return () => controller?.abort();
   });
 
-  $: ({ icon, title } = headings[status]);
+  $: ({ icon } = headings[status]);
+  // Without a hash there's nothing to follow: it was sent.
+  $: title = !hash
+    ? "Sent"
+    : status === "completed" && outcome
+      ? `Sent at ${timeLabel(outcome.timestamp ?? outcomeAt, language)}`
+      : headings[status].title;
 </script>
 
 <div class="transaction-status transaction-status--{status}">
@@ -104,7 +120,7 @@
     {#if !hash}
       <p>The wallet updates automatically.</p>
     {:else if status === "pending"}
-      <p>Pending. This usually takes under a minute.</p>
+      <p>This usually takes under a minute.</p>
     {:else if status === "late"}
       <p>Still pending. See its status in the explorer.</p>
     {:else if outcome && status === "completed"}

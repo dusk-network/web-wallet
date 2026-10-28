@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
+import { pageTitle } from "$lib/navigation";
 
 import Shell from "../Shell.svelte";
 
@@ -181,5 +182,42 @@ describe("Shell", () => {
       "href",
       "#shell-main"
     );
+  });
+
+  it("keeps the top bar and the navigation out of the page's main content, which the skip link goes to", () => {
+    mocks.url = new URL("http://localhost/dashboard");
+
+    const { getAllByRole, getByRole } = render(Shell);
+    const main = getByRole("main");
+
+    expect(main).toHaveAttribute("id", "shell-main");
+    expect(main).not.toContainElement(getByRole("banner"));
+    expect(main).not.toContainElement(
+      getByRole("link", { name: "Skip to content" })
+    );
+
+    for (const nav of getAllByRole("navigation", { name: "Wallet pages" })) {
+      expect(main).not.toContainElement(nav);
+    }
+  });
+
+  it("names the page with one heading: its own title where it shows one, or else one for screen readers", async () => {
+    mocks.url = new URL("http://localhost/dashboard/send");
+
+    const { getAllByRole, queryByRole } = render(Shell);
+
+    expect(
+      getAllByRole("heading", { level: 1 }).map((h) => h.textContent)
+    ).toStrictEqual(["Send"]);
+    expect(getAllByRole("heading", { level: 1 })[0]).toHaveClass("sr-only");
+
+    // A page showing its own title: that one only.
+    const title = await act(() => pageTitle(document.createElement("h1")));
+
+    expect(queryByRole("heading", { level: 1 })).toBeNull();
+
+    await act(() => title.destroy());
+
+    expect(getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 });

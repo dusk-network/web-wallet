@@ -205,7 +205,7 @@ describe("Unstake", () => {
 
       const explorerLink = getByRole("link", { name: /explorer/i });
 
-      expect(await findByRole("status")).toHaveTextContent(/^Sent Pending/);
+      expect(await findByRole("status")).toHaveTextContent(/^Sending… /);
       expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
@@ -286,7 +286,7 @@ describe("Unstake", () => {
 
       const explorerLink = getByRole("link", { name: /explorer/i });
 
-      expect(await findByRole("status")).toHaveTextContent(/^Sent Pending/);
+      expect(await findByRole("status")).toHaveTextContent(/^Sending… /);
       expect(getByText("8dcf6f8a...993db55e")).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);

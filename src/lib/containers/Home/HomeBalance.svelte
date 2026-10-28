@@ -16,6 +16,13 @@
   /** @type {bigint} */
   export let unshielded;
 
+  /**
+   * What is staked, natively and with Sozu, which the total leaves out.
+   *
+   * @type {bigint}
+   */
+  export let staked = 0n;
+
   /** @type {string} */
   export let locale;
 
@@ -72,6 +79,14 @@
   </p>
   {#if fiat}
     <p class="home-balance__fiat">≈ <BalanceValue value={fiat} /></p>
+  {/if}
+  {#if staked > 0n}
+    <p class="home-balance__staked">
+      Staked <BalanceValue
+        exact={formatDuskExact(staked, locale)}
+        value={formatDusk(staked, locale)}
+      /> DUSK
+    </p>
   {/if}
   <div aria-hidden="true" class="home-balance__bar">
     <i class="home-balance__bar-public" style:flex-grow={publicShare}></i>
@@ -157,10 +172,12 @@
     font-size: clamp(1.125rem, 2vw, 1.5rem);
   }
 
-  .home-balance__fiat {
+  .home-balance__fiat,
+  .home-balance__staked {
     margin-top: 0.25rem;
     color: var(--calm-muted);
     font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
   }
 
   .home-balance__bar {

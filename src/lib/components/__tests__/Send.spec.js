@@ -15,6 +15,7 @@ import {
   formatDuskExact,
   formatDuskPlain,
 } from "$lib/dusk/currency";
+import { timeLabel } from "$lib/activity/present";
 import { shortenAddress } from "$lib/dusk/string";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import { addBasePath } from "$lib/navigation";
@@ -705,7 +706,7 @@ describe("Send", () => {
 
       // What went to whom, and where the history has it.
       expect(getByRole("status")).toHaveTextContent(
-        `Sent 567 DUSK to ${shortenAddress(shieldedAddress)} Pending. This usually takes under a minute.`
+        `Sending… 567 DUSK to ${shortenAddress(shieldedAddress)} This usually takes under a minute.`
       );
       expect(getByRole("link", { name: "See in History" })).toHaveAttribute(
         "href",
@@ -742,7 +743,7 @@ describe("Send", () => {
       expect(baseProps.execute).toHaveBeenCalledOnce();
     });
 
-    it("should follow the transaction until its block is final, then show it completed with the fee it was charged", async () => {
+    it("should follow the transaction until its block is final, then say when it was sent, with the fee it was charged", async () => {
       /** @type {PromiseWithResolvers<any>} */
       const following = Promise.withResolvers();
 
@@ -753,20 +754,24 @@ describe("Send", () => {
       await sendWith(getByRole);
 
       expect(getByRole("status")).toHaveTextContent(
-        /^Sent 567 DUSK to .+ Pending/
+        /^Sending… 567 DUSK to .+ This usually takes under a minute\.$/
       );
       expect(getByText("Network fee (at most)")).toBeInTheDocument();
       expect(getByText("0.02 DUSK")).toBeInTheDocument();
+
+      const blockTime = Date.UTC(2026, 9, 28, 0, 34);
 
       following.resolve({
         blockHeight: 4_687_200n,
         error: null,
         fee: 1_854_795n,
+        timestamp: blockTime,
       });
       await vi.advanceTimersToNextTimerAsync();
 
+      // Sent, at its block's time.
       expect(getByRole("status")).toHaveTextContent(
-        /^Completed 567 DUSK to .+ In block 4,687,200\.$/
+        `Sent at ${timeLabel(blockTime, "en")} 567 DUSK to ${shortenAddress(shieldedAddress)} In block 4,687,200.`
       );
       // The fee charged, to the nearest of four decimals.
       expect(getByText("0.0019 DUSK")).toBeInTheDocument();
@@ -814,7 +819,7 @@ describe("Send", () => {
         gasPrice,
         gasLimit
       );
-      expect(getByText("Sent")).toBeInTheDocument();
+      expect(getByText("Sending…")).toBeInTheDocument();
     });
 
     it("should trim a BEP20 bridge memo in the summary and the transfer", async () => {

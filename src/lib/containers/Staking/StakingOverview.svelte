@@ -5,7 +5,7 @@
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { Button, Icon } from "$lib/dusk/components";
   import { AppAnchorButton, BalanceValue, SectionHead } from "$lib/components";
-  import { goto } from "$lib/navigation";
+  import { goto, pageTitle } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
   import { duskPerStDusk, feePercent } from "$lib/sozu/amounts";
 
@@ -122,7 +122,7 @@
 
 <div class="staking">
   <section aria-labelledby="staking-title" class="staking__main">
-    <h2 class="staking__title" id="staking-title">Staking</h2>
+    <h1 class="staking__title" id="staking-title" use:pageTitle>Staking</h1>
 
     <div class="staking__summary">
       <div class="staking__summary-row">
@@ -195,7 +195,7 @@
       {/if}
     </div>
 
-    <SectionHead className="staking__choose" level={3}>Stake</SectionHead>
+    <SectionHead className="staking__choose">Stake</SectionHead>
 
     <div class="staking__start">
       <AppAnchorButton
@@ -282,11 +282,11 @@
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
               {#if rate}
-                You get stDUSK. Each is worth {formatDusk(rate, locale)} DUSK now,
-                and more as Sozu's pool earns rewards.
+                You get stDUSK. Each is worth {formatDusk(rate, locale)} DUSK now.
+                It usually rises with rewards, but can fall with a penalty.
               {:else}
-                You get stDUSK, a token for your share of Sozu's pool. Each is
-                worth more DUSK as the pool earns rewards.
+                You get stDUSK, a token for your share of Sozu's pool. Its worth
+                usually rises with rewards, but can fall with a penalty.
               {/if}
             </td>
           {/if}
@@ -372,6 +372,7 @@
     font-size: 1.75rem;
     font-weight: 500;
     letter-spacing: -0.01em;
+    line-height: 1.15;
   }
 
   .staking__summary {

@@ -2,17 +2,12 @@
 
 <script>
   import { onMount } from "svelte";
-  import {
-    mdiArrowBottomLeftThin,
-    mdiShieldLock,
-    mdiShieldLockOpenOutline,
-  } from "@mdi/js";
 
   import { getPrimaryName } from "$lib/dusk-domains";
   import { networkStore, walletStore } from "$lib/stores";
   import { Receive } from "$lib/components";
   import { ExclusiveChoice } from "$lib/dusk/components";
-  import { IconHeadingCard } from "$lib/containers/Cards";
+  import { PageCard } from "$lib/containers/Cards";
   import { nodeBaseUrl } from "$lib/url";
 
   let addressToShow = "public";
@@ -34,11 +29,6 @@
   $: currentAddress = currentProfile
     ? currentProfile[addressProp].toString()
     : "";
-  $: icons = [
-    mdiArrowBottomLeftThin,
-    addressToShow === "public" ? mdiShieldLockOpenOutline : mdiShieldLock,
-  ];
-
   // The name shown with the address, looked up once the page has rendered:
   // the public account's verified primary name, which the shielded address
   // shows only if the name pays to it as well.
@@ -53,7 +43,7 @@
       : "";
 </script>
 
-<IconHeadingCard gap="medium" heading="Receive" {icons}>
+<PageCard gap="medium" heading="Receive">
   <ExclusiveChoice {options} bind:value={addressToShow} />
   <Receive address={currentAddress} addressType={addressProp} {name} />
-</IconHeadingCard>
+</PageCard>

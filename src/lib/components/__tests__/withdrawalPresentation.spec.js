@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { claimDay } from "$lib/bridge/claimDate";
 
 import {
-  activityNote,
   claimDateOf,
   stageMessage,
 } from "../EvmTransactions/withdrawalPresentation";
@@ -102,19 +101,6 @@ describe("withdrawal presentation", () => {
     ).toBe(
       `Step 1 of 2. Fee from your public account. If you prove now, you can claim from about ${day}.`
     );
-  });
-
-  it("gives a row the claim date, or that it can be claimed now", () => {
-    expect(activityNote(waiting({ readyAt: READY_AT }), locale)).toBe(
-      `Claim from about ${day}`
-    );
-    expect(activityNote({ stage: "ready_to_finalize" }, locale)).toBe(
-      "Ready to claim"
-    );
-    expect(
-      activityNote(waiting({ proofRejected: true, readyAt: READY_AT }), locale)
-    ).toBe("");
-    expect(activityNote({ stage: "ready_to_prove" }, locale)).toBe("");
   });
 
   it("leaves the other stages' lines to the lifecycle", () => {

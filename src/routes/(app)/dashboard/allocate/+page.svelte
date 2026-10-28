@@ -2,10 +2,9 @@
 
 <script>
   import { onDestroy } from "svelte";
-  import { mdiSync } from "@mdi/js";
   import { AllocateContract } from "$lib/containers";
   import { updateOperation } from "$lib/contracts";
-  import { IconHeadingCard } from "$lib/containers/Cards";
+  import { PageCard } from "$lib/containers/Cards";
 
   onDestroy(() => {
     updateOperation("");
@@ -13,9 +12,9 @@
 </script>
 
 {#if import.meta.env.VITE_FEATURE_ALLOCATE || false}
-  <IconHeadingCard heading="Shield" icons={[mdiSync]}>
+  <PageCard heading="Shield">
     <AllocateContract
       on:operationChange={({ detail }) => updateOperation(detail)}
     />
-  </IconHeadingCard>
+  </PageCard>
 {/if}

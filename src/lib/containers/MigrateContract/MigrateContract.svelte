@@ -23,6 +23,7 @@
   import NetworkPicker from "$lib/components/NetworkPicker/NetworkPicker.svelte";
   import SwapCard from "$lib/components/SwapCard/SwapCard.svelte";
   import { Button, Icon, Stepper } from "$lib/dusk/components";
+  import { pageTitle } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import {
@@ -255,7 +256,7 @@
 
 <SwapCard label="Migrate">
   <div class="swap-top" slot="top">
-    <h2 class="migrate__title">Migrate</h2>
+    <h1 class="migrate__title" use:pageTitle>Migrate</h1>
   </div>
 
   <div class="swap-panel">
@@ -419,6 +420,7 @@
     padding: 0.5rem 0.5rem 0;
     font-size: 1.125rem;
     font-weight: 600;
+    line-height: 1.15;
   }
 
   .migrate__network {

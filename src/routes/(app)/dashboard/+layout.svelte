@@ -78,7 +78,7 @@
         padding: 0.5rem 0 0;
       }
 
-      & .dusk-card__heading-container h3 {
+      & .dusk-card__heading-container :is(h1, h3) {
         font-size: 1.75rem;
         font-weight: 500;
       }
@@ -97,7 +97,10 @@
         padding: 1rem 1rem 0;
       }
 
-      .dashboard--column > .dusk-card .dusk-card__heading-container h3 {
+      .dashboard--column
+        > .dusk-card
+        .dusk-card__heading-container
+        :is(h1, h3) {
         font-size: 1.375rem;
       }
     }

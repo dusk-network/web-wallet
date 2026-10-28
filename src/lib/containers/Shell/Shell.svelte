@@ -2,14 +2,21 @@
   import { page } from "$app/stores";
   import { isHistoryEnabled } from "$lib/activity";
   import { contractDescriptors } from "$lib/contracts";
+  import { pageHasTitle } from "$lib/navigation";
   import { networkStore, walletStore } from "$lib/stores";
 
   import CommandBar from "./CommandBar.svelte";
   import TabBar from "./TabBar.svelte";
   import TestnetStrip from "./TestnetStrip.svelte";
   import TopBar from "./TopBar.svelte";
-  import keyboardInset from "./keyboardInset";
-  import { appPath, isTestNetwork, shellTabs, tabOf } from "./navigation";
+  import keyboardInset, { TYPING_FIELDS } from "./keyboardInset";
+  import {
+    appPath,
+    isTestNetwork,
+    pageName,
+    shellTabs,
+    tabOf,
+  } from "./navigation";
 
   /** @param {string} id */
   const isEnabled = (id) =>
@@ -54,10 +61,6 @@
       .map(({ href, keywords, label }) => ({ href, keywords, label })),
     { href: "/settings", keywords: "gas lock password", label: "Settings" },
   ];
-
-  /** The fields one types in. */
-  const TYPING_FIELDS =
-    "textarea, select, [contenteditable]:not([contenteditable=false]), input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit])";
 
   let searchOpen = false;
   let typing = false;
@@ -116,6 +119,7 @@
   }
 
   $: ({ networkName } = $networkStore);
+  $: name = pageName(url.pathname) || "Dusk Wallet";
 </script>
 
 <svelte:window on:keydown={handleShortcut} />
@@ -143,9 +147,14 @@
       {tabs}
     />
   </div>
-  <div class="shell__main" id="shell-main" tabindex="-1">
+  <!-- The page's name is its one heading: its own title where it shows
+    one, or else this one, for screen readers. -->
+  <main class="shell__main" id="shell-main" tabindex="-1">
+    {#if !$pageHasTitle}
+      <h1 class="sr-only">{name}</h1>
+    {/if}
     <slot />
-  </div>
+  </main>
   <TabBar {activeTab} {tabs} />
   {#if searchOpen}
     <CommandBar

@@ -17,6 +17,10 @@
   // announcement of it.
   $: name = pageName($page.url.pathname);
 
+  // The wallet's pages have their top bar and navigation around their main
+  // content (Shell); the others are one main content, with its heading.
+  $: inShell = $page.route.id?.startsWith("/(app)") ?? false;
+
   /** @param {StorageEvent} event */
   function handleStorageChange({ key, oldValue, newValue, storageArea }) {
     if (
@@ -51,10 +55,12 @@
   <title>{name ? `${name} · Dusk Wallet` : "Dusk Wallet"}</title>
 </svelte:head>
 
-<main class="app">
-  <h1 class="sr-only">{name || "Dusk Wallet"}</h1>
+<svelte:element this={inShell ? "div" : "main"} class="app">
+  {#if !inShell}
+    <h1 class="sr-only">{name || "Dusk Wallet"}</h1>
+  {/if}
   <slot />
-</main>
+</svelte:element>
 
 <Tooltip id="main-tooltip" />
 <Toast />

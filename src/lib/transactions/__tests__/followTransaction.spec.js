@@ -18,6 +18,7 @@ const spentTx = (fields = {}) => ({
   tx: {
     blockHash,
     blockHeight: 4_687_200,
+    blockTimestamp: 1_793_166_840,
     err: null,
     gasSpent: 1_854_795,
     tx: { gasPrice: 1 },
@@ -82,12 +83,14 @@ describe("followTransaction", () => {
       blockHeight: 4_687_200n,
       error: null,
       fee: 1_854_795n,
+      // Its block's time.
+      timestamp: 1_793_166_840_000,
     });
     expect(withId).toHaveBeenCalledWith(hash);
     expect(query).toHaveBeenCalledTimes(5);
     expect(query).toHaveBeenNthCalledWith(
       2,
-      `tx(hash: "${hash}") { blockHash blockHeight err gasSpent tx { gasPrice } }`,
+      `tx(hash: "${hash}") { blockHash blockHeight blockTimestamp err gasSpent tx { gasPrice } }`,
       { signal: expect.any(AbortSignal) }
     );
     expect(query).toHaveBeenNthCalledWith(
@@ -112,7 +115,20 @@ describe("followTransaction", () => {
       blockHeight: 4_687_200n,
       error: "Panic: out of gas",
       fee: 2_500_000n,
+      timestamp: 1_793_166_840_000,
     });
+  });
+
+  it("should give no time for a block the node gives none for", async () => {
+    query
+      .mockResolvedValueOnce(spentTx({ blockTimestamp: null }))
+      .mockResolvedValueOnce(blockWith("Final"));
+
+    const result = followTransaction(hash);
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL);
+
+    await expect(result).resolves.toMatchObject({ timestamp: null });
   });
 
   it("should check right away when the node says a block took the transaction", async () => {
@@ -130,6 +146,7 @@ describe("followTransaction", () => {
       blockHeight: 4_687_200n,
       error: null,
       fee: 3_709_590n,
+      timestamp: 1_793_166_840_000,
     });
   });
 

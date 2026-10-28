@@ -1,6 +1,7 @@
 <script>
   import { Button } from "$lib/dusk/components";
   import { AppAnchor, AppAnchorButton } from "$lib/components";
+  import { LEGAL_LINKS } from "$lib/constants";
   import { IconHeadingCard } from "$lib/containers/Cards";
 
   /** @type {boolean} */
@@ -16,12 +17,12 @@
     <p>
       Accepting means you agree to the <AppAnchor
         className="text-link"
-        href="https://dusk.network/terms-of-use/"
+        href={LEGAL_LINKS.TERMS_OF_USE}
         rel="noopener noreferrer"
         target="_blank">Terms of Use</AppAnchor
       > and the <AppAnchor
         className="text-link"
-        href="https://dusk.network/privacy-policy/"
+        href={LEGAL_LINKS.PRIVACY_POLICY}
         rel="noopener noreferrer"
         target="_blank">Privacy Policy</AppAnchor
       >.

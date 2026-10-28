@@ -105,6 +105,7 @@
       fiatPrice={networkName === "mainnet" ? fiatPrice : undefined}
       locale={language}
       shielded={balance.shielded.value}
+      staked={(staked ?? 0n) + liquid}
       unshielded={balance.unshielded.value}
     />
 

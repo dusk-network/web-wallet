@@ -56,9 +56,11 @@ type SozuStatus = {
 };
 
 /**
- * A data driver: encodes a contract's arguments and decodes its replies.
+ * A data driver: encodes a contract's arguments and decodes its replies,
+ * and its events where it reads them.
  */
 type SozuDriver = {
+  decodeEvent?: (eventName: string, bytes: Uint8Array) => unknown;
   decodeOutputFn: (fnName: string, bytes: Uint8Array) => unknown;
   encodeInputFn: (fnName: string, json: string) => Uint8Array;
 };

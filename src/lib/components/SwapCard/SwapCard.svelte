@@ -22,9 +22,12 @@
 
   /** Where the back link goes, and what it says. */
   export let back = { href: "/dashboard", text: "Home" };
+
+  /** Wider, for a list, as the bridge's activity. */
+  export let wide = false;
 </script>
 
-<div class="swap-page">
+<div class="swap-page" class:swap-page--wide={wide}>
   <a class="swap-page__back" href={addBasePath(back.href)}
     ><Icon path={mdiArrowLeft} />{back.text}</a
   >
@@ -63,6 +66,11 @@
       width: 1rem;
       height: 1rem;
     }
+  }
+
+  .swap-page--wide .swap-page__back,
+  .swap-page--wide .swap-card {
+    width: min(100%, 44rem);
   }
 
   .swap-card {

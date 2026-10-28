@@ -240,6 +240,7 @@
 
 /* The top bar's pill, with the profiles in a popover under it. */
 .address-picker--compact {
+  min-width: 0;
   padding: 0;
   border: 0 none;
   border-radius: 999px;
@@ -251,6 +252,7 @@
   gap: 0.5rem;
   height: 2.375rem;
   min-width: 44px;
+  max-width: 100%;
   padding: 0 0.625rem 0 0.3125rem;
   border-radius: 999px;
   background: var(--calm-s1);
@@ -282,6 +284,8 @@
 }
 
 .address-picker__compact-name {
+  flex: 0 1 auto;
+  min-width: 0;
   max-width: 12rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -312,14 +316,23 @@
   }
 }
 
-/* The avatar alone where the top bar has no room for the name: below 976 px. */
+/*
+ * Where the top bar has less room, below 976 px: the avatar, and the .dusk
+ * name without its ending, cut short where it doesn't fit; no label.
+ */
 @media (max-width: 60.99rem) {
-  .address-picker--compact .address-picker__compact-name,
+  .address-picker--compact .address-picker__compact-name--label,
+  .address-picker--compact .address-picker__tld,
   .address-picker--compact .address-picker__chevron {
     display: none;
   }
 
   .address-picker--compact .address-picker__trigger {
+    gap: 0.375rem;
     padding: 0 0.3125rem;
+  }
+
+  .address-picker--compact .address-picker__trigger--named {
+    padding-right: 0.625rem;
   }
 }

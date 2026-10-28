@@ -7,7 +7,13 @@ import {
   it,
   vi,
 } from "vitest";
-import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  within,
+} from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { HIGHEST_DEFAULT_GAS_LIMIT } from "$lib/contracts/gasDefaults";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
@@ -117,14 +123,35 @@ describe("Settings", () => {
     );
   });
 
+  it("should link the Terms of Use and the Privacy Policy under Support, as setup does", () => {
+    const { getByRole } = render(Settings, {});
+    const support = /** @type {HTMLElement} */ (
+      getByRole("heading", { name: "Support" }).closest("article")
+    );
+
+    for (const [name, href] of [
+      ["Terms of Use", "https://dusk.network/terms-of-use/"],
+      ["Privacy Policy", "https://dusk.network/privacy-policy/"],
+    ]) {
+      const link = within(support).getByRole("link", { name });
+
+      expect(link).toHaveAttribute("href", href);
+      expect(link).toHaveAttribute("target", "_blank");
+    }
+  });
+
   it("should open with the preferences, and keep gas under Advanced, folded", async () => {
     const rendered = render(Settings, {});
     const { getAllByRole, getByRole, queryByRole } = rendered;
     const advanced = getByRole("button", { name: "Advanced" });
 
-    // The sections' heads between brackets; Advanced a plain button.
+    // The page's title its one heading with its name; under it, the
+    // sections' heads between brackets; Advanced a plain button.
     expect(
-      getAllByRole("heading", { level: 3 }).map((heading) => [
+      getAllByRole("heading", { level: 1 }).map((h) => h.textContent?.trim())
+    ).toStrictEqual(["Settings"]);
+    expect(
+      getAllByRole("heading", { level: 2 }).map((heading) => [
         heading.textContent?.trim(),
         heading.classList.contains("section-head"),
       ])
@@ -134,7 +161,7 @@ describe("Settings", () => {
       ["[Support]", true],
       ["[Reset wallet]", true],
     ]);
-    expect(advanced.closest("h3")).not.toHaveClass("section-head");
+    expect(advanced.closest("h2")).not.toHaveClass("section-head");
     expect(advanced).toHaveAttribute("aria-expanded", "false");
     expect(queryByRole("switch", { name: "Custom gas" })).toBeNull();
 

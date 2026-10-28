@@ -32,7 +32,7 @@
   <DepositLifecycle {deposit} />
   <div class="deposit-progress__actions">
     <AppAnchorButton
-      href={`/dashboard/bridge/transactions?view=deposits&tx=${transactionHash}`}
+      href={`/dashboard/bridge/transactions?tx=${transactionHash}`}
       text="Track in activity"
     />
     <AppAnchorButton href="/dashboard" text="Home" variant="tertiary" />

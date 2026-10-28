@@ -20,5 +20,6 @@ export {
   sozuUnstakeAllowed,
   stDuskFor,
 } from "./amounts";
+export { stDuskReceived } from "./received";
 export { loadSozuDriver, readSozuStatus } from "./status";
 export { default as sozuStore } from "./sozuStore";
