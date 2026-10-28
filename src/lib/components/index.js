@@ -18,6 +18,7 @@ export { default as DuskIcon } from "./DuskIcon/DuskIcon.svelte";
 export { default as EvmTransactions } from "./EvmTransactions/EvmTransactions.svelte";
 export { default as ExecuteMigration } from "./ExecuteMigration/ExecuteMigration.svelte";
 export { default as ExistingWalletNotice } from "./ExistingWalletNotice/ExistingWalletNotice.svelte";
+export { default as FullAddress } from "./FullAddress/FullAddress.svelte";
 export { default as GasControls } from "./GasControls/GasControls.svelte";
 export { default as GasFee } from "./GasFee/GasFee.svelte";
 export { default as GasSettings } from "./GasSettings/GasSettings.svelte";

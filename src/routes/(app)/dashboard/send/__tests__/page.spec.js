@@ -4,17 +4,39 @@ import { get } from "svelte/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { getGasSettings } from "$lib/contracts";
-import {
-  formatDusk,
-  formatDuskExact,
-  formatFee,
-  luxToDusk,
-} from "$lib/dusk/currency";
+import { formatDusk, luxToDusk } from "$lib/dusk/currency";
 import { gasPriceStore, settingsStore } from "$lib/stores";
 
 import SendPage from "../+page.svelte";
 
 const { resolveDuskName } = vi.hoisted(() => ({ resolveDuskName: vi.fn() }));
+
+const page = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<{ url: URL }> | null} */
+  store: null,
+  url: new URL("http://localhost/some-base-path/dashboard/send"),
+}));
+
+vi.mock("$app/stores", async () => {
+  const { writable } = await import("svelte/store");
+
+  page.store = writable({ url: page.url });
+
+  return {
+    page: {
+      subscribe: (/** @type {(value: any) => void} */ run) =>
+        /** @type {NonNullable<typeof page.store>} */ (page.store).subscribe(
+          run
+        ),
+    },
+  };
+});
+
+/** @param {URL} url */
+const openAt = (url) => {
+  page.url = url;
+  page.store?.set({ url });
+};
 
 vi.mock("$lib/dusk-domains", async (importOriginal) => ({
   .../** @type {typeof import("$lib/dusk-domains")} */ (await importOriginal()),
@@ -42,17 +64,23 @@ vi.mock("$lib/stores", async (importOriginal) => {
 });
 
 const { balance, currentProfile } = mockedWalletStore.getMockedStoreValue();
-const formattedShielded = formatDusk(balance.shielded.spendable, "en");
-const formattedUnshielded = formatDusk(balance.unshielded.value, "en");
+const OTHER =
+  "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
+
+/** @param {HTMLElement} container */
+const available = (container) =>
+  container.querySelector(".send__amount + .send__hint");
 
 describe("Send page", () => {
   afterEach(() => {
     cleanup();
     resolveDuskName.mockReset();
     settingsStore.reset();
+    openAt(new URL("http://localhost/some-base-path/dashboard/send"));
   });
 
   afterAll(() => {
+    vi.doUnmock("$app/stores");
     vi.doUnmock("$lib/dusk-domains");
     vi.doUnmock("$lib/dusk/string");
     vi.doUnmock("$lib/stores");
@@ -64,36 +92,30 @@ describe("Send page", () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
-  it("should update the spendable amount passed to its child components, and say which balance it is, when a `keyChange` event is fired", async () => {
+  it("should pay from the public balance, or the shielded one for a shielded address, and say which", async () => {
     const { container, getByRole } = render(SendPage);
-    const addressTextbox = getByRole("textbox");
-    const label = () => container.querySelector(".contract-statuses__label");
+    const to = getByRole("textbox", { name: "To" });
 
-    expect(
-      container.querySelector(".contract-statuses__value")
-    ).toHaveTextContent(formattedUnshielded);
-    expect(label()).toHaveTextContent(/^Spendable \(public\)$/);
+    expect(available(container)).toHaveTextContent(
+      `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`
+    );
 
-    await fireEvent.input(addressTextbox, {
+    await fireEvent.input(to, {
       target: { value: currentProfile.address.toString() },
     });
 
-    expect(
-      container.querySelector(".contract-statuses__value")
-    ).toHaveTextContent(formattedShielded);
-    expect(label()).toHaveTextContent(/^Spendable \(shielded\)$/);
+    expect(available(container)).toHaveTextContent(
+      `Available ${formatDusk(balance.shielded.spendable, "en")} DUSK from your shielded balance`
+    );
 
-    await fireEvent.input(addressTextbox, {
+    await fireEvent.input(to, {
       target: { value: currentProfile.account.toString() },
     });
 
-    expect(
-      container.querySelector(".contract-statuses__value")
-    ).toHaveTextContent(formattedUnshielded);
-    expect(label()).toHaveTextContent(/^Spendable \(public\)$/);
+    expect(available(container)).toHaveTextContent(/from your public balance$/);
   });
 
-  it("should show the public spendable amount again when the recipient entered after a shielded one doesn't resolve, or is cleared", async () => {
+  it("should pay from the public balance again when the recipient entered after a shielded one doesn't resolve, or is cleared", async () => {
     resolveDuskName.mockImplementation((name) =>
       Promise.resolve(
         name === "alice.dusk"
@@ -103,33 +125,35 @@ describe("Send page", () => {
     );
 
     const { container, findByText, getByRole } = render(SendPage);
-    const spendable = () =>
-      container.querySelector(".contract-statuses__value");
 
     /** @param {string} value */
     const enter = (value) =>
-      fireEvent.input(getByRole("textbox"), { target: { value } });
+      fireEvent.input(getByRole("textbox", { name: "To" }), {
+        target: { value },
+      });
 
     await enter("alice.dusk");
 
-    expect(await findByText("Shielded address")).toBeInTheDocument();
-    expect(spendable()).toHaveTextContent(formattedShielded);
+    expect(
+      await findByText("alice.dusk points to a shielded address")
+    ).toBeInTheDocument();
+    expect(available(container)).toHaveTextContent(/shielded balance$/);
 
     await enter("bob.dusk");
 
-    expect(await findByText("bob.dusk isn't registered")).toBeInTheDocument();
-    expect(spendable()).toHaveTextContent(formattedUnshielded);
+    expect(await findByText("bob.dusk isn't registered.")).toBeInTheDocument();
+    expect(available(container)).toHaveTextContent(/public balance$/);
 
     await enter(currentProfile.address.toString());
 
-    expect(spendable()).toHaveTextContent(formattedShielded);
+    expect(available(container)).toHaveTextContent(/shielded balance$/);
 
     await enter("");
 
-    expect(spendable()).toHaveTextContent(formattedUnshielded);
+    expect(available(container)).toHaveTextContent(/public balance$/);
   });
 
-  it("should hide the spendable balance, but not the amount or the Review amounts, while balances are hidden", async () => {
+  it("should hide the balance it pays from, but not the amount or the summary, while balances are hidden", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     const { container, getByRole } = render(SendPage);
@@ -139,61 +163,42 @@ describe("Send page", () => {
       get(gasPriceStore)
     );
     const fee = gasLimit * gasPrice;
-    const maxAmount = luxToDusk(balance.unshielded.value - fee);
-    const spendable = container.querySelector(".contract-statuses__value");
+    const amount = getByRole("spinbutton", { name: "Amount" });
 
-    expect(spendable).toHaveTextContent(/^•••• hidden$/);
-    expect(container).not.toHaveTextContent(formattedUnshielded);
+    expect(available(container)).toHaveTextContent(
+      /^Available •••• hidden DUSK from your public balance$/
+    );
+    expect(container).not.toHaveTextContent(
+      formatDusk(balance.unshielded.value, "en")
+    );
 
-    await fireEvent.input(getByRole("textbox"), {
-      target: {
-        value:
-          "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff",
-      },
+    await fireEvent.input(getByRole("textbox", { name: "To" }), {
+      target: { value: OTHER },
     });
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    const amountInput = getByRole("spinbutton");
-
-    await fireEvent.input(amountInput, { target: { value: 10 } });
-
-    expect(amountInput).toHaveValue(10);
-
-    await fireEvent.click(getByRole("button", { name: "Use max" }));
-
-    expect(amountInput).toHaveValue(maxAmount);
-
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-
-    expect(
-      Array.from(container.querySelectorAll(".review-amount__value"), (value) =>
-        value.textContent?.trim()
-      )
-    ).toStrictEqual([
-      `${formatDuskExact(balance.unshielded.value - fee, "en")} DUSK`,
-      `${formatFee(fee, "en", { max: true })} DUSK`,
-      `${formatFee(balance.unshielded.value, "en", { max: true })} DUSK`,
-    ]);
-    expect(spendable).toHaveTextContent(/^•••• hidden$/);
+    expect(amount).toHaveValue(luxToDusk(balance.unshielded.value - fee));
+    expect(container.querySelector(".send__summary")).toHaveTextContent(
+      /Amount [\d,.]+ DUSK/
+    );
+    expect(available(container)).toHaveTextContent(/•••• hidden/);
   });
 
   it("should start a transfer from the default gas limit of its recipient", async () => {
     const { container, getByRole } = render(SendPage);
     const maxFee = () =>
       container.querySelector(".gas-fee__amount-value")?.textContent;
+    const to = getByRole("textbox", { name: "To" });
 
-    await fireEvent.input(getByRole("textbox"), {
+    await fireEvent.input(to, {
       target: { value: currentProfile.account.toString() },
     });
-    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(maxFee()).toBe("0.0025");
 
-    await fireEvent.click(getByRole("button", { name: "Back" }));
-    await fireEvent.input(getByRole("textbox"), {
+    await fireEvent.input(to, {
       target: { value: currentProfile.address.toString() },
     });
-    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(maxFee()).toBe("0.05");
   });
@@ -201,10 +206,9 @@ describe("Send page", () => {
   it("should keep the user's gas limit when other settings change", async () => {
     const { container, getByLabelText, getByRole } = render(SendPage);
 
-    await fireEvent.input(getByRole("textbox"), {
+    await fireEvent.input(getByRole("textbox", { name: "To" }), {
       target: { value: currentProfile.account.toString() },
     });
-    await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Edit" }));
     await fireEvent.input(getByLabelText(/gas limit/i), {
       target: { value: "3000000" },
@@ -216,5 +220,32 @@ describe("Send page", () => {
     expect(container.querySelector(".gas-fee__amount-value")?.textContent).toBe(
       "0.003"
     );
+  });
+
+  it("should open with the recipient in the address, as from Send again or a contact", () => {
+    openAt(
+      new URL(`http://localhost/some-base-path/dashboard/send?to=${OTHER}`)
+    );
+
+    const { getByRole } = render(SendPage);
+
+    expect(getByRole("textbox", { name: "To" })).toHaveValue(OTHER);
+  });
+
+  it("should start again with another recipient the address asks for while the page shows", async () => {
+    openAt(
+      new URL(`http://localhost/some-base-path/dashboard/send?to=${OTHER}`)
+    );
+
+    const { getByRole } = render(SendPage);
+    const self = String(currentProfile?.account);
+
+    await act(() =>
+      openAt(
+        new URL(`http://localhost/some-base-path/dashboard/send?to=${self}`)
+      )
+    );
+
+    expect(getByRole("textbox", { name: "To" })).toHaveValue(self);
   });
 });

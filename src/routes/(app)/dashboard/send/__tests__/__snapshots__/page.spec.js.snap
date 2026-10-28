@@ -2,361 +2,346 @@
 
 exports[`Send page > should render the send page 1`] = `
 <div
-  class="dusk-card dusk-card--gap-large"
-  reverse="true"
+  class="send svelte-x7e9dl"
 >
-  <!---->
-  <div
-    class="dusk-card__header-container"
+  <section
+    aria-labelledby="some-generated-id-title"
+    class="send__form svelte-x7e9dl"
   >
-    <header
-      class="dusk-card__header"
-      slot="header"
+    <h2
+      class="send__title svelte-x7e9dl"
+      id="some-generated-id-title"
     >
-      <div
-        class="dusk-card__heading-container"
+      Send
+    </h2>
+     
+    <div
+      class="send__field svelte-x7e9dl"
+    >
+      <label
+        class="send__label svelte-x7e9dl"
+        for="some-generated-id-to"
       >
-        <h3
-          class="h4"
-        >
-          Send
-        </h3>
+        To
+      </label>
+       
+      <div
+        class="send__to svelte-x7e9dl"
+      >
+        <!---->
+        <input
+          aria-invalid="false"
+          autocomplete="off"
+          class="dusk-textbox dusk-textbox-text send__to-input"
+          id="some-generated-id-to"
+          placeholder="Address or .dusk name"
+          spellcheck="false"
+          type="text"
+        />
+        
+        <!---->
          
-        <div
-          class="dusk-card__heading-icons"
-        >
-          <!---->
-          <svg
-            class="dusk-icon dusk-icon--size--default"
-            role="graphics-symbol"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M5,17.59L15.59,7H9V5H19V15H17V8.41L6.41,19L5,17.59Z"
-            />
-          </svg>
-          
-          
-        </div>
+        <!---->
+         
         <!---->
       </div>
-    </header>
-    <!---->
-  </div>
-  <!---->
-   
-  <div
-    class="dusk-card__body-container"
-  >
-    <!---->
-    <!---->
+       
+      <!---->
+       
+      <!---->
+       
+      <!---->
+       
+      <!---->
+       
+      <!---->
+       
+      <!---->
+       
+      <div
+        class="scan svelte-spu5d1"
+      >
+        <video
+          class="svelte-spu5d1"
+        >
+          <track
+            kind="captions"
+          />
+        </video>
+         
+        <div
+          class="scan__highlight svelte-spu5d1"
+        />
+        <!---->
+         
+        <button
+          class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
+          type="button"
+        >
+          <span
+            class="dusk-button__text"
+          >
+            Close
+          </span>
+          <!---->
+        </button>
+        <!---->
+      </div>
+      <!---->
+       
+      <!---->
+       
+      <!---->
+    </div>
+     
     <div
-      class="contract-statuses svelte-193vool"
+      class="send__field svelte-x7e9dl"
     >
-      <dl
-        class="contract-statuses__list svelte-193vool"
+      <label
+        class="send__label svelte-x7e9dl"
+        for="some-generated-id-amount"
+      >
+        Amount
+      </label>
+       
+      <div
+        class="send__amount svelte-x7e9dl"
+      >
+        <!---->
+        <input
+          class="dusk-textbox dusk-textbox-number send__amount-input"
+          id="some-generated-id-amount"
+          max="1172.4975"
+          min="1e-9"
+          required=""
+          step="0.000000001"
+          type="number"
+        />
+        
+        <!---->
+         
+        <span
+          aria-hidden="true"
+          class="send__unit svelte-x7e9dl"
+        >
+          DUSK
+        </span>
+         
+        <button
+          class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--small"
+          type="button"
+        >
+          <span
+            class="dusk-button__text"
+          >
+            Max
+          </span>
+          <!---->
+        </button>
+        <!---->
+      </div>
+       
+      <p
+        class="send__hint svelte-x7e9dl"
+      >
+        Available 
+        <!---->
+        1,172.5
+        
+        <!---->
+         DUSK from your public balance
+      </p>
+       
+      <!---->
+    </div>
+     
+    <div
+      class="send__field svelte-x7e9dl"
+    >
+      <label
+        class="send__label svelte-x7e9dl"
+        for="some-generated-id-memo"
+      >
+        Memo (optional)
+      </label>
+       
+      <!---->
+      <textarea
+        class="dusk-textbox dusk-textbox-multiline send__memo-input"
+        id="some-generated-id-memo"
+      />
+      
+      <!---->
+       
+      <p
+        class="send__hint svelte-x7e9dl"
+      >
+        Visible on chain, for good: don't put personal details in it.
+      </p>
+      <!---->
+    </div>
+  </section>
+   
+  <aside
+    aria-labelledby="some-generated-id-summary"
+    class="send__summary svelte-x7e9dl"
+  >
+    <h2
+      class="send__summary-title svelte-x7e9dl"
+      id="some-generated-id-summary"
+    >
+      Summary
+    </h2>
+     
+    <dl
+      class="send__rows svelte-x7e9dl"
+    >
+      <div
+        class="svelte-x7e9dl"
       >
         <dt
-          class="contract-statuses__label svelte-193vool"
+          class="svelte-x7e9dl"
         >
-          Spendable (public)
+          To
         </dt>
          
         <dd
-          class="contract-statuses__value svelte-193vool"
+          class="svelte-x7e9dl"
         >
-          <span>
-            <!---->
-            1,172.5
-            
-            <!---->
-          </span>
-           
-          <!---->
-          <svg
-            aria-label="DUSK"
-            class="dusk-icon dusk-icon--size--default contract-statuses__icon"
-            data-tooltip-id="main-tooltip"
-            data-tooltip-text="DUSK"
-            role="img"
-            viewBox="0 0 24 24"
+          <span
+            class="send__muted svelte-x7e9dl"
           >
-            <path
-              d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-            />
-          </svg>
-          
+            Not set
+          </span>
           <!---->
         </dd>
-        
+      </div>
+       
+      <div
+        class="svelte-x7e9dl"
+      >
+        <dt
+          class="svelte-x7e9dl"
+        >
+          Amount
+        </dt>
+         
+        <dd
+          class="svelte-x7e9dl"
+        >
+          1 DUSK
+        </dd>
+      </div>
+       
+      <!---->
+    </dl>
+     
+    <div
+      class="gas-settings svelte-1wfde5f"
+    >
+      <dl
+        class="gas-settings__edit svelte-1wfde5f"
+      >
+        <div
+          class="gas-fee svelte-9uj43"
+        >
+          <span>
+            Network fee (at most)
+          </span>
+           
+          <span
+            class="gas-fee__amount svelte-9uj43"
+          >
+            <span
+              class="gas-fee__amount-value"
+            >
+              0.0025
+            </span>
+             DUSK
+          </span>
+        </div>
+        <!---->
+         
+        <dd>
+          <button
+            class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
+            type="button"
+          >
+            <span
+              class="dusk-button__text"
+            >
+              Edit
+            </span>
+            <!---->
+          </button>
+          <!---->
+        </dd>
       </dl>
        
       <!---->
     </div>
     <!---->
      
-    <div
-      class="operation"
+    <dl
+      class="send__rows send__rows--total svelte-x7e9dl"
     >
       <div
-        class="dusk-wizard"
+        class="svelte-x7e9dl"
       >
-        <div
-          slot="stepper"
+        <dt
+          class="svelte-x7e9dl"
         >
-          <!---->
-          <div
-            class="dusk-stepper dusk-stepper--variant--primary"
-            style="--columns: 4; --progress-width: 0%;"
-          >
-            <!---->
-            <span
-              aria-current="step"
-              aria-labelledby="step-some-generated-id"
-              class="dusk-stepper__step dusk-stepper__step--processed"
-            >
-              <span
-                class="dusk-stepper__step-number"
-              >
-                1
-              </span>
-              <!---->
-            </span>
-             
-            <span
-              class="dusk-stepper__step-label"
-              id="step-some-generated-id"
-            >
-              Address
-            </span>
-            <span
-              aria-labelledby="step-some-generated-id"
-              class="dusk-stepper__step"
-            >
-              <span
-                class="dusk-stepper__step-number"
-              >
-                2
-              </span>
-              <!---->
-            </span>
-             
-            <span
-              class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
-              id="step-some-generated-id"
-            >
-              Amount
-            </span>
-            <span
-              aria-labelledby="step-some-generated-id"
-              class="dusk-stepper__step"
-            >
-              <span
-                class="dusk-stepper__step-number"
-              >
-                3
-              </span>
-              <!---->
-            </span>
-             
-            <span
-              class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
-              id="step-some-generated-id"
-            >
-              Review
-            </span>
-            <span
-              aria-labelledby="step-some-generated-id"
-              class="dusk-stepper__step"
-            >
-              <span
-                class="dusk-stepper__step-number"
-              >
-                4
-              </span>
-              <!---->
-            </span>
-             
-            <span
-              class="dusk-stepper__step-label dusk-stepper__step-label--invisible"
-              id="step-some-generated-id"
-            >
-              Done
-            </span>
-            
-            <!---->
-          </div>
-          
-          <!---->
-        </div>
-        <!---->
+          Total
+        </dt>
          
-        <!---->
-        <!---->
-        <!---->
-        <!---->
-         
-        <!---->
-         
-        <div
-          class="operation__send svelte-x7e9dl"
+        <dd
+          class="svelte-x7e9dl"
         >
-          <div
-            class="operation__address-wrapper svelte-x7e9dl"
-          >
-            <p>
-              Address or .dusk name
-            </p>
-             
-            <!---->
-          </div>
-           
-          <!---->
-          <textarea
-            aria-invalid="false"
-            aria-label="Recipient address or .dusk name"
-            class="dusk-textbox dusk-textbox-multiline operation__send-address"
-            required=""
-          />
-          
-          <!---->
-           
-          <!---->
-           
-          <!---->
-           
-          <!---->
-           
-          <div
-            class="scan svelte-spu5d1"
-          >
-            <video
-              class="svelte-spu5d1"
-            >
-              <track
-                kind="captions"
-              />
-            </video>
-             
-            <div
-              class="scan__highlight svelte-spu5d1"
-            />
-            <!---->
-             
-            <button
-              class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--small"
-              type="button"
-            >
-              <span
-                class="dusk-button__text"
-              >
-                Close
-              </span>
-              <!---->
-            </button>
-            <!---->
-          </div>
-          <!---->
-           
-          <!---->
-           
-          <!---->
-        </div>
-        <!---->
-         
-        <!---->
-        <div
-          class="dusk-wizard__step-navigation"
-        >
-          <!---->
-          <a
-            aria-disabled="false"
-            class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default dusk-icon-button--labeled"
-            href="/some-base-path/dashboard"
-          >
-            <!---->
-            <!---->
-            <!---->
-            <svg
-              class="dusk-icon dusk-icon--size--default dusk-anchor-button__icon"
-              role="graphics-symbol"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
-              />
-            </svg>
-            
-            <!---->
-             
-            <span
-              class="dusk-anchor-button__text"
-            >
-              Back
-            </span>
-            <!---->
-            
-            <!---->
-          </a>
-          
-          <!---->
-           
-          <button
-            class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
-            disabled=""
-            type="button"
-          >
-            <!---->
-            <span
-              class="dusk-button__text"
-            >
-              Next
-            </span>
-            <!---->
-             
-            <!---->
-            <svg
-              class="dusk-icon dusk-icon--size--default dusk-button__icon"
-              role="graphics-symbol"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"
-              />
-            </svg>
-            
-            <!---->
-            <!---->
-          </button>
-          <!---->
-        </div>
-        
-        <!---->
-        
-        <!---->
-         
-        <!---->
-        
-        <!---->
-         
-        <!---->
-        
-        <!---->
-         
-        <!---->
-        
-        <!---->
-        <!---->
+          Up to 1.0025 DUSK
+        </dd>
       </div>
+    </dl>
+     
+    <button
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default send__send"
+      disabled=""
+      type="button"
+    >
+      <span
+        class="dusk-button__text"
+      >
+        Send 1 DUSK
+      </span>
       <!---->
-    </div>
+    </button>
     <!---->
-    
+     
+    <p
+      class="send__final svelte-x7e9dl"
+    >
+      Sends can't be undone.
+    </p>
+     
+    <!---->
+  </aside>
+   
+  <div
+    class="send__phone-bar svelte-x7e9dl"
+  >
+    <button
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default send__review"
+      disabled=""
+      type="button"
+    >
+      <span
+        class="dusk-button__text"
+      >
+        Review
+      </span>
+      <!---->
+    </button>
     <!---->
   </div>
   <!---->
-   
-  <!---->
-  
 </div>
 `;

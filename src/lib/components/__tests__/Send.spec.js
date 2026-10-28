@@ -8,19 +8,20 @@ import {
   vi,
 } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
-import {
-  duskToLux,
-  formatDuskExact,
-  formatFee,
-  luxToDusk,
-} from "$lib/dusk/currency";
+import { tick } from "svelte";
+import { duskToLux, luxToDusk } from "$lib/dusk/currency";
 import { shortenAddress } from "$lib/dusk/string";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import { addBasePath } from "$lib/navigation";
 import { DEFAULT_BLOCKLISTED_ADDRESSES } from "$lib/security/addressBlocklist";
+import {
+  getContact,
+  listContacts,
+  removeContact,
+  saveContact,
+} from "$lib/contacts";
 
 import { Send } from "..";
-import { tick } from "svelte";
 
 vi.mock("$lib/dusk/string", async (importOriginal) => {
   /** @type {typeof import("$lib/dusk/string")} */
@@ -60,15 +61,18 @@ vi.mock("qr-scanner", () => ({
 }));
 
 /**
- * The Review step's amounts, as their labels and values.
+ * The summary's rows, as their labels and values.
  *
  * @param {HTMLElement} container
  */
-const getReviewAmounts = (container) =>
-  Array.from(container.querySelectorAll(".review-amount"), (row) => [
-    row.querySelector("dt")?.textContent,
-    row.querySelector("dd")?.textContent?.trim(),
-  ]);
+const getSummary = (container) =>
+  Array.from(
+    container.querySelectorAll(".send__summary .send__rows > div"),
+    (row) => [
+      row.querySelector("dt")?.textContent,
+      row.querySelector("dd")?.textContent?.replace(/\s+/g, " ").trim(),
+    ]
+  );
 
 describe("Send", () => {
   const lastTxId =
@@ -77,7 +81,14 @@ describe("Send", () => {
     "zTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE4FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
   const shieldedAddress =
     "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnMM";
-  const bep20BridgeAddress = "0x1234567890123456789012345678901234567890"; // Example BEP20 bridge address
+  const otherAccount =
+    "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
+  const otherShielded =
+    "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnM";
+
+  // The BEP20 bridge's account on Dusk.
+  const bep20BridgeAddress =
+    "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
   const baseProps = {
     availableBalance: 1_000_000_000_000n,
     bep20BridgeAddress,
@@ -96,9 +107,20 @@ describe("Send", () => {
     shieldedAddress,
     shieldedBalance: 500_000_000_000n,
   };
+  const { gasLimit, gasPrice } = baseProps.gasSettings;
+  const fee = gasLimit * gasPrice;
 
   const invalidAddress =
     "aB5rL7yC2zK9eV3xH1gQ6fP4jD8sM0iU2oX7wG9nZ8lT3hU4jP5mK8nS6qJ3wF4aA9bB2cC5dD8eE7";
+
+  /** @param {(role: string, options: object) => HTMLElement} getByRole */
+  const fieldsOf = (getByRole) => ({
+    amount: () => getByRole("spinbutton", { name: "Amount" }),
+    memo: () => getByRole("textbox", { name: /^Memo/ }),
+    review: () => getByRole("button", { name: "Review" }),
+    send: () => getByRole("button", { name: /^Send/ }),
+    to: () => getByRole("textbox", { name: "To" }),
+  });
 
   beforeEach(() => {
     followTransaction.mockReturnValue(new Promise(() => {}));
@@ -110,42 +132,40 @@ describe("Send", () => {
     baseProps.resolveName.mockReset();
     followTransaction.mockReset();
     hasCamera.mockClear();
+
+    for (const contact of listContacts()) {
+      removeContact(contact.id);
+    }
   });
 
-  describe("Address step", () => {
-    it("should render the Send component Address step", () => {
+  describe("Recipient", () => {
+    it("should render the one-page Send form, with its summary", () => {
       const { container } = render(Send, baseProps);
 
       expect(container.firstElementChild).toMatchSnapshot();
     });
 
-    it("should disable the next button if the address is empty", () => {
+    it("should keep Send and Review disabled while the recipient is empty or isn't valid", async () => {
       const { getByRole } = render(Send, baseProps);
-      const nextButton = getByRole("button", { name: "Next" });
-      const addressInput = getByRole("textbox");
+      const fields = fieldsOf(getByRole);
 
-      expect(addressInput).toHaveValue("");
-      expect(nextButton).toBeDisabled();
-    });
+      expect(fields.to()).toHaveValue("");
+      expect(fields.send()).toBeDisabled();
+      expect(fields.review()).toBeDisabled();
 
-    it("should disable the next button if the address is invalid", async () => {
-      const { getByRole } = render(Send, baseProps);
-      const nextButton = getByRole("button", { name: "Next" });
-      const addressInput = getByRole("textbox");
-
-      await fireEvent.input(addressInput, {
+      await fireEvent.input(fields.to(), {
         target: { value: invalidAddress },
       });
 
-      expect(addressInput).toHaveValue(invalidAddress);
-      expect(nextButton).toBeDisabled();
+      expect(fields.send()).toBeDisabled();
+      expect(fields.review()).toBeDisabled();
     });
 
-    it("should take Enter after an address as Next, instead of adding a line break", async () => {
+    it("should take Enter after an address to the amount, instead of adding anything", async () => {
       const { getByRole } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
+      const fields = fieldsOf(getByRole);
 
-      await fireEvent.input(addressInput, {
+      await fireEvent.input(fields.to(), {
         target: { value: shieldedAddress },
       });
 
@@ -155,77 +175,77 @@ describe("Send", () => {
         key: "Enter",
       });
 
-      addressInput.dispatchEvent(enter);
+      fields.to().dispatchEvent(enter);
       await tick();
 
       expect(enter.defaultPrevented).toBe(true);
-      expect(getByRole("spinbutton", { name: "Amount" })).toBeInTheDocument();
+      expect(fields.amount()).toHaveFocus();
     });
 
-    it("should stay on the address step on Enter while the address is invalid, and say why", async () => {
+    it("should say why on Enter while the address isn't valid", async () => {
       const { getByRole, getByText } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
+      const fields = fieldsOf(getByRole);
 
-      await fireEvent.input(addressInput, {
+      await fireEvent.input(fields.to(), {
         target: { value: invalidAddress },
       });
-      await fireEvent.keyDown(addressInput, { key: "Enter" });
+      await fireEvent.keyDown(fields.to(), { key: "Enter" });
 
-      expect(addressInput).toHaveValue(invalidAddress);
-      expect(getByRole("button", { name: "Next" })).toBeDisabled();
-      expect(getByText("Not a valid address")).toBeInTheDocument();
-      expect(addressInput).toHaveAccessibleDescription(
-        "Not a valid address Check it, or paste it again."
+      expect(fields.amount()).not.toHaveFocus();
+      expect(fields.send()).toBeDisabled();
+      expect(getByText("Not a valid address.")).toBeInTheDocument();
+      expect(fields.to()).toHaveAccessibleDescription(
+        "Not a valid address. Check it, or paste it again."
       );
-      expect(addressInput).toHaveAttribute("aria-invalid", "true");
+      expect(fields.to()).toHaveAttribute("aria-invalid", "true");
     });
 
     it("should remove the spaces and line breaks a pasted address brings", async () => {
       const { getByRole } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
+      const fields = fieldsOf(getByRole);
 
-      await fireEvent.paste(addressInput);
-      await fireEvent.input(addressInput, {
+      await fireEvent.paste(fields.to());
+      await fireEvent.input(fields.to(), {
         target: {
           value: ` ${shieldedAddress.slice(0, 40)}\n${shieldedAddress.slice(40)}\n`,
         },
       });
 
-      expect(addressInput).toHaveValue(shieldedAddress);
-      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+      expect(fields.to()).toHaveValue(shieldedAddress);
+      expect(fields.send()).toBeEnabled();
     });
 
     it("should point out an invalid address once it is pasted or left, not while it is typed", async () => {
       const { getByRole, queryByText } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
+      const fields = fieldsOf(getByRole);
 
-      await fireEvent.input(addressInput, {
+      await fireEvent.input(fields.to(), {
         target: { value: invalidAddress.slice(0, 20) },
       });
 
-      expect(queryByText("Not a valid address")).toBeNull();
-      expect(addressInput).toHaveAttribute("aria-invalid", "false");
+      expect(queryByText("Not a valid address.")).toBeNull();
+      expect(fields.to()).toHaveAttribute("aria-invalid", "false");
 
-      await fireEvent.blur(addressInput);
+      await fireEvent.blur(fields.to());
 
-      expect(queryByText("Not a valid address")).toBeInTheDocument();
+      expect(queryByText("Not a valid address.")).toBeInTheDocument();
 
-      await fireEvent.input(addressInput, { target: { value: "" } });
+      await fireEvent.input(fields.to(), { target: { value: "" } });
 
-      expect(queryByText("Not a valid address")).toBeNull();
+      expect(queryByText("Not a valid address.")).toBeNull();
 
-      await fireEvent.paste(addressInput);
-      await fireEvent.input(addressInput, {
+      await fireEvent.paste(fields.to());
+      await fireEvent.input(fields.to(), {
         target: { value: invalidAddress },
       });
 
-      expect(queryByText("Not a valid address")).toBeInTheDocument();
+      expect(queryByText("Not a valid address.")).toBeInTheDocument();
 
-      await fireEvent.input(addressInput, {
+      await fireEvent.input(fields.to(), {
         target: { value: shieldedAddress },
       });
 
-      expect(queryByText("Not a valid address")).toBeNull();
+      expect(queryByText("Not a valid address.")).toBeNull();
     });
 
     it("should offer no QR scan without a camera", async () => {
@@ -236,7 +256,7 @@ describe("Send", () => {
       await hasCamera.mock.results[0].value;
       await tick();
 
-      expect(queryByRole("button", { name: "Scan QR" })).toBeNull();
+      expect(queryByRole("button", { name: "Scan a QR code" })).toBeNull();
     });
 
     it("should offer a QR scan with a camera", async () => {
@@ -244,51 +264,68 @@ describe("Send", () => {
 
       const { findByRole } = render(Send, baseProps);
 
-      expect(await findByRole("button", { name: "Scan QR" })).toBeEnabled();
+      expect(
+        await findByRole("button", { name: "Scan a QR code" })
+      ).toBeEnabled();
     });
 
-    it("should show no banner for a public account, as the page's spendable balance says which one pays", async () => {
-      const { container, getByRole } = render(Send, baseProps);
-      const sendToAddress =
-        "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
-      const addressInput = getByRole("textbox");
+    it.each([
+      [
+        "a public account",
+        otherAccount,
+        "A public account",
+        "Public: the amount and both accounts are visible on chain.",
+      ],
+      [
+        "a shielded address",
+        otherShielded,
+        "A shielded address",
+        "Shielded: not shown on the public chain. The person you pay sees what you send them.",
+      ],
+    ])(
+      "should show %s in full, and what the chain shows of the transfer",
+      async (_, address, title, privacy) => {
+        const { container, getByRole } = render(Send, baseProps);
 
-      await fireEvent.input(addressInput, {
-        target: { value: sendToAddress },
-      });
+        await fireEvent.input(fieldsOf(getByRole).to(), {
+          target: { value: address },
+        });
 
-      expect(addressInput).toHaveValue(sendToAddress);
-      expect(container.querySelector(".banner")).toBeNull();
-      expect(getByRole("button", { name: "Next" })).toBeEnabled();
-      expect(container.firstElementChild).toMatchSnapshot();
-    });
+        const card = getAsHTMLElement(container, ".send__card");
+
+        expect(card).toHaveTextContent(title);
+        expect(getAsHTMLElement(card, ".full-address")).toHaveTextContent(
+          address
+        );
+        expect(getAsHTMLElement(card, ".full-address__tail")).toHaveTextContent(
+          address.slice(-6)
+        );
+        expect(card).toHaveTextContent(privacy);
+        expect(container.querySelector(".banner")).toBeNull();
+      }
+    );
 
     it("should display only a one-line warning if the address input is the user's own public account", async () => {
       const { container, getByRole } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
 
-      await fireEvent.input(addressInput, {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: publicAddress },
       });
 
       const banners = container.querySelectorAll(".banner");
 
-      expect(addressInput).toHaveValue(publicAddress);
       expect(banners).toHaveLength(1);
       expect(banners[0]).toHaveClass("banner--warning");
       expect(banners[0]).toHaveTextContent(/^This is your own address\.$/);
-      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should display a notice if the address input is the BEP20 bridge address", async () => {
-      const { getByRole, findByText, getByText } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
+      const { findByText, getByRole, getByText } = render(Send, baseProps);
 
-      await fireEvent.input(addressInput, {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: bep20BridgeAddress },
       });
 
-      expect(addressInput).toHaveValue(bep20BridgeAddress);
       expect(await findByText("BEP20 bridge address")).toBeInTheDocument();
       expect(
         getByText(
@@ -296,398 +333,200 @@ describe("Send", () => {
         )
       ).toBeInTheDocument();
     });
+
+    it("should start from the recipient it opens with, as from Send again", () => {
+      const { container, getByRole } = render(Send, {
+        ...baseProps,
+        initialRecipient: otherAccount,
+      });
+
+      expect(fieldsOf(getByRole).to()).toHaveValue(otherAccount);
+      expect(getAsHTMLElement(container, ".send__card")).toHaveTextContent(
+        "A public account"
+      );
+    });
   });
 
-  describe("Amount step", () => {
-    it("should start over from the gas settings it gets in the address step", async () => {
-      const { container, getByRole, rerender } = render(Send, baseProps);
+  describe("Amount and memo", () => {
+    it("should take new gas settings while the form shows, unless the gas was edited here", async () => {
+      const { container, getByLabelText, getByRole, rerender } = render(
+        Send,
+        baseProps
+      );
       const maxFee = () =>
         container.querySelector(".gas-fee__amount-value")?.textContent;
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: shieldedAddress },
       });
       await rerender({
         gasLimits: { ...baseProps.gasLimits, gasLimitLower: 30_000_000n },
         gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n },
       });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
 
       expect(maxFee()).toBe("0.05");
-      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+      expect(fieldsOf(getByRole).send()).toBeEnabled();
 
-      await fireEvent.click(getByRole("button", { name: "Back" }));
-      await rerender({
-        gasLimits: { ...baseProps.gasLimits, gasLimitLower: 60_000_000n },
-        gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      expect(getByRole("button", { name: "Next" })).toBeDisabled();
-    });
-
-    it("should take new default gas, as the node's price, on the amount step, unless the gas was edited there", async () => {
-      const { getByRole, rerender } = render(Send, baseProps);
-      const { gasLimit } = baseProps.gasSettings;
-
-      await fireEvent.input(getByRole("textbox"), {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Send" }));
-      await vi.advanceTimersToNextTimerAsync();
-
-      expect(baseProps.execute).toHaveBeenCalledWith(
-        shieldedAddress,
-        duskToLux(1),
-        "",
-        3n,
-        gasLimit
-      );
-
-      cleanup();
-      baseProps.execute.mockClear();
-
-      // Edited here: the gas edited is the gas sent.
-      const edited = render(Send, baseProps);
-
-      await fireEvent.input(edited.getByRole("textbox"), {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(edited.getByRole("button", { name: "Next" }));
-      await fireEvent.click(edited.getByRole("button", { name: "Edit" }));
-      await fireEvent.input(edited.getByLabelText(/gas limit/i), {
-        target: { value: "30000000" },
+      await fireEvent.click(getByRole("button", { name: "Edit" }));
+      await fireEvent.input(getByLabelText(/gas limit/i), {
+        target: { value: "40000000" },
       });
       await tick();
-      await edited.rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
-      await fireEvent.click(edited.getByRole("button", { name: "Next" }));
-      await fireEvent.click(edited.getByRole("button", { name: "Send" }));
-      await vi.advanceTimersToNextTimerAsync();
+      await rerender({ gasSettings: { gasLimit: 60_000_000n, gasPrice: 1n } });
 
-      expect(baseProps.execute).toHaveBeenCalledWith(
-        shieldedAddress,
-        duskToLux(1),
-        "",
-        1n,
-        30_000_000n
-      );
+      expect(maxFee()).toBe("0.04");
     });
 
-    it("should render the Send component Amount step", async () => {
-      const { container, getByRole } = render(Send, baseProps);
-
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      expect(container.firstElementChild).toMatchSnapshot();
-    });
-
-    it("should disable the next button if the amount is invalid on mount", async () => {
-      const props = {
+    it("should keep Send disabled, and say why, while the balance can't pay the fee", async () => {
+      const { getByRole, getByText } = render(Send, {
         ...baseProps,
-        gasSettings: {
-          ...baseProps.gasSettings,
-          gasLimit: 40000000n,
-          gasPrice: 40000000n,
-        },
-      };
-      const { getByRole, getByText } = render(Send, props);
-
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      const next = getByRole("button", { name: "Next" });
+        gasSettings: { gasLimit: 40000000n, gasPrice: 40000000n },
+        initialRecipient: shieldedAddress,
+      });
 
       await tick();
 
-      expect(next).toBeDisabled();
-      expect(
-        getByText("Insufficient balance for gas fees")
-      ).toBeInTheDocument();
-      expect(
-        getByText("Add funds or lower the gas limit.")
-      ).toBeInTheDocument();
+      expect(fieldsOf(getByRole).send()).toBeDisabled();
+      expect(getByText("Not enough for the network fee.")).toBeInTheDocument();
     });
 
-    it("should set the max amount in the textbox if the user clicks the related button", async () => {
-      const maxSpendableDusk = luxToDusk(
-        baseProps.availableBalance -
-          baseProps.gasSettings.gasPrice * baseProps.gasSettings.gasLimit
+    it("should set the most it can send with Max, leaving room for the fee", async () => {
+      const { getByRole } = render(Send, {
+        ...baseProps,
+        initialRecipient: shieldedAddress,
+      });
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(fields.amount()).toHaveValue(
+        luxToDusk(baseProps.availableBalance - fee)
       );
-      const { getByRole } = render(Send, baseProps);
-
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      const useMaxButton = getByRole("button", { name: "Use max" });
-      const nextButton = getByRole("button", { name: "Next" });
-      const amountInput = getByRole("spinbutton");
-
-      await fireEvent.click(useMaxButton);
-
-      expect(amountInput).toHaveValue(maxSpendableDusk);
-      expect(nextButton).toBeEnabled();
-    });
-
-    it("should not change the default amount (1) in the textbox if the user clicks the related button and the balance is zero", async () => {
-      const props = {
-        ...baseProps,
-        availableBalance: 0n,
-      };
-      const { getByRole } = render(Send, props);
-
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      const useMaxButton = getByRole("button", { name: "Use max" });
-      const amountInput = getByRole("spinbutton");
-
-      expect(amountInput).toHaveValue(1);
-
-      await fireEvent.click(useMaxButton);
-
-      expect(amountInput).toHaveValue(1);
-    });
-
-    it("should not change the default amount (1) in the textbox if the user clicks the related button and the gas settings are invalid", async () => {
-      const props = {
-        ...baseProps,
-        gasSettings: {
-          ...baseProps.gasSettings,
-          gasLimit: 40000000n,
-          gasPrice: 40000000n,
-        },
-      };
-
-      const { getByRole } = render(Send, props);
-
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      const useMaxButton = getByRole("button", { name: "Use max" });
-      const amountInput = getByRole("spinbutton");
-
-      expect(amountInput).toHaveValue(1);
-
-      await fireEvent.click(useMaxButton);
-
-      expect(amountInput).toHaveValue(1);
-    });
-
-    it("should disable the next button if the user enters an invalid amount", async () => {
-      const { getByRole, getByText } = render(Send, baseProps);
-
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      const nextButton = getByRole("button", { name: "Next" });
-      const amountInput = getByRole("spinbutton");
-
-      expect(nextButton).toBeEnabled();
-
-      await fireEvent.input(amountInput, { target: { value: 0 } });
-
-      expect(amountInput).toHaveValue(0);
-      expect(nextButton).toBeDisabled();
-
-      await fireEvent.input(amountInput, { target: { value: 1000 } });
-
-      expect(nextButton).toBeDisabled();
-      expect(getByText("Amount exceeds available balance")).toBeInTheDocument();
-      expect(
-        getByText("Lower the amount to leave room for the fee.")
-      ).toBeInTheDocument();
-    });
-
-    it("should require a valid EVM address in memo if sending to BEP20 bridge", async () => {
-      const { getByRole, findByText, queryByText, container } = render(Send, {
-        ...baseProps,
-        availableBalance: 1_000_000_000_000_000n,
-      });
-      const addressInput = getByRole("textbox");
-      const nextButtonAddressStep = getByRole("button", { name: "Next" });
-
-      await fireEvent.input(addressInput, {
-        target: { value: bep20BridgeAddress },
-      });
-      await fireEvent.click(nextButtonAddressStep);
-
-      const nextButtonAmountStep = getByRole("button", { name: "Next" });
-      const amountInput = getByRole("spinbutton");
-      const memoInput = getAsHTMLElement(container, ".operation__send-memo");
-
-      expect(memoInput).toBeInTheDocument();
-
-      // Banner for required memo should be visible
-      expect(
-        await findByText("Memo required for bridge operation")
-      ).toBeInTheDocument();
-      expect(
-        await findByText("Enter the EVM address that receives the tokens.")
-      ).toBeInTheDocument();
-      expect(nextButtonAmountStep).toBeDisabled();
-
-      // Enter an invalid EVM address as memo
-      await fireEvent.input(memoInput, { target: { value: "invalid-evm" } });
-      expect(memoInput).toHaveValue("invalid-evm");
-
-      expect(
-        await findByText("Invalid EVM address format")
-      ).toBeInTheDocument();
-      expect(
-        await findByText(
-          'EVM addresses are 40 hexadecimal characters, optionally prefixed with "0x".'
-        )
-      ).toBeInTheDocument();
-      expect(nextButtonAmountStep).toBeDisabled();
-
-      // Enter a valid EVM address as memo
-      const validEvmAddress = "0x9876543210987654321098765432109876543210";
-
-      await fireEvent.input(memoInput, {
-        target: { value: validEvmAddress },
-      });
-      expect(memoInput).toHaveValue(validEvmAddress);
-
-      // Error banners should disappear
-      expect(
-        queryByText("Memo required for bridge operation")
-      ).not.toBeInTheDocument();
-      expect(queryByText("Invalid EVM address format")).not.toBeInTheDocument();
-
-      await fireEvent.input(amountInput, { target: { value: "10" } });
-
-      expect(nextButtonAmountStep).toBeEnabled();
-    });
-
-    it("should make memo optional and not require EVM format if not sending to BEP20 bridge", async () => {
-      const { getByRole, queryByText, container } = render(Send, {
-        ...baseProps,
-        availableBalance: 1_000_000_000_000_000n,
-      });
-      const addressInput = getByRole("textbox");
-      const nextButtonAddressStep = getByRole("button", { name: "Next" });
-
-      await fireEvent.input(addressInput, {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(nextButtonAddressStep);
-
-      const nextButtonAmountStep = getByRole("button", { name: "Next" });
-      const amountInput = getByRole("spinbutton");
-      const memoSwitch = getByRole("switch");
-
-      expect(memoSwitch).toBeInTheDocument();
-      expect(
-        queryByText("Memo required for bridge operation")
-      ).not.toBeInTheDocument();
-      expect(queryByText("Invalid EVM address format")).not.toBeInTheDocument();
-
-      await fireEvent.input(amountInput, { target: { value: "10" } });
-      expect(nextButtonAmountStep).toBeEnabled();
-
-      // Show memo field
-      await fireEvent.click(memoSwitch);
-
-      const memoInput = getAsHTMLElement(container, ".operation__send-memo");
-
-      expect(memoInput).toBeInTheDocument();
-
-      await fireEvent.input(memoInput, {
-        target: { value: "not-an-evm-address" },
-      });
-      expect(memoInput).toHaveValue("not-an-evm-address");
-
-      expect(queryByText("Invalid EVM address format")).not.toBeInTheDocument();
-      expect(nextButtonAmountStep).toBeEnabled();
-    });
-  });
-
-  describe("Review step", () => {
-    it("should render the Send component Review step", async () => {
-      const amount = 2345;
-      const { container, getByRole, queryByText } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
-
-      await fireEvent.input(addressInput, {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("switch"));
-
-      const amountInput = getByRole("spinbutton");
-      const memoInput = getByRole("textbox");
-
-      await fireEvent.input(amountInput, { target: { value: amount } });
-      await fireEvent.input(memoInput, {
-        target: { value: "abc-example-memo" },
-      });
-
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      const fee =
-        baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
-      const key = getAsHTMLElement(
-        container,
-        ".operation__review-address span"
-      );
-      const memo = getAsHTMLElement(container, ".operation__review-memo span");
-
-      expect(getReviewAmounts(container)).toStrictEqual([
-        ["Amount", `${formatDuskExact(duskToLux(amount), "en")} DUSK`],
-        [
-          "Network fee (at most)",
-          `${formatFee(fee, "en", { max: true })} DUSK`,
-        ],
-        [
-          "Total (at most)",
-          `${formatFee(duskToLux(amount) + fee, "en", { max: true })} DUSK`,
-        ],
-      ]);
-      expect(container.querySelector("dt .dusk-icon")).toBeNull();
-      expect(container.querySelector(".gas-fee")).toBeNull();
-      expect(key.textContent).toBe(shieldedAddress);
-      expect(key.parentElement).not.toHaveClass(
-        "operation__review-address--with-name"
-      );
-      expect(container.querySelector(".operation__review-name")).toBeNull();
-      expect(memo.textContent).toBe("abc-example-memo");
-
-      // The stepper names the step: no banner repeats it.
-      expect(
-        getAsHTMLElement(
-          container,
-          ".dusk-stepper__step-label:not(.dusk-stepper__step-label--invisible)"
-        )
-      ).toHaveTextContent(/^Review$/);
-      expect(queryByText("Review transaction")).not.toBeInTheDocument();
-      expect(
-        container.querySelector(".dusk-badge--variant-warning")
-      ).toBeNull();
-      expect(container.firstElementChild).toMatchSnapshot();
+      expect(fields.send()).toBeEnabled();
     });
 
     it.each([
+      ["the balance is zero", { availableBalance: 0n }],
       [
-        "a public account",
-        "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff",
-        /^Public Visible on chain$/,
+        "the gas settings aren't valid",
+        { gasSettings: { gasLimit: 40000000n, gasPrice: 40000000n } },
       ],
-      ["a shielded address", shieldedAddress, /^Shielded Private$/],
-    ])(
-      "should show the type of a transfer to %s in one short line",
-      async (_, address, type) => {
-        const { container, getByRole, getByText } = render(Send, baseProps);
+    ])("should keep the amount on Max while %s", async (_, props) => {
+      const { getByRole } = render(Send, { ...baseProps, ...props });
+      const fields = fieldsOf(getByRole);
 
-        await fireEvent.input(getByRole("textbox"), {
-          target: { value: address },
-        });
-        await fireEvent.click(getByRole("button", { name: "Next" }));
-        await fireEvent.click(getByRole("button", { name: "Next" }));
+      expect(fields.amount()).toHaveValue(1);
 
-        expect(getByText("Type")).toBeInTheDocument();
-        expect(
-          getAsHTMLElement(container, ".operation__review-type")
-        ).toHaveTextContent(type);
-      }
-    );
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(fields.amount()).toHaveValue(1);
+    });
+
+    it("should keep Send disabled for an amount that isn't valid, and say when it's more than there is", async () => {
+      const { getByRole, getByText } = render(Send, {
+        ...baseProps,
+        initialRecipient: shieldedAddress,
+      });
+      const fields = fieldsOf(getByRole);
+
+      expect(fields.send()).toBeEnabled();
+
+      await fireEvent.input(fields.amount(), { target: { value: 0 } });
+
+      expect(fields.send()).toBeDisabled();
+
+      await fireEvent.input(fields.amount(), { target: { value: 1000 } });
+
+      expect(fields.send()).toBeDisabled();
+      expect(getByText("More than you have.")).toBeInTheDocument();
+    });
+
+    it("should require a valid EVM address in memo if sending to BEP20 bridge", async () => {
+      const { getByRole, queryByText } = render(Send, {
+        ...baseProps,
+        availableBalance: 1_000_000_000_000_000n,
+      });
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), {
+        target: { value: bep20BridgeAddress },
+      });
+      await fireEvent.input(fields.amount(), { target: { value: "10" } });
+
+      expect(getByRole("textbox", { name: "Memo" })).toBeInTheDocument();
+      expect(
+        queryByText("Enter the EVM address that receives the tokens.")
+      ).toBeInTheDocument();
+      expect(fields.send()).toBeDisabled();
+
+      await fireEvent.input(fields.memo(), {
+        target: { value: "invalid-evm" },
+      });
+
+      expect(queryByText("Not an EVM address.")).toBeInTheDocument();
+      expect(fields.send()).toBeDisabled();
+
+      await fireEvent.input(fields.memo(), {
+        target: { value: "0x9876543210987654321098765432109876543210" },
+      });
+
+      expect(queryByText("Not an EVM address.")).not.toBeInTheDocument();
+      expect(fields.send()).toBeEnabled();
+    });
+
+    it("should take any memo, and say it stays on chain, for a transfer not to the BEP20 bridge", async () => {
+      const { getByRole, getByText, queryByText } = render(Send, {
+        ...baseProps,
+        initialRecipient: shieldedAddress,
+      });
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.memo(), {
+        target: { value: "not-an-evm-address" },
+      });
+
+      expect(getByRole("textbox", { name: "Memo (optional)" })).toHaveValue(
+        "not-an-evm-address"
+      );
+      expect(
+        getByText(
+          "Visible on chain, for good: don't put personal details in it."
+        )
+      ).toBeInTheDocument();
+      expect(queryByText("Not an EVM address.")).not.toBeInTheDocument();
+      expect(fields.send()).toBeEnabled();
+    });
+  });
+
+  describe("Summary", () => {
+    it("should sum the transfer up, the amount exactly and the fee and total as the most they cost", async () => {
+      const amount = 2345.5;
+      const { container, getByRole, getByText } = render(Send, {
+        ...baseProps,
+        availableBalance: 10_000_000_000_000n,
+      });
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), {
+        target: { value: shieldedAddress },
+      });
+      await fireEvent.input(fields.amount(), { target: { value: amount } });
+      await fireEvent.input(fields.memo(), {
+        target: { value: "abc-example-memo" },
+      });
+
+      expect(getSummary(container)).toStrictEqual([
+        ["To", shortenAddress(shieldedAddress)],
+        ["Amount", "2,345.5 DUSK"],
+        ["Memo", "abc-example-memo"],
+        ["Total", "Up to 2,345.52 DUSK"],
+      ]);
+      expect(
+        container.querySelector(".send__summary .gas-fee")
+      ).toHaveTextContent("Network fee (at most) 0.02 DUSK");
+      expect(fields.send()).toHaveTextContent("Send 2,345.5 DUSK");
+      expect(getByText("Sends can't be undone.")).toBeInTheDocument();
+    });
   });
 
   describe("Send operation", () => {
@@ -700,30 +539,40 @@ describe("Send", () => {
       vi.useRealTimers();
     });
 
-    it("should perform a transfer for the desired amount, give a success message and supply a link to see the transaction in the explorer", async () => {
-      const { getByRole, getByText } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
+    /**
+     * Fills the form in and sends, as on a laptop.
+     *
+     * @param {(role: string, options: object) => HTMLElement} getByRole
+     * @param {{ memo?: string, to?: string, value?: number }} [values]
+     */
+    const sendWith = async (
+      getByRole,
+      { memo, to = shieldedAddress, value = amount } = {}
+    ) => {
+      const fields = fieldsOf(getByRole);
 
-      await fireEvent.input(addressInput, {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.input(fields.to(), { target: { value: to } });
+      await fireEvent.input(fields.amount(), { target: { value } });
 
-      const amountInput = getByRole("spinbutton");
+      if (memo !== undefined) {
+        await fireEvent.input(fields.memo(), { target: { value: memo } });
+      }
 
-      await fireEvent.input(amountInput, { target: { value: amount } });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Send" }));
-
+      await fireEvent.click(fields.send());
       await vi.advanceTimersToNextTimerAsync();
+    };
 
-      expect(baseProps.execute).toHaveBeenCalledTimes(1);
-      expect(baseProps.execute).toHaveBeenCalledWith(
+    it("should send the amount from the summary, with no review on a laptop, and say it was sent with a link to the explorer", async () => {
+      const { getByRole, getByText } = render(Send, baseProps);
+
+      await sendWith(getByRole);
+
+      expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
         shieldedAddress,
         duskToLux(amount),
         "",
-        baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        gasPrice,
+        gasLimit
       );
 
       const explorerLink = getByRole("link", { name: /explorer/i });
@@ -740,6 +589,28 @@ describe("Send", () => {
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
     });
 
+    it("should review a transfer on a phone before it sends it, and go back to the form", async () => {
+      const { container, getByRole, queryByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), {
+        target: { value: shieldedAddress },
+      });
+      await fireEvent.click(fields.review());
+
+      expect(container.querySelector(".send")).toHaveClass("send--review");
+      expect(queryByRole("button", { name: "Review" })).toBeNull();
+
+      await fireEvent.click(getByRole("button", { name: "Back" }));
+
+      expect(container.querySelector(".send")).not.toHaveClass("send--review");
+
+      await fireEvent.click(fields.review());
+      await fireEvent.click(fields.send());
+
+      expect(baseProps.execute).toHaveBeenCalledOnce();
+    });
+
     it("should follow the transaction until its block is final, then show it completed with the fee it was charged", async () => {
       /** @type {PromiseWithResolvers<any>} */
       const following = Promise.withResolvers();
@@ -748,25 +619,11 @@ describe("Send", () => {
 
       const { getByRole, getByText } = render(Send, baseProps);
 
-      await fireEvent.input(getByRole("textbox"), {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Send" }));
-      await vi.advanceTimersToNextTimerAsync();
-
-      const fee =
-        baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
+      await sendWith(getByRole);
 
       expect(getByRole("status")).toHaveTextContent(/^Sent Pending/);
       expect(getByText("Network fee (at most)")).toBeInTheDocument();
-      expect(
-        getByText(`${formatFee(fee, "en", { max: true })} DUSK`)
-      ).toBeInTheDocument();
-      expect(
-        getByRole("button", { name: "Copy transaction hash" })
-      ).toBeInTheDocument();
+      expect(getByText("0.02 DUSK")).toBeInTheDocument();
 
       following.resolve({
         blockHeight: 4_687_200n,
@@ -778,7 +635,6 @@ describe("Send", () => {
       expect(getByRole("status")).toHaveTextContent(
         "Completed In block 4,687,200."
       );
-      expect(getByText("Network fee")).toBeInTheDocument();
       // The fee charged, to the nearest of four decimals.
       expect(getByText("0.0019 DUSK")).toBeInTheDocument();
     });
@@ -786,25 +642,18 @@ describe("Send", () => {
     it("should perform the transfer with the gas limit the user sets", async () => {
       const { getByLabelText, getByRole } = render(Send, baseProps);
 
-      await fireEvent.input(getByRole("textbox"), {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
       await fireEvent.click(getByRole("button", { name: "Edit" }));
       await fireEvent.input(getByLabelText(/gas limit/i), {
         target: { value: "30000000" },
       });
       await tick();
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Send" }));
-
-      await vi.advanceTimersToNextTimerAsync();
+      await sendWith(getByRole, { value: 1 });
 
       expect(baseProps.execute).toHaveBeenCalledWith(
         shieldedAddress,
         duskToLux(1),
         "",
-        baseProps.gasSettings.gasPrice,
+        gasPrice,
         30_000_000n
       );
     });
@@ -812,94 +661,53 @@ describe("Send", () => {
     it("should not send again when new gas settings arrive after sending", async () => {
       const { getByRole, rerender } = render(Send, baseProps);
 
-      await fireEvent.input(getByRole("textbox"), {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Send" }));
-      await vi.advanceTimersToNextTimerAsync();
+      await sendWith(getByRole);
       await rerender({ gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n } });
       await vi.advanceTimersToNextTimerAsync();
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
     });
 
-    it("should perform a transfer for the desired amount, with a memo, give a success message and supply a link to see the transaction in the explorer", async () => {
-      const { getByRole, getByText } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
+    it("should send a memo as typed", async () => {
       const memo = " abc-example-memo ";
+      const { getByRole, getByText } = render(Send, baseProps);
 
-      await fireEvent.input(addressInput, {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("switch"));
+      await sendWith(getByRole, { memo });
 
-      const amountInput = getByRole("spinbutton");
-      const memoInput = getByRole("textbox");
-
-      await fireEvent.input(amountInput, { target: { value: amount } });
-      await fireEvent.input(memoInput, {
-        target: { value: memo },
-      });
-
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Send" }));
-
-      await vi.advanceTimersToNextTimerAsync();
-
-      expect(baseProps.execute).toHaveBeenCalledTimes(1);
-      expect(baseProps.execute).toHaveBeenCalledWith(
+      expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
         shieldedAddress,
         duskToLux(amount),
         memo,
-        baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        gasPrice,
+        gasLimit
       );
-
-      const explorerLink = getByRole("link", { name: /explorer/i });
-
       expect(getByText("Sent")).toBeInTheDocument();
-      expect(explorerLink).toHaveAttribute("target", "_blank");
-      expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
     });
 
-    it("should trim a BEP20 bridge memo before review and execution", async () => {
-      const { container, getByRole } = render(Send, baseProps);
+    it("should trim a BEP20 bridge memo in the summary and the transfer", async () => {
       const evmAddress = "0x9876543210987654321098765432109876543210";
+      const { container, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fields.to(), {
         target: { value: bep20BridgeAddress },
       });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      await fireEvent.input(getByRole("spinbutton"), {
-        target: { value: amount },
+      await fireEvent.input(fields.amount(), { target: { value: amount } });
+      await fireEvent.input(fields.memo(), {
+        target: { value: ` \n${evmAddress}\t ` },
       });
-      await fireEvent.input(
-        getAsHTMLElement(container, ".operation__send-memo"),
-        { target: { value: ` \n${evmAddress}\t ` } }
-      );
-      await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      const reviewMemo = getAsHTMLElement(
-        container,
-        ".operation__review-memo span"
-      );
+      expect(getSummary(container)).toContainEqual(["Memo", evmAddress]);
 
-      expect(reviewMemo).toHaveTextContent(evmAddress);
-
-      await fireEvent.click(getByRole("button", { name: "Send" }));
+      await fireEvent.click(fields.send());
       await vi.advanceTimersToNextTimerAsync();
 
-      expect(baseProps.execute).toHaveBeenCalledTimes(1);
-      expect(baseProps.execute).toHaveBeenCalledWith(
+      expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
         bep20BridgeAddress,
         duskToLux(amount),
         evmAddress,
-        baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        gasPrice,
+        gasLimit
       );
     });
 
@@ -909,28 +717,10 @@ describe("Send", () => {
       baseProps.execute.mockRejectedValueOnce(new Error(errorMessage));
 
       const { getByRole, getByText } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
 
-      await fireEvent.input(addressInput, {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      const amountInput = getByRole("spinbutton");
-
-      await fireEvent.input(amountInput, { target: { value: amount } });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Send" }));
-      await vi.advanceTimersToNextTimerAsync();
+      await sendWith(getByRole);
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
-      expect(baseProps.execute).toHaveBeenCalledWith(
-        shieldedAddress,
-        duskToLux(amount),
-        "",
-        baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
-      );
       expect(getByText("Transaction failed")).toBeInTheDocument();
       expect(getByText(errorMessage)).toBeInTheDocument();
     });
@@ -939,28 +729,10 @@ describe("Send", () => {
       baseProps.execute.mockResolvedValueOnce(void 0);
 
       const { getByRole, getByText } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
 
-      await fireEvent.input(addressInput, {
-        target: { value: shieldedAddress },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      const amountInput = getByRole("spinbutton");
-
-      await fireEvent.input(amountInput, { target: { value: amount } });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Send" }));
-      await vi.advanceTimersToNextTimerAsync();
+      await sendWith(getByRole);
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
-      expect(baseProps.execute).toHaveBeenCalledWith(
-        shieldedAddress,
-        duskToLux(amount),
-        "",
-        baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
-      );
       expect(getByText("Sent")).toBeInTheDocument();
       expect(followTransaction).not.toHaveBeenCalled();
       expect(() => getByRole("link", { name: /explorer/i })).toThrow();
@@ -973,10 +745,9 @@ describe("Send", () => {
       "qaJoSNfnh7kLyMPvFkWUPhzcAo2aDexVuGGjRZvghm31NPk7i8N57EFgKoYNBAicCfZVFm9icdcQYEoedS9jN5RZhYeuoSWbmomXdm7A1yUfPSUovheWccGYUvVkKCUnt7V";
     const nameAddress =
       "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnM";
-    const { gasLimit, gasPrice } = baseProps.gasSettings;
 
     // The least a balance must hold to pay for a transfer is one Lux more.
-    const maxGasFee = gasLimit * gasPrice;
+    const maxGasFee = fee;
 
     /** @param {string} name */
     const withBothAddresses = (name) => ({
@@ -985,52 +756,19 @@ describe("Send", () => {
       name,
     });
 
-    /** @param {HTMLElement} container */
-    const getShownAddress = (container) =>
-      getAsHTMLElement(container, ".operation__review-address span");
-
-    /** @param {HTMLElement} container */
-    const getReviewType = (container) =>
-      getAsHTMLElement(container, ".operation__review-type");
-
     /**
-     * Checks that a name's one address shows as the two do, in an option
-     * card, but picked and with no radio or radio mark, and with no full
-     * address or banner besides.
+     * Sends what the form holds, as on a laptop.
      *
-     * @param {HTMLElement} container
-     * @param {string} title
-     * @param {string} address
-     * @param {string} line The option's line under its title.
+     * @param {(role: string, options: object) => HTMLElement} getByRole
      */
-    const expectOnlyOption = (container, title, address, line) => {
-      const option = getAsHTMLElement(container, ".operation__name-option");
+    const sendIt = async (getByRole) => {
+      const fields = fieldsOf(getByRole);
 
-      expect(
-        container.querySelectorAll(".operation__name-option")
-      ).toHaveLength(1);
-      expect(option).toHaveClass(
-        "operation__name-option--picked",
-        "operation__name-option--single"
-      );
-      expect(option.querySelector(".operation__name-option-mark")).toBeNull();
-      expect(option).toHaveTextContent(
-        `${title} ${shortenAddress(address)} ${address} ${line}`
-      );
-      expect(getAsHTMLElement(option, "samp")).toHaveAttribute(
-        "title",
-        address
-      );
-      expect(
-        container.querySelector(
-          "[role='radiogroup'], [role='radio'], .operation__review-address, .banner"
-        )
-      ).toBeNull();
-
-      return option;
+      await fireEvent.input(fields.amount(), { target: { value: amount } });
+      await fireEvent.click(fields.send());
     };
 
-    it("should send to the account a name resolves to, after showing both", async () => {
+    it("should send to the account a name resolves to, with its name and address shown", async () => {
       /** @type {(value: DuskNameResolution) => void} */
       let finishLookup = () => {};
 
@@ -1045,7 +783,7 @@ describe("Send", () => {
         baseProps
       );
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: " Alice.dusk " },
       });
 
@@ -1053,36 +791,25 @@ describe("Send", () => {
         "Alice.dusk"
       );
       expect(getByText("Looking up Alice.dusk…")).toBeInTheDocument();
-      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+      expect(fieldsOf(getByRole).send()).toBeDisabled();
 
       finishLookup({ account: nameAccount, name: "alice.dusk" });
 
-      expect(await findByText("alice.dusk points to")).toBeInTheDocument();
-      expectOnlyOption(
-        container,
-        "Public account",
-        nameAccount,
-        "Visible on chain"
-      );
+      expect(
+        await findByText("alice.dusk points to a public account")
+      ).toBeInTheDocument();
+      expect(getByText("Verified name")).toBeInTheDocument();
+      expect(container.querySelector("[role='radiogroup']")).toBeNull();
+      expect(
+        getAsHTMLElement(container, ".send__card .full-address")
+      ).toHaveTextContent(nameAccount);
+      expect(getSummary(container)[0]).toStrictEqual([
+        "To",
+        `alice.dusk ${shortenAddress(nameAccount)}`,
+      ]);
 
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.input(getByRole("spinbutton"), {
-        target: { value: amount },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await sendIt(getByRole);
 
-      expect(getByText("alice.dusk")).toHaveClass("operation__review-name");
-      expect(getShownAddress(container)).toHaveTextContent(nameAccount);
-      expect(getShownAddress(container).parentElement).toHaveClass(
-        "operation__review-address--with-name"
-      );
-      expect(getReviewType(container)).toHaveTextContent(
-        "Public Visible on chain"
-      );
-
-      await fireEvent.click(getByRole("button", { name: "Send" }));
-
-      // The name, as the lookup gives it, goes with it for the history.
       expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
         nameAccount,
         duskToLux(amount),
@@ -1101,31 +828,24 @@ describe("Send", () => {
         name: "alice.dusk",
       });
 
-      const { container, findByText, getByRole, getByText, queryByText } =
-        render(Send, { events: { keyChange }, props: baseProps });
+      const { findByText, getByRole, queryByText } = render(Send, {
+        events: { keyChange },
+        props: baseProps,
+      });
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: "alice.dusk" },
       });
 
-      expect(await findByText("alice.dusk points to")).toBeInTheDocument();
-      expectOnlyOption(container, "Shielded address", nameAddress, "Private");
+      expect(
+        await findByText("alice.dusk points to a shielded address")
+      ).toBeInTheDocument();
       expect(queryByText(/Not enough shielded DUSK/)).not.toBeInTheDocument();
       expect(keyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ detail: { type: "address" } })
       );
 
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.input(getByRole("spinbutton"), {
-        target: { value: amount },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      expect(getByText("alice.dusk")).toBeInTheDocument();
-      expect(getShownAddress(container)).toHaveTextContent(nameAddress);
-      expect(getReviewType(container)).toHaveTextContent("Shielded Private");
-
-      await fireEvent.click(getByRole("button", { name: "Send" }));
+      await sendIt(getByRole);
 
       expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
         nameAddress,
@@ -1137,30 +857,24 @@ describe("Send", () => {
       );
     });
 
-    it("should keep Next disabled for a name with only a shielded address while the shielded balance can't pay for a transfer", async () => {
+    it("should keep Send disabled for a name with only a shielded address while the shielded balance can't pay for a transfer", async () => {
       baseProps.resolveName.mockResolvedValueOnce({
         address: nameAddress,
         name: "alice.dusk",
       });
 
-      const { container, findByText, getByRole, getByText } = render(Send, {
+      const { findByText, getByRole, getByText } = render(Send, {
         ...baseProps,
         shieldedBalance: maxGasFee,
       });
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: "alice.dusk" },
       });
 
-      expect(await findByText("alice.dusk points to")).toBeInTheDocument();
       expect(
-        expectOnlyOption(
-          container,
-          "Shielded address",
-          nameAddress,
-          "Not enough shielded DUSK · Shield first"
-        )
-      ).toHaveClass("operation__name-option--disabled");
+        await findByText("alice.dusk points to a shielded address")
+      ).toBeInTheDocument();
       expect(getByText(/Not enough shielded DUSK ·/)).toHaveTextContent(
         /^Not enough shielded DUSK · Shield first$/
       );
@@ -1168,7 +882,7 @@ describe("Send", () => {
         "href",
         addBasePath("/dashboard/allocate")
       );
-      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+      expect(fieldsOf(getByRole).send()).toBeDisabled();
     });
 
     it("should offer both addresses of a name with both, a short line each, and send to the one picked", async () => {
@@ -1178,30 +892,23 @@ describe("Send", () => {
         withBothAddresses("alice.dusk")
       );
 
-      const { container, findByRole, getByRole, getByText } = render(Send, {
+      const { container, findByRole, getByRole } = render(Send, {
         events: { keyChange },
         props: baseProps,
       });
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: "alice.dusk" },
       });
 
       const options = await findByRole("radiogroup", {
-        name: "alice.dusk points to",
+        name: "alice.dusk points to two addresses",
       });
       const publicOption = getByRole("radio", { name: "Public account" });
       const shieldedOption = getByRole("radio", { name: "Shielded address" });
 
       expect(options).toContainElement(publicOption);
       expect(options).toContainElement(shieldedOption);
-      // A choice: each option has its radio mark.
-      expect(
-        options.querySelectorAll(".operation__name-option-mark")
-      ).toHaveLength(2);
-      expect(
-        options.querySelector(".operation__name-option--single")
-      ).toBeNull();
       expect(publicOption).toHaveAttribute("aria-checked", "true");
       expect(publicOption).toHaveTextContent(shortenAddress(nameAccount));
       expect(getAsHTMLElement(publicOption, "samp")).toHaveAttribute(
@@ -1213,20 +920,9 @@ describe("Send", () => {
       );
       expect(shieldedOption).toHaveAttribute("aria-checked", "false");
       expect(shieldedOption).toHaveAttribute("aria-disabled", "false");
-      expect(shieldedOption).toHaveTextContent(shortenAddress(nameAddress));
-      expect(getAsHTMLElement(shieldedOption, "samp")).toHaveAttribute(
-        "title",
-        nameAddress
-      );
       expect(shieldedOption).toHaveAccessibleDescription(
-        `Private ${nameAddress}`
+        `Not shown on the public chain ${nameAddress}`
       );
-
-      // No balances or banner, and the full address is left to Review.
-      expect(options).not.toHaveTextContent("DUSK");
-      expect(
-        container.querySelector(".operation__review-address, .banner")
-      ).toBeNull();
       expect(keyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ detail: { type: "account" } })
       );
@@ -1238,21 +934,11 @@ describe("Send", () => {
       expect(keyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ detail: { type: "address" } })
       );
+      expect(
+        getAsHTMLElement(container, ".send__card .full-address")
+      ).toHaveTextContent(nameAddress);
 
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.input(getByRole("spinbutton"), {
-        target: { value: amount },
-      });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-
-      expect(getByText("alice.dusk")).toHaveClass("operation__review-name");
-      expect(getShownAddress(container)).toHaveTextContent(nameAddress);
-      expect(getShownAddress(container).parentElement).toHaveClass(
-        "operation__review-address--with-name"
-      );
-      expect(getReviewType(container)).toHaveTextContent("Shielded Private");
-
-      await fireEvent.click(getByRole("button", { name: "Send" }));
+      await sendIt(getByRole);
 
       expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
         nameAddress,
@@ -1274,7 +960,7 @@ describe("Send", () => {
         shieldedBalance: maxGasFee,
       });
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: "alice.dusk" },
       });
 
@@ -1287,11 +973,6 @@ describe("Send", () => {
       expect(shieldedOption).toHaveAccessibleDescription(
         `Not enough shielded DUSK · Shield first ${nameAddress}`
       );
-      expect(shieldedOption).not.toHaveTextContent("Private");
-      expect(getByRole("link", { name: "Shield first" })).toHaveAttribute(
-        "href",
-        addBasePath("/dashboard/allocate")
-      );
 
       await fireEvent.click(shieldedOption);
       await fireEvent.keyDown(publicOption, { key: "ArrowDown" });
@@ -1299,7 +980,7 @@ describe("Send", () => {
 
       expect(publicOption).toBeChecked();
       expect(shieldedOption).not.toBeChecked();
-      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+      expect(fieldsOf(getByRole).send()).toBeEnabled();
     });
 
     it("should keep the address picked when the balances change, even once the shielded one can't pay, until the user picks another", async () => {
@@ -1307,10 +988,10 @@ describe("Send", () => {
         withBothAddresses("alice.dusk")
       );
 
-      const { findByRole, getByRole, getByText, queryByText, rerender } =
+      const { findByRole, getByRole, getAllByText, queryByText, rerender } =
         render(Send, { ...baseProps, shieldedBalance: maxGasFee + 1n });
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: "alice.dusk" },
       });
 
@@ -1319,23 +1000,28 @@ describe("Send", () => {
       });
 
       await fireEvent.click(shieldedOption);
+      await fireEvent.input(fieldsOf(getByRole).amount(), {
+        target: { value: 0.000000001 },
+      });
       await rerender({ availableBalance: maxGasFee + 1n });
 
       expect(shieldedOption).toBeChecked();
       expect(queryByText(/Not enough shielded DUSK/)).not.toBeInTheDocument();
-      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+      expect(fieldsOf(getByRole).send()).toBeEnabled();
 
       await rerender({ shieldedBalance: maxGasFee });
 
       expect(shieldedOption).toBeChecked();
       expect(shieldedOption).toHaveAttribute("aria-disabled", "true");
-      expect(getByText(/Not enough shielded DUSK/)).toBeInTheDocument();
-      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+      expect(getAllByText(/Not enough shielded DUSK/).length).toBeGreaterThan(
+        0
+      );
+      expect(fieldsOf(getByRole).send()).toBeDisabled();
 
       await fireEvent.click(getByRole("radio", { name: "Public account" }));
 
       expect(shieldedOption).not.toBeChecked();
-      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+      expect(fieldsOf(getByRole).send()).toBeEnabled();
     });
 
     it("should move the pick between a name's addresses with the arrow keys, and make it with Space", async () => {
@@ -1345,7 +1031,7 @@ describe("Send", () => {
 
       const { findByRole, getByRole } = render(Send, baseProps);
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: "alice.dusk" },
       });
 
@@ -1386,7 +1072,7 @@ describe("Send", () => {
       expect(publicOption).toBeChecked();
     });
 
-    it("should keep the address picked for a name when it is entered again or the user steps back, and start any other name at its public account", async () => {
+    it("should keep the address picked for a name when it is entered again, and start any other name at its public account", async () => {
       baseProps.resolveName.mockImplementation((input) =>
         Promise.resolve(withBothAddresses(input.toLowerCase()))
       );
@@ -1395,7 +1081,7 @@ describe("Send", () => {
 
       /** @param {string} value */
       const enter = (value) =>
-        fireEvent.input(getByRole("textbox"), { target: { value } });
+        fireEvent.input(fieldsOf(getByRole).to(), { target: { value } });
 
       /** @param {string} name */
       const findPicked = async (name) => {
@@ -1417,12 +1103,6 @@ describe("Send", () => {
       await enter("alice.dusk");
       await findPicked("Shielded address");
       await enter("Alice.dusk");
-      await findPicked("Shielded address");
-
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Back" }));
-      await fireEvent.click(getByRole("button", { name: "Back" }));
       await findPicked("Shielded address");
 
       await enter("bob.dusk");
@@ -1447,7 +1127,7 @@ describe("Send", () => {
 
       /** @param {string} value */
       const enter = (value) =>
-        fireEvent.input(getByRole("textbox"), { target: { value } });
+        fireEvent.input(fieldsOf(getByRole).to(), { target: { value } });
 
       /** @param {"account" | "address" | undefined} type */
       const lastReported = (type) =>
@@ -1459,12 +1139,16 @@ describe("Send", () => {
 
       await enter("alice.dusk");
 
-      expect(await findByText("Shielded address")).toBeInTheDocument();
+      expect(
+        await findByText("alice.dusk points to a shielded address")
+      ).toBeInTheDocument();
       lastReported("address");
 
       await enter("bob.dusk");
 
-      expect(await findByText("bob.dusk isn't registered")).toBeInTheDocument();
+      expect(
+        await findByText("bob.dusk isn't registered.")
+      ).toBeInTheDocument();
       lastReported(undefined);
 
       await enter(shieldedAddress);
@@ -1479,51 +1163,52 @@ describe("Send", () => {
     it.each([
       [
         "expired",
-        "alice.dusk has expired",
+        "alice.dusk has expired.",
         "An expired name can't receive DUSK.",
       ],
       [
         "invalid",
-        "alice.dusk isn't a valid name",
+        "alice.dusk isn't a valid name.",
         "Names use only letters, digits and hyphens.",
       ],
       [
         "lookup-failed",
-        "Couldn't look up alice.dusk",
+        "Couldn't look up alice.dusk.",
         "Check your connection.",
       ],
       [
         "no-address",
-        "alice.dusk has no address to send to",
+        "alice.dusk has no address to send to.",
         "Its owner needs to add one first.",
       ],
       [
         "not-registered",
-        "alice.dusk isn't registered",
+        "alice.dusk isn't registered.",
         "Check the name, or paste the recipient's address instead.",
       ],
       [
         "unsupported-network",
-        ".dusk names aren't available on this network",
+        ".dusk names aren't available on this network.",
         "They work on mainnet and testnet. Paste the recipient's address instead.",
       ],
     ])(
-      "should explain the %s error inline and keep Next disabled",
+      "should explain the %s error inline and keep Send disabled",
       async (error, title, text) => {
         baseProps.resolveName.mockResolvedValueOnce({
           error,
           name: "alice.dusk",
         });
 
-        const { findByText, getByRole, getByText } = render(Send, baseProps);
+        const { findByText, getByRole } = render(Send, baseProps);
 
-        await fireEvent.input(getByRole("textbox"), {
+        await fireEvent.input(fieldsOf(getByRole).to(), {
           target: { value: "alice.dusk" },
         });
 
-        expect(await findByText(title)).toBeInTheDocument();
-        expect(getByText(text)).toBeInTheDocument();
-        expect(getByRole("button", { name: "Next" })).toBeDisabled();
+        const shown = await findByText(title);
+
+        expect(shown.parentElement).toHaveTextContent(`${title} ${text}`);
+        expect(fieldsOf(getByRole).send()).toBeDisabled();
       }
     );
 
@@ -1534,13 +1219,15 @@ describe("Send", () => {
 
       const { findByRole, findByText, getByRole } = render(Send, baseProps);
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: "alice.dusk" },
       });
       await fireEvent.click(await findByRole("button", { name: "Try again" }));
 
-      expect(await findByText(nameAccount)).toBeInTheDocument();
-      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+      expect(
+        await findByText("alice.dusk points to a public account")
+      ).toBeInTheDocument();
+      expect(fieldsOf(getByRole).send()).toBeEnabled();
     });
 
     it("should ignore the lookup of a name that is no longer entered", async () => {
@@ -1555,17 +1242,19 @@ describe("Send", () => {
         )
         .mockResolvedValueOnce({ error: "not-registered", name: "bob.dusk" });
 
-      const { findByText, getByRole, queryByText } = render(Send, baseProps);
-      const addressInput = getByRole("textbox");
+      const { container, findByText, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
 
-      await fireEvent.input(addressInput, { target: { value: "alice.dusk" } });
-      await fireEvent.input(addressInput, { target: { value: "bob.dusk" } });
+      await fireEvent.input(fields.to(), { target: { value: "alice.dusk" } });
+      await fireEvent.input(fields.to(), { target: { value: "bob.dusk" } });
       finishFirstLookup({ account: nameAccount, name: "alice.dusk" });
       await tick();
 
-      expect(await findByText("bob.dusk isn't registered")).toBeInTheDocument();
-      expect(queryByText(nameAccount)).not.toBeInTheDocument();
-      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+      expect(
+        await findByText("bob.dusk isn't registered.")
+      ).toBeInTheDocument();
+      expect(container.querySelector(".send__card")).toBeNull();
+      expect(fields.send()).toBeDisabled();
     });
 
     it("should block a name that resolves to a blocked address", async () => {
@@ -1576,12 +1265,264 @@ describe("Send", () => {
 
       const { findByText, getByRole } = render(Send, baseProps);
 
-      await fireEvent.input(getByRole("textbox"), {
+      await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: "alice.dusk" },
       });
 
       expect(await findByText("Blocked recipient address")).toBeInTheDocument();
-      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+      expect(fieldsOf(getByRole).send()).toBeDisabled();
+    });
+
+    it("should suggest a known name for one that isn't registered, from the contacts and past payments only", async () => {
+      saveContact({
+        address: nameAccount,
+        duskName: "alice-shop.dusk",
+        name: "Alice's shop",
+      });
+      baseProps.resolveName.mockImplementation(async (input) =>
+        input === "bram.dusk"
+          ? { account: otherAccount, name: input }
+          : { error: "not-registered", name: input }
+      );
+
+      const { findByRole, findByText, getByRole, queryByRole } = render(Send, {
+        ...baseProps,
+        knownNames: ["bram.dusk"],
+      });
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), {
+        target: { value: "alice-shpo.dusk" },
+      });
+
+      expect(
+        await findByRole("button", { name: "Did you mean alice-shop.dusk?" })
+      ).toBeInTheDocument();
+
+      await fireEvent.input(fields.to(), { target: { value: "brma.dusk" } });
+      await fireEvent.click(
+        await findByRole("button", { name: "Did you mean bram.dusk?" })
+      );
+
+      expect(fields.to()).toHaveValue("bram.dusk");
+      expect(
+        await findByText("bram.dusk points to a public account")
+      ).toBeInTheDocument();
+
+      await fireEvent.input(fields.to(), { target: { value: "zed.dusk" } });
+      await findByText("zed.dusk isn't registered.");
+
+      expect(queryByRole("button", { name: /^Did you mean/ })).toBeNull();
+    });
+  });
+
+  describe("Contacts", () => {
+    const nameAccount =
+      "qaJoSNfnh7kLyMPvFkWUPhzcAo2aDexVuGGjRZvghm31NPk7i8N57EFgKoYNBAicCfZVFm9icdcQYEoedS9jN5RZhYeuoSWbmomXdm7A1yUfPSUovheWccGYUvVkKCUnt7V";
+
+    it("should save a recipient to the contacts, with the .dusk name it came from", async () => {
+      baseProps.resolveName.mockResolvedValueOnce({
+        account: nameAccount,
+        name: "alice.dusk",
+      });
+
+      const { container, findByRole, getByRole, getByText, queryByRole } =
+        render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: "alice.dusk" },
+      });
+      await fireEvent.click(
+        await findByRole("button", { name: "Save to contacts" })
+      );
+
+      expect(getByText("Saved only on this device.")).toBeInTheDocument();
+
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "Alice" },
+      });
+      await fireEvent.click(getByRole("button", { name: "Save" }));
+
+      expect(listContacts()).toStrictEqual([
+        expect.objectContaining({
+          address: nameAccount,
+          duskName: "alice.dusk",
+          name: "Alice",
+          type: "account",
+        }),
+      ]);
+      expect(
+        getAsHTMLElement(container, ".send__card-title")
+      ).toHaveTextContent("Alice · alice.dusk");
+      expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
+    });
+
+    it("should name the contact of the address picked, of a .dusk name saved twice", async () => {
+      saveContact({
+        address: nameAccount,
+        duskName: "alice.dusk",
+        name: "Alice",
+      });
+      saveContact({
+        address: otherShielded,
+        duskName: "alice.dusk",
+        name: "Alice (shielded)",
+      });
+      baseProps.resolveName.mockResolvedValueOnce({
+        account: nameAccount,
+        address: otherShielded,
+        name: "alice.dusk",
+      });
+
+      const { container, findByRole, getByRole } = render(Send, baseProps);
+      const title = () =>
+        getAsHTMLElement(container, ".send__card-title").textContent?.trim();
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: "alice.dusk" },
+      });
+      await fireEvent.click(
+        await findByRole("radio", { name: "Shielded address" })
+      );
+
+      expect(title()).toBe("Alice (shielded) · alice.dusk");
+
+      await fireEvent.click(getByRole("radio", { name: "Public account" }));
+
+      expect(title()).toBe("Alice · alice.dusk");
+    });
+
+    it("should send to a contact picked from the list", async () => {
+      saveContact({ address: otherAccount, name: "Cold storage" });
+
+      const { container, getByRole } = render(Send, baseProps);
+
+      await fireEvent.change(
+        getByRole("combobox", { name: "Send to a contact" }),
+        { target: { value: listContacts()[0].id } }
+      );
+
+      expect(fieldsOf(getByRole).to()).toHaveValue(otherAccount);
+      expect(
+        getAsHTMLElement(container, ".send__card-title")
+      ).toHaveTextContent("Cold storage");
+      expect(getSummary(container)[0]).toStrictEqual([
+        "To",
+        `Cold storage ${shortenAddress(otherAccount)}`,
+      ]);
+    });
+
+    it("should note a contact's .dusk name still points to the address saved", async () => {
+      const alice = saveContact({
+        address: nameAccount,
+        checkedAt: 1,
+        duskName: "alice.dusk",
+        name: "Alice",
+      });
+
+      baseProps.resolveName.mockResolvedValueOnce({
+        account: nameAccount,
+        name: "alice.dusk",
+      });
+
+      const { container, getByRole } = render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: "alice.dusk" },
+      });
+
+      await waitFor(() =>
+        expect(container.querySelector(".send__card-title")).toHaveTextContent(
+          "Alice · alice.dusk"
+        )
+      );
+      expect(getContact(alice.id)?.checkedAt).toBeGreaterThan(1);
+      expect(fieldsOf(getByRole).send()).toBeEnabled();
+    });
+
+    it("should take a .dusk name's contact of the kind of address picked, and ask when that one moved", async () => {
+      // A name with a contact for each address, the shielded one moved since.
+      saveContact({
+        address: nameAccount,
+        duskName: "alice.dusk",
+        name: "Alice",
+      });
+      saveContact({
+        address: shieldedAddress,
+        duskName: "alice.dusk",
+        name: "Alice (shielded)",
+      });
+      baseProps.resolveName.mockResolvedValue({
+        account: nameAccount,
+        address: otherShielded,
+        name: "alice.dusk",
+      });
+
+      const { findByRole, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), { target: { value: "alice.dusk" } });
+      await fireEvent.click(
+        await findByRole("radio", { name: "Shielded address" })
+      );
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "alice.dusk now points to a different address from the one saved for Alice (shielded)."
+      );
+
+      await fireEvent.click(getByRole("button", { name: "The saved address" }));
+
+      expect(fields.to()).toHaveValue(shieldedAddress);
+    });
+
+    it("should ask before it sends to a new address of a contact's .dusk name", async () => {
+      const alice = saveContact({
+        address: otherAccount,
+        duskName: "alice.dusk",
+        name: "Alice",
+      });
+
+      baseProps.resolveName.mockResolvedValue({
+        account: nameAccount,
+        name: "alice.dusk",
+      });
+
+      const { container, findByRole, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), { target: { value: "alice.dusk" } });
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "alice.dusk now points to a different address from the one saved for Alice. Which do you want to send to?"
+      );
+      expect(fields.send()).toBeDisabled();
+      expect(container.querySelector(".send__card")).toBeNull();
+
+      await fireEvent.click(getByRole("button", { name: "The new address" }));
+
+      expect(fields.send()).toBeEnabled();
+      expect(
+        getAsHTMLElement(container, ".send__card .full-address")
+      ).toHaveTextContent(nameAccount);
+      expect(getContact(alice.id)?.address).toBe(otherAccount);
+
+      // Or the saved one, which the field then holds.
+      cleanup();
+
+      const again = render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(again.getByRole).to(), {
+        target: { value: "alice.dusk" },
+      });
+      await fireEvent.click(
+        await again.findByRole("button", { name: "The saved address" })
+      );
+
+      expect(fieldsOf(again.getByRole).to()).toHaveValue(otherAccount);
+      expect(
+        getAsHTMLElement(again.container, ".send__card-title")
+      ).toHaveTextContent("Alice");
+      expect(fieldsOf(again.getByRole).send()).toBeEnabled();
     });
   });
 });
