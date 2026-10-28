@@ -4,6 +4,7 @@ import bridgeCalls from "../../bridge/__tests__/fixtures/bridge-calls-testnet.js
 import fixture from "./fixtures/activity-testnet.json";
 import { fakeArchive } from "./fixtures/fakeArchive";
 import { calls as REGISTRATIONS } from "./fixtures/registrations-testnet.json";
+import { networks } from "@dusk-network/networks";
 
 /*
  * Recorded on Testnet: A registered a .dusk name and received two transfers;
@@ -26,12 +27,18 @@ let history;
 /** @type {typeof import("../activityStore")} */
 let store;
 
+/** @type {typeof import("$lib/stores/nodeNetwork").setNodeNetwork} */
+let setNodeNetwork;
+
 beforeEach(async () => {
-  // A new database per test, and fresh modules.
+  // A new database per test, and fresh modules, on a testnet node: the
+  // recordings' network.
   vi.resetModules();
   store = await import("../activityStore");
   await store.activityDatabase.delete({ disableAutoOpen: false });
   history = await import("../activityHistory");
+  ({ setNodeNetwork } = await import("$lib/stores/nodeNetwork"));
+  setNodeNetwork(networks.testnet);
 });
 
 afterEach(() => {
@@ -952,23 +959,19 @@ describe("a .dusk name's registration", () => {
 });
 
 describe("historyArchiverUrl", () => {
-  it("reads a network's history from its own node when the archiver is on another network", () => {
-    const testnet = "https://testnet.nodes.dusk.network";
-    const mainnet = "https://nodes.dusk.network";
-
-    expect(
-      history.historyArchiverUrl({ archiverUrl: mainnet, nodeUrl: testnet })
-    ).toBe(testnet);
-    expect(
-      history.historyArchiverUrl({ archiverUrl: mainnet, nodeUrl: mainnet })
-    ).toBe(mainnet);
+  it("reads a network's history from the archiver given, else from its node", () => {
     expect(
       history.historyArchiverUrl({
         archiverUrl: "https://my.archive",
         nodeUrl: "https://my.node",
       })
     ).toBe("https://my.archive");
-    expect(history.historyArchiverUrl({ nodeUrl: testnet })).toBe(testnet);
+    expect(
+      history.historyArchiverUrl({
+        archiverUrl: " ",
+        nodeUrl: "https://testnet.nodes.dusk.network",
+      })
+    ).toBe("https://testnet.nodes.dusk.network");
   });
 });
 
@@ -985,6 +988,9 @@ describe("a node under a base path", () => {
     expect(String(/** @type {any[]} */ (fetch.mock.calls[0])[0])).toBe(
       "https://node.example/rusk/on/graphql/query"
     );
+    // A node of a network without a file, as a local one.
+    setNodeNetwork(null);
+
     expect(history.activityNetworkKey("https://node.example/rusk")).toBe(
       "https://node.example/rusk"
     );
@@ -994,8 +1000,11 @@ describe("a node under a base path", () => {
     expect(history.activityNetworkKey("https://node.example/other")).not.toBe(
       history.activityNetworkKey("https://node.example/rusk")
     );
-    expect(
-      history.activityNetworkKey("https://testnet.nodes.dusk.network")
-    ).toBe("testnet");
+    // Testnet by the chain ID its node gives, whatever node it is.
+    setNodeNetwork(networks.testnet);
+
+    expect(history.activityNetworkKey("https://node.example/rusk")).toBe(
+      "testnet"
+    );
   });
 });

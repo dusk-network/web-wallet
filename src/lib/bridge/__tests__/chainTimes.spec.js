@@ -27,6 +27,8 @@ describe("chain times", () => {
 
         return 1_793_095_779;
       },
+      // DuskEVM's L1Block predeploy, as testnet's file gives it.
+      l1Block: "0x4200000000000000000000000000000000000015",
       l2Batch: async (calls) => {
         expect(calls.map(({ method }) => method)).toStrictEqual([
           "eth_getBlockByNumber",
@@ -49,6 +51,7 @@ describe("chain times", () => {
     await expect(
       readDepositLag({
         blockTime: async () => 1,
+        l1Block: "0x4200000000000000000000000000000000000015",
         l2Batch: async () => [{ timestamp: "0x1" }, "0x"],
       })
     ).rejects.toThrow();

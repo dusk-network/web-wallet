@@ -9,6 +9,7 @@
 
 import { getAddress, keccak256 } from "viem";
 import { hashWithdrawal } from "@dusk/evm-sdk";
+import { duskEvmContractId } from "$lib/web3/duskEvm";
 
 export const BRIDGE_FUNCTIONS = Object.freeze({
   claim: "finalizeWithdrawalTransaction",
@@ -301,12 +302,23 @@ function decodeClaim(args, rootSize, l1Bridge) {
 }
 
 /**
- * The bridge's contracts on Dusk, from the configuration: the deposit
- * bridge and the withdrawal portal, as the history keeps contract IDs.
+ * The bridge's contracts on Dusk, from the network's file or as set: the
+ * deposit bridge and the withdrawal portal, as the history keeps contract
+ * IDs.
  */
 export const configuredBridge = () => ({
-  bridge: norm(import.meta.env.VITE_BRIDGE_CONTRACT_ID),
-  portal: norm(import.meta.env.VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID),
+  bridge: norm(
+    duskEvmContractId(
+      "l1_standard_bridge",
+      import.meta.env.VITE_BRIDGE_CONTRACT_ID
+    )
+  ),
+  portal: norm(
+    duskEvmContractId(
+      "optimism_portal",
+      import.meta.env.VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID
+    )
+  ),
 });
 
 /**

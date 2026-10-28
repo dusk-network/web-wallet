@@ -19,7 +19,7 @@ import { timeLabel } from "$lib/activity/present";
 import { shortenAddress } from "$lib/dusk/string";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import { addBasePath } from "$lib/navigation";
-import { DEFAULT_BLOCKLISTED_ADDRESSES } from "$lib/security/addressBlocklist";
+import { networks } from "@dusk-network/networks";
 import {
   getContact,
   listContacts,
@@ -1403,7 +1403,7 @@ describe("Send", () => {
 
     it("should block a name that resolves to a blocked address", async () => {
       baseProps.resolveName.mockResolvedValueOnce({
-        account: DEFAULT_BLOCKLISTED_ADDRESSES[0].address,
+        account: networks.mainnet.display.blocklist[0].account,
         name: "alice.dusk",
       });
 

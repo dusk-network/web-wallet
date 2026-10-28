@@ -13,6 +13,10 @@ vi.mock("@wagmi/core", async (importOriginal) => ({
 describe("startWalletConnection, for a wallet connected before", () => {
   it("should let the pages in only once the wallet has reconnected", async () => {
     const { startWalletConnection } = await import("../walletConnection");
+    const { networks } = await import("@dusk-network/networks");
+
+    (await import("$lib/stores/nodeNetwork")).setNodeNetwork(networks.testnet);
+
     let started = false;
 
     const start = startWalletConnection().then(() => {

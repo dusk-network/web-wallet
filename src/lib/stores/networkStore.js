@@ -1,5 +1,6 @@
 import { writable } from "svelte/store";
 import { browser } from "$app/environment";
+import { networkFor } from "@dusk-network/networks";
 import {
   AccountSyncer,
   AddressSyncer,
@@ -8,6 +9,8 @@ import {
 } from "@dusk/w3sper";
 
 import { rejectAfter } from "$lib/dusk/promise";
+
+import { setNodeNetwork } from "./nodeNetwork";
 import { makeNodeUrl } from "$lib/url";
 
 import wasmPath from "$lib/vendor/wallet_core-1.6.0.wasm?url";
@@ -31,9 +34,11 @@ const network = new Network(networkUrl);
 
 /** @type {NetworkStoreContent} */
 const initialState = {
+  chainId: null,
   get connected() {
     return network.connected;
   },
+  net: null,
   networkName: "unknown",
 };
 
@@ -119,12 +124,22 @@ const getLastFinalizedBlockHeight = () =>
     .then((data) => data?.lastBlockPair?.json?.last_finalized_block?.[0])
     .then((height) => (height === undefined ? 0n : BigInt(height)));
 
-/** @type {NetworkStoreServices["init"]} */
+/**
+ * Names the network by the chain ID its node gives, never by its address:
+ * a custom node of a network gets that network's contracts and routes.
+ *
+ * @type {NetworkStoreServices["init"]}
+ */
 async function init() {
   const info = await network.node.info;
+  const chainId = Number(info.chainId);
+  const net = networkFor(chainId);
 
+  setNodeNetwork(net);
   set({
     ...initialState,
+    chainId,
+    net,
     networkName: info.chain.toString(),
   });
 }

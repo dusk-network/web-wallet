@@ -17,6 +17,7 @@ import { claimDay, claimText } from "$lib/bridge/claimDate";
 import { knownCall } from "./knownContracts";
 
 import { TX_KIND } from "./constants";
+import { configuredBridge } from "$lib/bridge/bridgeCalls";
 
 /**
  * @typedef {"all" | "bridge" | "received" | "sent" | "staking"} ActivityKindFilter
@@ -80,20 +81,15 @@ export const normalizeContractId = (id) =>
     .replace(/^0x/, "");
 
 /**
- * The bridge's contracts on Dusk, from the configuration: the deposit
- * bridge and the withdrawal portal.
+ * The bridge's contracts on Dusk: the deposit bridge and the withdrawal
+ * portal.
  *
  * @returns {Set<string>}
  */
 export function configuredBridgeContracts() {
-  return new Set(
-    [
-      import.meta.env.VITE_BRIDGE_CONTRACT_ID,
-      import.meta.env.VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID,
-    ]
-      .map(normalizeContractId)
-      .filter(Boolean)
-  );
+  const { bridge, portal } = configuredBridge();
+
+  return new Set([bridge, portal].filter(Boolean));
 }
 
 /** @param {string | undefined} value */

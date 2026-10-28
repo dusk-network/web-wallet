@@ -79,7 +79,7 @@
 
   $: ({ balance, currentProfile, minimumStake, stakeInfo } = $walletStore);
   // Test DUSK has no value: no money value off mainnet.
-  $: ({ networkName } = $networkStore);
+  $: ({ net, networkName } = $networkStore);
   $: staked = stakeInfo.amount
     ? stakeInfo.amount.value + stakeInfo.amount.locked
     : null;
@@ -133,7 +133,7 @@
       {minimumStake}
       reward={stakeInfo.reward}
       shielded={balance.shielded.value}
-      sozuAvailable={sozuContractsFor(networkName) !== null}
+      sozuAvailable={sozuContractsFor(net) !== null}
       stakeEnabled={isEnabled("stake")}
       {staked}
       unshielded={balance.unshielded.value}

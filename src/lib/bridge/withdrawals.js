@@ -43,6 +43,7 @@ import {
   walletStore,
 } from "$lib/stores";
 import { duskEvm } from "$lib/web3/walletConnection";
+import { duskEvmContractId, duskEvmDriverUrl } from "$lib/web3/duskEvm";
 
 /**
  * @typedef {import("$lib/bridge/bridgeReads").BridgeReads} BridgeReads
@@ -58,34 +59,18 @@ const ZERO_HASH = /** @type {`0x${string}`} */ (
   "0x0000000000000000000000000000000000000000000000000000000000000000"
 );
 
-const VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID = import.meta.env
-  .VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID;
-const VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL = import.meta.env
-  .VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL;
-const VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID = import.meta.env
-  .VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID;
-const VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL = import.meta.env
-  .VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL;
 /**
- * The anchor state registry the Portal asks whether a dispute game is
+ * DuskEVM's contracts and drivers on Dusk come from the network's file
+ * (`$lib/web3/duskEvm`); these set them instead, for local work. The
+ * anchor state registry is the one the Portal asks whether a dispute game is
  * proper and respected: with it, a proof goes against a game that has
  * already resolved, so its claim date is exact. `none` leaves it out.
  */
-const VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID = import.meta.env
-  .VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID;
-
-/** DuskEVM testnet, and its anchor state registry (its address book, testnet/l1-addresses.json). */
-const DUSKEVM_TESTNET_CHAIN_ID = 745;
-const TESTNET_ANCHOR_STATE_REGISTRY_CONTRACT_ID =
-  "1735498c11978854e390894502850916f4ba619e3f4b88c10ef758c5026619cc";
+const env = import.meta.env;
 
 const VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH = parseGameSearchDepth(
   import.meta.env.VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH
 );
-const DEFAULT_OPTIMISM_PORTAL_DATA_DRIVER_URL =
-  "/drivers/optimism_portal_dd_opt.wasm";
-const DEFAULT_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL =
-  "/drivers/dispute_game_factory_dd_opt.wasm";
 /** The latest games read for how often outputs come: five gaps. */
 const OUTPUT_SAMPLE = 6n;
 
@@ -132,18 +117,6 @@ function isConfiguredDataDriverUrl(value) {
 }
 
 /**
- * @param {string | undefined} value
- * @param {string} fallback
- */
-function dataDriverUrl(value, fallback) {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return fallback;
-  }
-
-  return value.trim();
-}
-
-/**
  * @param {string} value
  */
 function strip0x(value) {
@@ -166,37 +139,45 @@ export function isWithdrawalTxHash(value) {
 }
 
 /**
- * The anchor state registry's contract ID: the one set, testnet's by default
- * on DuskEVM testnet, or "" with `none`, or where it isn't known.
+ * The anchor state registry's contract ID: the one set, else the network's,
+ * or "" with `none`, or where it isn't known.
  */
 function anchorStateRegistryContractId() {
-  const set = String(VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID ?? "").trim();
+  const set = String(env.VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID ?? "");
 
-  if (set.toLowerCase() === "none") {
-    return "";
-  }
-
-  if (isContractId(set)) {
-    return normalizeContractId(set);
-  }
-
-  return duskEvm.id === DUSKEVM_TESTNET_CHAIN_ID
-    ? TESTNET_ANCHOR_STATE_REGISTRY_CONTRACT_ID
-    : "";
+  return set.trim().toLowerCase() === "none"
+    ? ""
+    : duskEvmContractId(
+        "anchor_state_registry",
+        isContractId(set.trim()) ? set : undefined
+      );
 }
 
+/**
+ * What proving and claiming a withdrawal on Dusk needs: the Portal and the
+ * dispute game factory, with their data drivers, from the network's file
+ * or as set; `missing` names what's neither.
+ */
 export function getWithdrawalFinalizationConfig() {
   const missing = [];
-  const optimismPortalDataDriverUrl = dataDriverUrl(
-    VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL,
-    DEFAULT_OPTIMISM_PORTAL_DATA_DRIVER_URL
+  const optimismPortalContractId = duskEvmContractId(
+    "optimism_portal",
+    env.VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID
   );
-  const disputeGameFactoryDataDriverUrl = dataDriverUrl(
-    VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL,
-    DEFAULT_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL
+  const disputeGameFactoryContractId = duskEvmContractId(
+    "dispute_game_factory",
+    env.VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID
+  );
+  const optimismPortalDataDriverUrl = duskEvmDriverUrl(
+    "optimismPortal",
+    env.VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL
+  );
+  const disputeGameFactoryDataDriverUrl = duskEvmDriverUrl(
+    "disputeGameFactory",
+    env.VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL
   );
 
-  if (!isContractId(VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID)) {
+  if (!isContractId(optimismPortalContractId)) {
     missing.push("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID");
   }
 
@@ -204,7 +185,7 @@ export function getWithdrawalFinalizationConfig() {
     missing.push("VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL");
   }
 
-  if (!isContractId(VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID)) {
+  if (!isContractId(disputeGameFactoryContractId)) {
     missing.push("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID");
   }
 
@@ -215,17 +196,13 @@ export function getWithdrawalFinalizationConfig() {
   return Object.freeze({
     anchorStateRegistryContractId: anchorStateRegistryContractId(),
     configured: missing.length === 0,
-    disputeGameFactoryContractId: isContractId(
-      VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID
-    )
-      ? normalizeContractId(VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID)
-      : VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID,
+    disputeGameFactoryContractId: normalizeContractId(
+      disputeGameFactoryContractId
+    ),
     disputeGameFactoryDataDriverUrl,
     l2RpcUrl: duskEvm.rpcUrls.default.http[0],
     missing,
-    optimismPortalContractId: isContractId(VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID)
-      ? normalizeContractId(VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID)
-      : VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID,
+    optimismPortalContractId: normalizeContractId(optimismPortalContractId),
     optimismPortalDataDriverUrl,
   });
 }

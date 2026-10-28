@@ -132,6 +132,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say Sending… on the Done screen until the block is final, then when it was sent
 - Name the network and profile buttons with what they show, for screen readers
 - List deposits and withdrawals together in Bridge › Activity, what needs you first, each with its route, amount, date or claim date, and state
+- Know the network by the chain ID its node gives, so a custom node gets that network's contracts, names and history
+- Offer only the network's own chains when connecting an EVM wallet
+- Name each contract in a transaction's details: Sozu pool, Sozu hub, DuskEVM bridge portal and the others
 
 ### Removed
 

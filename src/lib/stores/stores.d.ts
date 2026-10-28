@@ -46,7 +46,11 @@ type OperationsStoreContent = { currentOperation: string };
 type OperationsStore = Writable<OperationsStoreContent>;
 
 type NetworkStoreContent = {
+  /** The chain ID the node gives: 0 local, 1 mainnet, 2 testnet, 3 devnet. */
+  chainId: number | null;
   get connected(): boolean;
+  /** The network's contracts and routes, or null for a chain without a file. */
+  net: import("@dusk-network/networks").Network | null;
   networkName: string;
 };
 

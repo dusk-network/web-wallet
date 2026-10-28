@@ -3,7 +3,7 @@ import { compressedDuskBlsPublicKeyToRaw } from "@dusk/evm-sdk";
 import { Bookkeeper, Bookmark, ProfileGenerator } from "@dusk/w3sper";
 import { keccak256 } from "viem";
 
-import { BRIDGE_FUNCTIONS } from "$lib/bridge/bridgeCalls";
+import { BRIDGE_FUNCTIONS, configuredBridge } from "$lib/bridge/bridgeCalls";
 import {
   BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
   buildDepositETHToWithValuePayload,
@@ -19,8 +19,7 @@ import {
 } from "$lib/activity";
 import { closeContacts, openContacts } from "$lib/contacts";
 import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
-import { sozuCall } from "$lib/sozu/calls";
-import { SOZU_FN } from "$lib/sozu/config";
+import { SOZU_FN, sozuCall } from "@dusk-network/networks/sozu";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
 
@@ -100,13 +99,13 @@ function unsafeGetCurrentProfile() {
 }
 
 function getBridgeContractId() {
-  const bridgeContractId = import.meta.env.VITE_BRIDGE_CONTRACT_ID;
+  const { bridge } = configuredBridge();
 
-  if (!bridgeContractId) {
+  if (!bridge) {
     throw new Error("DuskEVM bridge contract id is not configured.");
   }
 
-  return bridgeContractId;
+  return bridge;
 }
 
 /**
@@ -515,10 +514,16 @@ const callSozu = async (poolId, fnName, amount, gas) => {
       privacy: "public",
     },
     async (network) => {
-      const { deposit, payload } = sozuCall(poolId, fnName, amount);
+      const { contractId, deposit, fnArgs } = sozuCall(poolId, fnName, amount);
       const builder = /** @type {any} */ (
         bookkeeper.as(profile).transfer(0n)
-      ).payload(payload);
+      ).payload({
+        contractId: Array.from(contractId.match(/../g) ?? [], (byte) =>
+          parseInt(byte, 16)
+        ),
+        fnArgs,
+        fnName,
+      });
 
       return await network.execute(
         builder.to(profile.account).deposit(deposit).gas(gas)

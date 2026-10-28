@@ -8,9 +8,10 @@ vi.mock("../status", () => ({ readSozuStatus }));
 
 vi.mock("$lib/stores", async () => {
   const { readable } = await import("svelte/store");
+  const { networks } = await import("@dusk-network/networks");
 
   return {
-    networkStore: readable({ networkName: "testnet" }),
+    networkStore: readable({ net: networks.testnet, networkName: "testnet" }),
     walletStore: readable({ currentProfile: { account: "account-1" } }),
   };
 });
@@ -32,6 +33,10 @@ describe("sozuStore", () => {
     expect(readSozuStatus).toHaveBeenCalledWith(
       expect.objectContaining({
         account: "account-1",
+        // Sozu's hub on the node's network, as its file names it.
+        contracts: expect.objectContaining({
+          hub: "bae85f8c24730a5a19fbe3d3bd58248ac8c302b62fe414a8c640d8c0ed286b9e",
+        }),
         nodeUrl: "https://node.example/rusk",
       })
     );

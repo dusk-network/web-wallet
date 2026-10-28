@@ -64,6 +64,34 @@ describe("Network store", async () => {
     vi.unstubAllEnvs();
   });
 
+  it("should name the network by the chain ID its node gives, whatever its address", async () => {
+    vi.stubEnv("VITE_NODE_URL", "https://node.example.test/");
+    vi.resetModules();
+
+    const store = (await import("..")).networkStore;
+    const nodeNetwork = (await import("../nodeNetwork")).default;
+    const network = await store.connect();
+
+    for (const [chainId, name, file] of [
+      [2, "testnet", "testnet"],
+      [1, "mainnet", "mainnet"],
+      [0, "localnet", null],
+    ]) {
+      network.node = /** @type {any} */ ({
+        info: Promise.resolve({ chain: { toString: () => name }, chainId }),
+      });
+      await store.init();
+
+      expect(get(store)).toMatchObject({ chainId, networkName: name });
+      expect(get(store).net?.name ?? null).toBe(file);
+      // For the modules that only need the network's contracts and routes.
+      expect(get(nodeNetwork)).toBe(get(store).net);
+    }
+
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
   it("should expose a method to connect to the network and update the store's connection status", async () => {
     const store = (await import("..")).networkStore;
 

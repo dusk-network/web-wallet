@@ -22,13 +22,15 @@ vi.mock("viem", () => ({
   http: mocks.http,
 }));
 
-// DuskEVM as configured, and no EVM wallet connection started: a deposit
-// is followed without one.
+// DuskEVM on the node's network, with its adapter at /l1 on its RPC's
+// host, and no EVM wallet connection started: a deposit is followed
+// without one.
 vi.mock("$lib/web3/duskEvm", () => ({
   duskEvm: {
     id: 310,
     rpcUrls: { default: { http: ["https://l2.example.test"] } },
   },
+  duskEvmAdapterUrl: () => "https://l2.example.test/l1",
 }));
 
 vi.mock("$lib/web3/walletConnection", () => ({
@@ -53,8 +55,6 @@ let rememberDepositTransaction;
 
 describe("DuskEVM deposit tracking", () => {
   beforeAll(async () => {
-    vi.stubEnv("VITE_EVM_L1_BRIDGE_RPC_URL", "https://l1.example.test");
-
     ({ depositTrackingPollInterval, refreshDepositTransaction } =
       await import("../depositActivity"));
     ({ getRememberedDepositTransaction, rememberDepositTransaction } =

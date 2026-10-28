@@ -7,7 +7,7 @@
 import { get, writable } from "svelte/store";
 
 import { networkStore } from "$lib/stores";
-import { duskEvm } from "$lib/web3/walletConnection";
+import { duskEvm, duskEvmNetwork } from "$lib/web3/duskEvm";
 
 import { createChainTimes, readDepositLag } from "./chainTimes";
 import {
@@ -90,7 +90,12 @@ function load() {
       times: createChainTimes({
         key,
         read: {
-          deposit: () => readDepositLag({ blockTime, l2Batch }),
+          deposit: () =>
+            readDepositLag({
+              blockTime,
+              l1Block: String(duskEvmNetwork()?.predeploys.l1Block ?? ""),
+              l2Batch,
+            }),
           withdrawal: () => loadWithdrawalTiming(),
         },
       }),

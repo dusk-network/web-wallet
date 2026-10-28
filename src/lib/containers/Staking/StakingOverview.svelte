@@ -7,7 +7,7 @@
   import { AppAnchorButton, BalanceValue, SectionHead } from "$lib/components";
   import { goto, pageTitle } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
-  import { duskPerStDusk, feePercent } from "$lib/sozu/amounts";
+  import { duskPerStDusk, feePercent } from "@dusk-network/networks/sozu";
 
   import ActivityPanel from "../Home/ActivityPanel.svelte";
   import { stakeActions } from "./stakeActions";

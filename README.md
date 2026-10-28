@@ -42,21 +42,8 @@ N.B. the current `0.1.2` version of the library has no option to pick the networ
 
 ```
 VITE_BASE_PATH="" # can be empty string, must start with a slash otherwise, must not end with a slash
-VITE_BRIDGE_CONTRACT_ID=""
-VITE_EVM_BRIDGE_CONTRACT_ADDRESS=""
-VITE_EVM_BRIDGE_CONTRACT_BLOCK_CREATED=
-VITE_EVM_BRIDGE_BLOCK_EXPLORER_NAME="Dusk EVM Explorer"
-VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL=""
-VITE_EVM_L1_BRIDGE_RPC_URL=""
-VITE_EVM_BRIDGE_RPC_URL=""
 VITE_EVM_DEPOSIT_DELAY_THRESHOLD_MS=300000
 VITE_EVM_DEPOSIT_STALL_THRESHOLD_MS=1800000
-VITE_EVM_CHAIN_ID=745
-VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID=""
-VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL="/drivers/optimism_portal_dd_opt.wasm"
-VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID=""
-VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL="/drivers/dispute_game_factory_dd_opt.wasm"
-VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID=""
 VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH=64
 VITE_FEATURE_ALLOCATE=true
 VITE_FEATURE_BRIDGE=true
@@ -73,6 +60,17 @@ VITE_REOWN_PROJECT_ID="" # the ID of the EVM project (as on Reown Cloud)
 VITE_NODE_URL="" # connect to a specific node
 ```
 
+The wallet finds its network by the chain ID the node gives in
+`/on/node/info`, never by the node's address, and takes the network's
+contracts, Sozu's hub, DuskEVM, the bridge routes, the contract labels and the
+recipient blocklist from its file in `@dusk-network/networks`. For local work,
+these variables set DuskEVM's values instead: `VITE_BRIDGE_CONTRACT_ID`,
+`VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID`,
+`VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID`,
+`VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID`, their `*_DATA_DRIVER_URL`s,
+`VITE_EVM_CHAIN_ID`, `VITE_EVM_BRIDGE_RPC_URL`, `VITE_EVM_L1_BRIDGE_RPC_URL`,
+`VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL` and `VITE_EVM_BRIDGE_CONTRACT_ADDRESS`.
+
 The transaction history is on unless `VITE_FEATURE_TRANSACTION_HISTORY` is
 `false`. It reads the public account's history from the node's archive
 (`moonlightHistory` over GraphQL) by block height, and the shielded history
@@ -83,14 +81,16 @@ Each operation has its own default gas limit and minimum, defined in
 `src/lib/contracts/gasDefaults.js`. `VITE_GAS_LIMIT_UPPER` caps the gas limit
 for all of them.
 
-For the DuskEVM bridge, `VITE_BRIDGE_CONTRACT_ID` is the Dusk L1
-`L1StandardBridge` contract id used for DuskDS -> DuskEVM deposits.
-`VITE_EVM_BRIDGE_CONTRACT_ADDRESS` is the DuskEVM L2 `L2StandardBridge`
-address used for DuskEVM -> DuskDS withdrawals. The current wallet bridge
+For the DuskEVM bridge, the network file's `l1_standard_bridge` (or
+`VITE_BRIDGE_CONTRACT_ID`) is the Dusk L1 `L1StandardBridge` contract id used
+for DuskDS -> DuskEVM deposits, and its `l2StandardBridge` predeploy (or
+`VITE_EVM_BRIDGE_CONTRACT_ADDRESS`) the DuskEVM L2 `L2StandardBridge` address
+used for DuskEVM -> DuskDS withdrawals. The current wallet bridge
 uses the pinned `@dusk/evm-sdk` beta for versioned Dusk asset-recipient
 metadata, L2 withdrawal calldata, `MessagePassed` verification, and L1 Portal
-argument serialization. `VITE_EVM_L1_BRIDGE_RPC_URL` points to the DuskEVM
-adapter's Ethereum-compatible L1 RPC. The wallet uses it only for deposits: to
+argument serialization. The DuskEVM adapter's Ethereum-compatible L1 RPC is
+at `/l1` on DuskEVM's RPC host, unless `VITE_EVM_L1_BRIDGE_RPC_URL` points
+elsewhere. The wallet uses it only for deposits: to
 confirm a deposit's DuskDS receipt, derive the OP deposit transaction, and
 track delivery on `VITE_EVM_BRIDGE_RPC_URL`. Withdrawals are read on Dusk
 itself. `VITE_EVM_DEPOSIT_DELAY_THRESHOLD_MS` controls when
@@ -98,8 +98,8 @@ an in-transit deposit is labelled delayed; it defaults to five minutes. Generic
 Dusk delivery envelopes for arbitrary L2 -> L1 contract messages are a
 separate application surface and are not exposed by the bridge UI.
 
-`VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL` must point to a Blockscout-compatible
-explorer for the configured DuskEVM network. Withdrawal activity uses its v2
+DuskEVM's explorer, or `VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL`, must be a
+Blockscout-compatible explorer for the DuskEVM network. Withdrawal activity uses its v2
 address-transactions and transaction-detail APIs, including the
 `op_withdrawals` data returned by Blockscout's Optimism module, and its list of
 all withdrawals to find, by their nonces, the ones the account proved or
@@ -108,18 +108,18 @@ connected. If the explorer is temporarily unavailable, the wallet retains and
 displays a bounded local history of withdrawals initiated in that browser.
 
 Withdrawal finalization uses the existing Dusk-native wallet path on L1.
-Reown/Wagmi is only used for the DuskEVM/L2 side. The wallet uses
-`VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID` and its data-driver URL to call
+Reown/Wagmi is only used for the DuskEVM/L2 side. The wallet uses the
+OptimismPortal contract and its data driver to call
 `proveWithdrawalTransaction`, `finalizeWithdrawalTransaction`, and withdrawal
-status getters through w3sper. It uses
-`VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID` and its data-driver URL to find a
+status getters through w3sper. It uses the DisputeGameFactory contract and
+its data driver to find a
 dispute game/output proposal that covers the L2 withdrawal block. The respected
-dispute game type is read from the portal at runtime. With
-`VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID`, the anchor state registry the
-portal asks whether a game is proper and respected, a proof goes against a
+dispute game type is read from the portal at runtime. With the anchor state
+registry the portal asks whether a game is proper and respected, a proof goes
+against a
 covering game that has already resolved and passes those checks, so its claim
-date is exact; otherwise against the newest covering game. DuskEVM testnet's
-registry (chain 745) is known by default, and `none` leaves it out. This flow requires Rusk
+date is exact; otherwise against the newest covering game.
+`VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID=none` leaves it out. This flow requires Rusk
 1.7.1 or later so read-only contract queries execute at the current chain tip
 and can evaluate proof maturity correctly.
 The data-driver URLs must point to browser-loadable Forge data-driver WASM
@@ -127,8 +127,8 @@ artifacts for the deployed contracts; they are not the deployed contract WASM
 artifacts themselves. These `VITE_*` values are public build-time browser
 configuration and must not be derived from user input. Data-driver URLs may be
 relative/root-relative asset paths or `http(s)` URLs. If the URL variables are
-unset or empty, the wallet uses the bundled `/drivers/optimism_portal_dd_opt.wasm`
-and `/drivers/dispute_game_factory_dd_opt.wasm` artifacts.
+unset or empty, the wallet uses the drivers the network's file names, bundled
+under `/drivers/`.
 
 A withdrawal can be claimed from the later of its proof plus the Portal's
 proof maturity delay, and its dispute game's resolution plus the game's
