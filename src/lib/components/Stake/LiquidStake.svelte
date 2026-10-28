@@ -411,15 +411,12 @@
     <div class="liquid-stake__intro">
       <p class="liquid-stake__who">
         Sozu <span class="liquid-stake__tag">third party</span>
-      </p>
-      <p>
-        Sozu, not Dusk, holds the DUSK you stake here and returns it under
-        Sozu's own rules: <a
+        <a
           class="liquid-stake__link text-link"
           href={SOZU_URL}
           rel="noopener noreferrer"
           target="_blank">sozu.fi</a
-        >.
+        >
       </p>
     </div>
 

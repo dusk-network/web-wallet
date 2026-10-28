@@ -123,15 +123,15 @@ describe("Settings", () => {
     );
   });
 
-  it("should link the Terms of Use and the Privacy Policy under Support, as setup does", () => {
+  it("should link the Terms of use and the Privacy policy under Support, as setup does", () => {
     const { getByRole } = render(Settings, {});
     const support = /** @type {HTMLElement} */ (
       getByRole("heading", { name: "Support" }).closest("article")
     );
 
     for (const [name, href] of [
-      ["Terms of Use", "https://dusk.network/terms-of-use/"],
-      ["Privacy Policy", "https://dusk.network/privacy-policy/"],
+      ["Terms of use", "https://dusk.network/terms-of-use/"],
+      ["Privacy policy", "https://dusk.network/privacy-policy/"],
     ]) {
       const link = within(support).getByRole("link", { name });
 

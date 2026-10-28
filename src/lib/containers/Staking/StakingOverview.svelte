@@ -349,7 +349,6 @@
           </td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
-              Sozu's contract and rules apply:
               <a
                 class="compare__link text-link"
                 href={SOZU_URL}

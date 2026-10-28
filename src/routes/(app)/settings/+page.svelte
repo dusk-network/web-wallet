@@ -299,14 +299,14 @@
           className="text-link"
           href={LEGAL_LINKS.TERMS_OF_USE}
           rel="noopener noreferrer"
-          target="_blank">Terms of Use</Anchor
+          target="_blank">Terms of use</Anchor
         >
         ·
         <Anchor
           className="text-link"
           href={LEGAL_LINKS.PRIVACY_POLICY}
           rel="noopener noreferrer"
-          target="_blank">Privacy Policy</Anchor
+          target="_blank">Privacy policy</Anchor
         >
       </p>
     </article>

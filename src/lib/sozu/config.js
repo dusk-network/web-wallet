@@ -10,7 +10,7 @@ import { get, writable } from "svelte/store";
 
 export { SOZU_FN };
 
-/** Sozu's site, for its own rules. */
+/** Sozu's site. */
 export const SOZU_URL = "https://sozu.fi/";
 
 /**
