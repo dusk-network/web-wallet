@@ -174,6 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Look a `.dusk` name up once more before saying it couldn't be looked up
 - Give the export's box, a contact's choice and the Bridge's Max a tap area of 44 px on phones
 - Take amounts on the Shield page with your language's decimal separator
+- Offer Claim on a DuskEVM withdrawal only once its claim date has come
 
 ## [1.8.0] - 2026-03-25
 
