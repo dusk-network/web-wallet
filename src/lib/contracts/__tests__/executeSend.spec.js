@@ -48,8 +48,21 @@ describe("executeSend", () => {
       expect.objectContaining({
         limit: 500n,
         price: 1n,
-      })
+      }),
+      { toName: undefined }
     );
     expect(result).toBe("some-tx-id");
+  });
+
+  it("should pass on the .dusk name typed for the recipient, for the history", async () => {
+    await executeSend("fake-address", 1n, "", 1n, 500n, "alice.dusk");
+
+    expect(walletStore.transfer).toHaveBeenCalledWith(
+      "fake-address",
+      1n,
+      "",
+      expect.objectContaining({ limit: 500n, price: 1n }),
+      { toName: "alice.dusk" }
+    );
   });
 });

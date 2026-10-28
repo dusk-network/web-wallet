@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show a withdrawal's network fee and its two steps on Dusk before it is sent
 - Label the Bridge amount, with the balance available and Use max
 - Show the connected DuskEVM account in the Bridge
+- Show the account's transaction history from the node's archive, kept in the browser
 
 ### Changed
 
@@ -47,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Title each withdrawal with its amount, show its status once, and say DuskEVM instead of L2
 - Swap the bridge direction with the ↑↓ button
 - Offer only wallets when connecting to DuskEVM
+- Turn the transaction history on unless `VITE_FEATURE_TRANSACTION_HISTORY` is `false`
 
 ### Removed
 

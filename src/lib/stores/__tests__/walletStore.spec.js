@@ -17,6 +17,12 @@ import {
 } from "@dusk/w3sper";
 
 import { stakeInfo } from "$lib/mock-data";
+import {
+  activityFor,
+  asTransactions,
+  clearActivityStore,
+  stopActivity,
+} from "$lib/activity";
 import { buildDepositETHToWithValuePayload } from "$lib/bridge/deposit";
 import {
   getVerifiedName,
@@ -29,6 +35,26 @@ import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 import { networkStore, settingsStore, walletStore } from "..";
 
 const VITE_SYNC_INTERVAL = import.meta.env.VITE_SYNC_INTERVAL;
+
+const history = vi.hoisted(() => ({
+  session: {
+    notesSynced: vi.fn(),
+    recordSent: vi.fn(async () => {}),
+
+    /** @type {ActivityRow[]} */
+    rows: [],
+    start: vi.fn(async () => {}),
+  },
+}));
+
+vi.mock("$lib/activity", async (importOriginal) => ({
+  .../** @type {typeof import("$lib/activity")} */ (await importOriginal()),
+  activityFor: vi.fn(() => history.session),
+  clearActivityStore: vi.fn(async () => {}),
+  currentActivity: vi.fn(() => history.session),
+  getShieldedHistory: vi.fn(async () => ({ entries: [] })),
+  stopActivity: vi.fn(),
+}));
 
 describe("Wallet store", async () => {
   const AUTO_SYNC_INTERVAL = !isNaN(Number(VITE_SYNC_INTERVAL))
@@ -169,6 +195,8 @@ describe("Wallet store", async () => {
 
   describe("Initialization and sync", () => {
     it("should expose a method to initialize the store with a `ProfileGenerator` instance", async () => {
+      history.session.notesSynced.mockClear();
+
       await walletStore.init(profileGenerator);
 
       const state = get(walletStore);
@@ -214,6 +242,9 @@ describe("Wallet store", async () => {
 
       // Check that we still have exactly 2 profiles
       expect(finalState.profiles).toHaveLength(2);
+
+      // The notes are synced: the history is told, for its shielded side.
+      expect(history.session.notesSynced).toHaveBeenCalledTimes(1);
       expect(finalState.profiles[0]).toBe(defaultProfile);
       expect(finalState.profiles[1]).toBeDefined();
 
@@ -502,6 +533,26 @@ describe("Wallet store", async () => {
      * @typedef { "claimRewards" | "shield" | "stake" | "transfer" | "unshield" | "unstake" } TransferMethod
      */
 
+    /** @type {Record<TransferMethod, ActivityDirection>} */
+    const SENT_DIRECTIONS = {
+      claimRewards: "in",
+      shield: "out",
+      stake: "out",
+      transfer: "out",
+      unshield: "in",
+      unstake: "in",
+    };
+
+    /** @type {Record<TransferMethod, ActivityKind>} */
+    const SENT_KINDS = {
+      claimRewards: "withdraw_reward",
+      shield: "shield",
+      stake: "stake",
+      transfer: "transfer",
+      unshield: "unshield",
+      unstake: "unstake",
+    };
+
     /**
      * @template {TransferMethod} M
      * @param {M} method
@@ -556,6 +607,20 @@ describe("Wallet store", async () => {
 
       // @ts-ignore here args can't be inferred apparently
       await walletStore[method](...args);
+
+      // The history shows what was sent until the archive has it.
+      expect(history.session.recordSent).toHaveBeenCalledTimes(1);
+      expect(history.session.recordSent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: String(amount),
+          direction: SENT_DIRECTIONS[method],
+          hash: phoenixTxResult.hash,
+          kind: SENT_KINDS[method],
+          privacy:
+            isPhoenixTransfer || method === "unshield" ? "shielded" : "public",
+          ...(method === "transfer" ? { to: args[0] } : {}),
+        })
+      );
 
       expect(executeSpy).toHaveBeenCalledTimes(1);
       expect(executeSpy.mock.calls[0][0].attributes).toStrictEqual(expectedTx);
@@ -690,6 +755,103 @@ describe("Wallet store", async () => {
       updateCachedPendingNotesSpy.mockRestore();
     });
 
+    it("should record a send in the history of the profile that sent it, though another one shows when it goes through", async () => {
+      vi.useRealTimers();
+
+      const { currentProfile: payer, profiles } = get(walletStore);
+      const sent = Promise.withResolvers();
+
+      executeSpy.mockReturnValueOnce(sent.promise);
+      vi.mocked(activityFor).mockClear();
+      history.session.recordSent.mockClear();
+
+      const sending = walletStore.transfer(toMoonlight, amount, memo, gas);
+
+      await vi.waitUntil(() => executeSpy.mock.calls.length === 1);
+      await walletStore.setCurrentProfile(profiles[1]);
+      sent.resolve({
+        buffer: new Uint8Array(),
+        hash: phoenixTxResult.hash,
+        nonce: 1n,
+      });
+      await sending;
+
+      // The history asked for is the paying profile's, as the send began.
+      expect(history.session.recordSent).toHaveBeenCalledOnce();
+      expect(
+        vi
+          .mocked(activityFor)
+          .mock.calls.map(([options]) => [
+            options.account,
+            options.profileIndex,
+          ])
+      ).toStrictEqual([[String(payer?.account), 0]]);
+
+      // The nonce it used is the paying profile's too.
+      expect(updateNonceSpy).toHaveBeenCalledExactlyOnceWith(payer, 1n);
+
+      vi.useFakeTimers();
+    });
+
+    it("should build, cache and record a send as the profile it began with, though another one is chosen while the wallet syncs", async () => {
+      vi.useRealTimers();
+
+      const { currentProfile: payer, profiles } = get(walletStore);
+      const held = Promise.withResolvers();
+
+      // The sync before the send waits, and another profile is chosen.
+      treasuryUpdateSpy.mockImplementationOnce(() => held.promise);
+      vi.mocked(activityFor).mockClear();
+      history.session.recordSent.mockClear();
+      executeSpy.mockResolvedValueOnce({
+        buffer: new Uint8Array(),
+        hash: phoenixTxResult.hash,
+        nonce: 7n,
+      });
+
+      const sending = walletStore.transfer(toMoonlight, amount, memo, gas);
+
+      await vi.waitUntil(() => treasuryUpdateSpy.mock.calls.length === 1);
+      await walletStore.setCurrentProfile(profiles[1]);
+      held.resolve(undefined);
+      await sending;
+
+      expect(executeSpy.mock.calls[0][0].bookentry.profile).toBe(payer);
+      expect(updateNonceSpy).toHaveBeenCalledExactlyOnceWith(payer, 7n);
+      expect(
+        vi.mocked(activityFor).mock.calls.map(([options]) => options.account)
+      ).toStrictEqual([String(payer?.account)]);
+      expect(history.session.recordSent).toHaveBeenCalledOnce();
+
+      vi.useFakeTimers();
+    });
+
+    it("should leave the cache alone when the wallet is reset while a send goes out", async () => {
+      vi.useRealTimers();
+
+      const sent = Promise.withResolvers();
+
+      executeSpy.mockReturnValueOnce(sent.promise);
+      updateNonceSpy.mockClear();
+      updateCachedPendingNotesSpy.mockClear();
+
+      const sending = walletStore.transfer(toMoonlight, amount, memo, gas);
+
+      await vi.waitUntil(() => executeSpy.mock.calls.length === 1);
+      walletStore.reset();
+      sent.resolve({
+        buffer: new Uint8Array(),
+        hash: phoenixTxResult.hash,
+        nonce: 1n,
+      });
+      await sending.catch(() => {});
+
+      expect(updateNonceSpy).not.toHaveBeenCalled();
+      expect(updateCachedPendingNotesSpy).not.toHaveBeenCalled();
+
+      vi.useFakeTimers();
+    });
+
     it.each(
       /** @type {const} */ (["getCachedSyncInfo", "clearCache", "update"])
     )(
@@ -761,6 +923,56 @@ describe("Wallet store", async () => {
     });
 
     /* eslint-disable vitest/expect-expect */
+
+    it("should neither start nor record a history while it is turned off", async () => {
+      vi.useRealTimers();
+      vi.stubEnv("VITE_FEATURE_TRANSACTION_HISTORY", "false");
+      vi.mocked(activityFor).mockClear();
+      history.session.recordSent.mockClear();
+      executeSpy.mockResolvedValueOnce({
+        buffer: new Uint8Array(),
+        hash: phoenixTxResult.hash,
+        nonce: 1n,
+      });
+
+      await walletStore.transfer(toMoonlight, amount, memo, gas);
+
+      expect(await walletStore.getTransactionsHistory()).toEqual([]);
+      expect(activityFor).not.toHaveBeenCalled();
+      expect(history.session.recordSent).not.toHaveBeenCalled();
+
+      vi.useFakeTimers();
+    });
+
+    it("should record the .dusk name typed for a recipient, and a transfer to the profile's own account as to itself", async () => {
+      vi.useRealTimers();
+
+      const own = String(defaultProfile.account);
+
+      for (const [to, options, expected] of /** @type {const} */ ([
+        [
+          toMoonlight,
+          { toName: "alice.dusk" },
+          { direction: "out", toName: "alice.dusk" },
+        ],
+        [own, undefined, { direction: "self", toName: undefined }],
+      ])) {
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: phoenixTxResult.hash,
+          nonce: 1n,
+        });
+        history.session.recordSent.mockClear();
+
+        await walletStore.transfer(to, amount, memo, gas, options);
+
+        expect(history.session.recordSent).toHaveBeenCalledWith(
+          expect.objectContaining({ to, ...expected })
+        );
+      }
+
+      vi.useFakeTimers();
+    });
 
     it("should expose a method to claim the rewards", async () => {
       await walletStoreTransferCheck("claimRewards", [amount, gas]);
@@ -1035,7 +1247,58 @@ describe("Wallet store", async () => {
       await walletStore.clearLocalData();
       expect(cacheClearSpy).toHaveBeenCalledTimes(1);
       expect(getVerifiedName("testnet", "some-account")).toBe("");
+
+      // The history kept in the browser goes too, and its work stops.
+      expect(stopActivity).toHaveBeenCalled();
+      expect(clearActivityStore).toHaveBeenCalledTimes(1);
       vi.useFakeTimers();
+    });
+
+    it("should stop the history when the wallet locks", () => {
+      vi.mocked(stopActivity).mockClear();
+
+      walletStore.reset();
+
+      expect(stopActivity).toHaveBeenCalledTimes(1);
+      expect(clearActivityStore).not.toHaveBeenCalled();
+    });
+
+    it("should give the current profile's history, from the archive, as its transactions", async () => {
+      const { currentProfile } = get(walletStore);
+
+      /** @type {ActivityRow[]} */
+      const rows = [
+        {
+          amount: "1100000000000",
+          blockHeight: 4655845,
+          direction: "in",
+          hash: "8e".repeat(32),
+          kind: "transfer",
+          source: "archive",
+          status: "executed",
+        },
+        {
+          amount: "5000000000",
+          direction: "out",
+          hash: "aa".repeat(32),
+          kind: "transfer",
+          source: "local",
+          status: "submitted",
+        },
+      ];
+
+      history.session.rows = rows;
+
+      await expect(walletStore.getTransactionsHistory()).resolves.toEqual(
+        asTransactions(rows)
+      );
+      expect(activityFor).toHaveBeenCalledWith(
+        expect.objectContaining({
+          account: String(currentProfile?.account),
+          profileIndex: 0,
+        })
+      );
+      expect(history.session.start).toHaveBeenCalled();
     });
 
     it("should expose a method to clear local data and init the wallet", async () => {

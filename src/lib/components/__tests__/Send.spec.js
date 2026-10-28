@@ -1079,12 +1079,14 @@ describe("Send", () => {
 
       await fireEvent.click(getByRole("button", { name: "SEND" }));
 
+      // The name, as the lookup gives it, goes with it for the history.
       expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
         nameAccount,
         duskToLux(amount),
         "",
         gasPrice,
-        gasLimit
+        gasLimit,
+        "alice.dusk"
       );
     });
 
@@ -1127,7 +1129,8 @@ describe("Send", () => {
         duskToLux(amount),
         "",
         gasPrice,
-        gasLimit
+        gasLimit,
+        "alice.dusk"
       );
     });
 
@@ -1253,7 +1256,8 @@ describe("Send", () => {
         duskToLux(amount),
         "",
         gasPrice,
-        gasLimit
+        gasLimit,
+        "alice.dusk"
       );
     });
 

@@ -99,5 +99,5 @@ export default defineConfig([
       "import/no-duplicates": 0,
     },
   },
-  globalIgnores([".svelte-kit/", "build/", "coverage/"]),
+  globalIgnores([".svelte-kit/", "build/", "coverage/", "src/lib/vendor/"]),
 ]);

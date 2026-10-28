@@ -35,7 +35,7 @@
     TransactionResult,
   } from "$lib/components";
 
-  /** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint) => Promise<string>} */
+  /** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint, toName?: string) => Promise<string>} */
   export let execute;
 
   /** @type {(amount: number) => string} */
@@ -351,6 +351,31 @@
   };
 
   let activeStep = 0;
+
+  /**
+   * Sends the transfer, with the `.dusk` name it goes to, as the lookup
+   * gives it, for the history.
+   */
+  function sendTransfer() {
+    const toName = recipientName ? nameLookup?.name : undefined;
+
+    return toName
+      ? execute(
+          recipientAddress,
+          sendAmountInLux,
+          transactionMemo,
+          gasPrice,
+          gasLimit,
+          toName
+        )
+      : execute(
+          recipientAddress,
+          sendAmountInLux,
+          transactionMemo,
+          gasPrice,
+          gasLimit
+        );
+  }
 
   // The gas settings depend on the recipient (public or shielded), chosen in
   // the address step: start over from new ones there. On the amount step,
@@ -855,13 +880,7 @@
       <TransactionResult
         {formatter}
         maxFee={maxGasFee}
-        operation={execute(
-          recipientAddress,
-          sendAmountInLux,
-          transactionMemo,
-          gasPrice,
-          gasLimit
-        )}
+        operation={sendTransfer()}
       />
     </WizardStep>
   </Wizard>

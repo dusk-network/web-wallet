@@ -59,6 +59,26 @@ describe("Dashboard", () => {
     walletSpy.mockRestore();
   });
 
+  it("should show the transactions unless the history is switched off", async () => {
+    vi.stubEnv("VITE_FEATURE_TRANSACTION_HISTORY", "");
+
+    const shown = renderWithSimpleContent(Dashboard, baseOptions);
+
+    expect(shown.container.querySelector(".transactions")).toBeInTheDocument();
+
+    cleanup();
+    vi.stubEnv("VITE_FEATURE_TRANSACTION_HISTORY", "false");
+
+    const hidden = renderWithSimpleContent(Dashboard, baseOptions);
+
+    expect(hidden.container.querySelector(".transactions")).toBeNull();
+    expect(
+      hidden.getByText("Transaction history isn't available here yet.")
+    ).toBeInTheDocument();
+
+    vi.unstubAllEnvs();
+  });
+
   it("should show the balance card, with the fiat value once the price is loaded", async () => {
     const { balance } = get(mockedWalletStore);
     const expectedFiat =
