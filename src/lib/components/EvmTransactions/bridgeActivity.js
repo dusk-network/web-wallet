@@ -309,3 +309,34 @@ export const groupBridgeActivity = (rows) =>
       .filter((row) => row.group === group)
       .sort((a, b) => b.when - a.when),
   })).filter(({ rows: inGroup }) => inGroup.length);
+
+/**
+ * Each withdrawal's proof and claim on Dusk, by the withdrawal's hash, as
+ * the history has them: the newest of each that didn't fail.
+ *
+ * @param {ActivityRow[]} rows Newest first
+ * @returns {Map<string, { claim?: string, prove?: string }>}
+ */
+export function withdrawalDuskTransactions(rows) {
+  /** @type {Map<string, { claim?: string, prove?: string }>} */
+  const steps = new Map();
+
+  for (const row of rows) {
+    const call = row.bridge;
+
+    if (
+      (call?.kind === "prove" || call?.kind === "claim") &&
+      call.hash &&
+      row.status !== "failed"
+    ) {
+      const hash = call.hash.toLowerCase();
+      const known = steps.get(hash) ?? {};
+
+      if (!known[call.kind]) {
+        steps.set(hash, { ...known, [call.kind]: row.hash });
+      }
+    }
+  }
+
+  return steps;
+}

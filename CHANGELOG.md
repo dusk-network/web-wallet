@@ -147,6 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Round the network fee paid in a transaction's details, with the exact fee under Technical details
 - Open the Bridge on BNB Smart Chain's migration from Home's Migrate it to Dusk, shown only where a migration is running
 - Link Run a node, to the docs on running one, where native staking says it needs your own node
+- Link both sides of a bridge transfer in its details: Dusk's transactions in the network's Dusk explorer, DuskEVM's in its own
 
 ### Removed
 

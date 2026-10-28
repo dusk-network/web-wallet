@@ -6,6 +6,7 @@ import {
   BRIDGE_ACTIVITY_GROUPS,
   depositRow,
   groupBridgeActivity,
+  withdrawalDuskTransactions,
   withdrawalRow,
 } from "../EvmTransactions/bridgeActivity";
 
@@ -228,5 +229,30 @@ describe("groupBridgeActivity", () => {
       "Completed",
       "Didn't go through",
     ]);
+  });
+});
+
+describe("a withdrawal's proof and claim on Dusk", () => {
+  it("are the history's newest of each that didn't fail, by the withdrawal's hash", () => {
+    const proved = `0x${"8e".repeat(32)}`;
+    /** @param {string} hash @param {"claim" | "prove"} kind @param {string} [status] */
+    const row = (hash, kind, status = "executed") =>
+      /** @type {ActivityRow} */ (
+        /** @type {unknown} */ ({
+          bridge: { hash: proved.toUpperCase().replace("0X", "0x"), kind },
+          hash,
+          source: "archive",
+          status,
+        })
+      );
+
+    expect(
+      withdrawalDuskTransactions([
+        row("c1".repeat(32), "claim", "failed"),
+        row("c2".repeat(32), "claim"),
+        row("b2".repeat(32), "prove"),
+        row("b1".repeat(32), "prove"),
+      ]).get(proved)
+    ).toStrictEqual({ claim: "c2".repeat(32), prove: "b2".repeat(32) });
   });
 });

@@ -66,6 +66,7 @@
     depositRow,
     groupBridgeActivity,
     routeTransferRow,
+    withdrawalDuskTransactions,
     withdrawalRow,
   } from "./bridgeActivity";
   import { formatTimestamp, shortened } from "./withdrawalPresentation";
@@ -716,6 +717,8 @@
     linkedTransfer = null;
     linkedDeposit = null;
   }
+  // Each withdrawal's proof and claim on Dusk, as the history has them.
+  $: withdrawalSteps = withdrawalDuskTransactions($activityState.rows);
   // DuskEVM's parts, and its reads: only on a network that has it.
   $: hasDuskEvm =
     Boolean($nodeNetwork?.duskEvm) || finalizationConfig.configured;
@@ -864,6 +867,9 @@
                       {isSubmitting}
                       {selectedWithdrawal}
                       {statusError}
+                      duskTransactions={withdrawalSteps.get(
+                        selectedWithdrawal?.withdrawalHash ?? ""
+                      ) ?? {}}
                       submittedHash={selectedWithdrawal?.pendingTransactionHash ??
                         ""}
                       on:finalize={submitFinalization}

@@ -8,6 +8,7 @@
   import { AnchorButton, ErrorDetails, Icon } from "$lib/dusk/components";
   import { AppAnchor } from "$lib/components";
   import { MESSAGES } from "$lib/constants";
+  import { duskExplorerTx } from "$lib/url";
 
   // @ts-ignore
   const hash = $page.state?.hash ?? null;
@@ -28,7 +29,7 @@
         <p>{MESSAGES.TRANSACTION_CREATED}</p>
         <br />
         <AnchorButton
-          href={`/explorer/transactions/transaction?id=${hash}`}
+          href={duskExplorerTx(hash)}
           text="View in Dusk explorer"
           rel="noopener noreferrer"
           target="_blank"

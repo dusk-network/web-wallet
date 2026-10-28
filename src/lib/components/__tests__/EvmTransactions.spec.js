@@ -568,9 +568,13 @@ describe("EvmTransactions", () => {
 
     await fireEvent.click(paid);
 
+    // On mainnet's own Dusk explorer.
     expect(
       getByRole("link", { name: "View dusk payout hash in Dusk explorer" })
-    ).toBeInTheDocument();
+    ).toHaveAttribute(
+      "href",
+      `https://apps.dusk.network/explorer/transactions/transaction?id=${"b1".repeat(32)}`
+    );
   });
 
   it("opens the migration its link names, one this browser sent to the profile shown", async () => {
@@ -1017,6 +1021,56 @@ describe("EvmTransactions", () => {
       getByRole("button", { name: "Copy duskevm transaction hash" })
     ).toBeInTheDocument();
     expect(queryByText(/Initiated|L2 /)).toBeNull();
+  });
+
+  it("links a withdrawal's two sides: its DuskEVM transaction, and its proof on Dusk as the history has it", async () => {
+    const txHash = `0x${"5b".repeat(32)}`;
+    const withdrawalHash = `0x${"eb".repeat(32)}`;
+    const proof = "b7".repeat(32);
+
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+    mocks.setHistoryRows([
+      {
+        bridge: { hash: withdrawalHash, kind: "prove", withdrawal: "01" },
+        direction: "out",
+        hash: proof,
+        privacy: "public",
+        source: "archive",
+        status: "executed",
+        timestamp: Date.now() - 3_600_000,
+      },
+    ]);
+    mocks.loadWithdrawalActivity.mockResolvedValue({
+      error: null,
+      items: [{ ...activityItem(txHash, "proven_waiting"), withdrawalHash }],
+      sourceUnavailable: false,
+    });
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      blockNumber: 2580123n,
+      stage: "proven_waiting",
+      transactionHash: txHash,
+      withdrawalHash,
+    });
+
+    const { findByRole, getByRole } = render(EvmTransactions, {
+      target: document.body,
+    });
+
+    await fireEvent.click(
+      await findByRole("button", { name: /^DuskEVM to Dusk / })
+    );
+
+    expect(
+      getByRole("link", { name: "View duskevm transaction hash in Blockscout" })
+    ).toHaveAttribute("href", `https://explorer.example.test/tx/${txHash}`);
+    expect(
+      await findByRole("link", {
+        name: "View proof on dusk hash in Dusk explorer",
+      })
+    ).toHaveAttribute(
+      "href",
+      `https://apps.testnet.dusk.network/explorer/transactions/transaction?id=${proof}`
+    );
   });
 
   it("shows the complete journey and prove action when ready", async () => {
