@@ -1,17 +1,19 @@
 <script>
-  import { luxToDusk } from "$lib/dusk/currency";
+  import { formatFee } from "$lib/dusk/currency";
+  import { settingsStore } from "$lib/stores";
 
   /** @type {bigint} */
   export let fee;
 
-  /** @type {(amount: number) => string} */
-  export let formatter;
+  $: ({ language } = $settingsStore);
 </script>
 
 <div class="gas-fee">
   <span>Network fee (at most)</span>
   <span class="gas-fee__amount">
-    <span class="gas-fee__amount-value">{formatter(luxToDusk(fee))}</span>
+    <span class="gas-fee__amount-value"
+      >{formatFee(fee, language, { max: true })}</span
+    >
     DUSK
   </span>
 </div>

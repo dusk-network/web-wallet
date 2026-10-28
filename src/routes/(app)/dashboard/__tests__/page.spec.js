@@ -1,99 +1,297 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup } from "@testing-library/svelte";
+import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
-import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
-import { renderWithSimpleContent } from "$lib/dusk/test-helpers";
+
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
-import { stakeInfo, transactions } from "$lib/mock-data";
+import { settingsStore } from "$lib/stores";
 
 import Dashboard from "../+page.svelte";
-import { walletStore } from "$lib/stores";
+
+const mocks = vi.hoisted(() => ({
+  refresh: vi.fn(() => Promise.resolve()),
+}));
+
+const network = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any> | null} */
+  store: null,
+}));
 
 vi.mock("$lib/stores", async (importOriginal) => {
-  /** @type {WalletStore} */
+  /** @type {typeof import("$lib/stores")} */
   const original = await importOriginal();
+  const { writable } = await import("svelte/store");
+
+  network.store = writable({ connected: true, networkName: "mainnet" });
 
   return {
     ...original,
+    networkStore: {
+      ...original.networkStore,
+      subscribe: network.store.subscribe,
+    },
     walletStore: {
       ...mockedWalletStore,
-      getStakeInfo: () => Promise.resolve(stakeInfo),
-      getTransactionsHistory: () => Promise.resolve(transactions),
+      startHistory: () => ({ refresh: mocks.refresh }),
     },
   };
 });
 
-vi.useFakeTimers();
+const history = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any> | null} */
+  state: null,
+}));
+
+vi.mock("$lib/activity", async (importOriginal) => {
+  /** @type {typeof import("$lib/activity")} */
+  const original = await importOriginal();
+  const { writable } = await import("svelte/store");
+
+  history.state = writable({
+    complete: true,
+    error: null,
+    hasMore: false,
+    loaded: true,
+    rows: [],
+    syncing: false,
+  });
+
+  return { ...original, activityState: history.state };
+});
+
+const ALICE =
+  "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+const NOW = Date.now();
+
+/** @type {ActivityRow[]} */
+const rows = [
+  {
+    amount: "5000000000",
+    direction: "out",
+    hash: "a1".repeat(32),
+    kind: "transfer",
+    privacy: "public",
+    source: "local",
+    status: "submitted",
+    submittedAt: NOW,
+    to: ALICE,
+    toName: "alice-shop.dusk",
+  },
+  {
+    amount: "50000000000",
+    blockHeight: 4_687_000,
+    counterpartyName: "wallet-both.dusk",
+    direction: "in",
+    from: ALICE,
+    hash: "b2".repeat(32),
+    kind: "transfer",
+    privacy: "public",
+    source: "archive",
+    status: "executed",
+    success: true,
+    timestamp: NOW - 60_000,
+  },
+  {
+    amount: "200000000000",
+    blockHeight: 4_686_000,
+    direction: "out",
+    feePaid: "3700000",
+    hash: "c3".repeat(32),
+    kind: "transfer",
+    privacy: "public",
+    source: "archive",
+    status: "failed",
+    success: false,
+    timestamp: NOW - 120_000,
+    to: ALICE,
+  },
+];
+
+/** @param {Partial<import("$lib/activity/activitySession").ActivityState>} state */
+const setHistory = (state) =>
+  act(() => history.state?.update((current) => ({ ...current, ...state })));
 
 describe("Dashboard", () => {
   const usdPrice = 0.5;
-  const baseOptions = {
-    props: { data: { currentPrice: Promise.resolve({ usd: usdPrice }) } },
+  const props = {
+    data: { currentPrice: Promise.resolve({ usd: usdPrice }) },
   };
+  const initialStore = mockedWalletStore.getMockedStoreValue();
 
-  afterEach(cleanup);
+  afterEach(async () => {
+    cleanup();
+    settingsStore.reset();
+    mockedWalletStore.setMockedStoreValue(initialStore);
+    await setHistory({ error: null, loaded: true, rows: [], syncing: false });
+    vi.unstubAllEnvs();
+  });
 
   afterAll(() => {
     vi.doUnmock("$lib/stores");
+    vi.doUnmock("$lib/activity");
   });
 
-  it("should render the dashboard page with the transactions after they are loaded", async () => {
-    const { container } = renderWithSimpleContent(Dashboard, baseOptions);
+  it("shows the total balance, its public and shielded parts, and every action", async () => {
+    const { container, getByRole } = render(Dashboard, props);
 
-    await vi.advanceTimersToNextTimerAsync();
+    expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
+      "3,517.5"
+    );
+    expect(container.querySelector(".home-balance__legend")).toHaveTextContent(
+      "Public 1,172.5 Shielded 2,345"
+    );
 
-    expect(container).toMatchSnapshot();
+    for (const [name, href] of [
+      ["Send", "/dashboard/send"],
+      ["Receive", "/dashboard/receive"],
+      ["Shield", "/dashboard/allocate"],
+      ["Stake", "/dashboard/stake"],
+      ["Bridge", "/dashboard/bridge"],
+    ]) {
+      expect(getByRole("link", { name })).toHaveAttribute(
+        "href",
+        `/some-base-path${href}`
+      );
+    }
+
+    await vi.waitFor(() =>
+      expect(container.querySelector(".home-balance__fiat")).toHaveTextContent(
+        "≈ $1,758.75"
+      )
+    );
   });
 
-  it("should render a card when there is an error getting transactions", async () => {
-    const someError = new Error("some error message");
-    const walletSpy = vi
-      .spyOn(walletStore, "getTransactionsHistory")
-      .mockRejectedValue(someError);
-    const { container } = renderWithSimpleContent(Dashboard, baseOptions);
+  it("shows no value in money off mainnet, as test DUSK has none", async () => {
+    network.store?.set({ connected: true, networkName: "testnet" });
 
-    await vi.advanceTimersToNextTimerAsync();
+    const { container } = render(Dashboard, props);
 
-    expect(container).toMatchSnapshot();
+    await props.data.currentPrice;
+    await act(() => {});
 
-    walletSpy.mockRestore();
+    expect(container.querySelector(".home-balance__fiat")).toBeNull();
+
+    network.store?.set({ connected: true, networkName: "mainnet" });
   });
 
-  it("should show the transactions unless the history is switched off", async () => {
+  it("says what each balance means, and that nothing is staked right now", async () => {
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      stakeInfo: { ...initialStore.stakeInfo, amount: null },
+    });
+
+    const { getByText, queryByRole } = render(Dashboard, props);
+
+    expect(
+      getByText("Visible on chain. Staking and the bridge use this balance.")
+    ).toBeInTheDocument();
+    expect(
+      getByText("Amounts and accounts stay hidden on chain.")
+    ).toBeInTheDocument();
+    expect(getByText("Nothing staked right now")).toBeInTheDocument();
+    expect(
+      getByText("From 1,000 DUSK with your own node.")
+    ).toBeInTheDocument();
+    expect(queryByRole("link", { name: "Past staking" })).toBeNull();
+
+    // Staked before: no "yet", and a way to what was staked.
+    await setHistory({
+      rows: [
+        { ...rows[1], direction: "out", hash: "d4".repeat(32), kind: "stake" },
+      ],
+    });
+
+    expect(queryByRole("link", { name: "Past staking" })).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard/transactions?kind=staking"
+    );
+  });
+
+  it("shows what is staked and its rewards", () => {
+    const { container } = render(Dashboard, props);
+
+    expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
+      "Staking 1,000 DUSK staked Rewards: 11,022.8426 DUSK Open staking"
+    );
+  });
+
+  it("lists the latest activity: pending, received and failed, which moved nothing", async () => {
+    await setHistory({ rows });
+
+    const { container, getByRole } = render(Dashboard, props);
+    const items = () =>
+      Array.from(container.querySelectorAll(".activity-row"), (row) =>
+        row.textContent?.replace(/\s+/g, " ").trim()
+      );
+
+    expect(items()).toEqual([
+      expect.stringMatching(
+        /^alice-shop\.dusk Sent · .+ · Public −5 DUSK Pending$/
+      ),
+      expect.stringMatching(
+        /^wallet-both\.dusk Received · .+ · Public \+50 DUSK$/
+      ),
+      `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid · Public 200 DUSK`,
+    ]);
+    expect(container.querySelector(".activity-row")).toHaveAttribute(
+      "href",
+      `/some-base-path/dashboard/transactions?tx=${"a1".repeat(32)}`
+    );
+
+    await fireEvent.click(getByRole("button", { name: "Received" }));
+
+    expect(items()).toEqual([
+      expect.stringMatching(/^wallet-both\.dusk Received/),
+    ]);
+  });
+
+  it("hides amounts while balances are hidden, but not a fee", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+    await setHistory({ rows: [rows[2]] });
+
+    const { container } = render(Dashboard, props);
+
+    expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
+      "•••• hidden"
+    );
+    expect(container.querySelector(".activity-row")).toHaveTextContent(
+      "fee 0.0037 DUSK paid · Public •••• hidden DUSK"
+    );
+    expect(get(settingsStore).hideBalances).toBe(true);
+  });
+
+  it("says when the history couldn't be read, and tries again", async () => {
+    await setHistory({ error: "fetch failed", rows: [] });
+
+    const { getByRole, getByText } = render(Dashboard, props);
+
+    expect(
+      getByText("Couldn't reach the network's history.")
+    ).toBeInTheDocument();
+
+    await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+    expect(mocks.refresh).toHaveBeenCalledOnce();
+  });
+
+  it("shows the activity unless the history is switched off", () => {
     vi.stubEnv("VITE_FEATURE_TRANSACTION_HISTORY", "");
 
-    const shown = renderWithSimpleContent(Dashboard, baseOptions);
+    const shown = render(Dashboard, props);
 
-    expect(shown.container.querySelector(".transactions")).toBeInTheDocument();
+    expect(
+      shown.container.querySelector(".activity-panel")
+    ).toBeInTheDocument();
 
     cleanup();
     vi.stubEnv("VITE_FEATURE_TRANSACTION_HISTORY", "false");
 
-    const hidden = renderWithSimpleContent(Dashboard, baseOptions);
+    const hidden = render(Dashboard, props);
 
-    expect(hidden.container.querySelector(".transactions")).toBeNull();
+    expect(hidden.container.querySelector(".activity-panel")).toBeNull();
     expect(
-      hidden.getByText("Transaction history isn't available here yet.")
+      hidden.getByText(
+        "Transaction history isn't available here yet. The Dusk explorer has your transactions."
+      )
     ).toBeInTheDocument();
-
-    vi.unstubAllEnvs();
-  });
-
-  it("should show the balance card, with the fiat value once the price is loaded", async () => {
-    const { balance } = get(mockedWalletStore);
-    const expectedFiat =
-      (luxToDusk(balance.shielded.value) +
-        luxToDusk(balance.unshielded.value)) *
-      usdPrice;
-    const { container } = renderWithSimpleContent(Dashboard, baseOptions);
-
-    expect(container.querySelector(".dusk-balance")).toBeInTheDocument();
-    expect(container.querySelector(".dusk-balance__fiat--visible")).toBeNull();
-
-    await vi.advanceTimersToNextTimerAsync();
-
-    expect(
-      container.querySelector(".dusk-balance__fiat--visible")
-    ).toHaveTextContent(createCurrencyFormatter("en", "usd", 2)(expectedFiat));
   });
 });

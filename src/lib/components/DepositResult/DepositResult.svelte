@@ -21,7 +21,7 @@
   <AppAnchorButton
     href="/dashboard"
     slot="error-extra-content"
-    text="HOME"
+    text="Home"
     variant="tertiary"
   />
 </Suspense>

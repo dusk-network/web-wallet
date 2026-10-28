@@ -9,10 +9,10 @@
   font-weight: 500;
   letter-spacing: 0;
   line-height: 1;
-  border-radius: var(--control-border-radius-size);
+  border-radius: 999px;
   border-style: solid;
   border-width: var(--control-border-size);
-  text-transform: uppercase;
+  text-transform: none;
   transform-origin: center center;
   transition-delay: 0s;
   transition-duration: 0.2s;
@@ -81,8 +81,8 @@
 
 /* Icon Buttons */
 .dusk-icon-button:not(.dusk-icon-button--labeled) {
-  border-radius: var(--control-border-radius-size);
-  padding: 0.2em;
+  border-radius: 999px;
+  padding: 0.35em;
 }
 
 .dusk-button:enabled:hover,
@@ -92,7 +92,39 @@
 .dusk-button--active {
   background-color: var(--control-bg-color-hover);
   color: var(--control-text-color-hover);
+  border-color: var(--control-border-color-hover);
+}
+
+.dusk-button--variant--primary:enabled:hover,
+.dusk-anchor-button--variant--primary:hover {
+  opacity: 0.88;
+}
+
+.dusk-button--variant--secondary:enabled:hover,
+.dusk-button--variant--secondary:enabled:active,
+.dusk-anchor-button--variant--secondary:hover,
+.dusk-anchor-button--variant--secondary:active {
+  background-color: var(--control-secondary-bg-color-hover);
+  color: var(--control-secondary-text-color);
   border-color: var(--control-secondary-border-color-hover);
+}
+
+.dusk-button--variant--tertiary:enabled:hover,
+.dusk-button--variant--tertiary:enabled:active,
+.dusk-anchor-button--variant--tertiary:hover,
+.dusk-anchor-button--variant--tertiary:active {
+  background-color: var(--control-tertiary-bg-color-hover);
+  color: var(--control-tertiary-text-color);
+  border-color: var(--control-tertiary-border-color-hover);
+}
+
+/* A disabled button looks disabled: no fill, muted text. */
+.dusk-button:disabled,
+.dusk-anchor-button.dusk-anchor-button--disabled {
+  background-color: var(--calm-s1);
+  border-color: transparent;
+  color: var(--calm-subtle);
+  opacity: 1;
 }
 
 .dusk-button:enabled:active,

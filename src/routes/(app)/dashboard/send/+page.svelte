@@ -5,7 +5,7 @@
   import { ContractStatusesList, Send } from "$lib/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { executeSend, getGasLimits, getGasSettings } from "$lib/contracts";
-  import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
+  import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { resolveDuskName } from "$lib/dusk-domains";
   import {
     gasPriceStore,
@@ -16,16 +16,17 @@
   } from "$lib/stores";
   import { makeNodeUrl } from "$lib/url";
 
-  /** @type {(source: "shielded" | "unshielded", balanceInfo: WalletStoreBalance) => [bigint, ContractStatus[]]}*/
-  function getContractInfo(source, balanceInfo) {
+  /** @type {(source: "shielded" | "unshielded", balanceInfo: WalletStoreBalance, locale: string) => [bigint, ContractStatus[]]}*/
+  function getContractInfo(source, balanceInfo, locale) {
     const spendable =
       source === "shielded"
         ? balanceInfo.shielded.spendable
         : balanceInfo.unshielded.value;
     const statuses = [
       {
+        exact: formatDuskExact(spendable, locale),
         label: `Spendable (${source === "shielded" ? "shielded" : "public"})`,
-        value: duskFormatter(luxToDusk(spendable)),
+        value: formatDusk(spendable, locale),
       },
     ];
 
@@ -75,9 +76,12 @@
     $gasPriceStore
   );
   $: gasLimits = getGasLimits(transferOperation, $gasStore);
-  $: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
   $: ({ balance, currentProfile } = $walletStore);
-  $: [spendable, statuses] = getContractInfo(spendableSource, balance);
+  $: [spendable, statuses] = getContractInfo(
+    spendableSource,
+    balance,
+    language
+  );
   $: shieldedAddress = currentProfile ? currentProfile.address.toString() : "";
   $: publicAddress = currentProfile ? currentProfile.account.toString() : "";
 </script>
@@ -88,7 +92,6 @@
     {shieldedAddress}
     {publicAddress}
     execute={executeSend}
-    formatter={duskFormatter}
     {resolveName}
     {gasLimits}
     {gasSettings}

@@ -7,10 +7,9 @@ import {
   it,
   vi,
 } from "vitest";
-import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, render } from "@testing-library/svelte";
 
 import { apiMarketData } from "$lib/mock-data";
-import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
@@ -27,24 +26,41 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
   };
 });
 
+const navigation = vi.hoisted(() => ({
+  /** @type {((navigation: any) => void) | null} */
+  afterNavigate: null,
+}));
+
+vi.mock("$app/navigation", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  afterNavigate: (/** @type {(navigation: any) => void} */ callback) => {
+    navigation.afterNavigate = callback;
+  },
+}));
+
+const network = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any> | null} */
+  store: null,
+}));
+
 vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {typeof import("$lib/stores")} */
   const original = await importOriginal();
+  const { writable } = await import("svelte/store");
+
+  network.store = writable({ connected: true, networkName: "mainnet" });
 
   return {
     ...original,
+    networkStore: {
+      ...original.networkStore,
+      subscribe: network.store.subscribe,
+    },
     walletStore: { ...original.walletStore, ...mockedWalletStore },
   };
 });
 
 describe("Dashboard Layout", () => {
-  /**
-   * @param {Element} container
-   * @param {"error" | "success" | "warning"} status
-   * @returns
-   */
-  const getStatusWrapper = (container, status) =>
-    container.querySelector(`.footer__network-status-icon--${status}`);
   const initialState = mockedWalletStore.getMockedStoreValue();
 
   beforeEach(() => {
@@ -54,6 +70,7 @@ describe("Dashboard Layout", () => {
   afterEach(cleanup);
 
   afterAll(() => {
+    vi.doUnmock("$app/navigation");
     vi.doUnmock("$lib/dusk/string");
     vi.doUnmock("$lib/stores");
   });
@@ -125,6 +142,17 @@ describe("Dashboard Layout", () => {
       await expect(result.currentPrice).resolves.toStrictEqual({});
     });
 
+    it("should ask for no market data off mainnet, as test DUSK has no value", async () => {
+      network.store?.set({ connected: true, networkName: "testnet" });
+
+      const result = /** @type {Record<string, any>} */ (await loadData());
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      await expect(result.currentPrice).resolves.toStrictEqual({});
+
+      network.store?.set({ connected: true, networkName: "mainnet" });
+    });
+
     it("should return a promise that resolves with an empty object if the fetch fails or the Response contains invalid JSON", async () => {
       fetchMock
         .mockRejectedValueOnce(new Error("some error"))
@@ -147,125 +175,39 @@ describe("Dashboard Layout", () => {
     });
   });
 
-  it("should render the dashboard layout", () => {
-    const { container } = render(Layout);
+  it("should start a new page at the top, and keep the place when a panel opens or closes on the same page", () => {
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const go = (/** @type {string} */ from, /** @type {string} */ to) =>
+      navigation.afterNavigate?.({
+        from: { url: new URL(`http://localhost${from}`) },
+        to: { url: new URL(`http://localhost${to}`) },
+      });
 
-    expect(getStatusWrapper(container, "success")).toBeTruthy();
-    expect(container).toMatchSnapshot();
+    render(Layout);
+
+    go("/dashboard/transactions", "/dashboard/transactions?tx=ab");
+    go("/dashboard/transactions?tx=ab", "/dashboard/transactions");
+    go("/dashboard/contacts", "/dashboard/contacts?contact=1&edit=1");
+
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    go("/dashboard", "/dashboard/transactions");
+
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+
+    go("/dashboard/stake", "/dashboard/stake?flow=native");
+
+    expect(scrollTo).toHaveBeenCalledTimes(2);
+
+    scrollTo.mockRestore();
   });
 
-  it("should leave the balance card to the dashboard page, out of the other pages", () => {
+  it("should hold the dashboard's pages, and leave the balance and the network to them and the top bar", () => {
     const { container } = render(Layout);
 
+    expect(container.querySelector("section.dashboard")).toBeTruthy();
     expect(container.querySelector(".dusk-balance")).toBeNull();
-  });
-
-  it("should render the dashboard layout in the sync state when no progress is reported", async () => {
-    const { container } = render(Layout);
-
-    expect(getStatusWrapper(container, "warning")).toBeNull();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue({
-        ...initialState,
-        syncStatus: {
-          error: null,
-          from: 0n,
-          isInProgress: true,
-          last: 0n,
-          progress: 0,
-        },
-      });
-    });
-
-    expect(getStatusWrapper(container, "warning")).toBeTruthy();
-    expect(container.firstElementChild).toMatchSnapshot();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue(initialState);
-    });
-
-    expect(getStatusWrapper(container, "warning")).toBeNull();
-  });
-
-  it("should render the dashboard layout in the sync state with a progress indicator", async () => {
-    const { container } = render(Layout);
-
-    expect(getStatusWrapper(container, "warning")).toBeNull();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue({
-        ...initialState,
-        syncStatus: {
-          error: null,
-          from: 100n,
-          isInProgress: true,
-          last: 200n,
-          progress: 0.5,
-        },
-      });
-    });
-
-    expect(getStatusWrapper(container, "warning")).toBeTruthy();
-    expect(container).toMatchSnapshot();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue(initialState);
-    });
-
-    expect(getStatusWrapper(container, "warning")).toBeNull();
-  });
-
-  it("should render the dashboard layout in the error state", async () => {
-    const { container } = render(Layout);
-    const getRetryButton = () =>
-      container.querySelector(".footer__actions-button--retry");
-
-    expect(getStatusWrapper(container, "error")).toBeNull();
-    expect(getRetryButton()).toBeNull();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue({
-        ...initialState,
-        syncStatus: {
-          error: new Error(),
-          from: 0n,
-          isInProgress: false,
-          last: 0n,
-          progress: 0,
-        },
-      });
-    });
-
-    expect(getStatusWrapper(container, "error")).toBeTruthy();
-    expect(getRetryButton()).toBeTruthy();
-    expect(container).toMatchSnapshot();
-
-    await act(() => {
-      mockedWalletStore.setMockedStoreValue(initialState);
-    });
-
-    expect(getStatusWrapper(container, "error")).toBeNull();
-    expect(getRetryButton()).toBeNull();
-    expect(getStatusWrapper(container, "success")).toBeTruthy();
-  });
-
-  it("should look no `.dusk` names up on a network without them", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
-    const { container } = render(Layout);
-
-    await fireEvent.click(
-      getAsHTMLElement(container, ".address-picker__trigger")
-    );
-    await new Promise((resolve) => setTimeout(resolve));
-
-    expect(
-      container.querySelector(
-        ".address-picker__name, .address-picker__address-name"
-      )
-    ).toBeNull();
-    expect(fetchSpy).not.toHaveBeenCalled();
-
-    fetchSpy.mockRestore();
+    expect(container.querySelector(".footer")).toBeNull();
+    expect(container.querySelector(".address-picker")).toBeNull();
   });
 });

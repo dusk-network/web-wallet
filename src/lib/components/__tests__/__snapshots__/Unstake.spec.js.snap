@@ -100,7 +100,7 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
         <span
           class="dusk-button__text"
         >
-          USE MAX
+          Use max
         </span>
         <!---->
       </button>
@@ -159,7 +159,7 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
             <span
               class="gas-fee__amount-value"
             >
-              0.020000000
+              0.02
             </span>
              DUSK
           </span>
@@ -174,7 +174,7 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
             <span
               class="dusk-button__text"
             >
-              EDIT
+              Edit
             </span>
             <!---->
           </button>
@@ -369,7 +369,7 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
         <span
           class="dusk-button__text"
         >
-          USE MAX
+          Use max
         </span>
         <!---->
       </button>
@@ -429,7 +429,7 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
             <span
               class="gas-fee__amount-value"
             >
-              0.020000000
+              0.02
             </span>
              DUSK
           </span>
@@ -444,7 +444,7 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
             <span
               class="dusk-button__text"
             >
-              EDIT
+              Edit
             </span>
             <!---->
           </button>

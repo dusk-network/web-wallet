@@ -1,7 +1,42 @@
 :root {
   /*
+   * The calm look: one neutral surface family, text in three strengths, and
+   * colour only where it carries meaning (pending, failed, online, focus).
+   * The dark values are the extension's; the light ones mirror them.
+   */
+  --calm-s0: #f6f5f2;
+  --calm-s1: #eeede9;
+  --calm-s2: #e5e3de;
+  --calm-s3: #dad8d2;
+  --calm-panel: #f1f0ec;
+  --calm-field: #fff;
+  --calm-text: #141416;
+  --calm-muted: #5b5862;
+  --calm-subtle: #6e6b75;
+  --calm-line: rgb(20 20 22 / 0.09);
+  --calm-line2: rgb(20 20 22 / 0.15);
+  --calm-pending: #8a5a00;
+  --calm-danger: #b42318;
+  --calm-online: #1e8e4e;
+  --calm-pill: #141416;
+  --calm-on-pill: #f6f5f2;
+  --calm-focus: #0b66d6;
+  --calm-scrim: rgb(20 20 22 / 0.4);
+
+  /* Violet is a test network, as on the bridge. */
+  --calm-test: #5b4bc4;
+  --calm-test-bg: #eeebfb;
+  --calm-test-line: rgb(91 75 196 / 0.25);
+
+  /* Addresses and hashes: the system code font, evenly spaced. */
+  --code-font-family:
+    ui-monospace, "SF Mono", sfmono-regular, menlo, "Cascadia Mono", consolas,
+    "Ubuntu Sans Mono", "Ubuntu Mono", monospace;
+  --mono-font-family: var(--code-font-family);
+
+  /*
    * Compatibility bridge for app-local components that still consume the
-   * pre-Duskit token names. Values come from the original Dusk language refresh.
+   * pre-Duskit token names, mapped onto the calm look.
    */
 
   --granite-grey: #636167;
@@ -28,45 +63,45 @@
   --info-500: #71b1ff;
   --info-700: #0863d1;
 
-  --page-background-color: var(--smokey-black);
-  --background-color: #edeaf3;
-  --background-color-alt: #f7f5fb;
-  --primary-color: var(--smokey-black);
-  --secondary-color: var(--cornflower);
-  --secondary-color-variant-dark: var(--cornflower-dark);
-  --secondary-color-variant-light: var(--cornflower-light);
-  --surface-color: #f7f5fb;
-  --error-color: var(--error-500);
-  --error-color-variant-dark: var(--error-700);
-  --info-color: var(--info-500);
-  --info-color-variant-dark: var(--info-700);
-  --success-color: var(--success-500);
-  --success-color-variant-dark: var(--success-700);
-  --warning-color: var(--warning-500);
-  --warning-color-variant-dark: var(--warning-700);
-  --muted-color: var(--granite-grey);
-  --badge-error-color: var(--error-700);
-  --badge-success-color: #0b744f;
-  --badge-warning-color: #6f5600;
-  --surface-border-color: #d4cedd;
-  --surface-border-color-subtle: #e4deea;
-  --surface-hover-color: #eef3ff;
-  --surface-soft-color: #f0eef5;
-  --focus-ring-color: rgb(113 177 255 / 0.38);
-  --progress-bg-color-muted: #d4cedd;
-  --status-error-bg-color: #fae8ed;
-  --status-success-bg-color: #e4f4ee;
-  --status-warning-bg-color: #fff4c2;
+  --page-background-color: var(--calm-s0);
+  --background-color: var(--calm-s0);
+  --background-color-alt: var(--calm-s1);
+  --primary-color: var(--calm-text);
+  --secondary-color: var(--calm-text);
+  --secondary-color-variant-dark: var(--calm-text);
+  --secondary-color-variant-light: var(--calm-muted);
+  --surface-color: var(--calm-s1);
+  --error-color: var(--calm-danger);
+  --error-color-variant-dark: var(--calm-danger);
+  --info-color: var(--calm-text);
+  --info-color-variant-dark: var(--calm-text);
+  --success-color: var(--calm-online);
+  --success-color-variant-dark: var(--calm-online);
+  --warning-color: var(--calm-pending);
+  --warning-color-variant-dark: var(--calm-pending);
+  --muted-color: var(--calm-muted);
+  --badge-error-color: var(--calm-danger);
+  --badge-success-color: var(--calm-online);
+  --badge-warning-color: var(--calm-pending);
+  --surface-border-color: var(--calm-line2);
+  --surface-border-color-subtle: var(--calm-line);
+  --surface-hover-color: var(--calm-s2);
+  --surface-soft-color: var(--calm-s2);
+  --focus-ring-color: rgb(11 102 214 / 0.3);
+  --progress-bg-color-muted: var(--calm-s3);
+  --status-error-bg-color: var(--calm-s1);
+  --status-success-bg-color: var(--calm-s1);
+  --status-warning-bg-color: var(--calm-s1);
 
-  --on-background-color: var(--smokey-black);
-  --on-primary-color: var(--light-grey);
-  --on-secondary-color: var(--smokey-black);
-  --on-surface-color: var(--smokey-black);
+  --on-background-color: var(--calm-text);
+  --on-primary-color: var(--calm-on-pill);
+  --on-secondary-color: var(--calm-on-pill);
+  --on-surface-color: var(--calm-text);
   --on-danger-color: #fff;
   --on-error-color: #fff;
-  --on-info-color: var(--smokey-black);
-  --on-success-color: var(--smokey-black);
-  --on-warning-color: var(--smokey-black);
+  --on-info-color: var(--calm-text);
+  --on-success-color: var(--calm-text);
+  --on-warning-color: var(--calm-text);
 
   --main-font-family: var(--sans-font-family);
   --main-font-size: 16px;
@@ -80,58 +115,58 @@
   --tablet-grid-template-columns: 1fr 1fr;
   --desktop-grid-template-columns: 1fr 1fr 1fr;
 
-  --control-border-radius-size: 0.5rem;
+  --control-border-radius-size: 0.75rem;
   --control-border-size: 0.0625em;
   --control-font-size: 1em;
   --control-icon-size: 2em;
-  --control-padding: 0.75em 1em;
-  --control-small-padding: 0.625em 0.875em;
+  --control-padding: 0.75em 1.25em;
+  --control-small-padding: 0.5em 0.875em;
 
-  --non-button-control-bg-color: #fff;
-  --non-button-control-text-color: var(--smokey-black);
+  --non-button-control-bg-color: var(--calm-field);
+  --non-button-control-text-color: var(--calm-text);
 
-  --control-bg-color: var(--cornflower);
-  --control-bg-color-hover: var(--cornflower);
+  --control-bg-color: var(--calm-pill);
+  --control-bg-color-hover: var(--calm-pill);
   --control-border-color: transparent;
   --control-border-color-hover: transparent;
-  --control-text-color: var(--smokey-black);
-  --control-text-color-hover: var(--smokey-black);
+  --control-text-color: var(--calm-on-pill);
+  --control-text-color-hover: var(--calm-on-pill);
 
-  --control-secondary-bg-color: transparent;
-  --control-secondary-bg-color-hover: rgb(16 16 16 / 0.045);
-  --control-secondary-border-color: #d4cedd;
-  --control-secondary-border-color-hover: var(--cornflower);
-  --control-secondary-text-color: var(--smokey-black);
+  --control-secondary-bg-color: var(--calm-s2);
+  --control-secondary-bg-color-hover: var(--calm-s3);
+  --control-secondary-border-color: transparent;
+  --control-secondary-border-color-hover: transparent;
+  --control-secondary-text-color: var(--calm-text);
 
-  --control-tertiary-bg-color: transparent;
-  --control-tertiary-bg-color-hover: var(--cornflower);
-  --control-tertiary-border-color: var(--smokey-black);
-  --control-tertiary-border-color-hover: var(--cornflower);
-  --control-tertiary-text-color: var(--smokey-black);
+  --control-tertiary-bg-color: var(--calm-s2);
+  --control-tertiary-bg-color-hover: var(--calm-s3);
+  --control-tertiary-border-color: transparent;
+  --control-tertiary-border-color-hover: transparent;
+  --control-tertiary-text-color: var(--calm-text);
 
-  --anchor-color-on-surface: var(--accent-light-900);
-  --anchor-color: var(--secondary-color);
-  --anchor-color-visited: var(--secondary-color);
-  --anchor-color-hover: var(--secondary-color-variant-light);
-  --anchor-color-active: var(--secondary-color-variant-light);
+  --anchor-color-on-surface: var(--calm-text);
+  --anchor-color: var(--calm-text);
+  --anchor-color-visited: var(--calm-text);
+  --anchor-color-hover: var(--calm-muted);
+  --anchor-color-active: var(--calm-muted);
 
-  --progress-bar-height: 0.6125em;
+  --progress-bar-height: 0.375em;
   --progress-bg-color: var(--progress-bg-color-muted);
-  --progress-filler-color: var(--secondary-color);
+  --progress-filler-color: var(--calm-text);
 
   --stepper-bar-height: 0.125em;
-  --stepper-rail-color: var(--surface-border-color-subtle);
-  --stepper-rail-color-variant-secondary: var(--surface-border-color);
-  --stepper-filler-color: var(--secondary-color);
-  --stepper-on-filler-color: var(--smokey-black);
-  --stepper-on-rail-color: var(--on-background-color);
-  --stepper-on-rail-variant-secondary-color: var(--on-primary-color);
+  --stepper-rail-color: var(--calm-line2);
+  --stepper-rail-color-variant-secondary: var(--calm-line2);
+  --stepper-filler-color: var(--calm-text);
+  --stepper-on-filler-color: var(--calm-on-pill);
+  --stepper-on-rail-color: var(--calm-text);
+  --stepper-on-rail-variant-secondary-color: var(--calm-text);
 
   --checkbox-control-size: 1.2em;
   --checkbox-control-border-radius: 20%;
   --checkbox-control-border-width: 0.2em;
-  --checkbox-control-border-color: var(--smokey-black);
-  --checkbox-control-checked-bg-color: var(--smokey-black);
+  --checkbox-control-border-color: var(--calm-text);
+  --checkbox-control-checked-bg-color: var(--calm-text);
 
   --fieldset-background-color: var(--background-color-alt);
   --fieldset-border-radius: var(--control-border-radius-size);
@@ -140,68 +175,36 @@
   --divider-background-color: var(--background-color);
   --divider-border-color: var(--surface-border-color);
 
-  --home-box-color: var(--silver-metallic);
-  --home-grid-color: var(--light-grey);
+  --home-box-color: var(--calm-s3);
+  --home-grid-color: var(--calm-s1);
 
-  --banner-info-color: var(--info-color-variant-dark);
-  --banner-warning-color: var(--warning-color-variant-dark);
-  --banner-error-color: var(--error-color-variant-dark);
+  --banner-info-color: var(--calm-muted);
+  --banner-warning-color: var(--calm-pending);
+  --banner-error-color: var(--calm-danger);
 }
 
 :root.dark {
-  --page-background-color: var(--smokey-black);
-  --background-color: var(--smokey-black);
-  --background-color-alt: #151519;
-  --primary-color: var(--light-grey);
-  --secondary-color-variant-dark: var(--cornflower);
-  --surface-color: #151519;
-  --muted-color: var(--silver-metallic);
-  --badge-error-color: #ff6f8c;
-  --badge-success-color: var(--success-color);
-  --badge-warning-color: var(--warning-color);
-  --surface-border-color: #34333a;
-  --surface-border-color-subtle: #26252b;
-  --surface-hover-color: #182334;
-  --surface-soft-color: #1c1c21;
-  --focus-ring-color: rgb(113 177 255 / 0.4);
-  --progress-bg-color-muted: #34333a;
-  --status-error-bg-color: #31131b;
-  --status-success-bg-color: #11291f;
-  --status-warning-bg-color: #302814;
+  --calm-s0: #101010;
+  --calm-s1: #18181b;
+  --calm-s2: #232327;
+  --calm-s3: #2c2c31;
+  --calm-panel: #141416;
+  --calm-field: #0c0c0d;
+  --calm-text: #f2f0eb;
+  --calm-muted: #a8a5af;
+  --calm-subtle: #8d8a94;
+  --calm-line: rgb(242 240 235 / 0.08);
+  --calm-line2: rgb(242 240 235 / 0.14);
+  --calm-pending: #e8b96a;
+  --calm-danger: #e37a7a;
+  --calm-online: #3fb871;
+  --calm-pill: #f2f0eb;
+  --calm-on-pill: #141416;
+  --calm-focus: #71b1ff;
+  --calm-scrim: rgb(5 5 6 / 0.66);
+  --calm-test: #b9aeff;
+  --calm-test-bg: #1b1830;
+  --calm-test-line: rgb(185 174 255 / 0.28);
 
-  --on-background-color: var(--light-grey);
-  --on-primary-color: var(--smokey-black);
-  --on-surface-color: var(--light-grey);
-
-  --anchor-color-on-surface: var(--accent-dark-900);
-
-  --stepper-rail-color: #24232a;
-  --stepper-rail-color-variant-secondary: #34333a;
-
-  --non-button-control-bg-color: #101014;
-  --non-button-control-text-color: var(--light-grey);
-
-  --control-bg-color: var(--cornflower);
-  --control-text-color: var(--smokey-black);
-  --control-secondary-bg-color: transparent;
-  --control-secondary-bg-color-hover: rgb(237 234 243 / 0.06);
-  --control-secondary-border-color: #34333a;
-  --control-secondary-text-color: var(--light-grey);
-  --control-tertiary-border-color: var(--light-grey);
-  --control-tertiary-text-color: var(--light-grey);
-
-  --checkbox-control-border-color: var(--light-grey);
-  --checkbox-control-checked-bg-color: var(--light-grey);
-
-  --fieldset-background-color: var(--background-color-alt);
-
-  --divider-color-primary: var(--surface-border-color);
-  --divider-background-color: var(--smokey-black);
-  --divider-border-color: var(--surface-border-color);
-
-  --home-grid-color: var(--smokey-black);
-
-  --banner-info-color: var(--info-color);
-  --banner-warning-color: var(--warning-color);
-  --banner-error-color: var(--error-color);
+  --focus-ring-color: rgb(113 177 255 / 0.35);
 }

@@ -8,11 +8,7 @@ import {
   vi,
 } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import {
-  createCurrencyFormatter,
-  duskToLux,
-  luxToDusk,
-} from "$lib/dusk/currency";
+import { duskToLux, luxToDusk } from "$lib/dusk/currency";
 
 import { Stake } from "..";
 
@@ -56,14 +52,12 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
 });
 
 describe("Stake", () => {
-  const formatter = createCurrencyFormatter("en", "DUSK", 9);
   const lastTxId =
     "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
 
   const baseProps = {
     availableBalance: 10_000_000_000_000n,
     execute: vi.fn().mockResolvedValue(lastTxId),
-    formatter,
     gasLimits: {
       gasLimitLower: 10000000n,
       gasLimitUpper: 2900000000n,
@@ -140,7 +134,7 @@ describe("Stake", () => {
 
   it("should set the max amount in the textbox if the user clicks the related button", async () => {
     const { getByRole } = render(Stake, baseOptions);
-    const useMaxButton = getByRole("button", { name: "USE MAX" });
+    const useMaxButton = getByRole("button", { name: "Use max" });
 
     await fireEvent.click(useMaxButton);
 
@@ -157,7 +151,7 @@ describe("Stake", () => {
 
     const { getByRole } = render(Stake, props);
 
-    const useMaxButton = getByRole("button", { name: "USE MAX" });
+    const useMaxButton = getByRole("button", { name: "Use max" });
     const amountInput = getByRole("spinbutton");
 
     expect(amountInput).toHaveValue(luxToDusk(baseProps.minStakeRequirement));
@@ -178,7 +172,7 @@ describe("Stake", () => {
     };
 
     const { getByRole } = render(Stake, props);
-    const useMaxButton = getByRole("button", { name: "USE MAX" });
+    const useMaxButton = getByRole("button", { name: "Use max" });
     const amountInput = getByRole("spinbutton");
 
     expect(amountInput).toHaveValue(luxToDusk(baseProps.minStakeRequirement));
@@ -211,7 +205,7 @@ describe("Stake", () => {
 
     expect(getReviewAmounts(container)[1]).toStrictEqual([
       "Network fee (at most)",
-      `${formatter(luxToDusk(gasLimit * 3n))} DUSK`,
+      "0.06 DUSK",
     ]);
 
     // Not while reviewing: the fee reviewed is the fee sent.
@@ -246,23 +240,19 @@ describe("Stake", () => {
 
     expect(getReviewAmounts(container)[1]).toStrictEqual([
       "Network fee (at most)",
-      `${formatter(luxToDusk(gasLimit * 2n))} DUSK`,
+      "0.04 DUSK",
     ]);
   });
 
   it("should render the review step of the Stake component", async () => {
     const { container, getByRole, queryByText } = render(Stake, baseOptions);
-    const fee = baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", `${formatter(luxToDusk(baseProps.minStakeRequirement))} DUSK`],
-      ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
-      [
-        "Total (at most)",
-        `${formatter(luxToDusk(baseProps.minStakeRequirement + fee))} DUSK`,
-      ],
+      ["Amount", "1,234 DUSK"],
+      ["Network fee (at most)", "0.02 DUSK"],
+      ["Total (at most)", "1,234.02 DUSK"],
     ]);
     expect(container.querySelector("dt .dusk-icon")).toBeNull();
     expect(container.querySelector(".gas-fee")).toBeNull();
@@ -272,7 +262,7 @@ describe("Stake", () => {
         ".dusk-stepper__step-label:not(.dusk-stepper__step-label--invisible)"
       )
     ).toHaveTextContent(/^Review$/);
-    expect(queryByText("REVIEW TRANSACTION")).not.toBeInTheDocument();
+    expect(queryByText("Review transaction")).not.toBeInTheDocument();
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
@@ -346,7 +336,7 @@ describe("Stake", () => {
 
       const { getByRole, getByText } = render(Stake, baseProps);
 
-      await fireEvent.click(getByRole("button", { name: "USE MAX" }));
+      await fireEvent.click(getByRole("button", { name: "Use max" }));
       await fireEvent.click(getByRole("button", { name: "Next" }));
       await fireEvent.click(getByRole("button", { name: "Stake" }));
 

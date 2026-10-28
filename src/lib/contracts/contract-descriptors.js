@@ -26,19 +26,19 @@ export default [
       {
         disabled: false,
         id: "stake",
-        label: "stake",
+        label: "Stake",
         primary: true,
       },
       {
         disabled: false,
         id: "unstake",
-        label: "unstake",
+        label: "Unstake",
         primary: false,
       },
       {
         disabled: false,
         id: "claim-rewards",
-        label: "claim rewards",
+        label: "Claim rewards",
         primary: false,
       },
     ],
@@ -46,12 +46,12 @@ export default [
   {
     enabled: import.meta.env.VITE_FEATURE_ALLOCATE === "true",
     id: "allocate",
-    label: "Allocate",
+    label: "Shield",
     operations: [
       {
         disabled: false,
         id: "send",
-        label: "send",
+        label: "Send",
         primary: true,
       },
     ],

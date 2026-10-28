@@ -293,7 +293,7 @@
 
     &__status {
       align-items: flex-end;
-      font-family: var(--mono-font-family);
+      font-variant-numeric: tabular-nums;
       text-align: right;
     }
 

@@ -1,7 +1,6 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { createCurrencyFormatter } from "$lib/dusk/currency";
   import {
     gasPriceStore,
     gasStore,
@@ -13,7 +12,7 @@
 
   const gasLimits = getGasLimits("allocate", $gasStore);
 
-  $: ({ customGasLimit, customGasPrice, language } = $settingsStore);
+  $: ({ customGasLimit, customGasPrice } = $settingsStore);
   $: gasSettings = getGasSettings(
     "allocate",
     { customGasLimit, customGasPrice },
@@ -24,7 +23,6 @@
   $: unshieldedAddress = currentProfile
     ? currentProfile.account.toString()
     : "";
-  $: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
 </script>
 
 <Allocate
@@ -32,7 +30,6 @@
   {unshieldedAddress}
   shieldedBalance={balance.shielded}
   unshieldedBalance={balance.unshielded.value}
-  formatter={duskFormatter}
   {gasLimits}
   {gasSettings}
   on:operationChange

@@ -17,12 +17,7 @@ import {
 } from "@dusk/w3sper";
 
 import { stakeInfo } from "$lib/mock-data";
-import {
-  activityFor,
-  asTransactions,
-  clearActivityStore,
-  stopActivity,
-} from "$lib/activity";
+import { activityFor, clearActivityStore, stopActivity } from "$lib/activity";
 import { buildDepositETHToWithValuePayload } from "$lib/bridge/deposit";
 import {
   getVerifiedName,
@@ -937,7 +932,7 @@ describe("Wallet store", async () => {
 
       await walletStore.transfer(toMoonlight, amount, memo, gas);
 
-      expect(await walletStore.getTransactionsHistory()).toEqual([]);
+      expect(walletStore.startHistory()).toBeNull();
       expect(activityFor).not.toHaveBeenCalled();
       expect(history.session.recordSent).not.toHaveBeenCalled();
 
@@ -1263,42 +1258,16 @@ describe("Wallet store", async () => {
       expect(clearActivityStore).not.toHaveBeenCalled();
     });
 
-    it("should give the current profile's history, from the archive, as its transactions", async () => {
+    it("should start the current profile's history, kept in step with it", () => {
       const { currentProfile } = get(walletStore);
 
-      /** @type {ActivityRow[]} */
-      const rows = [
-        {
-          amount: "1100000000000",
-          blockHeight: 4655845,
-          direction: "in",
-          hash: "8e".repeat(32),
-          kind: "transfer",
-          source: "archive",
-          status: "executed",
-        },
-        {
-          amount: "5000000000",
-          direction: "out",
-          hash: "aa".repeat(32),
-          kind: "transfer",
-          source: "local",
-          status: "submitted",
-        },
-      ];
-
-      history.session.rows = rows;
-
-      await expect(walletStore.getTransactionsHistory()).resolves.toEqual(
-        asTransactions(rows)
-      );
+      expect(walletStore.startHistory()).toBe(history.session);
       expect(activityFor).toHaveBeenCalledWith(
         expect.objectContaining({
           account: String(currentProfile?.account),
           profileIndex: 0,
         })
       );
-      expect(history.session.start).toHaveBeenCalled();
     });
 
     it("should expose a method to clear local data and init the wallet", async () => {

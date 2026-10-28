@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
-import { createCurrencyFormatter } from "$lib/dusk/currency";
-
 import { TransactionStatus } from "..";
 
 const { followTransaction } = vi.hoisted(() => ({
@@ -18,7 +16,6 @@ describe("TransactionStatus", () => {
   const hash =
     "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
   const baseProps = {
-    formatter: createCurrencyFormatter("en", "DUSK", 9),
     hash,
     maxFee: 2_500_000n,
   };
@@ -59,9 +56,9 @@ describe("TransactionStatus", () => {
       getByRole("button", { name: "Copy transaction hash" })
     ).toBeInTheDocument();
     expect(getByText("Network fee (at most)")).toBeInTheDocument();
-    expect(getByText("0.002500000 DUSK")).toBeInTheDocument();
+    expect(getByText("0.0025 DUSK")).toBeInTheDocument();
     expect(
-      getByRole("link", { name: "VIEW ON BLOCK EXPLORER" })
+      getByRole("link", { name: "View in Dusk explorer" })
     ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${hash}`);
     expect(container.firstElementChild).toMatchSnapshot();
   });
@@ -85,7 +82,7 @@ describe("TransactionStatus", () => {
     );
 
     expect(getByText("Network fee")).toBeInTheDocument();
-    expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
+    expect(getByText("0.0019 DUSK")).toBeInTheDocument();
     expect(queryByText("Network fee (at most)")).not.toBeInTheDocument();
     expect(queryByText("Details")).not.toBeInTheDocument();
   });
@@ -109,7 +106,7 @@ describe("TransactionStatus", () => {
     );
 
     expect(getByText("Network fee")).toBeInTheDocument();
-    expect(getByText("0.002500000 DUSK")).toBeInTheDocument();
+    expect(getByText("0.0025 DUSK")).toBeInTheDocument();
     expect(getByText("Details")).toBeInTheDocument();
     expect(
       container.querySelector(".dusk-error-details__error")
@@ -129,13 +126,13 @@ describe("TransactionStatus", () => {
 
     const again = followNext();
 
-    await fireEvent.click(getByRole("button", { name: "CHECK AGAIN" }));
+    await fireEvent.click(getByRole("button", { name: "Check again" }));
 
     expect(followTransaction).toHaveBeenCalledTimes(2);
     expect(getByRole("status")).toHaveTextContent(
       "Sent Pending. This usually takes under a minute."
     );
-    expect(queryByRole("button", { name: "CHECK AGAIN" })).toBeNull();
+    expect(queryByRole("button", { name: "Check again" })).toBeNull();
 
     again.resolve({ blockHeight: 1n, error: null, fee: 1n });
     await vi.waitFor(() =>

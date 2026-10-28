@@ -9,8 +9,9 @@ import {
 } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 import {
-  createCurrencyFormatter,
   duskToLux,
+  formatDuskExact,
+  formatFee,
   luxToDusk,
 } from "$lib/dusk/currency";
 import { shortenAddress } from "$lib/dusk/string";
@@ -70,7 +71,6 @@ const getReviewAmounts = (container) =>
   ]);
 
 describe("Send", () => {
-  const formatter = createCurrencyFormatter("en", "DUSK", 9);
   const lastTxId =
     "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
   const publicAddress =
@@ -82,7 +82,6 @@ describe("Send", () => {
     availableBalance: 1_000_000_000_000n,
     bep20BridgeAddress,
     execute: vi.fn().mockResolvedValue(lastTxId),
-    formatter,
     gasLimits: {
       gasLimitLower: 10000000n,
       gasLimitUpper: 2900000000n,
@@ -237,7 +236,7 @@ describe("Send", () => {
       await hasCamera.mock.results[0].value;
       await tick();
 
-      expect(queryByRole("button", { name: "SCAN QR" })).toBeNull();
+      expect(queryByRole("button", { name: "Scan QR" })).toBeNull();
     });
 
     it("should offer a QR scan with a camera", async () => {
@@ -245,7 +244,7 @@ describe("Send", () => {
 
       const { findByRole } = render(Send, baseProps);
 
-      expect(await findByRole("button", { name: "SCAN QR" })).toBeEnabled();
+      expect(await findByRole("button", { name: "Scan QR" })).toBeEnabled();
     });
 
     it("should show no banner for a public account, as the page's spendable balance says which one pays", async () => {
@@ -314,7 +313,7 @@ describe("Send", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      expect(maxFee()).toBe(formatter(luxToDusk(50_000_000n)));
+      expect(maxFee()).toBe("0.05");
       expect(getByRole("button", { name: "Next" })).toBeEnabled();
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
@@ -337,7 +336,7 @@ describe("Send", () => {
       await fireEvent.click(getByRole("button", { name: "Next" }));
       await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
       await vi.advanceTimersToNextTimerAsync();
 
       expect(baseProps.execute).toHaveBeenCalledWith(
@@ -358,14 +357,14 @@ describe("Send", () => {
         target: { value: shieldedAddress },
       });
       await fireEvent.click(edited.getByRole("button", { name: "Next" }));
-      await fireEvent.click(edited.getByRole("button", { name: "EDIT" }));
+      await fireEvent.click(edited.getByRole("button", { name: "Edit" }));
       await fireEvent.input(edited.getByLabelText(/gas limit/i), {
         target: { value: "30000000" },
       });
       await tick();
       await edited.rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
       await fireEvent.click(edited.getByRole("button", { name: "Next" }));
-      await fireEvent.click(edited.getByRole("button", { name: "SEND" }));
+      await fireEvent.click(edited.getByRole("button", { name: "Send" }));
       await vi.advanceTimersToNextTimerAsync();
 
       expect(baseProps.execute).toHaveBeenCalledWith(
@@ -420,7 +419,7 @@ describe("Send", () => {
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      const useMaxButton = getByRole("button", { name: "USE MAX" });
+      const useMaxButton = getByRole("button", { name: "Use max" });
       const nextButton = getByRole("button", { name: "Next" });
       const amountInput = getByRole("spinbutton");
 
@@ -439,7 +438,7 @@ describe("Send", () => {
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      const useMaxButton = getByRole("button", { name: "USE MAX" });
+      const useMaxButton = getByRole("button", { name: "Use max" });
       const amountInput = getByRole("spinbutton");
 
       expect(amountInput).toHaveValue(1);
@@ -463,7 +462,7 @@ describe("Send", () => {
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      const useMaxButton = getByRole("button", { name: "USE MAX" });
+      const useMaxButton = getByRole("button", { name: "Use max" });
       const amountInput = getByRole("spinbutton");
 
       expect(amountInput).toHaveValue(1);
@@ -632,11 +631,14 @@ describe("Send", () => {
       const memo = getAsHTMLElement(container, ".operation__review-memo span");
 
       expect(getReviewAmounts(container)).toStrictEqual([
-        ["Amount", `${formatter(amount)} DUSK`],
-        ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
+        ["Amount", `${formatDuskExact(duskToLux(amount), "en")} DUSK`],
+        [
+          "Network fee (at most)",
+          `${formatFee(fee, "en", { max: true })} DUSK`,
+        ],
         [
           "Total (at most)",
-          `${formatter(luxToDusk(duskToLux(amount) + fee))} DUSK`,
+          `${formatFee(duskToLux(amount) + fee, "en", { max: true })} DUSK`,
         ],
       ]);
       expect(container.querySelector("dt .dusk-icon")).toBeNull();
@@ -655,7 +657,7 @@ describe("Send", () => {
           ".dusk-stepper__step-label:not(.dusk-stepper__step-label--invisible)"
         )
       ).toHaveTextContent(/^Review$/);
-      expect(queryByText("REVIEW TRANSACTION")).not.toBeInTheDocument();
+      expect(queryByText("Review transaction")).not.toBeInTheDocument();
       expect(
         container.querySelector(".dusk-badge--variant-warning")
       ).toBeNull();
@@ -666,9 +668,9 @@ describe("Send", () => {
       [
         "a public account",
         "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff",
-        /^PUBLIC Visible on chain$/,
+        /^Public Visible on chain$/,
       ],
-      ["a shielded address", shieldedAddress, /^SHIELDED Private$/],
+      ["a shielded address", shieldedAddress, /^Shielded Private$/],
     ])(
       "should show the type of a transfer to %s in one short line",
       async (_, address, type) => {
@@ -711,7 +713,7 @@ describe("Send", () => {
 
       await fireEvent.input(amountInput, { target: { value: amount } });
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
 
       await vi.advanceTimersToNextTimerAsync();
 
@@ -751,7 +753,7 @@ describe("Send", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Next" }));
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
       await vi.advanceTimersToNextTimerAsync();
 
       const fee =
@@ -760,7 +762,7 @@ describe("Send", () => {
       expect(getByRole("status")).toHaveTextContent(/^Sent Pending/);
       expect(getByText("Network fee (at most)")).toBeInTheDocument();
       expect(
-        getByText(`${formatter(luxToDusk(fee))} DUSK`)
+        getByText(`${formatFee(fee, "en", { max: true })} DUSK`)
       ).toBeInTheDocument();
       expect(
         getByRole("button", { name: "Copy transaction hash" })
@@ -777,7 +779,8 @@ describe("Send", () => {
         "Completed In block 4,687,200."
       );
       expect(getByText("Network fee")).toBeInTheDocument();
-      expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
+      // The fee charged, to the nearest of four decimals.
+      expect(getByText("0.0019 DUSK")).toBeInTheDocument();
     });
 
     it("should perform the transfer with the gas limit the user sets", async () => {
@@ -787,13 +790,13 @@ describe("Send", () => {
         target: { value: shieldedAddress },
       });
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "EDIT" }));
+      await fireEvent.click(getByRole("button", { name: "Edit" }));
       await fireEvent.input(getByLabelText(/gas limit/i), {
         target: { value: "30000000" },
       });
       await tick();
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
 
       await vi.advanceTimersToNextTimerAsync();
 
@@ -814,7 +817,7 @@ describe("Send", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Next" }));
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
       await vi.advanceTimersToNextTimerAsync();
       await rerender({ gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n } });
       await vi.advanceTimersToNextTimerAsync();
@@ -842,7 +845,7 @@ describe("Send", () => {
       });
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
 
       await vi.advanceTimersToNextTimerAsync();
 
@@ -887,7 +890,7 @@ describe("Send", () => {
 
       expect(reviewMemo).toHaveTextContent(evmAddress);
 
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
       await vi.advanceTimersToNextTimerAsync();
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
@@ -917,7 +920,7 @@ describe("Send", () => {
 
       await fireEvent.input(amountInput, { target: { value: amount } });
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
       await vi.advanceTimersToNextTimerAsync();
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
@@ -947,7 +950,7 @@ describe("Send", () => {
 
       await fireEvent.input(amountInput, { target: { value: amount } });
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
       await vi.advanceTimersToNextTimerAsync();
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
@@ -1074,10 +1077,10 @@ describe("Send", () => {
         "operation__review-address--with-name"
       );
       expect(getReviewType(container)).toHaveTextContent(
-        "PUBLIC Visible on chain"
+        "Public Visible on chain"
       );
 
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
 
       // The name, as the lookup gives it, goes with it for the history.
       expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
@@ -1120,9 +1123,9 @@ describe("Send", () => {
 
       expect(getByText("alice.dusk")).toBeInTheDocument();
       expect(getShownAddress(container)).toHaveTextContent(nameAddress);
-      expect(getReviewType(container)).toHaveTextContent("SHIELDED Private");
+      expect(getReviewType(container)).toHaveTextContent("Shielded Private");
 
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
 
       expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
         nameAddress,
@@ -1247,9 +1250,9 @@ describe("Send", () => {
       expect(getShownAddress(container).parentElement).toHaveClass(
         "operation__review-address--with-name"
       );
-      expect(getReviewType(container)).toHaveTextContent("SHIELDED Private");
+      expect(getReviewType(container)).toHaveTextContent("Shielded Private");
 
-      await fireEvent.click(getByRole("button", { name: "SEND" }));
+      await fireEvent.click(getByRole("button", { name: "Send" }));
 
       expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
         nameAddress,
@@ -1534,7 +1537,7 @@ describe("Send", () => {
       await fireEvent.input(getByRole("textbox"), {
         target: { value: "alice.dusk" },
       });
-      await fireEvent.click(await findByRole("button", { name: "TRY AGAIN" }));
+      await fireEvent.click(await findByRole("button", { name: "Try again" }));
 
       expect(await findByText(nameAccount)).toBeInTheDocument();
       expect(getByRole("button", { name: "Next" })).toBeEnabled();

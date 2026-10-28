@@ -7,6 +7,7 @@
     startInactivityTimer,
   } from "$lib/navigation";
   import loginInfoStorage from "$lib/services/loginInfoStorage";
+  import { Shell } from "$lib/containers/Shell";
   import { gasPriceStore, settingsStore } from "$lib/stores";
 
   // A wallet with a password locks after the time set in Settings, or not at
@@ -37,4 +38,6 @@
   $: restartInactivityTimer(autoLockTimeout);
 </script>
 
-<slot />
+<Shell>
+  <slot />
+</Shell>

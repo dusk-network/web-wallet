@@ -9,9 +9,6 @@
   /** @type {string} */
   export let errorMessage = "Transaction failed";
 
-  /** @type {(amount: number) => string} */
-  export let formatter;
-
   /**
    * The most the transaction can cost, in Lux.
    *
@@ -42,12 +39,12 @@
   waitFor={operation}
 >
   <svelte:fragment slot="success-content" let:result={hash}>
-    <TransactionStatus {formatter} {hash} {maxFee} />
+    <TransactionStatus {hash} {maxFee} />
     <AppAnchorButton
       className="transaction-result__button"
       href="/dashboard"
       on:click={handleGoHomeClick}
-      text="HOME"
+      text="Home"
       variant="tertiary"
     />
   </svelte:fragment>
@@ -56,7 +53,7 @@
     href="/dashboard"
     on:click={handleGoHomeClick}
     slot="error-extra-content"
-    text="HOME"
+    text="Home"
     variant="tertiary"
   />
 </Suspense>

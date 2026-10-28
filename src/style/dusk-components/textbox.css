@@ -2,10 +2,10 @@
   font-family: inherit;
   font-size: var(--control-font-size);
   letter-spacing: 0;
-  padding: var(--control-small-padding);
+  padding: 0.625em 0.875em;
   background-color: var(--non-button-control-bg-color);
-  border-color: var(--surface-border-color);
-  border-radius: var(--control-border-radius-size);
+  border-color: var(--calm-line2);
+  border-radius: 0.75rem;
   border-style: solid;
   border-width: var(--control-border-size);
   color: var(--non-button-control-text-color);

@@ -7,7 +7,7 @@
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { contractDescriptors, updateOperation } from "$lib/contracts";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
-  import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
+  import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { ContractStatusesList, StakeMaturityInfo } from "$lib/components";
   import { createNumberFormatter } from "$lib/dusk/number";
 
@@ -34,33 +34,30 @@
   });
 
   $: numberFormatter = createNumberFormatter(language);
-  $: duskFormatter = createCurrencyFormatter(language, "DUSK", 9);
+
+  /**
+   * A status of an amount, in the one number format and in full on hover.
+   *
+   * @param {string} label
+   * @param {bigint | undefined} lux
+   * @param {string} locale
+   * @returns {ContractStatus}
+   */
+  const amountStatus = (label, lux, locale) => ({
+    exact: lux === undefined ? undefined : formatDuskExact(lux, locale),
+    label,
+    value: lux === undefined ? null : formatDusk(lux, locale),
+  });
 
   $: ({ balance, stakeInfo } = $walletStore);
   $: ({ language } = $settingsStore);
 
   /** @returns {ContractStatus[]} */
   $: statuses = [
-    {
-      label: "Spendable",
-      value: duskFormatter(luxToDusk(balance.unshielded.value)),
-    },
-    {
-      label: "Active Stake",
-      value: stakeInfo.amount
-        ? duskFormatter(luxToDusk(stakeInfo.amount.value))
-        : null,
-    },
-    {
-      label: "Penalized Stake",
-      value: stakeInfo.amount
-        ? duskFormatter(luxToDusk(stakeInfo.amount.locked))
-        : null,
-    },
-    {
-      label: "Rewards",
-      value: duskFormatter(luxToDusk(stakeInfo.reward)),
-    },
+    amountStatus("Spendable", balance.unshielded.value, language),
+    amountStatus("Active Stake", stakeInfo.amount?.value, language),
+    amountStatus("Penalized Stake", stakeInfo.amount?.locked, language),
+    amountStatus("Rewards", stakeInfo.reward, language),
   ];
 
   $: shouldShowStakeEligibility = stakeInfo.amount && currentBlockHeight;
@@ -85,7 +82,6 @@
     </ContractStatusesList>
     <StakeContract
       {stakeInfo}
-      formatter={duskFormatter}
       descriptor={contractDescriptors[2]}
       on:operationChange={({ detail }) => updateOperation(detail)}
       on:suppressStakingNotice={() => updateSetting("hideStakingNotice", true)}

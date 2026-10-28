@@ -100,7 +100,7 @@
       border: 1px solid var(--surface-border-color);
       border-radius: 50%;
       display: flex;
-      font-family: var(--mono-font-family);
+      font-variant-numeric: tabular-nums;
       font-size: 0.75rem;
       height: 1.75rem;
       justify-content: center;

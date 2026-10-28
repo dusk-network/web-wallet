@@ -67,7 +67,7 @@ exports[`Send page > should render the send page 1`] = `
         >
           <span>
             <!---->
-            1,172.500000000
+            1,172.5
             
             <!---->
           </span>
@@ -250,7 +250,7 @@ exports[`Send page > should render the send page 1`] = `
               <span
                 class="dusk-button__text"
               >
-                CLOSE
+                Close
               </span>
               <!---->
             </button>

@@ -1,0 +1,484 @@
+<script>
+  import { createEventDispatcher, onMount } from "svelte";
+  import {
+    mdiAlertCircleOutline,
+    mdiCheck,
+    mdiClose,
+    mdiContentCopy,
+    mdiOpenInNew,
+    mdiSendOutline,
+    mdiTimerSand,
+  } from "@mdi/js";
+  import { AnchorButton, Icon } from "$lib/dusk/components";
+  import { toast } from "$lib/dusk/components/Toast/store";
+  import { BalanceValue } from "$lib/components";
+  import { fullDateTime, rowTime } from "$lib/activity/present";
+  import { formatDuskExact } from "$lib/dusk/currency";
+  import { addBasePath } from "$lib/navigation";
+
+  import { ACTIVITY_ICONS } from "../Home/activityIcons";
+
+  /** @type {ActivityRow} */
+  export let row;
+
+  /** @type {import("$lib/activity/present").ActivityPresentation} */
+  export let presentation;
+
+  /** @type {string} */
+  export let locale;
+
+  const dispatch = createEventDispatcher();
+
+  /** @type {HTMLButtonElement} */
+  let closeButton;
+
+  /**
+   * An address or hash in full, its first and last six characters set
+   * apart, and the last six never split across lines.
+   *
+   * @param {string} value
+   */
+  const parts = (value) =>
+    value.length > 12
+      ? [value.slice(0, 6), value.slice(6, -6), value.slice(-6)]
+      : ["", value, ""];
+
+  /** @param {string} value */
+  async function copy(value) {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast("success", "Transaction ID copied", mdiContentCopy);
+    } catch {
+      toast("error", "Couldn't copy the transaction ID", mdiAlertCircleOutline);
+    }
+  }
+
+  /** @param {string} value */
+  const lux = (value) => {
+    try {
+      return BigInt(value);
+    } catch {
+      return 0n;
+    }
+  };
+
+  $: p = presentation;
+  $: time = rowTime(row);
+  $: failed = p.status === "failed";
+  $: outcome =
+    p.status === "failed"
+      ? { icon: mdiAlertCircleOutline, text: "Failed · nothing sent" }
+      : p.status === "pending"
+        ? { icon: mdiTimerSand, text: "Pending" }
+        : p.status === "unknown"
+          ? { icon: mdiTimerSand, text: "Not confirmed by the network" }
+          : row.success === true || row.status === "executed"
+            ? { icon: mdiCheck, text: "Completed" }
+            : { icon: mdiTimerSand, text: "Checking the outcome…" };
+  $: headline =
+    p.titleIsAddress || p.icon === "sent" || p.icon === "received"
+      ? `${row.direction === "in" ? "Received from" : "Sent to"} ${p.title}`
+      : p.title;
+  $: counterpartyLabel = row.direction === "in" ? "From" : "To";
+  $: canSendAgain =
+    p.icon === "sent" && !!p.counterparty && row.kind === "transfer";
+  $: gasUsed =
+    row.gasSpent && row.gasLimit
+      ? `${Number(row.gasSpent).toLocaleString(locale)} of ${Number(row.gasLimit).toLocaleString(locale)}`
+      : "";
+
+  onMount(() => {
+    closeButton?.focus();
+  });
+</script>
+
+<aside aria-labelledby="tx-detail-title" class="tx-detail">
+  <header class="tx-detail__header">
+    <h2 id="tx-detail-title">Transaction</h2>
+    <button
+      aria-label="Close the details"
+      bind:this={closeButton}
+      class="tx-detail__close"
+      on:click={() => dispatch("close")}
+      type="button"
+    >
+      <Icon path={mdiClose} />
+    </button>
+  </header>
+
+  <div class="tx-detail__body">
+    <div class="tx-detail__summary">
+      <span aria-hidden="true" class="tx-detail__icon"
+        ><Icon path={ACTIVITY_ICONS[p.icon]} /></span
+      >
+      <div>
+        <p class="tx-detail__headline">{headline}</p>
+        <p class="tx-detail__outcome tx-detail__outcome--{p.status ?? 'final'}">
+          <Icon path={outcome.icon} />{outcome.text}
+        </p>
+      </div>
+    </div>
+
+    <p class="tx-detail__amount" class:tx-detail__amount--muted={failed}>
+      {p.amount.sign}<BalanceValue value={p.amount.exact} />
+      <span class="tx-detail__unit">DUSK</span>
+    </p>
+
+    <dl class="tx-detail__list">
+      <div>
+        <dt>Date</dt>
+        <dd>{time === null ? "Not known yet" : fullDateTime(time, locale)}</dd>
+      </div>
+      {#if p.counterparty && p.icon !== "shield"}
+        <div class="tx-detail__wide">
+          <dt>{counterpartyLabel}</dt>
+          <dd>
+            {#if row.counterpartyName ?? row.toName}
+              <span class="tx-detail__name"
+                >{row.counterpartyName ?? row.toName}</span
+              >
+            {/if}
+            <span class="tx-detail__code"
+              >{#each [parts(p.counterparty)] as [head, middle, tail] (tail)}<b
+                  >{head}</b
+                ><span class="tx-detail__middle">{middle}</span><b
+                  class="tx-detail__tail">{tail}</b
+                >{/each}</span
+            >
+          </dd>
+        </div>
+      {/if}
+      <div>
+        <dt>Type</dt>
+        <dd>{p.privacy}</dd>
+      </div>
+      {#if row.memo}
+        <div>
+          <dt>Memo</dt>
+          <dd class="tx-detail__memo">{row.memo}</dd>
+        </div>
+      {/if}
+      <div>
+        <dt>Network fee paid</dt>
+        <dd>
+          {row.feePaid
+            ? `${formatDuskExact(lux(row.feePaid), locale)} DUSK`
+            : p.icon === "received"
+              ? "Paid by the sender"
+              : "Not known yet"}
+        </dd>
+      </div>
+      <div class="tx-detail__wide">
+        <dt>Transaction ID</dt>
+        <dd class="tx-detail__id">
+          <span class="tx-detail__code"
+            >{#each [parts(row.hash)] as [head, middle, tail] (tail)}<b
+                >{head}</b
+              ><span class="tx-detail__middle">{middle}</span><b
+                class="tx-detail__tail">{tail}</b
+              >{/each}</span
+          >
+          <button
+            class="tx-detail__copy"
+            on:click={() => copy(row.hash)}
+            type="button"><Icon path={mdiContentCopy} />Copy</button
+          >
+        </dd>
+      </div>
+    </dl>
+
+    <details class="tx-detail__tech">
+      <summary>Technical details</summary>
+      <dl class="tx-detail__list tx-detail__list--tech">
+        <div>
+          <dt>Block height</dt>
+          <dd>
+            {row.blockHeight === undefined
+              ? "Not in a block yet"
+              : row.blockHeight.toLocaleString(locale)}
+          </dd>
+        </div>
+        {#if gasUsed}
+          <div>
+            <dt>Gas used</dt>
+            <dd>{gasUsed}</dd>
+          </div>
+        {/if}
+        <div>
+          <dt>Finality</dt>
+          <dd>
+            {row.source === "local" ? "Not final yet" : "Final"}
+          </dd>
+        </div>
+        {#if row.error}
+          <div class="tx-detail__wide">
+            <dt>Error</dt>
+            <dd class="tx-detail__error">{row.error}</dd>
+          </div>
+        {/if}
+      </dl>
+    </details>
+
+    <div class="tx-detail__actions">
+      <AnchorButton
+        href={`/explorer/transactions/transaction?id=${row.hash}`}
+        icon={{ path: mdiOpenInNew, position: "after" }}
+        rel="noopener noreferrer"
+        target="_blank"
+        text="View in Dusk explorer"
+        variant="secondary"
+      />
+      {#if canSendAgain}
+        <AnchorButton
+          href={addBasePath(
+            `/dashboard/send?to=${encodeURIComponent(String(p.counterparty))}`
+          )}
+          icon={{ path: mdiSendOutline }}
+          text="Send again"
+          variant="secondary"
+        />
+      {/if}
+    </div>
+  </div>
+</aside>
+
+<style lang="postcss">
+  .tx-detail {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--calm-panel);
+  }
+
+  .tx-detail__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 3.625rem;
+    padding: 0 0.75rem 0 1.5rem;
+    border-bottom: 1px solid var(--calm-line);
+
+    & h2 {
+      font-size: 1.0625rem;
+      font-weight: 500;
+    }
+  }
+
+  .tx-detail__close {
+    all: unset;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: var(--calm-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--calm-text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--calm-focus);
+    }
+  }
+
+  .tx-detail__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem 2rem;
+  }
+
+  .tx-detail__summary {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+  }
+
+  .tx-detail__icon {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: var(--calm-s2);
+    flex: 0 0 auto;
+  }
+
+  .tx-detail__headline {
+    font-size: 1rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  .tx-detail__outcome {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.125rem;
+    color: var(--calm-muted);
+    font-size: 0.84375rem;
+
+    & :global(.dusk-icon) {
+      width: 0.9375rem;
+      height: 0.9375rem;
+    }
+
+    &--failed {
+      color: var(--calm-danger);
+    }
+
+    &--pending {
+      color: var(--calm-pending);
+    }
+  }
+
+  .tx-detail__amount {
+    font-size: 2.5rem;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+
+    &--muted {
+      color: var(--calm-subtle);
+    }
+  }
+
+  .tx-detail__unit {
+    color: var(--calm-muted);
+    font-size: 1rem;
+  }
+
+  .tx-detail__list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+
+    & > div {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.625rem 0;
+      border-top: 1px solid var(--calm-line);
+      font-size: 0.875rem;
+    }
+
+    & dt {
+      color: var(--calm-muted);
+      white-space: nowrap;
+    }
+
+    & dd {
+      margin: 0;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      min-width: 0;
+    }
+
+    & > .tx-detail__wide {
+      flex-direction: column;
+      gap: 0.375rem;
+
+      & dd {
+        text-align: left;
+      }
+    }
+  }
+
+  .tx-detail__name {
+    display: block;
+    font-weight: 500;
+  }
+
+  .tx-detail__code {
+    font-family: var(--code-font-family);
+    font-size: 0.78125rem;
+    line-height: 1.6;
+    color: var(--calm-muted);
+
+    & b {
+      color: var(--calm-text);
+      font-weight: 500;
+    }
+  }
+
+  .tx-detail__middle {
+    word-break: break-all;
+  }
+
+  /* The ending compared against an invoice stays on one line. */
+  .tx-detail__tail {
+    white-space: nowrap;
+  }
+
+  .tx-detail__id {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .tx-detail__copy {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    flex: 0 0 auto;
+    min-height: 2rem;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    background: var(--calm-s2);
+    font-size: 0.78125rem;
+    font-weight: 500;
+    cursor: pointer;
+
+    & :global(.dusk-icon) {
+      width: 0.8125rem;
+      height: 0.8125rem;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--calm-focus);
+    }
+  }
+
+  .tx-detail__memo {
+    overflow-wrap: anywhere;
+  }
+
+  .tx-detail__error {
+    color: var(--calm-muted);
+    font-family: var(--code-font-family);
+    font-size: 0.78125rem;
+    overflow-wrap: anywhere;
+  }
+
+  .tx-detail__tech {
+    border: 1px solid var(--calm-line);
+    border-radius: 0.75rem;
+    padding: 0 0.875rem;
+
+    & summary {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    & .tx-detail__list > div:first-child {
+      border-top: 0 none;
+    }
+  }
+
+  .tx-detail__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+
+    & :global(.dusk-anchor-button) {
+      flex: 1 1 auto;
+    }
+  }
+</style>

@@ -29,7 +29,7 @@
         <br />
         <AnchorButton
           href={`/explorer/transactions/transaction?id=${hash}`}
-          text="VIEW ON BLOCK EXPLORER"
+          text="View in Dusk explorer"
           rel="noopener noreferrer"
           target="_blank"
         />

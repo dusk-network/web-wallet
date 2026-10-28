@@ -6,7 +6,13 @@
 
   import { BALANCE_MASK } from "$lib/constants";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { duskToLux, luxToDusk } from "$lib/dusk/currency";
+  import {
+    duskToLux,
+    formatDusk,
+    formatDuskExact,
+    formatFee,
+    luxToDusk,
+  } from "$lib/dusk/currency";
   import { randomUUID } from "$lib/dusk/string";
   import { settingsStore } from "$lib/stores";
 
@@ -30,9 +36,6 @@
 
   /** @type {(...args: any[]) => Promise<string>} */
   export let execute;
-
-  /** @type {(amount: number) => string} */
-  export let formatter;
 
   /** @type {GasStoreContent} */
   export let gasLimits;
@@ -136,7 +139,8 @@
   });
 
   $: withdrawAmountInLux = withdrawAmount ? duskToLux(withdrawAmount) : 0n;
-  $: isAmountHidden = $settingsStore.hideBalances && !isAmountChosen;
+  $: ({ hideBalances, language } = $settingsStore);
+  $: isAmountHidden = hideBalances && !isAmountChosen;
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
@@ -200,7 +204,7 @@
           size="small"
           variant="tertiary"
           on:click={setMaxAmount}
-          text="USE MAX"
+          text="Use max"
         />
       </div>
 
@@ -226,7 +230,6 @@
       </div>
 
       <GasSettings
-        {formatter}
         fee={maxGasFee}
         limit={gasLimit}
         limitLower={gasLimits.gasLimitLower}
@@ -251,8 +254,8 @@
           title="Remaining staked amount below minimum requirement"
         >
           <p>
-            Leave at least {luxToDusk(minStakeRequirement).toLocaleString()} DUSK
-            staked, or unstake it all.
+            Leave at least {formatDusk(minStakeRequirement, language)} DUSK staked,
+            or unstake it all.
           </p>
         </Banner>
       {/if}
@@ -279,11 +282,11 @@
       <div in:fade|global class="operation__unstake">
         <ReviewAmount
           label={operationOverviewLabel}
-          value={formatter(withdrawAmount)}
+          value={formatDuskExact(withdrawAmountInLux, language)}
         />
         <ReviewAmount
           label="Network fee (at most)"
-          value={formatter(luxToDusk(maxGasFee))}
+          value={formatFee(maxGasFee, language, { max: true })}
         />
       </div>
     </WizardStep>
@@ -291,7 +294,6 @@
     <!-- OPERATION RESULT STEP  -->
     <WizardStep step={2} {key} showNavigation={false}>
       <TransactionResult
-        {formatter}
         maxFee={maxGasFee}
         onBeforeLeave={resetOperation}
         operation={execute(withdrawAmountInLux, gasPrice, gasLimit)}

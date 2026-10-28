@@ -1,68 +1,27 @@
 <script>
   import { afterNavigate } from "$app/navigation";
-  import {
-    mdiAlertOutline,
-    mdiCogOutline,
-    mdiLink,
-    mdiRestore,
-    mdiTimerSand,
-  } from "@mdi/js";
-  import { Button, Icon } from "$lib/dusk/components";
-  import { getPrimaryName, getVerifiedName } from "$lib/dusk-domains";
-  import { networkStore, walletStore } from "$lib/stores";
-  import { AddressPicker, AppAnchorButton, SyncBar } from "$lib/components";
-  import { makeNodeUrl } from "$lib/url";
+  import { page } from "$app/stores";
+  import { appPath } from "$lib/containers/Shell";
 
-  /** @type {HTMLDivElement} */
-  let scrollContainer;
+  /** Pages laid out across the window; the others are one column. */
+  const WIDE = new Set(["/dashboard", "/dashboard/transactions"]);
 
-  /** @type {string} */
-  let syncStatusLabel = "";
+  const scrollToTop = () => window.scrollTo(0, 0);
 
-  /** @type {string} */
-  let networkStatusIconPath = "";
+  // A new page, or a flow's next step, starts at the top. A panel opened or
+  // closed on the page, a query of its own, keeps the place in its list:
+  // only the page's path, or the flow it shows, makes it a new page.
+  afterNavigate(({ from, to }) => {
+    const isSamePage =
+      from?.url.pathname === to?.url.pathname &&
+      from?.url.searchParams.get("flow") === to?.url.searchParams.get("flow");
 
-  /** @type {string} */
-  let iconVariant = "";
+    if (!isSamePage) {
+      scrollToTop();
+    }
+  });
 
-  const scrollToTop = () => {
-    scrollContainer.scrollTo(0, 0);
-  };
-
-  /**
-   * Looks up the verified `.dusk` names of public accounts on the
-   * network, through the wallet's own node as the send page does.
-   *
-   * @param {string} network
-   * @returns {(account: string) => Promise<string>}
-   */
-  const lookUpNamesOn = (network) => (account) =>
-    getPrimaryName(account, network, makeNodeUrl().origin);
-
-  afterNavigate(scrollToTop);
-
-  $: ({ networkName } = $networkStore);
-  $: ({ currentProfile, profiles, syncStatus } = $walletStore);
-  $: if (syncStatus.isInProgress) {
-    iconVariant = "warning";
-    networkStatusIconPath = mdiTimerSand;
-    syncStatusLabel = `Dusk ${networkName}`;
-  } else if (syncStatus.error) {
-    iconVariant = "error";
-    networkStatusIconPath = mdiAlertOutline;
-    syncStatusLabel = `Dusk ${networkName} - Sync Failed`;
-  } else {
-    iconVariant = "success";
-    networkStatusIconPath = mdiLink;
-    syncStatusLabel = `Dusk ${networkName}`;
-  }
-
-  /**
-   * @param {Profile} profile
-   */
-  function setCurrentProfile(profile) {
-    walletStore.setCurrentProfile(profile);
-  }
+  $: ({ url } = $page);
 </script>
 
 <svelte:window
@@ -71,83 +30,13 @@
   }}
 />
 
-<section class="dashboard">
-  <div
-    class="dashboard-content"
-    bind:this={scrollContainer}
-    on:wizardstepchange={scrollToTop}
-  >
-    <h2 class="sr-only">Dashboard</h2>
-
-    <AddressPicker
-      {currentProfile}
-      getKnownName={(account) => getVerifiedName(networkName, account)}
-      getName={lookUpNamesOn(networkName)}
-      {profiles}
-      on:setCurrentProfile={(event) => setCurrentProfile(event.detail.profile)}
-    />
-
-    <slot />
-  </div>
-  <footer class="footer">
-    <div class="footer__network-status">
-      <Icon
-        className="footer__network-status-icon footer__network-status-icon--{iconVariant}"
-        data-tooltip-disabled={!syncStatus.error}
-        data-tooltip-id="main-tooltip"
-        data-tooltip-text={syncStatus.error?.message}
-        data-tooltip-type="error"
-        path={networkStatusIconPath}
-        size="large"
-      />
-      <div class="footer__network-message">
-        {#if syncStatusLabel && !syncStatus.isInProgress}
-          <span>{syncStatusLabel}</span>
-        {/if}
-        {#if syncStatus.isInProgress}
-          <span>
-            {syncStatusLabel} –
-            <b
-              >Syncing... {syncStatus.progress
-                ? `${(syncStatus.progress * 100).toFixed(0)}%`
-                : ""}</b
-            >
-          </span>
-          {#if syncStatus.progress}
-            <SyncBar
-              from={syncStatus.from}
-              last={syncStatus.last}
-              progress={syncStatus.progress}
-            />
-          {/if}
-        {/if}
-      </div>
-    </div>
-    <div class="footer__actions">
-      {#if syncStatus.error}
-        <Button
-          aria-label="Retry synchronization"
-          className="footer__actions-button footer__actions-button--retry"
-          data-tooltip-id="main-tooltip"
-          data-tooltip-text="Retry synchronization"
-          icon={{ path: mdiRestore, size: "large" }}
-          on:click={() => {
-            walletStore.sync().catch(() => {});
-          }}
-          variant="secondary"
-        />
-      {/if}
-      <AppAnchorButton
-        variant="secondary"
-        className="footer__actions-button footer__actions-button--settings"
-        icon={{ path: mdiCogOutline, size: "large" }}
-        href="/settings"
-        aria-label="Settings"
-        data-tooltip-id="main-tooltip"
-        data-tooltip-text="Settings"
-      />
-    </div>
-  </footer>
+<section
+  class="dashboard"
+  class:dashboard--column={!WIDE.has(appPath(url.pathname))}
+  on:wizardstepchange={scrollToTop}
+>
+  <h2 class="sr-only">Dashboard</h2>
+  <slot />
 </section>
 
 <style lang="postcss">
@@ -155,77 +44,56 @@
     .dashboard {
       position: relative;
       display: flex;
-      align-content: space-between;
-      gap: 1rem;
       flex: 1;
       flex-direction: column;
-      max-height: 100%;
-    }
-
-    .dashboard-content {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
       gap: 1rem;
-      overflow-y: auto;
-      flex: 1;
-      padding-right: 0.125rem;
-      scrollbar-color: var(--surface-border-color) transparent;
+      width: 100%;
     }
 
-    .footer {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      gap: 0.75rem;
-      align-items: center;
-      border-top: 1px solid var(--surface-border-color-subtle);
-      padding-top: 0.875rem;
+    /* A flow: one column, centred, with room around it. */
+    .dashboard--column {
+      width: min(100%, 44rem);
+      margin: 0 auto;
+      padding: 2rem 1.5rem 0;
+    }
 
-      &__actions {
-        display: flex;
-        flex-direction: row;
-        gap: 0.75em;
-        align-items: center;
+    /*
+     * A flow's card is the page itself: no surface of its own, its heading
+     * the page's title, and its buttons on the window's surface.
+     */
+    .dashboard--column > .dusk-card {
+      padding: 0;
+      background: none;
+
+      & > .dusk-card__header-container {
+        padding: 0 0 0.5rem;
       }
 
-      &__network-status {
-        display: flex;
-        height: 100%;
-        align-items: center;
-        gap: var(--small-gap);
-        line-height: 150%;
-        text-transform: capitalize;
-        flex: 1;
+      & > .dusk-card__body-container {
+        padding: 0.5rem 0 0;
       }
 
-      &__network-message {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        flex: 1;
+      & .dusk-card__heading-container h3 {
+        font-size: 1.75rem;
+        font-weight: 500;
       }
 
-      .footer__network-status-icon {
-        border: 1px solid currentColor;
-        border-radius: var(--control-border-radius-size);
-        padding: 0.2em;
+      & .dusk-card__heading-icons {
+        display: none;
       }
 
-      .footer__network-status-icon--error {
-        cursor: help;
-        color: var(--badge-error-color);
-        background: var(--status-error-bg-color);
+      & .dusk-wizard__step-navigation {
+        background: var(--calm-s0);
+      }
+    }
+
+    @media (max-width: 47.99rem) {
+      .dashboard--column {
+        padding: 1rem 1rem 0;
       }
 
-      .footer__network-status-icon--success {
-        color: var(--badge-success-color);
-        background: var(--status-success-bg-color);
-      }
-
-      .footer__network-status-icon--warning {
-        color: var(--badge-warning-color);
-        background: var(--status-warning-bg-color);
+      .dashboard--column > .dusk-card .dusk-card__heading-container h3 {
+        font-size: 1.375rem;
       }
     }
   }

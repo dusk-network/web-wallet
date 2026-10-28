@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import {
-  createCurrencyFormatter,
-  duskToLux,
-  luxToDusk,
-} from "$lib/dusk/currency";
+import { formatFee } from "$lib/dusk/currency";
 import { settingsStore } from "$lib/stores";
 
 import { Allocate } from "..";
@@ -21,9 +17,7 @@ const getReviewAmounts = (container) =>
   ]);
 
 describe("Allocate", () => {
-  const formatter = createCurrencyFormatter("en", "DUSK", 9);
   const baseProps = {
-    formatter,
     gasLimits: {
       gasLimitLower: 10000000n,
       gasLimitUpper: 2900000000n,
@@ -43,7 +37,6 @@ describe("Allocate", () => {
       "zTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE4FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff",
     unshieldedBalance: 1_000_000_000_000n,
   };
-  const fee = baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
 
   afterEach(() => {
     cleanup();
@@ -58,9 +51,9 @@ describe("Allocate", () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", `${formatter(500)} DUSK`],
-      ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
-      ["Total (at most)", `${formatter(luxToDusk(duskToLux(500) + fee))} DUSK`],
+      ["Amount", "500 DUSK"],
+      ["Network fee (at most)", "0.02 DUSK"],
+      ["Total (at most)", "500.02 DUSK"],
     ]);
     expect(container.querySelector("dt .dusk-icon")).toBeNull();
     expect(container.querySelector(".gas-fee")).toBeNull();
@@ -73,7 +66,7 @@ describe("Allocate", () => {
     /** @param {bigint} price */
     const feeRow = (price) => [
       "Network fee (at most)",
-      `${formatter(luxToDusk(gasLimit * price))} DUSK`,
+      `${formatFee(gasLimit * price, "en", { max: true })} DUSK`,
     ];
 
     await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
@@ -133,9 +126,9 @@ describe("Allocate", () => {
     await fireEvent.click(nextButton);
 
     expect(getReviewAmounts(container)).toStrictEqual([
-      ["Amount", `${formatter(500)} DUSK`],
-      ["Network fee (at most)", `${formatter(luxToDusk(fee))} DUSK`],
-      ["Total (at most)", `${formatter(luxToDusk(duskToLux(500) + fee))} DUSK`],
+      ["Amount", "500 DUSK"],
+      ["Network fee (at most)", "0.02 DUSK"],
+      ["Total (at most)", "500.02 DUSK"],
     ]);
   });
 });

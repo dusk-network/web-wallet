@@ -4,7 +4,12 @@ import { get } from "svelte/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { getGasSettings } from "$lib/contracts";
-import { createCurrencyFormatter, luxToDusk } from "$lib/dusk/currency";
+import {
+  formatDusk,
+  formatDuskExact,
+  formatFee,
+  luxToDusk,
+} from "$lib/dusk/currency";
 import { gasPriceStore, settingsStore } from "$lib/stores";
 
 import SendPage from "../+page.svelte";
@@ -36,10 +41,9 @@ vi.mock("$lib/stores", async (importOriginal) => {
   };
 });
 
-const formatter = createCurrencyFormatter("en", "DUSK", 9);
 const { balance, currentProfile } = mockedWalletStore.getMockedStoreValue();
-const formattedShielded = formatter(luxToDusk(balance.shielded.spendable));
-const formattedUnshielded = formatter(luxToDusk(balance.unshielded.value));
+const formattedShielded = formatDusk(balance.shielded.spendable, "en");
+const formattedUnshielded = formatDusk(balance.unshielded.value, "en");
 
 describe("Send page", () => {
   afterEach(() => {
@@ -155,7 +159,7 @@ describe("Send page", () => {
 
     expect(amountInput).toHaveValue(10);
 
-    await fireEvent.click(getByRole("button", { name: "USE MAX" }));
+    await fireEvent.click(getByRole("button", { name: "Use max" }));
 
     expect(amountInput).toHaveValue(maxAmount);
 
@@ -166,9 +170,9 @@ describe("Send page", () => {
         value.textContent?.trim()
       )
     ).toStrictEqual([
-      `${formatter(maxAmount)} DUSK`,
-      `${formatter(luxToDusk(fee))} DUSK`,
-      `${formattedUnshielded} DUSK`,
+      `${formatDuskExact(balance.unshielded.value - fee, "en")} DUSK`,
+      `${formatFee(fee, "en", { max: true })} DUSK`,
+      `${formatFee(balance.unshielded.value, "en", { max: true })} DUSK`,
     ]);
     expect(spendable).toHaveTextContent(/^•••• hidden$/);
   });
@@ -183,7 +187,7 @@ describe("Send page", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    expect(maxFee()).toBe(formatter(luxToDusk(2_500_000n)));
+    expect(maxFee()).toBe("0.0025");
 
     await fireEvent.click(getByRole("button", { name: "Back" }));
     await fireEvent.input(getByRole("textbox"), {
@@ -191,7 +195,7 @@ describe("Send page", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    expect(maxFee()).toBe(formatter(luxToDusk(50_000_000n)));
+    expect(maxFee()).toBe("0.05");
   });
 
   it("should keep the user's gas limit when other settings change", async () => {
@@ -201,7 +205,7 @@ describe("Send page", () => {
       target: { value: currentProfile.account.toString() },
     });
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "EDIT" }));
+    await fireEvent.click(getByRole("button", { name: "Edit" }));
     await fireEvent.input(getByLabelText(/gas limit/i), {
       target: { value: "3000000" },
     });
@@ -210,7 +214,7 @@ describe("Send page", () => {
     );
 
     expect(container.querySelector(".gas-fee__amount-value")?.textContent).toBe(
-      formatter(luxToDusk(3_000_000n))
+      "0.003"
     );
   });
 });

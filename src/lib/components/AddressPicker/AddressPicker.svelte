@@ -36,6 +36,12 @@
   /** @type {string|undefined} */
   export let className = undefined;
 
+  /**
+   * A pill for the top bar: the profile's number and its name, or its label
+   * while it has none.
+   */
+  export let compact = false;
+
   const dispatch = createEventDispatcher();
 
   let expanded = false;
@@ -119,7 +125,11 @@
     }
   }
 
-  $: classes = makeClassName(["address-picker", className]);
+  $: classes = makeClassName([
+    "address-picker",
+    compact && "address-picker--compact",
+    className,
+  ]);
 
   // Scrolls the address options menu to top on addresses change
   $: if (profiles && addressOptionsMenu) {
@@ -143,7 +153,7 @@
       : "";
 </script>
 
-{#if expanded}
+{#if expanded && !compact}
   <Overlay />
 {/if}
 
@@ -166,28 +176,42 @@
     on:click={handleTriggerClick}
     on:keydown={handleTriggerKeyDown}
   >
-    <!-- The profile's label, with its name under it, or its account,
-      shortened, while it has none. -->
-    <span class="address-picker__current-profile" id={currentProfileId}>
-      <span class="address-picker__title">{displayedAddress}</span>
-      {#if currentAccount}
-        {#snippet currentNameLine(/** @type {string} */ name)}
-          {#if name}
-            <span class="address-picker__name" title={name}>{name}</span>
-          {:else}
-            <span class="address-picker__account" title={currentAccount}>
-              <span aria-hidden="true">{shortenAddress(currentAccount)}</span>
-              <span class="sr-only">{currentAccount}</span>
-            </span>
-          {/if}
-        {/snippet}
+    {#if compact}
+      <!-- The profile's number, and its name or label. -->
+      <span aria-hidden="true" class="address-picker__avatar"
+        >{profileNumber || "–"}</span
+      >
+      <span class="address-picker__compact-name" id={currentProfileId}>
         {#await currentName}
-          {@render currentNameLine(getKnownName(currentAccount))}
+          {(currentAccount && getKnownName(currentAccount)) || displayedAddress}
         {:then name}
-          {@render currentNameLine(name)}
+          {name || displayedAddress}
         {/await}
-      {/if}
-    </span>
+      </span>
+    {:else}
+      <!-- The profile's label, with its name under it, or its account,
+        shortened, while it has none. -->
+      <span class="address-picker__current-profile" id={currentProfileId}>
+        <span class="address-picker__title">{displayedAddress}</span>
+        {#if currentAccount}
+          {#snippet currentNameLine(/** @type {string} */ name)}
+            {#if name}
+              <span class="address-picker__name" title={name}>{name}</span>
+            {:else}
+              <span class="address-picker__account" title={currentAccount}>
+                <span aria-hidden="true">{shortenAddress(currentAccount)}</span>
+                <span class="sr-only">{currentAccount}</span>
+              </span>
+            {/if}
+          {/snippet}
+          {#await currentName}
+            {@render currentNameLine(getKnownName(currentAccount))}
+          {:then name}
+            {@render currentNameLine(name)}
+          {/await}
+        {/if}
+      </span>
+    {/if}
     <Icon path={mdiChevronDown} className="address-picker__chevron" />
   </div>
 

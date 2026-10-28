@@ -6,7 +6,7 @@
   /** @type {ContractStatus[]} */
   export let statuses;
 
-  /** @type {(status: ContractStatus) => status is { label: string, value: string }} */
+  /** @type {(status: ContractStatus) => status is ContractStatus & { value: string }} */
   const hasValue = (status) => status.value !== null;
 </script>
 
@@ -17,7 +17,7 @@
         {status.label}
       </dt>
       <dd class="contract-statuses__value">
-        <span><BalanceValue value={status.value} /></span>
+        <span><BalanceValue exact={status.exact} value={status.value} /></span>
         <DuskIcon className="contract-statuses__icon" />
       </dd>
     {/each}
@@ -54,19 +54,16 @@
     &__label {
       align-self: center;
       color: var(--muted-color);
-      font-family: var(--mono-font-family);
-      font-size: 0.75rem;
-      letter-spacing: 0.12em;
+      font-size: 0.875rem;
       padding-left: 0.5rem;
       padding-right: 0.75rem;
-      text-transform: uppercase;
     }
 
     &__value {
       display: inline-flex;
       align-items: center;
       gap: var(--small-gap);
-      font-family: var(--mono-font-family);
+      font-variant-numeric: tabular-nums;
       font-size: 0.9375rem;
       font-weight: 500;
       justify-content: end;

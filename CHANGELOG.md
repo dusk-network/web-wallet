@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Label the Bridge amount, with the balance available and Use max
 - Show the connected DuskEVM account in the Bridge
 - Show the account's transaction history from the node's archive, kept in the browser
+- Add a top bar with Home, History and Staking, the network, the profile and a search of names, addresses and transactions (Ctrl K)
+- Add a History page: transactions by day in a table, with filters, each one's details and a CSV export
+- Show the latest activity beside the balance on Home, with filters
+- Say what the public, shielded and staking balances are on Home
+- Add a tab bar and a row of round actions on phones
+- Say at the top of a test network that test DUSK has no value
 
 ### Changed
 
@@ -49,6 +55,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Swap the bridge direction with the ↑↓ button
 - Offer only wallets when connecting to DuskEVM
 - Turn the transaction history on unless `VITE_FEATURE_TRANSACTION_HISTORY` is `false`
+- Fill the window instead of a fixed card, with a flow's buttons kept in view, above a phone's keyboard
+- Give the wallet a calm look: neutral surfaces, pill buttons and sentence-case labels, without bracketed headings
+- Call Allocate Shield
+- Show addresses and hashes in the system's code font
+- Show no money values or market data off mainnet
+- Show amounts in one format, at most four decimals, and in full on hover, under review and in a transaction's details
+- Round a fee up to four decimals when it is the most it can cost, and to the nearest when it was paid
 
 ### Removed
 

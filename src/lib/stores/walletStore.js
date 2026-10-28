@@ -10,7 +10,6 @@ import {
 import {
   TX_KIND,
   activityFor,
-  asTransactions,
   clearActivityStore,
   currentActivity,
   getShieldedHistory,
@@ -355,18 +354,8 @@ const claimRewards = async (amount, gas) => {
   );
 };
 
-/** @type {WalletStoreServices["getTransactionsHistory"]} */
-const getTransactionsHistory = async () => {
-  const history = historyOf(unsafeGetCurrentProfile());
-
-  if (!history) {
-    return [];
-  }
-
-  await history.start();
-
-  return asTransactions(history.rows);
-};
+/** @type {WalletStoreServices["startHistory"]} */
+const startHistory = () => historyOf(unsafeGetCurrentProfile());
 
 /** @type {WalletStoreServices["init"]} */
 async function init(profileGeneratorInstance, syncFromBlock) {
@@ -830,13 +819,13 @@ export default {
   depositEvmFunctionCall,
   finalizeDuskEvmWithdrawal,
   getDuskEvmProofSubmitter,
-  getTransactionsHistory,
   init,
   proveDuskEvmWithdrawal,
   reset,
   setCurrentProfile,
   shield,
   stake,
+  startHistory,
   subscribe,
   sync,
   transfer,

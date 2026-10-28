@@ -57,15 +57,15 @@
   import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
   import { withdrawalSentMessage } from "$lib/bridge/withdrawalLifecycle";
   import { loadWithdrawalWaitingPeriod } from "$lib/bridge/withdrawals";
-  import { luxToDusk } from "$lib/dusk/currency";
+  import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
   import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
   import { cleanNumberString, shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { walletStore } from "$lib/stores";
+  import { settingsStore, walletStore } from "$lib/stores";
 
   /**
    * DuskEVM uses duskEvm.nativeCurrency.decimals (currently 18). DuskDS uses 9 decimals (Lux).
-   * This converts from EVM base units (1e18) to Lux units (1e9) so we can reuse luxToDusk().
+   * This converts from EVM base units (1e18) to Lux units (1e9), which amounts are shown from.
    * @type {bigint}
    */
   const EVM_TO_LUX_SCALE_FACTOR =
@@ -78,9 +78,6 @@
    */
   const WITHDRAWAL_FEE_RESERVE_WEI = 10n ** 16n;
   const WITHDRAWAL_TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
-
-  /** @type {(amount: bigint|number) => string} */
-  export let formatter;
 
   /** @type {ContractGasSettings} */
   export let gasSettings;
@@ -243,6 +240,13 @@
       (evmDuskBalance.value - reserveWei) / EVM_TO_LUX_SCALE_FACTOR
     );
   }
+
+  /**
+   * A DuskEVM balance in LUX.
+   *
+   * @param {{ value: bigint }} balance
+   */
+  const evmLux = (balance) => balance.value / EVM_TO_LUX_SCALE_FACTOR;
 
   async function submitNativeWithdrawal() {
     if (!unshieldedAccount) {
@@ -442,6 +446,8 @@
 
     return unsubscribeAccount;
   });
+
+  $: ({ language } = $settingsStore);
 </script>
 
 <article class="bridge">
@@ -459,22 +465,27 @@
     <dl class="balances">
       <dt class="balances__token">DuskDS</dt>
       <dd class="balances__balance">
-        <BalanceValue value={formatter(luxToDusk(unshieldedBalance))} />
+        <BalanceValue
+          exact={formatDuskExact(unshieldedBalance, language)}
+          value={formatDusk(unshieldedBalance, language)}
+        />
       </dd>
       <dt class="balances__token">DuskEVM</dt>
       <dd class="balances__balance">
         {#if evmDuskBalance}
           <BalanceValue
-            value={formatter(
-              luxToDusk(evmDuskBalance.value / EVM_TO_LUX_SCALE_FACTOR)
-            )}
+            exact={formatDuskExact(evmLux(evmDuskBalance), language)}
+            value={formatDusk(evmLux(evmDuskBalance), language)}
           />
         {:else}
           <Throbber size={16} />
         {/if}
         {#if incomingDepositLux > 0n}
           <small>
-            + <BalanceValue value={formatter(luxToDusk(incomingDepositLux))} /> incoming
+            + <BalanceValue
+              exact={formatDuskExact(incomingDepositLux, language)}
+              value={formatDusk(incomingDepositLux, language)}
+            /> incoming
           </small>
         {/if}
       </dd>
@@ -560,7 +571,7 @@
                 disabled={isWithdrawing && !evmDuskBalance}
                 on:click={setMaxAmount}
                 size="small"
-                text="USE MAX"
+                text="Use max"
                 variant="tertiary"
               />
             </div>
@@ -581,13 +592,15 @@
             <p class="operation__available" id="destination-amount-available">
               Available on {isWithdrawing ? "DuskEVM" : "DuskDS"}:
               {#if !isWithdrawing}
-                <BalanceValue value={formatter(luxToDusk(unshieldedBalance))} />
+                <BalanceValue
+                  exact={formatDuskExact(unshieldedBalance, language)}
+                  value={formatDusk(unshieldedBalance, language)}
+                />
                 DUSK
               {:else if evmDuskBalance}
                 <BalanceValue
-                  value={formatter(
-                    luxToDusk(evmDuskBalance.value / EVM_TO_LUX_SCALE_FACTOR)
-                  )}
+                  exact={formatDuskExact(evmLux(evmDuskBalance), language)}
+                  value={formatDusk(evmLux(evmDuskBalance), language)}
                 /> DUSK
               {:else}
                 checking
@@ -618,7 +631,6 @@
           </fieldset>
           {#if isDepositing}
             <GasSettings
-              {formatter}
               {fee}
               limit={gasLimit}
               limitLower={gasLimits.gasLimitLower}
@@ -644,19 +656,19 @@
         nextButton={{
           disabled: isNextButtonDisabled,
           icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-          label: "SEND",
+          label: "Send",
           variant: "primary",
         }}
       >
         <div in:fade|global class="operation__bridge">
           <Badge
             className="operation__review-notice"
-            text="REVIEW TRANSACTION"
+            text="Review transaction"
             variant="warning"
           />
           <ReviewAmount
             label="Amount"
-            value={formatter(luxToDusk(amountLux))}
+            value={formatDuskExact(amountLux, language)}
           />
           <dl class="operation__review-transaction">
             <dt class="review-transaction__label">
@@ -681,11 +693,11 @@
           {#if isDepositing}
             <ReviewAmount
               label="Network fee (at most)"
-              value={formatter(luxToDusk(fee))}
+              value={formatFee(fee, language, { max: true })}
             />
             <ReviewAmount
               label="Total (at most)"
-              value={formatter(luxToDusk(totalDepositLux))}
+              value={formatFee(totalDepositLux, language, { max: true })}
             />
             <Banner
               title="The fee is paid from your public balance."
@@ -695,8 +707,9 @@
             {#if withdrawalFeeWei !== null}
               <ReviewAmount
                 label="Network fee (about)"
-                value={formatter(
-                  luxToDusk(withdrawalFeeWei / EVM_TO_LUX_SCALE_FACTOR)
+                value={formatFee(
+                  withdrawalFeeWei / EVM_TO_LUX_SCALE_FACTOR,
+                  language
                 )}
               />
             {/if}
@@ -727,13 +740,13 @@
               {#if hash}
                 <AnchorButton
                   href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}
-                  text="VIEW ON BLOCK EXPLORER"
+                  text="View in Dusk explorer"
                   rel="noopener noreferrer"
                   target="_blank"
                 />
                 <AppAnchorButton
                   href={withdrawalStatusHref(hash)}
-                  text="TRACK WITHDRAWAL"
+                  text="Track withdrawal"
                   variant="tertiary"
                 />
               {/if}

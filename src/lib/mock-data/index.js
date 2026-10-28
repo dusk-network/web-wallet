@@ -7,4 +7,3 @@ export { default as cacheStakeInfo } from "./cache-stake-info";
 export { default as cacheSyncInfo } from "./cache-sync-info";
 export { default as cacheUnspentNotes } from "./cache-unspent-notes";
 export { default as stakeInfo } from "./stakeInfo";
-export { default as transactions } from "./transactions";

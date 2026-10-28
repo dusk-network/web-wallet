@@ -8,10 +8,15 @@
     mdiShieldLock,
     mdiShieldLockOpenOutline,
   } from "@mdi/js";
-  import { formatUnits } from "viem";
 
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { duskToLux, luxToDusk } from "$lib/dusk/currency";
+  import {
+    duskToLux,
+    formatDusk,
+    formatDuskExact,
+    formatFee,
+    luxToDusk,
+  } from "$lib/dusk/currency";
   import {
     calculateAdaptiveCharCount,
     middleEllipsis,
@@ -35,9 +40,6 @@
   import { Gas } from "@dusk/w3sper";
   import { BALANCE_MASK } from "$lib/constants";
   import Banner from "../Banner/Banner.svelte";
-
-  /** @type {(amount: number) => string} */
-  export let formatter;
 
   /** @type {ContractGasSettings} */
   export let gasSettings;
@@ -148,7 +150,7 @@
   $: shieldedNumber = luxToDusk(shielded);
   $: unshieldedNumber = luxToDusk(unshielded);
 
-  $: ({ hideBalances } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
   $: isShieldedHidden = hideBalances && typedAmount !== "shielded-amount";
   $: isUnshieldedHidden = hideBalances && typedAmount !== "unshielded-amount";
 
@@ -248,10 +250,14 @@
             Shielded<br />
             <small
               >(<BalanceValue
-                value={formatUnits(shieldedBalance.spendable, 9)}
+                exact={formatDuskExact(shieldedBalance.spendable, language)}
+                value={formatDusk(shieldedBalance.spendable, language)}
               />
               spendable out of
-              <BalanceValue value={formatUnits(shieldedBalance.value, 9)} /> total)</small
+              <BalanceValue
+                exact={formatDuskExact(shieldedBalance.value, language)}
+                value={formatDusk(shieldedBalance.value, language)}
+              /> total)</small
             >
           </p>
 
@@ -286,7 +292,6 @@
         </fieldset>
 
         <GasSettings
-          {formatter}
           {fee}
           limit={gasLimit}
           limitLower={gasLimits.gasLimitLower}
@@ -324,17 +329,20 @@
       }}
       nextButton={{
         icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-        label: "SEND",
+        label: "Send",
         variant: "primary",
       }}
     >
       <div in:fade|global class="operation__allocate">
         <Badge
           className="operation__review-notice"
-          text="REVIEW TRANSACTION"
+          text="Review transaction"
           variant="warning"
         />
-        <ReviewAmount label="Amount" value={formatter(luxToDusk(amount))} />
+        <ReviewAmount
+          label="Amount"
+          value={formatDuskExact(amount, language)}
+        />
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">
             <span>From</span>
@@ -357,11 +365,11 @@
         </dl>
         <ReviewAmount
           label="Network fee (at most)"
-          value={formatter(luxToDusk(fee))}
+          value={formatFee(fee, language, { max: true })}
         />
         <ReviewAmount
           label="Total (at most)"
-          value={formatter(luxToDusk(amount + fee))}
+          value={formatFee(amount + fee, language, { max: true })}
         />
         <Banner
           title={`The fee is paid from your ${isShielding ? "public" : "shielded"} balance.`}
@@ -370,7 +378,7 @@
       </div>
     </WizardStep>
     <WizardStep step={2} {key} showNavigation={false}>
-      <TransactionResult {formatter} maxFee={fee} operation={allocate()} />
+      <TransactionResult maxFee={fee} operation={allocate()} />
     </WizardStep>
   </Wizard>
 </div>
@@ -426,7 +434,7 @@
     }
 
     &__label {
-      font-family: var(--mono-font-family);
+      font-variant-numeric: tabular-nums;
     }
 
     &__input-wrapper {

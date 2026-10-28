@@ -48,14 +48,14 @@
       href="/dashboard"
       on:click={handleGoHomeClick}
       variant="tertiary"
-      text="HOME"
+      text="Home"
     />
   </svelte:fragment>
   <AppAnchorButton
     href="/dashboard"
     on:click={handleGoHomeClick}
     slot="error-extra-content"
-    text="HOME"
+    text="Home"
     variant="tertiary"
   />
 </Suspense>

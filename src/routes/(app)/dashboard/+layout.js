@@ -1,4 +1,7 @@
+import { get } from "svelte/store";
+
 import { failureToRejection } from "$lib/dusk/http";
+import { networkStore } from "$lib/stores";
 
 const createEmptyObject = () => ({});
 
@@ -17,6 +20,14 @@ const coinGeckoParams = new URLSearchParams({
 
 /** @type {import('./$types').LayoutLoad} */
 export async function load({ fetch }) {
+  // Test DUSK has no value: no market data off mainnet.
+  if (get(networkStore).networkName !== "mainnet") {
+    return {
+      /** @type {Promise<Record<string, number>>} */
+      currentPrice: Promise.resolve(createEmptyObject()),
+    };
+  }
+
   return {
     /** @type {Promise<Record<string, number>>} */
     currentPrice: fetch(

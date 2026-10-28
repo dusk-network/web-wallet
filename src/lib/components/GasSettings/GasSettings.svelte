@@ -23,9 +23,6 @@
   /** @type {bigint} */
   export let fee;
 
-  /** @type {(amount: number) => string} */
-  export let formatter;
-
   /** @type {boolean} */
   let isExpanded = false;
 
@@ -44,7 +41,7 @@
 
 <div class="gas-settings">
   <dl class="gas-settings__edit">
-    <GasFee {formatter} {fee} />
+    <GasFee {fee} />
     <dd>
       <Button
         size="small"
@@ -52,7 +49,7 @@
         on:click={() => {
           isExpanded = !isExpanded;
         }}
-        text={isExpanded ? "CLOSE" : "EDIT"}
+        text={isExpanded ? "Close" : "Edit"}
       />
     </dd>
   </dl>

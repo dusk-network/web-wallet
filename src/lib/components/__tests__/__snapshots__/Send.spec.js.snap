@@ -156,7 +156,7 @@ exports[`Send > Address step > should display only a one-line warning if the add
           <span
             class="dusk-button__text"
           >
-            CLOSE
+            Close
           </span>
           <!---->
         </button>
@@ -439,7 +439,7 @@ exports[`Send > Address step > should render the Send component Address step 1`]
           <span
             class="dusk-button__text"
           >
-            CLOSE
+            Close
           </span>
           <!---->
         </button>
@@ -697,7 +697,7 @@ exports[`Send > Address step > should show no banner for a public account, as th
           <span
             class="dusk-button__text"
           >
-            CLOSE
+            Close
           </span>
           <!---->
         </button>
@@ -923,7 +923,7 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
           <span
             class="dusk-button__text"
           >
-            USE MAX
+            Use max
           </span>
           <!---->
         </button>
@@ -1002,7 +1002,7 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
               <span
                 class="gas-fee__amount-value"
               >
-                0.020000000
+                0.02
               </span>
                DUSK
             </span>
@@ -1017,7 +1017,7 @@ exports[`Send > Amount step > should render the Send component Amount step 1`] =
               <span
                 class="dusk-button__text"
               >
-                EDIT
+                Edit
               </span>
               <!---->
             </button>
@@ -1238,7 +1238,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
         <dd
           class="review-amount__value svelte-1dytdvp"
         >
-          2,345.000000000 DUSK
+          2,345 DUSK
         </dd>
       </dl>
       <!---->
@@ -1283,7 +1283,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
           <span
             class="dusk-badge dusk-badge--variant-neutral"
           >
-            SHIELDED
+            Shielded
           </span>
           <!---->
            
@@ -1325,7 +1325,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
         <dd
           class="review-amount__value svelte-1dytdvp"
         >
-          0.020000000 DUSK
+          0.02 DUSK
         </dd>
       </dl>
       <!---->
@@ -1340,7 +1340,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
         <dd
           class="review-amount__value svelte-1dytdvp"
         >
-          2,345.020000000 DUSK
+          2,345.02 DUSK
         </dd>
       </dl>
       <!---->
@@ -1402,7 +1402,7 @@ exports[`Send > Review step > should render the Send component Review step 1`] =
         <span
           class="dusk-button__text"
         >
-          SEND
+          Send
         </span>
         <!---->
         <!---->

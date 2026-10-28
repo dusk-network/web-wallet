@@ -27,7 +27,7 @@
       </p>
     </div>
   </WarningCard>
-  <AppAnchorButton data-sveltekit-replacestate href="/" text="HOME" />
+  <AppAnchorButton data-sveltekit-replacestate href="/" text="Home" />
 </section>
 
 <style>

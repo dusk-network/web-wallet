@@ -1,8 +1,8 @@
 .dusk-exclusive-choice {
-  border-radius: var(--control-border-radius-size);
-  border-color: var(--control-tertiary-border-color);
-  border-style: solid;
-  border-width: var(--control-border-size);
+  border-radius: 999px;
+  border: 0 none;
+  background-color: var(--calm-s1);
+  padding: 3px;
   overflow: hidden;
 }
 
@@ -16,21 +16,22 @@
   letter-spacing: 0;
   line-height: 1;
   text-align: center;
-  text-transform: uppercase;
-  background-color: var(--control-tertiary-bg-color);
-  color: var(--control-tertiary-text-color);
+  text-transform: none;
+  background-color: transparent;
+  border-radius: 999px;
+  color: var(--calm-muted);
   padding: var(--control-small-padding);
 }
 
 .dusk-exclusive-choice__radio:checked + .dusk-exclusive-choice__label {
-  background-color: var(--control-bg-color);
-  color: var(--control-text-color);
+  background-color: var(--calm-s3);
+  color: var(--calm-text);
 }
 
 .dusk-exclusive-choice__radio:enabled:not(:checked)
   + .dusk-exclusive-choice__label:hover {
-  background-color: var(--control-tertiary-bg-color-hover);
-  color: var(--control-text-color-hover);
+  background-color: var(--calm-s2);
+  color: var(--calm-text);
 }
 
 .dusk-exclusive-choice__radio:disabled + .dusk-exclusive-choice__label {

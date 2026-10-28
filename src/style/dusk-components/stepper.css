@@ -44,7 +44,7 @@
   place-items: center;
   width: var(--step-size);
   height: var(--step-size);
-  font-family: var(--mono-font-family);
+  font-variant-numeric: tabular-nums;
   font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1;
@@ -83,10 +83,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-family: var(--mono-font-family);
-  font-size: 0.5em;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.75em;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: center;
   color: var(--muted-color);
 }

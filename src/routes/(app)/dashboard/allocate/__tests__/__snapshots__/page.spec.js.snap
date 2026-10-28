@@ -18,7 +18,7 @@ exports[`Allocate > should render the allocation page 1`] = `
         <h3
           class="h4"
         >
-          Allocate
+          Shield
         </h3>
          
         <div
@@ -231,7 +231,7 @@ exports[`Allocate > should render the allocation page 1`] = `
                   <span
                     class="gas-fee__amount-value"
                   >
-                    0.050000000
+                    0.05
                   </span>
                    DUSK
                 </span>
@@ -246,7 +246,7 @@ exports[`Allocate > should render the allocation page 1`] = `
                   <span
                     class="dusk-button__text"
                   >
-                    EDIT
+                    Edit
                   </span>
                   <!---->
                 </button>

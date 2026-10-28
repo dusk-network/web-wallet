@@ -24,7 +24,7 @@
     gap: 0.625em;
 
     &__value {
-      font-family: var(--mono-font-family);
+      font-variant-numeric: tabular-nums;
       font-weight: 500;
     }
   }
