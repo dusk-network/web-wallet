@@ -107,7 +107,7 @@ describe("DuskEVM deposit tracking", () => {
 
     expect(mocks.query).toHaveBeenNthCalledWith(
       1,
-      `tx(hash: "${duskTransactionHash}") { blockHeight err }`
+      `tx(hash: "${duskTransactionHash}") { blockHeight blockTimestamp err }`
     );
     expect(mocks.query).toHaveBeenNthCalledWith(
       2,
@@ -160,17 +160,29 @@ describe("DuskEVM deposit tracking", () => {
     );
 
     try {
+      // Sent by a browser whose clock is ten minutes ahead.
       rememberDepositTransaction(duskTransactionHash, {
         account: recipient,
         amountLux: "100000000",
-        createdAt: Date.parse("2026-10-26T04:49:20Z"),
+        createdAt: Date.parse("2026-10-26T04:59:20Z"),
       });
       mocks.query
-        .mockResolvedValueOnce({ tx: { blockHeight: 8512, err: null } })
+        .mockResolvedValueOnce({
+          tx: {
+            blockHeight: 8512,
+            blockTimestamp: Date.parse("2026-10-26T04:49:20Z") / 1000,
+            err: null,
+          },
+        })
         .mockResolvedValueOnce({ block: { status: { Final: 1 } } });
       mocks.request.mockRejectedValue(new Error("Method not found"));
 
       const result = await refreshDepositTransaction(duskTransactionHash);
+
+      // Timed by its Dusk block, as the node gave it.
+      expect(
+        getRememberedDepositTransaction(duskTransactionHash)?.l1BlockTimestamp
+      ).toBe(Date.parse("2026-10-26T04:49:20Z"));
 
       // The adapter first, then the recipient's incoming calls on DuskEVM.
       expect(mocks.request).toHaveBeenCalledOnce();
@@ -186,6 +198,35 @@ describe("DuskEVM deposit tracking", () => {
           trackingError: null,
         })
       );
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it("doesn't look on the explorer for a deposit before its Dusk block is final", async () => {
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(
+        async () => new Response(JSON.stringify({ items: [] }))
+      );
+
+    try {
+      rememberDepositTransaction(duskTransactionHash, {
+        account: "0xb0e834d62ca3f5cf0f82619c8515c673818f8c6b",
+        amountLux: "100000000",
+      });
+      mocks.query
+        .mockResolvedValueOnce({
+          tx: { blockHeight: 8512, blockTimestamp: 1_793_000_000, err: null },
+        })
+        .mockResolvedValueOnce({ block: { status: { Attested: 1 } } });
+
+      const result = await refreshDepositTransaction(duskTransactionHash);
+
+      expect(result).toEqual(
+        expect.objectContaining({ l1BlockTimestamp: null, stage: "l1_pending" })
+      );
+      expect(fetch).not.toHaveBeenCalled();
     } finally {
       fetch.mockRestore();
     }

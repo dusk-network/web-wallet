@@ -63,7 +63,7 @@ function trackingClients() {
 async function finalizedDuskTransaction(transactionHash) {
   const network = await networkStore.connect();
   const transactionResult = await network.query(
-    `tx(hash: "${transactionHash}") { blockHeight err }`
+    `tx(hash: "${transactionHash}") { blockHeight blockTimestamp err }`
   );
 
   if (!transactionResult?.tx) return null;
@@ -84,7 +84,12 @@ async function finalizedDuskTransaction(transactionHash) {
     );
   }
 
-  return { blockHeight };
+  const seconds = Number(transactionResult.tx.blockTimestamp);
+
+  return {
+    blockHeight,
+    timestamp: Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null,
+  };
 }
 
 /** @param {any} remembered */
@@ -94,6 +99,13 @@ async function resolveL1TransactionHash(remembered) {
   const finalized = await finalizedDuskTransaction(remembered.transactionHash);
 
   if (!finalized) return null;
+
+  // What DuskEVM's explorer times its payment against, from Dusk's clock.
+  if (finalized.timestamp && !remembered.l1BlockTimestamp) {
+    updateDepositTransaction(remembered.transactionHash, {
+      l1BlockTimestamp: finalized.timestamp,
+    });
+  }
 
   const { l1Client: client } = trackingClients();
   const resolved = await client.request({

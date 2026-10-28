@@ -30,6 +30,7 @@ const VALID_STAGES = new Set([
  * @property {"l1" | "l2" | null} failureLayer
  * @property {number | null} l1ConfirmedAt
  * @property {string | null} l1BlockHeight
+ * @property {number | null} l1BlockTimestamp Its Dusk block's time, in milliseconds: null until that block is final.
  * @property {`0x${string}` | null} l1TransactionHash
  * @property {string | null} l2BlockNumber
  * @property {`0x${string}` | null} l2TransactionHash
@@ -108,6 +109,7 @@ function normalizeStoredItem(value) {
     createdAt,
     failureLayer: validFailureLayer(stored.failureLayer),
     l1BlockHeight: stringValue(stored.l1BlockHeight),
+    l1BlockTimestamp: finiteNumber(stored.l1BlockTimestamp, 0) || null,
     l1ConfirmedAt: finiteNumber(stored.l1ConfirmedAt, 0) || null,
     l1TransactionHash: normalizedTxHash(stored.l1TransactionHash),
     l2BlockNumber: stringValue(stored.l2BlockNumber),
@@ -176,6 +178,7 @@ export function rememberDepositTransaction(transactionHash, options = {}) {
       createdAt,
       failureLayer: null,
       l1BlockHeight: null,
+      l1BlockTimestamp: null,
       l1ConfirmedAt: null,
       l1TransactionHash: null,
       l2BlockNumber: null,
