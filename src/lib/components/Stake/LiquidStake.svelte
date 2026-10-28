@@ -66,6 +66,14 @@
   /** @type {() => void} */
   export let onRetry = () => {};
 
+  /**
+   * Reads Sozu again, as just before a stake is sent: the status now, or
+   * null when it couldn't be read.
+   *
+   * @type {() => Promise<SozuStatus | null>}
+   */
+  export let recheck;
+
   const id = randomUUID();
 
   /** @type {("stake" | "unstake")[]} */
@@ -82,9 +90,20 @@
   /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
   let sent = null;
 
+  /** A fee so high that no stake gets stDUSK: 100%, or so near it that the least is past any amount. */
+  const NO_STAKE = "No stake gets stDUSK at Sozu's deposit fee now.";
+
+  /** Sozu's terms, read again as the stake was sent, had changed: nothing was sent. */
+  let termsChanged = false;
+
+  /** They couldn't be read again: nothing was sent. */
+  let termsError = "";
+  let isChecking = false;
+
   /** @param {"stake" | "unstake"} next */
   async function pick(next) {
     if (next !== action) {
+      forgetTerms();
       [amountText, otherText] = [otherText, amountText];
       action = next;
     }
@@ -107,6 +126,7 @@
 
   /** @param {bigint} lux */
   function fill(lux) {
+    forgetTerms();
     amountText = formatDuskPlain(lux);
     document.getElementById(`${id}-amount`)?.focus();
   }
@@ -120,22 +140,124 @@
     }
   }
 
-  function send() {
-    if (status && amount !== null && canSend) {
+  /**
+   * What the summary shows of Sozu's terms for a stake of `lux`: the deposit
+   * fee and its rate, about how much stDUSK it gets, and whether it goes
+   * ahead.
+   *
+   * @param {bigint} lux
+   * @param {SozuStatus | null} terms
+   */
+  function shownTerms(lux, terms) {
+    const rate = terms?.fees?.deposit ?? null;
+    const quote = sozuStake(lux, terms?.pool ?? null, rate);
+
+    return [
+      rate
+        ? `${feePercent(rate, language)} · ${formatDuskExact(quote.fee, language)}`
+        : "",
+      quote.stDusk === null ? "" : formatDusk(quote.stDusk, language),
+      quote.ok,
+    ].join(" | ");
+  }
+
+  /**
+   * Sozu's terms for a stake as they are now, read again just before it's
+   * sent: its pool takes the fee of that moment, and Sozu can change it, or
+   * pause deposits, at any time.
+   *
+   * @param {bigint} lux
+   * @param {SozuStatus} shown The status the summary showed
+   * @returns {Promise<SozuStatus | "changed" | "unread">} The status now,
+   *   when nothing the summary shows changed and deposits are open
+   */
+  async function recheckStake(lux, shown) {
+    const now = await recheck().catch(() => null);
+
+    if (!now) {
+      return "unread";
+    }
+
+    const changed =
+      shownTerms(lux, shown) !== shownTerms(lux, now) ||
+      now.contracts.pool !== shown.contracts.pool ||
+      now.flags?.maintenance !== false ||
+      (shown.flags?.synchronization !== true &&
+        now.flags?.synchronization === true);
+
+    return changed ? "changed" : now;
+  }
+
+  /**
+   * Reads Sozu's terms again for the stake about to be sent: the pool to
+   * send it to, or null when nothing goes, as the terms changed, couldn't be
+   * read, or the amount or the action changed meanwhile.
+   *
+   * @param {{ action: "stake" | "unstake", lux: bigint }} order
+   * @param {SozuStatus} shown The status the summary showed
+   * @returns {Promise<string | null>}
+   */
+  async function termsNow(order, shown) {
+    isChecking = true;
+    termsError = "";
+
+    const terms = await recheckStake(order.lux, shown);
+
+    isChecking = false;
+
+    if (amount !== order.lux || action !== order.action) {
+      return null;
+    }
+
+    termsChanged = terms === "changed";
+    termsError =
+      terms === "unread" ? "Couldn't check Sozu's terms just now" : "";
+
+    return typeof terms === "string" ? null : terms.contracts.pool;
+  }
+
+  async function send() {
+    if (!status || amount === null || !canSend || isChecking) {
+      return;
+    }
+
+    const order = {
+      action,
+      gasLimit,
+      gasPrice,
+      lux: amount,
+      maxFee: maxGasFee,
+    };
+    // A stake goes ahead on Sozu's terms as they are when it's sent: read
+    // them again first, and if anything the summary shows changed, show the
+    // new figures for another confirmation instead.
+    const pool =
+      order.action === "stake"
+        ? await termsNow(order, status)
+        : status.contracts.pool;
+
+    if (pool) {
       sent = {
-        maxFee: maxGasFee,
+        maxFee: order.maxFee,
         operation: execute(
-          action,
-          status.contracts.pool,
-          amount,
-          gasPrice,
-          gasLimit
+          order.action,
+          pool,
+          order.lux,
+          order.gasPrice,
+          order.gasLimit
         ),
-        what: isStake
-          ? `${formatDuskExact(amount, language)} DUSK to Sozu`
-          : `${formatDuskExact(amount, language)} DUSK unstaked from Sozu`,
+        what:
+          order.action === "stake"
+            ? `${formatDuskExact(order.lux, language)} DUSK to Sozu`
+            : `${formatDuskExact(order.lux, language)} DUSK unstaked from Sozu`,
       };
     }
+  }
+
+  /** What the summary shows follows the amount and the action again. */
+  function forgetTerms() {
+    termsChanged = false;
+    termsError = "";
   }
 
   onMount(() => {
@@ -157,9 +279,14 @@
 
   $: ({ language } = $settingsStore);
   $: ({ status } = sozu);
-  // Sozu's switches: no deposits while it's under maintenance, and calls
-  // that can fail while it synchronizes.
-  $: isPaused = isStake && status?.flags?.maintenance === true;
+  // Sozu's switches, each on its own: no deposits while it's under
+  // maintenance, or while that can't be checked, and calls that can fail
+  // while it synchronizes.
+  $: maintenance = status?.flags?.maintenance;
+  $: isPaused = isStake && maintenance === true;
+  $: isUnchecked =
+    isStake && Boolean(status) && maintenance !== true && maintenance !== false;
+  $: isStakeOff = isPaused || isUnchecked;
   $: isSyncing = status?.flags?.synchronization === true;
   $: fees = status?.fees ?? null;
   $: isStake = action === "stake";
@@ -174,13 +301,15 @@
       : 0n
     : staked;
   $: amount = parseDuskInput(amountText);
-  $: check = checkAmount({
+  // Less than this gets no stDUSK at the rate now, after the fee; with none,
+  // no stake does.
+  $: least = isStake ? leastSozuStake(status?.pool ?? null, depositRate) : 0n;
+  $: checked = checkAmount({
     amount,
     available: availableBalance,
     fee: maxGasFee,
     locale: language,
-    // Less than this gets no stDUSK at the rate now, after the fee.
-    minimum: isStake ? leastSozuStake(status?.pool ?? null, depositRate) : 0n,
+    minimum: least ?? 0n,
     most: isStake
       ? undefined
       : {
@@ -189,7 +318,11 @@
         },
     text: amountText,
   });
-  $: canSend = Boolean(status) && check.ok && isGasValid && !isPaused;
+  $: check =
+    least === null && checked.ok
+      ? { error: NO_STAKE, isMinimum: true, ok: false }
+      : checked;
+  $: canSend = Boolean(status) && check.ok && isGasValid && !isStakeOff;
   $: shownAmount = amount !== null && check.ok ? amount : 0n;
   // What is typed shows in the summary, muted while it can't be sent.
   $: typedAmount = amount ?? 0n;
@@ -320,14 +453,15 @@
             autocomplete="off"
             bind:value={amountText}
             className="liquid-stake__input"
-            disabled={!status || isPaused}
+            disabled={!status || isStakeOff}
             id="{id}-amount"
             inputmode="decimal"
+            on:input={forgetTerms}
             type="text"
           />
           <span aria-hidden="true" class="liquid-stake__unit">DUSK</span>
           <Button
-            disabled={!status || isPaused || most <= 0n}
+            disabled={!status || isStakeOff || most <= 0n}
             on:click={() => fill(most)}
             size="small"
             text="Max"
@@ -354,6 +488,11 @@
           {#if isPaused}
             <p class="liquid-stake__error" role="alert">
               <strong>Sozu has paused deposits.</strong> Unstaking still works.
+            </p>
+          {:else if isUnchecked}
+            <p class="liquid-stake__error" role="alert">
+              <strong>Sozu's deposits couldn't be checked.</strong> Staking stays
+              off until they can be. Unstaking still works.
             </p>
           {:else if check.error}
             <p class="liquid-stake__error" role="alert">
@@ -426,6 +565,12 @@
     </ul>
 
     <svelte:fragment slot="summary">
+      {#if termsChanged}
+        <div class="liquid-stake__changed" role="alert">
+          <p>Sozu's terms changed</p>
+          <p>These are the figures now. Check them, then confirm again.</p>
+        </div>
+      {/if}
       <dl class="stake-flow__rows">
         <div>
           <dt>{isStake ? "Stake with Sozu" : "Unstake from Sozu"}</dt>
@@ -498,9 +643,14 @@
           </dd>
         </div>
       </dl>
+      {#if termsError}
+        <p class="liquid-stake__error" role="alert">
+          <strong>{termsError}, so nothing was sent.</strong> Try again.
+        </p>
+      {/if}
       <Button
         className="stake-flow__send"
-        disabled={!canSend}
+        disabled={!canSend || isChecking}
         on:click={send}
         text={canSend
           ? isStake
@@ -657,7 +807,8 @@
     }
   }
 
-  .liquid-stake__estimate {
+  .liquid-stake__estimate,
+  .liquid-stake__changed {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;

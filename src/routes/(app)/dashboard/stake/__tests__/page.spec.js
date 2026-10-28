@@ -2,7 +2,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
-import { settingsStore } from "$lib/stores";
+import { settingsStore, walletStore } from "$lib/stores";
 
 import Staking from "../+page.svelte";
 
@@ -75,11 +75,15 @@ const SOZU_STATUS = {
     deposit: { denominator: 10_000n, numerator: 25n },
     reward: { denominator: 100n, numerator: 10n },
   },
+  // Deposits open, and the pool not synchronizing.
+  flags: { maintenance: false, synchronization: false },
   pool: { stake: 8_142_876_697_294_578n, supply: 2_647_997_731_233_173n },
   position: { balance: 0n, stDusk: 0n },
 };
 
 const sozu = vi.hoisted(() => ({
+  /** @type {import("vitest").Mock<() => Promise<any>>} */
+  check: vi.fn(async () => null),
   load: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
   store: null,
@@ -101,6 +105,7 @@ vi.mock("$lib/sozu", async (importOriginal) => {
   return {
     ...original,
     sozuStore: {
+      check: sozu.check,
       load: sozu.load,
       reset: () => {},
       subscribe: sozu.store.subscribe,
@@ -138,6 +143,8 @@ describe("Staking", () => {
     mockedWalletStore.setMockedStoreValue(initialStore);
     open("");
     sozu.load.mockClear();
+    sozu.check.mockReset();
+    vi.restoreAllMocks();
     sozu.store?.set({
       account: "",
       available: true,
@@ -289,6 +296,25 @@ describe("Staking", () => {
     );
 
     expect(queryByText("Sozu has paused deposits.")).toBeInTheDocument();
+  });
+
+  it("says so while Sozu's deposits can't be checked", async () => {
+    const { queryByText } = render(Staking);
+
+    await act(() =>
+      sozu.store?.update((s) => ({
+        ...s,
+        status: {
+          ...SOZU_STATUS,
+          flags: { maintenance: null, synchronization: false },
+        },
+      }))
+    );
+
+    expect(
+      queryByText("Sozu's deposits couldn't be checked.")
+    ).toBeInTheDocument();
+    expect(queryByText("Sozu has paused deposits.")).toBeNull();
   });
 
   it("shows only native staking where Sozu isn't", async () => {
@@ -497,5 +523,30 @@ describe("Staking", () => {
     expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
       "Total Up to 0.01 DUSK"
     );
+  });
+
+  it("reads Sozu again before a stake goes, and stakes on the terms it read", async () => {
+    open("?flow=liquid");
+    await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
+    sozu.check.mockResolvedValue(SOZU_STATUS);
+
+    const stakeWithSozu = vi
+      .spyOn(walletStore, "stakeWithSozu")
+      .mockReturnValue(new Promise(() => {}));
+    const { getByLabelText, getByRole } = render(Staking);
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+    await fireEvent.click(
+      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+    );
+
+    await vi.waitFor(() => expect(stakeWithSozu).toHaveBeenCalledOnce());
+    expect(sozu.check).toHaveBeenCalledOnce();
+    expect(stakeWithSozu.mock.calls[0].slice(0, 2)).toStrictEqual([
+      POOL,
+      100_000_000_000n,
+    ]);
   });
 });

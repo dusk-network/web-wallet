@@ -22,13 +22,18 @@ const FEES = {
   reward: { denominator: 100n, numerator: 15n },
 };
 
+/** Sozu's switches as read: deposits open, the pool not synchronizing. */
+const OPEN = { maintenance: false, synchronization: false };
+
 /**
  * @param {Partial<SozuStatus["position"]>} position
  * @param {SozuFees | null} [fees]
  * @param {SozuFlags | null} [flags]
+ * @param {string} [pool]
+ * @returns {SozuStatus}
  */
-const statusWith = (position = {}, fees = FEES, flags = null) => ({
-  contracts: { hub: "aa".repeat(32), pool: POOL, stDusk: "dd".repeat(32) },
+const statusWith = (position = {}, fees = FEES, flags = OPEN, pool = POOL) => ({
+  contracts: { hub: "aa".repeat(32), pool, stDusk: "dd".repeat(32) },
   fees,
   flags,
   pool: { stake: 8_142_876_697_294_578n, supply: 2_647_997_731_233_173n },
@@ -65,6 +70,8 @@ const baseProps = {
   execute: vi.fn().mockResolvedValue(HASH),
   gas: gasAt(),
   onRetry: vi.fn(),
+  // Sozu read again before a stake goes: as it was.
+  recheck: vi.fn(async () => statusWith()),
   sozu: { error: null, loading: false, status: statusWith() },
 };
 
@@ -76,6 +83,7 @@ describe("LiquidStake", () => {
     cleanup();
     baseProps.execute.mockClear();
     baseProps.onRetry.mockClear();
+    baseProps.recheck.mockClear();
   });
 
   it("says Sozu, a third party, holds what is staked here", () => {
@@ -130,14 +138,18 @@ describe("LiquidStake", () => {
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })
     );
 
-    // A stake's own gas: 5,000,000 at the node's price.
-    expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
-      "stake",
-      POOL,
-      100n * DUSK,
-      1n,
-      5_000_000n
+    // A stake's own gas: 5,000,000 at the node's price, once Sozu's terms
+    // are read again.
+    await vi.waitFor(() =>
+      expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
+        "stake",
+        POOL,
+        100n * DUSK,
+        1n,
+        5_000_000n
+      )
     );
+    expect(baseProps.recheck).toHaveBeenCalledOnce();
   });
 
   it("refuses a stake too small to get any stDUSK, saying the least", async () => {
@@ -320,12 +332,14 @@ describe("LiquidStake", () => {
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })
     );
 
-    expect(execute).toHaveBeenCalledExactlyOnceWith(
-      "stake",
-      POOL,
-      100n * DUSK,
-      1n,
-      5_000_000n
+    await vi.waitFor(() =>
+      expect(execute).toHaveBeenCalledExactlyOnceWith(
+        "stake",
+        POOL,
+        100n * DUSK,
+        1n,
+        5_000_000n
+      )
     );
   });
 
@@ -354,6 +368,9 @@ describe("LiquidStake", () => {
     expect(total()).toBe("Total Up to 0.01 DUSK");
 
     await fireEvent.click(getByRole("button", { name: "Unstake 1 DUSK" }));
+
+    // An unstake doesn't wait for Sozu's terms: it has none to read.
+    expect(baseProps.recheck).not.toHaveBeenCalled();
 
     expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
       "unstake",
@@ -409,5 +426,205 @@ describe("LiquidStake", () => {
 
     // Not while it doesn't.
     expect(render(LiquidStake, baseProps).queryByRole("status")).toBeNull();
+  });
+
+  describe("Sozu's terms, read again before a stake goes", () => {
+    /** Sozu's deposit fee raised to 1%. */
+    const RAISED = { ...FEES, deposit: { denominator: 100n, numerator: 1n } };
+    const NEW_POOL = "ee".repeat(32);
+
+    /**
+     * Renders liquid staking with Sozu reading `next` when it's read again,
+     * the status shown following, as the staking page's store makes it.
+     *
+     * @param {SozuStatus | null} next
+     */
+    function renderReading(next) {
+      /** @type {() => Promise<void>} */
+      let follow = async () => {};
+      const recheck = vi.fn(async () => {
+        await follow();
+
+        return next;
+      });
+      const view = render(LiquidStake, { ...baseProps, recheck });
+
+      follow = async () => {
+        if (next) {
+          await view.rerender({
+            sozu: { error: null, loading: false, status: next },
+          });
+        }
+      };
+
+      return { ...view, recheck };
+    }
+
+    /** @param {HTMLElement} container */
+    const changedNote = (container) =>
+      textOf(container.querySelector(".liquid-stake__changed"));
+
+    it.each([
+      {
+        next: statusWith({}, RAISED),
+        pool: POOL,
+        shows: "Deposit fee 1% · 1 DUSK",
+        what: "the deposit fee",
+      },
+      {
+        next: statusWith({}, FEES, OPEN, NEW_POOL),
+        pool: NEW_POOL,
+        shows: "Deposit fee 0.25% · 0.25 DUSK",
+        what: "the pool",
+      },
+      {
+        next: statusWith({}, FEES, { ...OPEN, synchronization: true }),
+        pool: POOL,
+        shows: "Deposit fee 0.25% · 0.25 DUSK",
+        what: "the switches: the pool synchronizes now",
+      },
+    ])(
+      "sends nothing when $what changed, shows the figures now, and sends once they're confirmed",
+      async ({ next, pool, shows }) => {
+        const { container, getByLabelText, getByRole, recheck } =
+          renderReading(next);
+
+        await fireEvent.input(getByLabelText("Stake amount"), {
+          target: { value: "100" },
+        });
+        await fireEvent.click(
+          getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+        );
+
+        await vi.waitFor(() =>
+          expect(changedNote(container)).toBe(
+            "Sozu's terms changed These are the figures now. Check them, then confirm again."
+          )
+        );
+        expect(baseProps.execute).not.toHaveBeenCalled();
+        expect(
+          Array.from(
+            container.querySelectorAll(".stake-flow__rows > div"),
+            textOf
+          )
+        ).toContain(shows);
+
+        // Confirmed again, on the same terms: it goes.
+        await fireEvent.click(
+          getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+        );
+
+        await vi.waitFor(() =>
+          expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
+            "stake",
+            pool,
+            100n * DUSK,
+            1n,
+            5_000_000n
+          )
+        );
+        expect(recheck).toHaveBeenCalledTimes(2);
+      }
+    );
+
+    it("keeps the stake off when Sozu paused deposits since the summary showed", async () => {
+      const { container, getByLabelText, getByRole, getByText } = renderReading(
+        statusWith({}, FEES, { maintenance: true, synchronization: false })
+      );
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+      await fireEvent.click(
+        getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+      );
+
+      await vi.waitFor(() => expect(changedNote(container)).toBeTruthy());
+      expect(baseProps.execute).not.toHaveBeenCalled();
+      expect(getByText("Sozu has paused deposits.")).toBeInTheDocument();
+      expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
+    });
+
+    it.each([
+      { recheck: async () => null, what: "isn't read" },
+      {
+        recheck: async () => {
+          throw new Error("offline");
+        },
+        what: "can't be read",
+      },
+    ])(
+      "sends nothing when Sozu's status $what, and says so",
+      async ({ recheck }) => {
+        const { container, getByLabelText, getByRole, findByText } = render(
+          LiquidStake,
+          { ...baseProps, recheck }
+        );
+
+        await fireEvent.input(getByLabelText("Stake amount"), {
+          target: { value: "100" },
+        });
+        await fireEvent.click(
+          getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+        );
+
+        const error = await findByText(
+          "Couldn't check Sozu's terms just now, so nothing was sent."
+        );
+
+        expect(textOf(error.parentElement)).toBe(
+          "Couldn't check Sozu's terms just now, so nothing was sent. Try again."
+        );
+        expect(baseProps.execute).not.toHaveBeenCalled();
+        expect(changedNote(container)).toBeUndefined();
+      }
+    );
+  });
+
+  it("keeps staking off while Sozu's deposits can't be checked, not unstaking", async () => {
+    const { getByLabelText, getByRole, getByText } = render(LiquidStake, {
+      ...baseProps,
+      sozu: {
+        ...baseProps.sozu,
+        status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }, FEES, {
+          maintenance: null,
+          synchronization: false,
+        }),
+      },
+    });
+
+    expect(
+      textOf(getByText("Sozu's deposits couldn't be checked.").parentElement)
+    ).toBe(
+      "Sozu's deposits couldn't be checked. Staking stays off until they can be. Unstaking still works."
+    );
+    expect(getByLabelText("Stake amount")).toBeDisabled();
+    expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
+
+    await fireEvent.click(getByRole("tab", { name: "Unstake" }));
+
+    expect(getByLabelText("Unstake amount")).toBeEnabled();
+  });
+
+  it("says no stake gets stDUSK while Sozu's deposit fee is 100%", async () => {
+    const { getByLabelText, getByRole, getByText } = render(LiquidStake, {
+      ...baseProps,
+      sozu: {
+        ...baseProps.sozu,
+        status: statusWith(
+          {},
+          { ...FEES, deposit: { denominator: 1n, numerator: 1n } }
+        ),
+      },
+    });
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+
+    expect(
+      getByText("No stake gets stDUSK at Sozu's deposit fee now.")
+    ).toBeInTheDocument();
+    expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
   });
 });

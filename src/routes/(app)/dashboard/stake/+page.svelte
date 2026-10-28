@@ -151,6 +151,7 @@
         execute={stakeLiquid}
         gas={liquidGas}
         onRetry={() => sozuStore.load({ force: true })}
+        recheck={() => sozuStore.check()}
         sozu={$sozuStore}
       />
     {/key}

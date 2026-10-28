@@ -76,8 +76,14 @@
   $: rate = duskPerStDusk(sozu.status?.pool ?? null);
   // Sozu's fees, as its substrate gives them, where they could be read.
   $: fees = sozu.status?.fees ?? null;
-  // No deposits while Sozu is under maintenance.
-  $: isSozuPaused = sozu.status?.flags?.maintenance === true;
+  // No deposits while Sozu is under maintenance, or while that can't be
+  // checked.
+  $: sozuMaintenance = sozu.status?.flags?.maintenance;
+  $: isSozuPaused = sozuMaintenance === true;
+  $: isSozuUnchecked =
+    Boolean(sozu.status) &&
+    sozuMaintenance !== true &&
+    sozuMaintenance !== false;
 
   /** @type {{ label: string, lux: bigint, stDusk?: bigint, sub?: string }[]} */
   // What is staked comes first, natively and with Sozu. With nothing
@@ -209,6 +215,8 @@
     </div>
     {#if sozu.available && isSozuPaused}
       <p class="staking__reason">Sozu has paused deposits.</p>
+    {:else if sozu.available && isSozuUnchecked}
+      <p class="staking__reason">Sozu's deposits couldn't be checked.</p>
     {/if}
 
     <table class="compare">

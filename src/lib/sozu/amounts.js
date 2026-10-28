@@ -149,11 +149,12 @@ export const sozuUnstakeAllowed = (amount, balance) =>
 
 /**
  * The least a stake gets any stDUSK for at the rate now, in lux, after the
- * deposit fee where it's known: 1 without a rate.
+ * deposit fee where it's known: 1 without a rate. Null when no stake can: a
+ * fee of 100% or more, or a least past the largest amount there is (a u64).
  *
  * @param {SozuPool | null} pool
  * @param {SozuFeeRate | null} [depositFee]
- * @returns {bigint}
+ * @returns {bigint | null}
  */
 export function leastSozuStake(pool, depositFee = null) {
   const least =
@@ -161,18 +162,25 @@ export function leastSozuStake(pool, depositFee = null) {
       ? (pool.stake + pool.supply - 1n) / pool.supply
       : 1n;
 
-  if (!depositFee || depositFee.numerator >= depositFee.denominator) {
+  if (
+    !depositFee ||
+    depositFee.denominator <= 0n ||
+    depositFee.numerator <= 0n
+  ) {
     return least;
   }
 
-  // What's left after the fee, rounded up, must be at least that.
-  let amount = least;
+  const { denominator: d, numerator: n } = depositFee;
 
-  while (amount - sozuFee(amount, depositFee) < least) {
-    amount += 1n;
+  if (n >= d) {
+    return null;
   }
 
-  return amount;
+  // What's left after the fee, amount − ⌈amount·n/d⌉, is ⌊amount·(d − n)/d⌋:
+  // it reaches `least` from ⌈least·d/(d − n)⌉ on, worked out at once.
+  const amount = (least * d + (d - n) - 1n) / (d - n);
+
+  return amount <= U64_MAX ? amount : null;
 }
 
 /**

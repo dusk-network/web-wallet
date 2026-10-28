@@ -45,7 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open the search with /, as with Ctrl K, unless typing in a field
 - Offer alice.dusk for alice, or alice.dusk. with a dot after it, in Send and the search
 - List in Bridge › Activity the withdrawals in the history, with their claim date and Claim, without an EVM wallet connected
-- Say in liquid staking when Sozu has paused deposits, and that a stake or an unstake can fail while it updates its pool
+- Say in liquid staking when Sozu has paused deposits or they can't be checked, and that a stake or an unstake can fail while it updates its pool
+- Read Sozu's terms again before a stake is sent, and show them for another confirmation when they changed
 - Show Sozu's fees in liquid staking: on deposits, on rewards, and none to unstake
 
 ### Changed
@@ -139,6 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open the network and profile menus inside the window on phones
 - Forget the EVM wallets connected here on Reset, so none comes back and Bridge loads nothing from Reown after it
 - Keep the labels in a staking summary on one line
+- Say that no stake gets stDUSK while Sozu's deposit fee is 100%
 
 ## [1.8.0] - 2026-03-25
 

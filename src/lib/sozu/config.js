@@ -17,15 +17,27 @@ export const SOZU_FN = Object.freeze(
   })
 );
 
-/** @type {Readonly<Record<string, SozuContracts>>} */
+/**
+ * Sozu's hub on each network, and the contracts it named when this was
+ * written, which the wallet reads from until the hub answers. The hub can
+ * name others at any time, and the wallet asks it on each read.
+ *
+ * @type {Readonly<Record<string, SozuContracts>>}
+ */
 const SOZU_CONTRACTS = Object.freeze({
   mainnet: Object.freeze({
     hub: "b32c917e76abc6fcf2edbee0fa70231d8e19c405b18421794a11badfc66d2f26",
     pool: "6fdfdc713a18fc6ca2ad20eb2b4a3305a935ef47d6a872d9a4df8bc9fd9d169e",
+    stDusk: "eb158fceeae76e59b28c1e6857eb50cf6a7a69532817fc455458096aab527980",
+    substrate:
+      "bc6f50f7404d098cdd1117b15dddab6f6f3dad01c5ce3c5ce9b68a8b60bc4c1d",
   }),
   testnet: Object.freeze({
     hub: "bae85f8c24730a5a19fbe3d3bd58248ac8c302b62fe414a8c640d8c0ed286b9e",
     pool: "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2",
+    stDusk: "fdbf49102e76cf58224003451c6cb9e3403c54ff1d9042f8bc46ec25c6a4337c",
+    substrate:
+      "0077ecbf88aa20d6d0a6afa20bd26300a2b562fdbac368bf1e3c1325e8555941",
   }),
 });
 

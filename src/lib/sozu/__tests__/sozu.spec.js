@@ -181,8 +181,19 @@ describe("the Sozu test vectors both wallets run", () => {
     "gives the least stake that goes ahead on the $pool pool with $fees fees: $least lux",
     (minimum) => {
       expect(leastSozuStake(pool(minimum.pool), deposit(minimum.fees))).toBe(
-        BigInt(minimum.least)
+        minimum.least === null ? null : BigInt(minimum.least)
       );
+    }
+  );
+
+  it.each(vectors.minimums.filter(({ least }) => least !== null))(
+    "lets a stake of the least on the $pool pool with $fees fees go ahead, and nothing under it",
+    (minimum) => {
+      const least = BigInt(/** @type {string} */ (minimum.least));
+      const rate = deposit(minimum.fees);
+
+      expect(sozuStake(least, pool(minimum.pool), rate).ok).toBe(true);
+      expect(sozuStake(least - 1n, pool(minimum.pool), rate).ok).toBe(false);
     }
   );
 
@@ -196,13 +207,101 @@ describe("the Sozu test vectors both wallets run", () => {
   );
 });
 
+describe("Sozu's least stake at fees near 100%", () => {
+  const testnet = parsePool(vectors.pools["testnet-2026-10-26"]);
+  const U64_MAX = 2n ** 64n - 1n;
+
+  it("has none when no stake can go ahead: a fee over 100%, or a least past any u64 amount", () => {
+    expect(
+      leastSozuStake(testnet, { denominator: 2n, numerator: 3n })
+    ).toBeNull();
+    // A pool whose stDUSK is worth a u64's whole, and a fee of 1 lux in u64::MAX.
+    expect(
+      leastSozuStake(
+        { stake: U64_MAX, supply: 1n },
+        { denominator: U64_MAX, numerator: 1n }
+      )
+    ).toBeNull();
+  });
+
+  it("doesn't count its way there: a fee a hair under 100% takes no time", () => {
+    const started = performance.now();
+
+    expect(
+      leastSozuStake(testnet, {
+        denominator: 10_000_000n,
+        numerator: 9_999_999n,
+      })
+    ).toBe(40_000_000n);
+    expect(performance.now() - started).toBeLessThan(50);
+  });
+
+  it("gives what counting up gives, for small pools and fees", () => {
+    /**
+     * @param {bigint} from
+     * @param {bigint} to
+     * @param {bigint} [step]
+     */
+    const range = (from, to, step = 1n) =>
+      Array.from(
+        { length: Number((to - from) / step) + 1 },
+        (_, i) => from + BigInt(i) * step
+      );
+    const cases = range(1n, 40n, 3n).flatMap((stake) =>
+      range(1n, 40n, 7n).flatMap((supply) =>
+        range(1n, 12n).flatMap((d) =>
+          range(0n, d - 1n).map((n) => ({
+            pool: { stake, supply },
+            rate: { denominator: d, numerator: n },
+          }))
+        )
+      )
+    );
+
+    /**
+     * The least counted up to, a lux at a time.
+     *
+     * @param {{ pool: SozuPool, rate: SozuFeeRate }} c
+     */
+    const counted = ({ pool, rate }) => {
+      const least = (pool.stake + pool.supply - 1n) / pool.supply;
+      let amount = least;
+
+      while (amount - sozuFee(amount, rate) < least) {
+        amount += 1n;
+      }
+
+      return amount;
+    };
+
+    expect(
+      cases
+        .filter((c) => leastSozuStake(c.pool, c.rate) !== counted(c))
+        .map(
+          ({ pool, rate }) =>
+            `${pool.stake}/${pool.supply} at ${rate.numerator}/${rate.denominator}`
+        )
+    ).toStrictEqual([]);
+    expect(cases).toHaveLength(14 * 6 * 78);
+  });
+});
+
 describe("Sozu's contracts", () => {
   afterEach(() => {
     localStorage.clear();
   });
 
-  it("has a hub and a pool on mainnet and testnet only", () => {
-    expect(sozuContractsFor("testnet")).toStrictEqual({ hub: HUB, pool: POOL });
+  it("has a hub, and the contracts it names, on mainnet and testnet only", () => {
+    // As the hubs named them on 28 Oct 2026.
+    expect(sozuContractsFor("testnet")).toStrictEqual({
+      hub: HUB,
+      pool: POOL,
+      stDusk:
+        "fdbf49102e76cf58224003451c6cb9e3403c54ff1d9042f8bc46ec25c6a4337c",
+      substrate:
+        "0077ecbf88aa20d6d0a6afa20bd26300a2b562fdbac368bf1e3c1325e8555941",
+    });
+    expect(Object.values(sozuContractsFor("mainnet") ?? {})).toHaveLength(4);
     expect(sozuContractsFor("mainnet")?.pool).toMatch(/^[0-9a-f]{64}$/);
     expect(sozuContractsFor("devnet")).toBeNull();
     expect(sozuContractsFor("toString")).toBeNull();
@@ -370,6 +469,76 @@ describe("readSozuStatus", () => {
   const TOKEN = "dd".repeat(32);
   const SUBSTRATE = "cc".repeat(32);
 
+  /** A driver that writes JSON and reads it back. */
+  const jsonDriver = () => {
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    return /** @type {SozuDriver} */ ({
+      decodeOutputFn: (_fn, bytes) => JSON.parse(decoder.decode(bytes)),
+      encodeInputFn: (_fn, json) => encoder.encode(json),
+    });
+  };
+
+  /** @param {unknown} value */
+  const json = (value) => new TextEncoder().encode(JSON.stringify(value));
+
+  /**
+   * The contracts and functions in an `aggregate` envelope, as the vendored
+   * codec writes them: "<contract's first 8>.<fn>".
+   *
+   * @param {any} body
+   */
+  function envelopeCalls(body) {
+    const u8 = new Uint8Array(body);
+    const view = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    const root = u8.length - 8;
+    const array = root + view.getInt32(root, true);
+
+    return Array.from({ length: view.getUint32(root + 4, true) }, (_, i) => {
+      const slot = array + 56 * i;
+      const inline = u8[slot + 39] <= 7;
+      const name = inline
+        ? slot + 32
+        : slot + 32 + view.getInt32(slot + 36, true);
+      const length = inline ? u8[slot + 39] : view.getUint32(slot + 32, true);
+      const contract = Array.from(u8.subarray(slot, slot + 4), (b) =>
+        b.toString(16).padStart(2, "0")
+      ).join("");
+
+      return `${contract}.${new TextDecoder().decode(u8.subarray(name, name + length))}`;
+    });
+  }
+
+  /**
+   * A node behind Multicall for Dusk: each query's calls, and its replies,
+   * from `answer`.
+   *
+   * @param {string} nodeUrl
+   * @param {(calls: string[], query: number) => Uint8Array[]} answer
+   */
+  function multicallNode(nodeUrl, answer) {
+    /** @type {string[][]} */
+    const queries = [];
+    const base = vi.fn(async (/** @type {string} */ _url, init) => {
+      const calls = envelopeCalls(init.body);
+
+      queries.push(calls);
+
+      return new Response(multicallReply(answer(calls, queries.length)));
+    });
+
+    return {
+      fetch: createMulticallFetch({
+        fetch: /** @type {typeof globalThis.fetch} */ (
+          /** @type {unknown} */ (base)
+        ),
+        nodeUrl,
+      }),
+      queries,
+    };
+  }
+
   it("reads the pool and the stDUSK token the hub names, and the account's balances there", async () => {
     const node = fakeNode({
       [`${HUB}/contract/"pool"`]: NEW_POOL,
@@ -408,9 +577,13 @@ describe("readSozuStatus", () => {
       true
     );
     expect(node.spy.mock.calls.map(([url]) => url)).toStrictEqual([
+      // The hub's names, with the figures of the pool known before…
       `https://one.example/on/contracts:${HUB}/contract`,
       `https://one.example/on/contracts:${HUB}/contract`,
       `https://one.example/on/contracts:${HUB}/contract`,
+      `https://one.example/on/contracts:${POOL}/exchange_rate`,
+      `https://one.example/on/contracts:${POOL}/balance_of`,
+      // …and as the hub names others, the figures from those.
       `https://one.example/on/contracts:${NEW_POOL}/exchange_rate`,
       `https://one.example/on/contracts:${NEW_POOL}/balance_of`,
       `https://one.example/on/contracts:${TOKEN}/balance_of`,
@@ -421,78 +594,103 @@ describe("readSozuStatus", () => {
     ]);
   });
 
-  it("reads the fees and switches with the pool's figures each time, in one Multicall for Dusk query", async () => {
-    const encoder = new TextEncoder();
-    const rate = encoder.encode(JSON.stringify(RATE));
-    const noBalance = encoder.encode(JSON.stringify("0"));
-    /** @type {number[]} */
-    const sizes = [];
-    const base = vi.fn(async (/** @type {string} */ _url, init) => {
-      const body = new Uint8Array(init.body);
-      const n = new DataView(body.buffer, body.byteOffset).getUint32(
-        body.length - 4,
-        true
-      );
-
-      sizes.push(n);
-
-      // The hub's three names, then the pool's figures with both fees and
-      // both switches: Sozu's maintenance on the second time.
-      return new Response(
-        n === 3
-          ? multicallReply(
-              [POOL, null, SUBSTRATE].map((id) =>
-                encoder.encode(JSON.stringify(id))
-              )
-            )
-          : multicallReply([
-              rate,
-              noBalance,
-              TESTNET_FEES.deposit,
-              TESTNET_FEES.reward,
-              Uint8Array.of(sizes.length > 2 ? 1 : 0),
-              Uint8Array.of(0),
-            ])
-      );
-    });
-    const decoder = new TextDecoder();
+  it("asks the hub again with every figure on each refresh, in one Multicall for Dusk query", async () => {
+    // The hub's three names, then the pool's rate, the account's balances,
+    // both fees and both switches: Sozu's maintenance on the second time.
+    const node = multicallNode("https://five.example", (_calls, query) => [
+      json(POOL),
+      json(TOKEN),
+      json(SUBSTRATE),
+      json(RATE),
+      json("0"),
+      json("0"),
+      TESTNET_FEES.deposit,
+      TESTNET_FEES.reward,
+      Uint8Array.of(query > 1 ? 1 : 0),
+      Uint8Array.of(0),
+    ]);
     const options = {
       account: ACCOUNT,
-      contracts: { hub: HUB, pool: POOL },
-      fetch: createMulticallFetch({
-        fetch: /** @type {typeof globalThis.fetch} */ (
-          /** @type {unknown} */ (base)
-        ),
-        nodeUrl: "https://five.example",
-      }),
-      loadDriver: async () =>
-        /** @type {SozuDriver} */ ({
-          decodeOutputFn: (_fn, bytes) => JSON.parse(decoder.decode(bytes)),
-          encodeInputFn: (_fn, json) => encoder.encode(json),
-        }),
+      contracts: { hub: HUB, pool: POOL, stDusk: TOKEN, substrate: SUBSTRATE },
+      fetch: node.fetch,
+      loadDriver: async () => jsonDriver(),
       nodeUrl: "https://five.example",
     };
 
     // The rates follow the contract: testnet's reward fee is 10%, not mainnet's 15%.
     await expect(readSozuStatus(options)).resolves.toMatchObject({
+      contracts: { pool: POOL, stDusk: TOKEN },
       fees: {
         deposit: { denominator: 10_000n, numerator: 25n },
         reward: { denominator: 100n, numerator: 10n },
       },
       flags: { maintenance: false, synchronization: false },
     });
-    expect(sizes).toStrictEqual([3, 6]);
-
-    // Read again with the figures, as Sozu can change them at any time; the
-    // contracts the hub names are kept for this node.
+    // Read again, the hub too: it can name others, and Sozu change its
+    // figures, at any time.
     await expect(readSozuStatus(options)).resolves.toMatchObject({
-      fees: { reward: { numerator: 10n } },
       flags: { maintenance: true, synchronization: false },
     });
-    expect(sizes).toStrictEqual([3, 6, 6]);
+    expect(node.queries).toStrictEqual([
+      [
+        "bae85f8c.contract",
+        "bae85f8c.contract",
+        "bae85f8c.contract",
+        "72883945.exchange_rate",
+        "72883945.balance_of",
+        "dddddddd.balance_of",
+        "cccccccc.stake_fee_rate",
+        "cccccccc.stake_fee_rate",
+        "cccccccc.is_feature_enabled",
+        "cccccccc.is_feature_enabled",
+      ],
+      node.queries[0],
+    ]);
   });
 
-  it("uses the pool it knows when the hub names none, and asks the hub once a node", async () => {
+  it("follows the hub when it names another pool later in the session", async () => {
+    let named = POOL;
+    const figures = [
+      json(RATE),
+      json("1500000000000"),
+      json("0"),
+      TESTNET_FEES.deposit,
+      TESTNET_FEES.reward,
+      Uint8Array.of(0),
+      Uint8Array.of(0),
+    ];
+    const node = multicallNode("https://six.example", (calls) =>
+      calls.length === 10
+        ? [json(named), json(TOKEN), json(SUBSTRATE), ...figures]
+        : figures
+    );
+    const options = {
+      account: ACCOUNT,
+      contracts: { hub: HUB, pool: POOL, stDusk: TOKEN, substrate: SUBSTRATE },
+      fetch: node.fetch,
+      loadDriver: async () => jsonDriver(),
+      nodeUrl: "https://six.example",
+    };
+
+    await readSozuStatus(options);
+
+    // An upgrade: the hub names a new pool. The next refresh reads it there…
+    named = NEW_POOL;
+    await expect(readSozuStatus(options)).resolves.toMatchObject({
+      contracts: { pool: NEW_POOL },
+      position: { balance: 1_500_000_000_000n },
+    });
+    // …and the one after, from it at once.
+    await readSozuStatus(options);
+
+    expect(node.queries.map((query) => query.length)).toStrictEqual([
+      10, 10, 7, 10,
+    ]);
+    expect(node.queries[2][0]).toBe("eeeeeeee.exchange_rate");
+    expect(node.queries[3][3]).toBe("eeeeeeee.exchange_rate");
+  });
+
+  it("uses the pool it knows when the hub names none, and asks the hub again on each refresh", async () => {
     const node = fakeNode({
       [`${HUB}/contract/"pool"`]: null,
       [`${HUB}/contract/"staked-dusk"`]: null,
@@ -511,16 +709,76 @@ describe("readSozuStatus", () => {
     await expect(readSozuStatus(options)).resolves.toMatchObject({
       contracts: { pool: POOL, stDusk: null },
       fees: null,
+      // Without a substrate, neither switch is known.
+      flags: { maintenance: null, synchronization: null },
       position: { balance: 0n, stDusk: 0n },
     });
     await readSozuStatus(options);
 
     expect(
       node.spy.mock.calls.filter(([url]) => String(url).endsWith("/contract"))
-    ).toHaveLength(3);
+    ).toHaveLength(6);
   });
 
-  it("fails when a read fails, and asks the hub again next time", async () => {
+  it("reads from the contracts known before while the hub can't be read", async () => {
+    const node = fakeNode({
+      [`${POOL}/balance_of/"${ACCOUNT}"`]: "0",
+      [`${POOL}/exchange_rate/null`]: RATE,
+      [`${SUBSTRATE}/stake_fee_rate/#0`]: TESTNET_FEES.deposit,
+      [`${SUBSTRATE}/stake_fee_rate/#1`]: TESTNET_FEES.reward,
+      [`${SUBSTRATE}/is_feature_enabled/#0`]: Uint8Array.of(0),
+      [`${SUBSTRATE}/is_feature_enabled/#1`]: Uint8Array.of(0),
+      [`${TOKEN}/balance_of/"${ACCOUNT}"`]: "0",
+    });
+
+    await expect(
+      readSozuStatus({
+        account: ACCOUNT,
+        contracts: {
+          hub: HUB,
+          pool: POOL,
+          stDusk: TOKEN,
+          substrate: SUBSTRATE,
+        },
+        fetch: node.fetch,
+        loadDriver: node.loadDriver,
+        nodeUrl: "https://seven.example",
+      })
+    ).resolves.toMatchObject({
+      contracts: { pool: POOL, stDusk: TOKEN },
+      fees: { deposit: { denominator: 10_000n, numerator: 25n } },
+      flags: { maintenance: false, synchronization: false },
+    });
+  });
+
+  it("keeps each switch on its own: deposits paused stay paused when synchronization can't be read", async () => {
+    const node = fakeNode({
+      [`${HUB}/contract/"pool"`]: POOL,
+      [`${HUB}/contract/"staked-dusk"`]: TOKEN,
+      [`${HUB}/contract/"substrate"`]: SUBSTRATE,
+      [`${POOL}/balance_of/"${ACCOUNT}"`]: "0",
+      [`${POOL}/exchange_rate/null`]: RATE,
+      [`${SUBSTRATE}/stake_fee_rate/#0`]: TESTNET_FEES.deposit,
+      [`${SUBSTRATE}/stake_fee_rate/#1`]: TESTNET_FEES.reward,
+      [`${SUBSTRATE}/is_feature_enabled/#0`]: Uint8Array.of(1),
+      [`${TOKEN}/balance_of/"${ACCOUNT}"`]: "0",
+    });
+    const status = await readSozuStatus({
+      account: ACCOUNT,
+      contracts: { hub: HUB, pool: POOL, stDusk: TOKEN, substrate: SUBSTRATE },
+      fetch: node.fetch,
+      loadDriver: node.loadDriver,
+      nodeUrl: "https://eight.example",
+    });
+
+    expect(status.flags).toStrictEqual({
+      maintenance: true,
+      synchronization: null,
+    });
+    expect(status.fees).not.toBeNull();
+  });
+
+  it("fails when the pool can't be read, and asks the hub again next time", async () => {
     const node = fakeNode({});
     const options = {
       account: ACCOUNT,
@@ -531,9 +789,10 @@ describe("readSozuStatus", () => {
     };
 
     await expect(readSozuStatus(options)).rejects.toThrow(
-      "Sozu's contract read failed: 500"
+      "Sozu's exchange_rate read failed: 500"
     );
     await expect(readSozuStatus(options)).rejects.toThrow();
-    expect(node.spy).toHaveBeenCalledTimes(6);
+    // The hub's three names and the pool's two figures, each time.
+    expect(node.spy).toHaveBeenCalledTimes(10);
   });
 });
