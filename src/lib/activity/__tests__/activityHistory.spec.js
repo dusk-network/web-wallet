@@ -814,6 +814,34 @@ describe("fetchTxDetails", () => {
         history.needsDetails({ contractId: "ab".repeat(32), detailsAt: 1 })
       ).toBe(false);
       expect(history.needsDetails({ contractId: portal })).toBe(true);
+      // A withdrawal's proof or claim read before the history kept its hash,
+      // which its claim date is read by, is read again; one with it isn't.
+      expect(
+        history.needsDetails({
+          bridge: { amount: "1", kind: "prove", withdrawal: "01" },
+          contractId: portal,
+          detailsAt: 1,
+        })
+      ).toBe(true);
+      expect(
+        history.needsDetails({
+          bridge: { amount: "1", kind: "claim", withdrawal: "01" },
+          contractId: portal,
+          detailsAt: 1,
+        })
+      ).toBe(true);
+      expect(
+        history.needsDetails({
+          bridge: {
+            amount: "1",
+            hash: `0x${"8e".repeat(32)}`,
+            kind: "prove",
+            withdrawal: "01",
+          },
+          contractId: portal,
+          detailsAt: 1,
+        })
+      ).toBe(false);
     } finally {
       delete details[prove];
       delete details[deposit];

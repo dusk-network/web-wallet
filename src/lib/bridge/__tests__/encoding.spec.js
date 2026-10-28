@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_BRIDGE_MIN_GAS_LIMIT,
   DUSK_EXTERNAL_ASSET_RECIPIENT_BYTES,
   compressedDuskBlsPublicKeyToRaw,
   encodeDuskExternalAssetRecipient,
@@ -7,7 +8,10 @@ import {
 } from "@dusk/evm-sdk";
 import { bytesToHex, decodeFunctionData, hexToBytes } from "viem";
 
-import { encodeDepositETHToWithValueArgs } from "../deposit";
+import {
+  BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
+  encodeDepositETHToWithValueArgs,
+} from "../deposit";
 import { prepareNativeDuskWithdrawalCall } from "../withdrawalInitiation";
 import depositRkyvFixtures from "./fixtures/deposit-rkyv";
 
@@ -89,6 +93,25 @@ describe("current bridge deposit payload encoding", () => {
       ).toBe(encoded);
     }
   );
+
+  it("leaves a deposit's call on DuskEVM the SDK's default gas, 200,000, as the bridge does", () => {
+    expect(BRIDGE_DEPOSIT_MIN_GAS_LIMIT).toBe(200_000);
+    expect(BRIDGE_DEPOSIT_MIN_GAS_LIMIT).toBe(DEFAULT_BRIDGE_MIN_GAS_LIMIT);
+
+    const args = encodeDepositETHToWithValueArgs({
+      amountLux: 1n,
+      minGasLimit: BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
+      to,
+    });
+
+    // The root's u32 after the amount and the address: 200,000, little-endian.
+    expect(
+      new DataView(args.buffer, args.byteOffset).getUint32(
+        args.length - 40 + 28,
+        true
+      )
+    ).toBe(200_000);
+  });
 
   it("rejects malformed deposit inputs", () => {
     const malformedExtraData = /** @type {any} */ ("not bytes");

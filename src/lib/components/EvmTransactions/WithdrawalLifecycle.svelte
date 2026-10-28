@@ -1,8 +1,11 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { mdiContain } from "@mdi/js";
 
+  import bridgeTimes from "$lib/bridge/bridgeTimes";
+  import { WITHDRAWAL, routeTime } from "$lib/bridge/routeTimes";
   import { withdrawalExplorerUrl } from "$lib/bridge/withdrawalActivity";
+  import { loadProveNowClaim } from "$lib/bridge/withdrawals";
   import {
     WITHDRAWAL_TIMELINE_STEPS,
     withdrawalActionFailure,
@@ -39,11 +42,53 @@
   /** @type {string} */
   export let submittedHash;
 
+  /** When a withdrawal can be claimed if it's proved now: read for the one ready to prove. */
+  export let loadProveNow = loadProveNowClaim;
+
+  /** @type {import("$lib/bridge/claimDate").ClaimDate | null} */
+  let proveNow = null;
+
+  /** The withdrawal `proveNow` is for, or is being read for. */
+  let proveNowOf = "";
+
+  /**
+   * Reads when the withdrawal can be claimed if it's proved now, once each
+   * time it's shown ready to prove: the proof "Prove on Dusk" sends is the
+   * one this date is for.
+   *
+   * @param {any} withdrawal
+   */
+  async function readProveNow(withdrawal) {
+    const hash = withdrawal?.transactionHash ?? "";
+
+    if (withdrawal?.stage !== "ready_to_prove" || hash === proveNowOf) {
+      return;
+    }
+
+    proveNowOf = hash;
+    proveNow = null;
+
+    const claim = await loadProveNow(hash).catch(() => null);
+
+    if (proveNowOf === hash) {
+      proveNow = claim;
+    }
+  }
+
+  onMount(() => {
+    void bridgeTimes.load();
+  });
+
   $: selectedStage = selectedWithdrawal?.stage ?? "submitted";
   $: selectedExplorerUrl = selectedWithdrawal
     ? withdrawalExplorerUrl(selectedWithdrawal.transactionHash)
     : null;
-  $: selectedStageMessage = stageMessage(selectedWithdrawal);
+  $: void readProveNow(selectedWithdrawal);
+  $: selectedStageMessage = stageMessage(selectedWithdrawal, {
+    proveNow:
+      proveNowOf === selectedWithdrawal?.transactionHash ? proveNow : null,
+    time: routeTime(WITHDRAWAL, $bridgeTimes),
+  });
   $: actionError = statusError || selectedWithdrawal?.actionError;
   $: actionFailure = actionError
     ? withdrawalActionFailure(selectedStage, actionError)

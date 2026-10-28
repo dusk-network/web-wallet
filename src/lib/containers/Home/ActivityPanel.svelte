@@ -1,5 +1,6 @@
 <script>
   import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import withdrawalClaims from "$lib/bridge/withdrawalClaims";
   import { sozuPools } from "$lib/sozu";
   import { mdiChevronRight } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
@@ -55,9 +56,12 @@
   /** @type {import("$lib/activity/present").ActivityKindFilter} */
   let kind = "all";
 
+  // When the proved withdrawals can be claimed, as the chain says.
+  $: void withdrawalClaims.load(state.rows);
   $: context = {
     bridgeContracts,
     claimed: claimedWithdrawals(state.rows),
+    claims: $withdrawalClaims,
     contactNames: contactNamesOf($contactsStore),
     locale,
     sozuPools: $sozuPools,

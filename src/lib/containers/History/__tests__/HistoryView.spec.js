@@ -6,6 +6,34 @@ import styleRules from "$lib/dusk/test-helpers/styleRules";
 
 import HistoryView from "../HistoryView.svelte";
 
+vi.mock("$lib/bridge/withdrawalClaims", () => {
+  // When the chain says the proved withdrawal can be claimed: Mon 2 Nov 2026, 03:20:39 UTC.
+  const claims = new Map([
+    [
+      `0x${"8e".repeat(32)}`,
+      {
+        at: Date.UTC(2026, 10, 2, 3, 20, 39),
+        claimed: false,
+        exact: false,
+        overdue: false,
+        ready: false,
+      },
+    ],
+  ]);
+
+  return {
+    default: {
+      load: () => Promise.resolve(),
+      /** @param {(value: Map<string, unknown>) => void} run */
+      subscribe(run) {
+        run(claims);
+
+        return () => {};
+      },
+    },
+  };
+});
+
 const ACCOUNT =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
 
@@ -165,6 +193,7 @@ describe("HistoryView", () => {
       amount: "0",
       bridge: /** @type {const} */ ({
         amount: "1008000000000",
+        hash: /** @type {`0x${string}`} */ (`0x${"8e".repeat(32)}`),
         kind: "prove",
         withdrawal: "0001".padEnd(64, "0"),
       }),
@@ -191,9 +220,11 @@ describe("HistoryView", () => {
       );
 
       // A desktop's line keeps the date; a phone's has it under the line.
-      expect(withdrawal.wide).toMatch(/^Bridge · claim from about Nov 2, /);
+      expect(withdrawal.wide).toMatch(
+        /^Bridge · claim from about Mon, Nov 2, /
+      );
       expect(withdrawal.narrow).toBe("Bridge");
-      expect(withdrawal.note).toMatch(/^Claim from about Nov 2, /);
+      expect(withdrawal.note).toMatch(/^Claim from about Mon, Nov 2, /);
       expect(sent).toStrictEqual({
         narrow: undefined,
         note: undefined,

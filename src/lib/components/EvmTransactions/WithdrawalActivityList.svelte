@@ -14,6 +14,7 @@
   import WithdrawalLifecycle from "./WithdrawalLifecycle.svelte";
   import {
     activityAmount,
+    activityNote,
     formatTimestamp,
     shortened,
   } from "./withdrawalPresentation";
@@ -83,7 +84,11 @@
   {#if !currentAccount}
     <Banner title="Connect DuskEVM wallet" variant="info">
       <div class="connect-wallet">
-        <p>Connect the originating account to load its activity.</p>
+        <p>
+          {activity.length
+            ? "Connect the account you withdrew from to load its other withdrawals."
+            : "Connect the originating account to load its activity."}
+        </p>
         <Button
           icon={{ path: mdiWalletOutline }}
           text="Connect"
@@ -91,7 +96,8 @@
         />
       </div>
     </Banner>
-  {:else if activityError}
+  {/if}
+  {#if activityError}
     <Banner title="Explorer unavailable" variant="warning">
       <p>{activityError} Locally remembered withdrawals are still shown.</p>
     </Banner>
@@ -124,6 +130,9 @@
             <span class="activity-list__primary">
               <strong>{activityAmount(item) ?? "DUSK withdrawal"}</strong>
               <span>{formatTimestamp(item.sentAt ?? item.timestamp)}</span>
+              {#if activityNote(item)}
+                <span class="activity-list__note">{activityNote(item)}</span>
+              {/if}
             </span>
             <span class="activity-list__status">
               <span class="activity-list__status-summary">
@@ -289,6 +298,10 @@
     &__status > span:last-child {
       color: var(--secondary-text-color);
       font-size: 0.75rem;
+    }
+
+    & &__note {
+      color: var(--on-surface-color);
     }
 
     &__status {

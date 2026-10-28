@@ -32,6 +32,7 @@ function statusPatch(status) {
 
   for (const key of [
     "blockNumber",
+    "claimOverdue",
     "proofRejected",
     "proofSubmitter",
     "readyAt",
@@ -44,6 +45,11 @@ function statusPatch(status) {
     if (value !== undefined) {
       patch[key] = key === "blockNumber" ? stringValue(value) : value;
     }
+  }
+
+  // The game its proof went against: the next check reads it with the Portal.
+  if (typeof status.disputeGameProxy === "string") {
+    patch.proofGame = status.disputeGameProxy;
   }
 
   // The amount, which a withdrawal found by its hash only has from here.
@@ -179,7 +185,10 @@ async function reconcilePendingSubmission(remembered, status) {
  */
 async function refreshStatus(remembered) {
   try {
-    const loadedStatus = await loadWithdrawalStatus(remembered.transactionHash);
+    const loadedStatus = await loadWithdrawalStatus(
+      remembered.transactionHash,
+      { proofGame: remembered.proofGame ?? null }
+    );
     const reconciliation = await reconcilePendingSubmission(
       remembered,
       loadedStatus

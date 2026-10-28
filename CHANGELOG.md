@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say in Send's summary what a public send shows everyone, also on a phone's review
 - Open the search with /, as with Ctrl K, unless typing in a field
 - Offer alice.dusk for alice, or alice.dusk. with a dot after it, in Send and the search
+- List in Bridge › Activity the withdrawals in the history, with their claim date and Claim, without an EVM wallet connected
 
 ### Changed
 
@@ -110,6 +111,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep contacts encrypted, for the wallet that saved them only, and delete them on Reset
 - Say plainly that a node for native staking needs keys made from this wallet's recovery phrase
 - Give a withdrawal's claim date a line of its own in the activity, and in the history on phones
+- Date a withdrawal's claim from its proof and its dispute game, in History, its details and Bridge › Activity, exact once the game has resolved, and say when the game is late
+- Say before a proof how long after it a withdrawal can be claimed, and on one ready to prove from when it could be claimed if proved now
+- Prove a withdrawal against a dispute game that has already resolved, where one covers it, so its claim date is exact
+- Leave a deposit's call on DuskEVM 200,000 gas, the DuskEVM SDK's default
 
 ### Removed
 

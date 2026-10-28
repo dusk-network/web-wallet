@@ -8,6 +8,7 @@
  */
 
 import { getAddress, keccak256 } from "viem";
+import { hashWithdrawal } from "@dusk/evm-sdk";
 
 export const BRIDGE_FUNCTIONS = Object.freeze({
   claim: "finalizeWithdrawalTransaction",
@@ -33,9 +34,11 @@ const WEI_PER_LUX = 1_000_000_000n;
 
 /**
  * @typedef {{ amount: string, kind: "deposit", to: string }
- *   | { amount: string, kind: "claim" | "prove", withdrawal: string }} BridgeCall
- *   Amounts in Lux; `to` is the DuskEVM address with its checksum, and
- *   `withdrawal` the withdrawal's nonce, the same in its proof and its claim.
+ *   | { amount: string, hash?: `0x${string}`, kind: "claim" | "prove", withdrawal: string }} BridgeCall
+ *   Amounts in Lux; `to` is the DuskEVM address with its checksum,
+ *   `withdrawal` the withdrawal's nonce, the same in its proof and its claim,
+ *   and `hash` the withdrawal's hash, which the Portal keys it by (missing
+ *   from a call read before the history kept it).
  */
 
 /** @param {unknown} id */
@@ -211,6 +214,7 @@ function decodeWithdrawal(args, at, end, l1Bridge) {
   const value = uintBe(args, at + 32, 32);
   const data = bytesAt(args, at + 96, end);
   const sender = hex(args.subarray(at + 104, at + 124));
+  const target = hex(args.subarray(at + 124, at + 144));
 
   if (sender !== L2_MESSENGER) {
     fail();
@@ -241,6 +245,15 @@ function decodeWithdrawal(args, at, end, l1Bridge) {
 
   return {
     amount: (value / WEI_PER_LUX).toString(),
+    // What the Portal keys the withdrawal by: its proofs and its claim.
+    hash: hashWithdrawal({
+      data: `0x${hex(data)}`,
+      gasLimit: uintBe(args, at + 64, 32),
+      nonce: uintBe(args, at, 32),
+      sender: `0x${sender}`,
+      target: `0x${target}`,
+      value,
+    }),
     withdrawal: hex(args.subarray(at, at + 32)),
   };
 }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readable } from "svelte/store";
-import { toRlp } from "viem";
+import { hexToBytes, toRlp } from "viem";
 
 import {
   hashWithdrawal,
@@ -72,6 +72,7 @@ function reply(results) {
 
 describe("DuskEVM withdrawal helpers", () => {
   afterEach(() => {
+    vi.doUnmock("$lib/bridge/bridgeReads");
     vi.doUnmock("$lib/stores");
     vi.doUnmock("$lib/web3/walletConnection");
     vi.restoreAllMocks();
@@ -371,11 +372,9 @@ describe("DuskEVM withdrawal helpers", () => {
     ).toThrow("Withdrawal MessagePassed event was not found.");
   });
 
-  it("keeps a proven withdrawal waiting when finalize preflight rejects", async () => {
-    const { dgf, portal } = mockWithdrawalFinalization({
-      finalizePreflight: vi
-        .fn()
-        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
+  it("keeps a proven withdrawal waiting while the Portal refuses its claim and its game is in progress", async () => {
+    const { dgf, portal } = mockWithdrawalReads({
+      check: refusal("OptimismPortal2: invalid dispute game"),
     });
     const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
 
@@ -391,125 +390,172 @@ describe("DuskEVM withdrawal helpers", () => {
     expect(dgf.call.gameCount).not.toHaveBeenCalled();
   });
 
-  it("estimates the claim time from the proof while its game is in progress", async () => {
-    const { portal } = mockWithdrawalFinalization({
-      finalizePreflight: vi.fn(),
+  it("dates the claim from the proof's maturity and its game: the earliest while the game is in progress", async () => {
+    mockWithdrawalReads({
+      check: refusal("OptimismPortal: proven withdrawal has not matured yet"),
+      maturity: 604_800,
     });
-    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
-    stubGameResolution({ resolvedAt: 0n, status: 0 });
     const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
 
-    // Proven at 100, so the proof matures at 604_900.
+    // Proven at 100: it matures at 604,900, a second later on block time.
+    // The game, created at 50, is final no sooner than 50 + 302,400 + 302,400.
     await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
       {
+        claimOverdue: false,
         proofRejected: false,
-        readyAt: 604_900n,
+        readyAt: 604_901n,
         readyAtExact: false,
         stage: "proven_waiting",
       }
     );
-    expect(portal.call.checkWithdrawal).not.toHaveBeenCalled();
   });
 
-  it("gives the exact claim time once the proven game has resolved", async () => {
-    const { portal } = mockWithdrawalFinalization({
-      finalizePreflight: vi.fn(),
+  it("gives the exact claim date once the proof's game has resolved", async () => {
+    mockWithdrawalReads({
+      check: refusal("OptimismPortal: proven withdrawal has not matured yet"),
+      game: { createdAt: 50n, resolvedAt: 400_000n, status: 2 },
+      maturity: 604_800,
     });
-    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
-    stubGameResolution({ resolvedAt: 400_000n, status: 2 });
     const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
 
-    // The game is final at 400_000 + 302_400, after the proof matures.
+    // The game is final at 400,000 + 302,400, after the proof matures.
     await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
-      { readyAt: 702_400n, readyAtExact: true, stage: "proven_waiting" }
+      { readyAt: 702_401n, readyAtExact: true, stage: "proven_waiting" }
     );
   });
 
-  it("flags a proof whose game the challenger won before it matured", async () => {
-    const { portal } = mockWithdrawalFinalization({
-      finalizePreflight: vi.fn(),
+  it("counts testnet's contract time, Dusk block height × 10, from the latest block", async () => {
+    // wallet-both.dusk's withdrawal, proved at block 4,687,744 against a game
+    // created at block 4,687,605: claimable from Mon 2 Nov, 03:20:39 UTC.
+    mockWithdrawalReads({
+      check: refusal("OptimismPortal2: invalid dispute game"),
+      game: { createdAt: 46_876_050n, resolvedAt: 0n, status: 0 },
+      maturity: 604_800,
+      proven: [Array(20).fill(0x1e), 46_877_440],
+      tip: TESTNET_TIP,
     });
-    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
-    stubGameResolution({ resolvedAt: 400_000n, status: 1 });
     const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
 
     await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
       {
-        proofRejected: true,
-        readyAt: null,
+        readyAt: BigInt(Date.UTC(2026, 10, 2, 3, 20, 39) / 1_000),
         readyAtExact: false,
         stage: "proven_waiting",
       }
     );
   });
 
-  it("estimates the claim time from the finality delay after the proof matures", async () => {
-    mockWithdrawalFinalization({
-      finalizePreflight: vi
-        .fn()
-        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
+  it("says when a proof's game is late to resolve, and the soonest it can be claimed", async () => {
+    mockWithdrawalReads({
+      check: refusal("OptimismPortal2: invalid dispute game"),
+      // Its clock ran out more than an hour before the latest block.
+      game: { createdAt: 46_000_000n, resolvedAt: 0n, status: 0 },
+      maturity: 604_800,
+      proven: [Array(20).fill(0x1e), 46_100_000],
+      tip: TESTNET_TIP,
     });
-    stubGameResolution({ resolvedAt: 0n, status: 0 });
     const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
 
-    // The latest block is at 200; the game can't be final before 200 + 302_400.
+    // It could resolve now: final 3.5 days from now, after the maturity.
     await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
-      { readyAt: 302_600n, readyAtExact: false, stage: "proven_waiting" }
+      {
+        claimOverdue: true,
+        readyAt: TESTNET_TIP.timestamp + 302_400n,
+        readyAtExact: false,
+      }
     );
   });
 
-  it("gives no claim time from a proof time off Dusk's clock", async () => {
-    const { networkStore, portal } = mockWithdrawalFinalization({
-      finalizePreflight: vi
-        .fn()
-        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
-    });
-    // Older deployments count block height × 10 seconds.
-    portal.call.provenWithdrawals.mockResolvedValue([
-      Array(20).fill(0x1e),
-      45_252_320n,
-    ]);
-    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
-    networkStore.getLatestBlockTimestamp.mockResolvedValue(1_792_950_989n);
-    stubGameResolution({ resolvedAt: 0n, status: 0 });
-    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
-
-    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
-      { readyAt: null, readyAtExact: false, stage: "proven_waiting" }
-    );
-  });
-
-  it("leaves out a game time off Dusk's clock", async () => {
-    const { networkStore, portal } = mockWithdrawalFinalization({
-      finalizePreflight: vi.fn(),
-    });
-    // Proven a day before the latest block.
-    portal.call.provenWithdrawals.mockResolvedValue([
-      Array(20).fill(0x1e),
-      1_792_864_589n,
-    ]);
-    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
-    networkStore.getLatestBlockTimestamp.mockResolvedValue(1_792_950_989n);
-    stubGameResolution({ resolvedAt: 46_807_020n, status: 2 });
-    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
-
-    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
-      { readyAt: 1_793_469_389n, readyAtExact: false, stage: "proven_waiting" }
-    );
-  });
-
-  it("flags a rejected proof that has no replacement output yet", async () => {
-    mockWithdrawalFinalization({
-      finalizePreflight: vi
-        .fn()
-        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
-      gameStatus: 1,
+  it("flags a proof whose game the challenger won, with no newer game to prove against", async () => {
+    mockWithdrawalReads({
+      check: refusal("OptimismPortal2: invalid dispute game"),
+      game: { createdAt: 50n, resolvedAt: 400_000n, status: 1 },
     });
     const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
 
     await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
       { proofRejected: true, readyAt: null, stage: "proven_waiting" }
     );
+  });
+
+  it("flags a proof whose game was blacklisted", async () => {
+    mockWithdrawalReads({
+      check: refusal("OptimismPortal2: invalid dispute game"),
+      isGameBlacklisted: true,
+    });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      { proofRejected: true, readyAt: null, stage: "proven_waiting" }
+    );
+  });
+
+  it("keeps the date known so far when the proof's game can't be read", async () => {
+    mockWithdrawalReads({
+      check: refusal("OptimismPortal2: invalid dispute game"),
+      gameReadFails: true,
+    });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    const status = await loadWithdrawalStatus(withdrawalTxHash);
+
+    expect(status).toMatchObject({
+      stage: "proven_waiting",
+      statusMessage:
+        "The proof is accepted, but its dispute game can't be read right now.",
+    });
+    expect("readyAt" in status).toBe(false);
+  });
+
+  it("gives no date once it has passed while the Portal still refuses the claim", async () => {
+    mockWithdrawalReads({
+      check: refusal("OptimismPortal2: invalid dispute game"),
+      game: { createdAt: 50n, resolvedAt: 100n, status: 2 },
+      tip: { height: 1_000_000n, timestamp: 2_000_000n },
+    });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      {
+        readyAt: null,
+        readyAtExact: false,
+        stage: "proven_waiting",
+        statusMessage: "The Portal doesn't take the claim yet.",
+      }
+    );
+  });
+
+  it("is ready to claim once the Portal takes the claim", async () => {
+    mockWithdrawalReads({
+      game: { createdAt: 50n, resolvedAt: 400n, status: 2 },
+    });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await expect(loadWithdrawalStatus(withdrawalTxHash)).resolves.toMatchObject(
+      {
+        disputeGameProxy: `0x${"1e".repeat(20)}`,
+        readyAtExact: true,
+        stage: "ready_to_finalize",
+      }
+    );
+  });
+
+  it("reads the game on its own hub, which the factory names, and never through the adapter's L1 view", async () => {
+    const { dgf, hubs } = mockWithdrawalReads({
+      check: refusal("OptimismPortal2: invalid dispute game"),
+    });
+    const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+
+    await loadWithdrawalStatus(withdrawalTxHash);
+
+    expect(dgf.call.gameContractId).toHaveBeenCalledWith(Array(20).fill(0x1e));
+    // The game and its hub's clock limit, on the hub the factory named.
+    expect(new Set(hubs)).toStrictEqual(new Set(["d5".repeat(32)]));
+    expect(
+      vi
+        .mocked(globalThis.fetch)
+        .mock.calls.map(([, init]) => JSON.parse(String(init?.body)).method)
+    ).toStrictEqual(["eth_getTransactionReceipt"]);
   });
 
   describe("a withdrawal's waits", () => {
@@ -624,10 +670,7 @@ describe("DuskEVM withdrawal helpers", () => {
   });
 
   it("checks readiness for the wallet submitter rather than a third party", async () => {
-    const { portal, walletStore } = mockWithdrawalFinalization({
-      finalizePreflight: vi.fn().mockResolvedValue(undefined),
-    });
-    portal.call.proofSubmitters.mockResolvedValue(Array(20).fill(0x3d));
+    const { portal, walletStore } = mockWithdrawalReads();
     const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
 
     const status = await loadWithdrawalStatus(withdrawalTxHash);
@@ -642,24 +685,18 @@ describe("DuskEVM withdrawal helpers", () => {
   });
 
   it("refuses to submit finalization for already-finalized withdrawals", async () => {
-    const { portal, walletStore } = mockWithdrawalFinalization({
-      finalized: true,
-      finalizePreflight: vi.fn(),
-    });
+    const { walletStore } = mockWithdrawalReads({ finalized: true });
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
 
     await expect(finalizeWithdrawal(withdrawalTxHash)).rejects.toThrow(
       "The withdrawal is already finalized."
     );
-    expect(portal.call.checkWithdrawal).not.toHaveBeenCalled();
     expect(walletStore.finalizeDuskEvmWithdrawal).not.toHaveBeenCalled();
   });
 
   it("reloads readiness before finalization and refuses stale ready state", async () => {
-    const { walletStore } = mockWithdrawalFinalization({
-      finalizePreflight: vi
-        .fn()
-        .mockRejectedValue(new Error("OptimismPortal2: invalid dispute game")),
+    const { walletStore } = mockWithdrawalReads({
+      check: refusal("OptimismPortal2: invalid dispute game"),
     });
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
 
@@ -670,8 +707,7 @@ describe("DuskEVM withdrawal helpers", () => {
   });
 
   it("doesn't submit a finalization that needs more gas than the global bound", async () => {
-    const { walletStore } = mockWithdrawalFinalization({
-      finalizePreflight: vi.fn().mockResolvedValue(undefined),
+    const { walletStore } = mockWithdrawalReads({
       gasLimitUpper: 50_000_000n,
     });
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
@@ -683,9 +719,7 @@ describe("DuskEVM withdrawal helpers", () => {
   });
 
   it("submits the SDK-serialized withdrawal through the Portal data driver", async () => {
-    const { walletStore } = mockWithdrawalFinalization({
-      finalizePreflight: vi.fn().mockResolvedValue(undefined),
-    });
+    const { walletStore } = mockWithdrawalReads();
     const { finalizeWithdrawal } = await import("$lib/bridge/withdrawals");
 
     await expect(finalizeWithdrawal(withdrawalTxHash)).resolves.toBe(
@@ -713,6 +747,400 @@ describe("DuskEVM withdrawal helpers", () => {
     expect(withdrawal.target).toHaveLength(20);
     expect(withdrawal.value).toHaveLength(32);
   });
+
+  it("reads when the history's proved withdrawals can be claimed: claimed, ready, a date, or none", async () => {
+    const { portal } = mockWithdrawalReads({ maturity: 604_800 });
+    const hash = (/** @type {number} */ byte) =>
+      /** @type {`0x${string}`} */ (`0x${byte.toString(16).repeat(64)}`);
+    const proofs = {
+      [hash(0xa)]: [Array(20).fill(0x1e), 100],
+      [hash(0xb)]: [Array(20).fill(0x1e), 100],
+      [hash(0xc)]: [Array(20).fill(0x1e), 100],
+      // Another account's proof only.
+      [hash(0xd)]: [Array(20).fill(0), 0],
+    };
+
+    portal.call.finalizedWithdrawals.mockImplementation(
+      async (/** @type {number[]} */ id) => id[0] === 0xaa
+    );
+    portal.call.provenWithdrawals.mockImplementation(
+      async (/** @type {any[]} */ [id]) =>
+        proofs[
+          `0x${Array.from(id, (b) => b.toString(16).padStart(2, "0")).join("")}`
+        ]
+    );
+    portal.call.checkWithdrawal.mockImplementation(
+      async (/** @type {any[]} */ [id]) => {
+        if (id[0] !== 0xbb) {
+          throw new Error(
+            "OptimismPortal: proven withdrawal has not matured yet"
+          );
+        }
+      }
+    );
+
+    const { readWithdrawalClaims } = await import("$lib/bridge/withdrawals");
+    const claims = await readWithdrawalClaims(
+      [hash(0xa), hash(0xb), hash(0xc), hash(0xd)],
+      { submitter: `0x${"2c".repeat(20)}` }
+    );
+
+    expect(claims.get(hash(0xa))).toMatchObject({ at: null, claimed: true });
+    expect(claims.get(hash(0xb))).toMatchObject({
+      claimed: false,
+      ready: true,
+    });
+    // Proven at 100: it matures at 604,900, a second later on block time.
+    expect(claims.get(hash(0xc))).toStrictEqual({
+      at: 604_901_000,
+      claimed: false,
+      exact: false,
+      overdue: false,
+      ready: false,
+    });
+    expect(claims.get(hash(0xd))).toMatchObject({ at: null, ready: false });
+    // The account's own proofs: its submitter's.
+    expect(portal.call.provenWithdrawals).toHaveBeenCalledWith([
+      expect.any(Array),
+      Array(20).fill(0x2c),
+    ]);
+  });
+
+  describe("reads through Multicall for Dusk", () => {
+    const NODE = "https://node.example.test";
+    const PORTAL = "11".repeat(32);
+    const DGF = "22".repeat(32);
+    const HUB = "d5".repeat(32);
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    /** Drivers that read and answer JSON. */
+    const driver = /** @type {BridgeDriver} */ ({
+      decodeOutputFn: (_fn, bytes) => JSON.parse(decoder.decode(bytes)),
+      encodeInputFn: (_fn, json) => encoder.encode(json),
+    });
+
+    /** @param {bigint} value */
+    const u64 = (value) => {
+      const out = new Uint8Array(8);
+
+      new DataView(out.buffer).setBigUint64(0, value, true);
+
+      return out;
+    };
+
+    /**
+     * What the node answers each read with: the Portal's and the factory's
+     * as JSON, the hub's raw.
+     *
+     * @param {string} contract
+     * @param {string} fn
+     */
+    function answer(contract, fn) {
+      const portal = {
+        disputeGameBlacklist: false,
+        disputeGameFinalityDelaySeconds: u256(302_400),
+        finalizedWithdrawals: false,
+        numProofSubmitters: u256(1),
+        proofMaturityDelaySeconds: u256(604_800),
+        provenWithdrawals: [Array(20).fill(0x1e), 46_877_440],
+      };
+      const hub = {
+        createdAtForGame: u64(46_876_050n),
+        maxClockDuration: u64(302_400n),
+        resolvedAtForGame: u64(0n),
+        statusForGame: Uint8Array.of(0),
+      };
+
+      if (contract === HUB) {
+        return hub[/** @type {keyof typeof hub} */ (fn)];
+      }
+
+      // The Portal refuses the claim: no answer its driver reads.
+      if (fn === "checkWithdrawal") {
+        return encoder.encode("refused");
+      }
+
+      return encoder.encode(
+        JSON.stringify(
+          contract === DGF
+            ? Array.from({ length: 32 }, () => 0xd5)
+            : portal[/** @type {keyof typeof portal} */ (fn)]
+        )
+      );
+    }
+
+    /**
+     * The calls in an `aggregate` envelope: each one's contract, name and
+     * arguments, as the vendored codec writes them.
+     *
+     * @param {any} body
+     */
+    function envelopeCalls(body) {
+      const u8 = new Uint8Array(body);
+      const view = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+      const root = u8.length - 8;
+      const array = root + view.getInt32(root, true);
+
+      return Array.from({ length: view.getUint32(root + 4, true) }, (_, i) => {
+        const slot = array + 56 * i;
+        const inline = u8[slot + 39] <= 7;
+        const name = inline
+          ? slot + 32
+          : slot + 32 + view.getInt32(slot + 36, true);
+        const length = inline ? u8[slot + 39] : view.getUint32(slot + 32, true);
+
+        return {
+          contract: Array.from(u8.subarray(slot, slot + 32), (b) =>
+            b.toString(16).padStart(2, "0")
+          ).join(""),
+          fn: decoder.decode(u8.subarray(name, name + length)),
+        };
+      });
+    }
+
+    it("check a waiting withdrawal in one query once its game's hub is known", async () => {
+      mockWithdrawalReads({ tip: TESTNET_TIP });
+      vi.doUnmock("$lib/bridge/bridgeReads");
+
+      const { MULTICALL_CONTRACT_ID, createMulticallFetch } =
+        await import("$lib/activity/multicallFetch");
+      const { bridgeReads } = await import("$lib/bridge/bridgeReads");
+      const { loadWithdrawalStatus } = await import("$lib/bridge/withdrawals");
+      const AGGREGATE = `${NODE}/on/contracts:${MULTICALL_CONTRACT_ID}/aggregate`;
+      /** @type {string[][]} */
+      const queries = [];
+      const base = vi.fn(async (/** @type {string} */ url, init) => {
+        if (url !== AGGREGATE) {
+          const [, id, fn] = /contracts:([0-9a-f]+)\/(\w+)$/.exec(url) ?? [];
+
+          queries.push([fn]);
+
+          return new Response(answer(id, fn).slice());
+        }
+
+        const calls = envelopeCalls(init.body);
+
+        queries.push(calls.map(({ fn }) => fn));
+
+        return new Response(
+          reply(calls.map(({ contract, fn }) => ({ Ok: answer(contract, fn) })))
+        );
+      });
+      const reads = bridgeReads({
+        config: {
+          disputeGameFactoryContractId: DGF,
+          disputeGameFactoryDataDriverUrl: "/dgf.wasm",
+          optimismPortalContractId: PORTAL,
+          optimismPortalDataDriverUrl: "/portal.wasm",
+        },
+        fetch: createMulticallFetch({
+          fetch: /** @type {typeof globalThis.fetch} */ (
+            /** @type {unknown} */ (base)
+          ),
+          nodeUrl: NODE,
+        }),
+        loadDriver: async () => driver,
+        nodeUrl: NODE,
+      });
+
+      const first = await loadWithdrawalStatus(withdrawalTxHash, { reads });
+
+      expect(first).toMatchObject({
+        readyAt: BigInt(Date.UTC(2026, 10, 2, 3, 20, 39) / 1_000),
+        stage: "proven_waiting",
+      });
+      // The Portal, then the game's hub, then the game with its blacklisting.
+      expect(queries).toStrictEqual([
+        [
+          "finalizedWithdrawals",
+          "numProofSubmitters",
+          "provenWithdrawals",
+          "proofMaturityDelaySeconds",
+          "disputeGameFinalityDelaySeconds",
+          "checkWithdrawal",
+        ],
+        ["gameContractId"],
+        [
+          "createdAtForGame",
+          "resolvedAtForGame",
+          "statusForGame",
+          "maxClockDuration",
+          "disputeGameBlacklist",
+        ],
+      ]);
+
+      queries.length = 0;
+
+      await expect(
+        loadWithdrawalStatus(withdrawalTxHash, {
+          proofGame: first.disputeGameProxy,
+          reads,
+        })
+      ).resolves.toMatchObject({ readyAt: first.readyAt });
+      // The next check: one query, the game's reads with the Portal's.
+      expect(queries).toStrictEqual([
+        [
+          "createdAtForGame",
+          "resolvedAtForGame",
+          "statusForGame",
+          "disputeGameBlacklist",
+          "finalizedWithdrawals",
+          "numProofSubmitters",
+          "provenWithdrawals",
+          "proofMaturityDelaySeconds",
+          "disputeGameFinalityDelaySeconds",
+          "checkWithdrawal",
+        ],
+      ]);
+    });
+  });
+
+  describe("proving", () => {
+    /** The factory's games: one every 1,800 s, the newest at the latest block's time. */
+    const COUNT = 400;
+    const TIP = { height: 1_000_000n, timestamp: 2_000_000n };
+
+    /** @param {number} index */
+    const created = (index) => 2_000_000 - (COUNT - 1 - index) * 1_800;
+
+    /** @param {number} index */
+    const l2Block = (index) => 10_000 + 100 * index;
+
+    /** @param {number} index */
+    const proxyOf = (index) => [
+      ...Array(18).fill(0x9a),
+      index >> 8,
+      index & 0xff,
+    ];
+
+    /**
+     * The proof DuskEVM gives for any block, and the root claim that makes
+     * it a game's own.
+     */
+    const BLOCK = {
+      hash: `0x${"b1".repeat(32)}`,
+      stateRoot: `0x${"b2".repeat(32)}`,
+    };
+    const STORAGE_HASH = `0x${"b3".repeat(32)}`;
+
+    /**
+     * @param {{ resolved: (index: number) => boolean }} options
+     */
+    async function proving({ resolved }) {
+      const { dgf, hub, portal, walletStore } = mockWithdrawalReads({
+        maturity: 604_800,
+        tip: TIP,
+      });
+      const { hashOutputRootProof } = await import("$lib/bridge/withdrawals");
+      const rootClaim = hexToBytes(
+        hashOutputRootProof({
+          latestBlockhash: /** @type {`0x${string}`} */ (BLOCK.hash),
+          messagePasserStorageRoot: /** @type {`0x${string}`} */ (STORAGE_HASH),
+          stateRoot: /** @type {`0x${string}`} */ (BLOCK.stateRoot),
+          version: /** @type {`0x${string}`} */ (`0x${"00".repeat(32)}`),
+        })
+      );
+      /** @param {number} index */
+      const index32 = (index) => u256(index);
+      const indexOf = (/** @type {number[]} */ bytes) =>
+        Number(BigInt(`0x${Buffer.from(bytes).toString("hex")}`));
+      const byProxy = (/** @type {number[]} */ address) =>
+        (address[18] << 8) | address[19];
+
+      portal.call.respectedGameType.mockResolvedValue(8);
+      dgf.call.gameCount.mockResolvedValue(u256(COUNT));
+      dgf.call.virtualGameHubId.mockResolvedValue(Array(32).fill(0xd5));
+      dgf.call.findLatestGames.mockImplementation(
+        async (/** @type {any[]} */ [, start, size]) => {
+          const from = indexOf(start);
+
+          return Array.from(
+            { length: Math.min(indexOf(size), from + 1) },
+            (_, k) => {
+              const index = from - k;
+
+              return {
+                ["extra_data"]: u256(l2Block(index)),
+                index: index32(index),
+                metadata: [
+                  0,
+                  0,
+                  0,
+                  8,
+                  ...u256(created(index)).slice(24),
+                  ...proxyOf(index),
+                ],
+                ["root_claim"]: Array.from(rootClaim),
+                timestamp: created(index),
+              };
+            }
+          );
+        }
+      );
+      dgf.call.gameMetadataAtIndex.mockImplementation(
+        async (/** @type {number[]} */ index) => ({
+          extraData: [],
+          l2SequenceNumber: u256(l2Block(indexOf(index))),
+          rootClaim: Array.from(rootClaim),
+        })
+      );
+      dgf.call.gameAtIndex.mockImplementation(
+        async (/** @type {number[]} */ index) => [
+          8,
+          created(indexOf(index)),
+          proxyOf(indexOf(index)),
+        ]
+      );
+      hub.statusForGame.mockImplementation(async (/** @type {number[]} */ a) =>
+        resolved(byProxy(a)) ? 2 : 0
+      );
+      hub.createdAtForGame.mockImplementation(
+        async (/** @type {number[]} */ a) => BigInt(created(byProxy(a)))
+      );
+      hub.resolvedAtForGame.mockImplementation(
+        async (/** @type {number[]} */ a) =>
+          resolved(byProxy(a)) ? BigInt(created(byProxy(a)) + 303_000) : 0n
+      );
+      stubL2Proofs();
+
+      return { walletStore, ...(await import("$lib/bridge/withdrawals")) };
+    }
+
+    it("proves against a covering game that has already resolved, so the claim date is exact", async () => {
+      // Games old enough have resolved.
+      const { prepareProof, proveWithdrawal, walletStore } = await proving({
+        resolved: (index) => created(index) <= 2_000_000 - 302_400 - 3_600,
+      });
+
+      const prepared = await prepareProof(withdrawalTxHash);
+
+      // The newest of them: its clock ran out, and its resolver's lag passed.
+      expect(prepared.proof).toMatchObject({ disputeGameIndex: 229n });
+      // Proved now: exactly the maturity from now, a second later on block time.
+      expect(prepared.claim).toStrictEqual({
+        at: (2_000_000 + 604_800 + 1) * 1_000,
+        exact: true,
+        overdue: false,
+      });
+
+      await proveWithdrawal(withdrawalTxHash);
+
+      const [, , args] = walletStore.proveDuskEvmWithdrawal.mock.calls[0];
+
+      // The proof whose date was shown.
+      expect(args[1]).toEqual(u256(229));
+    });
+
+    it("proves against the newest covering game when none has resolved, its date the earliest", async () => {
+      const { prepareProof } = await proving({ resolved: () => false });
+
+      const prepared = await prepareProof(withdrawalTxHash);
+
+      expect(prepared.proof).toMatchObject({ disputeGameIndex: 399n });
+      expect(prepared.claim).toMatchObject({ exact: false });
+    });
+  });
 });
 
 /**
@@ -730,61 +1158,114 @@ function u256(value) {
   return out;
 }
 
+/** The latest testnet block, as read on 28 Oct 2026. */
+const TESTNET_TIP = Object.freeze({
+  height: 4_704_959n,
+  timestamp: 1_793_156_989n,
+});
+
 /**
- * @param {object} options
+ * A read the contract refuses, as the Portal refuses a claim.
+ *
+ * @param {string} message
+ */
+const refusal = (message) => vi.fn().mockRejectedValue(new Error(message));
+
+/**
+ * The bridge's contracts on Dusk as fakes: the Portal, the factory and a
+ * game's hub answer as given. The stores give the node's gas price, the
+ * latest block and the wallet's account; DuskEVM gives the withdrawal's
+ * receipt.
+ *
+ * @param {object} [options]
+ * @param {ReturnType<typeof vi.fn>} [options.check] The Portal's check of a claim now
  * @param {boolean} [options.finalized]
- * @param {ReturnType<typeof vi.fn>} options.finalizePreflight
- * @param {number} [options.gameStatus]
+ * @param {{ createdAt: bigint, resolvedAt: bigint, status: number }} [options.game]
+ * @param {boolean} [options.gameReadFails]
  * @param {bigint} [options.gasLimitUpper]
  * @param {boolean} [options.isGameBlacklisted]
+ * @param {number} [options.maturity] The Portal's proof maturity delay
+ * @param {unknown[]} [options.proven] The Portal's record of the account's proof
+ * @param {{ height: bigint, timestamp: bigint }} [options.tip]
  */
-function mockWithdrawalFinalization({
+function mockWithdrawalReads({
+  check = vi.fn().mockResolvedValue(undefined),
   finalized = false,
-  finalizePreflight,
-  gameStatus = 0,
+  game = { createdAt: 50n, resolvedAt: 0n, status: 0 },
+  gameReadFails = false,
   gasLimitUpper = 1_000_000_000n,
   isGameBlacklisted = false,
-}) {
+  maturity = 0,
+  proven = [Array(20).fill(0x1e), 100n],
+  tip = { height: 1_000_000n, timestamp: 200n },
+} = {}) {
   vi.resetModules();
   vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", "11".repeat(32));
   vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL", "");
   vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", "22".repeat(32));
   vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL", "");
-  vi.stubEnv("VITE_EVM_L1_BRIDGE_RPC_URL", "https://l1.example.test");
 
   const proofSubmitter = Array(20).fill(0x2c);
-  const disputeGameProxy = Array(20).fill(0x1e);
   const portal = {
     call: {
-      checkWithdrawal: finalizePreflight,
+      checkWithdrawal: check,
       disputeGameBlacklist: vi.fn().mockResolvedValue(isGameBlacklisted),
       disputeGameFinalityDelaySeconds: vi.fn().mockResolvedValue(u256(302_400)),
       finalizedWithdrawals: vi.fn().mockResolvedValue(finalized),
       numProofSubmitters: vi.fn().mockResolvedValue(u256(1)),
-      proofMaturityDelaySeconds: vi.fn().mockResolvedValue(u256(0)),
+      proofMaturityDelaySeconds: vi.fn().mockResolvedValue(u256(maturity)),
       proofSubmitters: vi.fn().mockResolvedValue(proofSubmitter),
-      provenWithdrawals: vi.fn().mockResolvedValue([disputeGameProxy, 100n]),
+      provenWithdrawals: vi.fn().mockResolvedValue(proven),
       respectedGameType: vi.fn().mockResolvedValue(0),
     },
   };
   const dgf = {
     call: {
+      findLatestGames: vi.fn().mockResolvedValue([]),
+      gameAtIndex: vi.fn(),
+      gameContractId: vi.fn().mockResolvedValue(Array(32).fill(0xd5)),
       gameCount: vi.fn().mockResolvedValue(u256(0)),
+      gameMetadataAtIndex: vi.fn(),
+      virtualGameHubId: vi.fn().mockResolvedValue(Array(32).fill(0xd5)),
     },
+  };
+  const read = (/** @type {unknown} */ value) =>
+    gameReadFails
+      ? vi.fn().mockRejectedValue(new Error("The hub can't be read"))
+      : vi.fn().mockResolvedValue(value);
+  const hub = {
+    createdAtForGame: read(game.createdAt),
+    maxClockDuration: read(302_400n),
+    resolvedAtForGame: read(game.resolvedAt),
+    statusForGame: read(game.status),
+  };
+  /** @type {string[]} */
+  const hubs = [];
+  const reads = {
+    dgf,
+    hub: (/** @type {string} */ id) => {
+      hubs.push(id);
+
+      return { call: hub };
+    },
+    nodeUrl: "https://node.example.test",
+    portal,
   };
   const walletStore = {
     finalizeDuskEvmWithdrawal: vi
       .fn()
       .mockResolvedValue({ hash: "finalize-hash" }),
     getDuskEvmProofSubmitter: vi.fn().mockReturnValue(`0x${"2c".repeat(20)}`),
-    useContract: vi.fn(async (contractId) =>
-      contractId === "11".repeat(32) ? portal : dgf
-    ),
+    proveDuskEvmWithdrawal: vi.fn().mockResolvedValue({ hash: "prove-hash" }),
   };
   const networkStore = {
-    getLatestBlockTimestamp: vi.fn().mockResolvedValue(200n),
+    getLatestBlock: vi.fn().mockResolvedValue(tip),
   };
 
+  vi.doMock("$lib/bridge/bridgeReads", async (importOriginal) => ({
+    .../** @type {object} */ (await importOriginal()),
+    bridgeReads: () => reads,
+  }));
   vi.doMock("$lib/stores", () => ({
     // The node's gas price, as no custom one is set.
     gasPriceStore: readable(2n),
@@ -808,66 +1289,53 @@ function mockWithdrawalFinalization({
   }));
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (_url, request) => {
-      const body = JSON.parse(request.body);
-
-      if (body.method === "eth_call") {
-        return {
-          json: async () => ({
-            result: `0x${BigInt(gameStatus).toString(16).padStart(64, "0")}`,
-          }),
-          ok: true,
-        };
-      }
-
-      return {
-        json: async () => ({
-          result: {
-            blockHash: messagePassedLog.blockHash,
-            blockNumber: messagePassedLog.blockNumber,
-            logs: [messagePassedLog],
-            status: "0x1",
-            transactionHash: messagePassedLog.transactionHash,
-          },
-        }),
-        ok: true,
-      };
-    })
+    vi.fn(async () => ({
+      json: async () => ({
+        result: {
+          blockHash: messagePassedLog.blockHash,
+          blockNumber: messagePassedLog.blockNumber,
+          logs: [messagePassedLog],
+          status: "0x1",
+          transactionHash: messagePassedLog.transactionHash,
+        },
+      }),
+      ok: true,
+    }))
   );
 
-  return { dgf, networkStore, portal, walletStore };
+  return { dgf, hub, hubs, networkStore, portal, reads, walletStore };
 }
 
 /**
- * Answers the proven game's status and resolution time over the L1 RPC, and
- * leaves the other requests to the stub in place.
- *
- * @param {{ resolvedAt: bigint, status: number }} game
+ * DuskEVM's answers for a proof: the withdrawal's receipt, any block, and
+ * the message passer's storage proof in it.
  */
-function stubGameResolution({ resolvedAt, status }) {
-  const fetch = globalThis.fetch;
-
+function stubL2Proofs() {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url, request) => {
-      const body = JSON.parse(request.body);
-      // The `resolvedAt()` and `status()` selectors.
-      const selector = body.method === "eth_call" ? body.params[0].data : "";
-      const answer =
-        selector === "0x19effeb4"
-          ? resolvedAt
-          : selector === "0x200d2ed2"
-            ? BigInt(status)
-            : null;
+    vi.fn(async (_url, request) => {
+      const { method } = JSON.parse(request.body);
+      const result =
+        method === "eth_getBlockByNumber"
+          ? {
+              hash: `0x${"b1".repeat(32)}`,
+              stateRoot: `0x${"b2".repeat(32)}`,
+              timestamp: "0x1",
+            }
+          : method === "eth_getProof"
+            ? {
+                storageHash: `0x${"b3".repeat(32)}`,
+                storageProof: [{ proof: [toRlp(["0x01"])] }],
+              }
+            : {
+                blockHash: messagePassedLog.blockHash,
+                blockNumber: messagePassedLog.blockNumber,
+                logs: [messagePassedLog],
+                status: "0x1",
+                transactionHash: messagePassedLog.transactionHash,
+              };
 
-      return answer === null
-        ? await fetch(url, request)
-        : {
-            json: async () => ({
-              result: `0x${answer.toString(16).padStart(64, "0")}`,
-            }),
-            ok: true,
-          };
+      return { json: async () => ({ result }), ok: true };
     })
   );
 }

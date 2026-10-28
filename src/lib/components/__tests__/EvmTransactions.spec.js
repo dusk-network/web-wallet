@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 
 import { EvmTransactions } from "..";
+import { claimDay } from "$lib/bridge/claimDate";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { formatTimestamp } from "../EvmTransactions/withdrawalPresentation";
 
@@ -26,6 +27,12 @@ const mocks = vi.hoisted(() => {
   };
   /** @type {any[]} */
   let withdrawalItems = [];
+  /** @type {Set<(value: any) => void>} */
+  const historySubscribers = new Set();
+  let historyValue = { rows: /** @type {any[]} */ ([]) };
+  /** @type {Set<(value: any) => void>} */
+  const timesSubscribers = new Set();
+  let timesValue = { chain: /** @type {any} */ (null), network: "testnet" };
   const account = {
     /**
      * @param {(value: any) => void} run
@@ -51,11 +58,32 @@ const mocks = vi.hoisted(() => {
 
   return {
     account,
+    activityState: {
+      /** @param {(value: any) => void} run */
+      subscribe(run) {
+        historySubscribers.add(run);
+        run(historyValue);
+
+        return () => historySubscribers.delete(run);
+      },
+    },
+    bridgeTimes: {
+      load: vi.fn(() => Promise.resolve()),
+      /** @param {(value: any) => void} run */
+      subscribe(run) {
+        timesSubscribers.add(run);
+        run(timesValue);
+
+        return () => timesSubscribers.delete(run);
+      },
+    },
     configuredFinalizationConfig,
     finalizationConfig: configuredFinalizationConfig(),
     finalizeWithdrawal: vi.fn(),
+    historyWithdrawals: vi.fn(() => /** @type {any[]} */ ([])),
     hydrateWithdrawalActivity: vi.fn(() => withdrawalItems),
     loadDuskTransactionExecution: vi.fn(),
+    loadProveNowClaim: vi.fn(() => Promise.resolve(/** @type {any} */ (null))),
     loadWithdrawalActivity: vi.fn(),
     loadWithdrawalStatus: vi.fn(),
     mergeWithdrawalActivity: vi.fn((remembered, indexed) => {
@@ -89,6 +117,9 @@ const mocks = vi.hoisted(() => {
     proveWithdrawal: vi.fn(),
     recordWithdrawalSubmission: vi.fn(),
     refreshWithdrawalTransaction: vi.fn(),
+    rememberHistoryWithdrawals: vi.fn(() =>
+      Promise.resolve(/** @type {any[]} */ ([]))
+    ),
     rememberWithdrawalTransaction: vi.fn(),
     resumeWithdrawalTracking: vi.fn(),
     /**
@@ -97,6 +128,16 @@ const mocks = vi.hoisted(() => {
     setAccount(value) {
       accountValue = value;
       subscribers.forEach((run) => run(value));
+    },
+    /** @param {any[]} rows */
+    setHistoryRows(rows) {
+      historyValue = { rows };
+      historySubscribers.forEach((run) => run(historyValue));
+    },
+    /** @param {any} chain */
+    setTimes(chain) {
+      timesValue = { chain, network: "testnet" };
+      timesSubscribers.forEach((run) => run(timesValue));
     },
     /**
      * @param {any[]} value
@@ -110,6 +151,13 @@ const mocks = vi.hoisted(() => {
     withdrawalItems: () => withdrawalItems,
   };
 });
+
+vi.mock("$lib/activity", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  activityState: mocks.activityState,
+}));
+
+vi.mock("$lib/bridge/bridgeTimes", () => ({ default: mocks.bridgeTimes }));
 
 vi.mock("$lib/web3/walletConnection", () => ({
   account: mocks.account,
@@ -126,16 +174,19 @@ vi.mock("$lib/bridge/withdrawals", () => ({
     return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
   },
   loadDuskTransactionExecution: mocks.loadDuskTransactionExecution,
+  loadProveNowClaim: mocks.loadProveNowClaim,
   loadWithdrawalStatus: mocks.loadWithdrawalStatus,
   proveWithdrawal: mocks.proveWithdrawal,
 }));
 
 vi.mock("$lib/bridge/withdrawalActivity", () => ({
+  historyWithdrawals: mocks.historyWithdrawals,
   hydrateWithdrawalActivity: mocks.hydrateWithdrawalActivity,
   loadWithdrawalActivity: mocks.loadWithdrawalActivity,
   mergeWithdrawalActivity: mocks.mergeWithdrawalActivity,
   recordWithdrawalSubmission: mocks.recordWithdrawalSubmission,
   refreshWithdrawalTransaction: mocks.refreshWithdrawalTransaction,
+  rememberHistoryWithdrawals: mocks.rememberHistoryWithdrawals,
   rememberWithdrawalTransaction: mocks.rememberWithdrawalTransaction,
   resumeWithdrawalTracking: mocks.resumeWithdrawalTracking,
   trackWithdrawalTransaction: mocks.trackWithdrawalTransaction,
@@ -180,6 +231,9 @@ vi.mock("$lib/bridge/withdrawalActivity", () => ({
 
 const accountAddress = "0x2222222222222222222222222222222222222222";
 
+/** A claim date, as a withdrawal's status gives it: Mon 2 Nov 2026, 03:20:39 UTC. */
+const CLAIM_AT = Date.UTC(2026, 10, 2, 3, 20, 39);
+
 /**
  * @param {string} transactionHash
  * @param {string} [stage]
@@ -190,7 +244,6 @@ function activityItem(transactionHash, stage = "submitted") {
     amountWei: "100000000000000000",
     blockNumber: "13668",
     chainId: 5678,
-    challengePeriodEnd: null,
     createdAt: 1_000,
     explorerStatus: null,
     l1TransactionHash: null,
@@ -222,6 +275,14 @@ describe("EvmTransactions", () => {
     mocks.rememberWithdrawalTransaction.mockReset();
     mocks.resumeWithdrawalTracking.mockReset();
     mocks.trackWithdrawalTransaction.mockClear();
+    mocks.historyWithdrawals.mockReset();
+    mocks.historyWithdrawals.mockReturnValue([]);
+    mocks.rememberHistoryWithdrawals.mockReset();
+    mocks.rememberHistoryWithdrawals.mockResolvedValue([]);
+    mocks.loadProveNowClaim.mockReset();
+    mocks.loadProveNowClaim.mockResolvedValue(null);
+    mocks.setHistoryRows([]);
+    mocks.setTimes(null);
     mocks.finalizationConfig = mocks.configuredFinalizationConfig();
     mocks.setAccount({ address: undefined, isConnected: false });
     mocks.setWithdrawalItems([]);
@@ -804,6 +865,8 @@ describe("EvmTransactions", () => {
       {
         ...selected,
         proofSubmitter: "0xeb9ea22334e679cdbc669cf9ad2d713b559708b1",
+        readyAt: String(CLAIM_AT / 1_000),
+        readyAtExact: true,
         stage: "proven_waiting",
       },
     ]);
@@ -813,7 +876,175 @@ describe("EvmTransactions", () => {
         name: /0\.1 DUSK.*Waiting period/i,
       })
     ).toHaveAttribute("aria-expanded", "true");
-    expect(getByText("Claim in about 7 days.")).toBeInTheDocument();
+    expect(
+      getByText(`Claim from ${claimDay(CLAIM_AT, "en")}`, {
+        selector: ".bridge-timeline *",
+      })
+    ).toBeInTheDocument();
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalledWith(editedHash);
+  });
+
+  it("lists the withdrawals the history knows without an EVM wallet, with their claim date and a Claim button", async () => {
+    const waitingHash = `0x${"64".repeat(32)}`;
+    const readyHash = `0x${"65".repeat(32)}`;
+    const otherHash = `0x${"66".repeat(32)}`;
+    const sender = "0xc11d5aab4234e255e214ac6e8c0ad61fa0836473";
+
+    mocks.historyWithdrawals.mockReturnValue([
+      { hash: `0x${"a1".repeat(32)}`, nonce: 41n },
+      { hash: `0x${"a2".repeat(32)}`, nonce: 42n },
+    ]);
+    mocks.setWithdrawalItems([
+      {
+        ...activityItem(waitingHash, "proven_waiting"),
+        account: sender,
+        readyAt: String(CLAIM_AT / 1_000),
+        readyAtExact: false,
+        withdrawalHash: `0x${"a1".repeat(32)}`,
+      },
+      {
+        ...activityItem(readyHash, "ready_to_finalize"),
+        account: sender,
+        withdrawalHash: `0x${"a2".repeat(32)}`,
+      },
+      // Another account's, which the history doesn't know.
+      {
+        ...activityItem(otherHash, "proven_waiting"),
+        account: sender,
+        withdrawalHash: `0x${"a3".repeat(32)}`,
+      },
+    ]);
+    mocks.setHistoryRows([{ hash: "some-row" }]);
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      blockNumber: 13673n,
+      stage: "ready_to_finalize",
+      transactionHash: readyHash,
+      withdrawalHash: `0x${"a2".repeat(32)}`,
+    });
+    mocks.finalizeWithdrawal.mockResolvedValue("claim-hash");
+
+    const { findByRole, getByRole, queryByRole, queryByText } = render(
+      EvmTransactions,
+      { target: document.body }
+    );
+
+    expect(
+      await findByRole("button", {
+        name: new RegExp(`Claim from about ${claimDay(CLAIM_AT, "en")}`),
+      })
+    ).toBeInTheDocument();
+    expect(
+      queryByRole("button", { name: new RegExp(otherHash.slice(0, 8)) })
+    ).toBeNull();
+    expect(queryByText("No withdrawals found")).toBeNull();
+    expect(mocks.historyWithdrawals).toHaveBeenCalledWith([
+      { hash: "some-row" },
+    ]);
+    // What the history knows is followed, as remembered ones are.
+    expect(mocks.trackWithdrawalTransaction).toHaveBeenCalledWith(waitingHash);
+
+    await fireEvent.click(
+      getByRole("button", { name: /0\.1 DUSK.*Ready to claim/ })
+    );
+    await fireEvent.click(
+      await findByRole("button", { name: /^claim on dusk$/i })
+    );
+
+    expect(mocks.finalizeWithdrawal).toHaveBeenCalledWith(readyHash);
+  });
+
+  it("finds on DuskEVM's explorer the history's withdrawals not remembered yet, and follows them", async () => {
+    const foundHash = `0x${"67".repeat(32)}`;
+    const known = [{ hash: `0x${"b1".repeat(32)}`, nonce: 7n }];
+
+    mocks.historyWithdrawals.mockReturnValue(known);
+    mocks.rememberHistoryWithdrawals.mockImplementation(async () => {
+      const item = {
+        ...activityItem(foundHash, "submitted"),
+        account: "0x9999999999999999999999999999999999999999",
+        withdrawalHash: known[0].hash,
+      };
+
+      mocks.setWithdrawalItems([item]);
+
+      return [item];
+    });
+    mocks.setHistoryRows([{ hash: "a-proof" }]);
+
+    const { findByRole } = render(EvmTransactions, { target: document.body });
+
+    expect(
+      await findByRole("button", { name: /0\.1 DUSK.*Processing/ })
+    ).toBeInTheDocument();
+    expect(mocks.rememberHistoryWithdrawals).toHaveBeenCalledWith(known);
+    await waitFor(() => {
+      expect(mocks.trackWithdrawalTransaction).toHaveBeenCalledWith(foundHash);
+    });
+  });
+
+  it("says when a withdrawal ready to prove can be claimed if it's proved now", async () => {
+    const txHash = `0x${"68".repeat(32)}`;
+
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      blockNumber: 13674n,
+      stage: "ready_to_prove",
+      transactionHash: txHash,
+      withdrawalHash: `0x${"ec".repeat(32)}`,
+    });
+    mocks.loadProveNowClaim.mockResolvedValue({
+      at: CLAIM_AT,
+      exact: true,
+      overdue: false,
+    });
+
+    const { findByText, getByLabelText, getByRole } = render(EvmTransactions, {
+      target: document.body,
+    });
+
+    await fireEvent.input(getByLabelText("Find by transaction hash"), {
+      target: { value: txHash },
+    });
+    await fireEvent.click(getByRole("button", { name: /^check$/i }));
+
+    expect(
+      await findByText(
+        `Step 1 of 2. Fee from your public account. If you prove now, you can claim from ${claimDay(CLAIM_AT, "en")}.`
+      )
+    ).toBeInTheDocument();
+    expect(mocks.loadProveNowClaim).toHaveBeenCalledWith(txHash);
+  });
+
+  it("says before the proof how long the steps on Dusk take, as the chain said", async () => {
+    const txHash = `0x${"69".repeat(32)}`;
+
+    mocks.setTimes({
+      withdrawal: {
+        at: Date.now(),
+        finalitySeconds: 302_400,
+        maturitySeconds: 604_800,
+        outputSeconds: 1_700,
+      },
+    });
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      blockNumber: 13675n,
+      stage: "waiting_for_output",
+      transactionHash: txHash,
+      withdrawalHash: `0x${"ed".repeat(32)}`,
+    });
+
+    const { findByText, getByLabelText, getByRole } = render(EvmTransactions, {
+      target: document.body,
+    });
+
+    await fireEvent.input(getByLabelText("Find by transaction hash"), {
+      target: { value: txHash },
+    });
+    await fireEvent.click(getByRole("button", { name: /^check$/i }));
+
+    expect(
+      await findByText(
+        "Claim 7 days after you prove. You can prove about 30 minutes after sending."
+      )
+    ).toBeInTheDocument();
   });
 });

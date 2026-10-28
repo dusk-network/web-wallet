@@ -183,6 +183,52 @@ describe("DuskEVM withdrawal tracking", () => {
     );
   });
 
+  it("keeps the proof's game and a late game's date, and reads that game with the Portal next time", async () => {
+    const game = `0x${"1e".repeat(20)}`;
+
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      ...readyToProveStatus(),
+      claimOverdue: true,
+      disputeGameProxy: game,
+      proofSubmitter: account,
+      readyAt: 1_793_459_389n,
+      readyAtExact: false,
+      stage: "proven_waiting",
+    });
+
+    await refreshWithdrawalTransaction(transactionHash);
+
+    expect(getRememberedWithdrawalTransaction(transactionHash)).toEqual(
+      expect.objectContaining({
+        claimOverdue: true,
+        proofGame: game,
+        readyAt: "1793459389",
+      })
+    );
+    expect(mocks.loadWithdrawalStatus).toHaveBeenLastCalledWith(
+      transactionHash,
+      { proofGame: null }
+    );
+
+    // A game that couldn't be read leaves the date known so far.
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      ...readyToProveStatus(),
+      disputeGameProxy: game,
+      proofSubmitter: account,
+      stage: "proven_waiting",
+    });
+
+    await refreshWithdrawalTransaction(transactionHash);
+
+    expect(mocks.loadWithdrawalStatus).toHaveBeenLastCalledWith(
+      transactionHash,
+      { proofGame: game }
+    );
+    expect(getRememberedWithdrawalTransaction(transactionHash)).toEqual(
+      expect.objectContaining({ claimOverdue: true, readyAt: "1793459389" })
+    );
+  });
+
   it("remembers a rejected proof", async () => {
     mocks.loadWithdrawalStatus.mockResolvedValue({
       ...readyToProveStatus(),

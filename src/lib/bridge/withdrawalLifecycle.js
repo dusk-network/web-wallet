@@ -13,12 +13,6 @@
 export const WITHDRAWAL_REPORT_SECONDS = 3_600;
 
 /**
- * The waiting period after the proof, for when Dusk's own value isn't known:
- * the proof maturity delay on DuskEVM mainnet and testnet.
- */
-export const WITHDRAWAL_WAITING_PERIOD_SECONDS = 604_800;
-
-/**
  * Why a proof or claim that needs more gas than the wallet allows isn't sent.
  */
 export const WITHDRAWAL_GAS_REFUSAL =

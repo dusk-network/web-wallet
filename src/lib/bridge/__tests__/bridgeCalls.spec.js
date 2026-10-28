@@ -87,6 +87,30 @@ describe("decodeBridgeCall", () => {
     expect(withdrawal("prove-account")).not.toBe(withdrawal("prove-contract"));
   });
 
+  it("should give a withdrawal's hash, which the Portal keys its proofs and claim by", () => {
+    // wallet-both.dusk's proof on testnet, as sent: withdrawal 41's hash, as
+    // DuskEVM's explorer has it.
+    expect(decode("prove-wallet-both")).toStrictEqual({
+      amount: "1000000000",
+      hash: call("prove-wallet-both").expected.hash,
+      kind: "prove",
+      withdrawal: expect.stringMatching(/^0001[0-9a-f]{58}29$/),
+    });
+
+    /** @param {string} name */
+    const hashOf = (name) => {
+      const out = decode(name);
+
+      return out && "hash" in out ? out.hash : null;
+    };
+
+    // A withdrawal's proof and its claims give the same hash; another's, another.
+    expect(hashOf("prove-account")).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(hashOf("claim-account")).toBe(hashOf("prove-account"));
+    expect(hashOf("claim-external-account")).toBe(hashOf("prove-account"));
+    expect(hashOf("prove-contract")).not.toBe(hashOf("prove-account"));
+  });
+
   it("should read nothing for other contracts, and null for the bridge's calls that don't decode", () => {
     const { args } = call("deposit");
 

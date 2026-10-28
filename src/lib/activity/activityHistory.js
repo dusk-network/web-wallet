@@ -1372,13 +1372,16 @@ const textOrUndefined = (value) => (value ? String(value) : undefined);
 /**
  * Whether an entry's details are still to look up: it has none, or it is a
  * call to the bridge looked up before the history read what bridge calls
- * do.
+ * do, or a withdrawal's proof or claim read before the history kept the
+ * withdrawal's hash, which its claim date is read by.
  *
- * @param {{ bridge?: unknown, contractId?: string, detailsAt?: number }} entry
+ * @param {{ bridge?: import("$lib/bridge/bridgeCalls").BridgeCall | null, contractId?: string, detailsAt?: number }} entry
  */
 export const needsDetails = (entry) =>
   !entry.detailsAt ||
-  (entry.bridge === undefined && isBridgeContract(entry.contractId));
+  (entry.bridge === undefined && isBridgeContract(entry.contractId)) ||
+  ((entry.bridge?.kind === "prove" || entry.bridge?.kind === "claim") &&
+    !entry.bridge.hash);
 
 /**
  * @param {any} tx

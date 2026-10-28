@@ -10,8 +10,8 @@ const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
  * @property {string | null} actionError
  * @property {string | null} amountWei
  * @property {string | null} blockNumber
- * @property {string | null} challengePeriodEnd
  * @property {number} chainId
+ * @property {boolean} [claimOverdue] Whether its game's resolution is late, as of `readyAt`.
  * @property {number} createdAt
  * @property {string | null} explorerStatus
  * @property {string | null} l1TransactionHash
@@ -19,6 +19,7 @@ const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
  * @property {"finalize" | "prove" | null} pendingAction
  * @property {string | null} pendingTransactionHash
  * @property {boolean} [proofRejected]
+ * @property {string | null} [proofGame] The game its proof went against, as the last check found.
  * @property {string | null} proofSubmitter
  * @property {string | null} readyAt
  * @property {boolean} [readyAtExact]

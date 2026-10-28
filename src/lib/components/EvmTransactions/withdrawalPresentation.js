@@ -1,8 +1,14 @@
 import { get } from "svelte/store";
 
 import {
-  WITHDRAWAL_WAITING_PERIOD_SECONDS,
-  roughDuration,
+  beforeProofText,
+  claimAfterProving,
+  claimDay,
+  claimText,
+  durationWords,
+  proveNowText,
+} from "$lib/bridge/claimDate";
+import {
   withdrawalStageDefaultMessage,
   withdrawalStageProgress,
 } from "$lib/bridge/withdrawalLifecycle";
@@ -71,52 +77,112 @@ export function timelineState(step, stage, stepCount) {
 }
 
 /**
- * "31 Oct, 14:20", in the user's locale and time zone.
+ * A waiting withdrawal's claim date, as the chain says it (`claimFrom`):
+ * exact once its game has resolved, the earliest before that, and overdue
+ * when the game's resolution is late. Null until Dusk said it: no date is
+ * made up from a fixed wait.
  *
- * @param {number} milliseconds
- * @param {string} [locale]
+ * @param {any} item
+ * @returns {import("$lib/bridge/claimDate").ClaimDate | null}
  */
-export function formatClaimTime(milliseconds, locale) {
-  return new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    month: "short",
-  }).format(milliseconds);
+export function claimDateOf(item) {
+  return item?.readyAt
+    ? {
+        at: Number(item.readyAt) * 1_000,
+        exact: Boolean(item.readyAtExact),
+        overdue: Boolean(item.claimOverdue),
+      }
+    : null;
 }
 
 /**
- * The claim time once Dusk knows it, otherwise the time left: estimated from
- * the proof, or the usual waiting period. A rejected proof can't be claimed.
+ * @typedef {{
+ *   locale?: string,
+ *   proveNow?: import("$lib/bridge/claimDate").ClaimDate | null,
+ *   time?: RouteTime | null,
+ * }} StageMessageOptions
+ *   `time` is what the chain said about withdrawals (`routeTime`), and
+ *   `proveNow` when the withdrawal can be claimed if it's proved now.
+ */
+
+/**
+ * The line under a proved withdrawal's step: when it can be claimed, as
+ * the chain says, or, until that's read, the Portal's wait after the proof.
+ * A rejected proof can't be claimed.
  *
  * @param {any} item
- * @param {number} now
+ * @param {(ms: number) => string} when
+ * @param {RouteTime | null | undefined} time
  */
-function waitingPeriodMessage(item, now) {
+function waitingMessage(item, when, time) {
   if (item.proofRejected) {
     return "The proof was rejected. Prove again once DuskEVM reports a new output.";
   }
 
-  const claimAt = item.readyAt
-    ? Number(item.readyAt) * 1_000
-    : Date.parse(item.challengePeriodEnd ?? "");
-
-  if (item.readyAt && item.readyAtExact) {
-    return `Claim from ${formatClaimTime(claimAt)}.`;
-  }
-
-  const remaining =
-    claimAt > now ? (claimAt - now) / 1_000 : WITHDRAWAL_WAITING_PERIOD_SECONDS;
-
-  return `Claim in about ${roughDuration(remaining)}.`;
+  return (
+    claimText(claimDateOf(item), when) ||
+    (time?.maturity
+      ? `Claim ${durationWords(time.maturity)} after the proof at the soonest.`
+      : "")
+  );
 }
 
 /**
- * @param {any} item
- * @param {number} [now]
+ * Before the proof: when it can be claimed if it's proved now, or the
+ * Portal's wait after a proof.
+ *
+ * @param {(ms: number) => string} when
+ * @param {StageMessageOptions} options
  */
-export function stageMessage(item, now = Date.now()) {
-  return item?.stage === "proven_waiting"
-    ? waitingPeriodMessage(item, now)
-    : withdrawalStageDefaultMessage(item?.stage);
+function provingMessage(when, { proveNow, time }) {
+  const step = withdrawalStageDefaultMessage("ready_to_prove");
+
+  if (proveNow?.at) {
+    return `${step} ${proveNowText(proveNow, when)}.`;
+  }
+
+  return time?.maturity ? `${step} ${claimAfterProving(time.maturity)}` : step;
+}
+
+/**
+ * The line under a withdrawal's current step.
+ *
+ * @param {any} item
+ * @param {StageMessageOptions} [options]
+ */
+export function stageMessage(item, options = {}) {
+  const locale = options.locale ?? get(settingsStore).language;
+  const when = (/** @type {number} */ ms) => claimDay(ms, locale);
+
+  switch (item?.stage) {
+    case "proven_waiting":
+      return waitingMessage(item, when, options.time);
+    case "ready_to_prove":
+      return provingMessage(when, options);
+    case "submitted":
+    case "waiting_for_output":
+      return (
+        beforeProofText(options.time) ||
+        withdrawalStageDefaultMessage(item.stage)
+      );
+    default:
+      return withdrawalStageDefaultMessage(item?.stage);
+  }
+}
+
+/**
+ * A row's line about what's next: when a proved withdrawal can be claimed,
+ * or that it can be now; nothing for the other stages.
+ *
+ * @param {any} item
+ * @param {string} [locale]
+ */
+export function activityNote(item, locale = get(settingsStore).language) {
+  if (item?.stage === "ready_to_finalize") {
+    return "Ready to claim";
+  }
+
+  return item?.stage === "proven_waiting" && !item.proofRejected
+    ? claimText(claimDateOf(item), (ms) => claimDay(ms, locale))
+    : "";
 }
