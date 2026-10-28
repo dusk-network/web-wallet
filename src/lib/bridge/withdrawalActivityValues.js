@@ -22,6 +22,7 @@ const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
  * @property {string | null} proofSubmitter
  * @property {string | null} readyAt
  * @property {boolean} [readyAtExact]
+ * @property {string | null} sentAt When the withdrawal was sent: the time of its DuskEVM block, once read.
  * @property {"explorer" | "local"} source
  * @property {"failed" | "finalize_submitted" | "finalized" | "prove_submitted" | "proven_waiting" | "ready_to_finalize" | "ready_to_prove" | "submitted" | "waiting_for_output"} stage
  * @property {string | null} statusMessage

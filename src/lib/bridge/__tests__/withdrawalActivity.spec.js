@@ -239,6 +239,34 @@ describe("DuskEVM withdrawal activity", () => {
     ]);
   });
 
+  it("lists the latest sent first, by the DuskEVM block's time once known, not by when a withdrawal was looked up", () => {
+    const sentFirst = `0x${"81".repeat(32)}`;
+    const sentLast = `0x${"82".repeat(32)}`;
+
+    // Looked up now, the first one sent in September.
+    const lookedUp = {
+      ...rememberWithdrawalTransaction(
+        /** @type {`0x${string}`} */ (sentFirst),
+        {
+          account,
+          createdAt: Date.parse("2026-10-26T01:10:00Z"),
+        }
+      ),
+      sentAt: "2026-09-24T20:49:00.000Z",
+    };
+    const sentHere = rememberWithdrawalTransaction(
+      /** @type {`0x${string}`} */ (sentLast),
+      { account, createdAt: Date.parse("2026-10-01T09:00:00Z") }
+    );
+
+    expect(
+      mergeWithdrawalActivity(
+        [/** @type {any} */ (lookedUp), /** @type {any} */ (sentHere)],
+        []
+      ).map((item) => item.transactionHash)
+    ).toEqual([sentLast, sentFirst]);
+  });
+
   it("keeps indexed progress when tracking fails before canonical observation", () => {
     const remembered = {
       ...rememberWithdrawalTransaction(withdrawalHash, {

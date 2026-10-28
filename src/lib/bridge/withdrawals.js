@@ -573,6 +573,17 @@ async function getL2Block(blockNumber) {
 }
 
 /**
+ * The time of a DuskEVM block, as an ISO string.
+ *
+ * @param {bigint} blockNumber
+ */
+export async function loadL2BlockTime(blockNumber) {
+  const block = await getL2Block(blockNumber);
+
+  return new Date(Number(BigInt(block.timestamp)) * 1_000).toISOString();
+}
+
+/**
  * @param {`0x${string}`} withdrawalHash
  * @param {bigint} blockNumber
  */

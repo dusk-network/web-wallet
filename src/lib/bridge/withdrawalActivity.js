@@ -82,8 +82,20 @@ export function mergeWithdrawalActivity(remembered, indexed) {
   }
 
   return [...byHash.values()]
-    .sort((left, right) => right.createdAt - left.createdAt)
+    .sort((left, right) => sentTime(right) - sentTime(left))
     .slice(0, MAX_ACTIVITY_ITEMS);
+}
+
+/**
+ * When a withdrawal was sent, in milliseconds: its DuskEVM block's time once
+ * read, or the time it was first seen.
+ *
+ * @param {WithdrawalActivityItem} item
+ */
+export function sentTime(item) {
+  const time = Date.parse(item.sentAt ?? item.timestamp ?? "");
+
+  return Number.isNaN(time) ? item.createdAt : time;
 }
 
 /**

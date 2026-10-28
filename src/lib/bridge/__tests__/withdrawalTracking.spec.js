@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   loadDuskTransactionExecution: vi.fn(),
+  loadL2BlockTime: vi.fn(),
   loadWithdrawalStatus: vi.fn(),
 }));
 
@@ -11,6 +12,7 @@ vi.mock("$lib/web3/walletConnection", () => ({
 
 vi.mock("$lib/bridge/withdrawals", () => ({
   loadDuskTransactionExecution: mocks.loadDuskTransactionExecution,
+  loadL2BlockTime: mocks.loadL2BlockTime,
   loadWithdrawalStatus: mocks.loadWithdrawalStatus,
 }));
 
@@ -21,6 +23,10 @@ const duskTransactionHash = "66".repeat(32);
 
 /** @type {typeof import("../withdrawalTracking").refreshWithdrawalTransaction} */
 let refreshWithdrawalTransaction;
+/** @type {typeof import("../withdrawalTracking").resumeWithdrawalTracking} */
+let resumeWithdrawalTracking;
+/** @type {typeof import("../withdrawalTracking").trackWithdrawalTransaction} */
+let trackWithdrawalTransaction;
 /** @type {typeof import("../withdrawalActivityStorage").getRememberedWithdrawalTransaction} */
 let getRememberedWithdrawalTransaction;
 /** @type {typeof import("../withdrawalActivityStorage").rememberWithdrawalTransaction} */
@@ -39,7 +45,11 @@ function readyToProveStatus() {
 
 describe("DuskEVM withdrawal tracking", () => {
   beforeAll(async () => {
-    ({ refreshWithdrawalTransaction } = await import("../withdrawalTracking"));
+    ({
+      refreshWithdrawalTransaction,
+      resumeWithdrawalTracking,
+      trackWithdrawalTransaction,
+    } = await import("../withdrawalTracking"));
     ({
       getRememberedWithdrawalTransaction,
       rememberWithdrawalTransaction,
@@ -50,8 +60,96 @@ describe("DuskEVM withdrawal tracking", () => {
   beforeEach(() => {
     localStorage.clear();
     mocks.loadDuskTransactionExecution.mockReset();
+    mocks.loadL2BlockTime.mockReset();
+    mocks.loadL2BlockTime.mockResolvedValue("2026-09-25T11:51:09.000Z");
     mocks.loadWithdrawalStatus.mockReset();
     rememberWithdrawalTransaction(transactionHash, { account });
+  });
+
+  it("takes when a withdrawal was sent from its DuskEVM block, and its amount from its message, once", async () => {
+    const lookedUpAt =
+      getRememberedWithdrawalTransaction(transactionHash)?.timestamp;
+
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      ...readyToProveStatus(),
+      blockNumber: 2_580_123n,
+      withdrawal: { value: 10n ** 19n },
+    });
+
+    await expect(
+      refreshWithdrawalTransaction(transactionHash)
+    ).resolves.toEqual(
+      expect.objectContaining({
+        amountWei: "10000000000000000000",
+        sentAt: "2026-09-25T11:51:09.000Z",
+        timestamp: lookedUpAt,
+      })
+    );
+    expect(mocks.loadL2BlockTime).toHaveBeenCalledExactlyOnceWith(2_580_123n);
+
+    await refreshWithdrawalTransaction(transactionHash);
+
+    expect(mocks.loadL2BlockTime).toHaveBeenCalledOnce();
+    expect(getRememberedWithdrawalTransaction(transactionHash)?.sentAt).toBe(
+      "2026-09-25T11:51:09.000Z"
+    );
+  });
+
+  it("reads the block's time again at the next refresh when it couldn't", async () => {
+    mocks.loadWithdrawalStatus.mockResolvedValue(readyToProveStatus());
+    mocks.loadL2BlockTime.mockRejectedValueOnce(new Error("RPC unavailable"));
+
+    await expect(
+      refreshWithdrawalTransaction(transactionHash)
+    ).resolves.toEqual(
+      expect.objectContaining({ sentAt: null, stage: "ready_to_prove" })
+    );
+
+    await expect(
+      refreshWithdrawalTransaction(transactionHash)
+    ).resolves.toEqual(
+      expect.objectContaining({ sentAt: "2026-09-25T11:51:09.000Z" })
+    );
+    expect(mocks.loadL2BlockTime).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps tracking a withdrawal first seen finalized until its block's time is read", async () => {
+    vi.useFakeTimers();
+
+    try {
+      mocks.loadWithdrawalStatus.mockResolvedValue({
+        ...readyToProveStatus(),
+        stage: "finalized",
+      });
+      mocks.loadL2BlockTime.mockRejectedValueOnce(new Error("RPC unavailable"));
+
+      const tracking = trackWithdrawalTransaction(transactionHash);
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(getRememberedWithdrawalTransaction(transactionHash)).toEqual(
+        expect.objectContaining({ sentAt: null, stage: "finalized" })
+      );
+
+      // Tracked still, and again after a reload.
+      expect(
+        resumeWithdrawalTracking(account).map((item) => item.transactionHash)
+      ).toStrictEqual([transactionHash]);
+
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      await expect(tracking).resolves.toEqual(
+        expect.objectContaining({
+          sentAt: "2026-09-25T11:51:09.000Z",
+          stage: "finalized",
+        })
+      );
+      expect(mocks.loadWithdrawalStatus).toHaveBeenCalledOnce();
+      expect(mocks.loadL2BlockTime).toHaveBeenCalledTimes(2);
+      expect(resumeWithdrawalTracking(account)).toStrictEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("persists canonical withdrawal progress independently of the activity route", async () => {

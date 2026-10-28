@@ -90,9 +90,12 @@ reconnect(wagmiConfig);
 export const modal = createAppKit({
   adapters: [wagmiAdapter],
   defaultNetwork: duskEvm,
+  // Wallets only: no email or social logins, which would make a new wallet.
   features: {
     analytics: false,
+    email: false,
     onramp: false,
+    socials: false,
     swaps: false,
   },
   networks,

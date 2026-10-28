@@ -11,6 +11,7 @@ import {
 } from "$lib/bridge/withdrawalActivityValues";
 import {
   loadDuskTransactionExecution,
+  loadL2BlockTime,
   loadWithdrawalStatus,
 } from "$lib/bridge/withdrawals";
 
@@ -45,7 +46,61 @@ function statusPatch(status) {
     }
   }
 
+  // The amount, which a withdrawal found by its hash only has from here.
+  if (typeof status.withdrawal?.value === "bigint") {
+    patch.amountWei = status.withdrawal.value;
+  }
+
   return patch;
+}
+
+/**
+ * When a withdrawal was sent: the time of its DuskEVM block, read once. A
+ * withdrawal found by its hash would otherwise show when it was looked up.
+ *
+ * @param {any} remembered
+ * @param {any} status
+ */
+async function sentAtPatch(remembered, status) {
+  if (remembered.sentAt || status.blockNumber === undefined) {
+    return {};
+  }
+
+  try {
+    return { sentAt: await loadL2BlockTime(BigInt(status.blockNumber)) };
+  } catch {
+    // Read again at the next refresh.
+    return {};
+  }
+}
+
+/**
+ * Whether nothing is left to read about a withdrawal: it failed, or it is
+ * finalized and when it was sent is known, or can't be. A withdrawal first
+ * seen finalized while its block's time couldn't be read is read again.
+ *
+ * @param {any} item
+ */
+function isSettled(item) {
+  return (
+    item.stage === "failed" ||
+    (item.stage === "finalized" &&
+      (Boolean(item.sentAt) || (item.blockNumber ?? null) === null))
+  );
+}
+
+/**
+ * Reads when a finalized withdrawal was sent, which is all that is left to
+ * read about it.
+ *
+ * @param {any} remembered
+ */
+async function refreshSentAt(remembered) {
+  const patch = await sentAtPatch(remembered, remembered);
+
+  return patch.sentAt
+    ? updateWithdrawalTransaction(remembered.transactionHash, patch)
+    : remembered;
 }
 
 /**
@@ -120,15 +175,9 @@ async function reconcilePendingSubmission(remembered, status) {
  * portal state. Native proof/finalization failures are checked separately
  * because an executed Dusk transaction may still contain an execution error.
  *
- * @param {string} transactionHash
+ * @param {any} remembered
  */
-export async function refreshWithdrawalTransaction(transactionHash) {
-  const remembered = getRememberedWithdrawalTransaction(transactionHash);
-
-  if (!remembered || remembered.stage === "finalized") {
-    return remembered;
-  }
-
+async function refreshStatus(remembered) {
   try {
     const loadedStatus = await loadWithdrawalStatus(remembered.transactionHash);
     const reconciliation = await reconcilePendingSubmission(
@@ -137,6 +186,7 @@ export async function refreshWithdrawalTransaction(transactionHash) {
     );
     const patch = {
       ...statusPatch(reconciliation.status),
+      ...(await sentAtPatch(remembered, loadedStatus)),
       ...(reconciliation.actionError !== undefined
         ? { actionError: reconciliation.actionError }
         : {}),
@@ -175,6 +225,23 @@ export async function refreshWithdrawalTransaction(transactionHash) {
       trackingError: message,
     });
   }
+}
+
+/**
+ * Reads where a withdrawal is, or, once it is finalized, when it was sent if
+ * that couldn't be read before.
+ *
+ * @param {string} transactionHash
+ */
+export async function refreshWithdrawalTransaction(transactionHash) {
+  const remembered = getRememberedWithdrawalTransaction(transactionHash);
+  const isFinalized = remembered?.stage === "finalized";
+
+  if (!remembered || (isFinalized && isSettled(remembered))) {
+    return remembered;
+  }
+
+  return isFinalized ? refreshSentAt(remembered) : refreshStatus(remembered);
 }
 
 /**
@@ -252,7 +319,7 @@ export function trackWithdrawalTransaction(transactionHash, options = {}) {
     while (true) {
       const item = await refreshWithdrawalTransaction(hash);
 
-      if (!item || item.stage === "finalized" || item.stage === "failed") {
+      if (!item || isSettled(item)) {
         return item;
       }
 
@@ -273,8 +340,7 @@ export function resumeWithdrawalTracking(account) {
   const withdrawals = hydrateWithdrawalActivity()
     .filter(
       (item) =>
-        item.stage !== "finalized" &&
-        item.stage !== "failed" &&
+        !isSettled(item) &&
         (item.account === null || item.account === normalizedAccount)
     )
     .slice(0, MAX_ACTIVITY_ITEMS);

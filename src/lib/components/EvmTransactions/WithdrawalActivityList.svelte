@@ -123,7 +123,7 @@
           >
             <span class="activity-list__primary">
               <strong>{activityAmount(item) ?? "DUSK withdrawal"}</strong>
-              <span>{formatTimestamp(item.timestamp)}</span>
+              <span>{formatTimestamp(item.sentAt ?? item.timestamp)}</span>
             </span>
             <span class="activity-list__status">
               <span class="activity-list__status-summary">

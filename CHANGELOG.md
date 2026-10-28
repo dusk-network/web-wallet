@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Lock a wallet with a password after 5 or 15 minutes without activity, or never, as set in Settings
 - Hint at how strong a new password is
 - Warn while a gas price or limit is typed outside its bounds
+- Show a withdrawal's network fee and its two steps on Dusk before it is sent
+- Label the Bridge amount, with the balance available and Use max
+- Show the connected DuskEVM account in the Bridge
 
 ### Changed
 
@@ -41,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sum up the terms before accepting them, with their own links to the Terms of Use and the Privacy Policy
 - Offer Unlock only once a wallet is kept in the browser
 - Name the eye button Show balances while balances are hidden
+- Title each withdrawal with its amount, show its status once, and say DuskEVM instead of L2
+- Swap the bridge direction with the ↑↓ button
+- Offer only wallets when connecting to DuskEVM
 
 ### Removed
 
@@ -53,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep the last verified `.dusk` name in the profile switcher when looking it up fails
 - Name the DUSK unit after amounts for screen readers
 - Give controls on phones a tap area of at least 44 px
+- Date a withdrawal found by its hash by its DuskEVM block, not by the lookup
 
 ## [1.8.0] - 2026-03-25
 
