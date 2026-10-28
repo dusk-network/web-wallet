@@ -137,6 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say Nothing to unstake or claim beside the native stake, not under Unstake from Sozu
 - Keep the top bar inside the window at every width from 320 px
 - Open the network and profile menus inside the window on phones
+- Forget the EVM wallets connected here on Reset, so none comes back and Bridge loads nothing from Reown after it
 - Keep the labels in a staking summary on one line
 
 ## [1.8.0] - 2026-03-25

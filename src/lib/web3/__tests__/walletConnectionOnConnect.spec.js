@@ -120,4 +120,134 @@ describe("the EVM wallet connection, on Connect", () => {
 
     expect(wasConnectedBefore()).toBe(true);
   });
+
+  it("should forget the wallets connected here, as Reset does: none comes back until Connect is pressed", async () => {
+    const appKit = stubAppKit();
+    const {
+      forgetEvmWallets,
+      modal,
+      startWalletConnection,
+      wasConnectedBefore,
+    } = await load();
+    const connection = [
+      "-walletlink:https://www.walletlink.org:session:id",
+      "@appkit/connection_status",
+      "@appkit/wallet_id",
+      "@w3m/connected_wallet_image_url",
+      "WALLETCONNECT_DEEPLINK_CHOICE",
+      "wagmi.recentConnectorId",
+      "wagmi.store",
+      "wc@2:core:0.3//keychain",
+    ];
+
+    for (const key of connection) {
+      localStorage.setItem(key, "kept by the connection");
+    }
+
+    // The wallet's own, and the bridge's.
+    localStorage.setItem("web-wallet-preferences", "{}");
+    localStorage.setItem("dusk-evm:withdrawal-activity:v1", "[]");
+
+    // WalletConnect's database, which its client holds open while it runs.
+    /** @type {IDBDatabase} */
+    const held = await new Promise((resolve) => {
+      const request = indexedDB.open("WALLET_CONNECT_V2_INDEXED_DB");
+
+      request.onupgradeneeded = () =>
+        request.result.createObjectStore("keyvaluestorage");
+      request.onsuccess = () => {
+        const transaction = request.result.transaction(
+          "keyvaluestorage",
+          "readwrite"
+        );
+
+        transaction
+          .objectStore("keyvaluestorage")
+          .put("a session", "wc@2:client:0.3//session");
+        transaction.oncomplete = () => resolve(request.result);
+      };
+    });
+
+    // A page brought the wallet back.
+    await startWalletConnection();
+
+    expect(wasConnectedBefore()).toBe(true);
+
+    await forgetEvmWallets();
+
+    // Held open, the database is emptied, and goes with the next page.
+    const left = () =>
+      new Promise((resolve) => {
+        const request = held
+          .transaction("keyvaluestorage")
+          .objectStore("keyvaluestorage")
+          .getAllKeys();
+
+        request.onsuccess = () => resolve(request.result);
+      });
+
+    await vi.waitFor(async () => expect(await left()).toStrictEqual([]));
+    expect(Object.keys(localStorage).sort()).toStrictEqual([
+      "dusk-evm:withdrawal-activity:v1",
+      "web-wallet-evm-wallets-forgotten",
+      "web-wallet-preferences",
+    ]);
+    expect(appKit.disconnect).toHaveBeenCalledOnce();
+    // No page starts the connection now, as the wallet would come back.
+    expect(wasConnectedBefore()).toBe(false);
+
+    // A second Reset in the page doesn't wait on the database it can't open.
+    await forgetEvmWallets();
+
+    // Pressing Connect does.
+    await modal.open();
+
+    expect(wasConnectedBefore()).toBe(true);
+    expect(appKit.open).toHaveBeenCalledOnce();
+
+    // The next page, where nothing holds the database open.
+    held.close();
+    await load();
+    await vi.waitFor(async () => {
+      expect(
+        (await indexedDB.databases()).map(({ name }) => name)
+      ).not.toContain("WALLET_CONNECT_V2_INDEXED_DB");
+      expect(
+        localStorage.getItem("web-wallet-evm-wallets-forgotten")
+      ).toBeNull();
+    });
+  });
+
+  it("should delete as a page opens the database Reset left to it, and only then", async () => {
+    const databases = async () =>
+      (await indexedDB.databases()).map(({ name }) => name);
+
+    // WalletConnect's database, which nothing holds open now.
+    await new Promise((resolve) => {
+      const request = indexedDB.open("WALLET_CONNECT_V2_INDEXED_DB");
+
+      request.onupgradeneeded = () =>
+        request.result.createObjectStore("keyvaluestorage");
+      request.onsuccess = () => {
+        request.result.close();
+        resolve(undefined);
+      };
+    });
+
+    // A page opens with no Reset before it: the database stays.
+    await load();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(await databases()).toContain("WALLET_CONNECT_V2_INDEXED_DB");
+
+    // A page opens after a Reset that couldn't delete it.
+    localStorage.setItem("web-wallet-evm-wallets-forgotten", "1");
+    await load();
+    await vi.waitFor(async () => {
+      expect(await databases()).not.toContain("WALLET_CONNECT_V2_INDEXED_DB");
+      expect(
+        localStorage.getItem("web-wallet-evm-wallets-forgotten")
+      ).toBeNull();
+    });
+  });
 });
