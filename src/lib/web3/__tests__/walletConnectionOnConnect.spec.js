@@ -24,6 +24,13 @@ function stubAppKit() {
 }
 
 /**
+ * The connections the test loaded, one for each page it opened.
+ *
+ * @type {(typeof import("../walletConnection"))[]}
+ */
+const pages = [];
+
+/**
  * The connection, as a page that opens loads it, on a testnet node:
  * started by nothing.
  */
@@ -34,6 +41,7 @@ const load = async () => {
   const { networks } = await import("@dusk-network/networks");
 
   (await import("$lib/stores/nodeNetwork")).setNodeNetwork(networks.testnet);
+  pages.push(connection);
 
   return connection;
 };
@@ -78,7 +86,13 @@ describe("the EVM wallet connection, on Connect", () => {
     vi.mocked(createAppKit).mockReset();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Reset deletes WalletConnect's database in the background, which no
+    // page waits for: the test does, so that delete doesn't go on into the
+    // next test, or past the end of the file.
+    await Promise.all(
+      pages.splice(0).map((connection) => connection.settledDeletes())
+    );
     localStorage.clear();
   });
 

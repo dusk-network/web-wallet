@@ -425,6 +425,14 @@ const CLEANUP_WAIT_MS = 3_000;
 let cleanup = null;
 
 /**
+ * Every delete of the connection's databases this page started that isn't
+ * over: nothing in the page waits for them (settledDeletes).
+ *
+ * @type {Set<Promise<void>>}
+ */
+const deletes = new Set();
+
+/**
  * Deletes the connection's databases, each emptied first, as can be done
  * while a connection holds it open. One held open goes as the page closes,
  * and until then it can't be opened again, so nothing should wait on this.
@@ -464,12 +472,29 @@ function deleteConnectionDatabases() {
       }
     })
     .finally(() => {
+      deletes.delete(entry.done);
+
       if (cleanup === entry) {
         cleanup = null;
         blocked.set(false);
       }
     });
+  deletes.add(entry.done);
   cleanup = entry;
+}
+
+/**
+ * Settles once the deletes of the connection's databases this page started
+ * are over, those started meanwhile too. The page never waits for them, as
+ * one held up by a handle on the database goes only with the page; a test
+ * does, so that none outlives it.
+ *
+ * @returns {Promise<void>}
+ */
+export async function settledDeletes() {
+  while (deletes.size) {
+    await Promise.allSettled([...deletes]);
+  }
 }
 
 /**
