@@ -67,7 +67,7 @@ describe("contacts", () => {
 
   afterEach(async () => {
     await contactsWritten();
-    deleteContacts();
+    await deleteContacts();
     vi.useRealTimers();
   });
 
@@ -244,7 +244,7 @@ describe("contacts", () => {
     await contactsWritten();
     keepPlain({ savings: plainSavings });
 
-    deleteContacts();
+    await deleteContacts();
 
     expect(localStorage.getItem(KEY)).toBeNull();
     expect(localStorage.getItem(PLAIN_KEY)).toBeNull();
@@ -258,7 +258,7 @@ describe("contacts", () => {
 
   it("doesn't bring contacts back with a write begun before Reset", async () => {
     saveContact({ address: ACCOUNT, name: "Shop" });
-    deleteContacts();
+    await deleteContacts();
     await contactsWritten();
 
     expect(localStorage.getItem(KEY)).toBeNull();

@@ -40,7 +40,7 @@
     walletStore
       .clearLocalData()
       .then(async () => {
-        deleteContacts();
+        await deleteContacts();
         await loginInfoStorage.remove();
         settingsStore.reset();
         await logout(false);

@@ -430,7 +430,15 @@ describe("Settings", () => {
 
       expect(listContacts()).toStrictEqual([]);
       expect(
-        Object.keys(localStorage).filter((key) => key.includes("contacts"))
+        localStorage.getItem(
+          `${CONFIG.LOCAL_STORAGE_APP_KEY}-encrypted-contacts`
+        )
+      ).toBeNull();
+      expect(
+        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts`)
+      ).toBeNull();
+      expect(
+        Object.values(localStorage).filter((value) => value.includes("Old"))
       ).toStrictEqual([]);
     });
 
