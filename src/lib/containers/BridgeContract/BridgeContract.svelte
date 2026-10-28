@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import {
     getBalance,
     switchChain,
@@ -31,6 +31,44 @@
     await switchChain(wagmiConfig, { chainId: id });
   }
 
+  /** Stops reading the balance on each block. */
+  let unwatchBalance = () => {};
+
+  /**
+   * Reads the connected EVM wallet's balance on each new block of its chain,
+   * only while one is connected: without one there is nothing to read, and
+   * no block to ask for.
+   *
+   * The watch names its chain and starts over when the wallet's chain
+   * changes: without a chain, wagmi swaps in a new watch on a chain change
+   * that stopping the first one leaves running.
+   *
+   * @param {number | undefined} chainId The connected wallet's chain, if
+   *   one the page knows.
+   */
+  function watchBalance(chainId) {
+    unwatchBalance();
+    unwatchBalance = chainId
+      ? watchBlocks(wagmiConfig, {
+          chainId,
+          async onBlock() {
+            if ($account.isConnected && $account.chainId && $account.address) {
+              try {
+                evmDuskBalance = await getBalance(wagmiConfig, {
+                  address: $account.address,
+                  chainId: $account.chainId,
+                });
+              } catch (e) {
+                // eslint-disable-next-line no-console
+                console.error("getBalance failed", e);
+                evmDuskBalance = undefined;
+              }
+            }
+          },
+        })
+      : () => {};
+  }
+
   onMount(() => {
     if ($account.isConnected && $account.chainId !== duskEvm.id) {
       switchChainHandler(duskEvm.id);
@@ -41,29 +79,18 @@
         await switchChainHandler(duskEvm.id);
       },
     });
-    const unwatchBalance = watchBlocks(wagmiConfig, {
-      async onBlock() {
-        if ($account.isConnected && $account.chainId && $account.address) {
-          try {
-            evmDuskBalance = await getBalance(wagmiConfig, {
-              address: $account.address,
-              chainId: $account.chainId,
-            });
-          } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error("getBalance failed", e);
-            evmDuskBalance = undefined;
-          }
-        }
-      },
-    });
 
     return () => {
       unwatchChain();
-      unwatchBalance();
     };
   });
 
+  onDestroy(() => {
+    unwatchBalance();
+  });
+
+  $: balanceChainId = $account.isConnected ? $account.chain?.id : undefined;
+  $: watchBalance(balanceChainId);
   $: ({ balance, currentProfile } = $walletStore);
   $: ({ customGasLimit, customGasPrice } = $settingsStore);
   $: gasSettings = getGasSettings(
