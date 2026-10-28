@@ -199,9 +199,10 @@ describe("TransactionDetail", () => {
     expect(
       getByText(`Claim from about ${fullDateTime(CLAIM_AT, "en")}.`)
     ).toBeTruthy();
-    expect(
-      getByRole("link", { name: "Open withdrawals" }).getAttribute("href")
-    ).toContain("/dashboard/bridge/transactions?view=withdrawals");
+    expect(getByRole("link", { name: "Open withdrawals" })).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard/bridge/transactions"
+    );
 
     cleanup();
 

@@ -34,6 +34,22 @@ const mocks = vi.hoisted(() => {
   const historySubscribers = new Set();
   let historyValue = { rows: /** @type {any[]} */ ([]) };
   /** @type {Set<(value: any) => void>} */
+  const pageSubscribers = new Set();
+  const pageAt = (/** @type {string} */ search) => ({
+    data: {},
+    error: null,
+    form: undefined,
+    params: {},
+    route: { id: "/(app)/dashboard/bridge/transactions" },
+    status: 200,
+    url: new URL(`http://localhost/dashboard/bridge/transactions${search}`),
+  });
+  let pageValue = pageAt("");
+  /** @type {Set<(value: any[]) => void>} */
+  const depositSubscribers = new Set();
+  /** @type {any[]} */
+  let depositItems = [];
+  /** @type {Set<(value: any) => void>} */
   const timesSubscribers = new Set();
   let timesValue = { chain: /** @type {any} */ (null), network: "testnet" };
   const account = {
@@ -81,9 +97,19 @@ const mocks = vi.hoisted(() => {
       },
     },
     configuredFinalizationConfig,
+    depositActivityStore: {
+      /** @param {(value: any[]) => void} run */
+      subscribe(run) {
+        depositSubscribers.add(run);
+        run(depositItems);
+
+        return () => depositSubscribers.delete(run);
+      },
+    },
     finalizationConfig: configuredFinalizationConfig(),
     finalizeWithdrawal: vi.fn(),
     historyWithdrawals: vi.fn(() => /** @type {any[]} */ ([])),
+    hydrateDepositActivity: vi.fn(() => depositItems),
     hydrateWithdrawalActivity: vi.fn(() => withdrawalItems),
     loadDuskTransactionExecution: vi.fn(),
     loadProveNowClaim: vi.fn(() => Promise.resolve(/** @type {any} */ (null))),
@@ -117,6 +143,15 @@ const mocks = vi.hoisted(() => {
       return [...byHash.values()];
     }),
     modalOpen: vi.fn(),
+    page: {
+      /** @param {(value: any) => void} run */
+      subscribe(run) {
+        pageSubscribers.add(run);
+        run(pageValue);
+
+        return () => pageSubscribers.delete(run);
+      },
+    },
     proveWithdrawal: vi.fn(),
     recordWithdrawalSubmission: vi.fn(),
     refreshWithdrawalTransaction: vi.fn(),
@@ -124,6 +159,7 @@ const mocks = vi.hoisted(() => {
       Promise.resolve(/** @type {any[]} */ ([]))
     ),
     rememberWithdrawalTransaction: vi.fn(),
+    resumeDepositTracking: vi.fn(),
     resumeWithdrawalTracking: vi.fn(),
     /**
      * @param {any} value
@@ -132,10 +168,20 @@ const mocks = vi.hoisted(() => {
       accountValue = value;
       subscribers.forEach((run) => run(value));
     },
+    /** @param {any[]} value */
+    setDepositItems(value) {
+      depositItems = value;
+      depositSubscribers.forEach((run) => run(value));
+    },
     /** @param {any[]} rows */
     setHistoryRows(rows) {
       historyValue = { rows };
       historySubscribers.forEach((run) => run(historyValue));
+    },
+    /** @param {string} search The page's query, as `?tx=…` */
+    setPageSearch(search) {
+      pageValue = pageAt(search);
+      pageSubscribers.forEach((run) => run(pageValue));
     },
     /** @param {any} chain */
     setTimes(chain) {
@@ -164,7 +210,36 @@ vi.mock("$lib/bridge/bridgeTimes", () => ({ default: mocks.bridgeTimes }));
 
 vi.mock("$lib/web3/walletConnection", () => ({
   account: mocks.account,
+  duskEvm: {
+    blockExplorers: {
+      default: { name: "Blockscout", url: "https://explorer.example.test" },
+    },
+  },
   modal: { open: mocks.modalOpen },
+}));
+
+vi.mock("$app/stores", () => {
+  const still = (/** @type {any} */ value) => ({
+    /** @param {(value: any) => void} run */
+    subscribe(run) {
+      run(value);
+
+      return () => {};
+    },
+  });
+
+  return {
+    getStores: () => ({ navigating: still(null), page: mocks.page }),
+    navigating: still(null),
+    page: mocks.page,
+    updated: { check: async () => false, ...still(false) },
+  };
+});
+
+vi.mock("$lib/bridge/depositActivity", () => ({
+  depositActivityStore: mocks.depositActivityStore,
+  hydrateDepositActivity: mocks.hydrateDepositActivity,
+  resumeDepositTracking: mocks.resumeDepositTracking,
 }));
 
 vi.mock("$lib/bridge/withdrawals", () => ({
@@ -258,6 +333,30 @@ function activityItem(transactionHash, stage = "submitted") {
   };
 }
 
+/**
+ * A deposit as this browser keeps it, on its way to DuskEVM.
+ *
+ * @param {string} transactionHash
+ * @param {Record<string, unknown>} [fields]
+ */
+function deposit(transactionHash, fields = {}) {
+  const now = Date.now();
+
+  return {
+    account: accountAddress,
+    amountLux: "250000000",
+    amountWei: null,
+    createdAt: now - 60_000,
+    failureLayer: null,
+    l1BlockHeight: 4_708_700,
+    l1ConfirmedAt: now - 30_000,
+    progressedAt: now,
+    stage: "l2_pending",
+    transactionHash,
+    ...fields,
+  };
+}
+
 function emptyActivity() {
   return Promise.resolve({
     error: null,
@@ -290,6 +389,9 @@ describe("EvmTransactions", () => {
     mocks.finalizationConfig = mocks.configuredFinalizationConfig();
     mocks.setAccount({ address: undefined, isConnected: false });
     mocks.setWithdrawalItems([]);
+    mocks.setDepositItems([]);
+    mocks.setPageSearch("");
+    mocks.resumeDepositTracking.mockReset();
     mocks.loadWithdrawalActivity.mockImplementation(emptyActivity);
     mocks.loadDuskTransactionExecution.mockResolvedValue(null);
     mocks.rememberWithdrawalTransaction.mockImplementation((hash, options) => {
@@ -366,17 +468,152 @@ describe("EvmTransactions", () => {
   it("keeps activity and manual lookup available without an EVM wallet", async () => {
     mocks.loadWithdrawalActivity.mockImplementation(emptyActivity);
 
-    const { findByText, getByLabelText, getByRole } = render(EvmTransactions, {
+    const { findByText, getByLabelText, getByRole, getByText } = render(
+      EvmTransactions,
+      {
+        target: document.body,
+      }
+    );
+
+    expect(getByLabelText("Find by transaction hash")).toBeInTheDocument();
+    expect(
+      await findByText(
+        "Connect DuskEVM wallet to list its deposits and other withdrawals."
+      )
+    ).toBeInTheDocument();
+    await fireEvent.click(getByRole("button", { name: /^connect$/i }));
+    expect(mocks.modalOpen).toHaveBeenCalledOnce();
+    // The bridge's card, on its Activity tab, with the way Home.
+    expect(getByRole("link", { name: "Bridge" })).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard/bridge"
+    );
+    expect(getByRole("link", { name: "Activity" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    expect(getByRole("link", { name: "Home" })).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard"
+    );
+    expect(getByText("No transfers yet.")).toBeInTheDocument();
+  });
+
+  it("lists the deposits kept here with the withdrawals, each in its group, and opens one row at a time", async () => {
+    const depositHash = "ab".repeat(32);
+    const withdrawalHash = `0x${"5c".repeat(32)}`;
+    const now = Date.now();
+
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+    mocks.setDepositItems([
+      deposit(depositHash, { account: null, createdAt: now - 60_000 }),
+      // Another DuskEVM account's: not this one's to see.
+      deposit("cd".repeat(32), {
+        account: `0x${"99".repeat(20)}`,
+        amountLux: "500000000",
+      }),
+    ]);
+    mocks.setWithdrawalItems([
+      { ...activityItem(withdrawalHash, "ready_to_finalize"), account: null },
+    ]);
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      blockNumber: 13668n,
+      stage: "ready_to_finalize",
+      transactionHash: withdrawalHash,
+      withdrawalHash: `0x${"e9".repeat(32)}`,
+    });
+
+    const {
+      findByRole,
+      getByLabelText,
+      getByRole,
+      getByText,
+      queryByRole,
+      queryByText,
+    } = render(EvmTransactions, { target: document.body });
+    const depositButton = await findByRole("button", {
+      name: new RegExp(
+        `^Dusk to DuskEVM Sent ${claimDay(now - 60_000, "en")}.* 0\\.25 DUSK Pending$`
+      ),
+    });
+    const withdrawalButton = getByRole("button", {
+      name: "DuskEVM to Dusk Ready to claim on Dusk 0.1 DUSK",
+    });
+
+    expect(withdrawalButton.closest("section")).toHaveAccessibleName(
+      "Needs you"
+    );
+    expect(depositButton.closest("section")).toHaveAccessibleName(
+      "In progress"
+    );
+    expect(queryByRole("button", { name: /0\.5 DUSK/ })).toBeNull();
+    expect(mocks.resumeDepositTracking).toHaveBeenCalledWith(accountAddress);
+
+    // A deposit opens to its steps.
+    await fireEvent.click(depositButton);
+
+    expect(depositButton).toHaveAttribute("aria-expanded", "true");
+    expect(getByText("DuskDS transaction")).toBeInTheDocument();
+    // Its row says the amount and the state: the steps don't again.
+    expect(queryByRole("heading", { name: "0.25 DUSK" })).toBeNull();
+
+    // Opening a withdrawal closes it.
+    await fireEvent.click(withdrawalButton);
+
+    await waitFor(() =>
+      expect(withdrawalButton).toHaveAttribute("aria-expanded", "true")
+    );
+    expect(depositButton).toHaveAttribute("aria-expanded", "false");
+    expect(queryByText("DuskDS transaction")).toBeNull();
+
+    // And the other way around.
+    await fireEvent.click(depositButton);
+
+    await waitFor(() =>
+      expect(depositButton).toHaveAttribute("aria-expanded", "true")
+    );
+    expect(withdrawalButton).toHaveAttribute("aria-expanded", "false");
+
+    // A withdrawal found by its hash opens in the deposit's place, which
+    // stays closed once that withdrawal goes: it's the account's, and
+    // another account connects.
+    await fireEvent.input(getByLabelText("Find by transaction hash"), {
+      target: { value: withdrawalHash },
+    });
+    await fireEvent.click(getByRole("button", { name: /^check$/i }));
+    await waitFor(() =>
+      expect(withdrawalButton).toHaveAttribute("aria-expanded", "true")
+    );
+    expect(depositButton).toHaveAttribute("aria-expanded", "false");
+
+    mocks.setAccount({ address: `0x${"33".repeat(20)}`, isConnected: true });
+    await tick();
+
+    expect(withdrawalButton).not.toBeInTheDocument();
+    expect(queryByRole("button", { expanded: true })).toBeNull();
+    expect(depositButton).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("opens the deposit its link names, without checking it as a withdrawal", async () => {
+    const depositHash = "ab".repeat(32);
+
+    mocks.setDepositItems([
+      deposit(depositHash, { account: null, stage: "completed" }),
+    ]);
+    mocks.setPageSearch(`?tx=${depositHash}`);
+
+    const { findByRole, getByText } = render(EvmTransactions, {
       target: document.body,
     });
 
-    expect(getByLabelText("Find by transaction hash")).toBeInTheDocument();
-    expect(await findByText("Connect DuskEVM wallet")).toBeInTheDocument();
-    await fireEvent.click(getByRole("button", { name: /^connect$/i }));
-    expect(mocks.modalOpen).toHaveBeenCalledOnce();
-    expect(getByRole("link", { name: /back/i }).getAttribute("href")).toMatch(
-      /\/dashboard\/bridge$/
-    );
+    expect(
+      await findByRole("button", {
+        name: /^Dusk to DuskEVM Sent .+ 0\.25 DUSK$/,
+      })
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(getByText("DuskDS transaction")).toBeInTheDocument();
+    expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
+    expect(mocks.rememberWithdrawalTransaction).not.toHaveBeenCalled();
   });
 
   it("shows inline validation for an invalid transaction hash", async () => {
@@ -442,7 +679,7 @@ describe("EvmTransactions", () => {
       target: document.body,
     });
     const item = await findByRole("button", {
-      name: /0\.1 DUSK.*Not on Dusk yet/i,
+      name: /Not on Dusk yet.*0\.1 DUSK/i,
     });
 
     expect(item).toHaveAttribute("aria-expanded", "false");
@@ -462,7 +699,7 @@ describe("EvmTransactions", () => {
     });
   });
 
-  it("names a withdrawal by its amount and when it was sent, gives its status once, and says DuskEVM", async () => {
+  it("names a withdrawal by its route and amount, says what it needs once, and when it was sent in its steps", async () => {
     const txHash = `0x${"5a".repeat(32)}`;
     const sentAt = "2026-09-25T11:51:09.000Z";
 
@@ -491,13 +728,14 @@ describe("EvmTransactions", () => {
     const { container, findByRole, getAllByText, getByRole, queryByText } =
       render(EvmTransactions, { target: document.body });
     const item = await findByRole("button", {
-      name: /^10 DUSK.*Ready to prove/,
+      name: "DuskEVM to Dusk Ready to prove on Dusk 10 DUSK",
     });
 
-    expect(item).toHaveTextContent(formatTimestamp(sentAt));
-    expect(item).not.toHaveTextContent(
-      formatTimestamp("2026-10-26T01:10:00.000Z")
-    );
+    // It needs its proof: under Needs you, with Prove beside it.
+    expect(item.closest("section")).toHaveAccessibleName("Needs you");
+    expect(
+      getByRole("button", { name: "Prove 10 DUSK from DuskEVM" })
+    ).toBeInTheDocument();
 
     await fireEvent.click(item);
 
@@ -514,7 +752,7 @@ describe("EvmTransactions", () => {
     expect(container.querySelector(".withdrawal-details dd")).toHaveTextContent(
       formatTimestamp(sentAt)
     );
-    expect(getAllByText("Ready to prove")).toHaveLength(1);
+    expect(getAllByText("Ready to prove on Dusk")).toHaveLength(1);
     expect(getByRole("button", { name: "Prove on Dusk" })).toBeInTheDocument();
     expect(
       getByRole("button", { name: "Copy duskevm transaction hash" })
@@ -644,7 +882,9 @@ describe("EvmTransactions", () => {
     await fireEvent.click(
       await findByRole("button", { name: /^prove on dusk$/i })
     );
-    expect((await findAllByText("Proof sent")).length).toBeGreaterThan(0);
+    expect(
+      (await findAllByText("Proof sent, waiting for Dusk")).length
+    ).toBeGreaterThan(0);
     expect(mocks.recordWithdrawalSubmission).toHaveBeenCalledWith(txHash, {
       action: "prove",
       hash: "65".repeat(32),
@@ -655,7 +895,9 @@ describe("EvmTransactions", () => {
     expect(
       queryByRole("button", { name: /refresh status/i })
     ).not.toBeInTheDocument();
-    expect((await findAllByText("Proof sent")).length).toBeGreaterThan(0);
+    expect(
+      (await findAllByText("Proof sent, waiting for Dusk")).length
+    ).toBeGreaterThan(0);
   });
 
   it("re-enables proof with a short line when the submitted transaction fails", async () => {
@@ -684,7 +926,7 @@ describe("EvmTransactions", () => {
     await fireEvent.click(
       await findByRole("button", { name: /^prove on dusk$/i })
     );
-    await findAllByText("Proof sent");
+    await findAllByText("Proof sent, waiting for Dusk");
 
     const pending = mocks
       .withdrawalItems()
@@ -858,7 +1100,7 @@ describe("EvmTransactions", () => {
     await fireEvent.input(input, { target: { value: selectedHash } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     await findByRole("button", {
-      name: /0\.1 DUSK.*Not on Dusk yet/i,
+      name: /Not on Dusk yet.*0\.1 DUSK/i,
     });
     await fireEvent.input(input, { target: { value: editedHash } });
 
@@ -877,7 +1119,7 @@ describe("EvmTransactions", () => {
 
     expect(
       await findByRole("button", {
-        name: /0\.1 DUSK.*Waiting period/i,
+        name: new RegExp(`Claim from ${claimDay(CLAIM_AT, "en")} 0\\.1 DUSK`),
       })
     ).toHaveAttribute("aria-expanded", "true");
     expect(
@@ -940,19 +1182,22 @@ describe("EvmTransactions", () => {
     expect(
       queryByRole("button", { name: new RegExp(otherHash.slice(0, 8)) })
     ).toBeNull();
-    expect(queryByText("No withdrawals found")).toBeNull();
+    expect(queryByText("No transfers yet.")).toBeNull();
     expect(mocks.historyWithdrawals).toHaveBeenCalledWith([
       { hash: "some-row" },
     ]);
     // What the history knows is followed, as remembered ones are.
     expect(mocks.trackWithdrawalTransaction).toHaveBeenCalledWith(waitingHash);
 
+    // Claim opens its steps, where the claim is sent, and goes to it.
     await fireEvent.click(
-      getByRole("button", { name: /0\.1 DUSK.*Ready to claim/ })
+      getByRole("button", { name: "Claim 0.1 DUSK from DuskEVM" })
     );
-    await fireEvent.click(
-      await findByRole("button", { name: /^claim on dusk$/i })
-    );
+
+    const claim = await findByRole("button", { name: /^claim on dusk$/i });
+
+    await waitFor(() => expect(claim).toHaveFocus());
+    await fireEvent.click(claim);
 
     expect(mocks.finalizeWithdrawal).toHaveBeenCalledWith(readyHash);
   });
@@ -978,7 +1223,9 @@ describe("EvmTransactions", () => {
     const { findByRole } = render(EvmTransactions, { target: document.body });
 
     expect(
-      await findByRole("button", { name: /0\.1 DUSK.*Processing/ })
+      await findByRole("button", {
+        name: /^DuskEVM to Dusk Sent .+ 0\.1 DUSK Pending$/,
+      })
     ).toBeInTheDocument();
     expect(mocks.rememberHistoryWithdrawals).toHaveBeenCalledWith(known);
     await waitFor(() => {

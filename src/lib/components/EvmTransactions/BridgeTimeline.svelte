@@ -63,65 +63,70 @@
     &__step {
       display: grid;
       gap: 0.75rem;
-      grid-template-columns: 1.75rem minmax(0, 1fr);
-      min-height: 3.5rem;
+      grid-template-columns: 1.5rem minmax(0, 1fr);
+      min-height: 2.75rem;
       position: relative;
+      font-size: 0.875rem;
 
       &:not(:last-child)::before {
-        background: var(--surface-border-color);
+        background: var(--calm-line2);
         content: "";
-        height: calc(100% - 1.25rem);
-        left: 0.84375rem;
+        height: calc(100% - 1.5rem);
+        left: 0.71875rem;
         position: absolute;
-        top: 1.75rem;
+        top: 1.5rem;
         width: 1px;
       }
 
       &--complete:not(:last-child)::before {
-        background: var(--success-color);
+        background: var(--calm-muted);
       }
 
       & > span:last-child {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
-        padding-top: 0.2rem;
+        gap: 0.125rem;
+        padding-top: 0.125rem;
+      }
+
+      & strong {
+        font-weight: 500;
       }
 
       & small {
-        color: var(--secondary-text-color);
+        color: var(--calm-muted);
+        font-size: 0.8125rem;
         line-height: 1.45;
       }
     }
 
     &__marker {
       align-items: center;
-      background: var(--surface-soft-color);
-      border: 1px solid var(--surface-border-color);
+      background: var(--calm-s2);
+      border: 1px solid var(--calm-line2);
       border-radius: 50%;
       display: flex;
       font-variant-numeric: tabular-nums;
-      font-size: 0.75rem;
-      height: 1.75rem;
+      font-size: 0.6875rem;
+      height: 1.5rem;
       justify-content: center;
-      width: 1.75rem;
+      width: 1.5rem;
       z-index: 1;
     }
 
     &__step--complete &__marker {
-      background: var(--status-success-bg-color);
-      border-color: var(--success-color);
-      color: var(--success-color);
+      background: var(--calm-text);
+      border-color: var(--calm-text);
+      color: var(--calm-s0);
     }
 
     &__step--current &__marker {
-      border-color: var(--secondary-color);
-      box-shadow: 0 0 0 2px var(--surface-hover-color);
-      color: var(--secondary-color);
+      border-color: var(--calm-text);
+      color: var(--calm-text);
     }
 
     &__step--pending {
-      color: var(--secondary-text-color);
+      color: var(--calm-muted);
     }
   }
 </style>

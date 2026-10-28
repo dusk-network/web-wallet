@@ -77,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sum up the terms before accepting them, with their own links to the Terms of Use and the Privacy Policy
 - Offer Unlock only once a wallet is kept in the browser
 - Name the eye button Show balances while balances are hidden
-- Title each withdrawal with its amount, show its status once, and say DuskEVM instead of L2
+- Show a withdrawal's status once, and say DuskEVM instead of L2
 - Swap the bridge direction with the arrow between From and To
 - Offer only wallets when connecting to DuskEVM
 - Turn the transaction history on unless `VITE_FEATURE_TRANSACTION_HISTORY` is `false`
@@ -131,6 +131,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shorten the search's help to "Enter: open · Shift+Enter: copy"
 - Say Sending… on the Done screen until the block is final, then when it was sent
 - Name the network and profile buttons with what they show, for screen readers
+- List deposits and withdrawals together in Bridge › Activity, what needs you first, each with its route, amount, date or claim date, and state
 
 ### Removed
 

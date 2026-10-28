@@ -271,7 +271,7 @@
     flex-direction: column;
     gap: 1rem;
     min-width: 0;
-    padding: 1.25rem;
+    padding: 1rem 1.25rem;
   }
 
   .status-actions {
@@ -282,16 +282,16 @@
   }
 
   .withdrawal-details {
-    border-top: 1px solid var(--surface-border-color-subtle);
+    border-top: 1px solid var(--calm-line);
     display: grid;
     gap: 0.75rem 1rem;
     grid-template-columns: max-content minmax(0, 1fr);
     margin: 0;
     padding-top: 1rem;
+    font-size: 0.875rem;
 
     & dt {
-      color: var(--secondary-text-color);
-      font-weight: 500;
+      color: var(--calm-muted);
     }
 
     & dd {

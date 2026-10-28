@@ -26,6 +26,9 @@
   /** @type {HTMLElement | null} */
   export let element = null;
 
+  /** Heads the steps with the amount and the state, unless a row says them. */
+  export let titled = true;
+
   $: l2ExplorerUrl = deposit?.l2TransactionHash
     ? `${duskEvm.blockExplorers.default.url}/tx/${deposit.l2TransactionHash}`
     : null;
@@ -41,16 +44,18 @@
 
 <section class="deposit-status" aria-live="polite" bind:this={element}>
   {#if deposit}
-    <header class="deposit-status__header">
-      <div>
-        <p>Deposit</p>
-        <h4>{activityAmount(deposit) ?? "DUSK deposit"}</h4>
-      </div>
-      <Badge
-        text={depositStageLabel(deposit)}
-        variant={depositStageBadge(deposit)}
-      />
-    </header>
+    {#if titled}
+      <header class="deposit-status__header">
+        <div>
+          <p>Deposit</p>
+          <h4>{activityAmount(deposit) ?? "DUSK deposit"}</h4>
+        </div>
+        <Badge
+          text={depositStageLabel(deposit)}
+          variant={depositStageBadge(deposit)}
+        />
+      </header>
+    {/if}
 
     <BridgeTimeline
       currentMessage={stageMessage}
@@ -136,16 +141,16 @@
     }
 
     &__details {
-      border-top: 1px solid var(--surface-border-color-subtle);
+      border-top: 1px solid var(--calm-line);
       display: grid;
       gap: 0.75rem 1rem;
       grid-template-columns: max-content minmax(0, 1fr);
       margin: 0;
       padding-top: 1rem;
+      font-size: 0.875rem;
 
       & dt {
-        color: var(--secondary-text-color);
-        font-weight: 500;
+        color: var(--calm-muted);
       }
 
       & dd {

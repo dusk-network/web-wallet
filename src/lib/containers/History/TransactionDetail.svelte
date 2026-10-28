@@ -407,9 +407,7 @@
             {nextStep}
             <AnchorButton
               className="tx-detail__next"
-              href={addBasePath(
-                "/dashboard/bridge/transactions?view=withdrawals"
-              )}
+              href={addBasePath("/dashboard/bridge/transactions")}
               size="small"
               text="Open withdrawals"
               variant="secondary"

@@ -169,20 +169,3 @@ export function stageMessage(item, options = {}) {
       return withdrawalStageDefaultMessage(item?.stage);
   }
 }
-
-/**
- * A row's line about what's next: when a proved withdrawal can be claimed,
- * or that it can be now; nothing for the other stages.
- *
- * @param {any} item
- * @param {string} [locale]
- */
-export function activityNote(item, locale = get(settingsStore).language) {
-  if (item?.stage === "ready_to_finalize") {
-    return "Ready to claim";
-  }
-
-  return item?.stage === "proven_waiting" && !item.proofRejected
-    ? claimText(claimDateOf(item), (ms) => claimDay(ms, locale))
-    : "";
-}

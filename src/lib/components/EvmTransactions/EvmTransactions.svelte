@@ -1,13 +1,28 @@
 <svelte:options immutable={true} />
 
 <script>
+  /**
+   * Bridge › Activity: the deposits and withdrawals between Dusk and
+   * DuskEVM, as the Dusk Bridge lists its transfers, each with its route,
+   * amount, date or claim date, state, and what needs doing. A row opens to
+   * its steps, where a withdrawal is proved or claimed.
+   */
   import { page } from "$app/stores";
-  import { onMount } from "svelte";
-  import { mdiArrowLeft } from "@mdi/js";
+  import { onMount, tick } from "svelte";
+  import { mdiArrowRight, mdiWalletOutline } from "@mdi/js";
   import { fade } from "svelte/transition";
 
   import { activityState } from "$lib/activity";
-  import { AppAnchorButton, Banner } from "$lib/components";
+  import bridgeTimes from "$lib/bridge/bridgeTimes";
+  import {
+    depositActivityStore,
+    hydrateDepositActivity,
+    resumeDepositTracking,
+  } from "$lib/bridge/depositActivity";
+  import { DEPOSIT, WITHDRAWAL, routeTime } from "$lib/bridge/routeTimes";
+  import { Button, Icon, Textbox } from "$lib/dusk/components";
+  import { addBasePath } from "$lib/navigation";
+  import { settingsStore } from "$lib/stores";
   import {
     finalizeWithdrawal,
     getWithdrawalFinalizationConfig,
@@ -27,10 +42,19 @@
     trackWithdrawalTransaction,
     withdrawalActivityStore,
   } from "$lib/bridge/withdrawalActivity";
-  import { account } from "$lib/web3/walletConnection";
+  import { account, modal } from "$lib/web3/walletConnection";
 
-  import WithdrawalActivityList from "./WithdrawalActivityList.svelte";
-  import { shortened } from "./withdrawalPresentation";
+  import Banner from "../Banner/Banner.svelte";
+  import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
+  import SwapCard from "../SwapCard/SwapCard.svelte";
+  import DepositLifecycle from "./DepositLifecycle.svelte";
+  import WithdrawalLifecycle from "./WithdrawalLifecycle.svelte";
+  import {
+    depositRow,
+    groupBridgeActivity,
+    withdrawalRow,
+  } from "./bridgeActivity";
+  import { formatTimestamp, shortened } from "./withdrawalPresentation";
 
   const finalizationConfig = getWithdrawalFinalizationConfig();
   const POLL_INTERVAL_MS = 30_000;
@@ -105,6 +129,83 @@
 
   /** @type {number} */
   let statusRequest = 0;
+
+  /** The deposits this browser keeps, of any account. */
+  /** @type {any[]} */
+  let keptDeposits = [];
+
+  /** The connected DuskEVM account's deposits, and those of none. */
+  /** @type {any[]} */
+  let deposits = [];
+
+  /** The deposit shown open, by its transaction. */
+  /** @type {string | null} */
+  let openDeposit = null;
+
+  function filterDeposits() {
+    deposits = keptDeposits.filter(
+      (item) =>
+        item.account === null ||
+        (currentAccount !== null && item.account === currentAccount)
+    );
+  }
+
+  /** @param {import("./bridgeActivity").BridgeActivityRow} row */
+  const isOpen = (row) =>
+    row.kind === "withdrawal"
+      ? selectedTransactionHash === row.hash
+      : openDeposit === row.hash;
+
+  // A withdrawal opened from its row, its hash or a link closes the deposit.
+  $: if (selectedTransactionHash) openDeposit = null;
+
+  // The row shown open, for the list to follow: a withdrawal or a deposit.
+  $: openId = selectedTransactionHash
+    ? `withdrawal:${selectedTransactionHash}`
+    : openDeposit
+      ? `deposit:${openDeposit}`
+      : null;
+
+  /**
+   * Opens a row to its steps, or closes it: one row is open at a time.
+   *
+   * @param {import("./bridgeActivity").BridgeActivityRow} row
+   */
+  function toggleRow(row) {
+    if (row.kind === "deposit") {
+      if (selectedTransactionHash) {
+        void selectActivity({ transactionHash: selectedTransactionHash });
+      }
+
+      openDeposit = openDeposit === row.hash ? null : row.hash;
+
+      return;
+    }
+
+    openDeposit = null;
+    void selectActivity(row.item);
+  }
+
+  /**
+   * A withdrawal's Prove or Claim: its steps open, with the date its proof
+   * gives where it's proved now, and the button that sends it.
+   *
+   * @param {import("./bridgeActivity").BridgeActivityRow} row
+   */
+  async function startAction(row) {
+    if (!isOpen(row)) {
+      toggleRow(row);
+    }
+
+    await tick();
+
+    /** @type {HTMLButtonElement | null} */
+    const send = document.querySelector(
+      `[id="bridge-details-${row.hash}"] .status-actions button`
+    );
+
+    send?.focus();
+  }
 
   /**
    * @param {unknown} error
@@ -347,9 +448,51 @@
     return submitWithdrawalAction(finalizeWithdrawal, "finalize");
   }
 
+  /**
+   * Opens the transfer the page's link names (`?tx=`): a deposit kept here,
+   * or else a withdrawal, which is checked.
+   */
+  function openLinked() {
+    const linked = $page.url.searchParams.get("tx");
+    const deposit = deposits.find(
+      (item) => item.transactionHash === linked?.toLowerCase()
+    );
+
+    if (deposit) {
+      openDeposit = deposit.transactionHash;
+
+      return;
+    }
+
+    if (!linked) {
+      return;
+    }
+
+    txHash = linked;
+
+    const remembered = isWithdrawalTxHash(linked)
+      ? rememberWithdrawalTransaction(/** @type {`0x${string}`} */ (linked), {
+          account: currentAccount,
+        })
+      : null;
+
+    if (remembered) {
+      selectedTransactionHash = remembered.transactionHash;
+    }
+
+    void checkStatus();
+  }
+
   onMount(() => {
+    void bridgeTimes.load();
     rememberedActivity = hydrateWithdrawalActivity();
     rebuildActivity();
+    keptDeposits = hydrateDepositActivity();
+
+    const unsubscribeDeposits = depositActivityStore.subscribe((items) => {
+      keptDeposits = items;
+      filterDeposits();
+    });
 
     const unsubscribeActivity = withdrawalActivityStore.subscribe((items) => {
       rememberedActivity = items;
@@ -360,6 +503,11 @@
     });
     const unsubscribe = account.subscribe((value) => {
       currentAccount = value.address?.toLowerCase() ?? null;
+      filterDeposits();
+
+      if (currentAccount) {
+        resumeDepositTracking(currentAccount);
+      }
 
       if (observedAccount !== currentAccount) {
         observedAccount = currentAccount;
@@ -374,23 +522,7 @@
       }
     });
 
-    const queryHash = $page.url.searchParams.get("tx");
-
-    if (queryHash) {
-      txHash = queryHash;
-      const remembered = isWithdrawalTxHash(queryHash)
-        ? rememberWithdrawalTransaction(
-            /** @type {`0x${string}`} */ (queryHash),
-            { account: currentAccount }
-          )
-        : null;
-
-      if (remembered) {
-        selectedTransactionHash = remembered.transactionHash;
-      }
-
-      void checkStatus();
-    }
+    openLinked();
 
     const timer = window.setInterval(() => {
       if (document.visibilityState !== "hidden") {
@@ -400,6 +532,7 @@
 
     return () => {
       unsubscribe();
+      unsubscribeDeposits();
       unsubscribeActivity();
       unsubscribeHistory();
       window.clearInterval(timer);
@@ -418,108 +551,410 @@
     lastCheckedAt = latestCheck > 0 ? new Date(latestCheck) : null;
   }
   $: canCheck = finalizationConfig.configured && !isChecking && !isSubmitting;
+  $: ({ language } = $settingsStore);
+  $: groups = groupBridgeActivity([
+    ...activity.map((item) =>
+      withdrawalRow(item, {
+        locale: language,
+        time: routeTime(WITHDRAWAL, $bridgeTimes),
+      })
+    ),
+    ...deposits.map((item) =>
+      depositRow(item, {
+        locale: language,
+        time: routeTime(DEPOSIT, $bridgeTimes),
+      })
+    ),
+  ]);
+
+  function validateHashInput() {
+    hashError =
+      txHash.length > 0 && !isWithdrawalTxHash(txHash.trim())
+        ? "Enter a 0x-prefixed 32-byte transaction hash."
+        : "";
+  }
 </script>
 
-<article in:fade|global class="transactions">
-  <header class="transactions__header">
-    <div>
-      <h3 class="h4">Withdrawal activity</h3>
-      {#if currentAccount}
-        <p>{shortened(currentAccount)}</p>
-      {/if}
-    </div>
-    <div class="transactions__header-actions">
-      <AppAnchorButton
-        href="/dashboard/bridge"
-        text="Back"
-        variant="tertiary"
-        icon={{ path: mdiArrowLeft }}
-      />
-    </div>
-  </header>
+<SwapCard label="Bridge activity" wide>
+  <div class="swap-top" slot="top">
+    <nav aria-label="Bridge and activity" class="swap-tabs">
+      <a class="swap-tab" href={addBasePath("/dashboard/bridge")}>Bridge</a>
+      <a
+        aria-current="page"
+        class="swap-tab"
+        href={addBasePath("/dashboard/bridge/transactions")}>Activity</a
+      >
+    </nav>
+  </div>
 
-  {#if !finalizationConfig.configured}
-    <div class="transactions__notice">
+  <div class="bridge-activity" in:fade|global>
+    <p class="bridge-activity__lede">
+      Transfers between Dusk and DuskEVM{#if currentAccount}, for DuskEVM
+        account <b>{shortened(currentAccount)}</b>{/if}.
+      {#if lastCheckedAt}
+        <span class="bridge-activity__checked"
+          >Updated {formatTimestamp(lastCheckedAt.toISOString())}</span
+        >
+      {/if}
+    </p>
+
+    {#if !currentAccount}
+      <div class="bridge-activity__connect">
+        <p>
+          Connect DuskEVM wallet to list its deposits and other withdrawals.
+        </p>
+        <Button
+          icon={{ path: mdiWalletOutline }}
+          on:click={() => modal.open()}
+          size="small"
+          text="Connect"
+          variant="secondary"
+        />
+      </div>
+    {/if}
+
+    {#if !finalizationConfig.configured}
       <Banner title="Finalization not configured" variant="warning">
         <p>Missing {finalizationConfig.missing.join(", ")}.</p>
       </Banner>
-    </div>
-  {/if}
+    {/if}
 
-  <div class="transactions__body">
-    <WithdrawalActivityList
-      {activity}
-      activityError={activityError || historyError}
-      {canCheck}
-      {currentAccount}
-      {isActivityLoading}
-      {isChecking}
-      {isSubmitting}
-      {lastCheckedAt}
-      {selectedWithdrawal}
-      {statusError}
-      submittedHash={selectedWithdrawal?.pendingTransactionHash ?? ""}
-      {selectedTransactionHash}
-      bind:hashError
-      bind:txHash
-      on:check={(event) => checkStatus(event.detail)}
-      on:finalize={submitFinalization}
-      on:prove={submitProof}
-      on:select={(event) => selectActivity(event.detail)}
-    />
+    {#if activityError || historyError}
+      <p class="bridge-activity__note" role="status">
+        DuskEVM's explorer can't be read: {activityError || historyError} The withdrawals
+        remembered here are still listed.
+      </p>
+    {/if}
+
+    {#if isActivityLoading && !groups.length}
+      <p class="bridge-activity__note" aria-live="polite">Loading activity…</p>
+    {:else if !groups.length}
+      <p class="bridge-activity__note">No transfers yet.</p>
+    {/if}
+
+    {#each groups as { group, head, rows } (group)}
+      <section aria-labelledby="bridge-group-{group}">
+        <h2 class="bridge-activity__head" id="bridge-group-{group}">{head}</h2>
+        <ul class="bridge-activity__rows">
+          {#each rows as row (row.id)}
+            <li class="bridge-row" class:bridge-row--open={row.id === openId}>
+              <div class="bridge-row__head">
+                <button
+                  aria-controls={row.id === openId
+                    ? `bridge-details-${row.hash}`
+                    : undefined}
+                  aria-expanded={row.id === openId}
+                  class="bridge-row__open"
+                  on:click={() => toggleRow(row)}
+                  type="button"
+                >
+                  <span aria-hidden="true" class="bridge-row__pair"
+                    ><NetworkMark id={row.from} /><Icon
+                      path={mdiArrowRight}
+                    /><NetworkMark id={row.to} /></span
+                  >
+                  <span class="bridge-row__main">
+                    <span class="bridge-row__title">{row.title}</span>
+                    <span class="bridge-row__line">{row.line}</span>
+                  </span>
+                  <span class="bridge-row__right">
+                    {#if row.amount}
+                      <span class="bridge-row__amount">{row.amount}</span>
+                    {/if}
+                    {#if row.state}
+                      <span
+                        class="bridge-row__state bridge-row__state--{row.group}"
+                        >{row.state}</span
+                      >
+                    {/if}
+                  </span>
+                </button>
+                {#if row.action}
+                  <Button
+                    aria-label={`${row.action === "prove" ? "Prove" : "Claim"} ${row.amount || "the withdrawal"} from DuskEVM`}
+                    className="bridge-row__action"
+                    on:click={() => startAction(row)}
+                    size="small"
+                    text={row.action === "prove" ? "Prove" : "Claim"}
+                  />
+                {/if}
+              </div>
+              {#if row.id === openId}
+                <div class="bridge-row__details" id="bridge-details-{row.hash}">
+                  {#if row.kind === "withdrawal"}
+                    <WithdrawalLifecycle
+                      {isChecking}
+                      {isSubmitting}
+                      {selectedWithdrawal}
+                      {statusError}
+                      submittedHash={selectedWithdrawal?.pendingTransactionHash ??
+                        ""}
+                      on:finalize={submitFinalization}
+                      on:prove={submitProof}
+                    />
+                  {:else}
+                    <DepositLifecycle deposit={row.item} titled={false} />
+                  {/if}
+                </div>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/each}
+
+    <form
+      class="bridge-activity__lookup"
+      on:submit|preventDefault={() => checkStatus(txHash)}
+    >
+      <label for="withdrawal-tx-hash">Find by transaction hash</label>
+      <div class="bridge-activity__lookup-row">
+        <Textbox
+          aria-describedby={hashError ? "withdrawal-tx-hash-error" : undefined}
+          aria-invalid={hashError ? "true" : undefined}
+          bind:value={txHash}
+          id="withdrawal-tx-hash"
+          name="withdrawal-tx-hash"
+          on:blur={validateHashInput}
+          on:input={() => {
+            if (isWithdrawalTxHash(txHash.trim())) hashError = "";
+          }}
+          placeholder="0x…"
+        />
+        <Button
+          disabled={!canCheck}
+          text={isChecking ? "Checking" : "Check"}
+          type="submit"
+          variant="secondary"
+        />
+      </div>
+      <p class="bridge-activity__hint">
+        A withdrawal's DuskEVM transaction, as its wallet shows it.
+      </p>
+      {#if hashError}
+        <p class="field-error" id="withdrawal-tx-hash-error" role="alert">
+          {hashError}
+        </p>
+      {/if}
+    </form>
   </div>
-</article>
+</SwapCard>
 
 <style lang="postcss">
-  .transactions {
-    background: var(--surface-color);
-    border-radius: 1.25em;
+  .bridge-activity {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    gap: 0.75rem;
+    padding: 0 0.5rem 0.5rem;
+  }
 
-    &__header {
-      align-items: center;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      justify-content: space-between;
-      padding: 1.25rem;
+  .bridge-activity__lede,
+  .bridge-activity__note,
+  .bridge-activity__hint {
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
 
-      & h3,
-      & p {
-        margin: 0;
-      }
+  .bridge-activity__lede b {
+    color: var(--calm-text);
+    font-family: var(--code-font-family);
+    font-weight: 400;
+  }
 
-      & p {
-        color: var(--secondary-text-color);
-        font-variant-numeric: tabular-nums;
-        font-size: 0.8125rem;
-        margin-top: 0.25rem;
-      }
-    }
+  .bridge-activity__checked {
+    display: block;
+    color: var(--calm-subtle);
+    font-size: 0.8125rem;
+  }
 
-    &__header-actions {
-      align-items: center;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
+  .bridge-activity__hint {
+    font-size: 0.8125rem;
+  }
 
-    &__notice {
-      padding: 0 1.25rem 1.25rem;
-    }
+  .bridge-activity__connect {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 1rem;
+    background: var(--calm-field);
+    box-shadow: inset 0 0 0 1px var(--calm-line);
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+  }
 
-    &__body {
-      border-top: 1px solid var(--surface-border-color-subtle);
-      min-height: 32rem;
+  .bridge-activity__head {
+    margin: 0.5rem 0 0;
+    padding: 0.4375rem 0.75rem;
+    border-radius: 0.625rem;
+    background: var(--calm-s2);
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  .bridge-activity__rows {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .bridge-row {
+    border-bottom: 1px solid var(--calm-line);
+
+    &:last-child {
+      border-bottom: 0 none;
     }
   }
 
+  .bridge-row__head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .bridge-row__open {
+    all: unset;
+    box-sizing: border-box;
+    display: grid;
+    flex: 1;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.875rem;
+    min-width: 0;
+    min-height: 3.75rem;
+    padding: 0.75rem 0.5rem;
+    border-radius: 0.75rem;
+    cursor: pointer;
+
+    &:hover .bridge-row__title {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--calm-focus);
+      outline-offset: -2px;
+    }
+  }
+
+  .bridge-row__pair {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--calm-subtle);
+
+    & :global(.dusk-icon) {
+      width: 0.875rem;
+      height: 0.875rem;
+    }
+  }
+
+  .bridge-row__main,
+  .bridge-row__right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
+  .bridge-row__right {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .bridge-row__title {
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+
+  .bridge-row__line {
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
+  }
+
+  .bridge-row__amount {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .bridge-row__state {
+    font-size: 0.8125rem;
+    font-weight: 500;
+
+    &--progress {
+      color: var(--calm-pending);
+    }
+
+    &--failed {
+      color: var(--calm-danger);
+    }
+  }
+
+  .bridge-row__head :global(.bridge-row__action) {
+    flex: 0 0 auto;
+    margin-right: 0.5rem;
+  }
+
+  .bridge-row__details {
+    margin: 0 0 0.75rem;
+    border-radius: 1rem;
+    background: var(--calm-field);
+    box-shadow: inset 0 0 0 1px var(--calm-line);
+
+    & > :global(.deposit-status) {
+      padding: 1rem 1.25rem;
+    }
+  }
+
+  .bridge-activity__lookup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--calm-line);
+
+    & label {
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+  }
+
+  .bridge-activity__lookup-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .field-error {
+    margin: 0;
+    color: var(--calm-danger);
+    font-size: 0.8125rem;
+  }
+
+  /* Phones: the amount and the state under the route, as a line of their own. */
   @media (max-width: 30rem) {
-    .transactions__header {
-      padding-left: 1rem;
-      padding-right: 1rem;
+    .bridge-row__open {
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 0.25rem 0.75rem;
+    }
+
+    .bridge-row__right {
+      grid-column: 2;
+      flex-direction: row;
+      align-items: baseline;
+      justify-content: space-between;
     }
   }
 </style>
