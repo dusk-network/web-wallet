@@ -118,14 +118,45 @@ function load({ force = false } = {}) {
   return entry.promise;
 }
 
+/**
+ * Reads Sozu again now, as before a stake is sent: the status read, or null
+ * when it couldn't be read, though the store keeps showing the last one.
+ *
+ * @returns {Promise<SozuStatus | null>}
+ */
+async function check() {
+  await load({ force: true });
+  await lastRead();
+
+  const { error, status } = get(store);
+
+  return error ? null : status;
+}
+
+/**
+ * Waits for the last read: a newer one can take an earlier one's place.
+ *
+ * @returns {Promise<void>}
+ */
+async function lastRead() {
+  const entry = current;
+
+  await entry?.promise;
+
+  if (current && current !== entry) {
+    await lastRead();
+  }
+}
+
 /** Forgets what was read, as on a lock or a reset. */
 function reset() {
   current = null;
   store.set(initialState);
 }
 
-/** @type {import("svelte/store").Readable<SozuState> & { load: typeof load, reset: typeof reset }} */
+/** @type {import("svelte/store").Readable<SozuState> & { check: typeof check, load: typeof load, reset: typeof reset }} */
 export default {
+  check,
   load,
   reset,
   subscribe: store.subscribe,

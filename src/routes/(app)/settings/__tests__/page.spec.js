@@ -442,6 +442,26 @@ describe("Settings", () => {
       ).toStrictEqual([]);
     });
 
+    it("should forget the EVM wallets connected here, so none comes back after it", async () => {
+      localStorage.setItem("wagmi.store", JSON.stringify({ state: {} }));
+      localStorage.setItem("@appkit/connection_status", "connected");
+
+      const { getByRole, getByText } = render(Settings);
+
+      expect(
+        getByText(
+          /^Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds\./
+        )
+      ).toBeInTheDocument();
+
+      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(logoutSpy).toHaveBeenCalledWith(false);
+      expect(localStorage.getItem("wagmi.store")).toBeNull();
+      expect(localStorage.getItem("@appkit/connection_status")).toBeNull();
+    });
+
     it("should do nothing if the user doesn't confirm the reset", async () => {
       confirmSpy.mockReturnValueOnce(false);
 

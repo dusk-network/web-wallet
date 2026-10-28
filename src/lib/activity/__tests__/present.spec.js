@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { claimDay } from "$lib/bridge/claimDate";
+
 import {
   CSV_COLUMNS,
   CSV_CONTACT_COLUMN,
@@ -209,9 +211,10 @@ describe("describeRow", () => {
   it("says where a bridge row's DUSK went: the DuskEVM address, or the withdrawal and its next step", () => {
     const evm = "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A";
     const withdrawal = "0001".padEnd(64, "0");
+    const hash = /** @type {`0x${string}`} */ (`0x${"8e".repeat(32)}`);
     const proved = row({
       amount: "0",
-      bridge: { amount: "1008000000000", kind: "prove", withdrawal },
+      bridge: { amount: "1008000000000", hash, kind: "prove", withdrawal },
       contractId: BRIDGE,
       fnName: "proveWithdrawalTransaction",
       kind: "contract_call",
@@ -219,14 +222,32 @@ describe("describeRow", () => {
     });
     const claim = row({
       amount: "0",
-      bridge: { amount: "1008000000000", kind: "claim", withdrawal },
+      bridge: { amount: "1008000000000", hash, kind: "claim", withdrawal },
       contractId: BRIDGE,
       fnName: "finalizeWithdrawalTransaction",
       hash: "bb".repeat(32),
       kind: "contract_call",
       to: undefined,
     });
-    const week = 7 * 86_400_000;
+    // When the chain says it can be claimed: Mon 2 Nov 2026, 03:20:39 UTC.
+    const at = Date.UTC(2026, 10, 2, 3, 20, 39);
+    const day = claimDay(at, "en");
+    /** @param {Record<string, unknown>} read */
+    const claims = (read) =>
+      new Map([
+        [
+          hash,
+          {
+            at,
+            claimed: false,
+            exact: false,
+            overdue: false,
+            ready: false,
+            reprove: false,
+            ...read,
+          },
+        ],
+      ]);
 
     expect(
       describeRow(
@@ -247,43 +268,72 @@ describe("describeRow", () => {
       title: "To DuskEVM",
     });
 
-    // Proved, not claimed: the amount on its way, muted, and when it can be claimed.
-    const waiting = describeRow(proved, { ...context, now: proved.timestamp });
+    // Proved, not claimed: the amount on its way, muted. No date is made up
+    // from a fixed wait: none until the chain has been read.
+    expect(describeRow(proved, context)).toMatchObject({
+      amount: { muted: true, sign: "", text: "1,008" },
+      line: "Bridge",
+      note: null,
+      title: "Withdrawal proved",
+      withdrawal: { claim: null, claimed: false, ready: false },
+    });
+
+    // Then when it can be claimed, as the chain says: about, until its
+    // game has resolved.
+    const waiting = describeRow(proved, { ...context, claims: claims({}) });
 
     expect(waiting).toMatchObject({
-      amount: { muted: true, sign: "", text: "1,008" },
-      title: "Withdrawal proved",
-      withdrawal: {
-        claimed: false,
-        claimFrom: Number(proved.timestamp) + week,
-      },
+      line: `Bridge · claim from about ${day}`,
+      withdrawal: { claim: { at, exact: false, overdue: false } },
     });
-    expect(waiting.line).toMatch(
-      /^Bridge · claim from about Nov 2, \d\d:32 [AP]M$/
-    );
-
     // Where a row is narrow, the claim date gets a line of its own.
-    expect(waiting.note).toMatch(/^Claim from about Nov 2, \d\d:32 [AP]M$/);
+    expect(waiting.note).toBe(`Claim from about ${day}`);
     expect(waiting.shortLine).toBe("Bridge");
-
-    // The time is an estimate: once it passed, the row still says about when,
-    // never that the claim is ready, which only the bridge can tell.
     expect(
-      describeRow(proved, { ...context, now: Number(proved.timestamp) + week })
-        .line
-    ).toMatch(/^Bridge · claim from about Nov 2, /);
+      describeRow(proved, { ...context, claims: claims({ exact: true }) }).line
+    ).toBe(`Bridge · claim from ${day}`);
+    expect(
+      describeRow(proved, { ...context, claims: claims({ overdue: true }) })
+        .note
+    ).toBe(
+      `Waiting for DuskEVM to settle this proof. Claim from ${day} at the soonest.`
+    );
+    expect(
+      describeRow(proved, { ...context, claims: claims({ ready: true }) })
+    ).toMatchObject({
+      line: "Bridge · ready to claim",
+      note: "Ready to claim",
+      withdrawal: { ready: true },
+    });
+    // Its proof's game blacklisted, or the challenger won: no date, but
+    // that the proof must be made again.
+    expect(
+      describeRow(proved, {
+        ...context,
+        claims: claims({ at: null, reprove: true }),
+      })
+    ).toMatchObject({
+      line: "Bridge · proof rejected · prove it again",
+      note: "Proof rejected · prove it again",
+      withdrawal: { claim: null, reprove: true },
+    });
 
+    // Claimed: by a row of this history, or as the Portal says.
     const claimed = claimedWithdrawals([claim, proved]);
 
-    expect(
-      describeRow(proved, { ...context, claimed, now: proved.timestamp })
-    ).toMatchObject({
-      amount: { muted: false, text: "1,008" },
-      line: "Bridge · claimed",
-      note: null,
-      shortLine: "Bridge · claimed",
-      withdrawal: { claimed: true },
-    });
+    for (const known of [
+      { ...context, claimed },
+      { ...context, claims: claims({ at: null, claimed: true }) },
+    ]) {
+      expect(describeRow(proved, known)).toMatchObject({
+        amount: { muted: false, text: "1,008" },
+        line: "Bridge · claimed",
+        note: null,
+        shortLine: "Bridge · claimed",
+        withdrawal: { claimed: true },
+      });
+    }
+
     expect(describeRow(claim, context)).toMatchObject({
       amount: { text: "1,008" },
       title: "Withdrawal claimed",

@@ -206,5 +206,27 @@ describe("Network store", async () => {
       // check that the cached network is used
       expect(connectSpy).toHaveBeenCalledTimes(1);
     });
+
+    it("should expose a method to retrieve the latest block's height and time, which contract times are counted from", async () => {
+      networkQuerySpy.mockResolvedValueOnce({
+        block: { header: { height: 4_704_959, timestamp: 1_793_156_989 } },
+      });
+
+      await expect(store.getLatestBlock()).resolves.toStrictEqual({
+        height: 4_704_959n,
+        timestamp: 1_793_156_989n,
+      });
+      expect(networkQuerySpy).toHaveBeenLastCalledWith(
+        "block(height: -1) { header { height timestamp } }"
+      );
+
+      networkQuerySpy.mockResolvedValueOnce({
+        block: { header: { timestamp: 1_793_156_989 } },
+      });
+
+      await expect(store.getLatestBlock()).rejects.toThrow(
+        "The latest block is unavailable"
+      );
+    });
   });
 });

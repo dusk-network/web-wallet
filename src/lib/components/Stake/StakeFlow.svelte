@@ -137,7 +137,9 @@
     font-size: 0.875rem;
   }
 
+  /* A row's label stays on one line; its value wraps. */
   .stake-flow__summary :global(.stake-flow__rows dt) {
+    flex-shrink: 0;
     color: var(--calm-muted);
   }
 

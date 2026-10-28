@@ -12,7 +12,7 @@ import {
 } from "$lib/dusk/currency/formatDusk";
 
 import { SOZU_FN, isSozuCall } from "$lib/sozu/config";
-import { WITHDRAWAL_WAITING_PERIOD_SECONDS } from "$lib/bridge/withdrawalLifecycle";
+import { claimDay, claimText } from "$lib/bridge/claimDate";
 
 import { knownCall } from "./knownContracts";
 
@@ -27,6 +27,7 @@ import { TX_KIND } from "./constants";
  * @typedef {{
  *   bridgeContracts?: Set<string>,
  *   claimed?: Set<string>,
+ *   claims?: Map<string, import("$lib/bridge/withdrawals").WithdrawalClaim>,
  *   contactNames?: Map<string, string>,
  *   locale: string,
  *   network?: string,
@@ -35,13 +36,20 @@ import { TX_KIND } from "./constants";
  *   sozuPools?: Set<string>,
  * }} PresentContext
  *
- * `claimed` holds the withdrawals the rows claim (claimedWithdrawals), and
- * `sozuPools` the pools Sozu's hub named (sozuPools in $lib/sozu).
+ * `claimed` holds the withdrawals the rows claim (claimedWithdrawals),
+ * `claims` when the proved ones can be claimed, by their hashes, as the
+ * chain says (withdrawalClaims in $lib/bridge), and `sozuPools` the pools
+ * Sozu's hub named (sozuPools in $lib/sozu).
  *
- * @typedef {{ claimFrom: number, claimed: boolean }} WithdrawalStep
- *   Where a proved withdrawal is: claimed, or about when it can be claimed.
- *   That time is an estimate: the bridge's withdrawals page says when the
- *   claim can be sent.
+ * @typedef {{
+ *   claim: import("$lib/bridge/claimDate").ClaimDate | null,
+ *   claimed: boolean,
+ *   ready: boolean,
+ *   reprove: boolean,
+ * }} WithdrawalStep
+ *   Where a proved withdrawal is: claimed, ready to claim, or when it can
+ *   be claimed, as the chain says; no date until that has been read, nor
+ *   when its proof must be made again (`reprove`).
  *
  * @typedef {{
  *   amount: { exact: string, muted: boolean, sign: "" | "+" | "−", text: string },
@@ -415,30 +423,30 @@ function amountOf(row, { bridge, failed, icon, locale }) {
 }
 
 /**
- * When a proved withdrawal can be claimed, at the earliest: its proof's
- * time and the waiting period after it.
+ * A proved withdrawal's line: claimed, ready to claim, its proof to make
+ * again, or when it can be claimed, as the chain says ("claim from about
+ * Mon 2 Nov, 04:20"); none until that has been read.
  *
- * @param {ActivityRow} row
- */
-const claimFromOf = (row) => {
-  const time = rowTime(row);
-
-  return time === null ? null : time + WITHDRAWAL_WAITING_PERIOD_SECONDS * 1000;
-};
-
-/**
- * "3 Nov, 14:20", in the user's locale and time zone.
- *
- * @param {number} time
+ * @param {WithdrawalStep} withdrawal
  * @param {string} locale
  */
-const dayAndTime = (time, locale) =>
-  new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-  }).format(time);
+function withdrawalLine(withdrawal, locale) {
+  if (withdrawal.claimed) {
+    return "claimed";
+  }
+
+  if (withdrawal.ready) {
+    return "ready to claim";
+  }
+
+  if (withdrawal.reprove) {
+    return "proof rejected · prove it again";
+  }
+
+  const text = claimText(withdrawal.claim, (ms) => claimDay(ms, locale));
+
+  return `${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+}
 
 /**
  * What a bridge call adds to its row: the DuskEVM address a deposit went
@@ -449,7 +457,7 @@ const dayAndTime = (time, locale) =>
  * @param {PresentContext} context
  * @returns {{ amount?: bigint, line?: string, to?: string, withdrawal?: WithdrawalStep } | null}
  */
-function bridgeOf(row, { claimed, locale }) {
+function bridgeOf(row, { claimed, claims, locale }) {
   const call = row.bridge;
 
   if (!call) {
@@ -461,26 +469,24 @@ function bridgeOf(row, { claimed, locale }) {
   }
 
   const amount = toLux(row.amount) === 0n ? toLux(call.amount) : undefined;
-  const claimFrom = call.kind === "prove" ? claimFromOf(row) : null;
 
-  if (claimFrom === null) {
+  if (call.kind !== "prove") {
     return { amount };
   }
 
-  // Only an estimate, from the usual waiting period after the proof: the
-  // claim also waits for its dispute game, which only the bridge follows.
+  // When it can be claimed, as the chain says, once that has been read.
+  const read = call.hash ? claims?.get(call.hash.toLowerCase()) : undefined;
+  /** @type {WithdrawalStep} */
   const withdrawal = {
-    claimed: Boolean(claimed?.has(call.withdrawal)),
-    claimFrom,
+    claim: read?.at
+      ? { at: read.at, exact: read.exact, overdue: read.overdue }
+      : null,
+    claimed: Boolean(claimed?.has(call.withdrawal) || read?.claimed),
+    ready: Boolean(read?.ready),
+    reprove: Boolean(read?.reprove),
   };
 
-  return {
-    amount,
-    line: withdrawal.claimed
-      ? "claimed"
-      : `claim from about ${dayAndTime(claimFrom, locale)}`,
-    withdrawal,
-  };
+  return { amount, line: withdrawalLine(withdrawal, locale), withdrawal };
 }
 
 /**

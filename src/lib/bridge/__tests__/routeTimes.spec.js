@@ -72,7 +72,12 @@ describe("route times", () => {
       })
     ).toStrictEqual({ seconds: 300, source: "chain" });
     expect(text(DEPOSIT, { chain: CHAIN, network: "mainnet" })).toBe("~1 min");
+    // The Portal's wait after a proof, and about when it can be proved: an
+    // output after it's sent, for "Claim 7 days after you prove. You can
+    // prove about 30 minutes after sending."
     expect(routeTime(WITHDRAWAL, { chain: CHAIN })).toStrictEqual({
+      maturity: 604_800,
+      prove: 1_700,
       report: 3_400,
       seconds: 608_200,
       source: "chain",

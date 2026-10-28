@@ -1,13 +1,38 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 
-import { claimedWithdrawals, describeRow } from "$lib/activity/present";
+import {
+  claimedWithdrawals,
+  describeRow,
+  fullDateTime,
+} from "$lib/activity/present";
 
 import TransactionDetail from "../TransactionDetail.svelte";
 
 const BRIDGE = "ab".repeat(32);
 const EVM = "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A";
 const WITHDRAWAL = "0001".padEnd(64, "0");
+const HASH = /** @type {`0x${string}`} */ (`0x${"8e".repeat(32)}`);
+
+/** When the chain says the withdrawal can be claimed: Mon 2 Nov 2026, 03:20:39 UTC. */
+const CLAIM_AT = Date.UTC(2026, 10, 2, 3, 20, 39);
+
+/** @param {Record<string, unknown>} read */
+const claims = (read) =>
+  new Map([
+    [
+      HASH,
+      {
+        at: CLAIM_AT,
+        claimed: false,
+        exact: false,
+        overdue: false,
+        ready: false,
+        reprove: false,
+        ...read,
+      },
+    ],
+  ]);
 const context = { bridgeContracts: new Set([BRIDGE]), locale: "en" };
 
 /**
@@ -64,12 +89,15 @@ describe("TransactionDetail", () => {
     const proved = row({
       bridge: {
         amount: "1008000000000",
+        hash: HASH,
         kind: "prove",
         withdrawal: WITHDRAWAL,
       },
       fnName: "proveWithdrawalTransaction",
     });
-    const { container, getByRole, getByText } = show(proved);
+    const { container, getByRole, getByText } = show(proved, {
+      claims: claims({}),
+    });
 
     expect(getByText("Proved · not claimed yet")).toBeTruthy();
     expect(
@@ -79,10 +107,42 @@ describe("TransactionDetail", () => {
     expect(container.querySelector(".tx-detail__amount")).toHaveClass(
       "tx-detail__amount--muted"
     );
-    expect(getByText(/^Claim it on Dusk from about/)).toBeTruthy();
+    // When the chain says it can be claimed, in full.
+    expect(
+      getByText(`Claim from about ${fullDateTime(CLAIM_AT, "en")}.`)
+    ).toBeTruthy();
     expect(
       getByRole("link", { name: "Open withdrawals" }).getAttribute("href")
     ).toContain("/dashboard/bridge/transactions?view=withdrawals");
+
+    cleanup();
+
+    const ready = show(proved, { claims: claims({ ready: true }) });
+
+    expect(ready.getByText("Proved · ready to claim")).toBeTruthy();
+    expect(ready.getByText("Ready to claim on Dusk.")).toBeTruthy();
+
+    cleanup();
+
+    // Its proof's game blacklisted: no date, but that it must be proved again.
+    const again = show(proved, {
+      claims: claims({ at: null, reprove: true }),
+    });
+
+    expect(again.getByText("Proof rejected · prove it again")).toBeTruthy();
+    expect(
+      again.getByText(
+        "Its proof was rejected, so it can't be claimed. Prove it again on Dusk."
+      )
+    ).toBeTruthy();
+    expect(again.queryByText(/Claim from/)).toBeNull();
+
+    cleanup();
+
+    // Until the chain has been read: no date made up from a fixed wait.
+    expect(
+      show(proved).getByText("Claim it on Dusk once its proof has matured.")
+    ).toBeTruthy();
 
     cleanup();
 

@@ -6,6 +6,7 @@
   import { mdiArrowLeft } from "@mdi/js";
   import { fade } from "svelte/transition";
 
+  import { activityState } from "$lib/activity";
   import { AppAnchorButton, Banner } from "$lib/components";
   import {
     finalizeWithdrawal,
@@ -14,11 +15,13 @@
     proveWithdrawal,
   } from "$lib/bridge/withdrawals";
   import {
+    historyWithdrawals,
     hydrateWithdrawalActivity,
     loadWithdrawalActivity,
     mergeWithdrawalActivity,
     recordWithdrawalSubmission,
     refreshWithdrawalTransaction,
+    rememberHistoryWithdrawals,
     rememberWithdrawalTransaction,
     resumeWithdrawalTracking,
     trackWithdrawalTransaction,
@@ -49,6 +52,17 @@
 
   /** @type {string} */
   let activityError = "";
+
+  /** Why the history's withdrawals couldn't be found on DuskEVM's explorer. */
+  let historyError = "";
+
+  /**
+   * The withdrawals the history knows, by their hashes: listed with or
+   * without an EVM wallet connected.
+   *
+   * @type {Set<string>}
+   */
+  let historyHashes = new Set();
 
   /** @type {string} */
   let hashError = "";
@@ -114,9 +128,40 @@
     const remembered = rememberedActivity.filter(
       (item) =>
         item.account === null ||
-        (currentAccount !== null && item.account === currentAccount)
+        (currentAccount !== null && item.account === currentAccount) ||
+        (item.withdrawalHash !== null && historyHashes.has(item.withdrawalHash))
     );
     activity = mergeWithdrawalActivity(remembered, indexedActivity);
+  }
+
+  /**
+   * Lists the withdrawals the history knows, proved or claimed by this
+   * account on Dusk, and follows them: those not remembered here yet are
+   * found on DuskEVM's explorer by their nonces.
+   *
+   * @param {ActivityRow[]} rows
+   */
+  async function showHistoryWithdrawals(rows) {
+    const known = historyWithdrawals(rows);
+
+    historyHashes = new Set(known.map(({ hash }) => hash));
+    rebuildActivity();
+
+    for (const item of rememberedActivity) {
+      if (item.withdrawalHash && historyHashes.has(item.withdrawalHash)) {
+        void trackWithdrawalTransaction(item.transactionHash);
+      }
+    }
+
+    try {
+      for (const item of await rememberHistoryWithdrawals(known)) {
+        void trackWithdrawalTransaction(item.transactionHash);
+      }
+
+      historyError = "";
+    } catch (error) {
+      historyError = getErrorMessage(error);
+    }
   }
 
   /**
@@ -310,6 +355,9 @@
       rememberedActivity = items;
       rebuildActivity();
     });
+    const unsubscribeHistory = activityState.subscribe((state) => {
+      void showHistoryWithdrawals(state.rows);
+    });
     const unsubscribe = account.subscribe((value) => {
       currentAccount = value.address?.toLowerCase() ?? null;
 
@@ -353,6 +401,7 @@
     return () => {
       unsubscribe();
       unsubscribeActivity();
+      unsubscribeHistory();
       window.clearInterval(timer);
     };
   });
@@ -400,7 +449,7 @@
   <div class="transactions__body">
     <WithdrawalActivityList
       {activity}
-      {activityError}
+      activityError={activityError || historyError}
       {canCheck}
       {currentAccount}
       {isActivityLoading}

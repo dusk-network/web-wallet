@@ -1,6 +1,14 @@
+import { DEFAULT_BRIDGE_MIN_GAS_LIMIT } from "@dusk/evm-sdk";
+
 import { hexToBytes, normalizeBytes } from "./encoding";
 
-export const BRIDGE_DEPOSIT_MIN_GAS_LIMIT = 150_000;
+/**
+ * The gas a deposit leaves for its call on DuskEVM: the DuskEVM SDK's
+ * default, 200,000, as the bridge sends, OP Stack's default too. Crediting
+ * an account uses about 27,000; the rest is room for a contract receiving
+ * the DUSK.
+ */
+export const BRIDGE_DEPOSIT_MIN_GAS_LIMIT = DEFAULT_BRIDGE_MIN_GAS_LIMIT;
 
 const UINT32_MAX = 2n ** 32n - 1n;
 const UINT64_MAX = 2n ** 64n - 1n;

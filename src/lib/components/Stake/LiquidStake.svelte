@@ -1,11 +1,13 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { onMount, tick } from "svelte";
+  import { onDestroy, onMount, tick } from "svelte";
+  import { get } from "svelte/store";
   import {
     mdiAlertCircleOutline,
     mdiContentCopy,
     mdiFileDocumentOutline,
+    mdiPercentOutline,
     mdiWaterOutline,
   } from "@mdi/js";
 
@@ -24,9 +26,9 @@
     feePercent,
     leastSozuStake,
     sozuFee,
-    stDuskFor,
+    sozuStake,
   } from "$lib/sozu/amounts";
-  import { settingsStore } from "$lib/stores";
+  import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
@@ -54,14 +56,24 @@
   /** @type {"stake" | "unstake"} */
   export let action = "stake";
 
-  /** @type {GasStoreContent} */
-  export let gasLimits;
-
-  /** @type {ContractGasSettings} */
-  export let gasSettings;
+  /**
+   * The gas each action starts from, at the node's price, and its bounds: a
+   * stake's, and an unstake's, which can touch more of Sozu's provisioners.
+   *
+   * @type {Record<"stake" | "unstake", { limits: GasStoreContent, settings: ContractGasSettings }>}
+   */
+  export let gas;
 
   /** @type {() => void} */
   export let onRetry = () => {};
+
+  /**
+   * Reads Sozu again, as just before a stake is sent: the status now, or
+   * null when it couldn't be read.
+   *
+   * @type {() => Promise<SozuStatus | null>}
+   */
+  export let recheck;
 
   const id = randomUUID();
 
@@ -72,16 +84,34 @@
   let amountText = "";
   let otherText = "";
   let isReviewing = false;
-  let { gasLimit, gasPrice } = gasSettings;
-  let defaultGas = gasSettings;
+  let { gasLimit, gasPrice } = gas[action].settings;
+  let defaultGas = gas[action].settings;
   let isGasValid = false;
 
   /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
   let sent = null;
 
+  /** A fee so high that no stake gets stDUSK: 100%, or so near it that the least is past any amount. */
+  const NO_STAKE = "No stake gets stDUSK at Sozu's deposit fee now.";
+
+  /** Sozu's terms, read again as the stake was sent, had changed: nothing was sent. */
+  let termsChanged = false;
+
+  /** They couldn't be read again: nothing was sent. */
+  let termsError = "";
+  let isChecking = false;
+
+  /**
+   * Counts what the summary showed being left or changed: a stake whose
+   * terms are read meanwhile isn't sent.
+   */
+  let draftEpoch = 0;
+  let isGone = false;
+
   /** @param {"stake" | "unstake"} next */
   async function pick(next) {
     if (next !== action) {
+      forgetTerms();
       [amountText, otherText] = [otherText, amountText];
       action = next;
     }
@@ -104,6 +134,7 @@
 
   /** @param {bigint} lux */
   function fill(lux) {
+    forgetTerms();
     amountText = formatDuskPlain(lux);
     document.getElementById(`${id}-amount`)?.focus();
   }
@@ -117,28 +148,175 @@
     }
   }
 
-  function send() {
-    if (status && amount !== null && canSend) {
+  /**
+   * What the summary shows of Sozu's terms for a stake of `lux`: the deposit
+   * fee and its rate, about how much stDUSK it gets, and whether it goes
+   * ahead.
+   *
+   * @param {bigint} lux
+   * @param {SozuStatus | null} terms
+   */
+  function shownTerms(lux, terms) {
+    const rate = terms?.fees?.deposit ?? null;
+    const quote = sozuStake(lux, terms?.pool ?? null, rate);
+
+    return [
+      rate
+        ? `${feePercent(rate, language)} · ${formatDuskExact(quote.fee, language)}`
+        : "",
+      quote.stDusk === null ? "" : formatDusk(quote.stDusk, language),
+      quote.ok,
+    ].join(" | ");
+  }
+
+  /**
+   * Sozu's terms for a stake as they are now, read again just before it's
+   * sent: its pool takes the fee of that moment, and Sozu can change it, or
+   * pause deposits, at any time.
+   *
+   * @param {bigint} lux
+   * @param {SozuStatus} shown The status the summary showed
+   * @returns {Promise<SozuStatus | "changed" | "unread">} The status now,
+   *   when nothing the summary shows changed and deposits are open
+   */
+  async function recheckStake(lux, shown) {
+    const now = await recheck().catch(() => null);
+
+    if (!now) {
+      return "unread";
+    }
+
+    const changed =
+      shownTerms(lux, shown) !== shownTerms(lux, now) ||
+      now.contracts.pool !== shown.contracts.pool ||
+      now.flags?.maintenance !== false ||
+      (shown.flags?.synchronization !== true &&
+        now.flags?.synchronization === true);
+
+    return changed ? "changed" : now;
+  }
+
+  /** The network and the profile a stake goes from. */
+  const whereFrom = () => ({
+    network: String(get(networkStore).networkName ?? ""),
+    profile: String(get(walletStore).currentProfile?.account ?? ""),
+  });
+
+  /**
+   * @typedef {{ action: "stake" | "unstake", epoch: number, gasLimit: bigint, gasPrice: bigint, lux: bigint, network: string, profile: string }} StakeOrder
+   */
+
+  /**
+   * Whether the stake about to be sent is still the one the summary shows:
+   * the page still open, its amount, action and gas as they were, as the
+   * node's price can come in meanwhile, and the same network and profile.
+   *
+   * @param {StakeOrder} order
+   */
+  function isStillShown(order) {
+    const from = whereFrom();
+
+    return (
+      !isGone &&
+      draftEpoch === order.epoch &&
+      amount === order.lux &&
+      action === order.action &&
+      gasLimit === order.gasLimit &&
+      gasPrice === order.gasPrice &&
+      from.network === order.network &&
+      from.profile === order.profile
+    );
+  }
+
+  /**
+   * Reads Sozu's terms again for the stake about to be sent: the pool to
+   * send it to, or null when nothing goes, as the terms changed, couldn't be
+   * read, or what the summary showed was left or changed meanwhile.
+   *
+   * @param {StakeOrder} order
+   * @param {SozuStatus} shown The status the summary showed
+   * @returns {Promise<string | null>}
+   */
+  async function termsNow(order, shown) {
+    isChecking = true;
+    termsError = "";
+
+    const terms = await recheckStake(order.lux, shown);
+
+    isChecking = false;
+
+    if (!isStillShown(order)) {
+      return null;
+    }
+
+    termsChanged = terms === "changed";
+    termsError =
+      terms === "unread" ? "Couldn't check Sozu's terms just now" : "";
+
+    return typeof terms === "string" ? null : terms.contracts.pool;
+  }
+
+  async function send() {
+    if (!status || amount === null || !canSend || isChecking) {
+      return;
+    }
+
+    const order = {
+      action,
+      epoch: draftEpoch,
+      gasLimit,
+      gasPrice,
+      lux: amount,
+      maxFee: maxGasFee,
+      ...whereFrom(),
+    };
+    // A stake goes ahead on Sozu's terms as they are when it's sent: read
+    // them again first, and if anything the summary shows changed, show the
+    // new figures for another confirmation instead.
+    const pool =
+      order.action === "stake"
+        ? await termsNow(order, status)
+        : status.contracts.pool;
+
+    if (pool) {
       sent = {
-        maxFee: maxGasFee,
+        maxFee: order.maxFee,
         operation: execute(
-          action,
-          status.contracts.pool,
-          amount,
-          gasPrice,
-          gasLimit
+          order.action,
+          pool,
+          order.lux,
+          order.gasPrice,
+          order.gasLimit
         ),
-        what: isStake
-          ? `${formatDuskExact(amount, language)} DUSK to Sozu`
-          : `${formatDuskExact(amount, language)} DUSK unstaked from Sozu`,
+        what:
+          order.action === "stake"
+            ? `${formatDuskExact(order.lux, language)} DUSK to Sozu`
+            : `${formatDuskExact(order.lux, language)} DUSK unstaked from Sozu`,
       };
     }
+  }
+
+  /**
+   * What the summary shows follows the amount, the action and the gas
+   * again: a stake whose terms are being read isn't sent.
+   */
+  function forgetTerms() {
+    termsChanged = false;
+    termsError = "";
+    draftEpoch += 1;
   }
 
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
 
+  onDestroy(() => {
+    isGone = true;
+  });
+
+  // Each action's own gas: a tab's, or the node's price once it's read,
+  // unless the gas was edited.
+  $: ({ limits: gasLimits, settings: gasSettings } = gas[action]);
   $: if (!sent && !isReviewing && gasSettings !== defaultGas) {
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
@@ -151,6 +329,16 @@
 
   $: ({ language } = $settingsStore);
   $: ({ status } = sozu);
+  // Sozu's switches, each on its own: no deposits while it's under
+  // maintenance, or while that can't be checked, and calls that can fail
+  // while it synchronizes.
+  $: maintenance = status?.flags?.maintenance;
+  $: isPaused = isStake && maintenance === true;
+  $: isUnchecked =
+    isStake && Boolean(status) && maintenance !== true && maintenance !== false;
+  $: isStakeOff = isPaused || isUnchecked;
+  $: isSyncing = status?.flags?.synchronization === true;
+  $: fees = status?.fees ?? null;
   $: isStake = action === "stake";
   $: maxGasFee = gasLimit * gasPrice;
   $: staked = status?.position.balance ?? 0n;
@@ -163,13 +351,15 @@
       : 0n
     : staked;
   $: amount = parseDuskInput(amountText);
-  $: check = checkAmount({
+  // Less than this gets no stDUSK at the rate now, after the fee; with none,
+  // no stake does.
+  $: least = isStake ? leastSozuStake(status?.pool ?? null, depositRate) : 0n;
+  $: checked = checkAmount({
     amount,
     available: availableBalance,
     fee: maxGasFee,
     locale: language,
-    // Less than this gets no stDUSK at the rate now, after the fee.
-    minimum: isStake ? leastSozuStake(status?.pool ?? null, depositRate) : 0n,
+    minimum: least ?? 0n,
     most: isStake
       ? undefined
       : {
@@ -178,19 +368,19 @@
         },
     text: amountText,
   });
-  $: canSend = Boolean(status) && check.ok && isGasValid;
+  $: check =
+    least === null && checked.ok
+      ? { error: NO_STAKE, isMinimum: true, ok: false }
+      : checked;
+  $: canSend = Boolean(status) && check.ok && isGasValid && !isStakeOff;
   $: shownAmount = amount !== null && check.ok ? amount : 0n;
   // What is typed shows in the summary, muted while it can't be sent.
   $: typedAmount = amount ?? 0n;
   $: depositFee = depositRate ? sozuFee(typedAmount, depositRate) : null;
-  // What the stake gets, for what's left once Sozu takes its fee.
-  $: estimate =
-    isStake && check.ok
-      ? stDuskFor(
-          shownAmount - (depositRate ? sozuFee(shownAmount, depositRate) : 0n),
-          status?.pool ?? null
-        )
-      : null;
+  // What the stake gets, for what's left once Sozu takes its fee, and what
+  // that's worth now.
+  $: stake = sozuStake(shownAmount, status?.pool ?? null, depositRate);
+  $: estimate = isStake && check.ok ? stake.stDusk : null;
   $: isTypedOff = Boolean(check.error);
   $: total = isStake ? typedAmount + maxGasFee : maxGasFee;
 </script>
@@ -211,6 +401,7 @@
     {isReviewing}
     on:back={() => {
       isReviewing = false;
+      forgetTerms();
     }}
     on:review={() => {
       isReviewing = true;
@@ -231,6 +422,12 @@
         >.
       </p>
     </div>
+
+    {#if isSyncing}
+      <p class="liquid-stake__notice" role="status">
+        Sozu is updating its pool, so a stake or an unstake sent now can fail.
+      </p>
+    {/if}
 
     {#if !status && sozu.loading}
       <p class="liquid-stake__hint">Reading Sozu's pool…</p>
@@ -307,14 +504,15 @@
             autocomplete="off"
             bind:value={amountText}
             className="liquid-stake__input"
-            disabled={!status}
+            disabled={!status || isStakeOff}
             id="{id}-amount"
             inputmode="decimal"
+            on:input={forgetTerms}
             type="text"
           />
           <span aria-hidden="true" class="liquid-stake__unit">DUSK</span>
           <Button
-            disabled={!status || most <= 0n}
+            disabled={!status || isStakeOff || most <= 0n}
             on:click={() => fill(most)}
             size="small"
             text="Max"
@@ -338,19 +536,34 @@
           {/if}
         </p>
         <div id="{id}-check">
-          {#if check.error}
+          {#if isPaused}
+            <p class="liquid-stake__error" role="alert">
+              <strong>Sozu has paused deposits.</strong> Unstaking still works.
+            </p>
+          {:else if isUnchecked}
+            <p class="liquid-stake__error" role="alert">
+              <strong>Sozu's deposits couldn't be checked.</strong> Staking stays
+              off until they can be. Unstaking still works.
+            </p>
+          {:else if check.error}
             <p class="liquid-stake__error" role="alert">
               <strong>{check.error}</strong>
             </p>
           {:else if estimate !== null}
             <div class="liquid-stake__estimate">
               <p>
-                You get about {formatDusk(estimate, language)} stDUSK, at the rate
-                Sozu's contract gives now.
+                You get about {formatDusk(estimate, language)} stDUSK, worth about
+                {formatDusk(stake.worth, language)} DUSK now.
               </p>
               <p>
                 stDUSK is Sozu's token for your share. Its DUSK value follows
                 Sozu's pool, its rewards and its fees.
+              </p>
+            </div>
+          {:else if !isStake}
+            <div class="liquid-stake__estimate">
+              <p>
+                The DUSK comes back in the same transaction. No fee, no waiting.
               </p>
             </div>
           {/if}
@@ -366,6 +579,20 @@
           <p>You get stDUSK, a token for your share of Sozu's pool.</p>
         </div>
       </li>
+      {#if fees}
+        <li>
+          <Icon path={mdiPercentOutline} />
+          <div>
+            <p class="liquid-stake__fact">Sozu's fees</p>
+            <p>
+              {feePercent(fees.deposit, language)} of each deposit · {feePercent(
+                fees.reward,
+                language
+              )} of rewards · no unstake fee
+            </p>
+          </div>
+        </li>
+      {/if}
       {#if status}
         <li>
           <Icon path={mdiFileDocumentOutline} />
@@ -389,6 +616,12 @@
     </ul>
 
     <svelte:fragment slot="summary">
+      {#if termsChanged}
+        <div class="liquid-stake__changed" role="alert">
+          <p>Sozu's terms changed</p>
+          <p>These are the figures now. Check them, then confirm again.</p>
+        </div>
+      {/if}
       <dl class="stake-flow__rows">
         <div>
           <dt>{isStake ? "Stake with Sozu" : "Unstake from Sozu"}</dt>
@@ -413,12 +646,16 @@
           </div>
           <div>
             <dt>Getting it back</dt>
-            <dd>Unstake from Sozu, under Sozu's rules</dd>
+            <dd>Unstake any time. No fee, no waiting.</dd>
           </div>
         {:else}
           <div>
             <dt>Back to</dt>
-            <dd>Your public balance</dd>
+            <dd>Your public balance, in the same transaction</dd>
+          </div>
+          <div>
+            <dt>Sozu's fee</dt>
+            <dd>No unstake fee</dd>
           </div>
         {/if}
         <div>
@@ -432,6 +669,13 @@
         limitLower={gasLimits.gasLimitLower}
         limitUpper={gasLimits.gasLimitUpper}
         on:gasSettings={(event) => {
+          if (
+            event.detail.limit !== gasLimit ||
+            event.detail.price !== gasPrice
+          ) {
+            forgetTerms();
+          }
+
           isGasValid = areValidGasSettings(
             event.detail.price,
             event.detail.limit,
@@ -446,6 +690,9 @@
         price={gasPrice}
         priceLower={gasLimits.gasPriceLower}
       />
+      <p class="liquid-stake__gas-note">
+        A call that fails is charged its whole gas limit.
+      </p>
       <dl class="stake-flow__rows stake-flow__rows--total">
         <div>
           <dt>Total</dt>
@@ -454,9 +701,14 @@
           </dd>
         </div>
       </dl>
+      {#if termsError}
+        <p class="liquid-stake__error" role="alert">
+          <strong>{termsError}, so nothing was sent.</strong> Try again.
+        </p>
+      {/if}
       <Button
         className="stake-flow__send"
-        disabled={!canSend}
+        disabled={!canSend || isChecking}
         on:click={send}
         text={canSend
           ? isStake
@@ -587,9 +839,17 @@
     color: var(--calm-muted);
   }
 
-  .liquid-stake__hint {
+  .liquid-stake__hint,
+  .liquid-stake__gas-note {
     color: var(--calm-muted);
     font-size: 0.84375rem;
+  }
+
+  .liquid-stake__notice {
+    padding: 0.75rem 0.875rem;
+    border-radius: 0.75rem;
+    background: var(--calm-s1);
+    font-size: 0.875rem;
   }
 
   .liquid-stake__error {
@@ -605,7 +865,8 @@
     }
   }
 
-  .liquid-stake__estimate {
+  .liquid-stake__estimate,
+  .liquid-stake__changed {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;

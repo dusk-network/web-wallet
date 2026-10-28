@@ -2,7 +2,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
-import { settingsStore } from "$lib/stores";
+import { settingsStore, walletStore } from "$lib/stores";
 
 import Staking from "../+page.svelte";
 
@@ -75,11 +75,15 @@ const SOZU_STATUS = {
     deposit: { denominator: 10_000n, numerator: 25n },
     reward: { denominator: 100n, numerator: 10n },
   },
+  // Deposits open, and the pool not synchronizing.
+  flags: { maintenance: false, synchronization: false },
   pool: { stake: 8_142_876_697_294_578n, supply: 2_647_997_731_233_173n },
   position: { balance: 0n, stDusk: 0n },
 };
 
 const sozu = vi.hoisted(() => ({
+  /** @type {import("vitest").Mock<() => Promise<any>>} */
+  check: vi.fn(async () => null),
   load: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
   store: null,
@@ -101,6 +105,7 @@ vi.mock("$lib/sozu", async (importOriginal) => {
   return {
     ...original,
     sozuStore: {
+      check: sozu.check,
       load: sozu.load,
       reset: () => {},
       subscribe: sozu.store.subscribe,
@@ -138,6 +143,8 @@ describe("Staking", () => {
     mockedWalletStore.setMockedStoreValue(initialStore);
     open("");
     sozu.load.mockClear();
+    sozu.check.mockReset();
+    vi.restoreAllMocks();
     sozu.store?.set({
       account: "",
       available: true,
@@ -232,9 +239,10 @@ describe("Staking", () => {
       "If it goes wrong",
     ]);
     expect(rows[0].slice(1)).toStrictEqual(["1,000 DUSK", "Any amount"]);
+    // Sozu pays an unstake out at once.
     expect(rows[3].slice(1)).toStrictEqual([
       "Any time, with no waiting period",
-      "Sozu, not Dusk, holds the DUSK and returns it under Sozu's own rules.",
+      "The DUSK comes back in the same transaction. No fee, no waiting.",
     ]);
     expect(rows[4][1]).toBe(
       "If your node misses its turn, part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost)."
@@ -268,8 +276,45 @@ describe("Staking", () => {
     expect(Array.from(table.tBodies[0].rows[3].cells, textOf)).toStrictEqual([
       "Fees",
       "Network fee only",
-      "Sozu keeps 10% of rewards · 0.25% on deposits",
+      "Sozu keeps 10% of rewards · 0.25% on deposits · no unstake fee",
     ]);
+  });
+
+  it("says so while Sozu has paused deposits", async () => {
+    const { queryByText } = render(Staking);
+
+    expect(queryByText("Sozu has paused deposits.")).toBeNull();
+
+    await act(() =>
+      sozu.store?.update((s) => ({
+        ...s,
+        status: {
+          ...SOZU_STATUS,
+          flags: { maintenance: true, synchronization: false },
+        },
+      }))
+    );
+
+    expect(queryByText("Sozu has paused deposits.")).toBeInTheDocument();
+  });
+
+  it("says so while Sozu's deposits can't be checked", async () => {
+    const { queryByText } = render(Staking);
+
+    await act(() =>
+      sozu.store?.update((s) => ({
+        ...s,
+        status: {
+          ...SOZU_STATUS,
+          flags: { maintenance: null, synchronization: false },
+        },
+      }))
+    );
+
+    expect(
+      queryByText("Sozu's deposits couldn't be checked.")
+    ).toBeInTheDocument();
+    expect(queryByText("Sozu has paused deposits.")).toBeNull();
   });
 
   it("shows only native staking where Sozu isn't", async () => {
@@ -462,10 +507,46 @@ describe("Staking", () => {
 
     // For what's left once testnet's 0.25% deposit fee is off it.
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.4378 stDUSK, at the rate Sozu's contract gives now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
+      "You get about 32.4378 stDUSK, worth about 99.75 DUSK now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
     );
     expect(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })
     ).toBeEnabled();
+    // A stake's own gas: up to 5,000,000 at the node's price.
+    expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
+      "Total Up to 100.005 DUSK"
+    );
+
+    await fireEvent.click(getByRole("tab", { name: "Unstake" }));
+
+    // An unstake's: up to 10,000,000, as it can touch more provisioners.
+    expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
+      "Total Up to 0.01 DUSK"
+    );
+  });
+
+  it("reads Sozu again before a stake goes, and stakes on the terms it read", async () => {
+    open("?flow=liquid");
+    await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
+    sozu.check.mockResolvedValue(SOZU_STATUS);
+
+    const stakeWithSozu = vi
+      .spyOn(walletStore, "stakeWithSozu")
+      .mockReturnValue(new Promise(() => {}));
+    const { getByLabelText, getByRole } = render(Staking);
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+    await fireEvent.click(
+      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+    );
+
+    await vi.waitFor(() => expect(stakeWithSozu).toHaveBeenCalledOnce());
+    expect(sozu.check).toHaveBeenCalledOnce();
+    expect(stakeWithSozu.mock.calls[0].slice(0, 2)).toStrictEqual([
+      POOL,
+      100_000_000_000n,
+    ]);
   });
 });

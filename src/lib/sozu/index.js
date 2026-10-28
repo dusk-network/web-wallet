@@ -16,6 +16,8 @@ export {
   parseFeeRate,
   parsePool,
   sozuFee,
+  sozuStake,
+  sozuUnstakeAllowed,
   stDuskFor,
 } from "./amounts";
 export { loadSozuDriver, readSozuStatus } from "./status";

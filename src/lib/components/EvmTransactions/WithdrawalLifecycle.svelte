@@ -1,8 +1,14 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import { mdiContain } from "@mdi/js";
 
+  import bridgeTimes from "$lib/bridge/bridgeTimes";
+  import { WITHDRAWAL, routeTime } from "$lib/bridge/routeTimes";
   import { withdrawalExplorerUrl } from "$lib/bridge/withdrawalActivity";
+  import {
+    PREPARED_PROOF_MS,
+    loadProveNowClaim,
+  } from "$lib/bridge/withdrawals";
   import {
     WITHDRAWAL_TIMELINE_STEPS,
     withdrawalActionFailure,
@@ -39,11 +45,121 @@
   /** @type {string} */
   export let submittedHash;
 
+  /** When a withdrawal can be claimed if it's proved now: read for the one ready to prove. */
+  export let loadProveNow = loadProveNowClaim;
+
+  /** @type {import("$lib/bridge/claimDate").ClaimDate | null} */
+  let proveNow = null;
+
+  /** The withdrawal `proveNow` is for, or is being read for. */
+  let proveNowOf = "";
+
+  /** The reads that failed in a row. */
+  let proveNowFailures = 0;
+
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let proveNowTimer;
+
+  /**
+   * Ends the date shown as the proof it's for expires: that proof is the
+   * one sent until then.
+   *
+   * @type {ReturnType<typeof setTimeout> | undefined}
+   */
+  let proveNowExpiry;
+
+  /** The date is read again a while before the proof it's for expires. */
+  const PROVE_NOW_REFRESH_MS = PREPARED_PROOF_MS - 20_000;
+
+  /** A failed read is tried again in 5 s, then twice as long each time, up to a minute. */
+  const RETRY_FIRST_MS = 5_000;
+  const RETRY_MOST_MS = 60_000;
+
+  /**
+   * Follows when the withdrawal shown ready to prove can be claimed if it's
+   * proved now: the proof "Prove on Dusk" sends is the one this date is for.
+   *
+   * @param {string} hash Its transaction while it's ready to prove, or ""
+   */
+  function followProveNow(hash) {
+    if (hash === proveNowOf) {
+      return;
+    }
+
+    clearTimeout(proveNowTimer);
+    clearTimeout(proveNowExpiry);
+    proveNowOf = hash;
+    proveNow = null;
+    proveNowFailures = 0;
+
+    if (hash) {
+      void readProveNow(hash);
+    }
+  }
+
+  /**
+   * Reads the date: again before the proof it's for expires, as a proof is
+   * kept two minutes and a new one can be against another game; after a
+   * failure, again each time after longer. A date goes as its proof
+   * expires, however long the reads take meanwhile.
+   *
+   * @param {string} hash
+   */
+  async function readProveNow(hash) {
+    const claim = await loadProveNow(/** @type {`0x${string}`} */ (hash)).catch(
+      () => null
+    );
+
+    if (proveNowOf !== hash) {
+      return;
+    }
+
+    if (claim) {
+      proveNow = claim;
+      proveNowFailures = 0;
+      clearTimeout(proveNowExpiry);
+      proveNowExpiry = setTimeout(() => {
+        proveNow = null;
+      }, PREPARED_PROOF_MS);
+      proveNowTimer = setTimeout(
+        () => readProveNow(hash),
+        PROVE_NOW_REFRESH_MS
+      );
+
+      return;
+    }
+
+    proveNowFailures += 1;
+    proveNowTimer = setTimeout(
+      () => readProveNow(hash),
+      Math.min(RETRY_FIRST_MS * 2 ** (proveNowFailures - 1), RETRY_MOST_MS)
+    );
+  }
+
+  onMount(() => {
+    void bridgeTimes.load();
+  });
+
+  onDestroy(() => {
+    clearTimeout(proveNowTimer);
+    clearTimeout(proveNowExpiry);
+    proveNowOf = "";
+  });
+
   $: selectedStage = selectedWithdrawal?.stage ?? "submitted";
   $: selectedExplorerUrl = selectedWithdrawal
     ? withdrawalExplorerUrl(selectedWithdrawal.transactionHash)
     : null;
-  $: selectedStageMessage = stageMessage(selectedWithdrawal);
+  $: followProveNow(
+    selectedWithdrawal?.stage === "ready_to_prove"
+      ? (selectedWithdrawal.transactionHash ?? "")
+      : ""
+  );
+  $: selectedStageMessage = stageMessage(selectedWithdrawal, {
+    proveNow:
+      proveNowOf === selectedWithdrawal?.transactionHash ? proveNow : null,
+    time: routeTime(WITHDRAWAL, $bridgeTimes),
+  });
   $: actionError = statusError || selectedWithdrawal?.actionError;
   $: actionFailure = actionError
     ? withdrawalActionFailure(selectedStage, actionError)

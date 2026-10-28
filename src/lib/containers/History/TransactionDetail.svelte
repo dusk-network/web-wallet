@@ -13,6 +13,7 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { BalanceValue, SectionHead } from "$lib/components";
   import { fetchTxNonce } from "$lib/activity/activityHistory";
+  import { claimText } from "$lib/bridge/claimDate";
   import { contractLabel } from "$lib/activity/knownContracts";
   import { fullDateTime, rowTime } from "$lib/activity/present";
   import { formatDuskExact } from "$lib/dusk/currency";
@@ -124,6 +125,36 @@
     }
   }
 
+  /**
+   * What a proved withdrawal waits for, as a sentence: nothing once it's
+   * claimed; otherwise that it can be claimed now, that its proof must be
+   * made again, or from when it can be claimed, as the chain says.
+   *
+   * @param {import("$lib/activity/present").WithdrawalStep | null} withdrawal
+   * @param {string} lang
+   */
+  function nextStepOf(withdrawal, lang) {
+    if (!withdrawal || withdrawal.claimed) {
+      return "";
+    }
+
+    if (withdrawal.ready) {
+      return "Ready to claim on Dusk.";
+    }
+
+    if (withdrawal.reprove) {
+      return "Its proof was rejected, so it can't be claimed. Prove it again on Dusk.";
+    }
+
+    const text = claimText(withdrawal.claim, (ms) => fullDateTime(ms, lang));
+
+    if (!text) {
+      return "Claim it on Dusk once its proof has matured.";
+    }
+
+    return text.endsWith(".") ? text : `${text}.`;
+  }
+
   /** @param {string} value */
   const lux = (value) => {
     try {
@@ -145,7 +176,14 @@
           : p.withdrawal
             ? p.withdrawal.claimed
               ? { icon: mdiCheck, text: "Proved · claimed" }
-              : { icon: mdiTimerSand, text: "Proved · not claimed yet" }
+              : p.withdrawal.ready
+                ? { icon: mdiCheck, text: "Proved · ready to claim" }
+                : p.withdrawal.reprove
+                  ? {
+                      icon: mdiAlertCircleOutline,
+                      text: "Proof rejected · prove it again",
+                    }
+                  : { icon: mdiTimerSand, text: "Proved · not claimed yet" }
             : row.success === true || row.status === "executed"
               ? { icon: mdiCheck, text: "Completed" }
               : { icon: mdiTimerSand, text: "Checking the outcome…" };
@@ -163,6 +201,7 @@
     addressType(String(p.counterparty)) !== "unknown";
   $: canSendAgain =
     p.icon === "sent" && !!p.counterparty && row.kind === "transfer";
+  $: nextStep = nextStepOf(p.withdrawal, locale);
   $: hasNonce = row.privacy !== "shielded" && row.source !== "local";
   $: if (`${row.hash} ${hasNonce}` !== nonceOf) {
     showNonce(row.hash, hasNonce);
@@ -313,10 +352,7 @@
         <div class="tx-detail__wide">
           <dt>Next step</dt>
           <dd>
-            Claim it on Dusk from about {fullDateTime(
-              p.withdrawal.claimFrom,
-              locale
-            )}. The withdrawals page says when it can be sent.
+            {nextStep}
             <AnchorButton
               className="tx-detail__next"
               href={addBasePath(

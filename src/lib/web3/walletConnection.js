@@ -15,7 +15,7 @@ import {
   reconnect,
   watchAccount,
 } from "@wagmi/core";
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 import { duskEvm } from "./duskEvm";
 
@@ -60,19 +60,39 @@ const failure = writable(false);
 /** Whether the connection failed to load, the last time it was asked for. */
 export const connectionFailed = { subscribe: failure.subscribe };
 
+const blocked = writable(false);
+
+/**
+ * Whether connecting a wallet was refused as Reset's delete of the last
+ * connection's database waits: on this page's own handle on it, which only
+ * a reload closes. A session written meanwhile would go with the delete.
+ */
+export const connectionBlocked = { subscribe: blocked.subscribe };
+
 /**
  * The EVM wallets' dialog. Opening it starts the connection first, if it
  * isn't yet: a failure to load shows as `connectionFailed`.
  */
 export const modal = {
   async open() {
+    const reset = resets;
+
     try {
+      await afterCleanup();
+
+      // Reset forgot the wallets since Connect was pressed: nothing opens.
+      if (reset !== resets) {
+        return;
+      }
+
       await startWalletConnection();
     } catch {
       return;
     }
 
-    await appKit?.open();
+    if (reset === resets) {
+      await appKit?.open();
+    }
   },
 
   /**
@@ -88,28 +108,41 @@ export const modal = {
   },
 };
 
-const accountStore = writable(
-  /** @type {import("@wagmi/core").GetAccountReturnType} */ (
-    /** @type {unknown} */ ({
-      address: undefined,
-      addresses: undefined,
-      chain: undefined,
-      chainId: undefined,
-      connector: undefined,
-      isConnected: false,
-      isConnecting: false,
-      isDisconnected: true,
-      isReconnecting: false,
-      status: "disconnected",
-    })
-  )
+/** No EVM account: before the connection starts, and once forgotten. */
+const NO_ACCOUNT = /** @type {import("@wagmi/core").GetAccountReturnType} */ (
+  /** @type {unknown} */ ({
+    address: undefined,
+    addresses: undefined,
+    chain: undefined,
+    chainId: undefined,
+    connector: undefined,
+    isConnected: false,
+    isConnecting: false,
+    isDisconnected: true,
+    isReconnecting: false,
+    status: "disconnected",
+  })
 );
+
+const accountStore = writable(NO_ACCOUNT);
 
 /** The connected EVM account: none until the connection started. */
 export const account = { subscribe: accountStore.subscribe };
 
 /** @type {Promise<void> | null} */
 let starting = null;
+
+/**
+ * Whether the wallets connected here were forgotten, as Reset forgets them:
+ * none comes back until someone presses Connect again.
+ */
+let forgotten = false;
+
+/**
+ * How many times Reset forgot the wallets: a start, or a dialog, asked for
+ * before one doesn't go on after it.
+ */
+let resets = 0;
 
 /**
  * The longest the pages wait for a wallet connected before to reconnect:
@@ -123,12 +156,21 @@ const RECONNECT_WAIT_MS = 5_000;
  * @returns {Promise<void>}
  */
 export function startWalletConnection() {
+  forgotten = false;
+
   if (!starting) {
+    const reset = resets;
+
     failure.set(false);
-    starting = start();
+    starting = afterCleanup().then(() => start(reset));
     starting.catch(() => {
       starting = null;
-      failure.set(true);
+
+      // Refused while Reset's delete waits, which `connectionBlocked` says,
+      // or stopped by Reset.
+      if (!get(blocked) && reset === resets) {
+        failure.set(true);
+      }
     });
   }
 
@@ -143,6 +185,10 @@ export function startWalletConnection() {
  * @returns {boolean}
  */
 export function wasConnectedBefore() {
+  if (forgotten) {
+    return false;
+  }
+
   if (starting) {
     return true;
   }
@@ -157,13 +203,21 @@ export function wasConnectedBefore() {
   }
 }
 
-async function start() {
+/**
+ * @param {number} reset Reset's count as the connection started
+ */
+async function start(reset) {
   const [{ createAppKit }, { WagmiAdapter }, { bsc, mainnet, sepolia }] =
     await Promise.all([
       import("@reown/appkit"),
       import("@reown/appkit-adapter-wagmi"),
       import("@reown/appkit/networks"),
     ]);
+
+  // Reset forgot the wallets as AppKit loaded: none of it starts.
+  if (reset !== resets) {
+    throw new Error("The EVM wallets were forgotten.");
+  }
 
   /** @type {[import("@reown/appkit/networks").AppKitNetwork, ...import("@reown/appkit/networks").AppKitNetwork[]]} */
   const networks = [sepolia, bsc, mainnet, duskEvm];
@@ -201,7 +255,21 @@ async function start() {
     }
   });
   accountStore.set(getAccount(wagmiConfig));
-  watchAccount(wagmiConfig, { onChange: (next) => accountStore.set(next) });
+  watchAccount(wagmiConfig, {
+    onChange: (next) => {
+      // A wallet that comes back after Reset, as a reconnect under way
+      // ends, goes again, until someone presses Connect.
+      if (reset !== resets && forgotten) {
+        if (!next.isDisconnected) {
+          void dropConnection();
+        }
+
+        return;
+      }
+
+      accountStore.set(next);
+    },
+  });
   window.addEventListener("beforeunload", walletDisconnect);
 
   // A wallet connected before comes back before the pages use it.
@@ -211,11 +279,229 @@ async function start() {
   ]);
 }
 
+/**
+ * What the EVM wallets' connection keeps in this browser: wagmi's keys,
+ * AppKit's (and Web3Modal's, before it), WalletConnect's and the Coinbase
+ * SDK's, and WalletConnect's database.
+ */
+const CONNECTION_KEYS =
+  /^(?:wagmi\.|@appkit|@w3m|W3M_|WCM_|wc@2|WALLETCONNECT|-walletlink|cbwsdk)/u;
+const CONNECTION_DATABASES = Object.freeze(["WALLET_CONNECT_V2_INDEXED_DB"]);
+
+/**
+ * Marks the connection's databases still to delete, until they're gone. A
+ * page that loaded the connection holds them open, so the next page deletes
+ * them, before any wallet connects.
+ */
+const FORGET_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-evm-wallets-forgotten`;
+
+/**
+ * Deletes a database: true once it's gone, false when that failed. A delete
+ * that a connection holds up isn't over: it goes through once the handles
+ * on the database close, as they do with the page, and `onBlocked` says it
+ * waits meanwhile.
+ *
+ * @param {string} name
+ * @param {() => void} onBlocked
+ * @returns {Promise<boolean>}
+ */
+const deleteDatabase = (name, onBlocked) =>
+  new Promise((resolve) => {
+    try {
+      const request = indexedDB.deleteDatabase(name);
+
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => resolve(false);
+      request.onblocked = onBlocked;
+    } catch {
+      // No databases kept here.
+      resolve(true);
+    }
+  });
+
+/**
+ * Empties every store of a database, as can be done while it's open; one
+ * that isn't there isn't made.
+ *
+ * @param {string} name
+ * @returns {Promise<void>}
+ */
+const emptyDatabase = (name) =>
+  new Promise((resolve) => {
+    try {
+      const request = indexedDB.open(name);
+
+      request.onupgradeneeded = () => request.transaction?.abort();
+      request.onerror = () => resolve();
+      request.onsuccess = () => {
+        const db = request.result;
+        const stores = Array.from(db.objectStoreNames);
+        const done = () => {
+          db.close();
+          resolve();
+        };
+
+        if (!stores.length) {
+          done();
+
+          return;
+        }
+
+        const transaction = db.transaction(stores, "readwrite");
+
+        stores.forEach((store) => transaction.objectStore(store).clear());
+        transaction.oncomplete = done;
+        transaction.onerror = done;
+        transaction.onabort = done;
+      };
+    } catch {
+      resolve();
+    }
+  });
+
+/** The longest a wallet's connecting waits for Reset's delete to be done. */
+const CLEANUP_WAIT_MS = 3_000;
+
+/**
+ * Reset's delete of the connection's databases while it runs: when it's
+ * done, and whether it waits on a handle on them this page keeps.
+ *
+ * @type {{ done: Promise<void>, isWaiting: boolean, waiting: Promise<void> } | null}
+ */
+let cleanup = null;
+
+/**
+ * Deletes the connection's databases, each emptied first, as can be done
+ * while a connection holds it open. One held open goes as the page closes,
+ * and until then it can't be opened again, so nothing should wait on this.
+ * No wallet connects meanwhile (afterCleanup).
+ */
+function deleteConnectionDatabases() {
+  localStorage.setItem(FORGET_KEY, "1");
+
+  const previous = cleanup;
+  /** @type {() => void} */
+  let markWaiting = () => {};
+  const entry = {
+    done: Promise.resolve(),
+    isWaiting: false,
+    waiting: new Promise((resolve) => {
+      markWaiting = () => resolve(undefined);
+    }),
+  };
+  const onBlocked = () => {
+    entry.isWaiting = true;
+    markWaiting();
+  };
+
+  // One that waits holds up this one too: it can't start before it's done.
+  void previous?.waiting.then(onBlocked);
+
+  entry.done = Promise.all(
+    CONNECTION_DATABASES.map(async (name) => {
+      await emptyDatabase(name);
+
+      return deleteDatabase(name, onBlocked);
+    })
+  )
+    .then((deleted) => {
+      if (deleted.every(Boolean)) {
+        localStorage.removeItem(FORGET_KEY);
+      }
+    })
+    .finally(() => {
+      if (cleanup === entry) {
+        cleanup = null;
+        blocked.set(false);
+      }
+    });
+  cleanup = entry;
+}
+
+/**
+ * Waits for Reset's delete of the last connection's database before a
+ * wallet connects: a session written before it's done would go with it.
+ * Refused, as `connectionBlocked` says, while the delete waits on this
+ * page's own handle, which only a reload closes.
+ *
+ * @returns {Promise<void>}
+ */
+async function afterCleanup() {
+  const entry = cleanup;
+
+  if (!entry) {
+    return;
+  }
+
+  const waits = await Promise.race([
+    entry.done.then(() => false),
+    entry.waiting.then(() => true),
+    // Neither, as when another tab holds the database: it waits too.
+    new Promise((resolve) => setTimeout(() => resolve(true), CLEANUP_WAIT_MS)),
+  ]);
+
+  if (waits) {
+    blocked.set(true);
+
+    throw new Error("Reload the page to connect a wallet again.");
+  }
+}
+
+// What Reset forgot in a page that held the connection's database open goes
+// now, before any wallet connects.
+if (typeof localStorage !== "undefined" && localStorage.getItem(FORGET_KEY)) {
+  deleteConnectionDatabases();
+}
+
+/**
+ * Disconnects a wallet connected now, and deletes what the connection keeps
+ * in localStorage.
+ */
+async function dropConnection() {
+  await walletDisconnect().catch(() => {});
+  accountStore.set(NO_ACCOUNT);
+
+  for (const key of Object.keys(localStorage)) {
+    if (CONNECTION_KEYS.test(key)) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
+/**
+ * Forgets every EVM wallet connected here, as Reset does: disconnects one
+ * connected now, and deletes what wagmi, AppKit and WalletConnect keep in
+ * the browser. No page brings a wallet back after it, or loads the
+ * connection, until someone presses Connect. It doesn't wait for the
+ * databases, which go in the background, or with the next page.
+ *
+ * @returns {Promise<void>}
+ */
+export async function forgetEvmWallets() {
+  forgotten = true;
+  resets += 1;
+  await dropConnection();
+  deleteConnectionDatabases();
+}
+
 export async function walletDisconnect() {
   if (!wagmiConfig) {
     return;
   }
 
-  await disconnect(wagmiConfig);
+  /** @type {{ error: unknown } | null} */
+  let failed = null;
+
+  try {
+    await disconnect(wagmiConfig);
+  } catch (error) {
+    failed = { error };
+  }
+
+  // AppKit's session goes too, even when wagmi's disconnect failed.
   await appKit?.disconnect();
+
+  if (failed) {
+    throw failed.error;
+  }
 }

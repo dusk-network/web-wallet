@@ -123,8 +123,14 @@ describe("Bridge withdrawal", () => {
   });
 
   it.each([
-    [604_800, "Prove it on Dusk in ~1 hour, then claim it ~7 days later."],
-    [10_800, "Prove it on Dusk in ~1 hour, then claim it ~3 hours later."],
+    [
+      604_800,
+      "Claim 7 days after you prove. You can prove about 30 minutes after sending.",
+    ],
+    [
+      10_800,
+      "Claim 3 hours after you prove. You can prove about 30 minutes after sending.",
+    ],
     [null, "Prove it on Dusk, then claim it."],
   ])(
     "says what's left on Dusk once sent, for a proof maturity of %s seconds",

@@ -1,5 +1,6 @@
 <script>
   import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import withdrawalClaims from "$lib/bridge/withdrawalClaims";
   import { sozuPools } from "$lib/sozu";
   import { createEventDispatcher } from "svelte";
   import { mdiTrayArrowDown } from "@mdi/js";
@@ -97,9 +98,12 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  // When the proved withdrawals can be claimed, as the chain says.
+  $: void withdrawalClaims.load(state.rows);
   $: context = {
     bridgeContracts,
     claimed: claimedWithdrawals(state.rows),
+    claims: $withdrawalClaims,
     contactNames: contactNamesOf($contactsStore),
     locale,
     network,

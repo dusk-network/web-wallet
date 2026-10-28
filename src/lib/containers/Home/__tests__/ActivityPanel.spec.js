@@ -6,6 +6,34 @@ import { noteSozuPool } from "$lib/sozu";
 
 import ActivityPanel from "../ActivityPanel.svelte";
 
+vi.mock("$lib/bridge/withdrawalClaims", () => {
+  // When the chain says the proved withdrawal can be claimed: Mon 2 Nov 2026, 03:20:39 UTC.
+  const claims = new Map([
+    [
+      `0x${"8e".repeat(32)}`,
+      {
+        at: Date.UTC(2026, 10, 2, 3, 20, 39),
+        claimed: false,
+        exact: false,
+        overdue: false,
+        ready: false,
+      },
+    ],
+  ]);
+
+  return {
+    default: {
+      load: () => Promise.resolve(),
+      /** @param {(value: Map<string, unknown>) => void} run */
+      subscribe(run) {
+        run(claims);
+
+        return () => {};
+      },
+    },
+  };
+});
+
 // A pool only Sozu's hub names.
 const POOL = "5a".repeat(32);
 
@@ -93,6 +121,7 @@ describe("ActivityPanel", () => {
               amount: "0",
               bridge: {
                 amount: "1008000000000",
+                hash: `0x${"8e".repeat(32)}`,
                 kind: "prove",
                 withdrawal: "0001".padEnd(64, "0"),
               },

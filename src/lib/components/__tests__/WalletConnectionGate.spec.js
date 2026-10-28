@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent } from "@testing-library/svelte";
 import { renderWithSlots } from "$lib/dusk/test-helpers";
 
 import {
+  connectionBlocked,
   connectionFailed,
   startWalletConnection,
   wasConnectedBefore,
@@ -15,6 +16,7 @@ vi.mock("$lib/web3/walletConnection", async () => {
   const { writable } = await import("svelte/store");
 
   return {
+    connectionBlocked: writable(false),
     connectionFailed: writable(false),
     startWalletConnection: vi.fn(),
     wasConnectedBefore: vi.fn(),
@@ -33,10 +35,17 @@ const setFailed = (failed) =>
     connectionFailed
   ).set(failed);
 
+/** @param {boolean} isBlocked */
+const setBlocked = (isBlocked) =>
+  /** @type {import("svelte/store").Writable<boolean>} */ (
+    connectionBlocked
+  ).set(isBlocked);
+
 describe("WalletConnectionGate", () => {
   afterEach(() => {
     cleanup();
     setFailed(false);
+    setBlocked(false);
     vi.clearAllMocks();
   });
 
@@ -86,5 +95,19 @@ describe("WalletConnectionGate", () => {
     await act(() => setFailed(false));
 
     expect(getByText("The Bridge page")).toBeInTheDocument();
+  });
+
+  it("should say a reload connects a wallet when Reset is still clearing the last connection", async () => {
+    vi.mocked(wasConnectedBefore).mockReturnValue(false);
+
+    const { getByRole, queryByText } = renderGate();
+
+    await act(() => setBlocked(true));
+
+    expect(getByRole("alert")).toHaveTextContent(
+      "Reset is still clearing the last EVM wallet connection. Reload the page to connect a wallet again."
+    );
+    expect(getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+    expect(queryByText("The Bridge page")).toBeNull();
   });
 });

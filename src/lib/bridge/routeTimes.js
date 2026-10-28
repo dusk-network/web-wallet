@@ -56,8 +56,10 @@ export const WITHDRAWAL = Object.freeze({ kind: "withdrawal" });
 export const migrationRoute = (from) => ({ from, kind: "migration" });
 
 /**
- * A withdrawal's time, as the chain says it: until it can be proved
- * (`report`), and from the proof to the claim (`wait`).
+ * A withdrawal's time, as the chain says it: about when it can be proved,
+ * an output after it's sent (`prove`); when it's late to be (`report`, two
+ * outputs); the Portal's wait from a proof to its claim (`maturity`); and
+ * the longer of that and the game's finality (`wait`).
  *
  * @param {ChainTimes["withdrawal"]} read
  * @returns {RouteTime | null}
@@ -73,7 +75,14 @@ function withdrawalTime(read) {
   const report = 2 * read.outputSeconds;
   const wait = Math.max(read.maturitySeconds, read.finalitySeconds ?? 0);
 
-  return { report, seconds: report + wait, source: "chain", wait };
+  return {
+    maturity: read.maturitySeconds,
+    prove: read.outputSeconds,
+    report,
+    seconds: report + wait,
+    source: "chain",
+    wait,
+  };
 }
 
 /**
@@ -98,8 +107,7 @@ function configured(route, network) {
 
 /**
  * How long `route` usually takes on `network`, or null when nothing says. A
- * withdrawal also gives its parts: `report`, until it can be proved, and
- * `wait`, from the proof to the claim.
+ * withdrawal also gives its parts, as `withdrawalTime` says.
  *
  * @param {RouteTimeRoute} route
  * @param {{ chain?: ChainTimes | null, network?: string }} [timing]

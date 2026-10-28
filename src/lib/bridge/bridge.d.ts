@@ -6,7 +6,11 @@ type RouteTimeRoute = Readonly<{
 
 /** How long a route takes, and where that comes from; a withdrawal's parts too. */
 type RouteTime = {
-  /** A withdrawal's wait until it can be proved, in seconds. */
+  /** The Portal's wait from a withdrawal's proof to its claim, in seconds. */
+  maturity?: number;
+  /** About how long after it's sent a withdrawal can be proved, in seconds: an output. */
+  prove?: number;
+  /** A withdrawal's wait until it can be proved at the latest, in seconds. */
   report?: number;
   seconds: number;
   source: "chain" | "config";

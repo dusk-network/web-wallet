@@ -1,8 +1,6 @@
 import {
   bytesToHex,
-  decodeFunctionResult,
   encodeAbiParameters,
-  encodeFunctionData,
   fromRlp,
   hexToBytes,
   keccak256,
@@ -16,12 +14,25 @@ import {
   serializeOutputRootProofForDuskAbi,
   serializeWithdrawalForDuskAbi,
 } from "@dusk/evm-sdk";
-import { Gas, dataDrivers } from "@dusk/w3sper";
+import { Gas } from "@dusk/w3sper";
 import { get } from "svelte/store";
 
-import { createMulticallFetch } from "$lib/activity/multicallFetch";
-import { nodeBaseUrl } from "$lib/url";
-
+import {
+  GAME_STATUS,
+  claimFrom,
+  contractClock,
+  contractNow,
+} from "$lib/bridge/claimDate";
+import {
+  bridgeReads,
+  hubClock,
+  hubOfGame,
+  hubOfType,
+  knownHubOf,
+  readGame,
+  settle,
+} from "$lib/bridge/bridgeReads";
+import { MAX_BATCH } from "$lib/activity/multicallFetch";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { WITHDRAWAL_GAS_LIMIT } from "$lib/contracts/gasDefaults";
 import {
@@ -33,6 +44,15 @@ import {
 } from "$lib/stores";
 import { duskEvm } from "$lib/web3/walletConnection";
 
+/**
+ * @typedef {import("$lib/bridge/bridgeReads").BridgeReads} BridgeReads
+ * @typedef {import("$lib/bridge/claimDate").ClaimDate} ClaimDate
+ * @typedef {ClaimDate & { claimed: boolean, ready: boolean, reprove: boolean }} WithdrawalClaim
+ *   When a proved withdrawal can be claimed, as the chain says, and whether
+ *   it's claimed already or can be claimed now. `reprove` when its proof
+ *   must be made again, as its game was blacklisted or the challenger won:
+ *   it has no date then.
+ */
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const ZERO_HASH = /** @type {`0x${string}`} */ (
   "0x0000000000000000000000000000000000000000000000000000000000000000"
@@ -46,7 +66,19 @@ const VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID = import.meta.env
   .VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID;
 const VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL = import.meta.env
   .VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL;
-const VITE_EVM_L1_BRIDGE_RPC_URL = import.meta.env.VITE_EVM_L1_BRIDGE_RPC_URL;
+/**
+ * The anchor state registry the Portal asks whether a dispute game is
+ * proper and respected: with it, a proof goes against a game that has
+ * already resolved, so its claim date is exact. `none` leaves it out.
+ */
+const VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID = import.meta.env
+  .VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID;
+
+/** DuskEVM testnet, and its anchor state registry (its address book, testnet/l1-addresses.json). */
+const DUSKEVM_TESTNET_CHAIN_ID = 745;
+const TESTNET_ANCHOR_STATE_REGISTRY_CONTRACT_ID =
+  "1735498c11978854e390894502850916f4ba619e3f4b88c10ef758c5026619cc";
+
 const VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH = parseGameSearchDepth(
   import.meta.env.VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH
 );
@@ -54,40 +86,21 @@ const DEFAULT_OPTIMISM_PORTAL_DATA_DRIVER_URL =
   "/drivers/optimism_portal_dd_opt.wasm";
 const DEFAULT_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL =
   "/drivers/dispute_game_factory_dd_opt.wasm";
-const GAME_STATUS = Object.freeze({
-  CHALLENGER_WINS: 1,
-  DEFENDER_WINS: 2,
-  IN_PROGRESS: 0,
-});
-const GAME_STATUS_ABI = Object.freeze([
-  {
-    inputs: [],
-    name: "status",
-    outputs: [{ type: "uint8" }],
-    stateMutability: "view",
-    type: "function",
-  },
-]);
-const GAME_RESOLUTION_ABI = Object.freeze([
-  ...GAME_STATUS_ABI,
-  {
-    inputs: [],
-    name: "resolvedAt",
-    outputs: [{ type: "uint64" }],
-    stateMutability: "view",
-    type: "function",
-  },
-]);
-/**
- * Proof and game times on Dusk's clock are within days of the latest block.
- * Older DuskEVM deployments count block height × 10 seconds instead, decades
- * behind it, so their times give no claim time.
- */
-const DUSK_CLOCK_WINDOW_SECONDS = 31_536_000n;
-
 /** The latest games read for how often outputs come: five gaps. */
 const OUTPUT_SAMPLE = 6n;
-const NO_CLAIM_TIME = Object.freeze({ readyAt: null, readyAtExact: false });
+
+/** Games searched for one already resolved, a page at a time, at most three pages. */
+const RESOLVED_PAGE = 32n;
+const RESOLVED_PAGES = 3;
+
+/** Three reads a game: as many games as one Multicall for Dusk query holds. */
+const CHECKED_PER_QUERY = Math.floor(MAX_BATCH / 3);
+
+/** How far past a game's earliest resolution its resolver is usually done: 205 blocks at p90. */
+const RESOLVER_LAG_SECONDS = 3_600n;
+
+/** How long a proof whose claim date was shown is the one sent. */
+const PREPARED_PROOF_MS = 120_000;
 
 /** @param {unknown} value */
 export function parseGameSearchDepth(value) {
@@ -152,6 +165,26 @@ export function isWithdrawalTxHash(value) {
   return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
 }
 
+/**
+ * The anchor state registry's contract ID: the one set, testnet's by default
+ * on DuskEVM testnet, or "" with `none`, or where it isn't known.
+ */
+function anchorStateRegistryContractId() {
+  const set = String(VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID ?? "").trim();
+
+  if (set.toLowerCase() === "none") {
+    return "";
+  }
+
+  if (isContractId(set)) {
+    return normalizeContractId(set);
+  }
+
+  return duskEvm.id === DUSKEVM_TESTNET_CHAIN_ID
+    ? TESTNET_ANCHOR_STATE_REGISTRY_CONTRACT_ID
+    : "";
+}
+
 export function getWithdrawalFinalizationConfig() {
   const missing = [];
   const optimismPortalDataDriverUrl = dataDriverUrl(
@@ -180,6 +213,7 @@ export function getWithdrawalFinalizationConfig() {
   }
 
   return Object.freeze({
+    anchorStateRegistryContractId: anchorStateRegistryContractId(),
     configured: missing.length === 0,
     disputeGameFactoryContractId: isContractId(
       VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID
@@ -222,6 +256,7 @@ function requireWithdrawalFinalizationConfig() {
   }
 
   return Object.freeze({
+    anchorStateRegistryContractId: config.anchorStateRegistryContractId,
     disputeGameFactoryContractId: /** @type {string} */ (
       config.disputeGameFactoryContractId
     ),
@@ -238,22 +273,21 @@ function requireWithdrawalFinalizationConfig() {
   });
 }
 
-async function optimismPortalContract() {
-  const config = requireWithdrawalFinalizationConfig();
-
-  return await walletStore.useContract(
-    config.optimismPortalContractId,
-    config.optimismPortalDataDriverUrl
-  );
-}
-
-async function disputeGameFactoryContract() {
-  const config = requireWithdrawalFinalizationConfig();
-
-  return await walletStore.useContract(
-    config.disputeGameFactoryContractId,
-    config.disputeGameFactoryDataDriverUrl
-  );
+/**
+ * The bridge's contracts on Dusk, read through Multicall for Dusk.
+ *
+ * @param {{
+ *   fetch?: typeof fetch,
+ *   loadDriver?: (url: string) => Promise<BridgeDriver>,
+ *   nodeUrl?: string,
+ * }} [options]
+ * @returns {BridgeReads}
+ */
+function contractReads(options = {}) {
+  return bridgeReads({
+    ...options,
+    config: requireWithdrawalFinalizationConfig(),
+  });
 }
 
 /**
@@ -458,21 +492,6 @@ async function rpc(url, method, params = []) {
   }
 
   return body.result;
-}
-
-/**
- * @param {`0x${string}`} to
- * @param {`0x${string}`} data
- */
-async function callL1Contract(to, data) {
-  if (!VITE_EVM_L1_BRIDGE_RPC_URL) {
-    throw new Error("DuskEVM L1 bridge RPC is not configured.");
-  }
-
-  return await rpc(VITE_EVM_L1_BRIDGE_RPC_URL, "eth_call", [
-    { data, to },
-    "latest",
-  ]);
 }
 
 /**
@@ -714,14 +733,7 @@ function l2SequenceFromExtraData(extraData) {
 }
 
 /**
- * @param {import("@dusk/w3sper").Contract} dgf
- */
-async function readGameCount(dgf) {
-  return u256ToBigInt(await dgf.call.gameCount());
-}
-
-/**
- * @param {import("@dusk/w3sper").Contract} dgf
+ * @param {import("$lib/bridge/bridgeReads").ContractReads} dgf
  * @param {number} gameType
  * @param {bigint} start
  * @param {bigint} pageSize
@@ -735,7 +747,7 @@ async function readLatestGames(dgf, gameType, start, pageSize) {
 }
 
 /**
- * @param {import("@dusk/w3sper").Contract} dgf
+ * @param {import("$lib/bridge/bridgeReads").ContractReads} dgf
  * @param {bigint} index
  */
 async function readGameMetadata(dgf, index) {
@@ -743,7 +755,7 @@ async function readGameMetadata(dgf, index) {
 }
 
 /**
- * @param {import("@dusk/w3sper").Contract} dgf
+ * @param {import("$lib/bridge/bridgeReads").ContractReads} dgf
  * @param {bigint} index
  */
 async function readGameAtIndex(dgf, index) {
@@ -788,7 +800,7 @@ async function buildWithdrawalOutputProof(withdrawalHash, l2BlockNumber) {
 
 /**
  * @param {object} options
- * @param {import("@dusk/w3sper").Contract} options.dgf
+ * @param {import("$lib/bridge/bridgeReads").ContractReads} options.dgf
  * @param {any} options.game
  * @param {bigint} options.withdrawalBlockNumber
  * @param {`0x${string}`} options.withdrawalHash
@@ -826,7 +838,7 @@ async function proofForCandidateGame({
 
 /**
  * @param {object} options
- * @param {import("@dusk/w3sper").Contract} options.dgf
+ * @param {import("$lib/bridge/bridgeReads").ContractReads} options.dgf
  * @param {ReadonlyArray<any>} options.games
  * @param {bigint} options.withdrawalBlockNumber
  * @param {`0x${string}`} options.withdrawalHash
@@ -885,7 +897,7 @@ function gameSearchPageSize(remaining) {
 
 /**
  * @param {object} options
- * @param {import("@dusk/w3sper").Contract} options.dgf
+ * @param {import("$lib/bridge/bridgeReads").ContractReads} options.dgf
  * @param {number} options.gameType
  * @param {bigint} options.remaining
  * @param {bigint} options.start
@@ -927,27 +939,264 @@ async function scanGamePages(options) {
 }
 
 /**
- * @param {import("@dusk/w3sper").Contract} portal
+ * A game as a search lists it: its index, creation time, address, root claim
+ * and DuskEVM block.
+ *
+ * @param {any} result
  */
-async function readRespectedGameType(portal) {
-  return Number(await portal.call.respectedGameType());
+function searchedGame(result) {
+  const metadata = fixedBytes(tupleValue(result, "metadata", 1), 32);
+
+  return {
+    createdAt: BigInt(tupleValue(result, "timestamp", 2)),
+    index: u256ToBigInt(tupleValue(result, "index", 0)),
+    l2BlockNumber: l2SequenceFromExtraData(tupleValue(result, "extra_data", 4)),
+    // A game ID packs its type, its creation time, then its address.
+    proxy: evmAddressToHex(metadata.slice(12)),
+    rootClaim: bytes32ToHex(tupleValue(result, "root_claim", 3)),
+  };
 }
 
 /**
+ * The withdrawal's proof against the first of `games` it matches: its output
+ * root is the game's root claim. `stop` when DuskEVM no longer gives a
+ * block's proof: an older game's won't come either.
+ *
+ * @param {ReturnType<typeof searchedGame>[]} games
+ * @param {`0x${string}`} withdrawalHash
+ * @returns {Promise<{ proof?: any, stop?: boolean }>}
+ */
+async function proofAgainst(games, withdrawalHash) {
+  for (const game of games) {
+    try {
+      const proof = await buildWithdrawalOutputProof(
+        withdrawalHash,
+        game.l2BlockNumber
+      );
+
+      if (proof.outputRoot.toLowerCase() === game.rootClaim.toLowerCase()) {
+        return {
+          proof: {
+            ...proof,
+            disputeGameIndex: game.index,
+            disputeGameProxy: game.proxy,
+            l2BlockNumber: game.l2BlockNumber,
+          },
+        };
+      }
+    } catch {
+      return { stop: true };
+    }
+  }
+
+  return {};
+}
+
+/**
+ * The first of `games` that covers the withdrawal, has resolved for its
+ * proposal, and that the Portal would take a proof against, with the
+ * withdrawal's proof against it. The Portal asks the anchor state registry:
+ * the game must be proper (registered, not blacklisted, not retired) and
+ * respected. Games created at or before the respected game type last
+ * changed are passed over too. Each game's status and the registry's two
+ * answers go to the node a query at a time, newest first, until one passes.
+ *
+ * @param {ReturnType<typeof searchedGame>[]} games
+ * @param {{ hubId: string, reads: BridgeReads, updatedAt: bigint, withdrawalBlockNumber: bigint, withdrawalHash: `0x${string}` }} options
+ * @returns {Promise<{ proof?: any, stop?: boolean }>}
+ */
+async function resolvedProofIn(
+  games,
+  { hubId, reads, updatedAt, withdrawalBlockNumber, withdrawalHash }
+) {
+  const registry =
+    /** @type {import("$lib/bridge/bridgeReads").ContractReads} */ (
+      reads.registry
+    );
+  const candidates = games.filter(
+    (game) =>
+      game.l2BlockNumber >= withdrawalBlockNumber && game.createdAt > updatedAt
+  );
+
+  for (let from = 0; from < candidates.length; from += CHECKED_PER_QUERY) {
+    const batch = candidates.slice(from, from + CHECKED_PER_QUERY);
+    const checks = await Promise.all(
+      batch.flatMap((game) => {
+        const address = hexToArray(game.proxy, 20);
+
+        return [
+          reads
+            .hub(hubId)
+            .call.statusForGame(address)
+            .then(Number, () => null),
+          registry.call.isGameProper(address).then(Boolean, () => null),
+          registry.call.isGameRespected(address).then(Boolean, () => null),
+        ];
+      })
+    );
+    const found = await proofAgainst(
+      batch.filter(
+        (_game, at) =>
+          checks[3 * at] === GAME_STATUS.DEFENDER_WINS &&
+          checks[3 * at + 1] === true &&
+          checks[3 * at + 2] === true
+      ),
+      withdrawalHash
+    );
+
+    if (found.proof || found.stop) {
+      return found;
+    }
+  }
+
+  return {};
+}
+
+/**
+ * Where to look for games old enough to have resolved: back from the newest
+ * by the time since `cutoff`, at the pace games come. Other game types share
+ * the factory's index.
+ *
+ * @param {ReturnType<typeof searchedGame>[]} newest
+ * @param {bigint} cutoff
+ */
+function resolvedSearchStart(newest, cutoff) {
+  const first = newest[0];
+  const last = newest[newest.length - 1];
+  const pace =
+    (first.createdAt - last.createdAt) / (first.index - last.index || 1n) || 1n;
+  const back =
+    first.createdAt > cutoff
+      ? (first.createdAt - cutoff + pace - 1n) / pace
+      : 0n;
+
+  return first.index > back ? first.index - back : 0n;
+}
+
+/**
+ * A game covering the withdrawal that has already resolved for its
+ * proposal, and that the Portal would take a proof against: a proof against
+ * it can be claimed exactly its maturity delay later. Games come at a steady
+ * pace, so the search starts about where games are old enough to have
+ * resolved, and goes back a few pages. Null when none covers the withdrawal
+ * yet, none of them has resolved and passes, or the anchor state registry
+ * isn't known.
+ *
+ * @param {{
+ *   gameCount: bigint,
+ *   gameType: number,
+ *   reads: BridgeReads,
+ *   tip: import("$lib/bridge/claimDate").DuskTip,
+ *   withdrawalBlockNumber: bigint,
+ *   withdrawalHash: `0x${string}`,
+ * }} options
+ */
+async function findResolvedProof({
+  gameCount,
+  gameType,
+  reads,
+  tip,
+  withdrawalBlockNumber,
+  withdrawalHash,
+}) {
+  // Without the registry the Portal asks, which games it takes can't be
+  // told: the proof then goes against the newest game covering the
+  // withdrawal.
+  if (!reads.registry) {
+    return null;
+  }
+
+  /** @param {bigint} from */
+  const page = async (from) =>
+    /** @type {any[]} */ (
+      await readLatestGames(reads.dgf, gameType, from, RESOLVED_PAGE)
+    ).map(searchedGame);
+  const [hubId, newest, updatedAt] = await Promise.all([
+    hubOfType(reads, gameType),
+    page(gameCount - 1n),
+    reads.registry.call.respectedGameTypeUpdatedAt().then(BigInt),
+  ]);
+
+  if (newest.length < 2) {
+    return null;
+  }
+
+  // Its clock ran out, and its resolver's usual lag has passed.
+  const cutoff =
+    contractNow(contractClock(newest[0].createdAt, tip), tip) -
+    (await hubClock(reads, hubId)) -
+    RESOLVER_LAG_SECONDS;
+
+  return await searchResolvedPages(page, resolvedSearchStart(newest, cutoff), {
+    cutoff,
+    hubId,
+    reads,
+    updatedAt,
+    withdrawalBlockNumber,
+    withdrawalHash,
+  });
+}
+
+/**
+ * Pages of games from `from` back, at most RESOLVED_PAGES, for one old
+ * enough to have resolved that covers the withdrawal.
+ *
+ * @param {(from: bigint) => Promise<ReturnType<typeof searchedGame>[]>} page
+ * @param {bigint} from
+ * @param {{ cutoff: bigint, hubId: string, reads: BridgeReads, updatedAt: bigint, withdrawalBlockNumber: bigint, withdrawalHash: `0x${string}` }} options
+ */
+async function searchResolvedPages(page, from, { cutoff, ...options }) {
+  let start = from;
+
+  for (let pages = 0; pages < RESOLVED_PAGES; pages += 1) {
+    const games = await page(start);
+    const old = games.filter((game) => game.createdAt <= cutoff);
+
+    // The newest of them doesn't cover the withdrawal: none does.
+    if (old.length && old[0].l2BlockNumber < options.withdrawalBlockNumber) {
+      return null;
+    }
+
+    const found = await resolvedProofIn(old, options);
+
+    if (found.proof || found.stop) {
+      return found.proof ?? null;
+    }
+
+    if (!games.length || games[games.length - 1].index === 0n) {
+      break;
+    }
+
+    start = games[games.length - 1].index - 1n;
+  }
+
+  return null;
+}
+
+/**
+ * The game to prove the withdrawal against, with its proof: the newest game
+ * covering it, or with `preferResolved` (`{ tip }`) one that has already
+ * resolved, where there is one, so the claim date is exact when the proof is
+ * made. The factory's game count and the Portal's game type go in one query.
+ *
  * @param {object} options
+ * @param {{ tip: import("$lib/bridge/claimDate").DuskTip } | null} [options.preferResolved]
+ * @param {BridgeReads} [options.reads]
  * @param {bigint} options.withdrawalBlockNumber
  * @param {`0x${string}`} options.withdrawalHash
  */
 async function lookupWithdrawalProof({
+  preferResolved = null,
+  reads = contractReads(),
   withdrawalBlockNumber,
   withdrawalHash,
 }) {
-  const [dgf, portal] = await Promise.all([
-    disputeGameFactoryContract(),
-    optimismPortalContract(),
+  const [count, type] = await Promise.all([
+    reads.dgf.call.gameCount(),
+    reads.portal.call.respectedGameType(),
   ]);
-  const gameCount = await readGameCount(dgf);
-  const gameType = await readRespectedGameType(portal);
+  const gameCount = u256ToBigInt(count);
+  const gameType = Number(type);
 
   if (gameCount === 0n) {
     return {
@@ -956,8 +1205,23 @@ async function lookupWithdrawalProof({
     };
   }
 
+  if (preferResolved) {
+    const resolved = await findResolvedProof({
+      gameCount,
+      gameType,
+      reads,
+      tip: preferResolved.tip,
+      withdrawalBlockNumber,
+      withdrawalHash,
+    }).catch(() => null);
+
+    if (resolved) {
+      return { lastError: null, proof: resolved };
+    }
+  }
+
   const result = await scanGamePages({
-    dgf,
+    dgf: reads.dgf,
     gameType,
     remaining: VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH,
     start: gameCount - 1n,
@@ -980,9 +1244,7 @@ async function lookupWithdrawalProof({
 }
 
 /**
- * @param {object} options
- * @param {bigint} options.withdrawalBlockNumber
- * @param {`0x${string}`} options.withdrawalHash
+ * @param {Parameters<typeof lookupWithdrawalProof>[0]} options
  */
 async function findWithdrawalProof(options) {
   const result = await lookupWithdrawalProof(options);
@@ -995,232 +1257,343 @@ async function findWithdrawalProof(options) {
 }
 
 /**
- * @param {import("@dusk/w3sper").Contract} portal
- * @param {`0x${string}`} withdrawalHash
+ * @typedef {{
+ *   blacklisted: { error?: Error, value?: boolean },
+ *   game: { error?: Error, value?: Awaited<ReturnType<typeof readGame>> },
+ * }} ProvenGameRead
  */
-async function isWithdrawalFinalized(portal, withdrawalHash) {
-  return await portal.call.finalizedWithdrawals(hexToArray(withdrawalHash, 32));
+
+/**
+ * A proven game as its hub gives it, and whether the Portal blacklisted it,
+ * started together so that they go in one query.
+ *
+ * @param {BridgeReads} reads
+ * @param {string} hubId
+ * @param {`0x${string}`} proxy
+ * @returns {Promise<ProvenGameRead>}
+ */
+const readProvenGame = (reads, hubId, proxy) =>
+  Promise.all([
+    settle(readGame(reads, hubId, proxy)),
+    settle(reads.portal.call.disputeGameBlacklist(hexToArray(proxy, 20))),
+  ]).then(([game, blacklisted]) => ({ blacklisted, game }));
+
+/**
+ * The Portal's record of a withdrawal for the account that proves and claims
+ * it, its delays, and its own check of a claim now, read together: through
+ * Multicall for Dusk they're one query. The game this account proved against
+ * at the last check (`proofGame`) goes in the same query, once its hub was
+ * read.
+ *
+ * @param {BridgeReads} reads
+ * @param {`0x${string}`} withdrawalHash
+ * @param {`0x${string}`} submitter
+ * @param {`0x${string}` | null} proofGame
+ */
+function readPortalState(reads, withdrawalHash, submitter, proofGame) {
+  const hash = hexToArray(withdrawalHash, 32);
+  const account = hexToArray(submitter, 20);
+  const hubId = proofGame ? knownHubOf(reads, proofGame) : null;
+  const ahead =
+    hubId && proofGame
+      ? {
+          game: proofGame.toLowerCase(),
+          reads: readProvenGame(reads, hubId, proofGame),
+        }
+      : null;
+
+  return Promise.all([
+    reads.portal.call.finalizedWithdrawals(hash),
+    reads.portal.call.numProofSubmitters(hash),
+    reads.portal.call.provenWithdrawals([hash, account]),
+    reads.portal.call.proofMaturityDelaySeconds(),
+    reads.portal.call.disputeGameFinalityDelaySeconds(),
+    settle(reads.portal.call.checkWithdrawal([hash, account])),
+  ]).then(([finalized, count, proven, maturity, finality, check]) => ({
+    ahead,
+    check,
+    finalized: Boolean(finalized),
+    proofSubmitterCount: u256ToBigInt(count),
+    proven: {
+      disputeGameProxy: evmAddressToHex(
+        tupleValue(proven, "disputeGameProxy", 0)
+      ),
+      timestamp: BigInt(tupleValue(proven, "timestamp", 1)),
+    },
+    timing: {
+      finalitySeconds: u256ToBigInt(finality),
+      maturitySeconds: u256ToBigInt(maturity),
+    },
+  }));
 }
 
 /**
- * @param {import("@dusk/w3sper").Contract} portal
- * @param {`0x${string}`} withdrawalHash
+ * A claim date as a withdrawal's status keeps it: wall-clock seconds.
+ *
+ * @param {ClaimDate} claim
  */
-async function readProofSubmitterCount(portal, withdrawalHash) {
-  return u256ToBigInt(
-    await portal.call.numProofSubmitters(hexToArray(withdrawalHash, 32))
-  );
-}
+const claimDates = (claim) => ({
+  claimOverdue: claim.overdue,
+  readyAt: claim.at === null ? null : BigInt(Math.floor(claim.at / 1_000)),
+  readyAtExact: claim.exact,
+});
 
 /**
- * @param {import("@dusk/w3sper").Contract} portal
- * @param {`0x${string}`} withdrawalHash
- * @param {`0x${string}`} proofSubmitter
+ * A proof the Portal won't take: proved again against a newer game where
+ * there is one.
+ *
+ * @param {any} event
+ * @param {BridgeReads} reads
+ * @param {`0x${string}`} proxy The game of the proof refused
  */
-async function readProvenAt(portal, withdrawalHash, proofSubmitter) {
-  const provenWithdrawal = await portal.call.provenWithdrawals([
-    hexToArray(withdrawalHash, 32),
-    hexToArray(proofSubmitter, 20),
-  ]);
+async function replacementStatus(event, reads, proxy) {
+  const proofAvailability = await lookupWithdrawalProof({
+    reads,
+    withdrawalBlockNumber: event.blockNumber,
+    withdrawalHash: event.withdrawalHash,
+  });
+  const undated = { claimOverdue: false, readyAt: null, readyAtExact: false };
+
+  if (
+    proofAvailability.proof &&
+    proofAvailability.proof.disputeGameProxy.toLowerCase() !==
+      proxy.toLowerCase()
+  ) {
+    return {
+      ...undated,
+      proofRejected: false,
+      stage: "ready_to_prove",
+      statusMessage:
+        "The existing proof is not accepted by the portal, and a newer output proposal is available. Prove the withdrawal again.",
+    };
+  }
 
   return {
-    disputeGameProxy: evmAddressToHex(
-      tupleValue(provenWithdrawal, "disputeGameProxy", 0)
-    ),
-    timestamp: BigInt(tupleValue(provenWithdrawal, "timestamp", 1)),
+    ...undated,
+    proofRejected: true,
+    stage: "proven_waiting",
+    statusMessage:
+      "The existing proof was rejected, but no replacement output proposal is available yet.",
   };
 }
 
 /**
- * @param {any} event
- * @param {import("@dusk/w3sper").Contract} portal
- * @param {`0x${string}`} proofSubmitter
+ * A proof that waits: until its date, or, with the date passed and the
+ * Portal still refusing the claim, with no date, as it says nothing more. A
+ * game that couldn't be read leaves the date known so far (no `readyAt`).
+ *
+ * @param {ClaimDate | null} claim
+ * @param {{ status: number } | null} game
+ * @param {import("$lib/bridge/claimDate").DuskTip | null} tip
  */
-async function provenWithdrawalStatus(event, portal, proofSubmitter) {
-  const provenWithdrawal = await readProvenAt(
-    portal,
-    event.withdrawalHash,
-    proofSubmitter
-  );
-
-  if (
-    provenWithdrawal.timestamp === 0n ||
-    provenWithdrawal.disputeGameProxy === ZERO_ADDRESS
-  ) {
-    const proofAvailability = await lookupWithdrawalProof({
-      withdrawalBlockNumber: event.blockNumber,
-      withdrawalHash: event.withdrawalHash,
-    });
-
-    if (!proofAvailability.proof) {
-      return {
-        ...event,
-        proofSubmitter,
-        provenAt: provenWithdrawal.timestamp,
-        stage: "waiting_for_output",
-        statusMessage: errorMessage(proofAvailability.lastError),
-      };
-    }
-
+function waitingStatus(claim, game, tip) {
+  if (!claim || !game || !tip) {
     return {
-      ...event,
-      disputeGameIndex: proofAvailability.proof.disputeGameIndex,
-      proofL2BlockNumber: proofAvailability.proof.l2BlockNumber,
-      proofSubmitter,
-      provenAt: provenWithdrawal.timestamp,
-      stage: "ready_to_prove",
+      proofRejected: false,
+      stage: "proven_waiting",
+      statusMessage:
+        "The proof is accepted, but its dispute game can't be read right now.",
     };
   }
 
-  const gameStatus = await provenWithdrawalGameStatus(
-    event,
-    portal,
-    provenWithdrawal,
-    proofSubmitter
-  );
+  const dated = claimDates(claim);
 
-  if (gameStatus.stage === "ready_to_finalize") {
+  if (dated.readyAt !== null && dated.readyAt <= BigInt(tip.timestamp)) {
+    return {
+      claimOverdue: false,
+      proofRejected: false,
+      readyAt: null,
+      readyAtExact: false,
+      stage: "proven_waiting",
+      statusMessage: "The Portal doesn't take the claim yet.",
+    };
+  }
+
+  return {
+    ...dated,
+    proofRejected: false,
+    stage: "proven_waiting",
+    statusMessage:
+      game.status === GAME_STATUS.IN_PROGRESS
+        ? "The proof is accepted. Its dispute game is still in progress."
+        : "The proof is accepted. Wait for its dispute game to become final.",
+  };
+}
+
+/**
+ * A proven withdrawal's stage and claim date. The proof's game is read on
+ * its own hub, as the Portal reads it, with whether it's blacklisted; the
+ * Portal's own check says whether it can be claimed now. A proof time on
+ * testnet's height clock is converted, not dropped.
+ *
+ * @param {any} event
+ * @param {{
+ *   reads: BridgeReads,
+ *   state: Awaited<ReturnType<typeof readPortalState>>,
+ *   tip: import("$lib/bridge/claimDate").DuskTip | null,
+ * }} options
+ */
+async function provenStatus(event, { reads, state, tip }) {
+  const { disputeGameProxy: proxy, timestamp } = state.proven;
+  /** @type {ProvenGameRead} */
+  const read =
+    state.ahead?.game === proxy.toLowerCase()
+      ? await state.ahead.reads
+      : await hubOfGame(reads, proxy).then(
+          (hubId) => readProvenGame(reads, hubId, proxy),
+          (/** @type {Error} */ error) => ({
+            blacklisted: { error },
+            game: { error },
+          })
+        );
+  const game = read.game.value ?? null;
+  const claimable = !state.check.error;
+
+  if (
+    !claimable &&
+    proofRequiresReplacement({
+      gameStatus: game?.status ?? GAME_STATUS.IN_PROGRESS,
+      isGameBlacklisted: read.blacklisted.value === true,
+    })
+  ) {
+    return replacementStatus(event, reads, proxy);
+  }
+
+  const claim =
+    game && tip
+      ? claimFrom({
+          game,
+          network: { clock: contractClock(timestamp, tip) },
+          provenAt: timestamp,
+          timing: { ...state.timing, maxClockSeconds: game.maxClock },
+          tip,
+        })
+      : null;
+
+  return claimable
+    ? {
+        ...(claim ? claimDates(claim) : {}),
+        proofRejected: false,
+        stage: "ready_to_finalize",
+        statusMessage: "",
+      }
+    : waitingStatus(claim, game, tip);
+}
+
+/**
+ * A withdrawal no proof of this account's covers yet: ready to prove once a
+ * game covers it.
+ *
+ * @param {any} event
+ * @param {BridgeReads} reads
+ */
+async function unprovenStatus(event, reads) {
+  const proofAvailability = await lookupWithdrawalProof({
+    reads,
+    withdrawalBlockNumber: event.blockNumber,
+    withdrawalHash: event.withdrawalHash,
+  });
+
+  if (!proofAvailability.proof) {
     return {
       ...event,
-      disputeGameProxy: provenWithdrawal.disputeGameProxy,
-      proofSubmitter,
-      provenAt: provenWithdrawal.timestamp,
-      stage: "ready_to_finalize",
+      stage: "waiting_for_output",
+      statusMessage: errorMessage(proofAvailability.lastError),
     };
   }
 
   return {
     ...event,
-    disputeGameProxy: provenWithdrawal.disputeGameProxy,
-    proofRejected: gameStatus.proofRejected ?? false,
-    proofSubmitter,
-    provenAt: provenWithdrawal.timestamp,
-    readyAt: gameStatus.readyAt ?? null,
-    readyAtExact: gameStatus.readyAtExact ?? false,
-    stage: gameStatus.stage,
-    statusMessage: gameStatus.statusMessage,
+    disputeGameIndex: proofAvailability.proof.disputeGameIndex,
+    proofL2BlockNumber: proofAvailability.proof.l2BlockNumber,
+    stage: "ready_to_prove",
   };
 }
 
 /**
- * @param {any} event
- * @param {import("@dusk/w3sper").Contract} portal
- * @param {object} provenWithdrawal
- * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
- * @param {bigint} provenWithdrawal.timestamp
- * @param {`0x${string}`} proofSubmitter
- * @returns {Promise<{ proofRejected?: boolean, readyAt?: bigint | null, readyAtExact?: boolean, stage: string, statusMessage: string }>}
+ * Where a withdrawal is, for the account that proves and claims it
+ * (`submitter`): claimed, waiting for a game, ready to prove, waiting for
+ * its claim date, or ready to claim. The latest block is read with the
+ * Portal: a proof's dates are counted from it.
+ *
+ * @param {any} event The withdrawal, as its DuskEVM receipt has it
+ * @param {{ proofGame?: `0x${string}` | null, reads: BridgeReads, submitter: `0x${string}` }} options
  */
-async function provenWithdrawalGameStatus(
-  event,
-  portal,
-  provenWithdrawal,
-  proofSubmitter
-) {
-  const [proofMaturityDelay, latestTimestamp] = await Promise.all([
-    readProofMaturityDelaySeconds(portal),
-    readLatestL1Timestamp(),
-  ]);
-  const readyAt = provenWithdrawal.timestamp + proofMaturityDelay;
-  const claim = () =>
-    claimTime(portal, provenWithdrawal, proofMaturityDelay, latestTimestamp);
+async function withdrawalStatus(event, { proofGame = null, reads, submitter }) {
+  const tip = settle(networkStore.getLatestBlock());
+  const state = await readPortalState(
+    reads,
+    event.withdrawalHash,
+    submitter,
+    proofGame
+  );
 
-  if (latestTimestamp < readyAt) {
-    return {
-      ...(await claim()),
-      stage: "proven_waiting",
-      statusMessage: "The proof maturity delay has not elapsed yet.",
-    };
+  if (state.finalized) {
+    return { ...event, stage: "finalized" };
   }
 
-  try {
-    await preflightFinalizeWithdrawal(
-      portal,
-      event.withdrawalHash,
-      proofSubmitter
-    );
-  } catch {
-    return await classifyRejectedProofStatus(
-      event,
-      portal,
-      provenWithdrawal,
-      claim
-    );
+  if (state.proofSubmitterCount === 0n) {
+    return { ...(await unprovenStatus(event, reads)), proofSubmitterCount: 0n };
+  }
+
+  const { proven } = state;
+  const base = {
+    proofSubmitter: submitter,
+    proofSubmitterCount: state.proofSubmitterCount,
+  };
+
+  if (proven.timestamp === 0n || proven.disputeGameProxy === ZERO_ADDRESS) {
+    return { ...(await unprovenStatus(event, reads)), ...base };
   }
 
   return {
-    stage: "ready_to_finalize",
-    statusMessage: "",
+    ...event,
+    ...base,
+    disputeGameProxy: proven.disputeGameProxy,
+    ...(await provenStatus(event, {
+      reads,
+      state,
+      tip: (await tip).value ?? null,
+    })),
   };
 }
 
 /**
- * @param {import("@dusk/w3sper").Contract} portal
+ * @param {object} disposition
+ * @param {number} disposition.gameStatus
+ * @param {boolean} disposition.isGameBlacklisted
  */
-async function readProofMaturityDelaySeconds(portal) {
-  return u256ToBigInt(await portal.call.proofMaturityDelaySeconds());
+export function proofRequiresReplacement(disposition) {
+  return (
+    disposition.isGameBlacklisted ||
+    disposition.gameStatus === GAME_STATUS.CHALLENGER_WINS
+  );
 }
 
-/** @type {Map<string, Promise<BridgeDriver>>} */
-const timingDrivers = new Map();
-
 /**
- * A bridge contract's data driver, fetched and started once; one that failed
- * to load is loaded again by the next read.
+ * Where a withdrawal is, by its DuskEVM transaction, for the wallet's
+ * account. `proofGame`, the game its last check found it proved against,
+ * puts the game's reads in the same query as the Portal's.
  *
- * @param {string} url
- * @returns {Promise<BridgeDriver>}
+ * @param {`0x${string}`} txHash
+ * @param {{ proofGame?: `0x${string}` | null, reads?: BridgeReads }} [options]
  */
-function loadTimingDriver(url) {
-  let driver = timingDrivers.get(url);
-
-  if (!driver) {
-    driver = fetch(url)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Couldn't load the data driver at ${url}`);
-        }
-
-        return res.arrayBuffer();
-      })
-      .then((bytes) => dataDrivers.load(new Uint8Array(bytes)))
-      .then((loaded) => {
-        loaded.init();
-
-        return loaded;
-      });
-
-    const kept = driver;
-
-    timingDrivers.set(url, kept);
-    kept.catch(() => {
-      if (timingDrivers.get(url) === kept) {
-        timingDrivers.delete(url);
-      }
-    });
+export async function loadWithdrawalStatus(
+  txHash,
+  { proofGame = null, reads = contractReads() } = {}
+) {
+  if (!isWithdrawalTxHash(txHash)) {
+    throw new Error("Enter a valid DuskEVM withdrawal transaction hash.");
   }
 
-  return driver;
-}
+  const receipt = await fetchL2Receipt(txHash);
+  const event = parseWithdrawalReceipt(receipt);
 
-/** @type {Map<string, typeof fetch>} */
-const batchedFetches = new Map();
-
-/**
- * The node's batched fetch: the reads of one task go to it as one Multicall
- * for Dusk query.
- *
- * @param {string} nodeUrl
- */
-function batchedFetch(nodeUrl) {
-  let batched = batchedFetches.get(nodeUrl);
-
-  if (!batched) {
-    batched = createMulticallFetch({ nodeUrl });
-    batchedFetches.set(nodeUrl, batched);
-  }
-
-  return batched;
+  return await withdrawalStatus(event, {
+    proofGame,
+    reads,
+    submitter: walletStore.getDuskEvmProofSubmitter(),
+  });
 }
 
 /**
@@ -1236,68 +1609,23 @@ function batchedFetch(nodeUrl) {
  *   nodeUrl?: string,
  * }} [options]
  */
-export async function loadWithdrawalTiming({
-  fetch: fetchFn,
-  loadDriver = loadTimingDriver,
-  nodeUrl = nodeBaseUrl(),
-} = {}) {
-  const config = requireWithdrawalFinalizationConfig();
-  const send = fetchFn ?? batchedFetch(nodeUrl);
-  const [portal, dgf] = await Promise.all([
-    loadDriver(config.optimismPortalDataDriverUrl),
-    loadDriver(config.disputeGameFactoryDataDriverUrl),
-  ]);
-
-  /**
-   * @param {BridgeDriver} driver
-   * @param {string} contractId
-   * @param {string} fnName
-   * @param {unknown} [args]
-   */
-  const read = async (driver, contractId, fnName, args) => {
-    const res = await send(`${nodeUrl}/on/contracts:${contractId}/${fnName}`, {
-      body: /** @type {BodyInit} */ (
-        driver.encodeInputFn(
-          fnName,
-          args === undefined ? "null" : JSON.stringify(args)
-        )
-      ),
-      headers: { "Content-Type": "application/octet-stream" },
-      method: "POST",
-    });
-
-    if (!res.ok) {
-      throw new Error(`The ${fnName} read failed: ${res.status}`);
-    }
-
-    return driver.decodeOutputFn(
-      fnName,
-      new Uint8Array(await res.arrayBuffer())
-    );
-  };
+export async function loadWithdrawalTiming(options = {}) {
+  const reads = contractReads(options);
   const [maturity, finality, gameType, count] = await Promise.all([
-    read(portal, config.optimismPortalContractId, "proofMaturityDelaySeconds"),
-    read(
-      portal,
-      config.optimismPortalContractId,
-      "disputeGameFinalityDelaySeconds"
-    ),
-    read(portal, config.optimismPortalContractId, "respectedGameType"),
-    read(dgf, config.disputeGameFactoryContractId, "gameCount"),
+    reads.portal.call.proofMaturityDelaySeconds(),
+    reads.portal.call.disputeGameFinalityDelaySeconds(),
+    reads.portal.call.respectedGameType(),
+    reads.dgf.call.gameCount(),
   ]);
   const total = u256ToBigInt(count);
   const games =
     total > 1n
       ? /** @type {unknown[]} */ (
-          await read(
-            dgf,
-            config.disputeGameFactoryContractId,
-            "findLatestGames",
-            [
-              Number(gameType),
-              bigIntToU256(total - 1n),
-              bigIntToU256(total < OUTPUT_SAMPLE ? total : OUTPUT_SAMPLE),
-            ]
+          await readLatestGames(
+            reads.dgf,
+            Number(gameType),
+            total - 1n,
+            total < OUTPUT_SAMPLE ? total : OUTPUT_SAMPLE
           )
         )
       : [];
@@ -1318,279 +1646,134 @@ export async function loadWithdrawalTiming({
 }
 
 /**
- * @param {import("@dusk/w3sper").Contract} portal
- */
-async function readDisputeGameFinalityDelaySeconds(portal) {
-  return u256ToBigInt(await portal.call.disputeGameFinalityDelaySeconds());
-}
-
-/**
- * The dispute game's status, or when it resolved (0 while in progress).
+ * A proved withdrawal's record on the Portal for the account, and the
+ * Portal's own check of a claim now, started together.
  *
- * @param {`0x${string}`} disputeGameProxy
- * @param {"resolvedAt" | "status"} functionName
+ * @param {BridgeReads} reads
+ * @param {`0x${string}`} hash
+ * @param {number[]} account
  */
-async function readGameResolution(disputeGameProxy, functionName) {
-  const data = await callL1Contract(
-    disputeGameProxy,
-    encodeFunctionData({ abi: GAME_RESOLUTION_ABI, functionName })
-  );
+const readClaimRecord = (reads, hash, account) => {
+  const id = hexToArray(hash, 32);
 
-  return BigInt(
-    /** @type {bigint | number} */ (
-      decodeFunctionResult({ abi: GAME_RESOLUTION_ABI, data, functionName })
-    )
-  );
-}
+  return Promise.all([
+    reads.portal.call.finalizedWithdrawals(id),
+    reads.portal.call.provenWithdrawals([id, account]),
+    settle(reads.portal.call.checkWithdrawal([id, account])),
+  ]).then(([finalized, proven, check]) => ({
+    claimed: Boolean(finalized),
+    provenAt: BigInt(tupleValue(proven, "timestamp", 1)),
+    proxy: evmAddressToHex(tupleValue(proven, "disputeGameProxy", 0)),
+    ready: !check.error,
+  }));
+};
 
 /**
- * Whether a proof or game time is on Dusk's clock, near the latest block.
+ * The games of the proofs still waiting, each on its hub, with whether the
+ * Portal blacklisted it, in one query; the hubs are read once a session. A
+ * game that can't be read is null.
  *
- * @param {bigint} time
- * @param {bigint} latestTimestamp
+ * @param {BridgeReads} reads
+ * @param {Awaited<ReturnType<typeof readClaimRecord>>[]} records
  */
-function onDuskClock(time, latestTimestamp) {
-  const distance =
-    time > latestTimestamp ? time - latestTimestamp : latestTimestamp - time;
-
-  return distance < DUSK_CLOCK_WINDOW_SECONDS;
-}
-
-/**
- * When a proven withdrawal can be claimed: once its proof has matured and its
- * dispute game has resolved for the proposal and become final. The time is
- * exact once the game has resolved. Until then the game needs at least its
- * finality delay, which makes an estimate. A proof time off Dusk's clock
- * gives no claim time, and a game time off it is left out.
- *
- * @param {import("@dusk/w3sper").Contract} portal
- * @param {object} provenWithdrawal
- * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
- * @param {bigint} provenWithdrawal.timestamp
- * @param {bigint} proofMaturityDelay
- * @param {bigint} latestTimestamp
- */
-async function claimTime(
-  portal,
-  provenWithdrawal,
-  proofMaturityDelay,
-  latestTimestamp
-) {
-  if (!onDuskClock(provenWithdrawal.timestamp, latestTimestamp)) {
-    return NO_CLAIM_TIME;
-  }
-
-  const maturedAt = provenWithdrawal.timestamp + proofMaturityDelay;
-  let claimAt = maturedAt;
-  let exact = false;
-
-  try {
-    const [status, resolvedAt, finalityDelay] = await Promise.all([
-      readGameResolution(provenWithdrawal.disputeGameProxy, "status"),
-      readGameResolution(provenWithdrawal.disputeGameProxy, "resolvedAt"),
-      readDisputeGameFinalityDelaySeconds(portal),
-    ]);
-    const resolved = Number(status) === GAME_STATUS.DEFENDER_WINS;
-    const finalAt = (resolved ? resolvedAt : latestTimestamp) + finalityDelay;
-
-    if (Number(status) === GAME_STATUS.CHALLENGER_WINS) {
-      return { ...NO_CLAIM_TIME, proofRejected: true };
-    }
-
-    if (!resolved || onDuskClock(resolvedAt, latestTimestamp)) {
-      exact = resolved;
-      claimAt = finalAt > maturedAt ? finalAt : maturedAt;
-    }
-  } catch {
-    // The proof's maturity alone still gives an estimate.
-  }
-
-  return claimAt > latestTimestamp
-    ? { readyAt: claimAt, readyAtExact: exact }
-    : NO_CLAIM_TIME;
-}
-
-async function readLatestL1Timestamp() {
-  return await networkStore.getLatestBlockTimestamp();
-}
-
-/**
- * @param {import("@dusk/w3sper").Contract} portal
- * @param {`0x${string}`} withdrawalHash
- * @param {`0x${string}`} proofSubmitter
- */
-async function preflightFinalizeWithdrawal(
-  portal,
-  withdrawalHash,
-  proofSubmitter
-) {
-  await portal.call.checkWithdrawal([
-    hexToArray(withdrawalHash, 32),
-    hexToArray(proofSubmitter, 20),
-  ]);
-}
-
-/**
- * @param {import("@dusk/w3sper").Contract} portal
- * @param {`0x${string}`} disputeGameProxy
- */
-async function readProvenGameDisposition(portal, disputeGameProxy) {
-  const [gameStatusResult, isGameBlacklisted] = await Promise.all([
-    callL1Contract(
-      disputeGameProxy,
-      encodeFunctionData({ abi: GAME_STATUS_ABI, functionName: "status" })
+async function readProofGames(reads, records) {
+  const proxies = [
+    ...new Set(
+      records
+        .filter(
+          (record) =>
+            !record.claimed &&
+            record.provenAt !== 0n &&
+            record.proxy !== ZERO_ADDRESS
+        )
+        .map((record) => record.proxy)
     ),
-    portal.call.disputeGameBlacklist(hexToArray(disputeGameProxy, 20)),
-  ]);
-
-  return {
-    gameStatus: Number(
-      decodeFunctionResult({
-        abi: GAME_STATUS_ABI,
-        data: gameStatusResult,
-        functionName: "status",
-      })
-    ),
-    isGameBlacklisted: Boolean(isGameBlacklisted),
-  };
-}
-
-/**
- * @param {object} disposition
- * @param {number} disposition.gameStatus
- * @param {boolean} disposition.isGameBlacklisted
- */
-export function proofRequiresReplacement(disposition) {
-  return (
-    disposition.isGameBlacklisted ||
-    disposition.gameStatus === GAME_STATUS.CHALLENGER_WINS
+  ];
+  const hubs = await Promise.all(
+    proxies.map((proxy) => hubOfGame(reads, proxy).catch(() => null))
   );
+  const games = await Promise.all(
+    proxies.map((proxy, at) => {
+      const hubId = hubs[at];
+
+      return hubId
+        ? Promise.all([
+            readGame(reads, hubId, proxy),
+            reads.portal.call
+              .disputeGameBlacklist(hexToArray(proxy, 20))
+              .then(Boolean),
+          ])
+            .then(([game, blacklisted]) => ({ ...game, blacklisted }))
+            .catch(() => null)
+        : null;
+    })
+  );
+
+  return new Map(proxies.map((proxy, at) => [proxy, games[at]]));
 }
 
 /**
- * @param {any} event
- * @param {import("@dusk/w3sper").Contract} portal
- * @param {object} provenWithdrawal
- * @param {`0x${string}`} provenWithdrawal.disputeGameProxy
- * @param {() => Promise<{ proofRejected?: boolean, readyAt: bigint | null, readyAtExact: boolean }>} claim
+ * When the withdrawals an account proved can be claimed, by their hashes,
+ * as the chain says: each one's record on the Portal and the Portal's check
+ * of a claim now in one query, the proofs' games in the next. A withdrawal
+ * claimed already says so; one the account has no proof of, or whose game
+ * can't be read, has no date, and one whose proof must be made again says
+ * that instead.
+ *
+ * @param {`0x${string}`[]} hashes
+ * @param {{ reads?: BridgeReads, submitter: `0x${string}` }} options
+ * @returns {Promise<Map<string, WithdrawalClaim>>}
  */
-async function classifyRejectedProofStatus(
-  event,
-  portal,
-  provenWithdrawal,
-  claim
+export async function readWithdrawalClaims(
+  hashes,
+  { reads = contractReads(), submitter }
 ) {
-  try {
-    const disposition = await readProvenGameDisposition(
-      portal,
-      provenWithdrawal.disputeGameProxy
-    );
-
-    if (!proofRequiresReplacement(disposition)) {
-      return {
-        ...(await claim()),
-        stage: "proven_waiting",
-        statusMessage:
-          disposition.gameStatus === GAME_STATUS.IN_PROGRESS
-            ? "The proof is accepted. Its dispute game is still in progress."
-            : "The proof is accepted. Wait for its dispute game to become final.",
-      };
-    }
-  } catch {
-    return {
-      stage: "proven_waiting",
-      statusMessage:
-        "The proof is accepted, but its dispute game is not final yet.",
-    };
-  }
-
-  const proofAvailability = await lookupWithdrawalProof({
-    withdrawalBlockNumber: event.blockNumber,
-    withdrawalHash: event.withdrawalHash,
-  });
-
-  if (
-    proofAvailability.proof &&
-    proofAvailability.proof.disputeGameProxy.toLowerCase() !==
-      provenWithdrawal.disputeGameProxy.toLowerCase()
-  ) {
-    return {
-      stage: "ready_to_prove",
-      statusMessage:
-        "The existing proof is not accepted by the portal, and a newer output proposal is available. Prove the withdrawal again.",
-    };
-  }
-
-  return {
-    proofRejected: true,
-    stage: "proven_waiting",
-    statusMessage:
-      "The existing proof was rejected, but no replacement output proposal is available yet.",
+  const account = hexToArray(submitter, 20);
+  const tip = settle(networkStore.getLatestBlock());
+  const [maturity, finality, ...records] = await Promise.all([
+    reads.portal.call.proofMaturityDelaySeconds(),
+    reads.portal.call.disputeGameFinalityDelaySeconds(),
+    ...hashes.map((hash) => readClaimRecord(reads, hash, account)),
+  ]);
+  const games = await readProofGames(reads, records);
+  const latest = (await tip).value ?? null;
+  const timing = {
+    finalitySeconds: u256ToBigInt(finality),
+    maturitySeconds: u256ToBigInt(maturity),
   };
-}
 
-/**
- * @param {any} event
- */
-async function unprovenWithdrawalStatus(event) {
-  const proofAvailability = await lookupWithdrawalProof({
-    withdrawalBlockNumber: event.blockNumber,
-    withdrawalHash: event.withdrawalHash,
-  });
+  return new Map(
+    hashes.map((hash, at) => {
+      const record = records[at];
+      const game = record.claimed ? null : (games.get(record.proxy) ?? null);
+      // The Portal takes no claim of a proof whose game was blacklisted, or
+      // that the challenger won: it must be made again.
+      const reprove = Boolean(
+        game &&
+        (game.blacklisted || game.status === GAME_STATUS.CHALLENGER_WINS)
+      );
+      const claim =
+        game && latest && !reprove
+          ? claimFrom({
+              game,
+              network: { clock: contractClock(record.provenAt, latest) },
+              provenAt: record.provenAt,
+              timing: { ...timing, maxClockSeconds: game.maxClock },
+              tip: latest,
+            })
+          : { at: null, exact: false, overdue: false };
 
-  if (!proofAvailability.proof) {
-    return {
-      ...event,
-      proofSubmitterCount: 0n,
-      stage: "waiting_for_output",
-      statusMessage: errorMessage(proofAvailability.lastError),
-    };
-  }
-
-  return {
-    ...event,
-    disputeGameIndex: proofAvailability.proof.disputeGameIndex,
-    proofL2BlockNumber: proofAvailability.proof.l2BlockNumber,
-    proofSubmitterCount: 0n,
-    stage: "ready_to_prove",
-  };
-}
-
-/**
- * @param {`0x${string}`} txHash
- */
-export async function loadWithdrawalStatus(txHash) {
-  if (!isWithdrawalTxHash(txHash)) {
-    throw new Error("Enter a valid DuskEVM withdrawal transaction hash.");
-  }
-
-  const receipt = await fetchL2Receipt(txHash);
-  const event = parseWithdrawalReceipt(receipt);
-  const portal = await optimismPortalContract();
-  const finalized = await isWithdrawalFinalized(portal, event.withdrawalHash);
-
-  if (finalized) {
-    return {
-      ...event,
-      stage: "finalized",
-    };
-  }
-
-  const proofSubmitterCount = await readProofSubmitterCount(
-    portal,
-    event.withdrawalHash
+      return [
+        hash.toLowerCase(),
+        {
+          ...claim,
+          claimed: record.claimed,
+          ready: !record.claimed && !reprove && record.ready,
+          reprove,
+        },
+      ];
+    })
   );
-
-  if (proofSubmitterCount === 0n) {
-    return await unprovenWithdrawalStatus(event);
-  }
-
-  const proofSubmitter = walletStore.getDuskEvmProofSubmitter();
-
-  return {
-    ...(await provenWithdrawalStatus(event, portal, proofSubmitter)),
-    proofSubmitterCount,
-  };
 }
 
 /**
@@ -1642,16 +1825,101 @@ export function withdrawalGas(withdrawalGasLimit = 0n) {
   });
 }
 
+export { PREPARED_PROOF_MS };
+
 /**
- * @param {`0x${string}`} txHash
+ * Proofs whose claim date was shown, by withdrawal transaction, for a short
+ * while: the proof sent is then the one the date was for.
+ *
+ * @type {Map<string, { at: number, claim: ClaimDate | null, event: any, proof: any }>}
  */
-export async function proveWithdrawal(txHash) {
-  const receipt = await fetchL2Receipt(txHash);
-  const event = parseWithdrawalReceipt(receipt);
+const preparedProofs = new Map();
+
+/**
+ * The proof of a withdrawal, and when it can be claimed if the proof is made
+ * now: against a game that covers the withdrawal and has already resolved,
+ * where there is one, so the date is exact; otherwise against the newest
+ * game that covers it, and the date is the earliest.
+ *
+ * @param {`0x${string}`} txHash
+ * @param {{ reads?: BridgeReads }} [options]
+ */
+export async function prepareProof(txHash, { reads = contractReads() } = {}) {
+  const event = parseWithdrawalReceipt(await fetchL2Receipt(txHash));
+  const tipRead = networkStore.getLatestBlock();
+  const delays = Promise.all([
+    reads.portal.call.proofMaturityDelaySeconds(),
+    reads.portal.call.disputeGameFinalityDelaySeconds(),
+  ]);
+
+  delays.catch(() => {});
+
+  const tip = await tipRead;
   const proof = await findWithdrawalProof({
+    preferResolved: { tip },
+    reads,
     withdrawalBlockNumber: event.blockNumber,
     withdrawalHash: event.withdrawalHash,
   });
+  const claim = await Promise.all([
+    hubOfGame(reads, proof.disputeGameProxy).then((hubId) =>
+      readGame(reads, hubId, proof.disputeGameProxy)
+    ),
+    delays,
+  ])
+    .then(([game, [maturity, finality]]) =>
+      claimFrom({
+        game,
+        timing: {
+          finalitySeconds: u256ToBigInt(finality),
+          maturitySeconds: u256ToBigInt(maturity),
+          maxClockSeconds: game.maxClock,
+        },
+        tip,
+      })
+    )
+    .catch(() => null);
+  const prepared = {
+    at: Date.now(),
+    claim: claim?.at ? claim : null,
+    event,
+    proof,
+  };
+
+  // Kept only with a date: one read again without leaves in place the proof
+  // whose date is still shown.
+  if (prepared.claim) {
+    preparedProofs.set(txHash.toLowerCase(), prepared);
+  }
+
+  return prepared;
+}
+
+/**
+ * When a withdrawal can be claimed if it's proved now; null when that can't
+ * be read. The proof it's for is the one "Prove on Dusk" then sends.
+ *
+ * @param {`0x${string}`} txHash
+ * @returns {Promise<ClaimDate | null>}
+ */
+export const loadProveNowClaim = (txHash) =>
+  prepareProof(txHash).then(({ claim }) => claim);
+
+/**
+ * Proves a withdrawal on Dusk: with the proof whose claim date was shown
+ * when there's one from the last two minutes, or else a new one.
+ *
+ * @param {`0x${string}`} txHash
+ */
+export async function proveWithdrawal(txHash) {
+  const key = txHash.toLowerCase();
+  const kept = preparedProofs.get(key);
+  const { event, proof } =
+    kept && Date.now() - kept.at < PREPARED_PROOF_MS
+      ? kept
+      : await prepareProof(txHash);
+
+  preparedProofs.delete(key);
 
   const config = requireWithdrawalFinalizationConfig();
   const response = await walletStore.proveDuskEvmWithdrawal(
@@ -1661,7 +1929,9 @@ export async function proveWithdrawal(txHash) {
       withdrawalToDriverInput(event.withdrawal),
       bigIntToU256(proof.disputeGameIndex),
       outputRootProofToDriverInput(proof.outputRootProof),
-      proof.withdrawalProof.map((node) => hexToArray(node, undefined)),
+      proof.withdrawalProof.map((/** @type {`0x${string}`} */ node) =>
+        hexToArray(node, undefined)
+      ),
     ],
     withdrawalGas()
   );
@@ -1671,9 +1941,10 @@ export async function proveWithdrawal(txHash) {
 
 /**
  * @param {`0x${string}`} txHash
+ * @param {{ reads?: BridgeReads }} [options]
  */
-export async function finalizeWithdrawal(txHash) {
-  const status = await loadWithdrawalStatus(txHash);
+export async function finalizeWithdrawal(txHash, options = {}) {
+  const status = await loadWithdrawalStatus(txHash, options);
 
   if (status.stage !== "ready_to_finalize") {
     throw new Error(finalizationNotReadyMessage(status));

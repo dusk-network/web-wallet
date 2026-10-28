@@ -281,7 +281,9 @@ describe("Bridge", () => {
       ])
     );
     expect(
-      getByText("Prove it on Dusk in ~1 hour, then claim it ~7 days later.")
+      getByText(
+        "Claim 7 days after you prove. You can prove about 30 minutes after sending."
+      )
     ).toBeInTheDocument();
     expect(
       getByText("Each step on Dusk takes a small fee from your public balance.")
@@ -518,7 +520,9 @@ describe("Bridge", () => {
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
     expect(
-      getByText("Prove it on Dusk in ~1 hour, then claim it ~7 days later.")
+      getByText(
+        "Claim 7 days after you prove. You can prove about 30 minutes after sending."
+      )
     ).toBeInTheDocument();
   });
 

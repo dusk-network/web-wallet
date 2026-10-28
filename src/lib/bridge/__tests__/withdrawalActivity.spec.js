@@ -26,8 +26,11 @@ import {
   explorerStatusToStage,
   fetchWithdrawalActivity,
   getRememberedWithdrawalActivity,
+  historyWithdrawals,
+  hydrateWithdrawalActivity,
   loadWithdrawalActivity,
   mergeWithdrawalActivity,
+  rememberHistoryWithdrawals,
   rememberWithdrawalTransaction,
   withdrawalStageProgress,
 } from "$lib/bridge/withdrawalActivity";
@@ -177,18 +180,21 @@ describe("DuskEVM withdrawal activity", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(fetchWithdrawalActivity(account)).resolves.toEqual([
+    const items = await fetchWithdrawalActivity(account);
+
+    expect(items).toEqual([
       expect.objectContaining({
         account,
         amountWei: "100000000000000000",
         blockNumber: "124",
-        challengePeriodEnd: "2026-07-15T10:00:00.000Z",
         explorerStatus: "Ready to prove",
         source: "explorer",
         stage: "ready_to_prove",
         transactionHash: withdrawalHash,
       }),
     ]);
+    // The explorer's challenge period end is no claim date: the chain says it.
+    expect(items[0]).not.toHaveProperty("challengePeriodEnd");
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[0][0])).toContain("filter=from");
   });
@@ -297,5 +303,166 @@ describe("DuskEVM withdrawal activity", () => {
         trackingError: "RPC unavailable",
       }),
     ]);
+  });
+
+  describe("the withdrawals the history knows", () => {
+    /** A withdrawal's nonce as its proof carries it: version 1, then its count. */
+    const nonceOf = (/** @type {number} */ count) =>
+      (1n << 240n) | BigInt(count);
+    /** @param {number} count */
+    const nonceHex = (count) => nonceOf(count).toString(16).padStart(64, "0");
+    /** @param {number} count */
+    const hashOf = (count) =>
+      /** @type {`0x${string}`} */ (
+        `0x${count.toString(16).padStart(64, "a")}`
+      );
+    /** @param {number} count */
+    const txOf = (count) => `0x${count.toString(16).padStart(64, "7")}`;
+
+    /**
+     * A withdrawal in DuskEVM's explorer's list of all of them.
+     *
+     * @param {number} count
+     */
+    const listed = (count) => ({
+      ["challenge_period_end"]: null,
+      from: { hash: "0xC11d5aAb4234E255E214aC6e8c0ad61FA0836473" },
+      ["l2_timestamp"]: "2026-10-01T12:50:11.000000Z",
+      ["l2_transaction_hash"]: txOf(count),
+      ["msg_nonce"]: count,
+      ["msg_nonce_raw"]: nonceOf(count).toString(),
+      ["msg_value"]: "1000000000000000000",
+      status: "Proven",
+    });
+
+    it("are the ones the account proved or claimed, once each, by hash", () => {
+      /**
+       * @param {"claim" | "prove"} kind
+       * @param {number} count
+       * @param {Partial<ActivityRow>} [fields]
+       */
+      const row = (kind, count, fields = {}) =>
+        /** @type {ActivityRow} */ ({
+          bridge: {
+            amount: "1000000000",
+            hash: hashOf(count),
+            kind,
+            withdrawal: nonceHex(count),
+          },
+          status: "executed",
+          ...fields,
+        });
+
+      expect(
+        historyWithdrawals([
+          row("claim", 40),
+          row("prove", 41),
+          row("prove", 40),
+          // A failed proof proved nothing; one read before the history kept
+          // its hash isn't known yet.
+          row("prove", 39, { status: "failed" }),
+          /** @type {ActivityRow} */ ({
+            bridge: { amount: "1", kind: "prove", withdrawal: nonceHex(38) },
+            status: "executed",
+          }),
+          /** @type {ActivityRow} */ ({ status: "executed" }),
+        ])
+      ).toStrictEqual([
+        { hash: hashOf(40), nonce: nonceOf(40) },
+        { hash: hashOf(41), nonce: nonceOf(41) },
+      ]);
+    });
+
+    it("are found on DuskEVM's explorer by their nonces, however they were sent, and remembered for their sender", async () => {
+      const fetchMock = vi.fn(async (/** @type {URL} */ url) => {
+        const page = url.searchParams.get("nonce");
+
+        return jsonResponse(
+          page
+            ? { items: [listed(40), listed(39)], ["next_page_params"]: null }
+            : {
+                items: [listed(43), listed(42), listed(41)],
+                ["next_page_params"]: { nonce: 41 },
+              }
+        );
+      });
+
+      vi.stubGlobal("fetch", fetchMock);
+
+      const found = await rememberHistoryWithdrawals([
+        { hash: hashOf(41), nonce: nonceOf(41) },
+        { hash: hashOf(40), nonce: nonceOf(40) },
+      ]);
+
+      expect(found.map((item) => item.transactionHash)).toStrictEqual([
+        txOf(41),
+        txOf(40),
+      ]);
+      expect(found[0]).toEqual(
+        expect.objectContaining({
+          account: "0xc11d5aab4234e255e214ac6e8c0ad61fa0836473",
+          amountWei: "1000000000000000000",
+          createdAt: Date.parse("2026-10-01T12:50:11Z"),
+          withdrawalHash: hashOf(41),
+        })
+      );
+      // The list of all withdrawals, newest first, only until the oldest asked for.
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(String(fetchMock.mock.calls[0][0])).toBe(
+        `${mocks.explorerUrl}/api/v2/optimism/withdrawals`
+      );
+      expect(String(fetchMock.mock.calls[1][0])).toContain("nonce=41");
+      expect(
+        hydrateWithdrawalActivity().map((item) => item.withdrawalHash)
+      ).toEqual(expect.arrayContaining([hashOf(41), hashOf(40)]));
+
+      // Remembered: not asked for again.
+      await expect(
+        rememberHistoryWithdrawals([{ hash: hashOf(41), nonce: nonceOf(41) }])
+      ).resolves.toStrictEqual([]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("aren't asked for again for a while when the explorer doesn't list them", async () => {
+      const fetchMock = vi.fn(async () =>
+        jsonResponse({ items: [listed(43)], ["next_page_params"]: null })
+      );
+
+      vi.stubGlobal("fetch", fetchMock);
+
+      const missing = [{ hash: hashOf(12), nonce: nonceOf(12) }];
+
+      await expect(rememberHistoryWithdrawals(missing)).resolves.toStrictEqual(
+        []
+      );
+      await expect(rememberHistoryWithdrawals(missing)).resolves.toStrictEqual(
+        []
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("are asked for again at once when the explorer couldn't be read", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(new Response("Bad gateway", { status: 502 }))
+        .mockResolvedValue(
+          jsonResponse({ items: [listed(13)], ["next_page_params"]: null })
+        );
+
+      vi.stubGlobal("fetch", fetchMock);
+
+      const missing = [{ hash: hashOf(13), nonce: nonceOf(13) }];
+
+      await expect(rememberHistoryWithdrawals(missing)).rejects.toThrow(
+        "HTTP 502"
+      );
+
+      const found = await rememberHistoryWithdrawals(missing);
+
+      expect(found.map((item) => item.transactionHash)).toStrictEqual([
+        txOf(13),
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
   });
 });

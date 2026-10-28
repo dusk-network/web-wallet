@@ -54,10 +54,10 @@
   } from "$lib/bridge/withdrawalActivity";
   import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
   import bridgeTimes from "$lib/bridge/bridgeTimes";
+  import { beforeProofText } from "$lib/bridge/claimDate";
   import {
     DEPOSIT,
     WITHDRAWAL,
-    aboutTime,
     routeTime,
     routeTimeText,
   } from "$lib/bridge/routeTimes";
@@ -517,10 +517,11 @@
     note: network.id === "duskDs" ? withdrawalLine : depositLine,
   }));
 
-  // What's left once a withdrawal is sent: the proof, then the claim.
-  $: withdrawalNext = withdrawalTime
-    ? `Prove it on Dusk in ${aboutTime(withdrawalTime.report ?? 0)}, then claim it ${aboutTime(withdrawalTime.wait ?? 0)} later.`
-    : "Prove it on Dusk, then claim it.";
+  // What's left once a withdrawal is sent: the proof, then the claim, with
+  // the waits the chain said: "Claim 7 days after you prove. You can prove
+  // about 30 minutes after sending."
+  $: withdrawalNext =
+    beforeProofText(withdrawalTime) || "Prove it on Dusk, then claim it.";
 
   onMount(() => {
     void bridgeTimes.load();

@@ -144,7 +144,6 @@ function localItemFromTransaction(transaction) {
     amountWei: stringValue(transaction?.value),
     blockNumber: stringValue(transaction?.block_number),
     chainId: duskEvm.id,
-    challengePeriodEnd: null,
     createdAt: timestamp ? new Date(timestamp).getTime() : Date.now(),
     explorerStatus: null,
     l1TransactionHash: null,
@@ -177,7 +176,6 @@ function activityItemFromTransaction(transaction) {
     ...fallback,
     amountWei:
       stringValue(withdrawal?.msg_value) ?? stringValue(transaction?.value),
-    challengePeriodEnd: normalizedTimestamp(withdrawal?.challenge_period_end),
     createdAt: timestamp ? new Date(timestamp).getTime() : fallback.createdAt,
     explorerStatus,
     l1TransactionHash: normalizedTxHash(withdrawal?.l1_transaction_hash),
@@ -255,6 +253,98 @@ async function fetchCandidateDetails(transaction) {
   } catch {
     return localItemFromTransaction(transaction);
   }
+}
+
+/** The low 240 bits of a withdrawal's nonce: its count, past its version. */
+const NONCE_COUNT = (1n << 240n) - 1n;
+
+/**
+ * A withdrawal in the explorer's list of all of them, as an activity item.
+ *
+ * @param {any} withdrawal
+ */
+function itemFromWithdrawal(withdrawal) {
+  const timestamp = normalizedTimestamp(withdrawal?.l2_timestamp);
+
+  return /** @type {WithdrawalActivityItem} */ ({
+    account: normalizedAddress(withdrawal?.from),
+    amountWei: stringValue(withdrawal?.msg_value),
+    blockNumber: null,
+    chainId: duskEvm.id,
+    createdAt: timestamp ? new Date(timestamp).getTime() : Date.now(),
+    explorerStatus:
+      typeof withdrawal?.status === "string" ? withdrawal.status : null,
+    l1TransactionHash: normalizedTxHash(withdrawal?.l1_transaction_hash),
+    source: "explorer",
+    stage: explorerStatusToStage(withdrawal?.status),
+    timestamp,
+    transactionHash: normalizedTxHash(withdrawal?.l2_transaction_hash),
+  });
+}
+
+/**
+ * The DuskEVM transactions of withdrawals known by their nonces, as their
+ * proofs on Dusk carry them, from the explorer's list of all withdrawals:
+ * newest first, a page at a time, never past the oldest nonce asked for and
+ * at most MAX_TRANSACTION_PAGES pages. However a withdrawal was sent, the
+ * list has it.
+ *
+ * @param {bigint[]} nonces
+ * @returns {Promise<Map<string, WithdrawalActivityItem>>} By nonce, as text
+ */
+export async function findWithdrawalsByNonce(nonces) {
+  const wanted = new Set(nonces.map(String));
+  const oldest = nonces.reduce(
+    (low, nonce) => ((nonce & NONCE_COUNT) < low ? nonce & NONCE_COUNT : low),
+    NONCE_COUNT
+  );
+  /** @type {Map<string, WithdrawalActivityItem>} */
+  const found = new Map();
+  /** @type {Record<string, unknown> | null} */
+  let pageParams = {};
+
+  for (
+    let page = 0;
+    pageParams && page < MAX_TRANSACTION_PAGES && wanted.size;
+    page += 1
+  ) {
+    pageParams = await findOnPage(pageParams, { found, oldest, wanted });
+  }
+
+  return found;
+}
+
+/**
+ * One page of the explorer's list of all withdrawals: those wanted on it
+ * go in `found`, and come off `wanted`. Gives the next page's parameters, or
+ * null when there's none, or it's past the oldest nonce asked for.
+ *
+ * @param {Record<string, unknown>} pageParams
+ * @param {{ found: Map<string, WithdrawalActivityItem>, oldest: bigint, wanted: Set<string> }} search
+ * @returns {Promise<Record<string, unknown> | null>}
+ */
+async function findOnPage(pageParams, { found, oldest, wanted }) {
+  const body = await fetchExplorerJson(
+    explorerApiUrl("optimism/withdrawals", pageParams)
+  );
+  const withdrawals = Array.isArray(body?.items) ? body.items : [];
+
+  for (const withdrawal of withdrawals) {
+    const nonce = stringValue(withdrawal?.msg_nonce_raw);
+    const item = itemFromWithdrawal(withdrawal);
+
+    if (nonce && wanted.delete(nonce) && item.transactionHash) {
+      found.set(nonce, item);
+    }
+  }
+
+  const last = withdrawals[withdrawals.length - 1];
+
+  return body?.next_page_params &&
+    last &&
+    BigInt(stringValue(last.msg_nonce) ?? 0) > oldest
+    ? body.next_page_params
+    : null;
 }
 
 /**
