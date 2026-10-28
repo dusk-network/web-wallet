@@ -13,7 +13,8 @@
     settingsStore,
     walletStore,
   } from "$lib/stores";
-  import { makeNodeUrl } from "$lib/url";
+  import { nodeBaseUrl } from "$lib/url";
+  import { profileLabel } from "$lib/wallet";
 
   /** @type {"shielded" | "unshielded"} */
   let spendableSource = "unshielded";
@@ -65,7 +66,7 @@
    * @param {string} name
    */
   const resolveName = (name) =>
-    resolveDuskName(name, networkName, makeNodeUrl().origin);
+    resolveDuskName(name, networkName, nodeBaseUrl());
 
   /** @type {GasOperation} */
   $: transferOperation =
@@ -88,6 +89,14 @@
   $: shieldedAddress = currentProfile ? currentProfile.address.toString() : "";
   $: publicAddress = currentProfile ? currentProfile.account.toString() : "";
   $: knownNames = pastNames($activityState.rows);
+  $: ownAccounts = $walletStore.profiles.flatMap((profile) => {
+    const label = profileLabel($walletStore.profiles, profile, networkName);
+
+    return [
+      { address: String(profile.account), label },
+      { address: String(profile.address), label: `${label}, shielded` },
+    ];
+  });
 </script>
 
 {#key initialRecipient}
@@ -100,6 +109,7 @@
     {initialRecipient}
     {knownNames}
     on:keyChange={keyChangeHandler}
+    {ownAccounts}
     {publicAddress}
     {resolveName}
     shieldedBalance={balance.shielded.spendable}

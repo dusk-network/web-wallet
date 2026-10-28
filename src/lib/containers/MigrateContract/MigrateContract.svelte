@@ -2,37 +2,27 @@
 
 <script>
   import {
-    mdiArrowLeft,
-    mdiArrowRight,
+    mdiArrowDown,
     mdiCheckDecagramOutline,
-    mdiWalletOutline,
+    mdiChevronDown,
+    mdiClockOutline,
   } from "@mdi/js";
   import { switchChain } from "@wagmi/core";
   import { formatUnits, parseUnits } from "viem";
   import { onMount } from "svelte";
   import { tokens } from "./tokenConfig";
   import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
+  import { cleanNumberString, shortenAddress } from "$lib/dusk/string";
   import {
-    calculateAdaptiveCharCount,
-    cleanNumberString,
-    middleEllipsis,
-  } from "$lib/dusk/string";
-  import {
-    AppAnchorButton,
-    AppImage,
     ApproveMigration,
     BalanceValue,
     Banner,
     ExecuteMigration,
   } from "$lib/components";
-  import {
-    Button,
-    ExclusiveChoice,
-    Icon,
-    Stepper,
-    Textbox,
-  } from "$lib/dusk/components";
-  import { logo } from "$lib/dusk/icons";
+  import NetworkMark from "$lib/components/NetworkPicker/NetworkMark.svelte";
+  import NetworkPicker from "$lib/components/NetworkPicker/NetworkPicker.svelte";
+  import SwapCard from "$lib/components/SwapCard/SwapCard.svelte";
+  import { Button, Icon, Stepper } from "$lib/dusk/components";
   import { settingsStore, walletStore } from "$lib/stores";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import {
@@ -42,11 +32,14 @@
     walletDisconnect,
   } from "$lib/web3/walletConnection";
   import { getBalanceOfCoin } from "$lib/web3/migration";
+  import {
+    migrationRoute,
+    routeTime,
+    routeTimeText,
+  } from "$lib/bridge/routeTimes";
 
   /** @type {string} */
   export let migrationNetwork;
-
-  const { darkMode } = $settingsStore;
 
   $: ({ language } = $settingsStore);
   $: ({ isConnected, address } = $account);
@@ -62,17 +55,10 @@
 
   const { ["ERC-20"]: erc20, ["BEP-20"]: bep20 } = tokens[network];
 
-  $: options = [
-    {
-      disabled: isInputDisabled,
-      label: "ERC-20",
-      value: "ERC-20",
-    },
-    {
-      disabled: isInputDisabled,
-      label: "BEP-20",
-      value: "BEP-20",
-    },
+  /** The chains DUSK is migrated from, by the token each holds. */
+  const CHAINS = [
+    { id: "ethereum", name: "Ethereum", token: erc20.name },
+    { id: "bsc", name: "BNB Smart Chain", token: bep20.name },
   ];
 
   // The minimum allowed amount to be migrated expressed as a string
@@ -98,9 +84,6 @@
 
   /** @type {boolean} */
   let isMigrationInitialized = false;
-
-  /** @type {number} */
-  let screenWidth = window.innerWidth;
 
   /** @type {number} */
   let migrationStep = 0;
@@ -148,17 +131,24 @@
     }
   }
 
-  /** Emits the switchChain event to the third-party wallet when the ExclusiveChoice UI is interacted with  */
-  // @ts-ignore
-  async function onChainSwitch(e) {
+  /**
+   * Picks the chain to migrate from, and has the connected wallet switch
+   * to it.
+   *
+   * @param {string} id "ethereum" or "bsc"
+   */
+  async function pickChain(id) {
+    selectedChain = id === "bsc" ? bep20.name : erc20.name;
+
     if (!isConnected) {
       return;
     }
+
     amount = "";
     connectedWalletBalance = undefined;
-    const chainIdToSwitchTo =
-      e.target?.value === bep20.name ? bep20.chainId : erc20.chainId;
-    await handleSwitchChain(chainIdToSwitchTo);
+    await handleSwitchChain(
+      selectedChain === bep20.name ? bep20.chainId : erc20.chainId
+    );
   }
 
   /**
@@ -186,13 +176,6 @@
   }
 
   onMount(() => {
-    const resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      screenWidth = entry.contentRect.width;
-    });
-
-    resizeObserver.observe(document.body);
-
     modal.subscribeEvents(handleModalEvents);
 
     // Workaround for when the user navigates back to the page
@@ -200,17 +183,29 @@
     if ($account.isConnecting) {
       walletDisconnect();
     }
-
-    // Workaround for when the user navigates
-    // back to the page from the dashboard
-    if ($account.isConnected) {
-      switchToSelectedChain();
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
   });
+
+  /** The account the balance shown is read for. */
+  let balanceOf = "";
+
+  /**
+   * Reads the balance of an account that is connected, or came back, while
+   * the page shows, once an account; forgets it once none is.
+   *
+   * @param {boolean} connected
+   * @param {string | undefined} connectedAddress
+   */
+  function followAccount(connected, connectedAddress) {
+    if (connected && connectedAddress && connectedAddress !== balanceOf) {
+      balanceOf = connectedAddress;
+      switchToSelectedChain();
+    } else if (!connected && balanceOf) {
+      balanceOf = "";
+      connectedWalletBalance = undefined;
+    }
+  }
+
+  $: followAccount(isConnected, address);
 
   /**
    * Handles modal state changes.
@@ -222,111 +217,156 @@
       await switchToSelectedChain();
     }
   };
+
+  $: chain = CHAINS.find((c) => c.token === selectedChain) ?? CHAINS[0];
+
+  // How long a migration from this chain takes on this network, or none.
+  $: time = routeTime(migrationRoute(chain.id), { network });
+  $: routeLine = [
+    routeTimeText(time),
+    `approve, then migrate, in your ${chain.name} wallet`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+    .replace(/^./, (first) => first.toUpperCase());
+  $: primary = !isConnected
+    ? { label: `Connect to ${chain.name}`, ready: true }
+    : connectedWalletBalance === undefined
+      ? { label: "Checking the balance…", ready: false }
+      : connectedWalletBalance === 0n
+        ? { label: `No DUSK on ${chain.name}`, ready: false }
+        : !amount
+          ? { label: "Enter an amount", ready: false }
+          : !isAmountValid
+            ? { label: "Check the amount", ready: false }
+            : { label: "Start the migration", ready: true };
+  $: canType =
+    isConnected && Boolean(connectedWalletBalance) && !isInputDisabled;
+
+  function primaryAction() {
+    if (!isConnected) {
+      modal.open();
+    } else if (primary.ready) {
+      isMigrationInitialized = true;
+      isInputDisabled = true;
+    }
+  }
 </script>
 
-<article class="migrate">
-  <header class="migrate__header">
-    <h3 class="h4">Migrate</h3>
-    <div class="migrate__header-icons">
-      <div>
-        <AppImage
-          src={darkMode ? "/binance_dusk_light.svg" : "/binance_dusk.svg"}
-          alt="Binance Dusk"
-          width="37"
-          height="27"
-        />
-        <AppImage
-          src={darkMode ? "/eth_dusk_light.svg" : "/eth_dusk.svg"}
-          alt="Ethereum Dusk"
-          width="37"
-          height="27"
-        />
-      </div>
-      <Icon path={mdiArrowRight} />
-      <Icon path={logo} />
-    </div>
-  </header>
+<SwapCard label="Migrate">
+  <div class="swap-top" slot="top">
+    <h2 class="migrate__title">Migrate</h2>
+  </div>
 
-  <div class="migrate__token">
-    <p class="migrate__token-header">From:</p>
-    <ExclusiveChoice
-      {options}
-      bind:value={selectedChain}
-      on:change={onChainSwitch}
-    />
-    {#if isConnected && address}
-      <p class="migrate__token-header">Connected Wallet:</p>
-      <p class="migrate__token-address">
-        {middleEllipsis(address, calculateAdaptiveCharCount(screenWidth))}
-      </p>
-      <span class="migrate__token-balance">
-        Balance:
-        {#if connectedWalletBalance === undefined}
-          <span>Loading...</span>
-        {:else}
-          <span
-            ><BalanceValue
+  <div class="swap-panel">
+    <div class="swap-panel__head">
+      <span class="swap-panel__label">From</span>
+      <NetworkPicker
+        choices={CHAINS}
+        disabled={isInputDisabled}
+        on:pick={({ detail }) => pickChain(detail)}
+        side="From"
+        title="Where it comes from"
+        value={chain.id}
+      />
+    </div>
+    <div class="swap-amount">
+      <label class="sr-only" for="migrate-amount">Amount</label>
+      <input
+        aria-describedby="migrate-balance-label migrate-balance"
+        aria-invalid={amount !== "" && !isAmountValid}
+        autocomplete="off"
+        bind:value={amount}
+        disabled={!canType}
+        id="migrate-amount"
+        inputmode="decimal"
+        placeholder="0"
+        spellcheck="false"
+        type="text"
+      />
+      <span class="swap-token"><NetworkMark id={chain.id} />DUSK</span>
+    </div>
+    <div class="swap-foot">
+      <span id="migrate-balance-label">Balance on {chain.name}:</span>
+      <span class="swap-foot__value">
+        <span id="migrate-balance">
+          {#if !isConnected}
+            connect a wallet to see it
+          {:else if connectedWalletBalance === undefined}
+            checking
+          {:else}
+            <BalanceValue
               exact={formatDuskExact(
                 tokenLux(connectedWalletBalance),
                 language
               )}
               value={formatDusk(tokenLux(connectedWalletBalance), language)}
-            />
-            {selectedChain} DUSK</span
-          >
-        {/if}
-      </span>
-    {/if}
-  </div>
-
-  {#if isConnected && address && connectedWalletBalance && connectedWalletBalance > 0n}
-    <div class="migrate__amount">
-      <div class="migrate__amount-header">
-        <div class="migrate__amount-token">
-          {#if selectedChain === erc20.name}
-            <AppImage
-              src={darkMode ? "/eth_dusk_light.svg" : "/eth_dusk.svg"}
-              alt="Ethereum Dusk"
-              width="37"
-              height="27"
-            />
-          {:else}
-            <AppImage
-              src={darkMode ? "/binance_dusk_light.svg" : "/binance_dusk.svg"}
-              alt="Binance Dusk"
-              width="37"
-              height="27"
-            />
+            /> DUSK
           {/if}
-          <p class="migrate__amount-currency">DUSK {selectedChain}</p>
-        </div>
-
-        <Button
-          size="small"
-          variant="tertiary"
+        </span>
+        <button
+          class="swap-mini"
+          disabled={!canType}
           on:click={() => {
             amount = formatUnits(connectedWalletBalance ?? 0n, ercDecimals);
           }}
-          text="Use max"
-          disabled={isInputDisabled}
-        />
-      </div>
-
-      <Textbox
-        className="migrate__input-field {!isAmountValid
-          ? 'migrate__input-field--invalid'
-          : ''}"
-        bind:value={amount}
-        required
-        type="text"
-        placeholder="Amount"
-        disabled={isInputDisabled}
-      />
+          type="button">Max</button
+        >
+      </span>
     </div>
-  {/if}
+    {#if isConnected && address}
+      <p class="swap-recipient">
+        from <b title={address}>{shortenAddress(address)}</b> ·
+        <button
+          aria-label={`${chain.name} wallet ${address}: disconnect or change wallet`}
+          class="swap-link"
+          on:click={() => modal.open()}
+          type="button">Change</button
+        >
+      </p>
+    {/if}
+  </div>
 
-  {#if isConnected && isAmountValid && isMigrationInitialized}
-    <div class="migrate__wizard">
+  <div class="swap-flip">
+    <span aria-hidden="true"><Icon path={mdiArrowDown} /></span>
+  </div>
+
+  <div class="swap-panel">
+    <div class="swap-panel__head">
+      <span class="swap-panel__label">To</span>
+      <span class="migrate__network"><NetworkMark id="duskDs" />Dusk</span>
+    </div>
+    <div class="swap-amount">
+      <output class:swap-amount__empty={!isAmountValid} for="migrate-amount"
+        >{isAmountValid ? amount : "0"}</output
+      >
+      <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
+    </div>
+    <div class="swap-foot"><span>You receive</span></div>
+    <p class="swap-recipient">to your public balance on Dusk</p>
+  </div>
+
+  <details class="swap-route">
+    <summary
+      ><Icon path={mdiClockOutline} /><span>{routeLine}</span><Icon
+        className="swap-route__chevron"
+        path={mdiChevronDown}
+      /></summary
+    >
+    <dl>
+      <div>
+        <dt>Network fees</dt>
+        <dd>On {chain.name}, as your wallet shows</dd>
+      </div>
+    </dl>
+    <p class="swap-route__note">
+      <b>Public on {chain.name} and Dusk, and linked:</b> your {chain.name} address,
+      your public account and the amount.
+    </p>
+  </details>
+
+  {#if isMigrationInitialized && isConnected && isAmountValid}
+    <div class="migrate__steps">
       <Stepper {steps} activeStep={migrationStep} />
       {#if migrationStep === 0}
         <ApproveMigration
@@ -349,150 +389,62 @@
           migrationContract={tokens[network][selectedChain].migrationContract}
         />
       {:else}
-        <div class="migrate__execute">
-          <div class="migrate__execute-approval">
-            <Icon path={mdiCheckDecagramOutline} size="large" />
-            <p>Migration request accepted!</p>
-          </div>
-          <Banner
-            title="Your DUSK can take a while to arrive."
-            variant="info"
-          />
+        <div class="migrate__done">
+          <Icon path={mdiCheckDecagramOutline} size="large" />
+          <p>Migration sent.</p>
+          {#if time}
+            <Banner
+              title={`Arrives on Dusk in ${routeTimeText(time)}.`}
+              variant="info"
+            />
+          {/if}
         </div>
       {/if}
     </div>
+  {:else}
+    <div class="swap-cta">
+      <Button
+        disabled={!primary.ready}
+        on:click={primaryAction}
+        text={primary.label}
+        variant="primary"
+      />
+    </div>
   {/if}
-
-  {#if !isConnected}
-    <Button
-      icon={{ path: mdiWalletOutline }}
-      text={`Connect to ${selectedChain === tokens[network]["ERC-20"].name ? "Ethereum" : "BSC"}`}
-      on:click={() => modal.open()}
-    />
-  {:else if connectedWalletBalance === 0n}
-    <Banner variant="warning" title="The connected wallet has no DUSK." />
-  {:else if !isMigrationInitialized && address}
-    <Button
-      text="Initialize migration"
-      on:click={() => {
-        isMigrationInitialized = true;
-      }}
-      disabled={!isAmountValid}
-    />
-  {/if}
-</article>
-
-{#if isConnected}
-  <Button
-    text="Manage Wallet"
-    on:click={() => {
-      modal.open();
-    }}
-    variant="tertiary"
-  />
-{/if}
-
-<AppAnchorButton
-  href="/dashboard"
-  icon={{ path: mdiArrowLeft }}
-  text="Back"
-  variant="tertiary"
-/>
+</SwapCard>
 
 <style lang="postcss">
-  .migrate {
-    border-radius: 1.25em;
-    background: var(--surface-color);
+  .migrate__title {
+    margin: 0;
+    padding: 0.5rem 0.5rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .migrate__network {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 0.875rem 0 0.375rem;
+    border-radius: 999px;
+    background: var(--calm-s2);
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+
+  .migrate__steps {
     display: flex;
     flex-direction: column;
-    gap: var(--default-gap);
-    padding: 1.25em;
-
-    &__wizard {
-      margin-top: var(--default-gap);
-      gap: 1.25em;
-      display: flex;
-      flex-direction: column;
-    }
-
-    &__execute {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--default-gap);
-
-      &-approval {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: var(--default-gap);
-      }
-    }
-
-    &__header {
-      display: flex;
-      justify-content: space-between;
-    }
-
-    &__header-icons {
-      display: flex;
-      align-items: center;
-      gap: 0.675em;
-    }
-
-    &__token,
-    &__amount {
-      display: flex;
-      flex-direction: column;
-      gap: var(--default-gap);
-      border-radius: 1.5em;
-      padding: 0.75em;
-      background-color: var(--background-color);
-    }
-
-    &__amount-token {
-      display: flex;
-      gap: var(--small-gap);
-      align-items: center;
-    }
-
-    &__token-header {
-      font-weight: 500;
-    }
-
-    &__token-address {
-      font-size: 1em;
-      font-weight: 500;
-      font-family: var(--mono-font-family);
-      text-align: center;
-    }
-
-    &__token-balance {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.875em;
-
-      span {
-        font-weight: 500;
-        font-family: var(--mono-font-family);
-      }
-    }
-
-    &__amount-header {
-      display: flex;
-      justify-content: space-between;
-    }
-
-    &__amount-currency {
-      font-size: 0.875em;
-    }
+    gap: 1rem;
+    padding: 0.75rem 0.5rem 0.25rem;
   }
 
-  :global(.dusk-textbox.migrate__input-field) {
-    background-color: var(--non-button-control-bg-color);
-  }
-
-  :global(.dusk-textbox.migrate__input-field--invalid) {
-    color: var(--error-color);
+  .migrate__done {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: center;
   }
 </style>

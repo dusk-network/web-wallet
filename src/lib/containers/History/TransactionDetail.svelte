@@ -12,10 +12,13 @@
   import { AnchorButton, Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { BalanceValue } from "$lib/components";
+  import { fetchTxNonce } from "$lib/activity/activityHistory";
+  import { contractLabel } from "$lib/activity/knownContracts";
   import { fullDateTime, rowTime } from "$lib/activity/present";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { addBasePath } from "$lib/navigation";
   import { addressType, contactsStore, saveContact } from "$lib/contacts";
+  import { nodeBaseUrl } from "$lib/url";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
 
@@ -27,6 +30,17 @@
 
   /** @type {string} */
   export let locale;
+
+  /** The network's name, for the contracts the wallet names. */
+  export let network = "";
+
+  /** The account the history is of, and how the wallet names it. */
+  /** @type {{ address: string, label: string } | null} */
+  export let account = null;
+
+  /** Looks a public transaction's nonce up. */
+  /** @type {(hash: string) => Promise<string | null>} */
+  export let loadNonce = (hash) => fetchTxNonce(nodeBaseUrl(), hash);
 
   const dispatch = createEventDispatcher();
 
@@ -62,13 +76,51 @@
       ? [value.slice(0, 6), value.slice(6, -6), value.slice(-6)]
       : ["", value, ""];
 
-  /** @param {string} value */
-  async function copy(value) {
+  /**
+   * @param {string} value
+   * @param {string} [what]
+   */
+  async function copy(value, what = "transaction ID") {
     try {
       await navigator.clipboard.writeText(value);
-      toast("success", "Transaction ID copied", mdiContentCopy);
+      toast(
+        "success",
+        `${what[0].toUpperCase()}${what.slice(1)} copied`,
+        mdiContentCopy
+      );
     } catch {
-      toast("error", "Couldn't copy the transaction ID", mdiAlertCircleOutline);
+      toast("error", `Couldn't copy the ${what}`, mdiAlertCircleOutline);
+    }
+  }
+
+  /**
+   * The row the nonce shown is of, with whether it can have one: a new row,
+   * or the same one become public and final, starts over, and an answer for
+   * a row shown before is dropped.
+   */
+  let nonceOf = "";
+
+  /** @type {string | null} */
+  let nonce = null;
+
+  /**
+   * @param {string} hash
+   * @param {boolean} canHaveOne Whether the row is public and final
+   */
+  async function showNonce(hash, canHaveOne) {
+    const key = `${hash} ${canHaveOne}`;
+
+    nonceOf = key;
+    nonce = null;
+
+    if (!canHaveOne) {
+      return;
+    }
+
+    const found = await loadNonce(hash).catch(() => null);
+
+    if (nonceOf === key) {
+      nonce = found;
     }
   }
 
@@ -83,7 +135,6 @@
 
   $: p = presentation;
   $: time = rowTime(row);
-  $: failed = p.status === "failed";
   $: outcome =
     p.status === "failed"
       ? { icon: mdiAlertCircleOutline, text: "Failed · nothing sent" }
@@ -91,9 +142,13 @@
         ? { icon: mdiTimerSand, text: "Pending" }
         : p.status === "unknown"
           ? { icon: mdiTimerSand, text: "Not confirmed by the network" }
-          : row.success === true || row.status === "executed"
-            ? { icon: mdiCheck, text: "Completed" }
-            : { icon: mdiTimerSand, text: "Checking the outcome…" };
+          : p.withdrawal
+            ? p.withdrawal.claimed
+              ? { icon: mdiCheck, text: "Proved · claimed" }
+              : { icon: mdiTimerSand, text: "Proved · not claimed yet" }
+            : row.success === true || row.status === "executed"
+              ? { icon: mdiCheck, text: "Completed" }
+              : { icon: mdiTimerSand, text: "Checking the outcome…" };
   $: headline =
     p.titleIsAddress || p.icon === "sent" || p.icon === "received"
       ? `${row.direction === "in" ? "Received from" : "Sent to"} ${p.title}`
@@ -108,6 +163,20 @@
     addressType(String(p.counterparty)) !== "unknown";
   $: canSendAgain =
     p.icon === "sent" && !!p.counterparty && row.kind === "transfer";
+  $: hasNonce = row.privacy !== "shielded" && row.source !== "local";
+  $: if (`${row.hash} ${hasNonce}` !== nonceOf) {
+    showNonce(row.hash, hasNonce);
+  }
+  // Who it went to: the contract a call went to, as one that moved no
+  // DUSK has no counterparty, and a deposit's DuskEVM address.
+  $: target =
+    row.kind === "contract_call" &&
+    row.contractId &&
+    row.bridge?.kind !== "deposit"
+      ? row.contractId
+      : p.counterparty;
+  $: known = target ? contractLabel(target, network) : "";
+  $: isSent = row.direction !== "in" && p.icon !== "received";
   $: gasUsed =
     row.gasSpent && row.gasLimit
       ? `${Number(row.gasSpent).toLocaleString(locale)} of ${Number(row.gasLimit).toLocaleString(locale)}`
@@ -118,7 +187,17 @@
   });
 </script>
 
-<aside aria-labelledby="tx-detail-title" class="tx-detail">
+<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+<aside
+  aria-labelledby="tx-detail-title"
+  class="tx-detail"
+  on:keydown={(event) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      dispatch("close");
+    }
+  }}
+>
   <header class="tx-detail__header">
     <h2 id="tx-detail-title">Transaction</h2>
     <button
@@ -145,7 +224,10 @@
       </div>
     </div>
 
-    <p class="tx-detail__amount" class:tx-detail__amount--muted={failed}>
+    <p
+      class="tx-detail__amount"
+      class:tx-detail__amount--muted={p.amount.muted}
+    >
       {p.amount.sign}<BalanceValue value={p.amount.exact} />
       <span class="tx-detail__unit">DUSK</span>
     </p>
@@ -155,11 +237,15 @@
         <dt>Date</dt>
         <dd>{time === null ? "Not known yet" : fullDateTime(time, locale)}</dd>
       </div>
-      {#if p.counterparty && p.icon !== "shield"}
+      {#if target && p.icon !== "shield"}
         <div class="tx-detail__wide">
           <dt>{counterpartyLabel}</dt>
           <dd>
-            {#if contact || duskName}
+            {#if row.bridge?.kind === "deposit"}
+              <span class="tx-detail__name">DuskEVM address</span>
+            {:else if known}
+              <span class="tx-detail__name">{known}</span>
+            {:else if contact || duskName}
               <span class="tx-detail__name"
                 >{contact && duskName
                   ? `${contact.name} · ${duskName}`
@@ -167,11 +253,16 @@
               >
             {/if}
             <span class="tx-detail__code"
-              >{#each [parts(p.counterparty)] as [head, middle, tail] (tail)}<b
+              >{#each [parts(target)] as [head, middle, tail] (tail)}<b
                   >{head}</b
                 ><span class="tx-detail__middle">{middle}</span><b
                   class="tx-detail__tail">{tail}</b
                 >{/each}</span
+            >
+            <button
+              class="tx-detail__copy"
+              on:click={() => copy(String(target), "address")}
+              type="button"><Icon path={mdiContentCopy} />Copy</button
             >
             {#if canSave && !isSavingContact}
               <Button
@@ -214,6 +305,47 @@
                 </div>
                 <p class="tx-detail__note">Saved only on this device.</p>
               </form>
+            {/if}
+          </dd>
+        </div>
+      {/if}
+      {#if p.withdrawal && !p.withdrawal.claimed}
+        <div class="tx-detail__wide">
+          <dt>Next step</dt>
+          <dd>
+            Claim it on Dusk from about {fullDateTime(
+              p.withdrawal.claimFrom,
+              locale
+            )}. The withdrawals page says when it can be sent.
+            <AnchorButton
+              className="tx-detail__next"
+              href={addBasePath(
+                "/dashboard/bridge/transactions?view=withdrawals"
+              )}
+              size="small"
+              text="Open withdrawals"
+              variant="secondary"
+            />
+          </dd>
+        </div>
+      {/if}
+      {#if account && isSent}
+        <div class="tx-detail__wide">
+          <dt>From</dt>
+          <dd>
+            <span class="tx-detail__name"
+              >{account.label}, {p.privacy === "Shielded"
+                ? "shielded balance"
+                : "public balance"}</span
+            >
+            {#if p.privacy !== "Shielded"}
+              <span class="tx-detail__code"
+                >{#each [parts(account.address)] as [head, middle, tail] (tail)}<b
+                    >{head}</b
+                  ><span class="tx-detail__middle">{middle}</span><b
+                    class="tx-detail__tail">{tail}</b
+                  >{/each}</span
+              >
             {/if}
           </dd>
         </div>
@@ -263,15 +395,38 @@
         <div>
           <dt>Block height</dt>
           <dd>
-            {row.blockHeight === undefined
-              ? "Not in a block yet"
-              : row.blockHeight.toLocaleString(locale)}
+            {#if row.blockHeight === undefined}
+              Not in a block yet
+            {:else if row.blockHash}
+              <a
+                href={`/explorer/blocks/block?id=${row.blockHash}`}
+                rel="noopener noreferrer"
+                target="_blank"
+                >{row.blockHeight.toLocaleString(locale)}<span class="sr-only">
+                  (opens the block in the Dusk explorer)</span
+                ></a
+              >
+            {:else}
+              {row.blockHeight.toLocaleString(locale)}
+            {/if}
           </dd>
         </div>
         {#if gasUsed}
           <div>
             <dt>Gas used</dt>
             <dd>{gasUsed}</dd>
+          </div>
+        {/if}
+        {#if row.gasPrice}
+          <div>
+            <dt>Gas price</dt>
+            <dd>{Number(row.gasPrice).toLocaleString(locale)} LUX</dd>
+          </div>
+        {/if}
+        {#if nonce !== null}
+          <div>
+            <dt>Nonce</dt>
+            <dd>{nonce}</dd>
           </div>
         {/if}
         <div>
@@ -520,6 +675,11 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.75rem;
+  }
+
+  .tx-detail__list a {
+    color: inherit;
+    text-underline-offset: 2px;
   }
 
   .tx-detail__copy {

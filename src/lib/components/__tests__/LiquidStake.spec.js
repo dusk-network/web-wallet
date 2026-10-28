@@ -16,9 +16,19 @@ const HASH = "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
 const POOL = "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
 const DUSK = 1_000_000_000n;
 
-/** @param {Partial<SozuStatus["position"]>} position */
-const statusWith = (position = {}) => ({
+/** Sozu's fees on mainnet, as its substrate gave them on 27 Oct 2026. */
+const FEES = {
+  deposit: { denominator: 400n, numerator: 1n },
+  reward: { denominator: 100n, numerator: 15n },
+};
+
+/**
+ * @param {Partial<SozuStatus["position"]>} position
+ * @param {SozuFees | null} [fees]
+ */
+const statusWith = (position = {}, fees = FEES) => ({
   contracts: { hub: "aa".repeat(32), pool: POOL, stDusk: "dd".repeat(32) },
+  fees,
   pool: { stake: 8_142_876_697_294_578n, supply: 2_647_997_731_233_173n },
   position: { balance: 0n, stDusk: 0n, ...position },
 });
@@ -71,14 +81,17 @@ describe("LiquidStake", () => {
       target: { value: "100" },
     });
 
+    // For what's left once Sozu's 0.25% deposit fee is off it.
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.5191 stDUSK, worth 100 DUSK now. stDUSK is Sozu's token for your share; its DUSK value grows as rewards come in."
+      "You get about 32.4378 stDUSK, at the rate Sozu's contract gives now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
     );
     expect(
       Array.from(container.querySelectorAll(".stake-flow__rows > div"), textOf)
     ).toStrictEqual([
       "Stake with Sozu 100 DUSK",
-      "You get about 32.5191 stDUSK",
+      "You get about 32.4378 stDUSK",
+      "Deposit fee 0.25% · 0.25 DUSK",
+      "Getting it back Unstake from Sozu, under Sozu's rules",
       "Fee paid from Public balance",
       "Total Up to 100.01 DUSK",
     ]);
@@ -94,6 +107,57 @@ describe("LiquidStake", () => {
       1n,
       10_000_000n
     );
+  });
+
+  it("refuses a stake too small to get any stDUSK, saying the least", async () => {
+    const { getByLabelText, getByRole } = render(LiquidStake, baseProps);
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "0.000000001" },
+    });
+
+    // 4 lux gets stDUSK at the rate, so 5 does once the fee is off it.
+    expect(getByRole("alert")).toHaveTextContent(
+      "The minimum stake is 0.000000005 DUSK."
+    );
+    expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "0.000000005" },
+    });
+
+    expect(
+      getByRole("button", { name: "Stake 0.000000005 DUSK with Sozu" })
+    ).toBeEnabled();
+  });
+
+  it("says Sozu's deposit fee as the contract gives it, and where it couldn't be read, that it's taken from the deposit", async () => {
+    const rows = async (/** @type {SozuFees | null} */ fees) => {
+      const { container, getByLabelText } = render(LiquidStake, {
+        ...baseProps,
+        sozu: { error: null, loading: false, status: statusWith({}, fees) },
+      });
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "1" },
+      });
+
+      const fee = textOf(
+        Array.from(container.querySelectorAll(".stake-flow__rows > div")).find(
+          (row) => textOf(row)?.startsWith("Deposit fee")
+        ) ?? null
+      );
+
+      cleanup();
+
+      return fee;
+    };
+
+    expect(await rows(FEES)).toBe("Deposit fee 0.25% · 0.0025 DUSK");
+    expect(
+      await rows({ ...FEES, deposit: { denominator: 100n, numerator: 1n } })
+    ).toBe("Deposit fee 1% · 0.01 DUSK");
+    expect(await rows(null)).toBe("Deposit fee Taken from the deposit");
   });
 
   it("says when a stake is more than the public balance, with the fee", async () => {
@@ -197,5 +261,30 @@ describe("LiquidStake", () => {
     await fireEvent.click(getByRole("button", { name: "Try again" }));
 
     expect(baseProps.onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the gas a review shows when the node's price changes", async () => {
+    const execute = vi.fn().mockResolvedValue(HASH);
+    const { getByLabelText, getByRole, rerender } = render(LiquidStake, {
+      ...baseProps,
+      execute,
+    });
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await rerender({ gasSettings: { gasLimit: 10_000_000n, gasPrice: 3n } });
+    await fireEvent.click(
+      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+    );
+
+    expect(execute).toHaveBeenCalledExactlyOnceWith(
+      "stake",
+      POOL,
+      100n * DUSK,
+      1n,
+      10_000_000n
+    );
   });
 });

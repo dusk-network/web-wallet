@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { NativeStake } from "..";
-import { checkAmount, parseDuskInput } from "../Stake/stakeAmount";
+import {
+  checkAmount,
+  normalizeDuskInput,
+  parseDuskInput,
+} from "../Stake/stakeAmount";
 
 // The transaction sent stays pending.
 const { followTransaction } = vi.hoisted(() => ({
@@ -40,6 +44,27 @@ describe("parseDuskInput", () => {
 
     for (const text of ["", "1,000", "1e3", "-1", "1.0000000001", "abc"]) {
       expect(parseDuskInput(text)).toBeNull();
+    }
+  });
+});
+
+describe("normalizeDuskInput", () => {
+  it("reads a decimal comma as a point, and leaves digit grouping out where it can't be decimals", () => {
+    expect(normalizeDuskInput("1,5")).toBe("1.5");
+    expect(normalizeDuskInput(" 0,25 ")).toBe("0.25");
+    expect(normalizeDuskInput("0,123")).toBe("0.123");
+    expect(normalizeDuskInput("1.000,5")).toBe("1000.5");
+    expect(normalizeDuskInput("1,000.5")).toBe("1000.5");
+    expect(normalizeDuskInput("1,000,000")).toBe("1000000");
+
+    // A lone comma before three digits groups them, unless the language
+    // writes decimals with a comma.
+    expect(normalizeDuskInput("1,000")).toBe("1000");
+    expect(normalizeDuskInput("1,000", ",")).toBe("1.000");
+
+    // Anything else stays as typed, for the parser to refuse.
+    for (const text of ["1,00,0", "1e3", "1.2.3", "abc", "1,5,"]) {
+      expect(normalizeDuskInput(text)).toBe(text);
     }
   });
 });
@@ -115,7 +140,7 @@ describe("NativeStake", () => {
   });
 
   it("stakes the amount typed, with the gas shown, and shows the result", async () => {
-    const { getByLabelText, getByRole, container } = render(
+    const { container, findByText, getByLabelText, getByRole } = render(
       NativeStake,
       baseProps
     );
@@ -146,6 +171,7 @@ describe("NativeStake", () => {
       "href",
       "/some-base-path/dashboard/stake"
     );
+    expect(await findByText("1,200.5 DUSK to your stake")).toBeInTheDocument();
   });
 
   it("shows the amount typed in the summary, muted, while it can't be staked", async () => {
@@ -228,5 +254,28 @@ describe("NativeStake", () => {
     expect(container.querySelector(".stake-flow")).not.toHaveClass(
       "stake-flow--review"
     );
+  });
+
+  it("keeps the gas a review shows when the node's price changes, and takes it after", async () => {
+    const { container, getByLabelText, getByRole, rerender } = render(
+      NativeStake,
+      { ...baseProps, execute: vi.fn().mockResolvedValue(HASH) }
+    );
+    const total = () =>
+      Array.from(container.querySelectorAll(".stake-flow__rows > div"), (row) =>
+        row.textContent?.replace(/\s+/g, " ").trim()
+      ).find((text) => text?.startsWith("Total"));
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1000" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await rerender({ gasSettings: { gasLimit: 50_000_000n, gasPrice: 3n } });
+
+    expect(total()).toBe("Total Up to 1,000.05 DUSK");
+
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+
+    expect(total()).toBe("Total Up to 1,000.15 DUSK");
   });
 });

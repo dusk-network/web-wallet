@@ -16,7 +16,7 @@
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
-    formatFee,
+    formatTotal,
   } from "$lib/dusk/currency";
   import { randomUUID } from "$lib/dusk/string";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
@@ -69,7 +69,7 @@
   let defaultGas = gasSettings;
   let isGasValid = false;
 
-  /** @type {{ maxFee: bigint, operation: Promise<string> } | null} */
+  /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
   let sent = null;
 
   /** @param {bigint} lux */
@@ -83,6 +83,7 @@
       sent = {
         maxFee: maxGasFee,
         operation: execute(amount, gasPrice, gasLimit),
+        what: `${formatDuskExact(amount, language)} DUSK to your stake`,
       };
     }
   }
@@ -92,8 +93,9 @@
   });
 
   // The default gas can change while the page shows, as when the node's
-  // price arrives: the page takes it unless its gas was edited here.
-  $: if (!sent && gasSettings !== defaultGas) {
+  // price arrives: the page takes it unless its gas was edited here, and
+  // keeps the gas a review shows.
+  $: if (!sent && !isReviewing && gasSettings !== defaultGas) {
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
@@ -137,6 +139,7 @@
       leaveText="Back to staking"
       maxFee={sent.maxFee}
       operation={sent.operation}
+      what={sent.what}
     />
   </div>
 {:else}
@@ -314,9 +317,11 @@
         <div>
           <dt>Total</dt>
           <dd class:stake-flow__muted={isTypedOff}>
-            Up to {formatFee(typedAmount + maxGasFee, language, {
-              max: true,
-            })} DUSK
+            Up to {formatTotal(
+              typedAmount + maxGasFee,
+              availableBalance,
+              language
+            )} DUSK
           </dd>
         </div>
       </dl>

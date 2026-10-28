@@ -9,7 +9,7 @@
   import { getVerifiedName, resolveDuskName } from "$lib/dusk-domains";
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
-  import { makeNodeUrl } from "$lib/url";
+  import { nodeBaseUrl } from "$lib/url";
 
   import { contactsStore } from "$lib/contacts";
   import { lookupKind, searchLocally } from "./search";
@@ -80,9 +80,17 @@
     }
   }
 
-  /** @param {import("./search").SearchResult} result */
-  function activate(result) {
-    if (result.external && result.href) {
+  /**
+   * Opens a result: its page, or Send for a person. With Shift, a result
+   * that has an address copies it instead.
+   *
+   * @param {import("./search").SearchResult} result
+   * @param {{ copyOnly?: boolean }} [options]
+   */
+  function activate(result, { copyOnly = false } = {}) {
+    if (copyOnly && result.value) {
+      copy(result.value);
+    } else if (result.external && result.href) {
       window.open(result.href, "_blank", "noopener,noreferrer");
     } else if (result.href) {
       close();
@@ -133,11 +141,7 @@
 
   /** @param {string} q */
   async function lookUpName(q) {
-    const resolved = await resolveDuskName(
-      q,
-      networkName,
-      makeNodeUrl().origin
-    );
+    const resolved = await resolveDuskName(q, networkName, nodeBaseUrl());
     const address = resolved.account ?? resolved.address;
 
     if (!address) {
@@ -160,6 +164,7 @@
           href: `/dashboard/send?to=${encodeURIComponent(resolved.name)}`,
           id: `lookup:${resolved.name}`,
           label: `Send to ${resolved.name}`,
+          value: address,
         }),
       ],
     };
@@ -168,7 +173,7 @@
   /** @param {string} q */
   async function lookUpTransaction(q) {
     const hash = q.replace(/^0x/i, "").toLowerCase();
-    const details = await fetchTxDetails(makeNodeUrl().origin, [hash]).catch(
+    const details = await fetchTxDetails(nodeBaseUrl(), [hash]).catch(
       () => null
     );
 
@@ -212,6 +217,7 @@
           href: `/dashboard/send?to=${encodeURIComponent(address)}`,
           id: `lookup:${address}`,
           label: "Send to this address",
+          value: address,
         }),
       ],
     };
@@ -262,7 +268,7 @@
         if (query.trim() && !found.length && lookup?.query !== query.trim()) {
           lookUp(query.trim());
         } else if (results[active]) {
-          activate(results[active]);
+          activate(results[active], { copyOnly: event.shiftKey });
         }
 
         break;
@@ -359,7 +365,9 @@
             class:command-bar__code={result.detailIsCode}>{result.detail}</span
           >
         {/if}
-        {#if !result.href && result.value}
+        {#if result.hint}
+          <span class="command-bar__hint">{result.hint}</span>
+        {:else if !result.href && result.value}
           <span class="command-bar__hint">Copy</span>
         {/if}
       </li>
@@ -375,8 +383,9 @@
   {/if}
 
   <p class="command-bar__note">
-    Searches this wallet on this device. Enter looks a .dusk name or a
-    transaction ID up on the network.
+    Searches this wallet on this device. Press Enter to open a result or send to
+    a person, Shift+Enter to copy an address, or Enter to look a .dusk name or
+    transaction up on the network.
   </p>
 </div>
 

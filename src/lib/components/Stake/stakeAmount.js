@@ -34,6 +34,44 @@ export function parseDuskInput(text) {
 }
 
 /**
+ * An amount as typed, in the form parseDuskInput reads: a decimal comma,
+ * as a phone's keyboard or the language gives it, made a point, and digit
+ * grouping left out where it can't be decimals. "1,5" is 1.5, "1.000,5" and
+ * "1,000.5" are 1000.5, and "1,000,000" is a million. A lone comma before
+ * three digits groups them, unless the language writes decimals with a
+ * comma. Anything else stays as typed.
+ *
+ * @param {string} text
+ * @param {string} [decimalSeparator] The language's: "." or ","
+ * @returns {string}
+ */
+export function normalizeDuskInput(text, decimalSeparator = ".") {
+  const value = text.trim();
+
+  // Groups of three after a first group that doesn't start with a zero.
+  if (/^[1-9]\d{0,2}(,\d{3})+\.\d*$/.test(value)) {
+    return value.replaceAll(",", "");
+  }
+
+  if (/^[1-9]\d{0,2}(\.\d{3})+,\d*$/.test(value)) {
+    return value.replaceAll(".", "").replace(",", ".");
+  }
+
+  if (/^[1-9]\d{0,2}(,\d{3}){2,}$/.test(value)) {
+    return value.replaceAll(",", "");
+  }
+
+  if (/^\d*,\d*$/.test(value)) {
+    const isGrouping =
+      decimalSeparator !== "," && /^[1-9]\d{0,2},\d{3}$/.test(value);
+
+    return isGrouping ? value.replace(",", "") : value.replace(",", ".");
+  }
+
+  return value;
+}
+
+/**
  * @typedef {{
  *   amount: bigint | null,
  *   available: bigint,
@@ -71,7 +109,7 @@ export function checkAmount({
 
   if (amount === null) {
     return fail(
-      minimum > 0n
+      minimum >= 1_000_000_000n
         ? "Enter an amount such as 1000 or 1000.5."
         : "Enter an amount such as 10 or 10.5."
     );

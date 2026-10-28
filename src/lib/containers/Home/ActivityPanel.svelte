@@ -1,14 +1,15 @@
 <script>
   import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import { sozuPools } from "$lib/sozu";
   import { mdiChevronRight } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import {
+    claimedWithdrawals,
     configuredBridgeContracts,
     describeRow,
     groupByDay,
     matchesFilters,
     rowTime,
-    zoneLabel,
   } from "$lib/activity/present";
   import { addBasePath } from "$lib/navigation";
 
@@ -55,8 +56,10 @@
 
   $: context = {
     bridgeContracts,
+    claimed: claimedWithdrawals(state.rows),
     contactNames: contactNamesOf($contactsStore),
     locale,
+    sozuPools: $sozuPools,
   };
   $: described = state.rows.map((row) => ({
     presentation: describeRow(row, context),
@@ -68,7 +71,6 @@
     )
     .slice(0, limit);
   $: groups = groupByDay(shown, ({ row }) => rowTime(row), { locale });
-  $: zone = zoneLabel(Date.now(), locale);
 </script>
 
 <section aria-labelledby="activity-panel-title" class="activity-panel">
@@ -111,7 +113,7 @@
     {:else if !shown.length}
       <p class="activity-panel__note">{emptyText}</p>
     {:else}
-      <p class="activity-panel__zone">Times in {zone}</p>
+      <p class="activity-panel__zone">Times in your local time</p>
       {#each groups as group (group.key)}
         <h3 class="activity-panel__day">{group.label}</h3>
         {#each group.items as item (item.row.hash)}

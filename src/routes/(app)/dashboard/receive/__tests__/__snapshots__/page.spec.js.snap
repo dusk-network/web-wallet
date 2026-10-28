@@ -161,6 +161,12 @@ exports[`Receive > should render the receive page with a choice to switch from p
             </button>
           </div>
            
+          <p
+            class="receive__reveal svelte-hh88gv"
+          >
+            Anyone with this address, or a name that points to it, can see its balance and every public payment to and from it.
+          </p>
+           
           <!---->
           
           <!---->
@@ -374,6 +380,12 @@ exports[`Receive > should show the shielded address when the user makes such cho
               <!---->
             </button>
           </div>
+           
+          <p
+            class="receive__reveal svelte-hh88gv"
+          >
+            Payments to this shielded address don't show on chain who receives them or how much. Whoever pays you sees what they send.
+          </p>
            
           <!---->
           

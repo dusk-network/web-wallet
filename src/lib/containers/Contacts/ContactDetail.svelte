@@ -16,11 +16,15 @@
     contactsStore,
     findContact,
     markContactNameChecked,
+    markContactNameMoved,
     saveContact,
   } from "$lib/contacts";
+  import { sozuPools } from "$lib/sozu";
   import { addBasePath } from "$lib/navigation";
 
   import ActivityRowItem from "../Home/ActivityRowItem.svelte";
+  import { groupByDay, rowTime } from "$lib/activity/present";
+
   import { activityWith, checkedLabel, pointedAddress } from "./contactPresent";
 
   /** @type {Contact} */
@@ -88,15 +92,20 @@
   }
 
   /**
-   * What a check found, noted on the contact when its name still points to
-   * its address.
+   * What a check found, noted on the contact: still its address, or moved.
+   * Null when the network has no names to check.
    *
    * @param {Contact} checked
    * @param {DuskNameResolution | null} resolution
-   * @returns {NonNullable<typeof check>}
+   * @returns {typeof check}
    */
   function checkOutcome(checked, resolution) {
     const pointed = resolution ? pointedAddress(checked, resolution) : null;
+
+    // No names on this network: nothing was checked, and nothing is noted.
+    if (resolution?.error === "unsupported-network") {
+      return null;
+    }
 
     if (!resolution || resolution.error === "lookup-failed") {
       return { state: "failed" };
@@ -107,6 +116,8 @@
 
       return { state: "same" };
     }
+
+    markContactNameMoved(checked, pointed ?? "");
 
     return { address: pointed ?? "", state: "moved" };
   }
@@ -147,7 +158,9 @@
     bridgeContracts,
     contactNames: contactNamesOf($contactsStore),
     locale,
+    sozuPools: $sozuPools,
   }).slice(0, 5);
+  $: days = groupByDay(activity, ({ row }) => rowTime(row), { locale });
   $: kind = contact.type === "address" ? "Shielded" : "Public";
   $: checkedAt = contact.checkedAt;
 
@@ -296,11 +309,21 @@
       <a href={addBasePath("/dashboard/transactions")}>History</a>
     </header>
     {#if activity.length}
-      <ul>
-        {#each activity as { presentation, row } (row.hash)}
-          <li><ActivityRowItem {locale} {presentation} {row} /></li>
-        {/each}
-      </ul>
+      {#each days as day (day.key)}
+        <h4 class="contact-detail__day">{day.label}</h4>
+        <ul>
+          {#each day.items as { presentation, row } (row.hash)}
+            <li>
+              <ActivityRowItem
+                {locale}
+                {presentation}
+                {row}
+                withoutCounterparty
+              />
+            </li>
+          {/each}
+        </ul>
+      {/each}
     {:else}
       <p class="contact-detail__note">
         No payments with {contact.name} in your history yet.
@@ -491,6 +514,13 @@
       color: var(--calm-muted);
       font-size: 0.84375rem;
     }
+  }
+
+  .contact-detail__day {
+    margin: 0.75rem 0 0;
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
+    font-weight: 500;
   }
 
   .contact-detail__activity ul {

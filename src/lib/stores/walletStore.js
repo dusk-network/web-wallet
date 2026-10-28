@@ -3,6 +3,7 @@ import { compressedDuskBlsPublicKeyToRaw } from "@dusk/evm-sdk";
 import { Bookkeeper, Bookmark, ProfileGenerator } from "@dusk/w3sper";
 import { keccak256 } from "viem";
 
+import { BRIDGE_FUNCTIONS } from "$lib/bridge/bridgeCalls";
 import {
   BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
   buildDepositETHToWithValuePayload,
@@ -19,7 +20,7 @@ import {
 import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
 import { sozuCall } from "$lib/sozu/calls";
 import { SOZU_FN } from "$lib/sozu/config";
-import { makeNodeUrl } from "$lib/url";
+import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
 
 import networkStore from "./networkStore";
@@ -120,7 +121,7 @@ function historyOf(profile) {
   }
 
   const session = walletSession;
-  const nodeUrl = makeNodeUrl().origin;
+  const nodeUrl = nodeBaseUrl();
 
   return activityFor({
     account: String(profile.account),
@@ -726,7 +727,10 @@ const depositEvmFunctionCall = async (
     profile,
     {
       amount: String(amount),
+      bridge: { amount: String(amount), kind: "deposit", to: address },
+      contractId: bridgeContractId,
       direction: "out",
+      fnName: BRIDGE_FUNCTIONS.deposit,
       kind: TX_KIND.CONTRACT_CALL,
       privacy: "public",
     },
@@ -817,7 +821,9 @@ const executeContractFunction = async (
     profile,
     {
       amount: "0",
+      contractId,
       direction: "out",
+      fnName,
       kind: TX_KIND.CONTRACT_CALL,
       privacy: "public",
     },

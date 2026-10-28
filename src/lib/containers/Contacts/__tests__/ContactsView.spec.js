@@ -6,6 +6,8 @@ import {
   contactsStore,
   getContact,
   listContacts,
+  markContactNameChecked,
+  markContactNameMoved,
   removeContact,
   saveContact,
 } from "$lib/contacts";
@@ -109,6 +111,99 @@ describe("ContactsView", () => {
     );
   });
 
+  it("marks a .dusk name that moved in the table, in place of its tick", async () => {
+    markContactNameChecked(shop);
+
+    const { container, rerender } = show({ contacts: get(contactsStore) });
+    const dusk = () =>
+      container.querySelector(".contacts__row .contacts__col-dusk");
+
+    expect(container.querySelector("th.contacts__col-last")).toHaveTextContent(
+      "Last activity"
+    );
+    expect(dusk()?.querySelector(".contacts__checked")).not.toBeNull();
+
+    markContactNameMoved(shop, OTHER);
+    await rerender({ contacts: get(contactsStore) });
+
+    expect(dusk()?.querySelector(".contacts__checked")).toBeNull();
+    expect(dusk()).toHaveTextContent("alice-shop.dusk moved");
+    expect(dusk()?.querySelector(".contacts__moved")).toHaveAttribute(
+      "title",
+      "Points to another address now"
+    );
+  });
+
+  it("lists a contact's activity by day, saying what happened rather than who with", async () => {
+    const yesterday = new Date(NOW);
+
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const older = {
+      ...rows[0],
+      amount: "250000000",
+      direction: /** @type {const} */ ("in"),
+      from: ACCOUNT,
+      hash: "a3".repeat(32),
+      timestamp: yesterday.getTime(),
+      to: undefined,
+    };
+    const { container } = show({
+      rows: [...rows, older],
+      selected: shop.id,
+    });
+    const activity = /** @type {HTMLElement} */ (
+      container.querySelector(".contact-detail__activity")
+    );
+
+    expect(
+      Array.from(activity.querySelectorAll(".contact-detail__day"), (day) =>
+        day.textContent?.trim()
+      )
+    ).toStrictEqual(["Today", "Yesterday"]);
+    expect(
+      Array.from(activity.querySelectorAll(".activity-row__title"), (title) =>
+        title.textContent?.trim()
+      )
+    ).toStrictEqual(["Sent", "Received"]);
+    expect(activity).not.toHaveTextContent("Alice's shop ·");
+  });
+
+  it("offers the people paid when there are no contacts yet, never the wallet's own", async () => {
+    for (const contact of listContacts()) {
+      removeContact(contact.id);
+    }
+
+    const own = { ...rows[0], hash: "a2".repeat(32), to: OTHER };
+    const { container, getByRole, getByText, queryByText, rerender } = show({
+      contacts: [],
+      own: [OTHER],
+      rows: [...rows, own],
+    });
+
+    expect(getByText("People you've paid")).toBeInTheDocument();
+    expect(
+      Array.from(container.querySelectorAll(".contacts__person"), (item) =>
+        item.textContent?.replace(/\s+/g, " ").trim()
+      )
+    ).toStrictEqual([
+      `${ACCOUNT.slice(0, 1).toUpperCase()} ${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)} Sent 40 DUSK · Today Save`,
+    ]);
+    expect(queryByText(`${OTHER.slice(0, 6)}…${OTHER.slice(-6)}`)).toBeNull();
+
+    await fireEvent.click(
+      getByRole("button", {
+        name: `Save ${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)} to contacts`,
+      })
+    );
+    // The page opens the new contact's form.
+    await rerender({ contacts: [], selected: "new" });
+
+    expect(
+      getByRole("textbox", { name: /address or \.dusk name/i })
+    ).toHaveValue(ACCOUNT);
+  });
+
   it("finds contacts by name, .dusk name or address", async () => {
     const { container, getByRole } = show();
     const names = () =>
@@ -147,10 +242,28 @@ describe("ContactsView", () => {
       shop.checkedAt ?? 0
     );
 
-    // Its payments, from the history, under the contact's name.
+    // Its payments, from the history, by what happened.
     expect(
       container.querySelector(".contact-detail__activity .activity-row")
-    ).toHaveTextContent(/^Alice's shop Sent/);
+    ).toHaveTextContent(/^Sent .* Public/);
+  });
+
+  it("notes nothing when the network has no names to check a contact's against", async () => {
+    resolveName.mockResolvedValueOnce({
+      // @ts-ignore: a lookup this network can't run
+      error: "unsupported-network",
+      name: "alice-shop.dusk",
+    });
+
+    const { container } = show({ selected: shop.id });
+
+    await vi.waitFor(() =>
+      expect(resolveName).toHaveBeenCalledWith("alice-shop.dusk")
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getContact(shop.id)).not.toHaveProperty("movedTo");
+    expect(container).not.toHaveTextContent("now points to another address");
   });
 
   it("says when a contact's .dusk name points elsewhere, and takes the new address only when asked", async () => {

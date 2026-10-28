@@ -1,18 +1,21 @@
 <script>
   import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import { sozuPools } from "$lib/sozu";
   import { createEventDispatcher } from "svelte";
   import { mdiTrayArrowDown } from "@mdi/js";
   import { Button, Icon, Select } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
   import {
+    claimedWithdrawals,
     configuredBridgeContracts,
     describeRow,
+    fullDateTime,
     groupByDay,
+    isRowIncomplete,
     matchesFilters,
     rowTime,
     timeLabel,
     toCsv,
-    zoneLabel,
   } from "$lib/activity/present";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
@@ -24,8 +27,12 @@
   /** @type {string} */
   export let locale;
 
-  /** The network's name, for the export's file name. */
+  /** The network's name, for the export's file name and known contracts. */
   export let network = "";
+
+  /** The account the history is of, and how the wallet names it. */
+  /** @type {{ address: string, label: string } | null} */
+  export let account = null;
 
   /** @type {string | null} */
   export let selected = null;
@@ -65,6 +72,9 @@
   let privacy = "all";
   let range = "all";
 
+  /** Whether an export holds the user's own contact names. */
+  let withContacts = false;
+
   /** @param {ActivityRow} row */
   function select(row) {
     dispatch("select", row.hash === selected ? null : row.hash);
@@ -73,7 +83,8 @@
   function exportCsv() {
     const csv = toCsv(
       shown.map(({ row }) => row),
-      context
+      context,
+      { withContacts }
     );
     const url = URL.createObjectURL(
       new Blob([csv], { type: "text/csv;charset=utf-8" })
@@ -88,8 +99,11 @@
 
   $: context = {
     bridgeContracts,
+    claimed: claimedWithdrawals(state.rows),
     contactNames: contactNamesOf($contactsStore),
     locale,
+    network,
+    sozuPools: $sozuPools,
   };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;
   $: described = state.rows.map((row) => ({
@@ -110,8 +124,28 @@
     full: true,
     locale,
   });
-  $: zone = zoneLabel(Date.now(), locale);
   $: open = described.find(({ row }) => row.hash === selected) ?? null;
+  $: incomplete = shown.filter(({ row }) => isRowIncomplete(row)).length;
+  $: incompleteText = [
+    state.error ? "Couldn't reach the network's history." : "",
+    incomplete === 1
+      ? 'A row has no date or fee yet. An export marks it "Not looked up yet".'
+      : `${incomplete} rows have no date or fee yet. An export marks them "Not looked up yet".`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  /**
+   * Closes the details, and gives the focus back to the row they were of.
+   *
+   * @param {string} hash
+   */
+  function closeDetail(hash) {
+    dispatch("select", null);
+    /** @type {HTMLElement | null} */ (
+      document.querySelector(`.history__open[data-hash="${hash}"]`)
+    )?.focus();
+  }
 </script>
 
 <div class="history" class:history--open={open}>
@@ -128,9 +162,18 @@
       />
     </header>
     <p class="history__note">
-      Times in {zone}. An export holds the rows shown, with memos and names, and
-      dates in UTC and {zone}.
+      Times in your local time. An export holds the rows shown, with memos and
+      .dusk names, and dates in UTC and your local time.
     </p>
+    <label class="history__option">
+      <input bind:checked={withContacts} type="checkbox" />
+      Include my contact names in the export, in their own column
+    </label>
+    {#if incomplete}
+      <p class="history__incomplete" role="status">
+        {incompleteText}
+      </p>
+    {/if}
 
     <div class="history__filters">
       <div aria-label="Show" class="history__kinds" role="group">
@@ -178,7 +221,7 @@
           <tr>
             <th scope="col">Transaction</th>
             <th class="history__col-type" scope="col">Type</th>
-            <th class="history__col-time" scope="col">Time ({zone})</th>
+            <th class="history__col-time" scope="col">Time</th>
             <th class="history__col-amount" scope="col">Amount</th>
           </tr>
         </thead>
@@ -196,7 +239,17 @@
                 <td>
                   <button
                     aria-expanded={row.hash === selected}
+                    aria-label={[
+                      p.title,
+                      p.line,
+                      `${p.amount.sign}${p.amount.text} DUSK`,
+                      time === null ? "" : fullDateTime(time, locale),
+                      p.privacy,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
                     class="history__open"
+                    data-hash={row.hash}
                     on:click={() => select(row)}
                     type="button"
                   >
@@ -211,19 +264,26 @@
                       <span
                         class="history__line"
                         class:history__line--failed={p.status === "failed"}
-                        >{p.line}</span
+                        >{p.line}<span class="history__phone-meta"
+                          >{time === null
+                            ? ""
+                            : ` · ${timeLabel(time, locale)}`}
+                          · {p.privacy}</span
+                        ></span
                       >
                     </span>
                   </button>
                 </td>
                 <td class="history__col-type">{p.privacy}</td>
-                <td class="history__col-time"
+                <td
+                  class="history__col-time"
+                  title={time === null ? undefined : fullDateTime(time, locale)}
                   >{time === null ? "" : timeLabel(time, locale)}</td
                 >
                 <td class="history__col-amount">
                   <span
                     class="history__amount"
-                    class:history__amount--muted={p.status === "failed"}
+                    class:history__amount--muted={p.amount.muted}
                     >{p.amount.sign}<BalanceValue
                       exact={p.amount.exact}
                       value={p.amount.text}
@@ -258,8 +318,10 @@
   {#if open}
     <div class="history__detail">
       <TransactionDetail
+        {account}
         {locale}
-        on:close={() => dispatch("select", null)}
+        {network}
+        on:close={() => closeDetail(open?.row.hash ?? "")}
         presentation={open.presentation}
         row={open.row}
       />
@@ -300,6 +362,22 @@
   .history__note {
     margin-top: 0.375rem;
     color: var(--calm-muted);
+    font-size: 0.8125rem;
+  }
+
+  .history__option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
+    cursor: pointer;
+  }
+
+  .history__incomplete {
+    margin: 0 0 0.5rem;
+    color: var(--calm-pending);
     font-size: 0.8125rem;
   }
 
@@ -388,6 +466,12 @@
     & td {
       padding: 0 1rem;
       font-size: 0.875rem;
+    }
+
+    /* The row's words take the room left, and are cut to fit it. */
+    & td:first-child {
+      width: 100%;
+      max-width: 0;
     }
 
     &--selected {
@@ -524,6 +608,10 @@
   }
 
   /* Narrow screens: the details over the list, as a page of their own. */
+  .history__phone-meta {
+    display: none;
+  }
+
   @media (max-width: 63.99rem) {
     .history--open {
       grid-template-columns: minmax(0, 1fr);
@@ -551,6 +639,10 @@
     .history__col-type,
     .history__col-time {
       display: none;
+    }
+
+    .history__phone-meta {
+      display: inline;
     }
 
     .history__row td,

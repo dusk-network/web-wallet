@@ -1,6 +1,11 @@
-import { createAppKit } from "@reown/appkit";
-import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-import { bsc, mainnet, sepolia } from "@reown/appkit/networks";
+/**
+ * The EVM wallets the Bridge and Migrate pages connect: Reown AppKit with
+ * wagmi, started only when one of those pages opens. Until then nothing of
+ * it runs: no requests to Reown, WalletConnect or Coinbase, and nothing
+ * kept in the browser. AppKit's analytics are off, and so are the Coinbase
+ * and Base Account wallet SDKs, which report to Coinbase on their own.
+ */
+
 import {
   disconnect,
   getAccount,
@@ -8,7 +13,11 @@ import {
   reconnect,
   watchAccount,
 } from "@wagmi/core";
-import { readable } from "svelte/store";
+import { writable } from "svelte/store";
+
+import { duskEvm } from "./duskEvm";
+
+export { duskEvm };
 
 /**
  * @constant {string} projectId - The ID of the project, sourced from an environment variable.
@@ -18,98 +27,123 @@ import { readable } from "svelte/store";
  * If the environment variable is not set, it defaults to an empty string. This behavior is not ideal
  * because an empty `projectId` will cause the modal initialization to fail.
  *
- * While this issue typically arises due to a developer error (e.g., forgetting to set the environment variable),
- * resolving it properly requires a broader refactor of the codebase to better handle missing or invalid `projectId` values.
- *
- * Additionally, when the `projectId` is missing, the "migrate" functionality will not be accessible in the UI,
- * effectively hiding the "broken" flow. Therefore, while the error can occur, users are unlikely to encounter it.
- *
- * **To improve:**
- * Consider implementing a mechanism to ensure `VITE_REOWN_PROJECT_ID` is always defined during the build or
- * runtime processes, potentially throwing a clear error during startup if it is missing.
+ * When the `projectId` is missing, the "migrate" and "bridge" functionality isn't accessible in the UI.
  */
 const VITE_REOWN_PROJECT_ID = import.meta.env.VITE_REOWN_PROJECT_ID || "";
-const VITE_EVM_BRIDGE_CONTRACT_ADDRESS = import.meta.env
-  .VITE_EVM_BRIDGE_CONTRACT_ADDRESS;
-const VITE_EVM_BRIDGE_CONTRACT_BLOCK_CREATED = import.meta.env
-  .VITE_EVM_BRIDGE_CONTRACT_BLOCK_CREATED;
-const VITE_EVM_BRIDGE_BLOCK_EXPLORER_NAME = import.meta.env
-  .VITE_EVM_BRIDGE_BLOCK_EXPLORER_NAME;
-const VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL = import.meta.env
-  .VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL;
-const VITE_EVM_BRIDGE_RPC_URL = import.meta.env.VITE_EVM_BRIDGE_RPC_URL;
-const VITE_EVM_CHAIN_ID = Number(import.meta.env.VITE_EVM_CHAIN_ID);
 
-export const duskEvm = {
-  blockExplorers: {
-    default: {
-      name: VITE_EVM_BRIDGE_BLOCK_EXPLORER_NAME,
-      url: VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL,
-    },
-  },
-  contracts: {
-    L2StandardBridge: {
-      address: VITE_EVM_BRIDGE_CONTRACT_ADDRESS,
-      blockCreated: VITE_EVM_BRIDGE_CONTRACT_BLOCK_CREATED,
-    },
-  },
-  id: VITE_EVM_CHAIN_ID,
-  name: "DuskEVM",
-  nativeCurrency: {
-    decimals: 18,
-    name: "Dusk",
-    symbol: "DUSK",
-  },
-  rpcUrls: {
-    default: {
-      http: [VITE_EVM_BRIDGE_RPC_URL],
-    },
-    public: {
-      http: [VITE_EVM_BRIDGE_RPC_URL],
-    },
-  },
-};
+/**
+ * The wagmi configuration, once the connection started.
+ *
+ * @type {import("@wagmi/core").Config}
+ */
+export let wagmiConfig;
 
-/** @typedef {import("@reown/appkit/networks").AppKitNetwork} AppKitNetwork */
-/** @type {[AppKitNetwork, ...AppKitNetwork[]]} */
-const networks = [sepolia, bsc, mainnet, duskEvm];
+/**
+ * The connect modal, once the connection started.
+ *
+ * @type {import("@reown/appkit").AppKit}
+ */
+export let modal;
 
-const wagmiAdapter = new WagmiAdapter({
-  networks,
-  projectId: VITE_REOWN_PROJECT_ID,
-  transports: {
-    [duskEvm.id]: http(duskEvm.rpcUrls.default.http[0]),
-  },
-});
-
-export const wagmiConfig = wagmiAdapter.wagmiConfig;
-
-reconnect(wagmiConfig);
-
-// Create the Reown App Kit modal
-export const modal = createAppKit({
-  adapters: [wagmiAdapter],
-  defaultNetwork: duskEvm,
-  // Wallets only: no email or social logins, which would make a new wallet.
-  features: {
-    analytics: false,
-    email: false,
-    onramp: false,
-    socials: false,
-    swaps: false,
-  },
-  networks,
-  projectId: VITE_REOWN_PROJECT_ID,
-  themeMode: "dark",
-});
-
-export const account = readable(getAccount(wagmiConfig), (set) =>
-  watchAccount(wagmiConfig, { onChange: set })
+const accountStore = writable(
+  /** @type {import("@wagmi/core").GetAccountReturnType} */ (
+    /** @type {unknown} */ ({
+      address: undefined,
+      addresses: undefined,
+      chain: undefined,
+      chainId: undefined,
+      connector: undefined,
+      isConnected: false,
+      isConnecting: false,
+      isDisconnected: true,
+      isReconnecting: false,
+      status: "disconnected",
+    })
+  )
 );
 
+/** The connected EVM account: none until the connection started. */
+export const account = { subscribe: accountStore.subscribe };
+
+/** @type {Promise<void> | null} */
+let starting = null;
+
+/**
+ * The longest the pages wait for a wallet connected before to reconnect:
+ * they then show the account as it is, and follow it as it changes.
+ */
+const RECONNECT_WAIT_MS = 5_000;
+
+/**
+ * Starts the connection, once, for the pages that need it.
+ *
+ * @returns {Promise<void>}
+ */
+export function startWalletConnection() {
+  if (!starting) {
+    starting = start();
+    starting.catch(() => {
+      starting = null;
+    });
+  }
+
+  return starting;
+}
+
+async function start() {
+  const [{ createAppKit }, { WagmiAdapter }, { bsc, mainnet, sepolia }] =
+    await Promise.all([
+      import("@reown/appkit"),
+      import("@reown/appkit-adapter-wagmi"),
+      import("@reown/appkit/networks"),
+    ]);
+
+  /** @type {[import("@reown/appkit/networks").AppKitNetwork, ...import("@reown/appkit/networks").AppKitNetwork[]]} */
+  const networks = [sepolia, bsc, mainnet, duskEvm];
+  const wagmiAdapter = new WagmiAdapter({
+    networks,
+    projectId: VITE_REOWN_PROJECT_ID,
+    transports: {
+      [duskEvm.id]: http(duskEvm.rpcUrls.default.http[0]),
+    },
+  });
+
+  wagmiConfig = wagmiAdapter.wagmiConfig;
+  modal = createAppKit({
+    adapters: [wagmiAdapter],
+    defaultNetwork: duskEvm,
+    // The Coinbase and Base Account SDKs send their own telemetry.
+    enableBaseAccount: false,
+    enableCoinbase: false,
+    // Wallets only: no email or social logins, which would make a new wallet.
+    features: {
+      analytics: false,
+      email: false,
+      onramp: false,
+      socials: false,
+      swaps: false,
+    },
+    networks,
+    projectId: VITE_REOWN_PROJECT_ID,
+    themeMode: "dark",
+  });
+
+  accountStore.set(getAccount(wagmiConfig));
+  watchAccount(wagmiConfig, { onChange: (next) => accountStore.set(next) });
+  window.addEventListener("beforeunload", walletDisconnect);
+
+  // A wallet connected before comes back before the pages use it.
+  await Promise.race([
+    reconnect(wagmiConfig).catch(() => {}),
+    new Promise((resolve) => setTimeout(resolve, RECONNECT_WAIT_MS)),
+  ]);
+}
+
 export async function walletDisconnect() {
+  if (!wagmiConfig) {
+    return;
+  }
+
   await disconnect(wagmiConfig);
   await modal?.disconnect();
 }
-
-window.addEventListener("beforeunload", walletDisconnect);

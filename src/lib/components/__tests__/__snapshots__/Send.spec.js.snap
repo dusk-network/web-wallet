@@ -8,6 +8,25 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
     aria-labelledby="some-generated-id-title"
     class="send__form svelte-x7e9dl"
   >
+    <a
+      class="send__back svelte-x7e9dl"
+      href="/some-base-path/dashboard"
+    >
+      <!---->
+      <svg
+        class="dusk-icon dusk-icon--size--default"
+        role="graphics-symbol"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
+        />
+      </svg>
+      
+      <!---->
+      Home
+    </a>
+     
     <h2
       class="send__title svelte-x7e9dl"
       id="some-generated-id-title"
@@ -45,6 +64,8 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
          
         <!---->
       </div>
+       
+      <!---->
        
       <!---->
        
@@ -109,13 +130,14 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
       >
         <!---->
         <input
-          class="dusk-textbox dusk-textbox-number send__amount-input"
+          aria-describedby="some-generated-id-amount-error"
+          autocomplete="off"
+          class="dusk-textbox dusk-textbox-text send__amount-input"
           id="some-generated-id-amount"
-          max="999.98"
-          min="1e-9"
+          inputmode="decimal"
+          placeholder="0"
           required=""
-          step="0.000000001"
-          type="number"
+          type="text"
         />
         
         <!---->
@@ -202,6 +224,33 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
         <dt
           class="svelte-x7e9dl"
         >
+          From
+        </dt>
+         
+        <dd
+          class="svelte-x7e9dl"
+        >
+          <span
+            class="send__summary-name svelte-x7e9dl"
+          >
+            Your public account
+          </span>
+           
+          <span
+            class="send__summary-code svelte-x7e9dl"
+          >
+            zTsZq8…oHybff
+          </span>
+          <!---->
+        </dd>
+      </div>
+       
+      <div
+        class="svelte-x7e9dl"
+      >
+        <dt
+          class="svelte-x7e9dl"
+        >
           To
         </dt>
          
@@ -229,7 +278,7 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
         <dd
           class="svelte-x7e9dl"
         >
-          1 DUSK
+          0 DUSK
         </dd>
       </div>
        
@@ -297,7 +346,7 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
         <dd
           class="svelte-x7e9dl"
         >
-          Up to 1.02 DUSK
+          Up to 0.02 DUSK
         </dd>
       </div>
     </dl>
@@ -310,7 +359,7 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
       <span
         class="dusk-button__text"
       >
-        Send 1 DUSK
+        Send
       </span>
       <!---->
     </button>

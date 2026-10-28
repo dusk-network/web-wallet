@@ -35,6 +35,10 @@ vi.mock("$lib/navigation", async (importOriginal) => ({
   goto: mocks.goto,
 }));
 
+const writeText = vi.fn().mockResolvedValue(undefined);
+
+Object.assign(navigator, { clipboard: { writeText } });
+
 const ALICE =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
 
@@ -48,6 +52,7 @@ describe("CommandBar", () => {
     cleanup();
     mocks.goto.mockReset();
     mocks.resolveDuskName.mockReset();
+    writeText.mockClear();
   });
 
   it("searches this device as it is typed into, and says what leaves it", async () => {
@@ -63,7 +68,7 @@ describe("CommandBar", () => {
     );
     expect(
       getByText(
-        "Searches this wallet on this device. Enter looks a .dusk name or a transaction ID up on the network."
+        "Searches this wallet on this device. Press Enter to open a result or send to a person, Shift+Enter to copy an address, or Enter to look a .dusk name or transaction up on the network."
       )
     ).toBeInTheDocument();
 
@@ -96,11 +101,30 @@ describe("CommandBar", () => {
       expect.any(String)
     );
 
+    // Shift+Enter copies the address it points to; Enter sends to it.
+    await fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+
+    expect(writeText).toHaveBeenCalledWith(ALICE);
+    expect(mocks.goto).not.toHaveBeenCalled();
+
     await fireEvent.keyDown(input, { key: "Enter" });
 
     expect(result).toBeInTheDocument();
     expect(mocks.resolveDuskName).toHaveBeenCalledOnce();
     expect(mocks.goto).toHaveBeenCalledWith("/dashboard/send?to=alice.dusk");
+  });
+
+  it("copies an address looked up on the network with Shift+Enter", async () => {
+    const { findByRole, getByRole } = render(CommandBar, { pages });
+    const input = getByRole("combobox");
+
+    await fireEvent.input(input, { target: { value: ALICE } });
+    await fireEvent.keyDown(input, { key: "Enter" });
+    await findByRole("option", { name: /Send to this address/ });
+    await fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+
+    expect(writeText).toHaveBeenCalledWith(ALICE);
+    expect(mocks.goto).not.toHaveBeenCalled();
   });
 
   it("says a name isn't registered", async () => {

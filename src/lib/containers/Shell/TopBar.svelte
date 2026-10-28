@@ -6,7 +6,7 @@
   import { getPrimaryName, getVerifiedName } from "$lib/dusk-domains";
   import { addBasePath } from "$lib/navigation";
   import { networkStore, walletStore } from "$lib/stores";
-  import { makeNodeUrl } from "$lib/url";
+  import { nodeBaseUrl } from "$lib/url";
 
   import DuskGlyph from "./DuskGlyph.svelte";
   import NetworkPill from "./NetworkPill.svelte";
@@ -30,7 +30,7 @@
    * @returns {(account: string) => Promise<string>}
    */
   const lookUpNamesOn = (network) => (account) =>
-    getPrimaryName(account, network, makeNodeUrl().origin);
+    getPrimaryName(account, network, nodeBaseUrl());
 
   $: ({ networkName } = $networkStore);
   $: ({ currentProfile, profiles } = $walletStore);

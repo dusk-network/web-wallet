@@ -18,6 +18,8 @@
  * entries. The shielded history is phoenixHistory.js's.
  */
 
+import { decodeBridgeCall, isBridgeContract } from "$lib/bridge/bridgeCalls";
+
 import * as defaultStore from "./activityStore";
 import { STAKE_CONTRACT, TRANSFER_CONTRACT, TX_KIND } from "./constants";
 
@@ -119,7 +121,7 @@ export function historyArchiverUrl({ archiverUrl, nodeUrl } = {}) {
 
 /**
  * The network a history belongs to: Mainnet and Testnet by name, any other
- * node by its origin.
+ * node by its base URL, with its path.
  *
  * @param {string} nodeUrl
  */
@@ -131,7 +133,9 @@ export function activityNetworkKey(nodeUrl) {
   }
 
   try {
-    return new URL(String(nodeUrl)).origin;
+    const url = new URL(String(nodeUrl));
+
+    return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
   } catch {
     return String(nodeUrl ?? "");
   }
@@ -211,7 +215,7 @@ export async function archiveQuery(
   { timeoutMs = REQUEST_TIMEOUT_MS } = {}
 ) {
   const res = await fetchWithTimeout(
-    new URL("/on/graphql/query", baseUrl).toString(),
+    `${String(baseUrl).replace(/\/+$/, "")}/on/graphql/query`,
     { body: query, headers: { "Content-Type": "text/plain" }, method: "POST" },
     timeoutMs
   );
@@ -1366,6 +1370,17 @@ export const errorText = (err) =>
 const textOrUndefined = (value) => (value ? String(value) : undefined);
 
 /**
+ * Whether an entry's details are still to look up: it has none, or it is a
+ * call to the bridge looked up before the history read what bridge calls
+ * do.
+ *
+ * @param {{ bridge?: unknown, contractId?: string, detailsAt?: number }} entry
+ */
+export const needsDetails = (entry) =>
+  !entry.detailsAt ||
+  (entry.bridge === undefined && isBridgeContract(entry.contractId));
+
+/**
  * @param {any} tx
  * @returns {ActivityDetails}
  */
@@ -1375,14 +1390,18 @@ function detailsOf(tx) {
   const seconds = Number(tx.blockTimestamp);
   const err = errorText(tx.err);
   const blockHash = String(tx.blockHash ?? "");
+  const contractId = textOrUndefined(dig(tx, "tx", "callData", "contractId"));
+  const fnName = textOrUndefined(dig(tx, "tx", "callData", "fnName"));
+  const data = dig(tx, "tx", "callData", "data");
 
   return {
     blockHash: HASH.test(blockHash) ? blockHash : undefined,
-    contractId: textOrUndefined(dig(tx, "tx", "callData", "contractId")),
+    bridge: decodeBridgeCall({ contractId, data, fnName }),
+    contractId,
     detailsAt: Date.now(),
     error: err || undefined,
     fee: (gasSpent * gasPrice).toString(),
-    fnName: textOrUndefined(dig(tx, "tx", "callData", "fnName")),
+    fnName,
     gasLimit: u64(dig(tx, "tx", "gasLimit")).toString(),
     gasPrice: gasPrice.toString(),
     gasSpent: gasSpent.toString(),
@@ -1411,7 +1430,7 @@ export async function fetchTxDetails(url, hashes) {
 
   const fields = list.map(
     (hash, i) =>
-      `t${i}: tx(hash: "${hash}") { err gasSpent blockHash blockTimestamp tx { gasPrice gasLimit callData { contractId fnName } } }`
+      `t${i}: tx(hash: "${hash}") { err gasSpent blockHash blockTimestamp tx { gasPrice gasLimit callData { contractId fnName data } } }`
   );
   const data = await archiveQuery(url, `query { ${fields.join(" ")} }`);
 
@@ -1424,6 +1443,35 @@ export async function fetchTxDetails(url, hashes) {
   });
 
   return out;
+}
+
+/**
+ * A public transaction's nonce, from its JSON: null for a shielded one, or
+ * one the node doesn't have.
+ *
+ * @param {string} url
+ * @param {string} hash
+ * @returns {Promise<string | null>}
+ */
+export async function fetchTxNonce(url, hash) {
+  if (!HASH.test(hash)) {
+    return null;
+  }
+
+  const data = await archiveQuery(
+    url,
+    `query { tx(hash: "${hash}") { tx { json } } }`
+  );
+
+  try {
+    const { nonce } = JSON.parse(String(dig(data, "tx", "tx", "json") ?? ""));
+
+    return typeof nonce === "number" || typeof nonce === "string"
+      ? String(nonce)
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -1460,7 +1508,7 @@ async function fillDetails({
       limit: DETAILS_BATCH * requests,
     }))
   )
-    .filter((e) => !e.detailsAt)
+    .filter(needsDetails)
     .map((e) => e.hash);
 
   for (let i = 0; i < missing.length && requests > 0; i += DETAILS_BATCH) {
@@ -1499,7 +1547,7 @@ export async function fillActivityDetails({
 }) {
   const url = historyArchiverUrl({ archiverUrl, nodeUrl });
   const ownerKey = store.activityOwnerKey(activityNetworkKey(nodeUrl), account);
-  const missing = entries.filter((e) => !e.detailsAt);
+  const missing = entries.filter(needsDetails);
 
   await fillDetails({
     entries: missing,
@@ -1525,6 +1573,7 @@ export function activityEntry(row) {
   return {
     blockHash: row.blockHash,
     blockHeight: row.blockHeight,
+    bridge: row.bridge,
     contractId: row.contractId,
     counterparty: row.counterparty ?? null,
     detailsAt: row.detailsAt,

@@ -87,34 +87,21 @@
 <div class="migrate__approve">
   {#if !isLoading && !error && !data}
     <div class="migrate__approve-notice-container">
-      <Banner title="Migration Requirements" variant="info">
-        <div class="migrate__requirements-info">
-          <p>DUSK token migration requires two transactions:</p>
-          <ol class="migrate__requirements-info-list">
-            <li>
-              <b>Approve:</b> Authorize the migration contract to spend your DUSK
-              tokens.
-            </li>
-            <li>
-              <b>Migrate:</b> Transfer your DUSK tokens to the migration contract.
-            </li>
-          </ol>
-        </div>
-      </Banner>
       <Banner
-        title="Make sure the connected wallet can pay gas for both transactions."
-        variant="warning"
+        title="Approving lets the migration contract take this amount."
+        variant="info"
       />
+      <Banner title="Your wallet pays gas for both steps." variant="warning" />
     </div>
   {:else if isLoading}
     <div class="migrate__approve-approval">
       <Icon path={mdiTimerSand} size="large" />
-      <span>Approval in progress...</span>
+      <span>Approving…</span>
     </div>
   {:else if error}
     <div class="migrate__approve-approval">
       <Icon path={mdiAlertOutline} size="large" />
-      <span>An error occurred during approval</span>
+      <span>The approval didn't go through.</span>
     </div>
   {/if}
 
@@ -126,17 +113,6 @@
 </div>
 
 <style lang="postcss">
-  .migrate {
-    &__requirements-info {
-      display: flex;
-      flex-direction: column;
-      gap: var(--small-gap);
-    }
-    &__requirements-info-list {
-      list-style-position: inside;
-    }
-  }
-
   .migrate__approve {
     display: flex;
     justify-content: center;

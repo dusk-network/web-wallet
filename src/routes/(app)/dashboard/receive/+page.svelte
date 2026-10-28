@@ -13,7 +13,7 @@
   import { Receive } from "$lib/components";
   import { ExclusiveChoice } from "$lib/dusk/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
-  import { makeNodeUrl } from "$lib/url";
+  import { nodeBaseUrl } from "$lib/url";
 
   let addressToShow = "public";
   let isMounted = false;
@@ -47,7 +47,7 @@
       ? getPrimaryName(
           currentProfile.account.toString(),
           networkName,
-          makeNodeUrl().origin,
+          nodeBaseUrl(),
           addressProp === "address" ? currentAddress : undefined
         )
       : "";

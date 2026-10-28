@@ -13,15 +13,20 @@
    */
   export let contact = null;
 
+  /** What a new contact starts with, as a person from the history. */
+  /** @type {{ name: string, recipient: string } | null} */
+  export let prefill = null;
+
   /** @type {(name: string) => Promise<DuskNameResolution>} */
   export let resolveName;
 
   const dispatch = createEventDispatcher();
 
-  let name = contact?.name ?? "";
+  let name = contact?.name ?? prefill?.name ?? "";
 
   /** The address or `.dusk` name entered. */
-  let recipient = contact?.duskName ?? contact?.address ?? "";
+  let recipient =
+    contact?.duskName ?? contact?.address ?? prefill?.recipient ?? "";
 
   /**
    * The `.dusk` name looked up, and what it resolved to once it has.
@@ -342,6 +347,17 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.625rem;
+  }
+
+  /* On a phone, the buttons stay in view as the form scrolls. */
+  @media (max-width: 63.99rem) {
+    .contact-form__buttons {
+      position: sticky;
+      bottom: 0;
+      z-index: 1;
+      padding: 0.75rem 0;
+      background: var(--calm-panel);
+    }
   }
 
   .contact-form__spacer {

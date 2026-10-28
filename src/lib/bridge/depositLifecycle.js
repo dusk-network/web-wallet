@@ -1,3 +1,5 @@
+import { routeTimeText } from "./routeTimes";
+
 const configuredDelayThreshold = Number(
   import.meta.env.VITE_EVM_DEPOSIT_DELAY_THRESHOLD_MS
 );
@@ -38,7 +40,7 @@ const STAGES = new Map([
       badge: "warning",
       label: "Bridging",
       message:
-        "Finalized on DuskDS. Your DUSK is secured by the bridge and is being delivered to DuskEVM. Do not submit it again.",
+        "Finalized on DuskDS, on its way to DuskEVM. Don't send it again.",
       progress: 2,
     },
   ],
@@ -97,7 +99,7 @@ function stageMetadata(deposit, now = Date.now()) {
       message:
         deposit.failureLayer === "l1"
           ? "The DuskDS transaction failed, so the deposit did not enter the bridge."
-          : "Delivery failed on DuskEVM. Do not submit the deposit again; use the transaction references when requesting bridge recovery.",
+          : "Delivery failed on DuskEVM. Don't send it again; give these transactions when you ask for bridge recovery.",
       progress: deposit.failureLayer === "l1" ? 1 : 2,
     };
   }
@@ -107,7 +109,7 @@ function stageMetadata(deposit, now = Date.now()) {
       badge: /** @type {BadgeVariant} */ ("warning"),
       label: "Tracking delayed",
       message:
-        "No new bridge progress has been observed recently. Tracking continues at a reduced rate; do not submit the deposit again.",
+        "No progress seen lately. Still followed, less often; don't send it again.",
       progress: deposit?.stage === "l2_pending" ? 2 : 1,
     };
   }
@@ -116,8 +118,7 @@ function stageMetadata(deposit, now = Date.now()) {
     return {
       badge: /** @type {BadgeVariant} */ ("warning"),
       label: "Delayed",
-      message:
-        "This is taking longer than expected. The DuskDS transaction finalized and the deposit is still being tracked. Do not submit it again.",
+      message: "Taking longer than usual. Still followed; don't send it again.",
       progress: 2,
     };
   }
@@ -138,15 +139,29 @@ export function depositStageLabel(deposit) {
   return stageMetadata(deposit).label;
 }
 
-/** @param {any} deposit */
-export function depositStageMessage(deposit) {
+/**
+ * What a deposit's stage says. On its way, with how long a deposit takes on
+ * this network (`time`) where that's known.
+ *
+ * @param {any} deposit
+ * @param {{ time?: RouteTime | null }} [options]
+ */
+export function depositStageMessage(deposit, { time = null } = {}) {
   const metadata = stageMetadata(deposit);
 
-  return deposit?.stage === "failed" ||
+  if (
+    deposit?.stage === "failed" ||
     isDepositDelayed(deposit) ||
     isDepositStalled(deposit)
-    ? metadata.message
-    : deposit?.statusMessage || metadata.message;
+  ) {
+    return metadata.message;
+  }
+
+  if (deposit?.stage === "l2_pending" && time) {
+    return `Finalized on DuskDS. Arrives on DuskEVM in ${routeTimeText(time)}. Don't send it again.`;
+  }
+
+  return deposit?.statusMessage || metadata.message;
 }
 
 /** @param {any} deposit */

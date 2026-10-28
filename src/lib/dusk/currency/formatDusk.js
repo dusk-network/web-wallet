@@ -174,6 +174,27 @@ export function formatFee(value, locale, { max = false } = {}) {
 }
 
 /**
+ * The most a transaction can take from a balance, as a summary's Total: up
+ * to four decimals rounded up, as fees are, unless that would read more
+ * than the balance as it shows, cut to four; then exactly, so that a Total
+ * at Max never reads more than there is.
+ *
+ * @param {bigint | number | string} total LUX
+ * @param {bigint | number | string} available LUX, the balance it's paid from
+ * @param {string} [locale]
+ * @returns {string}
+ */
+export function formatTotal(total, available, locale) {
+  const lux = toLux(total);
+  const roundedUp = ((lux + STEP - 1n) / STEP) * STEP;
+  const shown = (toLux(available) / STEP) * STEP;
+
+  return lux > 0n && roundedUp > shown
+    ? formatDuskExact(lux, locale)
+    : formatFee(lux, locale, { max: true });
+}
+
+/**
  * An amount for a file, such as a CSV export: every decimal, a point and no
  * grouping, whatever the language.
  *

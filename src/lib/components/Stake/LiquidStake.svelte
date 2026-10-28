@@ -14,13 +14,18 @@
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
-    formatFee,
+    formatTotal,
   } from "$lib/dusk/currency";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { SOZU_URL } from "$lib/sozu/config";
-  import { stDuskFor } from "$lib/sozu/amounts";
+  import {
+    feePercent,
+    leastSozuStake,
+    sozuFee,
+    stDuskFor,
+  } from "$lib/sozu/amounts";
   import { settingsStore } from "$lib/stores";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
@@ -71,7 +76,7 @@
   let defaultGas = gasSettings;
   let isGasValid = false;
 
-  /** @type {{ maxFee: bigint, operation: Promise<string> } | null} */
+  /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
   let sent = null;
 
   /** @param {"stake" | "unstake"} next */
@@ -123,6 +128,9 @@
           gasPrice,
           gasLimit
         ),
+        what: isStake
+          ? `${formatDuskExact(amount, language)} DUSK to Sozu`
+          : `${formatDuskExact(amount, language)} DUSK unstaked from Sozu`,
       };
     }
   }
@@ -131,7 +139,7 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
 
-  $: if (!sent && gasSettings !== defaultGas) {
+  $: if (!sent && !isReviewing && gasSettings !== defaultGas) {
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
@@ -146,6 +154,8 @@
   $: isStake = action === "stake";
   $: maxGasFee = gasLimit * gasPrice;
   $: staked = status?.position.balance ?? 0n;
+  // Sozu's deposit fee, as its substrate gives it, where it could be read.
+  $: depositRate = status?.fees?.deposit ?? null;
   $: stDusk = status?.position.stDusk ?? 0n;
   $: most = isStake
     ? availableBalance > maxGasFee
@@ -158,6 +168,8 @@
     available: availableBalance,
     fee: maxGasFee,
     locale: language,
+    // Less than this gets no stDUSK at the rate now, after the fee.
+    minimum: isStake ? leastSozuStake(status?.pool ?? null, depositRate) : 0n,
     most: isStake
       ? undefined
       : {
@@ -168,10 +180,17 @@
   });
   $: canSend = Boolean(status) && check.ok && isGasValid;
   $: shownAmount = amount !== null && check.ok ? amount : 0n;
-  $: estimate =
-    isStake && check.ok ? stDuskFor(shownAmount, status?.pool ?? null) : null;
   // What is typed shows in the summary, muted while it can't be sent.
   $: typedAmount = amount ?? 0n;
+  $: depositFee = depositRate ? sozuFee(typedAmount, depositRate) : null;
+  // What the stake gets, for what's left once Sozu takes its fee.
+  $: estimate =
+    isStake && check.ok
+      ? stDuskFor(
+          shownAmount - (depositRate ? sozuFee(shownAmount, depositRate) : 0n),
+          status?.pool ?? null
+        )
+      : null;
   $: isTypedOff = Boolean(check.error);
   $: total = isStake ? typedAmount + maxGasFee : maxGasFee;
 </script>
@@ -183,6 +202,7 @@
       leaveText="Back to staking"
       maxFee={sent.maxFee}
       operation={sent.operation}
+      what={sent.what}
     />
   </div>
 {:else}
@@ -325,14 +345,12 @@
           {:else if estimate !== null}
             <div class="liquid-stake__estimate">
               <p>
-                You get about {formatDusk(estimate, language)} stDUSK, worth {formatDuskExact(
-                  shownAmount,
-                  language
-                )} DUSK now.
+                You get about {formatDusk(estimate, language)} stDUSK, at the rate
+                Sozu's contract gives now.
               </p>
               <p>
-                stDUSK is Sozu's token for your share; its DUSK value grows as
-                rewards come in.
+                stDUSK is Sozu's token for your share. Its DUSK value follows
+                Sozu's pool, its rewards and its fees.
               </p>
             </div>
           {/if}
@@ -385,6 +403,18 @@
               {estimate === null ? "—" : formatDusk(estimate, language)} stDUSK
             </dd>
           </div>
+          <div>
+            <dt>Deposit fee</dt>
+            <dd class:stake-flow__muted={isTypedOff && depositFee !== null}>
+              {depositRate && depositFee !== null
+                ? `${feePercent(depositRate, language)} · ${formatDuskExact(depositFee, language)} DUSK`
+                : "Taken from the deposit"}
+            </dd>
+          </div>
+          <div>
+            <dt>Getting it back</dt>
+            <dd>Unstake from Sozu, under Sozu's rules</dd>
+          </div>
         {:else}
           <div>
             <dt>Back to</dt>
@@ -420,7 +450,7 @@
         <div>
           <dt>Total</dt>
           <dd class:stake-flow__muted={isTypedOff}>
-            Up to {formatFee(total, language, { max: true })} DUSK
+            Up to {formatTotal(total, availableBalance, language)} DUSK
           </dd>
         </div>
       </dl>

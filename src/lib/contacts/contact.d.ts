@@ -20,6 +20,12 @@ type Contact = {
   /** The contact's name, as the user wrote it. */
   name: string;
 
+  /**
+   * Where `duskName` pointed instead when last checked: another address,
+   * or "" for none of the contact's kind. Gone once it points back.
+   */
+  movedTo?: string;
+
   type: "account" | "address" | "unknown";
 
   updatedAt: number;

@@ -10,5 +10,6 @@ export { default as initializeWallet } from "./initializeWallet";
 export { default as migrateLoginInfo } from "./migrateLoginInfo";
 export { default as notesArrayToMap } from "./notesArrayToMap";
 export { default as profileGeneratorFrom } from "./profileGeneratorFrom";
+export { default as profileLabel } from "./profileLabel";
 export { default as refreshLocalStoragePasswordInfo } from "./refreshLocalStoragePasswordInfo";
 export { default as validateMnemonic } from "./validateMnemonic";

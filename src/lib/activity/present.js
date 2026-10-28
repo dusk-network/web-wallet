@@ -12,6 +12,9 @@ import {
 } from "$lib/dusk/currency/formatDusk";
 
 import { SOZU_FN, isSozuCall } from "$lib/sozu/config";
+import { WITHDRAWAL_WAITING_PERIOD_SECONDS } from "$lib/bridge/withdrawalLifecycle";
+
+import { knownCall } from "./knownContracts";
 
 import { TX_KIND } from "./constants";
 
@@ -23,10 +26,22 @@ import { TX_KIND } from "./constants";
  *
  * @typedef {{
  *   bridgeContracts?: Set<string>,
+ *   claimed?: Set<string>,
  *   contactNames?: Map<string, string>,
  *   locale: string,
+ *   network?: string,
+ *   now?: number,
  *   ownAccount?: string,
+ *   sozuPools?: Set<string>,
  * }} PresentContext
+ *
+ * `claimed` holds the withdrawals the rows claim (claimedWithdrawals), and
+ * `sozuPools` the pools Sozu's hub named (sozuPools in $lib/sozu).
+ *
+ * @typedef {{ claimFrom: number, claimed: boolean }} WithdrawalStep
+ *   Where a proved withdrawal is: claimed, or about when it can be claimed.
+ *   That time is an estimate: the bridge's withdrawals page says when the
+ *   claim can be sent.
  *
  * @typedef {{
  *   amount: { exact: string, muted: boolean, sign: "" | "+" | "−", text: string },
@@ -38,6 +53,7 @@ import { TX_KIND } from "./constants";
  *   status: ActivityShownStatus,
  *   title: string,
  *   titleIsAddress: boolean,
+ *   withdrawal: WithdrawalStep | null,
  * }} ActivityPresentation
  */
 
@@ -104,9 +120,10 @@ const isBridge = (row, bridgeContracts) =>
  *
  * @param {ActivityRow} row
  * @param {Set<string> | undefined} bridgeContracts
+ * @param {Set<string>} [sozuPools]
  * @returns {{ category: ActivityPresentation["category"], icon: ActivityIcon }}
  */
-function classify(row, bridgeContracts) {
+function classify(row, bridgeContracts, sozuPools) {
   switch (row.kind) {
     case TX_KIND.STAKE:
     case TX_KIND.UNSTAKE:
@@ -119,7 +136,7 @@ function classify(row, bridgeContracts) {
       break;
   }
 
-  if (isSozuCall(row)) {
+  if (isSozuCall(row, sozuPools)) {
     return { category: "staking", icon: "staking" };
   }
 
@@ -173,6 +190,10 @@ function bridgeTitle(row) {
     return "To DuskEVM";
   }
 
+  if (row.bridge?.kind === "deposit") {
+    return "To DuskEVM";
+  }
+
   const fn = String(row.fnName ?? "").toLowerCase();
 
   return fn.includes("prove")
@@ -184,14 +205,16 @@ function bridgeTitle(row) {
 
 /**
  * A row's title and the first part of its line. A counterparty saved as a
- * contact goes by the contact's name, with its `.dusk` name after it.
+ * contact goes by the contact's name, with its `.dusk` name after it, and a
+ * call to a contract the wallet knows by what it did.
  *
  * @param {ActivityRow} row
  * @param {ActivityIcon} icon
  * @param {Map<string, string>} [contactNames] Contact names by address
+ * @param {string} [network] The network's name
  * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
  */
-function titleOf(row, icon, contactNames) {
+function titleOf(row, icon, contactNames, network) {
   const kindTitle = row.kind ? KIND_TITLES.get(row.kind) : undefined;
 
   if (kindTitle) {
@@ -215,6 +238,12 @@ function titleOf(row, icon, contactNames) {
 
   if (icon === "self") {
     return { title: "To yourself", titleIsAddress: false, verb: "Sent" };
+  }
+
+  const named = icon === "call" ? knownCall(row, network) : null;
+
+  if (named) {
+    return { title: named.label, titleIsAddress: false, verb: named.app };
   }
 
   return counterpartyTitle(row, icon, contactNames);
@@ -260,9 +289,10 @@ function counterpartyTitle(row, icon, contactNames) {
  * Whether a row is staking: natively, or with Sozu.
  *
  * @param {ActivityRow} row
+ * @param {Set<string>} [sozuPools] The pools Sozu's hub named
  */
-export const isStakingRow = (row) =>
-  classify(row, undefined).category === "staking";
+export const isStakingRow = (row, sozuPools) =>
+  classify(row, undefined, sozuPools).category === "staking";
 
 /**
  * The status a row shows: only while it isn't final, or when it failed.
@@ -296,34 +326,157 @@ function shownStatus(row) {
  * @param {PresentContext} context
  * @returns {ActivityPresentation}
  */
-export function describeRow(row, { bridgeContracts, contactNames, locale }) {
-  const { category, icon } = classify(row, bridgeContracts);
-  const { title, titleIsAddress, verb } = titleOf(row, icon, contactNames);
+export function describeRow(row, context) {
+  const { bridgeContracts, contactNames, locale, network, sozuPools } = context;
+  const { category, icon } = classify(row, bridgeContracts, sozuPools);
+  const { title, titleIsAddress, verb } = titleOf(
+    row,
+    icon,
+    contactNames,
+    network
+  );
   const status = shownStatus(row);
-  const lux = toLux(row.amount);
   const failed = status === "failed";
-  const moved = icon === "shield" || icon === "self";
-  const fee = row.feePaid
-    ? `fee ${formatFee(toLux(row.feePaid), locale)} DUSK paid`
-    : "no fee";
+  const bridge = icon === "bridge" && !failed ? bridgeOf(row, context) : null;
 
   return {
-    amount: {
-      exact: formatDuskExact(lux, locale),
-      muted: failed,
-      sign:
-        failed || moved || lux === 0n ? "" : row.direction === "in" ? "+" : "−",
-      text: formatDusk(lux, locale),
-    },
+    amount: amountOf(row, { bridge, failed, icon, locale }),
     category,
-    counterparty: counterpartyOf(row),
+    counterparty: bridge?.to ?? counterpartyOf(row),
     icon,
-    line: failed ? `Failed · nothing sent · ${fee}` : verb,
+    line: failed
+      ? `Failed · nothing sent · ${feeText(row, locale)}`
+      : bridge?.line
+        ? `${verb} · ${bridge.line}`
+        : verb,
     privacy: row.privacy === "shielded" ? "Shielded" : "Public",
     status,
     title,
     titleIsAddress,
+    withdrawal: bridge?.withdrawal ?? null,
   };
+}
+
+/**
+ * The fee a row's sender paid, for its line.
+ *
+ * @param {ActivityRow} row
+ * @param {string} locale
+ */
+const feeText = (row, locale) =>
+  row.feePaid
+    ? `fee ${formatFee(toLux(row.feePaid), locale)} DUSK paid`
+    : "no fee";
+
+/**
+ * A row's amount: what it moved, signed by its direction, or what a bridge
+ * call was for, unsigned. A failed transaction and a withdrawal not claimed
+ * yet show theirs muted.
+ *
+ * @param {ActivityRow} row
+ * @param {{ bridge: ReturnType<typeof bridgeOf>, failed: boolean, icon: ActivityIcon, locale: string }} options
+ * @returns {ActivityPresentation["amount"]}
+ */
+function amountOf(row, { bridge, failed, icon, locale }) {
+  const lux = bridge?.amount ?? toLux(row.amount);
+  const unsigned =
+    failed ||
+    icon === "shield" ||
+    icon === "self" ||
+    bridge?.amount !== undefined ||
+    lux === 0n;
+
+  return {
+    exact: formatDuskExact(lux, locale),
+    muted: failed || bridge?.withdrawal?.claimed === false,
+    sign: unsigned ? "" : row.direction === "in" ? "+" : "−",
+    text: formatDusk(lux, locale),
+  };
+}
+
+/**
+ * When a proved withdrawal can be claimed, at the earliest: its proof's
+ * time and the waiting period after it.
+ *
+ * @param {ActivityRow} row
+ */
+const claimFromOf = (row) => {
+  const time = rowTime(row);
+
+  return time === null ? null : time + WITHDRAWAL_WAITING_PERIOD_SECONDS * 1000;
+};
+
+/**
+ * "3 Nov, 14:20", in the user's locale and time zone.
+ *
+ * @param {number} time
+ * @param {string} locale
+ */
+const dayAndTime = (time, locale) =>
+  new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+  }).format(time);
+
+/**
+ * What a bridge call adds to its row: the DuskEVM address a deposit went
+ * to, or the amount a withdrawal's proof or claim is for (only where the
+ * transaction itself moved none of it), and where a proved withdrawal is.
+ *
+ * @param {ActivityRow} row
+ * @param {PresentContext} context
+ * @returns {{ amount?: bigint, line?: string, to?: string, withdrawal?: WithdrawalStep } | null}
+ */
+function bridgeOf(row, { claimed, locale }) {
+  const call = row.bridge;
+
+  if (!call) {
+    return null;
+  }
+
+  if (call.kind === "deposit") {
+    return { line: `to ${shortAddress(call.to)}`, to: call.to };
+  }
+
+  const amount = toLux(row.amount) === 0n ? toLux(call.amount) : undefined;
+  const claimFrom = call.kind === "prove" ? claimFromOf(row) : null;
+
+  if (claimFrom === null) {
+    return { amount };
+  }
+
+  // Only an estimate, from the usual waiting period after the proof: the
+  // claim also waits for its dispute game, which only the bridge follows.
+  const withdrawal = {
+    claimed: Boolean(claimed?.has(call.withdrawal)),
+    claimFrom,
+  };
+
+  return {
+    amount,
+    line: withdrawal.claimed
+      ? "claimed"
+      : `claim from about ${dayAndTime(claimFrom, locale)}`,
+    withdrawal,
+  };
+}
+
+/**
+ * The withdrawals the rows claim, for the proofs before them.
+ *
+ * @param {ActivityRow[]} rows
+ * @returns {Set<string>}
+ */
+export function claimedWithdrawals(rows) {
+  return new Set(
+    rows.flatMap((row) =>
+      row.bridge?.kind === "claim" && row.status !== "failed"
+        ? [row.bridge.withdrawal]
+        : []
+    )
+  );
 }
 
 /**
@@ -352,7 +505,8 @@ export function matchesFilters(
   return (
     (kind === "all" || presentation.category === kind) &&
     (privacy === "all" || presentation.privacy.toLowerCase() === privacy) &&
-    (since === null || time === null || time >= since)
+    // A row with no time yet isn't in a range of days.
+    (since === null || (time !== null && time >= since))
   );
 }
 
@@ -522,6 +676,9 @@ export const CSV_COLUMNS = Object.freeze([
   "Status",
 ]);
 
+/** The column an export adds with the user's own contact names. */
+export const CSV_CONTACT_COLUMN = "Your contact name";
+
 /** @type {Record<string, string>} */
 const STATUS_WORDS = {
   executed: "Completed",
@@ -533,13 +690,26 @@ const STATUS_WORDS = {
 };
 
 /**
- * One row as a CSV line.
+ * Whether a row's time, fee and outcome are still to be looked up: a row
+ * with no time, or one from the chain whose outcome isn't looked up yet.
+ *
+ * @param {ActivityRow} row
+ */
+export const isRowIncomplete = (row) =>
+  rowTime(row) === null ||
+  ((row.source === "archive" || row.source === "both") &&
+    typeof row.success !== "boolean");
+
+/**
+ * One row as a CSV line. Its words never use the user's contact names:
+ * those go in their own column, when asked for.
  *
  * @param {ActivityRow} row
  * @param {PresentContext} context
+ * @param {boolean} withContacts
  */
-function csvLine(row, context) {
-  const p = describeRow(row, context);
+function csvLine(row, context, withContacts) {
+  const p = describeRow(row, { ...context, contactNames: undefined });
   const time = rowTime(row);
   const amount = p.status === "failed" ? 0n : toLux(row.amount);
   const signed = row.direction === "out" && amount ? -amount : amount;
@@ -560,20 +730,44 @@ function csvLine(row, context) {
     csvField(formatDuskPlain(signed)),
     csvField(row.feePaid ? formatDuskPlain(toLux(row.feePaid)) : ""),
     csvText(row.memo ?? ""),
-    csvField(STATUS_WORDS[row.status] ?? ""),
+    csvField(csvStatus(row)),
+    ...(withContacts ? [csvText(contactOf(p, context))] : []),
   ].join(",");
 }
 
 /**
- * The rows as CSV, one line each with the columns of CSV_COLUMNS. Amounts
+ * A row's status in an export, or that it isn't looked up yet.
+ *
+ * @param {ActivityRow} row
+ */
+const csvStatus = (row) =>
+  isRowIncomplete(row) ? "Not looked up yet" : (STATUS_WORDS[row.status] ?? "");
+
+/**
+ * The user's own name for a row's counterparty, if it is a contact.
+ *
+ * @param {ActivityPresentation} p
+ * @param {PresentContext} context
+ */
+const contactOf = (p, context) =>
+  (p.counterparty && context.contactNames?.get(p.counterparty)) || "";
+
+/**
+ * The rows as CSV, one line each with the columns of CSV_COLUMNS, and the
+ * user's contact names in CSV_CONTACT_COLUMN only `withContacts`. Amounts
  * are exact, with a minus for what left the account; a failed transaction
- * moved nothing, so its amount is 0 and its fee stands on its own.
+ * moved nothing, so its amount is 0 and its fee stands on its own. A row
+ * not looked up yet says so in its status.
  *
  * @param {ActivityRow[]} rows
  * @param {PresentContext} context
+ * @param {{ withContacts?: boolean }} [options]
  */
-export function toCsv(rows, context) {
-  const lines = rows.map((row) => csvLine(row, context));
+export function toCsv(rows, context, { withContacts = false } = {}) {
+  const lines = rows.map((row) => csvLine(row, context, withContacts));
+  const columns = withContacts
+    ? [...CSV_COLUMNS, CSV_CONTACT_COLUMN]
+    : CSV_COLUMNS;
 
-  return [CSV_COLUMNS.map(csvField).join(","), ...lines].join("\r\n");
+  return [columns.map(csvField).join(","), ...lines].join("\r\n");
 }

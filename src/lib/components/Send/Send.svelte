@@ -13,19 +13,25 @@
     closeDuskName,
     contactsStore,
     markContactNameChecked,
+    markContactNameMoved,
     saveContact,
   } from "$lib/contacts";
   import { isDuskName } from "$lib/dusk-domains";
+  import { addBasePath } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
   import {
-    duskToLux,
     formatDusk,
     formatDuskExact,
-    formatFee,
-    luxToDusk,
+    formatDuskPlain,
+    formatTotal,
   } from "$lib/dusk/currency";
+  import {
+    normalizeDuskInput,
+    parseDuskInput,
+  } from "$lib/components/Stake/stakeAmount";
+  import { getDecimalSeparator } from "$lib/dusk/number";
   import {
     isValidEvmAddress,
     makeClassName,
@@ -49,6 +55,14 @@
 
   /** @type {(name: string) => Promise<DuskNameResolution>} */
   export let resolveName;
+
+  /**
+   * The wallet's own public accounts and shielded addresses, with how the
+   * wallet names their profile: never offered as contacts.
+   *
+   * @type {{ address: string, label: string }[]}
+   */
+  export let ownAccounts = [];
 
   /** @type {ContractGasSettings} */
   export let gasSettings;
@@ -90,8 +104,8 @@
    */
   export let knownNames = [];
 
-  /** @type {number} */
-  let sendAmount = 1;
+  /** The amount as typed, in DUSK: nothing until it is. */
+  let sendAmount = "";
 
   /** @type {string} */
   let sendToAddress = initialRecipient;
@@ -115,7 +129,7 @@
   /**
    * The transfer once sent, and the most it can cost.
    *
-   * @type {{ maxFee: bigint, operation: Promise<string> } | null}
+   * @type {{ maxFee: bigint, memo: string, operation: Promise<string>, what: string } | null}
    */
   let sent = null;
 
@@ -158,6 +172,80 @@
   /** @type {DuskNameResolution | null} */
   let checkedLookup = null;
 
+  /** The contact whose `.dusk` name was last checked as its address was picked. */
+  let savedNameChecked = "";
+
+  /**
+   * Checks that a contact's `.dusk` name still points to the address saved
+   * for it, as Send goes to that address: noted on the contact, moved or
+   * not, so that Send and Contacts can say so. Once a contact.
+   *
+   * @param {Contact} saved
+   */
+  async function checkSavedName(saved) {
+    const key = [saved.id, saved.address, saved.duskName].join("\n");
+
+    if (!saved.duskName || savedNameChecked === key) {
+      return;
+    }
+
+    savedNameChecked = key;
+
+    const resolution = await resolveName(saved.duskName).catch(() => null);
+
+    // A lookup that failed, or a network without names, checked nothing.
+    if (
+      !resolution ||
+      resolution.error === "lookup-failed" ||
+      resolution.error === "unsupported-network"
+    ) {
+      return;
+    }
+
+    const pointsTo =
+      (saved.type === "address" ? resolution.address : resolution.account) ??
+      "";
+
+    if (pointsTo === saved.address) {
+      markContactNameChecked(saved);
+    } else {
+      markContactNameMoved(saved, pointsTo);
+    }
+  }
+
+  /**
+   * What is wrong with the amount typed, in the words the page shows: ""
+   * for nothing typed yet, or an amount that can go.
+   *
+   * @param {string} text
+   * @param {bigint | null} amount
+   */
+  function amountErrorOf(text, amount) {
+    const typed = text.trim();
+
+    if (!typed) {
+      return "";
+    }
+
+    if (amount === null) {
+      return /^\d*\.\d{10,}$/.test(typed)
+        ? "DUSK has 9 decimals at most."
+        : "Enter an amount such as 10 or 10.5.";
+    }
+
+    if (amount === 0n) {
+      return "Enter an amount greater than 0.";
+    }
+
+    if (amount > availableBalance) {
+      return `More than your ${formatDuskExact(availableBalance, language)} DUSK.`;
+    }
+
+    return amount > maxSpendableAmount
+      ? `That leaves too little for the network fee: send up to ${formatDuskExact(maxSpendableAmount, language)} DUSK.`
+      : "";
+  }
+
   /** Whether the recipient is being saved to the contacts, and as what. */
   let isSavingContact = false;
   let contactName = "";
@@ -179,7 +267,8 @@
   let { gasLimit, gasPrice } = gasSettings;
   let defaultGas = gasSettings;
 
-  const minAmount = 0.000000001;
+  /** The least a transfer sends: one LUX. */
+  const minAmount = 1n;
 
   const dispatch = createEventDispatcher();
 
@@ -202,7 +291,7 @@
       return;
     }
 
-    sendAmount = luxToDusk(maxSpendableAmount);
+    sendAmount = formatDuskPlain(maxSpendableAmount);
   }
 
   /**
@@ -410,7 +499,8 @@
   function saveRecipient() {
     const name = contactName.trim();
 
-    if (name) {
+    // Never one of the wallet's own accounts.
+    if (name && !own) {
       saveContact({
         address: recipientAddress,
         checkedAt: recipientName ? Date.now() : null,
@@ -431,6 +521,7 @@
 
     sent = {
       maxFee: maxGasFee,
+      memo: transactionMemo,
       operation: toName
         ? execute(
             recipientAddress,
@@ -447,6 +538,7 @@
             gasPrice,
             gasLimit
           ),
+      what: `${amountText} DUSK to ${recipientLabel}`,
     };
     step = "done";
   }
@@ -464,15 +556,18 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
 
-  $: sendAmountInLux = sendAmount ? duskToLux(sendAmount) : 0n;
+  // A comma keyboard's "1,5" and digit grouping read as the amount meant.
+  $: typedAmount = normalizeDuskInput(sendAmount, getDecimalSeparator());
+  $: parsedAmount = parseDuskInput(typedAmount);
+  $: sendAmountInLux = parsedAmount ?? 0n;
+  $: amountError = amountErrorOf(typedAmount, parsedAmount);
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
 
   // A balance can pay for a transfer if it covers the smallest amount
   // plus the maximum gas fee.
-  $: canPayFromShieldedBalance =
-    shieldedBalance >= maxGasFee + duskToLux(minAmount);
+  $: canPayFromShieldedBalance = shieldedBalance >= maxGasFee + minAmount;
 
   // Check if the available balance is sufficient to cover the max gas fee.
   // This is a prerequisite for any transaction.
@@ -572,6 +667,24 @@
     }
   }
 
+  // The account the transfer goes from, as the wallet names it.
+  $: from = isShielded ? shieldedAddress : publicAddress;
+  $: fromLabel =
+    ownAccounts.find((account) => account.address === from)?.label ??
+    (isShielded ? "Your shielded balance" : "Your public account");
+  // Who the transfer goes to, as the Done screen says it.
+  $: recipientLabel = contact
+    ? recipientName
+      ? `${contact.name} (${shownName})`
+      : contact.name
+    : own && !recipientName
+      ? `your ${own.label}`
+      : recipientName
+        ? shownName
+        : shortenAddress(recipientAddress);
+  $: own = ownAccounts.find(
+    (account) => recipientAddress && account.address === recipientAddress
+  );
   $: contacts = $contactsStore;
   $: contact = contactFor(
     contacts,
@@ -596,14 +709,27 @@
     namePointsTo !== contact?.address &&
     newAddressTaken[recipientName.toLowerCase()] !== recipientAddress;
 
-  // Still the contact's address: noted, once a lookup.
-  $: if (
-    contact &&
-    namePointsTo === contact.address &&
-    nameLookup !== checkedLookup
-  ) {
+  // A contact's saved address, entered or picked: its name is checked.
+  $: if (contact && !recipientName && addressInfo.isValid) {
+    checkSavedName(contact);
+  }
+
+  // What a lookup of the contact's name found: noted on the contact, still
+  // its address or moved, once a lookup.
+  $: if (contact && namePointsTo !== null && nameLookup !== checkedLookup) {
     checkedLookup = nameLookup;
-    markContactNameChecked(contact);
+
+    if (namePointsTo === contact.address) {
+      markContactNameChecked(contact);
+    } else {
+      markContactNameMoved(contact, namePointsTo);
+    }
+  }
+
+  // One of the wallet's own accounts is never saved as a contact.
+  $: if (own && isSavingContact) {
+    isSavingContact = false;
+    contactName = "";
   }
 
   $: suggestion =
@@ -639,10 +765,18 @@
 </script>
 
 {#if step === "done" && sent}
-  <TransactionResult maxFee={sent.maxFee} operation={sent.operation} />
+  <TransactionResult
+    maxFee={sent.maxFee}
+    memo={sent.memo}
+    operation={sent.operation}
+    what={sent.what}
+  />
 {:else}
   <div class="send" class:send--review={step === "review"}>
     <section aria-labelledby="{id}-title" class="send__form">
+      <a class="send__back" href={addBasePath("/dashboard")}
+        ><Icon path={mdiArrowLeft} />Home</a
+      >
       <h2 class="send__title" id="{id}-title">Send</h2>
 
       <div class="send__field">
@@ -670,7 +804,7 @@
           />
           {#if recipientName && nameLookup?.[nameAddressType]}
             <span class="send__verified"
-              ><Icon path={mdiCheckCircleOutline} />Verified name</span
+              ><Icon path={mdiCheckCircleOutline} />Name found</span
             >
           {/if}
           <!-- Only with a camera, which ScanQR looks for without asking
@@ -709,8 +843,9 @@
             <option value="">Choose a contact…</option>
             {#each contacts as option (option.id)}
               <option value={option.id}
-                >{option.name} · {option.duskName ??
-                  shortenAddress(option.address)}</option
+                >{option.name} · {option.movedTo === undefined
+                  ? (option.duskName ?? shortenAddress(option.address))
+                  : shortenAddress(option.address)}</option
               >
             {/each}
           </select>
@@ -788,12 +923,21 @@
           </div>
         {/if}
 
+        {#if contact?.duskName && !recipientName && contact.movedTo !== undefined}
+          <p class="send__hint" role="status">
+            {contact.duskName} now points to a different address. You're sending to
+            the address saved for {contact.name}.
+          </p>
+        {/if}
+
         {#if addressInfo.isValid && !isContactMoved}
           {@const isChoice = recipientName !== "" && nameOptions.length > 1}
           <div class="send__card">
             <p class="send__card-title" id="{id}-points">
               {#if contact}
                 {contact.name}{recipientName ? ` · ${shownName}` : ""}
+              {:else if own && !recipientName}
+                Your {own.label}
               {:else if recipientName}
                 {shownName} points to {isChoice
                   ? "two addresses"
@@ -888,7 +1032,7 @@
                   Public: the amount and both accounts are visible on chain.
                 {/if}
               </p>
-              {#if !contact && !isSavingContact}
+              {#if !contact && !own && !isSavingContact}
                 <Button
                   on:click={() => {
                     isSavingContact = true;
@@ -959,14 +1103,16 @@
         <label class="send__label" for="{id}-amount">Amount</label>
         <div class="send__amount">
           <Textbox
+            aria-describedby="{id}-amount-error"
+            aria-invalid={amountError ? "true" : undefined}
+            autocomplete="off"
             bind:value={sendAmount}
             className="send__amount-input"
             id="{id}-amount"
-            max={luxToDusk(maxSpendableAmount)}
-            min={minAmount}
+            inputmode="decimal"
+            placeholder="0"
             required
-            step="0.000000001"
-            type="number"
+            type="text"
           />
           <span aria-hidden="true" class="send__unit">DUSK</span>
           <Button
@@ -987,10 +1133,9 @@
             <strong>Not enough for the network fee.</strong> Add funds or lower the
             gas limit.
           </p>
-        {:else if sendAmountInLux > maxSpendableAmount}
-          <p class="send__error" role="alert">
-            <strong>More than you have.</strong> Lower the amount to leave room for
-            the fee.
+        {:else if amountError}
+          <p class="send__error" id="{id}-amount-error" role="alert">
+            {amountError}
           </p>
         {/if}
       </div>
@@ -1028,6 +1173,15 @@
     <aside aria-labelledby="{id}-summary" class="send__summary">
       <h2 class="send__summary-title" id="{id}-summary">Summary</h2>
       <dl class="send__rows">
+        <div>
+          <dt>From</dt>
+          <dd>
+            <span class="send__summary-name">{fromLabel}</span>
+            {#if !isShielded && from}
+              <span class="send__summary-code">{shortenAddress(from)}</span>
+            {/if}
+          </dd>
+        </div>
         <div>
           <dt>To</dt>
           <dd>
@@ -1079,7 +1233,9 @@
       <dl class="send__rows send__rows--total">
         <div>
           <dt>Total</dt>
-          <dd>Up to {formatFee(totalAmount, language, { max: true })} DUSK</dd>
+          <dd>
+            Up to {formatTotal(totalAmount, availableBalance, language)} DUSK
+          </dd>
         </div>
       </dl>
       <Button
@@ -1138,6 +1294,27 @@
     flex-direction: column;
     gap: 1.5rem;
     min-width: 0;
+  }
+
+  .send__back {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 0.375rem;
+    min-height: 44px;
+    margin-bottom: -1rem;
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+    text-decoration: none;
+
+    &:hover {
+      color: var(--calm-text);
+    }
+
+    & :global(.dusk-icon) {
+      width: 1rem;
+      height: 1rem;
+    }
   }
 
   .send__title {

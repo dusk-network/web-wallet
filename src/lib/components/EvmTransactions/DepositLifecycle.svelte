@@ -1,4 +1,8 @@
 <script>
+  import { onMount } from "svelte";
+
+  import bridgeTimes from "$lib/bridge/bridgeTimes";
+  import { DEPOSIT, routeTime } from "$lib/bridge/routeTimes";
   import {
     DEPOSIT_TIMELINE_STEPS,
     depositStageBadge,
@@ -25,7 +29,14 @@
   $: l2ExplorerUrl = deposit?.l2TransactionHash
     ? `${duskEvm.blockExplorers.default.url}/tx/${deposit.l2TransactionHash}`
     : null;
-  $: stageMessage = depositStageMessage(deposit);
+  // How long a deposit takes on this network, where it's known.
+  $: stageMessage = depositStageMessage(deposit, {
+    time: routeTime(DEPOSIT, $bridgeTimes),
+  });
+
+  onMount(() => {
+    void bridgeTimes.load();
+  });
 </script>
 
 <section class="deposit-status" aria-live="polite" bind:this={element}>
@@ -47,36 +58,20 @@
       steps={DEPOSIT_TIMELINE_STEPS}
     />
 
-    {#if deposit.stage === "completed"}
-      <Banner title="Deposit available" variant="info">
-        <p>{stageMessage}</p>
-      </Banner>
-    {:else if deposit.stage === "failed"}
-      <Banner title={depositStageLabel(deposit)} variant="error">
-        <p>{stageMessage}</p>
-      </Banner>
+    <!-- The timeline says what's happening; a banner only what went wrong. -->
+    {#if deposit.stage === "failed"}
+      <Banner title={depositStageLabel(deposit)} variant="error" />
     {:else if isDepositStalled(deposit) || isDepositDelayed(deposit)}
       <Banner
         title={isDepositStalled(deposit)
           ? "Deposit tracking delayed"
           : "Deposit delayed"}
         variant="warning"
-      >
-        <p>{stageMessage}</p>
-      </Banner>
-    {:else if deposit.stage === "l2_pending"}
-      <Banner title="Deposit in transit" variant="info">
-        <p>{stageMessage}</p>
-      </Banner>
+      />
     {/if}
 
     {#if deposit.trackingError}
-      <Banner title="Status temporarily unavailable" variant="warning">
-        <p>
-          The last confirmed deposit state is still shown. Tracking will retry
-          automatically.
-        </p>
-      </Banner>
+      <Banner title="Status unavailable. Trying again." variant="warning" />
     {/if}
 
     <dl class="deposit-status__details">

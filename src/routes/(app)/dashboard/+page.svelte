@@ -16,7 +16,12 @@
     HomeBalance,
   } from "$lib/containers/Home";
   import { addBasePath } from "$lib/navigation";
-  import { isSozuFunction, sozuContractsFor, sozuStore } from "$lib/sozu";
+  import {
+    isSozuFunction,
+    sozuContractsFor,
+    sozuPools,
+    sozuStore,
+  } from "$lib/sozu";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
   /** @type {import("./$types").PageData} */
@@ -78,7 +83,7 @@
     ? stakeInfo.amount.value + stakeInfo.amount.locked
     : null;
   $: ({ rows } = $activityState);
-  $: hasPastStaking = rows.some(isStakingRow);
+  $: hasPastStaking = rows.some((row) => isStakingRow(row, $sozuPools));
 
   // What is staked with Sozu, read only for an account that called a pool
   // of its: read, a pool its hub named is known from then on.

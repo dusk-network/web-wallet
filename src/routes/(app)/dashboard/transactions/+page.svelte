@@ -5,6 +5,7 @@
   import { appPath } from "$lib/containers/Shell";
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
+  import { profileLabel } from "$lib/wallet";
 
   /** @type {Set<string>} */
   const KINDS = new Set(["all", "bridge", "received", "sent", "staking"]);
@@ -37,6 +38,13 @@
   $: ({ url } = $page);
   $: ({ language } = $settingsStore);
   $: ({ networkName } = $networkStore);
+  $: ({ currentProfile, profiles } = $walletStore);
+  $: account = currentProfile
+    ? {
+        address: String(currentProfile.account),
+        label: profileLabel(profiles, currentProfile, networkName),
+      }
+    : null;
   $: kindParam = url.searchParams.get("kind") ?? "all";
   /** @type {import("$lib/activity/present").ActivityKindFilter} */
   let kind = "all";
@@ -50,6 +58,7 @@
 
 {#if isHistoryEnabled()}
   <HistoryView
+    {account}
     {kind}
     locale={language}
     network={networkName}

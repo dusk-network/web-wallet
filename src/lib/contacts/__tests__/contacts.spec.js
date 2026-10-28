@@ -7,6 +7,7 @@ import {
   getContact,
   listContacts,
   markContactNameChecked,
+  markContactNameMoved,
   removeContact,
   saveContact,
 } from "..";
@@ -96,6 +97,28 @@ describe("contacts", () => {
     });
     expect(getContact(shop.id)).toStrictEqual(renamed);
     expect(listContacts()).toHaveLength(2);
+  });
+
+  it("notes a name that moved on the contact, until it points back or the contact changes", () => {
+    const shop = saveContact({
+      address: ACCOUNT,
+      duskName: "alice-shop.dusk",
+      name: "Alice's shop",
+    });
+
+    expect(markContactNameMoved(shop, "elsewhere")).toMatchObject({
+      address: ACCOUNT,
+      movedTo: "elsewhere",
+    });
+    expect(markContactNameChecked(shop)).not.toHaveProperty("movedTo");
+
+    markContactNameMoved(shop, "");
+
+    expect(getContact(shop.id)?.movedTo).toBe("");
+    expect(
+      saveContact({ ...shop, name: "Alice's other shop" })
+    ).not.toHaveProperty("movedTo");
+    expect(markContactNameMoved(shop, "elsewhere")).toBeNull();
   });
 
   it("notes a name checked only on the contact as it was checked", () => {

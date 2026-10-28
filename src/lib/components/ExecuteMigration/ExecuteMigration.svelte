@@ -8,7 +8,7 @@
   } from "@mdi/js";
   import { waitForTransactionReceipt } from "@wagmi/core";
   import { isHex } from "viem";
-  import { AppAnchor, Banner } from "$lib/components";
+  import { AppAnchor } from "$lib/components";
   import { Button, Icon } from "$lib/dusk/components";
   import { account, wagmiConfig } from "$lib/web3/walletConnection";
   import { migrate } from "$lib/web3/migration";
@@ -63,32 +63,28 @@
   {#if !isLoading && !data && !error}
     <div class="migrate__execute-approval">
       <Icon path={mdiCheckDecagramOutline} size="large" />
-      <span>Approval successful!</span>
+      <span>Approved.</span>
     </div>
   {:else if error}
     <div class="migrate__execute-approval">
       <Icon path={mdiAlertOutline} size="large" />
-      <span>Action has been rejected on the connected wallet.</span>
+      <span>Rejected in your wallet.</span>
     </div>
   {:else if isLoading && !migrationHash}
     <div class="migrate__execute-approval">
       <Icon path={mdiTimerSand} size="large" />
-      <span>Migration in progress...</span>
+      <span>Migrating…</span>
     </div>
   {/if}
   {#if migrationHash && chain?.blockExplorers}
     <div class="migrate__execute-approval">
       <Icon path={mdiTimerSand} size="large" />
-      <span>Your migration request is being processed...</span>
-      <Banner title="This can take a few minutes" variant="info">
-        <p>
-          <AppAnchor
-            href={`${chain.blockExplorers.default.url}/tx/${migrationHash}`}
-            target="_blank"
-            rel="noopener noreferrer">Track the transaction</AppAnchor
-          >
-        </p>
-      </Banner>
+      <span>Confirming the migration…</span>
+      <AppAnchor
+        href={`${chain.blockExplorers.default.url}/tx/${migrationHash}`}
+        target="_blank"
+        rel="noopener noreferrer">Track the transaction</AppAnchor
+      >
     </div>
   {/if}
   {#if (isLoading || !data || error) && !migrationHash}

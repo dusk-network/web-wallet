@@ -29,16 +29,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say what the public, shielded and staking balances are on Home
 - Add a tab bar and a row of round actions on phones
 - Say at the top of a test network that test DUSK has no value
-- Add Contacts, kept on this device: a name for an address or a `.dusk` name, the last payment and Send, with a check that a contact's `.dusk` name still points to its address
+- Add Contacts, kept on this device: a name for an address or a `.dusk` name, the last activity and Send, with a check that a contact's `.dusk` name still points to its address, marked in the list and in Send once it moved
+- Offer the people paid as contacts while there are none
+- Name the wallet's own accounts in Send, without offering to save them as contacts
+- Send to a person found with Ctrl K on Enter, and copy their address with Shift+Enter
+- Say what a call to Dusk Domains did, name the contracts the wallet knows in a transaction's details, and show who sent it, its gas price, its nonce and a link to its block
 - Ask before sending to a contact's `.dusk` name when it points to another address now
 - Show a saved contact's name in the activity and the history, with its `.dusk` name second, and save a counterparty to the contacts from a transaction's details
 - Save a recipient to the contacts from Send, pick a contact there, and take "Did you mean …?" for a mistyped name the wallet knows
-- Stake any amount with Sozu, a third party's liquid staking, and unstake from it, with the stDUSK a stake gets and what is staked there
+- Stake with Sozu, a third party's liquid staking, from the least amount that gets stDUSK, and unstake from it, with the stDUSK a stake gets, Sozu's deposit fee and what is staked there
 - Compare native and liquid staking side by side on the Staking page, with neither picked
 - Add to a stake with Stake more
+- Show in the history the DuskEVM address a bridge deposit went to, and a withdrawal's amount and when it can be claimed
 
 ### Changed
 
+- Show each Bridge and Migrate route's time for this network: DuskEVM's from its chains, migrations' as measured, and none where none is known
+- Cut the Bridge and Migrate cards, reviews and results to what is needed to act
+- Show Sozu's fees as its contract gives them: its cut of rewards and deposits in the staking comparison, and the deposit fee in the liquid staking summary
 - Shorten and clarify the withdrawal statuses in the Bridge [#973]
 - Migrate DuskEVM bridge flows to the current contracts and the published
   `@dusk/evm-sdk` beta [#946], [#948]
@@ -59,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offer Unlock only once a wallet is kept in the browser
 - Name the eye button Show balances while balances are hidden
 - Title each withdrawal with its amount, show its status once, and say DuskEVM instead of L2
-- Swap the bridge direction with the ↑↓ button
+- Swap the bridge direction with the arrow between From and To
 - Offer only wallets when connecting to DuskEVM
 - Turn the transaction history on unless `VITE_FEATURE_TRANSACTION_HISTORY` is `false`
 - Fill the window instead of a fixed card, with a flow's buttons kept in view, above a phone's keyboard
@@ -68,15 +76,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show addresses and hashes in the system's code font
 - Show no money values or market data off mainnet
 - Send from one page, with the summary beside the form, a review on phones, and a button that says what it sends
+- Start Send with no amount, take one with at most 9 decimals as typed, with a decimal point or comma, and say what's wrong with it
+- Show a Total at Max that never reads more than the balance
+- Say times are in your local time, with each one's own offset on hover, and keep a row's time and Public or Shielded on phones
+- List a contact's activity by day
+- Keep contact names out of the CSV export unless asked, and then in their own column
+- Mark the rows not looked up yet in the export, say so above it, and leave undated rows out of a range of days
+- Say Name found for a .dusk name, not Verified name
+- Give each page its own title
+- Close a transaction's details with Escape, back on its row
+- Say in Send's summary which account it sends from, and on Receive what sharing an address shows
+- Darken the hint grey to meet the contrast minimum
+- Say on the Done screen what was sent to whom, with a link to its row in History, in a column with margins
+- Show what is staked with Sozu next to what is staked natively, the ways to stake before their comparison, and Unstake and Claim only once something is staked
+- Keep a contact's Save above a phone's keyboard, give Send a way back Home, and make phone tap targets 44 px
+- Offer Unlock first when a wallet is kept in this browser
 - Show amounts in one format, at most four decimals, and in full on hover, under review and in a transaction's details
 - Round a fee up to four decimals when it is the most it can cost, and to the nearest when it was paid
 - Show what is staked, its rewards and what can be staked on the Staking page, and why Unstake or Claim rewards can't be pressed
 - Stake natively from one page with the minimum up front and nothing filled in, without the node notice step, and offer liquid staking under the minimum
+- Show Bridge and Migrate as one card: From and To with their networks, the amount, what arrives, the route and one button, before an EVM wallet connects, with a way back Home
+- Call the chains Migrate takes DUSK from Ethereum and BNB Smart Chain
 
 ### Removed
 
 ### Fixed
 
+- Send nothing to Reown, WalletConnect or Coinbase until the Bridge or Migrate page opens, and leave out the Coinbase wallet SDKs and their telemetry
 - Stop transaction attempts when prerequisite synchronization fails or is cancelled [#953].
 - Prevent pending login migration or password setup from restoring reset wallet credentials [#953].
 - Show the public spendable balance on Send while no valid recipient is entered [#965]

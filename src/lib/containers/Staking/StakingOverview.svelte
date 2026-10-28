@@ -7,7 +7,7 @@
   import { AppAnchorButton, BalanceValue } from "$lib/components";
   import { goto } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
-  import { duskPerStDusk } from "$lib/sozu/amounts";
+  import { duskPerStDusk, feePercent } from "$lib/sozu/amounts";
 
   import ActivityPanel from "../Home/ActivityPanel.svelte";
   import { stakeActions } from "./stakeActions";
@@ -74,16 +74,13 @@
   $: hasLiquid =
     position !== null && (position.balance > 0n || position.stDusk > 0n);
   $: rate = duskPerStDusk(sozu.status?.pool ?? null);
+  // Sozu's fees, as its substrate gives them, where they could be read.
+  $: fees = sozu.status?.fees ?? null;
 
   /** @type {{ label: string, lux: bigint, stDusk?: bigint, sub?: string }[]} */
+  // What is staked comes first, natively and with Sozu.
   $: figures = [
-    { label: "Staked", lux: staked },
-    { label: "Rewards", lux: stakeInfo.reward },
-    {
-      label: "Available to stake",
-      lux: publicBalance,
-      sub: "From your public balance",
-    },
+    { label: hasLiquid ? "Staked natively" : "Staked", lux: staked },
     ...(hasLiquid && position
       ? [
           {
@@ -93,7 +90,15 @@
           },
         ]
       : []),
+    { label: "Rewards", lux: stakeInfo.reward },
+    {
+      label: "Available to stake",
+      lux: publicBalance,
+      sub: "From your public balance",
+    },
   ];
+  // Unstake and Claim show once there is something natively staked.
+  $: hasNative = staked > 0n || stakeInfo.reward > 0n;
 
   // A new stake earns from the block it becomes eligible at.
   $: eligibility = stakeInfo.amount?.eligibility ?? 0n;
@@ -130,18 +135,20 @@
 
         <div class="staking__actions">
           <div class="staking__buttons">
-            <Button
-              disabled={!actions.canUnstake}
-              on:click={() => goto("/dashboard/stake?flow=unstake")}
-              text="Unstake"
-              variant="secondary"
-            />
-            <Button
-              disabled={!actions.canClaim}
-              on:click={() => goto("/dashboard/stake?flow=claim")}
-              text="Claim rewards"
-              variant="secondary"
-            />
+            {#if hasNative}
+              <Button
+                disabled={!actions.canUnstake}
+                on:click={() => goto("/dashboard/stake?flow=unstake")}
+                text="Unstake"
+                variant="secondary"
+              />
+              <Button
+                disabled={!actions.canClaim}
+                on:click={() => goto("/dashboard/stake?flow=claim")}
+                text="Claim rewards"
+                variant="secondary"
+              />
+            {/if}
             {#if hasLiquid}
               <AppAnchorButton
                 href="/dashboard/stake?flow=liquid&action=unstake"
@@ -171,6 +178,23 @@
     </div>
 
     <h3 class="staking__choose">Choose how to stake</h3>
+
+    <div class="staking__start">
+      <AppAnchorButton
+        className="compare__go"
+        href="/dashboard/stake?flow=native"
+        text={hasStake ? "Stake more" : "Stake natively"}
+        variant="secondary"
+      />
+      {#if sozu.available}
+        <AppAnchorButton
+          className="compare__go"
+          href="/dashboard/stake?flow=liquid"
+          text="Stake with Sozu"
+          variant="secondary"
+        />
+      {/if}
+    </div>
 
     <table class="compare">
       <caption class="sr-only">The ways to stake, side by side</caption>
@@ -235,15 +259,27 @@
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
               {#if rate}
-                You get stDUSK. Each stDUSK is worth {formatDusk(rate, locale)}
-                DUSK and grows as rewards come in.
+                You get stDUSK. Each is worth {formatDusk(rate, locale)} DUSK now,
+                as Sozu's contract gives it, and follows Sozu's pool.
               {:else}
                 You get stDUSK, a token for your share of Sozu's pool. Its DUSK
-                value grows as rewards come in.
+                value follows the pool.
               {/if}
             </td>
           {/if}
         </tr>
+        {#if sozu.available && fees}
+          <tr>
+            <th scope="row">Fees</th>
+            <td data-way="Native staking">Network fee only</td>
+            <td data-way="Liquid staking (Sozu, third party)">
+              Sozu keeps {feePercent(fees.reward, locale)} of rewards · {feePercent(
+                fees.deposit,
+                locale
+              )} on deposits
+            </td>
+          </tr>
+        {/if}
         <tr>
           <th scope="row">Unstake</th>
           <td data-way="Native staking">Any time, with no waiting period</td>
@@ -274,29 +310,6 @@
           {/if}
         </tr>
       </tbody>
-      <tfoot>
-        <tr>
-          <td></td>
-          <td>
-            <AppAnchorButton
-              className="compare__go"
-              href="/dashboard/stake?flow=native"
-              text={hasStake ? "Stake more" : "Stake natively"}
-              variant="secondary"
-            />
-          </td>
-          {#if sozu.available}
-            <td>
-              <AppAnchorButton
-                className="compare__go"
-                href="/dashboard/stake?flow=liquid"
-                text="Stake with Sozu"
-                variant="secondary"
-              />
-            </td>
-          {/if}
-        </tr>
-      </tfoot>
     </table>
   </section>
 
@@ -523,8 +536,16 @@
     }
   }
 
-  .compare :global(.compare__go) {
+  .staking__start {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .staking__start :global(.compare__go) {
     width: 100%;
+    min-height: 44px;
   }
 
   .staking__side {
@@ -589,7 +610,6 @@
 
     .compare,
     .compare tbody,
-    .compare tfoot,
     .compare tr,
     .compare th,
     .compare td {
@@ -623,21 +643,6 @@
 
     .compare tbody tr {
       padding-bottom: 0.625rem;
-    }
-
-    .compare tfoot td {
-      border-top: 0 none;
-      padding-top: 0.375rem;
-      padding-bottom: 0.375rem;
-    }
-
-    .compare tfoot td:empty {
-      display: none;
-    }
-
-    .compare tfoot tr {
-      padding: 0.625rem 0;
-      border-top: 1px solid var(--calm-line);
     }
   }
 </style>

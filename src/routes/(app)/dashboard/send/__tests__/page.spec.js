@@ -4,7 +4,7 @@ import { get } from "svelte/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { getGasSettings } from "$lib/contracts";
-import { formatDusk, luxToDusk } from "$lib/dusk/currency";
+import { formatDusk, formatDuskPlain } from "$lib/dusk/currency";
 import { gasPriceStore, settingsStore } from "$lib/stores";
 
 import SendPage from "../+page.svelte";
@@ -163,7 +163,7 @@ describe("Send page", () => {
       get(gasPriceStore)
     );
     const fee = gasLimit * gasPrice;
-    const amount = getByRole("spinbutton", { name: "Amount" });
+    const amount = getByRole("textbox", { name: "Amount" });
 
     expect(available(container)).toHaveTextContent(
       /^Available •••• hidden DUSK from your public balance$/
@@ -177,7 +177,7 @@ describe("Send page", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    expect(amount).toHaveValue(luxToDusk(balance.unshielded.value - fee));
+    expect(amount).toHaveValue(formatDuskPlain(balance.unshielded.value - fee));
     expect(container.querySelector(".send__summary")).toHaveTextContent(
       /Amount [\d,.]+ DUSK/
     );

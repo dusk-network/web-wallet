@@ -68,9 +68,13 @@ vi.mock("$lib/activity", async (importOriginal) => {
 
 const POOL = "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
 
-/** Sozu as read on testnet: about 3.0751 DUSK a stDUSK. */
+/** Sozu as read on testnet: about 3.0751 DUSK a stDUSK, and its fees. */
 const SOZU_STATUS = {
   contracts: { hub: "bae8".padEnd(64, "0"), pool: POOL, stDusk: null },
+  fees: {
+    deposit: { denominator: 10_000n, numerator: 25n },
+    reward: { denominator: 100n, numerator: 10n },
+  },
   pool: { stake: 8_142_876_697_294_578n, supply: 2_647_997_731_233_173n },
   position: { balance: 0n, stDusk: 0n },
 };
@@ -171,10 +175,11 @@ describe("Staking", () => {
   it("says why Unstake and Claim rewards are off, without contradicting the history", async () => {
     withoutStake();
 
-    const { container, getByRole } = render(Staking);
+    const { container, queryByRole } = render(Staking);
 
-    expect(getByRole("button", { name: "Unstake" })).toBeDisabled();
-    expect(getByRole("button", { name: "Claim rewards" })).toBeDisabled();
+    // Nothing staked natively: no Unstake or Claim to grey out.
+    expect(queryByRole("button", { name: "Unstake" })).toBeNull();
+    expect(queryByRole("button", { name: "Claim rewards" })).toBeNull();
     expect(textOf(container.querySelector(".staking__actions"))).toContain(
       "Nothing staked yet, so there's nothing to unstake or claim."
     );
@@ -233,7 +238,7 @@ describe("Staking", () => {
       "If your node misses its turn, part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost)."
     );
     expect(rows[2][2]).toBe(
-      "You get stDUSK, a token for your share of Sozu's pool. Its DUSK value grows as rewards come in."
+      "You get stDUSK, a token for your share of Sozu's pool. Its DUSK value follows the pool."
     );
 
     // Nothing picked: two ways to go, neither one chosen.
@@ -255,8 +260,14 @@ describe("Staking", () => {
     await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
 
     expect(textOf(table.tBodies[0].rows[2].cells[2])).toBe(
-      "You get stDUSK. Each stDUSK is worth 3.0751 DUSK and grows as rewards come in."
+      "You get stDUSK. Each is worth 3.0751 DUSK now, as Sozu's contract gives it, and follows Sozu's pool."
     );
+    // And Sozu's fees, as its contract gives them on this network.
+    expect(Array.from(table.tBodies[0].rows[3].cells, textOf)).toStrictEqual([
+      "Fees",
+      "Network fee only",
+      "Sozu keeps 10% of rewards · 0.25% on deposits",
+    ]);
   });
 
   it("shows only native staking where Sozu isn't", async () => {
@@ -283,9 +294,22 @@ describe("Staking", () => {
 
     const { container, getByRole } = render(Staking);
 
+    // Next to what is staked natively, first.
     expect(
-      textOf(container.querySelectorAll(".staking__figures > div")[3])
+      Array.from(container.querySelectorAll(".staking__figures > div"), textOf)
+        .slice(0, 2)
+        .map((text) => text?.split(" ")[0])
+    ).toStrictEqual(["Staked", "With"]);
+    expect(
+      textOf(container.querySelectorAll(".staking__figures > div")[1])
     ).toBe("With Sozu 1,500 DUSK 487.8 stDUSK");
+    expect(
+      textOf(container.querySelectorAll(".staking__figures > div")[0])
+    ).toMatch(/^Staked natively /);
+    // The ways to stake come before their comparison.
+    expect(
+      Array.from(container.querySelectorAll(".staking__start a"), textOf)
+    ).toStrictEqual(["Stake more", "Stake with Sozu"]);
     expect(getByRole("link", { name: "Unstake from Sozu" })).toHaveAttribute(
       "href",
       "/some-base-path/dashboard/stake?flow=liquid&action=unstake"
@@ -400,8 +424,9 @@ describe("Staking", () => {
       target: { value: "100" },
     });
 
+    // For what's left once testnet's 0.25% deposit fee is off it.
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.5191 stDUSK, worth 100 DUSK now. stDUSK is Sozu's token for your share; its DUSK value grows as rewards come in."
+      "You get about 32.4378 stDUSK, at the rate Sozu's contract gives now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
     );
     expect(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })

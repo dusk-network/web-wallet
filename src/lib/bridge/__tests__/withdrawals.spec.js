@@ -35,6 +35,41 @@ const withdrawalTxHash = /** @type {`0x${string}`} */ (
   messagePassedLog.transactionHash
 );
 
+/**
+ * An `aggregate` reply as the contract writes it (rkyv 0.7): each Ok
+ * result's bytes, then one 16-byte slot per result, then the root. As in
+ * multicallFetch.spec.js.
+ *
+ * @param {{ Ok: Uint8Array }[]} results
+ */
+function reply(results) {
+  /**
+   * @param {number} n
+   * @param {number} to
+   */
+  const align = (n, to) => Math.ceil(n / to) * to;
+  const data = results.reduce((n, r) => n + r.Ok.length, 0);
+  const slots = align(data, 4);
+  const root = align(slots + 16 * results.length, 8);
+  const out = new Uint8Array(root + 16);
+  const view = new DataView(out.buffer);
+  let at = 0;
+
+  results.forEach((r, i) => {
+    const slot = slots + 16 * i;
+
+    out.set(r.Ok, at);
+    view.setInt32(slot + 4, at - (slot + 4), true);
+    view.setUint32(slot + 8, r.Ok.length, true);
+    at += r.Ok.length;
+  });
+  view.setBigUint64(root, 7n, true);
+  view.setInt32(root + 8, slots - (root + 8), true);
+  view.setUint32(root + 12, results.length, true);
+
+  return out;
+}
+
 describe("DuskEVM withdrawal helpers", () => {
   afterEach(() => {
     vi.doUnmock("$lib/stores");
@@ -477,19 +512,115 @@ describe("DuskEVM withdrawal helpers", () => {
     );
   });
 
-  it("reads the waiting period from the portal, or nothing", async () => {
-    const { portal, walletStore } = mockWithdrawalFinalization({
-      finalizePreflight: vi.fn(),
+  describe("a withdrawal's waits", () => {
+    const NODE = "https://node.example.test";
+    const PORTAL = "11".repeat(32);
+    const DGF = "22".repeat(32);
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    /** Drivers that read and answer JSON. */
+    const driver = /** @type {BridgeDriver} */ ({
+      decodeOutputFn: (_fn, bytes) => JSON.parse(decoder.decode(bytes)),
+      encodeInputFn: (_fn, json) => encoder.encode(json),
     });
-    portal.call.proofMaturityDelaySeconds.mockResolvedValue(u256(604_800));
-    const { loadWithdrawalWaitingPeriod } =
-      await import("$lib/bridge/withdrawals");
 
-    await expect(loadWithdrawalWaitingPeriod()).resolves.toBe(604_800n);
+    /** As DuskEVM testnet's on 27 Oct 2026: an output every 170 Dusk blocks. */
+    const ANSWERS = {
+      disputeGameFinalityDelaySeconds: u256(302_400),
+      findLatestGames: [
+        46_986_550, 46_984_850, 46_983_150, 46_979_750, 46_978_050, 46_976_350,
+      ].map((timestamp) => ({ timestamp })),
+      gameCount: u256(3_915),
+      proofMaturityDelaySeconds: u256(604_800),
+      respectedGameType: 8,
+    };
 
-    walletStore.useContract.mockRejectedValue(new Error("offline"));
+    async function timingModule() {
+      vi.resetModules();
+      vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", PORTAL);
+      vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", DGF);
 
-    await expect(loadWithdrawalWaitingPeriod()).resolves.toBeNull();
+      return await import("$lib/bridge/withdrawals");
+    }
+
+    it("are the Portal's delays, and how often outputs come from the latest games", async () => {
+      const { loadWithdrawalTiming } = await timingModule();
+      /** @type {string[]} */
+      const asked = [];
+      const fetch = vi.fn(async (/** @type {string} */ url, init) => {
+        const [, id, fn] = /contracts:([0-9a-f]+)\/(\w+)$/.exec(url) ?? [];
+
+        asked.push(
+          `${id === PORTAL ? "portal" : "dgf"}.${fn}(${decoder.decode(init.body)})`
+        );
+
+        return new Response(
+          JSON.stringify(ANSWERS[/** @type {keyof typeof ANSWERS} */ (fn)])
+        );
+      });
+
+      await expect(
+        loadWithdrawalTiming({
+          fetch: /** @type {typeof globalThis.fetch} */ (
+            /** @type {unknown} */ (fetch)
+          ),
+          loadDriver: async () => driver,
+          nodeUrl: NODE,
+        })
+      ).resolves.toStrictEqual({
+        finalitySeconds: 302_400,
+        maturitySeconds: 604_800,
+        // Five gaps, one twice as long: the middle one counts.
+        outputSeconds: 1_700,
+      });
+      // The latest six games of the type the Portal takes.
+      expect(asked.at(-1)).toBe(
+        `dgf.findLatestGames(${JSON.stringify([8, u256(3_914), u256(6)])})`
+      );
+    });
+
+    it("go to the node as one Multicall for Dusk query, then the games", async () => {
+      const { loadWithdrawalTiming } = await timingModule();
+      const { MULTICALL_CONTRACT_ID } =
+        await import("$lib/activity/multicallFetch");
+      const AGGREGATE = `${NODE}/on/contracts:${MULTICALL_CONTRACT_ID}/aggregate`;
+      const base = vi.fn(async (/** @type {string} */ url) =>
+        url === AGGREGATE
+          ? new Response(
+              reply(
+                [
+                  ANSWERS.proofMaturityDelaySeconds,
+                  ANSWERS.disputeGameFinalityDelaySeconds,
+                  ANSWERS.respectedGameType,
+                  ANSWERS.gameCount,
+                ].map((answer) => ({
+                  Ok: encoder.encode(JSON.stringify(answer)),
+                }))
+              )
+            )
+          : new Response(JSON.stringify(ANSWERS.findLatestGames))
+      );
+      const { createMulticallFetch } =
+        await import("$lib/activity/multicallFetch");
+
+      await expect(
+        loadWithdrawalTiming({
+          fetch: createMulticallFetch({
+            fetch: /** @type {typeof globalThis.fetch} */ (
+              /** @type {unknown} */ (base)
+            ),
+            nodeUrl: NODE,
+          }),
+          loadDriver: async () => driver,
+          nodeUrl: NODE,
+        })
+      ).resolves.toMatchObject({ outputSeconds: 1_700 });
+      expect(base.mock.calls.map(([url]) => url)).toStrictEqual([
+        AGGREGATE,
+        `${NODE}/on/contracts:${DGF}/findLatestGames`,
+      ]);
+    });
   });
 
   it("checks readiness for the wallet submitter rather than a third party", async () => {

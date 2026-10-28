@@ -3,15 +3,21 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { dataDrivers } from "@dusk/w3sper";
 
+import { createMulticallFetch } from "$lib/activity/multicallFetch";
+
 import {
   SOZU_FN,
   duskPerStDusk,
   encodeU64,
+  feePercent,
   isSozuCall,
+  leastSozuStake,
   noteSozuPool,
+  parseFeeRate,
   parsePool,
   readSozuStatus,
   sozuContractsFor,
+  sozuFee,
   stDuskFor,
 } from "..";
 import { sozuCall } from "../calls";
@@ -26,6 +32,41 @@ const RATE = {
   denominator: "2647997731233173",
   numerator: "8142876697294578",
 };
+
+/**
+ * An `aggregate` reply as Multicall for Dusk writes it (rkyv 0.7): each
+ * result's bytes, then one 16-byte slot per result, then the root. As in
+ * multicallFetch.spec.js.
+ *
+ * @param {Uint8Array[]} results
+ */
+function multicallReply(results) {
+  /**
+   * @param {number} n
+   * @param {number} to
+   */
+  const align = (n, to) => Math.ceil(n / to) * to;
+  const data = results.reduce((n, r) => n + r.length, 0);
+  const slots = align(data, 4);
+  const root = align(slots + 16 * results.length, 8);
+  const out = new Uint8Array(root + 16);
+  const view = new DataView(out.buffer);
+  let at = 0;
+
+  results.forEach((r, i) => {
+    const slot = slots + 16 * i;
+
+    out.set(r, at);
+    view.setInt32(slot + 4, at - (slot + 4), true);
+    view.setUint32(slot + 8, r.length, true);
+    at += r.length;
+  });
+  view.setBigUint64(root, 7n, true);
+  view.setInt32(root + 8, slots - (root + 8), true);
+  view.setUint32(root + 12, results.length, true);
+
+  return out;
+}
 
 /** @param {string} name */
 async function loadDriver(name) {
@@ -169,10 +210,49 @@ describe("Sozu's data drivers", () => {
   });
 });
 
+/** @param {string} hex */
+const fromHex = (hex) =>
+  Uint8Array.from(hex.match(/../g) ?? [], (b) => parseInt(b, 16));
+
+/** Sozu's fees on mainnet, as its substrate gave them on 27 Oct 2026. */
+const MAINNET_FEES = {
+  deposit: fromHex("01000000000000009001000000000000"),
+  reward: fromHex("0f000000000000006400000000000000"),
+};
+
+/** And on testnet: its rewards' fee is another. */
+const TESTNET_FEES = {
+  deposit: fromHex("19000000000000001027000000000000"),
+  reward: fromHex("0a000000000000006400000000000000"),
+};
+
+describe("Sozu's fees", () => {
+  it("decode from the substrate's two little-endian u64s, and read as a percentage and an amount", () => {
+    const deposit = parseFeeRate(MAINNET_FEES.deposit);
+    const reward = parseFeeRate(MAINNET_FEES.reward);
+
+    expect(deposit).toStrictEqual({ denominator: 400n, numerator: 1n });
+    expect(reward).toStrictEqual({ denominator: 100n, numerator: 15n });
+    expect([feePercent(deposit, "en"), feePercent(reward, "en")]).toStrictEqual(
+      ["0.25%", "15%"]
+    );
+    expect(feePercent(parseFeeRate(TESTNET_FEES.reward), "en")).toBe("10%");
+    // 0.25% of 1 DUSK; rounded up, as the pool takes it.
+    expect(sozuFee(1_000_000_000n, deposit)).toBe(2_500_000n);
+    expect(sozuFee(5n, deposit)).toBe(1n);
+    expect(() => parseFeeRate(new Uint8Array(8))).toThrow(RangeError);
+    // The least a stake gets stDUSK for, once the fee is off it.
+    const pool = parsePool(RATE);
+
+    expect(leastSozuStake(pool)).toBe(4n);
+    expect(leastSozuStake(pool, deposit)).toBe(5n);
+  });
+});
+
 describe("readSozuStatus", () => {
   /**
    * Drivers that read JSON and answer JSON, and a node that answers each
-   * read from `replies`.
+   * read from `replies`; the substrate's take a byte and give bytes.
    *
    * @param {Record<string, unknown>} replies By "<contract>/<fn>/<args>"
    */
@@ -187,11 +267,15 @@ describe("readSozuStatus", () => {
     };
     const fetch = vi.fn(async (/** @type {string} */ url, init) => {
       const [, id, fn] = /contracts:([0-9a-f]+)\/(\w+)$/.exec(url) ?? [];
-      const key = `${id}/${fn}/${decoder.decode(init.body)}`;
+      const body = new Uint8Array(init.body);
+      const key = `${id}/${fn}/${body.length === 1 ? `#${body[0]}` : decoder.decode(body)}`;
+      const answer = replies[key];
 
-      return key in replies
-        ? new Response(JSON.stringify(replies[key]))
-        : new Response("Unknown", { status: 500 });
+      return !(key in replies)
+        ? new Response("Unknown", { status: 500 })
+        : answer instanceof Uint8Array
+          ? new Response(answer.slice())
+          : new Response(JSON.stringify(answer));
     });
 
     return {
@@ -205,13 +289,17 @@ describe("readSozuStatus", () => {
 
   const NEW_POOL = "ee".repeat(32);
   const TOKEN = "dd".repeat(32);
+  const SUBSTRATE = "cc".repeat(32);
 
   it("reads the pool and the stDUSK token the hub names, and the account's balances there", async () => {
     const node = fakeNode({
       [`${HUB}/contract/"pool"`]: NEW_POOL,
       [`${HUB}/contract/"staked-dusk"`]: TOKEN,
+      [`${HUB}/contract/"substrate"`]: SUBSTRATE,
       [`${NEW_POOL}/balance_of/"${ACCOUNT}"`]: "1500000000000",
       [`${NEW_POOL}/exchange_rate/null`]: RATE,
+      [`${SUBSTRATE}/stake_fee_rate/#0`]: MAINNET_FEES.deposit,
+      [`${SUBSTRATE}/stake_fee_rate/#1`]: MAINNET_FEES.reward,
       [`${TOKEN}/balance_of/"${ACCOUNT}"`]: "487000000000",
     });
 
@@ -225,6 +313,10 @@ describe("readSozuStatus", () => {
       })
     ).resolves.toStrictEqual({
       contracts: { hub: HUB, pool: NEW_POOL, stDusk: TOKEN },
+      fees: {
+        deposit: { denominator: 400n, numerator: 1n },
+        reward: { denominator: 100n, numerator: 15n },
+      },
       pool: parsePool(RATE),
       position: { balance: 1_500_000_000_000n, stDusk: 487_000_000_000n },
     });
@@ -235,16 +327,85 @@ describe("readSozuStatus", () => {
     expect(node.spy.mock.calls.map(([url]) => url)).toStrictEqual([
       `https://one.example/on/contracts:${HUB}/contract`,
       `https://one.example/on/contracts:${HUB}/contract`,
+      `https://one.example/on/contracts:${HUB}/contract`,
       `https://one.example/on/contracts:${NEW_POOL}/exchange_rate`,
       `https://one.example/on/contracts:${NEW_POOL}/balance_of`,
       `https://one.example/on/contracts:${TOKEN}/balance_of`,
+      `https://one.example/on/contracts:${SUBSTRATE}/stake_fee_rate`,
+      `https://one.example/on/contracts:${SUBSTRATE}/stake_fee_rate`,
     ]);
+  });
+
+  it("reads the fees with the pool's figures, in one Multicall for Dusk query, and once a node", async () => {
+    const encoder = new TextEncoder();
+    const rate = encoder.encode(JSON.stringify(RATE));
+    const noBalance = encoder.encode(JSON.stringify("0"));
+    /** @type {number[]} */
+    const sizes = [];
+    const base = vi.fn(async (/** @type {string} */ _url, init) => {
+      const body = new Uint8Array(init.body);
+      const n = new DataView(body.buffer, body.byteOffset).getUint32(
+        body.length - 4,
+        true
+      );
+
+      sizes.push(n);
+
+      // The hub's three names, then the pool's figures with both fees.
+      return new Response(
+        n === 3
+          ? multicallReply(
+              [POOL, null, SUBSTRATE].map((id) =>
+                encoder.encode(JSON.stringify(id))
+              )
+            )
+          : multicallReply([
+              rate,
+              noBalance,
+              // The fees only until they're kept.
+              ...(n === 4 ? [TESTNET_FEES.deposit, TESTNET_FEES.reward] : []),
+            ])
+      );
+    });
+    const decoder = new TextDecoder();
+    const options = {
+      account: ACCOUNT,
+      contracts: { hub: HUB, pool: POOL },
+      fetch: createMulticallFetch({
+        fetch: /** @type {typeof globalThis.fetch} */ (
+          /** @type {unknown} */ (base)
+        ),
+        nodeUrl: "https://five.example",
+      }),
+      loadDriver: async () =>
+        /** @type {SozuDriver} */ ({
+          decodeOutputFn: (_fn, bytes) => JSON.parse(decoder.decode(bytes)),
+          encodeInputFn: (_fn, json) => encoder.encode(json),
+        }),
+      nodeUrl: "https://five.example",
+    };
+
+    // The rates follow the contract: testnet's reward fee is 10%, not mainnet's 15%.
+    await expect(readSozuStatus(options)).resolves.toMatchObject({
+      fees: {
+        deposit: { denominator: 10_000n, numerator: 25n },
+        reward: { denominator: 100n, numerator: 10n },
+      },
+    });
+    expect(sizes).toStrictEqual([3, 4]);
+
+    // Kept for this node, like the contracts the hub names: not read again.
+    await expect(readSozuStatus(options)).resolves.toMatchObject({
+      fees: { reward: { numerator: 10n } },
+    });
+    expect(sizes).toStrictEqual([3, 4, 2]);
   });
 
   it("uses the pool it knows when the hub names none, and asks the hub once a node", async () => {
     const node = fakeNode({
       [`${HUB}/contract/"pool"`]: null,
       [`${HUB}/contract/"staked-dusk"`]: null,
+      [`${HUB}/contract/"substrate"`]: null,
       [`${POOL}/balance_of/"${ACCOUNT}"`]: "0",
       [`${POOL}/exchange_rate/null`]: RATE,
     });
@@ -258,13 +419,14 @@ describe("readSozuStatus", () => {
 
     await expect(readSozuStatus(options)).resolves.toMatchObject({
       contracts: { pool: POOL, stDusk: null },
+      fees: null,
       position: { balance: 0n, stDusk: 0n },
     });
     await readSozuStatus(options);
 
     expect(
       node.spy.mock.calls.filter(([url]) => String(url).endsWith("/contract"))
-    ).toHaveLength(2);
+    ).toHaveLength(3);
   });
 
   it("fails when a read fails, and asks the hub again next time", async () => {
@@ -281,6 +443,6 @@ describe("readSozuStatus", () => {
       "Sozu's contract read failed: 500"
     );
     await expect(readSozuStatus(options)).rejects.toThrow();
-    expect(node.spy).toHaveBeenCalledTimes(4);
+    expect(node.spy).toHaveBeenCalledTimes(6);
   });
 });

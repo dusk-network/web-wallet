@@ -70,6 +70,57 @@ export function lastPayments(rows, context) {
 }
 
 /**
+ * @typedef {{
+ *   address: string,
+ *   amount: { exact: string, text: string },
+ *   day: string,
+ *   duskName: string | null,
+ * }} PaidPerson
+ */
+
+/**
+ * The people the history shows this account paid, newest first, to offer
+ * as contacts: public transfers that went through or are on their way, to
+ * an address that isn't a contact or one of the wallet's own.
+ *
+ * @param {ActivityRow[]} rows The history, newest first
+ * @param {{
+ *   context: import("$lib/activity/present").PresentContext,
+ *   limit?: number,
+ *   saved: Set<string>,
+ * }} options `saved`: the contacts' addresses and the wallet's own
+ * @returns {PaidPerson[]}
+ */
+export function peopleYouPaid(rows, { context, limit = 5, saved }) {
+  /** @type {Map<string, PaidPerson>} */
+  const people = new Map();
+
+  for (const row of rows) {
+    const p = describeRow(row, context);
+    const time = rowTime(row);
+    const to = p.counterparty;
+
+    if (
+      p.icon === "sent" &&
+      p.status !== "failed" &&
+      to &&
+      time !== null &&
+      !saved.has(to) &&
+      !people.has(to)
+    ) {
+      people.set(to, {
+        address: to,
+        amount: { exact: p.amount.exact, text: p.amount.text },
+        day: dayLabel(time, { locale: context.locale }),
+        duskName: row.toName ?? row.counterpartyName ?? null,
+      });
+    }
+  }
+
+  return [...people.values()].slice(0, limit);
+}
+
+/**
  * When a name was last checked, as "just now", "5 minutes ago" or a date.
  *
  * @param {number} at

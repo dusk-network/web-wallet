@@ -3,8 +3,13 @@
 <script>
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
-  import { fade } from "svelte/transition";
-  import { mdiArrowUpBoldBoxOutline, mdiListStatus } from "@mdi/js";
+  import {
+    mdiArrowDown,
+    mdiArrowLeft,
+    mdiArrowUpBoldBoxOutline,
+    mdiChevronDown,
+    mdiClockOutline,
+  } from "@mdi/js";
   import { DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT } from "@dusk/evm-sdk";
   import { formatUnits, parseUnits } from "viem";
   import {
@@ -15,26 +20,19 @@
   } from "@wagmi/core";
   import { Gas } from "@dusk/w3sper";
 
-  import {
-    AnchorButton,
-    Badge,
-    Button,
-    Select,
-    Textbox,
-    Throbber,
-    Wizard,
-    WizardStep,
-  } from "$lib/dusk/components";
+  import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import {
     AppAnchorButton,
     BalanceValue,
     Banner,
     DepositResult,
-    DuskIcon,
     GasSettings,
     OperationResult,
     ReviewAmount,
   } from "$lib/components";
+  import NetworkMark from "$lib/components/NetworkPicker/NetworkMark.svelte";
+  import NetworkPicker from "$lib/components/NetworkPicker/NetworkPicker.svelte";
+  import SwapCard from "$lib/components/SwapCard/SwapCard.svelte";
   import {
     account,
     duskEvm,
@@ -55,12 +53,24 @@
     trackWithdrawalTransaction,
   } from "$lib/bridge/withdrawalActivity";
   import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
-  import { withdrawalSentMessage } from "$lib/bridge/withdrawalLifecycle";
-  import { loadWithdrawalWaitingPeriod } from "$lib/bridge/withdrawals";
-  import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
+  import bridgeTimes from "$lib/bridge/bridgeTimes";
+  import {
+    DEPOSIT,
+    WITHDRAWAL,
+    aboutTime,
+    routeTime,
+    routeTimeText,
+  } from "$lib/bridge/routeTimes";
+  import {
+    formatDusk,
+    formatDuskExact,
+    formatFee,
+    formatTotal,
+  } from "$lib/dusk/currency";
   import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
   import { cleanNumberString, shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
+  import { addBasePath } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
 
   /**
@@ -105,9 +115,6 @@
 
   /** @type {string} */
   let lastWithdrawalTxHash = "";
-
-  /** @type {bigint | null} */
-  let withdrawalWaitingPeriod = null;
 
   /** @type {bigint} */
   let amountLux = 0n;
@@ -177,7 +184,7 @@
     return gas * price;
   }
 
-  /** Gets the fee and the waiting period a withdrawal's review shows. */
+  /** Gets the fee a withdrawal's review shows. */
   function prepareWithdrawalReview() {
     reviewRequests += 1;
 
@@ -194,9 +201,6 @@
         }
       })
       .catch(() => {});
-    void loadWithdrawalWaitingPeriod().then((seconds) => {
-      withdrawalWaitingPeriod = seconds;
-    });
   }
 
   /**
@@ -357,25 +361,68 @@
     return hash;
   }
 
-  /**
-   * Options used for selecting which network to bridge between in the UI.
-   *
-   * @type {Array<SelectOption>}
-   */
-  const baseOptions = [
-    { label: "DuskDS", value: "duskDs" },
-    { label: "DuskEVM", value: "duskEvm" },
+  /** The networks the bridge moves DUSK between. */
+  const NETWORKS = [
+    { id: "duskDs", name: "Dusk" },
+    { id: "duskEvm", name: "DuskEVM" },
   ];
 
-  // Default origin
-  let originNetwork = baseOptions[0].value;
+  /** @param {string} id */
+  const otherThan = (id) => (id === "duskDs" ? "duskEvm" : "duskDs");
 
-  $: destinationNetworkOptions = baseOptions.map((option) => ({
-    ...option,
-    disabled: option.value === originNetwork,
-  }));
-  $: destinationNetwork =
-    destinationNetworkOptions.find((o) => !o.disabled)?.value ?? "";
+  /**
+   * A route in one line, its time on this network first where it's known:
+   * the route row and the To list say the same.
+   *
+   * @param {RouteTime | null} time
+   * @param {string[]} rest
+   */
+  const routeLineOf = (time, rest) => {
+    const line = [routeTimeText(time), ...rest].filter(Boolean).join(" · ");
+
+    return `${line.charAt(0).toUpperCase()}${line.slice(1)}`;
+  };
+
+  // Default origin
+  let originNetwork = "duskDs";
+
+  /** Where the card is: the form, the review, or what came of it. */
+  /** @type {"form" | "result" | "review"} */
+  let step = "form";
+
+  /** What Send started: shown once the card moves on to it. */
+  /** @type {Promise<string>} */
+  let operation = Promise.resolve("");
+
+  function review() {
+    isEditing = false;
+
+    if (isWithdrawing) {
+      prepareWithdrawalReview();
+    }
+
+    step = "review";
+  }
+
+  function edit() {
+    isEditing = true;
+    step = "form";
+  }
+
+  function send() {
+    operation = bridge();
+    step = "result";
+  }
+
+  function primaryAction() {
+    if (!isConnected) {
+      modal.open();
+    } else if (primary.ready) {
+      review();
+    }
+  }
+
+  $: destinationNetwork = otherThan(originNetwork);
   $: amount = slashDecimals(cleanNumberString(amount, getDecimalSeparator()));
   $: fee = gasLimit * gasPrice;
 
@@ -395,7 +442,7 @@
     originNetwork === "duskDs" && destinationNetwork === "duskEvm";
   $: isWithdrawing =
     originNetwork === "duskEvm" && destinationNetwork === "duskDs";
-  $: ({ address: evmAddress } = $account);
+  $: ({ address: evmAddress, isConnected } = $account);
 
   // What the maximum and a review's fee are asked for: new whenever the
   // amount, the direction or a wallet changes, so that an answer for an
@@ -435,7 +482,48 @@
   $: isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   $: ({ address } = $account);
 
+  $: primary = !isConnected
+    ? { label: "Connect a DuskEVM wallet", ready: true }
+    : amountLux === 0n
+      ? { label: "Enter an amount", ready: false }
+      : !isBalanceSufficient
+        ? {
+            label:
+              isWithdrawing && !evmDuskBalance
+                ? "Checking the DuskEVM balance…"
+                : "Not enough DUSK",
+            ready: false,
+          }
+        : isDepositing && !isGasValid
+          ? { label: "Check the network fee", ready: false }
+          : { label: "Review bridge", ready: true };
+
+  // A review needs its EVM wallet: without one, back to the form, which
+  // offers to connect it.
+  $: if (step === "review" && !isConnected) {
+    edit();
+  }
+
+  // How long each way takes on this network: what its chains said, or none.
+  $: depositTime = routeTime(DEPOSIT, $bridgeTimes);
+  $: withdrawalTime = routeTime(WITHDRAWAL, $bridgeTimes);
+  $: depositLine = routeLineOf(depositTime, [
+    `fee up to ${formatFee(fee, language, { max: true })} DUSK`,
+  ]);
+  $: withdrawalLine = routeLineOf(withdrawalTime, ["two steps on Dusk"]);
+  $: routeLine = isDepositing ? depositLine : withdrawalLine;
+  $: toChoices = NETWORKS.map((network) => ({
+    ...network,
+    note: network.id === "duskDs" ? withdrawalLine : depositLine,
+  }));
+
+  // What's left once a withdrawal is sent: the proof, then the claim.
+  $: withdrawalNext = withdrawalTime
+    ? `Prove it on Dusk in ${aboutTime(withdrawalTime.report ?? 0)}, then claim it ${aboutTime(withdrawalTime.wait ?? 0)} later.`
+    : "Prove it on Dusk, then claim it.";
+
   onMount(() => {
+    void bridgeTimes.load();
     lastWithdrawalTxHash =
       localStorage.getItem(LAST_WITHDRAWAL_TX_HASH_KEY) ?? "";
 
@@ -450,506 +538,380 @@
   $: ({ language } = $settingsStore);
 </script>
 
-<article class="bridge">
-  <header class="bridge__header">
-    <h3 class="h4">Bridge</h3>
-    <AppAnchorButton
-      href={withdrawalStatusHref()}
-      text="Activity"
-      variant="tertiary"
-      icon={{ path: mdiListStatus }}
-    />
-  </header>
+<SwapCard label="Bridge">
+  <div class="swap-top" slot="top">
+    <nav aria-label="Bridge and activity" class="swap-tabs">
+      <a
+        aria-current="page"
+        class="swap-tab"
+        href={addBasePath("/dashboard/bridge")}>Bridge</a
+      >
+      <a class="swap-tab" href={addBasePath(withdrawalStatusHref())}>Activity</a
+      >
+    </nav>
+  </div>
 
-  <aside class="bridge__balances">
-    <dl class="balances">
-      <dt class="balances__token">DuskDS</dt>
-      <dd class="balances__balance">
-        <BalanceValue
-          exact={formatDuskExact(unshieldedBalance, language)}
-          value={formatDusk(unshieldedBalance, language)}
+  {#if step === "form"}
+    <div class="swap-panel">
+      <div class="swap-panel__head">
+        <span class="swap-panel__label">From</span>
+        <NetworkPicker
+          choices={NETWORKS}
+          on:pick={({ detail }) => {
+            originNetwork = detail;
+          }}
+          side="From"
+          title="Where it comes from"
+          value={originNetwork}
         />
-      </dd>
-      <dt class="balances__token">DuskEVM</dt>
-      <dd class="balances__balance">
-        {#if evmDuskBalance}
-          <BalanceValue
-            exact={formatDuskExact(evmLux(evmDuskBalance), language)}
-            value={formatDusk(evmLux(evmDuskBalance), language)}
-          />
-        {:else}
-          <Throbber size={16} />
-        {/if}
-        {#if incomingDepositLux > 0n}
-          <small>
-            + <BalanceValue
+      </div>
+      <div class="swap-amount">
+        <label class="sr-only" for="bridge-amount">Amount</label>
+        <input
+          aria-describedby="bridge-balance-label bridge-balance"
+          aria-invalid={amount !== "" && !isBalanceSufficient}
+          autocomplete="off"
+          bind:value={amount}
+          id="bridge-amount"
+          inputmode="decimal"
+          name="destination-amount"
+          placeholder="0"
+          spellcheck="false"
+          type="text"
+        />
+        <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
+      </div>
+      <div class="swap-foot">
+        <span id="bridge-balance-label"
+          >{isWithdrawing ? "DuskEVM balance:" : "Public balance:"}</span
+        >
+        <span class="swap-foot__value">
+          <span id="bridge-balance">
+            {#if !isWithdrawing}
+              <BalanceValue
+                exact={formatDuskExact(unshieldedBalance, language)}
+                value={formatDusk(unshieldedBalance, language)}
+              /> DUSK
+            {:else if evmDuskBalance}
+              <BalanceValue
+                exact={formatDuskExact(evmLux(evmDuskBalance), language)}
+                value={formatDusk(evmLux(evmDuskBalance), language)}
+              /> DUSK
+            {:else}
+              {isConnected ? "checking" : "connect a wallet to see it"}
+            {/if}
+          </span>
+          <button
+            class="swap-mini"
+            disabled={isWithdrawing && !evmDuskBalance}
+            on:click={setMaxAmount}
+            type="button">Max</button
+          >
+        </span>
+      </div>
+      {#if isWithdrawing && evmAddress}
+        <p class="swap-recipient">
+          from your DuskEVM account <b title={evmAddress}
+            >{shortenAddress(evmAddress)}</b
+          >
+          ·
+          <button
+            aria-label={`DuskEVM account ${evmAddress}: disconnect or change wallet`}
+            class="swap-link"
+            on:click={() => modal.open()}
+            type="button">Change</button
+          >
+        </p>
+      {/if}
+      {#if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
+        <p class="swap-error" role="alert">
+          {isDepositing
+            ? "Your public balance must cover the amount and the fee."
+            : evmDuskBalance
+              ? "Your DuskEVM balance must cover the amount and its gas."
+              : "Checking your DuskEVM balance…"}
+        </p>
+      {/if}
+    </div>
+
+    <div class="swap-flip">
+      <button
+        aria-label="Swap From and To"
+        class="swap-flip__button"
+        on:click={() => {
+          originNetwork = destinationNetwork;
+        }}
+        type="button"><Icon path={mdiArrowDown} /></button
+      >
+    </div>
+
+    <div class="swap-panel">
+      <div class="swap-panel__head">
+        <span class="swap-panel__label">To</span>
+        <NetworkPicker
+          choices={toChoices}
+          on:pick={({ detail }) => {
+            originNetwork = otherThan(detail);
+          }}
+          side="To"
+          title="Where it goes"
+          value={destinationNetwork}
+        />
+      </div>
+      <div class="swap-amount">
+        <output class:swap-amount__empty={amountLux === 0n} for="bridge-amount"
+          >{amountLux === 0n
+            ? "0"
+            : formatDuskExact(amountLux, language)}</output
+        >
+        <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
+      </div>
+      <div class="swap-foot">
+        <span>You receive</span>
+        {#if isDepositing && incomingDepositLux > 0n}
+          <span class="swap-foot__value"
+            >+ <BalanceValue
               exact={formatDuskExact(incomingDepositLux, language)}
               value={formatDusk(incomingDepositLux, language)}
-            /> incoming
-          </small>
+            /> DUSK on its way</span
+          >
         {/if}
-      </dd>
-      {#if address}
-        <dt class="balances__token">DuskEVM account</dt>
-        <dd class="balances__balance">
-          <!-- Opens the connection's account view, to disconnect it. -->
+      </div>
+      {#if isWithdrawing}
+        <p class="swap-recipient">to your public balance on Dusk</p>
+      {:else if evmAddress}
+        <p class="swap-recipient">
+          to your DuskEVM account <b title={evmAddress}
+            >{shortenAddress(evmAddress)}</b
+          >
+          ·
           <button
-            aria-label={`DuskEVM account ${address}: disconnect or change wallet`}
-            class="balances__account"
-            data-tooltip-id="main-tooltip"
-            data-tooltip-text="Disconnect or change wallet"
+            aria-label={`DuskEVM account ${evmAddress}: disconnect or change wallet`}
+            class="swap-link"
             on:click={() => modal.open()}
-            title={address}
-            type="button">{shortenAddress(address)}</button
+            type="button">Change</button
           >
-        </dd>
+        </p>
       {/if}
-    </dl>
-  </aside>
+    </div>
 
-  <div class="operation">
-    <Wizard steps={3} let:key>
-      <WizardStep
-        step={0}
-        {key}
-        backButton={{
-          disabled: false,
-          href: "/dashboard",
-          isAnchor: true,
-        }}
-        nextButton={{
-          action: () => {
-            isEditing = false;
-
-            if (isWithdrawing) {
-              prepareWithdrawalReview();
-            }
-          },
-          disabled: isNextButtonDisabled,
-        }}
+    <details class="swap-route">
+      <summary
+        ><Icon path={mdiClockOutline} /><span>{routeLine}</span><Icon
+          className="swap-route__chevron"
+          path={mdiChevronDown}
+        /></summary
       >
-        <div in:fade|global class="operation__bridge">
-          <fieldset class="operation__fieldset">
-            <p class="operation__label">From</p>
-
-            <div class="operation__input-wrapper">
-              <Select
-                bind:value={originNetwork}
-                name="origin-network"
-                options={baseOptions}
-              />
-            </div>
-
-            <div class="operation__swap">
-              <button
-                aria-label="Swap the direction"
-                class="operation__swap-button"
-                data-tooltip-id="main-tooltip"
-                data-tooltip-text="Swap the direction"
-                on:click={() => {
-                  originNetwork = destinationNetwork;
-                }}
-                type="button">↑↓</button
-              >
-            </div>
-
-            <p class="operation__label">To</p>
-
-            <div class="operation__input-wrapper">
-              <Select
-                bind:value={destinationNetwork}
-                name="destination-network"
-                options={destinationNetworkOptions}
-              />
-            </div>
-
-            <div class="operation__amount-wrapper">
-              <label class="operation__label" for="destination-amount"
-                >Amount</label
-              >
-              <Button
-                disabled={isWithdrawing && !evmDuskBalance}
-                on:click={setMaxAmount}
-                size="small"
-                text="Use max"
-                variant="tertiary"
-              />
-            </div>
-
-            <div class="operation__input-wrapper">
-              <Textbox
-                aria-describedby="destination-amount-available"
-                className="operation__input-field"
-                required
-                type="text"
-                id="destination-amount"
-                name="destination-amount"
-                bind:value={amount}
-              />
-              <DuskIcon />
-            </div>
-
-            <p class="operation__available" id="destination-amount-available">
-              Available on {isWithdrawing ? "DuskEVM" : "DuskDS"}:
-              {#if !isWithdrawing}
-                <BalanceValue
-                  exact={formatDuskExact(unshieldedBalance, language)}
-                  value={formatDusk(unshieldedBalance, language)}
-                />
-                DUSK
-              {:else if evmDuskBalance}
-                <BalanceValue
-                  exact={formatDuskExact(evmLux(evmDuskBalance), language)}
-                  value={formatDusk(evmLux(evmDuskBalance), language)}
-                /> DUSK
-              {:else}
-                checking
-              {/if}
-            </p>
-
-            {#if amount !== ""}
-              {#if isDepositing && !hasEnoughUnshielded}
-                <Banner title="Insufficient balance" variant="warning">
-                  <p>
-                    Your <b>public</b> balance must cover the amount
-                    <i>plus</i> the fee.
-                  </p>
-                </Banner>
-              {:else if isWithdrawing && !evmDuskBalance}
-                <Banner title="Checking balance" variant="info">
-                  <p>Fetching your <b>DuskEVM</b> balance…</p>
-                </Banner>
-              {:else if isWithdrawing && evmDuskBalance && !hasEnoughEvm}
-                <Banner title="Insufficient balance" variant="warning">
-                  <p>
-                    Your <b>DuskEVM</b> balance must cover the amount
-                    <i>plus</i> gas.
-                  </p>
-                </Banner>
-              {/if}
-            {/if}
-          </fieldset>
-          {#if isDepositing}
-            <GasSettings
-              {fee}
-              limit={gasLimit}
-              limitLower={gasLimits.gasLimitLower}
-              limitUpper={gasLimits.gasLimitUpper}
-              price={gasPrice}
-              priceLower={gasLimits.gasPriceLower}
-              on:gasSettings={(event) => {
-                gasPrice = event.detail.price;
-                gasLimit = event.detail.limit;
-              }}
-            />
-          {/if}
-        </div>
-      </WizardStep>
-      <WizardStep
-        step={1}
-        {key}
-        backButton={{
-          action: () => {
-            isEditing = true;
-          },
-        }}
-        nextButton={{
-          disabled: isNextButtonDisabled,
-          icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-          label: "Send",
-          variant: "primary",
-        }}
-      >
-        <div in:fade|global class="operation__bridge">
-          <Badge
-            className="operation__review-notice"
-            text="Review transaction"
-            variant="warning"
-          />
-          <ReviewAmount
-            label="Amount"
-            value={formatDuskExact(amountLux, language)}
-          />
-          <dl class="operation__review-transaction">
-            <dt class="review-transaction__label">
-              <span>From</span>
-            </dt>
-            <dd class="operation__review-address">
-              <span>
-                {isDepositing ? unshieldedAddress : address}
-              </span>
-            </dd>
-          </dl>
-          <dl class="operation__review-transaction">
-            <dt class="review-transaction__label">
-              <span>To</span>
-            </dt>
-            <dd class="operation__review-address">
-              <span>
-                {isDepositing ? address : unshieldedAddress}
-              </span>
-            </dd>
-          </dl>
-          {#if isDepositing}
-            <ReviewAmount
-              label="Network fee (at most)"
-              value={formatFee(fee, language, { max: true })}
-            />
-            <ReviewAmount
-              label="Total (at most)"
-              value={formatFee(totalDepositLux, language, { max: true })}
-            />
-            <Banner
-              title="The fee is paid from your public balance."
-              variant="info"
-            />
-          {:else}
-            {#if withdrawalFeeWei !== null}
-              <ReviewAmount
-                label="Network fee (about)"
-                value={formatFee(
-                  withdrawalFeeWei / EVM_TO_LUX_SCALE_FACTOR,
-                  language
-                )}
-              />
-            {/if}
-            <Banner
-              title={withdrawalSentMessage(withdrawalWaitingPeriod)}
-              variant="info"
-            >
-              <p>
-                This fee is paid from your DuskEVM balance. Each step on Dusk
-                takes a small fee from your public balance.
-              </p>
-            </Banner>
-          {/if}
-        </div>
-      </WizardStep>
-      <WizardStep step={2} {key} showNavigation={false}>
+      <dl>
         {#if isDepositing}
-          <DepositResult operation={bridge()} />
+          <div>
+            <dt>Steps</dt>
+            <dd>One, in this wallet</dd>
+          </div>
+          <div>
+            <dt>Leaves your public balance</dt>
+            <dd>
+              up to {formatFee(totalDepositLux, language, { max: true })} DUSK
+            </dd>
+          </div>
         {:else}
-          <OperationResult
-            errorMessage="Bridging failed"
-            operation={bridge()}
-            pendingMessage="Processing transaction"
-            successMessage="Withdrawal sent"
-          >
-            <svelte:fragment slot="success-content" let:result={hash}>
-              <p>{withdrawalSentMessage(withdrawalWaitingPeriod)}</p>
-              {#if hash}
-                <AnchorButton
-                  href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}
-                  text="View in Dusk explorer"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                />
-                <AppAnchorButton
-                  href={withdrawalStatusHref(hash)}
-                  text="Track withdrawal"
-                  variant="tertiary"
-                />
-              {/if}
-            </svelte:fragment>
-          </OperationResult>
+          <div>
+            <dt>Steps</dt>
+            <dd>Send on DuskEVM, then prove and claim on Dusk</dd>
+          </div>
+          <div>
+            <dt>Network fees</dt>
+            <dd>
+              On DuskEVM, as your EVM wallet shows, and a small fee for each
+              step on Dusk
+            </dd>
+          </div>
         {/if}
-      </WizardStep>
-    </Wizard>
-  </div>
-</article>
+      </dl>
+      {#if isDepositing}
+        <div class="bridge__gas">
+          <GasSettings
+            {fee}
+            limit={gasLimit}
+            limitLower={gasLimits.gasLimitLower}
+            limitUpper={gasLimits.gasLimitUpper}
+            price={gasPrice}
+            priceLower={gasLimits.gasPriceLower}
+            on:gasSettings={(event) => {
+              gasPrice = event.detail.price;
+              gasLimit = event.detail.limit;
+            }}
+          />
+        </div>
+      {/if}
+      <p class="swap-route__note">
+        <b>Public on Dusk and DuskEVM, and linked:</b> your public account, the DuskEVM
+        account and the amount.
+      </p>
+    </details>
+
+    <div class="swap-cta">
+      <Button
+        disabled={!primary.ready}
+        on:click={primaryAction}
+        text={primary.label}
+        variant="primary"
+      />
+    </div>
+  {:else if step === "review"}
+    <div class="bridge-review">
+      <h2 class="bridge-review__title">Review</h2>
+      <ReviewAmount
+        label="Amount"
+        value={formatDuskExact(amountLux, language)}
+      />
+      <dl class="bridge-review__ends">
+        <div>
+          <dt>From</dt>
+          <dd>
+            <span>{isDepositing ? "Your public account" : "DuskEVM"}</span>
+            <span class="bridge-review__address"
+              >{isDepositing ? unshieldedAddress : address}</span
+            >
+          </dd>
+        </div>
+        <div>
+          <dt>To</dt>
+          <dd>
+            <span>{isDepositing ? "DuskEVM" : "Your public account"}</span>
+            <span class="bridge-review__address"
+              >{isDepositing ? address : unshieldedAddress}</span
+            >
+          </dd>
+        </div>
+      </dl>
+      {#if isDepositing}
+        <ReviewAmount
+          label="Network fee (at most)"
+          value={formatFee(fee, language, { max: true })}
+        />
+        <ReviewAmount
+          label="Total (at most)"
+          value={formatTotal(totalDepositLux, unshieldedBalance, language)}
+        />
+      {:else}
+        {#if withdrawalFeeWei !== null}
+          <ReviewAmount
+            label="Network fee (about)"
+            value={formatFee(
+              withdrawalFeeWei / EVM_TO_LUX_SCALE_FACTOR,
+              language
+            )}
+          />
+        {/if}
+        <Banner title={withdrawalNext} variant="info">
+          <p>Each step on Dusk takes a small fee from your public balance.</p>
+        </Banner>
+      {/if}
+      <div class="bridge-review__actions">
+        <Button
+          icon={{ path: mdiArrowLeft }}
+          on:click={edit}
+          text="Back"
+          variant="secondary"
+        />
+        <Button
+          disabled={isNextButtonDisabled || !isConnected}
+          icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
+          on:click={send}
+          text="Send"
+          variant="primary"
+        />
+      </div>
+    </div>
+  {:else if isDepositing}
+    <div class="bridge-result">
+      <DepositResult {operation} />
+    </div>
+  {:else}
+    <div class="bridge-result">
+      <OperationResult
+        errorMessage="Bridging failed"
+        {operation}
+        pendingMessage="Processing transaction"
+        successMessage="Withdrawal sent"
+      >
+        <svelte:fragment slot="success-content" let:result={hash}>
+          <p>{withdrawalNext}</p>
+          {#if hash}
+            <AnchorButton
+              href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}
+              text="View in Dusk explorer"
+              rel="noopener noreferrer"
+              target="_blank"
+            />
+            <AppAnchorButton
+              href={withdrawalStatusHref(hash)}
+              text="Track withdrawal"
+              variant="tertiary"
+            />
+          {/if}
+        </svelte:fragment>
+      </OperationResult>
+    </div>
+  {/if}
+</SwapCard>
 
 <style lang="postcss">
-  .bridge {
-    border-radius: 1.25em;
-    background: var(--surface-color);
-    display: flex;
-    flex-direction: column;
-    gap: var(--default-gap);
-    padding: 1.25em;
-
-    &__header {
-      align-items: center;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      justify-content: space-between;
-    }
-
-    &__balances {
-      display: flex;
-      padding: 1em 1.25em;
-      flex-direction: column;
-      justify-content: center;
-      align-items: flex-start;
-      gap: var(--medium-gap);
-      align-self: stretch;
-
-      border-radius: var(--fieldset-border-radius);
-      background: var(--fieldset-background-color);
-    }
+  .bridge__gas {
+    margin: 0 0.5rem 0.5rem;
   }
 
-  .balances {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 0.25rem 1rem;
-    align-items: baseline;
+  .bridge-review,
+  .bridge-result {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem;
+  }
+
+  .bridge-review__title {
     margin: 0;
-    width: 100%;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
 
-    &__token {
-      font-weight: 500;
-    }
+  .bridge-review__ends {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
 
-    &__balance {
-      align-items: flex-end;
+    & > div {
       display: flex;
       flex-direction: column;
       gap: 0.25rem;
+    }
+
+    & dt {
+      color: var(--calm-muted);
+      font-size: 0.8125rem;
+    }
+
+    & dd {
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
       margin: 0;
-      overflow-wrap: anywhere;
-      text-align: right;
-
-      & small {
-        color: var(--secondary-text-color);
-        font-size: 0.75rem;
-      }
     }
   }
 
-  .operation {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-
-    &__fieldset {
-      display: flex;
-      padding: 1em 1.25em;
-      flex-direction: column;
-      justify-content: center;
-      align-items: flex-start;
-      gap: var(--medium-gap);
-      align-self: stretch;
-
-      border-radius: var(--fieldset-border-radius);
-      background: var(--fieldset-background-color);
-    }
-
-    &__input-wrapper {
-      column-gap: var(--default-gap);
-      display: flex;
-      align-items: center;
-      width: 100%;
-    }
-
-    &__review-address {
-      background-color: var(--surface-soft-color);
-      border: 1px solid var(--surface-border-color);
-      border-radius: var(--control-border-radius-size);
-      font-family: var(--mono-font-family);
-      font-size: 0.875rem;
-      padding: 0.75em 1em;
-      width: 100%;
-      line-break: anywhere;
-    }
-
-    &__review-transaction {
-      display: flex;
-      flex-direction: column;
-      gap: 0.625em;
-    }
-
-    &__bridge {
-      display: flex;
-      flex-direction: column;
-      gap: 1.2em;
-    }
-
-    .review-transaction__label {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--small-gap);
-    }
-
-    :global(&__review-notice) {
-      text-align: center;
-    }
-
-    & > :global(.operation__operation-button) {
-      width: 100%;
-      text-align: left;
-    }
+  .bridge-review__address {
+    color: var(--calm-muted);
+    font-family: var(--mono-font-family, monospace);
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
   }
 
-  .operation__swap {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    border-top: 1px solid var(--divider-color-primary);
-    margin: var(--default-gap) 0;
-    height: 1px;
-  }
-
-  .operation__swap-button {
-    position: relative;
-    top: -1.4em;
-    min-height: 44px;
-    padding: 0 1.25em;
-    border: 1px solid var(--control-secondary-border-color);
-    border-radius: 2em;
-    background-color: var(--divider-background-color);
-    color: var(--on-surface-color);
-    font: inherit;
-    cursor: pointer;
-    transition: border-color 0.2s ease;
-
-    &:hover {
-      border-color: var(--control-secondary-border-color-hover);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--secondary-color);
-      outline-offset: 2px;
-    }
-  }
-
-  .operation__amount-wrapper {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-  }
-
-  .operation__available {
-    color: var(--muted-color);
-    font-size: 0.875em;
-  }
-
-  .balances__account {
-    all: unset;
-    position: relative;
-    cursor: pointer;
-    font-family: var(--mono-font-family);
-    font-size: 0.875em;
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-
-    &:focus-visible {
-      outline: 2px solid var(--secondary-color);
-      outline-offset: 2px;
-    }
-  }
-
-  /* A larger tap area on phones, as for the other small controls. */
-  @media (max-width: 30rem) {
-    .balances__account::before {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: max(100%, 44px);
-      height: max(100%, 44px);
-      transform: translate(-50%, -50%);
-    }
+  .bridge-review__actions {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
   }
 </style>
