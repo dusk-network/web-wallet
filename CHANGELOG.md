@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show Sozu's fees in liquid staking: on deposits, on rewards, and none to unstake
 - Say which `.dusk` name a registration registered, in the history and its details
 - Say in a stake with Sozu's details what stDUSK it got
-- Link the Terms of Use and the Privacy Policy under Settings › Support
+- Link the Terms of use and the Privacy policy under Settings › Support
 - Show under the total balance what is staked, natively and with Sozu
 - Show the exact most a transaction can cost beside its gas limit and price
 - Say about what native staking and Sozu pay a year where you choose how to stake

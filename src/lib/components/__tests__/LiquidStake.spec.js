@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 
 import { LiquidStake } from "..";
 
@@ -93,15 +93,23 @@ describe("LiquidStake", () => {
     baseProps.recheck.mockClear();
   });
 
-  it("says Sozu, a third party, holds what is staked here", () => {
+  it("names Sozu, a third party, with its site and no more", () => {
     const { container, getByRole } = render(LiquidStake, baseProps);
 
+    // The terms are Dusk's own, linked under Settings › Support: none here.
     expect(textOf(container.querySelector(".liquid-stake__intro"))).toBe(
-      "Sozu third party Sozu, not Dusk, holds the DUSK you stake here and returns it under Sozu's own rules: sozu.fi."
+      "Sozu third party sozu.fi"
     );
+    expect(
+      within(
+        /** @type {HTMLElement} */ (
+          container.querySelector(".liquid-stake__who")
+        )
+      ).getByRole("link", { name: "sozu.fi" })
+    ).toHaveAttribute("href", "https://sozu.fi/");
     expect(getByRole("link", { name: "sozu.fi" })).toHaveAttribute(
-      "href",
-      "https://sozu.fi/"
+      "target",
+      "_blank"
     );
     expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
       "Any amount, no node needed You get stDUSK, a token for your share of Sozu's pool."

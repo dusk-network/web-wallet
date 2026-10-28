@@ -257,6 +257,8 @@ describe("Staking", () => {
     expect(rows[4][1]).toBe(
       "If your node misses its turn, part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost)."
     );
+    // Sozu's own site, with no terms of the wallet's about it.
+    expect(rows[4][2]).toBe("sozu.fi");
     // stDUSK's worth isn't promised to rise: a penalty can lower it.
     expect(rows[2][2]).toBe(
       "You get stDUSK, a token for your share of Sozu's pool. Its worth usually rises with rewards, but can fall with a penalty."

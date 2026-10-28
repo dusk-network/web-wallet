@@ -418,7 +418,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           rel="noopener noreferrer"
           target="_blank"
         >
-          Terms of Use
+          Terms of use
           <!---->
         </a>
         <!---->
@@ -429,7 +429,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
           rel="noopener noreferrer"
           target="_blank"
         >
-          Privacy Policy
+          Privacy policy
           <!---->
         </a>
         <!---->
@@ -934,7 +934,7 @@ exports[`Settings > should render the settings page displaying the status of the
           rel="noopener noreferrer"
           target="_blank"
         >
-          Terms of Use
+          Terms of use
           <!---->
         </a>
         <!---->
@@ -945,7 +945,7 @@ exports[`Settings > should render the settings page displaying the status of the
           rel="noopener noreferrer"
           target="_blank"
         >
-          Privacy Policy
+          Privacy policy
           <!---->
         </a>
         <!---->
@@ -1433,7 +1433,7 @@ exports[`Settings > should render the settings page displaying the status of the
           rel="noopener noreferrer"
           target="_blank"
         >
-          Terms of Use
+          Terms of use
           <!---->
         </a>
         <!---->
@@ -1444,7 +1444,7 @@ exports[`Settings > should render the settings page displaying the status of the
           rel="noopener noreferrer"
           target="_blank"
         >
-          Privacy Policy
+          Privacy policy
           <!---->
         </a>
         <!---->
@@ -2012,7 +2012,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
           rel="noopener noreferrer"
           target="_blank"
         >
-          Terms of Use
+          Terms of use
           <!---->
         </a>
         <!---->
@@ -2023,7 +2023,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
           rel="noopener noreferrer"
           target="_blank"
         >
-          Privacy Policy
+          Privacy policy
           <!---->
         </a>
         <!---->
