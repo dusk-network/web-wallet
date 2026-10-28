@@ -25,23 +25,45 @@ const FEES = {
 /**
  * @param {Partial<SozuStatus["position"]>} position
  * @param {SozuFees | null} [fees]
+ * @param {SozuFlags | null} [flags]
  */
-const statusWith = (position = {}, fees = FEES) => ({
+const statusWith = (position = {}, fees = FEES, flags = null) => ({
   contracts: { hub: "aa".repeat(32), pool: POOL, stDusk: "dd".repeat(32) },
   fees,
+  flags,
   pool: { stake: 8_142_876_697_294_578n, supply: 2_647_997_731_233_173n },
   position: { balance: 0n, stDusk: 0n, ...position },
+});
+
+/**
+ * Each action's gas, as the staking page gives it: a stake 5,000,000 and a
+ * warning under 2,500,000; an unstake 10,000,000 and a warning under 4,000,000.
+ *
+ * @param {bigint} [gasPrice]
+ */
+const gasAt = (gasPrice = 1n) => ({
+  stake: {
+    limits: {
+      gasLimitLower: 2_500_000n,
+      gasLimitUpper: 1_000_000_000n,
+      gasPriceLower: 1n,
+    },
+    settings: { gasLimit: 5_000_000n, gasPrice },
+  },
+  unstake: {
+    limits: {
+      gasLimitLower: 4_000_000n,
+      gasLimitUpper: 1_000_000_000n,
+      gasPriceLower: 1n,
+    },
+    settings: { gasLimit: 10_000_000n, gasPrice },
+  },
 });
 
 const baseProps = {
   availableBalance: 172n * DUSK,
   execute: vi.fn().mockResolvedValue(HASH),
-  gasLimits: {
-    gasLimitLower: 4_000_000n,
-    gasLimitUpper: 1_000_000_000n,
-    gasPriceLower: 1n,
-  },
-  gasSettings: { gasLimit: 10_000_000n, gasPrice: 1n },
+  gas: gasAt(),
   onRetry: vi.fn(),
   sozu: { error: null, loading: false, status: statusWith() },
 };
@@ -69,6 +91,10 @@ describe("LiquidStake", () => {
     expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
       "Any amount, no node needed You get stDUSK, a token for your share of Sozu's pool."
     );
+    // Sozu's fees, as its substrate gives them, and none to unstake.
+    expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
+      "Sozu's fees 0.25% of each deposit · 15% of rewards · no unstake fee"
+    );
   });
 
   it("stakes any amount with Sozu's pool, saying about what it gets", async () => {
@@ -81,9 +107,10 @@ describe("LiquidStake", () => {
       target: { value: "100" },
     });
 
-    // For what's left once Sozu's 0.25% deposit fee is off it.
+    // For what's left once Sozu's 0.25% deposit fee is off it, and what
+    // that's worth now.
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.4378 stDUSK, at the rate Sozu's contract gives now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
+      "You get about 32.4378 stDUSK, worth about 99.75 DUSK now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
     );
     expect(
       Array.from(container.querySelectorAll(".stake-flow__rows > div"), textOf)
@@ -91,21 +118,25 @@ describe("LiquidStake", () => {
       "Stake with Sozu 100 DUSK",
       "You get about 32.4378 stDUSK",
       "Deposit fee 0.25% · 0.25 DUSK",
-      "Getting it back Unstake from Sozu, under Sozu's rules",
+      "Getting it back Unstake any time. No fee, no waiting.",
       "Fee paid from Public balance",
-      "Total Up to 100.01 DUSK",
+      "Total Up to 100.005 DUSK",
     ]);
+    expect(textOf(container.querySelector(".liquid-stake__gas-note"))).toBe(
+      "A call that fails is charged its whole gas limit."
+    );
 
     await fireEvent.click(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })
     );
 
+    // A stake's own gas: 5,000,000 at the node's price.
     expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
       "stake",
       POOL,
       100n * DUSK,
       1n,
-      10_000_000n
+      5_000_000n
     );
   });
 
@@ -171,7 +202,7 @@ describe("LiquidStake", () => {
     });
 
     expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-      "That's 0.01 DUSK more than the public balance, with the network fee."
+      "That's 0.005 DUSK more than the public balance, with the network fee."
     );
     expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
 
@@ -202,6 +233,10 @@ describe("LiquidStake", () => {
       "aria-selected",
       "true"
     );
+    // Sozu pays it out at once.
+    expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
+      "The DUSK comes back in the same transaction. No fee, no waiting."
+    );
 
     await fireEvent.input(getByLabelText("Unstake amount"), {
       target: { value: "16" },
@@ -214,9 +249,15 @@ describe("LiquidStake", () => {
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
     expect(getByLabelText("Unstake amount")).toHaveValue("15");
-    expect(textOf(container.querySelector(".stake-flow__rows"))).toContain(
-      "Back to Your public balance"
-    );
+    expect(
+      Array.from(container.querySelectorAll(".stake-flow__rows > div"), textOf)
+    ).toStrictEqual([
+      "Unstake from Sozu 15 DUSK",
+      "Back to Your public balance, in the same transaction",
+      "Sozu's fee No unstake fee",
+      "Fee paid from Public balance",
+      "Total Up to 0.01 DUSK",
+    ]);
 
     await fireEvent.click(getByRole("button", { name: "Unstake 15 DUSK" }));
 
@@ -274,7 +315,7 @@ describe("LiquidStake", () => {
       target: { value: "100" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
-    await rerender({ gasSettings: { gasLimit: 10_000_000n, gasPrice: 3n } });
+    await rerender({ gas: gasAt(3n) });
     await fireEvent.click(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })
     );
@@ -284,7 +325,89 @@ describe("LiquidStake", () => {
       POOL,
       100n * DUSK,
       1n,
+      5_000_000n
+    );
+  });
+
+  it("takes each action's own gas: a tab's default follows the tab", async () => {
+    const { container, getByLabelText, getByRole } = render(LiquidStake, {
+      ...baseProps,
+      sozu: {
+        ...baseProps.sozu,
+        status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
+      },
+    });
+    const total = () =>
+      textOf(container.querySelector(".stake-flow__rows--total"));
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1" },
+    });
+
+    expect(total()).toBe("Total Up to 1.005 DUSK");
+
+    await fireEvent.click(getByRole("tab", { name: "Unstake" }));
+    await fireEvent.input(getByLabelText("Unstake amount"), {
+      target: { value: "1" },
+    });
+
+    expect(total()).toBe("Total Up to 0.01 DUSK");
+
+    await fireEvent.click(getByRole("button", { name: "Unstake 1 DUSK" }));
+
+    expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
+      "unstake",
+      POOL,
+      DUSK,
+      1n,
       10_000_000n
     );
+  });
+
+  it("stops stakes, not unstakes, while Sozu has paused deposits", async () => {
+    const paused = statusWith(
+      { balance: 15n * DUSK, stDusk: 4n * DUSK },
+      FEES,
+      { maintenance: true, synchronization: false }
+    );
+    const { getByLabelText, getByRole } = render(LiquidStake, {
+      ...baseProps,
+      sozu: { ...baseProps.sozu, status: paused },
+    });
+
+    expect(getByRole("alert")).toHaveTextContent(
+      "Sozu has paused deposits. Unstaking still works."
+    );
+    expect(getByLabelText("Stake amount")).toBeDisabled();
+    expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
+
+    await fireEvent.click(getByRole("tab", { name: "Unstake" }));
+    await fireEvent.input(getByLabelText("Unstake amount"), {
+      target: { value: "1" },
+    });
+
+    expect(getByRole("button", { name: "Unstake 1 DUSK" })).toBeEnabled();
+  });
+
+  it("warns that a call can fail while Sozu synchronizes its pool", () => {
+    const { getByRole } = render(LiquidStake, {
+      ...baseProps,
+      sozu: {
+        ...baseProps.sozu,
+        status: statusWith({}, FEES, {
+          maintenance: false,
+          synchronization: true,
+        }),
+      },
+    });
+
+    expect(getByRole("status")).toHaveTextContent(
+      "Sozu is updating its pool, so a stake or an unstake sent now can fail."
+    );
+
+    cleanup();
+
+    // Not while it doesn't.
+    expect(render(LiquidStake, baseProps).queryByRole("status")).toBeNull();
   });
 });

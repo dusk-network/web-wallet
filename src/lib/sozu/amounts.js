@@ -96,16 +96,56 @@ export const feePercent = ({ denominator, numerator }, locale) =>
 
 /**
  * About how much stDUSK a stake of `amount` gets now, before any fee Sozu
- * takes; null without a rate.
+ * takes, rounded down as its pool rounds it: 1:1 while the pool has no stake
+ * or no stDUSK, as its contract mints then; null without the pool's rate.
  *
  * @param {bigint} amount
  * @param {SozuPool | null} pool
  * @returns {bigint | null}
  */
-export const stDuskFor = (amount, pool) =>
-  pool && pool.stake > 0n && pool.supply > 0n
+export function stDuskFor(amount, pool) {
+  if (!pool) {
+    return null;
+  }
+
+  return pool.stake > 0n && pool.supply > 0n
     ? (amount * pool.supply) / pool.stake
-    : null;
+    : amount;
+}
+
+/**
+ * A stake of `amount` with Sozu, as its pool takes it: the deposit fee,
+ * rounded up; what's left, which the stDUSK is worth now; and the stDUSK,
+ * rounded down. It goes ahead only when the fee leaves something and that
+ * gets at least 1 lux of stDUSK.
+ *
+ * @param {bigint} amount
+ * @param {SozuPool | null} pool
+ * @param {SozuFeeRate | null} [depositFee]
+ * @returns {{ fee: bigint, ok: boolean, stDusk: bigint | null, worth: bigint }}
+ */
+export function sozuStake(amount, pool, depositFee = null) {
+  const fee = depositFee ? sozuFee(amount, depositFee) : 0n;
+  const worth = amount > fee ? amount - fee : 0n;
+  const stDusk = worth > 0n ? stDuskFor(worth, pool) : 0n;
+
+  return {
+    fee,
+    ok: amount > fee && stDusk !== null && stDusk >= 1n,
+    stDusk,
+    worth,
+  };
+}
+
+/**
+ * Whether an unstake of `amount` goes ahead: more than nothing, and no more
+ * than what the account has with Sozu (`pool.balance_of`).
+ *
+ * @param {bigint} amount
+ * @param {bigint} balance
+ */
+export const sozuUnstakeAllowed = (amount, balance) =>
+  amount > 0n && amount <= balance;
 
 /**
  * The least a stake gets any stDUSK for at the rate now, in lux, after the

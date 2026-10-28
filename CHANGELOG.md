@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open the search with /, as with Ctrl K, unless typing in a field
 - Offer alice.dusk for alice, or alice.dusk. with a dot after it, in Send and the search
 - List in Bridge › Activity the withdrawals in the history, with their claim date and Claim, without an EVM wallet connected
+- Say in liquid staking when Sozu has paused deposits, and that a stake or an unstake can fail while it updates its pool
+- Show Sozu's fees in liquid staking: on deposits, on rewards, and none to unstake
 
 ### Changed
 
@@ -114,6 +116,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Date a withdrawal's claim from its proof and its dispute game, in History, its details and Bridge › Activity, exact once the game has resolved, and say when the game is late
 - Say before a proof how long after it a withdrawal can be claimed, and on one ready to prove from when it could be claimed if proved now
 - Prove a withdrawal against a dispute game that has already resolved, where one covers it, so its claim date is exact
+- Say that unstaking from Sozu pays the DUSK back in the same transaction, with no fee and no waiting
+- Show what a stake with Sozu is worth now, once its deposit fee is off
+- Give a stake with Sozu a gas limit of 5,000,000 and an unstake 10,000,000, and say that a failed call is charged its whole limit
 - Leave a deposit's call on DuskEVM 200,000 gas, the DuskEVM SDK's default
 
 ### Removed
@@ -132,6 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say Nothing to unstake or claim beside the native stake, not under Unstake from Sozu
 - Keep the top bar inside the window at every width from 320 px
 - Open the network and profile menus inside the window on phones
+- Keep the labels in a staking summary on one line
 
 ## [1.8.0] - 2026-03-25
 

@@ -232,9 +232,10 @@ describe("Staking", () => {
       "If it goes wrong",
     ]);
     expect(rows[0].slice(1)).toStrictEqual(["1,000 DUSK", "Any amount"]);
+    // Sozu pays an unstake out at once.
     expect(rows[3].slice(1)).toStrictEqual([
       "Any time, with no waiting period",
-      "Sozu, not Dusk, holds the DUSK and returns it under Sozu's own rules.",
+      "The DUSK comes back in the same transaction. No fee, no waiting.",
     ]);
     expect(rows[4][1]).toBe(
       "If your node misses its turn, part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost)."
@@ -268,8 +269,26 @@ describe("Staking", () => {
     expect(Array.from(table.tBodies[0].rows[3].cells, textOf)).toStrictEqual([
       "Fees",
       "Network fee only",
-      "Sozu keeps 10% of rewards · 0.25% on deposits",
+      "Sozu keeps 10% of rewards · 0.25% on deposits · no unstake fee",
     ]);
+  });
+
+  it("says so while Sozu has paused deposits", async () => {
+    const { queryByText } = render(Staking);
+
+    expect(queryByText("Sozu has paused deposits.")).toBeNull();
+
+    await act(() =>
+      sozu.store?.update((s) => ({
+        ...s,
+        status: {
+          ...SOZU_STATUS,
+          flags: { maintenance: true, synchronization: false },
+        },
+      }))
+    );
+
+    expect(queryByText("Sozu has paused deposits.")).toBeInTheDocument();
   });
 
   it("shows only native staking where Sozu isn't", async () => {
@@ -462,10 +481,21 @@ describe("Staking", () => {
 
     // For what's left once testnet's 0.25% deposit fee is off it.
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.4378 stDUSK, at the rate Sozu's contract gives now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
+      "You get about 32.4378 stDUSK, worth about 99.75 DUSK now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
     );
     expect(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })
     ).toBeEnabled();
+    // A stake's own gas: up to 5,000,000 at the node's price.
+    expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
+      "Total Up to 100.005 DUSK"
+    );
+
+    await fireEvent.click(getByRole("tab", { name: "Unstake" }));
+
+    // An unstake's: up to 10,000,000, as it can touch more provisioners.
+    expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
+      "Total Up to 0.01 DUSK"
+    );
   });
 });

@@ -124,7 +124,11 @@
     $gasPriceStore
   );
   $: stakeGas = gasFor("stake", custom, $gasStore, $gasPriceStore);
-  $: liquidGas = gasFor("liquid-staking", custom, $gasStore, $gasPriceStore);
+  // A stake with Sozu and an unstake from it each have their own gas.
+  $: liquidGas = {
+    stake: gasFor("liquid-stake", custom, $gasStore, $gasPriceStore),
+    unstake: gasFor("liquid-unstake", custom, $gasStore, $gasPriceStore),
+  };
   $: ({ available: isSozuAvailable } = $sozuStore);
 </script>
 
@@ -145,8 +149,7 @@
         action={liquidAction}
         availableBalance={publicBalance}
         execute={stakeLiquid}
-        gasLimits={liquidGas.limits}
-        gasSettings={liquidGas.settings}
+        gas={liquidGas}
         onRetry={() => sozuStore.load({ force: true })}
         sozu={$sozuStore}
       />

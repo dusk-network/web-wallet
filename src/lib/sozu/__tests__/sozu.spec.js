@@ -18,9 +18,13 @@ import {
   readSozuStatus,
   sozuContractsFor,
   sozuFee,
+  sozuStake,
+  sozuUnstakeAllowed,
   stDuskFor,
 } from "..";
 import { sozuCall } from "../calls";
+
+import vectors from "./sozu-vectors.json";
 
 const POOL = "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
 const HUB = "bae85f8c24730a5a19fbe3d3bd58248ac8c302b62fe414a8c640d8c0ed286b9e";
@@ -98,7 +102,9 @@ describe("Sozu amounts", () => {
     });
     expect(duskPerStDusk(pool)).toBe(3_075_107_127n);
     expect(stDuskFor(100_000_000_000n, pool)).toBe(32_519_192_291n);
-    expect(stDuskFor(1n, parsePool({}))).toBeNull();
+    // A pool with no stake or no stDUSK mints 1:1, as its contract does.
+    expect(stDuskFor(1n, parsePool({}))).toBe(1n);
+    expect(stDuskFor(1n, null)).toBeNull();
     expect(duskPerStDusk(null)).toBeNull();
   });
 
@@ -115,6 +121,79 @@ describe("Sozu amounts", () => {
     expect(() => sozuCall("nope", SOZU_FN.STAKE, 5n)).toThrow(TypeError);
     expect(() => sozuCall(POOL, SOZU_FN.STAKE, 0n)).toThrow(RangeError);
   });
+});
+
+describe("the Sozu test vectors both wallets run", () => {
+  /** @param {string} hex */
+  const bytes = (hex) =>
+    Uint8Array.from(hex.match(/../g) ?? [], (b) => parseInt(b, 16));
+
+  /** @param {string} name */
+  const pool = (name) =>
+    parsePool(vectors.pools[/** @type {keyof typeof vectors.pools} */ (name)]);
+
+  /** @param {string | null} name */
+  const deposit = (name) =>
+    name
+      ? parseFeeRate(
+          bytes(
+            vectors.fees[/** @type {keyof typeof vectors.fees} */ (name)]
+              .deposit
+          )
+        )
+      : null;
+
+  it("reads each fee rate from the substrate's bytes, and as a percentage", () => {
+    for (const rate of vectors.feeRates) {
+      const parsed = parseFeeRate(bytes(rate.bytes));
+
+      expect(parsed).toStrictEqual({
+        denominator: BigInt(rate.denominator),
+        numerator: BigInt(rate.numerator),
+      });
+      expect(feePercent(parsed, "en")).toBe(rate.percent);
+    }
+  });
+
+  it("values a stDUSK at each pool's rate, and nothing without one", () => {
+    for (const value of vectors.duskPerStDusk) {
+      expect(duskPerStDusk(pool(value.pool))).toBe(
+        value.lux === null ? null : BigInt(value.lux)
+      );
+    }
+  });
+
+  it.each(vectors.stakes)(
+    "takes a stake of $amount lux on the $pool pool with $fees fees: fee $fee, worth $worth, $stDusk stDUSK, goes ahead: $ok",
+    (stake) => {
+      expect(
+        sozuStake(BigInt(stake.amount), pool(stake.pool), deposit(stake.fees))
+      ).toStrictEqual({
+        fee: BigInt(stake.fee),
+        ok: stake.ok,
+        stDusk: BigInt(stake.stDusk),
+        worth: BigInt(stake.worth),
+      });
+    }
+  );
+
+  it.each(vectors.minimums)(
+    "gives the least stake that goes ahead on the $pool pool with $fees fees: $least lux",
+    (minimum) => {
+      expect(leastSozuStake(pool(minimum.pool), deposit(minimum.fees))).toBe(
+        BigInt(minimum.least)
+      );
+    }
+  );
+
+  it.each(vectors.unstakes)(
+    "lets an unstake of $amount lux with $balance lux at Sozu go ahead: $ok",
+    (unstake) => {
+      expect(
+        sozuUnstakeAllowed(BigInt(unstake.amount), BigInt(unstake.balance))
+      ).toBe(unstake.ok);
+    }
+  );
 });
 
 describe("Sozu's contracts", () => {
@@ -300,6 +379,9 @@ describe("readSozuStatus", () => {
       [`${NEW_POOL}/exchange_rate/null`]: RATE,
       [`${SUBSTRATE}/stake_fee_rate/#0`]: MAINNET_FEES.deposit,
       [`${SUBSTRATE}/stake_fee_rate/#1`]: MAINNET_FEES.reward,
+      // Maintenance off, synchronization on.
+      [`${SUBSTRATE}/is_feature_enabled/#0`]: Uint8Array.of(0),
+      [`${SUBSTRATE}/is_feature_enabled/#1`]: Uint8Array.of(1),
       [`${TOKEN}/balance_of/"${ACCOUNT}"`]: "487000000000",
     });
 
@@ -317,6 +399,7 @@ describe("readSozuStatus", () => {
         deposit: { denominator: 400n, numerator: 1n },
         reward: { denominator: 100n, numerator: 15n },
       },
+      flags: { maintenance: false, synchronization: true },
       pool: parsePool(RATE),
       position: { balance: 1_500_000_000_000n, stDusk: 487_000_000_000n },
     });
@@ -333,10 +416,12 @@ describe("readSozuStatus", () => {
       `https://one.example/on/contracts:${TOKEN}/balance_of`,
       `https://one.example/on/contracts:${SUBSTRATE}/stake_fee_rate`,
       `https://one.example/on/contracts:${SUBSTRATE}/stake_fee_rate`,
+      `https://one.example/on/contracts:${SUBSTRATE}/is_feature_enabled`,
+      `https://one.example/on/contracts:${SUBSTRATE}/is_feature_enabled`,
     ]);
   });
 
-  it("reads the fees with the pool's figures, in one Multicall for Dusk query, and once a node", async () => {
+  it("reads the fees and switches with the pool's figures each time, in one Multicall for Dusk query", async () => {
     const encoder = new TextEncoder();
     const rate = encoder.encode(JSON.stringify(RATE));
     const noBalance = encoder.encode(JSON.stringify("0"));
@@ -351,7 +436,8 @@ describe("readSozuStatus", () => {
 
       sizes.push(n);
 
-      // The hub's three names, then the pool's figures with both fees.
+      // The hub's three names, then the pool's figures with both fees and
+      // both switches: Sozu's maintenance on the second time.
       return new Response(
         n === 3
           ? multicallReply(
@@ -362,8 +448,10 @@ describe("readSozuStatus", () => {
           : multicallReply([
               rate,
               noBalance,
-              // The fees only until they're kept.
-              ...(n === 4 ? [TESTNET_FEES.deposit, TESTNET_FEES.reward] : []),
+              TESTNET_FEES.deposit,
+              TESTNET_FEES.reward,
+              Uint8Array.of(sizes.length > 2 ? 1 : 0),
+              Uint8Array.of(0),
             ])
       );
     });
@@ -391,14 +479,17 @@ describe("readSozuStatus", () => {
         deposit: { denominator: 10_000n, numerator: 25n },
         reward: { denominator: 100n, numerator: 10n },
       },
+      flags: { maintenance: false, synchronization: false },
     });
-    expect(sizes).toStrictEqual([3, 4]);
+    expect(sizes).toStrictEqual([3, 6]);
 
-    // Kept for this node, like the contracts the hub names: not read again.
+    // Read again with the figures, as Sozu can change them at any time; the
+    // contracts the hub names are kept for this node.
     await expect(readSozuStatus(options)).resolves.toMatchObject({
       fees: { reward: { numerator: 10n } },
+      flags: { maintenance: true, synchronization: false },
     });
-    expect(sizes).toStrictEqual([3, 4, 2]);
+    expect(sizes).toStrictEqual([3, 6, 6]);
   });
 
   it("uses the pool it knows when the hub names none, and asks the hub once a node", async () => {

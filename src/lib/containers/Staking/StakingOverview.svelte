@@ -76,6 +76,8 @@
   $: rate = duskPerStDusk(sozu.status?.pool ?? null);
   // Sozu's fees, as its substrate gives them, where they could be read.
   $: fees = sozu.status?.fees ?? null;
+  // No deposits while Sozu is under maintenance.
+  $: isSozuPaused = sozu.status?.flags?.maintenance === true;
 
   /** @type {{ label: string, lux: bigint, stDusk?: bigint, sub?: string }[]} */
   // What is staked comes first, natively and with Sozu. With nothing
@@ -205,6 +207,9 @@
         />
       {/if}
     </div>
+    {#if sozu.available && isSozuPaused}
+      <p class="staking__reason">Sozu has paused deposits.</p>
+    {/if}
 
     <table class="compare">
       <caption class="sr-only">The ways to stake, side by side</caption>
@@ -286,7 +291,7 @@
               Sozu keeps {feePercent(fees.reward, locale)} of rewards · {feePercent(
                 fees.deposit,
                 locale
-              )} on deposits
+              )} on deposits · no unstake fee
             </td>
           </tr>
         {/if}
@@ -295,8 +300,7 @@
           <td data-way="Native staking">Any time, with no waiting period</td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
-              Sozu, not Dusk, holds the DUSK and returns it under Sozu's own
-              rules.
+              The DUSK comes back in the same transaction. No fee, no waiting.
             </td>
           {/if}
         </tr>

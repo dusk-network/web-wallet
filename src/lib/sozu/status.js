@@ -1,7 +1,9 @@
 /**
  * What an account has with Sozu: the pool and the stDUSK token the hub
- * names, the pool's rate, Sozu's fees, and the account's balances there. The
- * reads go through Multicall for Dusk, a query for all those made at once.
+ * names, the pool's rate, Sozu's fees and switches, and the account's
+ * balances there. The reads go through Multicall for Dusk, a query for all
+ * those made at once: the hub's names once a session and node, then one query
+ * a refresh, with the fees and switches read live.
  */
 
 import { dataDrivers } from "@dusk/w3sper";
@@ -122,58 +124,70 @@ const contractIdOf = (id) =>
     ? id.toLowerCase()
     : null;
 
+/** The substrate's kinds of fee and of switch: each an enum, one byte. */
+const SUBSTRATE_KINDS = Object.freeze({
+  deposit: 0,
+  maintenance: 0,
+  reward: 1,
+  synchronization: 1,
+});
+
 /**
  * Sozu's substrate, read by hand: the wallet bundles no driver for it, and
- * the one read it makes of it needs none. `stake_fee_rate` takes the fee's
- * kind as its enum, one byte (Deposit 0, Reward 1), and gives its rate.
+ * the reads it makes of it need none. `stake_fee_rate` takes the fee's kind
+ * (Deposit 0, Reward 1) and gives its rate; `is_feature_enabled` takes the
+ * switch's (Maintenance 0, Synchronization 1) and gives whether it's on.
  *
  * @type {SozuDriver}
  */
 const SUBSTRATE = Object.freeze({
-  decodeOutputFn: (_fnName, bytes) => parseFeeRate(bytes),
+  decodeOutputFn: (fnName, bytes) =>
+    fnName === "is_feature_enabled" ? bytes[0] === 1 : parseFeeRate(bytes),
   encodeInputFn: (_fnName, json) =>
-    Uint8Array.of(JSON.parse(json) === "reward" ? 1 : 0),
+    Uint8Array.of(
+      SUBSTRATE_KINDS[
+        /** @type {keyof typeof SUBSTRATE_KINDS} */ (JSON.parse(json))
+      ] ?? 0
+    ),
 });
 
 /** @type {Map<string, Promise<{ pool: string | null, stDusk: string | null, substrate: string | null }>>} */
 const found = new Map();
 
-/** @type {Map<string, Promise<SozuFees>>} */
-const feesFound = new Map();
-
 /**
- * Sozu's fees, read once a node and substrate, as the contracts the hub
- * names are; one that failed is read again next time, and is no fees.
+ * Sozu's fees and switches, read live with the pool's figures: one query
+ * with them. Ones that can't be read are none.
  *
  * @param {SozuReader} reader
  * @param {string} substrate
- * @returns {Promise<SozuFees | null>}
+ * @returns {Promise<{ fees: SozuFees | null, flags: SozuFlags | null }>}
  */
-function feesOf(reader, substrate) {
-  const key = `${reader.nodeUrl}\n${substrate}`;
-  let fees = feesFound.get(key);
-
-  if (!fees) {
-    // Both in the task the status reads in: one query with them.
-    fees = Promise.all([
-      read(reader, SUBSTRATE, substrate, "stake_fee_rate", "deposit"),
-      read(reader, SUBSTRATE, substrate, "stake_fee_rate", "reward"),
-    ]).then(([deposit, reward]) => ({
+function substrateOf(reader, substrate) {
+  const fees = Promise.all([
+    read(reader, SUBSTRATE, substrate, "stake_fee_rate", "deposit"),
+    read(reader, SUBSTRATE, substrate, "stake_fee_rate", "reward"),
+  ]).then(
+    ([deposit, reward]) => ({
       deposit: /** @type {SozuFeeRate} */ (deposit),
       reward: /** @type {SozuFeeRate} */ (reward),
-    }));
+    }),
+    () => null
+  );
+  const flags = Promise.all([
+    read(reader, SUBSTRATE, substrate, "is_feature_enabled", "maintenance"),
+    read(reader, SUBSTRATE, substrate, "is_feature_enabled", "synchronization"),
+  ]).then(
+    ([maintenance, synchronization]) => ({
+      maintenance: maintenance === true,
+      synchronization: synchronization === true,
+    }),
+    () => null
+  );
 
-    const kept = fees;
-
-    feesFound.set(key, kept);
-    kept.catch(() => {
-      if (feesFound.get(key) === kept) {
-        feesFound.delete(key);
-      }
-    });
-  }
-
-  return fees.catch(() => null);
+  return Promise.all([fees, flags]).then(([rates, switches]) => ({
+    fees: rates,
+    flags: switches,
+  }));
 }
 
 /**
@@ -244,18 +258,21 @@ export async function readSozuStatus({
 
   // The history names this pool's calls too, from now on.
   noteSozuPool(poolId);
-  const [rate, balance, stDusk, fees] = await Promise.all([
+  const [rate, balance, stDusk, substrate] = await Promise.all([
     read(reader, pool, poolId, "exchange_rate"),
     read(reader, pool, poolId, "balance_of", account),
     named.stDusk
       ? read(reader, token, named.stDusk, "balance_of", account)
       : "0",
-    named.substrate ? feesOf(reader, named.substrate) : null,
+    named.substrate
+      ? substrateOf(reader, named.substrate)
+      : { fees: null, flags: null },
   ]);
 
   return {
     contracts: { hub: contracts.hub, pool: poolId, stDusk: named.stDusk },
-    fees,
+    fees: substrate.fees,
+    flags: substrate.flags,
     pool: parsePool(rate),
     position: { balance: readLux(balance), stDusk: readLux(stDusk) },
   };

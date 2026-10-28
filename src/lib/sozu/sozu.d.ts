@@ -22,11 +22,22 @@ type SozuFees = {
   reward: SozuFeeRate;
 };
 
+/**
+ * Sozu's switches, as its substrate gives them: maintenance stops deposits;
+ * while it synchronizes, a stake or an unstake can fail.
+ */
+type SozuFlags = {
+  maintenance: boolean;
+  synchronization: boolean;
+};
+
 /** What an account has with Sozu, read from its pool and its token. */
 type SozuStatus = {
   contracts: SozuContracts & { stDusk: string | null };
   /** Sozu's fees, where they could be read. */
   fees?: SozuFees | null;
+  /** Sozu's switches, where they could be read. */
+  flags?: SozuFlags | null;
   pool: SozuPool;
   position: {
     /** The DUSK the account has staked with Sozu, as the pool counts it. */
