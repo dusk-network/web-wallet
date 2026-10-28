@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show under the total balance what is staked, natively and with Sozu
 - Show the exact most a transaction can cost beside its gas limit and price
 - Say about what native staking and Sozu pay a year where you choose how to stake
+- Migrate DUSK from BNB Smart Chain and Ethereum in the Bridge card
+- Send DUSK to BNB Smart Chain from the Bridge card, to the connected wallet's address, less the 1 DUSK bridge fee
+- Say when a route isn't running on this network
+- List migrations and transfers to BNB Smart Chain in Bridge › Activity, until they're paid
 
 ### Changed
 
@@ -141,8 +145,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show amounts under 0.01 DUSK to two significant digits
 - Shorten addresses and hashes with one ellipsis character
 - Round the network fee paid in a transaction's details, with the exact fee under Technical details
+- Open the Bridge on a migration from BNB Smart Chain from Home's Migrate it to Dusk
 
 ### Removed
+
+- Remove the Migrate page, whose address now opens the Bridge on a migration
+- Remove testnet's BEP-20 migration on Sepolia
 
 ### Fixed
 

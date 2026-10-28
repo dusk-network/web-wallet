@@ -16,6 +16,7 @@
     HomeActions,
     HomeBalance,
   } from "$lib/containers/Home";
+  import { cardRoutes, migrationRoutes } from "$lib/bridge/cardRoutes";
   import { addBasePath } from "$lib/navigation";
   import {
     isSozuFunction,
@@ -80,6 +81,8 @@
   $: ({ balance, currentProfile, minimumStake, stakeInfo } = $walletStore);
   // Test DUSK has no value: no money value off mainnet.
   $: ({ net, networkName } = $networkStore);
+  // The Bridge opens on BNB Smart Chain's migration, where there is one.
+  $: [migration] = migrationRoutes(cardRoutes(net));
   $: staked = stakeInfo.amount
     ? stakeInfo.amount.value + stakeInfo.amount.locked
     : null;
@@ -115,10 +118,12 @@
       <p class="home__note">Nothing can be sent from this wallet right now.</p>
     {/if}
 
-    {#if isEnabled("migrate")}
+    {#if isEnabled("bridge") && migration}
       <p class="home__note">
         Have DUSK on Ethereum or BNB Smart Chain?
-        <a class="text-link" href={addBasePath("/dashboard/migrate")}
+        <a
+          class="text-link"
+          href={addBasePath(`/dashboard/bridge?route=${migration.id}`)}
           >Migrate it to Dusk</a
         >
       </p>

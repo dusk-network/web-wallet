@@ -47,14 +47,8 @@
       {
         href: "/dashboard/bridge",
         id: "bridge",
-        keywords: "duskevm",
+        keywords: "duskevm migrate erc20 bep20 bsc ethereum",
         label: "Bridge",
-      },
-      {
-        href: "/dashboard/migrate",
-        id: "migrate",
-        keywords: "erc20 bep20",
-        label: "Migrate",
       },
     ]
       .filter(({ id }) => isEnabled(id))

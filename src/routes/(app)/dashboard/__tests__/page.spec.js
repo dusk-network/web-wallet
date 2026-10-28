@@ -196,6 +196,36 @@ describe("Dashboard", () => {
     );
   });
 
+  it("opens the Bridge on a migration into Dusk for whoever holds DUSK on Ethereum or BNB Smart Chain: BNB Smart Chain's, where there is one", async () => {
+    const { getByRole, unmount } = render(Dashboard, props);
+
+    expect(getByRole("link", { name: "Migrate it to Dusk" })).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard/bridge?route=bsc-to-dusk"
+    );
+    unmount();
+
+    // Testnet has one: from Sepolia.
+    network.store?.set({
+      connected: true,
+      net: networks.testnet,
+      networkName: "testnet",
+    });
+
+    expect(
+      render(Dashboard, props).getByRole("link", { name: "Migrate it to Dusk" })
+    ).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard/bridge?route=ethereum-to-dusk"
+    );
+
+    network.store?.set({
+      connected: true,
+      net: networks.mainnet,
+      networkName: "mainnet",
+    });
+  });
+
   it("shows no value in money off mainnet, as test DUSK has none", async () => {
     network.store?.set({
       connected: true,

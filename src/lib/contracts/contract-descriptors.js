@@ -57,23 +57,11 @@ export default [
     ],
   },
   {
+    // Migrations into Dusk are routes of the Bridge, as moving DUSK to
+    // DuskEVM and out to BNB Smart Chain are.
     enabled:
-      import.meta.env.VITE_FEATURE_MIGRATE === "true" &&
-      import.meta.env.VITE_REOWN_PROJECT_ID !== "",
-    id: "migrate",
-    label: "Migrate",
-    operations: [
-      {
-        disabled: false,
-        id: "connect",
-        label: "Connect",
-        primary: true,
-      },
-    ],
-  },
-  {
-    enabled:
-      import.meta.env.VITE_FEATURE_BRIDGE === "true" &&
+      (import.meta.env.VITE_FEATURE_BRIDGE === "true" ||
+        import.meta.env.VITE_FEATURE_MIGRATE === "true") &&
       import.meta.env.VITE_REOWN_PROJECT_ID !== "",
     id: "bridge",
     label: "Bridge",

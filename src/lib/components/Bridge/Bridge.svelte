@@ -33,6 +33,20 @@
   import NetworkMark from "$lib/components/NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "$lib/components/NetworkPicker/NetworkPicker.svelte";
   import SwapCard from "$lib/components/SwapCard/SwapCard.svelte";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
+  import {
+    cardRoutes,
+    choosePair,
+    flipRoute,
+    fromChoices as fromChoicesOf,
+    notRunning,
+    openingRoute,
+    routeBetween,
+    toChoices as toChoicesOf,
+  } from "$lib/bridge/cardRoutes";
+
+  import MigrationRoute from "./MigrationRoute.svelte";
+  import ServiceRoute from "./ServiceRoute.svelte";
   import {
     account,
     duskEvm,
@@ -107,8 +121,24 @@
   /** @type {import('@wagmi/core').GetBalanceReturnType | undefined} */
   export let evmDuskBalance;
 
-  /** @type {string} */
-  let destinationNetwork = "";
+  /** A public transfer's gas, for the routes out to another chain. */
+  /** @type {ContractGasSettings} */
+  export let transferGasSettings = gasSettings;
+
+  /** @type {GasStoreContent} */
+  export let transferGasLimits = gasLimits;
+
+  /** The route a link names (`?route=bsc-to-dusk`), or none. */
+  /** @type {string | null} */
+  export let linkedRoute = null;
+
+  /**
+   * The EVM chain the connected wallet is kept on for the route picked:
+   * DuskEVM's, a migration's chain, or none for a transfer out.
+   *
+   * @type {number | undefined}
+   */
+  export let evmChainId = undefined;
 
   /** @type {string} */
   let amount = "";
@@ -361,14 +391,38 @@
     return hash;
   }
 
-  /** The networks the bridge moves DUSK between. */
-  const NETWORKS = [
-    { id: "duskDs", name: "Dusk" },
-    { id: "duskEvm", name: "DuskEVM" },
-  ];
+  /** The route picked, by its ID; until one is, the one the card opens on. */
+  /** @type {string | null} */
+  let routeId = null;
 
-  /** @param {string} id */
-  const otherThan = (id) => (id === "duskDs" ? "duskEvm" : "duskDs");
+  /**
+   * Picks the route a From or a To choice makes, and starts its form over.
+   *
+   * @param {{ from?: string, to?: string }} choice
+   */
+  function pickRoute({ from, to }) {
+    const next = from
+      ? choosePair(list, from, destinationNetwork)
+      : to
+        ? routeBetween(list, originNetwork, to)
+        : null;
+
+    if (next && next.id !== route?.id) {
+      routeId = next.id;
+      amount = "";
+      step = "form";
+    }
+  }
+
+  /** Goes the other way, where the network has it. */
+  function flip() {
+    const back = flipRoute(list, route);
+
+    if (back) {
+      routeId = back.id;
+      step = "form";
+    }
+  }
 
   /**
    * A route in one line, its time on this network first where it's known:
@@ -382,9 +436,6 @@
 
     return `${line.charAt(0).toUpperCase()}${line.slice(1)}`;
   };
-
-  // Default origin
-  let originNetwork = "duskDs";
 
   /** Where the card is: the form, the review, or what came of it. */
   /** @type {"form" | "result" | "review"} */
@@ -422,7 +473,18 @@
     }
   }
 
-  $: destinationNetwork = otherThan(originNetwork);
+  $: list = cardRoutes($nodeNetwork);
+  $: route =
+    list.find(({ id }) => id === routeId) ?? openingRoute(list, linkedRoute);
+  $: originNetwork = route?.origin ?? "duskDs";
+  $: destinationNetwork = route?.destination ?? "duskEvm";
+  $: evmChainId = !route
+    ? undefined
+    : route.kind === "migration"
+      ? route.chain.chainId
+      : route.kind === "service"
+        ? undefined
+        : duskEvm.id;
   $: amount = slashDecimals(cleanNumberString(amount, getDecimalSeparator()));
   $: fee = gasLimit * gasPrice;
 
@@ -482,21 +544,23 @@
   $: isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   $: ({ address } = $account);
 
-  $: primary = !isConnected
-    ? { label: "Connect a DuskEVM wallet", ready: true }
-    : amountLux === 0n
-      ? { label: "Enter an amount", ready: false }
-      : !isBalanceSufficient
-        ? {
-            label:
-              isWithdrawing && !evmDuskBalance
-                ? "Checking the DuskEVM balance…"
-                : "Not enough DUSK",
-            ready: false,
-          }
-        : isDepositing && !isGasValid
-          ? { label: "Check the network fee", ready: false }
-          : { label: "Review bridge", ready: true };
+  $: primary = !route?.running
+    ? { label: "Not running right now", ready: false }
+    : !isConnected
+      ? { label: "Connect a DuskEVM wallet", ready: true }
+      : amountLux === 0n
+        ? { label: "Enter an amount", ready: false }
+        : !isBalanceSufficient
+          ? {
+              label:
+                isWithdrawing && !evmDuskBalance
+                  ? "Checking the DuskEVM balance…"
+                  : "Not enough DUSK",
+              ready: false,
+            }
+          : isDepositing && !isGasValid
+            ? { label: "Check the network fee", ready: false }
+            : { label: "Review bridge", ready: true };
 
   // A review needs its EVM wallet: without one, back to the form, which
   // offers to connect it.
@@ -512,10 +576,22 @@
   ]);
   $: withdrawalLine = routeLineOf(withdrawalTime, ["two steps on Dusk"]);
   $: routeLine = isDepositing ? depositLine : withdrawalLine;
-  $: toChoices = NETWORKS.map((network) => ({
-    ...network,
-    note: network.id === "duskDs" ? withdrawalLine : depositLine,
-  }));
+  $: fromChoices = fromChoicesOf(list, originNetwork, $nodeNetwork);
+  $: toChoices = toChoicesOf(
+    list,
+    originNetwork,
+    destinationNetwork,
+    $nodeNetwork,
+    (each) =>
+      each.kind === "duskevm-deposit"
+        ? depositLine
+        : each.kind === "duskevm-withdrawal"
+          ? withdrawalLine
+          : each.running
+            ? routeTimeText(routeTime(each, { net: $nodeNetwork }))
+            : notRunning($nodeNetwork)
+  );
+  $: canFlip = Boolean(flipRoute(list, route));
 
   // What's left once a withdrawal is sent: the proof, then the claim, with
   // the waits the chain said: "Claim 7 days after you prove. You can prove
@@ -552,15 +628,44 @@
     </nav>
   </div>
 
-  {#if step === "form"}
+  {#if !route}
+    <p class="bridge__none">The bridge has no routes on this network.</p>
+  {:else if route.kind === "migration"}
+    {#key route.id}
+      <MigrationRoute
+        {canFlip}
+        {fromChoices}
+        net={$nodeNetwork}
+        on:flip={flip}
+        on:pick={({ detail }) => pickRoute(detail)}
+        recipient={unshieldedAddress}
+        {route}
+        {toChoices}
+      />
+    {/key}
+  {:else if route.kind === "service"}
+    {#key route.id}
+      <ServiceRoute
+        {canFlip}
+        {fromChoices}
+        gasLimits={transferGasLimits}
+        gasSettings={transferGasSettings}
+        net={$nodeNetwork}
+        on:flip={flip}
+        on:pick={({ detail }) => pickRoute(detail)}
+        {route}
+        {toChoices}
+        {unshieldedAddress}
+        {unshieldedBalance}
+      />
+    {/key}
+  {:else if step === "form"}
     <div class="swap-panel">
       <div class="swap-panel__head">
         <span class="swap-panel__label">From</span>
         <NetworkPicker
-          choices={NETWORKS}
-          on:pick={({ detail }) => {
-            originNetwork = detail;
-          }}
+          choices={fromChoices}
+          on:pick={({ detail }) => pickRoute({ from: detail })}
           side="From"
           title="Where it comes from"
           value={originNetwork}
@@ -636,14 +741,16 @@
     </div>
 
     <div class="swap-flip">
-      <button
-        aria-label="Swap From and To"
-        class="swap-flip__button"
-        on:click={() => {
-          originNetwork = destinationNetwork;
-        }}
-        type="button"><Icon path={mdiArrowDown} /></button
-      >
+      {#if canFlip}
+        <button
+          aria-label="Swap From and To"
+          class="swap-flip__button"
+          on:click={flip}
+          type="button"><Icon path={mdiArrowDown} /></button
+        >
+      {:else}
+        <span aria-hidden="true"><Icon path={mdiArrowDown} /></span>
+      {/if}
     </div>
 
     <div class="swap-panel">
@@ -651,9 +758,7 @@
         <span class="swap-panel__label">To</span>
         <NetworkPicker
           choices={toChoices}
-          on:pick={({ detail }) => {
-            originNetwork = otherThan(detail);
-          }}
+          on:pick={({ detail }) => pickRoute({ to: detail })}
           side="To"
           title="Where it goes"
           value={destinationNetwork}
@@ -861,6 +966,12 @@
 <style lang="postcss">
   .bridge__gas {
     margin: 0 0.5rem 0.5rem;
+  }
+
+  .bridge__none {
+    margin: 0;
+    padding: 1rem 0.5rem;
+    color: var(--calm-muted);
   }
 
   .bridge-review,

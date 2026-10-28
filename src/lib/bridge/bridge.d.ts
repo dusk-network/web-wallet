@@ -13,7 +13,7 @@ type RouteTime = {
   /** A withdrawal's wait until it can be proved at the latest, in seconds. */
   report?: number;
   seconds: number;
-  source: "chain" | "config";
+  source: "chain" | "network";
   /** A withdrawal's wait from the proof to the claim, in seconds. */
   wait?: number;
 };

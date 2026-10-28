@@ -8,6 +8,8 @@ import WithdrawalLifecycle from "../EvmTransactions/WithdrawalLifecycle.svelte";
 import { claimDay } from "$lib/bridge/claimDate";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { formatTimestamp } from "../EvmTransactions/withdrawalPresentation";
+import { networks } from "@dusk-network/networks";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 const mocks = vi.hoisted(() => {
   const configuredFinalizationConfig = () =>
@@ -236,6 +238,15 @@ vi.mock("$app/stores", () => {
   };
 });
 
+const tracking = vi.hoisted(() => ({
+  followTransfers: vi.fn(async () => {}),
+}));
+
+vi.mock("$lib/bridge/routeTracking", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  followTransfers: tracking.followTransfers,
+}));
+
 vi.mock("$lib/bridge/depositActivity", () => ({
   depositActivityStore: mocks.depositActivityStore,
   hydrateDepositActivity: mocks.hydrateDepositActivity,
@@ -391,6 +402,8 @@ describe("EvmTransactions", () => {
     mocks.setWithdrawalItems([]);
     mocks.setDepositItems([]);
     mocks.setPageSearch("");
+    // A testnet node, with DuskEVM.
+    setNodeNetwork(networks.testnet);
     mocks.resumeDepositTracking.mockReset();
     mocks.loadWithdrawalActivity.mockImplementation(emptyActivity);
     mocks.loadDuskTransactionExecution.mockResolvedValue(null);
@@ -463,6 +476,139 @@ describe("EvmTransactions", () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("lists migrations into Dusk and transfers out to BNB Smart Chain on mainnet, without DuskEVM's parts", async () => {
+    // Mainnet: no DuskEVM, so nothing of it is configured.
+    setNodeNetwork(networks.mainnet);
+    mocks.finalizationConfig = {
+      ...mocks.configuredFinalizationConfig(),
+      configured: false,
+      disputeGameFactoryContractId: undefined,
+      missing: ["VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID"],
+      optimismPortalContractId: undefined,
+    };
+
+    const [bsc] = networks.mainnet.routes.migrations;
+    const [out] = networks.mainnet.routes.services;
+    const paidAt = Date.now() - 3_600_000;
+    const sentAt = Date.now() - 600_000;
+
+    const { container, findByRole, getByRole, queryByLabelText, queryByText } =
+      render(EvmTransactions, { target: document.body });
+
+    // The history comes after the page opened.
+    expect(tracking.followTransfers).not.toHaveBeenCalled();
+    mocks.setHistoryRows([
+      {
+        amount: "5000000000",
+        counterparty: bsc.payoutAccount,
+        direction: "in",
+        hash: "b1".repeat(32),
+        memo: `0x${"a6".repeat(32)}`,
+        privacy: "public",
+        source: "archive",
+        status: "executed",
+        timestamp: paidAt,
+      },
+      {
+        amount: "200001000000000",
+        counterparty: out.account,
+        direction: "out",
+        hash: "d1".repeat(32),
+        memo: accountAddress,
+        privacy: "public",
+        source: "archive",
+        status: "executed",
+        timestamp: sentAt,
+      },
+    ]);
+    const paid = await findByRole("button", {
+      name: `BNB Smart Chain to Dusk Paid ${claimDay(paidAt, "en")} 5 DUSK`,
+    });
+    const sent = getByRole("button", {
+      name: `Dusk to BNB Smart Chain Sent ${claimDay(sentAt, "en")} · takes ~10 hours 200,001 DUSK Pending`,
+    });
+
+    expect(paid.closest("section")).toHaveAccessibleName("Completed");
+    expect(sent.closest("section")).toHaveAccessibleName("In progress");
+    // No DuskEVM on mainnet: nothing to connect for it, nor to look up.
+    expect(queryByText(/Connect DuskEVM wallet/)).toBeNull();
+    expect(queryByLabelText("Find by transaction hash")).toBeNull();
+    expect(container).toHaveTextContent(
+      "Transfers between Dusk and other chains."
+    );
+
+    // Followed as soon as the history gives the one under way: the one
+    // paid needs no read.
+    await vi.waitFor(() =>
+      expect(tracking.followTransfers).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({ kind: "migration", stage: "paid" }),
+          expect.objectContaining({ hash: "d1".repeat(32), stage: "sent" }),
+        ],
+        {}
+      )
+    );
+
+    await fireEvent.click(paid);
+
+    expect(
+      getByRole("link", { name: "View dusk payout hash in Dusk explorer" })
+    ).toBeInTheDocument();
+  });
+
+  it("opens the migration its link names", async () => {
+    setNodeNetwork(networks.mainnet);
+    localStorage.setItem(
+      "web-wallet-migrations",
+      JSON.stringify([
+        {
+          amountLux: "2500000000",
+          createdAt: Date.now(),
+          hash: `0x${"bb".repeat(32)}`,
+          recipient: accountAddress,
+          routeId: "bsc-to-dusk",
+          sender: accountAddress,
+        },
+      ])
+    );
+    mocks.setPageSearch(`?tx=0x${"bb".repeat(32)}`);
+
+    const { findByRole } = render(EvmTransactions, { target: document.body });
+
+    expect(
+      await findByRole("button", { name: /^BNB Smart Chain to Dusk Sent/ })
+    ).toHaveAttribute("aria-expanded", "true");
+    // Not looked up as a withdrawal.
+    expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
+    localStorage.clear();
+    (await import("$lib/bridge/migrationActivity")).hydrateMigrations();
+  });
+
+  it("reads nothing again while nothing is under way", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+
+    try {
+      mocks.setAccount({ address: accountAddress, isConnected: true });
+      render(EvmTransactions, { target: document.body });
+      await vi.waitFor(() =>
+        expect(mocks.loadWithdrawalActivity).toHaveBeenCalledTimes(1)
+      );
+
+      vi.advanceTimersByTime(60_000);
+
+      expect(mocks.loadWithdrawalActivity).toHaveBeenCalledTimes(1);
+
+      // A withdrawal on its way: read again, every 30 seconds.
+      mocks.setWithdrawalItems([activityItem(`0x${"5d".repeat(32)}`)]);
+      await tick();
+      vi.advanceTimersByTime(30_000);
+
+      expect(mocks.loadWithdrawalActivity).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps activity and manual lookup available without an EVM wallet", async () => {
@@ -616,7 +762,7 @@ describe("EvmTransactions", () => {
     expect(mocks.rememberWithdrawalTransaction).not.toHaveBeenCalled();
   });
 
-  it("opens the deposit its link names once its account connects, and drops what checking it as a withdrawal said", async () => {
+  it("opens the deposit its link names once its account connects, never checking it as a withdrawal", async () => {
     const depositHash = "cd".repeat(32);
 
     mocks.setDepositItems([deposit(depositHash, { stage: "completed" })]);
@@ -628,9 +774,11 @@ describe("EvmTransactions", () => {
     );
     const input = getByLabelText("Find by transaction hash");
 
-    // Its account isn't connected: the deposit isn't listed yet, and the
-    // link is checked as a withdrawal's hash, which it isn't.
-    await waitFor(() => expect(input).toHaveAttribute("aria-invalid", "true"));
+    // Its account isn't connected: the deposit isn't listed yet. A Dusk
+    // hash waits for what it names, a deposit or a transfer out.
+    await tick();
+
+    expect(queryByRole("alert")).toBeNull();
 
     mocks.setAccount({ address: accountAddress, isConnected: true });
 
@@ -656,7 +804,6 @@ describe("EvmTransactions", () => {
     });
     const input = getByLabelText("Find by transaction hash");
 
-    await waitFor(() => expect(input).toHaveAttribute("aria-invalid", "true"));
     await fireEvent.input(input, { target: { value: "0x1234" } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     mocks.setAccount({ address: accountAddress, isConnected: true });

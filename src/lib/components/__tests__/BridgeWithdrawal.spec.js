@@ -4,6 +4,8 @@ import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 
 import { Bridge } from "..";
+import { networks } from "@dusk-network/networks";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 const mocks = vi.hoisted(() => ({
   sendTransaction: vi.fn(),
@@ -81,6 +83,7 @@ describe("Bridge withdrawal", () => {
   };
 
   beforeEach(() => {
+    setNodeNetwork(networks.testnet);
     mocks.sendTransaction.mockResolvedValue(`0x${"57".repeat(32)}`);
     mocks.switchChain.mockResolvedValue(undefined);
   });

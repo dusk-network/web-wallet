@@ -7,6 +7,7 @@
 import { get, writable } from "svelte/store";
 
 import { networkStore } from "$lib/stores";
+import nodeNetwork from "$lib/stores/nodeNetwork";
 import { duskEvm, duskEvmNetwork } from "$lib/web3/duskEvm";
 
 import { createChainTimes, readDepositLag } from "./chainTimes";
@@ -15,8 +16,14 @@ import {
   loadWithdrawalTiming,
 } from "./withdrawals";
 
-/** @type {import("svelte/store").Writable<{ chain: ChainTimes | null, network: string }>} */
-const store = writable({ chain: null, network: "" });
+/**
+ * @type {import("svelte/store").Writable<{
+ *   chain: ChainTimes | null,
+ *   net: import("@dusk-network/networks").Network | null,
+ *   network: string,
+ * }>}
+ */
+const store = writable({ chain: null, net: null, network: "" });
 
 /** @type {{ key: string, times: ReturnType<typeof createChainTimes> } | null} */
 let current = null;
@@ -73,11 +80,12 @@ function finalizationConfig() {
 /** Reads the chains again where it's been a while; the store follows. */
 function load() {
   const network = get(networkStore).networkName;
+  const net = get(nodeNetwork);
   const config = finalizationConfig();
 
   if (!config) {
     current = null;
-    store.set({ chain: null, network });
+    store.set({ chain: null, net, network });
 
     return Promise.resolve();
   }
@@ -104,12 +112,12 @@ function load() {
 
   const { times } = current;
 
-  store.set({ chain: times.get(), network });
+  store.set({ chain: times.get(), net, network });
 
   return times.refresh().then(
     (moved) => {
       if (moved && current?.times === times) {
-        store.set({ chain: times.get(), network });
+        store.set({ chain: times.get(), net, network });
       }
     },
     () => {}

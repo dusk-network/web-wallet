@@ -22,16 +22,16 @@ import { claimDateOf } from "./withdrawalPresentation";
  * @typedef {{
  *   action: "claim" | "prove" | null,
  *   amount: string,
- *   from: "duskDs" | "duskEvm",
+ *   from: string,
  *   group: BridgeActivityGroup,
  *   hash: string,
  *   id: string,
  *   item: any,
- *   kind: "deposit" | "withdrawal",
+ *   kind: "deposit" | "migration" | "service" | "withdrawal",
  *   line: string,
  *   state: "" | "Failed" | "Pending",
  *   title: string,
- *   to: "duskDs" | "duskEvm",
+ *   to: string,
  *   when: number,
  * }} BridgeActivityRow
  *   `action` is what the row asks for: proving or claiming a withdrawal on
@@ -223,6 +223,75 @@ export function depositRow(item, options) {
     title: "Dusk to DuskEVM",
     to: "duskEvm",
     when: item.createdAt ?? 0,
+  };
+}
+
+/**
+ * What a transfer between Dusk and another chain's row says, by its stage.
+ *
+ * @param {import("$lib/bridge/migrationActivity").RouteTransfer} transfer
+ * @param {BridgeActivityOptions} options
+ */
+function routeTransferLine(transfer, { locale, time }) {
+  const day = (/** @type {number} */ ms) => claimDay(ms, locale);
+  const sent = transfer.at ? `Sent ${day(transfer.at)}` : "Sent";
+  const usual = routeTimeText(time ?? null);
+
+  switch (transfer.stage) {
+    case "paid":
+      return transfer.paidAt ? `Paid ${day(transfer.paidAt)}` : "Paid on Dusk";
+    case "arrived":
+      return transfer.arrivedAt
+        ? `Arrived ${day(transfer.arrivedAt)}`
+        : `Arrived on ${transfer.route.chain.name}`;
+    case "failed":
+      return (
+        transfer.failure ??
+        `The migration failed on ${transfer.route.chain.name}`
+      );
+    default:
+      return usual ? `${sent} · takes ${usual}` : sent;
+  }
+}
+
+/**
+ * A transfer between Dusk and another chain as a row: a migration into
+ * Dusk, paid once the route's payout account pays it, or a transfer out,
+ * sent until it arrives.
+ *
+ * @param {import("$lib/bridge/migrationActivity").RouteTransfer} transfer
+ * @param {BridgeActivityOptions} options
+ * @returns {BridgeActivityRow}
+ */
+export function routeTransferRow(transfer, options) {
+  const { route } = transfer;
+  const group =
+    transfer.stage === "failed"
+      ? "failed"
+      : transfer.stage === "paid" || transfer.stage === "arrived"
+        ? "done"
+        : "progress";
+  const name = (/** @type {string} */ id) =>
+    id === "duskDs" ? "Dusk" : route.chain.name;
+
+  return {
+    action: null,
+    amount:
+      transfer.amountLux > 0n
+        ? `${formatDusk(transfer.amountLux, options.locale)} DUSK`
+        : "",
+    from: route.origin,
+    group,
+    hash: transfer.hash,
+    id: `${transfer.kind}:${transfer.hash}`,
+    item: transfer,
+    kind: transfer.kind,
+    line: routeTransferLine(transfer, options),
+    state:
+      group === "failed" ? "Failed" : group === "progress" ? "Pending" : "",
+    title: `${name(route.origin)} to ${name(route.destination)}`,
+    to: route.destination,
+    when: transfer.at,
   };
 }
 
