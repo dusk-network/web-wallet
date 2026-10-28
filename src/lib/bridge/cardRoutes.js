@@ -198,12 +198,13 @@ export function flipRoute(list, route) {
 }
 
 /**
- * The migration routes into Dusk, for whoever holds DUSK on Ethereum or BNB
- * Smart Chain: BNB Smart Chain's first, as the Home line opens it.
+ * The migration routes into Dusk that are running, for whoever holds DUSK
+ * on Ethereum or BNB Smart Chain: BNB Smart Chain's first, as the Home line
+ * opens it.
  *
  * @param {CardRoute[]} list
  */
 export const migrationRoutes = (list) =>
   list
-    .filter(({ kind }) => kind === "migration")
+    .filter(({ kind, running }) => kind === "migration" && running)
     .sort((a, b) => Number(b.from === "bsc") - Number(a.from === "bsc"));

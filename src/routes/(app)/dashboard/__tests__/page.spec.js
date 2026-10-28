@@ -196,7 +196,7 @@ describe("Dashboard", () => {
     );
   });
 
-  it("opens the Bridge on a migration into Dusk for whoever holds DUSK on Ethereum or BNB Smart Chain: BNB Smart Chain's, where there is one", async () => {
+  it("offers whoever holds DUSK on Ethereum or BNB Smart Chain a migration, only where one is running: BNB Smart Chain's on mainnet", async () => {
     const { getByRole, unmount } = render(Dashboard, props);
 
     expect(getByRole("link", { name: "Migrate it to Dusk" })).toHaveAttribute(
@@ -205,19 +205,17 @@ describe("Dashboard", () => {
     );
     unmount();
 
-    // Testnet has one: from Sepolia.
+    // Testnet's migration, from Sepolia, isn't running: no line.
     network.store?.set({
       connected: true,
       net: networks.testnet,
       networkName: "testnet",
     });
 
-    expect(
-      render(Dashboard, props).getByRole("link", { name: "Migrate it to Dusk" })
-    ).toHaveAttribute(
-      "href",
-      "/some-base-path/dashboard/bridge?route=ethereum-to-dusk"
-    );
+    const { container, queryByRole } = render(Dashboard, props);
+
+    expect(queryByRole("link", { name: "Migrate it to Dusk" })).toBeNull();
+    expect(container).not.toHaveTextContent("Have DUSK on Ethereum");
 
     network.store?.set({
       connected: true,

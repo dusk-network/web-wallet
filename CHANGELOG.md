@@ -145,11 +145,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show amounts under 0.01 DUSK to two significant digits
 - Shorten addresses and hashes with one ellipsis character
 - Round the network fee paid in a transaction's details, with the exact fee under Technical details
-- Open the Bridge on a migration from BNB Smart Chain from Home's Migrate it to Dusk
+- Open the Bridge on BNB Smart Chain's migration from Home's Migrate it to Dusk, shown only where a migration is running
 
 ### Removed
 
-- Remove the Migrate page, whose address now opens the Bridge on a migration
+- Remove the Migrate page, whose address now opens the Bridge
 - Remove testnet's BEP-20 migration on Sepolia
 
 ### Fixed

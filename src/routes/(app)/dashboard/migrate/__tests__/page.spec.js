@@ -21,20 +21,21 @@ describe("Migrate", () => {
     setNodeNetwork(null);
   });
 
-  it("opens the Bridge on the first migration into Dusk, BNB Smart Chain's on mainnet", () => {
+  it("opens the Bridge on the first migration into Dusk that's running, BNB Smart Chain's on mainnet", () => {
     setNodeNetwork(networks.mainnet);
 
     expect(sentTo()).toMatchObject({
       location: "/dashboard/bridge?route=bsc-to-dusk",
       status: 307,
     });
-
-    setNodeNetwork(networks.testnet);
-
-    expect(sentTo()?.location).toBe("/dashboard/bridge?route=ethereum-to-dusk");
   });
 
-  it("opens the Bridge as it is where the network has no migration", () => {
+  it("opens the Bridge with no route where no migration is running, or there is none", () => {
+    // Testnet's, from Sepolia, isn't running.
+    setNodeNetwork(networks.testnet);
+
+    expect(sentTo()?.location).toBe("/dashboard/bridge");
+
     setNodeNetwork(networks.devnet);
 
     expect(sentTo()?.location).toBe("/dashboard/bridge");

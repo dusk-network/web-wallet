@@ -81,7 +81,8 @@
   $: ({ balance, currentProfile, minimumStake, stakeInfo } = $walletStore);
   // Test DUSK has no value: no money value off mainnet.
   $: ({ net, networkName } = $networkStore);
-  // The Bridge opens on BNB Smart Chain's migration, where there is one.
+  // Offered only where a migration runs: the Bridge opens on BNB Smart
+  // Chain's, where there is one.
   $: [migration] = migrationRoutes(cardRoutes(net));
   $: staked = stakeInfo.amount
     ? stakeInfo.amount.value + stakeInfo.amount.locked

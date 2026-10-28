@@ -41,6 +41,8 @@ describe("the Bridge card's routes", () => {
       "bsc-to-dusk",
       "ethereum-to-dusk",
     ]);
+    // Testnet's, from Sepolia, isn't running.
+    expect(migrationRoutes(cardRoutes(networks.testnet))).toStrictEqual([]);
   });
 
   it("offer each way that runs, and say why another can't be picked", () => {

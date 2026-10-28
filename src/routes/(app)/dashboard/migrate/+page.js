@@ -6,7 +6,8 @@ import nodeNetwork from "$lib/stores/nodeNetwork";
 
 /**
  * Migrating is one of the Bridge's routes: this opens the Bridge on the
- * first migration into Dusk, BNB Smart Chain's where the network has one.
+ * first migration into Dusk that's running, BNB Smart Chain's where the
+ * network has one, else on the Bridge's own first route.
  *
  * @type {import("./$types").PageLoad}
  */
