@@ -71,9 +71,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offer only wallets when connecting to DuskEVM
 - Turn the transaction history on unless `VITE_FEATURE_TRANSACTION_HISTORY` is `false`
 - Fill the window instead of a fixed card, with a flow's buttons kept in view, above a phone's keyboard
-- Give the wallet a calm look: neutral surfaces, pill buttons and sentence-case labels, without bracketed headings
+- Give the wallet a calm look: neutral surfaces and pill buttons
 - Call Allocate Shield
-- Show addresses and hashes in the system's code font
+- Show addresses, hashes and block heights in Söhne Mono
 - Show no money values or market data off mainnet
 - Send from one page, with the summary beside the form, a review on phones, and a button that says what it sends
 - Start Send with no amount, take one with at most 9 decimals as typed, with a decimal point or comma, and say what's wrong with it
@@ -97,6 +97,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stake natively from one page with the minimum up front and nothing filled in, without the node notice step, and offer liquid staking under the minimum
 - Show Bridge and Migrate as one card: From and To with their networks, the amount, what arrives, the route and one button, before an EVM wallet connects, with a way back Home
 - Call the chains Migrate takes DUSK from Ethereum and BNB Smart Chain
+- Set section heads in small Söhne Mono capitals between grey brackets, and labels and column heads in the same type
+- Show the DUSK wordmark in the top bar, with WALLET on wide screens
+- Show links in blue, and the focus ring in the same blue
+- Shorten the Staking page's Choose how to stake to Stake
+- Say on the Staking page that the rewards shown are the native stake's, and that what is staked with Sozu includes its rewards
+- Say plainly what a stDUSK is worth and how it grows
+- Say Shown in your local time, not Times in your local time
 
 ### Removed
 
@@ -111,6 +118,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Name the DUSK unit after amounts for screen readers
 - Give controls on phones a tap area of at least 44 px
 - Date a withdrawal found by its hash by its DuskEVM block, not by the lookup
+- Say Nothing to unstake or claim beside the native stake, not under Unstake from Sozu
+- Keep the top bar inside the window at every width from 320 px
 
 ## [1.8.0] - 2026-03-25
 

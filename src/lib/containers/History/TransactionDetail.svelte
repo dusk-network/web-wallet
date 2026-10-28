@@ -11,7 +11,7 @@
   } from "@mdi/js";
   import { AnchorButton, Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
-  import { BalanceValue } from "$lib/components";
+  import { BalanceValue, SectionHead } from "$lib/components";
   import { fetchTxNonce } from "$lib/activity/activityHistory";
   import { contractLabel } from "$lib/activity/knownContracts";
   import { fullDateTime, rowTime } from "$lib/activity/present";
@@ -199,7 +199,7 @@
   }}
 >
   <header class="tx-detail__header">
-    <h2 id="tx-detail-title">Transaction</h2>
+    <SectionHead id="tx-detail-title">Transaction</SectionHead>
     <button
       aria-label="Close the details"
       bind:this={closeButton}
@@ -399,6 +399,7 @@
               Not in a block yet
             {:else if row.blockHash}
               <a
+                class="tx-detail__block text-link"
                 href={`/explorer/blocks/block?id=${row.blockHash}`}
                 rel="noopener noreferrer"
                 target="_blank"
@@ -482,11 +483,6 @@
     min-height: 3.625rem;
     padding: 0 0.75rem 0 1.5rem;
     border-bottom: 1px solid var(--calm-line);
-
-    & h2 {
-      font-size: 1.0625rem;
-      font-weight: 500;
-    }
   }
 
   .tx-detail__close {
@@ -677,8 +673,11 @@
     gap: 0.75rem;
   }
 
-  .tx-detail__list a {
-    color: inherit;
+  /* The block's height, a link to it in the explorer. */
+  .tx-detail__block {
+    font-family: var(--code-font-family);
+    font-size: 0.8125rem;
+    text-decoration-line: none;
     text-underline-offset: 2px;
   }
 

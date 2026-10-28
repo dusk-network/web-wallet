@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { mdiArrowLeft } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
+  import SectionHead from "../SectionHead/SectionHead.svelte";
   import { addBasePath } from "$lib/navigation";
   import { randomUUID } from "$lib/dusk/string";
 
@@ -34,7 +35,7 @@
   </section>
 
   <aside aria-labelledby="{id}-summary" class="stake-flow__summary">
-    <h2 class="stake-flow__summary-title" id="{id}-summary">Summary</h2>
+    <SectionHead id="{id}-summary">Summary</SectionHead>
     <slot name="summary" />
     {#if isReviewing}
       <Button
@@ -118,11 +119,6 @@
     padding: 1.5rem;
     border-radius: 1rem;
     background: var(--calm-s1);
-  }
-
-  .stake-flow__summary-title {
-    font-size: 1.0625rem;
-    font-weight: 500;
   }
 
   /* The summary's rows, total and buttons, whichever flow fills them. */

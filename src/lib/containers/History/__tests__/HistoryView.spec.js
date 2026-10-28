@@ -52,8 +52,9 @@ describe("HistoryView", () => {
       container.querySelectorAll("td.history__col-time")
     );
 
+    // Said once: "time" not twice.
     expect(
-      getByText(/^Times in your local time\./, { exact: false })
+      getByText(/^Shown in your local time\./, { exact: false })
     ).toBeInTheDocument();
     expect(container.querySelector("th.history__col-time")).toHaveTextContent(
       /^Time$/

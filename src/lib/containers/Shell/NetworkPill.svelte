@@ -131,6 +131,34 @@
     }
   }
 
+  /*
+   * Phones: no chevron, as the profile's pill; below 344 px the dot alone,
+   * with the network's name still there for screen readers.
+   */
+  @media (max-width: 47.99rem) {
+    .network-pill__button :global(.network-pill__chevron) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 21.49rem) {
+    .network-pill__button {
+      justify-content: center;
+      width: 44px;
+      padding: 0;
+    }
+
+    .network-pill__name {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+  }
+
   @keyframes network-pill-pulse {
     50% {
       opacity: 0.35;

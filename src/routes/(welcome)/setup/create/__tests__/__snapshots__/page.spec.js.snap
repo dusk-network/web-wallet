@@ -2277,7 +2277,7 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
           <small>
             Find out more in our 
             <a
-              class="dusk-anchor dusk-anchor--on-surface"
+              class="dusk-anchor dusk-anchor--on-surface text-link"
               href="https://docs.dusk.network/learn/guides/restore-height"
               rel="noopener noreferrer"
               target="_blank"
@@ -3933,7 +3933,7 @@ exports[`Create > should render the Terms of Service step of the Create flow if 
         <p>
           Accepting means you agree to the 
           <a
-            class="dusk-anchor dusk-anchor--on-surface"
+            class="dusk-anchor dusk-anchor--on-surface text-link"
             href="https://dusk.network/terms-of-use/"
             rel="noopener noreferrer"
             target="_blank"
@@ -3946,7 +3946,7 @@ exports[`Create > should render the Terms of Service step of the Create flow if 
           <!---->
            and the 
           <a
-            class="dusk-anchor dusk-anchor--on-surface"
+            class="dusk-anchor dusk-anchor--on-surface text-link"
             href="https://dusk.network/privacy-policy/"
             rel="noopener noreferrer"
             target="_blank"

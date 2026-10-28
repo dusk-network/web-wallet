@@ -1,14 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import {
-    mdiAccountQuestionOutline,
-    mdiApplicationCogOutline,
-    mdiArrowLeft,
-    mdiChevronDown,
-    mdiRestoreAlert,
-    mdiTuneVariant,
-  } from "@mdi/js";
+  import { mdiArrowLeft, mdiChevronDown } from "@mdi/js";
   import {
     Anchor,
     Button,
@@ -17,7 +10,12 @@
     Select,
     Switch,
   } from "$lib/dusk/components";
-  import { AppAnchorButton, CopyField, GasControls } from "$lib/components";
+  import {
+    AppAnchorButton,
+    CopyField,
+    GasControls,
+    SectionHead,
+  } from "$lib/components";
   import { currencies, formatFee } from "$lib/dusk/currency";
   import { createNumberFormatter } from "$lib/dusk/number";
   import {
@@ -125,10 +123,7 @@
 
   <div class="settings__content">
     <article class="settings-group">
-      <header class="settings-group__header">
-        <Icon path={mdiApplicationCogOutline} />
-        <h3 class="h4 settings-group__heading">Preferences</h3>
-      </header>
+      <SectionHead level={3}>Preferences</SectionHead>
       <div class="settings-group__multi-control-content">
         <label
           class="settings-group__control settings-group__control--with-label"
@@ -202,7 +197,6 @@
           }}
           type="button"
         >
-          <Icon path={mdiTuneVariant} />
           <span>Advanced</span>
           <Icon className="settings-group__toggle-icon" path={mdiChevronDown} />
         </button>
@@ -273,22 +267,22 @@
     </article>
     <hr />
     <article class="settings-group">
-      <header class="settings-group__header">
-        <Icon path={mdiAccountQuestionOutline} />
-        <h3 class="h4 settings-group__heading">Support</h3>
-      </header>
+      <SectionHead level={3}>Support</SectionHead>
       <p>
         Read the <Anchor
+          className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://docs.dusk.network">Dusk Docs</Anchor
         >, ask on
         <Anchor
+          className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://discord.gg/dusk-official">Discord</Anchor
         >, or report issues on
         <Anchor
+          className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://github.com/dusk-network/web-wallet/issues"
@@ -298,10 +292,7 @@
     </article>
     <hr />
     <article class="settings-group">
-      <header class="settings-group__header">
-        <Icon path={mdiRestoreAlert} />
-        <h3 class="h4 settings-group__heading">Reset wallet</h3>
-      </header>
+      <SectionHead level={3}>Reset wallet</SectionHead>
       <div class="settings-group__multi-control-content">
         <p>
           Resetting clears the cache and settings, not your funds. You'll need
@@ -437,10 +428,6 @@
         letter-spacing: inherit;
         text-transform: inherit;
         cursor: pointer;
-
-        & > .dusk-icon:first-child {
-          color: var(--calm-muted);
-        }
       }
 
       &__toggle[aria-expanded="true"] .settings-group__toggle-icon {

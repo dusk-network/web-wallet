@@ -3,6 +3,7 @@
   import {
     mdiAlertCircleOutline,
     mdiCheckCircleOutline,
+    mdiChevronRight,
     mdiClose,
     mdiContentCopy,
     mdiPencilOutline,
@@ -10,7 +11,7 @@
   } from "@mdi/js";
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
-  import { FullAddress } from "$lib/components";
+  import { FullAddress, SectionHead } from "$lib/components";
   import {
     contactNamesOf,
     contactsStore,
@@ -305,8 +306,10 @@
 
   <section class="contact-detail__activity">
     <header class="contact-detail__activity-header">
-      <h3>Activity with {contact.name}</h3>
-      <a href={addBasePath("/dashboard/transactions")}>History</a>
+      <SectionHead level={3}>Activity</SectionHead>
+      <a class="text-link" href={addBasePath("/dashboard/transactions")}
+        >History <Icon path={mdiChevronRight} /></a
+      >
     </header>
     {#if activity.length}
       {#each days as day (day.key)}
@@ -424,12 +427,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.625rem;
+  }
 
-    & h3 {
-      color: var(--calm-muted);
-      font-size: 0.875rem;
-      font-weight: 400;
-    }
+  .contact-detail__address h3 {
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+    font-weight: 400;
   }
 
   .contact-detail__code {
@@ -507,12 +510,21 @@
 
   .contact-detail__activity-header {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: space-between;
 
     & a {
-      color: var(--calm-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.125rem;
+      min-height: 44px;
       font-size: 0.84375rem;
+      text-decoration: none;
+    }
+
+    & :global(.dusk-icon) {
+      width: 0.9375rem;
+      height: 0.9375rem;
     }
   }
 

@@ -46,7 +46,9 @@
 
 <ul aria-label="Your balances" class="explainer-cards">
   <li class="explainer-card">
-    <p class="explainer-card__key"><Icon path={mdiEyeOutline} />Public</p>
+    <p class="explainer-card__key ledger-label">
+      <Icon path={mdiEyeOutline} />Public
+    </p>
     <p class="explainer-card__value">
       <BalanceValue
         exact={formatDuskExact(unshielded, locale)}
@@ -59,7 +61,7 @@
     </p>
   </li>
   <li class="explainer-card">
-    <p class="explainer-card__key">
+    <p class="explainer-card__key ledger-label">
       <Icon path={mdiEyeOffOutline} />Shielded
     </p>
     <p class="explainer-card__value">
@@ -75,7 +77,7 @@
   </li>
   {#if stakeEnabled}
     <li class="explainer-card">
-      <p class="explainer-card__key">
+      <p class="explainer-card__key ledger-label">
         <Icon path={mdiLayersOutline} />Staking
       </p>
       {#if staked}
@@ -123,13 +125,15 @@
         </p>
         {#if hasPastStaking}
           <a
-            class="explainer-card__link explainer-card__link--secondary"
+            class="explainer-card__link explainer-card__link--secondary text-link"
             href={addBasePath("/dashboard/transactions?kind=staking")}
             >Past staking</a
           >
         {/if}
       {/if}
-      <a class="explainer-card__link" href={addBasePath("/dashboard/stake")}
+      <a
+        class="explainer-card__link text-link"
+        href={addBasePath("/dashboard/stake")}
         >Open staking <Icon path={mdiChevronRight} /></a
       >
     </li>
@@ -159,7 +163,6 @@
     align-items: center;
     gap: 0.5rem;
     color: var(--calm-muted);
-    font-size: 0.84375rem;
 
     & :global(.dusk-icon) {
       width: 1rem;
@@ -203,7 +206,6 @@
     margin-top: auto;
     padding-top: 0.875rem;
     min-height: 44px;
-    color: var(--calm-text);
     font-size: 0.84375rem;
     font-weight: 500;
     text-decoration: none;
@@ -211,7 +213,6 @@
     &--secondary {
       margin-top: 0.25rem;
       padding-top: 0;
-      color: var(--calm-muted);
       text-decoration: underline;
       text-underline-offset: 3px;
     }

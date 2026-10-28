@@ -9,6 +9,7 @@
   import { nodeBaseUrl } from "$lib/url";
 
   import DuskGlyph from "./DuskGlyph.svelte";
+  import DuskWordmark from "./DuskWordmark.svelte";
   import NetworkPill from "./NetworkPill.svelte";
 
   /** @type {import("./navigation").ShellTab[]} */
@@ -43,7 +44,9 @@
     href={addBasePath("/dashboard")}
   >
     <DuskGlyph />
-    <span class="top-bar__brand-name">Dusk Wallet</span>
+    <DuskWordmark />
+    <span aria-hidden="true" class="top-bar__divider"></span>
+    <span class="top-bar__app">Wallet</span>
   </a>
 
   <nav aria-label="Wallet pages" class="top-bar__tabs">
@@ -105,19 +108,46 @@
     padding: 0 1.25rem 0 1.5rem;
     border-bottom: 1px solid var(--calm-line);
     background: var(--calm-s0);
+
+    /* Nothing in the bar shrinks under its content to make room. */
+    & > :global(*) {
+      flex-shrink: 0;
+    }
+  }
+
+  /*
+   * The wordmark, a thin line and WALLET in the ledger's type; the round
+   * mark alone where the wordmark doesn't fit, below 374 px.
+   */
+  .top-bar__brand :global(.dusk-glyph) {
+    display: none;
   }
 
   .top-bar__brand {
     display: flex;
     align-items: center;
-    gap: 0.625rem;
+    gap: 0.75rem;
     margin-right: 1.375rem;
     min-height: 44px;
     color: var(--calm-text);
-    font-size: 0.96875rem;
-    font-weight: 500;
     text-decoration: none;
     white-space: nowrap;
+  }
+
+  .top-bar__divider {
+    width: 1px;
+    height: 1rem;
+    background-color: color-mix(in oklab, var(--calm-text), transparent 72%);
+    flex: 0 0 auto;
+  }
+
+  .top-bar__app {
+    font-family: var(--code-font-family);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    line-height: 1;
+    text-transform: uppercase;
   }
 
   .top-bar__tabs {
@@ -223,8 +253,20 @@
     }
   }
 
-  /* Narrow screens: a search button, then the phone's bar. */
-  @media (max-width: 63.99rem) {
+  /*
+   * What fits beside the tabs, the longest profile name and the network
+   * pill's longest label (Connecting): WALLET with the search's field from
+   * 1400 px, the field from 1320 px (a search button below), and the
+   * profile's name from 976 px, as AddressPicker shows it.
+   */
+  @media (max-width: 87.49rem) {
+    .top-bar__divider,
+    .top-bar__app {
+      display: none;
+    }
+  }
+
+  @media (max-width: 82.49rem) {
     .top-bar__search {
       width: 2.375rem;
       padding: 0;
@@ -255,7 +297,6 @@
       margin-right: 0;
     }
 
-    .top-bar__brand-name,
     .top-bar__tabs {
       display: none;
     }
@@ -264,6 +305,16 @@
     .top-bar__settings {
       width: 44px;
       height: 44px;
+    }
+  }
+
+  @media (max-width: 23.37rem) {
+    .top-bar__brand :global(.dusk-glyph) {
+      display: block;
+    }
+
+    .top-bar__brand :global(.dusk-wordmark) {
+      display: none;
     }
   }
 </style>

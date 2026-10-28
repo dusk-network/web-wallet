@@ -32,6 +32,26 @@ describe("ActivityPanel", () => {
     localStorage.clear();
   });
 
+  it("should say once that times are local, over days in sentence case", () => {
+    const { getByRole, getByText, queryByText } = render(ActivityPanel, {
+      locale: "en",
+      state: {
+        complete: true,
+        error: null,
+        hasMore: false,
+        loaded: true,
+        rows: [stake],
+        syncing: false,
+      },
+    });
+
+    expect(getByText("Shown in your local time")).toBeInTheDocument();
+    expect(queryByText(/Times in your local time/)).toBeNull();
+    expect(getByRole("heading", { level: 3, name: "Today" })).toHaveTextContent(
+      /^Today$/
+    );
+  });
+
   it("should read its rows again when Sozu's hub names another pool", async () => {
     const { container } = render(ActivityPanel, {
       locale: "en",

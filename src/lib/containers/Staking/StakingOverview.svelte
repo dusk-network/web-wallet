@@ -4,7 +4,7 @@
   import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { Button, Icon } from "$lib/dusk/components";
-  import { AppAnchorButton, BalanceValue } from "$lib/components";
+  import { AppAnchorButton, BalanceValue, SectionHead } from "$lib/components";
   import { goto } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
   import { duskPerStDusk, feePercent } from "$lib/sozu/amounts";
@@ -78,9 +78,16 @@
   $: fees = sozu.status?.fees ?? null;
 
   /** @type {{ label: string, lux: bigint, stDusk?: bigint, sub?: string }[]} */
-  // What is staked comes first, natively and with Sozu.
+  // What is staked comes first, natively and with Sozu. With nothing
+  // natively staked, the native stake says there's nothing to unstake or
+  // claim, away from Unstake from Sozu; its rewards are the native stake's,
+  // as Sozu's are in what is staked there.
   $: figures = [
-    { label: hasLiquid ? "Staked natively" : "Staked", lux: staked },
+    {
+      label: hasLiquid ? "Staked natively" : "Staked",
+      lux: staked,
+      sub: hasNative ? undefined : "Nothing to unstake or claim",
+    },
     ...(hasLiquid && position
       ? [
           {
@@ -90,7 +97,7 @@
           },
         ]
       : []),
-    { label: "Rewards", lux: stakeInfo.reward },
+    { label: hasLiquid ? "Native rewards" : "Rewards", lux: stakeInfo.reward },
     {
       label: "Available to stake",
       lux: publicBalance,
@@ -114,7 +121,7 @@
         <dl class="staking__figures">
           {#each figures as figure (figure.label)}
             <div>
-              <dt>{figure.label}</dt>
+              <dt class="ledger-label">{figure.label}</dt>
               <dd>
                 <span class="staking__amount"
                   ><span class="staking__figure"
@@ -125,7 +132,8 @@
                   <span class="staking__sub">{figure.sub}</span>
                 {:else if figure.stDusk !== undefined}
                   <span class="staking__sub"
-                    ><BalanceValue {...amountOf(figure.stDusk)} /> stDUSK</span
+                    ><BalanceValue {...amountOf(figure.stDusk)} /> stDUSK, rewards
+                    included</span
                   >
                 {/if}
               </dd>
@@ -133,34 +141,36 @@
           {/each}
         </dl>
 
-        <div class="staking__actions">
-          <div class="staking__buttons">
-            {#if hasNative}
-              <Button
-                disabled={!actions.canUnstake}
-                on:click={() => goto("/dashboard/stake?flow=unstake")}
-                text="Unstake"
-                variant="secondary"
-              />
-              <Button
-                disabled={!actions.canClaim}
-                on:click={() => goto("/dashboard/stake?flow=claim")}
-                text="Claim rewards"
-                variant="secondary"
-              />
-            {/if}
-            {#if hasLiquid}
-              <AppAnchorButton
-                href="/dashboard/stake?flow=liquid&action=unstake"
-                text="Unstake from Sozu"
-                variant="secondary"
-              />
-            {/if}
+        {#if hasNative || hasLiquid}
+          <div class="staking__actions">
+            <div class="staking__buttons">
+              {#if hasNative}
+                <Button
+                  disabled={!actions.canUnstake}
+                  on:click={() => goto("/dashboard/stake?flow=unstake")}
+                  text="Unstake"
+                  variant="secondary"
+                />
+                <Button
+                  disabled={!actions.canClaim}
+                  on:click={() => goto("/dashboard/stake?flow=claim")}
+                  text="Claim rewards"
+                  variant="secondary"
+                />
+              {/if}
+              {#if hasLiquid}
+                <AppAnchorButton
+                  href="/dashboard/stake?flow=liquid&action=unstake"
+                  text="Unstake from Sozu"
+                  variant="secondary"
+                />
+              {/if}
+            </div>
+            {#each actions.reasons as reason (reason)}
+              <p class="staking__reason">{reason}</p>
+            {/each}
           </div>
-          {#each actions.reasons as reason (reason)}
-            <p class="staking__reason">{reason}</p>
-          {/each}
-        </div>
+        {/if}
       </div>
 
       {#if isMaturing}
@@ -177,7 +187,7 @@
       {/if}
     </div>
 
-    <h3 class="staking__choose">Choose how to stake</h3>
+    <SectionHead className="staking__choose" level={3}>Stake</SectionHead>
 
     <div class="staking__start">
       <AppAnchorButton
@@ -243,7 +253,7 @@
             Needs your own Dusk node: a computer that runs Dusk's node software
             and stays online.
             <a
-              class="compare__link"
+              class="compare__link text-link"
               href={DOCUMENTATION_LINKS.STAKING_BASICS}
               rel="noopener noreferrer"
               target="_blank">What's a node? <Icon path={mdiOpenInNew} /></a
@@ -260,10 +270,10 @@
             <td data-way="Liquid staking (Sozu, third party)">
               {#if rate}
                 You get stDUSK. Each is worth {formatDusk(rate, locale)} DUSK now,
-                as Sozu's contract gives it, and follows Sozu's pool.
+                and more as Sozu's pool earns rewards.
               {:else}
-                You get stDUSK, a token for your share of Sozu's pool. Its DUSK
-                value follows the pool.
+                You get stDUSK, a token for your share of Sozu's pool. Each is
+                worth more DUSK as the pool earns rewards.
               {/if}
             </td>
           {/if}
@@ -301,7 +311,7 @@
             <td data-way="Liquid staking (Sozu, third party)">
               Sozu's contract and rules apply:
               <a
-                class="compare__link"
+                class="compare__link text-link"
                 href={SOZU_URL}
                 rel="noopener noreferrer"
                 target="_blank">sozu.fi <Icon path={mdiOpenInNew} /></a
@@ -324,7 +334,7 @@
         title="Staking activity"
       />
     {:else}
-      <h2 class="staking__side-title">Staking activity</h2>
+      <SectionHead>Staking activity</SectionHead>
       <p class="staking__reason">
         Transaction history isn't available here yet. The Dusk explorer has your
         transactions.
@@ -377,7 +387,6 @@
 
     & dt {
       color: var(--calm-muted);
-      font-size: 0.875rem;
     }
 
     & dd {
@@ -447,10 +456,8 @@
     font-size: 0.875rem;
   }
 
-  .staking__choose {
+  .staking__main :global(.staking__choose) {
     margin: 2rem 0 0.75rem;
-    font-size: 1.0625rem;
-    font-weight: 500;
   }
 
   .compare {
@@ -523,7 +530,6 @@
   }
 
   .compare__link {
-    color: var(--calm-text);
     text-decoration: underline;
     text-underline-offset: 2px;
     white-space: nowrap;
@@ -558,11 +564,6 @@
     padding: 1.5rem 1.5rem 2rem;
     border-left: 1px solid var(--calm-line);
     background: var(--calm-panel);
-  }
-
-  .staking__side-title {
-    font-size: 1rem;
-    font-weight: 500;
   }
 
   @media (max-width: 79.99rem) {

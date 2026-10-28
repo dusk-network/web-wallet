@@ -33,6 +33,7 @@
       />
       <small>
         Find out more in our <AppAnchor
+          className="text-link"
           href={DOCUMENTATION_LINKS.RESTORE_BLOCK_HEIGHT}
           rel="noopener noreferrer"
           target="_blank">documentation</AppAnchor

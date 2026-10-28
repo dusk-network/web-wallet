@@ -2,7 +2,9 @@ import { feeError } from "$lib/components/Stake/stakeAmount";
 
 /**
  * Whether the stake can be unstaked and its rewards claimed, and if not,
- * why: each reason said once, in the words the overview shows.
+ * why: each reason said once, in the words the overview shows. With
+ * nothing staked natively and no rewards there are no buttons to explain:
+ * the overview says so with the native stake.
  *
  * @param {{
  *   hasLiquid?: boolean,
@@ -31,13 +33,9 @@ export function stakeActions({
   /** @type {string[]} */
   const reasons = [];
 
-  if (!hasStake && !hasReward) {
-    reasons.push(
-      `Nothing staked ${when}, so there's nothing to unstake or claim.`
-    );
-  } else if (!hasStake) {
+  if (hasReward && !hasStake) {
     reasons.push(`Nothing staked ${when}, so there's nothing to unstake.`);
-  } else if (!hasReward) {
+  } else if (hasStake && !hasReward) {
     reasons.push("No rewards to claim yet.");
   }
 

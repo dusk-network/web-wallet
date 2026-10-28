@@ -208,12 +208,29 @@ exports[`Send > Recipient > should render the one-page Send form, with its summa
     aria-labelledby="some-generated-id-summary"
     class="send__summary svelte-x7e9dl"
   >
+    <!---->
     <h2
-      class="send__summary-title svelte-x7e9dl"
+      class="section-head"
       id="some-generated-id-summary"
     >
+      <span
+        aria-hidden="true"
+        class="section-head__bracket section-head__bracket--open"
+      >
+        [
+      </span>
       Summary
+      <!---->
+      <span
+        aria-hidden="true"
+        class="section-head__bracket section-head__bracket--close"
+      >
+        ]
+      </span>
+      
     </h2>
+    
+    <!---->
      
     <dl
       class="send__rows svelte-x7e9dl"

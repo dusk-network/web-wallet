@@ -15,10 +15,12 @@
     </p>
     <p>
       Accepting means you agree to the <AppAnchor
+        className="text-link"
         href="https://dusk.network/terms-of-use/"
         rel="noopener noreferrer"
         target="_blank">Terms of Use</AppAnchor
       > and the <AppAnchor
+        className="text-link"
         href="https://dusk.network/privacy-policy/"
         rel="noopener noreferrer"
         target="_blank">Privacy Policy</AppAnchor
