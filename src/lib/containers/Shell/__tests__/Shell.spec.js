@@ -70,6 +70,40 @@ describe("Shell", () => {
     expect(queryByRole("dialog", { name: "Search" })).toBeNull();
   });
 
+  it("opens the search with /, as with Ctrl K, unless a field is typed in", async () => {
+    const { container, queryByRole } = render(Shell);
+    const shell = /** @type {HTMLElement} */ (
+      container.querySelector(".shell")
+    );
+    const field = document.createElement("input");
+    const notes = document.createElement("textarea");
+    const box = document.createElement("input");
+
+    box.type = "checkbox";
+    shell.append(field, notes, box);
+
+    // Typed in a field, it's a slash.
+    for (const target of [field, notes]) {
+      expect(await fireEvent.keyDown(target, { key: "/" })).toBe(true);
+    }
+
+    // With Ctrl or Alt, it's another shortcut.
+    await fireEvent.keyDown(window, { ctrlKey: true, key: "/" });
+    await fireEvent.keyDown(window, { altKey: true, key: "/" });
+
+    expect(queryByRole("dialog", { name: "Search" })).toBeNull();
+
+    // Anywhere else, as on a checkbox, it opens the search, the slash kept
+    // out of its field.
+    expect(await fireEvent.keyDown(box, { key: "/" })).toBe(false);
+
+    expect(queryByRole("dialog", { name: "Search" })).toBeInTheDocument();
+    expect(container.querySelector(".top-bar__search")).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Control+K Meta+K /"
+    );
+  });
+
   it("says at the top that test DUSK has no value, on a test network only", async () => {
     const { container, getByRole, queryByRole } = render(Shell);
 

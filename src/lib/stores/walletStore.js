@@ -17,6 +17,7 @@ import {
   isHistoryEnabled,
   stopActivity,
 } from "$lib/activity";
+import { closeContacts, openContacts } from "$lib/contacts";
 import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
 import { sozuCall } from "$lib/sozu/calls";
 import { SOZU_FN } from "$lib/sozu/config";
@@ -360,6 +361,26 @@ const claimRewards = async (amount, gas) => {
 /** @type {WalletStoreServices["startHistory"]} */
 const startHistory = () => historyOf(unsafeGetCurrentProfile());
 
+/**
+ * Opens the wallet's contacts with the key its seed makes: they stay
+ * closed when there's none.
+ *
+ * @param {ProfileGenerator} profileGenerator
+ * @param {Profile} firstProfile
+ */
+async function openContactsOf(profileGenerator, firstProfile) {
+  try {
+    const seed = await ProfileGenerator.seedFrom(profileGenerator);
+
+    await openContacts({
+      account: String(firstProfile.account),
+      seed: seed ?? new Uint8Array(),
+    });
+  } catch {
+    // The contacts stay closed, as when the wallet is locked.
+  }
+}
+
 /** @type {WalletStoreServices["init"]} */
 async function init(profileGeneratorInstance, syncFromBlock) {
   reset();
@@ -369,6 +390,11 @@ async function init(profileGeneratorInstance, syncFromBlock) {
   const currentProfile = await profileGeneratorInstance.default;
   const secondProfile = await profileGeneratorInstance.next();
   const profiles = [currentProfile, secondProfile];
+
+  // The contacts open with the wallet, and close when it locks.
+  if (session === walletSession) {
+    await openContactsOf(profileGeneratorInstance, currentProfile);
+  }
 
   const cachedBalance = await treasury.getCachedBalance(currentProfile);
   const cachedStakeInfo = await treasury.getCachedStakeInfo(currentProfile);
@@ -413,6 +439,7 @@ function reset() {
   walletSession++;
   abortSync();
   stopActivity();
+  closeContacts();
   treasury.reset();
   set(initialState);
 }

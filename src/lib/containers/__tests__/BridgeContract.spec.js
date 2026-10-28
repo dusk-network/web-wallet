@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 import { tick } from "svelte";
-import { getBalance, switchChain, watchBlocks } from "@wagmi/core";
+import {
+  getBalance,
+  switchChain,
+  watchBlocks,
+  watchChainId,
+} from "@wagmi/core";
 
 import { account } from "$lib/web3/walletConnection";
 
@@ -244,6 +249,36 @@ describe("BridgeContract", () => {
       expect(evm.asking()).toEqual([]);
     }
   );
+
+  it("should follow the wallet's chain only while one is connected, the connection unloaded until then", async () => {
+    const unwatch = vi.fn();
+
+    vi.mocked(watchChainId).mockReturnValue(unwatch);
+
+    const { unmount } = render(BridgeContract);
+
+    await tick();
+
+    expect(watchChainId).not.toHaveBeenCalled();
+
+    setAccount(CONNECTED);
+    await tick();
+
+    expect(watchChainId).toHaveBeenCalledOnce();
+
+    // Another account, still connected: the same watch.
+    setAccount({ ...CONNECTED, address: `0x${"3".repeat(40)}` });
+    await tick();
+
+    expect(watchChainId).toHaveBeenCalledOnce();
+
+    setAccount(DISCONNECTED);
+    await tick();
+
+    expect(unwatch).toHaveBeenCalledOnce();
+
+    unmount();
+  });
 
   it("should ask for no block while the wallet is on a chain the page doesn't know", async () => {
     setAccount({ ...CONNECTED, chain: undefined, chainId: 42_161 });

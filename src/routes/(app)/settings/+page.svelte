@@ -29,6 +29,7 @@
     HIGHEST_DEFAULT_GAS_LIMIT,
     areValidGasSettings,
   } from "$lib/contracts";
+  import { deleteContacts } from "$lib/contacts";
   import { logout } from "$lib/navigation";
   import loginInfoStorage from "$lib/services/loginInfoStorage";
 
@@ -39,6 +40,7 @@
     walletStore
       .clearLocalData()
       .then(async () => {
+        await deleteContacts();
         await loginInfoStorage.remove();
         settingsStore.reset();
         await logout(false);
@@ -295,9 +297,9 @@
       <SectionHead level={3}>Reset wallet</SectionHead>
       <div class="settings-group__multi-control-content">
         <p>
-          Resetting clears the cache and settings, not your funds. You'll need
-          your recovery phrase to restore access, so make sure it's stored
-          securely.
+          Resetting clears the cache, settings and contacts, not your funds.
+          You'll need your recovery phrase to restore access, so make sure it's
+          stored securely.
         </p>
         <ErrorDetails
           error={resetError}

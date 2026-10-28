@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
@@ -11,6 +19,7 @@ import {
   removeContact,
   saveContact,
 } from "$lib/contacts";
+import { openTestContacts } from "$lib/test-helpers";
 
 import { ContactsView } from "..";
 
@@ -53,6 +62,9 @@ const show = (props = {}) =>
     rows,
     ...props,
   });
+
+// The contacts open with a wallet, as when it unlocks.
+beforeAll(() => openTestContacts());
 
 describe("ContactsView", () => {
   /** @type {Contact} */

@@ -61,7 +61,7 @@
   </nav>
 
   <button
-    aria-keyshortcuts="Control+K Meta+K"
+    aria-keyshortcuts="Control+K Meta+K /"
     aria-label="Search names, addresses and transactions"
     class="top-bar__search"
     on:click={() => dispatch("search")}

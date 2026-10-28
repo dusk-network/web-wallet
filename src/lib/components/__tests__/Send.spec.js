@@ -1,6 +1,7 @@
 import {
   afterAll,
   afterEach,
+  beforeAll,
   beforeEach,
   describe,
   expect,
@@ -24,6 +25,7 @@ import {
   removeContact,
   saveContact,
 } from "$lib/contacts";
+import { openTestContacts } from "$lib/test-helpers";
 
 import { Send } from "..";
 
@@ -77,6 +79,9 @@ const getSummary = (container) =>
       row.querySelector("dd")?.textContent?.replace(/\s+/g, " ").trim(),
     ]
   );
+
+// The contacts open with a wallet, as when it unlocks.
+beforeAll(() => openTestContacts());
 
 describe("Send", () => {
   const lastTxId =
@@ -615,6 +620,38 @@ describe("Send", () => {
       ).toHaveTextContent("Network fee (at most) 0.02 DUSK");
       expect(fields.send()).toHaveTextContent("Send 2,345.5 DUSK");
       expect(getByText("Sends can't be undone.")).toBeInTheDocument();
+      expect(container.querySelector(".send__visible")).toBeNull();
+    });
+
+    it("should say what a public transfer shows everyone, where it's sent from, and on a phone's review", async () => {
+      const { container, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const visible = () =>
+        container.querySelector(".send__summary .send__visible");
+
+      // Nothing to send yet: nothing said.
+      expect(visible()).toBeNull();
+
+      await fireEvent.input(fields.to(), { target: { value: otherAccount } });
+      await fireEvent.input(fields.amount(), { target: { value: "0.1" } });
+
+      expect(visible()).toHaveTextContent(
+        "Visible to everyone: the amount and both accounts."
+      );
+
+      await fireEvent.input(fields.memo(), {
+        target: { value: "Invoice 118" },
+      });
+
+      expect(visible()).toHaveTextContent(
+        "Visible to everyone: the amount, both accounts and the memo."
+      );
+
+      // The review a phone sends from is the summary, the line in it.
+      await fireEvent.click(fields.review());
+
+      expect(container.querySelector(".send--review")).not.toBeNull();
+      expect(visible()).toHaveTextContent(/^Visible to everyone/);
     });
   });
 
@@ -1413,6 +1450,47 @@ describe("Send", () => {
 
       await fireEvent.input(fields.to(), { target: { value: "zed.dusk" } });
       await findByText("zed.dusk isn't registered.");
+
+      expect(queryByRole("button", { name: /^Did you mean/ })).toBeNull();
+    });
+
+    it("should offer the .dusk name of a name typed without it, or with a dot after it, and look it up once taken", async () => {
+      baseProps.resolveName.mockImplementation(async (input) => ({
+        account: otherAccount,
+        name: input,
+      }));
+
+      const { findByText, getByRole, queryByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), { target: { value: "alice" } });
+      await fireEvent.blur(fields.to());
+
+      // Nothing looked up for an offer.
+      expect(baseProps.resolveName).not.toHaveBeenCalled();
+
+      await fireEvent.click(
+        getByRole("button", { name: "Did you mean alice.dusk?" })
+      );
+
+      expect(fields.to()).toHaveValue("alice.dusk");
+      expect(
+        await findByText("alice.dusk points to a public account")
+      ).toBeInTheDocument();
+      expect(baseProps.resolveName).toHaveBeenCalledWith("alice.dusk");
+
+      await fireEvent.input(fields.to(), { target: { value: "alice.dusk." } });
+      await fireEvent.blur(fields.to());
+
+      expect(
+        getByRole("button", { name: "Did you mean alice.dusk?" })
+      ).toBeInTheDocument();
+
+      // Part of an address gets no offer.
+      await fireEvent.input(fields.to(), {
+        target: { value: invalidAddress.slice(0, 20) },
+      });
+      await fireEvent.blur(fields.to());
 
       expect(queryByRole("button", { name: /^Did you mean/ })).toBeNull();
     });

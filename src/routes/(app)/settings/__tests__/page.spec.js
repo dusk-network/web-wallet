@@ -20,6 +20,8 @@ import {
   walletStore,
 } from "$lib/stores";
 import loginInfoStorage from "$lib/services/loginInfoStorage";
+import { contactsWritten, listContacts, saveContact } from "$lib/contacts";
+import { openTestContacts } from "$lib/test-helpers";
 
 import Settings from "../+page.svelte";
 
@@ -410,6 +412,34 @@ describe("Settings", () => {
       expect(settingsResetSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledWith(false);
+    });
+
+    it("should delete the contacts of every wallet on this device, and those kept in plain text before", async () => {
+      await openTestContacts();
+      saveContact({ address: "some-address", name: "Alice (landlord)" });
+      await contactsWritten();
+      localStorage.setItem(
+        `${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts`,
+        JSON.stringify({ old: { address: "a", id: "old", name: "Old" } })
+      );
+
+      const { getByRole } = render(Settings);
+
+      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(listContacts()).toStrictEqual([]);
+      expect(
+        localStorage.getItem(
+          `${CONFIG.LOCAL_STORAGE_APP_KEY}-encrypted-contacts`
+        )
+      ).toBeNull();
+      expect(
+        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts`)
+      ).toBeNull();
+      expect(
+        Object.values(localStorage).filter((value) => value.includes("Old"))
+      ).toStrictEqual([]);
     });
 
     it("should do nothing if the user doesn't confirm the reset", async () => {

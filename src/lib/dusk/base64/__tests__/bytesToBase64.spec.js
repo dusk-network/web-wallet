@@ -8,4 +8,10 @@ describe("bytesToBase64", () => {
   it("should convert a Uint8Array to a base 64 string", () => {
     expect(bytesToBase64(source)).toBe("AQECAwUIDRU=");
   });
+
+  it("should convert one larger than a call takes as arguments", () => {
+    const large = new Uint8Array(300_000).fill(65);
+
+    expect(bytesToBase64(large)).toBe("QUFB".repeat(100_000));
+  });
 });

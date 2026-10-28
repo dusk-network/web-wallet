@@ -101,8 +101,7 @@
   $: flow = url.searchParams.get("flow");
   $: liquidAction = actionOf(url);
   $: ({ customGasLimit, customGasPrice, language } = $settingsStore);
-  $: ({ balance, currentProfile, minimumStake, profiles, stakeInfo } =
-    $walletStore);
+  $: ({ balance, currentProfile, minimumStake, stakeInfo } = $walletStore);
   $: ({ networkName } = $networkStore);
   $: hasStake = stakeInfo.amount !== null;
   $: publicBalance = balance.unshielded.value;
@@ -139,9 +138,6 @@
       {hasStake}
       liquidHref={isSozuAvailable ? "/dashboard/stake?flow=liquid" : undefined}
       {minimumStake}
-      profileName={currentProfile
-        ? `Profile ${profiles.indexOf(currentProfile) + 1}`
-        : "This profile"}
     />
   {:else if flow === "liquid" && isSozuAvailable}
     {#key liquidAction}

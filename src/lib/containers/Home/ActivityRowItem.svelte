@@ -38,10 +38,12 @@
   $: details = failed
     ? [p.privacy]
     : [
-        withoutCounterparty ? "" : p.line,
+        withoutCounterparty ? "" : p.shortLine,
         time === null ? "" : timeLabel(time, locale),
         p.privacy,
       ];
+  // A withdrawal's claim date, on a line of its own: it doesn't fit after.
+  $: note = withoutCounterparty ? null : p.note;
 </script>
 
 <a
@@ -63,6 +65,9 @@
       >{#if failed}<span class="activity-row__failed">{p.line}</span
         >{SEPARATOR}{/if}{details.filter(Boolean).join(SEPARATOR)}</span
     >
+    {#if note}
+      <span class="activity-row__line">{note}</span>
+    {/if}
   </span>
   <span class="activity-row__right">
     <span

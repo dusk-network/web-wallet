@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { lookupKind, searchLocally } from "../search";
+import { lookupKind, lookupName, searchLocally } from "../search";
 
 const ALICE =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
@@ -110,6 +110,14 @@ describe("lookupKind", () => {
     expect(lookupKind(` ${"ab".repeat(32)} `)).toBe("transaction");
     expect(lookupKind(`0x${"ab".repeat(32)}`)).toBe("transaction");
     expect(lookupKind(ALICE)).toBe("address");
-    expect(lookupKind("bakery")).toBeNull();
+    expect(lookupKind("bad_name")).toBeNull();
+    expect(lookupKind("two words")).toBeNull();
+  });
+
+  it("looks a name typed without .dusk, or with a dot after it, up as its .dusk name", () => {
+    expect(lookupKind("bakery")).toBe("name");
+    expect(lookupName("bakery")).toBe("bakery.dusk");
+    expect(lookupName("alice.dusk.")).toBe("alice.dusk");
+    expect(lookupName(" Alice.Dusk ")).toBe("Alice.Dusk");
   });
 });

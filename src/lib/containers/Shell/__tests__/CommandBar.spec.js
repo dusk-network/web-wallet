@@ -114,6 +114,38 @@ describe("CommandBar", () => {
     expect(mocks.goto).toHaveBeenCalledWith("/dashboard/send?to=alice.dusk");
   });
 
+  it("offers to look a name typed without .dusk up as its .dusk name, on Enter", async () => {
+    mocks.resolveDuskName.mockResolvedValue({
+      account: ALICE,
+      name: "bakery.dusk",
+    });
+
+    const { findByRole, getByRole, getByText } = render(CommandBar, {
+      pages,
+    });
+    const input = getByRole("combobox");
+
+    await fireEvent.input(input, { target: { value: "bakery" } });
+
+    expect(
+      getByText(
+        "Nothing on this device. Press Enter to look up bakery.dusk on the network."
+      )
+    ).toBeInTheDocument();
+    expect(mocks.resolveDuskName).not.toHaveBeenCalled();
+
+    await fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(
+      await findByRole("option", { name: /Send to bakery\.dusk/ })
+    ).toBeInTheDocument();
+    expect(mocks.resolveDuskName).toHaveBeenCalledWith(
+      "bakery.dusk",
+      "testnet",
+      expect.any(String)
+    );
+  });
+
   it("copies an address looked up on the network with Shift+Enter", async () => {
     const { findByRole, getByRole } = render(CommandBar, { pages });
     const input = getByRole("combobox");

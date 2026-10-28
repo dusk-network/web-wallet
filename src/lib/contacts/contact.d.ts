@@ -30,3 +30,14 @@ type Contact = {
 
   updatedAt: number;
 };
+
+/** A wallet's contacts, encrypted: see contactsVault.js. */
+type ContactsRecord = {
+  /** The encrypted contacts, in base64. */
+  data: string;
+
+  /** The write's 12-byte IV, in base64. */
+  iv: string;
+
+  v: number;
+};

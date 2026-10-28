@@ -303,6 +303,15 @@
   border-radius: 999px;
 }
 
+/* Phones: against the window, under the top bar, as the network's. */
+@media (max-width: 47.99rem) {
+  .address-picker--compact .address-picker__drop-down {
+    position: fixed;
+    top: calc(var(--header-height, 3.75rem) + 0.5rem);
+    right: 1rem;
+  }
+}
+
 /* The avatar alone where the top bar has no room for the name: below 976 px. */
 @media (max-width: 60.99rem) {
   .address-picker--compact .address-picker__compact-name,

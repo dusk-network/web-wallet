@@ -3,15 +3,63 @@
  * device, in the shape of the extension's address book. A contact saved
  * from a `.dusk` name keeps that name, and when it last pointed to the
  * contact's address: Send asks before it uses another address for it.
+ *
+ * They are the wallet's own: kept encrypted, in a place of their own
+ * (contactsVault.js), and readable only while the wallet is unlocked, when
+ * `openContacts` has the key. While it's locked there are none, and
+ * nothing that changes them works.
+ *
+ * Contacts kept in plain text before move into the wallet's record the
+ * first time it opens, and the plain copy goes. Reset deletes them all.
+ *
+ * Every change of what's kept, and Reset, takes the same lock across this
+ * browser's tabs, so one tab never writes over another's change, and none
+ * brings back what Reset deleted.
  */
 
 import { ProfileGenerator } from "@dusk/w3sper";
 import { writable } from "svelte/store";
 
+import {
+  contactsNamespace,
+  deriveContactsKey,
+  sealContacts,
+  unsealContacts,
+} from "./contactsVault";
+
 /** The most contacts kept: past it, the least recently changed go. */
 const LIMIT = 200;
 
-const STORAGE_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts`;
+/** The records of the wallets' contacts, by their place. */
+const STORAGE_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-encrypted-contacts`;
+
+/** Where contacts were kept in plain text before. */
+const PLAIN_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts`;
+
+/**
+ * A new mark each time the contacts kept are reset, or another wallet's
+ * removed: a change begun before then is dropped, in any tab.
+ */
+const RESET_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts-reset`;
+
+/** How many times a change is tried while other tabs write without the lock. */
+const TRIES = 3;
+
+/** @returns {string | null} */
+const readReset = () => localStorage.getItem(RESET_KEY);
+
+/**
+ * Runs a task alone across this browser's tabs: under the contacts' lock,
+ * where the browser has Web Locks.
+ *
+ * @template T
+ * @param {() => Promise<T> | T} task
+ * @returns {Promise<T>}
+ */
+const alone = async (task) =>
+  navigator.locks?.request
+    ? navigator.locks.request(STORAGE_KEY, task)
+    : task();
 
 /**
  * @param {unknown} value
@@ -24,18 +72,62 @@ const isContact = (value) =>
   typeof (/** @type {any} */ (value).name) === "string" &&
   typeof (/** @type {any} */ (value).address) === "string";
 
-/** @returns {Record<string, Contact>} */
-function read() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+/**
+ * The contacts in a parsed book, without anything else.
+ *
+ * @param {unknown} parsed
+ * @returns {Record<string, Contact>}
+ */
+const contactsIn = (parsed) =>
+  Object.fromEntries(
+    Object.entries(
+      typeof parsed === "object" && parsed !== null ? parsed : {}
+    ).filter(([, value]) => isContact(value))
+  );
 
-    return Object.fromEntries(
-      Object.entries(stored ?? {}).filter(([, value]) => isContact(value))
-    );
+/**
+ * @param {string} key
+ * @returns {unknown}
+ */
+function readJson(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? "null");
   } catch {
-    return {};
+    return null;
   }
 }
+
+/** @returns {Record<string, unknown>} */
+const readRecords = () => {
+  const records = readJson(STORAGE_KEY);
+
+  return typeof records === "object" && records !== null
+    ? /** @type {Record<string, unknown>} */ (records)
+    : {};
+};
+
+/** @param {Record<string, unknown>} records */
+function writeRecords(records) {
+  if (Object.keys(records).length) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+/**
+ * The most recently changed contacts, up to LIMIT.
+ *
+ * @param {Record<string, Contact>} all
+ * @returns {Record<string, Contact>}
+ */
+const kept = (all) =>
+  Object.fromEntries(
+    Object.values(all)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, LIMIT)
+      .map((contact) => [contact.id, contact])
+  );
 
 /**
  * Contacts by name, A to Z, then the most recently changed first.
@@ -50,12 +142,125 @@ const sorted = (all) =>
       b.updatedAt - a.updatedAt
   );
 
+/**
+ * A wallet's key, its place, and the reset mark when its contacts opened.
+ *
+ * @typedef {{ key: CryptoKey, namespace: string, reset: string | null }} Vault
+ */
+
+/**
+ * The unlocked wallet's key and place, while its contacts are open.
+ *
+ * @type {Vault | null}
+ */
+let vault = null;
+
+/** The open contacts, by ID: none while the wallet is locked. */
+/** @type {Record<string, Contact>} */
+let book = {};
+
+/** New each time the contacts open or close: an open begun before is dropped. */
+let session = 0;
+
+/** The changes being kept, one after the other. */
+/** @type {Promise<void>} */
+let writes = Promise.resolve();
+
+/** How many changes were made: only the last one's copy, as kept, shows. */
+let changes = 0;
+
+/**
+ * The open wallet's book as kept: none yet is empty. Throws when the record
+ * doesn't open with the wallet's key.
+ *
+ * @param {Vault} opened
+ * @returns {Promise<Record<string, Contact>>}
+ */
+async function readBook(opened) {
+  const record = readRecords()[opened.namespace];
+
+  return record === undefined
+    ? {}
+    : contactsIn(
+        JSON.parse(await unsealContacts(opened.key, opened.namespace, record))
+      );
+}
+
+/** A change to try again: another tab wrote while it was made. */
+const AGAIN = Symbol("again");
+
+/**
+ * Makes a change on the book kept, and keeps it encrypted, alone across
+ * tabs. Where another tab wrote meanwhile without the lock, it's tried
+ * again. Nothing is kept once the contacts were reset since they opened:
+ * that gives null.
+ *
+ * @param {Vault} opened
+ * @param {(all: Record<string, Contact>) => { all: Record<string, Contact> }} apply
+ * @param {() => void} [whenKept] What to do once it's kept, still alone
+ * @returns {Promise<Record<string, Contact> | null>} The book kept
+ */
+async function keepChange(opened, apply, whenKept) {
+  for (let tries = 0; tries < TRIES; tries++) {
+    const done = await alone(async () => {
+      if (readReset() !== opened.reset) {
+        return null;
+      }
+
+      const before = localStorage.getItem(STORAGE_KEY);
+      const next = kept(apply(await readBook(opened)).all);
+      const record = await sealContacts(
+        opened.key,
+        opened.namespace,
+        JSON.stringify(next)
+      );
+
+      if (
+        localStorage.getItem(STORAGE_KEY) !== before ||
+        readReset() !== opened.reset
+      ) {
+        return AGAIN;
+      }
+
+      writeRecords({ ...readRecords(), [opened.namespace]: record });
+      whenKept?.();
+
+      return next;
+    });
+
+    if (done !== AGAIN) {
+      return done;
+    }
+  }
+
+  throw new Error("Other tabs kept changing the contacts.");
+}
+
 /** The contacts, sorted, as they change here or in another tab. */
-const store = writable(sorted(read()), (set) => {
+const store = writable(/** @type {Contact[]} */ ([]), () => {
   /** @param {StorageEvent} event */
   const onStorage = (event) => {
-    if (event.key === STORAGE_KEY || event.key === null) {
-      set(sorted(read()));
+    if (vault && readReset() !== vault.reset) {
+      // Reset, or another wallet restored, in another tab.
+      closeContacts();
+    } else if (vault && (event.key === STORAGE_KEY || event.key === null)) {
+      const opened = vault;
+      const changed = changes;
+
+      // After the changes made here, and unless one is made meanwhile: the
+      // book kept is then the latest.
+      writes = writes
+        .then(() => readBook(opened))
+        .then((latest) => {
+          if (vault === opened && changed === changes) {
+            show(latest);
+          }
+        })
+        .catch(() => {
+          if (vault === opened) {
+            closeContacts();
+          }
+        });
     }
   };
 
@@ -66,16 +271,187 @@ const store = writable(sorted(read()), (set) => {
 
 export const contactsStore = { subscribe: store.subscribe };
 
-/** @param {Record<string, Contact>} all */
-function write(all) {
-  const kept = Object.values(all)
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, LIMIT);
-  const next = Object.fromEntries(kept.map((contact) => [contact.id, contact]));
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  store.set(sorted(next));
+/** @param {Record<string, Contact>} next */
+function show(next) {
+  book = next;
+  store.set(sorted(book));
 }
+
+/**
+ * Changes the contacts: at once on screen, then on the latest kept copy,
+ * one change at a time and alone across tabs, so that one made in another
+ * tab stays. A copy that doesn't open with the wallet's key, or contacts
+ * reset since they opened, close the contacts, and nothing is written.
+ *
+ * @template T
+ * @param {(all: Record<string, Contact>) => { all: Record<string, Contact>, value: T }} apply
+ *   A change that depends only on the contacts it's given
+ * @param {() => void} [whenKept] What to do once the change is kept
+ * @returns {T}
+ */
+function change(apply, whenKept) {
+  const opened = vault;
+
+  if (!opened) {
+    throw new Error("Contacts open with the wallet: unlock it first.");
+  }
+
+  const now = apply(book);
+
+  if (now.all === book) {
+    return now.value;
+  }
+
+  const thisChange = ++changes;
+
+  show(kept(now.all));
+  writes = writes
+    .then(async () => {
+      const next = await keepChange(opened, apply, whenKept);
+
+      if (vault !== opened) {
+        return;
+      }
+
+      // Reset meanwhile: none show. Else the last change shows the copy
+      // kept, with another tab's changes.
+      if (next === null) {
+        closeContacts();
+      } else if (thisChange === changes) {
+        show(next);
+      }
+    })
+    .catch(() => {
+      if (vault === opened) {
+        closeContacts();
+      }
+    });
+
+  return now.value;
+}
+
+/**
+ * A wallet's key and place, as its contacts open.
+ *
+ * @param {string} account Its first public account
+ * @param {Uint8Array} seed
+ * @returns {Promise<Vault>}
+ */
+const vaultOf = async (account, seed) => ({
+  key: await deriveContactsKey(seed),
+  namespace: await contactsNamespace(account),
+  reset: readReset(),
+});
+
+/**
+ * Opens the contacts of the wallet that is unlocking, with its seed: those
+ * it kept, and those kept in plain text before, which move into its record.
+ * A record that doesn't open with its key stays as it is, and the contacts
+ * stay closed.
+ *
+ * @param {{ account: string, seed: Uint8Array }} wallet Its first public
+ *   account and its seed
+ * @returns {Promise<boolean>} Whether they opened
+ */
+export async function openContacts({ account, seed }) {
+  closeContacts();
+
+  const opening = session;
+
+  try {
+    // What was changed before is kept first.
+    await writes;
+
+    const opened = await vaultOf(account, seed);
+    const own = await readBook(opened);
+
+    if (opening !== session) {
+      return false;
+    }
+
+    vault = opened;
+    show(own);
+    await moveInPlainContacts();
+
+    return vault === opened;
+  } catch {
+    if (opening === session) {
+      closeContacts();
+    }
+
+    return false;
+  }
+}
+
+/**
+ * Moves contacts kept in plain text, if any, into the open wallet's record,
+ * its own winning, and deletes the plain copy once the record holding them
+ * is kept. Nothing to move still deletes the copy.
+ */
+async function moveInPlainContacts() {
+  if (localStorage.getItem(PLAIN_KEY) === null) {
+    return;
+  }
+
+  const plain = contactsIn(readJson(PLAIN_KEY));
+
+  change(
+    (all) => ({ all: { ...plain, ...all }, value: null }),
+    () => localStorage.removeItem(PLAIN_KEY)
+  );
+  await writes;
+}
+
+/** Closes the contacts, as the wallet locks: none show until it unlocks. */
+export function closeContacts() {
+  session++;
+  vault = null;
+  show({});
+}
+
+/**
+ * Deletes every wallet's contacts on this device, encrypted or in plain
+ * text, as Reset does: alone across tabs, and a change begun before is
+ * dropped in any of them.
+ *
+ * @returns {Promise<void>}
+ */
+export function deleteContacts() {
+  closeContacts();
+
+  return alone(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(PLAIN_KEY);
+    localStorage.setItem(RESET_KEY, newId());
+  });
+}
+
+/**
+ * Keeps only one wallet's contacts on this device, as it's restored or
+ * made: another wallet's go, and with `plain` false so do those kept in
+ * plain text before, which then belong to no wallet this device knows.
+ *
+ * @param {string} account The wallet's first public account
+ * @param {{ plain: boolean }} options
+ */
+export async function keepOnlyContactsOf(account, { plain }) {
+  const namespace = await contactsNamespace(account);
+
+  await alone(() => {
+    const own = readRecords()[namespace];
+
+    writeRecords(own === undefined ? {} : { [namespace]: own });
+
+    if (!plain) {
+      localStorage.removeItem(PLAIN_KEY);
+    }
+
+    localStorage.setItem(RESET_KEY, newId());
+  });
+}
+
+/** Resolves once the changes made so far are kept. */
+export const contactsWritten = () => writes;
 
 /** @returns {string} */
 const newId = () =>
@@ -103,7 +479,7 @@ export function addressType(address) {
  */
 export function listContacts(query = "") {
   const q = query.trim().toLowerCase();
-  const all = sorted(read());
+  const all = sorted(book);
 
   return q
     ? all.filter((contact) =>
@@ -118,7 +494,7 @@ export function listContacts(query = "") {
  * @param {string} id
  * @returns {Contact | null}
  */
-export const getContact = (id) => read()[id] ?? null;
+export const getContact = (id) => book[id] ?? null;
 
 /**
  * The contact a recipient is: one saved with that address, or with that
@@ -157,34 +533,32 @@ export function findContact(recipient) {
  * @returns {Contact}
  */
 export function saveContact(entry) {
-  const all = read();
   const id = entry.id || newId();
   const now = Date.now();
-  const previous = all[id];
   const address = entry.address.trim();
   const duskName = (entry.duskName ?? "").trim().toLowerCase();
   const checkedAt = Number(entry.checkedAt);
 
-  /** @type {Contact} */
-  const contact = {
-    address,
-    createdAt: previous?.createdAt ?? now,
-    id,
-    name: entry.name.trim(),
-    type: addressType(address),
-    updatedAt: now,
-    ...(duskName
-      ? {
-          checkedAt:
-            Number.isFinite(checkedAt) && checkedAt > 0 ? checkedAt : now,
-          duskName,
-        }
-      : {}),
-  };
+  return change((all) => {
+    /** @type {Contact} */
+    const contact = {
+      address,
+      createdAt: all[id]?.createdAt ?? now,
+      id,
+      name: entry.name.trim(),
+      type: addressType(address),
+      updatedAt: now,
+      ...(duskName
+        ? {
+            checkedAt:
+              Number.isFinite(checkedAt) && checkedAt > 0 ? checkedAt : now,
+            duskName,
+          }
+        : {}),
+    };
 
-  write({ ...all, [id]: contact });
-
-  return contact;
+    return { all: { ...all, [id]: contact }, value: contact };
+  });
 }
 
 /**
@@ -210,21 +584,20 @@ const isStillAsChecked = (current, checked) =>
  * @returns {Contact | null} The contact, or null when it changed
  */
 export function markContactNameChecked(checked, checkedAt = Date.now()) {
-  const all = read();
-  const current = all[checked.id];
+  return change((all) => {
+    const current = all[checked.id];
 
-  if (!isStillAsChecked(current, checked)) {
-    return null;
-  }
+    if (!isStillAsChecked(current, checked)) {
+      return { all, value: null };
+    }
 
-  // It points here again: no longer moved.
-  const contact = { ...current, checkedAt };
+    // It points here again: no longer moved.
+    const contact = { ...current, checkedAt };
 
-  delete contact.movedTo;
+    delete contact.movedTo;
 
-  write({ ...all, [contact.id]: contact });
-
-  return contact;
+    return { all: { ...all, [contact.id]: contact }, value: contact };
+  });
 }
 
 /**
@@ -237,28 +610,32 @@ export function markContactNameChecked(checked, checkedAt = Date.now()) {
  * @returns {Contact | null} The contact, or null when it changed
  */
 export function markContactNameMoved(checked, pointsTo) {
-  const all = read();
-  const current = all[checked.id];
+  return change((all) => {
+    const current = all[checked.id];
 
-  if (!isStillAsChecked(current, checked)) {
-    return null;
-  }
+    if (!isStillAsChecked(current, checked)) {
+      return { all, value: null };
+    }
 
-  const contact = { ...current, movedTo: pointsTo };
+    const contact = { ...current, movedTo: pointsTo };
 
-  write({ ...all, [contact.id]: contact });
-
-  return contact;
+    return { all: { ...all, [contact.id]: contact }, value: contact };
+  });
 }
 
 /** @param {string} id */
 export function removeContact(id) {
-  const all = read();
+  change((all) => {
+    if (!all[id]) {
+      return { all, value: undefined };
+    }
 
-  if (all[id]) {
-    delete all[id];
-    write(all);
-  }
+    const rest = { ...all };
+
+    delete rest[id];
+
+    return { all: rest, value: undefined };
+  });
 }
 
 /**

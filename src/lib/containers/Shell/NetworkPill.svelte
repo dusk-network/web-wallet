@@ -188,6 +188,18 @@
     font-size: 0.875rem;
   }
 
+  /*
+   * Phones: against the window, under the top bar. The pill sits too far
+   * right for the popover to open under it.
+   */
+  @media (max-width: 47.99rem) {
+    .network-pill__popover {
+      position: fixed;
+      top: calc(var(--header-height, 3.75rem) + 0.5rem);
+      right: 1rem;
+    }
+  }
+
   .network-pill__title {
     font-weight: 500;
   }
