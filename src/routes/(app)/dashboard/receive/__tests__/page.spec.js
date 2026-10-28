@@ -7,7 +7,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
@@ -51,6 +51,11 @@ describe("Receive", () => {
   const expectedAddress = currentProfile.address.toString();
   const expectedAccount = currentProfile.account.toString();
 
+  // The QR code shows once its PNG is made, which Node deflates on its
+  // threadpool: running the fake timers doesn't wait for that.
+  const qrCodeDrawn = () =>
+    vi.waitFor(() => screen.getByRole("img", { name: "Key QR code" }));
+
   beforeEach(() => {
     getPrimaryName.mockResolvedValue("");
     Object.assign(navigator, {
@@ -74,6 +79,7 @@ describe("Receive", () => {
     const { container, getByRole, getByText } = render(Receive);
 
     await vi.runAllTimersAsync();
+    await qrCodeDrawn();
 
     expect(getByRole("radiogroup")).toBeInTheDocument();
     expect(getByText(expectedAccount)).toBeInTheDocument();
@@ -116,6 +122,7 @@ describe("Receive", () => {
 
     await fireEvent.click(getByRole("radio", { checked: false }));
     await vi.runAllTimersAsync();
+    await qrCodeDrawn();
 
     expect(() => getByText(expectedAccount)).toThrow();
     expect(getByText(expectedAddress)).toBeInTheDocument();
