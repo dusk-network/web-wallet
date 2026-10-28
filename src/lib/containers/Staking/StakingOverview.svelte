@@ -275,13 +275,12 @@
         <tr>
           <th scope="row">Node</th>
           <td data-way="Native staking">
-            Needs your own Dusk node: a computer that runs Dusk's node software
-            and stays online.
+            Needs your own Dusk node<br />
             <a
               class="compare__link text-link"
-              href={DOCUMENTATION_LINKS.STAKING_BASICS}
+              href={DOCUMENTATION_LINKS.RUN_A_PROVISIONER}
               rel="noopener noreferrer"
-              target="_blank">What's a node? <Icon path={mdiOpenInNew} /></a
+              target="_blank">Run a node <Icon path={mdiOpenInNew} /></a
             >
           </td>
           {#if sozu.available}

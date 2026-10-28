@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
+import { networks } from "@dusk-network/networks";
+
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import DepositLifecycle from "../EvmTransactions/DepositLifecycle.svelte";
 
@@ -49,6 +52,30 @@ describe("DepositLifecycle", () => {
     expect(
       getByRole("list", { name: "Bridge transaction progress" })
     ).toBeInTheDocument();
+  });
+
+  it("should link each side's transaction: Dusk's in the network's Dusk explorer, DuskEVM's in its explorer", () => {
+    setNodeNetwork(networks.testnet);
+
+    const { getByRole } = render(DepositLifecycle, {
+      deposit: { ...deposit(), l2TransactionHash: `0x${"e2".repeat(32)}` },
+    });
+    const dusk = getByRole("link", {
+      name: "View duskds transaction hash in Dusk explorer",
+    });
+
+    expect(dusk).toHaveAttribute(
+      "href",
+      `https://apps.testnet.dusk.network/explorer/transactions/transaction?id=${"ab".repeat(32)}`
+    );
+    expect(dusk).toHaveAttribute("target", "_blank");
+    expect(
+      getByRole("link", { name: "View duskevm transaction hash in Blockscout" })
+    ).toHaveAttribute(
+      "href",
+      `https://explorer.example.test/tx/0x${"e2".repeat(32)}`
+    );
+    setNodeNetwork(null);
   });
 
   it("should leave the amount and the state to the row in a list that says them", () => {

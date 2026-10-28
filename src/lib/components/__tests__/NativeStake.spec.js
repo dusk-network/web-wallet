@@ -124,18 +124,24 @@ describe("NativeStake", () => {
     baseProps.execute.mockClear();
   });
 
-  it("states what native staking takes, the lock and the burn in plain words, with no consensus key", () => {
-    const { container } = render(NativeStake, baseProps);
+  it("states what native staking takes, the lock and the burn in plain words, with no consensus key nor recovery phrase", () => {
+    const { container, getByRole } = render(NativeStake, baseProps);
     const facts = Array.from(
       container.querySelectorAll(".native-stake__facts li"),
       (li) => li.textContent?.replace(/\s+/g, " ").trim()
     );
 
+    expect(container).not.toHaveTextContent(/recovery phrase/i);
     expect(facts).toStrictEqual([
-      "Needs your own Dusk node A computer that runs Dusk's node software and stays online. It needs keys made from this wallet's recovery phrase. What's a node?",
+      "Needs your own Dusk node Run a node",
       "Rewards start in about 6 to 12 hours Unstake any time, with no waiting period.",
       "If your node misses its turn Part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost).",
     ]);
+    // The docs on running one.
+    expect(getByRole("link", { name: "Run a node" })).toHaveAttribute(
+      "href",
+      "https://docs.dusk.network/operator/provisioner/"
+    );
   });
 
   it("stakes the amount typed, with the gas shown, and shows the result", async () => {

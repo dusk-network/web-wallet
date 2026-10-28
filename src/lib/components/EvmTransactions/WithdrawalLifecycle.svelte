@@ -15,6 +15,8 @@
     withdrawalStageProgress,
   } from "$lib/bridge/withdrawalLifecycle";
   import { Button, Icon } from "$lib/dusk/components";
+  import { duskExplorerTx } from "$lib/url";
+  import { duskEvm } from "$lib/web3/walletConnection";
 
   import Banner from "../Banner/Banner.svelte";
   import BridgeTimeline from "./BridgeTimeline.svelte";
@@ -44,6 +46,19 @@
 
   /** @type {string} */
   export let submittedHash;
+
+  /**
+   * The withdrawal's proof and claim on Dusk, as the history has them.
+   *
+   * @type {{ claim?: string, prove?: string }}
+   */
+  export let duskTransactions = {};
+
+  /** @type {{ label: string, step: "claim" | "prove" }[]} */
+  const DUSK_STEPS = [
+    { label: "Proof on Dusk", step: "prove" },
+    { label: "Claim on Dusk", step: "claim" },
+  ];
 
   /** When a withdrawal can be claimed if it's proved now: read for the one ready to prove. */
   export let loadProveNow = loadProveNowClaim;
@@ -196,8 +211,7 @@
     {#if submittedHash}
       <Banner title="Transaction submitted" variant="info">
         <WithdrawalHash
-          external={false}
-          href={`/explorer/transactions/transaction?id=${submittedHash}`}
+          href={duskExplorerTx(submittedHash)}
           name="Submitted transaction hash"
           explorerName="Dusk explorer"
           value={submittedHash}
@@ -239,10 +253,24 @@
         <WithdrawalHash
           href={selectedExplorerUrl}
           name="DuskEVM transaction hash"
-          explorerName="Blockscout"
+          explorerName={duskEvm.blockExplorers.default.name}
           value={selectedWithdrawal.transactionHash}
         />
       </dd>
+      {#each DUSK_STEPS as { label, step } (step)}
+        {@const hash = duskTransactions[step]}
+        {#if hash}
+          <dt>{label}</dt>
+          <dd>
+            <WithdrawalHash
+              href={duskExplorerTx(hash)}
+              name={`${label} hash`}
+              explorerName="Dusk explorer"
+              value={hash}
+            />
+          </dd>
+        {/if}
+      {/each}
       {#if selectedWithdrawal.withdrawalHash}
         <dt>Withdrawal hash</dt>
         <dd>

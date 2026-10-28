@@ -12,6 +12,7 @@
     isDepositDelayed,
     isDepositStalled,
   } from "$lib/bridge/depositLifecycle";
+  import { duskExplorerTx } from "$lib/url";
   import { duskEvm } from "$lib/web3/walletConnection";
   import { Badge } from "$lib/dusk/components";
 
@@ -85,8 +86,7 @@
       <dt>DuskDS transaction</dt>
       <dd>
         <WithdrawalHash
-          external={false}
-          href={`/explorer/transactions/transaction?id=${deposit.transactionHash}`}
+          href={duskExplorerTx(deposit.transactionHash)}
           name="DuskDS transaction hash"
           explorerName="Dusk explorer"
           value={deposit.transactionHash}

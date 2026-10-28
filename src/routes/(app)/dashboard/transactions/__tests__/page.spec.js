@@ -233,6 +233,51 @@ describe("History", () => {
     ]);
   });
 
+  it("keeps its filters in its address, for a refresh, Back or a link, and goes back to the default for any that isn't one", async () => {
+    await visit(
+      "/dashboard/transactions?kind=received&privacy=shielded&range=30"
+    );
+
+    const { container, getByRole } = render(History);
+    const dates = getByRole("combobox", { name: "Dates" });
+    const privacy = getByRole("combobox", { name: "Public or shielded" });
+
+    expect(getByRole("button", { name: "Received" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(privacy).toHaveValue("shielded");
+    expect(dates).toHaveValue("30");
+    expect(shownRows(container)).toEqual([
+      expect.stringMatching(/^wallet-both\.dusk/),
+    ]);
+
+    // Picked here, it goes in the address, with the defaults left out.
+    await fireEvent.click(getByRole("button", { name: "Staking" }));
+
+    expect(mocks.goto).toHaveBeenLastCalledWith(
+      "/dashboard/transactions?kind=staking&privacy=shielded&range=30",
+      expect.objectContaining({ replaceState: true })
+    );
+
+    await fireEvent.change(dates, { target: { value: "all" } });
+
+    expect(mocks.goto).toHaveBeenLastCalledWith(
+      "/dashboard/transactions?kind=staking&privacy=shielded",
+      expect.objectContaining({ replaceState: true })
+    );
+
+    // None of them a filter: each one's default.
+    await visit("/dashboard/transactions?kind=fees&privacy=both&range=365");
+
+    expect(getByRole("button", { name: "All" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(privacy).toHaveValue("all");
+    expect(dates).toHaveValue("all");
+  });
+
   it("opens a transaction's details, in full, and closes them", async () => {
     const { container, getByRole, getByText, queryByRole } = render(History);
 

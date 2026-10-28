@@ -1,15 +1,20 @@
 <script>
   import { createEventDispatcher, onMount, tick } from "svelte";
-  import { mdiClose, mdiContentCopy, mdiMagnify } from "@mdi/js";
+  import {
+    mdiAlertOutline,
+    mdiClose,
+    mdiContentCopy,
+    mdiMagnify,
+  } from "@mdi/js";
   import { Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { activityState } from "$lib/activity";
-  import { fetchTxDetails } from "$lib/activity/activityHistory";
+  import { archiveQuery, fetchTxDetails } from "$lib/activity/activityHistory";
   import { shortAddress } from "$lib/activity/present";
   import { getVerifiedName, resolveDuskName } from "$lib/dusk-domains";
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
-  import { nodeBaseUrl } from "$lib/url";
+  import { duskExplorerBlock, duskExplorerTx, nodeBaseUrl } from "$lib/url";
 
   import { contactsStore } from "$lib/contacts";
   import { lookupKind, lookupName, searchLocally } from "./search";
@@ -47,6 +52,7 @@
     contacts: $contactsStore,
     history: $activityState.rows,
     locale: language,
+    network: networkName,
     pages,
     profiles: profiles.map((profile, i) => {
       const account = String(profile.account);
@@ -81,6 +87,39 @@
   }
 
   /**
+   * Opens a block in the Dusk explorer, which goes by the block's hash: the
+   * tab opens on the click, and goes to the block once the node gives its
+   * hash for the height.
+   *
+   * @param {string} height
+   */
+  async function openBlock(height) {
+    const tab = window.open("", "_blank");
+
+    try {
+      const data = await archiveQuery(
+        nodeBaseUrl(),
+        `query { block(height: ${height}) { header { hash } } }`
+      );
+      const hash = data?.block?.header?.hash;
+
+      if (typeof hash !== "string" || !hash) {
+        throw new Error("No block at this height");
+      }
+
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = duskExplorerBlock(hash);
+      }
+
+      close();
+    } catch {
+      tab?.close();
+      toast("error", `Couldn't find block ${height}`, mdiAlertOutline);
+    }
+  }
+
+  /**
    * Opens a result: its page, or Send for a person. With Shift, a result
    * that has an address copies it instead.
    *
@@ -90,6 +129,8 @@
   function activate(result, { copyOnly = false } = {}) {
     if (copyOnly && result.value) {
       copy(result.value);
+    } else if (result.block) {
+      openBlock(result.block);
     } else if (result.external && result.href) {
       window.open(result.href, "_blank", "noopener,noreferrer");
     } else if (result.href) {
@@ -191,7 +232,7 @@
               detail: tx.success ? "Completed" : "Failed",
               external: true,
               group: "Transactions",
-              href: `/explorer/transactions/transaction?id=${hash}`,
+              href: duskExplorerTx(hash),
               id: `lookup:${hash}`,
               label: `View ${shortAddress(hash)} in Dusk explorer`,
             }),

@@ -6,6 +6,7 @@
    * was sent and with what, where it's paid, and what paid it.
    */
   import { formatDuskExact } from "$lib/dusk/currency";
+  import { duskExplorerTx } from "$lib/url";
   import { settingsStore } from "$lib/stores";
 
   import WithdrawalHash from "./WithdrawalHash.svelte";
@@ -19,8 +20,6 @@
   $: isMigration = transfer.kind === "migration";
   /** @param {string} hash A transaction on the other chain */
   const chainTx = (hash) => `${transfer.route.chain.explorerUrl}/tx/${hash}`;
-  /** @param {string} hash A transaction on Dusk */
-  const duskTx = (hash) => `/explorer/transactions/transaction?id=${hash}`;
 </script>
 
 <dl class="route-transfer">
@@ -34,8 +33,9 @@
   <dd>
     <WithdrawalHash
       explorerName={isMigration ? `${chain.name} explorer` : "Dusk explorer"}
-      external={isMigration}
-      href={isMigration ? chainTx(transfer.hash) : duskTx(transfer.hash)}
+      href={isMigration
+        ? chainTx(transfer.hash)
+        : duskExplorerTx(transfer.hash)}
       name={isMigration
         ? `${chain.name} transaction hash`
         : "Dusk transaction hash"}
@@ -65,8 +65,9 @@
     <dd>
       <WithdrawalHash
         explorerName={isMigration ? "Dusk explorer" : `${chain.name} explorer`}
-        external={!isMigration}
-        href={isMigration ? duskTx(transfer.payout) : chainTx(transfer.payout)}
+        href={isMigration
+          ? duskExplorerTx(transfer.payout)
+          : chainTx(transfer.payout)}
         name={isMigration ? "Dusk payout hash" : `${chain.name} payout hash`}
         value={transfer.payout}
       />

@@ -73,6 +73,20 @@ export function duskEvmAdapterUrl() {
 }
 
 /**
+ * DuskEVM's Blockscout API: the network's, as its file gives it, else beside
+ * the explorer set for local work.
+ *
+ * @returns {string | undefined}
+ */
+export function duskEvmBlockscoutApiUrl() {
+  const explorer = setting(import.meta.env.VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL);
+
+  return explorer
+    ? `${explorer.replace(/\/+$/, "")}/api/v2`
+    : duskEvmNetwork()?.blockscoutApiUrl;
+}
+
+/**
  * DuskEVM as a viem chain. Read on use: the node's network gives it.
  */
 export const duskEvm = {

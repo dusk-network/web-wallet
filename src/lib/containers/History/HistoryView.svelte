@@ -42,6 +42,12 @@
   /** @type {import("$lib/activity/present").ActivityKindFilter} */
   export let kind = "all";
 
+  /** Public, shielded or both ("all"). */
+  export let privacy = "all";
+
+  /** The last days shown ("7", "30", "90"), or all of them. */
+  export let range = "all";
+
   const dispatch = createEventDispatcher();
 
   /** @type {{ id: import("$lib/activity/present").ActivityKindFilter, label: string }[]} */
@@ -70,9 +76,6 @@
   const STATUS_WORDS = { pending: "Pending", unknown: "Not confirmed" };
 
   const bridgeContracts = configuredBridgeContracts();
-
-  let privacy = "all";
-  let range = "all";
 
   /** Whether an export holds the user's own contact names. */
   let withContacts = false;
@@ -189,6 +192,7 @@
             class:history__kind--on={kind === option.id}
             on:click={() => {
               kind = option.id;
+              dispatch("filter", { kind });
             }}
             type="button">{option.label}</button
           >
@@ -198,12 +202,14 @@
         aria-label="Public or shielded"
         bind:value={privacy}
         className="history__select"
+        on:change={() => dispatch("filter", { privacy })}
         options={PRIVACY}
       />
       <Select
         aria-label="Dates"
         bind:value={range}
         className="history__select"
+        on:change={() => dispatch("filter", { range })}
         options={RANGES}
       />
     </div>
