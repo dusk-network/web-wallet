@@ -163,6 +163,8 @@ exports[`GasSettings > renders the GasSettings component opened 1`] = `
         0.1 DUSK
       </dd>
     </dl>
+     
+    <!---->
   </div>
   <!---->
 </div>

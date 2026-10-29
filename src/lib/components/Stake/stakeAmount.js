@@ -3,6 +3,8 @@
  * are typed, in the words the pages show.
  */
 
+import { leastSozuStake } from "@dusk-network/networks/sozu";
+
 import { formatDusk, formatFee } from "$lib/dusk/currency/formatDusk";
 
 const LUX_DECIMALS = 9;
@@ -72,7 +74,47 @@ export function normalizeDuskInput(text, decimalSeparator = ".") {
 }
 
 /**
+ * The least an unstake from Sozu can be: what burns at least 1 lux of
+ * stDUSK at the pool's rate now, as the pool rounds the stDUSK it burns
+ * down; or all that is staked there, which burns all its stDUSK.
+ *
+ * @param {{ stake: bigint, supply: bigint } | null} pool
+ * @param {bigint} staked What the account has staked with Sozu
+ * @returns {bigint}
+ */
+export function leastSozuUnstake(pool, staked) {
+  const least = leastSozuStake(pool) ?? 1n;
+
+  return staked > 0n && staked < least ? staked : least;
+}
+
+/**
+ * What to enter instead of what isn't an amount, written as the language
+ * writes decimals: "Enter an amount such as 10 or 10,5."
+ *
+ * @param {bigint} minimum
+ * @param {string} locale
+ */
+function exampleError(minimum, locale) {
+  let point = ".";
+
+  try {
+    point =
+      new Intl.NumberFormat(locale || undefined)
+        .formatToParts(1.5)
+        .find((part) => part.type === "decimal")?.value ?? ".";
+  } catch {
+    // The point, then.
+  }
+
+  const whole = minimum >= 1_000_000_000n ? "1000" : "10";
+
+  return `Enter an amount such as ${whole} or ${whole}${point}5.`;
+}
+
+/**
  * @typedef {{
+ *   action?: "stake" | "unstake",
  *   amount: bigint | null,
  *   available: bigint,
  *   fee: bigint,
@@ -86,12 +128,14 @@ export function normalizeDuskInput(text, decimalSeparator = ".") {
 /**
  * What stops an amount, as the page says it, or "" when it can go ahead.
  * The amount is paid from `available` with the fee, unless `most` caps it
- * on its own, as what can be unstaked; `minimum` is the least it can be.
+ * on its own, as what can be unstaked; `minimum` is the least it can be,
+ * for a stake or, as `action` says, an unstake.
  *
  * @param {AmountCheck} check
  * @returns {{ error: string, isMinimum: boolean, ok: boolean }}
  */
 export function checkAmount({
+  action = "stake",
   amount,
   available,
   fee,
@@ -108,11 +152,7 @@ export function checkAmount({
   }
 
   if (amount === null) {
-    return fail(
-      minimum >= 1_000_000_000n
-        ? "Enter an amount such as 1000 or 1000.5."
-        : "Enter an amount such as 10 or 10.5."
-    );
+    return fail(exampleError(minimum, locale));
   }
 
   if (amount <= 0n) {
@@ -121,7 +161,7 @@ export function checkAmount({
 
   if (amount < minimum) {
     return fail(
-      `The minimum stake is ${formatDusk(minimum, locale)} DUSK.`,
+      `The minimum ${action} is ${formatDusk(minimum, locale)} DUSK.`,
       true
     );
   }

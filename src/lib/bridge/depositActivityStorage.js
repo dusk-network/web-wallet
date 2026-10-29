@@ -25,6 +25,7 @@ const VALID_STAGES = new Set([
  * @property {string | null} account
  * @property {string | null} amountLux
  * @property {string | null} amountWei
+ * @property {number | null} arrivedAt When it arrived on DuskEVM, in milliseconds: its payment's time there, where that's known.
  * @property {number} chainId
  * @property {number} createdAt
  * @property {"l1" | "l2" | null} failureLayer
@@ -105,6 +106,7 @@ function normalizeStoredItem(value) {
     account: normalizedAddress(stored.account),
     amountLux: normalizedAmountWei(stored.amountLux),
     amountWei: normalizedAmountWei(stored.amountWei),
+    arrivedAt: finiteNumber(stored.arrivedAt, 0) || null,
     chainId: duskEvm.id,
     createdAt,
     failureLayer: validFailureLayer(stored.failureLayer),
@@ -143,11 +145,24 @@ function readRememberedItems() {
   }
 }
 
-/** @param {DepositActivityItem[]} items */
+/**
+ * Keeps the newest deposits, by when each was sent: however many older ones
+ * a history brings, one on its way stays.
+ *
+ * @param {DepositActivityItem[]} items
+ */
 function writeRememberedItems(items) {
-  const stored = items.slice(0, MAX_STORED_ITEMS);
+  const stored = items
+    .toSorted((a, b) => b.createdAt - a.createdAt)
+    .slice(0, MAX_STORED_ITEMS);
   storage()?.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(stored));
   activity.set(stored);
+}
+
+/** Forgets every deposit kept here, as Reset does. */
+export function forgetDepositActivity() {
+  storage()?.removeItem(ACTIVITY_STORAGE_KEY);
+  activity.set([]);
 }
 
 export function hydrateDepositActivity() {
@@ -174,6 +189,7 @@ export function rememberDepositTransaction(transactionHash, options = {}) {
       account: null,
       amountLux: null,
       amountWei: null,
+      arrivedAt: null,
       chainId: duskEvm.id,
       createdAt,
       failureLayer: null,

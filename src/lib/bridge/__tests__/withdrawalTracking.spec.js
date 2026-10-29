@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PAID, relayedWithdrawal } from "./fixtures/withdrawal-recipient";
+
 const mocks = vi.hoisted(() => ({
   loadDuskTransactionExecution: vi.fn(),
   loadL2BlockTime: vi.fn(),
@@ -92,6 +94,27 @@ describe("DuskEVM withdrawal tracking", () => {
     expect(mocks.loadL2BlockTime).toHaveBeenCalledOnce();
     expect(getRememberedWithdrawalTransaction(transactionHash)?.sentAt).toBe(
       "2026-09-25T11:51:09.000Z"
+    );
+  });
+
+  it("takes whom a withdrawal pays on Dusk from its message, and keeps it", async () => {
+    const data = relayedWithdrawal();
+
+    mocks.loadWithdrawalStatus.mockResolvedValue({
+      ...readyToProveStatus(),
+      withdrawal: { data, value: 10n ** 18n },
+    });
+
+    await expect(
+      refreshWithdrawalTransaction(transactionHash)
+    ).resolves.toEqual(expect.objectContaining({ recipient: PAID }));
+
+    // A later read that can't say keeps what one said.
+    mocks.loadWithdrawalStatus.mockResolvedValue(readyToProveStatus());
+    await refreshWithdrawalTransaction(transactionHash);
+
+    expect(getRememberedWithdrawalTransaction(transactionHash)?.recipient).toBe(
+      PAID
     );
   });
 
@@ -226,6 +249,20 @@ describe("DuskEVM withdrawal tracking", () => {
     );
     expect(getRememberedWithdrawalTransaction(transactionHash)).toEqual(
       expect.objectContaining({ claimOverdue: true, readyAt: "1793459389" })
+    );
+  });
+
+  it("forgets the proof's game once a read finds no proof of this account's", async () => {
+    const game = `0x${"1e".repeat(20)}`;
+
+    rememberWithdrawalTransaction(transactionHash, { account });
+    updateWithdrawalTransaction(transactionHash, { proofGame: game });
+    mocks.loadWithdrawalStatus.mockResolvedValue(readyToProveStatus());
+
+    await refreshWithdrawalTransaction(transactionHash);
+
+    expect(getRememberedWithdrawalTransaction(transactionHash)?.proofGame).toBe(
+      null
     );
   });
 

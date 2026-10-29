@@ -151,6 +151,17 @@
     }
   }
 
+  /* Phones: the eye takes a tap 44 px across, where it is, over the total. */
+  @media (max-width: 47.99rem) {
+    .home-balance__toggle {
+      position: relative;
+      z-index: 1;
+      width: 44px;
+      height: 44px;
+      margin: -6px;
+    }
+  }
+
   .home-balance__total {
     display: flex;
     align-items: baseline;

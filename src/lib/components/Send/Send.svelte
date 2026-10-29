@@ -643,12 +643,15 @@
     publicAddress
   );
 
-  $: isRecipientInvalid =
-    isRecipientChecked && !recipientName && !addressInfo.isValid;
+  // A name typed without .dusk, as "alice": Send offers alice.dusk as it's
+  // typed, and looks it up once taken. It isn't a wrong address.
+  $: bareName =
+    sendToAddress && !recipientName && !addressInfo.isValid
+      ? asDuskName(sendToAddress)
+      : null;
 
-  // A name typed without .dusk, as "alice": Send offers alice.dusk, and
-  // looks it up once taken.
-  $: bareName = isRecipientInvalid ? asDuskName(sendToAddress) : null;
+  $: isRecipientInvalid =
+    isRecipientChecked && !recipientName && !addressInfo.isValid && !bareName;
 
   $: blocklistedRecipient = getBlocklistedRecipient(recipientAddress);
   $: isRecipientBlocklisted = Boolean(blocklistedRecipient);
@@ -758,7 +761,7 @@
     "send__to-input--blocked": isRecipientBlocklisted,
     "send__to-input--invalid": recipientName
       ? nameLookup?.error
-      : sendToAddress && !addressInfo.isValid,
+      : sendToAddress && !addressInfo.isValid && !bareName,
   });
 
   // A name as the lookup gives it, once it has: in its canonical form.
@@ -862,15 +865,14 @@
           <p class="send__error" id={invalidRecipientId} role="alert">
             <strong>Not a valid address.</strong> Check it, or paste it again.
           </p>
-          {#if bareName}
-            <button
-              class="send__link"
-              on:click={() => {
-                sendToAddress = bareName ?? sendToAddress;
-              }}
-              type="button">Did you mean {bareName}?</button
-            >
-          {/if}
+        {:else if bareName}
+          <button
+            class="send__link"
+            on:click={() => {
+              sendToAddress = bareName ?? sendToAddress;
+            }}
+            type="button">Did you mean {bareName}?</button
+          >
         {/if}
 
         {#if nameLookup?.error}

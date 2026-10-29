@@ -84,6 +84,17 @@ describe("Allocate", () => {
     ]);
   });
 
+  it("should shorten the public account and the shielded address the one way: six characters at each end", () => {
+    const { container } = render(Allocate, baseProps);
+
+    expect(
+      Array.from(
+        container.querySelectorAll(".operation__address-wrapper"),
+        (el) => el.textContent?.trim()
+      )
+    ).toStrictEqual(["zTsZq8…oHybff", "47jNTg…89vnMM"]);
+  });
+
   it("should show the amount, the network fee and the total on the review step", async () => {
     const { container, getByRole } = render(Allocate, baseProps);
     const shieldedInput = getByRole("textbox", { name: "Shielded amount" });

@@ -2,9 +2,19 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 
 import {
+  forgetDepositActivity,
+  rememberDepositTransaction,
+  updateDepositTransaction,
+} from "$lib/bridge/depositActivityStorage";
+import { settingsStore } from "$lib/stores";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { networks } from "@dusk-network/networks";
+
+import {
   claimedWithdrawals,
   describeRow,
   fullDateTime,
+  routeAccountsOf,
 } from "$lib/activity/present";
 
 import TransactionDetail from "../TransactionDetail.svelte";
@@ -112,7 +122,7 @@ describe("TransactionDetail", () => {
     expect(techList(container)).toContain(STORE);
   });
 
-  it("should say what stDUSK a stake with Sozu got, read once, with Sozu's contract under Technical details", async () => {
+  it("should say about what stDUSK a stake with Sozu got, read once, exactly under Technical details with Sozu's contract", async () => {
     const loadStDusk = vi.fn(async () => 162_189_471n);
     const stake = row({
       amount: "500000000",
@@ -129,8 +139,10 @@ describe("TransactionDetail", () => {
     );
 
     expect(getByText("Staked with Sozu")).toBeInTheDocument();
-    expect(await findByText("You got")).toBeInTheDocument();
-    expect(mainList(container)).toContain("You got 0.162189471 stDUSK");
+    expect(await findByText("You got about")).toBeInTheDocument();
+    expect(mainList(container)).toContain("You got about 0.1621 stDUSK");
+    expect(mainList(container)).not.toContain("0.162189471");
+    expect(techList(container)).toContain("You got 0.162189471 stDUSK");
     expect(loadStDusk).toHaveBeenCalledExactlyOnceWith(stake);
     expect(mainList(container)).not.toContain(SOZU_POOL);
     expect(techList(container)).toContain("Sozu");
@@ -284,9 +296,48 @@ describe("TransactionDetail", () => {
       { network: "testnet" }
     );
 
-    expect(getByText("Reserved a .dusk name")).toBeInTheDocument();
+    expect(getByText("Name reservation (step 1 of 2)")).toBeInTheDocument();
     expect(getByText("Dusk Domains")).toBeInTheDocument();
     expect(container.textContent).toContain(store.slice(-6));
+  });
+
+  it("should name a migration's payout by its route, with the route's account by what the network's file calls it, on any network", () => {
+    // A network the wallet only knows from its node, as a local one.
+    const local = /** @type {import("@dusk-network/networks").Network} */ ({
+      ...networks.mainnet,
+      chainId: 0,
+      name: "local",
+    });
+    const routeAccounts = routeAccountsOf(local);
+    const [payouts] = [...routeAccounts.payouts.keys()];
+    const payout = row({
+      amount: "3500000000",
+      contractId: undefined,
+      counterparty: payouts,
+      direction: "in",
+      feePaid: undefined,
+      from: payouts,
+      kind: "transfer",
+      memo: `0x${"c3".repeat(32)}`,
+    });
+
+    setNodeNetwork(local);
+
+    try {
+      const { container, getByText } = show(
+        payout,
+        { routeAccounts },
+        { network: "Localnet" }
+      );
+
+      expect(getByText("From BNB Smart Chain")).toBeInTheDocument();
+      expect(mainList(container)).toMatch(/From\s*BSC bridge/);
+      expect(mainList(container)).toMatch(
+        /Network fee paid\s*Paid by the sender/
+      );
+    } finally {
+      setNodeNetwork(null);
+    }
   });
 
   it("should round the fee paid in its list, and give it exactly under Technical details", () => {
@@ -294,7 +345,114 @@ describe("TransactionDetail", () => {
 
     expect(mainList(container)).toMatch(/Network fee paid\s*0\.0044 DUSK/);
     expect(mainList(container)).not.toContain("0.00441901");
-    expect(techList(container)).toMatch(/Fee paid, exactly\s*0\.00441901 DUSK/);
+    expect(techList(container)).toMatch(/^.*\bFee paid\s+0\.00441901 DUSK/);
+    expect(techList(container)).not.toContain("exactly");
+  });
+
+  it("should say under Technical details the gas used of its limit, its price and the fee paid, as the other apps do", () => {
+    const { container } = show(
+      row({ gasLimit: "2500000", gasPrice: "1", gasSpent: "1853542" })
+    );
+    const labels = Array.from(
+      container.querySelectorAll(".tx-detail__list--tech dt"),
+      (dt) => dt.textContent?.trim()
+    );
+
+    expect(labels).toEqual(
+      expect.arrayContaining(["Gas used", "Gas price", "Fee paid"])
+    );
+    expect(techList(container)).toMatch(/Gas used\s*1,853,542 of 2,500,000/);
+  });
+
+  describe("a deposit to DuskEVM", () => {
+    const DEPOSIT = "d0".repeat(32);
+    const PAID = `0x${"02".repeat(31)}9e`;
+    const deposited = row({
+      amount: "100000000",
+      bridge: { amount: "100000000", kind: "deposit", to: EVM },
+      fnName: "depositETHToWithValue",
+      hash: DEPOSIT,
+    });
+
+    afterEach(() => {
+      forgetDepositActivity();
+      setNodeNetwork(null);
+    });
+
+    it("should follow it to DuskEVM, and say when it arrived there, linking the transaction that paid it", async () => {
+      const followDeposit = vi.fn();
+      const ARRIVED = Date.UTC(2026, 9, 27, 5, 52, 13);
+
+      setNodeNetwork(networks.testnet);
+
+      const { container, findByText, getByRole } = show(
+        deposited,
+        {},
+        { followDeposit }
+      );
+
+      expect(followDeposit).toHaveBeenCalledExactlyOnceWith(deposited);
+      expect(mainList(container)).not.toContain("Arrived");
+
+      rememberDepositTransaction(DEPOSIT, {
+        account: EVM,
+        amountLux: "100000000",
+      });
+      updateDepositTransaction(DEPOSIT, {
+        arrivedAt: ARRIVED,
+        l2TransactionHash: /** @type {`0x${string}`} */ (PAID),
+        stage: "completed",
+      });
+
+      expect(await findByText("Arrived")).toBeInTheDocument();
+      expect(mainList(container)).toContain(
+        `Arrived ${fullDateTime(ARRIVED, "en")}`
+      );
+      expect(mainList(container)).toContain("DuskEVM transaction 0x0202…029e");
+      expect(
+        getByRole("link", {
+          name: "0x0202…029e (opens the transaction in DuskEVM's explorer)",
+        })
+      ).toHaveAttribute(
+        "href",
+        `https://explorer.testnet.evm.dusk.network/tx/${PAID}`
+      );
+    });
+
+    it("should say nothing arrived while it's on its way", () => {
+      rememberDepositTransaction(DEPOSIT, {
+        account: EVM,
+        amountLux: "100000000",
+      });
+
+      const { container } = show(deposited, {}, { followDeposit: vi.fn() });
+
+      expect(mainList(container)).not.toContain("Arrived");
+      expect(mainList(container)).not.toContain("DuskEVM transaction");
+    });
+  });
+
+  it("should hide the stDUSK a stake got with the balances, here and under Technical details", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container, findByText } = show(
+        row({
+          amount: "500000000",
+          contractId: SOZU_POOL,
+          counterparty: SOZU_POOL,
+          fnName: "sozu_stake",
+        }),
+        { network: "testnet" },
+        { loadStDusk: async () => 162_189_471n, network: "testnet" }
+      );
+
+      expect(await findByText("You got about")).toBeInTheDocument();
+      expect(container.textContent).not.toContain("0.1621");
+      expect(container.textContent).not.toContain("0.162189471");
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
   });
 
   it("should say which account sent it, and its gas price, nonce and block", async () => {

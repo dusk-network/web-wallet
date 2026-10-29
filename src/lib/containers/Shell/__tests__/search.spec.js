@@ -68,9 +68,56 @@ describe("searchLocally", () => {
     ]);
     expect(searchLocally("dc3f73", index)).toEqual([
       expect.objectContaining({
-        detail: "alice.dusk",
+        detail: "dc3f73…000000",
         group: "Transactions",
         href: `/dashboard/transactions?tx=${"dc3f73".padEnd(64, "0")}`,
+        label: "alice.dusk",
+        sub: undefined,
+      }),
+    ]);
+  });
+
+  it("names the history's transactions as History does, with a call's method under it", () => {
+    const BRIDGE = "22".repeat(32);
+    const deposit = /** @type {ActivityRow} */ ({
+      amount: "100000000",
+      bridge: {
+        amount: "100000000",
+        kind: "deposit",
+        to: "0xb0E8340000000000000000000000000000f8C6b0",
+      },
+      contractId: BRIDGE,
+      direction: "out",
+      fnName: "depositETHToWithValue",
+      hash: "40c50a".padEnd(64, "1"),
+      kind: "contract_call",
+      source: "archive",
+      status: "executed",
+    });
+    const proof = /** @type {ActivityRow} */ ({
+      ...deposit,
+      amount: "0",
+      bridge: null,
+      fnName: "proveWithdrawalTransaction",
+      hash: "fdc37b".padEnd(64, "2"),
+    });
+    const withBridge = {
+      ...index,
+      history: [deposit, proof],
+      present: { bridgeContracts: new Set([BRIDGE]) },
+    };
+
+    expect(
+      searchLocally("40c50a", withBridge).map(({ detail, label, sub }) => [
+        label,
+        sub,
+        detail,
+      ])
+    ).toEqual([["To DuskEVM", "depositETHToWithValue", "40c50a…111111"]]);
+    expect(searchLocally("fdc37b", withBridge)).toEqual([
+      expect.objectContaining({
+        label: "Withdrawal proved",
+        sub: "proveWithdrawalTransaction",
       }),
     ]);
   });

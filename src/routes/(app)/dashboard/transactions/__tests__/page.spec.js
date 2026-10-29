@@ -298,7 +298,7 @@ describe("History", () => {
     expect(detail).toHaveTextContent("Memo Order 1042");
     // Rounded in the list, exactly under Technical details.
     expect(detail).toHaveTextContent("Network fee paid 0.0019 DUSK");
-    expect(detail).toHaveTextContent("Fee paid, exactly 0.001854786 DUSK");
+    expect(detail).toHaveTextContent("Fee paid 0.001854786 DUSK");
 
     // The hash in full, its ending kept on one line.
     expect(detail.querySelector(".tx-detail__id")).toHaveTextContent(SENT);
@@ -374,9 +374,11 @@ describe("History", () => {
     expect(mocks.showMore).toHaveBeenCalledOnce();
   });
 
-  it("exports the rows shown as CSV", async () => {
+  it("exports the rows shown as CSV, named as the extension names its own, by the day here", async () => {
     /** @type {Blob[]} */
     const blobs = [];
+    /** @type {string[]} */
+    const names = [];
 
     vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
       blobs.push(/** @type {Blob} */ (blob));
@@ -384,7 +386,12 @@ describe("History", () => {
       return "blob:history";
     });
     vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      /** @this {HTMLAnchorElement} */
+      function () {
+        names.push(this.download);
+      }
+    );
 
     await visit("/dashboard/transactions?kind=staking");
 
@@ -393,10 +400,19 @@ describe("History", () => {
     await fireEvent.click(getByRole("button", { name: "Export CSV" }));
 
     const lines = (await blobs[0].text()).split("\r\n");
+    const now = new Date();
+    const today = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+      .map((part) => String(part).padStart(2, "0"))
+      .join("-");
 
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatch(/^Date \(UTC\),Date \(local\),Block,/);
     expect(lines[1]).toContain(`,${STAKED},out,Public,Staked (Staking),`);
+    expect(names).toStrictEqual([
+      expect.stringMatching(
+        new RegExp(`^dusk-activity-[a-z0-9-]+-profile-1-${today}\\.csv$`)
+      ),
+    ]);
   });
 
   it("says when there is nothing yet, or the history couldn't be read", async () => {

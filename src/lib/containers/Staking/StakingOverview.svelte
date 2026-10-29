@@ -86,8 +86,12 @@
   $: rate = duskPerStDusk(sozu.status?.pool ?? null);
   // Sozu's fees, as its substrate gives them, where they could be read.
   $: fees = sozu.status?.fees ?? null;
-  // What Sozu pays a year, once its fee on rewards is off.
-  $: sozuRate = sozuRateEstimate(nativeRate ?? null, fees?.reward ?? null);
+  // What Sozu pays a year, once its fee on rewards is off: from the native
+  // figure as it's shown, so that it reads the same wherever that does.
+  $: sozuRate = sozuRateEstimate(
+    typeof nativeRate === "number" ? Math.round(nativeRate * 100) / 100 : null,
+    fees?.reward ?? null
+  );
   // No deposits while Sozu is under maintenance, or while that can't be
   // checked.
   $: sozuMaintenance = sozu.status?.flags?.maintenance;
@@ -305,7 +309,7 @@
                   >About {ratePercent(sozuRate, locale)} a year after Sozu's {feePercent(
                     fees.reward,
                     locale
-                  )}.</span
+                  )}. Not promised.</span
                 >
               {/if}
               {#if rate}

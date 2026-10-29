@@ -44,7 +44,7 @@ const WEI_PER_LUX = 1_000_000_000n;
  * @typedef {{
  *   amountLux: bigint,
  *   arrivedAt?: number | null,
- *   at: number,
+ *   at: number | null,
  *   failure?: string,
  *   feeLux?: bigint,
  *   hash: string,
@@ -56,7 +56,9 @@ const WEI_PER_LUX = 1_000_000_000n;
  *   stage: "arrived" | "failed" | "paid" | "sending" | "sent",
  * }} RouteTransfer
  *   `hash` the transaction that started it: on its chain for a migration,
- *   on Dusk for a transfer out; `payout` what paid it on the other side.
+ *   on Dusk for a transfer out; `at` when that was sent, null for a
+ *   migration known only by its payout; `payout` what paid it on the other
+ *   side.
  */
 
 /** @returns {KeptMigration[]} */
@@ -213,7 +215,7 @@ function sentMigration(item, rows, route) {
 /**
  * A migration's payout in the history, from a route's payout account with
  * a migration's hash as the memo, as Bridge › Activity lists it; null for
- * any other row.
+ * any other row. When the migration was sent isn't known from its payout.
  *
  * @param {ActivityRow} row
  * @param {(import("./cardRoutes").CardRoute & { kind: "migration" })[]} migrations
@@ -231,7 +233,7 @@ function paidMigration(row, migrations) {
   return route && row.direction === "in" && EVM_HASH.test(memo)
     ? {
         amountLux: luxOf(row.amount),
-        at: row.timestamp ?? 0,
+        at: null,
         hash: memo,
         kind: "migration",
         paidAt: row.timestamp ?? null,

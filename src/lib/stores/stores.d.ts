@@ -144,6 +144,9 @@ type WalletStoreServices = {
     syncFromBlock?: bigint
   ) => Promise<void>;
 
+  /** The balances and the stake read again, as after a send. */
+  refreshBalance: () => Promise<void>;
+
   reset: () => void;
 
   setCurrentProfile: (profile: Profile) => Promise<void>;

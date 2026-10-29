@@ -25,7 +25,12 @@ import nodeNetwork from "$lib/stores/nodeNetwork";
 
 import * as defaultStore from "./activityStore";
 import { STAKE_CONTRACT, TRANSFER_CONTRACT, TX_KIND } from "./constants";
-import { isNameRegistration, registeredNameOf } from "./knownContracts";
+import {
+  isNameCommitCall,
+  isNameRegistration,
+  nameCommitOf,
+  registeredNameOf,
+} from "./knownContracts";
 
 export { STAKE_CONTRACT, TRANSFER_CONTRACT };
 
@@ -1330,17 +1335,20 @@ const textOrUndefined = (value) => (value ? String(value) : undefined);
  * Whether an entry's details are still to look up: it has none, or it is a
  * call to the bridge looked up before the history read what bridge calls
  * do, or a withdrawal's proof or claim read before the history kept the
- * withdrawal's hash, which its claim date is read by, or a `.dusk` name's
- * registration read before the history read which name it was.
+ * withdrawal's hash, which its claim date is read by, or whom it pays (none
+ * read is kept as null), or a `.dusk` name's
+ * registration read before the history read which name it was, or a
+ * reservation or registration before it read what they hold of each other.
  *
- * @param {{ bridge?: import("$lib/bridge/bridgeCalls").BridgeCall | null, contractId?: string, detailsAt?: number, fnName?: string, registeredName?: string | null }} entry
+ * @param {{ bridge?: import("$lib/bridge/bridgeCalls").BridgeCall | null, contractId?: string, detailsAt?: number, fnName?: string, nameCommit?: import("./knownContracts").NameCommit | null, registeredName?: string | null }} entry
  */
 export const needsDetails = (entry) =>
   !entry.detailsAt ||
   (entry.bridge === undefined && isBridgeContract(entry.contractId)) ||
   ((entry.bridge?.kind === "prove" || entry.bridge?.kind === "claim") &&
-    !entry.bridge.hash) ||
-  (entry.registeredName === undefined && isNameRegistration(entry));
+    (!entry.bridge.hash || entry.bridge.recipient === undefined)) ||
+  (entry.registeredName === undefined && isNameRegistration(entry)) ||
+  (entry.nameCommit === undefined && isNameCommitCall(entry));
 
 /**
  * @param {any} tx
@@ -1357,6 +1365,7 @@ function detailsOf(tx) {
   const data = dig(tx, "tx", "callData", "data");
 
   const registeredName = registeredNameOf({ contractId, data, fnName });
+  const nameCommit = nameCommitOf({ contractId, data, fnName });
 
   return {
     blockHash: HASH.test(blockHash) ? blockHash : undefined,
@@ -1369,6 +1378,7 @@ function detailsOf(tx) {
     gasLimit: u64(dig(tx, "tx", "gasLimit")).toString(),
     gasPrice: gasPrice.toString(),
     gasSpent: gasSpent.toString(),
+    ...(nameCommit === undefined ? {} : { nameCommit }),
     ...(registeredName === undefined ? {} : { registeredName }),
     success: !err,
     timestamp: Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null,
@@ -1556,6 +1566,7 @@ export function activityEntry(row) {
     hash: row.hash,
     kind: row.kind,
     memo: row.memo ?? "",
+    nameCommit: row.nameCommit,
     registeredName: row.registeredName,
     success: row.success ?? null,
     timestamp: row.timestamp ?? null,

@@ -1,13 +1,13 @@
 /**
  * What a call to the DuskEVM bridge's contracts on Dusk did, read from its
  * arguments: a deposit's DuskEVM address and amount, and the amount of the
- * withdrawal a proof or a claim is for. The arguments are rkyv, as the
- * bridge writes them, and must decode exactly: every pointer in bounds, a
- * withdrawal's amount the same in each place it's written, and its route
- * the bridge's own. Anything else reads as nothing.
+ * withdrawal a proof or a claim is for, and whom it pays. The arguments are
+ * rkyv, as the bridge writes them, and must decode exactly: every pointer in
+ * bounds, a withdrawal's amount the same in each place it's written, and its
+ * route the bridge's own. Anything else reads as nothing.
  */
 
-import { getAddress, keccak256 } from "viem";
+import { getAddress, keccak256, toFunctionSelector } from "viem";
 import { hashWithdrawal } from "@dusk/evm-sdk";
 import { duskEvmContractId } from "$lib/web3/duskEvm";
 
@@ -33,13 +33,32 @@ const L2_BRIDGE = "4200000000000000000000000000000000000010";
 
 const WEI_PER_LUX = 1_000_000_000n;
 
+// Whom a withdrawal pays on Dusk, as its `extraData` says: a Dusk account's
+// key (tag 2, version 1, kind 0, then the key as 4 field elements and a
+// flag), or a Dusk contract's ID (tag 32, version 1, then the ID).
+const FP_BYTES = 48;
+const RAW_KEY_BYTES = 4 * FP_BYTES + 1;
+const FP = BigInt(
+  "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
+);
+const FP_R_INVERSE = BigInt(
+  "0x14fec701e8fb0ce9ed5e64273c4f538b1797ab1458a88de9343ea97914956dc87fe11274d898fafbf4d38259380b4820"
+);
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+/** What a withdrawal from DuskEVM calls there: L2StandardBridge.bridgeETHTo. */
+const BRIDGE_ETH_TO = toFunctionSelector(
+  "bridgeETHTo(address,uint32,bytes)"
+).slice(2);
+
 /**
  * @typedef {{ amount: string, kind: "deposit", to: string }
- *   | { amount: string, hash?: `0x${string}`, kind: "claim" | "prove", withdrawal: string }} BridgeCall
+ *   | { amount: string, hash?: `0x${string}`, kind: "claim" | "prove", recipient?: string | null, withdrawal: string }} BridgeCall
  *   Amounts in Lux; `to` is the DuskEVM address with its checksum,
  *   `withdrawal` the withdrawal's nonce, the same in its proof and its claim,
- *   and `hash` the withdrawal's hash, which the Portal keys it by (missing
- *   from a call read before the history kept it).
+ *   `hash` the withdrawal's hash, which the Portal keys it by, and
+ *   `recipient` whom it pays on Dusk (both missing from a call read before
+ *   the history kept them).
  */
 
 /** @param {unknown} id */
@@ -118,6 +137,173 @@ function bytesAt(bytes, at, end) {
   const { length, start } = vecAt(bytes, at, end);
 
   return bytes.subarray(start, start + length);
+}
+
+/**
+ * Bytes as base58, as Dusk writes an account.
+ *
+ * @param {Uint8Array} bytes
+ */
+function base58(bytes) {
+  let value = 0n;
+
+  for (const byte of bytes) {
+    value = (value << 8n) | BigInt(byte);
+  }
+
+  let out = "";
+
+  while (value > 0n) {
+    out = BASE58[Number(value % 58n)] + out;
+    value /= 58n;
+  }
+
+  for (const byte of bytes) {
+    if (byte !== 0) {
+      break;
+    }
+
+    out = `1${out}`;
+  }
+
+  return out;
+}
+
+/**
+ * A field element of a key as the bridge carries it: Montgomery form, its
+ * 48 bytes little-endian; it must be below the field's modulus.
+ *
+ * @param {Uint8Array} raw
+ * @param {number} at
+ */
+function fieldAt(raw, at) {
+  const montgomery = uintLe(raw, at, FP_BYTES);
+
+  if (montgomery >= FP) {
+    fail();
+  }
+
+  return (montgomery * FP_R_INVERSE) % FP;
+}
+
+/**
+ * A Dusk account from its key as the bridge carries it: the key compressed
+ * as Dusk writes it, x as c1 and c0 big-endian, with the compression flag
+ * and whether y is the larger root on top, in base58.
+ *
+ * @param {Uint8Array} raw
+ */
+function accountOf(raw) {
+  if (raw.length !== RAW_KEY_BYTES || raw[RAW_KEY_BYTES - 1] !== 0) {
+    fail();
+  }
+
+  const [x0, x1, y0, y1] = [0, 1, 2, 3].map((i) => fieldAt(raw, i * FP_BYTES));
+  const half = (FP - 1n) / 2n;
+  const larger = y1 > half || (y1 === 0n && y0 > half);
+  const compressed = new Uint8Array(2 * FP_BYTES);
+
+  [x1, x0].forEach((part, i) => {
+    for (let at = FP_BYTES - 1, rest = part; at >= 0; at--, rest >>= 8n) {
+      compressed[i * FP_BYTES + at] = Number(rest & 0xffn);
+    }
+  });
+  compressed[0] |= 0x80 | (larger ? 0x20 : 0);
+
+  return base58(compressed);
+}
+
+/**
+ * Whom a withdrawal pays on Dusk, from its `extraData`: a Dusk account, or
+ * a Dusk contract's ID. Null for anything else.
+ *
+ * @param {Uint8Array} extraData
+ * @returns {string | null}
+ */
+function recipientOf(extraData) {
+  try {
+    if (
+      extraData.length === 3 + RAW_KEY_BYTES &&
+      extraData[0] === 2 &&
+      extraData[1] === 1 &&
+      extraData[2] === 0
+    ) {
+      return accountOf(extraData.subarray(3));
+    }
+
+    return extraData.length >= 34 && extraData[0] === 32 && extraData[1] === 1
+      ? hex(extraData.subarray(2, 34))
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {unknown} data Hex, with or without 0x
+ * @returns {Uint8Array | null}
+ */
+function bytesOf(data) {
+  const text = norm(data);
+
+  return /^(?:[0-9a-f]{2})+$/.test(text)
+    ? Uint8Array.from(text.match(/../g) ?? [], (b) => parseInt(b, 16))
+    : null;
+}
+
+/**
+ * Whom a withdrawal pays on Dusk, from its message as DuskEVM passed it:
+ * the messenger's relay of the bridge's `finalizeBridgeETH`. Null where it
+ * doesn't read as one.
+ *
+ * @param {unknown} data The withdrawal's data, in hex
+ * @returns {string | null}
+ */
+export function withdrawalRecipient(data) {
+  const bytes = bytesOf(data);
+
+  try {
+    const [, , , , , message] = abiCall(bytes ?? fail(), RELAY_MESSAGE, [
+      "uint",
+      "address",
+      "address",
+      "uint",
+      "uint",
+      "bytes",
+    ]);
+    const [, , , extraData] = abiCall(
+      /** @type {Uint8Array} */ (message),
+      FINALIZE_BRIDGE_ETH,
+      ["address", "address", "uint", "bytes"]
+    );
+
+    return recipientOf(/** @type {Uint8Array} */ (extraData));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whom a withdrawal pays on Dusk, from the call that sent it on DuskEVM:
+ * the bridge's `bridgeETHTo`. Null for any other call.
+ *
+ * @param {unknown} input The call's data, in hex
+ * @returns {string | null}
+ */
+export function withdrawalCallRecipient(input) {
+  const bytes = bytesOf(input);
+
+  try {
+    const [, , extraData] = abiCall(bytes ?? fail(), BRIDGE_ETH_TO, [
+      "address",
+      "uint",
+      "bytes",
+    ]);
+
+    return recipientOf(/** @type {Uint8Array} */ (extraData));
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -255,6 +441,7 @@ function decodeWithdrawal(args, at, end, l1Bridge) {
       target: `0x${target}`,
       value,
     }),
+    recipient: withdrawalRecipient(`0x${hex(data)}`),
     withdrawal: hex(args.subarray(at, at + 32)),
   };
 }

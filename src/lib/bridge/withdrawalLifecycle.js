@@ -50,7 +50,7 @@ const STAGES = new Map([
     {
       badge: "success",
       label: "Ready to prove",
-      message: "Step 1 of 2. Fee from your public account.",
+      message: "Step 2 of 3. Fee from your public account.",
       progress: 2,
     },
   ],
@@ -77,7 +77,7 @@ const STAGES = new Map([
     {
       badge: "success",
       label: "Ready to claim",
-      message: "Step 2 of 2. Fee from your public account.",
+      message: "Step 3 of 3. Fee from your public account.",
       progress: 4,
     },
   ],

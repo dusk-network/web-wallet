@@ -61,6 +61,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep History's filters in its address
 - Open a block by its height from the search
 - Find transactions in the search by memo, and by the label of their contract or account
+- List this wallet's deposits to DuskEVM in Bridge › Activity without an EVM wallet, with when they arrived and where
+- Say in Bridge › Activity whom a withdrawal pays, and list one that pays someone else and that this wallet hasn't proved under Sent to someone else, its step offered quietly
+- Show when a deposit arrived on DuskEVM, and link its DuskEVM transaction, in its details
+- Name the contract a deposit calls on its Review
+- Name a name reservation after the registration that reveals it, else call it the first of two steps
+- Refuse an unstake from Sozu too small to burn any stDUSK, saying the least
 
 ### Changed
 
@@ -151,11 +157,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open the Bridge on BNB Smart Chain's migration from Home's Migrate it to Dusk, shown only where a migration is running
 - Link Run a node, to the docs on running one, where native staking says it needs your own node
 - Link both sides of a bridge transfer in its details: Dusk's transactions in the network's Dusk explorer, DuskEVM's in its own
+- Say "Not promised." after Sozu's yearly estimate, and work it out from the native estimate as shown
+- Hide the DUSK of Sozu's deposit fee while balances are hidden
+- Move Sozu's contract from the Liquid staking form to the summary's Edit
+- Shorten IDs as the other Dusk apps do: Dusk's to six characters at each end, DuskEVM's to 0x and four at each end, an address with its checksum
+- Call the exact fee under Technical details Fee paid
+- Show the stDUSK a stake with Sozu got to four decimals, in full under Technical details
+- Offer alice.dusk as alice is typed in Send, without calling it a wrong address
+- Name transactions in the search as History does, with a call's method under the name
+- Name the CSV export after the network, the profile and the local day, as the extension does
+- Count a withdrawal's send on DuskEVM as the first of its three steps
+- Call transfers to and from other chains in History by their chain, as the extension does, with the bridge's account named in their details, and list them under Bridge
+- Update History when the public balance changes, and while a migration or a transfer out is under way
+- Read the balance again as soon as History finds a new public transaction
 
 ### Removed
 
 - Remove the Migrate page, whose address now opens the Bridge
 - Remove testnet's BEP-20 migration on Sepolia
+- Remove the line about what a failed call to Sozu is charged
 
 ### Fixed
 
@@ -181,6 +201,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Take amounts on the Shield page with your language's decimal separator
 - Offer Claim on a DuskEVM withdrawal only once its claim date has come
 - Show a deposit to DuskEVM as arrived once DuskEVM's explorer has its payment, where DuskEVM's adapter can't say
+- Take amounts with a decimal comma in liquid and native staking
+- Give the Bridge card's Max and the eye by the total balance a 44 px tap area on phones
+- Give a deposit's time a line of its own in History on phones
+- Forget the bridge's transfers and times on Reset, and another wallet's transfers on restoring a wallet
 
 ## [1.8.0] - 2026-03-25
 

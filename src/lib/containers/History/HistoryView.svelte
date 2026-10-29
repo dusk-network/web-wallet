@@ -1,5 +1,6 @@
 <script>
   import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import reservedNames from "$lib/activity/reservedNames";
   import withdrawalClaims from "$lib/bridge/withdrawalClaims";
   import { sozuPools } from "$lib/sozu";
   import { createEventDispatcher } from "svelte";
@@ -10,15 +11,18 @@
   import {
     claimedWithdrawals,
     configuredBridgeContracts,
+    csvFileName,
     describeRow,
     fullDateTime,
     groupByDay,
     isRowIncomplete,
     matchesFilters,
+    routeAccountsOf,
     rowTime,
     timeLabel,
     toCsv,
   } from "$lib/activity/present";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
   import TransactionDetail from "./TransactionDetail.svelte";
@@ -35,6 +39,9 @@
   /** The account the history is of, and how the wallet names it. */
   /** @type {{ address: string, label: string } | null} */
   export let account = null;
+
+  /** The profile the history is of, from 0, for the export's file name. */
+  export let profileIndex = 0;
 
   /** @type {string | null} */
   export let selected = null;
@@ -97,13 +104,15 @@
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = `dusk-history-${network || "wallet"}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = csvFileName({ network, profileIndex });
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  // When the proved withdrawals can be claimed, as the chain says.
+  // When the proved withdrawals can be claimed, as the chain says, and
+  // which names the reservations were for.
   $: void withdrawalClaims.load(state.rows);
+  $: void reservedNames.load(state.rows);
   $: context = {
     bridgeContracts,
     claimed: claimedWithdrawals(state.rows),
@@ -111,6 +120,9 @@
     contactNames: contactNamesOf($contactsStore),
     locale,
     network,
+    reservations: $reservedNames,
+    // The routes to and from other chains: their transfers are the bridge's.
+    routeAccounts: routeAccountsOf($nodeNetwork),
     sozuPools: $sozuPools,
   };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;
@@ -243,6 +255,7 @@
             </tr>
             {#each group.items as { presentation: p, row } (row.hash)}
               {@const time = rowTime(row)}
+              {@const isDeposit = row.bridge?.kind === "deposit"}
               <tr
                 class="history__row"
                 class:history__row--selected={row.hash === selected}
@@ -277,15 +290,23 @@
                         class:history__line--failed={p.status === "failed"}
                         >{#if p.note}<span class="history__wide">{p.line}</span
                           ><span class="history__narrow">{p.shortLine}</span
-                          >{:else}{p.line}{/if}<span class="history__phone-meta"
-                          >{time === null
-                            ? ""
-                            : ` · ${timeLabel(time, locale)}`}
-                          · {p.privacy}</span
-                        ></span
+                          >{:else}{p.line}{/if}{#if !isDeposit}<span
+                            class="history__phone-meta"
+                            >{time === null
+                              ? ""
+                              : ` · ${timeLabel(time, locale)}`}
+                            · {p.privacy}</span
+                          >{/if}</span
                       >
                       {#if p.note}
                         <span class="history__claim">{p.note}</span>
+                      {/if}
+                      {#if isDeposit}
+                        <span class="history__when"
+                          >{time === null
+                            ? p.privacy
+                            : `${timeLabel(time, locale)} · ${p.privacy}`}</span
+                        >
                       {/if}
                     </span>
                   </button>
@@ -622,14 +643,19 @@
     background: var(--calm-panel);
   }
 
-  /* Phones only: the time and privacy after the line, a claim date under it. */
+  /*
+   * Phones only: the time and privacy after the line, a claim date under
+   * it, and a deposit's time under its line, which its address makes long.
+   */
   .history__phone-meta,
   .history__narrow,
-  .history__claim {
+  .history__claim,
+  .history__when {
     display: none;
   }
 
-  .history__claim {
+  .history__claim,
+  .history__when {
     overflow: hidden;
     color: var(--calm-muted);
     font-size: 0.78125rem;
@@ -677,7 +703,8 @@
       display: none;
     }
 
-    .history__claim {
+    .history__claim,
+    .history__when {
       display: block;
     }
 

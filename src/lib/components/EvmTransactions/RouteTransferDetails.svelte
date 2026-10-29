@@ -3,7 +3,8 @@
 <script>
   /**
    * A transfer between Dusk and another chain, opened from its row: when it
-   * was sent and with what, where it's paid, and what paid it.
+   * was sent and with what, where it's paid, and what paid it. A migration
+   * known only by its payout says when it was paid, not when it was sent.
    */
   import { formatDuskExact } from "$lib/dusk/currency";
   import { duskExplorerTx } from "$lib/url";
@@ -23,12 +24,14 @@
 </script>
 
 <dl class="route-transfer">
-  <dt>Sent</dt>
-  <dd>
-    {transfer.at
-      ? formatTimestamp(new Date(transfer.at).toISOString())
-      : "Not known yet"}
-  </dd>
+  {#if transfer.at !== null}
+    <dt>Sent</dt>
+    <dd>
+      {transfer.at
+        ? formatTimestamp(new Date(transfer.at).toISOString())
+        : "Not known yet"}
+    </dd>
+  {/if}
   <dt>{isMigration ? `${chain.name} transaction` : "Dusk transaction"}</dt>
   <dd>
     <WithdrawalHash

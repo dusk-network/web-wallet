@@ -18,6 +18,7 @@
     formatDuskPlain,
     formatTotal,
   } from "$lib/dusk/currency";
+  import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID } from "$lib/dusk/string";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { settingsStore } from "$lib/stores";
@@ -27,7 +28,11 @@
   import GasSettings from "../GasSettings/GasSettings.svelte";
   import TransactionResult from "../TransactionResult/TransactionResult.svelte";
   import StakeFlow from "./StakeFlow.svelte";
-  import { checkAmount, parseDuskInput } from "./stakeAmount";
+  import {
+    checkAmount,
+    normalizeDuskInput,
+    parseDuskInput,
+  } from "./stakeAmount";
 
   /**
    * Native staking: the amount, checked as it is typed against the minimum
@@ -71,7 +76,7 @@
 
   /** @param {bigint} lux */
   function fill(lux) {
-    amountText = formatDuskPlain(lux);
+    amountText = formatDuskPlain(lux).replace(".", getDecimalSeparator());
     document.getElementById(`${id}-amount`)?.focus();
   }
 
@@ -107,7 +112,11 @@
   $: maxStake =
     availableBalance > maxGasFee ? availableBalance - maxGasFee : 0n;
   $: minimum = hasStake ? 0n : minimumStake;
-  $: amount = parseDuskInput(amountText);
+  // A decimal comma, as the language or a phone's keyboard gives it, reads
+  // as the amount meant.
+  $: amount = parseDuskInput(
+    normalizeDuskInput(amountText, getDecimalSeparator())
+  );
   $: check = checkAmount({
     amount,
     available: availableBalance,

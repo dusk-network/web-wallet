@@ -111,6 +111,10 @@
         <dt>DuskEVM block</dt>
         <dd>{deposit.l2BlockNumber}</dd>
       {/if}
+      {#if deposit.stage === "completed" && deposit.arrivedAt}
+        <dt>Arrived</dt>
+        <dd>{formatTimestamp(new Date(deposit.arrivedAt).toISOString())}</dd>
+      {/if}
     </dl>
   {/if}
 </section>

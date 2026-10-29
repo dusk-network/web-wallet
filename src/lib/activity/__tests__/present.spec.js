@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { networks } from "@dusk-network/networks";
 
 import { claimDay } from "$lib/bridge/claimDate";
 
@@ -6,12 +7,14 @@ import {
   CSV_COLUMNS,
   CSV_CONTACT_COLUMN,
   claimedWithdrawals,
+  csvFileName,
   dayLabel,
   describeRow,
   fullDateTime,
   groupByDay,
   isStakingRow,
   matchesFilters,
+  routeAccountsOf,
   timeLabel,
   toCsv,
 } from "../present";
@@ -223,6 +226,27 @@ describe("describeRow", () => {
         { ...context, network: "testnet" }
       )
     ).toMatchObject({ line: "Dusk Domains", title: "Registered alice.dusk" });
+
+    // A reservation: the first of two steps, until a registration after it
+    // reveals which name it was for.
+    const reservation = row({
+      amount: "0",
+      contractId: store,
+      fnName: "commit",
+      kind: "contract_call",
+      to: undefined,
+    });
+
+    expect(
+      describeRow(reservation, { ...context, network: "testnet" }).title
+    ).toBe("Name reservation (step 1 of 2)");
+    expect(
+      describeRow(reservation, {
+        ...context,
+        network: "testnet",
+        reservations: new Map([[reservation.hash, "alice.dusk"]]),
+      }).title
+    ).toBe("Reserved alice.dusk");
   });
 
   it("says where a bridge row's DUSK went: the DuskEVM address, or the withdrawal and its next step", () => {
@@ -279,9 +303,9 @@ describe("describeRow", () => {
     ).toMatchObject({
       amount: { sign: "−", text: "25" },
       counterparty: evm,
-      line: "Bridge · to 0x19E7…DAff2A",
+      line: "Bridge · to 0x19E7…ff2A",
       note: null,
-      shortLine: "Bridge · to 0x19E7…DAff2A",
+      shortLine: "Bridge · to 0x19E7…ff2A",
       title: "To DuskEVM",
     });
 
@@ -422,6 +446,95 @@ describe("describeRow", () => {
   });
 });
 
+describe("transfers on the routes to and from other chains", () => {
+  const routeAccounts = routeAccountsOf(networks.mainnet);
+  const [BSC_BRIDGE, ETHEREUM_PAYOUTS] = [...routeAccounts.payouts.keys()];
+  const withRoutes = { ...context, routeAccounts };
+
+  it("are known by the routes' accounts, as the network's file calls them", () => {
+    expect(routeAccounts.labels).toStrictEqual(
+      new Map([
+        [BSC_BRIDGE, "BSC bridge"],
+        [ETHEREUM_PAYOUTS, "Ethereum migration payouts"],
+      ])
+    );
+    expect(routeAccounts.payouts).toStrictEqual(
+      new Map([
+        [BSC_BRIDGE, "BNB Smart Chain"],
+        [ETHEREUM_PAYOUTS, "Ethereum"],
+      ])
+    );
+    expect(routeAccounts.services).toStrictEqual(
+      new Map([[BSC_BRIDGE, "BNB Smart Chain"]])
+    );
+    expect(routeAccountsOf(null).labels.size).toBe(0);
+
+    // One the file doesn't name goes by its chain.
+    const unnamed = {
+      ...networks.mainnet,
+      display: { ...networks.mainnet.display, labels: {} },
+    };
+
+    expect([...routeAccountsOf(unnamed).labels.values()]).toStrictEqual([
+      "BNB Smart Chain bridge",
+      "Ethereum bridge",
+    ]);
+  });
+
+  it("are the bridge's: a migration's payout in, and a transfer out to the route's account, named by their chain as the extension names them", () => {
+    const payout = row({
+      counterparty: ETHEREUM_PAYOUTS,
+      direction: "in",
+      from: ETHEREUM_PAYOUTS,
+      memo: `0x${"c3".repeat(32)}`,
+      to: undefined,
+    });
+    const out = row({ memo: `0x${"11".repeat(20)}`, to: BSC_BRIDGE });
+
+    expect(describeRow(payout, withRoutes)).toMatchObject({
+      amount: { sign: "+" },
+      category: "bridge",
+      counterparty: ETHEREUM_PAYOUTS,
+      icon: "bridge",
+      line: "Bridge",
+      title: "From Ethereum",
+      titleIsAddress: false,
+    });
+    expect(describeRow(out, withRoutes)).toMatchObject({
+      amount: { sign: "−" },
+      category: "bridge",
+      counterparty: BSC_BRIDGE,
+      icon: "bridge",
+      line: "Bridge",
+      title: "To BNB Smart Chain",
+    });
+    expect(
+      describeRow(
+        { ...payout, counterparty: BSC_BRIDGE, from: BSC_BRIDGE },
+        withRoutes
+      ).title
+    ).toBe("From BNB Smart Chain");
+    expect(
+      matchesFilters(describeRow(out, withRoutes), out, { kind: "bridge" })
+    ).toBe(true);
+
+    // Without the network's routes, as before.
+    expect(describeRow(payout, context)).toMatchObject({
+      category: "received",
+      titleIsAddress: true,
+    });
+
+    // A send to an account that only pays migrations out isn't a transfer
+    // out, though it goes by the account's name.
+    expect(
+      describeRow(row({ to: ETHEREUM_PAYOUTS }), withRoutes)
+    ).toMatchObject({
+      category: "sent",
+      title: "Ethereum migration payouts",
+    });
+  });
+});
+
 describe("matchesFilters", () => {
   const sent = row({});
   const staked = row({ kind: "stake" });
@@ -526,6 +639,26 @@ describe("dayLabel and groupByDay", () => {
       ["Sat 24 Oct", 1],
       ["Time not known yet", 1],
     ]);
+  });
+});
+
+describe("csvFileName", () => {
+  it("names an export by the network, the profile and the day where the user is, as the extension does", () => {
+    // Past midnight in Amsterdam, still the day before in UTC.
+    const day = new Date(2026, 9, 29, 0, 46);
+
+    expect(csvFileName({ network: "testnet", profileIndex: 0 }, day)).toBe(
+      "dusk-activity-testnet-profile-1-2026-10-29.csv"
+    );
+    expect(csvFileName({ network: "Mainnet", profileIndex: 1 }, day)).toBe(
+      "dusk-activity-mainnet-profile-2-2026-10-29.csv"
+    );
+    expect(csvFileName({ network: "My node / 1" }, day)).toBe(
+      "dusk-activity-my-node-1-profile-1-2026-10-29.csv"
+    );
+    expect(csvFileName({}, day)).toBe(
+      "dusk-activity-wallet-profile-1-2026-10-29.csv"
+    );
   });
 });
 

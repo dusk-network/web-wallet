@@ -1,5 +1,6 @@
 import { get } from "svelte/store";
 
+import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
 import { keepOnlyContactsOf } from "$lib/contacts";
 import { settingsStore, walletStore } from "$lib/stores";
 
@@ -9,7 +10,7 @@ import profileGeneratorFrom from "./profileGeneratorFrom";
 /**
  * Starts a wallet restored or made here. Of the contacts on this device it
  * keeps only its own: those kept in plain text before stay only when it's
- * the wallet this device had.
+ * the wallet this device had. So do the bridge's transfers kept here.
  *
  * @param {string} mnemonic
  * @param {bigint} [syncFrom]
@@ -23,10 +24,16 @@ async function initializeWallet(mnemonic, syncFrom) {
     getSeedFromMnemonic(mnemonic)
   );
   const firstProfile = await profileGenerator.default;
+  const isKnownWallet =
+    knownWallet !== "" && knownWallet === String(firstProfile.address);
 
   await keepOnlyContactsOf(String(firstProfile.account), {
-    plain: knownWallet !== "" && knownWallet === String(firstProfile.address),
+    plain: isKnownWallet,
   });
+
+  if (!isKnownWallet) {
+    forgetBridgeRecords();
+  }
 
   walletStore.clearLocalDataAndInit(profileGenerator, syncFrom);
 }

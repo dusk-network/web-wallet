@@ -717,7 +717,7 @@ describe("Send", () => {
         "href",
         `/some-base-path/dashboard/transactions?tx=${lastTxId}`
       );
-      expect(getByText("8dcf6f8a…993db55e")).toBeInTheDocument();
+      expect(getByText("8dcf6f…3db55e")).toBeInTheDocument();
       expect(followTransaction).toHaveBeenCalledWith(
         lastTxId,
         expect.anything()
@@ -1503,6 +1503,34 @@ describe("Send", () => {
       await fireEvent.blur(fields.to());
 
       expect(queryByRole("button", { name: /^Did you mean/ })).toBeNull();
+    });
+
+    it("should offer the .dusk name as a name without it is typed, without calling it a wrong address", async () => {
+      const { getByRole, queryByRole, queryByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      // Typed, still in the field: no blur, no Enter.
+      await fireEvent.input(fields.to(), { target: { value: "alice" } });
+
+      expect(
+        getByRole("button", { name: "Did you mean alice.dusk?" })
+      ).toBeInTheDocument();
+      expect(fields.to()).not.toHaveClass("send__to-input--invalid");
+      expect(fields.to()).not.toHaveAttribute("aria-invalid", "true");
+
+      // Nor once it's left.
+      await fireEvent.blur(fields.to());
+
+      expect(queryByText("Not a valid address.")).toBeNull();
+      expect(
+        getByRole("button", { name: "Did you mean alice.dusk?" })
+      ).toBeInTheDocument();
+
+      // Anything else that isn't an address still is a wrong one.
+      await fireEvent.input(fields.to(), { target: { value: "alice_shop" } });
+
+      expect(queryByRole("button", { name: /^Did you mean/ })).toBeNull();
+      expect(queryByText("Not a valid address.")).toBeInTheDocument();
     });
   });
 

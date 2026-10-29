@@ -116,6 +116,16 @@ describe("checkAmount", () => {
     );
     expect(check("5", { minimum: 0n, most }).ok).toBe(true);
   });
+
+  it("gives an example in the language's way, and says an unstake's least as one", () => {
+    expect(check("ten", { locale: "nl-NL" }).error).toBe(
+      "Enter an amount such as 1000 or 1000,5."
+    );
+    expect(check("0.5", { action: "unstake", minimum: 4n }).error).toBe("");
+    expect(check("0.000000001", { action: "unstake", minimum: 4n }).error).toBe(
+      "The minimum unstake is 0.000000004 DUSK."
+    );
+  });
 });
 
 describe("NativeStake", () => {
@@ -205,6 +215,22 @@ describe("NativeStake", () => {
     expect(stake).toHaveTextContent("1,000 DUSK");
     expect(stake).not.toHaveClass("stake-flow__muted");
     expect(total).not.toHaveClass("stake-flow__muted");
+  });
+
+  it("takes an amount with a decimal comma, as Send does", async () => {
+    const { container, getByLabelText, getByRole } = render(
+      NativeStake,
+      baseProps
+    );
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1000,5" },
+    });
+
+    expect(container.querySelector(".stake-flow__rows dd")).toHaveTextContent(
+      "1,000.5 DUSK"
+    );
+    expect(getByRole("button", { name: "Stake 1,000.5 DUSK" })).toBeEnabled();
   });
 
   it("adds to a stake there is: no minimum, and the lock on what is added", async () => {

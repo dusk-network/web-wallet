@@ -22,6 +22,10 @@ vi.mock("$lib/web3/walletConnection", () => ({
   },
 }));
 
+import { prepareNativeWithdrawal } from "@dusk/evm-sdk";
+
+import { PAID, PAID_EXTRA_DATA } from "./fixtures/withdrawal-recipient";
+import { updateWithdrawalTransaction } from "$lib/bridge/withdrawalActivityStorage";
 import {
   explorerStatusToStage,
   fetchWithdrawalActivity,
@@ -121,7 +125,13 @@ describe("DuskEVM withdrawal activity", () => {
     ]);
   });
 
-  it("discovers bridge calls and enriches them with Blockscout OP status", async () => {
+  it("discovers bridge calls and enriches them with Blockscout OP status, and whom they pay on Dusk", async () => {
+    const { data: rawInput } = prepareNativeWithdrawal({
+      amountWei: 10n ** 17n,
+      extraData: PAID_EXTRA_DATA,
+      minGasLimit: 200_000,
+      recipient: account,
+    }).l2Transaction;
     const unrelatedHash = `0x${"66".repeat(32)}`;
     const directTransferHash = `0x${"77".repeat(32)}`;
     const fetchMock = vi.fn(async (input) => {
@@ -141,6 +151,7 @@ describe("DuskEVM withdrawal activity", () => {
               status: "Ready to prove",
             },
           ],
+          ["raw_input"]: rawInput,
           status: "ok",
           timestamp: "2026-07-14T10:00:00Z",
           to: { hash: mocks.bridgeAddress },
@@ -188,6 +199,7 @@ describe("DuskEVM withdrawal activity", () => {
         amountWei: "100000000000000000",
         blockNumber: "124",
         explorerStatus: "Ready to prove",
+        recipient: PAID,
         source: "explorer",
         stage: "ready_to_prove",
         transactionHash: withdrawalHash,
@@ -335,7 +347,7 @@ describe("DuskEVM withdrawal activity", () => {
       status: "Proven",
     });
 
-    it("are the ones the account proved or claimed, once each, by hash", () => {
+    it("are the ones the account proved or claimed, once each, by hash, with whom they pay", () => {
       /**
        * @param {"claim" | "prove"} kind
        * @param {number} count
@@ -355,7 +367,15 @@ describe("DuskEVM withdrawal activity", () => {
 
       expect(
         historyWithdrawals([
-          row("claim", 40),
+          row("claim", 40, {
+            bridge: {
+              amount: "1000000000",
+              hash: hashOf(40),
+              kind: "claim",
+              recipient: "ab".repeat(32),
+              withdrawal: nonceHex(40),
+            },
+          }),
           row("prove", 41),
           row("prove", 40),
           // A failed proof proved nothing; one read before the history kept
@@ -368,8 +388,8 @@ describe("DuskEVM withdrawal activity", () => {
           /** @type {ActivityRow} */ ({ status: "executed" }),
         ])
       ).toStrictEqual([
-        { hash: hashOf(40), nonce: nonceOf(40) },
-        { hash: hashOf(41), nonce: nonceOf(41) },
+        { hash: hashOf(40), nonce: nonceOf(40), recipient: "ab".repeat(32) },
+        { hash: hashOf(41), nonce: nonceOf(41), recipient: null },
       ]);
     });
 
@@ -421,6 +441,36 @@ describe("DuskEVM withdrawal activity", () => {
         rememberHistoryWithdrawals([{ hash: hashOf(41), nonce: nonceOf(41) }])
       ).resolves.toStrictEqual([]);
       expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("give one kept before whom it pays was read the account the history says it pays, without asking for it", async () => {
+      const fetchMock = vi.fn(async () =>
+        jsonResponse({ items: [], ["next_page_params"]: null })
+      );
+
+      vi.stubGlobal("fetch", fetchMock);
+
+      const claimed = /** @type {`0x${string}`} */ (txOf(44));
+
+      // Kept and claimed: no read would say whom it pays now.
+      rememberWithdrawalTransaction(claimed, { account, createdAt: 1 });
+      updateWithdrawalTransaction(claimed, {
+        sentAt: "2026-10-01T12:50:11.000Z",
+        stage: "finalized",
+        withdrawalHash: hashOf(44),
+      });
+
+      await expect(
+        rememberHistoryWithdrawals([
+          { hash: hashOf(44), nonce: nonceOf(44), recipient: PAID },
+          { hash: hashOf(45), nonce: nonceOf(45), recipient: null },
+        ])
+      ).resolves.toStrictEqual([]);
+      expect(hydrateWithdrawalActivity()).toEqual([
+        expect.objectContaining({ recipient: PAID, transactionHash: claimed }),
+      ]);
+      // The one not kept is looked for, as ever.
+      expect(fetchMock).toHaveBeenCalledOnce();
     });
 
     it("aren't asked for again for a while when the explorer doesn't list them", async () => {

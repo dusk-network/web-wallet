@@ -30,6 +30,7 @@
     HIGHEST_DEFAULT_GAS_LIMIT,
     areValidGasSettings,
   } from "$lib/contracts";
+  import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
   import { deleteContacts } from "$lib/contacts";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
   import { logout, pageTitle } from "$lib/navigation";
@@ -43,6 +44,7 @@
       .clearLocalData()
       .then(async () => {
         await deleteContacts();
+        forgetBridgeRecords({ times: true });
         await forgetEvmWallets();
         await loginInfoStorage.remove();
         settingsStore.reset();

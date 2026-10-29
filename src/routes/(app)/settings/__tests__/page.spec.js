@@ -489,6 +489,29 @@ describe("Settings", () => {
       expect(localStorage.getItem("@appkit/connection_status")).toBeNull();
     });
 
+    it("should forget the bridge's transfers and times kept here", async () => {
+      const kept = {
+        [`${CONFIG.LOCAL_STORAGE_APP_KEY}-bridge-times-testnet-${"14".repeat(32)}`]:
+          "{}",
+        "dusk-evm:deposit-activity:v1": "[]",
+        "dusk-evm:last-withdrawal-tx-hash": `0x${"44".repeat(32)}`,
+        "dusk-evm:withdrawal-activity:v1": "[]",
+      };
+
+      for (const [key, value] of Object.entries(kept)) {
+        localStorage.setItem(key, value);
+      }
+
+      const { getByRole } = render(Settings);
+
+      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
+      await vi.advanceTimersToNextTimerAsync();
+
+      for (const key of Object.keys(kept)) {
+        expect(localStorage.getItem(key)).toBeNull();
+      }
+    });
+
     it("should do nothing if the user doesn't confirm the reset", async () => {
       confirmSpy.mockReturnValueOnce(false);
 

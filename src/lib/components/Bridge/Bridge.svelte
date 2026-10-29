@@ -53,6 +53,8 @@
     modal,
     wagmiConfig,
   } from "$lib/web3/walletConnection";
+  import { contractLabel } from "$lib/activity/knownContracts";
+  import { configuredBridge } from "$lib/bridge/bridgeCalls";
   import { BRIDGE_DEPOSIT_MIN_GAS_LIMIT } from "$lib/bridge/deposit";
   import {
     depositActivityStore,
@@ -379,9 +381,10 @@
 
     lastWithdrawalTxHash = /** @type {string} */ (hash);
     localStorage.setItem(LAST_WITHDRAWAL_TX_HASH_KEY, lastWithdrawalTxHash);
+    // It pays this wallet's public account.
     const remembered = rememberWithdrawalTransaction(
       /** @type {`0x${string}`} */ (lastWithdrawalTxHash),
-      { account: $account.address, amountWei }
+      { account: $account.address, amountWei, recipient: unshieldedAddress }
     );
 
     if (remembered) {
@@ -574,7 +577,7 @@
   $: depositLine = routeLineOf(depositTime, [
     `fee up to ${formatFee(fee, language, { max: true })} DUSK`,
   ]);
-  $: withdrawalLine = routeLineOf(withdrawalTime, ["two steps on Dusk"]);
+  $: withdrawalLine = routeLineOf(withdrawalTime, ["three steps"]);
   $: routeLine = isDepositing ? depositLine : withdrawalLine;
   $: fromChoices = fromChoicesOf(list, originNetwork, $nodeNetwork);
   $: toChoices = toChoicesOf(
@@ -613,6 +616,9 @@
   });
 
   $: ({ language } = $settingsStore);
+  // The contract a deposit calls on Dusk, as the network's file names it.
+  $: ({ name: networkName } = $nodeNetwork ?? { name: "" });
+  $: depositContract = networkName ? configuredBridge().bridge : "";
 </script>
 
 <SwapCard label="Bridge">
@@ -890,6 +896,20 @@
             >
           </dd>
         </div>
+        {#if isDepositing && depositContract}
+          <div>
+            <dt>Contract</dt>
+            <dd>
+              <span
+                >{contractLabel(depositContract, networkName) ||
+                  "DuskEVM bridge"}</span
+              >
+              <span class="bridge-review__address" title={depositContract}
+                >{shortenAddress(depositContract)}</span
+              >
+            </dd>
+          </div>
+        {/if}
       </dl>
       {#if isDepositing}
         <ReviewAmount

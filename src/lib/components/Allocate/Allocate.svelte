@@ -17,11 +17,7 @@
     formatFee,
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
-  import {
-    calculateAdaptiveCharCount,
-    middleEllipsis,
-    randomUUID,
-  } from "$lib/dusk/string";
+  import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import {
     Badge,
     Icon,
@@ -123,16 +119,6 @@
 
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-
-      screenWidth = entry.contentRect.width;
-    });
-
-    resizeObserver.observe(document.body);
-
-    return () => resizeObserver.disconnect();
   });
 
   /** @type {boolean} */
@@ -147,9 +133,6 @@
   let isEditing = true;
 
   let defaultGas = gasSettings;
-
-  /** @type {number} */
-  let screenWidth = window.innerWidth;
 
   let hasInvalidInput = false;
 
@@ -248,10 +231,7 @@
 
           <div class="operation__address-wrapper">
             <Icon path={mdiShieldLockOpenOutline} />
-            {middleEllipsis(
-              unshieldedAddress,
-              calculateAdaptiveCharCount(screenWidth, 320, 640, 5, 20)
-            )}
+            {shortenAddress(unshieldedAddress)}
           </div>
 
           <div class="operation__input-wrapper">
@@ -291,10 +271,7 @@
 
           <div class="operation__address-wrapper">
             <Icon path={mdiShieldLock} />
-            {middleEllipsis(
-              shieldedAddress,
-              calculateAdaptiveCharCount(screenWidth, 320, 640, 5, 20)
-            )}
+            {shortenAddress(shieldedAddress)}
           </div>
 
           <div class="operation__input-wrapper">

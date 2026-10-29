@@ -778,18 +778,32 @@ describe("fetchTxDetails", () => {
           detailsAt: 1,
         })
       ).toBe(true);
+      // So is one read before the history read whom it pays; one read since
+      // isn't, whether it says or not (null).
+      const proof = {
+        amount: "1",
+        hash: /** @type {`0x${string}`} */ (`0x${"8e".repeat(32)}`),
+        kind: /** @type {const} */ ("prove"),
+        withdrawal: "01",
+      };
+
       expect(
         history.needsDetails({
-          bridge: {
-            amount: "1",
-            hash: `0x${"8e".repeat(32)}`,
-            kind: "prove",
-            withdrawal: "01",
-          },
+          bridge: proof,
           contractId: portal,
           detailsAt: 1,
         })
-      ).toBe(false);
+      ).toBe(true);
+
+      for (const recipient of [null, "213qXN"]) {
+        expect(
+          history.needsDetails({
+            bridge: { ...proof, recipient },
+            contractId: portal,
+            detailsAt: 1,
+          })
+        ).toBe(false);
+      }
     } finally {
       delete details[prove];
       delete details[deposit];
@@ -799,7 +813,7 @@ describe("fetchTxDetails", () => {
 });
 
 describe("a .dusk name's registration", () => {
-  it("is read for the name it registered, and one read before is read again, once", async () => {
+  it("is read for the name it registered and what it reveals of its reservation, and one read before is read again, once", async () => {
     const [alice] = REGISTRATIONS;
     const registration = "d1".repeat(32);
     const ok =
@@ -823,24 +837,44 @@ describe("a .dusk name's registration", () => {
       fakeArchive();
 
       const read = await history.fetchTxDetails(NODE, [registration, ok]);
+      const root = alice.data.slice(-608);
 
       expect(read.get(registration)?.registeredName).toBe("alice.dusk");
+      expect(read.get(registration)?.nameCommit).toStrictEqual({
+        commitment: root.slice(82, 146),
+        node: root.slice(0, 64),
+        secret: root.slice(146, 210),
+      });
       expect(read.get(ok)).not.toHaveProperty("registeredName");
+      expect(read.get(ok)).not.toHaveProperty("nameCommit");
     } finally {
       delete details[registration];
     }
 
     const call = { contractId: STORE, detailsAt: 1, fnName: "register" };
+    const commit = { commitment: "ab".repeat(32) };
 
     expect(history.needsDetails(call)).toBe(true);
-    expect(history.needsDetails({ ...call, registeredName: null })).toBe(false);
+    expect(history.needsDetails({ ...call, registeredName: null })).toBe(true);
     expect(
-      history.needsDetails({ ...call, registeredName: "alice.dusk" })
+      history.needsDetails({ ...call, nameCommit: null, registeredName: null })
     ).toBe(false);
-    expect(history.needsDetails({ ...call, fnName: "commit" })).toBe(false);
+    expect(
+      history.needsDetails({
+        ...call,
+        nameCommit: commit,
+        registeredName: "alice.dusk",
+      })
+    ).toBe(false);
+    // A reservation is read again for what it holds, once.
+    expect(history.needsDetails({ ...call, fnName: "commit" })).toBe(true);
+    expect(
+      history.needsDetails({ ...call, fnName: "commit", nameCommit: commit })
+    ).toBe(false);
+    expect(history.needsDetails({ ...call, fnName: "renew" })).toBe(false);
   });
 
-  it("keeps the name it registered through the store, for the history's rows", async () => {
+  it("keeps the name it registered and what it reveals through the store, for the history's rows", async () => {
     const [alice] = REGISTRATIONS;
     const ownerKey = store.activityOwnerKey("testnet", A);
     const hash = "d2".repeat(32);
@@ -883,6 +917,7 @@ describe("a .dusk name's registration", () => {
             gasLimit: "1",
             gasPrice: "1",
             gasSpent: "1",
+            nameCommit: { commitment: "ab".repeat(32) },
             registeredName: "alice.dusk",
             success: true,
             timestamp: 1,
@@ -894,6 +929,7 @@ describe("a .dusk name's registration", () => {
     const [entry] = (await kept(A)).map(history.activityEntry);
 
     expect(entry.registeredName).toBe("alice.dusk");
+    expect(entry.nameCommit).toStrictEqual({ commitment: "ab".repeat(32) });
     expect(history.needsDetails(entry)).toBe(false);
   });
 });

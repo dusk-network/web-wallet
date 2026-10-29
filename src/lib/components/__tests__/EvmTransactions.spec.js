@@ -112,6 +112,7 @@ const mocks = vi.hoisted(() => {
     },
     finalizationConfig: configuredFinalizationConfig(),
     finalizeWithdrawal: vi.fn(),
+    followHistoryDeposits: vi.fn(() => new Set()),
     historyWithdrawals: vi.fn(() => /** @type {any[]} */ ([])),
     hydrateDepositActivity: vi.fn(() => depositItems),
     hydrateWithdrawalActivity: vi.fn(() => withdrawalItems),
@@ -264,6 +265,7 @@ vi.mock("$lib/bridge/routeTracking", async (importOriginal) => ({
 
 vi.mock("$lib/bridge/depositActivity", () => ({
   depositActivityStore: mocks.depositActivityStore,
+  followHistoryDeposits: mocks.followHistoryDeposits,
   hydrateDepositActivity: mocks.hydrateDepositActivity,
   resumeDepositTracking: mocks.resumeDepositTracking,
 }));
@@ -406,6 +408,8 @@ describe("EvmTransactions", () => {
     mocks.trackWithdrawalTransaction.mockClear();
     mocks.historyWithdrawals.mockReset();
     mocks.historyWithdrawals.mockReturnValue([]);
+    mocks.followHistoryDeposits.mockReset();
+    mocks.followHistoryDeposits.mockReturnValue(new Set());
     mocks.rememberHistoryWithdrawals.mockReset();
     mocks.rememberHistoryWithdrawals.mockResolvedValue([]);
     mocks.loadProveNowClaim.mockReset();
@@ -804,6 +808,143 @@ describe("EvmTransactions", () => {
     expect(depositButton).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("lists this wallet's own deposits from its history with no EVM wallet connected, saying when they arrived and where", async () => {
+    const own = "ef".repeat(32);
+    const paid = `0x${"29".repeat(32)}`;
+    const arrived = Date.now() - 30_000;
+    const rows = [
+      {
+        bridge: {
+          amount: "250000000",
+          kind: "deposit",
+          to: "0xAB84EDFFD745af9420AC74FEC73121FBEE9FC86F",
+        },
+        hash: own,
+      },
+    ];
+
+    mocks.followHistoryDeposits.mockReturnValue(new Set([own]));
+    mocks.setHistoryRows(rows);
+    mocks.setDepositItems([
+      deposit(own, {
+        account: "0xab84edffd745af9420ac74fec73121fbee9fc86f",
+        arrivedAt: arrived,
+        l2TransactionHash: paid,
+        stage: "completed",
+      }),
+      // Another wallet's, to a DuskEVM account that isn't connected.
+      deposit("cd".repeat(32), {
+        account: `0x${"99".repeat(20)}`,
+        amountLux: "500000000",
+      }),
+    ]);
+
+    const { findByRole, getByRole, getByText, queryByRole } = render(
+      EvmTransactions,
+      { target: document.body }
+    );
+    const row = await findByRole("button", {
+      name: `Dusk to DuskEVM Arrived ${claimDay(arrived, "en")} · to 0xAB84…C86F 0.25 DUSK`,
+    });
+
+    expect(mocks.followHistoryDeposits).toHaveBeenCalledWith(rows);
+    expect(row.closest("section")).toHaveAccessibleName("Completed");
+    expect(queryByRole("button", { name: /0\.5 DUSK/ })).toBeNull();
+
+    // Its steps link the DuskEVM transaction that paid it.
+    await fireEvent.click(row);
+
+    expect(getByText("Arrived")).toBeInTheDocument();
+    expect(
+      getByRole("link", {
+        name: "View duskevm transaction hash in Blockscout",
+      })
+    ).toHaveAttribute("href", `https://explorer.example.test/tx/${paid}`);
+  });
+
+  it("puts a withdrawal the EVM wallet sent to someone else's Dusk account in a group of its own, saying whom it pays, with its Prove offered quietly", async () => {
+    const theirs = `0x${"67".repeat(32)}`;
+    const mine = `0x${"68".repeat(32)}`;
+    const own = String(get(walletStore).currentProfile?.account);
+    const other =
+      "213qXNJXsQEGigeKJ8jFxuaPb1UV2BiGNykjS3cqRULiaBjQQcGQyEknV7WAhNF5u9hhhFoJcLxbuMWuWhCq3b9jCHDTpvGZaV5HcUU8Z5c4oHbdJ7TQ1NWQJNghYV5JJ9Y";
+
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+    mocks.setWithdrawalItems([
+      { ...activityItem(theirs, "ready_to_prove"), recipient: other },
+      { ...activityItem(mine, "ready_to_prove"), recipient: own },
+    ]);
+    mocks.loadWithdrawalStatus.mockImplementation(async (hash) => ({
+      blockNumber: 13668n,
+      stage: "ready_to_prove",
+      transactionHash: hash,
+    }));
+
+    const { findByRole, getAllByRole, getByRole } = render(EvmTransactions, {
+      target: document.body,
+    });
+    const row = await findByRole("button", {
+      name: "DuskEVM to Dusk Pays 213qXN…V5JJ9Y · ready to prove on Dusk 0.1 DUSK",
+    });
+
+    expect(row.closest("section")).toHaveAccessibleName("Sent to someone else");
+    expect(
+      getByRole("button", {
+        name: "DuskEVM to Dusk Ready to prove on Dusk 0.1 DUSK",
+      }).closest("section")
+    ).toHaveAccessibleName("Needs you");
+
+    // What needs you comes first.
+    const [loud, quiet] = getAllByRole("button", {
+      name: "Prove 0.1 DUSK from DuskEVM",
+    });
+
+    expect(quiet).toHaveClass("dusk-button--variant--secondary");
+    expect(loud).toHaveClass("dusk-button--variant--primary");
+
+    // Opened, its own step is quiet too.
+    await fireEvent.click(quiet);
+
+    expect(await findByRole("button", { name: "Prove on Dusk" })).toHaveClass(
+      "dusk-button--variant--secondary"
+    );
+  });
+
+  it("leaves a withdrawal to someone else that this wallet proved where its claim needs it, with its Claim as ever, still saying whom it pays", async () => {
+    const theirs = `0x${"69".repeat(32)}`;
+    const withdrawalHash = `0x${"a3".repeat(32)}`;
+    const other =
+      "213qXNJXsQEGigeKJ8jFxuaPb1UV2BiGNykjS3cqRULiaBjQQcGQyEknV7WAhNF5u9hhhFoJcLxbuMWuWhCq3b9jCHDTpvGZaV5HcUU8Z5c4oHbdJ7TQ1NWQJNghYV5JJ9Y";
+
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+    // Its reads, which are this wallet's, say it's proved and ready to claim.
+    mocks.setWithdrawalItems([
+      {
+        ...activityItem(theirs, "ready_to_finalize"),
+        recipient: other,
+        withdrawalHash,
+      },
+    ]);
+    mocks.loadWithdrawalStatus.mockImplementation(async (hash) => ({
+      blockNumber: 13668n,
+      stage: "ready_to_finalize",
+      transactionHash: hash,
+      withdrawalHash,
+    }));
+
+    const { findByRole, getByRole } = render(EvmTransactions, {
+      target: document.body,
+    });
+    const row = await findByRole("button", {
+      name: "DuskEVM to Dusk Pays 213qXN…V5JJ9Y · ready to claim on Dusk 0.1 DUSK",
+    });
+
+    expect(row.closest("section")).toHaveAccessibleName("Needs you");
+    expect(
+      getByRole("button", { name: "Claim 0.1 DUSK from DuskEVM" })
+    ).toHaveClass("dusk-button--variant--primary");
+  });
+
   it("opens the deposit its link names, without checking it as a withdrawal", async () => {
     const depositHash = "ab".repeat(32);
 
@@ -818,7 +959,7 @@ describe("EvmTransactions", () => {
 
     expect(
       await findByRole("button", {
-        name: /^Dusk to DuskEVM Sent .+ 0\.25 DUSK$/,
+        name: /^Dusk to DuskEVM Arrived on DuskEVM 0\.25 DUSK$/,
       })
     ).toHaveAttribute("aria-expanded", "true");
     expect(getByText("DuskDS transaction")).toBeInTheDocument();
@@ -848,7 +989,7 @@ describe("EvmTransactions", () => {
 
     expect(
       await findByRole("button", {
-        name: /^Dusk to DuskEVM Sent .+ 0\.25 DUSK$/,
+        name: /^Dusk to DuskEVM Arrived on DuskEVM · to 0x\w{4}…\w{4} 0\.25 DUSK$/,
       })
     ).toHaveAttribute("aria-expanded", "true");
     expect(queryByRole("alert")).toBeNull();
@@ -874,7 +1015,7 @@ describe("EvmTransactions", () => {
 
     expect(
       await findByRole("button", {
-        name: /^Dusk to DuskEVM Sent .+ 0\.25 DUSK$/,
+        name: /^Dusk to DuskEVM Arrived on DuskEVM · to 0x\w{4}…\w{4} 0\.25 DUSK$/,
       })
     ).toHaveAttribute("aria-expanded", "false");
   });
@@ -1106,7 +1247,7 @@ describe("EvmTransactions", () => {
       expect(getAllByText(label).length).toBeGreaterThan(0);
     }
     expect(
-      getByText("Step 1 of 2. Fee from your public account.")
+      getByText("Step 2 of 3. Fee from your public account.")
     ).toBeInTheDocument();
   });
 
@@ -1572,7 +1713,7 @@ describe("EvmTransactions", () => {
 
     expect(
       await findByText(
-        `Step 1 of 2. Fee from your public account. If you prove now, you can claim from ${claimDay(CLAIM_AT, "en")}.`
+        `Step 2 of 3. Fee from your public account. If you prove now, you can claim from ${claimDay(CLAIM_AT, "en")}.`
       )
     ).toBeInTheDocument();
     expect(mocks.loadProveNowClaim).toHaveBeenCalledWith(txHash);

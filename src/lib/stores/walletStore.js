@@ -435,6 +435,18 @@ async function init(profileGeneratorInstance, syncFromBlock) {
     });
 }
 
+/**
+ * The balances and the stake read again, as after a transaction of the
+ * wallet's: for one the history found that changed them.
+ *
+ * @type {WalletStoreServices["refreshBalance"]}
+ */
+const refreshBalance = () =>
+  sync()
+    .catch(() => {}) // Background sync errors are reported in syncStatus.
+    .finally(updateStaticInfo)
+    .then(() => {});
+
 /** @type {WalletStoreServices["reset"]} */
 function reset() {
   walletSession++;
@@ -923,6 +935,7 @@ export default {
   getDuskEvmProofSubmitter,
   init,
   proveDuskEvmWithdrawal,
+  refreshBalance,
   reset,
   setCurrentProfile,
   shield,

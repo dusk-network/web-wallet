@@ -34,7 +34,7 @@ export const DUSK_DOMAINS_CONTRACTS = Object.freeze(
 /** @type {ReadonlyMap<string, string>} */
 const NAME_CALLS = new Map([
   ["clear_primary", "Cleared the primary .dusk name"],
-  ["commit", "Reserved a .dusk name"],
+  ["commit", "Name reservation (step 1 of 2)"],
   ["create_subname", "Created a .dusk subname"],
   ["issue_reserved", "Issued a reserved .dusk name"],
   ["mutate_records", "Changed a .dusk name's records"],
@@ -139,15 +139,72 @@ export function registeredNameOf({ contractId, data, fnName }) {
 }
 
 /**
+ * @typedef {{ commitment: string, node?: string, secret?: string }} NameCommit
+ *   A name's reservation, or its registration, which reveals what the
+ *   reservation was for: each as hex.
+ */
+
+/**
+ * Whether a call reserved a `.dusk` name or registered one.
+ *
+ * @param {{ contractId?: string | null, fnName?: string }} call
+ */
+export const isNameCommitCall = ({ contractId, fnName }) =>
+  ["commit", "register"].includes(String(fnName ?? "").trim()) &&
+  isDuskDomains(contractId);
+
+/** @param {Uint8Array} bytes */
+const hexOf = (bytes) =>
+  Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+
+/**
+ * What a reservation of a `.dusk` name holds, or what its registration
+ * reveals of it, read from its arguments: undefined for any other call, and
+ * null for one whose arguments don't read as they should.
+ *
+ * @param {{ contractId?: string | null, data?: unknown, fnName?: string }} call
+ *   `data` the call's arguments in hex
+ * @returns {NameCommit | null | undefined}
+ */
+export function nameCommitOf({ contractId, data, fnName }) {
+  if (!isNameCommitCall({ contractId, fnName })) {
+    return undefined;
+  }
+
+  const text = norm(data);
+  const args = /^(?:[0-9a-f]{2})+$/.test(text)
+    ? Uint8Array.from(text.match(/../g) ?? [], (b) => parseInt(b, 16))
+    : new Uint8Array();
+
+  if (String(fnName).trim() === "commit") {
+    return args.length === 32 ? { commitment: hexOf(args) } : null;
+  }
+
+  const root = args.length - REGISTRATION_ROOT;
+
+  return root >= 0 && root % 8 === 0
+    ? {
+        commitment: hexOf(args.subarray(root + 41, root + 73)),
+        node: hexOf(args.subarray(root, root + 32)),
+        secret: hexOf(args.subarray(root + 73, root + 105)),
+      }
+    : null;
+}
+
+/**
  * What a call to a contract the wallet knows did, in words, with its app;
  * null for any other contract. A registration says which name it was, once
- * that has been read from it (`registeredNameOf`).
+ * that has been read from it (`registeredNameOf`), and a reservation the
+ * name its registration revealed, where there's one (`reservedName`).
  *
- * @param {{ contractId?: string | null, fnName?: string, registeredName?: string | null }} call
+ * @param {{ contractId?: string | null, fnName?: string, registeredName?: string | null, reservedName?: string | null }} call
  * @param {string} [network] The network's name
  * @returns {{ app: string, label: string } | null}
  */
-export function knownCall({ contractId, fnName, registeredName }, network) {
+export function knownCall(
+  { contractId, fnName, registeredName, reservedName },
+  network
+) {
   if (!isDuskDomains(contractId, network)) {
     return null;
   }
@@ -156,6 +213,10 @@ export function knownCall({ contractId, fnName, registeredName }, network) {
 
   if (fn === "register" && registeredName) {
     return { app: "Dusk Domains", label: `Registered ${registeredName}` };
+  }
+
+  if (fn === "commit" && reservedName) {
+    return { app: "Dusk Domains", label: `Reserved ${reservedName}` };
   }
 
   return { app: "Dusk Domains", label: NAME_CALLS.get(fn) ?? "Dusk Domains" };
