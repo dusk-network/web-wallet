@@ -1,4 +1,4 @@
-import getAddressInfo from "$lib/wallet/getAddressInfo";
+import { validateName } from "@duskdomains/sdk/names";
 
 import getLensReader from "./getLensReader";
 
@@ -32,42 +32,10 @@ export default async function resolveDuskName(input, network, nodeUrl) {
 }
 
 /**
- * What a name's records pay to: the public account in its
- * `moonlight_address` record and the shielded address in its
- * `phoenix_payment_endpoint` record, each where it's valid.
- *
- * @param {string} name
- * @param {({ value: number[] } | null)[]} records
- * @param {typeof import("@duskdomains/sdk")} sdk
- * @returns {DuskNameResolution}
- */
-function paidTo(name, [moonlight, phoenix], sdk) {
-  /** @type {DuskNameResolution} */
-  const resolution = { name };
-
-  // The reader doesn't check the public account: it must be a valid
-  // compressed 96-byte BLS key, as Moonlight accounts are.
-  if (moonlight && sdk.isMoonlightEndpoint(moonlight.value)) {
-    resolution.account = sdk.encodeBase58(moonlight.value);
-  }
-
-  // The shielded address is stored as text, and taken only if
-  // the wallet would take it as a pasted shielded address.
-  if (phoenix) {
-    const address = new TextDecoder().decode(Uint8Array.from(phoenix.value));
-
-    if (getAddressInfo(address, "", "").type === "address") {
-      resolution.address = address;
-    }
-  }
-
-  return resolution.account || resolution.address
-    ? resolution
-    : { error: "no-address", name };
-}
-
-/**
- * One lookup of a name: "lookup-failed" when it couldn't be made.
+ * One lookup of a name: "lookup-failed" when it couldn't be made. What it
+ * pays to is what `resolveAccounts` reads: the public account in its
+ * `moonlight_address` record where that's a valid key, and the shielded
+ * address in its `phoenix_payment_endpoint` record where it's exactly one.
  *
  * @param {string} input
  * @param {"mainnet" | "testnet"} network
@@ -75,23 +43,20 @@ function paidTo(name, [moonlight, phoenix], sdk) {
  * @returns {Promise<DuskNameResolution>}
  */
 async function lookUp(input, network, nodeUrl) {
-  let name = input;
+  const validation = validateName(input);
+
+  if (!validation.ok) {
+    return { error: "invalid", name: input };
+  }
+
+  const name = validation.name.canonical;
 
   try {
-    const sdk = await import("@duskdomains/sdk");
-    const validation = sdk.validateName(name);
-
-    if (!validation.ok) {
-      return { error: "invalid", name };
-    }
-
-    name = validation.name.canonical;
-
-    const reader = await getLensReader(network, nodeUrl);
-    const { records, status } = await reader.resolve(name, [
-      "moonlight_address",
-      "phoenix_payment_endpoint",
+    const [{ resolveAccounts }, reader] = await Promise.all([
+      import("@duskdomains/sdk/accounts"),
+      getLensReader(network, nodeUrl),
     ]);
+    const { account, address, status } = await resolveAccounts(reader, name);
 
     if (status !== "Active") {
       return {
@@ -100,7 +65,13 @@ async function lookUp(input, network, nodeUrl) {
       };
     }
 
-    return paidTo(name, records, sdk);
+    return account || address
+      ? {
+          ...(account ? { account } : {}),
+          ...(address ? { address } : {}),
+          name,
+        }
+      : { error: "no-address", name };
   } catch {
     return { error: "lookup-failed", name };
   }

@@ -1,15 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { decodeBase58 } from "@duskdomains/sdk";
-
-import releases from "$lib/dusk-domains/dusk-domains-releases.json";
-import recorded from "./fixtures/multicall-testnet.json";
+import { decodeBase58 } from "@duskdomains/sdk/lens-reader";
+import { PINNED_RELEASES as releases } from "@duskdomains/sdk/releases";
 
 const mocks = vi.hoisted(() => ({
   createLensReader: vi.fn(),
   getLensReader: vi.fn(),
 }));
 
-vi.mock("@duskdomains/sdk/lens-reader", () => ({
+vi.mock("@duskdomains/sdk/lens-reader", async (importOriginal) => ({
+  .../** @type {typeof import("@duskdomains/sdk/lens-reader")} */ (
+    await importOriginal()
+  ),
   createLensReader: mocks.createLensReader,
 }));
 
@@ -18,7 +19,11 @@ vi.mock("$lib/dusk-domains/getLensReader", () => ({
 }));
 
 const NODE = "https://testnet.nodes.dusk.network";
-const [NAMED, UNNAMED] = recorded.accounts;
+// Testnet accounts: the one shpongle.dusk names, and one without a name.
+const NAMED =
+  "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+const UNNAMED =
+  "oUgxBUWEPyFAekXW9T2UdJBcMF7xAuBfstrCX8ATXFk7MusqddFGoq2LN9euCbwVuXpSM5rGLKNUb6NVPFUVM5g4pA6CnXjNfNVBiy91NcH9eBVcdcG1eYUaKWQSYQ9t2um";
 const SHIELDED_ADDRESS =
   "4ZH3oyfTuMHyWD1Rp4e7QKp5yK6wLrWvxHneufAiYBAjvereFvfjtDvTbBcZN5ZCsaoMo49s1LKPTwGpowik6QJG";
 const LENS = releases.testnet.lens.contractId;
@@ -124,6 +129,7 @@ describe("lookupCounterpartyNames", () => {
     const read = (body) =>
       batched(`${NODE}/on/contracts:${LENS}/reverse`, {
         body: new Uint8Array(body),
+        headers: { "Content-Type": "application/octet-stream" },
         method: "POST",
       });
     const answers = await Promise.all([read([1]), read([2])]);

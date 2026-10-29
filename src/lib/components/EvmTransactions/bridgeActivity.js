@@ -7,7 +7,9 @@
  * didn't go through.
  */
 
-import { claimDay, claimText } from "$lib/bridge/claimDate";
+import { claimText } from "@dusk-network/networks/duskevm";
+
+import { claimDay } from "$lib/bridge/claimDate";
 import {
   isDepositDelayed,
   isDepositStalled,

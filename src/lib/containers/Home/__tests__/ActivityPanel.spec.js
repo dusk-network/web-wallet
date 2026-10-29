@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 import { tick } from "svelte";
+import { networks } from "@dusk-network/networks";
 
 import { noteSozuPool } from "$lib/sozu";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import ActivityPanel from "../ActivityPanel.svelte";
 
@@ -80,7 +82,37 @@ describe("ActivityPanel", () => {
     );
   });
 
+  it("should name a call to Dusk Domains by what it did, on the node's network", () => {
+    setNodeNetwork(networks.testnet);
+
+    const { container } = render(ActivityPanel, {
+      locale: "en",
+      state: {
+        complete: true,
+        error: null,
+        hasMore: false,
+        loaded: true,
+        rows: [
+          {
+            ...stake,
+            contractId:
+              "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199",
+            deposit: undefined,
+            fnName: "register",
+            registeredName: "alice.dusk",
+          },
+        ],
+        syncing: false,
+      },
+    });
+
+    expect(container).toHaveTextContent("Registered alice.dusk");
+    setNodeNetwork(null);
+  });
+
   it("should read its rows again when Sozu's hub names another pool", async () => {
+    setNodeNetwork(networks.testnet);
+
     const { container } = render(ActivityPanel, {
       locale: "en",
       state: {
@@ -100,6 +132,7 @@ describe("ActivityPanel", () => {
 
     expect(container).toHaveTextContent("Staked with Sozu");
     expect(container).not.toHaveTextContent("Called sozu_stake");
+    setNodeNetwork(null);
   });
 
   it("should grey a withdrawal's amount until it arrives", () => {

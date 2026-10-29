@@ -39,7 +39,7 @@ const withdrawalTxHash = /** @type {`0x${string}`} */ (
 /**
  * An `aggregate` reply as the contract writes it (rkyv 0.7): each Ok
  * result's bytes, then one 16-byte slot per result, then the root. As in
- * multicallFetch.spec.js.
+ * @hdauven/dusk-multicall's codec.
  *
  * @param {{ Ok: Uint8Array }[]} results
  */
@@ -92,8 +92,10 @@ describe("DuskEVM withdrawal helpers", () => {
   });
 
   it("proves and finalizes withdrawals with a large gas limit, within the global bound", () => {
-    expect(withdrawalGas()).toMatchObject({ limit: 50_000_000n, price: 1n });
-    expect(withdrawalGas(519_542n)).toMatchObject({ limit: 50_519_542n });
+    // 50M, and the withdrawal's own gas, at least 1M.
+    expect(withdrawalGas()).toMatchObject({ limit: 51_000_000n, price: 1n });
+    expect(withdrawalGas(519_542n)).toMatchObject({ limit: 51_000_000n });
+    expect(withdrawalGas(1_500_000n)).toMatchObject({ limit: 51_500_000n });
     expect(withdrawalGas(950_000_000n)).toMatchObject({
       limit: 1_000_000_000n,
     });
@@ -713,8 +715,7 @@ describe("DuskEVM withdrawal helpers", () => {
 
     it("go to the node as one Multicall for Dusk query, then the games", async () => {
       const { loadWithdrawalTiming } = await timingModule();
-      const { MULTICALL_CONTRACT_ID } =
-        await import("$lib/activity/multicallFetch");
+      const { MULTICALL_CONTRACT_ID } = await import("@hdauven/dusk-multicall");
       const AGGREGATE = `${NODE}/on/contracts:${MULTICALL_CONTRACT_ID}/aggregate`;
       const base = vi.fn(async (/** @type {string} */ url) =>
         url === AGGREGATE
@@ -732,8 +733,7 @@ describe("DuskEVM withdrawal helpers", () => {
             )
           : new Response(JSON.stringify(ANSWERS.findLatestGames))
       );
-      const { createMulticallFetch } =
-        await import("$lib/activity/multicallFetch");
+      const { createMulticallFetch } = await import("@hdauven/dusk-multicall");
 
       await expect(
         loadWithdrawalTiming({
@@ -741,6 +741,7 @@ describe("DuskEVM withdrawal helpers", () => {
             fetch: /** @type {typeof globalThis.fetch} */ (
               /** @type {unknown} */ (base)
             ),
+            multicallId: MULTICALL_CONTRACT_ID,
             nodeUrl: NODE,
           }),
           loadDriver: async () => driver,
@@ -815,8 +816,9 @@ describe("DuskEVM withdrawal helpers", () => {
     const [, , withdrawal, gas] =
       walletStore.finalizeDuskEvmWithdrawal.mock.calls[0];
 
-    // The withdrawal gas limit plus the gas the withdrawal asks for.
-    expect(gas).toMatchObject({ limit: 50_519_542n, price: 2n });
+    // The withdrawal gas limit plus the gas the withdrawal asks for, at
+    // least 1M.
+    expect(gas).toMatchObject({ limit: 51_000_000n, price: 2n });
 
     expect(withdrawal).toMatchObject({
       data: expect.any(Array),
@@ -1024,7 +1026,7 @@ describe("DuskEVM withdrawal helpers", () => {
 
     /**
      * The calls in an `aggregate` envelope: each one's contract, name and
-     * arguments, as the vendored codec writes them.
+     * arguments, as the multicall's codec writes them.
      *
      * @param {any} body
      */
@@ -1060,7 +1062,7 @@ describe("DuskEVM withdrawal helpers", () => {
       vi.doUnmock("$lib/bridge/bridgeReads");
 
       const { MULTICALL_CONTRACT_ID, createMulticallFetch } =
-        await import("$lib/activity/multicallFetch");
+        await import("@hdauven/dusk-multicall");
       const { bridgeReads } = await import("$lib/bridge/bridgeReads");
       const AGGREGATE = `${NODE}/on/contracts:${MULTICALL_CONTRACT_ID}/aggregate`;
       /** @type {string[][]} */
@@ -1093,6 +1095,7 @@ describe("DuskEVM withdrawal helpers", () => {
           fetch: /** @type {typeof globalThis.fetch} */ (
             /** @type {unknown} */ (base)
           ),
+          multicallId: MULTICALL_CONTRACT_ID,
           nodeUrl: NODE,
         }),
         loadDriver: async () => driver,
@@ -1361,10 +1364,11 @@ describe("DuskEVM withdrawal helpers", () => {
 
       await proveWithdrawal(withdrawalTxHash);
 
-      const [, , args] = walletStore.proveDuskEvmWithdrawal.mock.calls[0];
+      const [, , args, gas] = walletStore.proveDuskEvmWithdrawal.mock.calls[0];
 
-      // The proof whose date was shown.
+      // The proof whose date was shown, with the gas a claim of it gets.
       expect(args[1]).toEqual(u256(229));
+      expect(gas).toMatchObject({ limit: 51_000_000n });
     });
 
     it("keeps proving with the proof whose date is shown when a newer one's date can't be read", async () => {

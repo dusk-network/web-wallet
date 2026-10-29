@@ -3,8 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import bridgeCalls from "../../bridge/__tests__/fixtures/bridge-calls-testnet.json";
 import fixture from "./fixtures/activity-testnet.json";
 import { fakeArchive } from "./fixtures/fakeArchive";
+import { PAID } from "../../bridge/__tests__/fixtures/withdrawal-recipient";
 import { calls as REGISTRATIONS } from "./fixtures/registrations-testnet.json";
 import { networks } from "@dusk-network/networks";
+
+import { describeRow } from "../present";
+import { reservationNames } from "../reservedNames";
 
 /*
  * Recorded on Testnet: A registered a .dusk name and received two transfers;
@@ -706,6 +710,8 @@ describe("fetchTxDetails", () => {
       bridgeCalls.calls.find((c) => c.name === name)?.args;
     const prove = "c1".repeat(32);
     const deposit = "c2".repeat(32);
+    const claim = "c3".repeat(32);
+    const contractProof = "c4".repeat(32);
     const ok =
       "8e247a33967153b229ce4f45f61e0f14808d8a417c4a4b37eabb269a8eb08e34";
     /** @type {Record<string, any>} */
@@ -720,8 +726,6 @@ describe("fetchTxDetails", () => {
       tx: { ...details[ok].tx, callData: { contractId, data, fnName } },
     });
 
-    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridge);
-    vi.stubEnv("VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID", `0x${portal}`);
     details[prove] = tx(
       portal,
       "proveWithdrawalTransaction",
@@ -732,17 +736,54 @@ describe("fetchTxDetails", () => {
       "depositETHToWithValue",
       args("deposit-shoot")
     );
+    details[claim] = tx(
+      portal,
+      "finalizeWithdrawalTransaction",
+      args("claim-account")
+    );
+    details[contractProof] = tx(
+      portal,
+      "proveWithdrawalTransaction",
+      args("prove-wallet-both")
+    );
 
     try {
       const node = fakeArchive();
-      const read = await history.fetchTxDetails(NODE, [prove, deposit, ok]);
+      const read = await history.fetchTxDetails(NODE, [
+        prove,
+        deposit,
+        claim,
+        contractProof,
+        ok,
+      ]);
 
       expect(node.detailQueries()[0].query).toContain(
         "callData { contractId fnName data }"
       );
+      // The withdrawal a proof and its claim are for, in Lux, and whom it
+      // pays on Dusk: an account, or a contract.
       expect(read.get(prove)?.bridge).toMatchObject({
         amount: "1008000000000",
+        hash: expect.stringMatching(/^0x[0-9a-f]{64}$/),
         kind: "prove",
+        recipient: PAID,
+        withdrawal: expect.stringMatching(/^[0-9a-f]{64}$/),
+      });
+      // Its claim is for the same withdrawal.
+      const proved = /** @type {{ withdrawal?: string }} */ (
+        read.get(prove)?.bridge ?? {}
+      );
+
+      expect(read.get(claim)?.bridge).toMatchObject({
+        amount: "1008000000000",
+        kind: "claim",
+        recipient: PAID,
+        withdrawal: proved.withdrawal,
+      });
+      expect(read.get(contractProof)?.bridge).toMatchObject({
+        amount: "1000000000",
+        recipient:
+          "21a5cb174bbd7dd0ae1c5bb76c989bb62fb82354aeec9fb25f548c43677dedd0",
       });
       expect(read.get(deposit)?.bridge).toEqual({
         amount: "100000000",
@@ -805,79 +846,121 @@ describe("fetchTxDetails", () => {
         ).toBe(false);
       }
     } finally {
-      delete details[prove];
-      delete details[deposit];
-      vi.unstubAllEnvs();
+      for (const hash of [prove, deposit, claim, contractProof]) {
+        delete details[hash];
+      }
     }
   });
 });
 
-describe("a .dusk name's registration", () => {
-  it("is read for the name it registered and what it reveals of its reservation, and one read before is read again, once", async () => {
-    const [alice] = REGISTRATIONS;
-    const registration = "d1".repeat(32);
-    const ok =
-      "8e247a33967153b229ce4f45f61e0f14808d8a417c4a4b37eabb269a8eb08e34";
+describe("a .dusk name's reservation and registration", () => {
+  const [RESERVATION, REGISTRATION] = REGISTRATIONS;
+  const ok = "8e247a33967153b229ce4f45f61e0f14808d8a417c4a4b37eabb269a8eb08e34";
+
+  /**
+   * The two calls as History reads them for `account`, from the archive.
+   *
+   * @param {string} account
+   * @returns {Promise<ActivityRow[]>}
+   */
+  async function rowsFor(account) {
     /** @type {Record<string, any>} */
     const details = fixture.details;
 
-    details[registration] = {
-      ...details[ok],
-      tx: {
-        ...details[ok].tx,
-        callData: {
-          contractId: alice.contractId,
-          data: alice.data,
-          fnName: alice.fnName,
-        },
-      },
-    };
+    for (const { contractId, data, fnName, hash } of REGISTRATIONS) {
+      details[hash] = {
+        ...details[ok],
+        tx: { ...details[ok].tx, callData: { contractId, data, fnName } },
+      };
+    }
 
     try {
       fakeArchive();
 
-      const read = await history.fetchTxDetails(NODE, [registration, ok]);
-      const root = alice.data.slice(-608);
+      const read = await history.fetchTxDetails(
+        NODE,
+        REGISTRATIONS.map(({ hash }) => hash),
+        account
+      );
 
-      expect(read.get(registration)?.registeredName).toBe("alice.dusk");
-      expect(read.get(registration)?.nameCommit).toStrictEqual({
-        commitment: root.slice(82, 146),
-        node: root.slice(0, 64),
-        secret: root.slice(146, 210),
+      return REGISTRATIONS.map(({ blockHeight, contractId, fnName, hash }) => {
+        const { nameCommit, registeredName } = read.get(hash) ?? {};
+
+        return {
+          blockHeight,
+          contractId,
+          direction: "out",
+          fnName,
+          hash,
+          kind: "contract_call",
+          nameCommit,
+          registeredName,
+          source: "archive",
+          status: "executed",
+        };
       });
-      expect(read.get(ok)).not.toHaveProperty("registeredName");
-      expect(read.get(ok)).not.toHaveProperty("nameCommit");
     } finally {
-      delete details[registration];
+      for (const { hash } of REGISTRATIONS) {
+        delete details[hash];
+      }
     }
+  }
 
-    const call = { contractId: STORE, detailsAt: 1, fnName: "register" };
-    const commit = { commitment: "ab".repeat(32) };
+  /** @param {ActivityRow[]} rows */
+  const titles = (rows) =>
+    rows.map(
+      (row) =>
+        describeRow(row, {
+          locale: "en",
+          network: "testnet",
+          reservations: reservationNames(rows),
+        }).title
+    );
 
-    expect(history.needsDetails(call)).toBe(true);
-    expect(history.needsDetails({ ...call, registeredName: null })).toBe(true);
-    expect(
-      history.needsDetails({ ...call, nameCommit: null, registeredName: null })
-    ).toBe(false);
-    expect(
-      history.needsDetails({
-        ...call,
-        nameCommit: commit,
-        registeredName: "alice.dusk",
-      })
-    ).toBe(false);
-    // A reservation is read again for what it holds, once.
-    expect(history.needsDetails({ ...call, fnName: "commit" })).toBe(true);
-    expect(
-      history.needsDetails({ ...call, fnName: "commit", nameCommit: commit })
-    ).toBe(false);
-    expect(history.needsDetails({ ...call, fnName: "renew" })).toBe(false);
+  it("say which name they were for, the reservation once the account that sent it registered the name", async () => {
+    expect(titles(await rowsFor(RESERVATION.sender))).toStrictEqual([
+      "Reserved shpongle.dusk",
+      "Registered shpongle.dusk",
+    ]);
+
+    // Read for another account, the registration reveals nothing of it.
+    expect(titles(await rowsFor(B))).toStrictEqual([
+      "Name reservation (step 1 of 2)",
+      "Registered shpongle.dusk",
+    ]);
   });
 
-  it("keeps the name it registered and what it reveals through the store, for the history's rows", async () => {
-    const [alice] = REGISTRATIONS;
+  it("are read again once when they were read before the history checked them", async () => {
+    const call = { contractId: STORE, detailsAt: 1, fnName: "register" };
+    const [, registration] = await rowsFor(REGISTRATION.sender);
+
+    for (const nameCommit of [
+      undefined,
+      null,
+      { commitment: "ab".repeat(32) },
+    ]) {
+      expect(
+        history.needsDetails({
+          ...call,
+          nameCommit: /** @type {any} */ (nameCommit),
+        })
+      ).toBe(true);
+    }
+
+    expect(history.needsDetails({ ...call, ...registration })).toBe(false);
+    expect(history.needsDetails({ ...call, fnName: "commit" })).toBe(true);
+    expect(history.needsDetails({ ...call, fnName: "renew" })).toBe(false);
+
+    // Dusk Domains' contracts are another network's.
+    setNodeNetwork(networks.mainnet);
+    expect(history.needsDetails(call)).toBe(false);
+  });
+
+  it("keep what they read through the store, for the history's rows", async () => {
     const ownerKey = store.activityOwnerKey("testnet", A);
-    const hash = "d2".repeat(32);
+    const [, { nameCommit, registeredName }] = await rowsFor(
+      REGISTRATION.sender
+    );
 
     await store.commitActivityStep(
       ownerKey,
@@ -886,7 +969,7 @@ describe("a .dusk name's registration", () => {
           blockHeight: 10,
           counterparty: STORE,
           direction: "out",
-          hash,
+          hash: REGISTRATION.hash,
           kind: "contract_call",
           memo: "",
           payer: true,
@@ -908,17 +991,17 @@ describe("a .dusk name's registration", () => {
       ownerKey,
       new Map([
         [
-          hash,
+          REGISTRATION.hash,
           {
-            contractId: alice.contractId,
+            contractId: STORE,
             detailsAt: 1,
             fee: "1",
             fnName: "register",
             gasLimit: "1",
             gasPrice: "1",
             gasSpent: "1",
-            nameCommit: { commitment: "ab".repeat(32) },
-            registeredName: "alice.dusk",
+            nameCommit,
+            registeredName,
             success: true,
             timestamp: 1,
           },
@@ -928,8 +1011,8 @@ describe("a .dusk name's registration", () => {
 
     const [entry] = (await kept(A)).map(history.activityEntry);
 
-    expect(entry.registeredName).toBe("alice.dusk");
-    expect(entry.nameCommit).toStrictEqual({ commitment: "ab".repeat(32) });
+    expect(entry.registeredName).toBe("shpongle.dusk");
+    expect(entry.nameCommit).toStrictEqual(nameCommit);
     expect(history.needsDetails(entry)).toBe(false);
   });
 });

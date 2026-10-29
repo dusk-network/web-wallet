@@ -1,13 +1,12 @@
 import { get, writable } from "svelte/store";
-import { compressedDuskBlsPublicKeyToRaw } from "@dusk/evm-sdk";
 import { Bookkeeper, Bookmark, ProfileGenerator } from "@dusk/w3sper";
-import { keccak256 } from "viem";
-
-import { BRIDGE_FUNCTIONS, configuredBridge } from "$lib/bridge/bridgeCalls";
 import {
-  BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
-  buildDepositETHToWithValuePayload,
-} from "$lib/bridge/deposit";
+  BRIDGE_FUNCTIONS,
+  encodeDepositArgs,
+  evmAddressOf,
+} from "@dusk-network/networks/duskevm";
+
+import { configuredBridge } from "$lib/bridge/bridgeCalls";
 import {
   TX_KIND,
   activityFor,
@@ -81,13 +80,10 @@ const bookkeeper = new Bookkeeper(treasury);
 
 const getCurrentProfile = () => get(walletStore).currentProfile;
 
-const getDuskEvmProofSubmitter = () => {
-  const account = unsafeGetCurrentProfile().account;
-  const rawPublicKey = compressedDuskBlsPublicKeyToRaw(account.valueOf());
-  const hash = keccak256(rawPublicKey);
-
-  return /** @type {`0x${string}`} */ (`0x${hash.slice(-40)}`);
-};
+const getDuskEvmProofSubmitter = () =>
+  /** @type {`0x${string}`} */ (
+    evmAddressOf(String(unsafeGetCurrentProfile().account)).toLowerCase()
+  );
 
 function unsafeGetCurrentProfile() {
   const profile = getCurrentProfile();
@@ -761,10 +757,7 @@ const depositEvmFunctionCall = async (
   address,
   amount,
   gas,
-  {
-    extraData = new Uint8Array(),
-    minGasLimit = BRIDGE_DEPOSIT_MIN_GAS_LIMIT,
-  } = {}
+  { extraData, minGasLimit } = {}
 ) => {
   const bridgeContractId = getBridgeContractId();
   const profile = unsafeGetCurrentProfile();
@@ -781,13 +774,18 @@ const depositEvmFunctionCall = async (
       privacy: "public",
     },
     async (network) => {
-      const payload = buildDepositETHToWithValuePayload({
-        amountLux: amount,
-        contractId: bridgeContractId,
-        extraData,
-        minGasLimit,
-        to: address,
-      });
+      const payload = {
+        contractId: Array.from(bridgeContractId.match(/../g) ?? [], (byte) =>
+          parseInt(byte, 16)
+        ),
+        fnArgs: encodeDepositArgs({
+          amountLux: amount,
+          extraData,
+          minGasLimit,
+          to: address,
+        }),
+        fnName: BRIDGE_FUNCTIONS.deposit,
+      };
       const builder = /** @type {any} */ (
         bookkeeper.as(profile).transfer(0n)
       ).payload(payload);

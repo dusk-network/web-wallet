@@ -11,13 +11,14 @@ import {
   formatFee,
 } from "$lib/dusk/currency/formatDusk";
 
-import { labelFor, routes } from "@dusk-network/networks";
+import { labelFor, routeForAccount } from "@dusk-network/networks";
+import { claimText } from "@dusk-network/networks/duskevm";
 import { formatTime } from "@dusk-network/networks/format";
 
 import { shortenAddress } from "$lib/dusk/string";
 
 import { SOZU_FN, isSozuCall } from "$lib/sozu/config";
-import { claimDay, claimText } from "$lib/bridge/claimDate";
+import { claimDay } from "$lib/bridge/claimDate";
 
 import { knownCall } from "./knownContracts";
 
@@ -36,33 +37,23 @@ import { configuredBridge } from "$lib/bridge/bridgeCalls";
  *   claims?: Map<string, import("$lib/bridge/withdrawals").WithdrawalClaim>,
  *   contactNames?: Map<string, string>,
  *   locale: string,
+ *   net?: import("@dusk-network/networks").Network | null,
  *   network?: string,
  *   now?: number,
  *   ownAccount?: string,
  *   reservations?: Map<string, string>,
- *   routeAccounts?: RouteAccounts,
  *   sozuPools?: Set<string>,
  * }} PresentContext
  *
  * `claimed` holds the withdrawals the rows claim (claimedWithdrawals),
  * `claims` when the proved ones can be claimed, by their hashes, as the
- * chain says (withdrawalClaims in $lib/bridge), `reservations` the `.dusk`
- * name each reservation was for, by its hash (reservedNames),
- * `routeAccounts` the network's (routeAccountsOf), and `sozuPools` the
- * pools Sozu's hub named (sozuPools in $lib/sozu).
+ * chain says (withdrawalClaims in $lib/bridge), `net` the network's file,
+ * for its routes to and from other chains and Sozu's pool, `reservations`
+ * the `.dusk` name each reservation was for, by its hash (reservedNames),
+ * and `sozuPools` the pools Sozu's hub named (sozuPools in $lib/sozu).
  *
  * @typedef {{
- *   labels: Map<string, string>,
- *   payouts: Map<string, string>,
- *   services: Map<string, string>,
- * }} RouteAccounts
- *   The accounts of the network's routes to and from other chains, each by
- *   its route's chain: those that pay migrations out on Dusk (`payouts`),
- *   and those a transfer out goes to (`services`); and what the network's
- *   file calls them (`labels`).
- *
- * @typedef {{
- *   claim: import("$lib/bridge/claimDate").ClaimDate | null,
+ *   claim: import("@dusk-network/networks/duskevm").ClaimDate | null,
  *   claimed: boolean,
  *   ready: boolean,
  *   reprove: boolean,
@@ -112,42 +103,22 @@ export function configuredBridgeContracts() {
 }
 
 /**
- * The accounts of a network's routes to and from other chains, by what its
- * file calls them, or after the chain where it doesn't; none without a
- * network.
+ * What the network's file calls one of its routes' accounts to and from
+ * other chains, or after the chain where it doesn't; null for any other
+ * account, and without a network.
  *
  * @param {import("@dusk-network/networks").Network | null | undefined} net
- * @returns {RouteAccounts}
+ * @param {string} account
  */
-export function routeAccountsOf(net) {
-  /** @type {RouteAccounts} */
-  const accounts = {
-    labels: new Map(),
-    payouts: new Map(),
-    services: new Map(),
-  };
+export function routeLabel(net, account) {
+  const route = net
+    ? (routeForAccount(net, account, "out") ??
+      routeForAccount(net, account, "in"))
+    : null;
 
-  for (const route of net ? routes(net) : []) {
-    const account =
-      route.kind === "migration"
-        ? route.payoutAccount
-        : route.kind === "service"
-          ? route.account
-          : null;
-
-    if (account && net) {
-      (route.kind === "migration" ? accounts.payouts : accounts.services).set(
-        account,
-        route.chain.name
-      );
-      accounts.labels.set(
-        account,
-        labelFor(net, account) ?? `${route.chain.name} bridge`
-      );
-    }
-  }
-
-  return accounts;
+  return net && route
+    ? (labelFor(net, account) ?? `${route.chain.name} bridge`)
+    : null;
 }
 
 /** @param {string | undefined} value */
@@ -195,19 +166,17 @@ const counterpartyOf = (row) => row.to ?? row.from ?? row.counterparty ?? null;
  * for any other row.
  *
  * @param {ActivityRow} row
- * @param {RouteAccounts} [routeAccounts]
+ * @param {import("@dusk-network/networks").Network | null} [net]
  * @returns {string | undefined}
  */
-const routeChainOf = (row, routeAccounts) => {
+const routeChainOf = (row, net) => {
   const counterparty = counterpartyOf(row);
-  const accounts =
-    row.direction === "in"
-      ? routeAccounts?.payouts
-      : row.direction === "out"
-        ? routeAccounts?.services
-        : undefined;
 
-  return counterparty ? accounts?.get(counterparty) : undefined;
+  return net &&
+    counterparty &&
+    (row.direction === "in" || row.direction === "out")
+    ? routeForAccount(net, counterparty, row.direction)?.chain.name
+    : undefined;
 };
 
 /**
@@ -217,10 +186,10 @@ const routeChainOf = (row, routeAccounts) => {
  * @param {ActivityRow} row
  * @param {Set<string> | undefined} bridgeContracts
  * @param {Set<string>} [sozuPools]
- * @param {RouteAccounts} [routeAccounts]
+ * @param {import("@dusk-network/networks").Network | null} [net]
  * @returns {{ category: ActivityPresentation["category"], icon: ActivityIcon }}
  */
-function classify(row, bridgeContracts, sozuPools, routeAccounts) {
+function classify(row, bridgeContracts, sozuPools, net) {
   switch (row.kind) {
     case TX_KIND.STAKE:
     case TX_KIND.UNSTAKE:
@@ -233,7 +202,7 @@ function classify(row, bridgeContracts, sozuPools, routeAccounts) {
       break;
   }
 
-  if (isSozuCall(row, sozuPools)) {
+  if (isSozuCall(row, sozuPools, net)) {
     return { category: "staking", icon: "staking" };
   }
 
@@ -241,7 +210,7 @@ function classify(row, bridgeContracts, sozuPools, routeAccounts) {
     return { category: "bridge", icon: "bridge" };
   }
 
-  if (routeChainOf(row, routeAccounts)) {
+  if (routeChainOf(row, net)) {
     return { category: "bridge", icon: "bridge" };
   }
 
@@ -274,10 +243,10 @@ const KIND_TITLES = new Map([
  * but its fee.
  *
  * @param {ActivityRow} row
- * @param {RouteAccounts} [routeAccounts]
+ * @param {import("@dusk-network/networks").Network | null} [net]
  */
-function bridgeTitle(row, routeAccounts) {
-  const chain = routeChainOf(row, routeAccounts);
+function bridgeTitle(row, net) {
+  const chain = routeChainOf(row, net);
 
   if (chain) {
     return `${row.direction === "in" ? "From" : "To"} ${chain}`;
@@ -315,11 +284,7 @@ function bridgeTitle(row, routeAccounts) {
  * @param {PresentContext} context
  * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
  */
-function titleOf(
-  row,
-  icon,
-  { contactNames, network, reservations, routeAccounts }
-) {
+function titleOf(row, icon, { contactNames, net, network, reservations }) {
   const kindTitle = row.kind ? KIND_TITLES.get(row.kind) : undefined;
 
   if (kindTitle) {
@@ -339,7 +304,7 @@ function titleOf(
 
   if (icon === "bridge") {
     return {
-      title: bridgeTitle(row, routeAccounts),
+      title: bridgeTitle(row, net),
       titleIsAddress: false,
       verb: "Bridge",
     };
@@ -361,19 +326,19 @@ function titleOf(
     return { title: named.label, titleIsAddress: false, verb: named.app };
   }
 
-  return counterpartyTitle(row, icon, contactNames, routeAccounts?.labels);
+  return counterpartyTitle(row, icon, contactNames, net);
 }
 
 /**
  * What a row's other side is called: the contact's name, with its `.dusk`
- * name after it, the verified `.dusk` name, or the account's label; "" for
+ * name after it, the verified `.dusk` name, or its route's label; "" for
  * none.
  *
  * @param {ActivityRow} row
  * @param {Map<string, string>} [contactNames] Contact names by address
- * @param {Map<string, string>} [labels] Labels by account
+ * @param {import("@dusk-network/networks").Network | null} [net]
  */
-function nameOf(row, contactNames, labels) {
+function nameOf(row, contactNames, net) {
   const counterparty = counterpartyOf(row);
   const name = row.counterpartyName ?? row.toName;
   const contact = counterparty ? contactNames?.get(counterparty) : undefined;
@@ -383,7 +348,10 @@ function nameOf(row, contactNames, labels) {
   }
 
   return (
-    contact ?? name ?? (counterparty ? labels?.get(counterparty) : null) ?? ""
+    contact ??
+    name ??
+    (counterparty ? routeLabel(net, counterparty) : null) ??
+    ""
   );
 }
 
@@ -394,13 +362,13 @@ function nameOf(row, contactNames, labels) {
  * @param {ActivityRow} row
  * @param {ActivityIcon} icon
  * @param {Map<string, string>} [contactNames] Contact names by address
- * @param {Map<string, string>} [labels] Labels by account
+ * @param {import("@dusk-network/networks").Network | null} [net]
  * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
  */
-function counterpartyTitle(row, icon, contactNames, labels) {
+function counterpartyTitle(row, icon, contactNames, net) {
   const counterparty = counterpartyOf(row);
   const verb = row.direction === "in" ? "Received" : "Sent";
-  const named = nameOf(row, contactNames, labels);
+  const named = nameOf(row, contactNames, net);
 
   if (named) {
     return { title: named, titleIsAddress: false, verb };
@@ -420,13 +388,14 @@ function counterpartyTitle(row, icon, contactNames, labels) {
 }
 
 /**
- * Whether a row is staking: natively, or with Sozu.
+ * Whether a row is staking: natively, or with Sozu on the network.
  *
  * @param {ActivityRow} row
  * @param {Set<string>} [sozuPools] The pools Sozu's hub named
+ * @param {import("@dusk-network/networks").Network | null} [net]
  */
-export const isStakingRow = (row, sozuPools) =>
-  classify(row, undefined, sozuPools).category === "staking";
+export const isStakingRow = (row, sozuPools, net) =>
+  classify(row, undefined, sozuPools, net).category === "staking";
 
 /**
  * The status a row shows: only while it isn't final, or when it failed.
@@ -461,13 +430,8 @@ function shownStatus(row) {
  * @returns {ActivityPresentation}
  */
 export function describeRow(row, context) {
-  const { bridgeContracts, locale, routeAccounts, sozuPools } = context;
-  const { category, icon } = classify(
-    row,
-    bridgeContracts,
-    sozuPools,
-    routeAccounts
-  );
+  const { bridgeContracts, locale, net, sozuPools } = context;
+  const { category, icon } = classify(row, bridgeContracts, sozuPools, net);
   const { title, titleIsAddress, verb } = titleOf(row, icon, context);
   const status = shownStatus(row);
   const failed = status === "failed";

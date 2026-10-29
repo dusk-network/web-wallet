@@ -9,8 +9,10 @@
 
 import { bytesToHex } from "viem";
 import { dataDrivers } from "@dusk/w3sper";
+import { createMulticallFetch } from "@hdauven/dusk-multicall";
+import { get } from "svelte/store";
 
-import { createMulticallFetch } from "$lib/activity/multicallFetch";
+import nodeNetwork from "$lib/stores/nodeNetwork";
 import { nodeBaseUrl } from "$lib/url";
 
 /**
@@ -80,16 +82,18 @@ const batchedFetches = new Map();
 
 /**
  * The node's batched fetch: the reads of one task go to it as one Multicall
- * for Dusk query.
+ * for Dusk query, on a network that has the multicall.
  *
  * @param {string} nodeUrl
  */
 function batchedFetch(nodeUrl) {
-  let batched = batchedFetches.get(nodeUrl);
+  const multicallId = get(nodeNetwork)?.contracts.multicall ?? null;
+  const key = `${nodeUrl} ${multicallId}`;
+  let batched = batchedFetches.get(key);
 
   if (!batched) {
-    batched = createMulticallFetch({ nodeUrl });
-    batchedFetches.set(nodeUrl, batched);
+    batched = createMulticallFetch({ multicallId, nodeUrl });
+    batchedFetches.set(key, batched);
   }
 
   return batched;

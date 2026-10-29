@@ -4,9 +4,10 @@
  * only until the hub has been read.
  */
 
-import { networks } from "@dusk-network/networks";
-import { SOZU_FN } from "@dusk-network/networks/sozu";
+import { SOZU_FN, isSozuCall as sozuCall } from "@dusk-network/networks/sozu";
 import { get, writable } from "svelte/store";
+
+import nodeNetwork from "$lib/stores/nodeNetwork";
 
 export { SOZU_FN };
 
@@ -21,13 +22,6 @@ export const SOZU_URL = "https://sozu.fi/";
  * @returns {SozuContracts | null}
  */
 export const sozuContractsFor = (net) => net?.sozu ?? null;
-
-/** Sozu's pools, for the history to name their calls. */
-export const SOZU_POOLS = new Set(
-  Object.values(networks).flatMap((net) =>
-    net.sozu ? [net.sozu.fallbacks.pool] : []
-  )
-);
 
 const POOLS_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-sozu-pools`;
 
@@ -55,8 +49,8 @@ function readPools() {
 const found = writable(readPools());
 
 /**
- * The pools Sozu's hub named besides those above, kept on this device so
- * the history names their calls from the start.
+ * The pools Sozu's hub named besides the network's file's, kept on this
+ * device so the history names their calls from the start.
  */
 export const sozuPools = { subscribe: found.subscribe };
 
@@ -70,7 +64,7 @@ export function noteSozuPool(id) {
 
   if (
     !/^[0-9a-f]{64}$/.test(pool) ||
-    SOZU_POOLS.has(pool) ||
+    get(nodeNetwork)?.sozu?.fallbacks.pool === pool ||
     get(found).has(pool)
   ) {
     return;
@@ -97,16 +91,14 @@ export const isSozuFunction = ({ fnName }) =>
   fnName === SOZU_FN.STAKE || fnName === SOZU_FN.UNSTAKE;
 
 /**
- * Whether a transaction is a stake or an unstake with Sozu: a call of one
- * of its pools, known here or named by its hub. A view passes the pools it
+ * Whether a transaction is a stake or an unstake with Sozu: a call of the
+ * network's pool, or of one its hub named. A view passes the pools it
  * subscribed to (sozuPools), so that it reads its rows again when the hub
- * names another one.
+ * names another one, and the node's network.
  *
  * @param {{ contractId?: string | null, fnName?: string }} call
  * @param {Set<string>} [pools] The pools the hub named
+ * @param {import("@dusk-network/networks").Network | null} [net]
  */
-export const isSozuCall = (call, pools = get(found)) => {
-  const pool = contractIdOf(call.contractId);
-
-  return isSozuFunction(call) && (SOZU_POOLS.has(pool) || pools.has(pool));
-};
+export const isSozuCall = (call, pools = get(found), net = get(nodeNetwork)) =>
+  net ? sozuCall(net, call, { pools }) : false;

@@ -13,17 +13,13 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { BalanceValue, SectionHead } from "$lib/components";
   import { fetchTxNonce } from "$lib/activity/activityHistory";
-  import { claimText } from "$lib/bridge/claimDate";
+  import { claimText } from "@dusk-network/networks/duskevm";
   import {
     depositActivityStore,
     followHistoryDeposits,
   } from "$lib/bridge/depositActivity";
   import { contractLabel } from "$lib/activity/knownContracts";
-  import {
-    fullDateTime,
-    routeAccountsOf,
-    rowTime,
-  } from "$lib/activity/present";
+  import { fullDateTime, routeLabel, rowTime } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
@@ -272,8 +268,7 @@
     contract && row.bridge?.kind !== "deposit" ? null : p.counterparty;
   // A route's account by what the network's file calls it, on any network.
   $: known = target
-    ? contractLabel(target, network) ||
-      (routeAccountsOf($nodeNetwork).labels.get(target) ?? "")
+    ? contractLabel(target, network) || (routeLabel($nodeNetwork, target) ?? "")
     : "";
   $: gotStDusk =
     p.icon === "staking" &&

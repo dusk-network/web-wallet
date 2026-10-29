@@ -116,11 +116,11 @@
   $: liquidAction = actionOf(url);
   $: ({ customGasLimit, customGasPrice, language } = $settingsStore);
   $: ({ balance, currentProfile, minimumStake, stakeInfo } = $walletStore);
-  $: ({ networkName } = $networkStore);
+  $: ({ net, networkName } = $networkStore);
   $: hasStake = stakeInfo.amount !== null;
   $: publicBalance = balance.unshielded.value;
   $: hasPastStaking = $activityState.rows.some((row) =>
-    isStakingRow(row, $sozuPools)
+    isStakingRow(row, $sozuPools, net)
   );
 
   // Sozu, read again for the overview each time it shows, as after a stake.

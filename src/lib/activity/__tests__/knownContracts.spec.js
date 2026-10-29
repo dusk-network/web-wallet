@@ -1,21 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { namehashHex } from "@duskdomains/sdk";
 import { networks } from "@dusk-network/networks";
 
-import releases from "$lib/dusk-domains/dusk-domains-releases.json";
-import { SOZU_POOLS } from "$lib/sozu/config";
-
-import {
-  DUSK_DOMAINS_CONTRACTS,
-  contractLabel,
-  isNameRegistration,
-  knownCall,
-  nameCommitOf,
-  registeredNameOf,
-} from "../knownContracts";
-
-import { calls as REGISTRATIONS } from "./fixtures/registrations-testnet.json";
+import { contractLabel, knownCall } from "../knownContracts";
 
 const STORE =
   "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199";
@@ -25,18 +12,6 @@ describe("knownCall", () => {
     vi.unstubAllEnvs();
   });
 
-  it("should know Dusk Domains' contracts as its release names them", () => {
-    for (const network of /** @type {const} */ (["mainnet", "testnet"])) {
-      const release = releases[network];
-
-      expect([...DUSK_DOMAINS_CONTRACTS[network]].sort()).toStrictEqual(
-        [...release.contracts.map((c) => c.contractId), release.lens.contractId]
-          .map((id) => id.toLowerCase().replace(/^0x/, ""))
-          .sort()
-      );
-    }
-  });
-
   it("should say what a call to Dusk Domains did, on its network only", () => {
     expect(
       knownCall({ contractId: STORE, fnName: "register" }, "testnet")
@@ -44,7 +19,9 @@ describe("knownCall", () => {
       app: "Dusk Domains",
       label: "Registered a .dusk name",
     });
-    expect(knownCall({ contractId: `0x${STORE}`, fnName: "commit" })).toEqual({
+    expect(
+      knownCall({ contractId: `0x${STORE}`, fnName: "commit" }, "testnet")
+    ).toEqual({
       app: "Dusk Domains",
       label: "Name reservation (step 1 of 2)",
     });
@@ -54,14 +31,21 @@ describe("knownCall", () => {
       app: "Dusk Domains",
       label: "Dusk Domains",
     });
+    // Both ways of changing a name's records read the same.
+    for (const fnName of ["mutate_records", "replace_records"]) {
+      expect(knownCall({ contractId: STORE, fnName }, "testnet")?.label).toBe(
+        "Changed a .dusk name's records"
+      );
+    }
     expect(
       knownCall({ contractId: STORE, fnName: "register" }, "mainnet")
     ).toBeNull();
     expect(
       knownCall({ contractId: STORE, fnName: "register" }, "devnet")
     ).toBeNull();
+    expect(knownCall({ contractId: STORE, fnName: "register" })).toBeNull();
     expect(
-      knownCall({ contractId: "ab".repeat(32), fnName: "register" })
+      knownCall({ contractId: "ab".repeat(32), fnName: "register" }, "testnet")
     ).toBeNull();
   });
 
@@ -103,13 +87,16 @@ describe("knownCall", () => {
     const portal = networks.testnet.duskEvm?.contracts.optimism_portal;
 
     expect(contractLabel(STORE, "testnet")).toBe("Dusk Domains");
+    expect(contractLabel(STORE, "mainnet")).toBe("");
     expect(contractLabel(portal?.contractId, "testnet")).toBe(
       "DuskEVM bridge portal"
     );
     expect(contractLabel(networks.mainnet.sozu?.hub, "mainnet")).toBe(
       "Sozu hub"
     );
-    expect(contractLabel([...SOZU_POOLS][0])).toBe("Sozu pool");
+    expect(
+      contractLabel(networks.testnet.sozu?.fallbacks.pool, "testnet")
+    ).toBe("Sozu pool");
     expect(contractLabel("ab".repeat(32))).toBe("");
     expect(contractLabel("")).toBe("");
 
@@ -119,134 +106,5 @@ describe("knownCall", () => {
 
     expect(contractLabel(`0x${"CD".repeat(32)}`)).toBe("DuskEVM bridge");
     expect(contractLabel("ef".repeat(32))).toBe("DuskEVM bridge");
-  });
-});
-
-describe("registeredNameOf", () => {
-  /** @param {string} hex */
-  const bytesOf = (hex) =>
-    Uint8Array.from(hex.match(/../g) ?? [], (b) => parseInt(b, 16));
-
-  /** @param {Uint8Array} bytes */
-  const hexOf = (bytes) =>
-    Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-
-  it.each(REGISTRATIONS.map((call) => [call.name, call]))(
-    "should read %s from its registration on testnet",
-    (name, call) => {
-      expect(isNameRegistration(call)).toBe(true);
-      expect(registeredNameOf(call)).toBe(name);
-
-      // The name read is the one the call's node was made from, as the
-      // contract checks: the node starts the arguments' last 304 bytes.
-      const args = bytesOf(call.data);
-
-      expect(hexOf(args.subarray(args.length - 304, args.length - 272))).toBe(
-        namehashHex(name)
-      );
-    }
-  );
-
-  it("should read a short name kept in place and a long one kept before the root", () => {
-    const [short, long] = REGISTRATIONS;
-
-    // "alice" is 5 bytes: in place, its length in the last byte.
-    expect(short.name).toBe("alice.dusk");
-    expect(bytesOf(short.data).at(-304 + 32 + 7)).toBe(5);
-    // "alice-shop" is 10: out of place, the top bit of that byte set.
-    expect(long.name).toBe("alice-shop.dusk");
-    expect(bytesOf(long.data).at(-304 + 32 + 7)).toBeGreaterThanOrEqual(0x80);
-  });
-
-  it("should leave other calls alone, and read nothing from arguments that don't read exactly", () => {
-    const [short, long] = REGISTRATIONS;
-    const args = bytesOf(long.data);
-    const root = args.length - 304;
-
-    /** @param {(bytes: Uint8Array) => void} change */
-    const changed = (change) => {
-      const copy = args.slice();
-
-      change(copy);
-
-      return { ...long, data: hexOf(copy) };
-    };
-
-    expect(registeredNameOf({ ...long, fnName: "renew" })).toBeUndefined();
-    expect(
-      registeredNameOf({ ...long, contractId: "ab".repeat(32) })
-    ).toBeUndefined();
-    expect(isNameRegistration({ ...long, fnName: "commit" })).toBe(false);
-
-    for (const call of [
-      // Not hex, or cut short.
-      { ...long, data: "" },
-      { ...long, data: "xyz" },
-      { ...long, data: long.data.slice(0, -2) },
-      { ...long, data: long.data.slice(2) },
-      // Its label pointing past the root, or before the arguments.
-      changed((bytes) =>
-        new DataView(bytes.buffer).setInt32(root + 36, 4, true)
-      ),
-      changed((bytes) =>
-        new DataView(bytes.buffer).setInt32(root + 36, -root - 64, true)
-      ),
-      // A label in capitals, or with a space.
-      changed((bytes) => bytes.set([0x41], 0)),
-      changed((bytes) => bytes.set([0x20], 3)),
-    ]) {
-      expect(registeredNameOf(call)).toBeNull();
-    }
-
-    // Kept in place, but longer than the place holds.
-    const tooLong = bytesOf(short.data);
-
-    tooLong[tooLong.length - 304 + 32 + 7] = 8;
-    expect(registeredNameOf({ ...short, data: hexOf(tooLong) })).toBeNull();
-  });
-});
-
-describe("nameCommitOf", () => {
-  it("should read what a registration on testnet reveals of its reservation", () => {
-    for (const call of REGISTRATIONS) {
-      const root = call.data.slice(-608);
-
-      expect(nameCommitOf(call)).toStrictEqual({
-        commitment: root.slice(82, 146),
-        node: namehashHex(call.name),
-        secret: root.slice(146, 210),
-      });
-    }
-  });
-
-  it("should read a reservation's commitment, its 32 bytes and nothing else", () => {
-    const commitment = "c0".repeat(32);
-
-    expect(
-      nameCommitOf({ contractId: STORE, data: commitment, fnName: "commit" })
-    ).toStrictEqual({ commitment });
-
-    for (const data of ["c0".repeat(31), "c0".repeat(33), "", "xyz"]) {
-      expect(
-        nameCommitOf({ contractId: STORE, data, fnName: "commit" })
-      ).toBeNull();
-    }
-
-    expect(
-      nameCommitOf({
-        contractId: STORE,
-        data: REGISTRATIONS[0].data.slice(2),
-        fnName: "register",
-      })
-    ).toBeNull();
-  });
-
-  it("should read nothing of other calls, or of other contracts' calls", () => {
-    const [alice] = REGISTRATIONS;
-
-    expect(nameCommitOf({ ...alice, fnName: "renew" })).toBeUndefined();
-    expect(
-      nameCommitOf({ ...alice, contractId: "ab".repeat(32) })
-    ).toBeUndefined();
   });
 });

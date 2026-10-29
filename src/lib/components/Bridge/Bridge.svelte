@@ -55,7 +55,6 @@
   } from "$lib/web3/walletConnection";
   import { contractLabel } from "$lib/activity/knownContracts";
   import { configuredBridge } from "$lib/bridge/bridgeCalls";
-  import { BRIDGE_DEPOSIT_MIN_GAS_LIMIT } from "$lib/bridge/deposit";
   import {
     depositActivityStore,
     pendingDepositAmountLux,
@@ -70,7 +69,7 @@
   } from "$lib/bridge/withdrawalActivity";
   import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
   import bridgeTimes from "$lib/bridge/bridgeTimes";
-  import { beforeProofText } from "$lib/bridge/claimDate";
+  import { beforeProofText } from "@dusk-network/networks/duskevm";
   import {
     DEPOSIT,
     WITHDRAWAL,
@@ -321,8 +320,7 @@
     const response = await walletStore.depositEvmFunctionCall(
       $account.address,
       amountLux,
-      new Gas({ limit: gasLimit, price: gasPrice }),
-      { minGasLimit: BRIDGE_DEPOSIT_MIN_GAS_LIMIT }
+      new Gas({ limit: gasLimit, price: gasPrice })
     );
     const { hash } = response;
 

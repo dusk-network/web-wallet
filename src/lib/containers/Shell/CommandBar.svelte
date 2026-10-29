@@ -12,7 +12,6 @@
   import { archiveQuery, fetchTxDetails } from "$lib/activity/activityHistory";
   import {
     configuredBridgeContracts,
-    routeAccountsOf,
     shortAddress,
   } from "$lib/activity/present";
   import reservedNames from "$lib/activity/reservedNames";
@@ -68,8 +67,8 @@
     present: {
       bridgeContracts,
       contactNames: contactNamesOf($contactsStore),
+      net: $nodeNetwork,
       reservations: $reservedNames,
-      routeAccounts: routeAccountsOf($nodeNetwork),
       sozuPools: $sozuPools,
     },
     profiles: profiles.map((profile, i) => {

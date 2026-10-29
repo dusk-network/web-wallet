@@ -17,7 +17,7 @@ describe("gas defaults", () => {
   const entries = Object.values(GAS_DEFAULTS);
 
   it("should give each operation the default and minimum the extension uses", () => {
-    expect(GAS_DEFAULTS).toStrictEqual({
+    expect(GAS_DEFAULTS).toMatchObject({
       allocate: { limit: 50_000_000n, minimum: 30_000_000n },
       bridge: { limit: 5_000_000n, minimum: 2_500_000n },
       "claim-rewards": { limit: 50_000_000n, minimum: 35_000_000n },

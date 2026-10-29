@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { dataDrivers } from "@dusk/w3sper";
@@ -14,8 +14,12 @@ import {
   sozuUnstakeAllowed,
 } from "@dusk-network/networks/sozu";
 import vectors from "@dusk-network/networks/fixtures/sozu-vectors.json";
+import {
+  MULTICALL_CONTRACT_ID,
+  createMulticallFetch,
+} from "@hdauven/dusk-multicall";
 
-import { createMulticallFetch } from "$lib/activity/multicallFetch";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { isSozuCall, noteSozuPool, readSozuStatus, sozuContractsFor } from "..";
 
@@ -62,8 +66,7 @@ const named = (/** @type {string} */ id) => Uint8Array.of(1, ...fromHex(id));
 
 /**
  * An `aggregate` reply as Multicall for Dusk writes it (rkyv 0.7): each
- * result's bytes, then one 16-byte slot per result, then the root. As in
- * multicallFetch.spec.js.
+ * result's bytes, then one 16-byte slot per result, then the root.
  *
  * @param {Uint8Array[]} results
  */
@@ -192,8 +195,13 @@ describe("the Sozu test vectors both wallets run", () => {
 });
 
 describe("Sozu's contracts", () => {
+  beforeEach(() => {
+    setNodeNetwork(networks.testnet);
+  });
+
   afterEach(() => {
     localStorage.clear();
+    setNodeNetwork(null);
   });
 
   it("takes its hub, and the contracts to read until it answers, from the network's file", () => {
@@ -221,21 +229,27 @@ describe("Sozu's contracts", () => {
 
     const again = await import("../config");
 
+    (await import("$lib/stores/nodeNetwork")).setNodeNetwork(networks.testnet);
     expect(again.isSozuCall(call)).toBe(true);
     expect(again.isSozuCall({ ...call, fnName: "balance_of" })).toBe(false);
   });
 
-  it("knows its pools' calls, on each network", () => {
+  it("knows its network's pool's calls, on that network only", () => {
+    const mainnetPool = {
+      contractId: `0x${networks.mainnet.sozu?.fallbacks.pool}`,
+      fnName: "sozu_unstake",
+    };
+
     expect(isSozuCall({ contractId: POOL, fnName: "sozu_stake" })).toBe(true);
-    expect(
-      isSozuCall({
-        contractId: `0x${networks.mainnet.sozu?.fallbacks.pool}`,
-        fnName: "sozu_unstake",
-      })
-    ).toBe(true);
+    expect(isSozuCall(mainnetPool)).toBe(false);
+    expect(isSozuCall(mainnetPool, undefined, networks.mainnet)).toBe(true);
     expect(isSozuCall({ contractId: POOL, fnName: "balance_of" })).toBe(false);
     expect(
       isSozuCall({ contractId: "cd".repeat(32), fnName: "sozu_stake" })
+    ).toBe(false);
+    // Before the node says which network it's on.
+    expect(
+      isSozuCall({ contractId: POOL, fnName: "sozu_stake" }, undefined, null)
     ).toBe(false);
   });
 });
@@ -274,7 +288,7 @@ describe("readSozuStatus", () => {
     });
 
   /**
-   * The contracts and functions in an `aggregate` envelope, as the vendored
+   * The contracts and functions in an `aggregate` envelope, as the multicall's
    * codec writes them: "<contract's first 8>.<fn>".
    *
    * @param {any} body
@@ -323,11 +337,58 @@ describe("readSozuStatus", () => {
         fetch: /** @type {typeof globalThis.fetch} */ (
           /** @type {unknown} */ (base)
         ),
+        multicallId: MULTICALL_CONTRACT_ID,
         nodeUrl,
       }),
       queries,
     };
   }
+
+  it("reads one by one on a network without Multicall for Dusk, as a local node's", async () => {
+    /** @type {string[]} */
+    const asked = [];
+    /** @param {string} nodeUrl */
+    const read = (nodeUrl) =>
+      readSozuStatus({
+        account: ACCOUNT,
+        contracts: {
+          fallbacks: { pool: POOL, stDusk: TOKEN, substrate: SUBSTRATE },
+          hub: HUB,
+        },
+        loadDriver: loadPool,
+        nodeUrl,
+      }).catch(() => null);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (/** @type {string} */ url) => {
+        asked.push(String(url));
+
+        return new Response(new Uint8Array(), { status: 500 });
+      })
+    );
+
+    try {
+      setNodeNetwork(networks.devnet);
+      await read("https://local.example");
+
+      expect(asked.length).toBeGreaterThan(1);
+      expect(asked.filter((url) => url.endsWith("/aggregate"))).toStrictEqual(
+        []
+      );
+
+      asked.length = 0;
+      setNodeNetwork(networks.testnet);
+      await read("https://testnet.example");
+
+      expect(asked[0]).toBe(
+        `https://testnet.example/on/contracts:${MULTICALL_CONTRACT_ID}/aggregate`
+      );
+    } finally {
+      setNodeNetwork(null);
+      vi.unstubAllGlobals();
+    }
+  });
 
   it("reads the hub's names with the figures in one Multicall for Dusk query, the account as the pool's driver encodes it", async () => {
     /** @type {Uint8Array[]} */
@@ -434,9 +495,13 @@ describe("readSozuStatus", () => {
 
     expect(status.contracts.pool).toBe(NEW_POOL);
     expect(status.position).toStrictEqual({ balance: 9n, stDusk: 9n });
-    expect(isSozuCall({ contractId: NEW_POOL, fnName: "sozu_stake" })).toBe(
-      true
-    );
+    expect(
+      isSozuCall(
+        { contractId: NEW_POOL, fnName: "sozu_stake" },
+        undefined,
+        networks.testnet
+      )
+    ).toBe(true);
   });
 
   it("fails when the pool's rate or a balance can't be read, saying why", async () => {

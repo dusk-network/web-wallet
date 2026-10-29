@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { networks } from "@dusk-network/networks";
+import { networks, routes } from "@dusk-network/networks";
 
 import { claimDay } from "$lib/bridge/claimDate";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import {
   CSV_COLUMNS,
@@ -14,7 +15,7 @@ import {
   groupByDay,
   isStakingRow,
   matchesFilters,
-  routeAccountsOf,
+  routeLabel,
   timeLabel,
   toCsv,
 } from "../present";
@@ -408,35 +409,49 @@ describe("describeRow", () => {
       fnName: "sozu_stake",
     });
 
-    expect(describeRow(staked, context)).toMatchObject({
+    const onTestnet = { ...context, net: networks.testnet };
+
+    expect(describeRow(staked, onTestnet)).toMatchObject({
       amount: { sign: "−", text: "25" },
       category: "staking",
       icon: "staking",
       line: "Liquid staking",
       title: "Staked with Sozu",
     });
-    expect(describeRow(unstaked, context)).toMatchObject({
+    expect(describeRow(unstaked, onTestnet)).toMatchObject({
       amount: { sign: "+" },
       category: "staking",
       title: "Unstaked from Sozu",
     });
-    expect(describeRow(lookalike, context)).toMatchObject({
+    expect(describeRow(lookalike, onTestnet)).toMatchObject({
       category: "sent",
       icon: "call",
       title: "Called sozu_stake",
     });
+    // Testnet's pool isn't Sozu's on another network.
     expect(
-      [staked, unstaked, lookalike].map((one) => isStakingRow(one))
-    ).toStrictEqual([true, true, false]);
-    expect(isStakingRow(row({ kind: "unstake" }))).toBe(true);
+      describeRow(staked, { ...context, net: networks.mainnet }).category
+    ).toBe("sent");
 
-    // A pool Sozu's hub named, as a view that follows them passes it.
-    const named = new Set([lookalike.contractId ?? ""]);
+    // On the node's network.
+    setNodeNetwork(networks.testnet);
 
-    expect(isStakingRow(lookalike, named)).toBe(true);
-    expect(
-      describeRow(lookalike, { ...context, sozuPools: named })
-    ).toMatchObject({ category: "staking", title: "Staked with Sozu" });
+    try {
+      expect(
+        [staked, unstaked, lookalike].map((one) => isStakingRow(one))
+      ).toStrictEqual([true, true, false]);
+      expect(isStakingRow(row({ kind: "unstake" }))).toBe(true);
+
+      // A pool Sozu's hub named, as a view that follows them passes it.
+      const named = new Set([lookalike.contractId ?? ""]);
+
+      expect(isStakingRow(lookalike, named)).toBe(true);
+      expect(
+        describeRow(lookalike, { ...onTestnet, sozuPools: named })
+      ).toMatchObject({ category: "staking", title: "Staked with Sozu" });
+    } finally {
+      setNodeNetwork(null);
+    }
   });
 
   it("says a shielded row is shielded", () => {
@@ -447,27 +462,21 @@ describe("describeRow", () => {
 });
 
 describe("transfers on the routes to and from other chains", () => {
-  const routeAccounts = routeAccountsOf(networks.mainnet);
-  const [BSC_BRIDGE, ETHEREUM_PAYOUTS] = [...routeAccounts.payouts.keys()];
-  const withRoutes = { ...context, routeAccounts };
+  const [BSC_BRIDGE, ETHEREUM_PAYOUTS] = routes(networks.mainnet).flatMap(
+    (route) =>
+      route.kind === "migration" && route.payoutAccount
+        ? [route.payoutAccount]
+        : []
+  );
+  const withRoutes = { ...context, net: networks.mainnet };
 
   it("are known by the routes' accounts, as the network's file calls them", () => {
-    expect(routeAccounts.labels).toStrictEqual(
-      new Map([
-        [BSC_BRIDGE, "BSC bridge"],
-        [ETHEREUM_PAYOUTS, "Ethereum migration payouts"],
-      ])
-    );
-    expect(routeAccounts.payouts).toStrictEqual(
-      new Map([
-        [BSC_BRIDGE, "BNB Smart Chain"],
-        [ETHEREUM_PAYOUTS, "Ethereum"],
-      ])
-    );
-    expect(routeAccounts.services).toStrictEqual(
-      new Map([[BSC_BRIDGE, "BNB Smart Chain"]])
-    );
-    expect(routeAccountsOf(null).labels.size).toBe(0);
+    expect(
+      [BSC_BRIDGE, ETHEREUM_PAYOUTS, ACCOUNT].map((account) =>
+        routeLabel(networks.mainnet, account)
+      )
+    ).toStrictEqual(["BSC bridge", "Ethereum migration payouts", null]);
+    expect(routeLabel(null, BSC_BRIDGE)).toBeNull();
 
     // One the file doesn't name goes by its chain.
     const unnamed = {
@@ -475,10 +484,11 @@ describe("transfers on the routes to and from other chains", () => {
       display: { ...networks.mainnet.display, labels: {} },
     };
 
-    expect([...routeAccountsOf(unnamed).labels.values()]).toStrictEqual([
-      "BNB Smart Chain bridge",
-      "Ethereum bridge",
-    ]);
+    expect(
+      [BSC_BRIDGE, ETHEREUM_PAYOUTS].map((account) =>
+        routeLabel(unnamed, account)
+      )
+    ).toStrictEqual(["BNB Smart Chain bridge", "Ethereum bridge"]);
   });
 
   it("are the bridge's: a migration's payout in, and a transfer out to the route's account, named by their chain as the extension names them", () => {

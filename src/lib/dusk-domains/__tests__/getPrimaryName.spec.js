@@ -6,7 +6,12 @@ const { createLensReader } = vi.hoisted(() => ({
 }));
 
 // Only the lens reader is mocked, as in the resolveDuskName tests.
-vi.mock("@duskdomains/sdk/lens-reader", () => ({ createLensReader }));
+vi.mock("@duskdomains/sdk/lens-reader", async (importOriginal) => ({
+  .../** @type {typeof import("@duskdomains/sdk/lens-reader")} */ (
+    await importOriginal()
+  ),
+  createLensReader,
+}));
 
 describe("getPrimaryName", () => {
   // A canonical compressed BLS12-381 G2 point: the generator times 7.

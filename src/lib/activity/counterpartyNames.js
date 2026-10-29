@@ -1,23 +1,18 @@
 /**
  * The verified primary `.dusk` names of the history's counterparties: many
  * public accounts at once, through a lens reader whose reads go through
- * Multicall for Dusk (multicallFetch.js), so up to 32 of them take one
- * query. The reader checks each answer as it checks one read alone.
+ * Multicall for Dusk, so up to 32 of them take one query. The reader checks
+ * each answer as it checks one read alone.
  */
 
 import { ProfileGenerator } from "@dusk/w3sper";
-
-import { createMulticallFetch } from "./multicallFetch";
+import { networks } from "@dusk-network/networks";
+import { nameToShow } from "@duskdomains/sdk/names";
+import { PINNED_RELEASES } from "@duskdomains/sdk/releases";
+import { createMulticallFetch } from "@hdauven/dusk-multicall";
 
 /** How long a kept name check is used without checking again: ten minutes. */
 export const NAME_CHECK_TTL_MS = 10 * 60_000;
-
-/**
- * The longest name shown for a counterparty, ".dusk" included. A longer name
- * is left out rather than cut short: the part cut off could be what gives it
- * away.
- */
-export const COUNTERPARTY_NAME_MAX = 24;
 
 /**
  * The gas a lens read takes inside a multicall, as the SDK's client gives it:
@@ -54,18 +49,19 @@ function batchedReader(network, nodeUrl) {
     return cached.reader;
   }
 
-  const reader = Promise.all([
-    import("@duskdomains/sdk/lens-reader"),
-    import("$lib/dusk-domains/dusk-domains-releases.json"),
-  ]).then(([{ createLensReader }, { default: releases }]) => {
-    const release = releases[network];
-
-    return createLensReader(release, {
-      artifactBaseUrl: release.artifactBaseUrl,
-      fetch: createMulticallFetch({ gasFor: lensGas(release), nodeUrl }),
-      nodeUrl,
-    });
-  });
+  const release = PINNED_RELEASES[network];
+  const reader = import("@duskdomains/sdk/lens-reader").then(
+    ({ createLensReader }) =>
+      createLensReader(release, {
+        artifactBaseUrl: release.artifactBaseUrl,
+        fetch: createMulticallFetch({
+          gasFor: lensGas(release),
+          multicallId: networks[network].contracts.multicall,
+          nodeUrl,
+        }),
+        nodeUrl,
+      })
+  );
   const entry = { nodeUrl, reader };
 
   readers.set(network, entry);
@@ -76,43 +72,6 @@ function batchedReader(network, nodeUrl) {
   });
 
   return reader;
-}
-
-/**
- * A label that reads as key material rather than a name: a contract ID's 0x
- * and hex digits, or 16 or more letters and digits with both among them, as
- * the start of an account or a shielded address reads.
- *
- * @param {string} label
- */
-const keyLike = (label) =>
-  /^0x[0-9a-f]*$/.test(label) ||
-  (label.length >= 16 &&
-    /^[a-z0-9]+$/.test(label) &&
-    /[0-9]/.test(label) &&
-    /[a-z]/.test(label));
-
-/**
- * A verified primary name as the history shows it: canonical, at most
- * COUNTERPARTY_NAME_MAX characters and no label like key material; else
- * null.
- *
- * @param {any} sdk
- * @param {unknown} name
- * @returns {string | null}
- */
-function shownName(sdk, name) {
-  if (typeof name !== "string" || name.length > COUNTERPARTY_NAME_MAX) {
-    return null;
-  }
-
-  const checked = sdk.validateName(name);
-
-  return checked.ok &&
-    checked.name.canonical === name &&
-    !checked.name.labels.some(keyLike)
-    ? name
-    : null;
 }
 
 /**
@@ -130,13 +89,13 @@ const shortOfGas = (error) =>
 /**
  * Reads again, one at a time, the names the batch was short of gas for.
  *
- * @param {any} sdk
+ * @param {(account: string) => Uint8Array | null} decodeBase58
  * @param {"mainnet" | "testnet"} network
  * @param {string} nodeUrl
  * @param {string[]} accounts
  * @param {Map<string, string | null>} out
  */
-async function readAlone(sdk, network, nodeUrl, accounts, out) {
+async function readAlone(decodeBase58, network, nodeUrl, accounts, out) {
   if (!accounts.length) {
     return;
   }
@@ -148,7 +107,7 @@ async function readAlone(sdk, network, nodeUrl, accounts, out) {
   for (const account of accounts) {
     try {
       const verified = await reader.verifyPrimary(
-        Array.from(sdk.decodeBase58(account) ?? [])
+        Array.from(decodeBase58(account) ?? [])
       );
 
       out.set(account, verified === null ? null : verified.primary.spelling);
@@ -181,16 +140,12 @@ export async function lookupCounterpartyNames(accounts, { network, nodeUrl }) {
   }
 
   try {
-    const [sdk, reader] = await Promise.all([
-      import("@duskdomains/sdk"),
-      batchedReader(network, nodeUrl),
-    ]);
+    const reader = await batchedReader(network, nodeUrl);
+    const { decodeBase58 } = await import("@duskdomains/sdk/lens-reader");
 
     // Started in one task, so one aggregate takes them.
     const results = await Promise.allSettled(
-      list.map((a) =>
-        reader.verifyPrimary(Array.from(sdk.decodeBase58(a) ?? []))
-      )
+      list.map((a) => reader.verifyPrimary(Array.from(decodeBase58(a) ?? [])))
     );
 
     /** @type {string[]} */
@@ -204,10 +159,11 @@ export async function lookupCounterpartyNames(accounts, { network, nodeUrl }) {
       }
     });
 
-    await readAlone(sdk, network, nodeUrl, again, out);
+    await readAlone(decodeBase58, network, nodeUrl, again, out);
 
+    // As the history shows them: whole, and none that reads like a key.
     for (const [account, name] of out) {
-      out.set(account, name === null ? null : shownName(sdk, name));
+      out.set(account, name === null ? null : nameToShow(name));
     }
   } catch {
     // whatever was looked up so far

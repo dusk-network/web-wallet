@@ -19,7 +19,7 @@ import {
 
 import { stakeInfo } from "$lib/mock-data";
 import { activityFor, clearActivityStore, stopActivity } from "$lib/activity";
-import { buildDepositETHToWithValuePayload } from "$lib/bridge/deposit";
+import { encodeDepositArgs } from "@dusk-network/networks/duskevm";
 import {
   getVerifiedName,
   keepVerifiedName,
@@ -1138,13 +1138,18 @@ describe("Wallet store", async () => {
         amount: 0n,
         deposit: amount,
         gas,
-        payload: buildDepositETHToWithValuePayload({
-          amountLux: amount,
-          contractId: bridgeContractId,
-          extraData,
-          minGasLimit,
-          to: address,
-        }),
+        payload: {
+          contractId: Array.from(bridgeContractId.match(/../g) ?? [], (byte) =>
+            parseInt(byte, 16)
+          ),
+          fnArgs: encodeDepositArgs({
+            amountLux: amount,
+            extraData,
+            minGasLimit,
+            to: address,
+          }),
+          fnName: "depositETHToWithValue",
+        },
         to: defaultProfile.account.toString(),
       });
       expect(updateNonceSpy).toHaveBeenCalledWith(defaultProfile, newNonce);

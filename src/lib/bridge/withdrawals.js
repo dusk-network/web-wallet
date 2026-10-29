@@ -26,6 +26,8 @@ import {
   isCandidateGame,
   isEligibleGame,
 } from "@dusk-network/networks/duskevm";
+import { withdrawalGasLimit } from "@dusk-network/networks/gas";
+import { MAX_BATCH } from "@hdauven/dusk-multicall";
 import {
   bridgeReads,
   hubClock,
@@ -35,9 +37,7 @@ import {
   readGame,
   settle,
 } from "$lib/bridge/bridgeReads";
-import { MAX_BATCH } from "$lib/activity/multicallFetch";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
-import { WITHDRAWAL_GAS_LIMIT } from "$lib/contracts/gasDefaults";
 import {
   gasPriceStore,
   gasStore,
@@ -1804,18 +1804,19 @@ export async function loadDuskTransactionExecution(txHash) {
 }
 
 /**
- * The gas to prove or finalize a withdrawal with. The Portal hands the gas it
- * has left to the withdrawal's own call, so finalizing adds the gas the
- * withdrawal asks for. A withdrawal that needs more than the wallet's upper
- * gas bound isn't sent: less gas could leave its call short, and finalizing
- * can consume the withdrawal even when that call fails.
+ * The gas to prove or finalize a withdrawal with, one for both steps
+ * (`withdrawalGasLimit`). The Portal hands the gas it has left to the
+ * withdrawal's own call, so it adds the gas the withdrawal asks for. A
+ * withdrawal that needs more than the wallet's upper gas bound isn't sent:
+ * less gas could leave its call short, and finalizing can consume the
+ * withdrawal even when that call fails.
  *
- * @param {bigint} [withdrawalGasLimit]
+ * @param {bigint} [own] The gas the withdrawal's own call asks for
  * @returns {Gas}
  */
-export function withdrawalGas(withdrawalGasLimit = 0n) {
+export function withdrawalGas(own = 0n) {
   const { gasLimitUpper } = get(gasStore);
-  const limit = WITHDRAWAL_GAS_LIMIT + withdrawalGasLimit;
+  const limit = withdrawalGasLimit(own);
 
   if (limit > gasLimitUpper) {
     throw new Error(WITHDRAWAL_GAS_REFUSAL);
@@ -1934,7 +1935,7 @@ export async function proveWithdrawal(txHash) {
         hexToArray(node, undefined)
       ),
     ],
-    withdrawalGas()
+    withdrawalGas(event.withdrawal.gasLimit)
   );
 
   return response.hash;
