@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 
+import { settingsStore } from "$lib/stores";
+
 import {
   claimedWithdrawals,
   describeRow,
@@ -112,7 +114,7 @@ describe("TransactionDetail", () => {
     expect(techList(container)).toContain(STORE);
   });
 
-  it("should say what stDUSK a stake with Sozu got, read once, with Sozu's contract under Technical details", async () => {
+  it("should say about what stDUSK a stake with Sozu got, read once, exactly under Technical details with Sozu's contract", async () => {
     const loadStDusk = vi.fn(async () => 162_189_471n);
     const stake = row({
       amount: "500000000",
@@ -129,8 +131,10 @@ describe("TransactionDetail", () => {
     );
 
     expect(getByText("Staked with Sozu")).toBeInTheDocument();
-    expect(await findByText("You got")).toBeInTheDocument();
-    expect(mainList(container)).toContain("You got 0.162189471 stDUSK");
+    expect(await findByText("You got about")).toBeInTheDocument();
+    expect(mainList(container)).toContain("You got about 0.1621 stDUSK");
+    expect(mainList(container)).not.toContain("0.162189471");
+    expect(techList(container)).toContain("You got 0.162189471 stDUSK");
     expect(loadStDusk).toHaveBeenCalledExactlyOnceWith(stake);
     expect(mainList(container)).not.toContain(SOZU_POOL);
     expect(techList(container)).toContain("Sozu");
@@ -294,7 +298,46 @@ describe("TransactionDetail", () => {
 
     expect(mainList(container)).toMatch(/Network fee paid\s*0\.0044 DUSK/);
     expect(mainList(container)).not.toContain("0.00441901");
-    expect(techList(container)).toMatch(/Fee paid, exactly\s*0\.00441901 DUSK/);
+    expect(techList(container)).toMatch(/^.*\bFee paid\s+0\.00441901 DUSK/);
+    expect(techList(container)).not.toContain("exactly");
+  });
+
+  it("should say under Technical details the gas used of its limit, its price and the fee paid, as the other apps do", () => {
+    const { container } = show(
+      row({ gasLimit: "2500000", gasPrice: "1", gasSpent: "1853542" })
+    );
+    const labels = Array.from(
+      container.querySelectorAll(".tx-detail__list--tech dt"),
+      (dt) => dt.textContent?.trim()
+    );
+
+    expect(labels).toEqual(
+      expect.arrayContaining(["Gas used", "Gas price", "Fee paid"])
+    );
+    expect(techList(container)).toMatch(/Gas used\s*1,853,542 of 2,500,000/);
+  });
+
+  it("should hide the stDUSK a stake got with the balances, here and under Technical details", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container, findByText } = show(
+        row({
+          amount: "500000000",
+          contractId: SOZU_POOL,
+          counterparty: SOZU_POOL,
+          fnName: "sozu_stake",
+        }),
+        { network: "testnet" },
+        { loadStDusk: async () => 162_189_471n, network: "testnet" }
+      );
+
+      expect(await findByText("You got about")).toBeInTheDocument();
+      expect(container.textContent).not.toContain("0.1621");
+      expect(container.textContent).not.toContain("0.162189471");
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
   });
 
   it("should say which account sent it, and its gas price, nonce and block", async () => {

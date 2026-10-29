@@ -717,7 +717,7 @@ describe("Send", () => {
         "href",
         `/some-base-path/dashboard/transactions?tx=${lastTxId}`
       );
-      expect(getByText("8dcf6f8a…993db55e")).toBeInTheDocument();
+      expect(getByText("8dcf6f…3db55e")).toBeInTheDocument();
       expect(followTransaction).toHaveBeenCalledWith(
         lastTxId,
         expect.anything()

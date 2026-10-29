@@ -6,11 +6,11 @@
   import {
     mdiAlertCircleOutline,
     mdiContentCopy,
-    mdiFileDocumentOutline,
     mdiPercentOutline,
     mdiWaterOutline,
   } from "@mdi/js";
 
+  import { contractLabel } from "$lib/activity/knownContracts";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
     formatDusk,
@@ -18,6 +18,7 @@
     formatDuskPlain,
     formatTotal,
   } from "$lib/dusk/currency";
+  import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
@@ -34,7 +35,12 @@
   import GasSettings from "../GasSettings/GasSettings.svelte";
   import TransactionResult from "../TransactionResult/TransactionResult.svelte";
   import StakeFlow from "./StakeFlow.svelte";
-  import { checkAmount, parseDuskInput } from "./stakeAmount";
+  import {
+    checkAmount,
+    leastSozuUnstake,
+    normalizeDuskInput,
+    parseDuskInput,
+  } from "./stakeAmount";
 
   /**
    * Liquid staking through Sozu, a third party: what the account has with
@@ -135,7 +141,7 @@
   /** @param {bigint} lux */
   function fill(lux) {
     forgetTerms();
-    amountText = formatDuskPlain(lux);
+    amountText = formatDuskPlain(lux).replace(".", getDecimalSeparator());
     document.getElementById(`${id}-amount`)?.focus();
   }
 
@@ -350,11 +356,18 @@
       ? availableBalance - maxGasFee
       : 0n
     : staked;
-  $: amount = parseDuskInput(amountText);
+  // A decimal comma, as the language or a phone's keyboard gives it, reads
+  // as the amount meant.
+  $: amount = parseDuskInput(
+    normalizeDuskInput(amountText, getDecimalSeparator())
+  );
   // Less than this gets no stDUSK at the rate now, after the fee; with none,
-  // no stake does.
-  $: least = isStake ? leastSozuStake(status?.pool ?? null, depositRate) : 0n;
+  // no stake does. Less than an unstake's least burns no stDUSK.
+  $: least = isStake
+    ? leastSozuStake(status?.pool ?? null, depositRate)
+    : leastSozuUnstake(status?.pool ?? null, staked);
   $: checked = checkAmount({
+    action,
     amount,
     available: availableBalance,
     fee: maxGasFee,
@@ -383,6 +396,12 @@
   $: estimate = isStake && check.ok ? stake.stDusk : null;
   $: isTypedOff = Boolean(check.error);
   $: total = isStake ? typedAmount + maxGasFee : maxGasFee;
+  // The pool's name, as the network's file gives it.
+  $: contractName =
+    contractLabel(
+      status?.contracts.pool,
+      String($networkStore.networkName ?? "")
+    ) || "Sozu pool";
 </script>
 
 {#if sent}
@@ -590,26 +609,6 @@
           </div>
         </li>
       {/if}
-      {#if status}
-        <li>
-          <Icon path={mdiFileDocumentOutline} />
-          <div>
-            <p class="liquid-stake__fact">Sozu's contract</p>
-            <p>
-              <code title={status.contracts.pool}
-                >{shortenAddress(status.contracts.pool)}</code
-              >
-            </p>
-          </div>
-          <Button
-            aria-label="Copy Sozu's contract ID"
-            on:click={copyContract}
-            size="small"
-            text="Copy"
-            variant="secondary"
-          />
-        </li>
-      {/if}
     </ul>
 
     <svelte:fragment slot="summary">
@@ -636,9 +635,13 @@
           <div>
             <dt>Deposit fee</dt>
             <dd class:stake-flow__muted={isTypedOff && depositFee !== null}>
-              {depositRate && depositFee !== null
-                ? `${feePercent(depositRate, language)} · ${formatDuskExact(depositFee, language)} DUSK`
-                : "Taken from the deposit"}
+              {#if depositRate && depositFee !== null}
+                {feePercent(depositRate, language)} · <BalanceValue
+                  value={formatDuskExact(depositFee, language)}
+                /> DUSK
+              {:else}
+                Taken from the deposit
+              {/if}
             </dd>
           </div>
           <div>
@@ -686,10 +689,26 @@
         }}
         price={gasPrice}
         priceLower={gasLimits.gasPriceLower}
-      />
-      <p class="liquid-stake__gas-note">
-        A call that fails is charged its whole gas limit.
-      </p>
+      >
+        {#if status?.contracts.pool}
+          <dl class="liquid-stake__contract">
+            <dt>Contract</dt>
+            <dd>
+              {contractName} ·
+              <code title={status.contracts.pool}
+                >{shortenAddress(status.contracts.pool)}</code
+              >
+              <Button
+                aria-label="Copy the contract ID"
+                on:click={copyContract}
+                size="small"
+                text="Copy"
+                variant="tertiary"
+              />
+            </dd>
+          </dl>
+        {/if}
+      </GasSettings>
       <dl class="stake-flow__rows stake-flow__rows--total">
         <div>
           <dt>Total</dt>
@@ -836,10 +855,37 @@
     color: var(--calm-muted);
   }
 
-  .liquid-stake__hint,
-  .liquid-stake__gas-note {
+  .liquid-stake__hint {
     color: var(--calm-muted);
     font-size: 0.84375rem;
+  }
+
+  /* The pool a stake or an unstake calls, under the fee's Edit. */
+  .liquid-stake__contract {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25em 1em;
+    margin: 0;
+    font-size: 0.875rem;
+
+    & dt {
+      color: var(--muted-color);
+    }
+
+    /* On a line of its own where it doesn't fit beside, still at the end. */
+    & dd {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      margin: 0 0 0 auto;
+    }
+
+    & code {
+      font-family: var(--code-font-family);
+      font-size: 0.8125rem;
+    }
   }
 
   .liquid-stake__notice {
@@ -904,12 +950,6 @@
       height: 1.25rem;
       margin-top: 0.0625rem;
       color: var(--calm-muted);
-    }
-
-    & code {
-      color: var(--calm-muted);
-      font-family: var(--code-font-family);
-      font-size: 0.8125rem;
     }
   }
 

@@ -61,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep History's filters in its address
 - Open a block by its height from the search
 - Find transactions in the search by memo, and by the label of their contract or account
+- Refuse an unstake from Sozu too small to burn any stDUSK, saying the least
 
 ### Changed
 
@@ -151,11 +152,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open the Bridge on BNB Smart Chain's migration from Home's Migrate it to Dusk, shown only where a migration is running
 - Link Run a node, to the docs on running one, where native staking says it needs your own node
 - Link both sides of a bridge transfer in its details: Dusk's transactions in the network's Dusk explorer, DuskEVM's in its own
+- Say "Not promised." after Sozu's yearly estimate, and work it out from the native estimate as shown
+- Hide the DUSK of Sozu's deposit fee while balances are hidden
+- Move Sozu's contract from the Liquid staking form to the summary's Edit
+- Shorten IDs as the other Dusk apps do: Dusk's to six characters at each end, DuskEVM's to 0x and four at each end, an address with its checksum
+- Call the exact fee under Technical details Fee paid
+- Show the stDUSK a stake with Sozu got to four decimals, in full under Technical details
 
 ### Removed
 
 - Remove the Migrate page, whose address now opens the Bridge
 - Remove testnet's BEP-20 migration on Sepolia
+- Remove the line about what a failed call to Sozu is charged
 
 ### Fixed
 
@@ -181,6 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Take amounts on the Shield page with your language's decimal separator
 - Offer Claim on a DuskEVM withdrawal only once its claim date has come
 - Show a deposit to DuskEVM as arrived once DuskEVM's explorer has its payment, where DuskEVM's adapter can't say
+- Take amounts with a decimal comma in liquid and native staking
 
 ## [1.8.0] - 2026-03-25
 

@@ -279,9 +279,9 @@ describe("describeRow", () => {
     ).toMatchObject({
       amount: { sign: "−", text: "25" },
       counterparty: evm,
-      line: "Bridge · to 0x19E7…DAff2A",
+      line: "Bridge · to 0x19E7…ff2A",
       note: null,
-      shortLine: "Bridge · to 0x19E7…DAff2A",
+      shortLine: "Bridge · to 0x19E7…ff2A",
       title: "To DuskEVM",
     });
 

@@ -263,7 +263,7 @@ describe("Bridge", () => {
 
     expect(change).toHaveTextContent("Change");
     expect(change.parentElement).toHaveTextContent(
-      "to your DuskEVM account 0x2222…222222 · Change"
+      "to your DuskEVM account 0x2222…2222 · Change"
     );
 
     await fireEvent.click(change);

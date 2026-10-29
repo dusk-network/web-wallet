@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 
+import { settingsStore } from "$lib/stores";
+
 import { LiquidStake } from "..";
 
 const { followTransaction } = vi.hoisted(() => ({
@@ -118,6 +120,10 @@ describe("LiquidStake", () => {
     expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
       "Sozu's fees 0.25% of each deposit · 15% of rewards · no unstake fee"
     );
+    // Its contract isn't one of the facts: it's under the fee's Edit.
+    expect(textOf(container.querySelector(".liquid-stake__facts"))).not.toMatch(
+      /contract/i
+    );
   });
 
   it("stakes any amount with Sozu's pool, saying about what it gets", async () => {
@@ -145,8 +151,16 @@ describe("LiquidStake", () => {
       "Fee paid from Public balance",
       "Total Up to 100.005 DUSK",
     ]);
-    expect(textOf(container.querySelector(".liquid-stake__gas-note"))).toBe(
-      "A call that fails is charged its whole gas limit."
+    // No line about what a failed call is charged.
+    expect(container).not.toHaveTextContent(/fails/);
+
+    // The pool it calls, named, with its ID to copy, under the fee's Edit.
+    expect(container.querySelector(".liquid-stake__contract")).toBeNull();
+
+    await fireEvent.click(getByRole("button", { name: "Edit" }));
+
+    expect(textOf(container.querySelector(".liquid-stake__contract"))).toBe(
+      "Contract Sozu pool · 728839…3078f2 Copy"
     );
 
     await fireEvent.click(
@@ -165,6 +179,88 @@ describe("LiquidStake", () => {
       )
     );
     expect(baseProps.recheck).toHaveBeenCalledOnce();
+  });
+
+  it("takes an amount with a decimal comma, as Send does, and Max in the language's way", async () => {
+    const { container, getByLabelText, getByRole } = render(
+      LiquidStake,
+      baseProps
+    );
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "0,5" },
+    });
+
+    expect(container.querySelector(".stake-flow__rows dd")).toHaveTextContent(
+      "0.5 DUSK"
+    );
+    expect(
+      getByRole("button", { name: "Stake 0.5 DUSK with Sozu" })
+    ).toBeEnabled();
+  });
+
+  it("hides the DUSK of Sozu's deposit fee with the balances, not its rate", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container, getByLabelText } = render(LiquidStake, baseProps);
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "50" },
+      });
+
+      expect(
+        Array.from(
+          container.querySelectorAll(".stake-flow__rows > div"),
+          textOf
+        ).find((row) => row?.startsWith("Deposit fee"))
+      ).toBe("Deposit fee 0.25% · •••• hidden DUSK");
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
+  });
+
+  it("refuses an unstake too small to burn any stDUSK, saying the least, unless it's all there is", async () => {
+    const unstakeOf = (/** @type {bigint} */ balance) =>
+      render(LiquidStake, {
+        ...baseProps,
+        action: "unstake",
+        sozu: {
+          ...baseProps.sozu,
+          status: statusWith({ balance, stDusk: balance / 3n || 1n }),
+        },
+      });
+    const { getByLabelText, getByRole } = unstakeOf(15n * DUSK);
+
+    await fireEvent.input(getByLabelText("Unstake amount"), {
+      target: { value: "0.000000001" },
+    });
+
+    // At 3.0751 DUSK a stDUSK, 4 lux burns the least there is of it.
+    expect(getByRole("alert")).toHaveTextContent(
+      "The minimum unstake is 0.000000004 DUSK."
+    );
+    expect(getByRole("button", { name: "Unstake" })).toBeDisabled();
+
+    await fireEvent.input(getByLabelText("Unstake amount"), {
+      target: { value: "0.000000004" },
+    });
+
+    expect(
+      getByRole("button", { name: "Unstake 0.000000004 DUSK" })
+    ).toBeEnabled();
+    cleanup();
+
+    // All of a smaller stake burns all its stDUSK.
+    const small = unstakeOf(3n);
+
+    await fireEvent.input(small.getByLabelText("Unstake amount"), {
+      target: { value: "0.000000003" },
+    });
+
+    expect(
+      small.getByRole("button", { name: "Unstake 0.000000003 DUSK" })
+    ).toBeEnabled();
   });
 
   it("refuses a stake too small to get any stDUSK, saying the least", async () => {

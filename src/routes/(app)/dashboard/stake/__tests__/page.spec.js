@@ -331,13 +331,42 @@ describe("Staking", () => {
           "About 24% a year lately, across the network. Not promised. Start in about 6 to 12 hours"
         )
       );
-      // Testnet's Sozu keeps 10% of rewards: 23.5% less 10% of it.
+      // Testnet's Sozu keeps 10% of rewards: the native figure as shown,
+      // 24%, less 10% of it.
       expect(rewards()[2]).toMatch(
-        /^About 21% a year after Sozu's 10%\. You get stDUSK/
+        /^About 22% a year after Sozu's 10%\. Not promised\. You get stDUSK/
       );
       expect(container).not.toHaveTextContent(/\bEarn\b/);
     } finally {
       rates.native = null;
+    }
+  });
+
+  it("gives Sozu's rate from the native one as shown, so that wherever 86% shows, 77% does", async () => {
+    for (const native of [0.8605, 0.862]) {
+      rates.native = native;
+
+      try {
+        const { container } = render(Staking);
+        const rewards = () =>
+          Array.from(
+            /** @type {HTMLTableElement} */ (
+              container.querySelector("table.compare")
+            ).tBodies[0].rows[2].cells,
+            textOf
+          );
+
+        await act(() =>
+          sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS }))
+        );
+        await vi.waitFor(() =>
+          expect(rewards()[1]).toMatch(/^About 86% a year lately/)
+        );
+        expect(rewards()[2]).toMatch(/^About 77% a year after Sozu's 10%\./);
+      } finally {
+        rates.native = null;
+        cleanup();
+      }
     }
   });
 

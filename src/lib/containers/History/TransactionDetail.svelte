@@ -16,7 +16,7 @@
   import { claimText } from "$lib/bridge/claimDate";
   import { contractLabel } from "$lib/activity/knownContracts";
   import { fullDateTime, rowTime } from "$lib/activity/present";
-  import { formatDuskExact, formatFee } from "$lib/dusk/currency";
+  import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
   import { addBasePath } from "$lib/navigation";
   import { addressType, contactsStore, saveContact } from "$lib/contacts";
   import { SOZU_FN, stDuskReceived } from "$lib/sozu";
@@ -322,9 +322,9 @@
       </div>
       {#if stDusk !== null}
         <div>
-          <dt>You got</dt>
+          <dt>You got about</dt>
           <dd>
-            <BalanceValue value={formatDuskExact(stDusk, locale)} /> stDUSK
+            <BalanceValue value={formatDusk(stDusk, locale)} /> stDUSK
           </dd>
         </div>
       {/if}
@@ -536,8 +536,16 @@
         {/if}
         {#if row.feePaid}
           <div>
-            <dt>Fee paid, exactly</dt>
+            <dt>Fee paid</dt>
             <dd>{formatDuskExact(lux(row.feePaid), locale)} DUSK</dd>
+          </div>
+        {/if}
+        {#if stDusk !== null}
+          <div>
+            <dt>You got</dt>
+            <dd>
+              <BalanceValue value={formatDuskExact(stDusk, locale)} /> stDUSK
+            </dd>
           </div>
         {/if}
         {#if nonce !== null}

@@ -71,6 +71,8 @@
         <dt>The most it can cost, exactly</dt>
         <dd>{formatDuskExact(fee, language)} DUSK</dd>
       </dl>
+      <!-- What else a review keeps folded away with the gas. -->
+      <slot />
     </div>
   {/if}
 </div>

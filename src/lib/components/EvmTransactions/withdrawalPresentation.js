@@ -11,14 +11,16 @@ import {
 } from "$lib/bridge/claimDate";
 import { withdrawalStageDefaultMessage } from "$lib/bridge/withdrawalLifecycle";
 import { formatDusk } from "$lib/dusk/currency";
-import { middleEllipsis } from "$lib/dusk/string";
+import { shortenAddress } from "$lib/dusk/string";
 import { settingsStore } from "$lib/stores";
 
 /**
+ * An address or a hash shortened, as everywhere in the wallet.
+ *
  * @param {string} value
  */
 export function shortened(value) {
-  return middleEllipsis(value, 8);
+  return shortenAddress(value);
 }
 
 /**

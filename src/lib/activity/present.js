@@ -13,6 +13,8 @@ import {
 
 import { formatTime } from "@dusk-network/networks/format";
 
+import { shortenAddress } from "$lib/dusk/string";
+
 import { SOZU_FN, isSozuCall } from "$lib/sozu/config";
 import { claimDay, claimText } from "$lib/bridge/claimDate";
 
@@ -104,12 +106,12 @@ const toLux = (value) => {
 };
 
 /**
- * An address shortened to its first and last six characters.
+ * An address or a hash shortened, as everywhere in the wallet
+ * (`shortenAddress`).
  *
  * @param {string} address
  */
-export const shortAddress = (address) =>
-  address.length > 14 ? `${address.slice(0, 6)}…${address.slice(-6)}` : address;
+export const shortAddress = (address) => shortenAddress(address);
 
 /**
  * Whether a row is the bridge's: a call to one of its contracts.

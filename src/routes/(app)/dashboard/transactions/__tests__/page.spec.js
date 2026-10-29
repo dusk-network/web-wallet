@@ -298,7 +298,7 @@ describe("History", () => {
     expect(detail).toHaveTextContent("Memo Order 1042");
     // Rounded in the list, exactly under Technical details.
     expect(detail).toHaveTextContent("Network fee paid 0.0019 DUSK");
-    expect(detail).toHaveTextContent("Fee paid, exactly 0.001854786 DUSK");
+    expect(detail).toHaveTextContent("Fee paid 0.001854786 DUSK");
 
     // The hash in full, its ending kept on one line.
     expect(detail.querySelector(".tx-detail__id")).toHaveTextContent(SENT);
