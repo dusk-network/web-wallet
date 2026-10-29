@@ -145,9 +145,16 @@ function readRememberedItems() {
   }
 }
 
-/** @param {DepositActivityItem[]} items */
+/**
+ * Keeps the newest deposits, by when each was sent: however many older ones
+ * a history brings, one on its way stays.
+ *
+ * @param {DepositActivityItem[]} items
+ */
 function writeRememberedItems(items) {
-  const stored = items.slice(0, MAX_STORED_ITEMS);
+  const stored = items
+    .toSorted((a, b) => b.createdAt - a.createdAt)
+    .slice(0, MAX_STORED_ITEMS);
   storage()?.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(stored));
   activity.set(stored);
 }

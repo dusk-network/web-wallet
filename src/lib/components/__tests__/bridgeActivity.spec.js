@@ -241,6 +241,19 @@ describe("withdrawalRow", () => {
       })
     );
 
+    // Or they found this account's proof, refused and to be proved again,
+    // whether or not the history loaded has it.
+    expect(
+      row("ready_to_prove", { proofGame: `0x${"1e".repeat(20)}` })
+    ).toEqual(
+      expect.objectContaining({
+        action: "prove",
+        forOther: false,
+        group: "needs",
+        line: "Pays 213qXN…V5JJ9Y · ready to prove on Dusk",
+      })
+    );
+
     // Or the account's history has its proof, before any read.
     expect(
       row("submitted", {}, new Map([[hash, { prove: "ab".repeat(32) }]]))

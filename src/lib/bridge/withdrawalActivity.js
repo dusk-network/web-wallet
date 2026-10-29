@@ -143,18 +143,39 @@ const LOOKUP_AGAIN_MS = 300_000;
 const lookedUp = new Map();
 
 /**
+ * The withdrawals kept here, by their hashes. Those kept without whom they
+ * pay, as before the history read it, take it from the history.
+ *
+ * @param {{ hash: `0x${string}`, recipient?: string | null }[]} known
+ * @returns {Set<string | null>}
+ */
+function keptWithdrawals(known) {
+  const kept = hydrateWithdrawalActivity();
+
+  for (const { hash, recipient } of known) {
+    const item = recipient
+      ? kept.find((each) => each.withdrawalHash === hash && !each.recipient)
+      : undefined;
+
+    if (item) {
+      updateWithdrawalTransaction(item.transactionHash, { recipient });
+    }
+  }
+
+  return new Set(kept.map((item) => item.withdrawalHash));
+}
+
+/**
  * Finds the DuskEVM transactions of the history's withdrawals that aren't
  * remembered here yet, and remembers them for the account that sent them,
  * with the withdrawal's hash, so that the history's account sees them
- * without connecting that account.
+ * without connecting that account. Those remembered learn whom they pay.
  *
  * @param {{ hash: `0x${string}`, nonce: bigint, recipient?: string | null }[]} known
  * @returns {Promise<WithdrawalActivityItem[]>} Those found
  */
 export async function rememberHistoryWithdrawals(known) {
-  const remembered = new Set(
-    hydrateWithdrawalActivity().map((item) => item.withdrawalHash)
-  );
+  const remembered = keptWithdrawals(known);
   const now = Date.now();
   const missing = known.filter(
     ({ hash, nonce }) =>

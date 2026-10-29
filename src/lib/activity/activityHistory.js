@@ -1335,7 +1335,8 @@ const textOrUndefined = (value) => (value ? String(value) : undefined);
  * Whether an entry's details are still to look up: it has none, or it is a
  * call to the bridge looked up before the history read what bridge calls
  * do, or a withdrawal's proof or claim read before the history kept the
- * withdrawal's hash, which its claim date is read by, or a `.dusk` name's
+ * withdrawal's hash, which its claim date is read by, or whom it pays (none
+ * read is kept as null), or a `.dusk` name's
  * registration read before the history read which name it was, or a
  * reservation or registration before it read what they hold of each other.
  *
@@ -1345,7 +1346,7 @@ export const needsDetails = (entry) =>
   !entry.detailsAt ||
   (entry.bridge === undefined && isBridgeContract(entry.contractId)) ||
   ((entry.bridge?.kind === "prove" || entry.bridge?.kind === "claim") &&
-    !entry.bridge.hash) ||
+    (!entry.bridge.hash || entry.bridge.recipient === undefined)) ||
   (entry.registeredName === undefined && isNameRegistration(entry)) ||
   (entry.nameCommit === undefined && isNameCommitCall(entry));
 

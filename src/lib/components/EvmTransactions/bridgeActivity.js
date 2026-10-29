@@ -169,7 +169,9 @@ const PROVED_STAGES = new Set([
 /**
  * Whether the account the activity is of proved a withdrawal, so that only
  * it can claim it: its history has the proof, or the withdrawal's own reads
- * say so. A stage the explorer gave, before any read, could be anyone's.
+ * say so, by the game this account's proof went against (kept while a
+ * rejected proof is proved again) or by its stage. A stage the explorer
+ * gave, before any read, could be anyone's.
  *
  * @param {any} item
  * @param {BridgeActivityOptions["steps"]} steps
@@ -179,7 +181,9 @@ function isProvedHere(item, steps) {
 
   return (
     hash !== "" &&
-    (Boolean(steps?.get(hash)?.prove) || PROVED_STAGES.has(item.stage))
+    (Boolean(item.proofGame) ||
+      Boolean(steps?.get(hash)?.prove) ||
+      PROVED_STAGES.has(item.stage))
   );
 }
 

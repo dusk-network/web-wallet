@@ -25,6 +25,7 @@ vi.mock("$lib/web3/walletConnection", () => ({
 import { prepareNativeWithdrawal } from "@dusk/evm-sdk";
 
 import { PAID, PAID_EXTRA_DATA } from "./fixtures/withdrawal-recipient";
+import { updateWithdrawalTransaction } from "$lib/bridge/withdrawalActivityStorage";
 import {
   explorerStatusToStage,
   fetchWithdrawalActivity,
@@ -440,6 +441,36 @@ describe("DuskEVM withdrawal activity", () => {
         rememberHistoryWithdrawals([{ hash: hashOf(41), nonce: nonceOf(41) }])
       ).resolves.toStrictEqual([]);
       expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("give one kept before whom it pays was read the account the history says it pays, without asking for it", async () => {
+      const fetchMock = vi.fn(async () =>
+        jsonResponse({ items: [], ["next_page_params"]: null })
+      );
+
+      vi.stubGlobal("fetch", fetchMock);
+
+      const claimed = /** @type {`0x${string}`} */ (txOf(44));
+
+      // Kept and claimed: no read would say whom it pays now.
+      rememberWithdrawalTransaction(claimed, { account, createdAt: 1 });
+      updateWithdrawalTransaction(claimed, {
+        sentAt: "2026-10-01T12:50:11.000Z",
+        stage: "finalized",
+        withdrawalHash: hashOf(44),
+      });
+
+      await expect(
+        rememberHistoryWithdrawals([
+          { hash: hashOf(44), nonce: nonceOf(44), recipient: PAID },
+          { hash: hashOf(45), nonce: nonceOf(45), recipient: null },
+        ])
+      ).resolves.toStrictEqual([]);
+      expect(hydrateWithdrawalActivity()).toEqual([
+        expect.objectContaining({ recipient: PAID, transactionHash: claimed }),
+      ]);
+      // The one not kept is looked for, as ever.
+      expect(fetchMock).toHaveBeenCalledOnce();
     });
 
     it("aren't asked for again for a while when the explorer doesn't list them", async () => {

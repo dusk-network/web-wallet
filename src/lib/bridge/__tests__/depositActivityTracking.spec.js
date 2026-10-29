@@ -57,6 +57,10 @@ let refreshDepositTransaction;
 let followHistoryDeposits;
 /** @type {typeof import("../depositActivity").depositTrackingPollInterval} */
 let depositTrackingPollInterval;
+/** @type {typeof import("../depositActivity").resumeDepositTracking} */
+let resumeDepositTracking;
+/** @type {typeof import("../depositActivityStorage").hydrateDepositActivity} */
+let hydrateDepositActivity;
 /** @type {typeof import("../depositActivityStorage").getRememberedDepositTransaction} */
 let getRememberedDepositTransaction;
 /** @type {typeof import("../depositActivityStorage").rememberDepositTransaction} */
@@ -70,9 +74,11 @@ describe("DuskEVM deposit tracking", () => {
       depositTrackingPollInterval,
       followHistoryDeposits,
       refreshDepositTransaction,
+      resumeDepositTracking,
     } = await import("../depositActivity"));
     ({
       getRememberedDepositTransaction,
+      hydrateDepositActivity,
       rememberDepositTransaction,
       updateDepositTransaction,
     } = await import("../depositActivityStorage"));
@@ -155,6 +161,87 @@ describe("DuskEVM deposit tracking", () => {
           transport: { url: "https://l2.example.test" },
         }),
       })
+    );
+  });
+
+  it("reads when a deposit arrived again where its DuskEVM block couldn't be read, and only that, once it's done", async () => {
+    rememberDepositTransaction(duskTransactionHash);
+    mocks.query
+      .mockResolvedValueOnce({ tx: { blockHeight: 8512, err: null } })
+      .mockResolvedValueOnce({ block: { status: { Final: 1 } } });
+    mocks.request.mockResolvedValue(l1TransactionHash);
+    mocks.observeDepositStatus.mockResolvedValue({
+      message: "The deposit is available on DuskEVM.",
+      metadata: {
+        failureLayer: null,
+        l1BlockHeight: 8512n,
+        l2BlockNumber: 5n,
+        l2TransactionHash,
+        stage: "completed",
+      },
+      updatedAt: 1_784_193_700_000,
+    });
+    mocks.getBlock.mockRejectedValueOnce(new Error("Too many requests"));
+
+    expect(await refreshDepositTransaction(duskTransactionHash)).toEqual(
+      expect.objectContaining({ arrivedAt: null, stage: "completed" })
+    );
+
+    // Done, it's read no more, but for its block's time.
+    expect(await refreshDepositTransaction(duskTransactionHash)).toEqual(
+      expect.objectContaining({
+        arrivedAt: 1_784_193_690_000,
+        stage: "completed",
+      })
+    );
+    expect(mocks.observeDepositStatus).toHaveBeenCalledOnce();
+    expect(mocks.getBlock).toHaveBeenCalledTimes(2);
+
+    // Once it has it, nothing more.
+    await refreshDepositTransaction(duskTransactionHash);
+
+    expect(mocks.getBlock).toHaveBeenCalledTimes(2);
+
+    // Following the wallet's deposits again reads it too.
+    updateDepositTransaction(duskTransactionHash, { arrivedAt: null });
+    resumeDepositTracking(null);
+
+    await vi.waitFor(() =>
+      expect(
+        getRememberedDepositTransaction(duskTransactionHash)?.arrivedAt
+      ).toBe(1_784_193_690_000)
+    );
+    expect(mocks.getBlock).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps the newest deposits, one on its way among them, when a history brings more than are kept", () => {
+    const sending = "e1".repeat(32);
+    const at = Date.parse("2026-10-26T04:49:20Z");
+    /** The history's deposits, newest first: all before the one on its way. */
+    const rows = /** @type {ActivityRow[]} */ (
+      Array.from({ length: 120 }, (_, i) => ({
+        bridge: {
+          amount: "100000000",
+          kind: "deposit",
+          to: "0xB0E834d62CA3f5cF0F82619c8515c673818f8C6b",
+        },
+        hash: (i + 1).toString(16).padStart(64, "0"),
+        source: "archive",
+        // Failed on Dusk: none of them is followed.
+        status: "failed",
+        timestamp: at - i * 60_000,
+      }))
+    );
+
+    rememberDepositTransaction(sending, { createdAt: at + 60_000 });
+    followHistoryDeposits(rows);
+
+    const kept = hydrateDepositActivity().map((item) => item.transactionHash);
+
+    expect(kept).toHaveLength(100);
+    expect(kept[0]).toBe(sending);
+    expect(kept.slice(1)).toStrictEqual(
+      rows.slice(0, 99).map((row) => row.hash)
     );
   });
 

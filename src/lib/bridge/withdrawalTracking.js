@@ -48,10 +48,12 @@ function statusPatch(status) {
     }
   }
 
-  // The game its proof went against: the next check reads it with the Portal.
-  if (typeof status.disputeGameProxy === "string") {
-    patch.proofGame = status.disputeGameProxy;
-  }
+  // The game this account's proof went against, which the next check reads
+  // with the Portal: none while this account has no proof of it.
+  patch.proofGame =
+    typeof status.disputeGameProxy === "string"
+      ? status.disputeGameProxy
+      : null;
 
   // The amount, which a withdrawal found by its hash only has from here.
   if (typeof status.withdrawal?.value === "bigint") {

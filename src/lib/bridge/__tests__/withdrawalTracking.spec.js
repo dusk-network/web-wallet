@@ -252,6 +252,20 @@ describe("DuskEVM withdrawal tracking", () => {
     );
   });
 
+  it("forgets the proof's game once a read finds no proof of this account's", async () => {
+    const game = `0x${"1e".repeat(20)}`;
+
+    rememberWithdrawalTransaction(transactionHash, { account });
+    updateWithdrawalTransaction(transactionHash, { proofGame: game });
+    mocks.loadWithdrawalStatus.mockResolvedValue(readyToProveStatus());
+
+    await refreshWithdrawalTransaction(transactionHash);
+
+    expect(getRememberedWithdrawalTransaction(transactionHash)?.proofGame).toBe(
+      null
+    );
+  });
+
   it("remembers a rejected proof", async () => {
     mocks.loadWithdrawalStatus.mockResolvedValue({
       ...readyToProveStatus(),

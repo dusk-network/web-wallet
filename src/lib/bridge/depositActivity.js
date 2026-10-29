@@ -256,11 +256,55 @@ async function arrivalTime({ l2BlockNumber, stage }) {
   }
 }
 
+/**
+ * Whether a deposit that arrived is without the time it did: its DuskEVM
+ * block's read failed, and is tried again.
+ *
+ * @param {any} item
+ */
+const lacksArrivalTime = (item) =>
+  item?.stage === "completed" && !item.arrivedAt && Boolean(item.l2BlockNumber);
+
+/** @type {Map<string, Promise<any>>} The arrival times being read, by deposit. */
+const arrivalReads = new Map();
+
+/**
+ * Reads when a deposit that arrived did, where it wasn't read before: one
+ * read at a time per deposit.
+ *
+ * @param {any} item
+ */
+function readArrivalTime(item) {
+  const hash = item.transactionHash;
+  let read = arrivalReads.get(hash);
+
+  if (!read) {
+    read = arrivalTime(item)
+      .then((at) =>
+        at ? updateDepositTransaction(hash, { arrivedAt: at }) : item
+      )
+      .finally(() => arrivalReads.delete(hash));
+    arrivalReads.set(hash, read);
+  }
+
+  return read;
+}
+
+/**
+ * A deposit that's done, which is read no more: but for when it arrived,
+ * where that wasn't read yet.
+ *
+ * @param {any} item
+ */
+const doneDeposit = (item) =>
+  lacksArrivalTime(item) ? readArrivalTime(item) : item;
+
 /** @param {string} transactionHash */
 export async function refreshDepositTransaction(transactionHash) {
   const remembered = getRememberedDepositTransaction(transactionHash);
 
-  if (!remembered || isDepositTerminal(remembered)) return remembered;
+  if (!remembered || isDepositTerminal(remembered))
+    return doneDeposit(remembered);
 
   try {
     const l1TransactionHash = await resolveL1TransactionHash(remembered);
@@ -367,19 +411,34 @@ export function trackDepositTransaction(transactionHash) {
   return tracker;
 }
 
-/** @param {string | null | undefined} account */
+/**
+ * Follows a kept deposit to DuskEVM: one under way until it's done, and one
+ * that arrived without the time it did, until that's read.
+ *
+ * @param {any} item
+ */
+function followDeposit(item) {
+  if (!isDepositTerminal(item)) {
+    void trackDepositTransaction(item.transactionHash);
+  } else if (lacksArrivalTime(item)) {
+    void readArrivalTime(item);
+  }
+}
+
+/**
+ * @param {string | null | undefined} account
+ * @returns {any[]} The deposits under way, followed again
+ */
 export function resumeDepositTracking(account) {
-  const deposits = hydrateDepositActivity().filter(
-    (item) =>
-      !isDepositTerminal(item) &&
-      (item.account === null || item.account === account?.toLowerCase())
+  const kept = hydrateDepositActivity().filter(
+    (item) => item.account === null || item.account === account?.toLowerCase()
   );
 
-  for (const deposit of deposits) {
-    void trackDepositTransaction(deposit.transactionHash);
+  for (const deposit of kept) {
+    followDeposit(deposit);
   }
 
-  return deposits;
+  return kept.filter((item) => !isDepositTerminal(item));
 }
 
 /**
@@ -440,8 +499,8 @@ export function followHistoryDeposits(rows) {
 
       hashes.add(hash);
 
-      if (item && !isDepositTerminal(item) && duskEvmAdapterUrl()) {
-        void trackDepositTransaction(hash);
+      if (item && duskEvmAdapterUrl()) {
+        followDeposit(item);
       }
     }
   }

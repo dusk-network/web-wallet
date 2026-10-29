@@ -778,18 +778,32 @@ describe("fetchTxDetails", () => {
           detailsAt: 1,
         })
       ).toBe(true);
+      // So is one read before the history read whom it pays; one read since
+      // isn't, whether it says or not (null).
+      const proof = {
+        amount: "1",
+        hash: /** @type {`0x${string}`} */ (`0x${"8e".repeat(32)}`),
+        kind: /** @type {const} */ ("prove"),
+        withdrawal: "01",
+      };
+
       expect(
         history.needsDetails({
-          bridge: {
-            amount: "1",
-            hash: `0x${"8e".repeat(32)}`,
-            kind: "prove",
-            withdrawal: "01",
-          },
+          bridge: proof,
           contractId: portal,
           detailsAt: 1,
         })
-      ).toBe(false);
+      ).toBe(true);
+
+      for (const recipient of [null, "213qXN"]) {
+        expect(
+          history.needsDetails({
+            bridge: { ...proof, recipient },
+            contractId: portal,
+            detailsAt: 1,
+          })
+        ).toBe(false);
+      }
     } finally {
       delete details[prove];
       delete details[deposit];
