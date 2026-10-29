@@ -5,6 +5,7 @@ import { duskEvm } from "$lib/web3/walletConnection";
 import {
   normalizedAddress,
   normalizedAmountWei,
+  normalizedDuskRecipient,
   normalizedDuskTxHash,
   normalizedTimestamp,
   normalizedTxHash,
@@ -87,6 +88,7 @@ function normalizeStoredItem(value) {
     proofSubmitter: normalizedAddress(stored.proofSubmitter),
     readyAt: stringValue(stored.readyAt),
     readyAtExact: stored.readyAtExact === true,
+    recipient: normalizedDuskRecipient(stored.recipient),
     sentAt: normalizedTimestamp(stored.sentAt),
     source: stored.source === "explorer" ? "explorer" : "local",
     stage: validStage(stored.stage),
@@ -134,6 +136,13 @@ function writeRememberedItems(items) {
   activity.set(stored);
 }
 
+/** Forgets every withdrawal kept here, as Reset does. */
+export function forgetWithdrawalActivity() {
+  storage()?.removeItem(ACTIVITY_STORAGE_KEY);
+  storage()?.removeItem(LEGACY_LAST_WITHDRAWAL_KEY);
+  activity.set([]);
+}
+
 export function hydrateWithdrawalActivity() {
   const items = readRememberedItems();
   activity.set(items);
@@ -141,8 +150,18 @@ export function hydrateWithdrawalActivity() {
 }
 
 /**
+ * Whom a withdrawal pays on Dusk: as now said, else as said before.
+ *
+ * @param {unknown} said
+ * @param {WithdrawalActivityItem | undefined} existing
+ */
+const recipientOf = (said, existing) =>
+  normalizedDuskRecipient(said) ?? existing?.recipient ?? null;
+
+/**
  * @param {`0x${string}`} transactionHash
- * @param {{ account?: string | null, amountWei?: bigint | string, createdAt?: number }} [options]
+ * @param {{ account?: string | null, amountWei?: bigint | string, createdAt?: number, recipient?: string | null }} [options]
+ *   `recipient` whom it pays on Dusk, where that's known
  */
 export function rememberWithdrawalTransaction(transactionHash, options = {}) {
   const hash = normalizedTxHash(transactionHash);
@@ -175,6 +194,7 @@ export function rememberWithdrawalTransaction(transactionHash, options = {}) {
     proofSubmitter: null,
     readyAt: null,
     readyAtExact: false,
+    recipient: null,
     sentAt: null,
     source: "local",
     stage: "submitted",
@@ -192,6 +212,7 @@ export function rememberWithdrawalTransaction(transactionHash, options = {}) {
       normalizedAmountWei(options.amountWei) ?? existing?.amountWei ?? null,
     chainId: duskEvm.id,
     createdAt,
+    recipient: recipientOf(options.recipient, existing),
     source: "local",
     transactionHash: hash,
   });
@@ -232,6 +253,7 @@ export function updateWithdrawalTransaction(transactionHash, patch) {
         ? null
         : (normalizedDuskTxHash(patch.pendingTransactionHash) ??
           existing.pendingTransactionHash),
+    recipient: recipientOf(patch.recipient, existing),
     source: existing.source,
     stage: VALID_STAGES.has(patch.stage ?? "") ? patch.stage : existing.stage,
     timestamp: existing.timestamp,

@@ -87,7 +87,7 @@ describe("withdrawal presentation", () => {
     expect(
       stageMessage({ stage: "ready_to_prove" }, { locale, time: TIME })
     ).toBe(
-      "Step 1 of 2. Fee from your public account. Claim 7 days after you prove."
+      "Step 2 of 3. Fee from your public account. Claim 7 days after you prove."
     );
     expect(
       stageMessage(
@@ -99,7 +99,7 @@ describe("withdrawal presentation", () => {
         }
       )
     ).toBe(
-      `Step 1 of 2. Fee from your public account. If you prove now, you can claim from about ${day}.`
+      `Step 2 of 3. Fee from your public account. If you prove now, you can claim from about ${day}.`
     );
   });
 
@@ -110,6 +110,6 @@ describe("withdrawal presentation", () => {
         { stage: "ready_to_prove", statusMessage: "A longer explanation." },
         { locale }
       )
-    ).toBe("Step 1 of 2. Fee from your public account.");
+    ).toBe("Step 2 of 3. Fee from your public account.");
   });
 });

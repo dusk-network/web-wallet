@@ -47,6 +47,9 @@
   /** @type {string} */
   export let submittedHash;
 
+  /** Whether it pays someone else: its step is then offered quietly. */
+  export let quiet = false;
+
   /**
    * The withdrawal's proof and claim on Dusk, as the history has them.
    *
@@ -226,12 +229,14 @@
             disabled={isSubmitting}
             text={isSubmitting ? "Submitting" : "Prove on Dusk"}
             on:click={() => dispatch("prove")}
+            variant={quiet ? "secondary" : "primary"}
           />
         {:else}
           <Button
             disabled={isSubmitting}
             text={isSubmitting ? "Submitting" : "Claim on Dusk"}
             on:click={() => dispatch("finalize")}
+            variant={quiet ? "secondary" : "primary"}
           />
         {/if}
       </div>

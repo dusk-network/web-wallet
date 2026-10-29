@@ -137,12 +137,15 @@ describe("a deposit's arrival, from DuskEVM's explorer", () => {
     await expect(
       findDepositArrival(second, [first, second], { fetch })
     ).resolves.toStrictEqual({
+      // When it arrived: the payment's time on DuskEVM.
+      at: Date.parse("2026-10-27T05:53:13Z"),
       blockNumber: "1",
       hash: `0x${"14".repeat(32)}`,
     });
     await expect(
       findDepositArrival(first, [first, second], { fetch })
     ).resolves.toStrictEqual({
+      at: Date.parse("2026-10-27T05:52:13Z"),
       blockNumber: "1",
       hash: `0x${"13".repeat(32)}`,
     });
@@ -199,12 +202,14 @@ describe("a deposit's arrival, from DuskEVM's explorer", () => {
     await expect(
       findDepositArrival(first, [first, second], { fetch })
     ).resolves.toStrictEqual({
+      at: expect.any(Number),
       blockNumber: "1",
       hash: `0x${"21".repeat(32)}`,
     });
     await expect(
       findDepositArrival(second, [first, second], { fetch })
     ).resolves.toStrictEqual({
+      at: expect.any(Number),
       blockNumber: "1",
       hash: `0x${"22".repeat(32)}`,
     });
@@ -263,12 +268,14 @@ describe("a deposit's arrival, from DuskEVM's explorer", () => {
     await expect(
       findDepositArrival(ahead, [ahead], { fetch })
     ).resolves.toStrictEqual({
+      at: expect.any(Number),
       blockNumber: "1",
       hash: `0x${"13".repeat(32)}`,
     });
     await expect(
       findDepositArrival(behind, [behind], { fetch })
     ).resolves.toStrictEqual({
+      at: expect.any(Number),
       blockNumber: "1",
       hash: `0x${"15".repeat(32)}`,
     });
@@ -290,6 +297,7 @@ describe("a deposit's arrival, from DuskEVM's explorer", () => {
     await expect(
       findDepositArrival(known, [unknown, known], { fetch })
     ).resolves.toStrictEqual({
+      at: expect.any(Number),
       blockNumber: "1",
       hash: `0x${"13".repeat(32)}`,
     });

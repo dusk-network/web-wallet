@@ -243,6 +243,7 @@
             </tr>
             {#each group.items as { presentation: p, row } (row.hash)}
               {@const time = rowTime(row)}
+              {@const isDeposit = row.bridge?.kind === "deposit"}
               <tr
                 class="history__row"
                 class:history__row--selected={row.hash === selected}
@@ -277,15 +278,23 @@
                         class:history__line--failed={p.status === "failed"}
                         >{#if p.note}<span class="history__wide">{p.line}</span
                           ><span class="history__narrow">{p.shortLine}</span
-                          >{:else}{p.line}{/if}<span class="history__phone-meta"
-                          >{time === null
-                            ? ""
-                            : ` · ${timeLabel(time, locale)}`}
-                          · {p.privacy}</span
-                        ></span
+                          >{:else}{p.line}{/if}{#if !isDeposit}<span
+                            class="history__phone-meta"
+                            >{time === null
+                              ? ""
+                              : ` · ${timeLabel(time, locale)}`}
+                            · {p.privacy}</span
+                          >{/if}</span
                       >
                       {#if p.note}
                         <span class="history__claim">{p.note}</span>
+                      {/if}
+                      {#if isDeposit}
+                        <span class="history__when"
+                          >{time === null
+                            ? p.privacy
+                            : `${timeLabel(time, locale)} · ${p.privacy}`}</span
+                        >
                       {/if}
                     </span>
                   </button>
@@ -622,14 +631,19 @@
     background: var(--calm-panel);
   }
 
-  /* Phones only: the time and privacy after the line, a claim date under it. */
+  /*
+   * Phones only: the time and privacy after the line, a claim date under
+   * it, and a deposit's time under its line, which its address makes long.
+   */
   .history__phone-meta,
   .history__narrow,
-  .history__claim {
+  .history__claim,
+  .history__when {
     display: none;
   }
 
-  .history__claim {
+  .history__claim,
+  .history__when {
     overflow: hidden;
     color: var(--calm-muted);
     font-size: 0.78125rem;
@@ -677,7 +691,8 @@
       display: none;
     }
 
-    .history__claim {
+    .history__claim,
+    .history__when {
       display: block;
     }
 

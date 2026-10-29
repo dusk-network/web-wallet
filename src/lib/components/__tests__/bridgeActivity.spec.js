@@ -14,6 +14,12 @@ const SENT = Date.UTC(2026, 9, 26, 4, 49);
 const CLAIM_AT = Date.UTC(2026, 10, 2, 3, 20, 39);
 const options = { locale: "en" };
 
+/** The Dusk account the activity is of, and another one. */
+const OWN =
+  "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+const OTHER =
+  "213qXNJXsQEGigeKJ8jFxuaPb1UV2BiGNykjS3cqRULiaBjQQcGQyEknV7WAhNF5u9hhhFoJcLxbuMWuWhCq3b9jCHDTpvGZaV5HcUU8Z5c4oHbdJ7TQ1NWQJNghYV5JJ9Y";
+
 /**
  * @param {string} stage
  * @param {Record<string, unknown>} [fields]
@@ -137,6 +143,69 @@ describe("withdrawalRow", () => {
     );
   });
 
+  it("should put a withdrawal that pays someone else in a group of its own, saying whom, with its step offered quietly", () => {
+    const theirs = withdrawalRow(
+      withdrawal("ready_to_prove", { recipient: OTHER }),
+      {
+        ...options,
+        account: OWN,
+      }
+    );
+
+    expect(theirs).toEqual(
+      expect.objectContaining({
+        action: "prove",
+        forOther: true,
+        group: "other",
+        line: "Pays 213qXN…V5JJ9Y · ready to prove on Dusk",
+        state: "",
+      })
+    );
+    expect(
+      withdrawalRow(withdrawal("proven_waiting", { recipient: OTHER }), {
+        ...options,
+        account: OWN,
+      })
+    ).toEqual(expect.objectContaining({ group: "other", state: "Pending" }));
+
+    // Done or failed, it goes where all of those go, still saying whom.
+    expect(
+      withdrawalRow(withdrawal("finalized", { recipient: OTHER }), {
+        ...options,
+        account: OWN,
+      })
+    ).toEqual(
+      expect.objectContaining({
+        group: "done",
+        line: "Pays 213qXN…V5JJ9Y · claimed on Dusk",
+      })
+    );
+
+    // A contract it pays is said to be one.
+    expect(
+      withdrawalRow(
+        withdrawal("ready_to_prove", { recipient: "21a5cb".padEnd(64, "0") }),
+        { ...options, account: OWN }
+      ).line
+    ).toBe("Pays contract 21a5cb…000000 · ready to prove on Dusk");
+
+    // One that pays the account, or whose recipient isn't known: as ever.
+    for (const recipient of [OWN, null]) {
+      expect(
+        withdrawalRow(withdrawal("ready_to_prove", { recipient }), {
+          ...options,
+          account: OWN,
+        })
+      ).toEqual(
+        expect.objectContaining({
+          forOther: false,
+          group: "needs",
+          line: "Ready to prove on Dusk",
+        })
+      );
+    }
+  });
+
   it("should leave out an amount it doesn't know", () => {
     expect(
       withdrawalRow(withdrawal("submitted", { amountWei: null }), options)
@@ -165,10 +234,31 @@ describe("depositRow", () => {
         time: { seconds: 60, source: "chain" },
       }).line
     ).toBe(`Sent ${claimDay(SENT, "en")} · takes ~1 min`);
-    // Arrived.
+    // Arrived, when DuskEVM's explorer says, and where.
     expect(depositRow(deposit("completed"), options)).toEqual(
-      expect.objectContaining({ group: "done", state: "" })
+      expect.objectContaining({
+        group: "done",
+        line: "Arrived on DuskEVM",
+        state: "",
+      })
     );
+    expect(
+      depositRow(
+        deposit("completed", {
+          account: "0xab84edffd745af9420ac74fec73121fbee9fc86f",
+          arrivedAt: SENT + 60_000,
+        }),
+        options
+      ).line
+    ).toBe(`Arrived ${claimDay(SENT + 60_000, "en")} · to 0xAB84…C86F`);
+    expect(
+      depositRow(
+        deposit("l1_pending", {
+          account: "0xab84edffd745af9420ac74fec73121fbee9fc86f",
+        }),
+        options
+      ).line
+    ).toBe(`Sent ${claimDay(SENT, "en")} · to 0xAB84…C86F`);
   });
 
   it("should say a deposit takes longer than usual, or why it didn't go through", () => {
@@ -191,7 +281,7 @@ describe("depositRow", () => {
 });
 
 describe("groupBridgeActivity", () => {
-  it("should list what needs you first, then what's under way, done and failed, each newest first, leaving out empty groups", () => {
+  it("should list what needs you first, then what's under way, what pays someone else, done and failed, each newest first, leaving out empty groups", () => {
     const rows = [
       depositRow(deposit("completed", { createdAt: SENT - 1 }), options),
       withdrawalRow(
@@ -226,6 +316,7 @@ describe("groupBridgeActivity", () => {
     expect(BRIDGE_ACTIVITY_GROUPS.map(([, head]) => head)).toStrictEqual([
       "Needs you",
       "In progress",
+      "Sent to someone else",
       "Completed",
       "Didn't go through",
     ]);

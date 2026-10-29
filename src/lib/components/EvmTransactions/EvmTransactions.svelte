@@ -16,6 +16,7 @@
   import bridgeTimes from "$lib/bridge/bridgeTimes";
   import {
     depositActivityStore,
+    followHistoryDeposits,
     hydrateDepositActivity,
     resumeDepositTracking,
   } from "$lib/bridge/depositActivity";
@@ -153,6 +154,14 @@
   /** @type {any[]} */
   let deposits = [];
 
+  /**
+   * This wallet's own deposits, by their Dusk transactions, as its history
+   * has them: listed with or without an EVM wallet connected.
+   *
+   * @type {Set<string>}
+   */
+  let ownDeposits = new Set();
+
   /** The deposit shown open, by its transaction. */
   /** @type {string | null} */
   let openDeposit = null;
@@ -181,6 +190,7 @@
     deposits = keptDeposits.filter(
       (item) =>
         item.account === null ||
+        ownDeposits.has(item.transactionHash) ||
         (currentAccount !== null && item.account === currentAccount)
     );
     openLinkedDeposit();
@@ -719,6 +729,14 @@
   }
   // Each withdrawal's proof and claim on Dusk, as the history has them.
   $: withdrawalSteps = withdrawalDuskTransactions($activityState.rows);
+  // The deposits in the history, followed to DuskEVM: the DuskEVM address
+  // each pays is the deposit's own, so no EVM wallet is needed.
+  $: ownDeposits = hasDuskEvm
+    ? followHistoryDeposits($activityState.rows)
+    : new Set();
+  $: if (ownDeposits) {
+    filterDeposits();
+  }
   // DuskEVM's parts, and its reads: only on a network that has it.
   $: hasDuskEvm =
     Boolean($nodeNetwork?.duskEvm) || finalizationConfig.configured;
@@ -731,6 +749,7 @@
     ),
     ...activity.map((item) =>
       withdrawalRow(item, {
+        account: duskAccount,
         locale: language,
         time: routeTime(WITHDRAWAL, $bridgeTimes),
       })
@@ -856,6 +875,7 @@
                     on:click={() => startAction(row)}
                     size="small"
                     text={row.action === "prove" ? "Prove" : "Claim"}
+                    variant={row.forOther ? "secondary" : "primary"}
                   />
                 {/if}
               </div>
@@ -874,6 +894,7 @@
                         ""}
                       on:finalize={submitFinalization}
                       on:prove={submitProof}
+                      quiet={row.forOther}
                     />
                   {:else if row.kind === "deposit"}
                     <DepositLifecycle deposit={row.item} titled={false} />
@@ -1084,7 +1105,8 @@
     font-size: 0.8125rem;
     font-weight: 500;
 
-    &--progress {
+    &--progress,
+    &--other {
       color: var(--calm-pending);
     }
 

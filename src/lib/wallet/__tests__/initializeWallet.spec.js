@@ -64,6 +64,49 @@ describe("initializeWallet", () => {
     localStorage.clear();
   });
 
+  it("should keep the bridge's transfers only when the restored wallet is the one this device had", async () => {
+    const mnemonic =
+      "cart dad sail wreck robot grit combine noble rap farm slide sad";
+    const restored = await new ProfileGenerator(async () => new Uint8Array())
+      .default;
+    const keys = [
+      "dusk-evm:deposit-activity:v1",
+      "dusk-evm:last-withdrawal-tx-hash",
+      "dusk-evm:withdrawal-activity:v1",
+    ];
+    const times = `${CONFIG.LOCAL_STORAGE_APP_KEY}-bridge-times-testnet-x`;
+    const keep = () => {
+      for (const key of [...keys, times]) {
+        localStorage.setItem(key, "[]");
+      }
+    };
+
+    keep();
+    settingsStore.update((settings) => ({
+      ...settings,
+      userId: String(restored.address),
+    }));
+
+    // The wallet this device had, restored again: its own.
+    await initializeWallet(mnemonic, 0n);
+
+    for (const key of keys) {
+      expect(localStorage.getItem(key)).toBe("[]");
+    }
+
+    // Another one was here: they were its own.
+    settingsStore.update((settings) => ({ ...settings, userId: "another" }));
+    await initializeWallet(mnemonic, 0n);
+
+    for (const key of keys) {
+      expect(localStorage.getItem(key)).toBeNull();
+    }
+
+    // What the chains said of the bridge's times is no wallet's.
+    expect(localStorage.getItem(times)).toBe("[]");
+    localStorage.clear();
+  });
+
   it("should clear the settings store and initialize a new wallet", async () => {
     const mnemonic =
       "cart dad sail wreck robot grit combine noble rap farm slide sad";

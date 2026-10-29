@@ -259,4 +259,58 @@ describe("HistoryView", () => {
       vi.unstubAllEnvs();
     }
   });
+  it("should give a deposit's time a line of its own on phones, as its DuskEVM address makes its line long", () => {
+    const bridge = "ab".repeat(32);
+    const deposited = {
+      ...row("d1".repeat(32), WINTER),
+      bridge: /** @type {const} */ ({
+        amount: "100000000",
+        kind: "deposit",
+        to: "0xB0E834d62CA3f5cF0F82619c8515c673818f8C6b",
+      }),
+      contractId: bridge,
+      fnName: "depositETHToWithValue",
+      kind: /** @type {const} */ ("contract_call"),
+      to: undefined,
+    };
+
+    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridge);
+
+    try {
+      const { container } = render(HistoryView, {
+        locale: "en",
+        state: { ...state, rows: [deposited, state.rows[0]] },
+      });
+      const [deposit, sent] = Array.from(
+        container.querySelectorAll(".history__who"),
+        (who) => ({
+          line: who.querySelector(".history__line")?.textContent?.trim(),
+          meta: who.querySelector(".history__phone-meta"),
+          when: who.querySelector(".history__when")?.textContent?.trim(),
+        })
+      );
+
+      expect(deposit.line).toBe("Bridge · to 0xb0E8…8C6b");
+      expect(deposit.meta).toBeNull();
+      expect(deposit.when).toBe(`${timeLabel(WINTER, "en")} · Public`);
+      // Any other row keeps its time after its line.
+      expect(sent.when).toBeUndefined();
+      expect(sent.meta).not.toBeNull();
+
+      const rules = styleRules("../HistoryView.svelte", import.meta.url);
+      const ruleOf = (/** @type {string} */ selector, media = "") =>
+        rules.find(
+          (rule) =>
+            rule.media === media &&
+            rule.selector.split(",").some((part) => part.trim() === selector)
+        );
+
+      expect(ruleOf(".history__when")?.declarations.display).toBe("none");
+      expect(
+        ruleOf(".history__when", "(max-width: 47.99rem)")?.declarations.display
+      ).toBe("block");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });

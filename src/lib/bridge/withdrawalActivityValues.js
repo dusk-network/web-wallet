@@ -1,6 +1,8 @@
 export const MAX_ACTIVITY_ITEMS = 12;
 
 const EVM_ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+const DUSK_RECIPIENT_PATTERN =
+  /^(?:[1-9A-HJ-NP-Za-km-z]{60,140}|[0-9a-f]{64})$/;
 const DUSK_TX_HASH_PATTERN = /^(?:0x)?[0-9a-fA-F]{64}$/;
 const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
@@ -23,6 +25,7 @@ const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
  * @property {string | null} proofSubmitter
  * @property {string | null} readyAt
  * @property {boolean} [readyAtExact]
+ * @property {string | null} [recipient] Whom it pays on Dusk, as its DuskEVM transaction says: a Dusk account, or a Dusk contract's ID.
  * @property {string | null} sentAt When the withdrawal was sent: the time of its DuskEVM block, once read.
  * @property {"explorer" | "local"} source
  * @property {"failed" | "finalize_submitted" | "finalized" | "prove_submitted" | "proven_waiting" | "ready_to_finalize" | "ready_to_prove" | "submitted" | "waiting_for_output"} stage
@@ -77,6 +80,19 @@ export function normalizedTxHash(value) {
 export function normalizedDuskTxHash(value) {
   return typeof value === "string" && DUSK_TX_HASH_PATTERN.test(value)
     ? value.replace(/^0x/u, "").toLowerCase()
+    : null;
+}
+
+/**
+ * Whom a withdrawal pays on Dusk: a Dusk account, in base58, or a Dusk
+ * contract's ID; null for anything else.
+ *
+ * @param {unknown} value
+ * @returns {string | null}
+ */
+export function normalizedDuskRecipient(value) {
+  return typeof value === "string" && DUSK_RECIPIENT_PATTERN.test(value)
+    ? value
     : null;
 }
 

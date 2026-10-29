@@ -1,8 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { encodeFunctionData, parseAbi } from "viem";
+import { prepareNativeWithdrawal } from "@dusk/evm-sdk";
 
-import { decodeBridgeCall, evmAddressOf } from "../bridgeCalls";
+import {
+  decodeBridgeCall,
+  evmAddressOf,
+  withdrawalCallRecipient,
+  withdrawalRecipient,
+} from "../bridgeCalls";
 
 import fixtures from "./fixtures/bridge-calls-testnet.json";
+import {
+  PAID,
+  PAID_EXTRA_DATA,
+  relayedWithdrawal,
+} from "./fixtures/withdrawal-recipient";
 
 const { contracts } = fixtures;
 
@@ -94,6 +106,8 @@ describe("decodeBridgeCall", () => {
       amount: "1000000000",
       hash: call("prove-wallet-both").expected.hash,
       kind: "prove",
+      recipient:
+        "21a5cb174bbd7dd0ae1c5bb76c989bb62fb82354aeec9fb25f548c43677dedd0",
       withdrawal: expect.stringMatching(/^0001[0-9a-f]{58}29$/),
     });
 
@@ -137,6 +151,42 @@ describe("decodeBridgeCall", () => {
         portalOnly
       )
     ).toBeNull();
+  });
+
+  it("should say whom a withdrawal pays on Dusk: an account, or a contract", () => {
+    for (const name of ["prove-account", "claim-account"]) {
+      expect(decode(name)).toMatchObject({ recipient: PAID });
+    }
+
+    for (const name of ["prove-contract", "claim-external-contract"]) {
+      expect(decode(name)).toMatchObject({
+        recipient: `21a5cb174bbd7dd0ae${"11".repeat(23)}`,
+      });
+    }
+  });
+
+  it("should read whom a withdrawal pays from its call on DuskEVM and from its message, as the SDK writes them", () => {
+    const { data } = prepareNativeWithdrawal({
+      amountWei: 10n ** 18n,
+      extraData: PAID_EXTRA_DATA,
+      minGasLimit: 200_000,
+      recipient: "0x2222222222222222222222222222222222222222",
+    }).l2Transaction;
+    const relayed = relayedWithdrawal();
+    const other = encodeFunctionData({
+      abi: parseAbi(["function transfer(address, uint256)"]),
+      args: ["0x2222222222222222222222222222222222222222", 1n],
+    });
+
+    expect(withdrawalCallRecipient(data)).toBe(PAID);
+    expect(withdrawalRecipient(relayed)).toBe(PAID);
+
+    // Any other call, or data that doesn't read, pays no one known.
+    expect(withdrawalCallRecipient(other)).toBeNull();
+    expect(withdrawalCallRecipient("0x")).toBeNull();
+    expect(withdrawalRecipient(data)).toBeNull();
+    expect(withdrawalRecipient(relayed.slice(0, -64))).toBeNull();
+    expect(withdrawalRecipient(relayedWithdrawal("0x0201"))).toBeNull();
   });
 
   it("should give a Dusk contract the EVM address DuskEVM gives it", () => {

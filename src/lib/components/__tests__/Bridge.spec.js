@@ -307,6 +307,13 @@ describe("Bridge", () => {
     ]);
     expect(container.querySelector("dt .dusk-icon")).toBeNull();
     expect(container.querySelector(".gas-fee")).toBeNull();
+    // The contract it calls, as the network's file names it.
+    expect(
+      Array.from(
+        container.querySelectorAll(".bridge-review__ends > div"),
+        (row) => row.textContent?.replace(/\s+/g, " ").trim()
+      ).at(-1)
+    ).toBe("Contract DuskEVM bridge 2257e5…a1b31d");
   });
 
   it("should take new default gas, as the node's price, until the review", async () => {
@@ -450,7 +457,7 @@ describe("Bridge", () => {
     await withdraw(container);
 
     expect(container.querySelector(".swap-route summary")).toHaveTextContent(
-      "~7 days · two steps on Dusk"
+      "~7 days · three steps"
     );
   });
 
@@ -526,10 +533,10 @@ describe("Bridge", () => {
 
     await withdraw(container);
 
-    expect(summary()).toBe("~7 days · two steps on Dusk");
+    expect(summary()).toBe("~7 days · three steps");
     expect(await notes()).toStrictEqual([
       "Sepolia No route from DuskEVM",
-      "Dusk ~7 days · two steps on Dusk",
+      "Dusk ~7 days · three steps",
       "EVM DuskEVM It's where it comes from",
     ]);
 
@@ -564,7 +571,7 @@ describe("Bridge", () => {
 
     await withdraw(container);
 
-    expect(summary()).toBe("Two steps on Dusk");
+    expect(summary()).toBe("Three steps");
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "1" } });
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));

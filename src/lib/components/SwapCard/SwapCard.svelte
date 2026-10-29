@@ -394,4 +394,15 @@
       font-size: 1.875rem;
     }
   }
+
+  /* Phones: Max takes a tap 44 px tall, its pill and its row as they are. */
+  @media (max-width: 47.99rem) {
+    .swap-card :global(.swap-mini) {
+      box-sizing: border-box;
+      min-height: 44px;
+      margin-block: -8px;
+      border-block: 8px solid transparent;
+      background-clip: padding-box;
+    }
+  }
 </style>

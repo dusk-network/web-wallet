@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   connect: vi.fn(),
   createPublicClient: vi.fn(),
+  getBlock: vi.fn(),
   http: vi.fn(),
   observeDepositStatus: vi.fn(),
   query: vi.fn(),
@@ -52,19 +53,29 @@ const l2TransactionHash = `0x${"88".repeat(32)}`;
 
 /** @type {typeof import("../depositActivity").refreshDepositTransaction} */
 let refreshDepositTransaction;
+/** @type {typeof import("../depositActivity").followHistoryDeposits} */
+let followHistoryDeposits;
 /** @type {typeof import("../depositActivity").depositTrackingPollInterval} */
 let depositTrackingPollInterval;
 /** @type {typeof import("../depositActivityStorage").getRememberedDepositTransaction} */
 let getRememberedDepositTransaction;
 /** @type {typeof import("../depositActivityStorage").rememberDepositTransaction} */
 let rememberDepositTransaction;
+/** @type {typeof import("../depositActivityStorage").updateDepositTransaction} */
+let updateDepositTransaction;
 
 describe("DuskEVM deposit tracking", () => {
   beforeAll(async () => {
-    ({ depositTrackingPollInterval, refreshDepositTransaction } =
-      await import("../depositActivity"));
-    ({ getRememberedDepositTransaction, rememberDepositTransaction } =
-      await import("../depositActivityStorage"));
+    ({
+      depositTrackingPollInterval,
+      followHistoryDeposits,
+      refreshDepositTransaction,
+    } = await import("../depositActivity"));
+    ({
+      getRememberedDepositTransaction,
+      rememberDepositTransaction,
+      updateDepositTransaction,
+    } = await import("../depositActivityStorage"));
   });
 
   beforeEach(() => {
@@ -72,9 +83,12 @@ describe("DuskEVM deposit tracking", () => {
     mocks.connect.mockReset();
     mocks.connect.mockResolvedValue({ query: mocks.query });
     mocks.createPublicClient.mockImplementation(({ transport }) => ({
+      getBlock: mocks.getBlock,
       request: mocks.request,
       transport,
     }));
+    mocks.getBlock.mockReset();
+    mocks.getBlock.mockResolvedValue({ timestamp: 1_784_193_690n });
     mocks.http.mockImplementation((url) => ({ url }));
     mocks.observeDepositStatus.mockReset();
     mocks.query.mockReset();
@@ -122,12 +136,17 @@ describe("DuskEVM deposit tracking", () => {
     );
     expect(result).toEqual(
       expect.objectContaining({
+        // When it arrived: its DuskEVM block's time.
+        arrivedAt: 1_784_193_690_000,
         l1TransactionHash,
         l2TransactionHash,
         stage: "completed",
         transactionHash: duskTransactionHash,
       })
     );
+    expect(mocks.getBlock).toHaveBeenCalledExactlyOnceWith({
+      blockNumber: 5n,
+    });
 
     // DuskEVM's side is read from its own RPC, with no EVM wallet connected.
     expect(mocks.observeDepositStatus).toHaveBeenCalledWith(
@@ -192,6 +211,8 @@ describe("DuskEVM deposit tracking", () => {
       );
       expect(result).toEqual(
         expect.objectContaining({
+          // When it arrived: its payment's time on DuskEVM.
+          arrivedAt: Date.parse("2026-10-26T04:50:15Z"),
           l2BlockNumber: "2900001",
           l2TransactionHash: payment,
           stage: "completed",
@@ -201,6 +222,84 @@ describe("DuskEVM deposit tracking", () => {
     } finally {
       fetch.mockRestore();
     }
+  });
+
+  it("follows the history's deposits as the ones sent from here: kept for the DuskEVM address each pays, timed by its block", async () => {
+    const final = "51".repeat(32);
+    const failed = "52".repeat(32);
+    const kept = "53".repeat(32);
+    const at = Date.parse("2026-10-26T04:49:20Z");
+    /** @type {(hash: string, fields?: Partial<ActivityRow>) => ActivityRow} */
+    const deposit = (hash, fields = {}) => ({
+      blockHeight: 4_700_000,
+      bridge: {
+        amount: "100000000",
+        kind: "deposit",
+        to: "0xB0E834d62CA3f5cF0F82619c8515c673818f8C6b",
+      },
+      hash,
+      source: "archive",
+      status: "executed",
+      timestamp: at,
+      ...fields,
+    });
+
+    // One already kept, arrived: left as it is.
+    rememberDepositTransaction(kept, { account: `0x${"99".repeat(20)}` });
+    updateDepositTransaction(kept, { stage: "completed" });
+    // On Dusk, the deposit followed failed after all: it's followed no more.
+    mocks.query.mockImplementation(async (/** @type {string} */ query) =>
+      query.startsWith("tx(")
+        ? {
+            tx: {
+              blockHeight: 4_700_000,
+              blockTimestamp: at / 1000,
+              err: "Panic",
+            },
+          }
+        : { block: { status: { Final: 1 } } }
+    );
+
+    const followed = followHistoryDeposits([
+      deposit(final),
+      deposit(failed, { status: "failed", success: false }),
+      deposit(kept),
+      /** @type {ActivityRow} */ ({
+        hash: "54".repeat(32),
+        status: "executed",
+      }),
+    ]);
+
+    expect(followed).toStrictEqual(new Set([final, failed, kept]));
+    expect(getRememberedDepositTransaction(final)).toEqual(
+      expect.objectContaining({
+        account: "0xb0e834d62ca3f5cf0f82619c8515c673818f8c6b",
+        amountLux: "100000000",
+        createdAt: at,
+        l1BlockHeight: "4700000",
+        l1BlockTimestamp: at,
+      })
+    );
+    // One that failed on Dusk never left: nothing to follow.
+    expect(getRememberedDepositTransaction(failed)).toEqual(
+      expect.objectContaining({ failureLayer: "l1", stage: "failed" })
+    );
+    expect(getRememberedDepositTransaction(kept)?.account).toBe(
+      `0x${"99".repeat(20)}`
+    );
+
+    // Followed on DuskEVM: as a deposit sent from here is.
+    await vi.waitFor(() =>
+      expect(mocks.query).toHaveBeenCalledWith(
+        `tx(hash: "${final}") { blockHeight blockTimestamp err }`
+      )
+    );
+    await vi.waitFor(() =>
+      expect(getRememberedDepositTransaction(final)?.stage).toBe("failed")
+    );
+    expect(mocks.query).not.toHaveBeenCalledWith(
+      `tx(hash: "${failed}") { blockHeight blockTimestamp err }`
+    );
   });
 
   it("doesn't look on the explorer for a deposit before its Dusk block is final", async () => {

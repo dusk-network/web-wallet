@@ -14,13 +14,19 @@
   import { BalanceValue, SectionHead } from "$lib/components";
   import { fetchTxNonce } from "$lib/activity/activityHistory";
   import { claimText } from "$lib/bridge/claimDate";
+  import {
+    depositActivityStore,
+    followHistoryDeposits,
+  } from "$lib/bridge/depositActivity";
   import { contractLabel } from "$lib/activity/knownContracts";
   import { fullDateTime, rowTime } from "$lib/activity/present";
   import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
+  import { shortenAddress } from "$lib/dusk/string";
   import { addBasePath } from "$lib/navigation";
   import { addressType, contactsStore, saveContact } from "$lib/contacts";
   import { SOZU_FN, stDuskReceived } from "$lib/sozu";
   import { nodeBaseUrl } from "$lib/url";
+  import { duskEvmExplorerTx } from "$lib/web3/duskEvm";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
 
@@ -47,6 +53,12 @@
   /** Looks up the stDUSK a stake with Sozu got. */
   /** @type {(stake: ActivityRow) => Promise<bigint | null>} */
   export let loadStDusk = (stake) => stDuskReceived(nodeBaseUrl(), stake);
+
+  /** Follows a deposit to DuskEVM, to say when it arrived there. */
+  /** @type {(deposit: ActivityRow) => void} */
+  export let followDeposit = (deposit) => {
+    followHistoryDeposits([deposit]);
+  };
 
   const dispatch = createEventDispatcher();
 
@@ -138,6 +150,9 @@
 
   /** @type {bigint | null} */
   let stDusk = null;
+
+  /** The deposit followed to DuskEVM last, with its row's source. */
+  let followedDeposit = "";
 
   /**
    * @param {ActivityRow} stake
@@ -260,6 +275,21 @@
     showStDusk(row, gotStDusk);
   }
   $: isSent = row.direction !== "in" && p.icon !== "received";
+  // A deposit to DuskEVM, as followed there: when it arrived, and the
+  // DuskEVM transaction that paid it.
+  $: isDeposit = row.bridge?.kind === "deposit";
+  $: if (isDeposit && `${row.hash} ${row.source}` !== followedDeposit) {
+    followedDeposit = `${row.hash} ${row.source}`;
+    followDeposit(row);
+  }
+  $: deposit = isDeposit
+    ? ($depositActivityStore.find(
+        (item) =>
+          item.transactionHash === row.hash.replace(/^0x/, "").toLowerCase()
+      ) ?? null)
+    : null;
+  $: arrived = deposit?.stage === "completed" ? deposit : null;
+  $: arrival = arrived?.l2TransactionHash ?? "";
   $: gasUsed =
     row.gasSpent && row.gasLimit
       ? `${Number(row.gasSpent).toLocaleString(locale)} of ${Number(row.gasLimit).toLocaleString(locale)}`
@@ -397,6 +427,42 @@
                 <p class="tx-detail__note">Saved only on this device.</p>
               </form>
             {/if}
+          </dd>
+        </div>
+      {/if}
+      {#if arrived}
+        <div>
+          <dt>Arrived</dt>
+          <dd>
+            {arrived.arrivedAt
+              ? fullDateTime(arrived.arrivedAt, locale)
+              : "On DuskEVM"}
+          </dd>
+        </div>
+      {/if}
+      {#if arrival}
+        <div class="tx-detail__wide">
+          <dt>DuskEVM transaction</dt>
+          <dd class="tx-detail__id">
+            {#if duskEvmExplorerTx(arrival)}
+              <a
+                class="tx-detail__block text-link"
+                href={duskEvmExplorerTx(arrival)}
+                rel="noopener noreferrer"
+                target="_blank"
+                >{shortenAddress(arrival)}
+                <span class="sr-only"
+                  >(opens the transaction in DuskEVM's explorer)</span
+                ></a
+              >
+            {:else}
+              <span class="tx-detail__code">{shortenAddress(arrival)}</span>
+            {/if}
+            <button
+              class="tx-detail__copy"
+              on:click={() => copy(arrival, "DuskEVM transaction ID")}
+              type="button"><Icon path={mdiContentCopy} />Copy</button
+            >
           </dd>
         </div>
       {/if}

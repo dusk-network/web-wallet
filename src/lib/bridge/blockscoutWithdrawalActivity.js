@@ -1,6 +1,8 @@
 import { duskEvm } from "$lib/web3/walletConnection";
 import { toFunctionSelector } from "viem";
 
+import { withdrawalCallRecipient } from "$lib/bridge/bridgeCalls";
+
 import {
   MAX_ACTIVITY_ITEMS,
   normalizedAddress,
@@ -147,6 +149,10 @@ function localItemFromTransaction(transaction) {
     createdAt: timestamp ? new Date(timestamp).getTime() : Date.now(),
     explorerStatus: null,
     l1TransactionHash: null,
+    // Whom it pays on Dusk, as the call says.
+    recipient: withdrawalCallRecipient(
+      transaction?.raw_input ?? transaction?.input
+    ),
     source: "explorer",
     stage: "submitted",
     timestamp,

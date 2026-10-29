@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 
+import {
+  forgetDepositActivity,
+  rememberDepositTransaction,
+  updateDepositTransaction,
+} from "$lib/bridge/depositActivityStorage";
 import { settingsStore } from "$lib/stores";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { networks } from "@dusk-network/networks";
 
 import {
   claimedWithdrawals,
@@ -315,6 +322,74 @@ describe("TransactionDetail", () => {
       expect.arrayContaining(["Gas used", "Gas price", "Fee paid"])
     );
     expect(techList(container)).toMatch(/Gas used\s*1,853,542 of 2,500,000/);
+  });
+
+  describe("a deposit to DuskEVM", () => {
+    const DEPOSIT = "d0".repeat(32);
+    const PAID = `0x${"02".repeat(31)}9e`;
+    const deposited = row({
+      amount: "100000000",
+      bridge: { amount: "100000000", kind: "deposit", to: EVM },
+      fnName: "depositETHToWithValue",
+      hash: DEPOSIT,
+    });
+
+    afterEach(() => {
+      forgetDepositActivity();
+      setNodeNetwork(null);
+    });
+
+    it("should follow it to DuskEVM, and say when it arrived there, linking the transaction that paid it", async () => {
+      const followDeposit = vi.fn();
+      const ARRIVED = Date.UTC(2026, 9, 27, 5, 52, 13);
+
+      setNodeNetwork(networks.testnet);
+
+      const { container, findByText, getByRole } = show(
+        deposited,
+        {},
+        { followDeposit }
+      );
+
+      expect(followDeposit).toHaveBeenCalledExactlyOnceWith(deposited);
+      expect(mainList(container)).not.toContain("Arrived");
+
+      rememberDepositTransaction(DEPOSIT, {
+        account: EVM,
+        amountLux: "100000000",
+      });
+      updateDepositTransaction(DEPOSIT, {
+        arrivedAt: ARRIVED,
+        l2TransactionHash: /** @type {`0x${string}`} */ (PAID),
+        stage: "completed",
+      });
+
+      expect(await findByText("Arrived")).toBeInTheDocument();
+      expect(mainList(container)).toContain(
+        `Arrived ${fullDateTime(ARRIVED, "en")}`
+      );
+      expect(mainList(container)).toContain("DuskEVM transaction 0x0202…029e");
+      expect(
+        getByRole("link", {
+          name: "0x0202…029e (opens the transaction in DuskEVM's explorer)",
+        })
+      ).toHaveAttribute(
+        "href",
+        `https://explorer.testnet.evm.dusk.network/tx/${PAID}`
+      );
+    });
+
+    it("should say nothing arrived while it's on its way", () => {
+      rememberDepositTransaction(DEPOSIT, {
+        account: EVM,
+        amountLux: "100000000",
+      });
+
+      const { container } = show(deposited, {}, { followDeposit: vi.fn() });
+
+      expect(mainList(container)).not.toContain("Arrived");
+      expect(mainList(container)).not.toContain("DuskEVM transaction");
+    });
   });
 
   it("should hide the stDUSK a stake got with the balances, here and under Technical details", async () => {

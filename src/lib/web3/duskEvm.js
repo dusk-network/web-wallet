@@ -87,6 +87,18 @@ export function duskEvmBlockscoutApiUrl() {
 }
 
 /**
+ * A DuskEVM transaction in DuskEVM's explorer: null where there's none.
+ *
+ * @param {string} hash
+ * @returns {string | null}
+ */
+export function duskEvmExplorerTx(hash) {
+  const url = duskEvm.blockExplorers.default.url;
+
+  return url ? `${String(url).replace(/\/+$/, "")}/tx/${hash}` : null;
+}
+
+/**
  * DuskEVM as a viem chain. Read on use: the node's network gives it.
  */
 export const duskEvm = {

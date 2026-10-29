@@ -14,7 +14,10 @@ import {
 } from "$lib/bridge/depositActivityStorage";
 import { findDepositArrival } from "$lib/bridge/depositArrival";
 import { isDepositTerminal } from "$lib/bridge/depositLifecycle";
-import { normalizedTxHash } from "$lib/bridge/withdrawalActivityValues";
+import {
+  normalizedDuskTxHash,
+  normalizedTxHash,
+} from "$lib/bridge/withdrawalActivityValues";
 import { errorMessage } from "$lib/dusk/error";
 
 const ACTIVE_POLL_INTERVAL_MS = 5_000;
@@ -217,6 +220,7 @@ async function arrivedOnExplorer(remembered) {
   const updatedAt = Date.now();
 
   return updateDepositTransaction(remembered.transactionHash, {
+    arrivedAt: arrival.at,
     failureLayer: null,
     l1ConfirmedAt: remembered.l1ConfirmedAt ?? updatedAt,
     l2BlockNumber: arrival.blockNumber,
@@ -227,6 +231,29 @@ async function arrivedOnExplorer(remembered) {
     trackingError: null,
     updatedAt,
   });
+}
+
+/**
+ * When a deposit DuskEVM's adapter says arrived did: its DuskEVM block's
+ * time, read once; null before it arrived, or when it can't be read.
+ *
+ * @param {{ l2BlockNumber: string | null, stage: string }} patch
+ * @returns {Promise<number | null>}
+ */
+async function arrivalTime({ l2BlockNumber, stage }) {
+  if (stage !== "completed" || !l2BlockNumber) {
+    return null;
+  }
+
+  try {
+    const block = await trackingClients().l2Client.getBlock({
+      blockNumber: BigInt(l2BlockNumber),
+    });
+
+    return Number(block.timestamp) * 1000 || null;
+  } catch {
+    return null;
+  }
 }
 
 /** @param {string} transactionHash */
@@ -258,10 +285,12 @@ export async function refreshDepositTransaction(transactionHash) {
 
     assertStatusProgression(remembered, metadata);
 
-    return updateDepositTransaction(
-      remembered.transactionHash,
-      observationPatch(remembered, status, metadata)
-    );
+    const patch = observationPatch(remembered, status, metadata);
+
+    return updateDepositTransaction(remembered.transactionHash, {
+      ...patch,
+      arrivedAt: remembered.arrivedAt ?? (await arrivalTime(patch)),
+    });
   } catch (error) {
     // The adapter can't say, as when it doesn't have the method: DuskEVM's
     // explorer can. A deposit that failed on Dusk didn't arrive.
@@ -351,4 +380,71 @@ export function resumeDepositTracking(account) {
   }
 
   return deposits;
+}
+
+/**
+ * A deposit in the history, as this browser keeps deposits: kept for the
+ * DuskEVM address it names, where it wasn't; a final one with its Dusk
+ * block's time and height, which its arrival is looked for after; and one
+ * that failed on Dusk as never having left.
+ *
+ * @param {ActivityRow} row A deposit, as the history has it
+ * @param {import("./depositActivityStorage").DepositActivityItem | undefined} kept
+ */
+function keepHistoryDeposit(row, kept) {
+  const call = /** @type {{ amount: string, to: string }} */ (row.bridge);
+  const hash = /** @type {string} */ (normalizedDuskTxHash(row.hash));
+  const isFinal = row.source === "archive" || row.source === "both";
+  let item =
+    kept ??
+    rememberDepositTransaction(hash, {
+      account: call.to,
+      amountLux: call.amount,
+      createdAt: row.timestamp ?? row.submittedAt ?? Date.now(),
+    });
+
+  if (item && isFinal && row.timestamp && !item.l1BlockTimestamp) {
+    item = updateDepositTransaction(hash, {
+      l1BlockHeight:
+        row.blockHeight === undefined ? null : String(row.blockHeight),
+      l1BlockTimestamp: row.timestamp,
+    });
+  }
+
+  return item && row.status === "failed" && !isDepositTerminal(item)
+    ? updateDepositTransaction(hash, { failureLayer: "l1", stage: "failed" })
+    : item;
+}
+
+/**
+ * The deposits to DuskEVM in the history, followed to DuskEVM as the ones
+ * sent from here are, with no EVM wallet needed: the DuskEVM address each
+ * pays is the deposit's own. They're followed on a network with DuskEVM
+ * only.
+ *
+ * @param {ActivityRow[]} rows
+ * @returns {Set<string>} The deposits' Dusk transactions, as kept
+ */
+export function followHistoryDeposits(rows) {
+  const kept = new Map(
+    hydrateDepositActivity().map((item) => [item.transactionHash, item])
+  );
+  /** @type {Set<string>} */
+  const hashes = new Set();
+
+  for (const row of rows) {
+    const hash = normalizedDuskTxHash(row.hash);
+
+    if (row.bridge?.kind === "deposit" && hash) {
+      const item = keepHistoryDeposit(row, kept.get(hash));
+
+      hashes.add(hash);
+
+      if (item && !isDepositTerminal(item) && duskEvmAdapterUrl()) {
+        void trackDepositTransaction(hash);
+      }
+    }
+  }
+
+  return hashes;
 }

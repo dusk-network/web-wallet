@@ -2,8 +2,8 @@
  * Bridge › Activity's rows, as the Dusk Bridge lists its transfers: each
  * deposit and withdrawal by its route, its amount, a line with when it was
  * sent, when it can be claimed or what it waits for, its state, and what
- * needs doing, in groups: what needs you, what's under way, what's done and
- * what didn't go through.
+ * needs doing, in groups: what needs you, what's under way, withdrawals that
+ * pay someone else, what's done and what didn't go through.
  */
 
 import { claimDay, claimText } from "$lib/bridge/claimDate";
@@ -13,15 +13,17 @@ import {
 } from "$lib/bridge/depositLifecycle";
 import { routeTimeText } from "$lib/bridge/routeTimes";
 import { formatDusk } from "$lib/dusk/currency";
+import { shortenAddress } from "$lib/dusk/string";
 
 import { claimDateOf } from "./withdrawalPresentation";
 
 /**
- * @typedef {"done" | "failed" | "needs" | "progress"} BridgeActivityGroup
+ * @typedef {"done" | "failed" | "needs" | "other" | "progress"} BridgeActivityGroup
  *
  * @typedef {{
  *   action: "claim" | "prove" | null,
  *   amount: string,
+ *   forOther: boolean,
  *   from: string,
  *   group: BridgeActivityGroup,
  *   hash: string,
@@ -35,11 +37,13 @@ import { claimDateOf } from "./withdrawalPresentation";
  *   when: number,
  * }} BridgeActivityRow
  *   `action` is what the row asks for: proving or claiming a withdrawal on
- *   Dusk. `state` is said for what's under way and what failed; a done row
- *   says nothing.
+ *   Dusk; `forOther` that it pays someone else, so it's offered quietly.
+ *   `state` is said for what's under way and what failed; a done row says
+ *   nothing.
  *
- * @typedef {{ locale: string, time?: RouteTime | null }} BridgeActivityOptions
- *   `time` is how long the route takes on this network, where it's known.
+ * @typedef {{ account?: string, locale: string, time?: RouteTime | null }} BridgeActivityOptions
+ *   `time` is how long the route takes on this network, where it's known;
+ *   `account` the Dusk account the activity is of.
  */
 
 /** The groups, in order, with their heads. */
@@ -48,6 +52,7 @@ export const BRIDGE_ACTIVITY_GROUPS =
     Object.freeze([
       ["needs", "Needs you"],
       ["progress", "In progress"],
+      ["other", "Sent to someone else"],
       ["done", "Completed"],
       ["failed", "Didn't go through"],
     ])
@@ -133,14 +138,54 @@ const WITHDRAWAL_GROUPS = new Map([
 ]);
 
 /**
- * A withdrawal from DuskEVM to Dusk as a row.
+ * Whether a withdrawal pays a Dusk account other than the one the activity
+ * is of, as its DuskEVM transaction says.
+ *
+ * @param {any} item
+ * @param {string | undefined} account
+ */
+const paysOther = (item, account) =>
+  Boolean(item.recipient && account && item.recipient !== account);
+
+/**
+ * Whom a withdrawal pays, as its row says it: an account, or a contract.
+ *
+ * @param {string} recipient
+ */
+const payeeOf = (recipient) =>
+  /^[0-9a-f]{64}$/.test(recipient)
+    ? `contract ${shortenAddress(recipient)}`
+    : shortenAddress(recipient);
+
+/**
+ * What a withdrawal's row says of where it is: Failed, Pending while it's
+ * under way, or nothing.
+ *
+ * @param {BridgeActivityGroup} stageGroup The group its stage puts it in
+ */
+const withdrawalState = (stageGroup) =>
+  stageGroup === "failed"
+    ? "Failed"
+    : stageGroup === "progress"
+      ? "Pending"
+      : "";
+
+/**
+ * A withdrawal from DuskEVM to Dusk as a row. One that pays someone else
+ * says whom, and waits in a group of its own until it's done.
  *
  * @param {any} item As the withdrawal activity keeps it
  * @param {BridgeActivityOptions} options
  * @returns {BridgeActivityRow}
  */
 export function withdrawalRow(item, options) {
-  const group = WITHDRAWAL_GROUPS.get(item.stage) ?? "progress";
+  const forOther = paysOther(item, options.account);
+  const stageGroup = WITHDRAWAL_GROUPS.get(item.stage) ?? "progress";
+  const group =
+    forOther && stageGroup !== "done" && stageGroup !== "failed"
+      ? "other"
+      : stageGroup;
+  const line = withdrawalLine(item, options);
 
   return {
     action:
@@ -150,15 +195,17 @@ export function withdrawalRow(item, options) {
           ? "claim"
           : null,
     amount: amountOf(item, options.locale),
+    forOther,
     from: "duskEvm",
     group,
     hash: item.transactionHash,
     id: `withdrawal:${item.transactionHash}`,
     item,
     kind: "withdrawal",
-    line: withdrawalLine(item, options),
-    state:
-      group === "failed" ? "Failed" : group === "progress" ? "Pending" : "",
+    line: forOther
+      ? `Pays ${payeeOf(item.recipient)} · ${line.charAt(0).toLowerCase()}${line.slice(1)}`
+      : line,
+    state: withdrawalState(stageGroup),
     title: "DuskEVM to Dusk",
     to: "duskDs",
     when: msOf(item.sentAt ?? item.timestamp) ?? item.createdAt ?? 0,
@@ -166,7 +213,8 @@ export function withdrawalRow(item, options) {
 }
 
 /**
- * A deposit's line: when it was sent, how long it takes, or why it failed.
+ * A deposit's line: when it was sent and how long it takes, or when it
+ * arrived, with the DuskEVM address it pays; or why it failed.
  *
  * @param {any} item
  * @param {BridgeActivityOptions} options
@@ -179,18 +227,19 @@ function depositLine(item, { locale, time }) {
   }
 
   const sent = `Sent ${claimDay(item.createdAt, locale)}`;
-
-  if (item.stage === "completed") {
-    return sent;
-  }
-
-  if (isDepositStalled(item) || isDepositDelayed(item)) {
-    return `${sent} · taking longer than usual`;
-  }
-
   const usual = routeTimeText(time ?? null);
+  const when =
+    item.stage === "completed"
+      ? item.arrivedAt
+        ? `Arrived ${claimDay(item.arrivedAt, locale)}`
+        : "Arrived on DuskEVM"
+      : isDepositStalled(item) || isDepositDelayed(item)
+        ? `${sent} · taking longer than usual`
+        : usual
+          ? `${sent} · takes ${usual}`
+          : sent;
 
-  return usual ? `${sent} · takes ${usual}` : sent;
+  return item.account ? `${when} · to ${shortenAddress(item.account)}` : when;
 }
 
 /**
@@ -211,6 +260,7 @@ export function depositRow(item, options) {
   return {
     action: null,
     amount: amountOf(item, options.locale),
+    forOther: false,
     from: "duskDs",
     group,
     hash: item.transactionHash,
@@ -280,6 +330,7 @@ export function routeTransferRow(transfer, options) {
       transfer.amountLux > 0n
         ? `${formatDusk(transfer.amountLux, options.locale)} DUSK`
         : "",
+    forOther: false,
     from: route.origin,
     group,
     hash: transfer.hash,

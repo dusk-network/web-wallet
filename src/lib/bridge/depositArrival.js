@@ -185,7 +185,7 @@ const waitingFor = (kept, recipient) =>
  * @param {import("./depositActivityStorage").DepositActivityItem} deposit
  * @param {import("./depositActivityStorage").DepositActivityItem[]} kept The deposits this browser keeps
  * @param {{ fetch?: typeof fetch }} [options]
- * @returns {Promise<{ blockNumber: string | null, hash: `0x${string}` } | null>}
+ * @returns {Promise<{ at: number, blockNumber: string | null, hash: `0x${string}` } | null>}
  */
 export async function findDepositArrival(
   deposit,
@@ -228,7 +228,7 @@ export async function findDepositArrival(
       taken.add(paid.hash);
 
       if (item.transactionHash === deposit.transactionHash) {
-        return { blockNumber: paid.blockNumber, hash: paid.hash };
+        return { at: paid.at, blockNumber: paid.blockNumber, hash: paid.hash };
       }
     }
   }

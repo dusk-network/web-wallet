@@ -25,6 +25,7 @@ const VALID_STAGES = new Set([
  * @property {string | null} account
  * @property {string | null} amountLux
  * @property {string | null} amountWei
+ * @property {number | null} arrivedAt When it arrived on DuskEVM, in milliseconds: its payment's time there, where that's known.
  * @property {number} chainId
  * @property {number} createdAt
  * @property {"l1" | "l2" | null} failureLayer
@@ -105,6 +106,7 @@ function normalizeStoredItem(value) {
     account: normalizedAddress(stored.account),
     amountLux: normalizedAmountWei(stored.amountLux),
     amountWei: normalizedAmountWei(stored.amountWei),
+    arrivedAt: finiteNumber(stored.arrivedAt, 0) || null,
     chainId: duskEvm.id,
     createdAt,
     failureLayer: validFailureLayer(stored.failureLayer),
@@ -150,6 +152,12 @@ function writeRememberedItems(items) {
   activity.set(stored);
 }
 
+/** Forgets every deposit kept here, as Reset does. */
+export function forgetDepositActivity() {
+  storage()?.removeItem(ACTIVITY_STORAGE_KEY);
+  activity.set([]);
+}
+
 export function hydrateDepositActivity() {
   const items = readRememberedItems();
   activity.set(items);
@@ -174,6 +182,7 @@ export function rememberDepositTransaction(transactionHash, options = {}) {
       account: null,
       amountLux: null,
       amountWei: null,
+      arrivedAt: null,
       chainId: duskEvm.id,
       createdAt,
       failureLayer: null,

@@ -61,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep History's filters in its address
 - Open a block by its height from the search
 - Find transactions in the search by memo, and by the label of their contract or account
+- List this wallet's deposits to DuskEVM in Bridge › Activity without an EVM wallet, with when they arrived and where
+- Say in Bridge › Activity whom a withdrawal pays, and list one that pays someone else under Sent to someone else, its step offered quietly
+- Show when a deposit arrived on DuskEVM, and link its DuskEVM transaction, in its details
+- Name the contract a deposit calls on its Review
 - Refuse an unstake from Sozu too small to burn any stDUSK, saying the least
 
 ### Changed
@@ -158,6 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shorten IDs as the other Dusk apps do: Dusk's to six characters at each end, DuskEVM's to 0x and four at each end, an address with its checksum
 - Call the exact fee under Technical details Fee paid
 - Show the stDUSK a stake with Sozu got to four decimals, in full under Technical details
+- Count a withdrawal's send on DuskEVM as the first of its three steps
 
 ### Removed
 
@@ -190,6 +195,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offer Claim on a DuskEVM withdrawal only once its claim date has come
 - Show a deposit to DuskEVM as arrived once DuskEVM's explorer has its payment, where DuskEVM's adapter can't say
 - Take amounts with a decimal comma in liquid and native staking
+- Give the Bridge card's Max and the eye by the total balance a 44 px tap area on phones
+- Give a deposit's time a line of its own in History on phones
+- Forget the bridge's transfers and times on Reset, and another wallet's transfers on restoring a wallet
 
 ## [1.8.0] - 2026-03-25
 
