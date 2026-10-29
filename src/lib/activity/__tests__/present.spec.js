@@ -448,7 +448,7 @@ describe("describeRow", () => {
 
 describe("transfers on the routes to and from other chains", () => {
   const routeAccounts = routeAccountsOf(networks.mainnet);
-  const [BSC_BRIDGE, ETHEREUM_PAYOUTS] = [...routeAccounts.payouts];
+  const [BSC_BRIDGE, ETHEREUM_PAYOUTS] = [...routeAccounts.payouts.keys()];
   const withRoutes = { ...context, routeAccounts };
 
   it("are known by the routes' accounts, as the network's file calls them", () => {
@@ -458,7 +458,15 @@ describe("transfers on the routes to and from other chains", () => {
         [ETHEREUM_PAYOUTS, "Ethereum migration payouts"],
       ])
     );
-    expect(routeAccounts.services).toStrictEqual(new Set([BSC_BRIDGE]));
+    expect(routeAccounts.payouts).toStrictEqual(
+      new Map([
+        [BSC_BRIDGE, "BNB Smart Chain"],
+        [ETHEREUM_PAYOUTS, "Ethereum"],
+      ])
+    );
+    expect(routeAccounts.services).toStrictEqual(
+      new Map([[BSC_BRIDGE, "BNB Smart Chain"]])
+    );
     expect(routeAccountsOf(null).labels.size).toBe(0);
 
     // One the file doesn't name goes by its chain.
@@ -473,7 +481,7 @@ describe("transfers on the routes to and from other chains", () => {
     ]);
   });
 
-  it("are the bridge's: a migration's payout in, and a transfer out to the route's account, by the accounts' names", () => {
+  it("are the bridge's: a migration's payout in, and a transfer out to the route's account, named by their chain as the extension names them", () => {
     const payout = row({
       counterparty: ETHEREUM_PAYOUTS,
       direction: "in",
@@ -484,18 +492,28 @@ describe("transfers on the routes to and from other chains", () => {
     const out = row({ memo: `0x${"11".repeat(20)}`, to: BSC_BRIDGE });
 
     expect(describeRow(payout, withRoutes)).toMatchObject({
+      amount: { sign: "+" },
       category: "bridge",
-      icon: "received",
-      line: "Received",
-      title: "Ethereum migration payouts",
+      counterparty: ETHEREUM_PAYOUTS,
+      icon: "bridge",
+      line: "Bridge",
+      title: "From Ethereum",
       titleIsAddress: false,
     });
     expect(describeRow(out, withRoutes)).toMatchObject({
+      amount: { sign: "−" },
       category: "bridge",
-      icon: "sent",
-      line: "Sent",
-      title: "BSC bridge",
+      counterparty: BSC_BRIDGE,
+      icon: "bridge",
+      line: "Bridge",
+      title: "To BNB Smart Chain",
     });
+    expect(
+      describeRow(
+        { ...payout, counterparty: BSC_BRIDGE, from: BSC_BRIDGE },
+        withRoutes
+      ).title
+    ).toBe("From BNB Smart Chain");
     expect(
       matchesFilters(describeRow(out, withRoutes), out, { kind: "bridge" })
     ).toBe(true);

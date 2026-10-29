@@ -53,12 +53,13 @@ import { configuredBridge } from "$lib/bridge/bridgeCalls";
  *
  * @typedef {{
  *   labels: Map<string, string>,
- *   payouts: Set<string>,
- *   services: Set<string>,
+ *   payouts: Map<string, string>,
+ *   services: Map<string, string>,
  * }} RouteAccounts
- *   The accounts of the network's routes to and from other chains: those
- *   that pay migrations out on Dusk (`payouts`), those a transfer out goes
- *   to (`services`), and what the network's file calls them (`labels`).
+ *   The accounts of the network's routes to and from other chains, each by
+ *   its route's chain: those that pay migrations out on Dusk (`payouts`),
+ *   and those a transfer out goes to (`services`); and what the network's
+ *   file calls them (`labels`).
  *
  * @typedef {{
  *   claim: import("$lib/bridge/claimDate").ClaimDate | null,
@@ -122,8 +123,8 @@ export function routeAccountsOf(net) {
   /** @type {RouteAccounts} */
   const accounts = {
     labels: new Map(),
-    payouts: new Set(),
-    services: new Set(),
+    payouts: new Map(),
+    services: new Map(),
   };
 
   for (const route of net ? routes(net) : []) {
@@ -135,8 +136,9 @@ export function routeAccountsOf(net) {
           : null;
 
     if (account && net) {
-      (route.kind === "migration" ? accounts.payouts : accounts.services).add(
-        account
+      (route.kind === "migration" ? accounts.payouts : accounts.services).set(
+        account,
+        route.chain.name
       );
       accounts.labels.set(
         account,
@@ -188,13 +190,15 @@ const isBridge = (row, bridgeContracts) =>
 const counterpartyOf = (row) => row.to ?? row.from ?? row.counterparty ?? null;
 
 /**
- * Whether a row moved DUSK on a route to or from another chain: a payout
- * of a migration in, or a transfer out to the route's account.
+ * The chain a row moved DUSK from or to on a route between it and Dusk: a
+ * payout of a migration in, or a transfer out to the route's account; none
+ * for any other row.
  *
  * @param {ActivityRow} row
  * @param {RouteAccounts} [routeAccounts]
+ * @returns {string | undefined}
  */
-const isRouteTransfer = (row, routeAccounts) => {
+const routeChainOf = (row, routeAccounts) => {
   const counterparty = counterpartyOf(row);
   const accounts =
     row.direction === "in"
@@ -203,12 +207,12 @@ const isRouteTransfer = (row, routeAccounts) => {
         ? routeAccounts?.services
         : undefined;
 
-  return Boolean(counterparty && accounts?.has(counterparty));
+  return counterparty ? accounts?.get(counterparty) : undefined;
 };
 
 /**
  * What a row is, for its icon and the filters. A transfer on a route to or
- * from another chain is the bridge's, and reads as the transfer it is.
+ * from another chain is the bridge's.
  *
  * @param {ActivityRow} row
  * @param {Set<string> | undefined} bridgeContracts
@@ -237,11 +241,8 @@ function classify(row, bridgeContracts, sozuPools, routeAccounts) {
     return { category: "bridge", icon: "bridge" };
   }
 
-  if (isRouteTransfer(row, routeAccounts)) {
-    return {
-      category: "bridge",
-      icon: row.direction === "in" ? "received" : "sent",
-    };
+  if (routeChainOf(row, routeAccounts)) {
+    return { category: "bridge", icon: "bridge" };
   }
 
   if (row.direction === "self") {
@@ -268,12 +269,20 @@ const KIND_TITLES = new Map([
 ]);
 
 /**
- * What a bridge transaction did: DUSK to or from DuskEVM, or a step of a
- * withdrawal that moved nothing but its fee.
+ * What a bridge transaction did: DUSK to or from DuskEVM or another chain
+ * (as the extension says it), or a step of a withdrawal that moved nothing
+ * but its fee.
  *
  * @param {ActivityRow} row
+ * @param {RouteAccounts} [routeAccounts]
  */
-function bridgeTitle(row) {
+function bridgeTitle(row, routeAccounts) {
+  const chain = routeChainOf(row, routeAccounts);
+
+  if (chain) {
+    return `${row.direction === "in" ? "From" : "To"} ${chain}`;
+  }
+
   if (row.direction === "in") {
     return "From DuskEVM";
   }
@@ -329,7 +338,11 @@ function titleOf(
   }
 
   if (icon === "bridge") {
-    return { title: bridgeTitle(row), titleIsAddress: false, verb: "Bridge" };
+    return {
+      title: bridgeTitle(row, routeAccounts),
+      titleIsAddress: false,
+      verb: "Bridge",
+    };
   }
 
   if (icon === "self") {

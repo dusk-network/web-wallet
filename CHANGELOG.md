@@ -167,8 +167,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Name transactions in the search as History does, with a call's method under the name
 - Name the CSV export after the network, the profile and the local day, as the extension does
 - Count a withdrawal's send on DuskEVM as the first of its three steps
-- Name the bridge's accounts in History as the network's file does, and list their transfers under Bridge
+- Call transfers to and from other chains in History by their chain, as the extension does, with the bridge's account named in their details, and list them under Bridge
 - Update History when the public balance changes, and while a migration or a transfer out is under way
+- Read the balance again as soon as History finds a new public transaction
 
 ### Removed
 

@@ -178,6 +178,45 @@ describe("followRouteHistory", () => {
     stop();
   });
 
+  it("reads the balance again at once when the history finds a public transaction in a newer block, as a send does", () => {
+    migrations.forgetRouteTransfers();
+    mocks.activity.set({ loaded: true, rows: [row({ blockHeight: 100 })] });
+
+    const refreshBalance = vi.fn();
+    const stop = follow.followRouteHistory({ read: vi.fn(), refreshBalance });
+
+    // What the history starts with is in the balance already.
+    expect(refreshBalance).not.toHaveBeenCalled();
+
+    // A migration's payout, found by a read.
+    mocks.activity.set({
+      loaded: true,
+      rows: [{ ...payout, blockHeight: 101 }, row({ blockHeight: 100 })],
+    });
+    expect(refreshBalance).toHaveBeenCalledOnce();
+
+    // Older ones shown later, a shielded one, and one of the wallet's own
+    // not in a block yet: no.
+    mocks.activity.set({
+      loaded: true,
+      rows: [
+        row({ blockHeight: undefined, hash: "cc".repeat(32), source: "local" }),
+        row({ blockHeight: 300, hash: "dd".repeat(32), privacy: "shielded" }),
+        { ...payout, blockHeight: 101 },
+        row({ blockHeight: 100 }),
+        row({ blockHeight: 50, hash: "ee".repeat(32) }),
+      ],
+    });
+    expect(refreshBalance).toHaveBeenCalledOnce();
+
+    // Another history, as after a lock or for another profile, starts over.
+    mocks.activity.set({ loaded: false, rows: [] });
+    mocks.activity.set({ loaded: true, rows: [row({ blockHeight: 400 })] });
+    expect(refreshBalance).toHaveBeenCalledOnce();
+
+    stop();
+  });
+
   it("reads nothing while nothing waits, but for a change in the public balance", async () => {
     migrations.forgetRouteTransfers();
 

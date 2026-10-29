@@ -19,7 +19,12 @@
     followHistoryDeposits,
   } from "$lib/bridge/depositActivity";
   import { contractLabel } from "$lib/activity/knownContracts";
-  import { fullDateTime, rowTime } from "$lib/activity/present";
+  import {
+    fullDateTime,
+    routeAccountsOf,
+    rowTime,
+  } from "$lib/activity/present";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
   import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { addBasePath } from "$lib/navigation";
@@ -265,7 +270,11 @@
   // not a call's contract.
   $: target =
     contract && row.bridge?.kind !== "deposit" ? null : p.counterparty;
-  $: known = target ? contractLabel(target, network) : "";
+  // A route's account by what the network's file calls it, on any network.
+  $: known = target
+    ? contractLabel(target, network) ||
+      (routeAccountsOf($nodeNetwork).labels.get(target) ?? "")
+    : "";
   $: gotStDusk =
     p.icon === "staking" &&
     row.fnName === SOZU_FN.STAKE &&
@@ -517,7 +526,8 @@
         <dd>
           {row.feePaid
             ? `${formatFee(lux(row.feePaid), locale)} DUSK`
-            : p.icon === "received"
+            : p.icon === "received" ||
+                (p.category === "bridge" && row.direction === "in")
               ? "Paid by the sender"
               : "Not known yet"}
         </dd>

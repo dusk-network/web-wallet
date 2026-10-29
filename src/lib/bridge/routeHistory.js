@@ -5,7 +5,8 @@
  * block. Each read carries on from where the last one got to. None is made
  * while nothing waits, or while the page is hidden. A change in the public
  * balance, as the wallet's sync finds one, reads it too: a payout of a
- * migration sent elsewhere is seen then.
+ * migration sent elsewhere is seen then. And a read that finds new public
+ * transactions reads the balance again at once, as a send does.
  */
 
 import { derived } from "svelte/store";
@@ -116,14 +117,51 @@ function onBalanceChange(read) {
 }
 
 /**
- * Reads the history every FOLLOW_MS while a transfer waits on it and the
- * page is shown, and when the public balance changes.
+ * Calls `refresh` when the history has public transactions in newer blocks
+ * than it had: they changed the public balance. Not for those a history
+ * starts with, nor for older ones shown later.
  *
- * @param {{ read?: () => void }} [options] `read` reads the history
+ * @param {() => void} refresh
+ * @returns {() => void} Stops
+ */
+function onNewTransactions(refresh) {
+  /** @type {number | null} */
+  let newest = null;
+
+  return activityState.subscribe(({ loaded, rows }) => {
+    if (!loaded) {
+      newest = null;
+
+      return;
+    }
+
+    const top = Math.max(
+      0,
+      ...rows
+        .filter((row) => row.privacy !== "shielded" && row.source !== "local")
+        .map((row) => row.blockHeight ?? 0)
+    );
+
+    if (newest !== null && top > newest) {
+      refresh();
+    }
+
+    newest = Math.max(newest ?? 0, top);
+  });
+}
+
+/**
+ * Reads the history every FOLLOW_MS while a transfer waits on it and the
+ * page is shown, and when the public balance changes; reads the balance
+ * again when the history finds new public transactions.
+ *
+ * @param {{ read?: () => void, refreshBalance?: () => void }} [options]
+ *   `read` reads the history, `refreshBalance` the balance
  * @returns {() => void} Stops
  */
 export function followRouteHistory({
   read = () => void currentActivity()?.refresh(),
+  refreshBalance = () => void walletStore.refreshBalance(),
 } = {}) {
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let timer;
@@ -144,10 +182,12 @@ export function followRouteHistory({
     }
   });
   const stopBalance = onBalanceChange(read);
+  const stopRows = onNewTransactions(refreshBalance);
 
   return () => {
     unsubscribe();
     stopBalance();
+    stopRows();
     stopTimer();
   };
 }

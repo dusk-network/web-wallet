@@ -540,6 +540,33 @@ describe("Wallet store", async () => {
     });
   });
 
+  describe("Balance refresh", () => {
+    beforeEach(async () => {
+      walletStore.reset();
+      await vi.runOnlyPendingTimersAsync();
+      await walletStore.init(profileGenerator);
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+      vi.clearAllTimers();
+      treasuryUpdateSpy.mockClear();
+      balanceSpy.mockClear();
+      setCachedBalanceSpy.mockClear();
+    });
+
+    it("should read the balances again after a sync, as after a send", async () => {
+      const refreshed = walletStore.refreshBalance();
+
+      await vi.waitUntil(() => balanceSpy.mock.calls.length === 2);
+      await refreshed;
+
+      expect(treasuryUpdateSpy).toHaveBeenCalledOnce();
+      expect(balanceSpy).toHaveBeenNthCalledWith(2, defaultProfile.account);
+      expect(balanceSpy.mock.invocationCallOrder[1]).toBeGreaterThan(
+        treasuryUpdateSpy.mock.invocationCallOrder[0]
+      );
+      expect(setCachedBalanceSpy).toHaveBeenCalledOnce();
+    });
+  });
+
   describe("Wallet store transfers", () => {
     const toPhoenix =
       "4ZH3oyfTuMHyWD1Rp4e7QKp5yK6wLrWvxHneufAiYBAjvereFvfjtDvTbBcZN5ZCsaoMo49s1LKPTwGpowik6QJG";

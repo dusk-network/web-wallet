@@ -14,6 +14,7 @@ import {
   claimedWithdrawals,
   describeRow,
   fullDateTime,
+  routeAccountsOf,
 } from "$lib/activity/present";
 
 import TransactionDetail from "../TransactionDetail.svelte";
@@ -298,6 +299,45 @@ describe("TransactionDetail", () => {
     expect(getByText("Name reservation (step 1 of 2)")).toBeInTheDocument();
     expect(getByText("Dusk Domains")).toBeInTheDocument();
     expect(container.textContent).toContain(store.slice(-6));
+  });
+
+  it("should name a migration's payout by its route, with the route's account by what the network's file calls it, on any network", () => {
+    // A network the wallet only knows from its node, as a local one.
+    const local = /** @type {import("@dusk-network/networks").Network} */ ({
+      ...networks.mainnet,
+      chainId: 0,
+      name: "local",
+    });
+    const routeAccounts = routeAccountsOf(local);
+    const [payouts] = [...routeAccounts.payouts.keys()];
+    const payout = row({
+      amount: "3500000000",
+      contractId: undefined,
+      counterparty: payouts,
+      direction: "in",
+      feePaid: undefined,
+      from: payouts,
+      kind: "transfer",
+      memo: `0x${"c3".repeat(32)}`,
+    });
+
+    setNodeNetwork(local);
+
+    try {
+      const { container, getByText } = show(
+        payout,
+        { routeAccounts },
+        { network: "Localnet" }
+      );
+
+      expect(getByText("From BNB Smart Chain")).toBeInTheDocument();
+      expect(mainList(container)).toMatch(/From\s*BSC bridge/);
+      expect(mainList(container)).toMatch(
+        /Network fee paid\s*Paid by the sender/
+      );
+    } finally {
+      setNodeNetwork(null);
+    }
   });
 
   it("should round the fee paid in its list, and give it exactly under Technical details", () => {
