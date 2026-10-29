@@ -55,6 +55,14 @@ export const chainRpc =
 const hex = (n) => `0x${n.toString(16)}`;
 
 /**
+ * An address as a log's topic: 32 bytes, lower case.
+ *
+ * @param {string} address
+ */
+const topic = (address) =>
+  `0x${address.slice(2).toLowerCase().padStart(64, "0")}`;
+
+/**
  * Whether a migration's transaction went through on its chain: true once it
  * did, false when it reverted, null while it's not in a block. It's kept
  * as confirmed or failed, and not read again.
@@ -109,13 +117,14 @@ async function searchSpan(rpc, sentAt, scanFrom) {
 
 /**
  * The token transfer in a window of blocks that pays `to` exactly `wanted`,
- * other than those `taken`, with when its block was made; null without one.
+ * from `payer` where it's known, other than those `taken`, with when its
+ * block was made; null without one.
  *
  * @param {ChainRpc} rpc
- * @param {{ from: bigint, taken: Set<string>, to: string, token: string, until: bigint, wanted: bigint }} search
+ * @param {{ from: bigint, payer: string | null, taken: Set<string>, to: string, token: string, until: bigint, wanted: bigint }} search
  * @returns {Promise<{ arrivedAt: number | null, payout: string } | null>}
  */
-async function payoutIn(rpc, { from, taken, to, token, until, wanted }) {
+async function payoutIn(rpc, { from, payer, taken, to, token, until, wanted }) {
   /** @type {{ blockNumber: string, data: string, transactionHash: string }[]} */
   const logs =
     (await rpc("eth_getLogs", [
@@ -123,7 +132,7 @@ async function payoutIn(rpc, { from, taken, to, token, until, wanted }) {
         address: token,
         fromBlock: hex(from),
         toBlock: hex(until),
-        topics: [TRANSFER_TOPIC, null, to],
+        topics: [TRANSFER_TOPIC, payer, to],
       },
     ])) ?? [];
   const match = logs.find(
@@ -148,10 +157,11 @@ async function payoutIn(rpc, { from, taken, to, token, until, wanted }) {
 
 /**
  * Searches the transfer's chain for the token transfer that pays it out:
- * to the address its memo gives, of the amount less the bridge's fee, from
- * about when it was sent, a few windows of blocks a check. Each payout pays
- * one transfer: `taken` are those others were paid with. Where the search
- * got to, and the payout once found, are kept.
+ * from the route's payout address where the network's file has it, to the
+ * address its memo gives, of the amount less the bridge's fee, from about
+ * when it was sent, a few windows of blocks a check. Each payout pays one
+ * transfer: `taken` are those others were paid with. Where the search got
+ * to, and the payout once found, are kept.
  *
  * @param {import("./migrationActivity").RouteTransfer} transfer
  * @param {{ rpc: ChainRpc, scanFrom?: string, taken?: Set<string> }} options
@@ -169,8 +179,12 @@ export async function searchArrival(
 
   const { head, start } = await searchSpan(rpc, transfer.at ?? 0, scanFrom);
   const search = {
+    payer:
+      transfer.route.kind === "service" && transfer.route.payoutAddress
+        ? topic(transfer.route.payoutAddress)
+        : null,
     taken,
-    to: `0x${transfer.recipient.slice(2).toLowerCase().padStart(64, "0")}`,
+    to: topic(transfer.recipient),
     token,
     wanted: arrivingWei(transfer),
   };

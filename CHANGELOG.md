@@ -209,6 +209,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Name a `.dusk` name's records replaced as a records change in History
 - Name a `.dusk` registration, and the reservation it reveals, only when its call checks out on the wallet's network
 - Read a DuskEVM withdrawal in History only when it goes to Dusk's bridge
+- Take a transfer to BNB Smart Chain as arrived only on a payout from the bridge's address
 
 ## [1.8.0] - 2026-03-25
 

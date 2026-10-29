@@ -323,15 +323,28 @@ describe("transfers out to BNB Smart Chain", () => {
     ).toStrictEqual([]);
   });
 
-  it("arrive with the token transfer to the memo's address of the amount less the fee, searched from about when sent", async () => {
+  it("arrive with the token transfer from the route's payout address to the memo's address of the amount less the fee, searched from about when sent", async () => {
     const [transfer] = activity.serviceTransfers([sent], {}, ROUTES);
     const head = 130_200_000n;
     /** BNB Smart Chain's pace: a block every 0.45 s. */
     const timeAt = (/** @type {bigint} */ n) =>
       Math.floor(Date.UTC(2026, 9, 28, 0, 0) / 1_000 - Number(head - n) * 0.45);
+    /** @param {string} address */
+    const topic = (address) =>
+      `0x${address.slice(2).toLowerCase().padStart(64, "0")}`;
     /** @type {any[]} */
     const searched = [];
     const payout = `0x${"1f".repeat(32)}`;
+    // The payout, 10 hours after it was sent, and an hour before it someone
+    // else's transfer of the same to the same address.
+    const logs = [
+      { from: `0x${"5a".repeat(20)}`, hash: `0x${"2e".repeat(32)}`, hours: 3 },
+      { from: String(TO_BSC.payoutAddress), hash: payout, hours: 2 },
+    ].map(({ from, hash, hours }) => ({
+      at: head - BigInt(Math.round((hours * 3_600) / 0.45)),
+      from: topic(from),
+      hash,
+    }));
     /** @type {import("../routeTracking").ChainRpc} */
     const rpc = async (method, params) => {
       if (method === "eth_getBlockByNumber") {
@@ -347,18 +360,33 @@ describe("transfers out to BNB Smart Chain", () => {
 
       searched.push(filter);
 
-      // The payout, 10 hours after it was sent.
-      const at = head - BigInt(Math.round((2 * 3_600) / 0.45));
+      // As the chain answers: in the window, from the sender asked for.
+      return logs
+        .filter(
+          ({ at, from }) =>
+            BigInt(filter.fromBlock) <= at &&
+            at <= BigInt(filter.toBlock) &&
+            (filter.topics[1] === null || filter.topics[1] === from)
+        )
+        .map(({ at, hash }) => ({
+          blockNumber: `0x${at.toString(16)}`,
+          data: `0x${(200_000n * DUSK * 1_000_000_000n).toString(16)}`,
+          transactionHash: hash,
+        }));
+    };
+    /** @param {import("../migrationActivity").RouteTransfer} one */
+    const arrival = async (one) => {
+      /** @type {any} */
+      let found = null;
 
-      return BigInt(filter.fromBlock) <= at && at <= BigInt(filter.toBlock)
-        ? [
-            {
-              blockNumber: `0x${at.toString(16)}`,
-              data: `0x${(200_000n * DUSK * 1_000_000_000n).toString(16)}`,
-              transactionHash: payout,
-            },
-          ]
-        : [];
+      for (let i = 0; i < 20 && !found; i++) {
+        found = await tracking.searchArrival(one, {
+          rpc,
+          scanFrom: get(activity.transferArrivals)[one.hash]?.scanFrom,
+        });
+      }
+
+      return found;
     };
 
     // A check searches a few windows, and keeps where it got to.
@@ -367,8 +395,8 @@ describe("transfers out to BNB Smart Chain", () => {
       address: TO_BSC.chain.token,
       topics: [
         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-        null,
-        `0x${"0".repeat(24)}${EVM.slice(2)}`,
+        topic(String(TO_BSC.payoutAddress)),
+        topic(EVM),
       ],
     });
 
@@ -378,18 +406,8 @@ describe("transfers out to BNB Smart Chain", () => {
       BigInt(searched[0].fromBlock)
     );
 
-    // Until it's found, on later checks.
-    /** @type {any} */
-    let found = null;
-
-    for (let i = 0; i < 20 && !found; i++) {
-      found = await tracking.searchArrival(transfer, {
-        rpc,
-        scanFrom: get(activity.transferArrivals)[sent.hash].scanFrom,
-      });
-    }
-
-    expect(found).toMatchObject({ payout });
+    // Until it's found, on later checks: the payout, not the other transfer.
+    await expect(arrival(transfer)).resolves.toMatchObject({ payout });
     expect(get(activity.transferArrivals)[sent.hash]).toMatchObject({ payout });
     // Another transfer of the same isn't paid with it.
     await expect(
@@ -398,5 +416,14 @@ describe("transfers out to BNB Smart Chain", () => {
         { rpc, scanFrom: searched[0].fromBlock, taken: new Set([payout]) }
       )
     ).resolves.toBeNull();
+
+    // A route whose payout address isn't known takes the first that pays it.
+    await expect(
+      arrival({
+        ...transfer,
+        hash: "cd".repeat(32),
+        route: { ...TO_BSC, payoutAddress: null },
+      })
+    ).resolves.toMatchObject({ payout: `0x${"2e".repeat(32)}` });
   });
 });
