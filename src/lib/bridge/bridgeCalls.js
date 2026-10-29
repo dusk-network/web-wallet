@@ -54,7 +54,7 @@ export const recipientOf = (recipient) =>
  * @returns {string | null}
  */
 export function withdrawalRecipient(withdrawal) {
-  const net = get(nodeNetwork);
+  const net = bridgeNetwork();
 
   return net && withdrawal
     ? recipientOf(decodeWithdrawal(net, withdrawal)?.recipient)
@@ -81,13 +81,66 @@ export const configuredBridge = () => ({
   ),
 });
 
+/** @type {WeakMap<import("@dusk-network/networks").Network, import("@dusk-network/networks").Network>} */
+const withSetBridge = new WeakMap();
+
+/**
+ * The node's network, with the bridge and Portal set for a local
+ * deployment in place of its file's, so the history reads the calls the
+ * wallet sends. Kept per network, as the settings don't change while the
+ * wallet runs.
+ */
+function bridgeNetwork() {
+  const net = get(nodeNetwork);
+  const contracts = net?.duskEvm?.contracts;
+
+  if (!net || !contracts) {
+    return net;
+  }
+
+  const { bridge, portal } = configuredBridge();
+  /** @param {"l1_standard_bridge" | "optimism_portal"} name @param {string} id */
+  const differs = (name, id) =>
+    Boolean(id) && norm(contracts[name]?.contractId) !== id;
+
+  if (
+    !differs("l1_standard_bridge", bridge) &&
+    !differs("optimism_portal", portal)
+  ) {
+    return net;
+  }
+
+  let set = withSetBridge.get(net);
+
+  if (!set) {
+    /** @param {"l1_standard_bridge" | "optimism_portal"} name @param {string} id */
+    const as = (name, id) =>
+      id ? { ...contracts[name], contractId: id } : contracts[name];
+
+    set = /** @type {import("@dusk-network/networks").Network} */ ({
+      ...net,
+      duskEvm: {
+        ...net.duskEvm,
+        contracts: {
+          ...contracts,
+          ["l1_standard_bridge"]: as("l1_standard_bridge", bridge),
+          ["optimism_portal"]: as("optimism_portal", portal),
+        },
+      },
+    });
+    withSetBridge.set(net, set);
+  }
+
+  return set;
+}
+
 /**
  * Whether a contract is the node's network's DuskEVM bridge or Portal.
  *
  * @param {unknown} contractId
  */
 export function isBridgeContract(contractId) {
-  const net = get(nodeNetwork);
+  const net = bridgeNetwork();
 
   return net ? isNetworkBridge(net, contractId) : false;
 }
@@ -102,7 +155,7 @@ export function isBridgeContract(contractId) {
  * @returns {BridgeCall | null | undefined}
  */
 export function decodeBridgeCall({ contractId, data, fnName }) {
-  const net = get(nodeNetwork);
+  const net = bridgeNetwork();
 
   if (!net || !isNetworkBridge(net, contractId)) {
     return undefined;
