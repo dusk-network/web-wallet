@@ -10,13 +10,16 @@
   } from "@mdi/js";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
-    closeDuskName,
     contactsStore,
     markContactNameChecked,
     markContactNameMoved,
     saveContact,
   } from "$lib/contacts";
-  import { asDuskName, isDuskName } from "$lib/dusk-domains";
+  import {
+    asDuskName,
+    closeDuskName,
+    isDuskName,
+  } from "@duskdomains/sdk/names";
   import { addBasePath, pageTitle } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";

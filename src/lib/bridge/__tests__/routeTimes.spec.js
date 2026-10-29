@@ -5,7 +5,6 @@ import { depositStageMessage } from "$lib/bridge/depositLifecycle";
 import {
   DEPOSIT,
   WITHDRAWAL,
-  aboutTime,
   migrationRoute,
   routeTime,
   routeTimeText,
@@ -29,26 +28,6 @@ const CHAIN = {
 const text = (route, timing) => routeTimeText(routeTime(route, timing));
 
 describe("route times", () => {
-  it("reads as an estimate, rounded up on a scale that reads at a glance", () => {
-    expect(
-      [
-        45, 172, 600, 660, 3_400, 3_600, 4_000, 5_400, 5_460, 36_000, 608_200,
-      ].map(aboutTime)
-    ).toStrictEqual([
-      "~1 min",
-      "~3 min",
-      "~10 min",
-      "~15 min",
-      "~1 hour",
-      "~1 hour",
-      "~70 min",
-      "~90 min",
-      "~2 hours",
-      "~10 hours",
-      "~7 days",
-    ]);
-  });
-
   it("are each network's own, as its file says, and another network's never stands in", () => {
     const { mainnet, testnet } = networks;
 

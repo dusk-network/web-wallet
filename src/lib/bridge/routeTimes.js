@@ -12,6 +12,7 @@
  */
 
 import { routes } from "@dusk-network/networks";
+import { aboutTime } from "@dusk-network/networks/format";
 
 /** Dusk makes a block every 10 seconds: a deposit waits for one. */
 const DUSK_BLOCK_SECONDS = 10;
@@ -116,40 +117,6 @@ export function routeTime(route, { chain = null, net = null } = {}) {
   const seconds = typicalSeconds(route, net);
 
   return seconds ? { seconds, source: "network" } : null;
-}
-
-/**
- * A time as an estimate, rounded up on a scale that reads at a glance:
- * "~1 min", "~15 min", "~1 hour", "~70 min", "~10 hours", "~7 days".
- *
- * @param {number} seconds
- */
-export function aboutTime(seconds) {
-  let minutes = Math.max(1, Math.ceil(Number(seconds) / 60));
-
-  if (minutes > 10 && minutes < 60) {
-    minutes = Math.ceil(minutes / 5) * 5;
-  } else if (minutes > 60 && minutes <= 90) {
-    minutes = Math.ceil(minutes / 10) * 10;
-  }
-
-  if (minutes < 60) {
-    return `~${minutes} min`;
-  }
-
-  if (minutes === 60) {
-    return "~1 hour";
-  }
-
-  if (minutes <= 90) {
-    return `~${minutes} min`;
-  }
-
-  const hours = Math.round(minutes / 60);
-
-  return hours < 48
-    ? `~${hours} hours`
-    : `~${Math.round(minutes / 1_440)} days`;
 }
 
 /**

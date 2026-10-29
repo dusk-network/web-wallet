@@ -8,13 +8,12 @@ import {
 } from "$lib/bridge/depositActivityStorage";
 import { settingsStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
-import { networks } from "@dusk-network/networks";
+import { networks, routes } from "@dusk-network/networks";
 
 import {
   claimedWithdrawals,
   describeRow,
   fullDateTime,
-  routeAccountsOf,
 } from "$lib/activity/present";
 
 import TransactionDetail from "../TransactionDetail.svelte";
@@ -43,7 +42,11 @@ const claims = (read) =>
       },
     ],
   ]);
-const context = { bridgeContracts: new Set([BRIDGE]), locale: "en" };
+const context = {
+  bridgeContracts: new Set([BRIDGE]),
+  locale: "en",
+  net: networks.testnet,
+};
 
 /**
  * @param {Partial<ActivityRow>} fields
@@ -308,8 +311,11 @@ describe("TransactionDetail", () => {
       chainId: 0,
       name: "local",
     });
-    const routeAccounts = routeAccountsOf(local);
-    const [payouts] = [...routeAccounts.payouts.keys()];
+    const [payouts] = routes(local).flatMap((route) =>
+      route.kind === "migration" && route.payoutAccount
+        ? [route.payoutAccount]
+        : []
+    );
     const payout = row({
       amount: "3500000000",
       contractId: undefined,
@@ -326,7 +332,7 @@ describe("TransactionDetail", () => {
     try {
       const { container, getByText } = show(
         payout,
-        { routeAccounts },
+        { net: local },
         { network: "Localnet" }
       );
 

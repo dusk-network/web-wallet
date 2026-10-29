@@ -61,7 +61,7 @@ function statusPatch(status) {
   }
 
   // Whom it pays on Dusk, as its message says.
-  const recipient = withdrawalRecipient(status.withdrawal?.data);
+  const recipient = withdrawalRecipient(status.withdrawal);
 
   if (recipient) {
     patch.recipient = recipient;

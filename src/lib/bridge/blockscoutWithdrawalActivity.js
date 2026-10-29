@@ -1,7 +1,8 @@
 import { duskEvm } from "$lib/web3/walletConnection";
-import { toFunctionSelector } from "viem";
+import { duskRecipientOf } from "@dusk-network/networks/duskevm";
+import { decodeFunctionData, parseAbi, toFunctionSelector } from "viem";
 
-import { withdrawalCallRecipient } from "$lib/bridge/bridgeCalls";
+import { recipientOf } from "$lib/bridge/bridgeCalls";
 
 import {
   MAX_ACTIVITY_ITEMS,
@@ -12,9 +13,30 @@ import {
 } from "$lib/bridge/withdrawalActivityValues";
 
 const MAX_TRANSACTION_PAGES = 10;
-const NATIVE_WITHDRAWAL_SELECTOR = toFunctionSelector(
-  "bridgeETHTo(address,uint32,bytes)"
-);
+const BRIDGE_ETH_TO = parseAbi([
+  "function bridgeETHTo(address, uint32, bytes)",
+]);
+const NATIVE_WITHDRAWAL_SELECTOR = toFunctionSelector(BRIDGE_ETH_TO[0]);
+
+/**
+ * Whom a withdrawal pays on Dusk, from the call that sent it on DuskEVM:
+ * the bridge's `bridgeETHTo`. Null for any other call.
+ *
+ * @param {unknown} input The call's data, in hex
+ * @returns {string | null}
+ */
+function withdrawalCallRecipient(input) {
+  try {
+    const { args } = decodeFunctionData({
+      abi: BRIDGE_ETH_TO,
+      data: `0x${String(input).replace(/^0x/i, "")}`,
+    });
+
+    return recipientOf(duskRecipientOf(args[2]));
+  } catch {
+    return null;
+  }
+}
 
 /** @typedef {import("./withdrawalActivityValues").WithdrawalActivityItem} WithdrawalActivityItem */
 

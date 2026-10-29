@@ -116,7 +116,7 @@ type WalletStoreServices = {
     amount: bigint,
     gas: Gas,
     options?: {
-      extraData?: Uint8Array | ArrayBuffer | number[];
+      extraData?: Uint8Array | number[];
       minGasLimit?: number;
     }
   ) => Promise<TransactionInfo>;

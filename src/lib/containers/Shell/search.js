@@ -7,10 +7,10 @@
 
 import { ProfileGenerator } from "@dusk/w3sper";
 import { labelFor, networks } from "@dusk-network/networks";
+import { asDuskName, isDuskName } from "@duskdomains/sdk/names";
 
 import { contractLabel } from "$lib/activity/knownContracts";
 import { describeRow, shortAddress } from "$lib/activity/present";
-import { asDuskName, isDuskName } from "$lib/dusk-domains";
 
 /**
  * @typedef {{

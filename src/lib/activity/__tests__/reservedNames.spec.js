@@ -1,179 +1,104 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { get, writable } from "svelte/store";
+import { describe, expect, it } from "vitest";
+import { get } from "svelte/store";
 
-import * as sdk from "@duskdomains/sdk";
+import reservedNames, { reservationNames } from "../reservedNames";
 
-import { nameCommitOf } from "../knownContracts";
-import reservedNames, {
-  reservationNames,
-  revealedName,
-} from "../reservedNames";
-
-import { calls as REGISTRATIONS } from "./fixtures/registrations-testnet.json";
-
-const wallet = vi.hoisted(() => ({ account: "" }));
-
-vi.mock("$lib/stores", async (importOriginal) => {
-  /** @type {typeof import("$lib/stores")} */
-  const original = await importOriginal();
-
-  return {
-    ...original,
-    walletStore: {
-      ...original.walletStore,
-      /** @param {(value: any) => void} run */
-      subscribe(run) {
-        return writable({
-          currentProfile: { account: wallet.account },
-        }).subscribe(run);
-      },
-    },
-  };
-});
-
-const [ALICE] = REGISTRATIONS;
+const STORE =
+  "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199";
+const COMMITMENT = "c0".repeat(32);
 
 /**
- * The account that registered alice.dusk on testnet: the one its record
- * names, after the record's key.
+ * A name's registration, as the history has it: checked for its account,
+ * it reveals `reservation`.
+ *
+ * @param {Partial<ActivityRow>} fields
+ * @param {string | null} [reservation]
+ * @returns {ActivityRow}
  */
-const OWNER = sdk.encodeBase58(
-  Uint8Array.from(ALICE.data.match(/../g) ?? [], (b) => parseInt(b, 16)).slice(
-    "moonlight_address".length,
-    "moonlight_address".length + 96
-  )
-);
-
-/** Another testnet account. */
-const OTHER =
-  "21n5ncyuJkRr9JRoxvWRLMcqcWxmVSSLdefDMTwQeNyZZikU5dcXuawf9kNuG1CxFvz32oBM965PQ2PCcWrwX8YX9a7fqaaQ6fabDhxW5mveEyAt4LgdY3KLH9iKtSfMMLNz";
-
-/** alice.dusk's registration, as the history has it. */
-const registration = /** @type {ActivityRow} */ ({
-  blockHeight: ALICE.blockHeight,
-  contractId: ALICE.contractId,
+const registration = (fields, reservation = COMMITMENT) => ({
+  blockHeight: 100,
+  contractId: STORE,
   fnName: "register",
-  hash: ALICE.hash,
-  nameCommit: nameCommitOf(ALICE),
+  hash: "d1".repeat(32),
+  nameCommit: {
+    kind: "registration",
+    name: "alice.dusk",
+    reservation,
+    role: "store",
+  },
   registeredName: "alice.dusk",
   source: "archive",
   status: "executed",
+  ...fields,
 });
 
-/** Its reservation: the commitment the registration reveals. */
-const reservation = /** @type {ActivityRow} */ ({
-  blockHeight: ALICE.blockHeight - 20,
-  contractId: ALICE.contractId,
+/**
+ * Its reservation, of `commitment`.
+ *
+ * @param {Partial<ActivityRow>} fields
+ * @param {string} [commitment]
+ * @returns {ActivityRow}
+ */
+const reservation = (fields, commitment = COMMITMENT) => ({
+  blockHeight: 80,
+  contractId: STORE,
   fnName: "commit",
-  hash: "c0".repeat(32),
-  nameCommit: { commitment: nameCommitOf(ALICE)?.commitment ?? "" },
+  hash: "c1".repeat(32),
+  nameCommit: { kind: "reservation", reservation: commitment, role: "store" },
   source: "archive",
   status: "executed",
-});
-
-describe("revealedName", () => {
-  it("should give the name a registration reveals, for the account that sent it only", () => {
-    expect(revealedName(registration, OWNER, sdk)).toBe("alice.dusk");
-    expect(revealedName(registration, OTHER, sdk)).toBeNull();
-    expect(revealedName(registration, "not an account", sdk)).toBeNull();
-  });
-
-  it("should give none where what it reveals doesn't make its commitment", () => {
-    const commit = /** @type {import("../knownContracts").NameCommit} */ (
-      registration.nameCommit
-    );
-
-    for (const nameCommit of [
-      { ...commit, secret: "00".repeat(32) },
-      { ...commit, node: "00".repeat(32) },
-      { ...commit, commitment: "00".repeat(32) },
-      { commitment: commit.commitment },
-    ]) {
-      expect(revealedName({ ...registration, nameCommit }, OWNER, sdk)).toBe(
-        null
-      );
-    }
-
-    expect(
-      revealedName({ ...registration, registeredName: "bob.dusk" }, OWNER, sdk)
-    ).toBeNull();
-  });
+  ...fields,
 });
 
 describe("reservationNames", () => {
-  /** @param {ActivityRow} row */
-  const reveals = (row) => revealedName(row, OWNER, sdk);
-
   it("should name a reservation by the registration after it that reveals it", () => {
-    expect(
-      reservationNames([registration, reservation], reveals)
-    ).toStrictEqual(new Map([[reservation.hash, "alice.dusk"]]));
+    expect(reservationNames([registration({}), reservation({})])).toStrictEqual(
+      new Map([["c1".repeat(32), "alice.dusk"]])
+    );
 
     // Pending: a registration not in a block yet comes after one that is,
     // and two not in one yet go by when they were sent.
-    const pending = {
-      ...registration,
+    const pending = registration({
       blockHeight: undefined,
-      source: /** @type {const} */ ("local"),
+      source: "local",
       submittedAt: 2,
-    };
+    });
 
-    expect(reservationNames([pending, reservation], reveals).size).toBe(1);
+    expect(reservationNames([pending, reservation({})]).size).toBe(1);
     expect(
-      reservationNames(
-        [
-          pending,
-          {
-            ...reservation,
-            blockHeight: undefined,
-            source: "local",
-            submittedAt: 1,
-          },
-        ],
-        reveals
-      ).size
+      reservationNames([
+        pending,
+        reservation({
+          blockHeight: undefined,
+          source: "local",
+          submittedAt: 1,
+        }),
+      ]).size
     ).toBe(1);
   });
 
   it("should name no reservation that no registration after it reveals", () => {
-    // After its registration, or another commitment, or not revealed.
-    expect(
-      reservationNames(
-        [{ ...reservation, blockHeight: ALICE.blockHeight + 1 }, registration],
-        reveals
-      ).size
-    ).toBe(0);
-    expect(
-      reservationNames(
-        [
-          registration,
-          { ...reservation, nameCommit: { commitment: "00".repeat(32) } },
-        ],
-        reveals
-      ).size
-    ).toBe(0);
-    expect(reservationNames([registration, reservation], () => null).size).toBe(
-      0
-    );
+    // After its registration, of another commitment, or not revealed for
+    // the history's account.
+    for (const rows of [
+      [registration({}), reservation({ blockHeight: 101 })],
+      [registration({}), reservation({}, "00".repeat(32))],
+      [registration({}, null), reservation({})],
+    ]) {
+      expect(reservationNames(rows).size).toBe(0);
+    }
   });
 });
 
 describe("reservedNames", () => {
-  afterEach(() => {
-    wallet.account = "";
-  });
-
-  it("should work the names out for the account the wallet shows", async () => {
-    wallet.account = OWNER;
-    await reservedNames.load([registration, reservation]);
+  it("should work the names out for the rows shown", () => {
+    reservedNames.load([registration({}), reservation({})]);
 
     expect(get(reservedNames)).toStrictEqual(
-      new Map([[reservation.hash, "alice.dusk"]])
+      new Map([["c1".repeat(32), "alice.dusk"]])
     );
 
-    // Another profile's history reveals none of them.
-    wallet.account = OTHER;
-    await reservedNames.load([registration, reservation]);
+    reservedNames.load([reservation({})]);
 
     expect(get(reservedNames).size).toBe(0);
   });

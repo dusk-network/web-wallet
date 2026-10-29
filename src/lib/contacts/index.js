@@ -15,4 +15,3 @@ export {
   removeContact,
   saveContact,
 } from "./contacts";
-export { closeDuskName, editDistance } from "./nameSuggest";

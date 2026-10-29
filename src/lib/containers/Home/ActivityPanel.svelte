@@ -12,7 +12,6 @@
     describeRow,
     groupByDay,
     matchesFilters,
-    routeAccountsOf,
     rowTime,
   } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
@@ -69,8 +68,9 @@
     claims: $withdrawalClaims,
     contactNames: contactNamesOf($contactsStore),
     locale,
+    net: $nodeNetwork,
+    network: $nodeNetwork?.name,
     reservations: $reservedNames,
-    routeAccounts: routeAccountsOf($nodeNetwork),
     sozuPools: $sozuPools,
   };
   $: described = state.rows.map((row) => ({

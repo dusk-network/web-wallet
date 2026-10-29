@@ -17,7 +17,6 @@
     groupByDay,
     isRowIncomplete,
     matchesFilters,
-    routeAccountsOf,
     rowTime,
     timeLabel,
     toCsv,
@@ -119,10 +118,10 @@
     claims: $withdrawalClaims,
     contactNames: contactNamesOf($contactsStore),
     locale,
+    // The routes to and from other chains: their transfers are the bridge's.
+    net: $nodeNetwork,
     network,
     reservations: $reservedNames,
-    // The routes to and from other chains: their transfers are the bridge's.
-    routeAccounts: routeAccountsOf($nodeNetwork),
     sozuPools: $sozuPools,
   };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;

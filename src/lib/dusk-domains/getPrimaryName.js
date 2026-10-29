@@ -80,10 +80,8 @@ export default function getPrimaryName(
   }
 
   return reuse(`${network} ${account}`, async () => {
-    const [{ decodeBase58 }, reader] = await Promise.all([
-      import("@duskdomains/sdk"),
-      getLensReader(network, nodeUrl),
-    ]);
+    const reader = await getLensReader(network, nodeUrl);
+    const { decodeBase58 } = await import("@duskdomains/sdk/lens-reader");
 
     // The lens takes the key as plain bytes.
     const primary = await reader.verifyPrimary(

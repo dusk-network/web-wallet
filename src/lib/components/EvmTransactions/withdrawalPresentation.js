@@ -1,14 +1,13 @@
-import { formatTime } from "@dusk-network/networks/format";
-import { get } from "svelte/store";
-
 import {
   beforeProofText,
   claimAfterProving,
-  claimDay,
   claimText,
-  durationWords,
   proveNowText,
-} from "$lib/bridge/claimDate";
+} from "@dusk-network/networks/duskevm";
+import { durationWords, formatTime } from "@dusk-network/networks/format";
+import { get } from "svelte/store";
+
+import { claimDay } from "$lib/bridge/claimDate";
 import { withdrawalStageDefaultMessage } from "$lib/bridge/withdrawalLifecycle";
 import { formatDusk } from "$lib/dusk/currency";
 import { shortenAddress } from "$lib/dusk/string";
@@ -63,7 +62,7 @@ export function activityAmount(item) {
  * made up from a fixed wait.
  *
  * @param {any} item
- * @returns {import("$lib/bridge/claimDate").ClaimDate | null}
+ * @returns {import("@dusk-network/networks/duskevm").ClaimDate | null}
  */
 export function claimDateOf(item) {
   return item?.readyAt
@@ -78,7 +77,7 @@ export function claimDateOf(item) {
 /**
  * @typedef {{
  *   locale?: string,
- *   proveNow?: import("$lib/bridge/claimDate").ClaimDate | null,
+ *   proveNow?: import("@dusk-network/networks/duskevm").ClaimDate | null,
  *   time?: RouteTime | null,
  * }} StageMessageOptions
  *   `time` is what the chain said about withdrawals (`routeTime`), and

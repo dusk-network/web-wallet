@@ -47,7 +47,8 @@ type ActivityDetails = {
 
   /**
    * What a `.dusk` name's reservation holds, or its registration reveals of
-   * it: null when it didn't read as one.
+   * it once that checks out for the history's account; null from a wallet
+   * that read it before.
    */
   nameCommit?: import("$lib/activity/knownContracts").NameCommit | null;
 

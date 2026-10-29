@@ -42,12 +42,13 @@
     }
   },
   "dependencies": {
-    "@dusk-network/networks": "0.2.0",
+    "@dusk-network/networks": "0.3.0",
     "@dusk/evm-sdk": "npm:@jsr/dusk__evm-sdk@0.1.0-beta.3",
     "@dusk/w3sper": "npm:@jsr/dusk__w3sper@1.6.0",
-    "@duskdomains/sdk": "npm:@jsr/duskdomains__sdk@0.5.4",
+    "@duskdomains/sdk": "npm:@jsr/duskdomains__sdk@0.6.1",
     "@duskit/css": "0.4.0",
     "@floating-ui/dom": "1.7.6",
+    "@hdauven/dusk-multicall": "npm:@jsr/hdauven__dusk-multicall@0.1.0",
     "@mdi/js": "7.4.47",
     "@reown/appkit": "1.8.20",
     "@reown/appkit-adapter-wagmi": "1.8.20",
@@ -56,6 +57,7 @@
     "dexie": "4.0.11",
     "qr-scanner": "1.4.2",
     "qrcode": "1.5.4",
+    "viem": "2.55.2",
     "web-streams-polyfill": "4.2.0"
   },
   "devDependencies": {

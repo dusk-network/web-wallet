@@ -66,7 +66,7 @@
   /** When a withdrawal can be claimed if it's proved now: read for the one ready to prove. */
   export let loadProveNow = loadProveNowClaim;
 
-  /** @type {import("$lib/bridge/claimDate").ClaimDate | null} */
+  /** @type {import("@dusk-network/networks/duskevm").ClaimDate | null} */
   let proveNow = null;
 
   /** The withdrawal `proveNow` is for, or is being read for. */

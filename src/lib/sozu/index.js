@@ -1,6 +1,5 @@
 export {
   SOZU_FN,
-  SOZU_POOLS,
   SOZU_URL,
   isSozuCall,
   isSozuFunction,

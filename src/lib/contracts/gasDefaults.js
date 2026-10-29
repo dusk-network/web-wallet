@@ -1,7 +1,13 @@
+import {
+  DEPOSIT_GAS,
+  SOZU_GAS,
+  TRANSFER_GAS,
+} from "@dusk-network/networks/gas";
+
 /**
  * Default gas limit and client-side minimum for each operation, in gas units.
  * The Dusk Wallet extension uses the same numbers for the operations both
- * wallets have.
+ * wallets have, from `@dusk-network/networks/gas` where it has them.
  *
  * Only the gas a transaction uses is charged, but a failed transaction,
  * including one that runs out of gas, is charged its whole limit. On mainnet
@@ -20,15 +26,15 @@ export const GAS_DEFAULTS = Object.freeze({
   allocate: Object.freeze({ limit: 50_000_000n, minimum: 30_000_000n }),
 
   // DuskEVM bridge deposits.
-  bridge: Object.freeze({ limit: 5_000_000n, minimum: 2_500_000n }),
+  bridge: DEPOSIT_GAS,
 
   "claim-rewards": Object.freeze({ limit: 50_000_000n, minimum: 35_000_000n }),
 
   // A stake with Sozu, and an unstake from it: calls of its pool.
-  "liquid-stake": Object.freeze({ limit: 5_000_000n, minimum: 2_500_000n }),
-  "liquid-unstake": Object.freeze({ limit: 10_000_000n, minimum: 4_000_000n }),
+  "liquid-stake": SOZU_GAS.sozu_stake,
+  "liquid-unstake": SOZU_GAS.sozu_unstake,
 
-  "public-transfer": Object.freeze({ limit: 2_500_000n, minimum: 2_000_000n }),
+  "public-transfer": TRANSFER_GAS,
   shield: Object.freeze({ limit: 50_000_000n, minimum: 30_000_000n }),
   "shielded-transfer": Object.freeze({
     limit: 50_000_000n,
@@ -38,14 +44,6 @@ export const GAS_DEFAULTS = Object.freeze({
   unshield: Object.freeze({ limit: 50_000_000n, minimum: 30_000_000n }),
   unstake: Object.freeze({ limit: 50_000_000n, minimum: 35_000_000n }),
 });
-
-/**
- * Proving and finalizing a DuskEVM withdrawal spend about 2.3M gas, but have
- * no gas editor, and finalizing consumes the withdrawal even if its own call
- * runs out of gas. They get a far larger limit, which costs nothing unless
- * the transaction fails.
- */
-export const WITHDRAWAL_GAS_LIMIT = 50_000_000n;
 
 const entries = Object.values(GAS_DEFAULTS);
 

@@ -88,7 +88,7 @@
     ? stakeInfo.amount.value + stakeInfo.amount.locked
     : null;
   $: ({ rows } = $activityState);
-  $: hasPastStaking = rows.some((row) => isStakingRow(row, $sozuPools));
+  $: hasPastStaking = rows.some((row) => isStakingRow(row, $sozuPools, net));
 
   // What is staked with Sozu, read only for an account that called a pool
   // of its: read, a pool its hub named is known from then on.

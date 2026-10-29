@@ -18,6 +18,7 @@
  * entries. The shielded history is phoenixHistory.js's.
  */
 
+import { nameCall } from "@duskdomains/sdk/call-facts";
 import { get } from "svelte/store";
 
 import { decodeBridgeCall, isBridgeContract } from "$lib/bridge/bridgeCalls";
@@ -25,12 +26,6 @@ import nodeNetwork from "$lib/stores/nodeNetwork";
 
 import * as defaultStore from "./activityStore";
 import { STAKE_CONTRACT, TRANSFER_CONTRACT, TX_KIND } from "./constants";
-import {
-  isNameCommitCall,
-  isNameRegistration,
-  nameCommitOf,
-  registeredNameOf,
-} from "./knownContracts";
 
 export { STAKE_CONTRACT, TRANSFER_CONTRACT };
 
@@ -1014,6 +1009,7 @@ class HistorySync {
   /** @param {number} maxRequests */
   details(maxRequests) {
     return fillDetails({
+      account: this.options.account,
       epoch: this.epoch,
       maxRequests,
       onStep: () => this.options.onStep?.(this.meta),
@@ -1332,29 +1328,48 @@ export const errorText = (err) =>
 const textOrUndefined = (value) => (value ? String(value) : undefined);
 
 /**
+ * What a call to Dusk Domains on the node's network is, as `nameCall` reads
+ * it: a registration with the account that sent it says whether it reveals
+ * that account's reservation. Null for any other call.
+ *
+ * @param {{ contractId?: string, data?: unknown, fnName?: string }} call
+ * @param {string} [sender]
+ */
+const nameCallOf = ({ contractId, data, fnName }, sender) =>
+  nameCall(
+    {
+      args: typeof data === "string" ? data : null,
+      contractId: contractId ?? "",
+      fnName: fnName ?? "",
+    },
+    get(nodeNetwork)?.name ?? "",
+    sender
+  );
+
+/**
  * Whether an entry's details are still to look up: it has none, or it is a
  * call to the bridge looked up before the history read what bridge calls
  * do, or a withdrawal's proof or claim read before the history kept the
  * withdrawal's hash, which its claim date is read by, or whom it pays (none
- * read is kept as null), or a `.dusk` name's
- * registration read before the history read which name it was, or a
- * reservation or registration before it read what they hold of each other.
+ * read is kept as null), or a `.dusk` name's reservation or registration
+ * read before the history read what they hold of each other, checked.
  *
- * @param {{ bridge?: import("$lib/bridge/bridgeCalls").BridgeCall | null, contractId?: string, detailsAt?: number, fnName?: string, nameCommit?: import("./knownContracts").NameCommit | null, registeredName?: string | null }} entry
+ * @param {{ bridge?: import("$lib/bridge/bridgeCalls").BridgeCall | null, contractId?: string, detailsAt?: number, fnName?: string, nameCommit?: import("./knownContracts").NameCommit | null }} entry
  */
 export const needsDetails = (entry) =>
   !entry.detailsAt ||
   (entry.bridge === undefined && isBridgeContract(entry.contractId)) ||
   ((entry.bridge?.kind === "prove" || entry.bridge?.kind === "claim") &&
     (!entry.bridge.hash || entry.bridge.recipient === undefined)) ||
-  (entry.registeredName === undefined && isNameRegistration(entry)) ||
-  (entry.nameCommit === undefined && isNameCommitCall(entry));
+  (!entry.nameCommit?.kind &&
+    /^(?:reservation|registration)$/.test(nameCallOf(entry)?.kind ?? ""));
 
 /**
  * @param {any} tx
+ * @param {string} [account] The account the history is of
  * @returns {ActivityDetails}
  */
-function detailsOf(tx) {
+function detailsOf(tx, account) {
   const gasSpent = u64(tx.gasSpent);
   const gasPrice = u64(dig(tx, "tx", "gasPrice"));
   const seconds = Number(tx.blockTimestamp);
@@ -1364,8 +1379,10 @@ function detailsOf(tx) {
   const fnName = textOrUndefined(dig(tx, "tx", "callData", "fnName"));
   const data = dig(tx, "tx", "callData", "data");
 
-  const registeredName = registeredNameOf({ contractId, data, fnName });
-  const nameCommit = nameCommitOf({ contractId, data, fnName });
+  const name = nameCallOf({ contractId, data, fnName }, account);
+  // A name's reservation, or its registration, as it reads.
+  const step =
+    name?.kind === "reservation" || name?.kind === "registration" ? name : null;
 
   return {
     blockHash: HASH.test(blockHash) ? blockHash : undefined,
@@ -1378,8 +1395,10 @@ function detailsOf(tx) {
     gasLimit: u64(dig(tx, "tx", "gasLimit")).toString(),
     gasPrice: gasPrice.toString(),
     gasSpent: gasSpent.toString(),
-    ...(nameCommit === undefined ? {} : { nameCommit }),
-    ...(registeredName === undefined ? {} : { registeredName }),
+    ...(step ? { nameCommit: step } : {}),
+    ...(step?.kind === "registration"
+      ? { registeredName: step.name ?? null }
+      : {}),
     success: !err,
     timestamp: Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null,
   };
@@ -1387,13 +1406,15 @@ function detailsOf(tx) {
 
 /**
  * Times, outcomes, fees and calls of transactions, from one aliased request:
- * by hash, for those the node has.
+ * by hash, for those the node has. A `.dusk` name's registration is checked
+ * against `account`, the one whose history it is, as its sender.
  *
  * @param {string} url
  * @param {string[]} hashes At most DETAILS_BATCH
+ * @param {string} [account]
  * @returns {Promise<Map<string, ActivityDetails>>}
  */
-export async function fetchTxDetails(url, hashes) {
+export async function fetchTxDetails(url, hashes, account) {
   const list = hashes.filter((h) => HASH.test(h)).slice(0, DETAILS_BATCH);
 
   /** @type {Map<string, ActivityDetails>} */
@@ -1413,7 +1434,7 @@ export async function fetchTxDetails(url, hashes) {
     const tx = data?.[`t${i}`];
 
     if (tx && typeof tx === "object") {
-      out.set(hash, detailsOf(tx));
+      out.set(hash, detailsOf(tx, account));
     }
   });
 
@@ -1453,6 +1474,7 @@ export async function fetchTxNonce(url, hash) {
  * Details for the newest kept entries that have none, a batch per request.
  *
  * @param {{
+ *   account: string,
  *   entries?: ActivityStoredEntry[] | ActivityEntry[],
  *   epoch?: number,
  *   maxRequests: number,
@@ -1463,6 +1485,7 @@ export async function fetchTxNonce(url, hash) {
  * }} options
  */
 async function fillDetails({
+  account,
   entries,
   epoch,
   maxRequests,
@@ -1489,7 +1512,8 @@ async function fillDetails({
   for (let i = 0; i < missing.length && requests > 0; i += DETAILS_BATCH) {
     const details = await fetchTxDetails(
       url,
-      missing.slice(i, i + DETAILS_BATCH)
+      missing.slice(i, i + DETAILS_BATCH),
+      account
     );
 
     // A transaction the node doesn't have yet is looked up again next time.
@@ -1525,6 +1549,7 @@ export async function fillActivityDetails({
   const missing = entries.filter(needsDetails);
 
   await fillDetails({
+    account,
     entries: missing,
     epoch: epoch ?? (await store.getActivityEpoch()),
     maxRequests: Math.ceil(missing.length / DETAILS_BATCH),

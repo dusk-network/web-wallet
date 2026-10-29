@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { decodeBase58 } from "@duskdomains/sdk";
-
-import releases from "../dusk-domains-releases.json";
+import { PINNED_RELEASES as releases } from "@duskdomains/sdk/releases";
 
 const { createLensReader } = vi.hoisted(() => ({
   createLensReader: vi.fn(),

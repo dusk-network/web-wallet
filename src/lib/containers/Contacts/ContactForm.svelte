@@ -4,7 +4,7 @@
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { FullAddress, SectionHead } from "$lib/components";
   import { addressType, findContact, saveContact } from "$lib/contacts";
-  import { isDuskName } from "$lib/dusk-domains";
+  import { isDuskName } from "@duskdomains/sdk/names";
 
   /**
    * The contact changed, or null for a new one.

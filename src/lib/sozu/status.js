@@ -7,9 +7,11 @@
 
 import { dataDrivers } from "@dusk/w3sper";
 import { readSozuStatus as readStatus } from "@dusk-network/networks/sozu";
+import { createMulticallFetch } from "@hdauven/dusk-multicall";
+import { get } from "svelte/store";
 
-import { createMulticallFetch } from "$lib/activity/multicallFetch";
 import { addBasePath } from "$lib/navigation";
+import nodeNetwork from "$lib/stores/nodeNetwork";
 
 import { noteSozuPool } from "./config";
 
@@ -61,17 +63,20 @@ export function loadSozuDriver(name) {
 const batchedFetches = new Map();
 
 /**
- * The node's batched fetch, one per node, so the batcher keeps what it
- * learnt about the node.
+ * The node's batched fetch, one per node and multicall, so the batcher keeps
+ * what it learnt about the node. A network without the multicall reads
+ * each alone.
  *
  * @param {string} nodeUrl
  */
 function batchedFetch(nodeUrl) {
-  let batched = batchedFetches.get(nodeUrl);
+  const multicallId = get(nodeNetwork)?.contracts.multicall ?? null;
+  const key = `${nodeUrl} ${multicallId}`;
+  let batched = batchedFetches.get(key);
 
   if (!batched) {
-    batched = createMulticallFetch({ nodeUrl });
-    batchedFetches.set(nodeUrl, batched);
+    batched = createMulticallFetch({ multicallId, nodeUrl });
+    batchedFetches.set(key, batched);
   }
 
   return batched;
