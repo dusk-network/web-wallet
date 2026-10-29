@@ -384,7 +384,7 @@ export function routeTransferRow(transfer, options) {
       group === "failed" ? "Failed" : group === "progress" ? "Pending" : "",
     title: `${name(route.origin)} to ${name(route.destination)}`,
     to: route.destination,
-    when: transfer.at,
+    when: transfer.at ?? transfer.paidAt ?? 0,
   };
 }
 

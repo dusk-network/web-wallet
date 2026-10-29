@@ -12,8 +12,10 @@
     describeRow,
     groupByDay,
     matchesFilters,
+    routeAccountsOf,
     rowTime,
   } from "$lib/activity/present";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
   import { addBasePath } from "$lib/navigation";
 
   import ActivityRowItem from "./ActivityRowItem.svelte";
@@ -68,6 +70,7 @@
     contactNames: contactNamesOf($contactsStore),
     locale,
     reservations: $reservedNames,
+    routeAccounts: routeAccountsOf($nodeNetwork),
     sozuPools: $sozuPools,
   };
   $: described = state.rows.map((row) => ({

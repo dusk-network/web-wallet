@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { networks } from "@dusk-network/networks";
 
+import { cardRoutes } from "$lib/bridge/cardRoutes";
 import { claimDay } from "$lib/bridge/claimDate";
 
 import {
   BRIDGE_ACTIVITY_GROUPS,
   depositRow,
   groupBridgeActivity,
+  routeTransferRow,
   withdrawalDuskTransactions,
   withdrawalRow,
 } from "../EvmTransactions/bridgeActivity";
@@ -47,6 +50,35 @@ const deposit = (stage, fields = {}) => ({
   stage,
   transactionHash: "ab".repeat(32),
   ...fields,
+});
+
+describe("routeTransferRow", () => {
+  it("lists a migration known only by its payout when it was paid, saying so", () => {
+    const route = /** @type {import("$lib/bridge/cardRoutes").CardRoute} */ (
+      cardRoutes(networks.mainnet).find(({ id }) => id === "bsc-to-dusk")
+    );
+
+    expect(
+      routeTransferRow(
+        {
+          amountLux: 4_000_000_000n,
+          at: null,
+          hash: `0x${"bf".repeat(32)}`,
+          kind: "migration",
+          paidAt: CLAIM_AT,
+          payout: "5c".repeat(32),
+          recipient: "",
+          route,
+          stage: "paid",
+        },
+        options
+      )
+    ).toMatchObject({
+      group: "done",
+      line: `Paid ${claimDay(CLAIM_AT, "en")}`,
+      when: CLAIM_AT,
+    });
+  });
 });
 
 describe("withdrawalRow", () => {

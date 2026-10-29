@@ -135,9 +135,17 @@ describe("migrations into Dusk", () => {
       memo: `0x${"c3".repeat(32)}`,
     });
 
+    // When it was sent isn't known from its payout: only when it was paid.
     expect(
       activity.migrationTransfers([payout], [], ROUTES, ACCOUNT)
-    ).toMatchObject([{ hash: `0x${"c3".repeat(32)}`, stage: "paid" }]);
+    ).toMatchObject([
+      {
+        at: null,
+        hash: `0x${"c3".repeat(32)}`,
+        paidAt: payout.timestamp,
+        stage: "paid",
+      },
+    ]);
 
     activity.rememberMigration({
       amountLux: String(DUSK),

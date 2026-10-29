@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { networks } from "@dusk-network/networks";
 
 import { claimDay } from "$lib/bridge/claimDate";
 
@@ -13,6 +14,7 @@ import {
   groupByDay,
   isStakingRow,
   matchesFilters,
+  routeAccountsOf,
   timeLabel,
   toCsv,
 } from "../present";
@@ -441,6 +443,77 @@ describe("describeRow", () => {
     expect(describeRow(row({ privacy: "shielded" }), context).privacy).toBe(
       "Shielded"
     );
+  });
+});
+
+describe("transfers on the routes to and from other chains", () => {
+  const routeAccounts = routeAccountsOf(networks.mainnet);
+  const [BSC_BRIDGE, ETHEREUM_PAYOUTS] = [...routeAccounts.payouts];
+  const withRoutes = { ...context, routeAccounts };
+
+  it("are known by the routes' accounts, as the network's file calls them", () => {
+    expect(routeAccounts.labels).toStrictEqual(
+      new Map([
+        [BSC_BRIDGE, "BSC bridge"],
+        [ETHEREUM_PAYOUTS, "Ethereum migration payouts"],
+      ])
+    );
+    expect(routeAccounts.services).toStrictEqual(new Set([BSC_BRIDGE]));
+    expect(routeAccountsOf(null).labels.size).toBe(0);
+
+    // One the file doesn't name goes by its chain.
+    const unnamed = {
+      ...networks.mainnet,
+      display: { ...networks.mainnet.display, labels: {} },
+    };
+
+    expect([...routeAccountsOf(unnamed).labels.values()]).toStrictEqual([
+      "BNB Smart Chain bridge",
+      "Ethereum bridge",
+    ]);
+  });
+
+  it("are the bridge's: a migration's payout in, and a transfer out to the route's account, by the accounts' names", () => {
+    const payout = row({
+      counterparty: ETHEREUM_PAYOUTS,
+      direction: "in",
+      from: ETHEREUM_PAYOUTS,
+      memo: `0x${"c3".repeat(32)}`,
+      to: undefined,
+    });
+    const out = row({ memo: `0x${"11".repeat(20)}`, to: BSC_BRIDGE });
+
+    expect(describeRow(payout, withRoutes)).toMatchObject({
+      category: "bridge",
+      icon: "received",
+      line: "Received",
+      title: "Ethereum migration payouts",
+      titleIsAddress: false,
+    });
+    expect(describeRow(out, withRoutes)).toMatchObject({
+      category: "bridge",
+      icon: "sent",
+      line: "Sent",
+      title: "BSC bridge",
+    });
+    expect(
+      matchesFilters(describeRow(out, withRoutes), out, { kind: "bridge" })
+    ).toBe(true);
+
+    // Without the network's routes, as before.
+    expect(describeRow(payout, context)).toMatchObject({
+      category: "received",
+      titleIsAddress: true,
+    });
+
+    // A send to an account that only pays migrations out isn't a transfer
+    // out, though it goes by the account's name.
+    expect(
+      describeRow(row({ to: ETHEREUM_PAYOUTS }), withRoutes)
+    ).toMatchObject({
+      category: "sent",
+      title: "Ethereum migration payouts",
+    });
   });
 });
 

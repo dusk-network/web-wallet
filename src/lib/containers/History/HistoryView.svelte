@@ -17,10 +17,12 @@
     groupByDay,
     isRowIncomplete,
     matchesFilters,
+    routeAccountsOf,
     rowTime,
     timeLabel,
     toCsv,
   } from "$lib/activity/present";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
   import TransactionDetail from "./TransactionDetail.svelte";
@@ -119,6 +121,8 @@
     locale,
     network,
     reservations: $reservedNames,
+    // The routes to and from other chains: their transfers are the bridge's.
+    routeAccounts: routeAccountsOf($nodeNetwork),
     sozuPools: $sozuPools,
   };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;

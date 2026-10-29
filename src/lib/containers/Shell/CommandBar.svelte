@@ -12,12 +12,14 @@
   import { archiveQuery, fetchTxDetails } from "$lib/activity/activityHistory";
   import {
     configuredBridgeContracts,
+    routeAccountsOf,
     shortAddress,
   } from "$lib/activity/present";
   import reservedNames from "$lib/activity/reservedNames";
   import { getVerifiedName, resolveDuskName } from "$lib/dusk-domains";
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
   import { duskExplorerBlock, duskExplorerTx, nodeBaseUrl } from "$lib/url";
 
   import { contactNamesOf, contactsStore } from "$lib/contacts";
@@ -67,6 +69,7 @@
       bridgeContracts,
       contactNames: contactNamesOf($contactsStore),
       reservations: $reservedNames,
+      routeAccounts: routeAccountsOf($nodeNetwork),
       sozuPools: $sozuPools,
     },
     profiles: profiles.map((profile, i) => {

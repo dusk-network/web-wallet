@@ -7,6 +7,7 @@
     startInactivityTimer,
   } from "$lib/navigation";
   import loginInfoStorage from "$lib/services/loginInfoStorage";
+  import { followRouteHistory } from "$lib/bridge/routeHistory";
   import { Shell } from "$lib/containers/Shell";
   import { gasPriceStore, settingsStore } from "$lib/stores";
 
@@ -27,6 +28,9 @@
   }
 
   onMount(() => gasPriceStore.startRefreshing());
+
+  // A migration's payout reaches the history while the wallet is open.
+  onMount(() => followRouteHistory());
 
   onDestroy(() => stopInactivityTimer());
 

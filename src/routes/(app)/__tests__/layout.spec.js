@@ -11,6 +11,7 @@ import { act, cleanup, render } from "@testing-library/svelte";
 import { ProfileGenerator } from "@dusk/w3sper";
 
 import * as navigation from "$lib/navigation";
+import * as routeHistory from "$lib/bridge/routeHistory";
 import loginInfoStorage from "$lib/services/loginInfoStorage";
 import { settingsStore, walletStore } from "$lib/stores";
 
@@ -80,6 +81,22 @@ describe("App layout.svelte", () => {
   afterAll(() => {
     logoutSpy.mockRestore();
     loginInfoSpy.mockRestore();
+  });
+
+  it("should follow the history for the transfers to and from other chains while the wallet is open", () => {
+    const stop = vi.fn();
+    const followSpy = vi
+      .spyOn(routeHistory, "followRouteHistory")
+      .mockReturnValue(stop);
+
+    render(Layout);
+
+    expect(followSpy).toHaveBeenCalledOnce();
+
+    cleanup();
+
+    expect(stop).toHaveBeenCalledOnce();
+    followSpy.mockRestore();
   });
 
   it("should logout the user after fifteen minutes without activity", async () => {

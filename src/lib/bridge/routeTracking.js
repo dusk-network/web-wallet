@@ -167,7 +167,7 @@ export async function searchArrival(
     return null;
   }
 
-  const { head, start } = await searchSpan(rpc, transfer.at, scanFrom);
+  const { head, start } = await searchSpan(rpc, transfer.at ?? 0, scanFrom);
   const search = {
     taken,
     to: `0x${transfer.recipient.slice(2).toLowerCase().padStart(64, "0")}`,
@@ -222,7 +222,9 @@ export async function followTransfers(transfers, arrivals, rpcFor = chainRpc) {
     transfers.flatMap(({ payout }) => (payout ? [payout] : []))
   );
 
-  for (const transfer of toFollow(transfers).sort((a, b) => a.at - b.at)) {
+  for (const transfer of toFollow(transfers).sort(
+    (a, b) => (a.at ?? 0) - (b.at ?? 0)
+  )) {
     const rpc = rpcFor(transfer.route.chain.rpcUrl);
 
     if (transfer.kind === "migration") {
