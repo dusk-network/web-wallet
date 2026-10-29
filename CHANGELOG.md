@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say in Bridge › Activity whom a withdrawal pays, and list one that pays someone else under Sent to someone else, its step offered quietly
 - Show when a deposit arrived on DuskEVM, and link its DuskEVM transaction, in its details
 - Name the contract a deposit calls on its Review
+- Name a name reservation after the registration that reveals it, else call it the first of two steps
 - Refuse an unstake from Sozu too small to burn any stDUSK, saying the least
 
 ### Changed
@@ -162,6 +163,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shorten IDs as the other Dusk apps do: Dusk's to six characters at each end, DuskEVM's to 0x and four at each end, an address with its checksum
 - Call the exact fee under Technical details Fee paid
 - Show the stDUSK a stake with Sozu got to four decimals, in full under Technical details
+- Offer alice.dusk as alice is typed in Send, without calling it a wrong address
+- Name transactions in the search as History does, with a call's method under the name
+- Name the CSV export after the network, the profile and the local day, as the extension does
 - Count a withdrawal's send on DuskEVM as the first of its three steps
 
 ### Removed

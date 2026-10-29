@@ -6,6 +6,7 @@ import {
   CSV_COLUMNS,
   CSV_CONTACT_COLUMN,
   claimedWithdrawals,
+  csvFileName,
   dayLabel,
   describeRow,
   fullDateTime,
@@ -223,6 +224,27 @@ describe("describeRow", () => {
         { ...context, network: "testnet" }
       )
     ).toMatchObject({ line: "Dusk Domains", title: "Registered alice.dusk" });
+
+    // A reservation: the first of two steps, until a registration after it
+    // reveals which name it was for.
+    const reservation = row({
+      amount: "0",
+      contractId: store,
+      fnName: "commit",
+      kind: "contract_call",
+      to: undefined,
+    });
+
+    expect(
+      describeRow(reservation, { ...context, network: "testnet" }).title
+    ).toBe("Name reservation (step 1 of 2)");
+    expect(
+      describeRow(reservation, {
+        ...context,
+        network: "testnet",
+        reservations: new Map([[reservation.hash, "alice.dusk"]]),
+      }).title
+    ).toBe("Reserved alice.dusk");
   });
 
   it("says where a bridge row's DUSK went: the DuskEVM address, or the withdrawal and its next step", () => {
@@ -526,6 +548,26 @@ describe("dayLabel and groupByDay", () => {
       ["Sat 24 Oct", 1],
       ["Time not known yet", 1],
     ]);
+  });
+});
+
+describe("csvFileName", () => {
+  it("names an export by the network, the profile and the day where the user is, as the extension does", () => {
+    // Past midnight in Amsterdam, still the day before in UTC.
+    const day = new Date(2026, 9, 29, 0, 46);
+
+    expect(csvFileName({ network: "testnet", profileIndex: 0 }, day)).toBe(
+      "dusk-activity-testnet-profile-1-2026-10-29.csv"
+    );
+    expect(csvFileName({ network: "Mainnet", profileIndex: 1 }, day)).toBe(
+      "dusk-activity-mainnet-profile-2-2026-10-29.csv"
+    );
+    expect(csvFileName({ network: "My node / 1" }, day)).toBe(
+      "dusk-activity-my-node-1-profile-1-2026-10-29.csv"
+    );
+    expect(csvFileName({}, day)).toBe(
+      "dusk-activity-wallet-profile-1-2026-10-29.csv"
+    );
   });
 });
 

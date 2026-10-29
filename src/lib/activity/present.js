@@ -38,13 +38,15 @@ import { configuredBridge } from "$lib/bridge/bridgeCalls";
  *   network?: string,
  *   now?: number,
  *   ownAccount?: string,
+ *   reservations?: Map<string, string>,
  *   sozuPools?: Set<string>,
  * }} PresentContext
  *
  * `claimed` holds the withdrawals the rows claim (claimedWithdrawals),
  * `claims` when the proved ones can be claimed, by their hashes, as the
- * chain says (withdrawalClaims in $lib/bridge), and `sozuPools` the pools
- * Sozu's hub named (sozuPools in $lib/sozu).
+ * chain says (withdrawalClaims in $lib/bridge), `reservations` the `.dusk`
+ * name each reservation was for, by its hash (reservedNames), and
+ * `sozuPools` the pools Sozu's hub named (sozuPools in $lib/sozu).
  *
  * @typedef {{
  *   claim: import("$lib/bridge/claimDate").ClaimDate | null,
@@ -224,9 +226,10 @@ function bridgeTitle(row) {
  * @param {ActivityIcon} icon
  * @param {Map<string, string>} [contactNames] Contact names by address
  * @param {string} [network] The network's name
+ * @param {Map<string, string>} [reservations] Reserved names by reservation
  * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
  */
-function titleOf(row, icon, contactNames, network) {
+function titleOf(row, icon, contactNames, network, reservations) {
   const kindTitle = row.kind ? KIND_TITLES.get(row.kind) : undefined;
 
   if (kindTitle) {
@@ -252,7 +255,13 @@ function titleOf(row, icon, contactNames, network) {
     return { title: "To yourself", titleIsAddress: false, verb: "Sent" };
   }
 
-  const named = icon === "call" ? knownCall(row, network) : null;
+  const named =
+    icon === "call"
+      ? knownCall(
+          { ...row, reservedName: reservations?.get(row.hash) },
+          network
+        )
+      : null;
 
   if (named) {
     return { title: named.label, titleIsAddress: false, verb: named.app };
@@ -339,13 +348,21 @@ function shownStatus(row) {
  * @returns {ActivityPresentation}
  */
 export function describeRow(row, context) {
-  const { bridgeContracts, contactNames, locale, network, sozuPools } = context;
+  const {
+    bridgeContracts,
+    contactNames,
+    locale,
+    network,
+    reservations,
+    sozuPools,
+  } = context;
   const { category, icon } = classify(row, bridgeContracts, sozuPools);
   const { title, titleIsAddress, verb } = titleOf(
     row,
     icon,
     contactNames,
-    network
+    network,
+    reservations
   );
   const status = shownStatus(row);
   const failed = status === "failed";
@@ -784,6 +801,28 @@ const csvStatus = (row) =>
  */
 const contactOf = (p, context) =>
   (p.counterparty && context.contactNames?.get(p.counterparty)) || "";
+
+/**
+ * An export's file name: the network, the profile and the day where the
+ * user is, as the wallet extension names its own:
+ * "dusk-activity-testnet-profile-1-2026-10-29.csv".
+ *
+ * @param {{ network?: string, profileIndex?: number }} what
+ * @param {Date} [now]
+ */
+export function csvFileName({ network, profileIndex = 0 }, now = new Date()) {
+  const slug = String(network ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const day = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+    .map((part) => String(part).padStart(2, "0"))
+    .join("-");
+  const profile = `profile-${Math.max(0, Math.floor(Number(profileIndex) || 0)) + 1}`;
+
+  return `${["dusk-activity", slug || "wallet", profile, day].join("-")}.csv`;
+}
 
 /**
  * The rows as CSV, one line each with the columns of CSV_COLUMNS, and the

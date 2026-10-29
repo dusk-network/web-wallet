@@ -45,6 +45,12 @@ type ActivityDetails = {
   gasPrice: string;
   gasSpent: string;
 
+  /**
+   * What a `.dusk` name's reservation holds, or its registration reveals of
+   * it: null when it didn't read as one.
+   */
+  nameCommit?: import("$lib/activity/knownContracts").NameCommit | null;
+
   /** The `.dusk` name a registration registered: null when it didn't read as one. */
   registeredName?: string | null;
   success: boolean;
@@ -77,6 +83,7 @@ type ActivityEntry = {
   hash: string;
   kind: ActivityKind;
   memo: string;
+  nameCommit?: import("$lib/activity/knownContracts").NameCommit | null;
   registeredName?: string | null;
   success: boolean | null;
   timestamp: number | null;
@@ -150,6 +157,7 @@ type ActivityRow = {
   hash: string;
   kind?: ActivityKind;
   memo?: string;
+  nameCommit?: import("$lib/activity/knownContracts").NameCommit | null;
   privacy?: "public" | "shielded";
   profileIndex?: number;
   registeredName?: string | null;

@@ -295,7 +295,7 @@ describe("TransactionDetail", () => {
       { network: "testnet" }
     );
 
-    expect(getByText("Reserved a .dusk name")).toBeInTheDocument();
+    expect(getByText("Name reservation (step 1 of 2)")).toBeInTheDocument();
     expect(getByText("Dusk Domains")).toBeInTheDocument();
     expect(container.textContent).toContain(store.slice(-6));
   });

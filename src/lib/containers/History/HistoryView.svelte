@@ -1,5 +1,6 @@
 <script>
   import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import reservedNames from "$lib/activity/reservedNames";
   import withdrawalClaims from "$lib/bridge/withdrawalClaims";
   import { sozuPools } from "$lib/sozu";
   import { createEventDispatcher } from "svelte";
@@ -10,6 +11,7 @@
   import {
     claimedWithdrawals,
     configuredBridgeContracts,
+    csvFileName,
     describeRow,
     fullDateTime,
     groupByDay,
@@ -35,6 +37,9 @@
   /** The account the history is of, and how the wallet names it. */
   /** @type {{ address: string, label: string } | null} */
   export let account = null;
+
+  /** The profile the history is of, from 0, for the export's file name. */
+  export let profileIndex = 0;
 
   /** @type {string | null} */
   export let selected = null;
@@ -97,13 +102,15 @@
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = `dusk-history-${network || "wallet"}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = csvFileName({ network, profileIndex });
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  // When the proved withdrawals can be claimed, as the chain says.
+  // When the proved withdrawals can be claimed, as the chain says, and
+  // which names the reservations were for.
   $: void withdrawalClaims.load(state.rows);
+  $: void reservedNames.load(state.rows);
   $: context = {
     bridgeContracts,
     claimed: claimedWithdrawals(state.rows),
@@ -111,6 +118,7 @@
     contactNames: contactNamesOf($contactsStore),
     locale,
     network,
+    reservations: $reservedNames,
     sozuPools: $sozuPools,
   };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;

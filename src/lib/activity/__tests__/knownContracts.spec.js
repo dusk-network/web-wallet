@@ -11,6 +11,7 @@ import {
   contractLabel,
   isNameRegistration,
   knownCall,
+  nameCommitOf,
   registeredNameOf,
 } from "../knownContracts";
 
@@ -45,7 +46,7 @@ describe("knownCall", () => {
     });
     expect(knownCall({ contractId: `0x${STORE}`, fnName: "commit" })).toEqual({
       app: "Dusk Domains",
-      label: "Reserved a .dusk name",
+      label: "Name reservation (step 1 of 2)",
     });
     expect(
       knownCall({ contractId: STORE, fnName: "other" }, "testnet")
@@ -62,6 +63,22 @@ describe("knownCall", () => {
     expect(
       knownCall({ contractId: "ab".repeat(32), fnName: "register" })
     ).toBeNull();
+  });
+
+  it("should say which name a reservation was for, once its registration revealed it", () => {
+    expect(
+      knownCall(
+        { contractId: STORE, fnName: "commit", reservedName: "alice.dusk" },
+        "testnet"
+      )
+    ).toEqual({ app: "Dusk Domains", label: "Reserved alice.dusk" });
+    // Only a reservation's.
+    expect(
+      knownCall(
+        { contractId: STORE, fnName: "renew", reservedName: "alice.dusk" },
+        "testnet"
+      )?.label
+    ).toBe("Renewed a .dusk name");
   });
 
   it("should say which name a registration registered, once that's read", () => {
@@ -186,5 +203,50 @@ describe("registeredNameOf", () => {
 
     tooLong[tooLong.length - 304 + 32 + 7] = 8;
     expect(registeredNameOf({ ...short, data: hexOf(tooLong) })).toBeNull();
+  });
+});
+
+describe("nameCommitOf", () => {
+  it("should read what a registration on testnet reveals of its reservation", () => {
+    for (const call of REGISTRATIONS) {
+      const root = call.data.slice(-608);
+
+      expect(nameCommitOf(call)).toStrictEqual({
+        commitment: root.slice(82, 146),
+        node: namehashHex(call.name),
+        secret: root.slice(146, 210),
+      });
+    }
+  });
+
+  it("should read a reservation's commitment, its 32 bytes and nothing else", () => {
+    const commitment = "c0".repeat(32);
+
+    expect(
+      nameCommitOf({ contractId: STORE, data: commitment, fnName: "commit" })
+    ).toStrictEqual({ commitment });
+
+    for (const data of ["c0".repeat(31), "c0".repeat(33), "", "xyz"]) {
+      expect(
+        nameCommitOf({ contractId: STORE, data, fnName: "commit" })
+      ).toBeNull();
+    }
+
+    expect(
+      nameCommitOf({
+        contractId: STORE,
+        data: REGISTRATIONS[0].data.slice(2),
+        fnName: "register",
+      })
+    ).toBeNull();
+  });
+
+  it("should read nothing of other calls, or of other contracts' calls", () => {
+    const [alice] = REGISTRATIONS;
+
+    expect(nameCommitOf({ ...alice, fnName: "renew" })).toBeUndefined();
+    expect(
+      nameCommitOf({ ...alice, contractId: "ab".repeat(32) })
+    ).toBeUndefined();
   });
 });

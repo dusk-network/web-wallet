@@ -10,13 +10,18 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { activityState } from "$lib/activity";
   import { archiveQuery, fetchTxDetails } from "$lib/activity/activityHistory";
-  import { shortAddress } from "$lib/activity/present";
+  import {
+    configuredBridgeContracts,
+    shortAddress,
+  } from "$lib/activity/present";
+  import reservedNames from "$lib/activity/reservedNames";
   import { getVerifiedName, resolveDuskName } from "$lib/dusk-domains";
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import { duskExplorerBlock, duskExplorerTx, nodeBaseUrl } from "$lib/url";
 
-  import { contactsStore } from "$lib/contacts";
+  import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import { sozuPools } from "$lib/sozu";
   import { lookupKind, lookupName, searchLocally } from "./search";
 
   /** @type {{ href: string, keywords?: string, label: string }[]} */
@@ -43,17 +48,27 @@
   /** @type {Element | null} */
   const opener = document.activeElement;
 
+  const bridgeContracts = configuredBridgeContracts();
+
   const close = () => dispatch("close");
 
   $: ({ networkName } = $networkStore);
   $: ({ profiles } = $walletStore);
   $: ({ language } = $settingsStore);
+  $: void reservedNames.load($activityState.rows);
   $: index = {
     contacts: $contactsStore,
     history: $activityState.rows,
     locale: language,
     network: networkName,
     pages,
+    // The history's rows told as History tells them.
+    present: {
+      bridgeContracts,
+      contactNames: contactNamesOf($contactsStore),
+      reservations: $reservedNames,
+      sozuPools: $sozuPools,
+    },
     profiles: profiles.map((profile, i) => {
       const account = String(profile.account);
 
@@ -396,14 +411,20 @@
         }}
         role="option"
       >
-        <span
-          class="command-bar__label"
-          class:command-bar__code={result.labelIsCode}>{result.label}</span
-        >
+        <span class="command-bar__text">
+          <span
+            class="command-bar__label"
+            class:command-bar__code={result.labelIsCode}>{result.label}</span
+          >
+          {#if result.sub}
+            <span class="command-bar__sub command-bar__code">{result.sub}</span>
+          {/if}
+        </span>
         {#if result.detail}
           <span
             class="command-bar__detail"
-            class:command-bar__code={result.detailIsCode}>{result.detail}</span
+            class:command-bar__code={result.detailIsCode}
+            class:command-bar__detail--end={result.sub}>{result.detail}</span
           >
         {/if}
         {#if result.hint}
@@ -522,12 +543,24 @@
     }
   }
 
-  .command-bar__label {
+  .command-bar__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .command-bar__label,
+  .command-bar__sub {
     color: var(--calm-text);
     font-size: 0.90625rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* A call's method, under the transaction it names. */
+  .command-bar__sub {
+    color: var(--calm-muted);
   }
 
   .command-bar__detail,
@@ -537,7 +570,8 @@
     white-space: nowrap;
   }
 
-  .command-bar__hint {
+  .command-bar__hint,
+  .command-bar__detail--end {
     margin-left: auto;
   }
 

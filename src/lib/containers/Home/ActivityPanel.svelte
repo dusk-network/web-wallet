@@ -1,5 +1,6 @@
 <script>
   import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import reservedNames from "$lib/activity/reservedNames";
   import withdrawalClaims from "$lib/bridge/withdrawalClaims";
   import { sozuPools } from "$lib/sozu";
   import { mdiChevronRight } from "@mdi/js";
@@ -56,14 +57,17 @@
   /** @type {import("$lib/activity/present").ActivityKindFilter} */
   let kind = "all";
 
-  // When the proved withdrawals can be claimed, as the chain says.
+  // When the proved withdrawals can be claimed, as the chain says, and
+  // which names the reservations were for.
   $: void withdrawalClaims.load(state.rows);
+  $: void reservedNames.load(state.rows);
   $: context = {
     bridgeContracts,
     claimed: claimedWithdrawals(state.rows),
     claims: $withdrawalClaims,
     contactNames: contactNamesOf($contactsStore),
     locale,
+    reservations: $reservedNames,
     sozuPools: $sozuPools,
   };
   $: described = state.rows.map((row) => ({

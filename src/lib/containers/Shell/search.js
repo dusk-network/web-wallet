@@ -24,8 +24,11 @@ import { asDuskName, isDuskName } from "$lib/dusk-domains";
  *   id: string,
  *   label: string,
  *   labelIsCode?: boolean,
+ *   sub?: string,
  *   value?: string,
  * }} SearchResult
+ *   `block` a block's height, which the explorer is opened at; `sub` a
+ *   second line, as a call's method.
  *
  * @typedef {{
  *   contacts?: Contact[],
@@ -33,9 +36,10 @@ import { asDuskName, isDuskName } from "$lib/dusk-domains";
  *   locale: string,
  *   network?: string,
  *   pages: { href: string, keywords?: string, label: string }[],
+ *   present?: Omit<import("$lib/activity/present").PresentContext, "locale" | "network">,
  *   profiles: { account: string, address: string, label: string, name: string }[],
  * }} SearchIndex
- *   `block` a block's height, which the explorer is opened at.
+ *   `present` what the history's rows are told by, as History tells them.
  */
 
 /** The most results a group shows. */
@@ -106,7 +110,15 @@ function peopleOf(history, locale) {
  */
 export function searchLocally(
   query,
-  { contacts = [], history, locale, network = "", pages, profiles }
+  {
+    contacts = [],
+    history,
+    locale,
+    network = "",
+    pages,
+    present = {},
+    profiles,
+  }
 ) {
   const q = query.trim().toLowerCase();
 
@@ -188,14 +200,25 @@ export function searchLocally(
           (q.length >= 4 && row.hash.includes(q)) ||
           (q.length >= 3 && has(knownBy(row, network), q))
       )
-      .map((row) => ({
-        detail: describeRow(row, { locale }).title,
-        group: "Transactions",
-        href: `/dashboard/transactions?tx=${row.hash}`,
-        id: `tx:${row.hash}`,
-        label: shortAddress(row.hash),
-        labelIsCode: true,
-      }))
+      .map((row) => {
+        // Named as History names it, with a call's method under it.
+        const { title, titleIsAddress } = describeRow(row, {
+          ...present,
+          locale,
+          network,
+        });
+
+        return {
+          detail: shortAddress(row.hash),
+          detailIsCode: true,
+          group: /** @type {const} */ ("Transactions"),
+          href: `/dashboard/transactions?tx=${row.hash}`,
+          id: `tx:${row.hash}`,
+          label: title,
+          labelIsCode: titleIsAddress,
+          sub: row.fnName || undefined,
+        };
+      })
   );
 
   // A block, by its height.

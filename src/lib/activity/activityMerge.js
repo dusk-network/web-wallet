@@ -87,6 +87,7 @@ export function historyRow(entry) {
     hash: lower(entry.hash),
     kind,
     memo: entry.memo || undefined,
+    nameCommit: entry.nameCommit,
     privacy: "public",
     registeredName: entry.registeredName,
     source: "archive",
