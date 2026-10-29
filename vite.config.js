@@ -3,6 +3,7 @@ import { coverageConfigDefaults } from "vitest/config";
 import { default as basicSsl } from "@vitejs/plugin-basic-ssl";
 import { defineConfig, loadEnv } from "vite";
 import { execSync } from "child_process";
+import { readFileSync } from "fs";
 import { resolve } from "path";
 
 const supportedBrowsers = ["chrome129", "edge129", "firefox130", "safari18"];
@@ -14,6 +15,11 @@ export default defineConfig(({ mode }) => {
     "git log -1 --grep='web-wallet:' --format=format:'%h'"
   );
   const APP_VERSION = process.env.npm_package_version ?? "unknown";
+  // What the wallet keeps in the browser is keyed by the package's name, from
+  // package.json: npm only gives it to Vite when npm runs it.
+  const { name: APP_NAME } = JSON.parse(
+    readFileSync(resolve("package.json"), "utf8")
+  );
   const APP_BUILD_INFO = `${buildHash.toString() || "unknown"} ${buildDate}`;
   const commonPlugins = [sveltekit()];
 
@@ -25,7 +31,7 @@ export default defineConfig(({ mode }) => {
       target: supportedBrowsers,
     },
     define: {
-      CONFIG: { LOCAL_STORAGE_APP_KEY: process.env.npm_package_name },
+      CONFIG: { LOCAL_STORAGE_APP_KEY: APP_NAME },
       "import.meta.env.APP_BUILD_INFO": JSON.stringify(APP_BUILD_INFO),
       "import.meta.env.APP_VERSION": JSON.stringify(APP_VERSION),
       "process.env": {

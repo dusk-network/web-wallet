@@ -206,6 +206,57 @@ describe("withdrawalRow", () => {
     }
   });
 
+  it("should leave a withdrawal that pays someone else where its step puts it once this account proved it, still saying whom", () => {
+    const hash = `0x${"4b".repeat(32)}`;
+    /**
+     * @param {string} stage
+     * @param {Record<string, unknown>} [fields]
+     * @param {Map<string, { prove?: string }>} [steps]
+     */
+    const row = (stage, fields = {}, steps = undefined) =>
+      withdrawalRow(
+        withdrawal(stage, {
+          recipient: OTHER,
+          withdrawalHash: hash,
+          ...fields,
+        }),
+        { ...options, account: OWN, steps }
+      );
+
+    // Its reads, which are this account's, say it proved it: the claim is
+    // this account's to make.
+    expect(row("ready_to_finalize")).toEqual(
+      expect.objectContaining({
+        action: "claim",
+        forOther: false,
+        group: "needs",
+        line: "Pays 213qXN…V5JJ9Y · ready to claim on Dusk",
+      })
+    );
+    expect(row("proven_waiting")).toEqual(
+      expect.objectContaining({
+        forOther: false,
+        group: "progress",
+        state: "Pending",
+      })
+    );
+
+    // Or the account's history has its proof, before any read.
+    expect(
+      row("submitted", {}, new Map([[hash, { prove: "ab".repeat(32) }]]))
+    ).toEqual(expect.objectContaining({ forOther: false, group: "progress" }));
+
+    // Not proved here: by nobody yet, or by another account, which leaves
+    // this account's reads short of a proof; or at a stage only the explorer
+    // gave, which could be anyone's proof.
+    expect(row("ready_to_prove", { proofSubmitterCount: 1n })).toEqual(
+      expect.objectContaining({ forOther: true, group: "other" })
+    );
+    expect(row("proven_waiting", { withdrawalHash: null })).toEqual(
+      expect.objectContaining({ forOther: true, group: "other" })
+    );
+  });
+
   it("should leave out an amount it doesn't know", () => {
     expect(
       withdrawalRow(withdrawal("submitted", { amountWei: null }), options)

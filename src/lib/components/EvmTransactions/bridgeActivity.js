@@ -3,7 +3,8 @@
  * deposit and withdrawal by its route, its amount, a line with when it was
  * sent, when it can be claimed or what it waits for, its state, and what
  * needs doing, in groups: what needs you, what's under way, withdrawals that
- * pay someone else, what's done and what didn't go through.
+ * pay someone else and this account hasn't proved, what's done and what
+ * didn't go through.
  */
 
 import { claimDay, claimText } from "$lib/bridge/claimDate";
@@ -37,13 +38,20 @@ import { claimDateOf } from "./withdrawalPresentation";
  *   when: number,
  * }} BridgeActivityRow
  *   `action` is what the row asks for: proving or claiming a withdrawal on
- *   Dusk; `forOther` that it pays someone else, so it's offered quietly.
+ *   Dusk; `forOther` that it pays someone else and this account hasn't
+ *   proved it, so it's offered quietly.
  *   `state` is said for what's under way and what failed; a done row says
  *   nothing.
  *
- * @typedef {{ account?: string, locale: string, time?: RouteTime | null }} BridgeActivityOptions
+ * @typedef {{
+ *   account?: string,
+ *   locale: string,
+ *   steps?: Map<string, { claim?: string, prove?: string }>,
+ *   time?: RouteTime | null,
+ * }} BridgeActivityOptions
  *   `time` is how long the route takes on this network, where it's known;
- *   `account` the Dusk account the activity is of.
+ *   `account` the Dusk account the activity is of; `steps` each withdrawal's
+ *   proof and claim in that account's history, by the withdrawal's hash.
  */
 
 /** The groups, in order, with their heads. */
@@ -148,6 +156,34 @@ const paysOther = (item, account) =>
   Boolean(item.recipient && account && item.recipient !== account);
 
 /**
+ * The stages a withdrawal's reads give once the account the activity is of
+ * proved it: they're read for that account.
+ */
+const PROVED_STAGES = new Set([
+  "finalize_submitted",
+  "prove_submitted",
+  "proven_waiting",
+  "ready_to_finalize",
+]);
+
+/**
+ * Whether the account the activity is of proved a withdrawal, so that only
+ * it can claim it: its history has the proof, or the withdrawal's own reads
+ * say so. A stage the explorer gave, before any read, could be anyone's.
+ *
+ * @param {any} item
+ * @param {BridgeActivityOptions["steps"]} steps
+ */
+function isProvedHere(item, steps) {
+  const hash = String(item.withdrawalHash ?? "").toLowerCase();
+
+  return (
+    hash !== "" &&
+    (Boolean(steps?.get(hash)?.prove) || PROVED_STAGES.has(item.stage))
+  );
+}
+
+/**
  * Whom a withdrawal pays, as its row says it: an account, or a contract.
  *
  * @param {string} recipient
@@ -172,14 +208,16 @@ const withdrawalState = (stageGroup) =>
 
 /**
  * A withdrawal from DuskEVM to Dusk as a row. One that pays someone else
- * says whom, and waits in a group of its own until it's done.
+ * says whom, and waits in a group of its own until it's done, unless this
+ * account proved it: its claim is then this account's to make.
  *
  * @param {any} item As the withdrawal activity keeps it
  * @param {BridgeActivityOptions} options
  * @returns {BridgeActivityRow}
  */
 export function withdrawalRow(item, options) {
-  const forOther = paysOther(item, options.account);
+  const paysElse = paysOther(item, options.account);
+  const forOther = paysElse && !isProvedHere(item, options.steps);
   const stageGroup = WITHDRAWAL_GROUPS.get(item.stage) ?? "progress";
   const group =
     forOther && stageGroup !== "done" && stageGroup !== "failed"
@@ -202,7 +240,7 @@ export function withdrawalRow(item, options) {
     id: `withdrawal:${item.transactionHash}`,
     item,
     kind: "withdrawal",
-    line: forOther
+    line: paysElse
       ? `Pays ${payeeOf(item.recipient)} · ${line.charAt(0).toLowerCase()}${line.slice(1)}`
       : line,
     state: withdrawalState(stageGroup),

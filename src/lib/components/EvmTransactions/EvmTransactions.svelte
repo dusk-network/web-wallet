@@ -751,6 +751,7 @@
       withdrawalRow(item, {
         account: duskAccount,
         locale: language,
+        steps: withdrawalSteps,
         time: routeTime(WITHDRAWAL, $bridgeTimes),
       })
     ),

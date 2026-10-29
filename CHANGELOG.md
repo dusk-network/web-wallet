@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open a block by its height from the search
 - Find transactions in the search by memo, and by the label of their contract or account
 - List this wallet's deposits to DuskEVM in Bridge › Activity without an EVM wallet, with when they arrived and where
-- Say in Bridge › Activity whom a withdrawal pays, and list one that pays someone else under Sent to someone else, its step offered quietly
+- Say in Bridge › Activity whom a withdrawal pays, and list one that pays someone else and that this wallet hasn't proved under Sent to someone else, its step offered quietly
 - Show when a deposit arrived on DuskEVM, and link its DuskEVM transaction, in its details
 - Name the contract a deposit calls on its Review
 - Name a name reservation after the registration that reveals it, else call it the first of two steps

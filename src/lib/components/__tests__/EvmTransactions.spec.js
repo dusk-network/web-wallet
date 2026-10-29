@@ -910,6 +910,41 @@ describe("EvmTransactions", () => {
     );
   });
 
+  it("leaves a withdrawal to someone else that this wallet proved where its claim needs it, with its Claim as ever, still saying whom it pays", async () => {
+    const theirs = `0x${"69".repeat(32)}`;
+    const withdrawalHash = `0x${"a3".repeat(32)}`;
+    const other =
+      "213qXNJXsQEGigeKJ8jFxuaPb1UV2BiGNykjS3cqRULiaBjQQcGQyEknV7WAhNF5u9hhhFoJcLxbuMWuWhCq3b9jCHDTpvGZaV5HcUU8Z5c4oHbdJ7TQ1NWQJNghYV5JJ9Y";
+
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+    // Its reads, which are this wallet's, say it's proved and ready to claim.
+    mocks.setWithdrawalItems([
+      {
+        ...activityItem(theirs, "ready_to_finalize"),
+        recipient: other,
+        withdrawalHash,
+      },
+    ]);
+    mocks.loadWithdrawalStatus.mockImplementation(async (hash) => ({
+      blockNumber: 13668n,
+      stage: "ready_to_finalize",
+      transactionHash: hash,
+      withdrawalHash,
+    }));
+
+    const { findByRole, getByRole } = render(EvmTransactions, {
+      target: document.body,
+    });
+    const row = await findByRole("button", {
+      name: "DuskEVM to Dusk Pays 213qXN…V5JJ9Y · ready to claim on Dusk 0.1 DUSK",
+    });
+
+    expect(row.closest("section")).toHaveAccessibleName("Needs you");
+    expect(
+      getByRole("button", { name: "Claim 0.1 DUSK from DuskEVM" })
+    ).toHaveClass("dusk-button--variant--primary");
+  });
+
   it("opens the deposit its link names, without checking it as a withdrawal", async () => {
     const depositHash = "ab".repeat(32);
 
