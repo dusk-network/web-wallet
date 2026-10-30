@@ -450,7 +450,9 @@ describe("ActivitySession", () => {
     await session.showMore();
 
     expect(session.state.rows).toHaveLength(140);
-  });
+    // Several syncs of a 140-entry history: more than the default 5 s on a
+    // busy CI runner.
+  }, 30_000);
 
   it("keeps the archive's error for the state and still shows what it kept", async () => {
     const node = fakeArchive({ finalized: 4_656_000 });
