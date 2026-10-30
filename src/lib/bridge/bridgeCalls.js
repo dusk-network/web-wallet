@@ -70,17 +70,18 @@ const withSetBridge = new WeakMap();
 /**
  * The node's network, with the bridge and Portal set for a local
  * deployment in place of its file's, so the history reads the calls the
- * wallet sends. Kept per network, as the settings don't change while the
- * wallet runs.
+ * wallet sends. A network whose file has no DuskEVM gets them too, the one
+ * set standing for both when only one is. Kept per network, as the
+ * settings don't change while the wallet runs.
  */
 export function bridgeNetwork() {
   const net = get(nodeNetwork);
-  const contracts = net?.duskEvm?.contracts;
 
-  if (!net || !contracts) {
+  if (!net) {
     return net;
   }
 
+  const contracts = net.duskEvm?.contracts ?? {};
   const { bridge, portal } = configuredBridge();
   /** @param {"l1_standard_bridge" | "optimism_portal"} name @param {string} id */
   const differs = (name, id) =>
@@ -96,18 +97,21 @@ export function bridgeNetwork() {
   let set = withSetBridge.get(net);
 
   if (!set) {
-    /** @param {"l1_standard_bridge" | "optimism_portal"} name @param {string} id */
-    const as = (name, id) =>
-      id ? { ...contracts[name], contractId: id } : contracts[name];
+    /** @param {"l1_standard_bridge" | "optimism_portal"} name @param {string} id @param {string} other */
+    const as = (name, id, other) =>
+      id
+        ? { ...contracts[name], contractId: id }
+        : (contracts[name] ?? { contractId: other });
 
     set = /** @type {import("@dusk-network/networks").Network} */ ({
       ...net,
       duskEvm: {
+        predeploys: {},
         ...net.duskEvm,
         contracts: {
           ...contracts,
-          ["l1_standard_bridge"]: as("l1_standard_bridge", bridge),
-          ["optimism_portal"]: as("optimism_portal", portal),
+          ["l1_standard_bridge"]: as("l1_standard_bridge", bridge, portal),
+          ["optimism_portal"]: as("optimism_portal", portal, bridge),
         },
       },
     });

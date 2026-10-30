@@ -86,6 +86,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   started.splice(0).forEach((session) => session.stop());
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -248,6 +249,32 @@ describe("ActivitySession", () => {
     expect(
       await store.listLocalTransactions(store.activityOwnerKey("testnet", A))
     ).toEqual([]);
+  });
+
+  it("puts a call to the bridge set for a local deployment under Bridge, on a network whose file has no DuskEVM", async () => {
+    const local = "cd".repeat(32);
+    const hash = "c2".repeat(32);
+
+    (await import("$lib/stores/nodeNetwork")).setNodeNetwork(
+      (await import("@dusk-network/networks")).networks.devnet
+    );
+    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", local);
+    fakeArchive({ finalized: 4_656_000 });
+    const session = sessionFor();
+
+    await session.start();
+    await session.recordSent({
+      amount: "100000000",
+      contractId: local,
+      fnName: "depositETHToWithValue",
+      hash,
+      kind: "contract_call",
+      privacy: "public",
+    });
+
+    expect(session.state.rows.find((row) => row.hash === hash)).toMatchObject({
+      category: "bridge",
+    });
   });
 
   it("keeps the name typed for a send with the chain's row, once the archive has it", async () => {

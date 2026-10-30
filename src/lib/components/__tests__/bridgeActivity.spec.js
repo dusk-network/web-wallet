@@ -423,12 +423,13 @@ describe("groupBridgeActivity", () => {
 describe("a withdrawal's proof and claim on Dusk", () => {
   it("are the history's newest of each that didn't fail, by the withdrawal's hash", () => {
     const proved = `0x${"8e".repeat(32)}`;
-    /** @param {string} hash @param {"claim" | "prove"} kind @param {string} [status] */
-    const row = (hash, kind, status = "executed") =>
+    /** @param {string} hash @param {"claim" | "prove"} kind @param {string} [status] @param {Record<string, unknown>} [fields] */
+    const row = (hash, kind, status = "executed", fields = {}) =>
       rowOf({
         bridge: { hash: proved.toUpperCase().replace("0X", "0x"), kind },
         hash,
         status,
+        ...fields,
       });
 
     expect(
@@ -439,5 +440,14 @@ describe("a withdrawal's proof and claim on Dusk", () => {
         row("b1".repeat(32), "prove"),
       ]).get(proved)
     ).toStrictEqual({ claim: "c2".repeat(32), prove: "b2".repeat(32) });
+    // A claim that pays the account shown is the claim all the same.
+    expect(
+      withdrawalDuskTransactions([
+        row("c3".repeat(32), "claim", "executed", {
+          amount: "1000000000",
+          direction: "in",
+        }),
+      ]).get(proved)
+    ).toStrictEqual({ claim: "c3".repeat(32) });
   });
 });

@@ -407,7 +407,8 @@ export const groupBridgeActivity = (rows) =>
 
 /**
  * Each withdrawal's proof and claim on Dusk, by the withdrawal's hash, as
- * the history has them: the newest of each that didn't fail.
+ * the history has them: the newest of each that didn't fail. Each is what
+ * its call says it is: a claim that pays the account shown is still a claim.
  *
  * @param {ActivityRow[]} rows Newest first
  * @returns {Map<string, { claim?: string, prove?: string }>}
@@ -416,19 +417,19 @@ export function withdrawalDuskTransactions(rows) {
   /** @type {Map<string, { claim?: string, prove?: string }>} */
   const steps = new Map();
 
-  for (const { bridge, hash, status } of rows) {
-    const step =
-      bridge?.step === "proof"
-        ? "prove"
-        : bridge?.step === "claim"
-          ? "claim"
-          : null;
+  for (const { entry, hash, sent, status } of rows) {
+    const call = entry?.bridge ?? sent?.bridge;
 
-    if (step && bridge?.hash && status !== "failed") {
-      const known = steps.get(bridge.hash) ?? {};
+    if (
+      (call?.kind === "prove" || call?.kind === "claim") &&
+      call.hash &&
+      status !== "failed"
+    ) {
+      const withdrawal = call.hash.toLowerCase();
+      const known = steps.get(withdrawal) ?? {};
 
-      if (!known[step]) {
-        steps.set(bridge.hash, { ...known, [step]: hash });
+      if (!known[call.kind]) {
+        steps.set(withdrawal, { ...known, [call.kind]: hash });
       }
     }
   }
