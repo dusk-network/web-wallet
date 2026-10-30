@@ -20,11 +20,10 @@
     markContactNameMoved,
     saveContact,
   } from "$lib/contacts";
-  import { sozuPools } from "$lib/sozu";
   import { addBasePath } from "$lib/navigation";
 
   import ActivityRowItem from "../Home/ActivityRowItem.svelte";
-  import { groupByDay, rowTime } from "$lib/activity/present";
+  import { groupByDay } from "$lib/activity/present";
 
   import { activityWith, checkedLabel, pointedAddress } from "./contactPresent";
 
@@ -36,9 +35,6 @@
 
   /** @type {string} */
   export let locale;
-
-  /** @type {Set<string> | undefined} */
-  export let bridgeContracts = undefined;
 
   /** @type {(name: string) => Promise<DuskNameResolution>} */
   export let resolveName;
@@ -156,12 +152,10 @@
   }
 
   $: activity = activityWith(rows, contact.address, {
-    bridgeContracts,
     contactNames: contactNamesOf($contactsStore),
     locale,
-    sozuPools: $sozuPools,
   }).slice(0, 5);
-  $: days = groupByDay(activity, ({ row }) => rowTime(row), { locale });
+  $: days = groupByDay(activity, ({ row }) => row.time, { locale });
   $: kind = contact.type === "address" ? "Shielded" : "Public";
   $: checkedAt = contact.checkedAt;
 

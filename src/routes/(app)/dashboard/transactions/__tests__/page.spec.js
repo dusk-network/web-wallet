@@ -9,6 +9,7 @@ import {
 } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 
+import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
 import { openTestContacts } from "$lib/test-helpers";
 
@@ -85,22 +86,19 @@ const RECEIVED = "b2".repeat(32);
 const STAKED = "c3".repeat(32);
 const NOW = Date.now();
 
-/** @type {ActivityRow[]} */
-const rows = [
+// Sent from here, to a name typed for it; received shielded; and staked.
+const rows = rowsOf([
   {
     amount: "25000000000",
     blockHeight: 4_687_600,
-    direction: "out",
     feePaid: "1854786",
     gasLimit: "2500000",
     gasSpent: "1854786",
     hash: SENT,
-    kind: "transfer",
     memo: "Order 1042",
     privacy: "public",
-    source: "archive",
+    source: "both",
     status: "executed",
-    success: true,
     timestamp: NOW - 60_000,
     to: ALICE,
     toName: "alice-shop.dusk",
@@ -108,12 +106,8 @@ const rows = [
   {
     amount: "50000000000",
     blockHeight: 4_687_500,
-    counterpartyName: "wallet-both.dusk",
     direction: "in",
-    from: ALICE,
     hash: RECEIVED,
-    kind: "transfer",
-    privacy: "shielded",
     source: "shielded",
     status: "executed",
     timestamp: NOW - 120_000,
@@ -121,16 +115,12 @@ const rows = [
   {
     amount: "1000000000000",
     blockHeight: 4_600_000,
-    direction: "out",
     hash: STAKED,
     kind: "stake",
-    privacy: "public",
-    source: "archive",
     status: "executed",
-    success: true,
     timestamp: NOW - 10 * 86_400_000,
   },
-];
+]);
 
 /** @param {Partial<import("$lib/activity/activitySession").ActivityState>} state */
 const setHistory = (state) =>
@@ -206,9 +196,7 @@ describe("History", () => {
     );
     expect(shownRows(container)).toEqual([
       expect.stringMatching(/^alice-shop\.dusk Sent Public .+ −25 DUSK$/),
-      expect.stringMatching(
-        /^wallet-both\.dusk Received Shielded .+ \+50 DUSK$/
-      ),
+      expect.stringMatching(/^Received Received Shielded .+ \+50 DUSK$/),
       expect.stringMatching(/^Staked Staking Public .+ −1,000 DUSK$/),
     ]);
   });
@@ -229,7 +217,7 @@ describe("History", () => {
     );
 
     expect(shownRows(container)).toEqual([
-      expect.stringMatching(/^wallet-both\.dusk/),
+      expect.stringMatching(/^Received Received Shielded/),
     ]);
   });
 
@@ -249,7 +237,7 @@ describe("History", () => {
     expect(privacy).toHaveValue("shielded");
     expect(dates).toHaveValue("30");
     expect(shownRows(container)).toEqual([
-      expect.stringMatching(/^wallet-both\.dusk/),
+      expect.stringMatching(/^Received Received Shielded/),
     ]);
 
     // Picked here, it goes in the address, with the defaults left out.

@@ -34,27 +34,18 @@ let queued = null;
  * @param {ActivityRow[]} rows
  * @returns {`0x${string}`[]}
  */
-export function provedWithdrawals(rows) {
-  const done = (/** @type {ActivityRow} */ row) => row.status === "failed";
-  const claimed = new Set(
-    rows.flatMap((row) =>
-      row.bridge?.kind === "claim" && !done(row) ? [row.bridge.withdrawal] : []
+export const provedWithdrawals = (rows) => [
+  ...new Set(
+    rows.flatMap(({ bridge, status }) =>
+      bridge?.step === "proof" &&
+      bridge.hash &&
+      !bridge.claimed &&
+      status !== "failed"
+        ? [bridge.hash]
+        : []
     )
-  );
-
-  return [
-    ...new Set(
-      rows.flatMap((row) =>
-        row.bridge?.kind === "prove" &&
-        row.bridge.hash &&
-        !done(row) &&
-        !claimed.has(row.bridge.withdrawal)
-          ? [/** @type {`0x${string}`} */ (row.bridge.hash.toLowerCase())]
-          : []
-      )
-    ),
-  ];
-}
+  ),
+];
 
 /**
  * The account the history's proofs are this wallet's: their submitter on

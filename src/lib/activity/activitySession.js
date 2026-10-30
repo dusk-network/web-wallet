@@ -2,7 +2,8 @@
  * One account's history while the wallet shows it: the kept history from
  * this browser, then sync runs with the archive by block height
  * (activityHistory.js), its counterparties' verified .dusk names, its
- * shielded history, and the wallet's own transactions, merged into rows.
+ * shielded history, and the wallet's own transactions, merged into rows
+ * (`@dusk-network/app-core/activity`).
  *
  * The kept history paints at once. A run follows when the session starts,
  * and others after a transaction of this wallet goes through; nothing polls
@@ -11,11 +12,21 @@
  * for a lock or another profile, drops whatever its work brings back.
  */
 
+import {
+  PENDING_MS,
+  activityRows,
+  settleSends,
+} from "@dusk-network/app-core/activity";
 import { StaleHistoryError } from "@dusk-network/app-core/history";
 import { ProfileGenerator } from "@dusk/w3sper";
+import { get } from "svelte/store";
+
+import { bridgeNetwork } from "$lib/bridge/bridgeCalls";
+import { sozuPools } from "$lib/sozu/config";
 
 import {
   activityNetworkKey,
+  nameFacts,
   noteActivityUnavailable,
   publicHistory,
 } from "./activityHistory";
@@ -33,19 +44,12 @@ import {
   NAME_CHECK_TTL_MS,
   lookupCounterpartyNames,
 } from "./counterpartyNames";
-import { mergeActivity } from "./activityMerge";
 
 /** Rows read at first, and how many more `showMore` adds. */
 export const ACTIVITY_PAGE = 50;
 
 /** The wait after a transaction went through before the archive is asked for it. */
 export const AFTER_TX_MS = 20_000;
-
-/** How long the wallet waits for the archive to have one of its sends. */
-export const LOCAL_PENDING_MS = 15 * 60_000;
-
-/** Blocks come about every 10 seconds. */
-const BLOCK_MS = 10_000;
 
 /** How long a session waits to ask again for a shielded history it couldn't have yet. */
 export const SHIELDED_RETRY_MS = 60_000;
@@ -56,7 +60,7 @@ export const SHIELDED_RETRY_MS = 60_000;
  *   namesNetwork: string,
  *   nodeUrl: string,
  *   profileIndex: number,
- *   shielded?: () => Promise<{ entries: ActivityRow[], pending?: boolean }>,
+ *   shielded?: () => Promise<{ entries: import("@dusk-network/app-core/shielded").ShieldedEntry[], pending?: boolean }>,
  * }} ActivitySessionOptions
  *
  * @typedef {{
@@ -68,15 +72,6 @@ export const SHIELDED_RETRY_MS = 60_000;
  *   syncing: boolean,
  * }} ActivityState
  */
-
-/**
- * Whether one of the wallet's own records has what the chain's row of it
- * lacks: the `.dusk` name typed for the recipient, or a shielded send's memo.
- *
- * @param {ActivityLocalRecord} record
- */
-const addsToChainRow = (record) =>
-  Boolean(record.toName || (record.privacy === "shielded" && record.memo));
 
 /** One account's history on one node, while it is shown. */
 export class ActivitySession {
@@ -123,7 +118,7 @@ export class ActivitySession {
 
   #runAgain = false;
 
-  /** @type {ActivityRow[]} */
+  /** @type {import("@dusk-network/app-core/shielded").ShieldedEntry[]} */
   #shielded = [];
 
   #shieldedAsked = false;
@@ -303,35 +298,35 @@ export class ActivitySession {
 
   /**
    * Settles the wallet's own records the chain has an outcome for, in the
-   * archive or in the shielded history: the chain's row says it all now.
-   * A record with what that row lacks, as the name typed for the recipient
-   * or a shielded send's memo, stays with it; the others go.
+   * archive or in the shielded history (`settleSends`): a record with what
+   * the chain's row lacks, as the name typed for the recipient or what a
+   * failed send tried to move, stays with it; the others go.
    */
   async #settleLocal() {
-    const settled = new Set([
-      ...this.#entries.filter((e) => e.success !== null).map((e) => e.hash),
-      ...this.#shielded
-        .filter((r) => r.status === "executed" || r.status === "failed")
-        .map((r) => r.hash),
-    ]);
-    const done = this.#local.filter((r) => !r.settled && settled.has(r.hash));
+    const { drop, keep } = settleSends({
+      pending: this.#local,
+      public: this.#entries,
+      shielded: this.#shielded,
+    });
+    const settled = /** @type {ActivityLocalRecord[]} */ (keep);
 
-    if (!done.length) {
+    if (!drop.length && !settled.length) {
       return;
     }
 
-    const kept = done.filter(addsToChainRow);
-    const gone = done.filter((r) => !addsToChainRow(r)).map((r) => r.hash);
     const epoch = await this.#epoch;
 
-    await deleteLocalTransactions(this.ownerKey, gone).catch(() => {});
+    await deleteLocalTransactions(this.ownerKey, drop).catch(() => {});
 
-    for (const record of kept) {
-      record.settled = true;
+    for (const record of settled) {
       await putLocalTransaction(this.ownerKey, record, epoch).catch(() => {});
     }
 
-    this.#local = this.#local.filter((r) => !gone.includes(r.hash));
+    const kept = new Map(settled.map((record) => [record.hash, record]));
+
+    this.#local = this.#local.flatMap((r) =>
+      drop.includes(r.hash) ? [] : [kept.get(r.hash) ?? r]
+    );
   }
 
   /** Whether one of the wallet's own sends still waits for the archive. */
@@ -342,7 +337,7 @@ export class ActivitySession {
       (r) =>
         r.status === "submitted" &&
         !r.settled &&
-        now - r.submittedAt < LOCAL_PENDING_MS
+        now - r.submittedAt < PENDING_MS
     );
   }
 
@@ -422,38 +417,25 @@ export class ActivitySession {
   }
 
   /**
-   * The time a block of that height was made, about: for sorting entries
-   * not looked up yet.
+   * The rows, newest first: the bridge's calls read on the bridge the
+   * wallet sends them to, and Sozu's calls on the pools its hub named too.
    *
-   * @param {number} height
+   * @returns {ActivityRow[]}
    */
-  #estimateTime(height) {
-    const meta = this.#meta;
-
-    return meta?.headAt
-      ? meta.headAt - Math.max(0, Number(meta.finalized) - height) * BLOCK_MS
-      : undefined;
-  }
-
-  /** The rows, newest first. */
   get rows() {
-    const now = Date.now();
+    const { account, profileIndex } = this.options;
 
-    // A send the archive hasn't had for a while: its outcome is unknown.
-    const local = this.#local.map((r) =>
-      r.status === "submitted" &&
-      !r.settled &&
-      now - r.submittedAt >= LOCAL_PENDING_MS
-        ? { ...r, status: /** @type {ActivityStatus} */ ("unknown") }
-        : r
-    );
-
-    return mergeActivity({
-      estimateTime: (height) => this.#estimateTime(height),
-      history: this.#entries,
-      local,
+    return activityRows({
+      account,
+      nameCall: nameFacts,
       names: this.#names,
+      network: bridgeNetwork(),
+      pending: this.#local,
+      pools: get(sozuPools),
+      profileIndex,
+      public: this.#entries,
       shielded: this.#shielded,
+      state: this.#meta,
     });
   }
 

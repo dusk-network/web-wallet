@@ -50,9 +50,9 @@ const TREE = [
   L495,
 ];
 
-// The profile's rows, as History shows and keeps them: the shield's note,
-// and the unshield's outputs, received.
-/** @type {ActivityRow[]} */
+// The profile's rows, as History keeps them: the shield's note, and the
+// unshield's outputs, received.
+/** @type {KeptShieldedRow[]} */
 const ROWS = [
   {
     amount: String(2n * DUSK),
@@ -81,6 +81,20 @@ const ROWS = [
     timestamp: 1_782_131_528_000,
   },
 ];
+
+/** The same, as the history gives them. */
+const ENTRIES = ROWS.map(
+  ({ amount, blockHeight, direction, hash, kind, timestamp }) => ({
+    blockHeight,
+    direction,
+    fee: null,
+    hash,
+    kind,
+    success: true,
+    timestamp,
+    value: amount,
+  })
+);
 
 const profile = /** @type {Profile} */ (
   /** @type {unknown} */ ({ address: { toString: () => ADDRESS } })
@@ -211,11 +225,11 @@ afterEach(() => {
 });
 
 describe("getShieldedHistory", () => {
-  it("works the history out from the cached notes as History's rows, asking for their blocks among others, and reads it back asking nothing", async () => {
+  it("works the history out from the cached notes, asking for their blocks among others, keeps it as History's rows, and reads it back asking nothing", async () => {
     const { call, network } = fakeNetwork();
     const options = { network: async () => network };
 
-    await expect(read(options)).resolves.toEqual({ entries: ROWS });
+    await expect(read(options)).resolves.toEqual({ entries: ENTRIES });
 
     // The notes' two heights, each among the tree's other heights.
     const asked = heightsAsked();
@@ -244,11 +258,12 @@ describe("getShieldedHistory", () => {
     });
 
     // The same notes again: the kept rows, without asking anything.
-    await expect(read(options)).resolves.toEqual({ entries: ROWS });
+    await expect(read(options)).resolves.toEqual({ entries: ENTRIES });
 
-    // Rows kept before for the same notes read back as they were: a failed
-    // send with its error and fee, and one to the profile itself.
-    /** @type {ActivityRow[]} */
+    // Rows kept before for the same notes read back as the entries they
+    // were: a failed send with its error and fee, and one to the profile
+    // itself.
+    /** @type {KeptShieldedRow[]} */
     const kept = [
       {
         ...ROWS[0],
@@ -268,7 +283,21 @@ describe("getShieldedHistory", () => {
       entries: kept,
       fingerprint: "493,494,495",
     });
-    await expect(read(options)).resolves.toEqual({ entries: kept });
+    await expect(read(options)).resolves.toEqual({
+      entries: [
+        {
+          ...ENTRIES[0],
+          direction: "out",
+          error: "Panic: out of gas",
+          fee: "2000000",
+          hash: "ab".repeat(32),
+          kind: "transfer",
+          success: false,
+          value: "500000000",
+        },
+        { ...ENTRIES[1], direction: "self", fee: "1000", value: "0" },
+      ],
+    });
     expect(queries).toHaveLength(1);
     expect(call.num_notes).toHaveBeenCalledTimes(1);
     expect(call.leaves_from_pos).toHaveBeenCalledTimes(1);
@@ -286,7 +315,7 @@ describe("getShieldedHistory", () => {
         return keep(key, record, epoch);
       });
 
-    await expect(read()).resolves.toEqual({ entries: ROWS });
+    await expect(read()).resolves.toEqual({ entries: ENTRIES });
     expect((await store.getShieldedHistoryRecord(KEY))?.entries ?? []).toEqual(
       []
     );

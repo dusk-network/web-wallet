@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
+import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { fullDateTime, timeLabel } from "$lib/activity/present";
 import styleRules from "$lib/dusk/test-helpers/styleRules";
 
@@ -42,23 +43,22 @@ const SUMMER = Date.UTC(2026, 9, 22, 16, 55);
 const WINTER = Date.UTC(2026, 9, 26, 13, 32);
 
 /**
+ * A transfer sent, final, and more about it.
+ *
  * @param {string} hash
  * @param {number} timestamp
- * @returns {ActivityRow}
+ * @param {Record<string, unknown>} [more]
  */
-const row = (hash, timestamp) => ({
-  amount: "100000000",
-  blockHeight: 4_687_000,
-  direction: "out",
-  hash,
-  kind: "transfer",
-  privacy: "public",
-  source: "archive",
-  status: "executed",
-  success: true,
-  timestamp,
-  to: ACCOUNT,
-});
+const row = (hash, timestamp, more = {}) =>
+  rowOf({
+    amount: "100000000",
+    blockHeight: 4_687_000,
+    hash,
+    status: "executed",
+    timestamp,
+    to: ACCOUNT,
+    ...more,
+  });
 
 const state = {
   complete: true,
@@ -131,7 +131,7 @@ describe("HistoryView", () => {
       state: {
         ...state,
         error: "Couldn't reach",
-        rows: [{ ...state.rows[0], status: "unknown", success: null }],
+        rows: [row("a1".repeat(32), WINTER, { success: null })],
       },
     });
 
@@ -153,164 +153,137 @@ describe("HistoryView", () => {
   });
 
   it("should grey a withdrawal's amount until it arrives, as a failed one's", () => {
-    const bridge = "ab".repeat(32);
-    const proved = {
-      ...row("b1".repeat(32), WINTER),
+    const proved = row("b1".repeat(32), WINTER, {
       amount: "0",
-      bridge: /** @type {const} */ ({
+      bridge: {
         amount: "1008000000000",
         kind: "prove",
         withdrawal: "0001".padEnd(64, "0"),
-      }),
-      contractId: bridge,
+      },
+      contractId: "ab".repeat(32),
       fnName: "proveWithdrawalTransaction",
-      kind: /** @type {const} */ ("contract_call"),
+      kind: "contract_call",
       to: undefined,
-    };
+    });
+    const { container } = render(HistoryView, {
+      locale: "en",
+      state: { ...state, rows: [proved, state.rows[0]] },
+    });
+    const amounts = Array.from(
+      container.querySelectorAll(".history__amount"),
+      (amount) => amount.classList.contains("history__amount--muted")
+    );
 
-    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridge);
-
-    try {
-      const { container } = render(HistoryView, {
-        locale: "en",
-        state: { ...state, rows: [proved, state.rows[0]] },
-      });
-      const amounts = Array.from(
-        container.querySelectorAll(".history__amount"),
-        (amount) => amount.classList.contains("history__amount--muted")
-      );
-
-      expect(amounts).toStrictEqual([true, false]);
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    expect(amounts).toStrictEqual([true, false]);
   });
 
   it("should give a withdrawal's claim date a line of its own on phones, as it doesn't fit after", () => {
-    const bridge = "ab".repeat(32);
-    const proved = {
-      ...row("b1".repeat(32), WINTER),
+    const proved = row("b1".repeat(32), WINTER, {
       amount: "0",
-      bridge: /** @type {const} */ ({
+      bridge: {
         amount: "1008000000000",
-        hash: /** @type {`0x${string}`} */ (`0x${"8e".repeat(32)}`),
+        hash: `0x${"8e".repeat(32)}`,
         kind: "prove",
         withdrawal: "0001".padEnd(64, "0"),
-      }),
-      contractId: bridge,
+      },
+      contractId: "ab".repeat(32),
       fnName: "proveWithdrawalTransaction",
-      kind: /** @type {const} */ ("contract_call"),
+      kind: "contract_call",
       to: undefined,
-    };
+    });
 
-    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridge);
+    const { container } = render(HistoryView, {
+      locale: "en",
+      state: { ...state, rows: [proved, state.rows[0]] },
+    });
+    const [withdrawal, sent] = Array.from(
+      container.querySelectorAll(".history__who"),
+      (who) => ({
+        narrow: who.querySelector(".history__narrow")?.textContent,
+        note: who.querySelector(".history__claim")?.textContent?.trim(),
+        wide: who.querySelector(".history__wide")?.textContent,
+      })
+    );
 
-    try {
-      const { container } = render(HistoryView, {
-        locale: "en",
-        state: { ...state, rows: [proved, state.rows[0]] },
-      });
-      const [withdrawal, sent] = Array.from(
-        container.querySelectorAll(".history__who"),
-        (who) => ({
-          narrow: who.querySelector(".history__narrow")?.textContent,
-          note: who.querySelector(".history__claim")?.textContent?.trim(),
-          wide: who.querySelector(".history__wide")?.textContent,
-        })
+    // A desktop's line keeps the date; a phone's has it under the line.
+    expect(withdrawal.wide).toMatch(/^Bridge · claim from about 2 Nov, /);
+    expect(withdrawal.narrow).toBe("Bridge");
+    expect(withdrawal.note).toMatch(/^Claim from about 2 Nov, /);
+    expect(sent).toStrictEqual({
+      narrow: undefined,
+      note: undefined,
+      wide: undefined,
+    });
+
+    // On phones only, and nothing else of the page hidden with it, as the
+    // note above the table.
+    const rules = styleRules("../HistoryView.svelte", import.meta.url);
+    const phone = "(max-width: 47.99rem)";
+    const ruleOf = (/** @type {string} */ selector, media = "") =>
+      rules.find(
+        (rule) =>
+          rule.media === media &&
+          rule.selector.split(",").some((part) => part.trim() === selector)
       );
 
-      // A desktop's line keeps the date; a phone's has it under the line.
-      expect(withdrawal.wide).toMatch(/^Bridge · claim from about 2 Nov, /);
-      expect(withdrawal.narrow).toBe("Bridge");
-      expect(withdrawal.note).toMatch(/^Claim from about 2 Nov, /);
-      expect(sent).toStrictEqual({
-        narrow: undefined,
-        note: undefined,
-        wide: undefined,
-      });
-
-      // On phones only, and nothing else of the page hidden with it, as the
-      // note above the table.
-      const rules = styleRules("../HistoryView.svelte", import.meta.url);
-      const phone = "(max-width: 47.99rem)";
-      const ruleOf = (/** @type {string} */ selector, media = "") =>
-        rules.find(
-          (rule) =>
-            rule.media === media &&
-            rule.selector.split(",").some((part) => part.trim() === selector)
-        );
-
-      expect(ruleOf(".history__claim")?.declarations.display).toBe("none");
-      expect(ruleOf(".history__claim", phone)?.declarations.display).toBe(
-        "block"
-      );
-      expect(ruleOf(".history__wide", phone)?.declarations.display).toBe(
-        "none"
-      );
-      expect(
-        rules.filter(
-          (rule) =>
-            rule.selector.includes(".history__note") &&
-            (rule.declarations.display === "none" ||
-              rule.declarations["white-space"] === "nowrap")
-        )
-      ).toStrictEqual([]);
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    expect(ruleOf(".history__claim")?.declarations.display).toBe("none");
+    expect(ruleOf(".history__claim", phone)?.declarations.display).toBe(
+      "block"
+    );
+    expect(ruleOf(".history__wide", phone)?.declarations.display).toBe("none");
+    expect(
+      rules.filter(
+        (rule) =>
+          rule.selector.includes(".history__note") &&
+          (rule.declarations.display === "none" ||
+            rule.declarations["white-space"] === "nowrap")
+      )
+    ).toStrictEqual([]);
   });
   it("should give a deposit's time a line of its own on phones, as its DuskEVM address makes its line long", () => {
-    const bridge = "ab".repeat(32);
-    const deposited = {
-      ...row("d1".repeat(32), WINTER),
-      bridge: /** @type {const} */ ({
+    const deposited = row("d1".repeat(32), WINTER, {
+      bridge: {
         amount: "100000000",
         kind: "deposit",
         to: "0xB0E834d62CA3f5cF0F82619c8515c673818f8C6b",
-      }),
-      contractId: bridge,
+      },
+      contractId: "ab".repeat(32),
       fnName: "depositETHToWithValue",
-      kind: /** @type {const} */ ("contract_call"),
+      kind: "contract_call",
       to: undefined,
-    };
+    });
 
-    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", bridge);
+    const { container } = render(HistoryView, {
+      locale: "en",
+      state: { ...state, rows: [deposited, state.rows[0]] },
+    });
+    const [deposit, sent] = Array.from(
+      container.querySelectorAll(".history__who"),
+      (who) => ({
+        line: who.querySelector(".history__line")?.textContent?.trim(),
+        meta: who.querySelector(".history__phone-meta"),
+        when: who.querySelector(".history__when")?.textContent?.trim(),
+      })
+    );
 
-    try {
-      const { container } = render(HistoryView, {
-        locale: "en",
-        state: { ...state, rows: [deposited, state.rows[0]] },
-      });
-      const [deposit, sent] = Array.from(
-        container.querySelectorAll(".history__who"),
-        (who) => ({
-          line: who.querySelector(".history__line")?.textContent?.trim(),
-          meta: who.querySelector(".history__phone-meta"),
-          when: who.querySelector(".history__when")?.textContent?.trim(),
-        })
+    expect(deposit.line).toBe("Bridge · to 0xb0E8…8C6b");
+    expect(deposit.meta).toBeNull();
+    expect(deposit.when).toBe(`${timeLabel(WINTER, "en")} · Public`);
+    // Any other row keeps its time after its line.
+    expect(sent.when).toBeUndefined();
+    expect(sent.meta).not.toBeNull();
+
+    const rules = styleRules("../HistoryView.svelte", import.meta.url);
+    const ruleOf = (/** @type {string} */ selector, media = "") =>
+      rules.find(
+        (rule) =>
+          rule.media === media &&
+          rule.selector.split(",").some((part) => part.trim() === selector)
       );
 
-      expect(deposit.line).toBe("Bridge · to 0xb0E8…8C6b");
-      expect(deposit.meta).toBeNull();
-      expect(deposit.when).toBe(`${timeLabel(WINTER, "en")} · Public`);
-      // Any other row keeps its time after its line.
-      expect(sent.when).toBeUndefined();
-      expect(sent.meta).not.toBeNull();
-
-      const rules = styleRules("../HistoryView.svelte", import.meta.url);
-      const ruleOf = (/** @type {string} */ selector, media = "") =>
-        rules.find(
-          (rule) =>
-            rule.media === media &&
-            rule.selector.split(",").some((part) => part.trim() === selector)
-        );
-
-      expect(ruleOf(".history__when")?.declarations.display).toBe("none");
-      expect(
-        ruleOf(".history__when", "(max-width: 47.99rem)")?.declarations.display
-      ).toBe("block");
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    expect(ruleOf(".history__when")?.declarations.display).toBe("none");
+    expect(
+      ruleOf(".history__when", "(max-width: 47.99rem)")?.declarations.display
+    ).toBe("block");
   });
 });

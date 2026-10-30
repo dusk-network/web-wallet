@@ -114,21 +114,14 @@ export function historyWithdrawals(rows) {
   /** @type {Map<string, { hash: `0x${string}`, nonce: bigint, recipient: string | null }>} */
   const known = new Map();
 
-  for (const row of rows) {
-    const call = row.bridge;
+  for (const { bridge, status } of rows) {
+    const hash = bridge?.hash;
 
-    if (
-      (call?.kind === "prove" || call?.kind === "claim") &&
-      call.hash &&
-      row.status !== "failed" &&
-      !known.has(call.hash.toLowerCase())
-    ) {
-      const hash = /** @type {`0x${string}`} */ (call.hash.toLowerCase());
-
+    if (hash && bridge?.nonce && status !== "failed" && !known.has(hash)) {
       known.set(hash, {
         hash,
-        nonce: BigInt(`0x${call.withdrawal}`),
-        recipient: call.recipient ?? null,
+        nonce: BigInt(`0x${bridge.nonce}`),
+        recipient: bridge.recipient,
       });
     }
   }

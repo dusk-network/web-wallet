@@ -3,7 +3,7 @@
 <script>
   import { Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
-  import { fullDateTime, rowTime, timeLabel } from "$lib/activity/present";
+  import { fullDateTime, timeLabel } from "$lib/activity/present";
   import { addBasePath } from "$lib/navigation";
 
   import { ACTIVITY_ICONS } from "./activityIcons";
@@ -32,7 +32,7 @@
   };
 
   $: p = presentation;
-  $: time = rowTime(row);
+  $: time = row.time;
   $: failed = p.status === "failed";
   $: title = withoutCounterparty && !failed ? p.line : p.title;
   $: details = failed

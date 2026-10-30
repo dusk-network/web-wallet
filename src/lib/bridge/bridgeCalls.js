@@ -1,8 +1,6 @@
 /**
  * The DuskEVM bridge's contracts on Dusk, as set or from the network's file,
- * and what a call to them did, as the history keeps it: a deposit's DuskEVM
- * address and amount, and the amount of the withdrawal a proof or a claim is
- * for, and whom it pays.
+ * and whom a withdrawal pays on Dusk.
  */
 
 import { decodeWithdrawal } from "@dusk-network/networks/duskevm";
@@ -10,16 +8,6 @@ import { get } from "svelte/store";
 
 import nodeNetwork from "$lib/stores/nodeNetwork";
 import { duskEvmContractId } from "$lib/web3/duskEvm";
-
-/**
- * @typedef {{ amount: string, kind: "deposit", to: string }
- *   | { amount: string, hash?: `0x${string}`, kind: "claim" | "prove", recipient?: string | null, withdrawal: string }} BridgeCall
- *   Amounts in Lux; `to` is the DuskEVM address with its checksum,
- *   `withdrawal` the withdrawal's nonce, the same in its proof and its claim,
- *   `hash` the withdrawal's hash, which the Portal keys it by, and
- *   `recipient` whom it pays on Dusk (both missing from a call read before
- *   the history kept them).
- */
 
 /** @param {unknown} id */
 const norm = (id) =>

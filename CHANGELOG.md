@@ -171,6 +171,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update History when the public balance changes, and while a migration or a transfer out is under way
 - Read the balance again as soon as History finds a new public transaction
 - Retry History's requests when the node is busy
+- Keep a shielded send's recipient in History
+- Keep showing in History the amount a failed send tried to move
 
 ### Removed
 
@@ -212,6 +214,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Read a DuskEVM withdrawal in History only when it goes to Dusk's bridge
 - Take a transfer to BNB Smart Chain as arrived only on a payout from the bridge's address
 - Wait for the archive to have every block a shielded history needs, rather than keep it incomplete
+- Call a failed shield in History a shield, not a call of convert
+- Show an unshield as shielded in History
 
 ## [1.8.0] - 2026-03-25
 

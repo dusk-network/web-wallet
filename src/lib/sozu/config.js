@@ -4,7 +4,7 @@
  * only until the hub has been read.
  */
 
-import { SOZU_FN, isSozuCall as sozuCall } from "@dusk-network/networks/sozu";
+import { SOZU_FN } from "@dusk-network/networks/sozu";
 import { get, writable } from "svelte/store";
 
 import nodeNetwork from "$lib/stores/nodeNetwork";
@@ -85,20 +85,7 @@ export function noteSozuPool(id) {
  * Whether a call is one of Sozu's pool functions, whichever contract it
  * calls.
  *
- * @param {{ fnName?: string }} call
+ * @param {{ fnName?: string | null }} call
  */
 export const isSozuFunction = ({ fnName }) =>
   fnName === SOZU_FN.STAKE || fnName === SOZU_FN.UNSTAKE;
-
-/**
- * Whether a transaction is a stake or an unstake with Sozu: a call of the
- * network's pool, or of one its hub named. A view passes the pools it
- * subscribed to (sozuPools), so that it reads its rows again when the hub
- * names another one, and the node's network.
- *
- * @param {{ contractId?: string | null, fnName?: string }} call
- * @param {Set<string>} [pools] The pools the hub named
- * @param {import("@dusk-network/networks").Network | null} [net]
- */
-export const isSozuCall = (call, pools = get(found), net = get(nodeNetwork)) =>
-  net ? sozuCall(net, call, { pools }) : false;

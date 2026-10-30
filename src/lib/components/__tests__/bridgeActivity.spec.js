@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { networks } from "@dusk-network/networks";
 
+import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { cardRoutes } from "$lib/bridge/cardRoutes";
 import { claimDay } from "$lib/bridge/claimDate";
 
@@ -424,14 +425,11 @@ describe("a withdrawal's proof and claim on Dusk", () => {
     const proved = `0x${"8e".repeat(32)}`;
     /** @param {string} hash @param {"claim" | "prove"} kind @param {string} [status] */
     const row = (hash, kind, status = "executed") =>
-      /** @type {ActivityRow} */ (
-        /** @type {unknown} */ ({
-          bridge: { hash: proved.toUpperCase().replace("0X", "0x"), kind },
-          hash,
-          source: "archive",
-          status,
-        })
-      );
+      rowOf({
+        bridge: { hash: proved.toUpperCase().replace("0X", "0x"), kind },
+        hash,
+        status,
+      });
 
     expect(
       withdrawalDuskTransactions([

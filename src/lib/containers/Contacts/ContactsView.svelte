@@ -10,11 +10,7 @@
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import { BalanceValue, SectionHead } from "$lib/components";
   import { removeContact } from "$lib/contacts";
-  import { sozuPools } from "$lib/sozu";
-  import {
-    configuredBridgeContracts,
-    shortAddress,
-  } from "$lib/activity/present";
+  import { shortAddress } from "$lib/activity/present";
   import { addBasePath, pageTitle } from "$lib/navigation";
 
   import ContactDetail from "./ContactDetail.svelte";
@@ -48,7 +44,6 @@
   export let own = [];
 
   const dispatch = createEventDispatcher();
-  const bridgeContracts = configuredBridgeContracts();
 
   let query = "";
 
@@ -74,17 +69,10 @@
         )
       )
     : contacts;
-  $: payments = lastPayments(rows, {
-    bridgeContracts,
-    locale,
-    sozuPools: $sozuPools,
-  });
+  $: payments = lastPayments(rows, { locale });
   $: paid = contacts.length
     ? []
-    : peopleYouPaid(rows, {
-        context: { bridgeContracts, locale, sozuPools: $sozuPools },
-        saved: new Set(own),
-      });
+    : peopleYouPaid(rows, { context: { locale }, saved: new Set(own) });
   $: open = contacts.find((contact) => contact.id === selected) ?? null;
   $: panel =
     selected === "new" ? "new" : open ? (editing ? "edit" : "detail") : null;
@@ -312,7 +300,6 @@
   {:else if open}
     <div class="contacts__panel">
       <ContactDetail
-        {bridgeContracts}
         contact={open}
         {locale}
         on:close={() => select(null)}

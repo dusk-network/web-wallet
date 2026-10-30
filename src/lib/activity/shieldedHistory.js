@@ -2,7 +2,7 @@
  * A profile's shielded history (`@dusk-network/app-core/shielded`), worked
  * out once its notes are synced and kept from then on: from the notes the
  * wallet cache holds, their values from the profile's keys, and the node's
- * note tree, kept in this browser as History's rows.
+ * note tree, kept in this browser.
  */
 
 import { Bookkeeper, Bookmark } from "@dusk/w3sper";
@@ -23,10 +23,10 @@ import { activityNetworkKey, archiveAt } from "./activityHistory";
 /** @typedef {import("@dusk-network/app-core/shielded").ShieldedEntry} ShieldedEntry */
 
 /**
- * An entry of the shielded history as History's row, as it is kept and shown.
+ * An entry of the shielded history as this browser keeps it.
  *
  * @param {ShieldedEntry} e
- * @returns {ActivityRow}
+ * @returns {KeptShieldedRow}
  */
 const rowOf = (e) => ({
   amount: e.direction === "self" ? undefined : e.value,
@@ -45,7 +45,7 @@ const rowOf = (e) => ({
 /**
  * A kept row as the entry it was.
  *
- * @param {ActivityRow} row
+ * @param {KeptShieldedRow} row
  * @returns {ShieldedEntry}
  */
 const entryOf = (row) => ({
@@ -137,13 +137,13 @@ async function cachedNotes(address) {
  *   shielded sync has found every note.
  */
 
-/** @type {Map<string, Promise<{ entries: ActivityRow[], pending?: boolean }>>} */
+/** @type {Map<string, Promise<{ entries: ShieldedEntry[], pending?: boolean }>>} */
 const runs = new Map();
 
 /**
  * @param {ShieldedHistoryOptions} options
  * @param {string} key
- * @returns {Promise<{ entries: ActivityRow[], pending?: boolean }>}
+ * @returns {Promise<{ entries: ShieldedEntry[], pending?: boolean }>}
  */
 async function readShieldedHistory(options, key) {
   const { isCurrent, network, nodeUrl, profile, synced } = options;
@@ -182,9 +182,8 @@ async function readShieldedHistory(options, key) {
     },
     valueOf: (note) => noteValue(profile, note),
   });
-  const rows = entries.map(rowOf);
 
-  return pending ? { entries: rows, pending } : { entries: rows };
+  return pending ? { entries, pending } : { entries };
 }
 
 /**
@@ -193,7 +192,7 @@ async function readShieldedHistory(options, key) {
  * nothing. One read at a time per profile and node.
  *
  * @param {ShieldedHistoryOptions} options
- * @returns {Promise<{ entries: ActivityRow[], pending?: boolean }>}
+ * @returns {Promise<{ entries: ShieldedEntry[], pending?: boolean }>}
  */
 export function getShieldedHistory(options) {
   const key = `${activityNetworkKey(options.nodeUrl)}::${String(options.profile.address)}`;

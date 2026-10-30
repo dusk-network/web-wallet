@@ -7,6 +7,7 @@ import {
   within,
 } from "@testing-library/svelte";
 
+import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore, walletStore } from "$lib/stores";
 
@@ -213,14 +214,13 @@ describe("Staking", () => {
       history.state?.update((s) => ({
         ...s,
         rows: [
-          {
+          rowOf({
             amount: "1000000000000",
             direction: "in",
             hash: "d4".repeat(32),
             kind: "unstake",
-            source: "archive",
             status: "executed",
-          },
+          }),
         ],
       }))
     );

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
 
+import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
+
 const mocks = vi.hoisted(() => ({
   readWithdrawalClaims: vi.fn(),
   submitter: "0x2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c",
@@ -21,24 +23,30 @@ const hashOf = (byte) =>
   /** @type {`0x${string}`} */ (`0x${byte.toString(16).repeat(64)}`);
 
 /**
- * A proof or a claim of a withdrawal, as the history has it.
+ * The history's proofs and claims of withdrawals, in the order given: each
+ * its kind, the byte its withdrawal's hash repeats, and more about it.
  *
- * @param {"claim" | "prove"} kind
- * @param {number} byte
- * @param {Partial<ActivityRow>} [fields]
- * @returns {ActivityRow}
+ * @param {...["claim" | "prove", number, Record<string, unknown>?]} steps
  */
-const row = (kind, byte, fields = {}) =>
-  /** @type {ActivityRow} */ ({
-    bridge: {
-      amount: "1000000000",
-      hash: hashOf(byte),
-      kind,
-      withdrawal: String(byte).padStart(64, "0"),
-    },
-    status: "executed",
-    ...fields,
-  });
+const history = (...steps) =>
+  rowsOf(
+    steps.map(([kind, byte, fields], i) => ({
+      amount: "0",
+      blockHeight: 4_687_000,
+      bridge: {
+        amount: "1000000000",
+        hash: hashOf(byte),
+        kind,
+        withdrawal: String(byte).padStart(64, "0"),
+      },
+      contractId: "ab".repeat(32),
+      hash: String(i + 1).padStart(64, "0"),
+      kind: "contract_call",
+      status: "executed",
+      timestamp: 1,
+      ...fields,
+    }))
+  );
 
 /** @param {`0x${string}`[]} hashes */
 const answer = (hashes) =>
@@ -73,12 +81,12 @@ describe("withdrawalClaims", () => {
   });
 
   it("reads the withdrawals the history proved and no row claims, for the account's own proofs", async () => {
-    const rows = [
-      row("prove", 0xa),
-      row("prove", 0xb),
-      row("claim", 0xb),
-      row("prove", 0xc, { status: "failed" }),
-    ];
+    const rows = history(
+      ["prove", 0xa],
+      ["prove", 0xb],
+      ["claim", 0xb],
+      ["prove", 0xc, { status: "failed" }]
+    );
 
     expect(provedWithdrawals(rows)).toStrictEqual([hashOf(0xa)]);
 
@@ -92,15 +100,15 @@ describe("withdrawalClaims", () => {
   });
 
   it("reads each at most once a minute, and a new one at once", async () => {
-    await withdrawalClaims.load([row("prove", 0xa)]);
-    await withdrawalClaims.load([row("prove", 0xa), row("prove", 0xd)]);
+    await withdrawalClaims.load(history(["prove", 0xa]));
+    await withdrawalClaims.load(history(["prove", 0xa], ["prove", 0xd]));
 
     expect(
       mocks.readWithdrawalClaims.mock.calls.map(([hashes]) => hashes)
     ).toStrictEqual([[hashOf(0xa)], [hashOf(0xd)]]);
 
     vi.advanceTimersByTime(60_000);
-    await withdrawalClaims.load([row("prove", 0xa), row("prove", 0xd)]);
+    await withdrawalClaims.load(history(["prove", 0xa], ["prove", 0xd]));
 
     expect(mocks.readWithdrawalClaims).toHaveBeenLastCalledWith(
       [hashOf(0xa), hashOf(0xd)],
@@ -120,12 +128,12 @@ describe("withdrawalClaims", () => {
         })
     );
 
-    const first = withdrawalClaims.load([row("prove", 0xa)]);
+    const first = withdrawalClaims.load(history(["prove", 0xa]));
 
     // While it reads: new rows, then another account's.
-    void withdrawalClaims.load([row("prove", 0xa), row("prove", 0xd)]);
+    void withdrawalClaims.load(history(["prove", 0xa], ["prove", 0xd]));
     mocks.submitter = `0x${"3d".repeat(20)}`;
-    void withdrawalClaims.load([row("prove", 0xe)]);
+    void withdrawalClaims.load(history(["prove", 0xe]));
 
     expect(mocks.readWithdrawalClaims).toHaveBeenCalledOnce();
 
@@ -140,15 +148,15 @@ describe("withdrawalClaims", () => {
   });
 
   it("starts over for another account, and reads again what couldn't be read", async () => {
-    await withdrawalClaims.load([row("prove", 0xa)]);
+    await withdrawalClaims.load(history(["prove", 0xa]));
 
     mocks.submitter = `0x${"3d".repeat(20)}`;
     mocks.readWithdrawalClaims.mockRejectedValueOnce(new Error("Offline"));
-    await withdrawalClaims.load([row("prove", 0xa)]);
+    await withdrawalClaims.load(history(["prove", 0xa]));
 
     expect(get(withdrawalClaims).size).toBe(0);
 
-    await withdrawalClaims.load([row("prove", 0xa)]);
+    await withdrawalClaims.load(history(["prove", 0xa]));
 
     expect(mocks.readWithdrawalClaims).toHaveBeenLastCalledWith([hashOf(0xa)], {
       submitter: `0x${"3d".repeat(20)}`,

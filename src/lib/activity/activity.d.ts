@@ -9,14 +9,8 @@ type ActivityKind =
 
 type ActivityDirection = "in" | "out" | "self";
 
-/** The outcome a row shows: "unknown" until the chain's is looked up. */
-type ActivityStatus =
-  | "executed"
-  | "failed"
-  | "mempool"
-  | "removed"
-  | "submitted"
-  | "unknown";
+/** Where one of the wallet's own transactions is, as it last saw it. */
+type ActivityStatus = import("@dusk-network/app-core/activity").SendStatus;
 
 /**
  * What the history reads of a `.dusk` name's call: what its reservation
@@ -51,7 +45,7 @@ type ActivityLocalRecord = {
   amount?: string;
 
   /** What a call to the bridge does, as the wallet sent it. */
-  bridge?: import("$lib/bridge/bridgeCalls").BridgeCall;
+  bridge?: import("@dusk-network/app-core/history").BridgeFacts;
   contractId?: string;
 
   /** Which way the amount went, as the chain will say. */
@@ -77,46 +71,29 @@ type ActivityLocalRecord = {
   toName?: string;
 };
 
-/** A row of the history: one transaction, from the archive, the notes or the wallet. */
-type ActivityRow = {
+/** A row of the history: one transaction, as `@dusk-network/app-core/activity` gives it. */
+type ActivityRow = import("@dusk-network/app-core/activity").ActivityRow;
+
+/** A shielded history's entry, as this browser keeps it. */
+type KeptShieldedRow = {
   amount?: string;
-  blockHash?: string;
-  blockHeight?: number;
-  bridge?: import("$lib/bridge/bridgeCalls").BridgeCall | null;
-  contractId?: string;
-  counterparty?: string | null;
-  counterpartyName?: string;
-  deposit?: string;
-  detailsAt?: number;
-  direction?: ActivityDirection;
+  blockHeight: number;
+  direction: ActivityDirection;
   error?: string;
   feePaid?: string;
-  fnName?: string;
-  from?: string;
-  gasLimit?: string;
-  gasPrice?: string;
-  gasSpent?: string;
   hash: string;
-  kind?: ActivityKind;
-  memo?: string;
-  nameCommit?: import("$lib/activity/knownContracts").NameCommit | null;
-  privacy?: "public" | "shielded";
-  profileIndex?: number;
-  registeredName?: string | null;
-  source: "archive" | "both" | "local" | "shielded";
-  status: ActivityStatus;
-  submittedAt?: number;
-  success?: boolean | null;
+  kind: ActivityKind;
+  privacy: "shielded";
+  source: "shielded";
+  status: "executed" | "failed";
   timestamp?: number;
-  to?: string;
-  toName?: string;
 };
 
 /** A profile's shielded history, with the decoy heights it was asked among. */
 type ShieldedHistoryRecord = {
   at: number;
   decoys: number[];
-  entries: ActivityRow[];
+  entries: KeptShieldedRow[];
   fingerprint: string;
   ownerKey: string;
 };

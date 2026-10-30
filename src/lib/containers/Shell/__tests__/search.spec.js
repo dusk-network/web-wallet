@@ -1,4 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { networks } from "@dusk-network/networks";
+
+import {
+  rowOf,
+  rowsOf,
+  withBridge,
+} from "$lib/activity/__tests__/fixtures/rows";
 
 import { lookupKind, lookupName, searchLocally } from "../search";
 
@@ -10,16 +17,14 @@ const OWN =
 /** @type {import("../search").SearchIndex} */
 const index = {
   history: [
-    {
+    rowOf({
       amount: "500000000",
       counterpartyName: "alice.dusk",
       direction: "in",
       from: ALICE,
       hash: "dc3f73".padEnd(64, "0"),
-      kind: "transfer",
-      source: "archive",
       status: "executed",
-    },
+    }),
   ],
   locale: "en",
   pages: [
@@ -79,7 +84,7 @@ describe("searchLocally", () => {
 
   it("names the history's transactions as History does, with a call's method under it", () => {
     const BRIDGE = "22".repeat(32);
-    const deposit = /** @type {ActivityRow} */ ({
+    const deposit = {
       amount: "100000000",
       bridge: {
         amount: "100000000",
@@ -87,34 +92,33 @@ describe("searchLocally", () => {
         to: "0xb0E8340000000000000000000000000000f8C6b0",
       },
       contractId: BRIDGE,
-      direction: "out",
       fnName: "depositETHToWithValue",
       hash: "40c50a".padEnd(64, "1"),
       kind: "contract_call",
-      source: "archive",
       status: "executed",
-    });
-    const proof = /** @type {ActivityRow} */ ({
+    };
+    const proof = {
       ...deposit,
       amount: "0",
       bridge: null,
       fnName: "proveWithdrawalTransaction",
       hash: "fdc37b".padEnd(64, "2"),
-    });
-    const withBridge = {
+    };
+    const bridged = {
       ...index,
-      history: [deposit, proof],
-      present: { bridgeContracts: new Set([BRIDGE]) },
+      history: rowsOf([deposit, proof], {
+        network: withBridge(networks.testnet, BRIDGE),
+      }),
     };
 
     expect(
-      searchLocally("40c50a", withBridge).map(({ detail, label, sub }) => [
+      searchLocally("40c50a", bridged).map(({ detail, label, sub }) => [
         label,
         sub,
         detail,
       ])
     ).toEqual([["To DuskEVM", "depositETHToWithValue", "40c50a…111111"]]);
-    expect(searchLocally("fdc37b", withBridge)).toEqual([
+    expect(searchLocally("fdc37b", bridged)).toEqual([
       expect.objectContaining({
         label: "Withdrawal proved",
         sub: "proveWithdrawalTransaction",
@@ -132,26 +136,23 @@ describe("searchLocally for a block, a memo or a label", () => {
     ...index,
     history: [
       ...index.history,
-      {
-        amount: "1000000000",
-        contractId: SOZU_POOL,
-        direction: "out",
-        fnName: "stake",
-        hash: "5d".repeat(32),
-        kind: "contract_call",
-        source: "archive",
-        status: "executed",
-      },
-      {
-        amount: "2000000000",
-        counterparty: ALICE,
-        direction: "out",
-        hash: "e1".repeat(32),
-        kind: "transfer",
-        memo: "Rent for October",
-        source: "archive",
-        status: "executed",
-      },
+      ...rowsOf([
+        {
+          amount: "1000000000",
+          contractId: SOZU_POOL,
+          fnName: "stake",
+          hash: "5d".repeat(32),
+          kind: "contract_call",
+          status: "executed",
+        },
+        {
+          amount: "2000000000",
+          counterparty: ALICE,
+          hash: "e1".repeat(32),
+          memo: "Rent for October",
+          status: "executed",
+        },
+      ]),
     ],
     network: "testnet",
   };

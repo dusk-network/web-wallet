@@ -39,7 +39,7 @@ const received = new Map();
  * found or read. The block's events are one request, made once per stake.
  *
  * @param {string} nodeUrl
- * @param {{ blockHeight?: number, contractId?: string, hash: string }} stake
+ * @param {{ blockHeight?: number | null, contractId?: string | null, hash: string }} stake
  *   Its transaction, its block and the pool it called
  * @param {{ driver?: () => Promise<SozuDriver> }} [options]
  * @returns {Promise<bigint | null>}
@@ -78,7 +78,7 @@ export function stDuskReceived(
 
 /**
  * @param {string} nodeUrl
- * @param {{ blockHeight?: number, pool: string, tx: string }} stake
+ * @param {{ blockHeight?: number | null, pool: string, tx: string }} stake
  * @param {() => Promise<SozuDriver>} driver
  * @returns {Promise<bigint | null>}
  */

@@ -31,12 +31,13 @@ vi.mock("$lib/stores", async (importOriginal) => {
 // The history has a deposit to DuskEVM.
 vi.mock("$lib/activity", async (importOriginal) => {
   const { readable } = await import("svelte/store");
+  const { rowOf } = await import("$lib/activity/__tests__/fixtures/rows");
 
   return {
     .../** @type {object} */ (await importOriginal()),
     activityState: readable({
       rows: [
-        {
+        rowOf({
           amount: "100000000",
           bridge: {
             amount: "100000000",
@@ -44,13 +45,11 @@ vi.mock("$lib/activity", async (importOriginal) => {
             to: "0xB0E834d62CA3f5cF0F82619c8515c673818f8C6b",
           },
           contractId: ids.bridge,
-          direction: "out",
           fnName: "depositETHToWithValue",
           hash: ids.deposit,
           kind: "contract_call",
-          source: "archive",
           status: "executed",
-        },
+        }),
       ],
     }),
   };

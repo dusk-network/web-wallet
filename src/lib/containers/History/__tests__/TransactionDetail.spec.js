@@ -11,10 +11,12 @@ import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { networks, routes } from "@dusk-network/networks";
 
 import {
-  claimedWithdrawals,
-  describeRow,
-  fullDateTime,
-} from "$lib/activity/present";
+  rowOf,
+  rowsOf,
+  withBridge,
+} from "$lib/activity/__tests__/fixtures/rows";
+import { nameFacts } from "$lib/activity/activityHistory";
+import { describeRow, fullDateTime } from "$lib/activity/present";
 
 import TransactionDetail from "../TransactionDetail.svelte";
 
@@ -42,17 +44,9 @@ const claims = (read) =>
       },
     ],
   ]);
-const context = {
-  bridgeContracts: new Set([BRIDGE]),
-  locale: "en",
-  net: networks.testnet,
-};
+const context = { locale: "en", net: networks.testnet };
 
-/**
- * @param {Partial<ActivityRow>} fields
- * @returns {ActivityRow}
- */
-const row = (fields) => ({
+const DEFAULTS = {
   amount: "0",
   blockHeight: 4_687_000,
   contractId: BRIDGE,
@@ -60,13 +54,26 @@ const row = (fields) => ({
   feePaid: "4419010",
   hash: "aa".repeat(32),
   kind: "contract_call",
-  privacy: "public",
-  source: "archive",
   status: "executed",
-  success: true,
   timestamp: Date.now() - 60_000,
-  ...fields,
-});
+};
+
+/**
+ * A row, by default a call to the bridge, final, on Testnet with the bridge
+ * set for a local deployment.
+ *
+ * @param {Record<string, unknown>} fields
+ * @param {Partial<import("@dusk-network/app-core/activity").ActivityInput>} [input]
+ */
+const row = (fields, input) =>
+  rowOf(
+    { ...DEFAULTS, ...fields },
+    {
+      nameCall: nameFacts,
+      network: withBridge(networks.testnet, BRIDGE),
+      ...input,
+    }
+  );
 
 /**
  * @param {ActivityRow} shown
@@ -100,9 +107,14 @@ const SOZU_POOL =
   "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
 
 describe("TransactionDetail", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    setNodeNetwork(null);
+  });
 
   it("should say which .dusk name a registration registered, with Dusk Domains' contract under Technical details only", () => {
+    setNodeNetwork(networks.testnet);
+
     const { container, getByText } = show(
       row({
         amount: "10000000000",
@@ -111,7 +123,7 @@ describe("TransactionDetail", () => {
         fnName: "register",
         registeredName: "alice.dusk",
       }),
-      { network: "testnet" },
+      {},
       { network: "testnet" }
     );
 
@@ -137,7 +149,7 @@ describe("TransactionDetail", () => {
     });
     const { container, findByText, getByText } = show(
       stake,
-      { network: "testnet" },
+      {},
       { loadStDusk, network: "testnet" }
     );
 
@@ -161,9 +173,11 @@ describe("TransactionDetail", () => {
     };
 
     show(
-      row({ ...call, fnName: "sozu_stake", status: "failed", success: false }),
+      row({ ...call, fnName: "sozu_stake", status: "failed" }),
       {},
-      { loadStDusk }
+      {
+        loadStDusk,
+      }
     );
     cleanup();
     show(row({ ...call, fnName: "sozu_unstake" }), {}, { loadStDusk });
@@ -189,7 +203,7 @@ describe("TransactionDetail", () => {
   });
 
   it("should show a proved withdrawal's amount and its next step until it is claimed", () => {
-    const proved = row({
+    const proveCall = {
       bridge: {
         amount: "1008000000000",
         hash: HASH,
@@ -197,7 +211,8 @@ describe("TransactionDetail", () => {
         withdrawal: WITHDRAWAL,
       },
       fnName: "proveWithdrawalTransaction",
-    });
+    };
+    const proved = row(proveCall);
     const { container, getByRole, getByText } = show(proved, {
       claims: claims({}),
     });
@@ -250,15 +265,20 @@ describe("TransactionDetail", () => {
 
     cleanup();
 
-    const claim = row({
-      bridge: {
-        amount: "1008000000000",
-        kind: "claim",
-        withdrawal: WITHDRAWAL,
-      },
-      fnName: "finalizeWithdrawalTransaction",
-    });
-    const done = show(proved, { claimed: claimedWithdrawals([claim]) });
+    // Claimed by a claim of the history.
+    const [claimed] = rowsOf(
+      [
+        { ...DEFAULTS, ...proveCall },
+        {
+          ...DEFAULTS,
+          bridge: { ...proveCall.bridge, kind: "claim" },
+          fnName: "finalizeWithdrawalTransaction",
+          hash: "bb".repeat(32),
+        },
+      ],
+      { network: withBridge(networks.testnet, BRIDGE) }
+    );
+    const done = show(claimed);
 
     expect(done.getByText("Proved · claimed")).toBeTruthy();
     expect(done.queryByText("Next step")).toBeNull();
@@ -267,6 +287,9 @@ describe("TransactionDetail", () => {
   it("should name the contract a call went to, with a way to copy it", () => {
     const store =
       "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199";
+
+    setNodeNetwork(networks.testnet);
+
     const { container, getAllByRole, getByText } = show(
       row({
         amount: "10000000000",
@@ -274,7 +297,7 @@ describe("TransactionDetail", () => {
         counterparty: store,
         fnName: "register",
       }),
-      { network: "testnet" },
+      {},
       { network: "testnet" }
     );
 
@@ -288,6 +311,9 @@ describe("TransactionDetail", () => {
   it("should name the contract of a call that moved no DUSK, which has no counterparty", () => {
     const store =
       "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199";
+
+    setNodeNetwork(networks.testnet);
+
     const { container, getByText } = show(
       row({
         amount: "0",
@@ -295,7 +321,7 @@ describe("TransactionDetail", () => {
         counterparty: null,
         fnName: "commit",
       }),
-      { network: "testnet" },
+      {},
       { network: "testnet" }
     );
 
@@ -316,34 +342,33 @@ describe("TransactionDetail", () => {
         ? [route.payoutAccount]
         : []
     );
-    const payout = row({
-      amount: "3500000000",
-      contractId: undefined,
-      counterparty: payouts,
-      direction: "in",
-      feePaid: undefined,
-      from: payouts,
-      kind: "transfer",
-      memo: `0x${"c3".repeat(32)}`,
-    });
+    const payout = row(
+      {
+        amount: "3500000000",
+        contractId: undefined,
+        counterparty: payouts,
+        direction: "in",
+        feePaid: undefined,
+        from: payouts,
+        kind: "transfer",
+        memo: `0x${"c3".repeat(32)}`,
+      },
+      { network: local }
+    );
 
     setNodeNetwork(local);
 
-    try {
-      const { container, getByText } = show(
-        payout,
-        { net: local },
-        { network: "Localnet" }
-      );
+    const { container, getByText } = show(
+      payout,
+      { net: local },
+      { network: "Localnet" }
+    );
 
-      expect(getByText("From BNB Smart Chain")).toBeInTheDocument();
-      expect(mainList(container)).toMatch(/From\s*BSC bridge/);
-      expect(mainList(container)).toMatch(
-        /Network fee paid\s*Paid by the sender/
-      );
-    } finally {
-      setNodeNetwork(null);
-    }
+    expect(getByText("From BNB Smart Chain")).toBeInTheDocument();
+    expect(mainList(container)).toMatch(/From\s*BSC bridge/);
+    expect(mainList(container)).toMatch(
+      /Network fee paid\s*Paid by the sender/
+    );
   });
 
   it("should round the fee paid in its list, and give it exactly under Technical details", () => {
@@ -382,7 +407,6 @@ describe("TransactionDetail", () => {
 
     afterEach(() => {
       forgetDepositActivity();
-      setNodeNetwork(null);
     });
 
     it("should follow it to DuskEVM, and say when it arrived there, linking the transaction that paid it", async () => {
@@ -449,7 +473,7 @@ describe("TransactionDetail", () => {
           counterparty: SOZU_POOL,
           fnName: "sozu_stake",
         }),
-        { network: "testnet" },
+        {},
         { loadStDusk: async () => 162_189_471n, network: "testnet" }
       );
 
@@ -514,7 +538,6 @@ describe("TransactionDetail", () => {
     const shieldedRow = row({
       ...transfer,
       hash: "a2".repeat(32),
-      privacy: "shielded",
       source: "shielded",
     });
     const pending = row({
@@ -550,7 +573,7 @@ describe("TransactionDetail", () => {
     expect(loadNonce).not.toHaveBeenCalledWith(pending.hash);
 
     // The same row, once final, is looked up.
-    await rerender(shown({ ...pending, source: "archive" }));
+    await rerender(shown(row({ ...transfer, hash: pending.hash })));
     await answer(pending.hash, "112");
 
     expect(queryByText("112")).toBeInTheDocument();

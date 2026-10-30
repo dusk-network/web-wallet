@@ -416,19 +416,19 @@ export function withdrawalDuskTransactions(rows) {
   /** @type {Map<string, { claim?: string, prove?: string }>} */
   const steps = new Map();
 
-  for (const row of rows) {
-    const call = row.bridge;
+  for (const { bridge, hash, status } of rows) {
+    const step =
+      bridge?.step === "proof"
+        ? "prove"
+        : bridge?.step === "claim"
+          ? "claim"
+          : null;
 
-    if (
-      (call?.kind === "prove" || call?.kind === "claim") &&
-      call.hash &&
-      row.status !== "failed"
-    ) {
-      const hash = call.hash.toLowerCase();
-      const known = steps.get(hash) ?? {};
+    if (step && bridge?.hash && status !== "failed") {
+      const known = steps.get(bridge.hash) ?? {};
 
-      if (!known[call.kind]) {
-        steps.set(hash, { ...known, [call.kind]: row.hash });
+      if (!known[step]) {
+        steps.set(bridge.hash, { ...known, [step]: hash });
       }
     }
   }

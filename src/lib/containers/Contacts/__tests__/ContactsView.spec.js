@@ -19,6 +19,7 @@ import {
   removeContact,
   saveContact,
 } from "$lib/contacts";
+import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { openTestContacts } from "$lib/test-helpers";
 
 import { ContactsView } from "..";
@@ -31,22 +32,16 @@ const SHIELDED =
   "4ZH3oyfTuMHyWD1Rp4e7QKp5yK6wLrWvxHneufAiYBAjvereFvfjtDvTbBcZN5ZCsaoMo49s1LKPTwGpowik6QJG";
 const NOW = Date.now();
 
-/** @type {ActivityRow[]} */
-const rows = [
-  {
-    amount: "40000000000",
-    blockHeight: 4_687_600,
-    direction: "out",
-    hash: "a1".repeat(32),
-    kind: "transfer",
-    privacy: "public",
-    source: "archive",
-    status: "executed",
-    success: true,
-    timestamp: NOW - 60_000,
-    to: ACCOUNT,
-  },
-];
+/** A transfer sent a minute ago. */
+const SENT = {
+  amount: "40000000000",
+  blockHeight: 4_687_600,
+  hash: "a1".repeat(32),
+  status: "executed",
+  timestamp: NOW - 60_000,
+  to: ACCOUNT,
+};
+const rows = [rowOf(SENT)];
 
 const resolveName = vi.fn(async (/** @type {string} */ name) => ({
   account: ACCOUNT,
@@ -151,15 +146,15 @@ describe("ContactsView", () => {
 
     yesterday.setDate(yesterday.getDate() - 1);
 
-    const older = {
-      ...rows[0],
+    const older = rowOf({
+      ...SENT,
       amount: "250000000",
-      direction: /** @type {const} */ ("in"),
+      direction: "in",
       from: ACCOUNT,
       hash: "a3".repeat(32),
       timestamp: yesterday.getTime(),
       to: undefined,
-    };
+    });
     const { container } = show({
       rows: [...rows, older],
       selected: shop.id,
@@ -186,7 +181,7 @@ describe("ContactsView", () => {
       removeContact(contact.id);
     }
 
-    const own = { ...rows[0], hash: "a2".repeat(32), to: OTHER };
+    const own = rowOf({ ...SENT, hash: "a2".repeat(32), to: OTHER });
     const { container, getByRole, getByText, queryByText, rerender } = show({
       contacts: [],
       own: [OTHER],

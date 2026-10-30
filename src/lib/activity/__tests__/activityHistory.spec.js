@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { activityRows } from "@dusk-network/app-core/activity";
 import { networks } from "@dusk-network/networks";
 import { depositCall } from "@dusk-network/networks/duskevm";
 
@@ -6,9 +7,7 @@ import fixture from "./fixtures/activity-testnet.json";
 import { fakeArchive } from "./fixtures/fakeArchive";
 import { calls as REGISTRATIONS } from "./fixtures/registrations-testnet.json";
 
-import { mergeActivity } from "../activityMerge";
 import { describeRow } from "../present";
-import { reservationNames } from "../reservedNames";
 
 /*
  * Recorded on Testnet: A registered a .dusk name and received two transfers;
@@ -73,7 +72,7 @@ const kept = (account) =>
 async function rowsOf(account) {
   const { entries } = await (await historyOf(account)).read();
 
-  return mergeActivity({ history: entries });
+  return activityRows({ nameCall: history.nameFacts, public: entries });
 }
 
 describe("a .dusk name's reservation and registration", () => {
@@ -91,13 +90,8 @@ describe("a .dusk name's reservation and registration", () => {
 
   /** @param {string} account */
   async function titles(account) {
-    const rows = await rowsOf(account);
-    const reservations = reservationNames(rows);
-
-    return rows.map(
-      (row) =>
-        describeRow(row, { locale: "en", network: "testnet", reservations })
-          .title
+    return (await rowsOf(account)).map(
+      (row) => describeRow(row, { locale: "en" }).title
     );
   }
 
@@ -190,9 +184,9 @@ describe("a deposit to the bridge set for a local deployment", () => {
 
     await sync(A);
 
-    expect((await rowsOf(A))[0].bridge).toStrictEqual({
-      amount: "100000000",
-      kind: "deposit",
+    expect((await rowsOf(A))[0].bridge).toMatchObject({
+      amount: 100_000_000n,
+      step: "deposit",
       to,
     });
   });

@@ -99,6 +99,28 @@ const NAME_CALLS = {
 };
 
 /**
+ * What a call to Dusk Domains on the node's network did, for History's rows
+ * (`activityRows`'s `nameCall`): the name a registration registered and the
+ * reservation it reveals, or a reservation's own, as the history read them.
+ *
+ * @type {NonNullable<import("@dusk-network/app-core/activity").ActivityInput["nameCall"]>}
+ */
+export function nameFacts(call, kept) {
+  const kind = nameCallOf(call)?.kind;
+  const commit = /** @type {ActivityNameFacts["nameCommit"]} */ (
+    kept.nameCommit
+  );
+
+  return kind
+    ? {
+        kind,
+        name: /** @type {string | null | undefined} */ (kept.registeredName),
+        reservation: commit?.reservation,
+      }
+    : null;
+}
+
+/**
  * One account's public history on a node's network, its bridge calls read
  * on the bridge the wallet sends them to. What it keeps is tied to the
  * store's `epoch` (getActivityEpoch): after a wallet reset since, it keeps

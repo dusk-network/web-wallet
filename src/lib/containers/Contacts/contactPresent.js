@@ -3,7 +3,7 @@
  * from the history, and when their `.dusk` name was last checked.
  */
 
-import { dayLabel, describeRow, rowTime } from "$lib/activity/present";
+import { dayLabel, describeRow } from "$lib/activity/present";
 
 /**
  * @typedef {{
@@ -48,7 +48,7 @@ export function lastPayments(rows, context) {
 
   for (const row of rows) {
     const p = describeRow(row, context);
-    const time = rowTime(row);
+    const { time } = row;
     const isTransfer = p.category === "sent" || p.category === "received";
 
     if (
@@ -97,7 +97,7 @@ export function peopleYouPaid(rows, { context, limit = 5, saved }) {
 
   for (const row of rows) {
     const p = describeRow(row, context);
-    const time = rowTime(row);
+    const { time } = row;
     const to = p.counterparty;
 
     if (

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { networks } from "@dusk-network/networks";
 
+import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { cardRoutes } from "../cardRoutes";
@@ -63,21 +64,19 @@ const NOW = Date.UTC(2026, 9, 29, 16, 30);
 const DUSK = 1_000_000_000n;
 
 /**
- * A history row.
+ * A history row, by default a public transfer received.
  *
- * @param {Partial<ActivityRow>} fields
- * @returns {ActivityRow}
+ * @param {Record<string, unknown>} fields
  */
-const row = (fields) => ({
-  amount: String(5n * DUSK),
-  direction: "in",
-  hash: "bb".repeat(32),
-  privacy: "public",
-  source: "archive",
-  status: "executed",
-  timestamp: NOW,
-  ...fields,
-});
+const row = (fields) =>
+  rowOf({
+    amount: String(5n * DUSK),
+    direction: "in",
+    hash: "bb".repeat(32),
+    status: "executed",
+    timestamp: NOW,
+    ...fields,
+  });
 
 /** The migration's payout: from the route's payout account, its hash the memo. */
 const payout = row({ counterparty: BSC.payoutAccount ?? "", memo: MIGRATION });
@@ -148,6 +147,7 @@ describe("waitsOnHistory", () => {
     const out = row({
       direction: "out",
       memo: "0x1111111111111111111111111111111111111111",
+      source: "local",
       status: "submitted",
       to: BSC.payoutAccount ?? "",
     });
@@ -201,7 +201,7 @@ describe("followRouteHistory", () => {
       loaded: true,
       rows: [
         row({ blockHeight: undefined, hash: "cc".repeat(32), source: "local" }),
-        row({ blockHeight: 300, hash: "dd".repeat(32), privacy: "shielded" }),
+        row({ blockHeight: 300, hash: "dd".repeat(32), source: "shielded" }),
         { ...payout, blockHeight: 101 },
         row({ blockHeight: 100 }),
         row({ blockHeight: 50, hash: "ee".repeat(32) }),

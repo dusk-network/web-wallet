@@ -20,13 +20,13 @@
     followHistoryDeposits,
   } from "$lib/bridge/depositActivity";
   import { contractLabel } from "$lib/activity/knownContracts";
-  import { fullDateTime, routeLabel, rowTime } from "$lib/activity/present";
+  import { fullDateTime, routeLabel } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { addBasePath } from "$lib/navigation";
   import { addressType, contactsStore, saveContact } from "$lib/contacts";
-  import { SOZU_FN, stDuskReceived } from "$lib/sozu";
+  import { stDuskReceived } from "$lib/sozu";
   import { nodeBaseUrl } from "$lib/url";
   import { duskEvmExplorerTx } from "$lib/web3/duskEvm";
 
@@ -207,17 +207,8 @@
     return text.endsWith(".") ? text : `${text}.`;
   }
 
-  /** @param {string} value */
-  const lux = (value) => {
-    try {
-      return BigInt(value);
-    } catch {
-      return 0n;
-    }
-  };
-
   $: p = presentation;
-  $: time = rowTime(row);
+  $: time = row.time;
   $: outcome =
     p.status === "failed"
       ? { icon: mdiAlertCircleOutline, text: "Failed · nothing sent" }
@@ -236,7 +227,7 @@
                       text: "Proof rejected · prove it again",
                     }
                   : { icon: mdiTimerSand, text: "Proved · not claimed yet" }
-            : row.success === true || row.status === "executed"
+            : row.status === "executed"
               ? { icon: mdiCheck, text: "Completed" }
               : { icon: mdiTimerSand, text: "Checking the outcome…" };
   $: headline =
@@ -254,7 +245,7 @@
   $: canSendAgain =
     p.icon === "sent" && !!p.counterparty && row.kind === "transfer";
   $: nextStep = nextStepOf(p.withdrawal, locale);
-  $: hasNonce = row.privacy !== "shielded" && row.source !== "local";
+  $: hasNonce = row.privacy !== "shielded" && row.source === "public";
   $: if (`${row.hash} ${hasNonce}` !== nonceOf) {
     showNonce(row.hash, hasNonce);
   }
@@ -265,24 +256,19 @@
   $: contractName = contract ? contractLabel(contract, network) : "";
   // Who it went to: the person or account, or a deposit's DuskEVM address;
   // not a call's contract.
-  $: target =
-    contract && row.bridge?.kind !== "deposit" ? null : p.counterparty;
+  $: target = contract && !row.bridge?.to ? null : p.counterparty;
   // A route's account by what the network's file calls it, on any network.
   $: known = target
     ? contractLabel(target, network) || (routeLabel($nodeNetwork, target) ?? "")
     : "";
-  $: gotStDusk =
-    p.icon === "staking" &&
-    row.fnName === SOZU_FN.STAKE &&
-    p.status !== "failed" &&
-    (row.success === true || row.status === "executed");
+  $: gotStDusk = row.sozu === "stake" && row.status === "executed";
   $: if (`${row.hash} ${gotStDusk}` !== stDuskOf) {
     showStDusk(row, gotStDusk);
   }
   $: isSent = row.direction !== "in" && p.icon !== "received";
   // A deposit to DuskEVM, as followed there: when it arrived, and the
   // DuskEVM transaction that paid it.
-  $: isDeposit = row.bridge?.kind === "deposit";
+  $: isDeposit = Boolean(row.bridge?.to);
   $: if (isDeposit && `${row.hash} ${row.source}` !== followedDeposit) {
     followedDeposit = `${row.hash} ${row.source}`;
     followDeposit(row);
@@ -367,7 +353,7 @@
         <div class="tx-detail__wide">
           <dt>{counterpartyLabel}</dt>
           <dd>
-            {#if row.bridge?.kind === "deposit"}
+            {#if row.bridge?.to}
               <span class="tx-detail__name">DuskEVM address</span>
             {:else if known}
               <span class="tx-detail__name">{known}</span>
@@ -520,8 +506,8 @@
       <div>
         <dt>Network fee paid</dt>
         <dd>
-          {row.feePaid
-            ? `${formatFee(lux(row.feePaid), locale)} DUSK`
+          {row.fee !== null
+            ? `${formatFee(row.fee, locale)} DUSK`
             : p.icon === "received" ||
                 (p.category === "bridge" && row.direction === "in")
               ? "Paid by the sender"
@@ -577,7 +563,7 @@
         <div>
           <dt>Block height</dt>
           <dd>
-            {#if row.blockHeight === undefined}
+            {#if row.blockHeight === null}
               Not in a block yet
             {:else if row.blockHash}
               <a
@@ -606,10 +592,10 @@
             <dd>{Number(row.gasPrice).toLocaleString(locale)} LUX</dd>
           </div>
         {/if}
-        {#if row.feePaid}
+        {#if row.fee !== null}
           <div>
             <dt>Fee paid</dt>
-            <dd>{formatDuskExact(lux(row.feePaid), locale)} DUSK</dd>
+            <dd>{formatDuskExact(row.fee, locale)} DUSK</dd>
           </div>
         {/if}
         {#if stDusk !== null}
@@ -629,7 +615,7 @@
         <div>
           <dt>Finality</dt>
           <dd>
-            {row.source === "local" ? "Not final yet" : "Final"}
+            {row.source === "sent" ? "Not final yet" : "Final"}
           </dd>
         </div>
         {#if row.error}

@@ -6,6 +6,7 @@ import { get } from "svelte/store";
 
 import { EvmTransactions } from "..";
 import WithdrawalLifecycle from "../EvmTransactions/WithdrawalLifecycle.svelte";
+import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 import { claimDay } from "$lib/bridge/claimDate";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { formatTimestamp } from "../EvmTransactions/withdrawalPresentation";
@@ -518,30 +519,27 @@ describe("EvmTransactions", () => {
 
     // The history comes after the page opened.
     expect(tracking.followTransfers).not.toHaveBeenCalled();
-    mocks.setHistoryRows([
-      {
-        amount: "5000000000",
-        counterparty: bsc.payoutAccount,
-        direction: "in",
-        hash: "b1".repeat(32),
-        memo: `0x${"a6".repeat(32)}`,
-        privacy: "public",
-        source: "archive",
-        status: "executed",
-        timestamp: paidAt,
-      },
-      {
-        amount: "200001000000000",
-        counterparty: out.account,
-        direction: "out",
-        hash: "d1".repeat(32),
-        memo: accountAddress,
-        privacy: "public",
-        source: "archive",
-        status: "executed",
-        timestamp: sentAt,
-      },
-    ]);
+    mocks.setHistoryRows(
+      rowsOf([
+        {
+          amount: "5000000000",
+          counterparty: bsc.payoutAccount,
+          direction: "in",
+          hash: "b1".repeat(32),
+          memo: `0x${"a6".repeat(32)}`,
+          status: "executed",
+          timestamp: paidAt,
+        },
+        {
+          amount: "200001000000000",
+          counterparty: out.account,
+          hash: "d1".repeat(32),
+          memo: accountAddress,
+          status: "executed",
+          timestamp: sentAt,
+        },
+      ])
+    );
     const paid = await findByRole("button", {
       name: `BNB Smart Chain to Dusk Paid ${claimDay(paidAt, "en")} 5 DUSK`,
     });
@@ -1170,17 +1168,16 @@ describe("EvmTransactions", () => {
     const proof = "b7".repeat(32);
 
     mocks.setAccount({ address: accountAddress, isConnected: true });
-    mocks.setHistoryRows([
-      {
-        bridge: { hash: withdrawalHash, kind: "prove", withdrawal: "01" },
-        direction: "out",
-        hash: proof,
-        privacy: "public",
-        source: "archive",
-        status: "executed",
-        timestamp: Date.now() - 3_600_000,
-      },
-    ]);
+    mocks.setHistoryRows(
+      rowsOf([
+        {
+          bridge: { hash: withdrawalHash, kind: "prove", withdrawal: "01" },
+          hash: proof,
+          status: "executed",
+          timestamp: Date.now() - 3_600_000,
+        },
+      ])
+    );
     mocks.loadWithdrawalActivity.mockResolvedValue({
       error: null,
       items: [{ ...activityItem(txHash, "proven_waiting"), withdrawalHash }],

@@ -38,6 +38,7 @@ import {
   rememberWithdrawalTransaction,
   withdrawalStageProgress,
 } from "$lib/bridge/withdrawalActivity";
+import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 
 const account = "0x2222222222222222222222222222222222222222";
 const otherAccount = "0x3333333333333333333333333333333333333333";
@@ -351,23 +352,23 @@ describe("DuskEVM withdrawal activity", () => {
       /**
        * @param {"claim" | "prove"} kind
        * @param {number} count
-       * @param {Partial<ActivityRow>} [fields]
+       * @param {Record<string, unknown>} [fields]
        */
-      const row = (kind, count, fields = {}) =>
-        /** @type {ActivityRow} */ ({
-          bridge: {
-            amount: "1000000000",
-            hash: hashOf(count),
-            kind,
-            withdrawal: nonceHex(count),
-          },
-          status: "executed",
-          ...fields,
-        });
-
-      expect(
-        historyWithdrawals([
-          row("claim", 40, {
+      const step = (kind, count, fields = {}) => ({
+        bridge: {
+          amount: "1000000000",
+          hash: hashOf(count),
+          kind,
+          withdrawal: nonceHex(count),
+        },
+        contractId: "ab".repeat(32),
+        kind: "contract_call",
+        ...fields,
+      });
+      // In the order given: one block, its rows by their hashes.
+      const history = rowsOf(
+        [
+          step("claim", 40, {
             bridge: {
               amount: "1000000000",
               hash: hashOf(40),
@@ -376,18 +377,26 @@ describe("DuskEVM withdrawal activity", () => {
               withdrawal: nonceHex(40),
             },
           }),
-          row("prove", 41),
-          row("prove", 40),
+          step("prove", 41),
+          step("prove", 40),
           // A failed proof proved nothing; one read before the history kept
           // its hash isn't known yet.
-          row("prove", 39, { status: "failed" }),
-          /** @type {ActivityRow} */ ({
+          step("prove", 39, { status: "failed" }),
+          step("prove", 38, {
             bridge: { amount: "1", kind: "prove", withdrawal: nonceHex(38) },
-            status: "executed",
           }),
-          /** @type {ActivityRow} */ ({ status: "executed" }),
-        ])
-      ).toStrictEqual([
+          { amount: "1" },
+        ].map((fields, i) => ({
+          amount: "0",
+          blockHeight: 4_687_000,
+          hash: String(i + 1).padStart(64, "0"),
+          status: "executed",
+          timestamp: 1,
+          ...fields,
+        }))
+      );
+
+      expect(historyWithdrawals(history)).toStrictEqual([
         { hash: hashOf(40), nonce: nonceOf(40), recipient: "ab".repeat(32) },
         { hash: hashOf(41), nonce: nonceOf(41), recipient: null },
       ]);

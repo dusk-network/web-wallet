@@ -11,11 +11,7 @@
   import { activityState } from "$lib/activity";
   import { fetchTxDetails } from "@dusk-network/app-core/history";
   import { archiveAt } from "$lib/activity/activityHistory";
-  import {
-    configuredBridgeContracts,
-    shortAddress,
-  } from "$lib/activity/present";
-  import reservedNames from "$lib/activity/reservedNames";
+  import { shortAddress } from "$lib/activity/present";
   import { getVerifiedName, resolveDuskName } from "$lib/dusk-domains";
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
@@ -23,7 +19,6 @@
   import { duskExplorerBlock, duskExplorerTx, nodeBaseUrl } from "$lib/url";
 
   import { contactNamesOf, contactsStore } from "$lib/contacts";
-  import { sozuPools } from "$lib/sozu";
   import { lookupKind, lookupName, searchLocally } from "./search";
 
   /** @type {{ href: string, keywords?: string, label: string }[]} */
@@ -50,14 +45,11 @@
   /** @type {Element | null} */
   const opener = document.activeElement;
 
-  const bridgeContracts = configuredBridgeContracts();
-
   const close = () => dispatch("close");
 
   $: ({ networkName } = $networkStore);
   $: ({ profiles } = $walletStore);
   $: ({ language } = $settingsStore);
-  $: void reservedNames.load($activityState.rows);
   $: index = {
     contacts: $contactsStore,
     history: $activityState.rows,
@@ -66,11 +58,8 @@
     pages,
     // The history's rows told as History tells them.
     present: {
-      bridgeContracts,
       contactNames: contactNamesOf($contactsStore),
       net: $nodeNetwork,
-      reservations: $reservedNames,
-      sozuPools: $sozuPools,
     },
     profiles: profiles.map((profile, i) => {
       const account = String(profile.account);
