@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { decodeFunctionData, parseAbi } from "viem";
 import { networks } from "@dusk-network/networks";
-import { duskRecipientOf } from "@dusk-network/networks/duskevm";
+import { duskRecipientOf, evmAddressOf } from "@dusk-network/networks/duskevm";
 import { WithdrawalError } from "@dusk-network/app-core/duskevm-withdrawals";
 
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
@@ -311,14 +311,28 @@ describe("DuskEVM withdrawals", () => {
         ...networks.testnet.duskEvm?.predeploys,
         l2StandardBridge: `0x${"42".repeat(20)}`,
       });
-      // A start still goes to the bridge the network's file names, as before.
+      // A start goes to the bridge its withdrawal is checked against.
       expect(
         withdrawals.withdrawalStart({
           amountWei: 10n ** 9n,
           sender: `0x${"22".repeat(20)}`,
           to: PAID,
         }).to
-      ).toBe(networks.testnet.duskEvm?.predeploys.l2StandardBridge);
+      ).toBe(`0x${"42".repeat(20)}`);
+    });
+
+    it("check a withdrawal's relay against the bridge on Dusk set for local work", async () => {
+      vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", "33".repeat(32));
+      pkg.status.mockResolvedValue(STATUS);
+
+      await withdrawals.loadWithdrawalStatus(TX);
+
+      expect(
+        pkg.made[0].network.duskEvm.contracts.l1_standard_bridge
+      ).toStrictEqual({
+        contractId: "33".repeat(32),
+        evmAddress: evmAddressOf("33".repeat(32)),
+      });
     });
   });
 

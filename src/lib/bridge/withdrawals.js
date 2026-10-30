@@ -544,13 +544,13 @@ export async function loadDuskTransactionExecution(txHash) {
 
 /**
  * A withdrawal's start on DuskEVM, for the EVM wallet to send: DuskEVM's
- * bridge's `bridgeETHTo`, paying `to` on Dusk. It goes to the bridge the
- * network's file names, as before, whatever is set for local work.
+ * bridge's `bridgeETHTo`, paying `to` on Dusk: the bridge withdrawals are
+ * read and checked against, as set for local work or the network's file's.
  *
  * @param {{ amountWei: bigint, sender: string, to: string }} withdrawal
  */
 export const withdrawalStart = (withdrawal) =>
-  withdrawalCall(/** @type {Network} */ (bridgeNetwork()), withdrawal);
+  withdrawalCall(/** @type {Network} */ (withdrawalNetwork()), withdrawal);
 
 /**
  * The gas a proof or a claim is sent with: the limit the package worked

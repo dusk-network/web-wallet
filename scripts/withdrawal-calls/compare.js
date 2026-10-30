@@ -29,7 +29,9 @@ import { basename, join, resolve } from "node:path";
 
 const HERE = resolve(import.meta.dirname, "../..");
 const OTHER = resolve(process.argv[2] ?? "");
-const TX = process.argv[process.argv.indexOf("--tx") + 1];
+const TX = process.argv.includes("--tx")
+  ? process.argv[process.argv.indexOf("--tx") + 1]
+  : undefined;
 const DIR = "scripts/withdrawal-calls";
 const FILES = ["capture.spec.js", "keep-fetch.js", "vitest.config.js"];
 

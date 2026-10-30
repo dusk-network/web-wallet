@@ -3,6 +3,7 @@
  * and whom a withdrawal pays on Dusk.
  */
 
+import { evmAddressOf } from "@dusk-network/networks/duskevm";
 import { get } from "svelte/store";
 
 import nodeNetwork from "$lib/stores/nodeNetwork";
@@ -84,8 +85,11 @@ export function bridgeNetwork() {
     /** @param {"l1_standard_bridge" | "optimism_portal"} name @param {string} id @param {string} other */
     const as = (name, id, other) =>
       id
-        ? { ...contracts[name], contractId: id }
-        : (contracts[name] ?? { contractId: other });
+        ? { ...contracts[name], contractId: id, evmAddress: evmAddressOf(id) }
+        : (contracts[name] ?? {
+            contractId: other,
+            evmAddress: evmAddressOf(other),
+          });
 
     set = /** @type {import("@dusk-network/networks").Network} */ ({
       ...net,
