@@ -2,7 +2,7 @@
  * A public account's transaction history, synced from the archive by block
  * height (`@dusk-network/app-core/history`) and kept in this browser
  * (activityStore.js), with what it reads of `.dusk` name calls. The shielded
- * history is phoenixHistory.js's.
+ * history is shieldedHistory.js's.
  */
 
 import { createArchive, createHistory } from "@dusk-network/app-core/history";

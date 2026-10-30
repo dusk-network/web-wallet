@@ -121,21 +121,6 @@ type ShieldedHistoryRecord = {
   ownerKey: string;
 };
 
-/** A shielded note of the profile: its leaf (note and height) and value. */
-type ShieldedNote = {
-  leaf: Uint8Array;
-  nullifier: string;
-  spent: boolean;
-  value: bigint;
-};
-
-/** A block as the shielded history reads it. */
-type ShieldedBlock = {
-  events: any[];
-  timestamp: number | null;
-  txs: Map<string, any>;
-};
-
 /** What the wallet records of a transaction it sends, for its history. */
 type SentDetails = Omit<
   ActivityLocalRecord,
