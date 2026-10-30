@@ -49,6 +49,14 @@ let store;
 /** @type {import("../activitySession").ActivitySession[]} */
 const started = [];
 
+/** A's history, synced by another run: on an earlier visit, or in another tab. */
+async function syncA() {
+  const { publicHistory } = await import("../activityHistory");
+  const epoch = await store.getActivityEpoch();
+
+  await publicHistory({ account: A, epoch, nodeUrl: NODE }).sync();
+}
+
 /** @param {Partial<import("../activitySession").ActivitySessionOptions>} [options] */
 function sessionFor(options = {}) {
   const session = new sessions.ActivitySession({
@@ -90,9 +98,7 @@ describe("ActivitySession", () => {
     const shielded = vi.fn(async () => ({ entries: [shieldedRow] }));
 
     // Kept from an earlier visit: the transfer at 4655845.
-    await (
-      await import("../activityHistory")
-    ).syncActivity({ account: A, nodeUrl: NODE });
+    await syncA();
     node.finalized = FINALIZED;
     mocks.lookupCounterpartyNames.mockResolvedValue(
       new Map([[sender, "faucet.dusk"]])
@@ -180,9 +186,7 @@ describe("ActivitySession", () => {
     const sender = entryOfA(4657992).events[0].data.sender;
 
     // Kept from an earlier visit: the history, and the sender's name.
-    await (
-      await import("../activityHistory")
-    ).syncActivity({ account: A, nodeUrl: NODE });
+    await syncA();
     await store.putCounterpartyNames(
       "testnet",
       new Map([[sender, "faucet.dusk"]]),
@@ -368,6 +372,82 @@ describe("ActivitySession", () => {
     await run;
 
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("says nothing of a run another one overtook, and shows the history as that one left it", async () => {
+    const node = fakeArchive();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const atWindow = Promise.withResolvers();
+    const held = Promise.withResolvers();
+    let holding = true;
+
+    // The session's run waits at its first window...
+    node.before = async (query) => {
+      if (holding && query.includes("toBlock")) {
+        holding = false;
+        atWindow.resolve(undefined);
+        await held.promise;
+      }
+    };
+
+    const session = sessionFor();
+    const run = session.start();
+
+    await atWindow.promise;
+
+    // ... while another run finds the node on another chain, and starts the
+    // history over there.
+    node.genesis = "ff".repeat(32);
+    await syncA();
+    held.resolve(undefined);
+    await run;
+
+    expect(session.state).toMatchObject({ error: null, syncing: false });
+    expect(warn).not.toHaveBeenCalled();
+    expect(session.state.rows.map((r) => r.blockHeight)).toEqual([
+      4658012, 4658000, 4657992, 4655845,
+    ]);
+    expect(
+      await store.getActivityMeta(store.activityOwnerKey("testnet", A))
+    ).toMatchObject({ genesis: "ff".repeat(32) });
+  });
+
+  it("shows more below a block the first page showed whole, however big", async () => {
+    // Derived: 10 transfers on top, each in its own block, then 100 in one
+    // block, then 30 older ones, oldest first as the archive lists them.
+    const sample = accounts[A].receiver[0];
+    /** @param {number} height @param {number} n */
+    const at = (height, n) => ({
+      ...sample,
+      ["block_height"]: height,
+      origin: n.toString(16).padStart(64, "0"),
+    });
+    const top = FINALIZED - 100;
+    const receiver = [
+      ...Array.from({ length: 30 }, (_, i) => at(top - 59 + i, 300 + i)),
+      ...Array.from({ length: 100 }, (_, i) => at(top - 20, 100 + i)),
+      ...Array.from({ length: 10 }, (_, i) => at(top - 9 + i, 1 + i)),
+    ];
+
+    fakeArchive({ accounts: { [A]: { receiver, sender: [] } } });
+
+    // A session syncs once a start: enough of them to keep the whole history.
+    let session = sessionFor();
+
+    await session.start();
+    for (let i = 0; i < 5 && !session.state.complete; i += 1) {
+      session.stop();
+      session = sessionFor();
+      await session.start();
+    }
+
+    // The first page: the 10, then the 100 of the block it cuts through.
+    expect(session.state.complete).toBe(true);
+    expect(session.state.rows).toHaveLength(110);
+
+    await session.showMore();
+
+    expect(session.state.rows).toHaveLength(140);
   });
 
   it("keeps the archive's error for the state and still shows what it kept", async () => {

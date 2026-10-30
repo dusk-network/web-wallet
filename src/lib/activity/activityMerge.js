@@ -59,7 +59,7 @@ function readAs(entry) {
  * A synced history entry as a row, in the shape of the wallet's own records
  * (`amount`, `to`, `status`, …).
  *
- * @param {ActivityEntry} entry From activityHistory.readActivity
+ * @param {ActivityEntry} entry As the history reads it (activityHistory.js)
  * @returns {ActivityRow}
  */
 export function historyRow(entry) {

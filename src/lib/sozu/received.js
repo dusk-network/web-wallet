@@ -5,7 +5,7 @@
  * minted the staker's stDUSK.
  */
 
-import { archiveQuery } from "$lib/activity/activityHistory";
+import { archiveAt } from "$lib/activity/activityHistory";
 
 import { stDuskFor } from "@dusk-network/networks/sozu";
 import { loadSozuDriver } from "./status";
@@ -83,8 +83,7 @@ export function stDuskReceived(
  * @returns {Promise<bigint | null>}
  */
 async function readReceived(nodeUrl, { blockHeight, pool, tx }, driver) {
-  const data = await archiveQuery(
-    nodeUrl,
+  const data = await archiveAt(nodeUrl).query(
     `query { contractEvents(height: ${blockHeight}) { json } }`
   );
   const events = data?.contractEvents?.json;

@@ -9,7 +9,8 @@
   import { Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { activityState } from "$lib/activity";
-  import { archiveQuery, fetchTxDetails } from "$lib/activity/activityHistory";
+  import { fetchTxDetails } from "@dusk-network/app-core/history";
+  import { archiveAt } from "$lib/activity/activityHistory";
   import {
     configuredBridgeContracts,
     shortAddress,
@@ -114,8 +115,7 @@
     const tab = window.open("", "_blank");
 
     try {
-      const data = await archiveQuery(
-        nodeBaseUrl(),
+      const data = await archiveAt(nodeBaseUrl()).query(
         `query { block(height: ${height}) { header { hash } } }`
       );
       const hash = data?.block?.header?.hash;
@@ -231,9 +231,8 @@
   /** @param {string} q */
   async function lookUpTransaction(q) {
     const hash = q.replace(/^0x/i, "").toLowerCase();
-    const details = await fetchTxDetails(nodeBaseUrl(), [hash]).catch(
-      () => null
-    );
+    const archive = archiveAt(nodeBaseUrl());
+    const details = await fetchTxDetails(archive, [hash]).catch(() => null);
 
     if (!details) {
       return { message: "Couldn't look the transaction up.", results: [] };

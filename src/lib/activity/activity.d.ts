@@ -18,91 +18,32 @@ type ActivityStatus =
   | "submitted"
   | "unknown";
 
-/** One archive entry as an account sees it (activityHistory.parseHistoryEntry). */
-type ActivityParsedEntry = {
-  blockHeight: number;
-  counterparty: string | null;
-  direction: ActivityDirection;
-  hash: string;
-  kind: ActivityKind;
-  memo: string;
-  payer: boolean;
-  value: bigint;
+/**
+ * What the history reads of a `.dusk` name's call: what its reservation
+ * holds, or its registration reveals of it once that checks out for the
+ * history's account (null from a wallet that read it before), and the name a
+ * registration registered (null when it didn't read as one).
+ */
+type ActivityNameFacts = {
+  nameCommit?: import("$lib/activity/knownContracts").NameCommit | null;
+  registeredName?: string | null;
 };
 
 /** A transaction's time, outcome, fee and call, from its details request. */
-type ActivityDetails = {
-  blockHash?: string;
-
-  /** What a call to the bridge did: null when it didn't read as one of its calls. */
-  bridge?: import("$lib/bridge/bridgeCalls").BridgeCall | null;
-  contractId?: string;
-  detailsAt: number;
-  error?: string;
-  fee: string;
-  fnName?: string;
-  gasLimit: string;
-  gasPrice: string;
-  gasSpent: string;
-
-  /**
-   * What a `.dusk` name's reservation holds, or its registration reveals of
-   * it once that checks out for the history's account; null from a wallet
-   * that read it before.
-   */
-  nameCommit?: import("$lib/activity/knownContracts").NameCommit | null;
-
-  /** The `.dusk` name a registration registered: null when it didn't read as one. */
-  registeredName?: string | null;
-  success: boolean;
-  timestamp: number | null;
-};
+type ActivityDetails = import("@dusk-network/app-core/history").EntryDetails &
+  ActivityNameFacts;
 
 /** An entry as the store keeps it: amounts as strings. */
-type ActivityStoredEntry = Omit<ActivityParsedEntry, "value"> &
-  Partial<ActivityDetails> & {
-    id?: string;
-    ownerKey?: string;
-    value: string;
-  };
+type ActivityStoredEntry = import("@dusk-network/app-core/history").KeptEntry &
+  ActivityNameFacts & { id?: string; ownerKey?: string };
 
-/** A kept entry as the history uses it (activityHistory.activityEntry). */
-type ActivityEntry = {
-  blockHash?: string;
-  blockHeight: number;
-  bridge?: import("$lib/bridge/bridgeCalls").BridgeCall | null;
-  contractId?: string;
-  counterparty: string | null;
-  detailsAt?: number;
-  direction: ActivityDirection;
-  error?: string;
-  fee: bigint | null;
-  fnName?: string;
-  gasLimit?: string;
-  gasPrice?: string;
-  gasSpent?: string;
-  hash: string;
-  kind: ActivityKind;
-  memo: string;
-  nameCommit?: import("$lib/activity/knownContracts").NameCommit | null;
-  registeredName?: string | null;
-  success: boolean | null;
-  timestamp: number | null;
-  value: bigint;
-};
+/** A kept entry as the history reads it: amounts as bigints. */
+type ActivityEntry = import("@dusk-network/app-core/history").ReadEntry &
+  ActivityNameFacts;
 
 /** An account's sync state: the heights covered, highest first, and the head. */
-type ActivityMeta = {
-  account: string;
-  covered: number[][];
-  crowded?: { height: number; page: number } | null;
-  finalized: number;
-  genesis: string;
-  headAt: number;
+type ActivityMeta = import("@dusk-network/app-core/history").HistoryState & {
   ownerKey: string;
-  target: number;
-  updatedAt: number;
-  window: number;
 };
 
 /** One of the wallet's own transactions, kept until the archive has it. */

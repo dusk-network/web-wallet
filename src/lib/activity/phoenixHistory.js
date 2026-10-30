@@ -19,12 +19,7 @@
  */
 
 import { STAKE_CONTRACT, TRANSFER_CONTRACT, TX_KIND } from "./constants";
-import {
-  archiveQuery,
-  assertArchive,
-  errorText,
-  rememberNoArchive,
-} from "./activityHistory";
+import { archiveAt } from "./activityHistory";
 
 /** A NoteLeaf in the note-tree stream: the note (728 bytes), then its block height. */
 export const LEAF_BYTES = 736;
@@ -292,26 +287,23 @@ function blockOf(data, h) {
 
 /**
  * The blocks at `heights`, HEIGHTS_PER_REQUEST a request, in their order;
- * nothing asked of a node without the archive (activityHistory.assertArchive).
+ * nothing asked of a node without the archive.
  *
  * @param {string} url
  * @param {number[]} heights
  * @returns {Promise<Map<number, ShieldedBlock>>}
  */
 export async function fetchBlocks(url, heights) {
-  await assertArchive(url);
+  const archive = archiveAt(url);
+
+  await archive.assertArchive();
 
   /** @type {Map<number, ShieldedBlock>} */
   const out = new Map();
 
   for (let i = 0; i < heights.length; i += HEIGHTS_PER_REQUEST) {
     const batch = heights.slice(i, i + HEIGHTS_PER_REQUEST);
-    const data = await archiveQuery(url, blocksQuery(batch), {
-      timeoutMs: 30_000,
-    }).catch(async (error) => {
-      await rememberNoArchive(url, error);
-      throw error;
-    });
+    const data = await archive.query(blocksQuery(batch), { timeoutMs: 30_000 });
 
     for (const h of batch) {
       out.set(h, blockOf(data, h));
@@ -503,6 +495,18 @@ function shieldedKind(t) {
  * @param {any} info
  */
 const feeOf = (info) => u64(info.gasSpent) * u64(info.tx?.gasPrice);
+
+/**
+ * A transaction's error as text: "" for none.
+ *
+ * @param {unknown} err
+ */
+const errorText = (err) =>
+  err === null || err === undefined
+    ? ""
+    : typeof err === "string"
+      ? err
+      : JSON.stringify(err);
 
 /**
  * @param {bigint} net

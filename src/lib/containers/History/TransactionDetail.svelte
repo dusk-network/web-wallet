@@ -12,7 +12,8 @@
   import { AnchorButton, Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { BalanceValue, SectionHead } from "$lib/components";
-  import { fetchTxNonce } from "$lib/activity/activityHistory";
+  import { fetchTxNonce } from "@dusk-network/app-core/history";
+  import { archiveAt } from "$lib/activity/activityHistory";
   import { claimText } from "@dusk-network/networks/duskevm";
   import {
     depositActivityStore,
@@ -49,7 +50,7 @@
 
   /** Looks a public transaction's nonce up. */
   /** @type {(hash: string) => Promise<string | null>} */
-  export let loadNonce = (hash) => fetchTxNonce(nodeBaseUrl(), hash);
+  export let loadNonce = (hash) => fetchTxNonce(archiveAt(nodeBaseUrl()), hash);
 
   /** Looks up the stDUSK a stake with Sozu got. */
   /** @type {(stake: ActivityRow) => Promise<bigint | null>} */

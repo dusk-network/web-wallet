@@ -1,16 +1,11 @@
 /**
- * What a call to the DuskEVM bridge's contracts on Dusk did, as the history
- * keeps it: a deposit's DuskEVM address and amount, and the amount of the
- * withdrawal a proof or a claim is for, and whom it pays. The calls are read
- * by `@dusk-network/networks/duskevm`, on the network's own bridge and
- * route: anything that doesn't decode exactly reads as nothing.
+ * The DuskEVM bridge's contracts on Dusk, as set or from the network's file,
+ * and what a call to them did, as the history keeps it: a deposit's DuskEVM
+ * address and amount, and the amount of the withdrawal a proof or a claim is
+ * for, and whom it pays.
  */
 
-import {
-  decodeBridgeCall as decodeCall,
-  decodeWithdrawal,
-  isBridgeContract as isNetworkBridge,
-} from "@dusk-network/networks/duskevm";
+import { decodeWithdrawal } from "@dusk-network/networks/duskevm";
 import { get } from "svelte/store";
 
 import nodeNetwork from "$lib/stores/nodeNetwork";
@@ -90,7 +85,7 @@ const withSetBridge = new WeakMap();
  * wallet sends. Kept per network, as the settings don't change while the
  * wallet runs.
  */
-function bridgeNetwork() {
+export function bridgeNetwork() {
   const net = get(nodeNetwork);
   const contracts = net?.duskEvm?.contracts;
 
@@ -132,48 +127,4 @@ function bridgeNetwork() {
   }
 
   return set;
-}
-
-/**
- * Whether a contract is the node's network's DuskEVM bridge or Portal.
- *
- * @param {unknown} contractId
- */
-export function isBridgeContract(contractId) {
-  const net = bridgeNetwork();
-
-  return net ? isNetworkBridge(net, contractId) : false;
-}
-
-/**
- * What a call to one of the bridge's contracts did: undefined for a call to
- * any other contract, and null for one of the bridge's calls that doesn't
- * decode exactly as the bridge writes it.
- *
- * @param {{ contractId?: string, data?: unknown, fnName?: string }} call
- *   `data` the call's arguments in hex
- * @returns {BridgeCall | null | undefined}
- */
-export function decodeBridgeCall({ contractId, data, fnName }) {
-  const net = bridgeNetwork();
-
-  if (!net || !isNetworkBridge(net, contractId)) {
-    return undefined;
-  }
-
-  const call = decodeCall(net, { args: data, contractId, fnName });
-
-  if (!call) {
-    return null;
-  }
-
-  return call.kind === "deposit"
-    ? { amount: String(call.amountLux), kind: "deposit", to: call.recipient }
-    : {
-        amount: String(call.amountWei / 1_000_000_000n),
-        hash: call.hash,
-        kind: call.kind,
-        recipient: recipientOf(call.recipient),
-        withdrawal: call.nonce.toString(16).padStart(64, "0"),
-      };
 }

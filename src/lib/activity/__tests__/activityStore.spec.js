@@ -74,6 +74,27 @@ describe("activityStore", () => {
     expect(await store.listLocalTransactions(owner)).toEqual([]);
   });
 
+  it("keeps nothing of a sync step whose state can't be made, as for a run another one overtook", async () => {
+    const owner = store.activityOwnerKey("testnet", "acct");
+
+    await expect(
+      store.commitActivityStep(
+        owner,
+        [
+          /** @type {ActivityStoredEntry} */ ({
+            blockHeight: 5,
+            hash: "aa".repeat(32),
+          }),
+        ],
+        () => {
+          throw new Error("Another run overtook this one");
+        }
+      )
+    ).rejects.toThrow("Another run overtook this one");
+    expect(await store.listActivityEntries(owner)).toEqual([]);
+    expect(await store.getActivityMeta(owner)).toBeNull();
+  });
+
   it("keeps when a node answered without the archive", async () => {
     expect(await store.getArchiveRefusal("https://node.example")).toBeNull();
 

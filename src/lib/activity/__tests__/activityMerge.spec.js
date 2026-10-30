@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import fixture from "./fixtures/activity-testnet.json";
-import { activityEntry, parseHistoryEntry } from "../activityHistory";
+import {
+  historyEntry,
+  parseHistoryEntry,
+} from "@dusk-network/app-core/history";
 import { historyRow, mergeActivity } from "../activityMerge";
 
 const [A, B, C] = Object.keys(fixture.accounts);
@@ -15,7 +18,7 @@ const accounts = /** @type {any} */ (fixture.accounts);
 const details = fixture.details;
 
 /**
- * An account's entry as readActivity gives it: parsed, with its details.
+ * An account's entry as the history reads it: parsed, with its details.
  *
  * @param {string} account
  * @param {number} height
@@ -25,12 +28,13 @@ function entry(account, height) {
   const raw = [...accounts[account].sender, ...accounts[account].receiver].find(
     (e) => e.block_height === height
   );
-  const parsed = /** @type {ActivityParsedEntry} */ (
-    parseHistoryEntry(account, raw)
-  );
+  const parsed =
+    /** @type {import("@dusk-network/app-core/history").HistoryEntry} */ (
+      parseHistoryEntry(account, raw)
+    );
   const tx = details[parsed.hash];
 
-  return activityEntry({
+  return historyEntry({
     ...parsed,
     contractId: tx.tx.callData?.contractId,
     detailsAt: 1,
@@ -96,7 +100,7 @@ describe("historyRow", () => {
 
   it("reads a call that sent its value to its own account as the call it was, once its call data came", () => {
     // Derived: A's register call as it would read had it sent 5 DUSK to itself.
-    const call = activityEntry(
+    const call = historyEntry(
       /** @type {ActivityStoredEntry} */ (
         /** @type {unknown} */ ({
           ...registered(),

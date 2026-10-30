@@ -17,11 +17,7 @@ import {
   putNoteHeightPool,
   putShieldedHistoryRecord,
 } from "./activityStore";
-import {
-  activityNetworkKey,
-  assertArchive,
-  historyArchiverUrl,
-} from "./activityHistory";
+import { activityNetworkKey, archiveAt } from "./activityHistory";
 import {
   buildShieldedHistory,
   fetchBlocks,
@@ -202,10 +198,9 @@ function assertCurrent(isCurrent) {
  */
 async function build(options, key, rows, kept, epoch) {
   const { isCurrent, nodeUrl, profile } = options;
-  const url = historyArchiverUrl({ nodeUrl });
 
   // A node without the archive reads no note tree either.
-  await assertArchive(url);
+  await archiveAt(nodeUrl).assertArchive();
 
   const notes = await valuedNotes(profile, rows);
 
@@ -219,7 +214,7 @@ async function build(options, key, rows, kept, epoch) {
     return { entries: kept?.entries ?? [], pending: true };
   }
 
-  const blocks = await fetchBlocks(url, asked.heights);
+  const blocks = await fetchBlocks(nodeUrl, asked.heights);
 
   assertCurrent(isCurrent);
 

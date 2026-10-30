@@ -121,7 +121,7 @@ export async function getActivityMeta(ownerKey) {
  *
  * @param {string} ownerKey
  * @param {ActivityStoredEntry[]} entries
- * @param {(meta: ActivityMeta | null) => Omit<ActivityMeta, "ownerKey">} update
+ * @param {(meta: ActivityMeta | null) => import("@dusk-network/app-core/history").HistoryState} update
  * @param {number} [epoch] getActivityEpoch when the work began
  * @returns {Promise<ActivityMeta>} the state kept
  */

@@ -11,15 +11,13 @@
  * for a lock or another profile, drops whatever its work brings back.
  */
 
+import { StaleHistoryError } from "@dusk-network/app-core/history";
 import { ProfileGenerator } from "@dusk/w3sper";
 
 import {
   activityNetworkKey,
-  fillActivityDetails,
-  needsDetails,
   noteActivityUnavailable,
-  readActivity,
-  syncActivity,
+  publicHistory,
 } from "./activityHistory";
 import {
   StaleActivityError,
@@ -95,6 +93,9 @@ export class ActivitySession {
 
   error = /** @type {string | null} */ (null);
 
+  /** @type {import("@dusk-network/app-core/history").History | null} */
+  #history = null;
+
   key;
 
   #limit = ACTIVITY_PAGE;
@@ -107,7 +108,7 @@ export class ActivitySession {
   /** @type {ActivityLocalRecord[]} */
   #local = [];
 
-  /** @type {ActivityMeta | null} */
+  /** @type {import("@dusk-network/app-core/history").HistoryState | null} */
   #meta = null;
 
   /** @type {Map<string, string | null>} */
@@ -157,7 +158,6 @@ export class ActivitySession {
     return [
       ...new Set(
         this.#entries
-          .slice(0, this.#limit)
           .map((e) => e.counterparty)
           .filter(
             (c) =>
@@ -278,15 +278,24 @@ export class ActivitySession {
     }, SHIELDED_RETRY_MS);
   }
 
-  async #reload() {
+  /** The account's public history, made once the store's epoch is known. */
+  async #publicHistory() {
     const { account, nodeUrl } = this.options;
+    const epoch = await this.#epoch;
+
+    this.#history ??= publicHistory({ account, epoch, nodeUrl });
+
+    return this.#history;
+  }
+
+  async #reload() {
     const [read, local] = await Promise.all([
-      readActivity({ account, limit: this.#limit, nodeUrl }),
+      this.#publicHistory().then((h) => h.read({ limit: this.#limit })),
       listLocalTransactions(this.ownerKey),
     ]);
 
     this.#entries = read.entries;
-    this.#meta = read.meta;
+    this.#meta = read.state;
     this.complete = read.complete;
     this.#local = local;
     this.loaded = true;
@@ -344,12 +353,9 @@ export class ActivitySession {
       throw new Error("The activity store is out of reach");
     }
 
-    const { account, nodeUrl } = this.options;
+    const history = await this.#publicHistory();
 
-    await syncActivity({
-      account,
-      epoch,
-      nodeUrl,
+    await history.sync({
       onStep: () => {
         this.#reload()
           .then(() => this.#emit())
@@ -358,7 +364,10 @@ export class ActivitySession {
     });
   }
 
-  /** A sync run, its error kept for the state. */
+  /**
+   * A sync run, its error kept for the state. One another run overtook says
+   * nothing: the history is that run's.
+   */
   async #syncAndNote() {
     try {
       await this.#sync();
@@ -366,7 +375,7 @@ export class ActivitySession {
     } catch (error) {
       if (error instanceof StaleActivityError) {
         this.#stale = true;
-      } else {
+      } else if (!(error instanceof StaleHistoryError)) {
         this.error = /** @type {any} */ (error)?.message ?? String(error);
         noteActivityUnavailable(error);
       }
@@ -470,14 +479,13 @@ export class ActivitySession {
   async loadDetail(hash) {
     const entry = this.#entries.find((e) => e.hash === hash);
     const epoch = await this.#epoch;
+    const history = await this.#publicHistory();
 
-    if (!entry || !needsDetails(entry) || epoch === undefined) {
+    if (!entry || !history.needsDetails(entry) || epoch === undefined) {
       return;
     }
 
-    const { account, nodeUrl } = this.options;
-
-    await fillActivityDetails({ account, entries: [entry], epoch, nodeUrl });
+    await history.fillDetails([entry]);
     await this.#reload();
     this.#emit();
   }
@@ -540,22 +548,17 @@ export class ActivitySession {
 
   /** The next page of kept history, and a sync run for older history when the kept history runs out. */
   async showMore() {
-    this.#limit += ACTIVITY_PAGE;
+    // From the rows shown: a read gives a block the page cuts through whole.
+    this.#limit = Math.max(this.#limit, this.#entries.length) + ACTIVITY_PAGE;
     await this.#reload().catch(() => {});
     this.#emit();
 
-    const missing = this.#entries.filter(needsDetails);
+    const history = await this.#publicHistory();
+    const missing = this.#entries.filter(history.needsDetails);
     const epoch = await this.#epoch;
 
     if (missing.length && epoch !== undefined) {
-      const { account, nodeUrl } = this.options;
-
-      await fillActivityDetails({
-        account,
-        entries: missing,
-        epoch,
-        nodeUrl,
-      }).catch(() => {});
+      await history.fillDetails(missing).catch(() => {});
       await this.#reload().catch(() => {});
       this.#emit();
     }
