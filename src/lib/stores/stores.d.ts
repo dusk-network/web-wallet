@@ -121,21 +121,7 @@ type WalletStoreServices = {
     }
   ) => Promise<TransactionInfo>;
 
-  finalizeDuskEvmWithdrawal: (
-    contractId: string,
-    wasmPath: string,
-    withdrawal: unknown,
-    gas?: Gas
-  ) => Promise<TransactionInfo>;
-
   getDuskEvmProofSubmitter: () => `0x${string}`;
-
-  proveDuskEvmWithdrawal: (
-    contractId: string,
-    wasmPath: string,
-    args: unknown,
-    gas?: Gas
-  ) => Promise<TransactionInfo>;
 
   useContract: (contractId: string, wasmPath: string) => Promise<Contract>;
 
@@ -148,6 +134,20 @@ type WalletStoreServices = {
   refreshBalance: () => Promise<void>;
 
   reset: () => void;
+
+  /**
+   * Proves or claims a DuskEVM withdrawal: the Portal's call as
+   * `@dusk-network/app-core/duskevm-withdrawals` gave it, signed as it is.
+   */
+  sendDuskEvmWithdrawalCall: (
+    call: Readonly<{
+      contractId: string;
+      deposit: bigint;
+      fnArgs: Uint8Array;
+      fnName: string;
+    }>,
+    gas: Gas
+  ) => Promise<TransactionInfo>;
 
   setCurrentProfile: (profile: Profile) => Promise<void>;
 

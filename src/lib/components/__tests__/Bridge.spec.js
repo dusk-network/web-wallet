@@ -10,6 +10,7 @@ import { account } from "$lib/web3/walletConnection";
 import { Bridge } from "..";
 import { networks } from "@dusk-network/networks";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { PAID } from "$lib/bridge/__tests__/fixtures/withdrawal-recipient";
 
 const {
   CONNECTED,
@@ -33,14 +34,6 @@ vi.mock("@wagmi/core", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
   estimateGas,
   getGasPrice,
-}));
-
-vi.mock("$lib/bridge/withdrawalInitiation", () => ({
-  prepareNativeDuskWithdrawalCall: () => ({
-    data: "0x",
-    to: "0x4200000000000000000000000000000000000010",
-    value: 1n,
-  }),
 }));
 
 vi.mock("$lib/bridge/depositActivity", async (importOriginal) => ({
@@ -121,8 +114,8 @@ describe("Bridge", () => {
       gasPrice: 1n,
     },
     unshieldedAccount: {},
-    unshieldedAddress:
-      "zTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE4FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff",
+    // A testnet account: the withdrawal pays it.
+    unshieldedAddress: PAID,
     unshieldedBalance: 1_000_000_000_000n,
   };
 

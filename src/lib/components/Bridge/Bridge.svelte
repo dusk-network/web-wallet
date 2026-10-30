@@ -10,7 +10,6 @@
     mdiChevronDown,
     mdiClockOutline,
   } from "@mdi/js";
-  import { DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT } from "@dusk/evm-sdk";
   import { formatUnits, parseUnits } from "viem";
   import {
     estimateGas,
@@ -67,7 +66,7 @@
     resumeWithdrawalTracking,
     trackWithdrawalTransaction,
   } from "$lib/bridge/withdrawalActivity";
-  import { prepareNativeDuskWithdrawalCall } from "$lib/bridge/withdrawalInitiation";
+  import { withdrawalStart } from "$lib/bridge/withdrawals";
   import bridgeTimes from "$lib/bridge/bridgeTimes";
   import { beforeProofText } from "@dusk-network/networks/duskevm";
   import {
@@ -191,15 +190,14 @@
    * Estimates the DuskEVM fee of a withdrawal of the given amount: the gas it
    * needs at the current gas price. The EVM wallet sets the fee it pays.
    *
-   * @param {bigint} value The amount, in wei.
+   * @param {bigint} value The amount, in wei: whole lux.
    * @returns {Promise<bigint>}
    */
   async function estimateWithdrawalFee(value) {
-    const call = prepareNativeDuskWithdrawalCall({
-      accountPublicKey: unshieldedAccount,
+    const call = withdrawalStart({
       amountWei: value,
-      evmRecipient: /** @type {string} */ ($account.address),
-      minGasLimit: DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT,
+      sender: /** @type {string} */ ($account.address),
+      to: unshieldedAddress,
     });
     const [gas, price] = await Promise.all([
       estimateGas(wagmiConfig, {
@@ -261,7 +259,10 @@
 
     const request = maxRequests;
     const scope = maxScope;
-    const feeWei = await estimateWithdrawalFee(1n).catch(() => null);
+    // A lux's withdrawal takes the gas any other amount does.
+    const feeWei = await estimateWithdrawalFee(EVM_TO_LUX_SCALE_FACTOR).catch(
+      () => null
+    );
 
     // The amount, the direction or a wallet changed while the fee was
     // estimated, or the maximum was asked for again: this one is dropped.
@@ -292,11 +293,11 @@
       throw new Error("DuskEVM account is not available.");
     }
 
-    const withdrawal = prepareNativeDuskWithdrawalCall({
-      accountPublicKey: unshieldedAccount,
+    // It pays this wallet's public account.
+    const withdrawal = withdrawalStart({
       amountWei,
-      evmRecipient: $account.address,
-      minGasLimit: DEFAULT_WITHDRAWAL_MIN_GAS_LIMIT,
+      sender: $account.address,
+      to: unshieldedAddress,
     });
 
     await switchChain(wagmiConfig, { chainId: duskEvm.id });

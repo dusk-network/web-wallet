@@ -219,6 +219,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wait for the archive to have every block a shielded history needs, rather than keep it incomplete
 - Call a failed shield in History a shield, not a call of convert
 - Show an unshield as shielded in History
+- Offer Claim on a DuskEVM withdrawal only once its dispute game is read, resolved and taken by the Portal, and ask to prove it again when the challenger won the game or it was retired or blacklisted
+- Prove a DuskEVM withdrawal only against a dispute game the Portal takes, and against an older resolved one after a rejected proof
+- Offer no proof or claim for a DuskEVM withdrawal off the bridge's route, and no proof of one claimed or already proved by this account
 
 ## [1.8.0] - 2026-03-25
 

@@ -23,6 +23,9 @@ vi.mock("$lib/web3/walletConnection", () => ({
 }));
 
 import { prepareNativeWithdrawal } from "@dusk/evm-sdk";
+import { networks } from "@dusk-network/networks";
+
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { PAID, PAID_EXTRA_DATA } from "./fixtures/withdrawal-recipient";
 import { updateWithdrawalTransaction } from "$lib/bridge/withdrawalActivityStorage";
@@ -60,6 +63,8 @@ function jsonResponse(body, status = 200) {
 describe("DuskEVM withdrawal activity", () => {
   beforeEach(() => {
     localStorage.clear();
+    // A testnet node, with its DuskEVM explorer and bridge as set.
+    setNodeNetwork(networks.testnet);
   });
 
   afterEach(() => {
@@ -403,8 +408,8 @@ describe("DuskEVM withdrawal activity", () => {
     });
 
     it("are found on DuskEVM's explorer by their nonces, however they were sent, and remembered for their sender", async () => {
-      const fetchMock = vi.fn(async (/** @type {URL} */ url) => {
-        const page = url.searchParams.get("nonce");
+      const fetchMock = vi.fn(async (/** @type {string | URL} */ url) => {
+        const page = new URL(url).searchParams.get("nonce");
 
         return jsonResponse(
           page
@@ -512,8 +517,9 @@ describe("DuskEVM withdrawal activity", () => {
 
       const missing = [{ hash: hashOf(13), nonce: nonceOf(13) }];
 
+      // In the wallet's words: Bridge › Activity shows them.
       await expect(rememberHistoryWithdrawals(missing)).rejects.toThrow(
-        "HTTP 502"
+        new Error("Blockscout request failed with HTTP 502.")
       );
 
       const found = await rememberHistoryWithdrawals(missing);

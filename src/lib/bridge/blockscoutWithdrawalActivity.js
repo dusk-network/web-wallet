@@ -1,66 +1,30 @@
-import { duskEvm } from "$lib/web3/walletConnection";
-import { duskRecipientOf } from "@dusk-network/networks/duskevm";
-import { decodeFunctionData, parseAbi, toFunctionSelector } from "viem";
+/**
+ * A DuskEVM account's withdrawals as DuskEVM's explorer lists them, read by
+ * `@dusk-network/app-core/duskevm-withdrawals`, as the wallet keeps them.
+ */
 
-import { recipientOf } from "$lib/bridge/bridgeCalls";
+import {
+  explorerStage,
+  explorerWithdrawals,
+  withdrawalsByNonce,
+} from "@dusk-network/app-core/duskevm-withdrawals";
+
+import { duskEvm } from "$lib/web3/walletConnection";
+import { withdrawalNetwork } from "$lib/bridge/withdrawals";
 
 import {
   MAX_ACTIVITY_ITEMS,
   normalizedAddress,
-  normalizedTimestamp,
   normalizedTxHash,
-  stringValue,
 } from "$lib/bridge/withdrawalActivityValues";
-
-const MAX_TRANSACTION_PAGES = 10;
-const BRIDGE_ETH_TO = parseAbi([
-  "function bridgeETHTo(address, uint32, bytes)",
-]);
-const NATIVE_WITHDRAWAL_SELECTOR = toFunctionSelector(BRIDGE_ETH_TO[0]);
-
-/**
- * Whom a withdrawal pays on Dusk, from the call that sent it on DuskEVM:
- * the bridge's `bridgeETHTo`. Null for any other call.
- *
- * @param {unknown} input The call's data, in hex
- * @returns {string | null}
- */
-function withdrawalCallRecipient(input) {
-  try {
-    const { args } = decodeFunctionData({
-      abi: BRIDGE_ETH_TO,
-      data: `0x${String(input).replace(/^0x/i, "")}`,
-    });
-
-    return recipientOf(duskRecipientOf(args[2]));
-  } catch {
-    return null;
-  }
-}
 
 /** @typedef {import("./withdrawalActivityValues").WithdrawalActivityItem} WithdrawalActivityItem */
 
 /**
  * @param {string | null | undefined} status
  */
-export function explorerStatusToStage(status) {
-  switch (status?.trim().toLowerCase()) {
-    case "waiting for state root":
-      return "waiting_for_output";
-    case "ready to prove":
-      return "ready_to_prove";
-    case "waiting a game to resolve":
-    case "in challenge period":
-    case "proven":
-      return "proven_waiting";
-    case "ready for relay":
-      return "ready_to_finalize";
-    case "relayed":
-      return "finalized";
-    default:
-      return "submitted";
-  }
-}
+export const explorerStatusToStage = (status) =>
+  explorerStage(status) ?? "submitted";
 
 function explorerBaseUrl() {
   const baseUrl = duskEvm.blockExplorers?.default?.url;
@@ -79,317 +43,100 @@ export function withdrawalExplorerUrl(txHash) {
   return baseUrl && normalizedTxHash(txHash) ? `${baseUrl}/tx/${txHash}` : null;
 }
 
-/**
- * @param {string} path
- * @param {Record<string, unknown>} [params]
- */
-function explorerApiUrl(path, params = {}) {
+/** The explorer's API, as set for local work or from the network's file. */
+function explorerApi() {
   const baseUrl = explorerBaseUrl();
 
   if (!baseUrl) {
     throw new Error("The DuskEVM block explorer is not configured.");
   }
 
-  const url = new URL(`${baseUrl}/api/v2/${path}`);
-
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== null && value !== undefined) {
-      url.searchParams.set(key, String(value));
-    }
-  }
-
-  return url;
+  return `${baseUrl}/api/v2`;
 }
 
 /**
- * @param {URL} url
+ * The explorer's answers, refused in the wallet's words.
+ *
+ * @param {Parameters<typeof fetch>[0]} input
+ * @param {Parameters<typeof fetch>[1]} [init]
  */
-async function fetchExplorerJson(url) {
-  const response = await fetch(url, {
-    headers: { accept: "application/json" },
-  });
+async function explorerFetch(input, init) {
+  const response = await fetch(input, init);
 
   if (!response.ok) {
     throw new Error(`Blockscout request failed with HTTP ${response.status}.`);
   }
 
-  return await response.json();
-}
-
-function bridgeAddress() {
-  return normalizedAddress(duskEvm.contracts?.L2StandardBridge?.address);
+  return response;
 }
 
 /**
- * @param {any} transaction
+ * @param {import("@dusk-network/app-core/duskevm-withdrawals").ExplorerWithdrawal} item
+ * @returns {WithdrawalActivityItem}
  */
-function isNativeWithdrawalCall(transaction) {
-  const input =
-    typeof transaction?.raw_input === "string"
-      ? transaction.raw_input
-      : transaction?.input;
-
-  if (typeof input === "string" && input.length >= 10) {
-    return input.slice(0, 10).toLowerCase() === NATIVE_WITHDRAWAL_SELECTOR;
-  }
-
-  return transaction?.method === "bridgeETHTo";
-}
-
-/**
- * @param {any} transaction
- * @param {string} account
- * @param {string} configuredBridgeAddress
- */
-function isWithdrawalCandidate(transaction, account, configuredBridgeAddress) {
-  return (
-    normalizedTxHash(transaction?.hash) !== null &&
-    normalizedAddress(transaction?.from) === account &&
-    normalizedAddress(transaction?.to) === configuredBridgeAddress &&
-    isNativeWithdrawalCall(transaction) &&
-    transaction?.status !== "error"
-  );
-}
-
-/**
- * @param {any} transaction
- */
-function localItemFromTransaction(transaction) {
-  const transactionHash = normalizedTxHash(transaction?.hash);
-
-  if (!transactionHash) {
-    return null;
-  }
-
-  const timestamp = normalizedTimestamp(transaction?.timestamp);
-
-  return /** @type {WithdrawalActivityItem} */ ({
-    account: normalizedAddress(transaction?.from),
-    amountWei: stringValue(transaction?.value),
-    blockNumber: stringValue(transaction?.block_number),
+const itemOf = (item) =>
+  /** @type {WithdrawalActivityItem} */ ({
+    account: item.from,
+    amountWei: item.amountWei,
+    blockNumber: item.blockNumber,
     chainId: duskEvm.id,
-    createdAt: timestamp ? new Date(timestamp).getTime() : Date.now(),
-    explorerStatus: null,
-    l1TransactionHash: null,
+    createdAt: item.timestamp ? new Date(item.timestamp).getTime() : Date.now(),
+    explorerStatus: item.explorerStatus,
+    l1TransactionHash: item.l1TransactionHash,
     // Whom it pays on Dusk, as the call says.
-    recipient: withdrawalCallRecipient(
-      transaction?.raw_input ?? transaction?.input
-    ),
+    recipient: item.destination,
     source: "explorer",
-    stage: "submitted",
-    timestamp,
-    transactionHash,
+    stage: explorerStatusToStage(item.explorerStatus),
+    timestamp: item.timestamp,
+    transactionHash: item.hash,
   });
-}
 
-/**
- * @param {any} transaction
- */
-function activityItemFromTransaction(transaction) {
-  const fallback = localItemFromTransaction(transaction);
-
-  if (!fallback) {
-    return null;
-  }
-
-  const withdrawal = Array.isArray(transaction?.op_withdrawals)
-    ? transaction.op_withdrawals[0]
-    : null;
-  const explorerStatus =
-    typeof withdrawal?.status === "string" ? withdrawal.status : null;
-  const timestamp =
-    normalizedTimestamp(withdrawal?.l2_timestamp) ?? fallback.timestamp;
-
-  return /** @type {WithdrawalActivityItem} */ ({
-    ...fallback,
-    amountWei:
-      stringValue(withdrawal?.msg_value) ?? stringValue(transaction?.value),
-    createdAt: timestamp ? new Date(timestamp).getTime() : fallback.createdAt,
-    explorerStatus,
-    l1TransactionHash: normalizedTxHash(withdrawal?.l1_transaction_hash),
-    stage: explorerStatusToStage(explorerStatus),
-    timestamp,
-  });
-}
-
-/**
- * @param {any[]} transactions
- * @param {string} account
- * @param {string} configuredBridgeAddress
- */
-function withdrawalCandidates(transactions, account, configuredBridgeAddress) {
-  return transactions.filter((transaction) =>
-    isWithdrawalCandidate(transaction, account, configuredBridgeAddress)
-  );
-}
-
-/**
- * @param {string} account
- */
-async function fetchCandidateTransactions(account) {
-  const configuredBridgeAddress = bridgeAddress();
-
-  if (!configuredBridgeAddress) {
-    throw new Error("The DuskEVM bridge contract is not configured.");
-  }
-
-  /** @type {any[]} */
-  const candidates = [];
-  /** @type {Record<string, unknown>} */
-  let pageParams = { filter: "from" };
-
-  for (let page = 0; page < MAX_TRANSACTION_PAGES; page += 1) {
-    const body = await fetchExplorerJson(
-      explorerApiUrl(`addresses/${account}/transactions`, pageParams)
-    );
-    const transactions = Array.isArray(body?.items) ? body.items : [];
-
-    candidates.push(
-      ...withdrawalCandidates(transactions, account, configuredBridgeAddress)
-    );
-
-    if (
-      candidates.length >= MAX_ACTIVITY_ITEMS ||
-      !body?.next_page_params ||
-      transactions.length === 0
-    ) {
-      break;
-    }
-
-    pageParams = { ...body.next_page_params, filter: "from" };
-  }
-
-  return candidates.slice(0, MAX_ACTIVITY_ITEMS);
-}
-
-/**
- * @param {any} transaction
- */
-async function fetchCandidateDetails(transaction) {
-  const transactionHash = normalizedTxHash(transaction?.hash);
-
-  if (!transactionHash) {
-    return null;
-  }
-
-  try {
-    const details = await fetchExplorerJson(
-      explorerApiUrl(`transactions/${transactionHash}`)
-    );
-
-    return activityItemFromTransaction(details);
-  } catch {
-    return localItemFromTransaction(transaction);
-  }
-}
-
-/** The low 240 bits of a withdrawal's nonce: its count, past its version. */
-const NONCE_COUNT = (1n << 240n) - 1n;
-
-/**
- * A withdrawal in the explorer's list of all of them, as an activity item.
- *
- * @param {any} withdrawal
- */
-function itemFromWithdrawal(withdrawal) {
-  const timestamp = normalizedTimestamp(withdrawal?.l2_timestamp);
-
-  return /** @type {WithdrawalActivityItem} */ ({
-    account: normalizedAddress(withdrawal?.from),
-    amountWei: stringValue(withdrawal?.msg_value),
-    blockNumber: null,
-    chainId: duskEvm.id,
-    createdAt: timestamp ? new Date(timestamp).getTime() : Date.now(),
-    explorerStatus:
-      typeof withdrawal?.status === "string" ? withdrawal.status : null,
-    l1TransactionHash: normalizedTxHash(withdrawal?.l1_transaction_hash),
-    source: "explorer",
-    stage: explorerStatusToStage(withdrawal?.status),
-    timestamp,
-    transactionHash: normalizedTxHash(withdrawal?.l2_transaction_hash),
-  });
-}
+const network = () =>
+  /** @type {import("@dusk-network/networks").Network} */ (withdrawalNetwork());
 
 /**
  * The DuskEVM transactions of withdrawals known by their nonces, as their
- * proofs on Dusk carry them, from the explorer's list of all withdrawals:
- * newest first, a page at a time, never past the oldest nonce asked for and
- * at most MAX_TRANSACTION_PAGES pages. However a withdrawal was sent, the
- * list has it.
+ * proofs on Dusk carry them, from the explorer's list of all withdrawals.
+ * However a withdrawal was sent, the list has it.
  *
  * @param {bigint[]} nonces
  * @returns {Promise<Map<string, WithdrawalActivityItem>>} By nonce, as text
  */
 export async function findWithdrawalsByNonce(nonces) {
-  const wanted = new Set(nonces.map(String));
-  const oldest = nonces.reduce(
-    (low, nonce) => ((nonce & NONCE_COUNT) < low ? nonce & NONCE_COUNT : low),
-    NONCE_COUNT
-  );
-  /** @type {Map<string, WithdrawalActivityItem>} */
-  const found = new Map();
-  /** @type {Record<string, unknown> | null} */
-  let pageParams = {};
+  const found = await withdrawalsByNonce({
+    fetch: explorerFetch,
+    network: network(),
+    nonces,
+    url: explorerApi(),
+  });
 
-  for (
-    let page = 0;
-    pageParams && page < MAX_TRANSACTION_PAGES && wanted.size;
-    page += 1
-  ) {
-    pageParams = await findOnPage(pageParams, { found, oldest, wanted });
-  }
-
-  return found;
+  return new Map([...found].map(([nonce, item]) => [nonce, itemOf(item)]));
 }
 
 /**
- * One page of the explorer's list of all withdrawals: those wanted on it
- * go in `found`, and come off `wanted`. Gives the next page's parameters, or
- * null when there's none, or it's past the oldest nonce asked for.
+ * The account's own withdrawals on DuskEVM, newest first, each with what
+ * the explorer says of it.
  *
- * @param {Record<string, unknown>} pageParams
- * @param {{ found: Map<string, WithdrawalActivityItem>, oldest: bigint, wanted: Set<string> }} search
- * @returns {Promise<Record<string, unknown> | null>}
- */
-async function findOnPage(pageParams, { found, oldest, wanted }) {
-  const body = await fetchExplorerJson(
-    explorerApiUrl("optimism/withdrawals", pageParams)
-  );
-  const withdrawals = Array.isArray(body?.items) ? body.items : [];
-
-  for (const withdrawal of withdrawals) {
-    const nonce = stringValue(withdrawal?.msg_nonce_raw);
-    const item = itemFromWithdrawal(withdrawal);
-
-    if (nonce && wanted.delete(nonce) && item.transactionHash) {
-      found.set(nonce, item);
-    }
-  }
-
-  const last = withdrawals[withdrawals.length - 1];
-
-  return body?.next_page_params &&
-    last &&
-    BigInt(stringValue(last.msg_nonce) ?? 0) > oldest
-    ? body.next_page_params
-    : null;
-}
-
-/**
  * @param {string} account
  */
 export async function fetchWithdrawalActivity(account) {
-  const normalizedAccount = normalizedAddress(account);
+  const address = normalizedAddress(account);
 
-  if (!normalizedAccount) {
+  if (!address) {
     throw new Error("Connect a valid DuskEVM account to load activity.");
   }
 
-  const candidates = await fetchCandidateTransactions(normalizedAccount);
-  const items = await Promise.all(candidates.map(fetchCandidateDetails));
+  if (!normalizedAddress(duskEvm.contracts?.L2StandardBridge?.address)) {
+    throw new Error("The DuskEVM bridge contract is not configured.");
+  }
 
-  return items.filter(
-    /** @returns {item is WithdrawalActivityItem} */
-    (item) => item !== null
-  );
+  const listed = await explorerWithdrawals({
+    address,
+    fetch: explorerFetch,
+    maxItems: MAX_ACTIVITY_ITEMS,
+    network: network(),
+    url: explorerApi(),
+  });
+
+  return listed.map(itemOf);
 }

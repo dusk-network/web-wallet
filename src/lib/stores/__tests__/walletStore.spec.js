@@ -11,7 +11,6 @@ import { get } from "svelte/store";
 import {
   Bookkeeper,
   Bookmark,
-  Contract,
   Gas,
   Network,
   ProfileGenerator,
@@ -1209,34 +1208,15 @@ describe("Wallet store", async () => {
       }
     );
 
-    it.each([
-      ["proveDuskEvmWithdrawal", "proveWithdrawalTransaction"],
-      ["finalizeDuskEvmWithdrawal", "finalizeWithdrawalTransaction"],
-    ])(
-      "should record %s as the bridge's call until the archive has it",
-      async (method, fnName) => {
+    it.each(["proveWithdrawalTransaction", "finalizeWithdrawalTransaction"])(
+      "should send %s as the withdrawals' package gave it, and record it as the bridge's call until the archive has it",
+      async (fnName) => {
         vi.useRealTimers();
 
         const portalId = "14".repeat(32);
+        const fnArgs = Uint8Array.of(1, 2, 3, 4);
         const currentlyCachedBalance =
           await new WalletTreasury().getCachedBalance(defaultProfile);
-        const sent = { gas: () => sent };
-        const tx = vi.spyOn(Contract.prototype, "tx", "get").mockReturnValue(
-          /** @type {any} */ ({
-            [fnName]: async () => ({ to: () => sent }),
-          })
-        );
-        const realFetch = globalThis.fetch;
-
-        // The portal's driver isn't needed here: it never loads.
-        vi.stubGlobal(
-          "fetch",
-          vi.fn((/** @type {any} */ input, /** @type {any} */ init) =>
-            String(input).endsWith("/portal.wasm")
-              ? new Promise(() => {})
-              : realFetch(input, init)
-          )
-        );
 
         executeSpy.mockResolvedValueOnce({
           buffer: new Uint8Array(),
@@ -1245,12 +1225,25 @@ describe("Wallet store", async () => {
         });
         history.session.recordSent.mockClear();
 
-        await walletStore[
-          /** @type {"finalizeDuskEvmWithdrawal" | "proveDuskEvmWithdrawal"} */ (
-            method
-          )
-        ](portalId, "/portal.wasm", {}, gas);
+        await walletStore.sendDuskEvmWithdrawalCall(
+          { contractId: portalId, deposit: 0n, fnArgs, fnName },
+          gas
+        );
 
+        // Its arguments as given, to the Portal, from the account to itself,
+        // with no DUSK sent along.
+        expect(executeSpy).toHaveBeenCalledTimes(1);
+        expect(executeSpy.mock.calls[0][0].attributes).toStrictEqual({
+          amount: 0n,
+          deposit: 0n,
+          gas,
+          payload: { contractId: Array(32).fill(0x14), fnArgs, fnName },
+          to: defaultProfile.account.toString(),
+        });
+        expect(
+          /** @type {any} */ (executeSpy.mock.calls[0][0].attributes).payload
+            .fnArgs
+        ).toBe(fnArgs);
         expect(history.session.recordSent).toHaveBeenCalledWith({
           amount: "0",
           contractId: portalId,
@@ -1260,9 +1253,29 @@ describe("Wallet store", async () => {
           kind: "contract_call",
           privacy: "public",
         });
+      }
+    );
 
-        tx.mockRestore();
-        vi.unstubAllGlobals();
+    it.each([
+      ["a deposit", { contractId: "14".repeat(32), deposit: 1n }],
+      ["a contract ID that isn't one", { contractId: "0x14", deposit: 0n }],
+    ])(
+      "should send no withdrawal call with %s",
+      async (_what, { contractId, deposit }) => {
+        vi.useRealTimers();
+
+        await expect(
+          walletStore.sendDuskEvmWithdrawalCall(
+            {
+              contractId,
+              deposit,
+              fnArgs: Uint8Array.of(1),
+              fnName: "proveWithdrawalTransaction",
+            },
+            gas
+          )
+        ).rejects.toThrow("Not a DuskEVM withdrawal's proof or claim.");
+        expect(executeSpy).not.toHaveBeenCalled();
       }
     );
 

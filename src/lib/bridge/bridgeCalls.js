@@ -3,7 +3,6 @@
  * and whom a withdrawal pays on Dusk.
  */
 
-import { decodeWithdrawal } from "@dusk-network/networks/duskevm";
 import { get } from "svelte/store";
 
 import nodeNetwork from "$lib/stores/nodeNetwork";
@@ -28,21 +27,6 @@ export const recipientOf = (recipient) =>
       ? recipient.account
       : recipient.contractId
     : null;
-
-/**
- * Whom a withdrawal pays on Dusk, as DuskEVM recorded it: null where it
- * isn't on the network's bridge route.
- *
- * @param {Parameters<typeof decodeWithdrawal>[1] | undefined} withdrawal
- * @returns {string | null}
- */
-export function withdrawalRecipient(withdrawal) {
-  const net = bridgeNetwork();
-
-  return net && withdrawal
-    ? recipientOf(decodeWithdrawal(net, withdrawal)?.recipient)
-    : null;
-}
 
 /**
  * The bridge's contracts on Dusk, from the network's file or as set: the
