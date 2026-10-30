@@ -1,12 +1,11 @@
 import { observeDepositStatus } from "@dusk/evm-sdk";
-import { depositArrivals, depositOf } from "@dusk-network/app-core/bridge";
 import { get } from "svelte/store";
 import { createPublicClient, http } from "viem";
 
 import { activityState, currentActivity } from "$lib/activity";
 import { archiveAt } from "$lib/activity/activityHistory";
+import { bridgeNetwork } from "$lib/bridge/bridgeCalls";
 import { networkStore } from "$lib/stores";
-import nodeNetwork from "$lib/stores/nodeNetwork";
 import { nodeBaseUrl } from "$lib/url";
 import { duskEvm, duskEvmAdapterUrl } from "$lib/web3/duskEvm";
 import {
@@ -233,14 +232,42 @@ const isOnItsWay = (item) =>
   !isDepositTerminal(item);
 
 /**
+ * The node's network as the wallet follows DuskEVM on it: the bridge's
+ * contracts on Dusk, and DuskEVM's L2 bridge and RPC, as set for local work
+ * or as its file has them. Null where they aren't known.
+ *
+ * @returns {import("@dusk-network/networks").Network | null}
+ */
+function followedNetwork() {
+  const net = bridgeNetwork();
+  const l2StandardBridge = duskEvm.contracts.L2StandardBridge.address;
+  const [rpcUrl] = duskEvm.rpcUrls.default.http;
+
+  return net?.duskEvm && l2StandardBridge && rpcUrl
+    ? {
+        ...net,
+        duskEvm: {
+          ...net.duskEvm,
+          predeploys: {
+            ...net.duskEvm.predeploys,
+            l2StandardBridge: /** @type {`0x${string}`} */ (l2StandardBridge),
+          },
+          rpcUrl,
+        },
+      }
+    : null;
+}
+
+/**
  * The deposits on their way, as the history of the account shown has them,
  * which says who sent each and from which block; else as this browser keeps
  * them.
  *
  * @param {import("./depositActivityStorage").DepositActivityItem[]} waiting
+ * @param {typeof import("@dusk-network/app-core/bridge").depositOf} depositOf
  * @returns {import("@dusk-network/app-core/bridge").Deposit[]}
  */
-function depositsOf(waiting) {
+function depositsOf(waiting, depositOf) {
   const account = currentActivity()?.options.account;
   const history = new Map(
     get(activityState).rows.flatMap((row) => {
@@ -263,28 +290,31 @@ function depositsOf(waiting) {
 
 /**
  * Looks for the deposits on their way on DuskEVM's RPC
- * (`@dusk-network/app-core/bridge`): by the bridge's event from the DuskEVM
- * address of the account that sent each, its equal deposits before it paid
- * first, as its history on Dusk says. Each that arrived is kept completed,
- * with the DuskEVM transaction that paid it and when.
+ * (`@dusk-network/app-core/bridge`, loaded then): by the bridge's event
+ * from the DuskEVM address of the account that sent each, its equal
+ * deposits before it paid first, as its history on Dusk says, however long
+ * ago it was sent. Each that arrived is kept completed, with the DuskEVM
+ * transaction that paid it and when.
  */
 async function readDuskEvm() {
-  const net = get(nodeNetwork);
+  const net = followedNetwork();
   const kept = hydrateDepositActivity();
   const waiting = kept.filter(isOnItsWay);
 
-  if (!net?.duskEvm || !waiting.length) return;
+  if (!net || !waiting.length) return;
 
-  const { arrivals } = await depositArrivals({
+  const bridge = await import("@dusk-network/app-core/bridge");
+  const { arrivals } = await bridge.depositArrivals({
     archive: archiveAt(nodeBaseUrl()),
     blockTimes: duskEvmBlockTimes,
-    deposits: depositsOf(waiting),
+    deposits: depositsOf(waiting, bridge.depositOf),
     network: net,
-    rpcUrl: duskEvm.rpcUrls.default.http[0],
     taken: kept.flatMap(({ l2TransactionHash }) =>
       l2TransactionHash ? [l2TransactionHash] : []
     ),
     via: "rpc",
+    // This browser may see a deposit only long after it was sent.
+    waitMs: Infinity,
   });
   const updatedAt = Date.now();
 

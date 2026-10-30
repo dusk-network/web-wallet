@@ -1,7 +1,7 @@
 /**
  * Migrations into Dusk and transfers out to another chain, for Bridge ›
  * Activity, as the bridge site follows them
- * (`@dusk-network/app-core/bridge`):
+ * (`@dusk-network/app-core/bridge`, loaded once there's one):
  * - a migration from BNB Smart Chain or Ethereum is sent there, then paid
  *   on Dusk: its route's payout account pays this account the amount, with
  *   the migration's transaction hash as the memo. The history has the
@@ -11,10 +11,7 @@
  *   DUSK token pays that address the amount less the bridge's fee.
  */
 
-import {
-  migrationPayouts,
-  serviceTransferOf,
-} from "@dusk-network/app-core/bridge";
+import { routeForAccount } from "@dusk-network/networks";
 import { get, writable } from "svelte/store";
 
 import { cardRoutes } from "./cardRoutes";
@@ -173,6 +170,7 @@ export const markMigrationFailed = (hash) =>
  * @returns {Promise<RouteTransfer[]>}
  */
 export async function migrationTransfers(rows, sent, net, account) {
+  const { migrationPayouts } = await import("@dusk-network/app-core/bridge");
   const routes = cardRoutes(net);
   const mine = sent.filter(
     (item) =>
@@ -189,13 +187,19 @@ export async function migrationTransfers(rows, sent, net, account) {
     })),
     network: net,
   });
-  /** @param {string} id */
-  const routeOf = (id) =>
-    /** @type {import("./cardRoutes").CardRoute} */ (
-      routes.find((route) => route.id === id)
-    );
+  /** @param {string | null} id */
+  const routeOf = (id) => routes.find((route) => route.id === id);
   // When each payout was, as the history shows it.
   const times = new Map(rows.map(({ hash, time }) => [hash, time]));
+  // Payouts of migrations sent from another device or before, each once:
+  // not one on a route the network doesn't name.
+  const elsewhere = new Map(
+    unlisted.flatMap((payout) => {
+      const route = routeOf(payout.route);
+
+      return route ? [[payout.hash, { ...payout, route }]] : [];
+    })
+  );
 
   return [
     ...mine.map((item) => {
@@ -220,8 +224,7 @@ export async function migrationTransfers(rows, sent, net, account) {
               : "sending",
       });
     }),
-    // Payouts of migrations sent from another device or before, each once.
-    ...[...new Map(unlisted.map((each) => [each.hash, each])).values()].map(
+    ...[...elsewhere.values()].map(
       (payout) =>
         /** @type {RouteTransfer} */ ({
           amountLux: payout.amount,
@@ -231,7 +234,7 @@ export async function migrationTransfers(rows, sent, net, account) {
           paidAt: times.get(payout.payout) ?? payout.at,
           payout: payout.payout,
           recipient: "",
-          route: routeOf(payout.route),
+          route: payout.route,
           stage: "paid",
         })
     ),
@@ -327,9 +330,10 @@ const entryOf = (row) => ({
  * @param {ActivityRow[]} rows The history
  * @param {Record<string, ArrivalSearch>} known What's known of their arrivals
  * @param {import("@dusk-network/networks").Network} net
- * @returns {RouteTransfer[]}
+ * @returns {Promise<RouteTransfer[]>}
  */
-export function serviceTransfers(rows, known, net) {
+export async function serviceTransfers(rows, known, net) {
+  const { serviceTransferOf } = await import("@dusk-network/app-core/bridge");
   const routes = cardRoutes(net);
 
   return rows.flatMap((row) => {
@@ -362,9 +366,28 @@ export function serviceTransfers(rows, known, net) {
 }
 
 /**
+ * Whether there can be a transfer between Dusk and another chain of the
+ * account: a migration sent from here to it, or a row with one of the
+ * bridge's accounts.
+ *
+ * @param {ActivityRow[]} rows
+ * @param {KeptMigration[]} sent
+ * @param {import("@dusk-network/networks").Network} net
+ * @param {string} account
+ */
+const hasRouteTransfers = (rows, sent, net, account) =>
+  sent.some(({ recipient }) => recipient === account) ||
+  rows.some(
+    ({ counterparty, direction }) =>
+      Boolean(counterparty) &&
+      (direction === "in" || direction === "out") &&
+      routeForAccount(net, String(counterparty), direction) !== null
+  );
+
+/**
  * The transfers between Dusk and another chain, as Bridge › Activity lists
  * them: the migrations into Dusk, then the transfers out. None without a
- * network.
+ * network, or without one of them.
  *
  * @param {{ account: string, known: Record<string, ArrivalSearch>, net: import("@dusk-network/networks").Network | null, rows: ActivityRow[], sent: KeptMigration[] }} state
  *   `known` what's known of the transfers out's arrivals; `sent` the
@@ -372,9 +395,9 @@ export function serviceTransfers(rows, known, net) {
  * @returns {Promise<RouteTransfer[]>}
  */
 export const routeTransfersOf = async ({ account, known, net, rows, sent }) =>
-  net
+  net && hasRouteTransfers(rows, sent, net, account)
     ? [
         ...(await migrationTransfers(rows, sent, net, account)),
-        ...serviceTransfers(rows, known, net),
+        ...(await serviceTransfers(rows, known, net)),
       ]
     : [];

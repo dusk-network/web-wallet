@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   createPublicClient: vi.fn(),
   getBlock: vi.fn(),
   http: vi.fn(),
+  /** DuskEVM's L2 bridge, as the wallet has it: the network's, or one set for local work. */
+  l2Bridge: "0x4200000000000000000000000000000000000010",
   observeDepositStatus: vi.fn(),
   query: vi.fn(),
   request: vi.fn(),
@@ -66,15 +68,14 @@ vi.mock("viem", () => ({
 // without one.
 vi.mock("$lib/web3/duskEvm", () => ({
   duskEvm: {
-    contracts: {
-      L2StandardBridge: {
-        address: "0x4200000000000000000000000000000000000010",
-      },
+    get contracts() {
+      return { L2StandardBridge: { address: mocks.l2Bridge } };
     },
     id: 310,
     rpcUrls: { default: { http: ["https://l2.example.test"] } },
   },
   duskEvmAdapterUrl: () => "https://l2.example.test/l1",
+  duskEvmContractId: () => "",
 }));
 
 vi.mock("$lib/web3/walletConnection", () => ({
@@ -125,6 +126,7 @@ describe("DuskEVM deposit tracking", () => {
     localStorage.clear();
     setNodeNetwork(networks.testnet);
     mocks.rows = [];
+    mocks.l2Bridge = "0x4200000000000000000000000000000000000010";
     mocks.connect.mockReset();
     mocks.connect.mockResolvedValue({ query: mocks.query });
     mocks.createPublicClient.mockImplementation(({ transport }) => ({
@@ -375,6 +377,113 @@ describe("DuskEVM deposit tracking", () => {
       );
     } finally {
       vi.useRealTimers();
+      fetch.mockRestore();
+    }
+  });
+
+  /** The DuskEVMs the tests made: each has blocks of its own, as the wallet keeps their times. */
+  let chains = 0;
+
+  /**
+   * A deposit of 0.1 DUSK by ACCOUNT, sent at `at`, as the history shown and
+   * this browser have it, which DuskEVM's adapter can't follow; and DuskEVM,
+   * its newest block made now, a block every `blockMs`, where `bridge` paid
+   * it 55 seconds after its Dusk block.
+   *
+   * @param {string} hash
+   * @param {{ at: number, blockMs?: number, bridge: string }} deposit
+   */
+  function paidDeposit(hash, { at, blockMs = 1_000, bridge }) {
+    const recipient = "0xb0e834d62ca3f5cf0f82619c8515c673818f8c6b";
+    const now = Date.now();
+    const head = 10_000_000n * BigInt((chains += 1));
+
+    mocks.rows = rowsOf([
+      {
+        blockHeight: 8512,
+        bridge: { amount: "100000000", kind: "deposit", to: recipient },
+        hash,
+        status: "executed",
+        timestamp: at,
+      },
+    ]);
+    rememberDepositTransaction(hash, {
+      account: recipient,
+      amountLux: "100000000",
+      createdAt: at,
+    });
+    mocks.query.mockImplementation(async (/** @type {string} */ query) =>
+      query.startsWith("tx(")
+        ? { tx: { blockHeight: 8512, blockTimestamp: at / 1000, err: null } }
+        : { block: { status: { Final: 1 } } }
+    );
+    mocks.request.mockRejectedValue(new Error("Method not found"));
+
+    return fakeChain({
+      blockMs,
+      head,
+      headAt: now,
+      logs: [
+        {
+          address: bridge,
+          block: head - BigInt(Math.floor((now - at - 55_000) / blockMs)),
+          data: `0x${wordOf(100_000_000n * 1_000_000_000n)}${wordOf(0x40n)}${wordOf(0n)}`,
+          hash: l2TransactionHash,
+          topics: [
+            ETH_BRIDGE_FINALIZED_TOPIC,
+            topicOf(evmAddressOf(ACCOUNT)),
+            topicOf(recipient),
+          ],
+        },
+      ],
+      url: "https://l2.example.test",
+    });
+  }
+
+  it("finds a deposit sent more than a week ago arrived on DuskEVM, in a browser that sees it only now", async () => {
+    const hash = "91".repeat(32);
+    // A DuskEVM block every 100 seconds: one look reaches back that far.
+    const chain = paidDeposit(hash, {
+      at: Date.now() - 8 * 86_400_000,
+      blockMs: 100_000,
+      bridge: mocks.l2Bridge,
+    });
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(chain.answer);
+
+    try {
+      expect(await refreshDepositTransaction(hash)).toStrictEqual(
+        expect.objectContaining({ l2TransactionHash, stage: "completed" })
+      );
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it("looks for a deposit's payment from DuskEVM's L2 bridge as set for local work", async () => {
+    const hash = "92".repeat(32);
+
+    mocks.l2Bridge = `0x${"99".repeat(20)}`;
+
+    const chain = paidDeposit(hash, {
+      at: Date.now() - 60_000,
+      bridge: mocks.l2Bridge,
+    });
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(chain.answer);
+
+    try {
+      expect(await refreshDepositTransaction(hash)).toStrictEqual(
+        expect.objectContaining({ l2TransactionHash, stage: "completed" })
+      );
+      expect(
+        chain.asked
+          .filter(({ method }) => method === "eth_getLogs")
+          .map(({ params }) => params[0].address)
+      ).toStrictEqual([mocks.l2Bridge]);
+    } finally {
       fetch.mockRestore();
     }
   });

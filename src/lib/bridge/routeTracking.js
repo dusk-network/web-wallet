@@ -2,11 +2,10 @@
  * Follows the transfers between Dusk and another chain that are under way,
  * as the bridge site does, with reads on that chain's RPC (the network
  * file's): a migration's receipt, and the DUSK token's transfer that pays a
- * transfer out (`@dusk-network/app-core/bridge`). Nothing is read for a
- * transfer that's done.
+ * transfer out (`@dusk-network/app-core/bridge`, loaded once there's one).
+ * Nothing is read for a transfer that's done.
  */
 
-import { serviceArrivals } from "@dusk-network/app-core/bridge";
 import { get } from "svelte/store";
 
 import { archiveAt } from "$lib/activity/activityHistory";
@@ -89,9 +88,10 @@ export const toFollow = (transfers) =>
 
 /**
  * Follows the transfers that need a read on their chain: each migration's
- * receipt, oldest first, then the transfers out, all at once. Each payout
- * pays one transfer; where its search got to, and the payout once found,
- * are kept. Nothing is read when none needs it.
+ * receipt, oldest first, then the transfers out, all at once, however long
+ * ago they were sent. Each payout pays one transfer; where its search got
+ * to, and the payout once found, are kept. Nothing is read when none needs
+ * it.
  *
  * @param {import("./migrationActivity").RouteTransfer[]} transfers
  * @param {Record<string, import("./migrationActivity").ArrivalSearch>} arrivals
@@ -112,16 +112,22 @@ export async function followTransfers(transfers, arrivals, rpcFor = chainRpc) {
     return;
   }
 
-  const found = await serviceArrivals({
-    archive: archiveAt(nodeBaseUrl()),
-    network: net,
-    taken: transfers.flatMap(({ payout }) => (payout ? [payout] : [])),
-    transfers: out.map(({ hash, route }) => ({
-      hash,
-      route: route.id,
-      scan: arrivals[hash]?.scan,
-    })),
-  }).catch(() => null);
+  const found = await import("@dusk-network/app-core/bridge")
+    .then(({ serviceArrivals }) =>
+      serviceArrivals({
+        archive: archiveAt(nodeBaseUrl()),
+        network: net,
+        taken: transfers.flatMap(({ payout }) => (payout ? [payout] : [])),
+        transfers: out.map(({ hash, route }) => ({
+          hash,
+          route: route.id,
+          scan: arrivals[hash]?.scan,
+        })),
+        // This browser may see a transfer only long after it was sent.
+        waitMs: Infinity,
+      })
+    )
+    .catch(() => null);
 
   for (const [hash, arrival] of found?.arrivals ?? []) {
     if (arrival.state === "arrived") {
