@@ -2,6 +2,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
+import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore } from "$lib/stores";
 
@@ -97,13 +98,11 @@ const ALICE =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
 const NOW = Date.now();
 
-/** @type {ActivityRow[]} */
-const rows = [
+// Sent from here, on its way; received; and failed.
+const FIELDS = [
   {
     amount: "5000000000",
-    direction: "out",
     hash: "a1".repeat(32),
-    kind: "transfer",
     privacy: "public",
     source: "local",
     status: "submitted",
@@ -118,28 +117,20 @@ const rows = [
     direction: "in",
     from: ALICE,
     hash: "b2".repeat(32),
-    kind: "transfer",
-    privacy: "public",
-    source: "archive",
     status: "executed",
-    success: true,
     timestamp: NOW - 60_000,
   },
   {
     amount: "200000000000",
     blockHeight: 4_686_000,
-    direction: "out",
     feePaid: "3700000",
     hash: "c3".repeat(32),
-    kind: "transfer",
-    privacy: "public",
-    source: "archive",
     status: "failed",
-    success: false,
     timestamp: NOW - 120_000,
     to: ALICE,
   },
 ];
+const rows = FIELDS.map((fields) => rowOf(fields));
 
 /** @param {Partial<import("$lib/activity/activitySession").ActivityState>} state */
 const setHistory = (state) =>
@@ -270,7 +261,12 @@ describe("Dashboard", () => {
     // Staked before: no "yet", and a way to what was staked.
     await setHistory({
       rows: [
-        { ...rows[1], direction: "out", hash: "d4".repeat(32), kind: "stake" },
+        rowOf({
+          ...FIELDS[1],
+          direction: "out",
+          hash: "d4".repeat(32),
+          kind: "stake",
+        }),
       ],
     });
 
@@ -295,21 +291,21 @@ describe("Dashboard", () => {
 
     await setHistory({
       rows: [
-        {
-          amount: "1500000000000",
-          blockHeight: 4_687_000,
-          contractId:
-            "6fdfdc713a18fc6ca2ad20eb2b4a3305a935ef47d6a872d9a4df8bc9fd9d169e",
-          direction: "out",
-          fnName: "sozu_stake",
-          hash: "e5".repeat(32),
-          kind: "contract_call",
-          privacy: "public",
-          source: "archive",
-          status: "executed",
-          success: true,
-          timestamp: NOW,
-        },
+        // Mainnet's pool.
+        rowOf(
+          {
+            amount: "1500000000000",
+            blockHeight: 4_687_000,
+            contractId:
+              "6fdfdc713a18fc6ca2ad20eb2b4a3305a935ef47d6a872d9a4df8bc9fd9d169e",
+            fnName: "sozu_stake",
+            hash: "e5".repeat(32),
+            kind: "contract_call",
+            status: "executed",
+            timestamp: NOW,
+          },
+          { network: networks.mainnet }
+        ),
       ],
     });
 
@@ -351,20 +347,16 @@ describe("Dashboard", () => {
 
     await setHistory({
       rows: [
-        {
+        rowOf({
           amount: "1000000000",
           blockHeight: 4_687_000,
           contractId: "ef".repeat(32),
-          direction: "out",
           fnName: "sozu_stake",
           hash: "e6".repeat(32),
           kind: "contract_call",
-          privacy: "public",
-          source: "archive",
           status: "executed",
-          success: true,
           timestamp: NOW,
-        },
+        }),
       ],
     });
 

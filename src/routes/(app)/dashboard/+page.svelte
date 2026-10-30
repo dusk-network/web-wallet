@@ -7,7 +7,6 @@
     mdiTrayArrowDown,
   } from "@mdi/js";
   import { activityState, isHistoryEnabled } from "$lib/activity";
-  import { isStakingRow } from "$lib/activity/present";
   import { contractDescriptors } from "$lib/contracts";
   import { SectionHead } from "$lib/components";
   import {
@@ -18,12 +17,7 @@
   } from "$lib/containers/Home";
   import { cardRoutes, migrationRoutes } from "$lib/bridge/cardRoutes";
   import { addBasePath } from "$lib/navigation";
-  import {
-    isSozuFunction,
-    sozuContractsFor,
-    sozuPools,
-    sozuStore,
-  } from "$lib/sozu";
+  import { isSozuFunction, sozuContractsFor, sozuStore } from "$lib/sozu";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
   /** @type {import("./$types").PageData} */
@@ -88,7 +82,7 @@
     ? stakeInfo.amount.value + stakeInfo.amount.locked
     : null;
   $: ({ rows } = $activityState);
-  $: hasPastStaking = rows.some((row) => isStakingRow(row, $sozuPools, net));
+  $: hasPastStaking = rows.some((row) => row.category === "staking");
 
   // What is staked with Sozu, read only for an account that called a pool
   // of its: read, a pool its hub named is known from then on.

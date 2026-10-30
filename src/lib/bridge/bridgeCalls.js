@@ -1,30 +1,13 @@
 /**
- * What a call to the DuskEVM bridge's contracts on Dusk did, as the history
- * keeps it: a deposit's DuskEVM address and amount, and the amount of the
- * withdrawal a proof or a claim is for, and whom it pays. The calls are read
- * by `@dusk-network/networks/duskevm`, on the network's own bridge and
- * route: anything that doesn't decode exactly reads as nothing.
+ * The DuskEVM bridge's contracts on Dusk, as set or from the network's file,
+ * and whom a withdrawal pays on Dusk.
  */
 
-import {
-  decodeBridgeCall as decodeCall,
-  decodeWithdrawal,
-  isBridgeContract as isNetworkBridge,
-} from "@dusk-network/networks/duskevm";
+import { decodeWithdrawal } from "@dusk-network/networks/duskevm";
 import { get } from "svelte/store";
 
 import nodeNetwork from "$lib/stores/nodeNetwork";
 import { duskEvmContractId } from "$lib/web3/duskEvm";
-
-/**
- * @typedef {{ amount: string, kind: "deposit", to: string }
- *   | { amount: string, hash?: `0x${string}`, kind: "claim" | "prove", recipient?: string | null, withdrawal: string }} BridgeCall
- *   Amounts in Lux; `to` is the DuskEVM address with its checksum,
- *   `withdrawal` the withdrawal's nonce, the same in its proof and its claim,
- *   `hash` the withdrawal's hash, which the Portal keys it by, and
- *   `recipient` whom it pays on Dusk (both missing from a call read before
- *   the history kept them).
- */
 
 /** @param {unknown} id */
 const norm = (id) =>
@@ -87,17 +70,18 @@ const withSetBridge = new WeakMap();
 /**
  * The node's network, with the bridge and Portal set for a local
  * deployment in place of its file's, so the history reads the calls the
- * wallet sends. Kept per network, as the settings don't change while the
- * wallet runs.
+ * wallet sends. A network whose file has no DuskEVM gets them too, the one
+ * set standing for both when only one is. Kept per network, as the
+ * settings don't change while the wallet runs.
  */
-function bridgeNetwork() {
+export function bridgeNetwork() {
   const net = get(nodeNetwork);
-  const contracts = net?.duskEvm?.contracts;
 
-  if (!net || !contracts) {
+  if (!net) {
     return net;
   }
 
+  const contracts = net.duskEvm?.contracts ?? {};
   const { bridge, portal } = configuredBridge();
   /** @param {"l1_standard_bridge" | "optimism_portal"} name @param {string} id */
   const differs = (name, id) =>
@@ -113,18 +97,21 @@ function bridgeNetwork() {
   let set = withSetBridge.get(net);
 
   if (!set) {
-    /** @param {"l1_standard_bridge" | "optimism_portal"} name @param {string} id */
-    const as = (name, id) =>
-      id ? { ...contracts[name], contractId: id } : contracts[name];
+    /** @param {"l1_standard_bridge" | "optimism_portal"} name @param {string} id @param {string} other */
+    const as = (name, id, other) =>
+      id
+        ? { ...contracts[name], contractId: id }
+        : (contracts[name] ?? { contractId: other });
 
     set = /** @type {import("@dusk-network/networks").Network} */ ({
       ...net,
       duskEvm: {
+        predeploys: {},
         ...net.duskEvm,
         contracts: {
           ...contracts,
-          ["l1_standard_bridge"]: as("l1_standard_bridge", bridge),
-          ["optimism_portal"]: as("optimism_portal", portal),
+          ["l1_standard_bridge"]: as("l1_standard_bridge", bridge, portal),
+          ["optimism_portal"]: as("optimism_portal", portal, bridge),
         },
       },
     });
@@ -132,48 +119,4 @@ function bridgeNetwork() {
   }
 
   return set;
-}
-
-/**
- * Whether a contract is the node's network's DuskEVM bridge or Portal.
- *
- * @param {unknown} contractId
- */
-export function isBridgeContract(contractId) {
-  const net = bridgeNetwork();
-
-  return net ? isNetworkBridge(net, contractId) : false;
-}
-
-/**
- * What a call to one of the bridge's contracts did: undefined for a call to
- * any other contract, and null for one of the bridge's calls that doesn't
- * decode exactly as the bridge writes it.
- *
- * @param {{ contractId?: string, data?: unknown, fnName?: string }} call
- *   `data` the call's arguments in hex
- * @returns {BridgeCall | null | undefined}
- */
-export function decodeBridgeCall({ contractId, data, fnName }) {
-  const net = bridgeNetwork();
-
-  if (!net || !isNetworkBridge(net, contractId)) {
-    return undefined;
-  }
-
-  const call = decodeCall(net, { args: data, contractId, fnName });
-
-  if (!call) {
-    return null;
-  }
-
-  return call.kind === "deposit"
-    ? { amount: String(call.amountLux), kind: "deposit", to: call.recipient }
-    : {
-        amount: String(call.amountWei / 1_000_000_000n),
-        hash: call.hash,
-        kind: call.kind,
-        recipient: recipientOf(call.recipient),
-        withdrawal: call.nonce.toString(16).padStart(64, "0"),
-      };
 }

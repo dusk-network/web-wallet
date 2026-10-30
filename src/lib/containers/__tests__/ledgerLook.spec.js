@@ -2,6 +2,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
+import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { contactsStore, removeContact, saveContact } from "$lib/contacts";
 import { openTestContacts } from "$lib/test-helpers";
 import { ContactsView } from "$lib/containers/Contacts";
@@ -17,21 +18,15 @@ const DUSK = 1_000_000_000n;
 const ACCOUNT =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
 
-/** @type {ActivityRow} */
-const sent = {
+const sent = rowOf({
   amount: "10000000",
   blockHash: "b1".repeat(32),
   blockHeight: 4_692_418,
-  direction: "out",
   hash: "a1".repeat(32),
-  kind: "transfer",
-  privacy: "public",
-  source: "archive",
   status: "executed",
-  success: true,
   timestamp: Date.now() - 60_000,
   to: ACCOUNT,
-};
+});
 
 const state = {
   complete: true,

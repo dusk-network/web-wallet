@@ -451,22 +451,22 @@ export function resumeDepositTracking(account) {
  * @param {import("./depositActivityStorage").DepositActivityItem | undefined} kept
  */
 function keepHistoryDeposit(row, kept) {
-  const call = /** @type {{ amount: string, to: string }} */ (row.bridge);
+  const call = /** @type {NonNullable<ActivityRow["bridge"]>} */ (row.bridge);
   const hash = /** @type {string} */ (normalizedDuskTxHash(row.hash));
-  const isFinal = row.source === "archive" || row.source === "both";
+  // Its block's time, once the chain's history has it.
+  const at = row.entry?.timestamp;
   let item =
     kept ??
     rememberDepositTransaction(hash, {
       account: call.to,
-      amountLux: call.amount,
-      createdAt: row.timestamp ?? row.submittedAt ?? Date.now(),
+      amountLux: call.amount ?? row.value,
+      createdAt: row.time ?? Date.now(),
     });
 
-  if (item && isFinal && row.timestamp && !item.l1BlockTimestamp) {
+  if (item && at && !item.l1BlockTimestamp) {
     item = updateDepositTransaction(hash, {
-      l1BlockHeight:
-        row.blockHeight === undefined ? null : String(row.blockHeight),
-      l1BlockTimestamp: row.timestamp,
+      l1BlockHeight: String(row.blockHeight),
+      l1BlockTimestamp: at,
     });
   }
 
@@ -494,7 +494,7 @@ export function followHistoryDeposits(rows) {
   for (const row of rows) {
     const hash = normalizedDuskTxHash(row.hash);
 
-    if (row.bridge?.kind === "deposit" && hash) {
+    if (row.bridge?.to && hash) {
       const item = keepHistoryDeposit(row, kept.get(hash));
 
       hashes.add(hash);

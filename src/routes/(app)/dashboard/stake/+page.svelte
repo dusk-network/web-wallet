@@ -12,13 +12,12 @@
   } from "@mdi/js";
 
   import { activityState, isHistoryEnabled } from "$lib/activity";
-  import { isStakingRow } from "$lib/activity/present";
   import { LiquidStake, NativeStake, Unstake } from "$lib/components";
   import { StakingOverview } from "$lib/containers";
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { goto } from "$lib/navigation";
-  import { sozuPools, sozuStore } from "$lib/sozu";
+  import { sozuStore } from "$lib/sozu";
   import { readNativeRewardRate } from "$lib/staking/rewardRate";
   import { nodeBaseUrl } from "$lib/url";
   import {
@@ -116,11 +115,11 @@
   $: liquidAction = actionOf(url);
   $: ({ customGasLimit, customGasPrice, language } = $settingsStore);
   $: ({ balance, currentProfile, minimumStake, stakeInfo } = $walletStore);
-  $: ({ net, networkName } = $networkStore);
+  $: ({ networkName } = $networkStore);
   $: hasStake = stakeInfo.amount !== null;
   $: publicBalance = balance.unshielded.value;
-  $: hasPastStaking = $activityState.rows.some((row) =>
-    isStakingRow(row, $sozuPools, net)
+  $: hasPastStaking = $activityState.rows.some(
+    (row) => row.category === "staking"
   );
 
   // Sozu, read again for the overview each time it shows, as after a stake.

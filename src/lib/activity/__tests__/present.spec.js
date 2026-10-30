@@ -4,48 +4,49 @@ import { networks, routes } from "@dusk-network/networks";
 import { claimDay } from "$lib/bridge/claimDate";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
+import { nameFacts } from "../activityHistory";
 import {
   CSV_COLUMNS,
   CSV_CONTACT_COLUMN,
-  claimedWithdrawals,
   csvFileName,
   dayLabel,
   describeRow,
   fullDateTime,
   groupByDay,
-  isStakingRow,
   matchesFilters,
   routeLabel,
   timeLabel,
   toCsv,
 } from "../present";
+import { rowOf, rowsOf, withBridge } from "./fixtures/rows";
 
 const ACCOUNT =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
-const BRIDGE = `0x${"ab".repeat(32)}`;
-const context = {
-  bridgeContracts: new Set(["ab".repeat(32)]),
-  locale: "en",
-};
+const BRIDGE = "ab".repeat(32);
+const context = { locale: "en" };
 
-/**
- * @param {Partial<ActivityRow>} fields
- * @returns {ActivityRow}
- */
-const row = (fields) => ({
+const bridged = withBridge(networks.testnet, BRIDGE);
+
+const DEFAULTS = {
   amount: "25000000000",
   blockHeight: 4_687_000,
   direction: "out",
   hash: "aa".repeat(32),
   kind: "transfer",
   privacy: "public",
-  source: "archive",
   status: "executed",
-  success: true,
   timestamp: Date.UTC(2026, 9, 26, 13, 32),
   to: ACCOUNT,
-  ...fields,
-});
+};
+
+/**
+ * A row, by default a public transfer sent, final, on Testnet.
+ *
+ * @param {Record<string, any>} fields
+ * @param {Partial<import("@dusk-network/app-core/activity").ActivityInput>} [input]
+ */
+const row = (fields, input) =>
+  rowOf({ ...DEFAULTS, ...fields }, { network: bridged, ...input });
 
 describe("describeRow", () => {
   it("names a counterparty saved as a contact by the contact's name, its .dusk name second", () => {
@@ -109,29 +110,23 @@ describe("describeRow", () => {
 
   it("shows a failed transaction moved nothing: no sign, muted, and the fee it cost", () => {
     expect(
-      describeRow(
-        row({ feePaid: "3700000", status: "failed", success: false }),
-        context
-      )
+      describeRow(row({ feePaid: "3700000", status: "failed" }), context)
     ).toMatchObject({
-      amount: { muted: true, sign: "", text: "25" },
+      amount: { muted: true, sign: "" },
       line: "Failed · nothing sent · fee 0.0037 DUSK paid",
       status: "failed",
     });
 
     // A fee paid rounds to the nearest of four decimals.
     expect(
-      describeRow(
-        row({ feePaid: "1853542", status: "failed", success: false }),
-        context
-      ).line
+      describeRow(row({ feePaid: "1853542", status: "failed" }), context).line
     ).toBe("Failed · nothing sent · fee 0.0019 DUSK paid");
     expect(
-      describeRow(
-        row({ source: "local", status: "failed", success: undefined }),
-        context
-      ).line
-    ).toBe("Failed · nothing sent · no fee");
+      describeRow(row({ source: "local", status: "failed" }), context)
+    ).toMatchObject({
+      amount: { muted: true, sign: "", text: "25" },
+      line: "Failed · nothing sent · no fee",
+    });
   });
 
   it("shows a status only while a transaction isn't final", () => {
@@ -194,83 +189,110 @@ describe("describeRow", () => {
   it("names a call to Dusk Domains by what it did", () => {
     const store =
       "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199";
-
-    expect(
-      describeRow(
-        row({
-          amount: "10000000000",
-          contractId: store,
-          fnName: "register",
-          kind: "contract_call",
-          to: undefined,
-        }),
-        { ...context, network: "testnet" }
-      )
-    ).toMatchObject({
-      amount: { sign: "−", text: "10" },
-      icon: "call",
-      line: "Dusk Domains",
-      title: "Registered a .dusk name",
-    });
-
-    // Once the history has read which name it registered: that name.
-    expect(
-      describeRow(
-        row({
-          amount: "10000000000",
-          contractId: store,
-          fnName: "register",
-          kind: "contract_call",
-          registeredName: "alice.dusk",
-          to: undefined,
-        }),
-        { ...context, network: "testnet" }
-      )
-    ).toMatchObject({ line: "Dusk Domains", title: "Registered alice.dusk" });
-
-    // A reservation: the first of two steps, until a registration after it
-    // reveals which name it was for.
-    const reservation = row({
-      amount: "0",
+    const call = {
+      amount: "10000000000",
       contractId: store,
-      fnName: "commit",
+      fnName: "register",
       kind: "contract_call",
       to: undefined,
-    });
+    };
+    const named = { nameCall: nameFacts };
 
-    expect(
-      describeRow(reservation, { ...context, network: "testnet" }).title
-    ).toBe("Name reservation (step 1 of 2)");
-    expect(
-      describeRow(reservation, {
-        ...context,
-        network: "testnet",
-        reservations: new Map([[reservation.hash, "alice.dusk"]]),
-      }).title
-    ).toBe("Reserved alice.dusk");
+    setNodeNetwork(networks.testnet);
+
+    try {
+      expect(describeRow(row(call, named), context)).toMatchObject({
+        amount: { sign: "−", text: "10" },
+        icon: "call",
+        line: "Dusk Domains",
+        title: "Registered a .dusk name",
+      });
+
+      // Once the history has read which name it registered: that name.
+      expect(
+        describeRow(
+          row({ ...call, registeredName: "alice.dusk" }, named),
+          context
+        )
+      ).toMatchObject({ line: "Dusk Domains", title: "Registered alice.dusk" });
+
+      // A reservation: the first of two steps, until a registration after
+      // it reveals which name it was for.
+      const reservation = {
+        ...DEFAULTS,
+        amount: "0",
+        contractId: store,
+        fnName: "commit",
+        kind: "contract_call",
+        nameCommit: { kind: "reservation", reservation: "c0".repeat(32) },
+        to: undefined,
+      };
+
+      expect(describeRow(row(reservation, named), context).title).toBe(
+        "Name reservation (step 1 of 2)"
+      );
+
+      const [registered, reserved] = rowsOf(
+        [
+          reservation,
+          {
+            ...DEFAULTS,
+            ...call,
+            blockHeight: 4_687_010,
+            hash: "bb".repeat(32),
+            nameCommit: { kind: "registration", reservation: "c0".repeat(32) },
+            registeredName: "alice.dusk",
+          },
+        ],
+        named
+      );
+
+      expect(
+        [registered, reserved].map((one) => describeRow(one, context).title)
+      ).toStrictEqual(["Registered alice.dusk", "Reserved alice.dusk"]);
+
+      // Both ways of changing a name's records read the same, and another
+      // call by Dusk Domains alone.
+      expect(
+        ["mutate_records", "replace_records", "other"].map(
+          (fnName) =>
+            describeRow(row({ ...call, fnName }, named), context).title
+        )
+      ).toStrictEqual([
+        "Changed a .dusk name's records",
+        "Changed a .dusk name's records",
+        "Dusk Domains",
+      ]);
+
+      // On Mainnet, the same contract is no one's: any call.
+      setNodeNetwork(networks.mainnet);
+      expect(describeRow(row(call, named), context).title).toBe(
+        "Called register"
+      );
+    } finally {
+      setNodeNetwork(null);
+    }
   });
 
   it("says where a bridge row's DUSK went: the DuskEVM address, or the withdrawal and its next step", () => {
     const evm = "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A";
     const withdrawal = "0001".padEnd(64, "0");
     const hash = /** @type {`0x${string}`} */ (`0x${"8e".repeat(32)}`);
-    const proved = row({
+    const prove = {
       amount: "0",
       bridge: { amount: "1008000000000", hash, kind: "prove", withdrawal },
       contractId: BRIDGE,
       fnName: "proveWithdrawalTransaction",
       kind: "contract_call",
       to: undefined,
-    });
-    const claim = row({
-      amount: "0",
-      bridge: { amount: "1008000000000", hash, kind: "claim", withdrawal },
-      contractId: BRIDGE,
+    };
+    const finalize = {
+      ...prove,
+      bridge: { ...prove.bridge, kind: "claim" },
       fnName: "finalizeWithdrawalTransaction",
       hash: "bb".repeat(32),
-      kind: "contract_call",
-      to: undefined,
-    });
+    };
+    const proved = row(prove);
     // When the chain says it can be claimed: Mon 2 Nov 2026, 03:20:39 UTC.
     const at = Date.UTC(2026, 10, 2, 3, 20, 39);
     const day = claimDay(at, "en");
@@ -361,13 +383,27 @@ describe("describeRow", () => {
     });
 
     // Claimed: by a row of this history, or as the Portal says.
-    const claimed = claimedWithdrawals([claim, proved]);
+    const both = rowsOf(
+      [
+        { ...DEFAULTS, ...prove },
+        { ...DEFAULTS, ...finalize },
+      ],
+      { network: bridged }
+    );
+    const [provedThenClaimed, claim] = [proved.hash, finalize.hash].map(
+      (one) => /** @type {ActivityRow} */ (both.find((r) => r.hash === one))
+    );
 
-    for (const known of [
-      { ...context, claimed },
-      { ...context, claims: claims({ at: null, claimed: true }) },
+    for (const [known, claimsRead] of [
+      [provedThenClaimed, undefined],
+      [proved, claims({ at: null, claimed: true })],
     ]) {
-      expect(describeRow(proved, known)).toMatchObject({
+      expect(
+        describeRow(/** @type {ActivityRow} */ (known), {
+          ...context,
+          claims: /** @type {any} */ (claimsRead),
+        })
+      ).toMatchObject({
         amount: { muted: false, text: "1,008" },
         line: "Bridge · claimed",
         note: null,
@@ -381,81 +417,51 @@ describe("describeRow", () => {
       title: "Withdrawal claimed",
       withdrawal: null,
     });
-    expect(
-      claimedWithdrawals([{ ...claim, status: "failed", success: false }])
-    ).toEqual(new Set());
 
     // A call to the bridge that didn't read as one of its calls reads as before.
-    expect(describeRow({ ...proved, bridge: null }, context)).toMatchObject({
-      amount: { text: "0" },
-      line: "Bridge",
-      withdrawal: null,
-    });
+    expect(describeRow(row({ ...prove, bridge: null }), context)).toMatchObject(
+      { amount: { text: "0" }, line: "Bridge", withdrawal: null }
+    );
   });
 
   it("names a stake with Sozu and an unstake from it as staking, and no other contract's calls of the same name", () => {
     const pool =
       "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
-    const call = {
-      contractId: pool,
-      kind: /** @type {const} */ ("contract_call"),
-      to: undefined,
-    };
-    const staked = row({ ...call, fnName: "sozu_stake" });
-    const unstaked = row({ ...call, direction: "in", fnName: "sozu_unstake" });
-    const lookalike = row({
-      ...call,
-      contractId: "cd".repeat(32),
-      fnName: "sozu_stake",
-    });
+    const call = { contractId: pool, kind: "contract_call", to: undefined };
 
-    const onTestnet = { ...context, net: networks.testnet };
-
-    expect(describeRow(staked, onTestnet)).toMatchObject({
+    expect(
+      describeRow(row({ ...call, fnName: "sozu_stake" }), context)
+    ).toMatchObject({
       amount: { sign: "−", text: "25" },
       category: "staking",
       icon: "staking",
       line: "Liquid staking",
       title: "Staked with Sozu",
     });
-    expect(describeRow(unstaked, onTestnet)).toMatchObject({
+    expect(
+      describeRow(
+        row({ ...call, direction: "in", fnName: "sozu_unstake" }),
+        context
+      )
+    ).toMatchObject({
       amount: { sign: "+" },
       category: "staking",
       title: "Unstaked from Sozu",
     });
-    expect(describeRow(lookalike, onTestnet)).toMatchObject({
+    expect(
+      describeRow(
+        row({ ...call, contractId: "cd".repeat(32), fnName: "sozu_stake" }),
+        context
+      )
+    ).toMatchObject({
       category: "sent",
       icon: "call",
       title: "Called sozu_stake",
     });
-    // Testnet's pool isn't Sozu's on another network.
-    expect(
-      describeRow(staked, { ...context, net: networks.mainnet }).category
-    ).toBe("sent");
-
-    // On the node's network.
-    setNodeNetwork(networks.testnet);
-
-    try {
-      expect(
-        [staked, unstaked, lookalike].map((one) => isStakingRow(one))
-      ).toStrictEqual([true, true, false]);
-      expect(isStakingRow(row({ kind: "unstake" }))).toBe(true);
-
-      // A pool Sozu's hub named, as a view that follows them passes it.
-      const named = new Set([lookalike.contractId ?? ""]);
-
-      expect(isStakingRow(lookalike, named)).toBe(true);
-      expect(
-        describeRow(lookalike, { ...onTestnet, sozuPools: named })
-      ).toMatchObject({ category: "staking", title: "Staked with Sozu" });
-    } finally {
-      setNodeNetwork(null);
-    }
   });
 
   it("says a shielded row is shielded", () => {
-    expect(describeRow(row({ privacy: "shielded" }), context).privacy).toBe(
+    expect(describeRow(row({ source: "shielded" }), context).privacy).toBe(
       "Shielded"
     );
   });
@@ -468,6 +474,7 @@ describe("transfers on the routes to and from other chains", () => {
         ? [route.payoutAccount]
         : []
   );
+  const onMainnet = { network: networks.mainnet };
   const withRoutes = { ...context, net: networks.mainnet };
 
   it("are known by the routes' accounts, as the network's file calls them", () => {
@@ -492,16 +499,18 @@ describe("transfers on the routes to and from other chains", () => {
   });
 
   it("are the bridge's: a migration's payout in, and a transfer out to the route's account, named by their chain as the extension names them", () => {
-    const payout = row({
-      counterparty: ETHEREUM_PAYOUTS,
+    const payout = {
       direction: "in",
       from: ETHEREUM_PAYOUTS,
       memo: `0x${"c3".repeat(32)}`,
       to: undefined,
-    });
-    const out = row({ memo: `0x${"11".repeat(20)}`, to: BSC_BRIDGE });
+    };
+    const out = row(
+      { memo: `0x${"11".repeat(20)}`, to: BSC_BRIDGE },
+      onMainnet
+    );
 
-    expect(describeRow(payout, withRoutes)).toMatchObject({
+    expect(describeRow(row(payout, onMainnet), withRoutes)).toMatchObject({
       amount: { sign: "+" },
       category: "bridge",
       counterparty: ETHEREUM_PAYOUTS,
@@ -519,25 +528,17 @@ describe("transfers on the routes to and from other chains", () => {
       title: "To BNB Smart Chain",
     });
     expect(
-      describeRow(
-        { ...payout, counterparty: BSC_BRIDGE, from: BSC_BRIDGE },
-        withRoutes
-      ).title
+      describeRow(row({ ...payout, from: BSC_BRIDGE }, onMainnet), withRoutes)
+        .title
     ).toBe("From BNB Smart Chain");
     expect(
       matchesFilters(describeRow(out, withRoutes), out, { kind: "bridge" })
     ).toBe(true);
 
-    // Without the network's routes, as before.
-    expect(describeRow(payout, context)).toMatchObject({
-      category: "received",
-      titleIsAddress: true,
-    });
-
     // A send to an account that only pays migrations out isn't a transfer
     // out, though it goes by the account's name.
     expect(
-      describeRow(row({ to: ETHEREUM_PAYOUTS }), withRoutes)
+      describeRow(row({ to: ETHEREUM_PAYOUTS }, onMainnet), withRoutes)
     ).toMatchObject({
       category: "sent",
       title: "Ethereum migration payouts",

@@ -1,23 +1,17 @@
 <script>
   import { contactNamesOf, contactsStore } from "$lib/contacts";
-  import reservedNames from "$lib/activity/reservedNames";
   import withdrawalClaims from "$lib/bridge/withdrawalClaims";
-  import { sozuPools } from "$lib/sozu";
   import { createEventDispatcher } from "svelte";
   import { mdiTrayArrowDown } from "@mdi/js";
   import { Button, Icon, Select } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
   import { pageTitle } from "$lib/navigation";
   import {
-    claimedWithdrawals,
-    configuredBridgeContracts,
     csvFileName,
     describeRow,
     fullDateTime,
     groupByDay,
-    isRowIncomplete,
     matchesFilters,
-    rowTime,
     timeLabel,
     toCsv,
   } from "$lib/activity/present";
@@ -81,8 +75,6 @@
   /** @type {Record<string, string>} */
   const STATUS_WORDS = { pending: "Pending", unknown: "Not confirmed" };
 
-  const bridgeContracts = configuredBridgeContracts();
-
   /** Whether an export holds the user's own contact names. */
   let withContacts = false;
 
@@ -108,21 +100,14 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  // When the proved withdrawals can be claimed, as the chain says, and
-  // which names the reservations were for.
+  // When the proved withdrawals can be claimed, as the chain says.
   $: void withdrawalClaims.load(state.rows);
-  $: void reservedNames.load(state.rows);
   $: context = {
-    bridgeContracts,
-    claimed: claimedWithdrawals(state.rows),
     claims: $withdrawalClaims,
     contactNames: contactNamesOf($contactsStore),
     locale,
-    // The routes to and from other chains: their transfers are the bridge's.
+    // What the network's file calls its routes' accounts.
     net: $nodeNetwork,
-    network,
-    reservations: $reservedNames,
-    sozuPools: $sozuPools,
   };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;
   $: described = state.rows.map((row) => ({
@@ -139,12 +124,12 @@
       since,
     })
   );
-  $: groups = groupByDay(shown, ({ row }) => rowTime(row), {
+  $: groups = groupByDay(shown, ({ row }) => row.time, {
     full: true,
     locale,
   });
   $: open = described.find(({ row }) => row.hash === selected) ?? null;
-  $: incomplete = shown.filter(({ row }) => isRowIncomplete(row)).length;
+  $: incomplete = shown.filter(({ row }) => row.incomplete).length;
   $: incompleteText = [
     state.error ? "Couldn't reach the network's history." : "",
     incomplete === 1
@@ -253,8 +238,8 @@
               <th colspan="4" scope="colgroup">{group.label}</th>
             </tr>
             {#each group.items as { presentation: p, row } (row.hash)}
-              {@const time = rowTime(row)}
-              {@const isDeposit = row.bridge?.kind === "deposit"}
+              {@const time = row.time}
+              {@const isDeposit = Boolean(row.bridge?.to)}
               <tr
                 class="history__row"
                 class:history__row--selected={row.hash === selected}

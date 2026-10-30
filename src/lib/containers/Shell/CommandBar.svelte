@@ -9,12 +9,9 @@
   import { Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { activityState } from "$lib/activity";
-  import { archiveQuery, fetchTxDetails } from "$lib/activity/activityHistory";
-  import {
-    configuredBridgeContracts,
-    shortAddress,
-  } from "$lib/activity/present";
-  import reservedNames from "$lib/activity/reservedNames";
+  import { fetchTxDetails } from "@dusk-network/app-core/history";
+  import { archiveAt } from "$lib/activity/activityHistory";
+  import { shortAddress } from "$lib/activity/present";
   import { getVerifiedName, resolveDuskName } from "$lib/dusk-domains";
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
@@ -22,7 +19,6 @@
   import { duskExplorerBlock, duskExplorerTx, nodeBaseUrl } from "$lib/url";
 
   import { contactNamesOf, contactsStore } from "$lib/contacts";
-  import { sozuPools } from "$lib/sozu";
   import { lookupKind, lookupName, searchLocally } from "./search";
 
   /** @type {{ href: string, keywords?: string, label: string }[]} */
@@ -49,14 +45,11 @@
   /** @type {Element | null} */
   const opener = document.activeElement;
 
-  const bridgeContracts = configuredBridgeContracts();
-
   const close = () => dispatch("close");
 
   $: ({ networkName } = $networkStore);
   $: ({ profiles } = $walletStore);
   $: ({ language } = $settingsStore);
-  $: void reservedNames.load($activityState.rows);
   $: index = {
     contacts: $contactsStore,
     history: $activityState.rows,
@@ -65,11 +58,8 @@
     pages,
     // The history's rows told as History tells them.
     present: {
-      bridgeContracts,
       contactNames: contactNamesOf($contactsStore),
       net: $nodeNetwork,
-      reservations: $reservedNames,
-      sozuPools: $sozuPools,
     },
     profiles: profiles.map((profile, i) => {
       const account = String(profile.account);
@@ -114,8 +104,7 @@
     const tab = window.open("", "_blank");
 
     try {
-      const data = await archiveQuery(
-        nodeBaseUrl(),
+      const data = await archiveAt(nodeBaseUrl()).query(
         `query { block(height: ${height}) { header { hash } } }`
       );
       const hash = data?.block?.header?.hash;
@@ -231,9 +220,8 @@
   /** @param {string} q */
   async function lookUpTransaction(q) {
     const hash = q.replace(/^0x/i, "").toLowerCase();
-    const details = await fetchTxDetails(nodeBaseUrl(), [hash]).catch(
-      () => null
-    );
+    const archive = archiveAt(nodeBaseUrl());
+    const details = await fetchTxDetails(archive, [hash]).catch(() => null);
 
     if (!details) {
       return { message: "Couldn't look the transaction up.", results: [] };

@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
 import { networks } from "@dusk-network/networks";
 
+import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
+
 import { cardRoutes } from "../cardRoutes";
 
 /** @type {typeof import("../migrationActivity")} */
@@ -26,21 +28,19 @@ const EVM = "0x1111111111111111111111111111111111111111";
 const DUSK = 1_000_000_000n;
 
 /**
- * A history row.
+ * A history row, by default a public transfer received.
  *
- * @param {Partial<ActivityRow>} fields
- * @returns {ActivityRow}
+ * @param {Record<string, unknown>} fields
  */
-const row = (fields) => ({
-  amount: String(5n * DUSK),
-  direction: "in",
-  hash: "bb".repeat(32),
-  privacy: "public",
-  source: "archive",
-  status: "executed",
-  timestamp: Date.UTC(2026, 9, 27, 7, 26),
-  ...fields,
-});
+const row = (fields) =>
+  rowOf({
+    amount: String(5n * DUSK),
+    direction: "in",
+    hash: "bb".repeat(32),
+    status: "executed",
+    timestamp: Date.UTC(2026, 9, 27, 7, 26),
+    ...fields,
+  });
 
 beforeEach(async () => {
   localStorage.clear();
@@ -90,7 +90,7 @@ describe("migrations into Dusk", () => {
       activity.migrationTransfers([payout], sent, ROUTES, ACCOUNT)
     ).toMatchObject([
       {
-        paidAt: payout.timestamp,
+        paidAt: payout.time,
         payout: payout.hash,
         route: { id: "bsc-to-dusk" },
         stage: "paid",
@@ -142,7 +142,7 @@ describe("migrations into Dusk", () => {
       {
         at: null,
         hash: `0x${"c3".repeat(32)}`,
-        paidAt: payout.timestamp,
+        paidAt: payout.time,
         stage: "paid",
       },
     ]);
@@ -234,12 +234,13 @@ describe("following transfers to and from other chains", () => {
       sender: EVM,
     });
 
-    const sentOut = row({
+    const out = {
       counterparty: TO_BSC.account,
       direction: "out",
       hash: "dd".repeat(32),
       memo: EVM,
-    });
+    };
+    const sentOut = row(out);
     const transfers = () => [
       ...activity.migrationTransfers(
         [],
@@ -248,7 +249,7 @@ describe("following transfers to and from other chains", () => {
         ACCOUNT
       ),
       ...activity.serviceTransfers(
-        [sentOut, { ...sentOut, hash: "ee".repeat(32), memo: "alice" }],
+        [sentOut, row({ ...out, hash: "ee".repeat(32), memo: "alice" })],
         get(activity.transferArrivals),
         ROUTES
       ),
@@ -274,14 +275,15 @@ describe("following transfers to and from other chains", () => {
 });
 
 describe("transfers out to BNB Smart Chain", () => {
-  const sent = row({
+  const out = {
     amount: String(200_001n * DUSK),
     counterparty: TO_BSC.account,
     direction: "out",
     hash: "dd".repeat(32),
     memo: EVM,
     timestamp: Date.UTC(2026, 9, 27, 11, 55),
-  });
+  };
+  const sent = row(out);
 
   it("are sent until they arrive, and pay nothing out at or under the bridge fee, or without an address as the memo", () => {
     expect(activity.serviceTransfers([sent], {}, ROUTES)).toMatchObject([
@@ -304,9 +306,9 @@ describe("transfers out to BNB Smart Chain", () => {
       activity
         .serviceTransfers(
           [
-            { ...sent, amount: String(DUSK) },
-            { ...sent, hash: "ee".repeat(32), memo: "alice" },
-            { ...sent, hash: "ff".repeat(32), status: "failed" },
+            row({ ...out, amount: String(DUSK) }),
+            row({ ...out, hash: "ee".repeat(32), memo: "alice" }),
+            row({ ...out, hash: "ff".repeat(32), status: "failed" }),
           ],
           {},
           ROUTES
@@ -319,7 +321,7 @@ describe("transfers out to BNB Smart Chain", () => {
     ]);
     // Received from the route's account isn't a transfer out.
     expect(
-      activity.serviceTransfers([{ ...sent, direction: "in" }], {}, ROUTES)
+      activity.serviceTransfers([row({ ...out, direction: "in" })], {}, ROUTES)
     ).toStrictEqual([]);
   });
 

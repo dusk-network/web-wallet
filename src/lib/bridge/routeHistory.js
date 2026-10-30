@@ -60,9 +60,7 @@ export function waitsOnHistory({
 }) {
   const routes = cardRoutes(net);
   const pending = new Set(
-    rows
-      .filter(({ status }) => status === "submitted" || status === "mempool")
-      .map(({ hash }) => hash)
+    rows.filter(({ status }) => status === "pending").map(({ hash }) => hash)
   );
 
   return (
@@ -138,7 +136,7 @@ function onNewTransactions(refresh) {
     const top = Math.max(
       0,
       ...rows
-        .filter((row) => row.privacy !== "shielded" && row.source !== "local")
+        .filter((row) => row.privacy !== "shielded" && row.source !== "sent")
         .map((row) => row.blockHeight ?? 0)
     );
 

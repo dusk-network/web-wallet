@@ -36,7 +36,7 @@ import { describeRow, shortAddress } from "$lib/activity/present";
  *   locale: string,
  *   network?: string,
  *   pages: { href: string, keywords?: string, label: string }[],
- *   present?: Omit<import("$lib/activity/present").PresentContext, "locale" | "network">,
+ *   present?: Omit<import("$lib/activity/present").PresentContext, "locale">,
  *   profiles: { account: string, address: string, label: string, name: string }[],
  * }} SearchIndex
  *   `present` what the history's rows are told by, as History tells them.
@@ -205,7 +205,6 @@ export function searchLocally(
         const { title, titleIsAddress } = describeRow(row, {
           ...present,
           locale,
-          network,
         });
 
         return {

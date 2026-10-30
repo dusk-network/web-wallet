@@ -172,7 +172,7 @@ export const payoutOf = (rows, { amountLux, hash, payoutAccount }) =>
       String(row.memo ?? "")
         .trim()
         .toLowerCase() === hash.toLowerCase() &&
-      luxOf(row.amount) === luxOf(amountLux) &&
+      row.value === luxOf(amountLux) &&
       (!payoutAccount || row.counterparty === payoutAccount)
   ) ?? null;
 
@@ -198,7 +198,7 @@ function sentMigration(item, rows, route) {
     at: item.createdAt,
     hash: item.hash,
     kind: "migration",
-    paidAt: payout?.timestamp ?? null,
+    paidAt: payout?.time ?? null,
     payout: payout?.hash ?? null,
     recipient: item.recipient,
     route,
@@ -232,11 +232,11 @@ function paidMigration(row, migrations) {
 
   return route && row.direction === "in" && EVM_HASH.test(memo)
     ? {
-        amountLux: luxOf(row.amount),
+        amountLux: row.value,
         at: null,
         hash: memo,
         kind: "migration",
-        paidAt: row.timestamp ?? null,
+        paidAt: row.time,
         payout: row.hash,
         recipient: "",
         route,
@@ -353,11 +353,11 @@ export function forgetRouteTransfers() {
  * @param {bigint} feeLux
  */
 function failureOf(row, feeLux) {
-  if (row.status === "failed" || row.success === false) {
+  if (row.status === "failed") {
     return "The transfer failed on Dusk";
   }
 
-  if (luxOf(row.amount) <= feeLux) {
+  if (row.value <= feeLux) {
     return "It was no more than the bridge fee: nothing is paid out";
   }
 
@@ -380,9 +380,7 @@ export function serviceTransfers(rows, known, routes) {
 
   return rows.flatMap((row) => {
     const route = services.find(
-      (each) =>
-        each.kind === "service" &&
-        (row.counterparty === each.account || row.to === each.account)
+      (each) => each.kind === "service" && row.counterparty === each.account
     );
 
     if (!route || route.kind !== "service" || row.direction !== "out") {
@@ -394,9 +392,9 @@ export function serviceTransfers(rows, known, routes) {
 
     return [
       {
-        amountLux: luxOf(row.amount),
+        amountLux: row.value,
         arrivedAt: arrival.arrivedAt ?? null,
-        at: row.timestamp ?? row.submittedAt ?? 0,
+        at: row.time ?? 0,
         failure: failure || undefined,
         feeLux: route.feeLux,
         hash: row.hash,

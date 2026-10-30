@@ -20,8 +20,9 @@ import {
 } from "@hdauven/dusk-multicall";
 
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { get } from "svelte/store";
 
-import { isSozuCall, noteSozuPool, readSozuStatus, sozuContractsFor } from "..";
+import { noteSozuPool, readSozuStatus, sozuContractsFor, sozuPools } from "..";
 
 const POOL = "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
 const HUB = "bae85f8c24730a5a19fbe3d3bd58248ac8c302b62fe414a8c640d8c0ed286b9e";
@@ -214,43 +215,21 @@ describe("Sozu's contracts", () => {
     expect(sozuContractsFor(null)).toBeNull();
   });
 
-  it("names the calls of a pool its hub named, from then on and on this device", async () => {
+  it("keeps the pools its hub named, from then on and on this device", async () => {
     const pool = "ef".repeat(32);
-    const call = { contractId: pool, fnName: "sozu_stake" };
 
-    expect(isSozuCall(call)).toBe(false);
+    expect(get(sozuPools).has(pool)).toBe(false);
 
     noteSozuPool(`0x${pool.toUpperCase()}`);
 
-    expect(isSozuCall(call)).toBe(true);
+    expect(get(sozuPools).has(pool)).toBe(true);
 
     // Kept for the next visit.
     vi.resetModules();
 
     const again = await import("../config");
 
-    (await import("$lib/stores/nodeNetwork")).setNodeNetwork(networks.testnet);
-    expect(again.isSozuCall(call)).toBe(true);
-    expect(again.isSozuCall({ ...call, fnName: "balance_of" })).toBe(false);
-  });
-
-  it("knows its network's pool's calls, on that network only", () => {
-    const mainnetPool = {
-      contractId: `0x${networks.mainnet.sozu?.fallbacks.pool}`,
-      fnName: "sozu_unstake",
-    };
-
-    expect(isSozuCall({ contractId: POOL, fnName: "sozu_stake" })).toBe(true);
-    expect(isSozuCall(mainnetPool)).toBe(false);
-    expect(isSozuCall(mainnetPool, undefined, networks.mainnet)).toBe(true);
-    expect(isSozuCall({ contractId: POOL, fnName: "balance_of" })).toBe(false);
-    expect(
-      isSozuCall({ contractId: "cd".repeat(32), fnName: "sozu_stake" })
-    ).toBe(false);
-    // Before the node says which network it's on.
-    expect(
-      isSozuCall({ contractId: POOL, fnName: "sozu_stake" }, undefined, null)
-    ).toBe(false);
+    expect(get(again.sozuPools).has(pool)).toBe(true);
   });
 });
 
@@ -495,13 +474,7 @@ describe("readSozuStatus", () => {
 
     expect(status.contracts.pool).toBe(NEW_POOL);
     expect(status.position).toStrictEqual({ balance: 9n, stDusk: 9n });
-    expect(
-      isSozuCall(
-        { contractId: NEW_POOL, fnName: "sozu_stake" },
-        undefined,
-        networks.testnet
-      )
-    ).toBe(true);
+    expect(get(sozuPools).has(NEW_POOL)).toBe(true);
   });
 
   it("fails when the pool's rate or a balance can't be read, saying why", async () => {

@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { networks } from "@dusk-network/networks";
 import { get } from "svelte/store";
+
+import { noteSozuPool } from "$lib/sozu";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import fixture from "./fixtures/activity-testnet.json";
 import { fakeArchive } from "./fixtures/fakeArchive";
@@ -18,6 +22,8 @@ const optionsFor = (account) => ({
 
 afterEach(() => {
   stopActivity();
+  setNodeNetwork(null);
+  localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -44,6 +50,35 @@ describe("activityFor", () => {
     // The first one stopped: it tells nobody anything any more.
     await first.refresh();
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("reads its rows again when Sozu's hub names another pool", async () => {
+    // A pool only Sozu's hub names.
+    const pool = "5a".repeat(32);
+    const sozu = () =>
+      get(activityState).rows.find((row) => row.contractId === pool)?.sozu;
+
+    fakeArchive();
+    setNodeNetwork(networks.testnet);
+
+    const session = activityFor(optionsFor(A));
+
+    await session.start();
+    await session.recordSent({
+      amount: "500000000",
+      contractId: pool,
+      direction: "out",
+      fnName: "sozu_stake",
+      hash: "ab".repeat(32),
+      kind: "contract_call",
+      privacy: "public",
+    });
+
+    expect(sozu()).toBeNull();
+
+    noteSozuPool(pool);
+
+    expect(sozu()).toBe("stake");
   });
 
   it("forgets the session and its rows when stopped, as for a lock", async () => {

@@ -1,7 +1,6 @@
 export {
   SOZU_FN,
   SOZU_URL,
-  isSozuCall,
   isSozuFunction,
   noteSozuPool,
   sozuContractsFor,

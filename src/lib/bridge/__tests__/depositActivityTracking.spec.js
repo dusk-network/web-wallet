@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { rowOf, rowsOf } from "$lib/activity/__tests__/fixtures/rows";
+
 const mocks = vi.hoisted(() => ({
   connect: vi.fn(),
   createPublicClient: vi.fn(),
@@ -218,7 +220,7 @@ describe("DuskEVM deposit tracking", () => {
     const sending = "e1".repeat(32);
     const at = Date.parse("2026-10-26T04:49:20Z");
     /** The history's deposits, newest first: all before the one on its way. */
-    const rows = /** @type {ActivityRow[]} */ (
+    const rows = rowsOf(
       Array.from({ length: 120 }, (_, i) => ({
         bridge: {
           amount: "100000000",
@@ -226,7 +228,6 @@ describe("DuskEVM deposit tracking", () => {
           to: "0xB0E834d62CA3f5cF0F82619c8515c673818f8C6b",
         },
         hash: (i + 1).toString(16).padStart(64, "0"),
-        source: "archive",
         // Failed on Dusk: none of them is followed.
         status: "failed",
         timestamp: at - i * 60_000,
@@ -316,20 +317,20 @@ describe("DuskEVM deposit tracking", () => {
     const failed = "52".repeat(32);
     const kept = "53".repeat(32);
     const at = Date.parse("2026-10-26T04:49:20Z");
-    /** @type {(hash: string, fields?: Partial<ActivityRow>) => ActivityRow} */
-    const deposit = (hash, fields = {}) => ({
-      blockHeight: 4_700_000,
-      bridge: {
-        amount: "100000000",
-        kind: "deposit",
-        to: "0xB0E834d62CA3f5cF0F82619c8515c673818f8C6b",
-      },
-      hash,
-      source: "archive",
-      status: "executed",
-      timestamp: at,
-      ...fields,
-    });
+    /** @type {(hash: string, fields?: Record<string, unknown>) => ActivityRow} */
+    const deposit = (hash, fields = {}) =>
+      rowOf({
+        blockHeight: 4_700_000,
+        bridge: {
+          amount: "100000000",
+          kind: "deposit",
+          to: "0xB0E834d62CA3f5cF0F82619c8515c673818f8C6b",
+        },
+        hash,
+        status: "executed",
+        timestamp: at,
+        ...fields,
+      });
 
     // One already kept, arrived: left as it is.
     rememberDepositTransaction(kept, { account: `0x${"99".repeat(20)}` });
@@ -349,12 +350,9 @@ describe("DuskEVM deposit tracking", () => {
 
     const followed = followHistoryDeposits([
       deposit(final),
-      deposit(failed, { status: "failed", success: false }),
+      deposit(failed, { status: "failed" }),
       deposit(kept),
-      /** @type {ActivityRow} */ ({
-        hash: "54".repeat(32),
-        status: "executed",
-      }),
+      rowOf({ hash: "54".repeat(32), status: "executed" }),
     ]);
 
     expect(followed).toStrictEqual(new Set([final, failed, kept]));

@@ -39,8 +39,9 @@ export function page(
  * @param {any} node
  * @param {string} query
  * @param {Record<string, any>} accounts
+ * @param {Record<string, any>} details
  */
-function answer(node, query, accounts) {
+function answer(node, query, accounts, details) {
   /** @type {Record<string, any>} */
   const data = {};
 
@@ -75,24 +76,25 @@ function answer(node, query, accounts) {
   }
 
   for (const m of query.matchAll(/(t\d+): tx\(hash: "([0-9a-f]{64})"\)/g)) {
-    data[m[1]] =
-      /** @type {Record<string, any>} */ (fixture.details)[m[2]] ?? null;
+    data[m[1]] = details[m[2]] ?? null;
   }
 
   return data;
 }
 
 /**
- * Stub `fetch` with a node holding the recorded history. Change `finalized`
+ * Stub `fetch` with a node holding the recorded history, and `details` by
+ * hash. Change `finalized`
  * (its last finalized block), `genesis`, `down` (every request fails),
  * `archive` (false: a node without the archive's fields) or `before`
  * (awaited with each query before its answer) as a test goes; `log` keeps
  * each query and its answer.
  *
- * @param {{ accounts?: Record<string, any>, finalized?: number, genesis?: string }} [options]
+ * @param {{ accounts?: Record<string, any>, details?: Record<string, any>, finalized?: number, genesis?: string }} [options]
  */
 export function fakeArchive({
   accounts = fixture.accounts,
+  details = fixture.details,
   finalized = Number(fixture.head.last_finalized_block[0]),
   genesis = fixture.head.genesis,
 } = {}) {
@@ -140,7 +142,7 @@ export function fakeArchive({
       };
     }
 
-    const data = answer(node, query, accounts);
+    const data = answer(node, query, accounts, details);
 
     node.log.push({ data, query });
 

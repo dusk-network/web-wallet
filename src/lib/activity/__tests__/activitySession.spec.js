@@ -27,17 +27,16 @@ const entryOfA = (height) =>
     (e) => e.block_height === height
   );
 
-/** @type {ActivityRow} */
-const shieldedRow = {
-  amount: "2000000000",
+/** @type {import("@dusk-network/app-core/shielded").ShieldedEntry} */
+const shieldedEntry = {
   blockHeight: 3861643,
   direction: "in",
+  fee: null,
   hash: "ab".repeat(32),
   kind: "shield",
-  privacy: "shielded",
-  source: "shielded",
-  status: "executed",
+  success: true,
   timestamp: 1_784_723_688_000,
+  value: "2000000000",
 };
 
 /** @type {typeof import("../activitySession")} */
@@ -48,6 +47,14 @@ let store;
 
 /** @type {import("../activitySession").ActivitySession[]} */
 const started = [];
+
+/** A's history, synced by another run: on an earlier visit, or in another tab. */
+async function syncA() {
+  const { publicHistory } = await import("../activityHistory");
+  const epoch = await store.getActivityEpoch();
+
+  await publicHistory({ account: A, epoch, nodeUrl: NODE }).sync();
+}
 
 /** @param {Partial<import("../activitySession").ActivitySessionOptions>} [options] */
 function sessionFor(options = {}) {
@@ -79,6 +86,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   started.splice(0).forEach((session) => session.stop());
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -87,12 +95,10 @@ describe("ActivitySession", () => {
   it("paints the kept history at once, then syncs, names the counterparties and adds the shielded history", async () => {
     const node = fakeArchive({ finalized: 4_656_000 });
     const sender = entryOfA(4657992).events[0].data.sender;
-    const shielded = vi.fn(async () => ({ entries: [shieldedRow] }));
+    const shielded = vi.fn(async () => ({ entries: [shieldedEntry] }));
 
     // Kept from an earlier visit: the transfer at 4655845.
-    await (
-      await import("../activityHistory")
-    ).syncActivity({ account: A, nodeUrl: NODE });
+    await syncA();
     node.finalized = FINALIZED;
     mocks.lookupCounterpartyNames.mockResolvedValue(
       new Map([[sender, "faucet.dusk"]])
@@ -115,15 +121,15 @@ describe("ActivitySession", () => {
     expect(
       session.state.rows.map((r) => [r.blockHeight, r.source, r.status])
     ).toEqual([
-      [4658012, "archive", "executed"],
-      [4658000, "archive", "executed"],
-      [4657992, "archive", "executed"],
-      [4655845, "archive", "executed"],
+      [4658012, "public", "executed"],
+      [4658000, "public", "executed"],
+      [4657992, "public", "executed"],
+      [4655845, "public", "executed"],
       [3861643, "shielded", "executed"],
     ]);
     expect(
       session.state.rows.find((r) => r.blockHeight === 4657992)
-    ).toMatchObject({ counterpartyName: "faucet.dusk", from: sender });
+    ).toMatchObject({ counterparty: sender, counterpartyName: "faucet.dusk" });
     expect(mocks.lookupCounterpartyNames).toHaveBeenCalledWith(
       expect.arrayContaining([sender]),
       { network: "testnet", nodeUrl: NODE }
@@ -142,7 +148,7 @@ describe("ActivitySession", () => {
       .fn()
       .mockResolvedValueOnce({ entries: [], pending: true })
       .mockResolvedValueOnce({ entries: [], pending: true })
-      .mockResolvedValue({ entries: [shieldedRow] });
+      .mockResolvedValue({ entries: [shieldedEntry] });
     const session = sessionFor({ shielded });
 
     await session.start();
@@ -180,9 +186,7 @@ describe("ActivitySession", () => {
     const sender = entryOfA(4657992).events[0].data.sender;
 
     // Kept from an earlier visit: the history, and the sender's name.
-    await (
-      await import("../activityHistory")
-    ).syncActivity({ account: A, nodeUrl: NODE });
+    await syncA();
     await store.putCounterpartyNames(
       "testnet",
       new Map([[sender, "faucet.dusk"]]),
@@ -229,8 +233,8 @@ describe("ActivitySession", () => {
 
     expect(session.state.rows[0]).toMatchObject({
       hash,
-      source: "local",
-      status: "submitted",
+      source: "sent",
+      status: "pending",
     });
 
     node.finalized = FINALIZED;
@@ -239,12 +243,38 @@ describe("ActivitySession", () => {
     expect(session.state.rows[0]).toMatchObject({
       blockHeight: 4658012,
       hash,
-      source: "archive",
+      source: "public",
       status: "executed",
     });
     expect(
       await store.listLocalTransactions(store.activityOwnerKey("testnet", A))
     ).toEqual([]);
+  });
+
+  it("puts a call to the bridge set for a local deployment under Bridge, on a network whose file has no DuskEVM", async () => {
+    const local = "cd".repeat(32);
+    const hash = "c2".repeat(32);
+
+    (await import("$lib/stores/nodeNetwork")).setNodeNetwork(
+      (await import("@dusk-network/networks")).networks.devnet
+    );
+    vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", local);
+    fakeArchive({ finalized: 4_656_000 });
+    const session = sessionFor();
+
+    await session.start();
+    await session.recordSent({
+      amount: "100000000",
+      contractId: local,
+      fnName: "depositETHToWithValue",
+      hash,
+      kind: "contract_call",
+      privacy: "public",
+    });
+
+    expect(session.state.rows.find((row) => row.hash === hash)).toMatchObject({
+      category: "bridge",
+    });
   });
 
   it("keeps the name typed for a send with the chain's row, once the archive has it", async () => {
@@ -265,7 +295,7 @@ describe("ActivitySession", () => {
 
     expect(session.state.rows[0]).toMatchObject({
       hash,
-      source: "both",
+      source: "public",
       status: "executed",
       toName: "alice.dusk",
     });
@@ -277,12 +307,12 @@ describe("ActivitySession", () => {
   it("settles a shielded send against the shielded history, keeping its memo, and stops waiting for the archive", async () => {
     fakeArchive();
 
-    const hash = shieldedRow.hash;
+    const hash = shieldedEntry.hash;
     const shielded = vi
       .fn()
       .mockResolvedValueOnce({ entries: [] })
       .mockResolvedValue({
-        entries: [{ ...shieldedRow, direction: "out", kind: "transfer" }],
+        entries: [{ ...shieldedEntry, direction: "out", kind: "transfer" }],
       });
     const session = sessionFor({ shielded });
 
@@ -324,33 +354,9 @@ describe("ActivitySession", () => {
 
     expect(session.state.rows.find((r) => r.hash === hash)).toMatchObject({
       memo: "Invoice 42",
-      source: "both",
+      source: "shielded",
       status: "executed",
     });
-  });
-
-  it("says the outcome of a send the archive never had is unknown, after a while", async () => {
-    fakeArchive();
-
-    const session = sessionFor();
-    const hash = "ee".repeat(32);
-
-    await session.start();
-    await session.recordSent({
-      amount: "1000000000",
-      hash,
-      kind: "transfer",
-      privacy: "public",
-      to: B,
-    });
-
-    expect(session.rows.find((r) => r.hash === hash)?.status).toBe("submitted");
-
-    vi.spyOn(Date, "now").mockReturnValue(
-      Date.now() + sessions.LOCAL_PENDING_MS
-    );
-
-    expect(session.rows.find((r) => r.hash === hash)?.status).toBe("unknown");
   });
 
   it("tells nobody anything once stopped", async () => {
@@ -369,6 +375,84 @@ describe("ActivitySession", () => {
 
     expect(listener).not.toHaveBeenCalled();
   });
+
+  it("says nothing of a run another one overtook, and shows the history as that one left it", async () => {
+    const node = fakeArchive();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const atWindow = Promise.withResolvers();
+    const held = Promise.withResolvers();
+    let holding = true;
+
+    // The session's run waits at its first window...
+    node.before = async (query) => {
+      if (holding && query.includes("toBlock")) {
+        holding = false;
+        atWindow.resolve(undefined);
+        await held.promise;
+      }
+    };
+
+    const session = sessionFor();
+    const run = session.start();
+
+    await atWindow.promise;
+
+    // ... while another run finds the node on another chain, and starts the
+    // history over there.
+    node.genesis = "ff".repeat(32);
+    await syncA();
+    held.resolve(undefined);
+    await run;
+
+    expect(session.state).toMatchObject({ error: null, syncing: false });
+    expect(warn).not.toHaveBeenCalled();
+    expect(session.state.rows.map((r) => r.blockHeight)).toEqual([
+      4658012, 4658000, 4657992, 4655845,
+    ]);
+    expect(
+      await store.getActivityMeta(store.activityOwnerKey("testnet", A))
+    ).toMatchObject({ genesis: "ff".repeat(32) });
+  });
+
+  it("shows more below a block the first page showed whole, however big", async () => {
+    // Derived: 10 transfers on top, each in its own block, then 100 in one
+    // block, then 30 older ones, oldest first as the archive lists them.
+    const sample = accounts[A].receiver[0];
+    /** @param {number} height @param {number} n */
+    const at = (height, n) => ({
+      ...sample,
+      ["block_height"]: height,
+      origin: n.toString(16).padStart(64, "0"),
+    });
+    const top = FINALIZED - 100;
+    const receiver = [
+      ...Array.from({ length: 30 }, (_, i) => at(top - 59 + i, 300 + i)),
+      ...Array.from({ length: 100 }, (_, i) => at(top - 20, 100 + i)),
+      ...Array.from({ length: 10 }, (_, i) => at(top - 9 + i, 1 + i)),
+    ];
+
+    fakeArchive({ accounts: { [A]: { receiver, sender: [] } } });
+
+    // A session syncs once a start: enough of them to keep the whole history.
+    let session = sessionFor();
+
+    await session.start();
+    for (let i = 0; i < 5 && !session.state.complete; i += 1) {
+      session.stop();
+      session = sessionFor();
+      await session.start();
+    }
+
+    // The first page: the 10, then the 100 of the block it cuts through.
+    expect(session.state.complete).toBe(true);
+    expect(session.state.rows).toHaveLength(110);
+
+    await session.showMore();
+
+    expect(session.state.rows).toHaveLength(140);
+    // Several syncs of a 140-entry history: more than the default 5 s on a
+    // busy CI runner.
+  }, 30_000);
 
   it("keeps the archive's error for the state and still shows what it kept", async () => {
     const node = fakeArchive({ finalized: 4_656_000 });

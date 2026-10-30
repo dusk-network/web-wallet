@@ -1,18 +1,13 @@
 <script>
   import { contactNamesOf, contactsStore } from "$lib/contacts";
-  import reservedNames from "$lib/activity/reservedNames";
   import withdrawalClaims from "$lib/bridge/withdrawalClaims";
-  import { sozuPools } from "$lib/sozu";
   import { mdiChevronRight } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import { SectionHead } from "$lib/components";
   import {
-    claimedWithdrawals,
-    configuredBridgeContracts,
     describeRow,
     groupByDay,
     matchesFilters,
-    rowTime,
   } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { addBasePath } from "$lib/navigation";
@@ -53,25 +48,16 @@
     { id: "staking", label: "Staking" },
   ];
 
-  const bridgeContracts = configuredBridgeContracts();
-
   /** @type {import("$lib/activity/present").ActivityKindFilter} */
   let kind = "all";
 
-  // When the proved withdrawals can be claimed, as the chain says, and
-  // which names the reservations were for.
+  // When the proved withdrawals can be claimed, as the chain says.
   $: void withdrawalClaims.load(state.rows);
-  $: void reservedNames.load(state.rows);
   $: context = {
-    bridgeContracts,
-    claimed: claimedWithdrawals(state.rows),
     claims: $withdrawalClaims,
     contactNames: contactNamesOf($contactsStore),
     locale,
     net: $nodeNetwork,
-    network: $nodeNetwork?.name,
-    reservations: $reservedNames,
-    sozuPools: $sozuPools,
   };
   $: described = state.rows.map((row) => ({
     presentation: describeRow(row, context),
@@ -82,7 +68,7 @@
       matchesFilters(presentation, row, { kind: only ?? kind })
     )
     .slice(0, limit);
-  $: groups = groupByDay(shown, ({ row }) => rowTime(row), { locale });
+  $: groups = groupByDay(shown, ({ row }) => row.time, { locale });
 </script>
 
 <section aria-labelledby="activity-panel-title" class="activity-panel">

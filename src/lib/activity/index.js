@@ -1,5 +1,8 @@
 import { writable } from "svelte/store";
 
+import { sozuPools } from "$lib/sozu/config";
+import nodeNetwork from "$lib/stores/nodeNetwork";
+
 import { ACTIVITY_PAGE, ActivitySession } from "./activitySession";
 
 export { clearActivityStore } from "./activityStore";
@@ -28,6 +31,13 @@ let unsubscribe = null;
 
 /** The history of the account the wallet shows: its rows, and how its sync goes. */
 export const activityState = { subscribe: state.subscribe };
+
+/** Tells the shown history's state again: its rows are read again. */
+const tellAgain = () => current && state.set(current.state);
+
+// The node's network and Sozu's pools say what the rows' calls did.
+nodeNetwork.subscribe(tellAgain);
+sozuPools.subscribe(tellAgain);
 
 /**
  * The history session for an account, made and started on first use. The
