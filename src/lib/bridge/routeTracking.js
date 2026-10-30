@@ -2,26 +2,22 @@
  * Follows the transfers between Dusk and another chain that are under way,
  * as the bridge site does, with reads on that chain's RPC (the network
  * file's): a migration's receipt, and the DUSK token's transfer that pays a
- * transfer out. Nothing is read for a transfer that's done.
+ * transfer out (`@dusk-network/app-core/bridge`). Nothing is read for a
+ * transfer that's done.
  */
 
+import { serviceArrivals } from "@dusk-network/app-core/bridge";
+import { get } from "svelte/store";
+
+import { archiveAt } from "$lib/activity/activityHistory";
+import nodeNetwork from "$lib/stores/nodeNetwork";
+import { nodeBaseUrl } from "$lib/url";
+
 import {
-  arrivingWei,
   keepArrival,
   markMigrationConfirmed,
   markMigrationFailed,
 } from "./migrationActivity";
-
-/** `Transfer(address,address,uint256)`, an ERC-20's transfer event. */
-const TRANSFER_TOPIC =
-  "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-
-/** Blocks a log search asks for at once, and windows a check searches. */
-const WINDOW = 5_000n;
-const WINDOWS_PER_CHECK = 8;
-
-/** Blocks back from the estimated start, for a chain whose pace varies. */
-const MARGIN = 2_000n;
 
 /**
  * @typedef {(method: string, params: unknown[]) => Promise<any>} ChainRpc
@@ -51,17 +47,6 @@ export const chainRpc =
     return body?.result;
   };
 
-/** @param {bigint} n */
-const hex = (n) => `0x${n.toString(16)}`;
-
-/**
- * An address as a log's topic: 32 bytes, lower case.
- *
- * @param {string} address
- */
-const topic = (address) =>
-  `0x${address.slice(2).toLowerCase().padStart(64, "0")}`;
-
 /**
  * Whether a migration's transaction went through on its chain: true once it
  * did, false when it reverted, null while it's not in a block. It's kept
@@ -89,126 +74,6 @@ export async function checkMigration(transfer, rpc) {
 }
 
 /**
- * The chain's head, and the block to search for a payout from: where the
- * last check stopped, else about when the transfer was sent, from the
- * chain's pace over its last 100,000 blocks, less a margin.
- *
- * @param {ChainRpc} rpc
- * @param {number} sentAt
- * @param {string} [scanFrom]
- */
-async function searchSpan(rpc, sentAt, scanFrom) {
-  const latest = await rpc("eth_getBlockByNumber", ["latest", false]);
-  const head = BigInt(latest.number);
-
-  if (scanFrom) {
-    return { head, start: BigInt(scanFrom) };
-  }
-
-  const back = head > 100_000n ? 100_000n : head;
-  const earlier = await rpc("eth_getBlockByNumber", [hex(head - back), false]);
-  const span = Number(BigInt(latest.timestamp) - BigInt(earlier.timestamp));
-  const perBlock = back > 0n && span > 0 ? span / Number(back) : 1;
-  const ago = Math.max(0, Number(BigInt(latest.timestamp)) - sentAt / 1_000);
-  const start = head - BigInt(Math.ceil(ago / perBlock)) - MARGIN;
-
-  return { head, start: start > 0n ? start : 0n };
-}
-
-/**
- * The token transfer in a window of blocks that pays `to` exactly `wanted`,
- * from `payer` where it's known, other than those `taken`, with when its
- * block was made; null without one.
- *
- * @param {ChainRpc} rpc
- * @param {{ from: bigint, payer: string | null, taken: Set<string>, to: string, token: string, until: bigint, wanted: bigint }} search
- * @returns {Promise<{ arrivedAt: number | null, payout: string } | null>}
- */
-async function payoutIn(rpc, { from, payer, taken, to, token, until, wanted }) {
-  /** @type {{ blockNumber: string, data: string, transactionHash: string }[]} */
-  const logs =
-    (await rpc("eth_getLogs", [
-      {
-        address: token,
-        fromBlock: hex(from),
-        toBlock: hex(until),
-        topics: [TRANSFER_TOPIC, payer, to],
-      },
-    ])) ?? [];
-  const match = logs.find(
-    (log) =>
-      BigInt(log.data) === wanted &&
-      !taken.has(log.transactionHash.toLowerCase())
-  );
-
-  if (!match) {
-    return null;
-  }
-
-  const block = await rpc("eth_getBlockByNumber", [match.blockNumber, false]);
-
-  return {
-    arrivedAt: block?.timestamp
-      ? Number(BigInt(block.timestamp)) * 1_000
-      : null,
-    payout: match.transactionHash.toLowerCase(),
-  };
-}
-
-/**
- * Searches the transfer's chain for the token transfer that pays it out:
- * from the route's payout address where the network's file has it, to the
- * address its memo gives, of the amount less the bridge's fee, from about
- * when it was sent, a few windows of blocks a check. Each payout pays one
- * transfer: `taken` are those others were paid with. Where the search got
- * to, and the payout once found, are kept.
- *
- * @param {import("./migrationActivity").RouteTransfer} transfer
- * @param {{ rpc: ChainRpc, scanFrom?: string, taken?: Set<string> }} options
- * @returns {Promise<{ arrivedAt: number | null, payout: string } | null>}
- */
-export async function searchArrival(
-  transfer,
-  { rpc, scanFrom, taken = new Set() }
-) {
-  const { token } = transfer.route.chain;
-
-  if (!token) {
-    return null;
-  }
-
-  const { head, start } = await searchSpan(rpc, transfer.at ?? 0, scanFrom);
-  const search = {
-    payer:
-      transfer.route.kind === "service" && transfer.route.payoutAddress
-        ? topic(transfer.route.payoutAddress)
-        : null,
-    taken,
-    to: topic(transfer.recipient),
-    token,
-    wanted: arrivingWei(transfer),
-  };
-  let from = start;
-
-  for (let i = 0; i < WINDOWS_PER_CHECK && from <= head; i++) {
-    const until = from + WINDOW - 1n < head ? from + WINDOW - 1n : head;
-    const found = await payoutIn(rpc, { ...search, from, until });
-
-    if (found) {
-      keepArrival(transfer.hash, found);
-
-      return found;
-    }
-
-    from = until + 1n;
-  }
-
-  keepArrival(transfer.hash, { scanFrom: from.toString() });
-
-  return null;
-}
-
-/**
  * The transfers that need a read on their chain: migrations not in a block
  * yet, and transfers out not paid yet. A migration in a block waits for its
  * payout in the history, with no read of its own.
@@ -223,37 +88,46 @@ export const toFollow = (transfers) =>
   );
 
 /**
- * Follows the transfers that need a read on their chain, oldest first, one
- * at a time: a migration's receipt, and a transfer out's payout. Each
- * payout pays one transfer. Nothing is read when none does.
+ * Follows the transfers that need a read on their chain: each migration's
+ * receipt, oldest first, then the transfers out, all at once. Each payout
+ * pays one transfer; where its search got to, and the payout once found,
+ * are kept. Nothing is read when none needs it.
  *
  * @param {import("./migrationActivity").RouteTransfer[]} transfers
  * @param {Record<string, import("./migrationActivity").ArrivalSearch>} arrivals
  * @param {(url: string) => ChainRpc} [rpcFor]
  */
 export async function followTransfers(transfers, arrivals, rpcFor = chainRpc) {
-  const taken = new Set(
-    transfers.flatMap(({ payout }) => (payout ? [payout] : []))
-  );
+  const due = toFollow(transfers).sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
+  const out = due.filter(({ kind }) => kind === "service");
+  const net = get(nodeNetwork);
 
-  for (const transfer of toFollow(transfers).sort(
-    (a, b) => (a.at ?? 0) - (b.at ?? 0)
-  )) {
-    const rpc = rpcFor(transfer.route.chain.rpcUrl);
+  for (const transfer of due.filter(({ kind }) => kind === "migration")) {
+    await checkMigration(transfer, rpcFor(transfer.route.chain.rpcUrl)).catch(
+      () => null
+    );
+  }
 
-    if (transfer.kind === "migration") {
-      await checkMigration(transfer, rpc).catch(() => null);
-      continue;
-    }
+  if (!out.length || !net) {
+    return;
+  }
 
-    const found = await searchArrival(transfer, {
-      rpc,
-      scanFrom: arrivals[transfer.hash]?.scanFrom,
-      taken,
-    }).catch(() => null);
+  const found = await serviceArrivals({
+    archive: archiveAt(nodeBaseUrl()),
+    network: net,
+    taken: transfers.flatMap(({ payout }) => (payout ? [payout] : [])),
+    transfers: out.map(({ hash, route }) => ({
+      hash,
+      route: route.id,
+      scan: arrivals[hash]?.scan,
+    })),
+  }).catch(() => null);
 
-    if (found) {
-      taken.add(found.payout);
+  for (const [hash, arrival] of found?.arrivals ?? []) {
+    if (arrival.state === "arrived") {
+      keepArrival(hash, { arrivedAt: arrival.at, payout: arrival.hash });
+    } else if (arrival.scan) {
+      keepArrival(hash, { scan: arrival.scan });
     }
   }
 }

@@ -47,14 +47,12 @@
   import { account, modal } from "$lib/web3/walletConnection";
 
   import nodeNetwork from "$lib/stores/nodeNetwork";
-  import { cardRoutes } from "$lib/bridge/cardRoutes";
   import {
     hydrateMigrations,
     keptMigrations,
-    migrationTransfers,
-    serviceTransfers,
     transferArrivals,
   } from "$lib/bridge/migrationActivity";
+  import { routeTransfers } from "$lib/bridge/routeHistory";
   import { followTransfers, toFollow } from "$lib/bridge/routeTracking";
 
   import Banner from "../Banner/Banner.svelte";
@@ -696,18 +694,9 @@
   }
   $: canCheck = finalizationConfig.configured && !isChecking && !isSubmitting;
   $: ({ language } = $settingsStore);
-  $: routeList = cardRoutes($nodeNetwork);
   // The public account the wallet shows: the migrations listed pay it.
   $: duskAccount = $walletStore.currentProfile?.account.toString() ?? "";
-  $: transfers = [
-    ...migrationTransfers(
-      $activityState.rows,
-      $keptMigrations,
-      routeList,
-      duskAccount
-    ),
-    ...serviceTransfers($activityState.rows, $transferArrivals, routeList),
-  ];
+  $: transfers = $routeTransfers;
   // Followed as soon as one is under way, as the history or this browser
   // gives it, then on the timer.
   $: underWay = toFollow(transfers)

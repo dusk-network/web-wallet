@@ -1,7 +1,13 @@
 import { observeDepositStatus } from "@dusk/evm-sdk";
+import { depositArrivals, depositOf } from "@dusk-network/app-core/bridge";
+import { get } from "svelte/store";
 import { createPublicClient, http } from "viem";
 
+import { activityState, currentActivity } from "$lib/activity";
+import { archiveAt } from "$lib/activity/activityHistory";
 import { networkStore } from "$lib/stores";
+import nodeNetwork from "$lib/stores/nodeNetwork";
+import { nodeBaseUrl } from "$lib/url";
 import { duskEvm, duskEvmAdapterUrl } from "$lib/web3/duskEvm";
 import {
   depositActivityStore,
@@ -12,7 +18,6 @@ import {
   rememberDepositTransaction,
   updateDepositTransaction,
 } from "$lib/bridge/depositActivityStorage";
-import { findDepositArrival } from "$lib/bridge/depositArrival";
 import { isDepositTerminal } from "$lib/bridge/depositLifecycle";
 import {
   normalizedDuskTxHash,
@@ -103,7 +108,7 @@ async function resolveL1TransactionHash(remembered) {
 
   if (!finalized) return null;
 
-  // What DuskEVM's explorer times its payment against, from Dusk's clock.
+  // What its arrival on DuskEVM is timed against, from Dusk's clock.
   if (finalized.timestamp && !remembered.l1BlockTimestamp) {
     updateDepositTransaction(remembered.transactionHash, {
       l1BlockTimestamp: finalized.timestamp,
@@ -202,35 +207,126 @@ function failedObservationPatch(remembered, error) {
   });
 }
 
+/** DuskEVM's block times, as its reads find them. */
+const duskEvmBlockTimes = new Map();
+
 /**
- * A deposit that DuskEVM's adapter can't follow, found arrived on DuskEVM's
- * explorer: completed, with the DuskEVM transaction that paid it. Null while
- * it isn't there, or the explorer can't be read.
+ * Where the last search on DuskEVM for each deposit stopped, by its Dusk
+ * transaction: the next one carries on from there.
+ *
+ * @type {Map<string, import("@dusk-network/app-core/bridge").Scan>}
+ */
+const duskEvmScans = new Map();
+
+/** The read of DuskEVM under way, for every deposit on its way. */
+/** @type {Promise<void> | null} */
+let duskEvmRead = null;
+
+/**
+ * A deposit on its way to a DuskEVM address, as this browser keeps it.
+ *
+ * @param {import("./depositActivityStorage").DepositActivityItem} item
+ */
+const isOnItsWay = (item) =>
+  Boolean(item.account && Number(item.amountLux) > 0) &&
+  !item.l2TransactionHash &&
+  !isDepositTerminal(item);
+
+/**
+ * The deposits on their way, as the history of the account shown has them,
+ * which says who sent each and from which block; else as this browser keeps
+ * them.
+ *
+ * @param {import("./depositActivityStorage").DepositActivityItem[]} waiting
+ * @returns {import("@dusk-network/app-core/bridge").Deposit[]}
+ */
+function depositsOf(waiting) {
+  const account = currentActivity()?.options.account;
+  const history = new Map(
+    get(activityState).rows.flatMap((row) => {
+      const deposit = row.entry && depositOf(row.entry, account);
+
+      return deposit ? [[deposit.hash, deposit]] : [];
+    })
+  );
+
+  return waiting.map((item) => ({
+    ...(history.get(item.transactionHash) ?? {
+      amount: /** @type {string} */ (item.amountLux),
+      at: item.l1BlockTimestamp,
+      hash: item.transactionHash,
+      to: /** @type {string} */ (item.account),
+    }),
+    scan: duskEvmScans.get(item.transactionHash),
+  }));
+}
+
+/**
+ * Looks for the deposits on their way on DuskEVM's RPC
+ * (`@dusk-network/app-core/bridge`): by the bridge's event from the DuskEVM
+ * address of the account that sent each, its equal deposits before it paid
+ * first, as its history on Dusk says. Each that arrived is kept completed,
+ * with the DuskEVM transaction that paid it and when.
+ */
+async function readDuskEvm() {
+  const net = get(nodeNetwork);
+  const kept = hydrateDepositActivity();
+  const waiting = kept.filter(isOnItsWay);
+
+  if (!net?.duskEvm || !waiting.length) return;
+
+  const { arrivals } = await depositArrivals({
+    archive: archiveAt(nodeBaseUrl()),
+    blockTimes: duskEvmBlockTimes,
+    deposits: depositsOf(waiting),
+    network: net,
+    rpcUrl: duskEvm.rpcUrls.default.http[0],
+    taken: kept.flatMap(({ l2TransactionHash }) =>
+      l2TransactionHash ? [l2TransactionHash] : []
+    ),
+    via: "rpc",
+  });
+  const updatedAt = Date.now();
+
+  for (const item of waiting) {
+    const arrival = arrivals.get(item.transactionHash);
+
+    if (arrival?.state === "arrived") {
+      updateDepositTransaction(item.transactionHash, {
+        arrivedAt: arrival.at,
+        failureLayer: null,
+        l1ConfirmedAt: item.l1ConfirmedAt ?? updatedAt,
+        l2BlockNumber: arrival.block === null ? null : String(arrival.block),
+        l2TransactionHash: /** @type {`0x${string}`} */ (arrival.hash),
+        lastCheckedAt: updatedAt,
+        stage: "completed",
+        statusMessage: null,
+        trackingError: null,
+        updatedAt,
+      });
+    } else if (arrival?.scan) {
+      duskEvmScans.set(item.transactionHash, arrival.scan);
+    }
+  }
+}
+
+/**
+ * A deposit that DuskEVM's adapter can't follow, found arrived on DuskEVM:
+ * completed, with the DuskEVM transaction that paid it. Null while it isn't
+ * there, or DuskEVM can't be read. One read looks for every deposit on its
+ * way.
  *
  * @param {any} remembered
  */
-async function arrivedOnExplorer(remembered) {
-  const arrival = await findDepositArrival(
-    remembered,
-    hydrateDepositActivity()
-  ).catch(() => null);
-
-  if (!arrival) return null;
-
-  const updatedAt = Date.now();
-
-  return updateDepositTransaction(remembered.transactionHash, {
-    arrivedAt: arrival.at,
-    failureLayer: null,
-    l1ConfirmedAt: remembered.l1ConfirmedAt ?? updatedAt,
-    l2BlockNumber: arrival.blockNumber,
-    l2TransactionHash: arrival.hash,
-    lastCheckedAt: updatedAt,
-    stage: "completed",
-    statusMessage: null,
-    trackingError: null,
-    updatedAt,
+async function arrivedOnDuskEvm(remembered) {
+  duskEvmRead ??= readDuskEvm().finally(() => {
+    duskEvmRead = null;
   });
+  await duskEvmRead.catch(() => {});
+
+  const item = getRememberedDepositTransaction(remembered.transactionHash);
+
+  return item?.stage === "completed" ? item : null;
 }
 
 /**
@@ -309,10 +405,10 @@ export async function refreshDepositTransaction(transactionHash) {
   try {
     const l1TransactionHash = await resolveL1TransactionHash(remembered);
 
-    // The adapter doesn't know it (yet): DuskEVM's explorer may.
+    // The adapter doesn't know it (yet): DuskEVM itself may.
     if (!l1TransactionHash) {
       return (
-        (await arrivedOnExplorer(remembered)) ??
+        (await arrivedOnDuskEvm(remembered)) ??
         pendingObservationPatch(remembered)
       );
     }
@@ -336,12 +432,12 @@ export async function refreshDepositTransaction(transactionHash) {
       arrivedAt: remembered.arrivedAt ?? (await arrivalTime(patch)),
     });
   } catch (error) {
-    // The adapter can't say, as when it doesn't have the method: DuskEVM's
-    // explorer can. A deposit that failed on Dusk didn't arrive.
+    // The adapter can't say, as when it doesn't have the method: DuskEVM
+    // itself can. A deposit that failed on Dusk didn't arrive.
     const arrived =
       error instanceof DuskDepositExecutionError
         ? null
-        : await arrivedOnExplorer(remembered);
+        : await arrivedOnDuskEvm(remembered);
 
     return arrived ?? failedObservationPatch(remembered, error);
   }
