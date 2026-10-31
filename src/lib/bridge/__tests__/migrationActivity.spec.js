@@ -18,17 +18,61 @@ const archive = vi.hoisted(() => ({
 vi.mock("$lib/activity/activityHistory", () => ({
   archiveAt: () => ({
     /** @param {string} query */
-    query: async (query) =>
-      // What the route's account received before: nothing.
-      query.includes("moonlightHistory")
-        ? { in: null }
-        : Object.fromEntries(
-            [
-              ...query.matchAll(
-                /(x\d+): tx\(hash: "([0-9a-f]{64})"\) \{ blockHeight/g
-              ),
-            ].map(([, key, hash]) => [key, archive.transactions[hash] ?? null])
+    query: async (query) => {
+      const listed =
+        /moonlightHistory\(receiver: "([^"]+)", fromBlock: (\d+)(?:, toBlock: (\d+))?/.exec(
+          query
+        );
+
+      if (listed) {
+        const [, receiver, from, to] = listed;
+        // What the route's account received: the transfers out a test gives,
+        // and nothing else, on one page.
+        const json = query.includes("pageCount")
+          ? []
+          : Object.entries(archive.transactions).flatMap(
+              ([hash, { blockHeight, tx }]) => {
+                const sent = JSON.parse(tx.json);
+
+                return sent.receiver === receiver &&
+                  blockHeight >= Number(from) &&
+                  blockHeight <= Number(to ?? Infinity)
+                  ? [
+                      {
+                        ["block_height"]: blockHeight,
+                        events: [
+                          {
+                            data: {
+                              ["gas_spent"]: "1000",
+                              memo: tx.memo,
+                              receiver,
+                              ["refund_info"]: null,
+                              sender: ACCOUNT,
+                              value: sent.value,
+                            },
+                            reverted: false,
+                            target: networks.mainnet.contracts.transfer,
+                            topic: "moonlight",
+                          },
+                        ],
+                        origin: hash,
+                      },
+                    ]
+                  : [];
+              }
+            );
+
+        return { in: json.length ? { json } : null };
+      }
+
+      return Object.fromEntries(
+        [
+          ...query.matchAll(
+            /(x\d+): tx\(hash: "([0-9a-f]{64})"\) \{ blockHeight/g
           ),
+        ].map(([, key, hash]) => [key, archive.transactions[hash] ?? null])
+      );
+    },
   }),
 }));
 

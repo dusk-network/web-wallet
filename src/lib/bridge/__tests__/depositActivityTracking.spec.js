@@ -28,12 +28,15 @@ const mocks = vi.hoisted(() => ({
   request: vi.fn(),
   /** The history of the account shown. @type {any[]} */
   rows: [],
+  /** The deposits the archive lists in the account's history, as it gives them. @type {any[]} */
+  sent: [],
 }));
 
 const ACCOUNT =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
 
-// The history of ACCOUNT, shown, and its archive, where it sent nothing else.
+// The history of ACCOUNT, shown, and its archive, where it sent nothing but
+// the deposits a test lists.
 vi.mock("$lib/activity", () => ({
   activityState: {
     /** @param {(state: { rows: any[] }) => void} run */
@@ -47,7 +50,23 @@ vi.mock("$lib/activity", () => ({
 }));
 
 vi.mock("$lib/activity/activityHistory", () => ({
-  archiveAt: () => ({ query: async () => ({ out: null }) }),
+  archiveAt: () => ({
+    /** @param {string} query */
+    query: async (query) => {
+      const range = /fromBlock: (\d+)(?:, toBlock: (\d+))?/.exec(query);
+      // One page holds them all.
+      const json =
+        range && !query.includes("pageCount")
+          ? mocks.sent.filter(
+              (entry) =>
+                entry.block_height >= Number(range[1]) &&
+                entry.block_height <= Number(range[2] ?? Infinity)
+            )
+          : [];
+
+      return { out: json.length ? { json } : null };
+    },
+  }),
 }));
 
 vi.mock("@dusk/evm-sdk", () => ({
@@ -126,6 +145,7 @@ describe("DuskEVM deposit tracking", () => {
     localStorage.clear();
     setNodeNetwork(networks.testnet);
     mocks.rows = [];
+    mocks.sent = [];
     mocks.l2Bridge = "0x4200000000000000000000000000000000000010";
     mocks.connect.mockReset();
     mocks.connect.mockResolvedValue({ query: mocks.query });
@@ -289,6 +309,30 @@ describe("DuskEVM deposit tracking", () => {
     );
   });
 
+  /**
+   * A deposit of 0.1 DUSK by ACCOUNT at block 8512, as the archive lists it
+   * in ACCOUNT's history.
+   *
+   * @param {string} hash
+   */
+  const listed = (hash) => ({
+    ["block_height"]: 8512,
+    events: [
+      {
+        data: {
+          receiver:
+            networks.testnet.duskEvm?.contracts.l1_standard_bridge.contractId,
+          sender: ACCOUNT,
+          value: "100000000",
+        },
+        reverted: false,
+        target: networks.testnet.contracts.transfer,
+        topic: "deposit",
+      },
+    ],
+    origin: hash,
+  });
+
   it("finds the deposit arrived on DuskEVM when the adapter doesn't have the method, as on public testnet: at once, by its sender's DuskEVM address, once the history says who sent it", async () => {
     const recipient = "0xb0e834d62ca3f5cf0f82619c8515c673818f8c6b";
     const payment = `0x${"43".repeat(32)}`;
@@ -318,6 +362,7 @@ describe("DuskEVM deposit tracking", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation(chain.answer);
 
+    mocks.sent = [listed(duskTransactionHash)];
     vi.useFakeTimers({ now: at + 60_000, toFake: ["Date"] });
 
     try {
@@ -407,6 +452,7 @@ describe("DuskEVM deposit tracking", () => {
         timestamp: at,
       },
     ]);
+    mocks.sent = [listed(hash)];
     rememberDepositTransaction(hash, {
       account: recipient,
       amountLux: "100000000",
