@@ -12,8 +12,8 @@ import { ProfileGenerator } from "@dusk/w3sper";
 
 import * as navigation from "$lib/navigation";
 import * as routeHistory from "$lib/bridge/routeHistory";
-import loginInfoStorage from "$lib/services/loginInfoStorage";
 import { settingsStore, walletStore } from "$lib/stores";
+import vault from "$lib/vault";
 
 import { load } from "../+layout";
 import Layout from "../+layout.svelte";
@@ -49,20 +49,15 @@ describe("App layout.js", () => {
 
 describe("App layout.svelte", () => {
   const logoutSpy = vi.spyOn(navigation, "logout").mockResolvedValue();
-  const loginInfoSpy = vi.spyOn(loginInfoStorage, "get");
+  const hasVaultSpy = vi.spyOn(vault, "exists");
   const minute = 60_000;
 
   /** @param {number} autoLockMinutes */
   const setAutoLock = (autoLockMinutes) =>
     settingsStore.update((settings) => ({ ...settings, autoLockMinutes }));
 
-  /** A password is set, as a login record is stored. */
-  const setPassword = () =>
-    loginInfoSpy.mockReturnValue({
-      data: new Uint8Array(),
-      iv: new Uint8Array(),
-      salt: new Uint8Array(),
-    });
+  /** A password is set, as the vault holds the phrase. */
+  const setPassword = () => hasVaultSpy.mockReturnValue(true);
 
   beforeEach(() => {
     walletStore.abortSync();
@@ -74,13 +69,13 @@ describe("App layout.svelte", () => {
     walletStore.abortSync();
     vi.useRealTimers();
     logoutSpy.mockClear();
-    loginInfoSpy.mockReset();
+    hasVaultSpy.mockReset();
     settingsStore.reset();
   });
 
   afterAll(() => {
     logoutSpy.mockRestore();
-    loginInfoSpy.mockRestore();
+    hasVaultSpy.mockRestore();
   });
 
   it("should follow the history for the transfers to and from other chains while the wallet is open", () => {

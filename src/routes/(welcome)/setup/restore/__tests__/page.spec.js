@@ -11,7 +11,7 @@ import {
   walletStore,
 } from "$lib/stores";
 import * as walletLib from "$lib/wallet";
-import loginInfoStorage from "$lib/services/loginInfoStorage";
+import vault from "$lib/vault";
 import { toastList } from "$lib/dusk/components/Toast/store";
 
 import Restore from "../+page.svelte";
@@ -36,7 +36,6 @@ describe("Restore", async () => {
   const mnemonic = walletLib.generateMnemonic();
   const invalidMnemonic = "dad dad dad dad dad dad dad dad dad dad dad dad";
   const pwd = "passwordpassword";
-  const loginInfo = await walletLib.encryptMnemonic(mnemonic, pwd);
   const seed = walletLib.getSeedFromMnemonic(mnemonic);
   const userId = await walletLib
     .profileGeneratorFrom(seed)
@@ -154,7 +153,7 @@ describe("Restore", async () => {
   });
 
   it("should initialize the wallet without setting a password", async () => {
-    await loginInfoStorage.set(loginInfo);
+    await vault.setUp(mnemonic, pwd);
 
     const { getByRole } = render(Restore);
 
@@ -177,7 +176,7 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("switch"));
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    expect(loginInfoStorage.get()).toBeNull();
+    expect(vault.exists()).toBe(false);
 
     // Block Height Step
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -225,16 +224,16 @@ describe("Restore", async () => {
     await fireEvent.click(nextButton);
 
     // Set Password step
-    expect(loginInfoStorage.get()).toBeNull();
+    expect(vault.exists()).toBe(false);
 
     await fireInput(asInput(getByPlaceholderText("Set Password")), pwd);
     await fireInput(asInput(getByPlaceholderText("Confirm Password")), pwd);
 
-    expect(loginInfoStorage.get()).toBeNull();
+    expect(vault.exists()).toBe(false);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => {
-      expect(loginInfoStorage.get()).not.toBeNull();
+      expect(vault.exists()).toBe(true);
     });
 
     // Block Height step

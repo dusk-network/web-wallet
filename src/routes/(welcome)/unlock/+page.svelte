@@ -22,13 +22,11 @@
     walletStore,
   } from "$lib/stores";
   import {
-    decryptMnemonic,
     getSeedFromMnemonic,
-    migrateLoginInfo,
     profileGeneratorFrom,
     validateMnemonic,
   } from "$lib/wallet";
-  import loginInfoStorage from "$lib/services/loginInfoStorage";
+  import vault from "$lib/vault";
 
   /** @type {(seed: Uint8Array<ArrayBuffer>) => Promise<ProfileGenerator>} */
   async function checkLocalData(seed) {
@@ -50,14 +48,31 @@
       ? getSeedFromMnemonic(mnemonic)
       : Promise.reject(new InvalidMnemonicError());
 
-  /** @type {(loginInfo: WalletEncryptInfo) => (pwd: string) => Promise<Uint8Array<ArrayBuffer>>} */
-  const getSeedFromInfo = (loginInfo) => (pwd) =>
-    decryptMnemonic(loginInfo, pwd).then(getSeedFromMnemonic, () =>
-      Promise.reject(new InvalidPasswordError())
-    );
+  /**
+   * The seed of the wallet this device has, of those the password opens in
+   * the vault: v1's phrase moves into it as it opens. A wrong password is
+   * an InvalidPasswordError.
+   *
+   * @type {(pwd: string) => Promise<Uint8Array<ArrayBuffer>>}
+   */
+  async function getSeedFromVault(pwd) {
+    const { wallets } = await vault.unlock(pwd, { signal: controller.signal });
+    const seeds = wallets.map(({ mnemonic }) => getSeedFromMnemonic(mnemonic));
 
-  const loginInfo = loginInfoStorage.get();
-  const modeLabel = loginInfo ? "Password" : "Recovery phrase";
+    for (const seed of seeds) {
+      const generator = await profileGeneratorFrom(seed);
+      const address = (await generator.default).address.toString();
+
+      if (address === $settingsStore.userId) {
+        return seed;
+      }
+    }
+
+    return seeds[0];
+  }
+
+  const hasPassword = vault.exists();
+  const modeLabel = hasPassword ? "Password" : "Recovery phrase";
 
   /** @type {Textbox} */
   let fldSecret;
@@ -90,26 +105,17 @@
     }
     pending = true;
     /** @type {(mnemonic: string) => Promise<Uint8Array<ArrayBuffer>>} */
-    const getSeed = loginInfo
-      ? getSeedFromInfo(loginInfo)
+    const getSeed = hasPassword
+      ? getSeedFromVault
       : (mnemonic) => getSeedFromMnemonicAsync(mnemonic.toLowerCase());
 
-    const secret = loginInfo ? secretText : secretText.trim();
+    const secret = hasPassword ? secretText : secretText.trim();
 
     getSeed(secret)
       .then(checkLocalData)
       .then(async (profileGenerator) => {
         controller.signal.throwIfAborted();
         await walletStore.init(profileGenerator);
-        controller.signal.throwIfAborted();
-
-        if (loginInfo) {
-          try {
-            await migrateLoginInfo(loginInfo, secret, controller.signal);
-          } catch {
-            // A failed migration should not prevent an otherwise valid unlock.
-          }
-        }
       })
       .then(() => {
         controller.signal.throwIfAborted();

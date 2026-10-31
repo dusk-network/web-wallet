@@ -25,7 +25,7 @@ import {
   settingsStore,
   walletStore,
 } from "$lib/stores";
-import loginInfoStorage from "$lib/services/loginInfoStorage";
+import vault from "$lib/vault";
 import { contactsWritten, listContacts, saveContact } from "$lib/contacts";
 import { openTestContacts } from "$lib/test-helpers";
 
@@ -344,19 +344,19 @@ describe("Settings", () => {
   });
 
   describe("Auto-lock", () => {
-    const loginInfoSpy = vi.spyOn(loginInfoStorage, "get");
+    const hasVaultSpy = vi.spyOn(vault, "exists");
 
     afterEach(() => {
-      loginInfoSpy.mockReset();
+      hasVaultSpy.mockReset();
       settingsStore.reset();
     });
 
     afterAll(() => {
-      loginInfoSpy.mockRestore();
+      hasVaultSpy.mockRestore();
     });
 
     it("should offer no auto-lock for a wallet without a password, which always locks", () => {
-      loginInfoSpy.mockReturnValue(null);
+      hasVaultSpy.mockReturnValue(false);
 
       const { queryByLabelText } = render(Settings);
 
@@ -364,11 +364,7 @@ describe("Settings", () => {
     });
 
     it("should let a wallet with a password lock after 5 or 15 minutes, 15 by default, or never", async () => {
-      loginInfoSpy.mockReturnValue({
-        data: new Uint8Array(),
-        iv: new Uint8Array(),
-        salt: new Uint8Array(),
-      });
+      hasVaultSpy.mockReturnValue(true);
 
       const { getByLabelText } = render(Settings);
       const select = /** @type {HTMLSelectElement} */ (
@@ -408,20 +404,20 @@ describe("Settings", () => {
       .mockResolvedValue(void 0);
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const settingsResetSpy = vi.spyOn(settingsStore, "reset");
-    const loginInfoStorageSpy = vi.spyOn(loginInfoStorage, "remove");
+    const clearVaultSpy = vi.spyOn(vault, "clear");
 
     beforeEach(() => {
       clearDataSpy.mockClear();
       confirmSpy.mockClear();
       settingsResetSpy.mockClear();
-      loginInfoStorageSpy.mockClear();
+      clearVaultSpy.mockClear();
     });
 
     afterAll(() => {
       clearDataSpy.mockRestore();
       confirmSpy.mockRestore();
       settingsResetSpy.mockRestore();
-      loginInfoStorageSpy.mockRestore();
+      clearVaultSpy.mockRestore();
     });
 
     it("should clear local data, settings, and login info before logging out the user if the reset wallet button is clicked and the user confirms the operation", async () => {
@@ -435,7 +431,7 @@ describe("Settings", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      expect(loginInfoStorageSpy).toHaveBeenCalledTimes(1);
+      expect(clearVaultSpy).toHaveBeenCalledTimes(1);
       expect(settingsResetSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledWith(false);
@@ -525,7 +521,7 @@ describe("Settings", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      expect(loginInfoStorageSpy).not.toHaveBeenCalled();
+      expect(clearVaultSpy).not.toHaveBeenCalled();
       expect(settingsResetSpy).not.toHaveBeenCalled();
       expect(logoutSpy).not.toHaveBeenCalled();
     });

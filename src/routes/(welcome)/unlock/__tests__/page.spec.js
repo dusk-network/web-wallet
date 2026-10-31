@@ -16,16 +16,26 @@ import * as navigation from "$lib/navigation";
 import * as wallet from "$lib/wallet";
 import { settingsStore, walletStore } from "$lib/stores";
 import {
-  decryptMnemonic,
-  encryptBuffer,
-  encryptMnemonic,
   generateMnemonic,
   getSeedFromMnemonic,
   profileGeneratorFrom,
 } from "$lib/wallet";
-import loginInfoStorage from "$lib/services/loginInfoStorage";
+import vault from "$lib/vault";
+import fixtures from "$lib/vault/__tests__/fixtures/login-v1.json";
 
 import UnlockWallet from "../+page.svelte";
+
+const V1 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`;
+const V2 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-v2`;
+
+/** @param {string} key */
+const stored = (key) => JSON.parse(localStorage.getItem(key) ?? "null");
+
+/** @param {string} mnemonic */
+const addressOf = (mnemonic) =>
+  profileGeneratorFrom(getSeedFromMnemonic(mnemonic))
+    .then((generator) => generator.default)
+    .then(({ address }) => String(address));
 
 const getKey = (/** @type {string} */ key) => (/** @type {any} */ value) =>
   value[key];
@@ -41,12 +51,6 @@ const getTextInput = (container) =>
 describe("Unlock Wallet", async () => {
   const mnemonic = generateMnemonic();
   const pwd = "some pwd";
-  const loginInfo = await encryptMnemonic(mnemonic, pwd);
-  const legacyLoginInfo = await encryptBuffer(
-    new TextEncoder().encode(mnemonic),
-    pwd,
-    10_000
-  );
   const seed = getSeedFromMnemonic(mnemonic);
   const userId = await profileGeneratorFrom(seed)
     .then(getKey("default"))
@@ -233,9 +237,9 @@ describe("Unlock Wallet", async () => {
   });
 
   describe("Password workflow", () => {
-    beforeAll(() => loginInfoStorage.set(loginInfo));
+    beforeAll(() => vault.setUp(mnemonic, pwd));
 
-    afterAll(() => loginInfoStorage.remove());
+    afterAll(() => vault.clear());
 
     it("should show the password field and the link to restore the wallet if there is login info stored", () => {
       const { container } = render(UnlockWallet, {});
@@ -337,7 +341,7 @@ describe("Unlock Wallet", async () => {
       "should preserve password whitespace (case %#)",
       async (password) => {
         settingsStore.update(setUserId(userId));
-        await loginInfoStorage.set(await encryptMnemonic(mnemonic, password));
+        await vault.setUp(mnemonic, password);
         try {
           const { container } = render(UnlockWallet);
           await fireEvent.input(getTextInput(container), {
@@ -348,7 +352,7 @@ describe("Unlock Wallet", async () => {
           expect(initSpy).toHaveBeenCalledTimes(1);
           expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
         } finally {
-          await loginInfoStorage.set(loginInfo);
+          await vault.setUp(mnemonic, pwd);
         }
       }
     );
@@ -367,61 +371,74 @@ describe("Unlock Wallet", async () => {
     });
   });
 
-  describe("Legacy password migration", () => {
-    afterEach(() => loginInfoStorage.remove());
+  describe("The move of the one recovery phrase earlier versions kept", () => {
+    afterEach(() => vault.clear());
 
-    it("should migrate legacy login info after unlocking the expected wallet", async () => {
-      await loginInfoStorage.set(legacyLoginInfo);
-      settingsStore.update(setUserId(userId));
-
+    /** @param {string} password */
+    async function unlockWith(password) {
       const { container } = render(UnlockWallet, {});
-      const form = getAsHTMLElement(container, "form");
-      const textInput = getTextInput(container);
 
-      await fireEvent.input(textInput, { target: { value: pwd } });
-      await fireEvent.submit(form, { currentTarget: form });
-      await waitForGoto();
+      await fireEvent.input(getTextInput(container), {
+        target: { value: password },
+      });
+      await fireEvent.submit(getAsHTMLElement(container, "form"));
+    }
 
-      const migratedLoginInfo = loginInfoStorage.get();
+    it.each([
+      ["a current record", fixtures.current],
+      ["a legacy record", fixtures.legacy],
+    ])(
+      "should move %s main kept into the vault as it unlocks",
+      async (_name, fixture) => {
+        localStorage.setItem(V1, fixture.stored);
+        settingsStore.update(setUserId(await addressOf(fixture.mnemonic)));
 
-      expect(migratedLoginInfo).not.toBeNull();
+        await unlockWith(fixture.password);
+        await waitForGoto();
 
-      if (!migratedLoginInfo) {
-        throw new Error("Expected migrated login info");
+        expect(localStorage.getItem(V1)).toBeNull();
+        expect(stored(V2).wallets).toEqual([
+          expect.objectContaining({ id: expect.stringMatching(/^v1-/), n: 1 }),
+        ]);
+
+        expect(stored(V2).wallets[0]).toMatchObject(
+          fixture === fixtures.current
+            ? JSON.parse(fixture.stored)
+            : { version: 1 }
+        );
+        expect(initSpy).toHaveBeenCalledTimes(1);
+        expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
       }
+    );
 
-      expect(migratedLoginInfo.version).toBe(1);
-      expect(await decryptMnemonic(migratedLoginInfo, pwd)).toBe(mnemonic);
-      expect(initSpy).toHaveBeenCalledTimes(1);
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+    it("should move nothing with a wrong password", async () => {
+      localStorage.setItem(V1, fixtures.legacy.stored);
+      settingsStore.update(
+        setUserId(await addressOf(fixtures.legacy.mnemonic))
+      );
+
+      await unlockWith(`${fixtures.legacy.password}!`);
+      await vi.waitUntil(getErrorElement);
+
+      expect(getErrorElement()?.textContent).toContain("Invalid password");
+      expect(localStorage.getItem(V1)).toBe(fixtures.legacy.stored);
+      expect(localStorage.getItem(V2)).toBeNull();
+      expect(initSpy).not.toHaveBeenCalled();
     });
 
-    it("should preserve legacy login info if the wallet identity does not match", async () => {
-      await loginInfoStorage.set(legacyLoginInfo);
+    it("should keep the phrase in the vault and go to Restore if the wallet isn't the one this device has", async () => {
+      localStorage.setItem(V1, fixtures.legacy.stored);
       settingsStore.update(setUserId("some-user-id"));
 
-      const { container } = render(UnlockWallet, {});
-      const form = getAsHTMLElement(container, "form");
-      const textInput = getTextInput(container);
-
-      await fireEvent.input(textInput, { target: { value: pwd } });
-      await fireEvent.submit(form, { currentTarget: form });
+      await unlockWith(fixtures.legacy.password);
       await waitForGoto();
 
-      const storedLoginInfo = loginInfoStorage.get();
-
-      expect(storedLoginInfo).not.toBeNull();
-
-      if (!storedLoginInfo) {
-        throw new Error("Expected stored login info");
-      }
-
-      for (const field of /** @type {const} */ (["data", "iv", "salt"])) {
-        expect([...storedLoginInfo[field]]).toStrictEqual([
-          ...legacyLoginInfo[field],
-        ]);
-      }
-      expect(storedLoginInfo.version).toBeUndefined();
+      await expect(vault.unlock(fixtures.legacy.password)).resolves.toEqual({
+        fromV1: null,
+        wallets: [
+          expect.objectContaining({ mnemonic: fixtures.legacy.mnemonic }),
+        ],
+      });
       expect(initSpy).not.toHaveBeenCalled();
       expect(gotoSpy).toHaveBeenCalledWith("/setup/restore");
     });

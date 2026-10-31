@@ -34,7 +34,7 @@
   import { deleteContacts } from "$lib/contacts";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
   import { logout, pageTitle } from "$lib/navigation";
-  import loginInfoStorage from "$lib/services/loginInfoStorage";
+  import vault from "$lib/vault";
 
   const confirmResetWalletMessage =
     "Confirm you've saved your recovery phrase before resetting the wallet. Proceed?";
@@ -46,7 +46,7 @@
         await deleteContacts();
         forgetBridgeRecords({ times: true });
         await forgetEvmWallets();
-        await loginInfoStorage.remove();
+        await vault.clear();
         settingsStore.reset();
         await logout(false);
       })
@@ -92,7 +92,7 @@
   ];
 
   // Auto-lock is for a wallet with a password: one without always locks.
-  const hasPassword = loginInfoStorage.get() !== null;
+  const hasPassword = vault.exists();
 
   let isAdvancedOpen = false;
 

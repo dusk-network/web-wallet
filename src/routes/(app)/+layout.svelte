@@ -6,15 +6,15 @@
     logout,
     startInactivityTimer,
   } from "$lib/navigation";
-  import loginInfoStorage from "$lib/services/loginInfoStorage";
   import { followRouteHistory } from "$lib/bridge/routeHistory";
   import { Shell } from "$lib/containers/Shell";
   import { gasPriceStore, settingsStore } from "$lib/stores";
+  import vault from "$lib/vault";
 
   // A wallet with a password locks after the time set in Settings, or not at
   // all. One without a password always locks after fifteen minutes: opening
   // it again takes the recovery phrase, so there is nothing to set.
-  const hasPassword = loginInfoStorage.get() !== null;
+  const hasPassword = vault.exists();
 
   /** @type {() => void} */
   let stopInactivityTimer = () => {};

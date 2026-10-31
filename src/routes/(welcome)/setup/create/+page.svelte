@@ -6,8 +6,8 @@
 
   import { ExistingWalletNotice } from "$lib/components";
   import { goto } from "$lib/navigation";
-  import loginInfoStorage from "$lib/services/loginInfoStorage";
   import { settingsStore } from "$lib/stores";
+  import vault from "$lib/vault";
   import {
     initializeWallet,
     refreshLocalStoragePasswordInfo,
@@ -143,7 +143,7 @@
       {key}
       showStepper={true}
       backButton={{
-        action: () => loginInfoStorage.remove(),
+        action: () => vault.clear(),
         disabled: false,
       }}
       nextButton={{
