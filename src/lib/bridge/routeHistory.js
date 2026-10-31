@@ -15,11 +15,9 @@ import { activityState, currentActivity } from "$lib/activity";
 import { walletStore } from "$lib/stores";
 import nodeNetwork from "$lib/stores/nodeNetwork";
 
-import { cardRoutes } from "./cardRoutes";
 import {
   keptMigrations,
-  migrationTransfers,
-  serviceTransfers,
+  routeTransfersOf,
   transferArrivals,
 } from "./migrationActivity";
 
@@ -33,45 +31,22 @@ export const FOLLOW_MS = 30_000;
 export const FOLLOW_FOR_MS = 86_400_000;
 
 /**
- * @typedef {{
- *   account: string,
- *   arrivals: Record<string, import("./migrationActivity").ArrivalSearch>,
- *   kept: import("./migrationActivity").KeptMigration[],
- *   net: import("@dusk-network/networks").Network | null,
- *   now?: number,
- *   rows: ActivityRow[],
- * }} RouteHistoryState
- */
-
-/**
  * Whether a transfer between Dusk and another chain waits on the history:
  * a migration to the account sent from here in the last day and not paid
  * yet, or a transfer out whose send isn't in a block yet.
  *
- * @param {RouteHistoryState} state
+ * @param {{ now?: number, rows: ActivityRow[], transfers: import("./migrationActivity").RouteTransfer[] }} state
  */
-export function waitsOnHistory({
-  account,
-  arrivals,
-  kept,
-  net,
-  now = Date.now(),
-  rows,
-}) {
-  const routes = cardRoutes(net);
+export function waitsOnHistory({ now = Date.now(), rows, transfers }) {
   const pending = new Set(
     rows.filter(({ status }) => status === "pending").map(({ hash }) => hash)
   );
 
-  return (
-    migrationTransfers(rows, kept, routes, account).some(
-      ({ at, stage }) =>
-        (stage === "sending" || stage === "sent") &&
+  return transfers.some(({ at, hash, kind, stage }) =>
+    kind === "migration"
+      ? (stage === "sending" || stage === "sent") &&
         now - (at ?? 0) < FOLLOW_FOR_MS
-    ) ||
-    serviceTransfers(rows, arrivals, routes).some(({ hash }) =>
-      pending.has(hash)
-    )
+      : pending.has(hash)
   );
 }
 
@@ -80,16 +55,40 @@ const shownAccount = derived(walletStore, ({ currentProfile }) =>
   String(currentProfile?.account ?? "")
 );
 
-const waiting = derived(
+/**
+ * The transfers between Dusk and another chain of the account the wallet
+ * shows, as Bridge › Activity lists them: worked out again as the history,
+ * the migrations sent from here or what's known of the transfers out
+ * change.
+ *
+ * @type {import("svelte/store").Readable<import("./migrationActivity").RouteTransfer[]>}
+ */
+export const routeTransfers = derived(
   [activityState, keptMigrations, transferArrivals, nodeNetwork, shownAccount],
-  ([$activity, $kept, $arrivals, $net, $account]) =>
-    waitsOnHistory({
+  ([$activity, $kept, $arrivals, $net, $account], set) => {
+    let current = true;
+
+    routeTransfersOf({
       account: $account,
-      arrivals: $arrivals,
-      kept: $kept,
+      known: $arrivals,
       net: $net,
       rows: $activity.rows,
+      sent: $kept,
     })
+      .then((list) => current && set(list))
+      .catch(() => {});
+
+    return () => {
+      current = false;
+    };
+  },
+  /** @type {import("./migrationActivity").RouteTransfer[]} */ ([])
+);
+
+const waiting = derived(
+  [routeTransfers, activityState],
+  ([$transfers, $activity]) =>
+    waitsOnHistory({ rows: $activity.rows, transfers: $transfers })
 );
 
 /**

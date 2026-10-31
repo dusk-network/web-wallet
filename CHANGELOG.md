@@ -203,7 +203,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Give the export's box, a contact's choice and the Bridge's Max a tap area of 44 px on phones
 - Take amounts on the Shield page with your language's decimal separator
 - Offer Claim on a DuskEVM withdrawal only once its claim date has come
-- Show a deposit to DuskEVM as arrived once DuskEVM's explorer has its payment, where DuskEVM's adapter can't say
+- Show a deposit to DuskEVM as arrived once DuskEVM has its payment, where DuskEVM's adapter can't say
 - Take amounts with a decimal comma in liquid and native staking
 - Give the Bridge card's Max and the eye by the total balance a 44 px tap area on phones
 - Give a deposit's time a line of its own in History on phones
@@ -213,6 +213,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Name a `.dusk` registration, and the reservation it reveals, only when its call checks out on the wallet's network
 - Read a DuskEVM withdrawal in History only when it goes to Dusk's bridge
 - Take a transfer to BNB Smart Chain as arrived only on a payout from the bridge's address
+- Take a migration as paid only on a payout from its route's payout account
+- Pay equal deposits to DuskEVM and equal transfers out one payment each, in the order they were sent, from any device
+- Read a transfer out's memo as the bridge does: an address with nothing around it
 - Wait for the archive to have every block a shielded history needs, rather than keep it incomplete
 - Call a failed shield in History a shield, not a call of convert
 - Show an unshield as shielded in History

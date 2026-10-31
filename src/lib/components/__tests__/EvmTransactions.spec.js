@@ -523,6 +523,7 @@ describe("EvmTransactions", () => {
       rowsOf([
         {
           amount: "5000000000",
+          blockHeight: 4_700_000,
           counterparty: bsc.payoutAccount,
           direction: "in",
           hash: "b1".repeat(32),

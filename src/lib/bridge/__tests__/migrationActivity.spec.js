@@ -1,10 +1,101 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
+import { TRANSFER_TOPIC } from "@dusk-network/app-core/bridge";
 import { networks } from "@dusk-network/networks";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 
 import { cardRoutes } from "../cardRoutes";
+import { fakeChain, topicOf, wordOf } from "./fixtures/chain";
+
+/** The archive, as `/bridge` reads a transfer out and its route's account. */
+const archive = vi.hoisted(() => ({
+  /** Transactions as `tx(hash) { … tx { memo json } }` gives them, by hash. */
+  /** @type {Record<string, any>} */
+  transactions: {},
+}));
+
+vi.mock("$lib/activity/activityHistory", () => ({
+  archiveAt: () => ({
+    /** @param {string} query */
+    query: async (query) => {
+      const listed =
+        /moonlightHistory\(receiver: "([^"]+)", fromBlock: (\d+)(?:, toBlock: (\d+))?/.exec(
+          query
+        );
+
+      if (listed) {
+        const [, receiver, from, to] = listed;
+        // What the route's account received: the transfers out a test gives,
+        // and nothing else, on one page.
+        const json = query.includes("pageCount")
+          ? []
+          : Object.entries(archive.transactions).flatMap(
+              ([hash, { blockHeight, tx }]) => {
+                const sent = JSON.parse(tx.json);
+
+                return sent.receiver === receiver &&
+                  blockHeight >= Number(from) &&
+                  blockHeight <= Number(to ?? Infinity)
+                  ? [
+                      {
+                        ["block_height"]: blockHeight,
+                        events: [
+                          {
+                            data: {
+                              ["gas_spent"]: "1000",
+                              memo: tx.memo,
+                              receiver,
+                              ["refund_info"]: null,
+                              sender: ACCOUNT,
+                              value: sent.value,
+                            },
+                            reverted: false,
+                            target: networks.mainnet.contracts.transfer,
+                            topic: "moonlight",
+                          },
+                        ],
+                        origin: hash,
+                      },
+                    ]
+                  : [];
+              }
+            );
+
+        return { in: json.length ? { json } : null };
+      }
+
+      return Object.fromEntries(
+        [
+          ...query.matchAll(
+            /(x\d+): tx\(hash: "([0-9a-f]{64})"\) \{ blockHeight/g
+          ),
+        ].map(([, key, hash]) => [key, archive.transactions[hash] ?? null])
+      );
+    },
+  }),
+}));
+
+/**
+ * `/bridge`, but for the migrations' payouts a test gives, as a later
+ * version may give them.
+ */
+const bridge = vi.hoisted(() => ({
+  /** @type {((options: any) => Promise<any>) | null} */
+  payouts: null,
+}));
+
+vi.mock("@dusk-network/app-core/bridge", async (importOriginal) => {
+  /** @type {typeof import("@dusk-network/app-core/bridge")} */
+  const real = await importOriginal();
+
+  return {
+    ...real,
+    /** @param {any} options */
+    migrationPayouts: (options) =>
+      (bridge.payouts ?? real.migrationPayouts)(options),
+  };
+});
 
 /** @type {typeof import("../migrationActivity")} */
 let activity;
@@ -35,6 +126,7 @@ const DUSK = 1_000_000_000n;
 const row = (fields) =>
   rowOf({
     amount: String(5n * DUSK),
+    blockHeight: 4_700_000,
     direction: "in",
     hash: "bb".repeat(32),
     status: "executed",
@@ -42,53 +134,54 @@ const row = (fields) =>
     ...fields,
   });
 
+/** @param {Partial<import("../migrationActivity").KeptMigration>} [fields] */
+const remember = (fields) =>
+  activity.rememberMigration({
+    amountLux: String(5n * DUSK),
+    createdAt: Date.UTC(2026, 9, 27, 6, 20),
+    hash: MIGRATION,
+    recipient: ACCOUNT,
+    routeId: "bsc-to-dusk",
+    sender: EVM,
+    ...fields,
+  });
+
+/** @param {ActivityRow[]} rows */
+const migrations = (rows) =>
+  activity.migrationTransfers(
+    rows,
+    get(activity.keptMigrations),
+    networks.mainnet,
+    ACCOUNT
+  );
+
 beforeEach(async () => {
   localStorage.clear();
   vi.resetModules();
   activity = await import("../migrationActivity");
   tracking = await import("../routeTracking");
+  (await import("$lib/stores/nodeNetwork")).setNodeNetwork(networks.mainnet);
+  archive.transactions = {};
+  bridge.payouts = null;
 });
 
 afterEach(() => {
   localStorage.clear();
+  vi.restoreAllMocks();
 });
 
 describe("migrations into Dusk", () => {
-  it("are paid once the route's payout account pays this account the amount, with the migration's hash as the memo", () => {
-    activity.rememberMigration({
-      amountLux: String(5n * DUSK),
-      createdAt: Date.UTC(2026, 9, 27, 6, 20),
-      hash: MIGRATION.toUpperCase().replace("0X", "0x"),
-      recipient: ACCOUNT,
-      routeId: "bsc-to-dusk",
-      sender: EVM,
-    });
+  it("are sending until in a block, then paid once the history has their payout", async () => {
+    remember({ hash: MIGRATION.toUpperCase().replace("0X", "0x") });
 
-    const sent = get(activity.keptMigrations);
+    await expect(migrations([])).resolves.toMatchObject([
+      { hash: MIGRATION, kind: "migration", stage: "sending" },
+    ]);
 
-    expect(
-      activity.migrationTransfers([], sent, ROUTES, ACCOUNT)
-    ).toMatchObject([{ hash: MIGRATION, kind: "migration", stage: "sending" }]);
-
-    // Anyone can send a transfer with that memo: only the payout account's,
-    // of exactly the amount, pays it.
-    const elsewhere = row({ counterparty: ACCOUNT, memo: MIGRATION });
-    const less = row({
-      amount: String(4n * DUSK),
-      counterparty: BSC.payoutAccount,
-      memo: MIGRATION,
-    });
-
-    expect(
-      activity.migrationTransfers([elsewhere, less], sent, ROUTES, ACCOUNT)[0]
-        .stage
-    ).toBe("sending");
-
+    // From the route's payout account, the migration's hash as the memo.
     const payout = row({ counterparty: BSC.payoutAccount, memo: MIGRATION });
 
-    expect(
-      activity.migrationTransfers([payout], sent, ROUTES, ACCOUNT)
-    ).toMatchObject([
+    await expect(migrations([payout])).resolves.toMatchObject([
       {
         paidAt: payout.time,
         payout: payout.hash,
@@ -98,27 +191,61 @@ describe("migrations into Dusk", () => {
     ]);
   });
 
-  it("list only those that pay the account the wallet shows, and are forgotten with the wallet", () => {
-    const other = `${ACCOUNT.slice(0, -4)}Zzzz`;
+  it("are paid by their payout however long ago they were sent", async () => {
+    remember({ createdAt: Date.now() - 30 * 86_400_000 });
 
-    activity.rememberMigration({
-      amountLux: String(DUSK),
-      createdAt: 1,
-      hash: MIGRATION,
-      recipient: other,
-      routeId: "bsc-to-dusk",
-      sender: EVM,
+    const payout = row({ counterparty: BSC.payoutAccount, memo: MIGRATION });
+
+    await expect(migrations([payout])).resolves.toMatchObject([
+      { payout: payout.hash, stage: "paid" },
+    ]);
+  });
+
+  it("leave out a payout of a migration sent elsewhere on a route the network doesn't name", async () => {
+    const paid = {
+      amount: 5n * DUSK,
+      at: 1,
+      block: 4_700_000,
+      hash: `0x${"c3".repeat(32)}`,
+      payout: "b1".repeat(32),
+      route: "bsc-to-dusk",
+    };
+
+    // A payer that pays more than one route: which one isn't known.
+    bridge.payouts = async () => ({
+      payouts: new Map(),
+      requests: 0,
+      unlisted: [
+        paid,
+        {
+          ...paid,
+          hash: `0x${"c4".repeat(32)}`,
+          payout: "b2".repeat(32),
+          route: null,
+        },
+      ],
     });
-    activity.keepArrival("dd".repeat(32), { scanFrom: "1" });
-
-    const sent = get(activity.keptMigrations);
 
     expect(
-      activity.migrationTransfers([], sent, ROUTES, ACCOUNT)
-    ).toStrictEqual([]);
-    expect(activity.migrationTransfers([], sent, ROUTES, other)).toHaveLength(
-      1
-    );
+      (await migrations([])).map(({ hash, route }) => [hash, route?.id])
+    ).toStrictEqual([[paid.hash, "bsc-to-dusk"]]);
+  });
+
+  it("list only those that pay the account the wallet shows, and are forgotten with the wallet", async () => {
+    const other = `${ACCOUNT.slice(0, -4)}Zzzz`;
+
+    remember({ recipient: other });
+    activity.keepArrival("dd".repeat(32), { payout: `0x${"1f".repeat(32)}` });
+
+    await expect(migrations([])).resolves.toStrictEqual([]);
+    await expect(
+      activity.migrationTransfers(
+        [],
+        get(activity.keptMigrations),
+        networks.mainnet,
+        other
+      )
+    ).resolves.toHaveLength(1);
 
     // Settings › Reset: nothing of it stays in this browser.
     activity.forgetRouteTransfers();
@@ -129,16 +256,20 @@ describe("migrations into Dusk", () => {
     expect(localStorage.getItem("web-wallet-transfer-arrivals")).toBeNull();
   });
 
-  it("include the payouts in the history of migrations sent elsewhere, and keep the ones that failed as failed", () => {
+  it("include the payouts in the history of migrations sent elsewhere, each once, and keep the ones that failed as failed", async () => {
     const payout = row({
       counterparty: BSC.payoutAccount,
       memo: `0x${"c3".repeat(32)}`,
     });
+    const again = row({
+      blockHeight: 4_700_100,
+      counterparty: BSC.payoutAccount,
+      hash: "b2".repeat(32),
+      memo: `0x${"c3".repeat(32)}`,
+    });
 
     // When it was sent isn't known from its payout: only when it was paid.
-    expect(
-      activity.migrationTransfers([payout], [], ROUTES, ACCOUNT)
-    ).toMatchObject([
+    await expect(migrations([payout, again])).resolves.toMatchObject([
       {
         at: null,
         hash: `0x${"c3".repeat(32)}`,
@@ -147,42 +278,16 @@ describe("migrations into Dusk", () => {
       },
     ]);
 
-    activity.rememberMigration({
-      amountLux: String(DUSK),
-      createdAt: 1,
-      hash: MIGRATION,
-      recipient: ACCOUNT,
-      routeId: "bsc-to-dusk",
-      sender: EVM,
-    });
+    remember({ amountLux: String(DUSK), createdAt: 1 });
     activity.markMigrationFailed(MIGRATION);
 
-    expect(
-      activity.migrationTransfers(
-        [],
-        get(activity.keptMigrations),
-        ROUTES,
-        ACCOUNT
-      )
-    ).toMatchObject([{ stage: "failed" }]);
+    await expect(migrations([])).resolves.toMatchObject([{ stage: "failed" }]);
   });
 
   it("know when their transaction reverted on its chain", async () => {
-    activity.rememberMigration({
-      amountLux: String(DUSK),
-      createdAt: 1,
-      hash: MIGRATION,
-      recipient: ACCOUNT,
-      routeId: "bsc-to-dusk",
-      sender: EVM,
-    });
+    remember({ amountLux: String(DUSK), createdAt: 1 });
 
-    const [transfer] = activity.migrationTransfers(
-      [],
-      get(activity.keptMigrations),
-      ROUTES,
-      ACCOUNT
-    );
+    const [transfer] = await migrations([]);
 
     await expect(
       tracking.checkMigration(transfer, async () => null)
@@ -191,14 +296,7 @@ describe("migrations into Dusk", () => {
       tracking.checkMigration(transfer, async () => ({ status: "0x1" }))
     ).resolves.toBe(true);
     // In a block, it's sent, and waits for its payout.
-    expect(
-      activity.migrationTransfers(
-        [],
-        get(activity.keptMigrations),
-        ROUTES,
-        ACCOUNT
-      )
-    ).toMatchObject([{ stage: "sent" }]);
+    await expect(migrations([])).resolves.toMatchObject([{ stage: "sent" }]);
     await expect(
       tracking.checkMigration(transfer, async () => ({ status: "0x0" }))
     ).resolves.toBe(false);
@@ -207,70 +305,182 @@ describe("migrations into Dusk", () => {
 });
 
 describe("following transfers to and from other chains", () => {
-  it("reads a migration's chain until it's in a block, a transfer out's until it arrives, and nothing for the rest", async () => {
-    /** @type {string[]} */
-    const reads = [];
-    const rpcFor = (/** @type {string} */ url) =>
-      /** @type {import("../routeTracking").ChainRpc} */ (
-        async (method, params) => {
-          reads.push(`${url} ${method}`);
-
-          return method === "eth_getBlockByNumber"
-            ? { number: "0x10", timestamp: "0x10" }
-            : method === "eth_getLogs"
-              ? []
-              : params[0] === MIGRATION
-                ? { status: "0x1" }
-                : null;
-        }
-      );
-
-    activity.rememberMigration({
-      amountLux: String(DUSK),
-      createdAt: 1,
-      hash: MIGRATION,
-      recipient: ACCOUNT,
-      routeId: "bsc-to-dusk",
-      sender: EVM,
-    });
-
-    const out = {
+  it("reads a migration's chain until it's in a block, a transfer out's until it arrives, carrying on from where it got to, and nothing for the rest", async () => {
+    const now = Date.now();
+    const sentAt = now - 3 * 3_600_000;
+    const out = row({
+      amount: String(200_001n * DUSK),
       counterparty: TO_BSC.account,
       direction: "out",
       hash: "dd".repeat(32),
       memo: EVM,
-    };
-    const sentOut = row(out);
-    const transfers = () => [
-      ...activity.migrationTransfers(
-        [],
-        get(activity.keptMigrations),
-        ROUTES,
-        ACCOUNT
-      ),
-      ...activity.serviceTransfers(
-        [sentOut, row({ ...out, hash: "ee".repeat(32), memo: "alice" })],
+      timestamp: sentAt,
+    });
+    // BNB Smart Chain: a block every 0.45 s.
+    const bsc = fakeChain({
+      blockMs: 450,
+      head: 130_200_000n,
+      headAt: now,
+      logs: [],
+      url: TO_BSC.chain.rpcUrl,
+    });
+    /** @type {string[]} */
+    const receipts = [];
+    const rpcFor = (/** @type {string} */ url) =>
+      /** @type {import("../routeTracking").ChainRpc} */ (
+        async (method, params) => {
+          receipts.push(`${url} ${method}`);
+
+          return params[0] === MIGRATION ? { status: "0x1" } : null;
+        }
+      );
+    const transfers = async () => [
+      ...(await migrations([])),
+      ...(await activity.serviceTransfers(
+        [out, row({ ...out, hash: "ee".repeat(32), memo: "alice" })],
         get(activity.transferArrivals),
-        ROUTES
-      ),
+        networks.mainnet
+      )),
     ];
+    const follow = async () =>
+      tracking.followTransfers(
+        await transfers(),
+        get(activity.transferArrivals),
+        rpcFor
+      );
 
-    await tracking.followTransfers(transfers(), {}, rpcFor);
+    vi.spyOn(globalThis, "fetch").mockImplementation(bsc.answer);
+    // The transfer out, as the chain has it: to the route's account, the
+    // address it pays as its memo.
+    archive.transactions[out.hash] = {
+      blockHeight: 4_700_000,
+      blockTimestamp: sentAt / 1000,
+      err: null,
+      tx: {
+        json: JSON.stringify({
+          receiver: TO_BSC.account,
+          type: "moonlight",
+          value: String(200_001n * DUSK),
+        }),
+        memo: Buffer.from(EVM).toString("hex"),
+      },
+    };
+    remember({ amountLux: String(DUSK), createdAt: 1 });
 
-    expect(reads).toStrictEqual([
+    // Not paid out yet: where the search got to is kept.
+    await follow();
+
+    expect(receipts).toStrictEqual([
       `${BSC.chain.rpcUrl} eth_getTransactionReceipt`,
-      `${TO_BSC.chain.rpcUrl} eth_getBlockByNumber`,
-      `${TO_BSC.chain.rpcUrl} eth_getBlockByNumber`,
-      `${TO_BSC.chain.rpcUrl} eth_getLogs`,
+    ]);
+    expect(bsc.methods()).toContain("eth_getLogs");
+    expect(get(activity.transferArrivals)[out.hash]).toStrictEqual({
+      scan: expect.objectContaining({ from: "130200001" }),
+    });
+
+    // Paid out a minute later: the DUSK token's transfer from the route's
+    // payout address to the memo's, of the amount less the fee. The next
+    // check carries on from where the last one stopped.
+    bsc.chain.head += 200n;
+    bsc.chain.headAt += 90_000;
+    bsc.chain.logs.push({
+      address: String(TO_BSC.chain.token),
+      block: 130_200_133n,
+      data: `0x${wordOf(200_000n * DUSK * 1_000_000_000n)}`,
+      hash: `0x${"1f".repeat(32)}`,
+      topics: [
+        TRANSFER_TOPIC,
+        topicOf(String(TO_BSC.payoutAddress)),
+        topicOf(EVM),
+      ],
+    });
+    bsc.asked.length = 0;
+    receipts.length = 0;
+
+    await follow();
+
+    expect(
+      bsc.asked.find(({ method }) => method === "eth_getLogs")?.params[0]
+    ).toMatchObject({ fromBlock: `0x${(130_200_001).toString(16)}` });
+    expect(get(activity.transferArrivals)[out.hash]).toMatchObject({
+      // Its block's time: 67 blocks before the head, 90 s on.
+      arrivedAt: Math.floor((now + 90_000 - 67 * 450) / 1000) * 1000,
+      payout: `0x${"1f".repeat(32)}`,
+    });
+    await expect(transfers()).resolves.toMatchObject([
+      { kind: "migration", stage: "sent" },
+      { hash: out.hash, stage: "arrived" },
+      { stage: "failed" },
     ]);
 
-    // The migration is in a block now, and the transfer out arrived.
-    activity.keepArrival(sentOut.hash, { arrivedAt: 2, payout: "0x1f" });
-    reads.length = 0;
+    // The migration is in a block, and the transfer out arrived: nothing
+    // more to read.
+    bsc.asked.length = 0;
 
-    await tracking.followTransfers(transfers(), {}, rpcFor);
+    await follow();
 
-    expect(reads).toStrictEqual([]);
+    expect([...receipts, ...bsc.methods()]).toStrictEqual([]);
+  });
+});
+
+describe("a transfer out sent more than a week ago", () => {
+  it("is read until it arrives, in a browser that sees it only now", async () => {
+    const now = Date.now();
+    const sentAt = now - 8 * 86_400_000;
+    const out = row({
+      amount: String(200_001n * DUSK),
+      counterparty: TO_BSC.account,
+      direction: "out",
+      hash: "d2".repeat(32),
+      memo: EVM,
+      timestamp: sentAt,
+    });
+    const head = 130_200_000n;
+    // BNB Smart Chain, a block a minute: one look reaches back that far.
+    // Paid out 10 hours after it was sent.
+    const bsc = fakeChain({
+      blockMs: 60_000,
+      head,
+      headAt: now,
+      logs: [
+        {
+          address: String(TO_BSC.chain.token),
+          block: head - BigInt((8 * 24 - 10) * 60),
+          data: `0x${wordOf(200_000n * DUSK * 1_000_000_000n)}`,
+          hash: `0x${"1f".repeat(32)}`,
+          topics: [
+            TRANSFER_TOPIC,
+            topicOf(String(TO_BSC.payoutAddress)),
+            topicOf(EVM),
+          ],
+        },
+      ],
+      url: TO_BSC.chain.rpcUrl,
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(bsc.answer);
+    archive.transactions[out.hash] = {
+      blockHeight: 4_700_000,
+      blockTimestamp: sentAt / 1000,
+      err: null,
+      tx: {
+        json: JSON.stringify({
+          receiver: TO_BSC.account,
+          type: "moonlight",
+          value: String(200_001n * DUSK),
+        }),
+        memo: Buffer.from(EVM).toString("hex"),
+      },
+    };
+
+    await tracking.followTransfers(
+      await activity.serviceTransfers([out], {}, networks.mainnet),
+      {}
+    );
+
+    expect(get(activity.transferArrivals)[out.hash]).toMatchObject({
+      payout: `0x${"1f".repeat(32)}`,
+    });
   });
 });
 
@@ -285,8 +495,10 @@ describe("transfers out to BNB Smart Chain", () => {
   };
   const sent = row(out);
 
-  it("are sent until they arrive, and pay nothing out at or under the bridge fee, or without an address as the memo", () => {
-    expect(activity.serviceTransfers([sent], {}, ROUTES)).toMatchObject([
+  it("are sent until they arrive, and pay nothing out at or under the bridge fee, or without an address as the memo", async () => {
+    await expect(
+      activity.serviceTransfers([sent], {}, networks.mainnet)
+    ).resolves.toMatchObject([
       {
         amountLux: 200_001n * DUSK,
         feeLux: DUSK,
@@ -295,137 +507,49 @@ describe("transfers out to BNB Smart Chain", () => {
         stage: "sent",
       },
     ]);
-    expect(
+    await expect(
       activity.serviceTransfers(
         [sent],
         { [sent.hash]: { arrivedAt: 2, payout: "0x1f77" } },
-        ROUTES
+        networks.mainnet
       )
-    ).toMatchObject([{ arrivedAt: 2, payout: "0x1f77", stage: "arrived" }]);
+    ).resolves.toMatchObject([
+      { arrivedAt: 2, payout: "0x1f77", stage: "arrived" },
+    ]);
     expect(
-      activity
-        .serviceTransfers(
+      (
+        await activity.serviceTransfers(
           [
             row({ ...out, amount: String(DUSK) }),
             row({ ...out, hash: "ee".repeat(32), memo: "alice" }),
             row({ ...out, hash: "ff".repeat(32), status: "failed" }),
+            // The wallet's own, which saw it fail before the history has it.
+            row({
+              ...out,
+              counterparty: undefined,
+              hash: "fe".repeat(32),
+              source: "local",
+              status: "failed",
+              to: TO_BSC.account,
+            }),
           ],
           {},
-          ROUTES
+          networks.mainnet
         )
-        .map(({ failure }) => failure)
+      ).map(({ failure }) => failure)
     ).toStrictEqual([
       "It was no more than the bridge fee: nothing is paid out",
       "The memo isn't an address: the bridge can't pay it out",
       "The transfer failed on Dusk",
+      "The transfer failed on Dusk",
     ]);
     // Received from the route's account isn't a transfer out.
-    expect(
-      activity.serviceTransfers([row({ ...out, direction: "in" })], {}, ROUTES)
-    ).toStrictEqual([]);
-  });
-
-  it("arrive with the token transfer from the route's payout address to the memo's address of the amount less the fee, searched from about when sent", async () => {
-    const [transfer] = activity.serviceTransfers([sent], {}, ROUTES);
-    const head = 130_200_000n;
-    /** BNB Smart Chain's pace: a block every 0.45 s. */
-    const timeAt = (/** @type {bigint} */ n) =>
-      Math.floor(Date.UTC(2026, 9, 28, 0, 0) / 1_000 - Number(head - n) * 0.45);
-    /** @param {string} address */
-    const topic = (address) =>
-      `0x${address.slice(2).toLowerCase().padStart(64, "0")}`;
-    /** @type {any[]} */
-    const searched = [];
-    const payout = `0x${"1f".repeat(32)}`;
-    // The payout, 10 hours after it was sent, and an hour before it someone
-    // else's transfer of the same to the same address.
-    const logs = [
-      { from: `0x${"5a".repeat(20)}`, hash: `0x${"2e".repeat(32)}`, hours: 3 },
-      { from: String(TO_BSC.payoutAddress), hash: payout, hours: 2 },
-    ].map(({ from, hash, hours }) => ({
-      at: head - BigInt(Math.round((hours * 3_600) / 0.45)),
-      from: topic(from),
-      hash,
-    }));
-    /** @type {import("../routeTracking").ChainRpc} */
-    const rpc = async (method, params) => {
-      if (method === "eth_getBlockByNumber") {
-        const n = params[0] === "latest" ? head : BigInt(String(params[0]));
-
-        return {
-          number: `0x${n.toString(16)}`,
-          timestamp: `0x${timeAt(n).toString(16)}`,
-        };
-      }
-
-      const [filter] = /** @type {any[]} */ (params);
-
-      searched.push(filter);
-
-      // As the chain answers: in the window, from the sender asked for.
-      return logs
-        .filter(
-          ({ at, from }) =>
-            BigInt(filter.fromBlock) <= at &&
-            at <= BigInt(filter.toBlock) &&
-            (filter.topics[1] === null || filter.topics[1] === from)
-        )
-        .map(({ at, hash }) => ({
-          blockNumber: `0x${at.toString(16)}`,
-          data: `0x${(200_000n * DUSK * 1_000_000_000n).toString(16)}`,
-          transactionHash: hash,
-        }));
-    };
-    /** @param {import("../migrationActivity").RouteTransfer} one */
-    const arrival = async (one) => {
-      /** @type {any} */
-      let found = null;
-
-      for (let i = 0; i < 20 && !found; i++) {
-        found = await tracking.searchArrival(one, {
-          rpc,
-          scanFrom: get(activity.transferArrivals)[one.hash]?.scanFrom,
-        });
-      }
-
-      return found;
-    };
-
-    // A check searches a few windows, and keeps where it got to.
-    await expect(tracking.searchArrival(transfer, { rpc })).resolves.toBeNull();
-    expect(searched[0]).toMatchObject({
-      address: TO_BSC.chain.token,
-      topics: [
-        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-        topic(String(TO_BSC.payoutAddress)),
-        topic(EVM),
-      ],
-    });
-
-    const { scanFrom } = get(activity.transferArrivals)[sent.hash];
-
-    expect(BigInt(scanFrom ?? 0)).toBeGreaterThan(
-      BigInt(searched[0].fromBlock)
-    );
-
-    // Until it's found, on later checks: the payout, not the other transfer.
-    await expect(arrival(transfer)).resolves.toMatchObject({ payout });
-    expect(get(activity.transferArrivals)[sent.hash]).toMatchObject({ payout });
-    // Another transfer of the same isn't paid with it.
     await expect(
-      tracking.searchArrival(
-        { ...transfer, hash: "ab".repeat(32) },
-        { rpc, scanFrom: searched[0].fromBlock, taken: new Set([payout]) }
+      activity.serviceTransfers(
+        [row({ ...out, direction: "in" })],
+        {},
+        networks.mainnet
       )
-    ).resolves.toBeNull();
-
-    // A route whose payout address isn't known takes the first that pays it.
-    await expect(
-      arrival({
-        ...transfer,
-        hash: "cd".repeat(32),
-        route: { ...TO_BSC, payoutAddress: null },
-      })
-    ).resolves.toMatchObject({ payout: `0x${"2e".repeat(32)}` });
+    ).resolves.toStrictEqual([]);
   });
 });

@@ -71,6 +71,7 @@ const DUSK = 1_000_000_000n;
 const row = (fields) =>
   rowOf({
     amount: String(5n * DUSK),
+    blockHeight: 4_700_000,
     direction: "in",
     hash: "bb".repeat(32),
     status: "executed",
@@ -113,37 +114,50 @@ afterEach(() => {
 });
 
 describe("waitsOnHistory", () => {
-  /** @param {Partial<import("../routeHistory").RouteHistoryState>} [state] */
-  const waits = (state = {}) =>
+  /**
+   * Whether the history is waited on, with the account's transfers as the
+   * history, the migration sent from here and the network give them.
+   *
+   * @param {{ account?: string, net?: import("@dusk-network/networks").Network | null, now?: number, rows?: ActivityRow[], sent?: import("../migrationActivity").KeptMigration[] }} [state]
+   */
+  const waits = async ({
+    account = ACCOUNT,
+    net = networks.mainnet,
+    now = NOW,
+    rows = [],
+    sent = [
+      {
+        amountLux: String(5n * DUSK),
+        confirmed: true,
+        createdAt: NOW - 60_000,
+        hash: MIGRATION,
+        recipient: ACCOUNT,
+        routeId: "bsc-to-dusk",
+        sender: "0x1111111111111111111111111111111111111111",
+      },
+    ],
+  } = {}) =>
     follow.waitsOnHistory({
-      account: ACCOUNT,
-      arrivals: {},
-      kept: [
-        {
-          amountLux: String(5n * DUSK),
-          confirmed: true,
-          createdAt: NOW - 60_000,
-          hash: MIGRATION,
-          recipient: ACCOUNT,
-          routeId: "bsc-to-dusk",
-          sender: "0x1111111111111111111111111111111111111111",
-        },
-      ],
-      net: networks.mainnet,
-      now: NOW,
-      rows: [],
-      ...state,
+      now,
+      rows,
+      transfers: await migrations.routeTransfersOf({
+        account,
+        known: {},
+        net,
+        rows,
+        sent,
+      }),
     });
 
-  it("is so while a migration sent from here in the last day isn't paid", () => {
-    expect(waits()).toBe(true);
-    expect(waits({ rows: [payout] })).toBe(false);
-    expect(waits({ now: NOW + follow.FOLLOW_FOR_MS })).toBe(false);
-    expect(waits({ account: OTHER })).toBe(false);
-    expect(waits({ net: null })).toBe(false);
+  it("is so while a migration sent from here in the last day isn't paid", async () => {
+    expect(await waits()).toBe(true);
+    expect(await waits({ rows: [payout] })).toBe(false);
+    expect(await waits({ now: NOW + follow.FOLLOW_FOR_MS })).toBe(false);
+    expect(await waits({ account: OTHER })).toBe(false);
+    expect(await waits({ net: null })).toBe(false);
   });
 
-  it("is so while a transfer out isn't in a block yet", () => {
+  it("is so while a transfer out isn't in a block yet", async () => {
     const out = row({
       direction: "out",
       memo: "0x1111111111111111111111111111111111111111",
@@ -152,10 +166,10 @@ describe("waitsOnHistory", () => {
       to: BSC.payoutAccount ?? "",
     });
 
-    expect(waits({ kept: [], rows: [out] })).toBe(true);
-    expect(waits({ kept: [], rows: [{ ...out, status: "executed" }] })).toBe(
-      false
-    );
+    expect(await waits({ rows: [out], sent: [] })).toBe(true);
+    expect(
+      await waits({ rows: [{ ...out, status: "executed" }], sent: [] })
+    ).toBe(false);
   });
 });
 

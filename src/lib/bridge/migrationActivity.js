@@ -1,6 +1,7 @@
 /**
  * Migrations into Dusk and transfers out to another chain, for Bridge ›
- * Activity, as the bridge site follows them:
+ * Activity, as the bridge site follows them
+ * (`@dusk-network/app-core/bridge`, loaded once there's one):
  * - a migration from BNB Smart Chain or Ethereum is sent there, then paid
  *   on Dusk: its route's payout account pays this account the amount, with
  *   the migration's transaction hash as the memo. The history has the
@@ -10,7 +11,10 @@
  *   DUSK token pays that address the amount less the bridge's fee.
  */
 
+import { routeForAccount } from "@dusk-network/networks";
 import { get, writable } from "svelte/store";
+
+import { cardRoutes } from "./cardRoutes";
 
 /** How many migrations this browser keeps. */
 const MAX_KEPT = 50;
@@ -18,8 +22,13 @@ const MAX_KEPT = 50;
 const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`;
 
 const EVM_HASH = /^0x[0-9a-f]{64}$/;
-const EVM_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
-const WEI_PER_LUX = 1_000_000_000n;
+
+/** Why a transfer to a route's account pays nothing out. */
+const FAILURES = {
+  failed: "The transfer failed on Dusk",
+  "no-address": "The memo isn't an address: the bridge can't pay it out",
+  "under-fee": "It was no more than the bridge fee: nothing is paid out",
+};
 
 /**
  * A migration this browser sent.
@@ -147,148 +156,96 @@ export const markMigrationConfirmed = (hash) =>
 export const markMigrationFailed = (hash) =>
   markMigration(hash, { failed: true });
 
-/** @param {unknown} value */
-const luxOf = (value) => {
-  try {
-    return BigInt(String(value ?? ""));
-  } catch {
-    return -1n;
-  }
-};
-
-/**
- * The payout of a migration in the history: a public transfer in from the
- * route's payout account, with the migration's hash as the memo, of exactly
- * the amount.
- *
- * @param {ActivityRow[]} rows
- * @param {{ amountLux: bigint | string, hash: string, payoutAccount: string | null }} migration
- */
-export const payoutOf = (rows, { amountLux, hash, payoutAccount }) =>
-  rows.find(
-    (row) =>
-      row.direction === "in" &&
-      row.privacy !== "shielded" &&
-      String(row.memo ?? "")
-        .trim()
-        .toLowerCase() === hash.toLowerCase() &&
-      row.value === luxOf(amountLux) &&
-      (!payoutAccount || row.counterparty === payoutAccount)
-  ) ?? null;
-
-/**
- * A migration this browser sent, as Bridge › Activity lists it: sending
- * until it's in a block on its chain, sent until the history has its
- * payout, then paid; failed when it reverted.
- *
- * @param {KeptMigration} item
- * @param {ActivityRow[]} rows The history
- * @param {import("./cardRoutes").CardRoute & { kind: "migration" }} route
- * @returns {RouteTransfer}
- */
-function sentMigration(item, rows, route) {
-  const payout = payoutOf(rows, {
-    amountLux: item.amountLux,
-    hash: item.hash,
-    payoutAccount: route.payoutAccount,
-  });
-
-  return {
-    amountLux: BigInt(item.amountLux),
-    at: item.createdAt,
-    hash: item.hash,
-    kind: "migration",
-    paidAt: payout?.time ?? null,
-    payout: payout?.hash ?? null,
-    recipient: item.recipient,
-    route,
-    stage: payout
-      ? "paid"
-      : item.failed
-        ? "failed"
-        : item.confirmed
-          ? "sent"
-          : "sending",
-  };
-}
-
-/**
- * A migration's payout in the history, from a route's payout account with
- * a migration's hash as the memo, as Bridge › Activity lists it; null for
- * any other row. When the migration was sent isn't known from its payout.
- *
- * @param {ActivityRow} row
- * @param {(import("./cardRoutes").CardRoute & { kind: "migration" })[]} migrations
- * @returns {RouteTransfer | null}
- */
-function paidMigration(row, migrations) {
-  const memo = String(row.memo ?? "")
-    .trim()
-    .toLowerCase();
-  const route = migrations.find(
-    ({ payoutAccount }) =>
-      Boolean(payoutAccount) && row.counterparty === payoutAccount
-  );
-
-  return route && row.direction === "in" && EVM_HASH.test(memo)
-    ? {
-        amountLux: row.value,
-        at: null,
-        hash: memo,
-        kind: "migration",
-        paidAt: row.time,
-        payout: row.hash,
-        recipient: "",
-        route,
-        stage: "paid",
-      }
-    : null;
-}
-
 /**
  * The migrations into Dusk: those this browser sent to the account the
- * wallet shows, and the payouts in its history of migrations sent
- * elsewhere, each once.
+ * wallet shows, sending until they're in a block on their chain, sent until
+ * the history has their payout, then paid, or failed when they reverted;
+ * and the payouts in its history of migrations sent elsewhere, paid. When
+ * one of those was sent isn't known from its payout.
  *
  * @param {ActivityRow[]} rows The history
  * @param {KeptMigration[]} sent The migrations this browser sent
- * @param {import("./cardRoutes").CardRoute[]} routes The network's
+ * @param {import("@dusk-network/networks").Network} net
  * @param {string} account The public account the wallet shows
- * @returns {RouteTransfer[]}
+ * @returns {Promise<RouteTransfer[]>}
  */
-export function migrationTransfers(rows, sent, routes, account) {
-  const migrations =
-    /** @type {(import("./cardRoutes").CardRoute & { kind: "migration" })[]} */ (
-      routes.filter(({ kind }) => kind === "migration")
-    );
-  /** @type {Map<string, RouteTransfer>} */
-  const byHash = new Map();
+export async function migrationTransfers(rows, sent, net, account) {
+  const { migrationPayouts } = await import("@dusk-network/app-core/bridge");
+  const routes = cardRoutes(net);
+  const mine = sent.filter(
+    (item) =>
+      item.recipient === account &&
+      routes.some(({ id, kind }) => id === item.routeId && kind === "migration")
+  );
+  const { payouts, unlisted } = await migrationPayouts({
+    entries: rows.flatMap(({ entry }) => (entry ? [entry] : [])),
+    migrations: mine.map(({ amountLux, createdAt, hash, routeId }) => ({
+      amount: amountLux,
+      at: createdAt,
+      hash,
+      route: routeId,
+    })),
+    network: net,
+  });
+  /** @param {string | null} id */
+  const routeOf = (id) => routes.find((route) => route.id === id);
+  // When each payout was, as the history shows it.
+  const times = new Map(rows.map(({ hash, time }) => [hash, time]));
+  // Payouts of migrations sent from another device or before, each once:
+  // not one on a route the network doesn't name.
+  const elsewhere = new Map(
+    unlisted.flatMap((payout) => {
+      const route = routeOf(payout.route);
 
-  for (const item of sent) {
-    const route = migrations.find(({ id }) => id === item.routeId);
+      return route ? [[payout.hash, { ...payout, route }]] : [];
+    })
+  );
 
-    if (route && item.recipient === account) {
-      byHash.set(item.hash, sentMigration(item, rows, route));
-    }
-  }
+  return [
+    ...mine.map((item) => {
+      const paid = payouts.get(item.hash);
+      const payout = paid?.state === "arrived" ? paid : null;
 
-  // Payouts of migrations sent from another device or before.
-  for (const row of rows) {
-    const paid = paidMigration(row, migrations);
-
-    if (paid && !byHash.has(paid.hash)) {
-      byHash.set(paid.hash, paid);
-    }
-  }
-
-  return [...byHash.values()];
+      return /** @type {RouteTransfer} */ ({
+        amountLux: BigInt(item.amountLux),
+        at: item.createdAt,
+        hash: item.hash,
+        kind: "migration",
+        paidAt: payout ? (times.get(payout.hash) ?? payout.at) : null,
+        payout: payout?.hash ?? null,
+        recipient: item.recipient,
+        route: routeOf(item.routeId),
+        stage: payout
+          ? "paid"
+          : item.failed
+            ? "failed"
+            : item.confirmed
+              ? "sent"
+              : "sending",
+      });
+    }),
+    ...[...elsewhere.values()].map(
+      (payout) =>
+        /** @type {RouteTransfer} */ ({
+          amountLux: payout.amount,
+          at: null,
+          hash: payout.hash,
+          kind: "migration",
+          paidAt: times.get(payout.payout) ?? payout.at,
+          payout: payout.payout,
+          recipient: "",
+          route: payout.route,
+          stage: "paid",
+        })
+    ),
+  ];
 }
 
 /**
  * Kept arrivals of transfers out, by their Dusk transaction: where the
  * search for the payout got to, and the payout once found.
  *
- * @typedef {{ arrivedAt?: number | null, payout?: string | null, scanFrom?: string }} ArrivalSearch
+ * @typedef {{ arrivedAt?: number | null, payout?: string | null, scan?: import("@dusk-network/app-core/bridge").Scan }} ArrivalSearch
  */
 
 const ARRIVALS_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-transfer-arrivals`;
@@ -347,47 +304,47 @@ export function forgetRouteTransfers() {
 }
 
 /**
- * Why a transfer to a route's account pays nothing out, or "".
+ * A row as the history's entry of it, which the wallet's own record of a
+ * send stands for until the history has it: one the wallet saw fail failed.
  *
  * @param {ActivityRow} row
- * @param {bigint} feeLux
+ * @returns {import("@dusk-network/app-core/bridge").HistoryLike}
  */
-function failureOf(row, feeLux) {
-  if (row.status === "failed") {
-    return "The transfer failed on Dusk";
-  }
-
-  if (row.value <= feeLux) {
-    return "It was no more than the bridge fee: nothing is paid out";
-  }
-
-  return EVM_ADDRESS.test(String(row.memo ?? "").trim())
-    ? ""
-    : "The memo isn't an address: the bridge can't pay it out";
-}
+const entryOf = (row) => ({
+  blockHeight: row.blockHeight ?? 0,
+  counterparty: row.counterparty,
+  direction: row.direction,
+  hash: row.hash,
+  kind: row.kind ?? "transfer",
+  memo: row.memo ?? "",
+  payer: true,
+  success: row.status === "failed" ? false : row.success,
+  value: row.value,
+});
 
 /**
  * The transfers out to another chain in the history: public transfers to a
- * route's account, sent until they arrive.
+ * route's account, sent until they arrive, or failed where they pay nothing
+ * out, as the route's bridge reads them.
  *
  * @param {ActivityRow[]} rows The history
  * @param {Record<string, ArrivalSearch>} known What's known of their arrivals
- * @param {import("./cardRoutes").CardRoute[]} routes The network's
- * @returns {RouteTransfer[]}
+ * @param {import("@dusk-network/networks").Network} net
+ * @returns {Promise<RouteTransfer[]>}
  */
-export function serviceTransfers(rows, known, routes) {
-  const services = routes.filter(({ kind }) => kind === "service");
+export async function serviceTransfers(rows, known, net) {
+  const { serviceTransferOf } = await import("@dusk-network/app-core/bridge");
+  const routes = cardRoutes(net);
 
   return rows.flatMap((row) => {
-    const route = services.find(
-      (each) => each.kind === "service" && row.counterparty === each.account
-    );
+    const facts = serviceTransferOf(entryOf(row), net);
+    const route = routes.find(({ id }) => id === facts?.route);
 
-    if (!route || route.kind !== "service" || row.direction !== "out") {
+    if (!facts || !route) {
       return [];
     }
 
-    const failure = failureOf(row, route.feeLux);
+    const failure = facts.problem ? FAILURES[facts.problem] : undefined;
     const arrival = known[row.hash] ?? {};
 
     return [
@@ -395,8 +352,8 @@ export function serviceTransfers(rows, known, routes) {
         amountLux: row.value,
         arrivedAt: arrival.arrivedAt ?? null,
         at: row.time ?? 0,
-        failure: failure || undefined,
-        feeLux: route.feeLux,
+        failure,
+        feeLux: facts.fee,
         hash: row.hash,
         kind: /** @type {const} */ ("service"),
         payout: arrival.payout ?? null,
@@ -409,10 +366,38 @@ export function serviceTransfers(rows, known, routes) {
 }
 
 /**
- * What a transfer out pays on its chain, in the token's wei: the amount
- * less the bridge's fee.
+ * Whether there can be a transfer between Dusk and another chain of the
+ * account: a migration sent from here to it, or a row with one of the
+ * bridge's accounts.
  *
- * @param {RouteTransfer} transfer
+ * @param {ActivityRow[]} rows
+ * @param {KeptMigration[]} sent
+ * @param {import("@dusk-network/networks").Network} net
+ * @param {string} account
  */
-export const arrivingWei = (transfer) =>
-  (transfer.amountLux - (transfer.feeLux ?? 0n)) * WEI_PER_LUX;
+const hasRouteTransfers = (rows, sent, net, account) =>
+  sent.some(({ recipient }) => recipient === account) ||
+  rows.some(
+    ({ counterparty, direction }) =>
+      Boolean(counterparty) &&
+      (direction === "in" || direction === "out") &&
+      routeForAccount(net, String(counterparty), direction) !== null
+  );
+
+/**
+ * The transfers between Dusk and another chain, as Bridge › Activity lists
+ * them: the migrations into Dusk, then the transfers out. None without a
+ * network, or without one of them.
+ *
+ * @param {{ account: string, known: Record<string, ArrivalSearch>, net: import("@dusk-network/networks").Network | null, rows: ActivityRow[], sent: KeptMigration[] }} state
+ *   `known` what's known of the transfers out's arrivals; `sent` the
+ *   migrations this browser sent
+ * @returns {Promise<RouteTransfer[]>}
+ */
+export const routeTransfersOf = async ({ account, known, net, rows, sent }) =>
+  net && hasRouteTransfers(rows, sent, net, account)
+    ? [
+        ...(await migrationTransfers(rows, sent, net, account)),
+        ...(await serviceTransfers(rows, known, net)),
+      ]
+    : [];
