@@ -846,19 +846,20 @@ const useContract = async (contractId, wasmPath) =>
   });
 
 /**
- * @param {string} contractId
- * @param {string} wasmPath
- * @param {string} fnName
- * @param {unknown} args
- * @param {Gas | undefined} gas
+ * Proves or claims a DuskEVM withdrawal on Dusk: the Portal's call as the
+ * withdrawals' package gave it, its arguments signed as they were encoded
+ * and read back, from the account to itself, with no DUSK sent along.
+ *
+ * @type {WalletStoreServices["sendDuskEvmWithdrawalCall"]}
  */
-const executeContractFunction = async (
-  contractId,
-  wasmPath,
-  fnName,
-  args,
+const sendDuskEvmWithdrawalCall = async (
+  { contractId, deposit, fnArgs, fnName },
   gas
 ) => {
+  if (deposit !== 0n || !/^[0-9a-f]{64}$/.test(contractId)) {
+    throw new Error("Not a DuskEVM withdrawal's proof or claim.");
+  }
+
   const profile = unsafeGetCurrentProfile();
 
   return sendAs(
@@ -872,55 +873,23 @@ const executeContractFunction = async (
       privacy: "public",
     },
     async (network) => {
-      network.dataDrivers.register(contractId, () =>
-        fetch(wasmPath).then((r) => r.arrayBuffer())
+      const payload = {
+        contractId: Array.from(contractId.match(/../g) ?? [], (byte) =>
+          parseInt(byte, 16)
+        ),
+        fnArgs,
+        fnName,
+      };
+      const builder = /** @type {any} */ (
+        bookkeeper.as(profile).transfer(0n)
+      ).payload(payload);
+
+      return await network.execute(
+        builder.to(profile.account).deposit(deposit).gas(gas)
       );
-
-      const contract = bookkeeper.as(profile).contract(contractId, network);
-      const contractFunction = contract.tx?.[fnName];
-
-      if (typeof contractFunction !== "function") {
-        throw new Error(
-          `Contract data-driver for ${contractId} does not expose ${fnName}.`
-        );
-      }
-
-      const builder = await contractFunction.call(contract.tx, args);
-      let tx = builder.to(profile.account);
-
-      if (gas) {
-        tx = tx.gas(gas);
-      }
-
-      return await network.execute(tx);
     }
   );
 };
-
-/** @type {WalletStoreServices["finalizeDuskEvmWithdrawal"]} */
-const finalizeDuskEvmWithdrawal = async (
-  contractId,
-  wasmPath,
-  withdrawal,
-  gas
-) =>
-  executeContractFunction(
-    contractId,
-    wasmPath,
-    "finalizeWithdrawalTransaction",
-    withdrawal,
-    gas
-  );
-
-/** @type {WalletStoreServices["proveDuskEvmWithdrawal"]} */
-const proveDuskEvmWithdrawal = async (contractId, wasmPath, args, gas) =>
-  executeContractFunction(
-    contractId,
-    wasmPath,
-    "proveWithdrawalTransaction",
-    args,
-    gas
-  );
 
 /** @type {WalletStore} */
 export default {
@@ -929,12 +898,11 @@ export default {
   clearLocalData,
   clearLocalDataAndInit,
   depositEvmFunctionCall,
-  finalizeDuskEvmWithdrawal,
   getDuskEvmProofSubmitter,
   init,
-  proveDuskEvmWithdrawal,
   refreshBalance,
   reset,
+  sendDuskEvmWithdrawalCall,
   setCurrentProfile,
   shield,
   stake,

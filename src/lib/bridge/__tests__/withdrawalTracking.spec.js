@@ -1,9 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { networks } from "@dusk-network/networks";
-
-import { setNodeNetwork } from "$lib/stores/nodeNetwork";
-
-import { PAID, relayedWithdrawal } from "./fixtures/withdrawal-recipient";
+import { PAID } from "./fixtures/withdrawal-recipient";
 
 const mocks = vi.hoisted(() => ({
   loadDuskTransactionExecution: vi.fn(),
@@ -78,7 +74,7 @@ describe("DuskEVM withdrawal tracking", () => {
     mocks.loadWithdrawalStatus.mockResolvedValue({
       ...readyToProveStatus(),
       blockNumber: 2_580_123n,
-      withdrawal: { value: 10n ** 19n },
+      facts: { amountWei: 10n ** 19n },
     });
 
     await expect(
@@ -100,23 +96,10 @@ describe("DuskEVM withdrawal tracking", () => {
     );
   });
 
-  // A withdrawal on testnet's bridge route: from DuskEVM's messenger to
-  // Dusk's.
-  const onRoute = {
-    data: relayedWithdrawal(),
-    gasLimit: 519_542n,
-    nonce: 1n,
-    sender: networks.testnet.duskEvm?.predeploys.l2CrossDomainMessenger,
-    target:
-      networks.testnet.duskEvm?.contracts.l1_cross_domain_messenger.evmAddress,
-    value: 10n ** 18n,
-  };
-
-  it("takes whom a withdrawal pays on Dusk from its message, and keeps it", async () => {
-    setNodeNetwork(networks.testnet);
+  it("takes whom a withdrawal pays on Dusk from its message, as the package read it, and keeps it", async () => {
     mocks.loadWithdrawalStatus.mockResolvedValue({
       ...readyToProveStatus(),
-      withdrawal: onRoute,
+      facts: { recipient: { account: PAID, kind: "account" } },
     });
 
     await expect(
@@ -130,18 +113,6 @@ describe("DuskEVM withdrawal tracking", () => {
     expect(getRememberedWithdrawalTransaction(transactionHash)?.recipient).toBe(
       PAID
     );
-  });
-
-  it("takes no recipient from a withdrawal that isn't to Dusk's messenger", async () => {
-    setNodeNetwork(networks.testnet);
-    mocks.loadWithdrawalStatus.mockResolvedValue({
-      ...readyToProveStatus(),
-      withdrawal: { ...onRoute, target: account },
-    });
-
-    await expect(
-      refreshWithdrawalTransaction(transactionHash)
-    ).resolves.toEqual(expect.objectContaining({ recipient: null }));
   });
 
   it("reads the block's time again at the next refresh when it couldn't", async () => {

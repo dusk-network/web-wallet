@@ -4,8 +4,11 @@ import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 
 import { Bridge } from "..";
+import { decodeFunctionData, parseAbi } from "viem";
 import { networks } from "@dusk-network/networks";
+import { duskRecipientOf } from "@dusk-network/networks/duskevm";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { PAID } from "$lib/bridge/__tests__/fixtures/withdrawal-recipient";
 
 const mocks = vi.hoisted(() => ({
   sendTransaction: vi.fn(),
@@ -54,14 +57,6 @@ vi.mock("$lib/bridge/withdrawalActivity", () => ({
   trackWithdrawalTransaction: vi.fn(),
 }));
 
-vi.mock("$lib/bridge/withdrawalInitiation", () => ({
-  prepareNativeDuskWithdrawalCall: () => ({
-    data: "0x",
-    to: "0x4200000000000000000000000000000000000010",
-    value: 1_000_000_000_000_000_000n,
-  }),
-}));
-
 describe("Bridge withdrawal", () => {
   const props = {
     evmDuskBalance: {
@@ -78,7 +73,8 @@ describe("Bridge withdrawal", () => {
     },
     gasSettings: { gasLimit: 20000000n, gasPrice: 1n },
     unshieldedAccount: new Uint8Array(96),
-    unshieldedAddress: "zTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2",
+    // A testnet account: the withdrawal pays it.
+    unshieldedAddress: PAID,
     unshieldedBalance: 1_000_000_000_000n,
   };
 
@@ -147,4 +143,33 @@ describe("Bridge withdrawal", () => {
       expect(mocks.sendTransaction).toHaveBeenCalledOnce();
     }
   );
+
+  it("sends the withdrawal on DuskEVM's bridge, from the connected address, paying the wallet's public account", async () => {
+    /** @type {any} */ (bridgeTimes).set(timesFor(604_800));
+
+    const { findByText } = await sendWithdrawal();
+
+    expect(await findByText("Withdrawal sent")).toBeInTheDocument();
+
+    const [[, sent]] = mocks.sendTransaction.mock.calls;
+    const { args, functionName } = decodeFunctionData({
+      abi: parseAbi(["function bridgeETHTo(address, uint32, bytes)"]),
+      data: sent.data,
+    });
+
+    expect(sent).toMatchObject({
+      chainId: 745,
+      to: networks.testnet.duskEvm?.predeploys.l2StandardBridge,
+      value: 10n ** 18n,
+    });
+    expect(functionName).toBe("bridgeETHTo");
+    expect(args.slice(0, 2)).toStrictEqual([
+      "0x2222222222222222222222222222222222222222",
+      200_000,
+    ]);
+    expect(duskRecipientOf(args[2])).toStrictEqual({
+      account: PAID,
+      kind: "account",
+    });
+  });
 });

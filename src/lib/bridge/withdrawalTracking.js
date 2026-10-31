@@ -8,7 +8,7 @@ import {
   MAX_ACTIVITY_ITEMS,
   stringValue,
 } from "$lib/bridge/withdrawalActivityValues";
-import { withdrawalRecipient } from "$lib/bridge/bridgeCalls";
+import { recipientOf } from "$lib/bridge/bridgeCalls";
 import { errorMessage } from "$lib/dusk/error";
 import {
   loadDuskTransactionExecution,
@@ -56,12 +56,12 @@ function statusPatch(status) {
       : null;
 
   // The amount, which a withdrawal found by its hash only has from here.
-  if (typeof status.withdrawal?.value === "bigint") {
-    patch.amountWei = status.withdrawal.value;
+  if (typeof status.facts?.amountWei === "bigint") {
+    patch.amountWei = status.facts.amountWei;
   }
 
   // Whom it pays on Dusk, as its message says.
-  const recipient = withdrawalRecipient(status.withdrawal);
+  const recipient = recipientOf(status.facts?.recipient);
 
   if (recipient) {
     patch.recipient = recipient;
