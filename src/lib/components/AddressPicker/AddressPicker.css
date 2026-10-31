@@ -283,6 +283,13 @@
   flex: 0 0 auto;
 }
 
+.address-picker__compact-lines {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .address-picker__compact-name {
   flex: 0 1 auto;
   min-width: 0;
@@ -291,6 +298,90 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.875rem;
+}
+
+/* With more than one wallet: the wallet's name, under the profile's. */
+.address-picker__compact-lines--wallet .address-picker__compact-name {
+  line-height: 1.15;
+}
+
+.address-picker__compact-wallet {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--calm-muted);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+}
+
+/* Each wallet's profiles, under its name. */
+.address-picker__wallet {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.address-picker__wallet + .address-picker__wallet {
+  margin-top: 0.375em;
+  padding-top: 0.5em;
+  border-top: 1px solid var(--surface-border-color-subtle);
+}
+
+.address-picker__wallet-title {
+  display: block;
+  overflow: hidden;
+  padding: 0.25em 0.75em 0;
+  color: var(--calm-muted);
+  font-size: 0.75em;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.address-picker__wallet-profiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.address-picker__add-wallet {
+  list-style: none;
+  margin: 0.375em 0 0;
+  padding: 0.375em 0 0;
+  border-top: 1px solid var(--surface-border-color-subtle);
+}
+
+.address-picker__add-wallet-button {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 0.75em;
+  border-radius: var(--control-border-radius-size);
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.address-picker__add-wallet-button .dusk-icon {
+  width: 1.125em;
+  height: 1.125em;
+  color: var(--calm-muted);
+}
+
+.address-picker__add-wallet-button:hover {
+  background-color: var(--surface-soft-color);
+}
+
+.address-picker__add-wallet-button:focus-visible {
+  outline: 2px solid var(--secondary-color);
+  outline-offset: 2px;
 }
 
 .address-picker--compact .address-picker__drop-down {

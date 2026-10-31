@@ -10,7 +10,8 @@
  * nothing that changes them works.
  *
  * Contacts kept in plain text before move into the wallet's record the
- * first time it opens, and the plain copy goes. Reset deletes them all.
+ * first time it opens, and the plain copy goes. Removing a wallet deletes
+ * its own; Reset deletes them all.
  *
  * Every change of what's kept, and Reset, takes the same lock across this
  * browser's tabs, so one tab never writes over another's change, and none
@@ -42,11 +43,42 @@ const PLAIN_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts`;
  */
 const RESET_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts-reset`;
 
+/**
+ * A new mark for a wallet's place each time that wallet is removed: a
+ * change of its contacts begun before then is dropped, in any tab.
+ */
+const GONE_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts-gone`;
+
 /** How many times a change is tried while other tabs write without the lock. */
 const TRIES = 3;
 
 /** @returns {string | null} */
 const readReset = () => localStorage.getItem(RESET_KEY);
+
+/**
+ * The mark of a wallet's place since it was last removed: null for none.
+ *
+ * @param {string} namespace
+ * @returns {string | null}
+ */
+function readGone(namespace) {
+  const marks = readJson(GONE_KEY);
+  const mark =
+    typeof marks === "object" && marks !== null
+      ? /** @type {Record<string, unknown>} */ (marks)[namespace]
+      : null;
+
+  return typeof mark === "string" ? mark : null;
+}
+
+/**
+ * Whether the contacts opened as `opened` were reset, or their wallet
+ * removed, since.
+ *
+ * @param {Vault} opened
+ */
+const isStale = (opened) =>
+  readReset() !== opened.reset || readGone(opened.namespace) !== opened.gone;
 
 /**
  * Runs a task alone across this browser's tabs: under the contacts' lock,
@@ -143,9 +175,10 @@ const sorted = (all) =>
   );
 
 /**
- * A wallet's key, its place, and the reset mark when its contacts opened.
+ * A wallet's key, its place, and the reset and removal marks when its
+ * contacts opened.
  *
- * @typedef {{ key: CryptoKey, namespace: string, reset: string | null }} Vault
+ * @typedef {{ gone: string | null, key: CryptoKey, namespace: string, reset: string | null }} Vault
  */
 
 /**
@@ -203,7 +236,7 @@ const AGAIN = Symbol("again");
 async function keepChange(opened, apply, whenKept) {
   for (let tries = 0; tries < TRIES; tries++) {
     const done = await alone(async () => {
-      if (readReset() !== opened.reset) {
+      if (isStale(opened)) {
         return null;
       }
 
@@ -215,10 +248,7 @@ async function keepChange(opened, apply, whenKept) {
         JSON.stringify(next)
       );
 
-      if (
-        localStorage.getItem(STORAGE_KEY) !== before ||
-        readReset() !== opened.reset
-      ) {
+      if (localStorage.getItem(STORAGE_KEY) !== before || isStale(opened)) {
         return AGAIN;
       }
 
@@ -240,8 +270,8 @@ async function keepChange(opened, apply, whenKept) {
 const store = writable(/** @type {Contact[]} */ ([]), () => {
   /** @param {StorageEvent} event */
   const onStorage = (event) => {
-    if (vault && readReset() !== vault.reset) {
-      // Reset, or another wallet restored, in another tab.
+    if (vault && isStale(vault)) {
+      // Reset, another wallet restored, or this one removed, in another tab.
       closeContacts();
     } else if (vault && (event.key === STORAGE_KEY || event.key === null)) {
       const opened = vault;
@@ -337,11 +367,12 @@ function change(apply, whenKept) {
  * @param {Uint8Array} seed
  * @returns {Promise<Vault>}
  */
-const vaultOf = async (account, seed) => ({
-  key: await deriveContactsKey(seed),
-  namespace: await contactsNamespace(account),
-  reset: readReset(),
-});
+async function vaultOf(account, seed) {
+  const key = await deriveContactsKey(seed);
+  const namespace = await contactsNamespace(account);
+
+  return { gone: readGone(namespace), key, namespace, reset: readReset() };
+}
 
 /**
  * Opens the contacts of the wallet that is unlocking, with its seed: those
@@ -422,7 +453,39 @@ export function deleteContacts() {
   return alone(() => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(PLAIN_KEY);
+    localStorage.removeItem(GONE_KEY);
     localStorage.setItem(RESET_KEY, newId());
+  });
+}
+
+/**
+ * Deletes one wallet's contacts, as it's removed: alone across tabs, and a
+ * change of them begun before is dropped in any of them. Another wallet's
+ * stay as they are, and open.
+ *
+ * @param {string} account The wallet's first public account
+ * @returns {Promise<void>}
+ */
+export async function forgetContactsOf(account) {
+  const namespace = await contactsNamespace(account);
+
+  if (vault?.namespace === namespace) {
+    closeContacts();
+  }
+
+  await alone(() => {
+    const rest = readRecords();
+    const marks = readJson(GONE_KEY);
+
+    delete rest[namespace];
+    writeRecords(rest);
+    localStorage.setItem(
+      GONE_KEY,
+      JSON.stringify({
+        ...(typeof marks === "object" && marks !== null ? marks : {}),
+        [namespace]: newId(),
+      })
+    );
   });
 }
 

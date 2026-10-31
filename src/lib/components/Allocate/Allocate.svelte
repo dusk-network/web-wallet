@@ -30,6 +30,7 @@
     DuskIcon,
     GasSettings,
     ReviewAmount,
+    ReviewWallet,
     TransactionResult,
   } from "$lib/components";
   import { settingsStore, walletStore } from "$lib/stores";
@@ -101,13 +102,16 @@
     }
   }
 
+  // What this screen sends, it sends from the wallet it was drawn for.
+  const forThisWallet = walletStore.forThisWallet();
+
   async function allocate() {
     const gas = new Gas({ limit: gasLimit, price: gasPrice });
 
     if (difference !== 0n) {
       const transactionInfo = isShielding
-        ? await walletStore.shield(difference, gas)
-        : await walletStore.unshield(-difference, gas);
+        ? await forThisWallet(walletStore.shield)(difference, gas)
+        : await forThisWallet(walletStore.unshield)(-difference, gas);
 
       return transactionInfo.hash;
     }
@@ -343,6 +347,7 @@
           text="Review transaction"
           variant="warning"
         />
+        <ReviewWallet />
         <ReviewAmount
           label="Amount"
           value={formatDuskExact(amount, language)}

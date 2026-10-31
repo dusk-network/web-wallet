@@ -49,10 +49,9 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
       >
         <!---->
         <p>
-          Initializing a new wallet will replace your existing local wallet cache,
-      erasing any stored data. Ensure you have securely backed up your current
-      wallet's recovery phrase to prevent loss. Proceeding without a backup can
-      lead to irreversible loss of access to your assets.
+          This removes every recovery phrase on this device, with each wallet's
+      cache, contacts and activity. Your funds stay on Dusk. Make sure you have
+      each recovery phrase saved: it's the only way back into its wallet.
         </p>
          
         <div
@@ -220,154 +219,298 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
     >
       <!---->
       <div
-        class="dusk-mnemonic"
+        class="mnemonic-input svelte-1dhzni7"
       >
         <div
-          class="dusk-mnemonic__actions-wrapper"
+          aria-label="How many words"
+          class="mnemonic-input__count svelte-1dhzni7"
+          role="group"
         >
           <button
-            class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+            aria-pressed="true"
+            class="mnemonic-input__count-button svelte-1dhzni7 mnemonic-input__count-button--on"
             type="button"
           >
-            <!---->
-            <!---->
-            <svg
-              class="dusk-icon dusk-icon--size--default dusk-button__icon"
-              role="graphics-symbol"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="M19,20H5V4H7V7H17V4H19M12,2A1,1 0 0,1 13,3A1,1 0 0,1 12,4A1,1 0 0,1 11,3A1,1 0 0,1 12,2M19,2H14.82C14.4,0.84 13.3,0 12,0C10.7,0 9.6,0.84 9.18,2H5A2,2 0 0,0 3,4V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V4A2,2 0 0,0 19,2Z"
-              />
-            </svg>
-            
-            <!---->
-             
-            <span
-              class="dusk-button__text"
-            >
-              Paste recovery phrase
-            </span>
-            <!---->
-            <!---->
+            12 words
           </button>
-          <!---->
-           
           <button
-            class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
-            disabled=""
+            aria-pressed="false"
+            class="mnemonic-input__count-button svelte-1dhzni7"
             type="button"
           >
-            <!---->
-            <!---->
-            <svg
-              class="dusk-icon dusk-icon--size--default dusk-button__icon"
-              role="graphics-symbol"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="M10.5,7A6.5,6.5 0 0,0 4,13.5A6.5,6.5 0 0,0 10.5,20H14V18H10.5C8,18 6,16 6,13.5C6,11 8,9 10.5,9H16.17L13.09,12.09L14.5,13.5L20,8L14.5,2.5L13.08,3.91L16.17,7H10.5M18,18H16V20H18V18Z"
-              />
-            </svg>
-            
-            <!---->
-             
-            <span
-              class="dusk-button__text"
-            >
-              Undo
-            </span>
-            <!---->
-            <!---->
+            24 words
           </button>
-          <!---->
-        </div>
-        <!---->
-         
-        <ol
-          class="dusk-words"
-        >
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
-          <li
-            class="dusk-words__word"
-          >
-            _____
-          </li>
           
-        </ol>
-        <!---->
+        </div>
+         
+        <p
+          class="mnemonic-input__hint svelte-1dhzni7"
+          id="some-generated-id-hint"
+        >
+          Paste the whole phrase into any box.
+        </p>
          
         <div
-          class="dusk-mnemonic__authenticate-actions-wrapper"
+          aria-describedby="some-generated-id-hint"
+          aria-label="Recovery phrase"
+          class="mnemonic-input__grid svelte-1dhzni7"
+          role="group"
         >
-          <!---->
-          <!---->
-          <input
-            class="dusk-textbox dusk-textbox-text"
-            maxlength="8"
-            placeholder="Enter word 1"
-            type="text"
-          />
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              1
+            </span>
+             
+            <input
+              aria-label="Word 1"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              2
+            </span>
+             
+            <input
+              aria-label="Word 2"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              3
+            </span>
+             
+            <input
+              aria-label="Word 3"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              4
+            </span>
+             
+            <input
+              aria-label="Word 4"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              5
+            </span>
+             
+            <input
+              aria-label="Word 5"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              6
+            </span>
+             
+            <input
+              aria-label="Word 6"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              7
+            </span>
+             
+            <input
+              aria-label="Word 7"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              8
+            </span>
+             
+            <input
+              aria-label="Word 8"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              9
+            </span>
+             
+            <input
+              aria-label="Word 9"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              10
+            </span>
+             
+            <input
+              aria-label="Word 10"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              11
+            </span>
+             
+            <input
+              aria-label="Word 11"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="next"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
+          <label
+            class="mnemonic-input__word svelte-1dhzni7"
+          >
+            <span
+              aria-hidden="true"
+              class="mnemonic-input__index svelte-1dhzni7"
+            >
+              12
+            </span>
+             
+            <input
+              aria-label="Word 12"
+              autocapitalize="none"
+              autocomplete="off"
+              class="svelte-1dhzni7"
+              enterkeyhint="done"
+              inputmode="text"
+              spellcheck="false"
+              type="text"
+            />
+          </label>
           
-          <!---->
-           
-          <!---->
-          <!---->
         </div>
+         
         <!---->
       </div>
       

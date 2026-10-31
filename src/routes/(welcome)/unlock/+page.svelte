@@ -27,6 +27,7 @@
     validateMnemonic,
   } from "$lib/wallet";
   import vault from "$lib/vault";
+  import { unlockWallets } from "$lib/wallets";
 
   /** @type {(seed: Uint8Array<ArrayBuffer>) => Promise<ProfileGenerator>} */
   async function checkLocalData(seed) {
@@ -49,28 +50,21 @@
       : Promise.reject(new InvalidMnemonicError());
 
   /**
-   * The seed of the wallet this device has, of those the password opens in
-   * the vault: v1's phrase moves into it as it opens. A wrong password is
-   * an InvalidPasswordError.
+   * The wallet without a password: the one this device has, from its
+   * recovery phrase.
    *
-   * @type {(pwd: string) => Promise<Uint8Array<ArrayBuffer>>}
+   * @param {string} mnemonic
    */
-  async function getSeedFromVault(pwd) {
-    const { wallets } = await vault.unlock(pwd, { signal: controller.signal });
-    const seeds = wallets.map(({ mnemonic }) => getSeedFromMnemonic(mnemonic));
+  const unlockWithPhrase = (mnemonic) =>
+    getSeedFromMnemonicAsync(mnemonic.toLowerCase())
+      .then(checkLocalData)
+      .then(async (profileGenerator) => {
+        controller.signal.throwIfAborted();
+        await walletStore.init(profileGenerator);
+      });
 
-    for (const seed of seeds) {
-      const generator = await profileGeneratorFrom(seed);
-      const address = (await generator.default).address.toString();
-
-      if (address === $settingsStore.userId) {
-        return seed;
-      }
-    }
-
-    return seeds[0];
-  }
-
+  // One password unlocks every wallet in the vault; without one, the
+  // recovery phrase unlocks the one wallet there is.
   const hasPassword = vault.exists();
   const modeLabel = hasPassword ? "Password" : "Recovery phrase";
 
@@ -104,19 +98,12 @@
       return;
     }
     pending = true;
-    /** @type {(mnemonic: string) => Promise<Uint8Array<ArrayBuffer>>} */
-    const getSeed = hasPassword
-      ? getSeedFromVault
-      : (mnemonic) => getSeedFromMnemonicAsync(mnemonic.toLowerCase());
 
-    const secret = hasPassword ? secretText : secretText.trim();
+    const unlock = hasPassword
+      ? unlockWallets(secretText, { signal: controller.signal })
+      : unlockWithPhrase(secretText.trim());
 
-    getSeed(secret)
-      .then(checkLocalData)
-      .then(async (profileGenerator) => {
-        controller.signal.throwIfAborted();
-        await walletStore.init(profileGenerator);
-      })
+    unlock
       .then(() => {
         controller.signal.throwIfAborted();
         pending = false;

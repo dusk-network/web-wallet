@@ -28,6 +28,7 @@
     GasSettings,
     OperationResult,
     ReviewAmount,
+    ReviewWallet,
   } from "$lib/components";
   import NetworkMark from "$lib/components/NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "$lib/components/NetworkPicker/NetworkPicker.svelte";
@@ -86,6 +87,8 @@
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { addBasePath } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
+  import { walletDataName } from "$lib/wallets/dataNames";
+  import { LAST_WITHDRAWAL_KEY as LAST_WITHDRAWAL_TX_HASH_KEY } from "$lib/bridge/bridgeRecordKeys";
 
   /**
    * DuskEVM uses duskEvm.nativeCurrency.decimals (currently 18). DuskDS uses 9 decimals (Lux).
@@ -94,7 +97,6 @@
    */
   const EVM_TO_LUX_SCALE_FACTOR =
     10n ** BigInt(duskEvm.nativeCurrency.decimals - 9);
-  const LAST_WITHDRAWAL_TX_HASH_KEY = "dusk-evm:last-withdrawal-tx-hash";
 
   /**
    * What Max leaves on DuskEVM for the withdrawal's fee while it can't be
@@ -313,12 +315,15 @@
     return hash;
   }
 
+  // What this screen sends, it sends from the wallet it was drawn for.
+  const forThisWallet = walletStore.forThisWallet();
+
   async function submitNativeDeposit() {
     if (!$account.address) {
       throw new Error("Account address is not available.");
     }
 
-    const response = await walletStore.depositEvmFunctionCall(
+    const response = await forThisWallet(walletStore.depositEvmFunctionCall)(
       $account.address,
       amountLux,
       new Gas({ limit: gasLimit, price: gasPrice })
@@ -379,7 +384,10 @@
     }
 
     lastWithdrawalTxHash = /** @type {string} */ (hash);
-    localStorage.setItem(LAST_WITHDRAWAL_TX_HASH_KEY, lastWithdrawalTxHash);
+    localStorage.setItem(
+      walletDataName(LAST_WITHDRAWAL_TX_HASH_KEY),
+      lastWithdrawalTxHash
+    );
     // It pays this wallet's public account.
     const remembered = rememberWithdrawalTransaction(
       /** @type {`0x${string}`} */ (lastWithdrawalTxHash),
@@ -604,7 +612,7 @@
   onMount(() => {
     void bridgeTimes.load();
     lastWithdrawalTxHash =
-      localStorage.getItem(LAST_WITHDRAWAL_TX_HASH_KEY) ?? "";
+      localStorage.getItem(walletDataName(LAST_WITHDRAWAL_TX_HASH_KEY)) ?? "";
 
     const unsubscribeAccount = account.subscribe((value) => {
       resumeDepositTracking(value.address);
@@ -872,6 +880,7 @@
   {:else if step === "review"}
     <div class="bridge-review">
       <h2 class="bridge-review__title">Review</h2>
+      <ReviewWallet />
       <ReviewAmount
         label="Amount"
         value={formatDuskExact(amountLux, language)}

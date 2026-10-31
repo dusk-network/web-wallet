@@ -1,4 +1,13 @@
 import { Dexie } from "dexie";
+
+import { walletDataSuffix } from "$lib/wallets/dataNames";
+
+/**
+ * The cache's name: each wallet's own, with its ending, the wallet with the
+ * names of before having none (see $lib/wallets/dataNames).
+ */
+const NAME = "@dusk-network/wallet-cache";
+
 /** @type {(buffer: ArrayBufferLike) => Uint8Array<ArrayBuffer>} */
 const bufferToUint8Array = (buffer) => new Uint8Array(new Uint8Array(buffer));
 
@@ -80,8 +89,9 @@ class WalletCache {
     return data.finally(() => this.#db.close({ disableAutoOpen: false }));
   }
 
-  constructor() {
-    const db = new Dexie("@dusk-network/wallet-cache", { autoOpen: true });
+  /** @param {string} [name] */
+  constructor(name = NAME) {
+    const db = new Dexie(name, { autoOpen: true });
 
     db.version(3)
       .stores({
@@ -139,6 +149,16 @@ class WalletCache {
   /** @returns {Promise<void>} */
   clear() {
     return this.#db.delete({ disableAutoOpen: false });
+  }
+
+  /**
+   * Deletes the cache for good, as its wallet goes: what's still running
+   * on it can't make it again.
+   *
+   * @returns {Promise<void>}
+   */
+  destroy() {
+    return this.#db.delete({ disableAutoOpen: true });
   }
 
   /**
@@ -392,4 +412,68 @@ class WalletCache {
   }
 }
 
-export default new WalletCache();
+/** @type {Map<string, WalletCache>} */
+const caches = new Map();
+
+/**
+ * A wallet's cache, by the ending of its names.
+ *
+ * @param {string} suffix
+ * @returns {WalletCache}
+ */
+export function walletCacheFor(suffix) {
+  const name = `${NAME}${suffix}`;
+  let cache = caches.get(name);
+
+  if (!cache) {
+    cache = new WalletCache(name);
+    caches.set(name, cache);
+  }
+
+  return cache;
+}
+
+/** The open wallet's cache. */
+export const currentWalletCache = () => walletCacheFor(walletDataSuffix());
+
+/**
+ * Deletes a removed wallet's cache, by the ending of its names.
+ *
+ * @param {string} suffix
+ * @returns {Promise<void>}
+ */
+export async function forgetWalletCache(suffix) {
+  const name = `${NAME}${suffix}`;
+  const cache = caches.get(name);
+
+  caches.delete(name);
+  await (cache ? cache.destroy() : Dexie.delete(name));
+}
+
+/**
+ * Deletes every wallet's cache but the one with the names of before, as a
+ * reset or a wallet set up in place of the ones here does.
+ *
+ * @param {string[]} suffixes The endings of the wallets the directory knows
+ * @returns {Promise<void>}
+ */
+export async function forgetOtherWalletCaches(suffixes) {
+  const names = new Set(suffixes.filter(Boolean).map((s) => `${NAME}${s}`));
+
+  try {
+    for (const { name } of await indexedDB.databases()) {
+      if (name?.startsWith(`${NAME}:`)) {
+        names.add(name);
+      }
+    }
+  } catch {
+    // The ones the directory knows go.
+  }
+
+  for (const name of names) {
+    await forgetWalletCache(name.slice(NAME.length));
+  }
+}
+
+/** The cache of the wallet with the names of before. */
+export default walletCacheFor("");

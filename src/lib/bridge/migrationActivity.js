@@ -14,11 +14,14 @@
 import { routeForAccount } from "@dusk-network/networks";
 import { get, writable } from "svelte/store";
 
+import { walletDataName } from "$lib/wallets/dataNames";
+
 import { cardRoutes } from "./cardRoutes";
 
 /** How many migrations this browser keeps. */
 const MAX_KEPT = 50;
 
+/** The migrations kept, the open wallet's (walletDataName). */
 const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`;
 
 const EVM_HASH = /^0x[0-9a-f]{64}$/;
@@ -73,7 +76,7 @@ const FAILURES = {
 /** @returns {KeptMigration[]} */
 function readKept() {
   try {
-    const kept = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    const kept = JSON.parse(localStorage.getItem(walletDataName(KEY)) ?? "[]");
 
     return Array.isArray(kept)
       ? kept.filter(
@@ -94,10 +97,14 @@ const kept = writable(readKept());
 export const keptMigrations = { subscribe: kept.subscribe };
 
 /**
- * Reads the migrations this browser kept again, as another tab may have
- * kept one since.
+ * Reads the migrations this browser kept again, and what's known of the
+ * transfers out, as another tab may have kept one since, or another wallet
+ * opened.
  */
-export const hydrateMigrations = () => kept.set(readKept());
+export function hydrateMigrations() {
+  kept.set(readKept());
+  arrivals.set(readArrivals());
+}
 
 /** @param {KeptMigration[]} items */
 function writeKept(items) {
@@ -106,7 +113,7 @@ function writeKept(items) {
   kept.set(next);
 
   try {
-    localStorage.setItem(KEY, JSON.stringify(next));
+    localStorage.setItem(walletDataName(KEY), JSON.stringify(next));
   } catch {
     // Kept for this visit only.
   }
@@ -253,7 +260,9 @@ const ARRIVALS_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-transfer-arrivals`;
 /** @returns {Record<string, ArrivalSearch>} */
 function readArrivals() {
   try {
-    const stored = JSON.parse(localStorage.getItem(ARRIVALS_KEY) ?? "{}");
+    const stored = JSON.parse(
+      localStorage.getItem(walletDataName(ARRIVALS_KEY)) ?? "{}"
+    );
 
     return stored && typeof stored === "object" ? stored : {};
   } catch {
@@ -281,23 +290,41 @@ export function keepArrival(hash, found) {
   arrivals.set(next);
 
   try {
-    localStorage.setItem(ARRIVALS_KEY, JSON.stringify(next));
+    localStorage.setItem(walletDataName(ARRIVALS_KEY), JSON.stringify(next));
   } catch {
     // Kept for this visit only.
   }
 }
 
 /**
- * Forgets the migrations and transfers out this browser follows, as
- * Settings › Reset forgets the wallet they're for.
+ * Forgets the migrations and transfers out this browser follows, every
+ * wallet's, as Settings › Reset forgets the wallets they're for.
  */
 export function forgetRouteTransfers() {
   kept.set([]);
   arrivals.set({});
 
   try {
-    localStorage.removeItem(KEY);
-    localStorage.removeItem(ARRIVALS_KEY);
+    for (const key of Object.keys(localStorage)) {
+      if ([KEY, ARRIVALS_KEY].some((name) => key.startsWith(name))) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // Nothing was kept.
+  }
+}
+
+/**
+ * Forgets the migrations and transfers out one wallet follows, as it's
+ * removed, by the ending of its names ($lib/wallets/dataNames).
+ *
+ * @param {string} suffix
+ */
+export function forgetWalletRouteTransfers(suffix) {
+  try {
+    localStorage.removeItem(`${KEY}${suffix}`);
+    localStorage.removeItem(`${ARRIVALS_KEY}${suffix}`);
   } catch {
     // Nothing was kept.
   }

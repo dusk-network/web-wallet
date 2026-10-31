@@ -32,21 +32,29 @@
   } from "$lib/contracts";
   import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
   import { deleteContacts } from "$lib/contacts";
+  import { WalletsSettings } from "$lib/containers/Wallets";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
   import { logout, pageTitle } from "$lib/navigation";
   import vault from "$lib/vault";
+  import { lockWallets, walletDirectory } from "$lib/wallets";
+  import { clearDirectory } from "$lib/wallets/directory";
+  import { forgetEveryWalletData } from "$lib/wallets/walletData";
 
   const confirmResetWalletMessage =
-    "Confirm you've saved your recovery phrase before resetting the wallet. Proceed?";
+    "This removes every recovery phrase on this device. Confirm you've saved each one before resetting. Proceed?";
 
+  // Every wallet's data goes, and every phrase: the wallets' own first,
+  // while the directory still lists them.
   const resetWallet = () =>
     walletStore
       .clearLocalData()
       .then(async () => {
+        await forgetEveryWalletData();
         await deleteContacts();
         forgetBridgeRecords({ times: true });
         await forgetEvmWallets();
         await vault.clear();
+        clearDirectory();
         settingsStore.reset();
         await logout(false);
       })
@@ -99,7 +107,13 @@
   /** @type {Error | null} */
   let resetError = null;
 
-  $: ({ syncStatus } = $walletStore);
+  $: ({ syncStatus, walletKey, wallets } = $walletStore);
+
+  // More than one wallet here: Lock and auto-lock lock them all, and say so.
+  $: several = wallets.length > 1;
+
+  // The block the open wallet was made at, when it was made here.
+  $: walletHeight = $walletDirectory.wallets[walletKey]?.height;
   $: ({
     autoLockMinutes,
     currency,
@@ -107,8 +121,15 @@
     customGasPrice,
     darkMode,
     language,
-    walletCreationBlockHeight,
+    walletCreationBlockHeight: settingsHeight,
   } = $settingsStore);
+
+  // A wallet made here kept its block; the first one, in the settings.
+  $: walletCreationBlockHeight = walletHeight
+    ? BigInt(walletHeight)
+    : !walletKey || walletKey === $walletDirectory.legacy
+      ? settingsHeight
+      : 0n;
   $: hasCustomGas = customGasLimit !== null && customGasPrice !== null;
   $: isGasValid =
     customGasLimit !== null && customGasPrice !== null
@@ -129,6 +150,8 @@
   </header>
 
   <div class="settings__content">
+    <WalletsSettings />
+    <hr />
     <article class="settings-group">
       <SectionHead>Preferences</SectionHead>
       <div class="settings-group__multi-control-content">
@@ -189,6 +212,11 @@
               options={autoLockOptions}
             />
           </label>
+          {#if several}
+            <p class="settings-group__note">
+              Locks every wallet after this long without use.
+            </p>
+          {/if}
         {/if}
       </div>
     </article>
@@ -317,9 +345,10 @@
       <SectionHead>Reset wallet</SectionHead>
       <div class="settings-group__multi-control-content">
         <p>
-          Resetting clears the cache, settings, contacts and connected EVM
-          wallets, not your funds. You'll need your recovery phrase to restore
-          access, so make sure it's stored securely.
+          Resetting removes every recovery phrase on this device, with the
+          cache, settings, contacts and connected EVM wallets, not your funds.
+          You'll need each recovery phrase to restore access, so make sure
+          they're stored securely.
         </p>
         <ErrorDetails
           error={resetError}
@@ -349,9 +378,9 @@
     text="Back"
   />
   <Button
-    on:click={() => logout(false)}
+    on:click={() => lockWallets()}
     variant="tertiary"
-    text="Lock Wallet"
+    text={several ? "Lock" : "Lock Wallet"}
   />
 </div>
 

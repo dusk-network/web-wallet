@@ -545,7 +545,8 @@ describe("Create", async () => {
     expect(clearAndInitSpy).toHaveBeenCalledTimes(1);
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
-      currentBlockHeight
+      currentBlockHeight,
+      { key: "", n: 1 }
     );
 
     // All Done step
@@ -610,10 +611,17 @@ describe("Create", async () => {
       currentBlockHeight
     );
     expect(clearAndInitSpy).toHaveBeenCalledTimes(1);
+    // The vault's one wallet, which keeps the data under the names of before.
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
-      currentBlockHeight
+      currentBlockHeight,
+      { key: expect.stringMatching(/^[0-9a-f]{32}$/), n: 1 }
     );
+    expect(
+      JSON.parse(
+        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`) ?? "{}"
+      ).legacy
+    ).toBe(clearAndInitSpy.mock.calls[0][2]?.key);
 
     // All Done step
     await fireEvent.click(getByRole("button", { name: "Next" }));

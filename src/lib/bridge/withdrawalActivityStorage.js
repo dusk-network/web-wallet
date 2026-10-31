@@ -11,9 +11,11 @@ import {
   normalizedTxHash,
   stringValue,
 } from "$lib/bridge/withdrawalActivityValues";
-
-const ACTIVITY_STORAGE_KEY = "dusk-evm:withdrawal-activity:v1";
-const LEGACY_LAST_WITHDRAWAL_KEY = "dusk-evm:last-withdrawal-tx-hash";
+import {
+  WITHDRAWAL_ACTIVITY_KEY as ACTIVITY_STORAGE_KEY,
+  LAST_WITHDRAWAL_KEY as LEGACY_LAST_WITHDRAWAL_KEY,
+} from "$lib/bridge/bridgeRecordKeys";
+import { walletDataName } from "$lib/wallets/dataNames";
 const MAX_STORED_ITEMS = 100;
 const VALID_STAGES = new Set([
   "submitted",
@@ -114,7 +116,7 @@ function readRememberedItems() {
 
   try {
     const parsed = JSON.parse(
-      localStorage.getItem(ACTIVITY_STORAGE_KEY) ?? "[]"
+      localStorage.getItem(walletDataName(ACTIVITY_STORAGE_KEY)) ?? "[]"
     );
 
     if (!Array.isArray(parsed)) {
@@ -132,14 +134,17 @@ function readRememberedItems() {
  */
 function writeRememberedItems(items) {
   const stored = items.slice(0, MAX_STORED_ITEMS);
-  storage()?.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(stored));
+  storage()?.setItem(
+    walletDataName(ACTIVITY_STORAGE_KEY),
+    JSON.stringify(stored)
+  );
   activity.set(stored);
 }
 
 /** Forgets every withdrawal kept here, as Reset does. */
 export function forgetWithdrawalActivity() {
-  storage()?.removeItem(ACTIVITY_STORAGE_KEY);
-  storage()?.removeItem(LEGACY_LAST_WITHDRAWAL_KEY);
+  storage()?.removeItem(walletDataName(ACTIVITY_STORAGE_KEY));
+  storage()?.removeItem(walletDataName(LEGACY_LAST_WITHDRAWAL_KEY));
   activity.set([]);
 }
 
@@ -218,7 +223,7 @@ export function rememberWithdrawalTransaction(transactionHash, options = {}) {
   });
 
   writeRememberedItems([item, ...remembered]);
-  storage()?.setItem(LEGACY_LAST_WITHDRAWAL_KEY, hash);
+  storage()?.setItem(walletDataName(LEGACY_LAST_WITHDRAWAL_KEY), hash);
 
   return item;
 }

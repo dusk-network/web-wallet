@@ -450,6 +450,39 @@ export async function putArchiveRefusal(url, at = Date.now()) {
 }
 
 /**
+ * Forget one wallet's history, a removed wallet's: its accounts' public
+ * history, sync states and own transactions, and its addresses' shielded
+ * history, on every network. Nothing of another wallet's, and the reset
+ * count stays.
+ *
+ * @param {{ accounts: string[], addresses: string[] }} wallet Its profiles'
+ *   public accounts and shielded addresses
+ */
+export async function forgetWalletActivity({ accounts, addresses }) {
+  const own = new Set([...accounts, ...addresses].map(String).filter(Boolean));
+
+  if (!own.size) {
+    return;
+  }
+
+  /** @param {{ ownerKey?: unknown }} row */
+  const isOwn = ({ ownerKey }) => {
+    const key = String(ownerKey ?? "");
+    const at = key.lastIndexOf("::");
+
+    return key !== LIFECYCLE && at > 0 && own.has(key.slice(at + 2));
+  };
+
+  await db.transaction("rw", ["entries", "local", "meta", "shielded"], () =>
+    Promise.all(
+      ["entries", "local", "meta", "shielded"].map((name) =>
+        db.table(name).filter(isOwn).delete()
+      )
+    )
+  );
+}
+
+/**
  * Forget everything kept here, for a wallet reset, and count the reset: work
  * that began before it writes nothing after it (getActivityEpoch).
  */

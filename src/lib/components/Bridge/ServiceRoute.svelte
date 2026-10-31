@@ -27,7 +27,7 @@
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { settingsStore } from "$lib/stores";
+  import { settingsStore, walletStore } from "$lib/stores";
   import { account, modal } from "$lib/web3/walletConnection";
   import { notRunning } from "$lib/bridge/cardRoutes";
   import { sendServiceTransfer, serviceLine } from "$lib/bridge/routeFlows";
@@ -40,6 +40,7 @@
   import NetworkPicker from "../NetworkPicker/NetworkPicker.svelte";
   import OperationResult from "../OperationResult/OperationResult.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
+  import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
   import { normalizeDuskInput, parseDuskInput } from "../Stake/stakeAmount";
 
   /** @type {import("$lib/bridge/cardRoutes").CardRoute & { kind: "service" }} */
@@ -85,8 +86,11 @@
   /** @type {Promise<string>} */
   let operation = Promise.resolve("");
 
+  // What this screen sends, it sends from the wallet it was drawn for.
+  const forThisWallet = walletStore.forThisWallet();
+
   function send() {
-    operation = sendServiceTransfer({
+    operation = forThisWallet(sendServiceTransfer)({
       amountLux,
       gasLimit,
       gasPrice,
@@ -319,6 +323,7 @@
 {:else if step === "review"}
   <div class="route-review">
     <h2 class="route-review__title">Review</h2>
+    <ReviewWallet />
     <p class="route-review__line">
       {serviceLine(
         { chain: chainName, feeLux: route.feeLux, sentLux: amountLux },

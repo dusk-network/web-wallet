@@ -9,9 +9,9 @@ import {
   stringValue,
 } from "$lib/bridge/withdrawalActivityValues";
 
+import { DEPOSIT_ACTIVITY_KEY as ACTIVITY_STORAGE_KEY } from "$lib/bridge/bridgeRecordKeys";
 import { isDepositTerminal } from "$lib/bridge/depositLifecycle";
-
-const ACTIVITY_STORAGE_KEY = "dusk-evm:deposit-activity:v1";
+import { walletDataName } from "$lib/wallets/dataNames";
 const MAX_STORED_ITEMS = 100;
 const VALID_STAGES = new Set([
   "l1_pending",
@@ -134,7 +134,7 @@ function readRememberedItems() {
 
   try {
     const parsed = JSON.parse(
-      localStorage.getItem(ACTIVITY_STORAGE_KEY) ?? "[]"
+      localStorage.getItem(walletDataName(ACTIVITY_STORAGE_KEY)) ?? "[]"
     );
 
     if (!Array.isArray(parsed)) return [];
@@ -155,13 +155,16 @@ function writeRememberedItems(items) {
   const stored = items
     .toSorted((a, b) => b.createdAt - a.createdAt)
     .slice(0, MAX_STORED_ITEMS);
-  storage()?.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(stored));
+  storage()?.setItem(
+    walletDataName(ACTIVITY_STORAGE_KEY),
+    JSON.stringify(stored)
+  );
   activity.set(stored);
 }
 
 /** Forgets every deposit kept here, as Reset does. */
 export function forgetDepositActivity() {
-  storage()?.removeItem(ACTIVITY_STORAGE_KEY);
+  storage()?.removeItem(walletDataName(ACTIVITY_STORAGE_KEY));
   activity.set([]);
 }
 

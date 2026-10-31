@@ -8,7 +8,7 @@
 import { Bookkeeper, Bookmark } from "@dusk/w3sper";
 import { shieldedHistory } from "@dusk-network/app-core/shielded";
 
-import walletCache from "$lib/wallet-cache";
+import { currentWalletCache } from "$lib/wallet-cache";
 
 import {
   StaleActivityError,
@@ -127,8 +127,8 @@ async function noteValue(profile, { leaf, nullifier }) {
  */
 async function cachedNotes(address) {
   const [unspent, spent] = await Promise.all([
-    walletCache.getUnspentNotes([address]),
-    walletCache.getSpentNotes([address]),
+    currentWalletCache().getUnspentNotes([address]),
+    currentWalletCache().getSpentNotes([address]),
   ]);
 
   return [

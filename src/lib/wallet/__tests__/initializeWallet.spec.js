@@ -116,9 +116,48 @@ describe("initializeWallet", () => {
 
     expect(settingsResetSpy).toHaveBeenCalledTimes(1);
     expect(clearWalletAndInitSpy).toHaveBeenCalledTimes(1);
+    // Without a password, the one wallet there is, under no vault ID.
     expect(clearWalletAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
-      from
+      from,
+      { key: "", n: 1 }
     );
+  });
+
+  it("should take the place of every wallet here: the others' data gone, its own kept under the names of before", async () => {
+    const { default: vault } = await import("$lib/vault");
+    const { noteActiveWallet, readDirectory } =
+      await import("$lib/wallets/directory");
+    const mnemonic =
+      "cart dad sail wreck robot grit combine noble rap farm slide sad";
+    const migrations = `${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`;
+
+    // Another wallet was here, with its own data; the password step set
+    // this one up in place of it.
+    await noteActiveWallet("other", { accounts: ["a"], addresses: ["s"] });
+    localStorage.setItem(`${migrations}:other`, "[]");
+    localStorage.setItem("dusk-evm:deposit-activity:v1:other", "[]");
+
+    const { id } = await vault.setUp(mnemonic, "password123");
+
+    await initializeWallet(mnemonic, 3n);
+
+    expect(localStorage.getItem(`${migrations}:other`)).toBeNull();
+    expect(
+      localStorage.getItem("dusk-evm:deposit-activity:v1:other")
+    ).toBeNull();
+    expect(readDirectory()).toStrictEqual({
+      active: id,
+      legacy: id,
+      wallets: {},
+    });
+    expect(clearWalletAndInitSpy).toHaveBeenCalledWith(
+      expect.any(ProfileGenerator),
+      3n,
+      { key: id, n: 1 }
+    );
+
+    await vault.clear();
+    localStorage.clear();
   });
 });

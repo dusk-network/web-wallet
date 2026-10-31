@@ -97,7 +97,16 @@ type WalletStoreContent = {
     error: Error | null;
     progress: number;
   };
+  /** The open wallet's vault ID: "" for a wallet without a password. */
+  walletKey: string;
+  /** The wallets this tab unlocked, by number. */
+  wallets: Array<{ key: string; n: number }>;
 };
+
+/** A wallet to open: its vault ID, number, and profile to show. */
+type WalletToOpen = { key?: string; n?: number; profile?: number };
+
+type HeldWallet = { n: number; profileGenerator: ProfileGenerator };
 
 type WalletStoreServices = {
   abortSync: () => void;
@@ -108,7 +117,8 @@ type WalletStoreServices = {
 
   clearLocalDataAndInit: (
     profileGenerator: ProfileGenerator,
-    syncFromBlock?: bigint
+    syncFromBlock?: bigint,
+    wallet?: WalletToOpen
   ) => Promise<void>;
 
   depositEvmFunctionCall: (
@@ -121,17 +131,34 @@ type WalletStoreServices = {
     }
   ) => Promise<TransactionInfo>;
 
+  /** Binds a screen's actions to the wallet open as it's drawn. */
+  forThisWallet: () => <A extends unknown[], R>(
+    task: (...args: A) => Promise<R>
+  ) => (...args: A) => Promise<R>;
+
   getDuskEvmProofSubmitter: () => `0x${string}`;
+
+  heldWallet: (key: string) => HeldWallet | null;
+
+  holdWallet: (wallet: HeldWallet & { key: string }) => void;
 
   useContract: (contractId: string, wasmPath: string) => Promise<Contract>;
 
   init: (
     profileGenerator: ProfileGenerator,
-    syncFromBlock?: bigint
+    syncFromBlock?: bigint,
+    wallet?: WalletToOpen
+  ) => Promise<void>;
+
+  open: (
+    wallets: Array<HeldWallet & { key: string }>,
+    options?: { active?: string; profile?: number }
   ) => Promise<void>;
 
   /** The balances and the stake read again, as after a send. */
   refreshBalance: () => Promise<void>;
+
+  releaseWallet: (key: string) => void;
 
   reset: () => void;
 
@@ -164,6 +191,12 @@ type WalletStoreServices = {
 
   /** The current profile's history, started on first use; none while it is turned off. */
   startHistory: () => import("$lib/activity").ActivitySession | null;
+
+  switchWallet: (
+    key: string,
+    profile?: number,
+    options?: { syncFromBlock?: bigint }
+  ) => Promise<void>;
 
   /** Rejects on sync failure or cancellation; syncStatus also records current-session errors. */
   sync: (fromBlock?: bigint) => Promise<void>;

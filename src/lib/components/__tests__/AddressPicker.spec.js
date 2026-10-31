@@ -909,4 +909,123 @@ describe("AddressPicker", () => {
       );
     });
   });
+
+  describe("Wallets", () => {
+    const OTHER_ACCOUNTS = ["other-account-one", "other-account-two"];
+
+    /** @param {number} count */
+    const walletsOf = (count) =>
+      [
+        { accounts: [], key: "k1", label: "Wallet 1", open: true },
+        {
+          accounts: OTHER_ACCOUNTS,
+          key: "k2",
+          label: "Savings",
+          open: false,
+        },
+      ].slice(0, count);
+
+    /** @param {HTMLElement} container */
+    const open = (container) =>
+      fireEvent.click(getAsHTMLElement(container, ".address-picker__trigger"));
+
+    it("lists each wallet's profiles under its name, the heading shown with one wallet too", async () => {
+      const { container, getByRole } = render(AddressPicker, {
+        ...props,
+        wallets: walletsOf(1),
+      });
+
+      await open(container);
+
+      const group = getByRole("group", { name: "Wallet 1" });
+      const items = [...group.querySelectorAll("[role=menuitem]")];
+
+      expect(items).toHaveLength(profiles.length);
+      items.forEach((item, i) =>
+        expect(item).toHaveTextContent(`Profile ${i + 1}`)
+      );
+    });
+
+    it("lists another wallet's profiles as it last showed them, and opens that wallet at the one picked", async () => {
+      const switchWallet = vi.fn();
+      const setCurrentProfile = vi.fn();
+      const { container, getByRole } = render(AddressPicker, {
+        events: { setCurrentProfile, switchWallet },
+        props: { ...props, wallets: walletsOf(2) },
+      });
+
+      await open(container);
+
+      const other = getByRole("group", { name: "Savings" });
+
+      expect(other).toHaveTextContent(shortenAddress(OTHER_ACCOUNTS[1]));
+      // No copy buttons for a wallet that isn't open.
+      expect(
+        other.querySelectorAll(".address-picker__copy-button")
+      ).toHaveLength(0);
+
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (
+          other.querySelectorAll("[role=menuitem]")[1]
+        )
+      );
+
+      expect(switchWallet).toHaveBeenCalledWith(
+        expect.objectContaining({ detail: { index: 1, key: "k2" } })
+      );
+      expect(setCurrentProfile).not.toHaveBeenCalled();
+      expect(container.querySelector(".address-picker__drop-down")).toBeNull();
+    });
+
+    it("offers Add wallet where the wallets share a password, and only there", async () => {
+      const addWallet = vi.fn();
+      const { container, getByRole, queryByRole } = render(AddressPicker, {
+        events: { addWallet },
+        props: { ...props, canAddWallet: true, wallets: walletsOf(1) },
+      });
+
+      await open(container);
+      await fireEvent.click(getByRole("menuitem", { name: "Add wallet" }));
+
+      expect(addWallet).toHaveBeenCalledOnce();
+
+      cleanup();
+
+      const without = render(AddressPicker, {
+        ...props,
+        wallets: walletsOf(1),
+      });
+
+      await open(without.container);
+
+      expect(queryByRole("menuitem", { name: "Add wallet" })).toBeNull();
+      expect(
+        without.queryByRole("menuitem", { name: "Add wallet" })
+      ).toBeNull();
+    });
+
+    it("shows the open wallet's name under the profile's in the top bar's pill with more than one wallet, and says it", async () => {
+      const { container, rerender } = render(AddressPicker, {
+        ...props,
+        compact: true,
+        wallets: walletsOf(1),
+      });
+
+      expect(
+        container.querySelector(".address-picker__compact-wallet")
+      ).toBeNull();
+      expect(
+        getAsHTMLElement(container, ".address-picker__trigger")
+      ).toHaveAccessibleName("Profile: Profile 1");
+
+      await rerender({ ...props, compact: true, wallets: walletsOf(2) });
+
+      expect(
+        getAsHTMLElement(container, ".address-picker__compact-wallet")
+      ).toHaveTextContent("Wallet 1");
+      expect(
+        getAsHTMLElement(container, ".address-picker__trigger")
+      ).toHaveAccessibleName("Profile: Profile 1, Wallet 1");
+    });
+  });
 });

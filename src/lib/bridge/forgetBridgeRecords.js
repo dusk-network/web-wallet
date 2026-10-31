@@ -9,8 +9,8 @@ const TIMES_PREFIX = `${CONFIG.LOCAL_STORAGE_APP_KEY}-bridge-times-`;
 
 /**
  * Forgets the bridge transfers this browser keeps, deposits and withdrawals,
- * as for another wallet; with `times`, as Reset does, the bridge's times on
- * each network too.
+ * every wallet's; with `times`, as Reset does, the bridge's times on each
+ * network too.
  *
  * @param {{ times?: boolean }} [options]
  */

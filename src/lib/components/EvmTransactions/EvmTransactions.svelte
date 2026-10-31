@@ -548,12 +548,18 @@
     }
   }
 
+  // What this screen sends, it sends from the wallet it was drawn for.
+  const forThisWallet = walletStore.forThisWallet();
+
   function submitProof() {
-    return submitWithdrawalAction(proveWithdrawal, "prove");
+    return submitWithdrawalAction(forThisWallet(proveWithdrawal), "prove");
   }
 
   function submitFinalization() {
-    return submitWithdrawalAction(finalizeWithdrawal, "finalize");
+    return submitWithdrawalAction(
+      forThisWallet(finalizeWithdrawal),
+      "finalize"
+    );
   }
 
   /**

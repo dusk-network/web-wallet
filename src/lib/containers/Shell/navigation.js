@@ -73,6 +73,9 @@ const PAGE_NAMES = new Map([
   ["/dashboard/stake", "Staking"],
   ["/dashboard/transactions", "History"],
   ["/settings", "Settings"],
+  ["/settings/password", "Change password"],
+  ["/settings/remove-wallet", "Remove wallet"],
+  ["/wallets/add", "Add wallet"],
 ]);
 
 /**

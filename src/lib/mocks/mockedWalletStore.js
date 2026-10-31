@@ -32,6 +32,8 @@ const content = {
     last: 0n,
     progress: 0,
   },
+  walletKey: "",
+  wallets: [{ key: "", n: 1 }],
 };
 
 const mockedWalletStore = mockReadableStore(content);

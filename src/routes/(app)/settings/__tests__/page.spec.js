@@ -156,6 +156,7 @@ describe("Settings", () => {
         heading.classList.contains("section-head"),
       ])
     ).toStrictEqual([
+      ["[Wallets]", true],
       ["[Preferences]", true],
       ["Advanced", false],
       ["[Support]", true],
@@ -406,6 +407,10 @@ describe("Settings", () => {
     const settingsResetSpy = vi.spyOn(settingsStore, "reset");
     const clearVaultSpy = vi.spyOn(vault, "clear");
 
+    // The reset done: every wallet's data and phrase gone, then locked.
+    const resetDone = () =>
+      vi.waitFor(() => expect(logoutSpy).toHaveBeenCalled());
+
     beforeEach(() => {
       clearDataSpy.mockClear();
       confirmSpy.mockClear();
@@ -429,7 +434,7 @@ describe("Settings", () => {
       expect(confirmSpy).toHaveBeenCalledTimes(1);
       expect(clearDataSpy).toHaveBeenCalledTimes(1);
 
-      await vi.advanceTimersToNextTimerAsync();
+      await resetDone();
 
       expect(clearVaultSpy).toHaveBeenCalledTimes(1);
       expect(settingsResetSpy).toHaveBeenCalledTimes(1);
@@ -449,7 +454,7 @@ describe("Settings", () => {
       const { getByRole } = render(Settings);
 
       await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
-      await vi.advanceTimersToNextTimerAsync();
+      await resetDone();
 
       expect(listContacts()).toStrictEqual([]);
       expect(
@@ -473,12 +478,12 @@ describe("Settings", () => {
 
       expect(
         getByText(
-          /^Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds\./
+          /^Resetting removes every recovery phrase on this device, with the cache, settings, contacts and connected EVM wallets, not your funds\./
         )
       ).toBeInTheDocument();
 
       await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
-      await vi.advanceTimersToNextTimerAsync();
+      await resetDone();
 
       expect(logoutSpy).toHaveBeenCalledWith(false);
       expect(localStorage.getItem("wagmi.store")).toBeNull();
@@ -501,7 +506,7 @@ describe("Settings", () => {
       const { getByRole } = render(Settings);
 
       await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
-      await vi.advanceTimersToNextTimerAsync();
+      await resetDone();
 
       for (const key of Object.keys(kept)) {
         expect(localStorage.getItem(key)).toBeNull();

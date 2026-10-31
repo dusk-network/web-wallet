@@ -1,12 +1,15 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { mdiCogOutline, mdiMagnify } from "@mdi/js";
+  import { mdiAlertOutline, mdiCogOutline, mdiMagnify } from "@mdi/js";
   import { Icon } from "$lib/dusk/components";
+  import { toast } from "$lib/dusk/components/Toast/store";
   import { AddressPicker } from "$lib/components";
   import { getPrimaryName, getVerifiedName } from "$lib/dusk-domains";
-  import { addBasePath } from "$lib/navigation";
+  import { addBasePath, goto } from "$lib/navigation";
   import { networkStore, walletStore } from "$lib/stores";
   import { nodeBaseUrl } from "$lib/url";
+  import vault from "$lib/vault";
+  import { switchToWallet, walletDirectory, walletLabel } from "$lib/wallets";
 
   import DuskGlyph from "./DuskGlyph.svelte";
   import DuskWordmark from "./DuskWordmark.svelte";
@@ -33,8 +36,35 @@
   const lookUpNamesOn = (network) => (account) =>
     getPrimaryName(account, network, nodeBaseUrl());
 
+  /**
+   * Another wallet's profile, from the switcher: that wallet opens, with no
+   * password.
+   *
+   * @param {CustomEvent<{ index: number, key: string }>} event
+   */
+  function handleSwitchWallet({ detail: { index, key } }) {
+    switchToWallet(key, index).catch((error) => {
+      toast(
+        "error",
+        error instanceof Error ? error.message : "Couldn't open the wallet",
+        mdiAlertOutline
+      );
+    });
+  }
+
+  // Adding a wallet takes the password the wallets here share.
+  const canAddWallet = vault.exists();
+
   $: ({ networkName } = $networkStore);
-  $: ({ currentProfile, profiles } = $walletStore);
+  $: ({ currentProfile, profiles, walletKey, wallets } = $walletStore);
+
+  // Each wallet under its name, with what it showed when it was last open.
+  $: walletGroups = wallets.map(({ key, n }) => ({
+    accounts: $walletDirectory.wallets[key]?.accounts ?? [],
+    key,
+    label: walletLabel({ n, name: $walletDirectory.wallets[key]?.name }),
+    open: key === walletKey,
+  }));
 </script>
 
 <header class="top-bar">
@@ -77,13 +107,17 @@
   <NetworkPill />
 
   <AddressPicker
+    {canAddWallet}
     compact
     {currentProfile}
     getKnownName={(account) => getVerifiedName(networkName, account)}
     getName={lookUpNamesOn(networkName)}
     {profiles}
+    wallets={walletGroups}
+    on:addWallet={() => goto("/wallets/add")}
     on:setCurrentProfile={(event) =>
       walletStore.setCurrentProfile(event.detail.profile)}
+    on:switchWallet={handleSwitchWallet}
   />
 
   <a

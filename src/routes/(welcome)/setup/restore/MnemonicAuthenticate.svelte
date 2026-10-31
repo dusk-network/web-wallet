@@ -1,29 +1,22 @@
 <script>
-  import { mdiAlertOutline } from "@mdi/js";
-
-  import { validateMnemonic } from "$lib/wallet";
-  import { Mnemonic } from "$lib/dusk/components";
+  import { MnemonicInput } from "$lib/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
-  import { toast } from "$lib/dusk/components/Toast/store";
 
   /** @type {boolean} */
   export let isValid = false;
 
-  /** @type {number} */
-  export let wordLimit = 12;
-
   /** @type {string[]} */
   export let enteredMnemonicPhrase = [];
 
-  $: isValid = validateMnemonic(enteredMnemonicPhrase.join(" "));
-  $: if (
-    enteredMnemonicPhrase.filter((word) => word !== "").length === wordLimit &&
-    !isValid
-  ) {
-    toast("error", "Invalid recovery phrase", mdiAlertOutline);
-  }
+  // The words the boxes start with: the phrase typed to unlock, if any.
+  const initialWords = enteredMnemonicPhrase;
+
+  /** @type {string} */
+  let mnemonic = enteredMnemonicPhrase.join(" ").trim();
+
+  $: enteredMnemonicPhrase = mnemonic ? mnemonic.split(" ") : [];
 </script>
 
 <IconHeadingCard gap="medium" heading="Enter your recovery phrase">
-  <Mnemonic bind:enteredMnemonicPhrase {wordLimit} type="authenticate" />
+  <MnemonicInput bind:isValid bind:mnemonic {initialWords} />
 </IconHeadingCard>
