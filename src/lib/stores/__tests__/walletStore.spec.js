@@ -392,6 +392,74 @@ describe("Wallet store", async () => {
     });
   });
 
+  describe("Automatic sync", () => {
+    /**
+     * Hides the page, or shows it again, as a browser does with a tab.
+     *
+     * @param {boolean} hidden
+     */
+    const setHidden = (hidden) => {
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => (hidden ? "hidden" : "visible"),
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+
+    afterEach(async () => {
+      // @ts-ignore The own property set above, over jsdom's own.
+      delete document.visibilityState;
+      walletStore.reset();
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    it("should pause while the page is hidden, and sync once when it shows again", async () => {
+      await walletStore.init(profileGenerator);
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
+      expect(get(walletStore).syncStatus.isInProgress).toBe(false);
+
+      treasuryUpdateSpy.mockClear();
+      balanceSpy.mockClear();
+
+      // Hidden for three intervals: nothing is read.
+      setHidden(true);
+      await vi.advanceTimersByTimeAsync(3 * AUTO_SYNC_INTERVAL);
+
+      expect(treasuryUpdateSpy).not.toHaveBeenCalled();
+      expect(balanceSpy).not.toHaveBeenCalled();
+
+      // Shown again: one sync, at once, and the balances read after it.
+      setHidden(false);
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
+      expect(balanceSpy).toHaveBeenCalledTimes(2);
+      expect(get(walletStore).syncStatus.isInProgress).toBe(false);
+
+      // Then every interval again while it shows.
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL);
+
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("should not sync once shown after the wallet was locked while hidden", async () => {
+      await walletStore.init(profileGenerator);
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+      setHidden(true);
+      await vi.advanceTimersByTimeAsync(2 * AUTO_SYNC_INTERVAL);
+
+      walletStore.reset();
+      treasuryUpdateSpy.mockClear();
+      setHidden(false);
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL);
+
+      expect(treasuryUpdateSpy).not.toHaveBeenCalled();
+      expect(get(walletStore)).toStrictEqual(initialState);
+    });
+  });
+
   describe("Abort sync", () => {
     beforeEach(async () => {
       walletStore.reset();
