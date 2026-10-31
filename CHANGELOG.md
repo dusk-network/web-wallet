@@ -223,6 +223,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offer Claim on a DuskEVM withdrawal only once its dispute game is read, resolved and taken by the Portal, and ask to prove it again when the challenger won the game or it was retired or blacklisted
 - Prove a DuskEVM withdrawal only against a dispute game the Portal takes, and against an older resolved one after a rejected proof
 - Offer no proof or claim for a DuskEVM withdrawal off the bridge's route, and no proof of one claimed or already proved by this account
+- Find where a bridge transfer arrived on DuskEVM or BNB Smart Chain in fewer requests, searching from 10 minutes before it was sent
+- Keep syncing the history when a transaction's time or outcome can't be read, rather than showing an error, and read it on the next sync
+- Keep what another tab read after a devnet or local node was reset, rather than forgetting it
+- Show no time or outcome from before a devnet or local node was reset on its new history
+- Load a profile's shielded history in two tabs at once, both asking among the same decoy heights
+- Show an unshield as an unshield to a profile that only received its change
+- Show two shielded payments one block made to the same address as two transactions
+- Show a gas refund from someone else's bridge call as received, not as a withdrawal from DuskEVM
 
 ## [1.8.0] - 2026-03-25
 

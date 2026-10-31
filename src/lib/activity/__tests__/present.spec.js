@@ -178,12 +178,32 @@ describe("describeRow", () => {
         context
       )
     ).toMatchObject({ title: "Withdrawal proved" });
+    // Paid by the bridge; a gas refund another account's call to it paid
+    // here is a transfer from that account.
     expect(
       describeRow(
-        row({ contractId: BRIDGE, direction: "in", kind: "contract_call" }),
+        row({
+          contractId: BRIDGE,
+          direction: "in",
+          from: BRIDGE,
+          kind: "contract_call",
+          to: undefined,
+        }),
         context
       ).title
     ).toBe("From DuskEVM");
+    expect(
+      describeRow(
+        row({
+          contractId: BRIDGE,
+          direction: "in",
+          from: ACCOUNT,
+          kind: "contract_call",
+          to: undefined,
+        }),
+        context
+      )
+    ).toMatchObject({ category: "received", title: "26JfWK…B5NsNi" });
   });
 
   it("names a call to Dusk Domains by what it did", () => {

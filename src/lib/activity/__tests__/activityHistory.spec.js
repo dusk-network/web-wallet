@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { activityRows } from "@dusk-network/app-core/activity";
+import { StaleHistoryError } from "@dusk-network/app-core/history";
 import { networks } from "@dusk-network/networks";
 import { depositCall } from "@dusk-network/networks/duskevm";
 
@@ -236,6 +237,84 @@ describe("another chain under the node", () => {
       await store.getShieldedHistoryRecord("testnet::the-address")
     ).toBeNull();
     expect(await store.getNoteHeightPool("testnet")).toBeNull();
+  });
+});
+
+describe("another chain under the node, found by two tabs at once", () => {
+  it("keeps what the faster tab read of the new chain, and a send kept there, reading none of it again", async () => {
+    const node = fakeArchive();
+    const ownerKey = store.activityOwnerKey("testnet", A);
+
+    await sync(A);
+
+    // The node is reset: another genesis, and A's first entry again.
+    node.genesis = "ff".repeat(32);
+    node.finalized = 4_656_000;
+
+    // One tab's sync reads the history kept, then waits for its head.
+    const held = Promise.withResolvers();
+    const reached = Promise.withResolvers();
+    let first = true;
+
+    node.before = async () => {
+      if (first) {
+        first = false;
+        reached.resolve(undefined);
+        await held.promise;
+      }
+    };
+
+    const slow = sync(A);
+
+    await reached.promise;
+    // Meanwhile the other tab starts the history over on the new chain,
+    // reads it, and keeps a send made there.
+    await sync(A);
+    await store.putLocalTransaction(ownerKey, {
+      amount: "1",
+      hash: "ab".repeat(32),
+      kind: "transfer",
+      privacy: "public",
+      status: "submitted",
+      submittedAt: 1,
+    });
+
+    const asked = node.log.length;
+
+    held.resolve(undefined);
+    await slow;
+
+    expect((await kept(A)).map((r) => r.blockHeight)).toEqual([4655845]);
+    expect(await store.listLocalTransactions(ownerKey)).toHaveLength(1);
+    // The slower tab asked for its head alone.
+    expect(node.log.length).toBe(asked + 1);
+  });
+
+  it("keeps none of the old chain's details on the new chain's history", async () => {
+    const node = fakeArchive();
+    const patch = store.patchActivityEntries;
+    let once = true;
+
+    // Between a run's last look at the history and its write of the old
+    // chain's details, the node is reset, and another tab reads the new
+    // chain without them.
+    vi.spyOn(store, "patchActivityEntries").mockImplementation(
+      async (...args) => {
+        if (once) {
+          once = false;
+          node.genesis = "ff".repeat(32);
+          await (await historyOf(A)).sync({ maxDetailRequests: 0 });
+        }
+
+        return patch(...args);
+      }
+    );
+
+    await expect(sync(A)).rejects.toBeInstanceOf(StaleHistoryError);
+    expect(await kept(A)).toHaveLength(4);
+    expect((await kept(A)).every((row) => row.detailsAt === undefined)).toBe(
+      true
+    );
   });
 });
 

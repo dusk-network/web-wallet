@@ -31,16 +31,20 @@ const FIRST = leavesOf(recorded.firstLeaves);
 const [L492, L493, L494, L495] = leavesOf(recorded.leaves492);
 
 // The tree up to leaf 495: leaves 6 to 491 made up, all at one height
-// between.
+// between, or, `distinct`, each at a height of its own.
 const GROWN = 300_000;
-const TREE = [
+const treeLeaves = ({ distinct = false } = {}) => [
   ...FIRST,
   ...Array.from({ length: 486 }, (_, i) => {
     const leaf = FIRST[5].slice();
     const view = new DataView(leaf.buffer);
 
     view.setBigUint64(LEAF_POS_OFFSET, BigInt(6 + i), true);
-    view.setBigUint64(LEAF_HEIGHT_OFFSET, BigInt(GROWN), true);
+    view.setBigUint64(
+      LEAF_HEIGHT_OFFSET,
+      BigInt(distinct ? GROWN + 6 + i : GROWN),
+      true
+    );
 
     return leaf;
   }),
@@ -49,9 +53,10 @@ const TREE = [
   L494,
   L495,
 ];
+const TREE = treeLeaves();
 
 // The profile's rows, as History keeps them: the shield's note, and the
-// unshield's outputs, received.
+// unshield's outputs, received, as an unshield.
 /** @type {KeptShieldedRow[]} */
 const ROWS = [
   {
@@ -74,7 +79,7 @@ const ROWS = [
     error: undefined,
     feePaid: undefined,
     hash: "3b0c1b4bcc517e91bf63525f232689452b6b51e46ccb1a5be4f8a0af73ddac11",
-    kind: "shield",
+    kind: "unshield",
     privacy: "shielded",
     source: "shielded",
     status: "executed",
@@ -147,6 +152,48 @@ async function valueNotes() {
     .mockResolvedValueOnce({ spendable: 2n * DUSK, value: 2n * DUSK });
 }
 
+/**
+ * The profile's notes in the wallet cache: the unshield's outputs and the
+ * shield's note.
+ *
+ * @param {typeof import("$lib/wallet-cache").default} walletCache
+ */
+function cacheNotes(walletCache) {
+  vi.spyOn(walletCache, "getUnspentNotes").mockResolvedValue(
+    [L493, L494, L495].map((leaf, i) => ({
+      address: ADDRESS,
+      note: /** @type {Uint8Array<ArrayBuffer>} */ (leaf),
+      nullifier: new Uint8Array(32).fill(i + 1),
+    }))
+  );
+  vi.spyOn(walletCache, "getSpentNotes").mockResolvedValue([]);
+}
+
+/**
+ * Another tab: the wallet's modules loaded again, on the same node and over
+ * the same database, with the same notes in its wallet cache.
+ *
+ * @returns {Promise<typeof import("../shieldedHistory")>}
+ */
+async function anotherTab() {
+  vi.resetModules();
+
+  const tab = await import("../shieldedHistory");
+
+  (await import("$lib/stores/nodeNetwork")).setNodeNetwork(
+    (await import("@dusk-network/networks")).networks.testnet
+  );
+  cacheNotes((await import("$lib/wallet-cache")).default);
+
+  const { Bookkeeper } = await import("@dusk/w3sper");
+
+  if (!vi.isMockFunction(Bookkeeper.prototype.balance)) {
+    vi.spyOn(Bookkeeper.prototype, "balance");
+  }
+
+  return tab;
+}
+
 /** @type {typeof import("../shieldedHistory")} */
 let shieldedHistory;
 
@@ -205,15 +252,7 @@ beforeEach(async () => {
   const { default: walletCache } = await import("$lib/wallet-cache");
   const { Bookkeeper } = await import("@dusk/w3sper");
 
-  // The profile's notes: the unshield's outputs and the shield's note.
-  vi.spyOn(walletCache, "getUnspentNotes").mockResolvedValue(
-    [L493, L494, L495].map((leaf, i) => ({
-      address: ADDRESS,
-      note: /** @type {Uint8Array<ArrayBuffer>} */ (leaf),
-      nullifier: new Uint8Array(32).fill(i + 1),
-    }))
-  );
-  vi.spyOn(walletCache, "getSpentNotes").mockResolvedValue([]);
+  cacheNotes(walletCache);
 
   vi.spyOn(Bookkeeper.prototype, "balance");
   await valueNotes();
@@ -304,15 +343,17 @@ describe("getShieldedHistory", () => {
   });
 
   it("shows a history this browser couldn't keep, and keeps nothing of one a reset overtook", async () => {
-    const keep = store.putShieldedHistoryRecord;
-    const put = vi
-      .spyOn(store, "putShieldedHistoryRecord")
-      .mockImplementation(async (key, record, epoch) => {
-        if (record.entries.length) {
+    const keep = store.updateShieldedHistoryRecord;
+    const update = vi
+      .spyOn(store, "updateShieldedHistoryRecord")
+      .mockImplementation(async (key, change, epoch) => {
+        const next = change(await store.getShieldedHistoryRecord(key));
+
+        if (next.entries.length) {
           throw new DOMException("The store is full", "QuotaExceededError");
         }
 
-        return keep(key, record, epoch);
+        return keep(key, () => next, epoch);
       });
 
     await expect(read()).resolves.toEqual({ entries: ENTRIES });
@@ -320,7 +361,7 @@ describe("getShieldedHistory", () => {
       []
     );
 
-    put.mockRestore();
+    update.mockRestore();
 
     // The wallet is reset while the blocks are asked for.
     beforeAnswer = () => store.clearActivityStore();
@@ -328,6 +369,42 @@ describe("getShieldedHistory", () => {
 
     await expect(read()).rejects.toThrow(store.StaleActivityError);
     expect(await store.getShieldedHistoryRecord(KEY)).toBeNull();
+  });
+
+  it("asks among the same decoys from two tabs reading it at once", async () => {
+    // Hundreds of heights to draw decoys from: two draws all but never
+    // match. Each tab has its own modules, over the same database, and the
+    // notes are worth the same, in whichever order they are valued.
+    const network = async () =>
+      fakeNetwork(treeLeaves({ distinct: true })).network;
+    const other = await anotherTab();
+    const { Bookkeeper } = await import("@dusk/w3sper");
+
+    vi.mocked(Bookkeeper.prototype.balance)
+      .mockReset()
+      .mockResolvedValue({ spendable: DUSK, value: DUSK });
+
+    const [one, two] = await Promise.all([
+      read({ network }),
+      other.getShieldedHistory({
+        isCurrent: () => true,
+        network,
+        nodeUrl: NODE,
+        profile,
+        synced: true,
+      }),
+    ]);
+
+    expect(two).toEqual(one);
+    expect(one.entries).toHaveLength(2);
+
+    // Both asked among the decoys kept, and no others.
+    const { decoys = [] } = (await store.getShieldedHistoryRecord(KEY)) ?? {};
+
+    expect(decoys).toHaveLength(8);
+    expect(
+      new Set(heightsAsked().filter((h) => h !== 3602438 && h !== 3861643))
+    ).toEqual(new Set(decoys));
   });
 
   it("keeps nothing when another profile is shown while it is worked out", async () => {

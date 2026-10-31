@@ -151,18 +151,23 @@ export async function commitActivityStep(ownerKey, entries, update, epoch) {
 
 /**
  * Add details (time, outcome, fee, call) to kept entries, by hash. Entries
- * that are not kept are left alone.
+ * that are not kept are left alone. `check` sees the account's sync state
+ * first, in the same transaction, and writes nothing when it throws: no
+ * details go on a history another tab started over since.
  *
  * @param {string} ownerKey
  * @param {Map<string, ActivityDetails>} details
  * @param {number} [epoch] getActivityEpoch when the work began
+ * @param {import("@dusk-network/app-core/history").StoreCheck} [check]
  */
-export async function patchActivityEntries(ownerKey, details, epoch) {
+export async function patchActivityEntries(ownerKey, details, epoch, check) {
   if (!details?.size) {
     return;
   }
 
   await guardedWrite(["entries"], epoch, async () => {
+    check?.((await db.table("meta").get(ownerKey)) ?? null);
+
     const table = db.table("entries");
 
     for (const [hash, patch] of details) {
@@ -207,18 +212,29 @@ export async function listActivityEntries(
  * Forget all that is kept of a network's chain, for another chain under the
  * same name (a reset devnet or local node): every account's history and
  * sync state, the wallet's own records, the shielded histories and the note
- * tree's heights.
+ * tree's heights. `check` sees the sync state of the account whose history
+ * starts over first, in the same transaction, and nothing is forgotten when
+ * it throws: another tab started it over on the new chain already.
  *
  * @param {string} network
  * @param {number} [epoch] getActivityEpoch when the work began
+ * @param {{ check?: import("@dusk-network/app-core/history").StoreCheck, ownerKey?: string }} [guard]
  */
-export async function clearChainActivity(network, epoch) {
+export async function clearChainActivity(
+  network,
+  epoch,
+  { check, ownerKey } = {}
+) {
   const prefix = `${network}::`;
 
   await guardedWrite(
     ["entries", "local", "pools", "shielded"],
     epoch,
     async () => {
+      if (check && ownerKey) {
+        check((await db.table("meta").get(ownerKey)) ?? null);
+      }
+
       await db.table("meta").where("ownerKey").startsWith(prefix).delete();
       await db
         .table("entries")
@@ -336,6 +352,34 @@ export async function putShieldedHistoryRecord(ownerKey, record, epoch) {
   await guardedWrite(["shielded"], epoch, () =>
     db.table("shielded").put({ ...record, at: Date.now(), ownerKey })
   );
+}
+
+/**
+ * Keep `change(kept)` in place of a profile's shielded history, in one
+ * transaction, and give what was kept: two tabs reading the history at once
+ * draw its decoy heights from the same kept ones.
+ *
+ * @param {string} ownerKey
+ * @param {(kept: ShieldedHistoryRecord | null) => Omit<ShieldedHistoryRecord, "at" | "ownerKey">} change
+ * @param {number} [epoch] getActivityEpoch when the work began
+ * @returns {Promise<ShieldedHistoryRecord>}
+ */
+export async function updateShieldedHistoryRecord(ownerKey, change, epoch) {
+  /** @type {ShieldedHistoryRecord | undefined} */
+  let kept;
+
+  await guardedWrite(["shielded"], epoch, async () => {
+    const table = db.table("shielded");
+
+    kept = {
+      ...change((await table.get(ownerKey)) ?? null),
+      at: Date.now(),
+      ownerKey,
+    };
+    await table.put(kept);
+  });
+
+  return /** @type {ShieldedHistoryRecord} */ (kept);
 }
 
 /**

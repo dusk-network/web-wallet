@@ -137,13 +137,18 @@ export function publicHistory({ account, epoch, nodeUrl }) {
     archive: archiveAt(nodeUrl),
     callFacts: NAME_CALLS,
     network: bridgeNetwork(),
+    // A reset node's history is forgotten, and details are kept, only while
+    // `check` says, in the write's own transaction, that it's still the one
+    // this run read: another tab may have started it over meanwhile.
     store: {
-      clear: () => store.clearChainActivity(network, epoch),
+      clear: (check) =>
+        store.clearChainActivity(network, epoch, { check, ownerKey }),
       commit: (entries, update) =>
         store.commitActivityStep(ownerKey, entries, update, epoch),
       getState: () => store.getActivityMeta(ownerKey),
       list: (options) => store.listActivityEntries(ownerKey, options),
-      patch: (details) => store.patchActivityEntries(ownerKey, details, epoch),
+      patch: (details, check) =>
+        store.patchActivityEntries(ownerKey, details, epoch, check),
     },
   });
 }
