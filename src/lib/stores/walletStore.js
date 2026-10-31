@@ -309,9 +309,48 @@ const updateStakeInfo = async () => {
 const updateStaticInfo = () =>
   Promise.allSettled([updateBalance(), updateStakeInfo()]);
 
+/**
+ * The automatic sync that came due while the page was hidden: it waits for
+ * the page to show again.
+ *
+ * @type {(() => void) | null}
+ */
+let syncWhenShown = null;
+
+function cancelSyncWhenShown() {
+  if (syncWhenShown) {
+    document.removeEventListener("visibilitychange", syncWhenShown);
+    syncWhenShown = null;
+  }
+}
+
+/**
+ * The automatic sync: now, or, while the page is hidden, once it shows
+ * again.
+ */
+function autoSync() {
+  cancelSyncWhenShown();
+
+  if (document.visibilityState === "hidden") {
+    syncWhenShown = () => {
+      if (document.visibilityState !== "hidden") {
+        autoSync();
+      }
+    };
+    document.addEventListener("visibilitychange", syncWhenShown);
+
+    return;
+  }
+
+  sync()
+    .catch(() => {})
+    .finally(updateStaticInfo);
+}
+
 /** @type {WalletStoreServices["abortSync"]} */
 const abortSync = () => {
   window.clearTimeout(autoSyncId);
+  cancelSyncWhenShown();
   syncController?.abort();
   syncPromise = null;
 };
@@ -677,11 +716,8 @@ async function sync(fromBlock) {
         }
 
         window.clearTimeout(autoSyncId);
-        autoSyncId = window.setTimeout(() => {
-          sync()
-            .catch(() => {})
-            .finally(updateStaticInfo);
-        }, AUTO_SYNC_INTERVAL);
+        cancelSyncWhenShown();
+        autoSyncId = window.setTimeout(autoSync, AUTO_SYNC_INTERVAL);
       })
       .catch((error) => {
         controller.abort();

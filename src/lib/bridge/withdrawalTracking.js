@@ -14,12 +14,38 @@ import {
   loadDuskTransactionExecution,
   loadL2BlockTime,
   loadWithdrawalStatus,
+  withOneLatestBlock,
 } from "$lib/bridge/withdrawals";
 
 const ACTIVE_POLL_INTERVAL_MS = 15_000;
 const ACTION_POLL_INTERVAL_MS = 5_000;
 const BACKGROUND_POLL_INTERVAL_MS = 60_000;
-const activeTrackers = new Map();
+
+/** How often a proof waiting for its claim date is checked before that date. */
+const PROVEN_POLL_INTERVAL_MS = 10 * 60_000;
+
+/** The longest a round's timer waits: a claim date can be days away. */
+const MAX_ROUND_WAIT_MS = 60 * 60_000;
+
+/**
+ * The withdrawals followed, by hash: when each is checked next, and what
+ * its callers wait on, settled once nothing is left to read about it.
+ * `woken` marks one asked for again while it was being checked.
+ *
+ * @type {Map<string, PromiseWithResolvers<any> & { due: number, woken: boolean }>}
+ */
+const trackers = new Map();
+
+/**
+ * The checks under way, by hash: one asked for meanwhile shares the answer,
+ * and a round leaves it out until it ends.
+ *
+ * @type {Map<string, Promise<any>>}
+ */
+const checking = new Map();
+
+/** @type {number | undefined} */
+let roundTimer;
 
 export { withdrawalActivityStore };
 
@@ -247,12 +273,9 @@ async function refreshStatus(remembered) {
 }
 
 /**
- * Reads where a withdrawal is, or, once it is finalized, when it was sent if
- * that couldn't be read before.
- *
  * @param {string} transactionHash
  */
-export async function refreshWithdrawalTransaction(transactionHash) {
+async function readWithdrawal(transactionHash) {
   const remembered = getRememberedWithdrawalTransaction(transactionHash);
   const isFinalized = remembered?.stage === "finalized";
 
@@ -261,6 +284,40 @@ export async function refreshWithdrawalTransaction(transactionHash) {
   }
 
   return isFinalized ? refreshSentAt(remembered) : refreshStatus(remembered);
+}
+
+/**
+ * Reads where a withdrawal is, or, once it is finalized, when it was sent if
+ * that couldn't be read before. A check of it under way gives its answer
+ * instead, and the check sets when a followed withdrawal is checked next.
+ *
+ * @param {string} transactionHash
+ */
+export function refreshWithdrawalTransaction(transactionHash) {
+  const hash = transactionHash.toLowerCase();
+  let check = checking.get(hash);
+
+  if (!check) {
+    const at = Date.now();
+
+    check = readWithdrawal(transactionHash).then(
+      (item) => {
+        checking.delete(hash);
+        checked(hash, item, at);
+
+        return item;
+      },
+      (error) => {
+        checking.delete(hash);
+        scheduleRound();
+
+        throw error;
+      }
+    );
+    checking.set(hash, check);
+  }
+
+  return check;
 }
 
 /**
@@ -285,21 +342,6 @@ export function recordWithdrawalSubmission(transactionHash, submission) {
   return updated;
 }
 
-/** @param {number} milliseconds */
-function trackerDelay(milliseconds) {
-  /** @type {() => void} */
-  let wake = () => {};
-  const promise = new Promise((resolve) => {
-    const timer = window.setTimeout(resolve, milliseconds);
-    wake = () => {
-      window.clearTimeout(timer);
-      resolve(undefined);
-    };
-  });
-
-  return { promise, wake };
-}
-
 /** @param {any} item */
 function pollInterval(item) {
   if (item.pendingTransactionHash) {
@@ -313,43 +355,164 @@ function pollInterval(item) {
 }
 
 /**
+ * Whether a withdrawal only waits for its proof's claim date: proved, with
+ * nothing sent, and its last check read everything.
+ *
+ * @param {any} item
+ */
+function waitsForClaimDate(item) {
+  return (
+    item.stage === "proven_waiting" &&
+    !item.pendingTransactionHash &&
+    !item.trackingError &&
+    (Boolean(item.sentAt) || (item.blockNumber ?? null) === null)
+  );
+}
+
+/**
+ * When a followed withdrawal checked at `at` is checked next: a poll later,
+ * in the round of another one due about then, so that their reads go out
+ * together; a proof waiting for its claim date every 10 minutes until that
+ * date, as a refused proof is made again.
+ *
+ * @param {string} hash
+ * @param {any} item
+ * @param {number} at
+ */
+function nextCheck(hash, item, at) {
+  const poll = pollInterval(item);
+  const readyAt = Number(item.readyAt) * 1_000;
+
+  if (waitsForClaimDate(item) && readyAt > at + poll) {
+    return Math.min(readyAt, at + PROVEN_POLL_INTERVAL_MS);
+  }
+
+  const near = Array.from(trackers)
+    .filter(
+      ([other, { due }]) =>
+        other !== hash && Math.abs(due - (at + poll)) <= poll / 2
+    )
+    .map(([, { due }]) => due);
+
+  return near.length ? Math.min(...near) : at + poll;
+}
+
+/**
+ * After a check of a followed withdrawal: when it is checked next, or, once
+ * nothing is left to read about it, its callers have it.
+ *
+ * @param {string} hash
+ * @param {any} item
+ * @param {number} at When the check started
+ */
+function checked(hash, item, at) {
+  const tracker = trackers.get(hash);
+
+  if (!tracker) {
+    return;
+  }
+
+  if (!item || isSettled(item)) {
+    trackers.delete(hash);
+    tracker.resolve(item);
+  } else {
+    // Asked for again while it was being checked: checked again at once.
+    tracker.due = tracker.woken ? Date.now() : nextCheck(hash, item, at);
+    tracker.woken = false;
+  }
+
+  scheduleRound();
+}
+
+/** Sets the next round, at the first one due of those not being checked. */
+function scheduleRound() {
+  window.clearTimeout(roundTimer);
+
+  const waiting = Array.from(trackers)
+    .filter(([hash]) => !checking.has(hash))
+    .map(([, { due }]) => due);
+
+  if (waiting.length === 0) {
+    return;
+  }
+
+  const first = Math.min(...waiting);
+
+  roundTimer = window.setTimeout(
+    runRound,
+    Math.min(Math.max(0, first - Date.now()), MAX_ROUND_WAIT_MS)
+  );
+}
+
+/**
+ * Checks every followed withdrawal that is due, together: their reads on
+ * Dusk go out together, with one read of its latest block. The next round
+ * doesn't wait for this one's checks to end: each sets its own next check.
+ */
+function runRound() {
+  const now = Date.now();
+  const dueNow = Array.from(trackers).filter(
+    ([hash, { due }]) => due <= now && !checking.has(hash)
+  );
+
+  void withOneLatestBlock(() =>
+    Promise.all(
+      dueNow.map(([hash, tracker]) =>
+        refreshWithdrawalTransaction(hash).catch((error) => {
+          if (trackers.get(hash) === tracker) {
+            trackers.delete(hash);
+            tracker.reject(error);
+          }
+        })
+      )
+    )
+  );
+  scheduleRound();
+}
+
+/**
  * Continue tracking independently of the activity route so bridge progress
- * survives navigation. Calling this for an active tracker wakes it immediately.
+ * survives navigation: each followed withdrawal is checked in rounds, as it
+ * comes due. Calling this for an active tracker with `wake` checks it at
+ * once.
  *
  * @param {string} transactionHash
  * @param {{ wake?: boolean }} [options]
  */
 export function trackWithdrawalTransaction(transactionHash, options = {}) {
   const hash = transactionHash.toLowerCase();
-  const active = activeTrackers.get(hash);
+  let tracker = trackers.get(hash);
 
-  if (active) {
-    if (options.wake) {
-      active.wake();
+  if (!tracker) {
+    const remembered = getRememberedWithdrawalTransaction(hash);
+
+    // Nothing to follow: it isn't kept here, or nothing is left to read.
+    if (!remembered || isSettled(remembered)) {
+      return Promise.resolve(remembered);
     }
-    return active.promise;
+
+    const now = Date.now();
+
+    // At once, or a poll after its last check.
+    tracker = {
+      ...Promise.withResolvers(),
+      due: remembered.lastCheckedAt
+        ? Math.max(now, remembered.lastCheckedAt + pollInterval(remembered))
+        : now,
+      woken: false,
+    };
+    trackers.set(hash, tracker);
+  } else if (!options.wake) {
+    return tracker.promise;
   }
 
-  const tracker = /** @type {{ promise: Promise<any>, wake: () => void }} */ ({
-    promise: Promise.resolve(null),
-    wake: () => {},
-  });
-  tracker.promise = (async () => {
-    while (true) {
-      const item = await refreshWithdrawalTransaction(hash);
+  if (options.wake) {
+    tracker.due = Date.now();
+    tracker.woken = checking.has(hash);
+  }
 
-      if (!item || isSettled(item)) {
-        return item;
-      }
+  scheduleRound();
 
-      const waiting = trackerDelay(pollInterval(item));
-      tracker.wake = waiting.wake;
-      await waiting.promise;
-      tracker.wake = () => {};
-    }
-  })().finally(() => activeTrackers.delete(hash));
-
-  activeTrackers.set(hash, tracker);
   return tracker.promise;
 }
 

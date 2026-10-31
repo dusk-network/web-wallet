@@ -173,6 +173,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Retry History's requests when the node is busy
 - Keep a shielded send's recipient in History
 - Keep showing in History the amount a failed send tried to move
+- Pause the 5-minute sync while the wallet's tab is hidden, and sync once it shows again
+- Show no EVM address for a bridge transfer whose memo isn't text
 
 ### Removed
 
