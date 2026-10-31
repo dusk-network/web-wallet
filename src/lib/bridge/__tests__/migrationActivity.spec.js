@@ -380,7 +380,8 @@ describe("following transfers to and from other chains", () => {
 
     // Paid out a minute later: the DUSK token's transfer from the route's
     // payout address to the memo's, of the amount less the fee. The next
-    // check carries on from where the last one stopped.
+    // check carries on to the new head, reading the 1,000 blocks under it
+    // again.
     bsc.chain.head += 200n;
     bsc.chain.headAt += 90_000;
     bsc.chain.logs.push({
@@ -401,7 +402,10 @@ describe("following transfers to and from other chains", () => {
 
     expect(
       bsc.asked.find(({ method }) => method === "eth_getLogs")?.params[0]
-    ).toMatchObject({ fromBlock: `0x${(130_200_001).toString(16)}` });
+    ).toMatchObject({
+      fromBlock: `0x${(130_199_201).toString(16)}`,
+      toBlock: `0x${(130_200_200).toString(16)}`,
+    });
     expect(get(activity.transferArrivals)[out.hash]).toMatchObject({
       // Its block's time: 67 blocks before the head, 90 s on.
       arrivedAt: Math.floor((now + 90_000 - 67 * 450) / 1000) * 1000,
