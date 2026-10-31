@@ -272,6 +272,47 @@ const deploymentFacts = new Map();
 let current = null;
 
 /**
+ * The latest block of the checks under way together (`withOneLatestBlock`):
+ * read once, when the first of them asks for it.
+ *
+ * @type {{ read: ReturnType<typeof networkStore.getLatestBlock> | null } | null}
+ */
+let sharedLatestBlock = null;
+
+/** Dusk's latest block: the one shared by the checks under way, else read now. */
+function latestBlock() {
+  if (!sharedLatestBlock) {
+    return networkStore.getLatestBlock();
+  }
+
+  sharedLatestBlock.read ??= networkStore.getLatestBlock();
+
+  return sharedLatestBlock.read;
+}
+
+/**
+ * Runs `checks` with one read of Dusk's latest block for all of them, as a
+ * round of withdrawal checks needs it: made when the first one asks.
+ *
+ * @template T
+ * @param {() => Promise<T>} checks
+ * @returns {Promise<T>}
+ */
+export async function withOneLatestBlock(checks) {
+  const shared = { read: null };
+
+  sharedLatestBlock = shared;
+
+  try {
+    return await checks();
+  } finally {
+    if (sharedLatestBlock === shared) {
+      sharedLatestBlock = null;
+    }
+  }
+}
+
+/**
  * The network's withdrawals, read on the node through its Multicall for
  * Dusk batcher with the bundled data drivers, and on DuskEVM's RPC; one
  * for as long as the network and the settings stay.
@@ -302,7 +343,7 @@ function withdrawals() {
         duskEvm: { url: config.l2RpcUrl },
         fetch: batchedFetch(nodeUrl),
         gameSearchDepth: Number(env.VITE_EVM_BRIDGE_GAME_SEARCH_DEPTH ?? 64),
-        latestBlock: () => networkStore.getLatestBlock(),
+        latestBlock,
         maxBatch: MAX_BATCH,
         network: /** @type {Network} */ (net),
         nodeUrl,

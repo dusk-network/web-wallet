@@ -15,6 +15,8 @@ vi.mock("$lib/bridge/withdrawals", () => ({
   loadDuskTransactionExecution: mocks.loadDuskTransactionExecution,
   loadL2BlockTime: mocks.loadL2BlockTime,
   loadWithdrawalStatus: mocks.loadWithdrawalStatus,
+  withOneLatestBlock: (/** @type {() => Promise<unknown>} */ checks) =>
+    checks(),
 }));
 
 const account = "0x2222222222222222222222222222222222222222";
