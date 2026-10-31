@@ -21,6 +21,9 @@ const ACTIVE_POLL_INTERVAL_MS = 15_000;
 const ACTION_POLL_INTERVAL_MS = 5_000;
 const BACKGROUND_POLL_INTERVAL_MS = 60_000;
 
+/** How often a proof waiting for its claim date is checked before that date. */
+const PROVEN_POLL_INTERVAL_MS = 10 * 60_000;
+
 /** The longest a round's timer waits: a claim date can be days away. */
 const MAX_ROUND_WAIT_MS = 60 * 60_000;
 
@@ -34,7 +37,8 @@ const MAX_ROUND_WAIT_MS = 60 * 60_000;
 const trackers = new Map();
 
 /**
- * The checks under way, by hash: one asked for meanwhile shares the answer.
+ * The checks under way, by hash: one asked for meanwhile shares the answer,
+ * and a round leaves it out until it ends.
  *
  * @type {Map<string, Promise<any>>}
  */
@@ -42,9 +46,6 @@ const checking = new Map();
 
 /** @type {number | undefined} */
 let roundTimer;
-
-/** Whether a round of checks is under way: it sets the next one as it ends. */
-let inRound = false;
 
 export { withdrawalActivityStore };
 
@@ -299,13 +300,20 @@ export function refreshWithdrawalTransaction(transactionHash) {
   if (!check) {
     const at = Date.now();
 
-    check = readWithdrawal(transactionHash)
-      .then((item) => {
+    check = readWithdrawal(transactionHash).then(
+      (item) => {
+        checking.delete(hash);
         checked(hash, item, at);
 
         return item;
-      })
-      .finally(() => checking.delete(hash));
+      },
+      (error) => {
+        checking.delete(hash);
+        scheduleRound();
+
+        throw error;
+      }
+    );
     checking.set(hash, check);
   }
 
@@ -347,10 +355,25 @@ function pollInterval(item) {
 }
 
 /**
+ * Whether a withdrawal only waits for its proof's claim date: proved, with
+ * nothing sent, and its last check read everything.
+ *
+ * @param {any} item
+ */
+function waitsForClaimDate(item) {
+  return (
+    item.stage === "proven_waiting" &&
+    !item.pendingTransactionHash &&
+    !item.trackingError &&
+    (Boolean(item.sentAt) || (item.blockNumber ?? null) === null)
+  );
+}
+
+/**
  * When a followed withdrawal checked at `at` is checked next: a poll later,
  * in the round of another one due about then, so that their reads go out
- * together; a proof waiting for its claim date at that date, as nothing
- * changes for it before.
+ * together; a proof waiting for its claim date every 10 minutes until that
+ * date, as a refused proof is made again.
  *
  * @param {string} hash
  * @param {any} item
@@ -360,12 +383,8 @@ function nextCheck(hash, item, at) {
   const poll = pollInterval(item);
   const readyAt = Number(item.readyAt) * 1_000;
 
-  if (
-    item.stage === "proven_waiting" &&
-    !item.pendingTransactionHash &&
-    readyAt > at + poll
-  ) {
-    return readyAt;
+  if (waitsForClaimDate(item) && readyAt > at + poll) {
+    return Math.min(readyAt, at + PROVEN_POLL_INTERVAL_MS);
   }
 
   const near = Array.from(trackers)
@@ -405,14 +424,19 @@ function checked(hash, item, at) {
   scheduleRound();
 }
 
+/** Sets the next round, at the first one due of those not being checked. */
 function scheduleRound() {
   window.clearTimeout(roundTimer);
 
-  if (inRound || trackers.size === 0) {
+  const waiting = Array.from(trackers)
+    .filter(([hash]) => !checking.has(hash))
+    .map(([, { due }]) => due);
+
+  if (waiting.length === 0) {
     return;
   }
 
-  const first = Math.min(...Array.from(trackers.values(), ({ due }) => due));
+  const first = Math.min(...waiting);
 
   roundTimer = window.setTimeout(
     runRound,
@@ -422,32 +446,28 @@ function scheduleRound() {
 
 /**
  * Checks every followed withdrawal that is due, together: their reads on
- * Dusk go out together, with one read of its latest block.
+ * Dusk go out together, with one read of its latest block. The next round
+ * doesn't wait for this one's checks to end: each sets its own next check.
  */
-async function runRound() {
+function runRound() {
   const now = Date.now();
+  const dueNow = Array.from(trackers).filter(
+    ([hash, { due }]) => due <= now && !checking.has(hash)
+  );
 
-  inRound = true;
-
-  try {
-    await withOneLatestBlock(() =>
-      Promise.all(
-        Array.from(trackers)
-          .filter(([, { due }]) => due <= now)
-          .map(([hash, tracker]) =>
-            refreshWithdrawalTransaction(hash).catch((error) => {
-              if (trackers.get(hash) === tracker) {
-                trackers.delete(hash);
-                tracker.reject(error);
-              }
-            })
-          )
+  void withOneLatestBlock(() =>
+    Promise.all(
+      dueNow.map(([hash, tracker]) =>
+        refreshWithdrawalTransaction(hash).catch((error) => {
+          if (trackers.get(hash) === tracker) {
+            trackers.delete(hash);
+            tracker.reject(error);
+          }
+        })
       )
-    );
-  } finally {
-    inRound = false;
-    scheduleRound();
-  }
+    )
+  );
+  scheduleRound();
 }
 
 /**

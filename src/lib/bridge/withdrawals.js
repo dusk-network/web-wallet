@@ -290,9 +290,13 @@ function latestBlock() {
   return sharedLatestBlock.read;
 }
 
+/** The longest a round's read of Dusk's latest block is shared. */
+const SHARED_LATEST_BLOCK_MS = 10_000;
+
 /**
  * Runs `checks` with one read of Dusk's latest block for all of them, as a
- * round of withdrawal checks needs it: made when the first one asks.
+ * round of withdrawal checks needs it: made when the first one asks, and
+ * shared for 10 seconds at most.
  *
  * @template T
  * @param {() => Promise<T>} checks
@@ -300,15 +304,20 @@ function latestBlock() {
  */
 export async function withOneLatestBlock(checks) {
   const shared = { read: null };
+  const end = () => {
+    if (sharedLatestBlock === shared) {
+      sharedLatestBlock = null;
+    }
+  };
+  const timer = setTimeout(end, SHARED_LATEST_BLOCK_MS);
 
   sharedLatestBlock = shared;
 
   try {
     return await checks();
   } finally {
-    if (sharedLatestBlock === shared) {
-      sharedLatestBlock = null;
-    }
+    clearTimeout(timer);
+    end();
   }
 }
 

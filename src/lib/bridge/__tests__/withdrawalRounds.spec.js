@@ -177,7 +177,7 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
   /** @param {`0x${string}`} tx */
   const shown = (tx) => storage.getRememberedWithdrawalTransaction(tx);
 
-  it("checks the ones due together, with one read of the latest block, and a proof again only from its claim date", async () => {
+  it("checks the ones due together, with one read of the latest block, and a proof waiting for its claim date less often", async () => {
     pkg.answers.set(WAITING, () =>
       status(WAITING, { reason: "no-output", stage: "waiting_for_output" })
     );
@@ -205,8 +205,8 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
       })
     );
 
-    // A proof is checked again only from its claim date, and is ready
-    // within a poll of it.
+    // A proof waiting for its claim date isn't checked every poll, and is
+    // ready within a poll of the date.
     expect(checksOf(LATER)).toStrictEqual([0]);
     expect(checksOf(SOON).filter((at) => at > 0 && at < 90_000)).toEqual([]);
     expect(checksOf(SOON)[1]).toBeLessThan(90_000 + 15_000);
@@ -294,5 +294,68 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
 
     expect(checksOf(SOON).filter((at) => at > 35_000)).toEqual([]);
     expect(checksOf(WAITING).length).toBeGreaterThan(20);
+  });
+
+  it("goes on checking the others, and a new one, while one check hangs", async () => {
+    const NEW = txOf("d4");
+
+    for (const tx of [WAITING, SOON, NEW]) {
+      pkg.answers.set(tx, () =>
+        status(tx, { reason: "no-output", stage: "waiting_for_output" })
+      );
+    }
+    // Its reads never answer.
+    pkg.latency.set(WAITING, 10 * 86_400_000);
+    kept(WAITING, { stage: "waiting_for_output" });
+    kept(SOON, { stage: "waiting_for_output" });
+    tracking.resumeWithdrawalTracking(ACCOUNT);
+
+    await vi.advanceTimersByTimeAsync(40_000);
+    kept(NEW, { stage: "waiting_for_output" });
+    void tracking.trackWithdrawalTransaction(NEW);
+    await vi.advanceTimersByTimeAsync(20_000);
+
+    expect(checksOf(WAITING)).toStrictEqual([0]);
+    expect(checksOf(SOON).slice(0, 4)).toStrictEqual([
+      0, 15_000, 30_000, 45_000,
+    ]);
+    expect(checksOf(NEW)[0]).toBe(40_000);
+    expect(checksOf(NEW).length).toBeGreaterThan(1);
+  });
+
+  it("checks a proof waiting for its claim date every 10 minutes, and a poll after a failed read", async () => {
+    let fails = false;
+
+    pkg.answers.set(LATER, (at) => {
+      if (fails) {
+        throw new Error("DuskEVM didn't answer.");
+      }
+
+      return provedUntil(LATER, START + 3 * 86_400_000)(at);
+    });
+    kept(LATER, { proofGame: GAME, stage: "proven_waiting" });
+    tracking.resumeWithdrawalTracking(ACCOUNT);
+
+    await vi.advanceTimersByTimeAsync(25 * 60_000);
+
+    expect(checksOf(LATER)).toStrictEqual([0, 600_000, 1_200_000]);
+
+    // A read fails: checked again a poll later, then every 10 minutes.
+    fails = true;
+    await vi.advanceTimersByTimeAsync(5 * 60_000 + 1_000);
+
+    expect(shown(LATER)?.trackingError).toBe("DuskEVM didn't answer.");
+
+    fails = false;
+    await vi.advanceTimersByTimeAsync(20_000);
+
+    expect(checksOf(LATER)).toStrictEqual([
+      0, 600_000, 1_200_000, 1_800_000, 1_815_000,
+    ]);
+    expect(shown(LATER)?.trackingError).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+
+    expect(checksOf(LATER).at(-1)).toBe(1_815_000 + 600_000);
   });
 });
