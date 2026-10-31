@@ -17,6 +17,7 @@ import {
   getShieldedHistoryRecord,
   putNoteHeightPool,
   putShieldedHistoryRecord,
+  updateShieldedHistoryRecord,
 } from "./activityStore";
 import { activityNetworkKey, archiveAt } from "./activityHistory";
 
@@ -59,6 +60,25 @@ const entryOf = (row) => ({
   timestamp: row.timestamp ?? null,
   value: row.amount ?? "0",
 });
+
+/**
+ * A kept record as the history reads it: its rows as the entries they were.
+ *
+ * @param {ShieldedHistoryRecord} kept
+ */
+const recordOf = (kept) => ({ ...kept, entries: kept.entries.map(entryOf) });
+
+/**
+ * A write that rejects only when the wallet was reset meanwhile; a store
+ * that can't keep a history asks again next time.
+ *
+ * @param {unknown} error
+ */
+function unlessReset(error) {
+  if (error instanceof StaleActivityError) {
+    throw error;
+  }
+}
 
 /**
  * The node's note tree, as the transfer contract gives it.
@@ -158,7 +178,7 @@ async function readShieldedHistory(options, key) {
       async get() {
         const kept = await getShieldedHistoryRecord(key);
 
-        return kept && { ...kept, entries: kept.entries.map(entryOf) };
+        return kept && recordOf(kept);
       },
       // Kept unless the wallet was reset meanwhile; a store that can't keep
       // it asks again next time.
@@ -167,11 +187,19 @@ async function readShieldedHistory(options, key) {
           key,
           { ...record, entries: record.entries.map(rowOf) },
           epoch
-        ).catch((error) => {
-          if (error instanceof StaleActivityError) {
-            throw error;
-          }
-        }),
+        ).catch(unlessReset),
+      // In one transaction: two tabs reading this history at once ask
+      // among the same decoys.
+      update: (change) =>
+        updateShieldedHistoryRecord(
+          key,
+          (kept) => {
+            const next = change(kept && recordOf(kept));
+
+            return { ...next, entries: next.entries.map(rowOf) };
+          },
+          epoch
+        ).then(recordOf, unlessReset),
     },
     synced,
     tree: noteTree(network),
