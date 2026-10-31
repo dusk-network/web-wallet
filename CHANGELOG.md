@@ -182,6 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep looking for a bridge transfer's payment on BNB Smart Chain or DuskEVM after a search missed it, rather than waiting for it for good
 - Send nothing to Reown, WalletConnect or Coinbase, nor load their fonts, until Connect is pressed on the Bridge or Migrate page or a wallet was connected before, and leave out the Coinbase wallet SDKs and their telemetry
 - Stop transaction attempts when prerequisite synchronization fails or is cancelled [#953].
 - Prevent pending login migration or password setup from restoring reset wallet credentials [#953].
