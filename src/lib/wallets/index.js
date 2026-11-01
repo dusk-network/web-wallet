@@ -220,12 +220,15 @@ export async function unlockWallets(password, { signal } = {}) {
 
 /**
  * Opens the wallet without a password, its phrase this device's: one kept
- * from before incarnations has its own from now on.
+ * from before incarnations has its own from now on. Nothing opens once
+ * `signal` aborts, as the unlock is left.
  *
  * @param {ProfileGenerator} profileGenerator
+ * @param {{ signal?: AbortSignal }} [options]
  */
-export async function unlockWithoutPassword(profileGenerator) {
+export async function unlockWithoutPassword(profileGenerator, { signal } = {}) {
   await keepIncarnation("");
+  signal?.throwIfAborted();
   await walletStore.init(profileGenerator);
 }
 

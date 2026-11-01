@@ -60,7 +60,9 @@
       .then(checkLocalData)
       .then(async (profileGenerator) => {
         controller.signal.throwIfAborted();
-        await unlockWithoutPassword(profileGenerator);
+        await unlockWithoutPassword(profileGenerator, {
+          signal: controller.signal,
+        });
       });
 
   // One password unlocks every wallet in the vault; without one, the

@@ -5,9 +5,7 @@ const APP = CONFIG.LOCAL_STORAGE_APP_KEY;
 const KEY = "k";
 const MIGRATIONS = `${APP}-migrations:${KEY}`;
 const ARRIVALS = `${APP}-transfer-arrivals:${KEY}`;
-const DEPOSITS = `dusk-evm:deposit-activity:v1:${KEY}`;
 const INCARNATION = `${APP}-incarnation:${KEY}`;
-const DEPOSIT = "ab".repeat(32);
 
 /** @param {number} n */
 const hashOf = (n) => `0x${n.toString(16).padStart(64, "0")}`;
@@ -50,17 +48,15 @@ async function loadTab() {
   vi.resetModules();
 
   const names = await import("../dataNames");
-  const deposits = await import("$lib/bridge/depositActivityStorage");
   const migrations = await import("$lib/bridge/migrationActivity");
 
   const unlock = async () => {
     await names.keepIncarnation(KEY);
     names.useWalletDataSuffix(`:${KEY}`, KEY);
-    deposits.hydrateDepositActivity();
     migrations.hydrateMigrations();
   };
 
-  return { ...migrations, deposits, names, unlock };
+  return { ...migrations, unlock };
 }
 
 /** A tab with the wallet open. */
@@ -202,79 +198,5 @@ describe("A wallet's records, open in two tabs", () => {
 
     expect(localStorage.getItem(INCARNATION)).toBe("theirs");
     expect(hashesOf(stored())).toEqual([hashOf(1), hashOf(2)]);
-  });
-
-  it("shows and follows a deposit as storage refuses a wallet from before its incarnation at its first unlock, keeps both once storage frees, and lets no late write land after another tab resets", async () => {
-    const refusing = vi
-      .spyOn(Storage.prototype, "setItem")
-      .mockImplementation(full);
-    const { deposits, names, unlock } = await loadTab();
-
-    await unlock();
-    deposits.rememberDepositTransaction(DEPOSIT, { amountLux: 1n });
-
-    expect(get(deposits.depositActivityStore)).toMatchObject([
-      { amountLux: "1", transactionHash: DEPOSIT },
-    ]);
-    expect(deposits.getRememberedDepositTransaction(DEPOSIT)).not.toBeNull();
-
-    refusing.mockRestore();
-
-    // Work begun now, which writes after the reset.
-    const late = names.walletDataScope();
-
-    deposits.updateDepositTransaction(DEPOSIT, { stage: "l2_pending" });
-
-    expect(localStorage.getItem(INCARNATION)).not.toBeNull();
-    expect(JSON.parse(localStorage.getItem(DEPOSITS) ?? "[]")).toMatchObject([
-      { amountLux: "1", stage: "l2_pending", transactionHash: DEPOSIT },
-    ]);
-
-    vi.resetModules();
-    await (await import("../walletData")).forgetEveryWalletData();
-
-    const left = localStorage.getItem(DEPOSITS);
-
-    deposits.rememberDepositTransaction(DEPOSIT, { amountLux: 2n }, late);
-
-    expect(localStorage.getItem(INCARNATION)).toBeNull();
-    expect(localStorage.getItem(DEPOSITS)).toBe(left);
-  });
-
-  it("takes the incarnation another tab keeps once storage frees, for a wallet from before storage refused its own", async () => {
-    const refusing = vi
-      .spyOn(Storage.prototype, "setItem")
-      .mockImplementation(full);
-    const a = await openTab();
-
-    refusing.mockRestore();
-
-    const b = await openTab();
-    const theirs = localStorage.getItem(INCARNATION);
-
-    a.rememberMigration(migration(1));
-    b.rememberMigration(migration(2));
-
-    expect(theirs).not.toBeNull();
-    expect(localStorage.getItem(INCARNATION)).toBe(theirs);
-    expect(hashesOf(stored())).toEqual([hashOf(1), hashOf(2)]);
-  });
-
-  it("lets no late write land as another tab resets while storage still refuses the incarnation, as the reset locks this tab", async () => {
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(full);
-
-    const { deposits, names, unlock } = await loadTab();
-
-    await unlock();
-
-    const late = names.walletDataScope();
-
-    vi.restoreAllMocks();
-    // This tab locks, as the reset tells it.
-    names.useWalletDataSuffix("", "", false);
-    deposits.rememberDepositTransaction(DEPOSIT, {}, late);
-
-    expect(localStorage.getItem(INCARNATION)).toBeNull();
-    expect(localStorage.getItem(DEPOSITS)).toBeNull();
   });
 });

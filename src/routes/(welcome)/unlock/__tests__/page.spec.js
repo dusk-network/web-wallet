@@ -268,6 +268,45 @@ describe("Unlock Wallet", async () => {
       localStorage.removeItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`);
     });
 
+    it("should leave the wallet locked if the unlock is left as it waits for another tab", async () => {
+      const name = `${CONFIG.LOCAL_STORAGE_APP_KEY}-incarnation:`;
+      const holding = Promise.withResolvers();
+      const free = Promise.withResolvers();
+      // Another tab starts the wallet's incarnation meanwhile.
+      const theirs = navigator.locks.request(name, async () => {
+        holding.resolve(undefined);
+        await free.promise;
+      });
+
+      settingsStore.update(setUserId(userId));
+      localStorage.removeItem(name);
+      await holding.promise;
+
+      const { container, unmount } = render(UnlockWallet, {});
+      const form = getAsHTMLElement(container, "form");
+
+      await fireEvent.input(getTextInput(container), {
+        target: { value: mnemonic },
+      });
+      await fireEvent.submit(form, { currentTarget: form });
+      await vi.waitUntil(
+        async () => (await navigator.locks.query()).pending?.length,
+        { timeout: 5_000 }
+      );
+      unmount();
+      free.resolve(undefined);
+      await theirs;
+      // The unlock's turn comes and goes before this one's.
+      await navigator.locks.request(
+        name,
+        () => new Promise((resolve) => setTimeout(resolve))
+      );
+
+      expect(localStorage.getItem(name)).not.toBeNull();
+      expect(initSpy).not.toHaveBeenCalled();
+      localStorage.removeItem(name);
+    });
+
     it("should trim and lower case the entered mnemonic before validating it", async () => {
       settingsStore.update(setUserId(userId));
 
