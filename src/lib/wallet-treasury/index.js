@@ -175,7 +175,6 @@ class WalletTreasury {
    * @param {(evt: CustomEvent) => void} syncIterationListener
    * @param {AbortSignal} signal
    */
-  // eslint-disable-next-line max-statements
   async update(from, syncIterationListener, signal) {
     const generation = this.#generation;
 

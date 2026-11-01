@@ -115,7 +115,6 @@ function fakeNetwork(leaves = TREE) {
   const position = (at) =>
     new DataView(at.buffer, at.byteOffset).getBigUint64(0, true);
   const call = {
-    // eslint-disable-next-line camelcase
     leaves_from_pos: vi.fn(
       async (/** @type {Uint8Array} */ from) =>
         new Response(
@@ -129,7 +128,6 @@ function fakeNetwork(leaves = TREE) {
           })
         )
     ),
-    // eslint-disable-next-line camelcase
     num_notes: vi.fn(async () => {
       const size = new Uint8Array(8);
 

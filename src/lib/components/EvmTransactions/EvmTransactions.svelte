@@ -551,7 +551,6 @@
       );
     } catch (error) {
       // The card shows a short line; the raw error stays in the console.
-      // eslint-disable-next-line no-console
       console.error(`Withdrawal ${actionName} failed`, error);
       statusError = errorMessage(error);
     } finally {

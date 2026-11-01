@@ -3,7 +3,6 @@
 
   /** @param {CustomEvent} event */
   function handleSwitchChange(event) {
-    // eslint-disable-next-line no-console
     console.log(`switch changed to ${event.detail}`);
   }
 

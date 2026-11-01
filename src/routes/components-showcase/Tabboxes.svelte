@@ -5,7 +5,6 @@
 
   /** @param {CustomEvent} event */
   function handleTabChange(event) {
-    // eslint-disable-next-line no-console
     console.log(`tab changed to ${event.detail}`);
   }
 

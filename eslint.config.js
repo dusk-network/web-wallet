@@ -1,46 +1,26 @@
-import { defineConfig, globalIgnores } from "@eslint/config-helpers";
+import { defineConfig, globalIgnores } from "eslint/config";
+import js from "@eslint/js";
+import prettierConfig from "eslint-config-prettier/flat";
+import svelte from "eslint-plugin-svelte";
 import globals from "globals";
-import jsEsLintConfig from "@dusk-network/eslint-config";
-import svelteEsLintConfig from "@dusk-network/eslint-config/svelte";
-import vitestEsLintConfig from "@dusk-network/eslint-config/vitest";
 
 import svelteConfig from "./svelte.config.js";
 
-/** @type {import("eslint").Linter.Config[]} */
 export default defineConfig([
+  js.configs.recommended,
+  svelte.configs.recommended,
+  prettierConfig,
   {
-    files: ["**/*.{js,mjs,cjs,svelte}"],
     languageOptions: {
-      ecmaVersion: "latest",
       globals: {
         ...globals.browser,
         ...globals.node,
+        // Vite's `define` sets it at build time.
         CONFIG: "readonly",
       },
-      sourceType: "module",
-    },
-    settings: {
-      "import/core-modules": [
-        "$app/environment",
-        "$app/navigation",
-        "$app/paths",
-        "$app/stores",
-      ],
-      "import/resolver": {
-        node: {},
-        typescript: {
-          alwaysTryTypes: true,
-          project: "./jsconfig.json",
-        },
-      },
     },
   },
   {
-    extends: [jsEsLintConfig],
-    files: ["src/**/*.{js,mjs,cjs}"],
-  },
-  {
-    extends: [svelteEsLintConfig],
     files: ["**/*.svelte"],
     languageOptions: {
       parserOptions: {
@@ -48,55 +28,8 @@ export default defineConfig([
       },
     },
     rules: {
-      /**
-       * This rule was added in `eslint-plugin-svelte` v3.12.0.
-       * We disable it temporarily for links, as we have our own
-       * path resolution in place.
-       *
-       * @see https://sveltejs.github.io/eslint-plugin-svelte/rules/no-navigation-without-resolve/
-       */
-      "svelte/no-navigation-without-resolve": [
-        "error",
-        {
-          ignoreGoto: false,
-          ignoreLinks: true,
-          ignorePushState: false,
-          ignoreReplaceState: false,
-        },
-      ],
-    },
-  },
-  {
-    extends: [vitestEsLintConfig],
-    files: ["*.js", "**/*.spec.js", "src/lib/dusk/mocks/**/*.js"],
-    rules: {
-      "vitest/no-standalone-expect": [
-        "error",
-        {
-          additionalTestBlockFunctions: [
-            "afterAll",
-            "afterEach",
-            "beforeAll",
-            "beforeEach",
-          ],
-        },
-      ],
-    },
-  },
-
-  /**
-   * Because of how svelte export types, currently
-   * `eslint-plugin-import`'s sees duplicates imports
-   * (`import/no-duplicates` rule)
-   */
-  {
-    files: [
-      "src/lib/dusk/components/ProgressBar/ProgressBar.svelte",
-      "src/lib/dusk/components/Toast/Toast.svelte",
-      "src/lib/dusk/components/__tests__/Toast.spec.js",
-    ],
-    rules: {
-      "import/no-duplicates": 0,
+      // Links get the base path from `addBasePath` (AppAnchor), not `resolve`.
+      "svelte/no-navigation-without-resolve": ["error", { ignoreLinks: true }],
     },
   },
   globalIgnores([".svelte-kit/", "build/", "coverage/", "src/lib/vendor/"]),

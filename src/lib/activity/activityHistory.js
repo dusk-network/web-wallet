@@ -167,7 +167,6 @@ export function noteActivityUnavailable(error) {
 
   warnedUnavailable = true;
 
-  // eslint-disable-next-line no-console
   console.warn(
     "Activity history is unavailable; showing this wallet's own transactions.",
     /** @type {any} */ (error)?.message ?? error

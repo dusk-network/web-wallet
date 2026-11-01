@@ -218,7 +218,6 @@ describe("Network store", async () => {
 
       networkQuerySpy.mockResolvedValueOnce({
         lastBlockPair: {
-          // eslint-disable-next-line camelcase
           json: { last_finalized_block: [height, "some-block-hash"] },
         },
       });
