@@ -24,7 +24,7 @@
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { shortenAddress } from "$lib/dusk/string";
-  import { settingsStore } from "$lib/stores";
+  import { settingsStore, walletStore } from "$lib/stores";
   import { account, modal } from "$lib/web3/walletConnection";
   import { getBalanceOfCoin } from "$lib/web3/migration";
   import { notRunning } from "$lib/bridge/cardRoutes";
@@ -37,6 +37,7 @@
   import NetworkPicker from "../NetworkPicker/NetworkPicker.svelte";
   import OperationResult from "../OperationResult/OperationResult.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
+  import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
   import { normalizeDuskInput, parseDuskInput } from "../Stake/stakeAmount";
 
   /** @type {import("$lib/bridge/cardRoutes").CardRoute & { kind: "migration" }} */
@@ -138,8 +139,11 @@
     );
   }
 
+  // What this screen sends, it sends for the wallet it was drawn for.
+  const forThisWallet = walletStore.forThisWallet();
+
   function send() {
-    operation = sendMigration({
+    operation = forThisWallet(sendMigration)({
       amountLux,
       onStep: (now) => {
         sending = now;
@@ -338,6 +342,7 @@
 {:else if step === "review"}
   <div class="route-review">
     <h2 class="route-review__title">Review</h2>
+    <ReviewWallet />
     <ReviewAmount label="Amount" value={formatDuskExact(amountLux, language)} />
     <dl class="route-review__ends">
       <div>

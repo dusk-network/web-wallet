@@ -3,7 +3,12 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import { makeClassName, randomUUID, shortenAddress } from "$lib/dusk/string";
-  import { mdiAlertOutline, mdiChevronDown, mdiContentCopy } from "@mdi/js";
+  import {
+    mdiAlertOutline,
+    mdiChevronDown,
+    mdiContentCopy,
+    mdiPlus,
+  } from "@mdi/js";
   import { Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
@@ -41,6 +46,19 @@
    * while it has none.
    */
   export let compact = false;
+
+  /**
+   * The wallets here, each with its profiles under its name, as "Wallet 1"
+   * and "Wallet 2": the open one's are `profiles`, another's its public
+   * accounts and shielded addresses as it last showed them, which copy as
+   * the open one's do. None lists the profiles alone.
+   *
+   * @type {Array<{ accounts: string[], addresses?: string[], key: string, label: string, open: boolean }>}
+   */
+  export let wallets = [];
+
+  /** Whether the list offers Add wallet. */
+  export let canAddWallet = false;
 
   const dispatch = createEventDispatcher();
 
@@ -93,6 +111,22 @@
   }
 
   /**
+   * Another wallet's profile: that wallet opens, at it.
+   *
+   * @param {string} key
+   * @param {number} index
+   */
+  function handleWalletProfileSelect(key, index) {
+    dispatch("switchWallet", { index, key });
+    closeDropDown();
+  }
+
+  function handleAddWallet() {
+    dispatch("addWallet");
+    closeDropDown();
+  }
+
+  /**
    * @param {string} address
    */
   async function handleCopyAddress(address) {
@@ -112,12 +146,12 @@
 
   /**
    * @param {KeyboardEvent & { currentTarget: EventTarget & HTMLButtonElement }} event
-   * @param {Profile} profile
+   * @param {() => void} select
    */
-  function handleProfileKeyDown(event, profile) {
+  function handleProfileKeyDown(event, select) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      handleProfileSelect(profile);
+      select();
     }
     if (event.key === "Escape") {
       event.preventDefault();
@@ -179,13 +213,21 @@
   // The pill's name: "Profile: alice.dusk (Profile 1)", or the profile's
   // label while it has no name.
   $: triggerLabel = currentProfile
-    ? `Profile: ${shownName ? `${shownName} (${displayedAddress})` : displayedAddress}`
+    ? `Profile: ${shownName ? `${shownName} (${displayedAddress})` : displayedAddress}${walletName ? `, ${walletName}` : ""}`
     : "Profile: none selected";
 
   // A .dusk name without its ending, for where there's little room.
   $: shortName = shownName.endsWith(".dusk")
     ? shownName.slice(0, -".dusk".length)
     : shownName;
+
+  // With more than one wallet, the open one's name, under the profile's.
+  $: walletName =
+    wallets.length > 1 ? (wallets.find((w) => w.open)?.label ?? "") : "";
+
+  // The pill's small line: the wallet's name, and the profile its number
+  // stands for.
+  $: walletLine = walletName ? `${walletName} · ${displayedAddress}` : "";
 </script>
 
 {#if expanded && !compact}
@@ -214,26 +256,34 @@
   >
     {#if compact}
       <!-- The profile's number, and its name or label: on a narrow screen
-        its .dusk name without the ending, and no label. -->
+        its .dusk name without the ending, and no label. With more than one
+        wallet, the wallet's name under it. -->
       <span aria-hidden="true" class="address-picker__avatar"
         >{profileNumber || "–"}</span
       >
-      {#if shownName}
-        <span
-          aria-hidden="true"
-          class="address-picker__compact-name"
-          title={shownName}
-          >{shortName}<span class="address-picker__tld"
-            >{shownName.slice(shortName.length)}</span
-          ></span
-        >
-      {:else}
-        <span
-          aria-hidden="true"
-          class="address-picker__compact-name address-picker__compact-name--label"
-          >{displayedAddress}</span
-        >
-      {/if}
+      <span
+        aria-hidden="true"
+        class="address-picker__compact-lines"
+        class:address-picker__compact-lines--wallet={Boolean(walletName)}
+      >
+        {#if shownName}
+          <span class="address-picker__compact-name" title={shownName}
+            >{shortName}<span class="address-picker__tld"
+              >{shownName.slice(shortName.length)}</span
+            ></span
+          >
+        {:else}
+          <span
+            class="address-picker__compact-name address-picker__compact-name--label"
+            >{displayedAddress}</span
+          >
+        {/if}
+        {#if walletName}
+          <span class="address-picker__compact-wallet" title={walletLine}
+            >{walletLine}</span
+          >
+        {/if}
+      </span>
     {:else}
       <!-- The profile's label, with its name under it, or its account,
         shortened, while it has none. -->
@@ -269,79 +319,173 @@
         role="menu"
         aria-label="Profile selection"
       >
-        {#each profiles as profile (profile)}
-          {@const account = profile.account.toString()}
-          <li
-            class="address-picker__profile"
-            class:address-picker__profile--selected={profile === currentProfile}
-            role="none"
-          >
-            <div class="address-picker__profile-container">
-              <button
-                class="address-picker__profile-button"
-                tabindex="0"
-                type="button"
-                role="menuitem"
-                aria-current={profile === currentProfile ? "true" : "false"}
-                on:click={() => handleProfileSelect(profile)}
-                on:keydown={(event) => handleProfileKeyDown(event, profile)}
+        {#if wallets.length}
+          <!-- Each wallet's profiles under its name: the open one's to
+            pick and copy, another's to open that wallet at. -->
+          {#each wallets as wallet, w (wallet.key)}
+            {@const titleId = `${currentProfileId}-wallet-${w}`}
+            <li class="address-picker__wallet" role="none">
+              <span
+                class="address-picker__wallet-title"
+                id={titleId}
+                role="presentation">{wallet.label}</span
               >
-                <!-- The profile, with its name under it, or its account,
-                  shortened, while it has none. -->
-                <span class="address-picker__profile-header">
-                  Profile {profiles.indexOf(profile) + 1}
-                  {#if profile === currentProfile}
-                    <span class="address-picker__current-indicator"
-                      >(Current)</span
-                    >
-                  {/if}
-                </span>
-                {#snippet nameLine(/** @type {string} */ name)}
-                  {#if name}
-                    <span class="address-picker__address-name" title={name}
-                      >{name}</span
-                    >
-                  {:else}
-                    <span class="address-picker__address-value" title={account}>
-                      <span aria-hidden="true">{shortenAddress(account)}</span>
-                      <span class="sr-only">{account}</span>
-                    </span>
-                  {/if}
-                {/snippet}
-                {#await getName(account)}
-                  {@render nameLine(getKnownName(account))}
-                {:then name}
-                  {@render nameLine(name)}
-                {:catch}
-                  {@render nameLine(getKnownName(account))}
-                {/await}
-              </button>
-              <div class="address-picker__copy-buttons">
-                <button
-                  aria-label="Copy public address"
-                  class="address-picker__copy-button"
-                  type="button"
-                  title="Copy public address"
-                  on:click={() => handleCopyAddress(account)}
-                >
-                  <Icon path={mdiContentCopy} />
-                  <span>Public</span>
-                </button>
-                <button
-                  aria-label="Copy shielded address"
-                  class="address-picker__copy-button"
-                  type="button"
-                  title="Copy shielded address"
-                  on:click={() => handleCopyAddress(profile.address.toString())}
-                >
-                  <Icon path={mdiContentCopy} />
-                  <span>Shielded</span>
-                </button>
-              </div>
-            </div>
+              <ul
+                aria-labelledby={titleId}
+                class="address-picker__wallet-profiles"
+                role="group"
+              >
+                {#if wallet.open}
+                  {#each profiles as profile (profile)}
+                    {@render ownProfile(profile)}
+                  {/each}
+                {:else}
+                  {#each wallet.accounts.length ? wallet.accounts : ["", ""] as account, index (`${wallet.key}-${index}`)}
+                    {@render otherProfile(
+                      wallet.key,
+                      account,
+                      wallet.addresses?.[index] ?? "",
+                      index
+                    )}
+                  {/each}
+                {/if}
+              </ul>
+            </li>
+          {/each}
+        {:else}
+          {#each profiles as profile (profile)}
+            {@render ownProfile(profile)}
+          {/each}
+        {/if}
+        {#if canAddWallet}
+          <li class="address-picker__add-wallet" role="none">
+            <button
+              class="address-picker__add-wallet-button"
+              role="menuitem"
+              type="button"
+              on:click={handleAddWallet}
+            >
+              <Icon path={mdiPlus} />
+              <span>Add wallet</span>
+            </button>
           </li>
-        {/each}
+        {/if}
       </ul>
     </div>
   {/if}
 </div>
+
+{#snippet profileName(
+  /** @type {string} */ account,
+  /** @type {string} */ name
+)}
+  {#if name}
+    <span class="address-picker__address-name" title={name}>{name}</span>
+  {:else if account}
+    <span class="address-picker__address-value" title={account}>
+      <span aria-hidden="true">{shortenAddress(account)}</span>
+      <span class="sr-only">{account}</span>
+    </span>
+  {/if}
+{/snippet}
+
+{#snippet copyButtons(
+  /** @type {string} */ account,
+  /** @type {string} */ address
+)}
+  <div class="address-picker__copy-buttons">
+    {#if account}
+      <button
+        aria-label="Copy public address"
+        class="address-picker__copy-button"
+        type="button"
+        title="Copy public address"
+        on:click={() => handleCopyAddress(account)}
+      >
+        <Icon path={mdiContentCopy} />
+        <span>Public</span>
+      </button>
+    {/if}
+    {#if address}
+      <button
+        aria-label="Copy shielded address"
+        class="address-picker__copy-button"
+        type="button"
+        title="Copy shielded address"
+        on:click={() => handleCopyAddress(address)}
+      >
+        <Icon path={mdiContentCopy} />
+        <span>Shielded</span>
+      </button>
+    {/if}
+  </div>
+{/snippet}
+
+{#snippet ownProfile(/** @type {Profile} */ profile)}
+  {@const account = profile.account.toString()}
+  <li
+    class="address-picker__profile"
+    class:address-picker__profile--selected={profile === currentProfile}
+    role="none"
+  >
+    <div class="address-picker__profile-container">
+      <button
+        class="address-picker__profile-button"
+        tabindex="0"
+        type="button"
+        role="menuitem"
+        aria-current={profile === currentProfile ? "true" : "false"}
+        on:click={() => handleProfileSelect(profile)}
+        on:keydown={(event) =>
+          handleProfileKeyDown(event, () => handleProfileSelect(profile))}
+      >
+        <!-- The profile, with its name under it, or its account,
+          shortened, while it has none. -->
+        <span class="address-picker__profile-header">
+          Profile {profiles.indexOf(profile) + 1}
+          {#if profile === currentProfile}
+            <span class="address-picker__current-indicator">(Current)</span>
+          {/if}
+        </span>
+        {#await getName(account)}
+          {@render profileName(account, getKnownName(account))}
+        {:then name}
+          {@render profileName(account, name)}
+        {:catch}
+          {@render profileName(account, getKnownName(account))}
+        {/await}
+      </button>
+      {@render copyButtons(account, profile.address.toString())}
+    </div>
+  </li>
+{/snippet}
+
+{#snippet otherProfile(
+  /** @type {string} */ key,
+  /** @type {string} */ account,
+  /** @type {string} */ address,
+  /** @type {number} */ index
+)}
+  <li class="address-picker__profile" role="none">
+    <div class="address-picker__profile-container">
+      <button
+        class="address-picker__profile-button"
+        tabindex="0"
+        type="button"
+        role="menuitem"
+        aria-current="false"
+        on:click={() => handleWalletProfileSelect(key, index)}
+        on:keydown={(event) =>
+          handleProfileKeyDown(event, () =>
+            handleWalletProfileSelect(key, index)
+          )}
+      >
+        <!-- Its name as last verified here: no lookup until it opens. -->
+        <span class="address-picker__profile-header">Profile {index + 1}</span>
+        {@render profileName(account, account ? getKnownName(account) : "")}
+      </button>
+      <!-- What it last showed copies: nothing where nothing is known. -->
+      {@render copyButtons(account, address)}
+    </div>
+  </li>
+{/snippet}

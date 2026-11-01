@@ -63,3 +63,23 @@ export function forgetVerifiedNames() {
     // Nothing was kept.
   }
 }
+
+/**
+ * Forgets the names kept for a removed wallet's public accounts, on every
+ * network: another wallet's stay.
+ *
+ * @param {string[]} accounts
+ */
+export function forgetVerifiedNamesOf(accounts) {
+  const own = new Set(accounts.map(String));
+  const names = readNames();
+  const kept = Object.fromEntries(
+    Object.entries(names).filter(([key]) => !own.has(key.split(" ")[1]))
+  );
+
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(kept));
+  } catch {
+    // Nothing was kept.
+  }
+}

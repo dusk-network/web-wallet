@@ -16,6 +16,90 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
     class="settings__content"
   >
     <article
+      class="settings-group wallets-settings"
+    >
+      <!---->
+      <h2
+        class="section-head"
+      >
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--open"
+        >
+          [
+        </span>
+        Wallets
+        <!---->
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--close"
+        >
+          ]
+        </span>
+        
+      </h2>
+      
+      <!---->
+       
+      <ul
+        class="wallets-settings__list svelte-1sxcuhu"
+      >
+        <li
+          class="wallets-settings__wallet svelte-1sxcuhu"
+        >
+          <div
+            class="wallets-settings__head svelte-1sxcuhu"
+          >
+            <span
+              class="wallets-settings__name svelte-1sxcuhu"
+            >
+              <span
+                class="wallets-settings__title svelte-1sxcuhu"
+              >
+                Wallet 1
+              </span>
+               
+              <!---->
+            </span>
+             
+            <span
+              class="wallets-settings__actions svelte-1sxcuhu"
+            >
+              <button
+                aria-label="Rename Wallet 1"
+                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default"
+                id="wallet-rename-"
+                type="button"
+              >
+                <span
+                  class="dusk-button__text"
+                >
+                  Rename
+                </span>
+                <!---->
+              </button>
+              <!---->
+               
+              <!---->
+            </span>
+          </div>
+          <!---->
+        </li>
+        
+      </ul>
+       
+      <p
+        class="settings-group__note"
+      >
+        Adding a wallet needs a password. Restore this wallet with one first.
+      </p>
+      <!---->
+    </article>
+    <!---->
+     
+    <hr />
+     
+    <article
       class="settings-group"
     >
       <!---->
@@ -468,9 +552,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
         class="settings-group__multi-control-content"
       >
         <p>
-          Resetting clears the cache, settings, contacts and connected EVM
-          wallets, not your funds. You'll need your recovery phrase to restore
-          access, so make sure it's stored securely.
+          Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.
         </p>
          
         <!---->
@@ -532,6 +614,90 @@ exports[`Settings > should render the settings page displaying the status of the
     class="settings__content"
   >
     <article
+      class="settings-group wallets-settings"
+    >
+      <!---->
+      <h2
+        class="section-head"
+      >
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--open"
+        >
+          [
+        </span>
+        Wallets
+        <!---->
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--close"
+        >
+          ]
+        </span>
+        
+      </h2>
+      
+      <!---->
+       
+      <ul
+        class="wallets-settings__list svelte-1sxcuhu"
+      >
+        <li
+          class="wallets-settings__wallet svelte-1sxcuhu"
+        >
+          <div
+            class="wallets-settings__head svelte-1sxcuhu"
+          >
+            <span
+              class="wallets-settings__name svelte-1sxcuhu"
+            >
+              <span
+                class="wallets-settings__title svelte-1sxcuhu"
+              >
+                Wallet 1
+              </span>
+               
+              <!---->
+            </span>
+             
+            <span
+              class="wallets-settings__actions svelte-1sxcuhu"
+            >
+              <button
+                aria-label="Rename Wallet 1"
+                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default"
+                id="wallet-rename-"
+                type="button"
+              >
+                <span
+                  class="dusk-button__text"
+                >
+                  Rename
+                </span>
+                <!---->
+              </button>
+              <!---->
+               
+              <!---->
+            </span>
+          </div>
+          <!---->
+        </li>
+        
+      </ul>
+       
+      <p
+        class="settings-group__note"
+      >
+        Adding a wallet needs a password. Restore this wallet with one first.
+      </p>
+      <!---->
+    </article>
+    <!---->
+     
+    <hr />
+     
+    <article
       class="settings-group"
     >
       <!---->
@@ -984,9 +1150,7 @@ exports[`Settings > should render the settings page displaying the status of the
         class="settings-group__multi-control-content"
       >
         <p>
-          Resetting clears the cache, settings, contacts and connected EVM
-          wallets, not your funds. You'll need your recovery phrase to restore
-          access, so make sure it's stored securely.
+          Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.
         </p>
          
         <!---->
@@ -1031,6 +1195,90 @@ exports[`Settings > should render the settings page displaying the status of the
     class="settings__content"
   >
     <article
+      class="settings-group wallets-settings"
+    >
+      <!---->
+      <h2
+        class="section-head"
+      >
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--open"
+        >
+          [
+        </span>
+        Wallets
+        <!---->
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--close"
+        >
+          ]
+        </span>
+        
+      </h2>
+      
+      <!---->
+       
+      <ul
+        class="wallets-settings__list svelte-1sxcuhu"
+      >
+        <li
+          class="wallets-settings__wallet svelte-1sxcuhu"
+        >
+          <div
+            class="wallets-settings__head svelte-1sxcuhu"
+          >
+            <span
+              class="wallets-settings__name svelte-1sxcuhu"
+            >
+              <span
+                class="wallets-settings__title svelte-1sxcuhu"
+              >
+                Wallet 1
+              </span>
+               
+              <!---->
+            </span>
+             
+            <span
+              class="wallets-settings__actions svelte-1sxcuhu"
+            >
+              <button
+                aria-label="Rename Wallet 1"
+                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default"
+                id="wallet-rename-"
+                type="button"
+              >
+                <span
+                  class="dusk-button__text"
+                >
+                  Rename
+                </span>
+                <!---->
+              </button>
+              <!---->
+               
+              <!---->
+            </span>
+          </div>
+          <!---->
+        </li>
+        
+      </ul>
+       
+      <p
+        class="settings-group__note"
+      >
+        Adding a wallet needs a password. Restore this wallet with one first.
+      </p>
+      <!---->
+    </article>
+    <!---->
+     
+    <hr />
+     
+    <article
       class="settings-group"
     >
       <!---->
@@ -1483,9 +1731,7 @@ exports[`Settings > should render the settings page displaying the status of the
         class="settings-group__multi-control-content"
       >
         <p>
-          Resetting clears the cache, settings, contacts and connected EVM
-          wallets, not your funds. You'll need your recovery phrase to restore
-          access, so make sure it's stored securely.
+          Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.
         </p>
          
         <!---->
@@ -1529,6 +1775,90 @@ exports[`Settings > should show the wallet creation block height under Advanced 
   <div
     class="settings__content"
   >
+    <article
+      class="settings-group wallets-settings"
+    >
+      <!---->
+      <h2
+        class="section-head"
+      >
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--open"
+        >
+          [
+        </span>
+        Wallets
+        <!---->
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--close"
+        >
+          ]
+        </span>
+        
+      </h2>
+      
+      <!---->
+       
+      <ul
+        class="wallets-settings__list svelte-1sxcuhu"
+      >
+        <li
+          class="wallets-settings__wallet svelte-1sxcuhu"
+        >
+          <div
+            class="wallets-settings__head svelte-1sxcuhu"
+          >
+            <span
+              class="wallets-settings__name svelte-1sxcuhu"
+            >
+              <span
+                class="wallets-settings__title svelte-1sxcuhu"
+              >
+                Wallet 1
+              </span>
+               
+              <!---->
+            </span>
+             
+            <span
+              class="wallets-settings__actions svelte-1sxcuhu"
+            >
+              <button
+                aria-label="Rename Wallet 1"
+                class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default"
+                id="wallet-rename-"
+                type="button"
+              >
+                <span
+                  class="dusk-button__text"
+                >
+                  Rename
+                </span>
+                <!---->
+              </button>
+              <!---->
+               
+              <!---->
+            </span>
+          </div>
+          <!---->
+        </li>
+        
+      </ul>
+       
+      <p
+        class="settings-group__note"
+      >
+        Adding a wallet needs a password. Restore this wallet with one first.
+      </p>
+      <!---->
+    </article>
+    <!---->
+     
+    <hr />
+     
     <article
       class="settings-group"
     >
@@ -2062,9 +2392,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
         class="settings-group__multi-control-content"
       >
         <p>
-          Resetting clears the cache, settings, contacts and connected EVM
-          wallets, not your funds. You'll need your recovery phrase to restore
-          access, so make sure it's stored securely.
+          Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.
         </p>
          
         <!---->

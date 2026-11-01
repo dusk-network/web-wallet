@@ -17,12 +17,14 @@ const getKeyMaterial = (pwd) =>
  * @param {String} pwd
  * @param {Uint8Array<ArrayBuffer>} salt
  * @param {number} [iterations]
+ * @param {boolean} [extractable] False for a key that never leaves WebCrypto
  * @returns {Promise<CryptoKey>}
  */
 const getDerivedKey = async (
   pwd,
   salt,
-  iterations = LEGACY_PBKDF2_ITERATIONS
+  iterations = LEGACY_PBKDF2_ITERATIONS,
+  extractable = true
 ) =>
   crypto.subtle.deriveKey(
     {
@@ -33,7 +35,7 @@ const getDerivedKey = async (
     },
     await getKeyMaterial(pwd),
     { length: 256, name: "AES-GCM" },
-    true,
+    extractable,
     ["encrypt", "decrypt"]
   );
 

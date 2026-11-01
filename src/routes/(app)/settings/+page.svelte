@@ -32,21 +32,43 @@
   } from "$lib/contracts";
   import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
   import { deleteContacts } from "$lib/contacts";
+  import { WalletsSettings } from "$lib/containers/Wallets";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
   import { logout, pageTitle } from "$lib/navigation";
-  import loginInfoStorage from "$lib/services/loginInfoStorage";
+  import vault from "$lib/vault";
+  import { lockWallets, walletDirectory } from "$lib/wallets";
+  import { clearDirectory } from "$lib/wallets/directory";
+  import { forgetEveryWalletData } from "$lib/wallets/walletData";
 
-  const confirmResetWalletMessage =
-    "Confirm you've saved your recovery phrase before resetting the wallet. Proceed?";
+  // With one wallet, as before there were more.
+  const RESET_ONE = {
+    body: "Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.",
+    button: "Reset Wallet",
+    confirm:
+      "Confirm you've saved your recovery phrase before resetting the wallet. Proceed?",
+    heading: "Reset wallet",
+  };
 
+  const RESET_ALL = {
+    body: "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+    button: "Reset all wallets",
+    confirm:
+      "This removes every wallet from this browser. Confirm you've saved each recovery phrase before resetting. Proceed?",
+    heading: "Reset all wallets",
+  };
+
+  // Every wallet's data goes, and every phrase: the wallets' own first,
+  // while the directory still lists them.
   const resetWallet = () =>
     walletStore
       .clearLocalData()
       .then(async () => {
+        await forgetEveryWalletData();
         await deleteContacts();
         forgetBridgeRecords({ times: true });
         await forgetEvmWallets();
-        await loginInfoStorage.remove();
+        await vault.clear();
+        clearDirectory();
         settingsStore.reset();
         await logout(false);
       })
@@ -71,7 +93,7 @@
 
   function handleResetWalletClick() {
     // eslint-disable-next-line no-alert
-    if (confirm(confirmResetWalletMessage)) {
+    if (confirm(reset.confirm)) {
       resetError = null;
       resetWallet();
     }
@@ -92,14 +114,49 @@
   ];
 
   // Auto-lock is for a wallet with a password: one without always locks.
-  const hasPassword = loginInfoStorage.get() !== null;
+  const hasPassword = vault.exists();
 
   let isAdvancedOpen = false;
 
   /** @type {Error | null} */
   let resetError = null;
 
-  $: ({ syncStatus } = $walletStore);
+  /**
+   * How many wallets this browser holds, those this tab didn't open too, as
+   * another password opens them: Reset removes them all.
+   */
+  let walletsHere = 0;
+
+  /**
+   * Counts the wallets here again, as they come and go here or in another
+   * tab: the ones known at once, then the vault's.
+   *
+   * @param {Array<{ key: string }>} held The wallets this tab opened
+   * @param {import("$lib/wallets/directory").WalletDirectory} directory
+   */
+  function countWallets(held, directory) {
+    walletsHere = new Set([
+      ...held.map(({ key }) => key),
+      ...Object.keys(directory.wallets),
+    ]).size;
+    vault.count().then(
+      (count) => {
+        walletsHere = Math.max(count, held.length);
+      },
+      () => {}
+    );
+  }
+
+  $: ({ syncStatus, walletKey, wallets } = $walletStore);
+  $: countWallets(wallets, $walletDirectory);
+
+  // More than one wallet here: Lock and auto-lock lock them all, Reset
+  // removes them all, and they say so.
+  $: several = walletsHere > 1;
+  $: reset = several ? RESET_ALL : RESET_ONE;
+
+  // The block the open wallet was made at, when it was made here.
+  $: walletHeight = $walletDirectory.wallets[walletKey]?.height;
   $: ({
     autoLockMinutes,
     currency,
@@ -107,8 +164,15 @@
     customGasPrice,
     darkMode,
     language,
-    walletCreationBlockHeight,
+    walletCreationBlockHeight: settingsHeight,
   } = $settingsStore);
+
+  // A wallet made here kept its block; the first one, in the settings.
+  $: walletCreationBlockHeight = walletHeight
+    ? BigInt(walletHeight)
+    : !walletKey || walletKey === $walletDirectory.legacy
+      ? settingsHeight
+      : 0n;
   $: hasCustomGas = customGasLimit !== null && customGasPrice !== null;
   $: isGasValid =
     customGasLimit !== null && customGasPrice !== null
@@ -129,6 +193,8 @@
   </header>
 
   <div class="settings__content">
+    <WalletsSettings />
+    <hr />
     <article class="settings-group">
       <SectionHead>Preferences</SectionHead>
       <div class="settings-group__multi-control-content">
@@ -189,6 +255,11 @@
               options={autoLockOptions}
             />
           </label>
+          {#if several}
+            <p class="settings-group__note">
+              Locks every wallet after this long without use.
+            </p>
+          {/if}
         {/if}
       </div>
     </article>
@@ -314,13 +385,9 @@
     </article>
     <hr />
     <article class="settings-group">
-      <SectionHead>Reset wallet</SectionHead>
+      <SectionHead>{reset.heading}</SectionHead>
       <div class="settings-group__multi-control-content">
-        <p>
-          Resetting clears the cache, settings, contacts and connected EVM
-          wallets, not your funds. You'll need your recovery phrase to restore
-          access, so make sure it's stored securely.
-        </p>
+        <p>{reset.body}</p>
         <ErrorDetails
           error={resetError}
           summary="Couldn't reset the wallet. Try again."
@@ -333,7 +400,7 @@
           data-tooltip-text="Not allowed to reset while syncing"
           data-tooltip-type="warning"
           on:click={handleResetWalletClick}
-          text="Reset Wallet"
+          text={reset.button}
         />
       </div>
     </article>
@@ -349,9 +416,9 @@
     text="Back"
   />
   <Button
-    on:click={() => logout(false)}
+    on:click={() => lockWallets()}
     variant="tertiary"
-    text="Lock Wallet"
+    text={several ? "Lock" : "Lock Wallet"}
   />
 </div>
 

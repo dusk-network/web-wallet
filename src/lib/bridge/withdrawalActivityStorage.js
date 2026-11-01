@@ -11,9 +11,26 @@ import {
   normalizedTxHash,
   stringValue,
 } from "$lib/bridge/withdrawalActivityValues";
+import {
+  WITHDRAWAL_ACTIVITY_KEY as ACTIVITY_STORAGE_KEY,
+  LAST_WITHDRAWAL_KEY as LEGACY_LAST_WITHDRAWAL_KEY,
+} from "$lib/bridge/bridgeRecordKeys";
+import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
+import {
+  changeRecords,
+  openRecords,
+  recordsOf,
+  walletRecords,
+} from "$lib/wallets/walletRecords";
 
-const ACTIVITY_STORAGE_KEY = "dusk-evm:withdrawal-activity:v1";
-const LEGACY_LAST_WITHDRAWAL_KEY = "dusk-evm:last-withdrawal-tx-hash";
+/**
+ * Each wallet's withdrawals are kept under its own name: work that writes
+ * them after it waits takes its wallet's as it begins (`scope`), and keeps
+ * them there whichever wallet is open by then ($lib/wallets/walletRecords).
+ *
+ * @typedef {import("$lib/wallets/dataNames").WalletDataScope} WalletDataScope
+ */
+
 const MAX_STORED_ITEMS = 100;
 const VALID_STAGES = new Set([
   "submitted",
@@ -29,8 +46,7 @@ const VALID_STAGES = new Set([
 
 /** @typedef {import("./withdrawalActivityValues").WithdrawalActivityItem} WithdrawalActivityItem */
 
-/** @type {import("svelte/store").Writable<WithdrawalActivityItem[]>} */
-const activity = writable([]);
+const activity = writable(/** @type {WithdrawalActivityItem[]} */ ([]));
 
 export const withdrawalActivityStore = { subscribe: activity.subscribe };
 
@@ -103,9 +119,10 @@ function normalizeStoredItem(value) {
 }
 
 /**
+ * @param {WalletDataScope} scope
  * @returns {WithdrawalActivityItem[]}
  */
-function readRememberedItems() {
+function readStoredItems(scope) {
   const localStorage = storage();
 
   if (!localStorage) {
@@ -114,7 +131,7 @@ function readRememberedItems() {
 
   try {
     const parsed = JSON.parse(
-      localStorage.getItem(ACTIVITY_STORAGE_KEY) ?? "[]"
+      localStorage.getItem(scope.name(ACTIVITY_STORAGE_KEY)) ?? "[]"
     );
 
     if (!Array.isArray(parsed)) {
@@ -127,27 +144,46 @@ function readRememberedItems() {
   }
 }
 
+/** A wallet's withdrawals, by transaction ($lib/wallets/walletRecords). */
+const withdrawals = walletRecords({
+  keyOf: (/** @type {WithdrawalActivityItem} */ item) => item.transactionHash,
+  name: ACTIVITY_STORAGE_KEY,
+  read: readStoredItems,
+  store: activity,
+});
+
+/**
+ * A wallet's withdrawals: the open one's as shown, another's as kept.
+ *
+ * @param {WalletDataScope} [scope]
+ * @returns {WithdrawalActivityItem[]}
+ */
+const readRememberedItems = (scope = walletDataScope()) =>
+  recordsOf(withdrawals, scope);
+
 /**
  * @param {WithdrawalActivityItem[]} items
+ * @param {WalletDataScope} scope
  */
-function writeRememberedItems(items) {
-  const stored = items.slice(0, MAX_STORED_ITEMS);
-  storage()?.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(stored));
-  activity.set(stored);
-}
+const writeRememberedItems = (items, scope) =>
+  changeRecords(withdrawals, scope, () => items.slice(0, MAX_STORED_ITEMS));
 
 /** Forgets every withdrawal kept here, as Reset does. */
 export function forgetWithdrawalActivity() {
-  storage()?.removeItem(ACTIVITY_STORAGE_KEY);
-  storage()?.removeItem(LEGACY_LAST_WITHDRAWAL_KEY);
+  storage()?.removeItem(walletDataName(ACTIVITY_STORAGE_KEY));
+  storage()?.removeItem(walletDataName(LEGACY_LAST_WITHDRAWAL_KEY));
   activity.set([]);
 }
 
-export function hydrateWithdrawalActivity() {
-  const items = readRememberedItems();
-  activity.set(items);
-  return items;
-}
+/** Reads the open wallet's withdrawals, as it opens. */
+export const hydrateWithdrawalActivity = () => openRecords(withdrawals);
+
+/**
+ * The withdrawals a wallet keeps: the open one's by default, as shown.
+ *
+ * @param {WalletDataScope} [scope]
+ */
+export const rememberedWithdrawals = (scope) => readRememberedItems(scope);
 
 /**
  * Whom a withdrawal pays on Dusk: as now said, else as said before.
@@ -159,23 +195,16 @@ const recipientOf = (said, existing) =>
   normalizedDuskRecipient(said) ?? existing?.recipient ?? null;
 
 /**
- * @param {`0x${string}`} transactionHash
- * @param {{ account?: string | null, amountWei?: bigint | string, createdAt?: number, recipient?: string | null }} [options]
- *   `recipient` whom it pays on Dusk, where that's known
+ * A withdrawal as it's kept: what was kept of it before, with what's said
+ * now.
+ *
+ * @param {`0x${string}`} hash
+ * @param {{ account?: string | null, amountWei?: bigint | string, createdAt?: number, recipient?: string | null }} options
+ * @param {WithdrawalActivityItem | undefined} existing
+ * @returns {WithdrawalActivityItem}
  */
-export function rememberWithdrawalTransaction(transactionHash, options = {}) {
-  const hash = normalizedTxHash(transactionHash);
-
-  if (!hash) {
-    return null;
-  }
-
-  const storedItems = readRememberedItems();
-  const existing = storedItems.find((item) => item.transactionHash === hash);
+function withdrawalItem(hash, options, existing) {
   const createdAt = options.createdAt ?? existing?.createdAt ?? Date.now();
-  const remembered = storedItems.filter(
-    (item) => item.transactionHash !== hash
-  );
   const defaults = /** @type {WithdrawalActivityItem} */ ({
     account: null,
     actionError: null,
@@ -204,7 +233,8 @@ export function rememberWithdrawalTransaction(transactionHash, options = {}) {
     transactionHash: hash,
     withdrawalHash: null,
   });
-  const item = /** @type {WithdrawalActivityItem} */ ({
+
+  return /** @type {WithdrawalActivityItem} */ ({
     ...defaults,
     ...existing,
     account: normalizedAddress(options.account) ?? existing?.account ?? null,
@@ -216,9 +246,39 @@ export function rememberWithdrawalTransaction(transactionHash, options = {}) {
     source: "local",
     transactionHash: hash,
   });
+}
 
-  writeRememberedItems([item, ...remembered]);
-  storage()?.setItem(LEGACY_LAST_WITHDRAWAL_KEY, hash);
+/**
+ * @param {`0x${string}`} transactionHash
+ * @param {{ account?: string | null, amountWei?: bigint | string, createdAt?: number, recipient?: string | null }} [options]
+ *   `recipient` whom it pays on Dusk, where that's known
+ * @param {WalletDataScope} [scope] The wallet it's kept for: the open one
+ *   by default
+ */
+export function rememberWithdrawalTransaction(
+  transactionHash,
+  options = {},
+  scope = walletDataScope()
+) {
+  const hash = normalizedTxHash(transactionHash);
+
+  if (!hash || !scope.keeps()) {
+    return null;
+  }
+
+  const storedItems = readRememberedItems(scope);
+  const existing = storedItems.find((item) => item.transactionHash === hash);
+  const item = withdrawalItem(hash, options, existing);
+
+  writeRememberedItems(
+    [item, ...storedItems.filter((each) => each.transactionHash !== hash)],
+    scope
+  );
+  try {
+    storage()?.setItem(scope.name(LEGACY_LAST_WITHDRAWAL_KEY), hash);
+  } catch {
+    // Kept in this tab only.
+  }
 
   return item;
 }
@@ -226,13 +286,19 @@ export function rememberWithdrawalTransaction(transactionHash, options = {}) {
 /**
  * @param {string} transactionHash
  * @param {Partial<WithdrawalActivityItem>} patch
+ * @param {WalletDataScope} [scope] The wallet it's kept for: the open one
+ *   by default
  */
-export function updateWithdrawalTransaction(transactionHash, patch) {
+export function updateWithdrawalTransaction(
+  transactionHash,
+  patch,
+  scope = walletDataScope()
+) {
   const hash = normalizedTxHash(transactionHash);
 
-  if (!hash) return null;
+  if (!hash || !scope.keeps()) return null;
 
-  const storedItems = readRememberedItems();
+  const storedItems = readRememberedItems(scope);
   const existing = storedItems.find((item) => item.transactionHash === hash);
 
   if (!existing) return null;
@@ -262,21 +328,31 @@ export function updateWithdrawalTransaction(transactionHash, patch) {
 
   if (!item) return null;
 
-  writeRememberedItems([
-    item,
-    ...storedItems.filter((candidate) => candidate.transactionHash !== hash),
-  ]);
+  writeRememberedItems(
+    [
+      item,
+      ...storedItems.filter((candidate) => candidate.transactionHash !== hash),
+    ],
+    scope
+  );
 
   return item;
 }
 
-/** @param {string} transactionHash */
-export function getRememberedWithdrawalTransaction(transactionHash) {
+/**
+ * @param {string} transactionHash
+ * @param {WalletDataScope} [scope] Whose: the open wallet's by default
+ */
+export function getRememberedWithdrawalTransaction(
+  transactionHash,
+  scope = walletDataScope()
+) {
   const hash = normalizedTxHash(transactionHash);
 
   return hash
-    ? (readRememberedItems().find((item) => item.transactionHash === hash) ??
-        null)
+    ? (readRememberedItems(scope).find(
+        (item) => item.transactionHash === hash
+      ) ?? null)
     : null;
 }
 

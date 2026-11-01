@@ -18,10 +18,14 @@ import {
 } from "$lib/activity";
 import { closeContacts, openContacts } from "$lib/contacts";
 import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
+import WalletChangedError from "$lib/errors/wallet-changed-error";
 import { forgetRouteTransfers } from "$lib/bridge/migrationActivity";
 import { SOZU_FN, sozuCall } from "@dusk-network/networks/sozu";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
+import { useWalletDataSuffix } from "$lib/wallets/dataNames";
+import { profilesOf } from "$lib/wallets/profiles";
+import { useWalletData } from "$lib/wallets/walletData";
 
 import networkStore from "./networkStore";
 import settingsStore from "./settingsStore";
@@ -70,9 +74,23 @@ const initialState = {
     last: 0n,
     progress: 0,
   },
+  walletKey: "",
+  wallets: [],
 };
 
 const walletStore = writable(initialState);
+
+/**
+ * The wallets this tab unlocked, by vault ID: what a switch opens, without
+ * the password. A lock lets them all go.
+ *
+ * @type {Map<string, { n: number, profileGenerator: ProfileGenerator }>}
+ */
+const held = new Map();
+
+/** The wallets held, by number, as the switcher lists them. */
+const heldList = () =>
+  [...held].map(([key, { n }]) => ({ key, n })).sort((a, b) => a.n - b.n);
 const { set, subscribe, update } = walletStore;
 
 const treasury = new WalletTreasury();
@@ -188,8 +206,8 @@ const passThruWithEffects = (fn) => (a) => {
  * Keeps what a transaction changed in the cache until the sync sees it: the
  * notes it spent, or the nonce it used, so that a transaction made before
  * then isn't refused. Taken as the transaction begins: the nonce is the
- * sending profile's, and after a lock or a reset since, the cache is left
- * alone.
+ * sending profile's, and after a switch, a lock or a reset since, the cache
+ * is left alone: the sync finds the transaction there.
  *
  * @param {Profile} profile
  * @returns {(txInfo: TransactionInfo) => Promise<TransactionInfo>}
@@ -220,22 +238,59 @@ const updateCacheAfterTransaction = (profile) => {
 };
 
 /**
+ * A transaction's builder whose transaction, once it's built and proved,
+ * goes on only while the wallet it began on is open: the node gets it
+ * after that check, or never.
+ *
+ * @template {object} B
+ * @param {B} builder
+ * @param {<T>(value: T) => T} stillOpen
+ * @returns {B}
+ */
+const builtWhileOpen = (builder, stillOpen) =>
+  new Proxy(builder, {
+    get(target, property) {
+      const value = Reflect.get(target, property);
+
+      if (property === "build" && typeof value === "function") {
+        return async (/** @type {unknown} */ network) =>
+          stillOpen(await value.call(target, network));
+      }
+
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+
+/**
  * Sends a transaction as `profile`, taken once as the send begins: it is
  * built, kept in the cache and recorded in the history as that profile,
- * whichever one is chosen while the wallet syncs before it goes out.
+ * whichever one is chosen while the wallet syncs before it goes out. It
+ * goes out only while the wallet it began on is open: not after a switch
+ * or a lock since, checked once the wallet synced, and again once the
+ * transaction is built and proved.
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
- * @param {(network: import("@dusk/w3sper").Network) => Promise<TransactionInfo>} execute
+ * @param {(network: Pick<import("@dusk/w3sper").Network, "execute">) => Promise<TransactionInfo>} execute
  * @returns {Promise<TransactionInfo>}
  */
 const sendAs = (profile, details, execute) => {
+  const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
   const record = recordInHistory(profile, details);
 
+  /** @param {import("@dusk/w3sper").Network} network */
+  const sending = (network) => ({
+    /** @param {any} tx */
+    execute: (tx) => network.execute(builtWhileOpen(tx, stillOpen)),
+  });
+
   return sync()
+    .catch((error) => {
+      throw stillOpen(error);
+    })
     .then(networkStore.connect)
-    .then(execute)
+    .then((network) => execute(sending(stillOpen(network))))
     .then(keepInCache)
     .then(passThruWithEffects(observeTxRemoval))
     .then(passThruWithEffects(record));
@@ -367,13 +422,17 @@ const clearLocalData = async () => {
 };
 
 /** @type {WalletStoreServices["clearLocalDataAndInit"]} */
-const clearLocalDataAndInit = async (profileGenerator, syncFromBlock) => {
+const clearLocalDataAndInit = async (
+  profileGenerator,
+  syncFromBlock,
+  wallet
+) => {
   reset();
   const session = walletSession;
   await clearLocalData();
 
   if (session === walletSession) {
-    await init(profileGenerator, syncFromBlock);
+    await init(profileGenerator, syncFromBlock, wallet);
   }
 };
 
@@ -418,23 +477,33 @@ async function openContactsOf(profileGenerator, firstProfile) {
 }
 
 /** @type {WalletStoreServices["init"]} */
-async function init(profileGeneratorInstance, syncFromBlock) {
-  reset();
+async function init(
+  profileGeneratorInstance,
+  syncFromBlock,
+  { key = "", n = 1, profile = 0 } = {}
+) {
+  resetSession();
   const session = walletSession;
 
-  // Create two profiles by default
-  const currentProfile = await profileGeneratorInstance.default;
-  const secondProfile = await profileGeneratorInstance.next();
-  const profiles = [currentProfile, secondProfile];
+  held.set(key, { n, profileGenerator: profileGeneratorInstance });
+
+  // Its own cache, records and names from now on.
+  useWalletData(key);
+
+  // Two profiles by default: the same two each time the wallet opens.
+  const profiles = await profilesOf(profileGeneratorInstance);
+  const currentProfile = profiles[profile] ?? profiles[0];
 
   // The contacts open with the wallet, and close when it locks.
   if (session === walletSession) {
-    await openContactsOf(profileGeneratorInstance, currentProfile);
+    await openContactsOf(profileGeneratorInstance, profiles[0]);
   }
 
-  const cachedBalance = await treasury.getCachedBalance(currentProfile);
-  const cachedStakeInfo = await treasury.getCachedStakeInfo(currentProfile);
-  const minimumStake = await bookkeeper.minimumStake;
+  const [balance, stakeInfo, minimumStake] = await Promise.all([
+    treasury.getCachedBalance(currentProfile),
+    treasury.getCachedStakeInfo(currentProfile),
+    bookkeeper.minimumStake,
+  ]);
 
   if (session !== walletSession) {
     return;
@@ -444,23 +513,28 @@ async function init(profileGeneratorInstance, syncFromBlock) {
 
   set({
     ...initialState,
-    balance: cachedBalance,
+    balance,
     currentProfile,
     initialized: true,
     minimumStake,
     profiles,
-    stakeInfo: cachedStakeInfo,
+    stakeInfo,
+    walletKey: key,
+    wallets: heldList(),
   });
 
   sync(syncFromBlock)
     // Keep the initialized wallet identity even if its background sync fails.
     .catch(() => {})
     .then(() => {
+      // The wallet set up here, the first time it syncs: unlocking and
+      // switching keep the one there is.
       if (session === walletSession) {
-        settingsStore.update((settings) => ({
-          ...settings,
-          userId: currentProfile.address.toString(),
-        }));
+        settingsStore.update((settings) =>
+          settings.userId
+            ? settings
+            : { ...settings, userId: profiles[0].address.toString() }
+        );
       }
     })
     .finally(async () => {
@@ -468,6 +542,128 @@ async function init(profileGeneratorInstance, syncFromBlock) {
         await updateStaticInfo();
       }
     });
+}
+
+/**
+ * Opens the wallets the password opened, all held from now on: `active`,
+ * at its profile `profile`, or the first by number.
+ *
+ * @type {WalletStoreServices["open"]}
+ */
+async function open(wallets, { active, profile = 0 } = {}) {
+  reset();
+
+  for (const { key, n, profileGenerator } of wallets) {
+    held.set(key, { n, profileGenerator });
+  }
+
+  const [first] = heldList();
+  const key = active && held.has(active) ? active : first?.key;
+  const wallet = key === undefined ? undefined : held.get(key);
+
+  if (key === undefined || !wallet) {
+    throw new Error("No wallet to open");
+  }
+
+  await init(wallet.profileGenerator, undefined, { key, n: wallet.n, profile });
+}
+
+/**
+ * Another wallet held here, without the password, at its profile
+ * `profile`; in the wallet open, its profile `profile`.
+ *
+ * @type {WalletStoreServices["switchWallet"]}
+ */
+async function switchWallet(key, profile = 0, { syncFromBlock } = {}) {
+  const store = get(walletStore);
+
+  if (store.initialized && key === store.walletKey) {
+    return setCurrentProfile(store.profiles[profile] ?? store.profiles[0]);
+  }
+
+  const wallet = held.get(key);
+
+  if (!wallet) {
+    throw new Error("That wallet isn't open here. Lock, then unlock again.");
+  }
+
+  return init(wallet.profileGenerator, syncFromBlock, {
+    key,
+    n: wallet.n,
+    profile,
+  });
+}
+
+/**
+ * Holds another wallet here, as it's added: a switch opens it.
+ *
+ * @type {WalletStoreServices["holdWallet"]}
+ */
+function holdWallet({ key, n, profileGenerator }) {
+  held.set(key, { n, profileGenerator });
+  update((store) => ({ ...store, wallets: heldList() }));
+}
+
+/**
+ * Lets a removed wallet go: it's no longer listed, and no switch opens it.
+ *
+ * @type {WalletStoreServices["releaseWallet"]}
+ */
+function releaseWallet(key) {
+  held.delete(key);
+  update((store) => ({ ...store, wallets: heldList() }));
+}
+
+/**
+ * A wallet held here, by vault ID: its number and its profiles' generator.
+ *
+ * @type {WalletStoreServices["heldWallet"]}
+ */
+const heldWallet = (key) => held.get(key) ?? null;
+
+/**
+ * A check bound to the wallet open now, for work that acts for it after it
+ * waits, right before it acts: once another wallet opened, or after a
+ * lock, it throws WalletChangedError; otherwise it gives back what it's
+ * given.
+ *
+ * @type {WalletStoreServices["whileOpen"]}
+ */
+function whileOpen() {
+  const session = walletSession;
+
+  /** @type {any} */
+  const stillOpen = (/** @type {unknown} */ value) => {
+    if (session !== walletSession) {
+      throw new WalletChangedError();
+    }
+
+    return value;
+  };
+
+  return stillOpen;
+}
+
+/**
+ * What a screen does, bound to the wallet open as it's drawn: asked once
+ * another opened, or after a lock, it does nothing and says so
+ * (WalletChangedError).
+ *
+ * @type {WalletStoreServices["forThisWallet"]}
+ */
+function forThisWallet() {
+  const stillOpen = whileOpen();
+
+  return (task) =>
+    (...args) => {
+      try {
+        stillOpen();
+      } catch (error) {
+        return Promise.reject(error);
+      }
+
+      return task(...args);
+    };
 }
 
 /**
@@ -482,13 +678,29 @@ const refreshBalance = () =>
     .finally(updateStaticInfo)
     .then(() => {});
 
-/** @type {WalletStoreServices["reset"]} */
-function reset() {
+/**
+ * Ends what the wallet open did: its sync, history, contacts and work under
+ * way. What it shows stays until the next wallet's is set.
+ */
+function resetSession() {
   walletSession++;
   abortSync();
   stopActivity();
   closeContacts();
   treasury.reset();
+}
+
+/**
+ * Locks: every wallet held here let go, and nothing of them shown.
+ *
+ * @type {WalletStoreServices["reset"]}
+ */
+function reset() {
+  held.clear();
+  resetSession();
+
+  // No wallet open: the names of before, until one opens.
+  useWalletDataSuffix("", "", false);
   set(initialState);
 }
 
@@ -934,9 +1146,14 @@ export default {
   clearLocalData,
   clearLocalDataAndInit,
   depositEvmFunctionCall,
+  forThisWallet,
   getDuskEvmProofSubmitter,
+  heldWallet,
+  holdWallet,
   init,
+  open,
   refreshBalance,
+  releaseWallet,
   reset,
   sendDuskEvmWithdrawalCall,
   setCurrentProfile,
@@ -945,6 +1162,7 @@ export default {
   stakeWithSozu,
   startHistory,
   subscribe,
+  switchWallet,
   sync,
   topUpStake,
   transfer,
@@ -952,4 +1170,5 @@ export default {
   unstake,
   unstakeFromSozu,
   useContract,
+  whileOpen,
 };

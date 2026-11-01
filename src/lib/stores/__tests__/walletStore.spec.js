@@ -31,6 +31,7 @@ import {
 } from "$lib/bridge/migrationActivity";
 import { listContacts, saveContact } from "$lib/contacts";
 import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
+import { WalletChangedError } from "$lib/errors";
 
 import { networkStore, settingsStore, walletStore } from "..";
 
@@ -173,6 +174,8 @@ describe("Wallet store", async () => {
       last: 0n,
       progress: 0,
     },
+    walletKey: "",
+    wallets: [],
   };
 
   beforeEach(async () => {
@@ -1056,7 +1059,8 @@ describe("Wallet store", async () => {
         });
         cachedSyncInfo.mockRestore();
       }
-      expect(await transfer).toEqual(new Error("Synchronization aborted"));
+      // Begun on the wallet open before: it says so, and sends nothing.
+      expect(await transfer).toEqual(new WalletChangedError());
       expect(executeSpy).not.toHaveBeenCalled();
       expect(get(walletStore).initialized).toBe(true);
       expect(get(walletStore).syncStatus.error).toBeNull();

@@ -7,14 +7,20 @@
  * - a transfer out, from this profile's public account: a public transfer to
  *   the route's account, with the connected EVM wallet's address as the
  *   memo, where the route pays it out.
+ *
+ * Each is sent for the wallet open as it begins: nothing goes out once
+ * another wallet opened, or after a lock, and what was sent is kept for
+ * that wallet.
  */
 
 import { waitForTransactionReceipt } from "@wagmi/core";
 
 import { executeSend } from "$lib/contracts";
 import { formatDuskExact } from "$lib/dusk/currency";
+import { walletStore } from "$lib/stores";
 import { allowance, approve, migrate } from "$lib/web3/migration";
 import { wagmiConfig } from "$lib/web3/walletConnection";
+import { walletDataScope } from "$lib/wallets/dataNames";
 
 import {
   markMigrationConfirmed,
@@ -67,14 +73,16 @@ export const isApproved = async (route, owner, amountLux) =>
  * @param {`0x${string}`} owner
  * @param {bigint} amountLux
  * @param {() => void} onApproving
+ * @param {() => void} stillOpen Throws once the wallet it's for isn't open
  */
-async function approveIfShort(route, owner, amountLux, onApproving) {
+async function approveIfShort(route, owner, amountLux, onApproving, stillOpen) {
   const { chainId, name, token } = route.chain;
 
   if (await isApproved(route, owner, amountLux)) {
     return;
   }
 
+  stillOpen();
   onApproving();
 
   const hash = await approve(
@@ -115,8 +123,17 @@ export async function sendMigration({
   route,
 }) {
   const { chainId, name } = route.chain;
+  const stillOpen = walletStore.whileOpen();
+  const scope = walletDataScope();
 
-  await approveIfShort(route, owner, amountLux, () => onStep("approving"));
+  await approveIfShort(
+    route,
+    owner,
+    amountLux,
+    () => onStep("approving"),
+    stillOpen
+  );
+  stillOpen();
   onStep("migrating");
 
   const hash = await migrate(
@@ -126,14 +143,18 @@ export async function sendMigration({
     route.contract
   );
 
-  rememberMigration({
-    amountLux: String(amountLux),
-    createdAt: Date.now(),
-    hash,
-    recipient,
-    routeId: route.id,
-    sender: owner,
-  });
+  // Sent: kept for its wallet, whichever is open now.
+  rememberMigration(
+    {
+      amountLux: String(amountLux),
+      createdAt: Date.now(),
+      hash,
+      recipient,
+      routeId: route.id,
+      sender: owner,
+    },
+    scope
+  );
   onStep("confirming");
 
   const migrated = await waitForTransactionReceipt(wagmiConfig, {
@@ -142,12 +163,12 @@ export async function sendMigration({
   });
 
   if (migrated.status !== "success") {
-    markMigrationFailed(hash);
+    markMigrationFailed(hash, scope);
 
     throw new Error(`The migration didn't go through on ${name}.`);
   }
 
-  markMigrationConfirmed(hash);
+  markMigrationConfirmed(hash, scope);
 
   return hash;
 }

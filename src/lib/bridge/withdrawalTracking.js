@@ -1,6 +1,6 @@
 import {
   getRememberedWithdrawalTransaction,
-  hydrateWithdrawalActivity,
+  rememberedWithdrawals,
   updateWithdrawalTransaction,
   withdrawalActivityStore,
 } from "$lib/bridge/withdrawalActivityStorage";
@@ -16,6 +16,16 @@ import {
   loadWithdrawalStatus,
   withOneLatestBlock,
 } from "$lib/bridge/withdrawals";
+import { walletDataScope } from "$lib/wallets/dataNames";
+
+/**
+ * Each withdrawal is followed for the wallet that keeps it, open as the
+ * following begins (`scope`): what a check reads is kept for that wallet,
+ * and no check begins once another wallet opened, as a check reads for the
+ * account open.
+ *
+ * @typedef {import("$lib/wallets/dataNames").WalletDataScope} WalletDataScope
+ */
 
 const ACTIVE_POLL_INTERVAL_MS = 15_000;
 const ACTION_POLL_INTERVAL_MS = 5_000;
@@ -28,21 +38,28 @@ const PROVEN_POLL_INTERVAL_MS = 10 * 60_000;
 const MAX_ROUND_WAIT_MS = 60 * 60_000;
 
 /**
- * The withdrawals followed, by hash: when each is checked next, and what
- * its callers wait on, settled once nothing is left to read about it.
- * `woken` marks one asked for again while it was being checked.
+ * The withdrawals followed, by hash: when each is checked next, for which
+ * wallet, and what its callers wait on, settled once nothing is left to
+ * read about it. `woken` marks one asked for again while it was being
+ * checked.
  *
- * @type {Map<string, PromiseWithResolvers<any> & { due: number, woken: boolean }>}
+ * @type {Map<string, PromiseWithResolvers<any> & { due: number, scope: WalletDataScope, woken: boolean }>}
  */
 const trackers = new Map();
 
 /**
- * The checks under way, by hash: one asked for meanwhile shares the answer,
- * and a round leaves it out until it ends.
+ * The checks under way, by wallet and hash: one asked for meanwhile shares
+ * the answer, and a round leaves it out until it ends.
  *
  * @type {Map<string, Promise<any>>}
  */
 const checking = new Map();
+
+/**
+ * @param {WalletDataScope} scope
+ * @param {string} hash
+ */
+const checkKey = (scope, hash) => `${scope.id} ${hash}`;
 
 /** @type {number | undefined} */
 let roundTimer;
@@ -136,12 +153,13 @@ function isSettled(item) {
  * read about it.
  *
  * @param {any} remembered
+ * @param {WalletDataScope} scope
  */
-async function refreshSentAt(remembered) {
+async function refreshSentAt(remembered, scope) {
   const patch = await sentAtPatch(remembered, remembered);
 
   return patch.sentAt
-    ? updateWithdrawalTransaction(remembered.transactionHash, patch)
+    ? updateWithdrawalTransaction(remembered.transactionHash, patch, scope)
     : remembered;
 }
 
@@ -218,8 +236,9 @@ async function reconcilePendingSubmission(remembered, status) {
  * because an executed Dusk transaction may still contain an execution error.
  *
  * @param {any} remembered
+ * @param {WalletDataScope} scope
  */
-async function refreshStatus(remembered) {
+async function refreshStatus(remembered, scope) {
   try {
     const loadedStatus = await loadWithdrawalStatus(
       remembered.transactionHash,
@@ -240,103 +259,145 @@ async function refreshStatus(remembered) {
         : { pendingAction: null, pendingTransactionHash: null }),
     };
 
-    return updateWithdrawalTransaction(remembered.transactionHash, patch);
+    return updateWithdrawalTransaction(
+      remembered.transactionHash,
+      patch,
+      scope
+    );
   } catch (error) {
-    const message = errorMessage(error);
-
-    if (
-      remembered.stage === "submitted" &&
-      message === "Withdrawal transaction was not found."
-    ) {
-      return updateWithdrawalTransaction(remembered.transactionHash, {
-        lastCheckedAt: Date.now(),
-        trackingError: null,
-      });
-    }
-
-    if (message === "Withdrawal transaction failed on DuskEVM.") {
-      return updateWithdrawalTransaction(remembered.transactionHash, {
-        actionError: message,
-        lastCheckedAt: Date.now(),
-        pendingAction: null,
-        pendingTransactionHash: null,
-        stage: "failed",
-        trackingError: null,
-      });
-    }
-
-    return updateWithdrawalTransaction(remembered.transactionHash, {
-      lastCheckedAt: Date.now(),
-      trackingError: message,
-    });
+    return updateWithdrawalTransaction(
+      remembered.transactionHash,
+      failedCheckPatch(remembered, errorMessage(error)),
+      scope
+    );
   }
 }
 
 /**
- * @param {string} transactionHash
+ * What a check that failed with `message` keeps of a withdrawal.
+ *
+ * @param {any} remembered
+ * @param {string} message
+ * @returns {Partial<import("./withdrawalActivityValues").WithdrawalActivityItem>}
  */
-async function readWithdrawal(transactionHash) {
-  const remembered = getRememberedWithdrawalTransaction(transactionHash);
+function failedCheckPatch(remembered, message) {
+  if (
+    remembered.stage === "submitted" &&
+    message === "Withdrawal transaction was not found."
+  ) {
+    return { lastCheckedAt: Date.now(), trackingError: null };
+  }
+
+  if (message === "Withdrawal transaction failed on DuskEVM.") {
+    return {
+      actionError: message,
+      lastCheckedAt: Date.now(),
+      pendingAction: null,
+      pendingTransactionHash: null,
+      stage: "failed",
+      trackingError: null,
+    };
+  }
+
+  return { lastCheckedAt: Date.now(), trackingError: message };
+}
+
+/**
+ * A withdrawal as its wallet keeps it, read again: nothing is read once
+ * another wallet opened.
+ *
+ * @param {string} transactionHash
+ * @param {WalletDataScope} scope
+ */
+async function readWithdrawal(transactionHash, scope) {
+  const remembered = getRememberedWithdrawalTransaction(transactionHash, scope);
   const isFinalized = remembered?.stage === "finalized";
 
-  if (!remembered || (isFinalized && isSettled(remembered))) {
+  if (
+    !remembered ||
+    (isFinalized && isSettled(remembered)) ||
+    !scope.isOpen()
+  ) {
     return remembered;
   }
 
-  return isFinalized ? refreshSentAt(remembered) : refreshStatus(remembered);
+  return isFinalized
+    ? refreshSentAt(remembered, scope)
+    : refreshStatus(remembered, scope);
 }
 
 /**
  * Reads where a withdrawal is, or, once it is finalized, when it was sent if
- * that couldn't be read before. A check of it under way gives its answer
- * instead, and the check sets when a followed withdrawal is checked next.
+ * that couldn't be read before, for the wallet open as it's asked for. A
+ * check of it under way gives its answer instead, and the check sets when a
+ * followed withdrawal is checked next.
  *
  * @param {string} transactionHash
+ * @param {WalletDataScope} [scope]
  */
-export function refreshWithdrawalTransaction(transactionHash) {
+export function refreshWithdrawalTransaction(
+  transactionHash,
+  scope = walletDataScope()
+) {
   const hash = transactionHash.toLowerCase();
-  let check = checking.get(hash);
+  const key = checkKey(scope, hash);
+  let check = checking.get(key);
 
   if (!check) {
     const at = Date.now();
 
-    check = readWithdrawal(transactionHash).then(
+    check = readWithdrawal(transactionHash, scope).then(
       (item) => {
-        checking.delete(hash);
-        checked(hash, item, at);
+        checking.delete(key);
+        checked(hash, item, at, scope);
 
         return item;
       },
       (error) => {
-        checking.delete(hash);
+        checking.delete(key);
         scheduleRound();
 
         throw error;
       }
     );
-    checking.set(hash, check);
+    checking.set(key, check);
   }
 
   return check;
 }
 
 /**
+ * Keeps a proof or a claim sent for a withdrawal, for the wallet that sent
+ * it (`scope`, taken as it was sent), and follows it while that wallet is
+ * open.
+ *
  * @param {string} transactionHash
  * @param {{ action: "finalize" | "prove", hash: string }} submission
+ * @param {WalletDataScope} [scope]
  */
-export function recordWithdrawalSubmission(transactionHash, submission) {
-  const updated = updateWithdrawalTransaction(transactionHash, {
-    actionError: null,
-    pendingAction: submission.action,
-    pendingTransactionHash: submission.hash,
-    stage: submittedStage(submission.action),
-    trackingError: null,
-  });
+export function recordWithdrawalSubmission(
+  transactionHash,
+  submission,
+  scope = walletDataScope()
+) {
+  const updated = updateWithdrawalTransaction(
+    transactionHash,
+    {
+      actionError: null,
+      pendingAction: submission.action,
+      pendingTransactionHash: submission.hash,
+      stage: submittedStage(submission.action),
+      trackingError: null,
+    },
+    scope
+  );
 
   if (updated) {
-    void trackWithdrawalTransaction(updated.transactionHash, {
-      wake: true,
-    });
+    void trackWithdrawalTransaction(
+      updated.transactionHash,
+      { wake: true },
+      scope
+    );
   }
 
   return updated;
@@ -404,11 +465,12 @@ function nextCheck(hash, item, at) {
  * @param {string} hash
  * @param {any} item
  * @param {number} at When the check started
+ * @param {WalletDataScope} scope Whose check it was
  */
-function checked(hash, item, at) {
+function checked(hash, item, at, scope) {
   const tracker = trackers.get(hash);
 
-  if (!tracker) {
+  if (!tracker || tracker.scope.id !== scope.id) {
     return;
   }
 
@@ -429,7 +491,7 @@ function scheduleRound() {
   window.clearTimeout(roundTimer);
 
   const waiting = Array.from(trackers)
-    .filter(([hash]) => !checking.has(hash))
+    .filter(([hash, { scope }]) => !checking.has(checkKey(scope, hash)))
     .map(([, { due }]) => due);
 
   if (waiting.length === 0) {
@@ -445,20 +507,36 @@ function scheduleRound() {
 }
 
 /**
+ * Ends the following of a wallet's withdrawals once another wallet opened:
+ * their callers have them as that wallet keeps them.
+ */
+function dropClosed() {
+  for (const [hash, tracker] of trackers) {
+    if (!tracker.scope.isOpen()) {
+      trackers.delete(hash);
+      tracker.resolve(getRememberedWithdrawalTransaction(hash, tracker.scope));
+    }
+  }
+}
+
+/**
  * Checks every followed withdrawal that is due, together: their reads on
  * Dusk go out together, with one read of its latest block. The next round
  * doesn't wait for this one's checks to end: each sets its own next check.
  */
 function runRound() {
+  dropClosed();
+
   const now = Date.now();
   const dueNow = Array.from(trackers).filter(
-    ([hash, { due }]) => due <= now && !checking.has(hash)
+    ([hash, { due, scope }]) =>
+      due <= now && !checking.has(checkKey(scope, hash))
   );
 
   void withOneLatestBlock(() =>
     Promise.all(
       dueNow.map(([hash, tracker]) =>
-        refreshWithdrawalTransaction(hash).catch((error) => {
+        refreshWithdrawalTransaction(hash, tracker.scope).catch((error) => {
           if (trackers.get(hash) === tracker) {
             trackers.delete(hash);
             tracker.reject(error);
@@ -471,36 +549,55 @@ function runRound() {
 }
 
 /**
+ * A followed withdrawal, checked at once, or a poll after its last check.
+ *
+ * @param {any} remembered
+ * @param {WalletDataScope} scope
+ */
+function newTracker(remembered, scope) {
+  const now = Date.now();
+
+  return {
+    ...Promise.withResolvers(),
+    due: remembered.lastCheckedAt
+      ? Math.max(now, remembered.lastCheckedAt + pollInterval(remembered))
+      : now,
+    scope,
+    woken: false,
+  };
+}
+
+/**
  * Continue tracking independently of the activity route so bridge progress
  * survives navigation: each followed withdrawal is checked in rounds, as it
- * comes due. Calling this for an active tracker with `wake` checks it at
- * once.
+ * comes due, while the wallet open as it's asked for (`scope`) is. Calling
+ * this for an active tracker with `wake` checks it at once.
  *
  * @param {string} transactionHash
  * @param {{ wake?: boolean }} [options]
+ * @param {WalletDataScope} [scope]
  */
-export function trackWithdrawalTransaction(transactionHash, options = {}) {
+export function trackWithdrawalTransaction(
+  transactionHash,
+  options = {},
+  scope = walletDataScope()
+) {
   const hash = transactionHash.toLowerCase();
+
+  dropClosed();
+
   let tracker = trackers.get(hash);
 
   if (!tracker) {
-    const remembered = getRememberedWithdrawalTransaction(hash);
+    const remembered = getRememberedWithdrawalTransaction(hash, scope);
 
-    // Nothing to follow: it isn't kept here, or nothing is left to read.
-    if (!remembered || isSettled(remembered)) {
+    // Nothing to follow: it isn't kept here, nothing is left to read, or
+    // its wallet isn't open.
+    if (!remembered || isSettled(remembered) || !scope.isOpen()) {
       return Promise.resolve(remembered);
     }
 
-    const now = Date.now();
-
-    // At once, or a poll after its last check.
-    tracker = {
-      ...Promise.withResolvers(),
-      due: remembered.lastCheckedAt
-        ? Math.max(now, remembered.lastCheckedAt + pollInterval(remembered))
-        : now,
-      woken: false,
-    };
+    tracker = newTracker(remembered, scope);
     trackers.set(hash, tracker);
   } else if (!options.wake) {
     return tracker.promise;
@@ -508,7 +605,7 @@ export function trackWithdrawalTransaction(transactionHash, options = {}) {
 
   if (options.wake) {
     tracker.due = Date.now();
-    tracker.woken = checking.has(hash);
+    tracker.woken = checking.has(checkKey(tracker.scope, hash));
   }
 
   scheduleRound();
@@ -519,7 +616,7 @@ export function trackWithdrawalTransaction(transactionHash, options = {}) {
 /** @param {string | null | undefined} account */
 export function resumeWithdrawalTracking(account) {
   const normalizedAccount = account?.toLowerCase() ?? null;
-  const withdrawals = hydrateWithdrawalActivity()
+  const withdrawals = rememberedWithdrawals()
     .filter(
       (item) =>
         !isSettled(item) &&

@@ -5,7 +5,7 @@ import nodeNetwork from "$lib/stores/nodeNetwork";
 
 import { ACTIVITY_PAGE, ActivitySession } from "./activitySession";
 
-export { clearActivityStore } from "./activityStore";
+export { clearActivityStore, forgetWalletActivity } from "./activityStore";
 export { getShieldedHistory } from "./shieldedHistory";
 export { TX_KIND } from "./constants";
 

@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { mdiArrowLeft } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
+  import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
   import SectionHead from "../SectionHead/SectionHead.svelte";
   import { addBasePath } from "$lib/navigation";
   import { randomUUID } from "$lib/dusk/string";
@@ -36,6 +37,7 @@
 
   <aside aria-labelledby="{id}-summary" class="stake-flow__summary">
     <SectionHead id="{id}-summary">Summary</SectionHead>
+    <ReviewWallet />
     <slot name="summary" />
     {#if isReviewing}
       <Button

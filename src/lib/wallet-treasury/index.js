@@ -1,5 +1,5 @@
 import notesArrayToMap from "$lib/wallet/notesArrayToMap";
-import walletCache from "$lib/wallet-cache";
+import { currentWalletCache } from "$lib/wallet-cache";
 import networkStore from "$lib/stores/networkStore";
 
 class WalletTreasury {
@@ -15,9 +15,10 @@ class WalletTreasury {
 
   /**
    * @param {bigint} lastBlockHeight
+   * @param {ReturnType<typeof currentWalletCache>} walletCache
    * @returns {Promise<WalletCacheSyncInfo>}
    */
-  async #getEnrichedSyncInfo(lastBlockHeight) {
+  async #getEnrichedSyncInfo(lastBlockHeight, walletCache) {
     const [currentSyncInfo, lastBlockHash, lastFinalizedBlockHeight] =
       await Promise.all([
         walletCache.getSyncInfo(),
@@ -62,6 +63,7 @@ class WalletTreasury {
   async address(identifier) {
     const address = identifier.toString();
     const result = [];
+    const walletCache = currentWalletCache();
     const notes = await walletCache.getUnspentNotes([address]);
 
     for (const note of notes) {
@@ -81,7 +83,7 @@ class WalletTreasury {
 
   /** @returns {Promise<void>} */
   async clearCache() {
-    await walletCache.clear();
+    await currentWalletCache().clear();
   }
 
   /**
@@ -89,7 +91,9 @@ class WalletTreasury {
    * @returns {Promise<WalletCacheBalanceInfo["balance"]>}
    */
   async getCachedBalance(profile) {
-    return await walletCache.getBalanceInfo(profile.address.toString());
+    return await currentWalletCache().getBalanceInfo(
+      profile.address.toString()
+    );
   }
 
   /**
@@ -97,14 +101,14 @@ class WalletTreasury {
    * @returns {Promise<StakeInfo>}
    */
   async getCachedStakeInfo(profile) {
-    return await walletCache.getStakeInfo(profile.account.toString());
+    return await currentWalletCache().getStakeInfo(profile.account.toString());
   }
 
   /**
    * @returns {Promise<WalletCacheSyncInfo>}
    */
   async getCachedSyncInfo() {
-    return await walletCache.getSyncInfo();
+    return await currentWalletCache().getSyncInfo();
   }
 
   reset() {
@@ -120,7 +124,10 @@ class WalletTreasury {
    * @returns {Promise<void>}
    */
   async setCachedBalance(profile, balance) {
-    await walletCache.setBalanceInfo(profile.address.toString(), balance);
+    await currentWalletCache().setBalanceInfo(
+      profile.address.toString(),
+      balance
+    );
   }
 
   /**
@@ -129,7 +136,10 @@ class WalletTreasury {
    * @returns {Promise<void>}
    */
   async setCachedStakeInfo(profile, stakeInfo) {
-    await walletCache.setStakeInfo(profile.account.toString(), stakeInfo);
+    await currentWalletCache().setStakeInfo(
+      profile.account.toString(),
+      stakeInfo
+    );
   }
 
   /** @param {Profile[]} profiles */
@@ -165,6 +175,9 @@ class WalletTreasury {
   // eslint-disable-next-line max-statements
   async update(from, syncIterationListener, signal) {
     const generation = this.#generation;
+
+    // The open wallet's cache, throughout: the next wallet's isn't touched.
+    const walletCache = currentWalletCache();
     const ensureCurrent = () => {
       if (generation !== this.#generation || signal.aborted) {
         throw new Error("Synchronization aborted");
@@ -306,7 +319,10 @@ class WalletTreasury {
        * fix our local cache state by syncing from the last finalized
        * block height.
        */
-      const syncInfo = await this.#getEnrichedSyncInfo(lastBlockHeight);
+      const syncInfo = await this.#getEnrichedSyncInfo(
+        lastBlockHeight,
+        walletCache
+      );
       ensureCurrent();
       await walletCache.setSyncInfo(syncInfo);
     } finally {
@@ -322,6 +338,7 @@ class WalletTreasury {
    */
   async updateCachedNonce(profile, nonce) {
     const address = profile.address.toString();
+    const walletCache = currentWalletCache();
     const currentBalance = await walletCache.getBalanceInfo(address);
 
     await walletCache.setBalanceInfo(address, {
@@ -336,7 +353,7 @@ class WalletTreasury {
    * @returns {Promise<void>}
    */
   async updateCachedPendingNotes(nullifiers, hash) {
-    await walletCache.setPendingNotesInfo(nullifiers, hash);
+    await currentWalletCache().setPendingNotesInfo(nullifiers, hash);
   }
 }
 

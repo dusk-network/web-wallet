@@ -15,6 +15,9 @@
   --calm-subtle: #6a6771;
   --calm-line: rgb(20 20 22 / 0.09);
   --calm-line2: rgb(20 20 22 / 0.15);
+
+  /* A field's edge where it must read as one: 3:1 or more on every surface. */
+  --calm-field-edge: #78757f;
   --calm-pending: #8a5a00;
   --calm-danger: #b42318;
   --calm-online: #1e8e4e;
@@ -205,6 +208,7 @@
   --calm-subtle: #8d8a94;
   --calm-line: rgb(242 240 235 / 0.08);
   --calm-line2: rgb(242 240 235 / 0.14);
+  --calm-field-edge: #7c7984;
   --calm-pending: #e8b96a;
   --calm-danger: #e37a7a;
   --calm-online: #3fb871;

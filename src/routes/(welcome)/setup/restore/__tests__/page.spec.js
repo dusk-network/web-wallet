@@ -11,10 +11,16 @@ import {
   walletStore,
 } from "$lib/stores";
 import * as walletLib from "$lib/wallet";
-import loginInfoStorage from "$lib/services/loginInfoStorage";
-import { toastList } from "$lib/dusk/components/Toast/store";
+import vault from "$lib/vault";
+import fixtures from "$lib/vault/__tests__/fixtures/login-v1.json";
 
 import Restore from "../+page.svelte";
+
+// The same IDs each run, for the snapshots.
+vi.mock("$lib/dusk/string", async (importOriginal) => ({
+  .../** @type {typeof import("$lib/dusk/string")} */ (await importOriginal()),
+  randomUUID: () => "some-generated-id",
+}));
 
 const getKey = (/** @type {string} */ key) => (/** @type {any} */ value) =>
   value[key];
@@ -32,11 +38,19 @@ const fireInput = (input, value) =>
 /** @param {HTMLElement} element */
 const asInput = (element) => /** @type {HTMLInputElement} */ (element);
 
+/**
+ * Pastes text into a word box, as a person does.
+ *
+ * @param {HTMLElement} box
+ * @param {string} text
+ */
+const pasteInto = (box, text) =>
+  fireEvent.paste(box, { clipboardData: { getData: () => text } });
+
 describe("Restore", async () => {
   const mnemonic = walletLib.generateMnemonic();
   const invalidMnemonic = "dad dad dad dad dad dad dad dad dad dad dad dad";
   const pwd = "passwordpassword";
-  const loginInfo = await walletLib.encryptMnemonic(mnemonic, pwd);
   const seed = walletLib.getSeedFromMnemonic(mnemonic);
   const userId = await walletLib
     .profileGeneratorFrom(seed)
@@ -48,10 +62,7 @@ describe("Restore", async () => {
   const clearAndInitSpy = vi
     .spyOn(walletStore, "clearLocalDataAndInit")
     .mockResolvedValue(undefined);
-  const readTextMock = vi.fn().mockResolvedValue(mnemonic);
   const initWalletSpy = vi.spyOn(walletLib, "initializeWallet");
-
-  Object.assign(window.navigator, { clipboard: { readText: readTextMock } });
 
   afterEach(async () => {
     cleanup();
@@ -61,7 +72,6 @@ describe("Restore", async () => {
     settingsResetSpy.mockClear();
     initWalletSpy.mockClear();
     walletStore.reset();
-    readTextMock.mockClear();
   });
 
   afterAll(() => {
@@ -77,6 +87,51 @@ describe("Restore", async () => {
     const { container } = render(Restore);
 
     expect(container.firstElementChild).toMatchSnapshot();
+  });
+
+  it("should say that it removes every wallet from this browser where there's more than one", async () => {
+    // Public BIP39 test phrases, never a real wallet's.
+    await vault.setUp(
+      "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      pwd
+    );
+    await vault.add(
+      "scheme spot photo card baby mountain device kick cradle pact join borrow",
+      pwd
+    );
+    settingsStore.update(setUserId(userId));
+
+    const { getByText } = render(Restore);
+
+    expect(
+      getByText(
+        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
+      )
+    ).toBeInTheDocument();
+
+    await vault.clear();
+  });
+
+  it("should count the phrase of earlier versions still to move as a wallet of its own", async () => {
+    await vault.setUp(
+      "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      pwd
+    );
+    localStorage.setItem(
+      `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`,
+      fixtures.current.stored
+    );
+    settingsStore.update(setUserId(userId));
+
+    const { findByText } = render(Restore);
+
+    expect(
+      await findByText(
+        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
+      )
+    ).toBeInTheDocument();
+
+    await vault.clear();
   });
 
   it("should render the Terms of Service step of the Restore flow if there is no userId saved in localStorage", () => {
@@ -96,8 +151,8 @@ describe("Restore", async () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
-  it("should allow the user to proceed to password setup after a valid mnemonic has been provided", async () => {
-    const { getByRole } = render(Restore);
+  it("should allow the user to proceed to password setup after a valid mnemonic has been pasted into any box", async () => {
+    const { getByLabelText, getByRole } = render(Restore);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
@@ -105,58 +160,79 @@ describe("Restore", async () => {
 
     expect(nextButton).toBeDisabled();
 
-    await fireEvent.click(
-      getByRole("button", { name: "Paste recovery phrase" })
-    );
-
+    // Pasted into box 5: the words fill the boxes from the first.
+    await pasteInto(getByLabelText("Word 5"), mnemonic);
     await tick();
+
+    expect(asInput(getByLabelText("Word 1")).value).toBe(
+      mnemonic.split(" ")[0]
+    );
     expect(nextButton).not.toBeDisabled();
   });
 
   it("should keep the mnemonic editable when returning from password setup", async () => {
-    const { getByRole, getByPlaceholderText } = render(Restore);
+    const { getByLabelText, getByRole } = render(Restore);
+
     await fireEvent.click(getByRole("button", { name: "Accept" }));
-    await fireEvent.click(
-      getByRole("button", { name: "Paste recovery phrase" })
-    );
+    await pasteInto(getByLabelText("Word 1"), mnemonic);
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Back" }));
-    expect(getByRole("button", { name: "Undo" })).toBeEnabled();
-    await fireEvent.click(getByRole("button", { name: "Undo" }));
-    expect(getByPlaceholderText("Enter word 12")).toBeInTheDocument();
-    expect(getByRole("button", { name: "Next" })).toBeDisabled();
-    await fireEvent.click(
-      getByRole("button", { name: "Paste recovery phrase" })
+
+    expect(asInput(getByLabelText("Word 12")).value).toBe(
+      mnemonic.split(" ")[11]
     );
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+
+    await fireInput(getByLabelText("Word 12"), "");
+
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+    await pasteInto(getByLabelText("Word 3"), mnemonic);
+
     expect(getByRole("button", { name: "Next" })).toBeEnabled();
   });
 
-  it("should not allow the user to proceed to password setup after an invalid mnemonic has been provided", async () => {
-    readTextMock.mockResolvedValueOnce(invalidMnemonic);
-
-    const { getByRole } = render(Restore);
+  it("should say what's wrong with an invalid mnemonic as it's pasted, and not allow the user to proceed", async () => {
+    const { getByLabelText, getByRole } = render(Restore);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     const nextButton = getByRole("button", { name: "Next" });
 
-    expect(nextButton).toBeDisabled();
-
-    expect(get(toastList).length).toBe(0);
-
-    await fireEvent.click(
-      getByRole("button", { name: "Paste recovery phrase" })
-    );
+    await pasteInto(getByLabelText("Word 1"), invalidMnemonic);
     await tick();
 
-    expect(get(toastList).length).toBe(1);
+    expect(getByRole("alert")).toHaveTextContent(
+      "That isn't a valid recovery phrase. Check each word."
+    );
     expect(nextButton).toBeDisabled();
   });
 
-  it("should initialize the wallet without setting a password", async () => {
-    await loginInfoStorage.set(loginInfo);
+  it("should say a paste of 25 words is one too many, and not take the first 24 as the phrase", async () => {
+    const { getByLabelText, getByRole } = render(Restore);
+    // A public 24-word test phrase, then one word more.
+    const twentyFour = `${"abandon ".repeat(23)}art`;
 
-    const { getByRole } = render(Restore);
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await pasteInto(getByLabelText("Word 1"), `${twentyFour} abandon`);
+    await tick();
+
+    expect(getByRole("alert")).toHaveTextContent(
+      "That's 25 words. A recovery phrase has 12 or 24."
+    );
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+    // The same 24 alone are a phrase.
+    await pasteInto(getByLabelText("Word 1"), twentyFour);
+    await tick();
+
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
+  it("should initialize the wallet without setting a password", async () => {
+    await vault.setUp(mnemonic, pwd);
+
+    const { getByLabelText, getByRole } = render(Restore);
 
     // ToS step
     await fireEvent.click(getByRole("button", { name: "Accept" }));
@@ -166,9 +242,7 @@ describe("Restore", async () => {
 
     expect(nextButton).toBeDisabled();
 
-    await fireEvent.click(
-      getByRole("button", { name: "Paste recovery phrase" })
-    );
+    await pasteInto(getByLabelText("Word 1"), mnemonic);
 
     expect(nextButton).toBeEnabled();
     await fireEvent.click(nextButton);
@@ -177,7 +251,7 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("switch"));
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    expect(loginInfoStorage.get()).toBeNull();
+    expect(vault.exists()).toBe(false);
 
     // Block Height Step
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -191,7 +265,8 @@ describe("Restore", async () => {
     expect(clearAndInitSpy).toHaveBeenCalledTimes(1);
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
-      0n
+      0n,
+      { key: "", n: 1 }
     );
 
     // Syncing Step
@@ -207,7 +282,7 @@ describe("Restore", async () => {
   });
 
   it("should initialize the wallet with the encrypted mnemonic saved in localStorage", async () => {
-    const { getByRole, getByPlaceholderText } = render(Restore);
+    const { getByLabelText, getByPlaceholderText, getByRole } = render(Restore);
 
     // ToS step
     await fireEvent.click(getByRole("button", { name: "Accept" }));
@@ -217,24 +292,22 @@ describe("Restore", async () => {
 
     expect(nextButton).toBeDisabled();
 
-    await fireEvent.click(
-      getByRole("button", { name: "Paste recovery phrase" })
-    );
+    await pasteInto(getByLabelText("Word 1"), mnemonic);
     await tick();
     expect(nextButton).toBeEnabled();
     await fireEvent.click(nextButton);
 
     // Set Password step
-    expect(loginInfoStorage.get()).toBeNull();
+    expect(vault.exists()).toBe(false);
 
     await fireInput(asInput(getByPlaceholderText("Set Password")), pwd);
     await fireInput(asInput(getByPlaceholderText("Confirm Password")), pwd);
 
-    expect(loginInfoStorage.get()).toBeNull();
+    expect(vault.exists()).toBe(false);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => {
-      expect(loginInfoStorage.get()).not.toBeNull();
+      expect(vault.exists()).toBe(true);
     });
 
     // Block Height step
@@ -247,10 +320,17 @@ describe("Restore", async () => {
     await vi.waitUntil(() => clearAndInitSpy.mock.calls.length === 1);
 
     expect(clearAndInitSpy).toHaveBeenCalledTimes(1);
+    // The vault's one wallet, which keeps the data under the names of before.
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
-      0n
+      0n,
+      { key: expect.stringMatching(/^[0-9a-f]{32}$/), n: 1 }
     );
+    expect(
+      JSON.parse(
+        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`) ?? "{}"
+      ).legacy
+    ).toBe(clearAndInitSpy.mock.calls[0][2]?.key);
 
     // Network Sync step
     await fireEvent.click(getByRole("button", { name: "Next" }));

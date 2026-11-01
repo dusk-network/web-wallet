@@ -12,13 +12,21 @@
  */
 
 import { routeForAccount } from "@dusk-network/networks";
-import { get, writable } from "svelte/store";
+import { writable } from "svelte/store";
+
+import { walletDataScope } from "$lib/wallets/dataNames";
+import {
+  changeRecords,
+  openRecords,
+  walletRecords,
+} from "$lib/wallets/walletRecords";
 
 import { cardRoutes } from "./cardRoutes";
 
 /** How many migrations this browser keeps. */
 const MAX_KEPT = 50;
 
+/** The migrations kept, each wallet's under its own name (walletDataScope). */
 const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`;
 
 const EVM_HASH = /^0x[0-9a-f]{64}$/;
@@ -70,10 +78,13 @@ const FAILURES = {
  *   side.
  */
 
-/** @returns {KeptMigration[]} */
-function readKept() {
+/**
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
+ * @returns {KeptMigration[]}
+ */
+function readKept(scope = walletDataScope()) {
   try {
-    const kept = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    const kept = JSON.parse(localStorage.getItem(scope.name(KEY)) ?? "[]");
 
     return Array.isArray(kept)
       ? kept.filter(
@@ -88,42 +99,55 @@ function readKept() {
   }
 }
 
-const kept = writable(readKept());
+const kept = writable(/** @type {KeptMigration[]} */ ([]));
 
 /** The migrations this browser sent, newest first. */
 export const keptMigrations = { subscribe: kept.subscribe };
 
+/** A wallet's migrations, by hash ($lib/wallets/walletRecords). */
+const migrations = walletRecords({
+  keyOf: (/** @type {KeptMigration} */ item) => item.hash,
+  name: KEY,
+  read: readKept,
+  store: kept,
+});
+
 /**
- * Reads the migrations this browser kept again, as another tab may have
- * kept one since.
+ * Reads the migrations the open wallet kept, and what's known of its
+ * transfers out, as it opens.
  */
-export const hydrateMigrations = () => kept.set(readKept());
-
-/** @param {KeptMigration[]} items */
-function writeKept(items) {
-  const next = items.slice(0, MAX_KEPT);
-
-  kept.set(next);
-
-  try {
-    localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {
-    // Kept for this visit only.
-  }
+export function hydrateMigrations() {
+  openRecords(migrations);
+  openRecords(arrivalRecords);
 }
 
 /**
- * Keeps a migration this browser sent, to follow it until it's paid.
+ * Changes the migrations a wallet keeps, its own, whichever wallet is open
+ * ($lib/wallets/walletRecords).
+ *
+ * @param {(items: KeptMigration[]) => KeptMigration[]} change
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
+ */
+const changeKept = (change, scope) =>
+  changeRecords(migrations, scope, (items) => change(items).slice(0, MAX_KEPT));
+
+/**
+ * Keeps a migration this browser sent, to follow it until it's paid: for
+ * the wallet it was sent for (`scope`, taken as it was sent).
  *
  * @param {Omit<KeptMigration, "confirmed" | "failed">} migration
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  */
-export function rememberMigration(migration) {
+export function rememberMigration(migration, scope = walletDataScope()) {
   const hash = migration.hash.toLowerCase();
 
-  writeKept([
-    { ...migration, hash },
-    ...get(kept).filter((item) => item.hash !== hash),
-  ]);
+  changeKept(
+    (items) => [
+      { ...migration, hash },
+      ...items.filter((item) => item.hash !== hash),
+    ],
+    scope
+  );
 }
 
 /**
@@ -131,12 +155,15 @@ export function rememberMigration(migration) {
  *
  * @param {string} hash
  * @param {{ confirmed: true } | { failed: true }} receipt
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
  */
-const markMigration = (hash, receipt) =>
-  writeKept(
-    get(kept).map((item) =>
-      item.hash === hash.toLowerCase() ? { ...item, ...receipt } : item
-    )
+const markMigration = (hash, receipt, scope) =>
+  changeKept(
+    (items) =>
+      items.map((item) =>
+        item.hash === hash.toLowerCase() ? { ...item, ...receipt } : item
+      ),
+    scope
   );
 
 /**
@@ -144,17 +171,19 @@ const markMigration = (hash, receipt) =>
  * paid out next.
  *
  * @param {string} hash
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  */
-export const markMigrationConfirmed = (hash) =>
-  markMigration(hash, { confirmed: true });
+export const markMigrationConfirmed = (hash, scope = walletDataScope()) =>
+  markMigration(hash, { confirmed: true }, scope);
 
 /**
  * Marks a migration whose transaction reverted on its chain.
  *
  * @param {string} hash
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  */
-export const markMigrationFailed = (hash) =>
-  markMigration(hash, { failed: true });
+export const markMigrationFailed = (hash, scope = walletDataScope()) =>
+  markMigration(hash, { failed: true }, scope);
 
 /**
  * The migrations into Dusk: those this browser sent to the account the
@@ -250,10 +279,15 @@ export async function migrationTransfers(rows, sent, net, account) {
 
 const ARRIVALS_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-transfer-arrivals`;
 
-/** @returns {Record<string, ArrivalSearch>} */
-function readArrivals() {
+/**
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
+ * @returns {Record<string, ArrivalSearch>}
+ */
+function readArrivals(scope = walletDataScope()) {
   try {
-    const stored = JSON.parse(localStorage.getItem(ARRIVALS_KEY) ?? "{}");
+    const stored = JSON.parse(
+      localStorage.getItem(scope.name(ARRIVALS_KEY)) ?? "{}"
+    );
 
     return stored && typeof stored === "object" ? stored : {};
   } catch {
@@ -261,43 +295,63 @@ function readArrivals() {
   }
 }
 
-const arrivals = writable(readArrivals());
+const arrivals = writable(/** @type {Record<string, ArrivalSearch>} */ ({}));
 
 /** What's known of each transfer out's arrival. */
 export const transferArrivals = { subscribe: arrivals.subscribe };
 
+/** A wallet's arrivals, by hash ($lib/wallets/walletRecords). */
+const arrivalRecords = walletRecords({
+  name: ARRIVALS_KEY,
+  read: readArrivals,
+  store: arrivals,
+});
+
 /**
- * Keeps what's known of a transfer out's arrival.
+ * Keeps what's known of a transfer out's arrival, for the wallet whose
+ * search found it (`scope`, taken as the search began): its own, whichever
+ * wallet is open ($lib/wallets/walletRecords).
  *
  * @param {string} hash Its Dusk transaction
  * @param {ArrivalSearch} found
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  */
-export function keepArrival(hash, found) {
-  const next = {
-    ...get(arrivals),
-    [hash]: { ...get(arrivals)[hash], ...found },
-  };
-
-  arrivals.set(next);
-
-  try {
-    localStorage.setItem(ARRIVALS_KEY, JSON.stringify(next));
-  } catch {
-    // Kept for this visit only.
-  }
+export function keepArrival(hash, found, scope = walletDataScope()) {
+  changeRecords(arrivalRecords, scope, (known) => ({
+    ...known,
+    [hash]: { ...known[hash], ...found },
+  }));
 }
 
 /**
- * Forgets the migrations and transfers out this browser follows, as
- * Settings › Reset forgets the wallet they're for.
+ * Forgets the migrations and transfers out this browser follows, every
+ * wallet's, as Settings › Reset forgets the wallets they're for.
  */
 export function forgetRouteTransfers() {
   kept.set([]);
   arrivals.set({});
 
   try {
-    localStorage.removeItem(KEY);
-    localStorage.removeItem(ARRIVALS_KEY);
+    for (const key of Object.keys(localStorage)) {
+      if ([KEY, ARRIVALS_KEY].some((name) => key.startsWith(name))) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // Nothing was kept.
+  }
+}
+
+/**
+ * Forgets the migrations and transfers out one wallet follows, as it's
+ * removed, by the ending of its names ($lib/wallets/dataNames).
+ *
+ * @param {string} suffix
+ */
+export function forgetWalletRouteTransfers(suffix) {
+  try {
+    localStorage.removeItem(`${KEY}${suffix}`);
+    localStorage.removeItem(`${ARRIVALS_KEY}${suffix}`);
   } catch {
     // Nothing was kept.
   }
@@ -401,3 +455,6 @@ export const routeTransfersOf = async ({ account, known, net, rows, sent }) =>
         ...(await serviceTransfers(rows, known, net)),
       ]
     : [];
+
+// What the wallet of before keeps, shown until a wallet opens.
+hydrateMigrations();

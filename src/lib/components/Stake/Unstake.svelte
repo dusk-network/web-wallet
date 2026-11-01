@@ -28,6 +28,7 @@
     DuskIcon,
     GasSettings,
     ReviewAmount,
+    ReviewWallet,
     TransactionResult,
   } from "$lib/components";
 
@@ -280,6 +281,7 @@
       }}
     >
       <div in:fade|global class="operation__unstake">
+        <ReviewWallet />
         <ReviewAmount
           label={operationOverviewLabel}
           value={formatDuskExact(withdrawAmountInLux, language)}

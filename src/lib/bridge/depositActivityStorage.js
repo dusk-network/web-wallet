@@ -9,9 +9,24 @@ import {
   stringValue,
 } from "$lib/bridge/withdrawalActivityValues";
 
+import { DEPOSIT_ACTIVITY_KEY as ACTIVITY_STORAGE_KEY } from "$lib/bridge/bridgeRecordKeys";
 import { isDepositTerminal } from "$lib/bridge/depositLifecycle";
+import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
+import {
+  changeRecords,
+  openRecords,
+  recordsOf,
+  walletRecords,
+} from "$lib/wallets/walletRecords";
 
-const ACTIVITY_STORAGE_KEY = "dusk-evm:deposit-activity:v1";
+/**
+ * Each wallet's deposits are kept under its own name: work that writes
+ * them after it waits takes its wallet's as it begins (`scope`), and keeps
+ * them there whichever wallet is open by then ($lib/wallets/walletRecords).
+ *
+ * @typedef {import("$lib/wallets/dataNames").WalletDataScope} WalletDataScope
+ */
+
 const MAX_STORED_ITEMS = 100;
 const VALID_STAGES = new Set([
   "l1_pending",
@@ -44,8 +59,7 @@ const VALID_STAGES = new Set([
  * @property {number} updatedAt
  */
 
-/** @type {import("svelte/store").Writable<DepositActivityItem[]>} */
-const activity = writable([]);
+const activity = writable(/** @type {DepositActivityItem[]} */ ([]));
 
 export const depositActivityStore = { subscribe: activity.subscribe };
 
@@ -126,15 +140,18 @@ function normalizeStoredItem(value) {
   });
 }
 
-/** @returns {DepositActivityItem[]} */
-function readRememberedItems() {
+/**
+ * @param {WalletDataScope} scope
+ * @returns {DepositActivityItem[]}
+ */
+function readStoredItems(scope) {
   const localStorage = storage();
 
   if (!localStorage) return [];
 
   try {
     const parsed = JSON.parse(
-      localStorage.getItem(ACTIVITY_STORAGE_KEY) ?? "[]"
+      localStorage.getItem(scope.name(ACTIVITY_STORAGE_KEY)) ?? "[]"
     );
 
     if (!Array.isArray(parsed)) return [];
@@ -145,42 +162,62 @@ function readRememberedItems() {
   }
 }
 
+/** A wallet's deposits, by transaction ($lib/wallets/walletRecords). */
+const deposits = walletRecords({
+  keyOf: (/** @type {DepositActivityItem} */ item) => item.transactionHash,
+  name: ACTIVITY_STORAGE_KEY,
+  read: readStoredItems,
+  store: activity,
+});
+
+/**
+ * A wallet's deposits: the open one's as shown, another's as kept.
+ *
+ * @param {WalletDataScope} [scope]
+ * @returns {DepositActivityItem[]}
+ */
+const readRememberedItems = (scope = walletDataScope()) =>
+  recordsOf(deposits, scope);
+
 /**
  * Keeps the newest deposits, by when each was sent: however many older ones
  * a history brings, one on its way stays.
  *
  * @param {DepositActivityItem[]} items
+ * @param {WalletDataScope} scope
  */
-function writeRememberedItems(items) {
-  const stored = items
-    .toSorted((a, b) => b.createdAt - a.createdAt)
-    .slice(0, MAX_STORED_ITEMS);
-  storage()?.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(stored));
-  activity.set(stored);
-}
+const writeRememberedItems = (items, scope) =>
+  changeRecords(deposits, scope, () =>
+    items
+      .toSorted((a, b) => b.createdAt - a.createdAt)
+      .slice(0, MAX_STORED_ITEMS)
+  );
 
 /** Forgets every deposit kept here, as Reset does. */
 export function forgetDepositActivity() {
-  storage()?.removeItem(ACTIVITY_STORAGE_KEY);
+  storage()?.removeItem(walletDataName(ACTIVITY_STORAGE_KEY));
   activity.set([]);
 }
 
-export function hydrateDepositActivity() {
-  const items = readRememberedItems();
-  activity.set(items);
-  return items;
-}
+/** Reads the open wallet's deposits, as it opens. */
+export const hydrateDepositActivity = () => openRecords(deposits);
 
 /**
  * @param {string} transactionHash
  * @param {{ account?: string | null, amountLux?: bigint | string, amountWei?: bigint | string, createdAt?: number }} [options]
+ * @param {WalletDataScope} [scope] The wallet it's kept for: the open one
+ *   by default
  */
-export function rememberDepositTransaction(transactionHash, options = {}) {
+export function rememberDepositTransaction(
+  transactionHash,
+  options = {},
+  scope = walletDataScope()
+) {
   const hash = normalizedDuskTxHash(transactionHash);
 
-  if (!hash) return null;
+  if (!hash || !scope.keeps()) return null;
 
-  const storedItems = readRememberedItems();
+  const storedItems = readRememberedItems(scope);
   const existing = storedItems.find((item) => item.transactionHash === hash);
   const createdAt = options.createdAt ?? existing?.createdAt ?? Date.now();
   const base =
@@ -217,10 +254,13 @@ export function rememberDepositTransaction(transactionHash, options = {}) {
     transactionHash: hash,
   });
 
-  writeRememberedItems([
-    item,
-    ...storedItems.filter((candidate) => candidate.transactionHash !== hash),
-  ]);
+  writeRememberedItems(
+    [
+      item,
+      ...storedItems.filter((candidate) => candidate.transactionHash !== hash),
+    ],
+    scope
+  );
 
   return item;
 }
@@ -253,13 +293,19 @@ function nextProgressedAt(
 /**
  * @param {string} transactionHash
  * @param {Partial<DepositActivityItem>} patch
+ * @param {WalletDataScope} [scope] The wallet it's kept for: the open one
+ *   by default
  */
-export function updateDepositTransaction(transactionHash, patch) {
+export function updateDepositTransaction(
+  transactionHash,
+  patch,
+  scope = walletDataScope()
+) {
   const hash = normalizedDuskTxHash(transactionHash);
 
-  if (!hash) return null;
+  if (!hash || !scope.keeps()) return null;
 
-  const storedItems = readRememberedItems();
+  const storedItems = readRememberedItems(scope);
   const existing = storedItems.find((item) => item.transactionHash === hash);
 
   if (!existing) return null;
@@ -308,10 +354,13 @@ export function updateDepositTransaction(transactionHash, patch) {
     transactionHash: hash,
   });
 
-  writeRememberedItems([
-    item,
-    ...storedItems.filter((candidate) => candidate.transactionHash !== hash),
-  ]);
+  writeRememberedItems(
+    [
+      item,
+      ...storedItems.filter((candidate) => candidate.transactionHash !== hash),
+    ],
+    scope
+  );
 
   return item;
 }
@@ -327,14 +376,28 @@ export function getRememberedDepositActivity(account) {
   );
 }
 
-/** @param {string} transactionHash */
-export function getRememberedDepositTransaction(transactionHash) {
+/**
+ * @param {string} transactionHash
+ * @param {WalletDataScope} [scope] Whose: the open wallet's by default
+ */
+export function getRememberedDepositTransaction(
+  transactionHash,
+  scope = walletDataScope()
+) {
   const hash = normalizedDuskTxHash(transactionHash);
   return hash
-    ? (readRememberedItems().find((item) => item.transactionHash === hash) ??
-        null)
+    ? (readRememberedItems(scope).find(
+        (item) => item.transactionHash === hash
+      ) ?? null)
     : null;
 }
+
+/**
+ * The deposits a wallet keeps: the open one's by default, as shown.
+ *
+ * @param {WalletDataScope} [scope]
+ */
+export const rememberedDeposits = (scope) => readRememberedItems(scope);
 
 /**
  * @param {string | null | undefined} account

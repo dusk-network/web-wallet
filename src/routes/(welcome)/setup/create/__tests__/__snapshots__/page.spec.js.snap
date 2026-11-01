@@ -3834,12 +3834,14 @@ exports[`Create > should render the Existing Wallet notice step of the Create fl
         class="dusk-card__body-container"
       >
         <!---->
+        <!---->
         <p>
           Initializing a new wallet will replace your existing local wallet cache,
-      erasing any stored data. Ensure you have securely backed up your current
-      wallet's recovery phrase to prevent loss. Proceeding without a backup can
-      lead to irreversible loss of access to your assets.
+        erasing any stored data. Ensure you have securely backed up your current
+        wallet's recovery phrase to prevent loss. Proceeding without a backup
+        can lead to irreversible loss of access to your assets.
         </p>
+        <!---->
          
         <div
           class="actions svelte-17crhcd"

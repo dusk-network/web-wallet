@@ -16,7 +16,7 @@ import { ProfileGenerator } from "@dusk/w3sper";
 import { networkStore, settingsStore, walletStore } from "$lib/stores";
 import * as walletLib from "$lib/wallet";
 import * as navigation from "$lib/navigation";
-import loginInfoStorage from "$lib/services/loginInfoStorage";
+import vault from "$lib/vault";
 import * as shuffleArray from "$lib/dusk/array";
 
 import Create from "../+page.svelte";
@@ -528,7 +528,7 @@ describe("Create", async () => {
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    expect(loginInfoStorage.get()).toBeNull();
+    expect(vault.exists()).toBe(false);
 
     // Network Syncing step
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -545,7 +545,8 @@ describe("Create", async () => {
     expect(clearAndInitSpy).toHaveBeenCalledTimes(1);
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
-      currentBlockHeight
+      currentBlockHeight,
+      { key: "", n: 1 }
     );
 
     // All Done step
@@ -585,16 +586,16 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // Set Password step
-    expect(loginInfoStorage.get()).toBeNull();
+    expect(vault.exists()).toBe(false);
 
     await fireInput(asInput(getByPlaceholderText("Set Password")), pwd);
     await fireInput(asInput(getByPlaceholderText("Confirm Password")), pwd);
 
-    expect(loginInfoStorage.get()).toBeNull();
+    expect(vault.exists()).toBe(false);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => {
-      expect(loginInfoStorage.get()).not.toBeNull();
+      expect(vault.exists()).toBe(true);
     });
 
     // Network Syncing step
@@ -610,10 +611,17 @@ describe("Create", async () => {
       currentBlockHeight
     );
     expect(clearAndInitSpy).toHaveBeenCalledTimes(1);
+    // The vault's one wallet, which keeps the data under the names of before.
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
-      currentBlockHeight
+      currentBlockHeight,
+      { key: expect.stringMatching(/^[0-9a-f]{32}$/), n: 1 }
     );
+    expect(
+      JSON.parse(
+        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`) ?? "{}"
+      ).legacy
+    ).toBe(clearAndInitSpy.mock.calls[0][2]?.key);
 
     // All Done step
     await fireEvent.click(getByRole("button", { name: "Next" }));

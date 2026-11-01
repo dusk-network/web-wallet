@@ -22,13 +22,12 @@
     walletStore,
   } from "$lib/stores";
   import {
-    decryptMnemonic,
     getSeedFromMnemonic,
-    migrateLoginInfo,
     profileGeneratorFrom,
     validateMnemonic,
   } from "$lib/wallet";
-  import loginInfoStorage from "$lib/services/loginInfoStorage";
+  import vault from "$lib/vault";
+  import { unlockWallets, unlockWithoutPassword } from "$lib/wallets";
 
   /** @type {(seed: Uint8Array<ArrayBuffer>) => Promise<ProfileGenerator>} */
   async function checkLocalData(seed) {
@@ -50,14 +49,26 @@
       ? getSeedFromMnemonic(mnemonic)
       : Promise.reject(new InvalidMnemonicError());
 
-  /** @type {(loginInfo: WalletEncryptInfo) => (pwd: string) => Promise<Uint8Array<ArrayBuffer>>} */
-  const getSeedFromInfo = (loginInfo) => (pwd) =>
-    decryptMnemonic(loginInfo, pwd).then(getSeedFromMnemonic, () =>
-      Promise.reject(new InvalidPasswordError())
-    );
+  /**
+   * The wallet without a password: the one this device has, from its
+   * recovery phrase.
+   *
+   * @param {string} mnemonic
+   */
+  const unlockWithPhrase = (mnemonic) =>
+    getSeedFromMnemonicAsync(mnemonic.toLowerCase())
+      .then(checkLocalData)
+      .then(async (profileGenerator) => {
+        controller.signal.throwIfAborted();
+        await unlockWithoutPassword(profileGenerator, {
+          signal: controller.signal,
+        });
+      });
 
-  const loginInfo = loginInfoStorage.get();
-  const modeLabel = loginInfo ? "Password" : "Recovery phrase";
+  // One password unlocks every wallet in the vault; without one, the
+  // recovery phrase unlocks the one wallet there is.
+  const hasPassword = vault.exists();
+  const modeLabel = hasPassword ? "Password" : "Recovery phrase";
 
   /** @type {Textbox} */
   let fldSecret;
@@ -89,28 +100,12 @@
       return;
     }
     pending = true;
-    /** @type {(mnemonic: string) => Promise<Uint8Array<ArrayBuffer>>} */
-    const getSeed = loginInfo
-      ? getSeedFromInfo(loginInfo)
-      : (mnemonic) => getSeedFromMnemonicAsync(mnemonic.toLowerCase());
 
-    const secret = loginInfo ? secretText : secretText.trim();
+    const unlock = hasPassword
+      ? unlockWallets(secretText, { signal: controller.signal })
+      : unlockWithPhrase(secretText.trim());
 
-    getSeed(secret)
-      .then(checkLocalData)
-      .then(async (profileGenerator) => {
-        controller.signal.throwIfAborted();
-        await walletStore.init(profileGenerator);
-        controller.signal.throwIfAborted();
-
-        if (loginInfo) {
-          try {
-            await migrateLoginInfo(loginInfo, secret, controller.signal);
-          } catch {
-            // A failed migration should not prevent an otherwise valid unlock.
-          }
-        }
-      })
+    unlock
       .then(() => {
         controller.signal.throwIfAborted();
         pending = false;

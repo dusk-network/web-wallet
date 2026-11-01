@@ -17,7 +17,7 @@
   import {
     depositActivityStore,
     followHistoryDeposits,
-    hydrateDepositActivity,
+    rememberedDeposits,
     resumeDepositTracking,
   } from "$lib/bridge/depositActivity";
   import { DEPOSIT, WITHDRAWAL, routeTime } from "$lib/bridge/routeTimes";
@@ -33,22 +33,22 @@
   } from "$lib/bridge/withdrawals";
   import {
     historyWithdrawals,
-    hydrateWithdrawalActivity,
     loadWithdrawalActivity,
     mergeWithdrawalActivity,
     recordWithdrawalSubmission,
     refreshWithdrawalTransaction,
     rememberHistoryWithdrawals,
     rememberWithdrawalTransaction,
+    rememberedWithdrawals,
     resumeWithdrawalTracking,
     trackWithdrawalTransaction,
     withdrawalActivityStore,
   } from "$lib/bridge/withdrawalActivity";
   import { account, modal } from "$lib/web3/walletConnection";
+  import { walletDataScope } from "$lib/wallets/dataNames";
 
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import {
-    hydrateMigrations,
     keptMigrations,
     transferArrivals,
   } from "$lib/bridge/migrationActivity";
@@ -72,6 +72,10 @@
 
   const finalizationConfig = getWithdrawalFinalizationConfig();
   const POLL_INTERVAL_MS = 30_000;
+
+  // The wallet this screen is drawn for: what its reads and sends find is
+  // kept for it, and what they find once another opened isn't shown.
+  const records = walletDataScope();
 
   /** @type {string} */
   let txHash = "";
@@ -337,8 +341,8 @@
     }
 
     try {
-      for (const item of await rememberHistoryWithdrawals(known)) {
-        void trackWithdrawalTransaction(item.transactionHash);
+      for (const item of await rememberHistoryWithdrawals(known, records)) {
+        void trackWithdrawalTransaction(item.transactionHash, {}, records);
       }
 
       historyError = "";
@@ -403,7 +407,11 @@
     try {
       const result = await loadWithdrawalActivity(requestedAccount);
 
-      if (request !== activityRequest || requestedAccount !== currentAccount) {
+      if (
+        request !== activityRequest ||
+        requestedAccount !== currentAccount ||
+        !records.isOpen()
+      ) {
         return;
       }
 
@@ -483,8 +491,8 @@
     isChecking = true;
 
     try {
-      const updated = await refreshWithdrawalTransaction(checkedHash);
-      void trackWithdrawalTransaction(checkedHash);
+      const updated = await refreshWithdrawalTransaction(checkedHash, records);
+      void trackWithdrawalTransaction(checkedHash, {}, records);
 
       if (
         request === statusRequest &&
@@ -534,10 +542,13 @@
     try {
       const checkedHash = checkedStatusTxHash();
       const submittedHash = await action(checkedHash);
-      recordWithdrawalSubmission(checkedHash, {
-        action: actionName,
-        hash: submittedHash,
-      });
+
+      // Sent: kept for this screen's wallet, whichever is open now.
+      recordWithdrawalSubmission(
+        checkedHash,
+        { action: actionName, hash: submittedHash },
+        records
+      );
     } catch (error) {
       // The card shows a short line; the raw error stays in the console.
       // eslint-disable-next-line no-console
@@ -548,12 +559,18 @@
     }
   }
 
+  // What this screen sends, it sends from the wallet it was drawn for.
+  const forThisWallet = walletStore.forThisWallet();
+
   function submitProof() {
-    return submitWithdrawalAction(proveWithdrawal, "prove");
+    return submitWithdrawalAction(forThisWallet(proveWithdrawal), "prove");
   }
 
   function submitFinalization() {
-    return submitWithdrawalAction(finalizeWithdrawal, "finalize");
+    return submitWithdrawalAction(
+      forThisWallet(finalizeWithdrawal),
+      "finalize"
+    );
   }
 
   /**
@@ -616,10 +633,9 @@
 
   onMount(() => {
     void bridgeTimes.load();
-    rememberedActivity = hydrateWithdrawalActivity();
+    rememberedActivity = rememberedWithdrawals();
     rebuildActivity();
-    keptDeposits = hydrateDepositActivity();
-    hydrateMigrations();
+    keptDeposits = rememberedDeposits();
 
     const unsubscribeDeposits = depositActivityStore.subscribe((items) => {
       keptDeposits = items;

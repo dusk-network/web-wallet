@@ -3,7 +3,6 @@
 
   import {
     depositActivityStore,
-    hydrateDepositActivity,
     trackDepositTransaction,
   } from "$lib/bridge/depositActivity";
   import { AppAnchorButton } from "$lib/components";
@@ -17,7 +16,6 @@
   let deposit = null;
 
   onMount(() => {
-    hydrateDepositActivity();
     const unsubscribe = depositActivityStore.subscribe((items) => {
       deposit =
         items.find((item) => item.transactionHash === transactionHash) ?? null;

@@ -8,6 +8,7 @@ import {
   getRememberedWithdrawalActivity,
   hydrateWithdrawalActivity,
   rememberWithdrawalTransaction,
+  rememberedWithdrawals,
   updateWithdrawalTransaction,
 } from "$lib/bridge/withdrawalActivityStorage";
 import {
@@ -15,6 +16,7 @@ import {
   normalizedAddress,
 } from "$lib/bridge/withdrawalActivityValues";
 import { errorMessage } from "$lib/dusk/error";
+import { walletDataScope } from "$lib/wallets/dataNames";
 
 /** @typedef {import("./withdrawalActivityValues").WithdrawalActivityItem} WithdrawalActivityItem */
 
@@ -32,6 +34,7 @@ export {
   getRememberedWithdrawalActivity,
   hydrateWithdrawalActivity,
   rememberWithdrawalTransaction,
+  rememberedWithdrawals,
 };
 export {
   recordWithdrawalSubmission,
@@ -132,18 +135,29 @@ export function historyWithdrawals(rows) {
 /** How long before the explorer is asked again about a withdrawal it didn't list. */
 const LOOKUP_AGAIN_MS = 300_000;
 
-/** @type {Map<string, number>} When each nonce was looked up, by nonce. */
+/**
+ * When each nonce was looked up, by wallet, in its time here, and nonce.
+ *
+ * @type {Map<string, number>}
+ */
 const lookedUp = new Map();
+
+/**
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
+ * @param {bigint} nonce
+ */
+const lookupOf = (scope, nonce) => `${scope.owner}\n${nonce}`;
 
 /**
  * The withdrawals kept here, by their hashes. Those kept without whom they
  * pay, as before the history read it, take it from the history.
  *
  * @param {{ hash: `0x${string}`, recipient?: string | null }[]} known
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
  * @returns {Set<string | null>}
  */
-function keptWithdrawals(known) {
-  const kept = hydrateWithdrawalActivity();
+function keptWithdrawals(known, scope) {
+  const kept = rememberedWithdrawals(scope);
 
   for (const { hash, recipient } of known) {
     const item = recipient
@@ -151,7 +165,7 @@ function keptWithdrawals(known) {
       : undefined;
 
     if (item) {
-      updateWithdrawalTransaction(item.transactionHash, { recipient });
+      updateWithdrawalTransaction(item.transactionHash, { recipient }, scope);
     }
   }
 
@@ -163,17 +177,24 @@ function keptWithdrawals(known) {
  * remembered here yet, and remembers them for the account that sent them,
  * with the withdrawal's hash, so that the history's account sees them
  * without connecting that account. Those remembered learn whom they pay.
+ * They're kept for the wallet whose history it is (`scope`, the one open
+ * as this begins), whichever wallet is open once they're found.
  *
  * @param {{ hash: `0x${string}`, nonce: bigint, recipient?: string | null }[]} known
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  * @returns {Promise<WithdrawalActivityItem[]>} Those found
  */
-export async function rememberHistoryWithdrawals(known) {
-  const remembered = keptWithdrawals(known);
+export async function rememberHistoryWithdrawals(
+  known,
+  scope = walletDataScope()
+) {
+  const remembered = keptWithdrawals(known, scope);
   const now = Date.now();
   const missing = known.filter(
     ({ hash, nonce }) =>
       !remembered.has(hash) &&
-      now - (lookedUp.get(String(nonce)) ?? -Infinity) >= LOOKUP_AGAIN_MS
+      now - (lookedUp.get(lookupOf(scope, nonce)) ?? -Infinity) >=
+        LOOKUP_AGAIN_MS
   );
 
   if (!missing.length) {
@@ -183,7 +204,7 @@ export async function rememberHistoryWithdrawals(known) {
   // Stamped as the lookup starts, so that another doesn't ask again
   // meanwhile; a lookup that fails is tried again the next time.
   for (const { nonce } of missing) {
-    lookedUp.set(String(nonce), now);
+    lookedUp.set(lookupOf(scope, nonce), now);
   }
 
   /** @type {Awaited<ReturnType<typeof findWithdrawalsByNonce>>} */
@@ -193,30 +214,49 @@ export async function rememberHistoryWithdrawals(known) {
     found = await findWithdrawalsByNonce(missing.map(({ nonce }) => nonce));
   } catch (error) {
     for (const { nonce } of missing) {
-      if (lookedUp.get(String(nonce)) === now) {
-        lookedUp.delete(String(nonce));
+      if (lookedUp.get(lookupOf(scope, nonce)) === now) {
+        lookedUp.delete(lookupOf(scope, nonce));
       }
     }
 
     throw error;
   }
 
+  return keepFound(missing, found, scope);
+}
+
+/**
+ * Keeps the withdrawals the explorer found by their nonces, each with the
+ * withdrawal's hash and whom it pays, for the wallet whose history it is.
+ *
+ * @param {{ hash: `0x${string}`, nonce: bigint, recipient?: string | null }[]} missing
+ * @param {Awaited<ReturnType<typeof findWithdrawalsByNonce>>} found
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
+ * @returns {WithdrawalActivityItem[]}
+ */
+function keepFound(missing, found, scope) {
   return missing.flatMap(({ hash, nonce, recipient }) => {
     const item = found.get(String(nonce));
     const kept = item
-      ? rememberWithdrawalTransaction(item.transactionHash, {
-          account: item.account,
-          amountWei: item.amountWei ?? undefined,
-          createdAt: item.createdAt,
-          recipient,
-        })
+      ? rememberWithdrawalTransaction(
+          item.transactionHash,
+          {
+            account: item.account,
+            amountWei: item.amountWei ?? undefined,
+            createdAt: item.createdAt,
+            recipient,
+          },
+          scope
+        )
       : null;
 
     return kept
       ? [
-          updateWithdrawalTransaction(kept.transactionHash, {
-            withdrawalHash: hash,
-          }) ?? kept,
+          updateWithdrawalTransaction(
+            kept.transactionHash,
+            { withdrawalHash: hash },
+            scope
+          ) ?? kept,
         ]
       : [];
   });

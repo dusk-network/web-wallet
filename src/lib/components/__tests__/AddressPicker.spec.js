@@ -909,4 +909,169 @@ describe("AddressPicker", () => {
       );
     });
   });
+
+  describe("Wallets", () => {
+    const OTHER_ACCOUNTS = ["other-account-one", "other-account-two"];
+
+    // The other wallet's second shielded address wasn't seen.
+    const OTHER_ADDRESSES = ["other-address-one"];
+
+    /** @param {number} count */
+    const walletsOf = (count) =>
+      [
+        { accounts: [], key: "k1", label: "Wallet 1", open: true },
+        {
+          accounts: OTHER_ACCOUNTS,
+          addresses: OTHER_ADDRESSES,
+          key: "k2",
+          label: "Savings",
+          open: false,
+        },
+      ].slice(0, count);
+
+    /** @param {HTMLElement} container */
+    const open = (container) =>
+      fireEvent.click(getAsHTMLElement(container, ".address-picker__trigger"));
+
+    it("lists each wallet's profiles under its name, the heading shown with one wallet too", async () => {
+      const { container, getByRole } = render(AddressPicker, {
+        ...props,
+        wallets: walletsOf(1),
+      });
+
+      await open(container);
+
+      const group = getByRole("group", { name: "Wallet 1" });
+      const items = [...group.querySelectorAll("[role=menuitem]")];
+
+      expect(items).toHaveLength(profiles.length);
+      items.forEach((item, i) =>
+        expect(item).toHaveTextContent(`Profile ${i + 1}`)
+      );
+    });
+
+    it("lists another wallet's profiles as it last showed them, copies what they showed, and opens that wallet at the one picked", async () => {
+      const switchWallet = vi.fn();
+      const setCurrentProfile = vi.fn();
+      const { container, getByRole } = render(AddressPicker, {
+        events: { setCurrentProfile, switchWallet },
+        props: { ...props, wallets: walletsOf(2) },
+      });
+
+      await open(container);
+
+      const other = getByRole("group", { name: "Savings" });
+      const [first, second] = other.querySelectorAll(
+        ".address-picker__profile"
+      );
+
+      expect(other).toHaveTextContent(shortenAddress(OTHER_ACCOUNTS[1]));
+
+      // Copied as they last showed: none where nothing was seen.
+      expect(
+        Array.from(
+          first.querySelectorAll(".address-picker__copy-button"),
+          (button) => button.textContent?.trim()
+        )
+      ).toEqual(["Public", "Shielded"]);
+      expect(
+        Array.from(
+          second.querySelectorAll(".address-picker__copy-button"),
+          (button) => button.textContent?.trim()
+        )
+      ).toEqual(["Public"]);
+
+      await fireEvent.click(
+        getAsHTMLElement(
+          /** @type {HTMLElement} */ (first),
+          "[aria-label='Copy shielded address']"
+        )
+      );
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        OTHER_ADDRESSES[0]
+      );
+
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (
+          other.querySelectorAll("[role=menuitem]")[1]
+        )
+      );
+
+      expect(switchWallet).toHaveBeenCalledWith(
+        expect.objectContaining({ detail: { index: 1, key: "k2" } })
+      );
+      expect(setCurrentProfile).not.toHaveBeenCalled();
+      expect(container.querySelector(".address-picker__drop-down")).toBeNull();
+    });
+
+    it("offers Add wallet where the wallets share a password, and only there", async () => {
+      const addWallet = vi.fn();
+      const { container, getByRole, queryByRole } = render(AddressPicker, {
+        events: { addWallet },
+        props: { ...props, canAddWallet: true, wallets: walletsOf(1) },
+      });
+
+      await open(container);
+      await fireEvent.click(getByRole("menuitem", { name: "Add wallet" }));
+
+      expect(addWallet).toHaveBeenCalledOnce();
+
+      cleanup();
+
+      const without = render(AddressPicker, {
+        ...props,
+        wallets: walletsOf(1),
+      });
+
+      await open(without.container);
+
+      expect(queryByRole("menuitem", { name: "Add wallet" })).toBeNull();
+      expect(
+        without.queryByRole("menuitem", { name: "Add wallet" })
+      ).toBeNull();
+    });
+
+    it("shows the open wallet's name under the profile's in the top bar's pill with more than one wallet, and says it", async () => {
+      const { container, rerender } = render(AddressPicker, {
+        ...props,
+        compact: true,
+        wallets: walletsOf(1),
+      });
+
+      expect(
+        container.querySelector(".address-picker__compact-wallet")
+      ).toBeNull();
+      expect(
+        getAsHTMLElement(container, ".address-picker__trigger")
+      ).toHaveAccessibleName("Profile: Profile 1");
+
+      await rerender({ ...props, compact: true, wallets: walletsOf(2) });
+
+      // The small line says which profile the number is, as phones show
+      // no other.
+      expect(
+        getAsHTMLElement(container, ".address-picker__compact-wallet")
+      ).toHaveTextContent(/^Wallet 1 · Profile 1$/);
+      expect(
+        getAsHTMLElement(container, ".address-picker__trigger")
+      ).toHaveAccessibleName("Profile: Profile 1, Wallet 1");
+
+      await rerender({
+        ...props,
+        compact: true,
+        getName: () => Promise.resolve("alice.dusk"),
+        wallets: walletsOf(2),
+      });
+
+      await waitFor(() =>
+        expect(
+          getAsHTMLElement(container, ".address-picker__trigger")
+        ).toHaveAccessibleName("Profile: alice.dusk (Profile 1), Wallet 1")
+      );
+      expect(
+        getAsHTMLElement(container, ".address-picker__compact-wallet")
+      ).toHaveTextContent(/^Wallet 1 · Profile 1$/);
+    });
+  });
 });

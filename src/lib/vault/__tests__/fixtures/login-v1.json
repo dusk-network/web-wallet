@@ -1,0 +1,18 @@
+{
+  "madeBy": "dusk-network/web-wallet main e5604ee: loginInfoStorage.set, with encryptMnemonic (current) and encryptBuffer at 10,000 iterations (legacy, as before f22574f)",
+  "current": {
+    "mnemonic": "legal winner thank year wave sausage worth useful legal winner thank yellow",
+    "password": "password123",
+    "stored": "{\"data\":\"2QVIxPgJB8a/sbH6zBLHL6dWaXvk4igNyizNXpw7GedMG6CiQcIp+UfQ/YIaRKAo4F5mzaz9N4Cg7dTjssgs7ky9bKOfvsACaLzPJ77ROH8/ka5ibQCsgZUzHw==\",\"iv\":\"ol422HHA7v8BVHaY\",\"salt\":\"aiIuGtm+joG9SPKGsxsNLYVeZ2DwpeIKQr9fiXpa91M=\",\"version\":1}"
+  },
+  "currentLong": {
+    "mnemonic": "letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless",
+    "password": " a password, with spaces and é ",
+    "stored": "{\"data\":\"hjH6+Vwo62344MyIZxO9Mtu9XJgq1E1yOmoDQ3yECb8Go/HbmrWRhvLhpqUh5HIJ65V8ZVNIvh+24NRtGU5gEaOoo7JGUSOuO9Jf9WzfcVlHHUdoDMUOwdMwKCwEqi5O9IBLr/PnqLCK420MNY1FlIgylVu8BS9dbCJnqYhEnoZhUlzJbi3ws2r9VJ/s/VrD/L53koM+SwCN2kHIai/horrtJNPxR7BTEcF8zqUbfZQA3e7X\",\"iv\":\"vSK+6+JamlOa4Sbt\",\"salt\":\"4StFtLe+HAKfw3rZkKN6u9fTJWxa/VJCu6zDXO7OKTg=\",\"version\":1}"
+  },
+  "legacy": {
+    "mnemonic": "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong",
+    "password": "an older password",
+    "stored": "{\"data\":\"sszlhHLitfaunLJSZKVYkLIX5nstZQz0RdRats/sInNey7C+3iVFvhKpk8SRXyPHgePkd1ittyS9u+2Ehs1IdPg=\",\"iv\":\"A5TjdcjaU8x75UhB\",\"salt\":\"20bRPLuXv0y9yQeh6KDMIzBCuHqSND3m6S4YNkJZhSY=\"}"
+  }
+}

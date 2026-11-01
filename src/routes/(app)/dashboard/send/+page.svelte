@@ -52,6 +52,9 @@
 
   const BEP20_BRIDGE_ADDRESS = import.meta.env.VITE_BEP20_BRIDGE_ADDRESS;
 
+  // What this page sends, it sends from the wallet it was drawn for.
+  const send = walletStore.forThisWallet()(executeSend);
+
   const { networkName } = $networkStore;
 
   // The recipient the page opens with, as from Send again or a contact; the
@@ -103,7 +106,7 @@
   <Send
     availableBalance={spendable}
     bep20BridgeAddress={BEP20_BRIDGE_ADDRESS}
-    execute={executeSend}
+    execute={send}
     {gasLimits}
     {gasSettings}
     {initialRecipient}

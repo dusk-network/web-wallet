@@ -6,6 +6,7 @@ export {
   contactsWritten,
   deleteContacts,
   findContact,
+  forgetContactsOf,
   getContact,
   keepOnlyContactsOf,
   listContacts,

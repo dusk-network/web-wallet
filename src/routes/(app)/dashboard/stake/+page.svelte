@@ -28,42 +28,51 @@
     walletStore,
   } from "$lib/stores";
 
+  // What this page sends, it sends from the wallet it was drawn for.
+  const forThisWallet = walletStore.forThisWallet();
+
   /** @type {Record<"claim" | "unstake", (amount: bigint, gasPrice: bigint, gasLimit: bigint) => Promise<string>>} */
   const withdrawals = {
-    claim: (amount, gasPrice, gasLimit) =>
+    claim: forThisWallet((amount, gasPrice, gasLimit) =>
       walletStore
         .claimRewards(amount, new Gas({ limit: gasLimit, price: gasPrice }))
-        .then(({ hash }) => hash),
-    unstake: (amount, gasPrice, gasLimit) =>
+        .then(({ hash }) => hash)
+    ),
+    unstake: forThisWallet((amount, gasPrice, gasLimit) =>
       walletStore
         .unstake(amount, new Gas({ limit: gasLimit, price: gasPrice }))
-        .then(({ hash }) => hash),
+        .then(({ hash }) => hash)
+    ),
   };
 
-  /**
-   * @param {bigint} amount
-   * @param {bigint} gasPrice
-   * @param {bigint} gasLimit
-   */
-  const stakeNatively = (amount, gasPrice, gasLimit) =>
-    walletStore[hasStake ? "topUpStake" : "stake"](
-      amount,
-      new Gas({ limit: gasLimit, price: gasPrice })
-    ).then(({ hash }) => hash);
+  const stakeNatively = forThisWallet(
+    /**
+     * @param {bigint} amount
+     * @param {bigint} gasPrice
+     * @param {bigint} gasLimit
+     */
+    (amount, gasPrice, gasLimit) =>
+      walletStore[hasStake ? "topUpStake" : "stake"](
+        amount,
+        new Gas({ limit: gasLimit, price: gasPrice })
+      ).then(({ hash }) => hash)
+  );
 
-  /**
-   * @param {"stake" | "unstake"} action
-   * @param {string} poolId
-   * @param {bigint} amount
-   * @param {bigint} gasPrice
-   * @param {bigint} gasLimit
-   */
-  const stakeLiquid = (action, poolId, amount, gasPrice, gasLimit) =>
-    walletStore[action === "stake" ? "stakeWithSozu" : "unstakeFromSozu"](
-      poolId,
-      amount,
-      new Gas({ limit: gasLimit, price: gasPrice })
-    ).then(({ hash }) => hash);
+  const stakeLiquid = forThisWallet(
+    /**
+     * @param {"stake" | "unstake"} action
+     * @param {string} poolId
+     * @param {bigint} amount
+     * @param {bigint} gasPrice
+     * @param {bigint} gasLimit
+     */
+    (action, poolId, amount, gasPrice, gasLimit) =>
+      walletStore[action === "stake" ? "stakeWithSozu" : "unstakeFromSozu"](
+        poolId,
+        amount,
+        new Gas({ limit: gasLimit, price: gasPrice })
+      ).then(({ hash }) => hash)
+  );
 
   /** @type {bigint | undefined} */
   let blockHeight;

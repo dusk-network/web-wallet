@@ -12,9 +12,9 @@ import {
   depositActivityStore,
   getRememberedDepositActivity,
   getRememberedDepositTransaction,
-  hydrateDepositActivity,
   pendingDepositAmountLux,
   rememberDepositTransaction,
+  rememberedDeposits,
   updateDepositTransaction,
 } from "$lib/bridge/depositActivityStorage";
 import { isDepositTerminal } from "$lib/bridge/depositLifecycle";
@@ -23,11 +23,28 @@ import {
   normalizedTxHash,
 } from "$lib/bridge/withdrawalActivityValues";
 import { errorMessage } from "$lib/dusk/error";
+import { walletDataScope } from "$lib/wallets/dataNames";
+
+/**
+ * Each deposit is followed for the wallet that keeps it, open as the
+ * following begins (`scope`): what a read finds is kept for that wallet,
+ * and the following ends once another wallet opened.
+ *
+ * @typedef {import("$lib/wallets/dataNames").WalletDataScope} WalletDataScope
+ */
 
 const ACTIVE_POLL_INTERVAL_MS = 5_000;
 const BACKGROUND_POLL_INTERVAL_MS = 30_000;
 const MAX_POLL_INTERVAL_MS = 300_000;
+
+/** The deposits followed, by wallet and hash. */
 const activeTrackers = new Map();
+
+/**
+ * @param {WalletDataScope} scope
+ * @param {string} hash
+ */
+const followKey = (scope, hash) => `${scope.id} ${hash}`;
 
 let l1Client;
 
@@ -39,9 +56,9 @@ class DuskDepositExecutionError extends Error {}
 export {
   depositActivityStore,
   getRememberedDepositActivity,
-  hydrateDepositActivity,
   pendingDepositAmountLux,
   rememberDepositTransaction,
+  rememberedDeposits,
 };
 
 function trackingClients() {
@@ -99,8 +116,11 @@ async function finalizedDuskTransaction(transactionHash) {
   };
 }
 
-/** @param {any} remembered */
-async function resolveL1TransactionHash(remembered) {
+/**
+ * @param {any} remembered
+ * @param {WalletDataScope} scope
+ */
+async function resolveL1TransactionHash(remembered, scope) {
   if (remembered.l1TransactionHash) return remembered.l1TransactionHash;
 
   const finalized = await finalizedDuskTransaction(remembered.transactionHash);
@@ -109,9 +129,11 @@ async function resolveL1TransactionHash(remembered) {
 
   // What its arrival on DuskEVM is timed against, from Dusk's clock.
   if (finalized.timestamp && !remembered.l1BlockTimestamp) {
-    updateDepositTransaction(remembered.transactionHash, {
-      l1BlockTimestamp: finalized.timestamp,
-    });
+    updateDepositTransaction(
+      remembered.transactionHash,
+      { l1BlockTimestamp: finalized.timestamp },
+      scope
+    );
   }
 
   const { l1Client: client } = trackingClients();
@@ -129,9 +151,11 @@ async function resolveL1TransactionHash(remembered) {
     );
   }
 
-  updateDepositTransaction(remembered.transactionHash, {
-    l1TransactionHash: hash,
-  });
+  updateDepositTransaction(
+    remembered.transactionHash,
+    { l1TransactionHash: hash },
+    scope
+  );
   return hash;
 }
 
@@ -178,32 +202,40 @@ function observationPatch(remembered, status, metadata) {
   };
 }
 
-/** @param {any} remembered */
-function pendingObservationPatch(remembered) {
+/**
+ * @param {any} remembered
+ * @param {WalletDataScope} scope
+ */
+function pendingObservationPatch(remembered, scope) {
   const updatedAt = Date.now();
-  return updateDepositTransaction(remembered.transactionHash, {
-    lastCheckedAt: updatedAt,
-    trackingError: null,
-    updatedAt,
-  });
+  return updateDepositTransaction(
+    remembered.transactionHash,
+    { lastCheckedAt: updatedAt, trackingError: null, updatedAt },
+    scope
+  );
 }
 
 /**
  * @param {any} remembered
  * @param {unknown} error
+ * @param {WalletDataScope} scope
  */
-function failedObservationPatch(remembered, error) {
+function failedObservationPatch(remembered, error, scope) {
   const updatedAt = Date.now();
   const failedOnL1 = error instanceof DuskDepositExecutionError;
 
-  return updateDepositTransaction(remembered.transactionHash, {
-    ...(failedOnL1
-      ? { failureLayer: "l1", stage: "failed", statusMessage: error.message }
-      : {}),
-    lastCheckedAt: updatedAt,
-    trackingError: failedOnL1 ? null : errorMessage(error),
-    updatedAt,
-  });
+  return updateDepositTransaction(
+    remembered.transactionHash,
+    {
+      ...(failedOnL1
+        ? { failureLayer: "l1", stage: "failed", statusMessage: error.message }
+        : {}),
+      lastCheckedAt: updatedAt,
+      trackingError: failedOnL1 ? null : errorMessage(error),
+      updatedAt,
+    },
+    scope
+  );
 }
 
 /** DuskEVM's block times, as its reads find them. */
@@ -217,9 +249,12 @@ const duskEvmBlockTimes = new Map();
  */
 const duskEvmScans = new Map();
 
-/** The read of DuskEVM under way, for every deposit on its way. */
-/** @type {Promise<void> | null} */
-let duskEvmRead = null;
+/**
+ * The read of DuskEVM under way, for every deposit on its way, by wallet.
+ *
+ * @type {Map<number, Promise<void>>}
+ */
+const duskEvmReads = new Map();
 
 /**
  * A deposit on its way to a DuskEVM address, as this browser keeps it.
@@ -294,11 +329,13 @@ function depositsOf(waiting, depositOf) {
  * from the DuskEVM address of the account that sent each, its equal
  * deposits before it paid first, as its history on Dusk says, however long
  * ago it was sent. Each that arrived is kept completed, with the DuskEVM
- * transaction that paid it and when.
+ * transaction that paid it and when, for the wallet that keeps them.
+ *
+ * @param {WalletDataScope} scope
  */
-async function readDuskEvm() {
+async function readDuskEvm(scope) {
   const net = followedNetwork();
-  const kept = hydrateDepositActivity();
+  const kept = rememberedDeposits(scope);
   const waiting = kept.filter(isOnItsWay);
 
   if (!net || !waiting.length) return;
@@ -322,18 +359,22 @@ async function readDuskEvm() {
     const arrival = arrivals.get(item.transactionHash);
 
     if (arrival?.state === "arrived") {
-      updateDepositTransaction(item.transactionHash, {
-        arrivedAt: arrival.at,
-        failureLayer: null,
-        l1ConfirmedAt: item.l1ConfirmedAt ?? updatedAt,
-        l2BlockNumber: arrival.block === null ? null : String(arrival.block),
-        l2TransactionHash: /** @type {`0x${string}`} */ (arrival.hash),
-        lastCheckedAt: updatedAt,
-        stage: "completed",
-        statusMessage: null,
-        trackingError: null,
-        updatedAt,
-      });
+      updateDepositTransaction(
+        item.transactionHash,
+        {
+          arrivedAt: arrival.at,
+          failureLayer: null,
+          l1ConfirmedAt: item.l1ConfirmedAt ?? updatedAt,
+          l2BlockNumber: arrival.block === null ? null : String(arrival.block),
+          l2TransactionHash: /** @type {`0x${string}`} */ (arrival.hash),
+          lastCheckedAt: updatedAt,
+          stage: "completed",
+          statusMessage: null,
+          trackingError: null,
+          updatedAt,
+        },
+        scope
+      );
     } else if (arrival?.scan) {
       duskEvmScans.set(item.transactionHash, arrival.scan);
     }
@@ -344,17 +385,25 @@ async function readDuskEvm() {
  * A deposit that DuskEVM's adapter can't follow, found arrived on DuskEVM:
  * completed, with the DuskEVM transaction that paid it. Null while it isn't
  * there, or DuskEVM can't be read. One read looks for every deposit on its
- * way.
+ * way that its wallet keeps.
  *
  * @param {any} remembered
+ * @param {WalletDataScope} scope
  */
-async function arrivedOnDuskEvm(remembered) {
-  duskEvmRead ??= readDuskEvm().finally(() => {
-    duskEvmRead = null;
-  });
-  await duskEvmRead.catch(() => {});
+async function arrivedOnDuskEvm(remembered, scope) {
+  let read = duskEvmReads.get(scope.id);
 
-  const item = getRememberedDepositTransaction(remembered.transactionHash);
+  if (!read) {
+    read = readDuskEvm(scope).finally(() => duskEvmReads.delete(scope.id));
+    duskEvmReads.set(scope.id, read);
+  }
+
+  await read.catch(() => {});
+
+  const item = getRememberedDepositTransaction(
+    remembered.transactionHash,
+    scope
+  );
 
   return item?.stage === "completed" ? item : null;
 }
@@ -391,7 +440,7 @@ async function arrivalTime({ l2BlockNumber, stage }) {
 const lacksArrivalTime = (item) =>
   item?.stage === "completed" && !item.arrivedAt && Boolean(item.l2BlockNumber);
 
-/** @type {Map<string, Promise<any>>} The arrival times being read, by deposit. */
+/** @type {Map<string, Promise<any>>} The arrival times being read, by wallet and deposit. */
 const arrivalReads = new Map();
 
 /**
@@ -399,18 +448,20 @@ const arrivalReads = new Map();
  * read at a time per deposit.
  *
  * @param {any} item
+ * @param {WalletDataScope} scope
  */
-function readArrivalTime(item) {
+function readArrivalTime(item, scope) {
   const hash = item.transactionHash;
-  let read = arrivalReads.get(hash);
+  const key = followKey(scope, hash);
+  let read = arrivalReads.get(key);
 
   if (!read) {
     read = arrivalTime(item)
       .then((at) =>
-        at ? updateDepositTransaction(hash, { arrivedAt: at }) : item
+        at ? updateDepositTransaction(hash, { arrivedAt: at }, scope) : item
       )
-      .finally(() => arrivalReads.delete(hash));
-    arrivalReads.set(hash, read);
+      .finally(() => arrivalReads.delete(key));
+    arrivalReads.set(key, read);
   }
 
   return read;
@@ -421,25 +472,35 @@ function readArrivalTime(item) {
  * where that wasn't read yet.
  *
  * @param {any} item
+ * @param {WalletDataScope} scope
  */
-const doneDeposit = (item) =>
-  lacksArrivalTime(item) ? readArrivalTime(item) : item;
+const doneDeposit = (item, scope) =>
+  lacksArrivalTime(item) ? readArrivalTime(item, scope) : item;
 
-/** @param {string} transactionHash */
-export async function refreshDepositTransaction(transactionHash) {
-  const remembered = getRememberedDepositTransaction(transactionHash);
+/**
+ * Reads where a deposit is, for the wallet that keeps it: the one open as
+ * it's asked for by default.
+ *
+ * @param {string} transactionHash
+ * @param {WalletDataScope} [scope]
+ */
+export async function refreshDepositTransaction(
+  transactionHash,
+  scope = walletDataScope()
+) {
+  const remembered = getRememberedDepositTransaction(transactionHash, scope);
 
   if (!remembered || isDepositTerminal(remembered))
-    return doneDeposit(remembered);
+    return doneDeposit(remembered, scope);
 
   try {
-    const l1TransactionHash = await resolveL1TransactionHash(remembered);
+    const l1TransactionHash = await resolveL1TransactionHash(remembered, scope);
 
     // The adapter doesn't know it (yet): DuskEVM itself may.
     if (!l1TransactionHash) {
       return (
-        (await arrivedOnDuskEvm(remembered)) ??
-        pendingObservationPatch(remembered)
+        (await arrivedOnDuskEvm(remembered, scope)) ??
+        pendingObservationPatch(remembered, scope)
       );
     }
 
@@ -457,19 +518,23 @@ export async function refreshDepositTransaction(transactionHash) {
 
     const patch = observationPatch(remembered, status, metadata);
 
-    return updateDepositTransaction(remembered.transactionHash, {
-      ...patch,
-      arrivedAt: remembered.arrivedAt ?? (await arrivalTime(patch)),
-    });
+    return updateDepositTransaction(
+      remembered.transactionHash,
+      {
+        ...patch,
+        arrivedAt: remembered.arrivedAt ?? (await arrivalTime(patch)),
+      },
+      scope
+    );
   } catch (error) {
     // The adapter can't say, as when it doesn't have the method: DuskEVM
     // itself can. A deposit that failed on Dusk didn't arrive.
     const arrived =
       error instanceof DuskDepositExecutionError
         ? null
-        : await arrivedOnDuskEvm(remembered);
+        : await arrivedOnDuskEvm(remembered, scope);
 
-    return arrived ?? failedObservationPatch(remembered, error);
+    return arrived ?? failedObservationPatch(remembered, error, scope);
   }
 }
 
@@ -498,26 +563,36 @@ function progressIdentity(item) {
 
 /**
  * Continue tracking independently of the initiating component so navigation
- * does not discard the in-flight bridge operation.
+ * does not discard the in-flight bridge operation: for the wallet that
+ * keeps it (`scope`, the one open by default), until another wallet opens.
  *
  * @param {string} transactionHash
+ * @param {WalletDataScope} [scope]
  */
-export function trackDepositTransaction(transactionHash) {
+export function trackDepositTransaction(
+  transactionHash,
+  scope = walletDataScope()
+) {
   const hash = transactionHash.toLowerCase();
-  const active = activeTrackers.get(hash);
+  const key = followKey(scope, hash);
+  const active = activeTrackers.get(key);
 
   if (active) return active;
+
+  if (!scope.isOpen()) {
+    return Promise.resolve(getRememberedDepositTransaction(hash, scope));
+  }
 
   const tracker = (async () => {
     let unchangedPolls = 0;
     let previousProgress = progressIdentity(
-      getRememberedDepositTransaction(hash)
+      getRememberedDepositTransaction(hash, scope)
     );
 
     while (true) {
-      const item = await refreshDepositTransaction(hash);
+      const item = await refreshDepositTransaction(hash, scope);
 
-      if (!item || isDepositTerminal(item)) return item;
+      if (!item || isDepositTerminal(item) || !scope.isOpen()) return item;
 
       const currentProgress = progressIdentity(item);
       unchangedPolls =
@@ -530,10 +605,12 @@ export function trackDepositTransaction(transactionHash) {
           document.visibilityState === "hidden"
         )
       );
-    }
-  })().finally(() => activeTrackers.delete(hash));
 
-  activeTrackers.set(hash, tracker);
+      if (!scope.isOpen()) return item;
+    }
+  })().finally(() => activeTrackers.delete(key));
+
+  activeTrackers.set(key, tracker);
   return tracker;
 }
 
@@ -542,12 +619,13 @@ export function trackDepositTransaction(transactionHash) {
  * that arrived without the time it did, until that's read.
  *
  * @param {any} item
+ * @param {WalletDataScope} scope
  */
-function followDeposit(item) {
+function followDeposit(item, scope) {
   if (!isDepositTerminal(item)) {
-    void trackDepositTransaction(item.transactionHash);
+    void trackDepositTransaction(item.transactionHash, scope);
   } else if (lacksArrivalTime(item)) {
-    void readArrivalTime(item);
+    void readArrivalTime(item, scope);
   }
 }
 
@@ -556,12 +634,13 @@ function followDeposit(item) {
  * @returns {any[]} The deposits under way, followed again
  */
 export function resumeDepositTracking(account) {
-  const kept = hydrateDepositActivity().filter(
+  const scope = walletDataScope();
+  const kept = rememberedDeposits().filter(
     (item) => item.account === null || item.account === account?.toLowerCase()
   );
 
   for (const deposit of kept) {
-    followDeposit(deposit);
+    followDeposit(deposit, scope);
   }
 
   return kept.filter((item) => !isDepositTerminal(item));
@@ -611,8 +690,9 @@ function keepHistoryDeposit(row, kept) {
  * @returns {Set<string>} The deposits' Dusk transactions, as kept
  */
 export function followHistoryDeposits(rows) {
+  const scope = walletDataScope();
   const kept = new Map(
-    hydrateDepositActivity().map((item) => [item.transactionHash, item])
+    rememberedDeposits().map((item) => [item.transactionHash, item])
   );
   /** @type {Set<string>} */
   const hashes = new Set();
@@ -626,7 +706,7 @@ export function followHistoryDeposits(rows) {
       hashes.add(hash);
 
       if (item && duskEvmAdapterUrl()) {
-        followDeposit(item);
+        followDeposit(item, scope);
       }
     }
   }

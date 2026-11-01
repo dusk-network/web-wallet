@@ -24,6 +24,7 @@
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
+  import { openWalletName } from "$lib/wallets";
   import {
     formatDusk,
     formatDuskExact,
@@ -1200,7 +1201,12 @@
         <div>
           <dt>From</dt>
           <dd>
-            <span class="send__summary-name">{fromLabel}</span>
+            <!-- With more than one wallet, the one it goes from first. -->
+            <span class="send__summary-name"
+              >{$openWalletName
+                ? `${$openWalletName} · ${fromLabel}`
+                : fromLabel}</span
+            >
             {#if !isShielded && from}
               <span class="send__summary-code">{shortenAddress(from)}</span>
             {/if}
