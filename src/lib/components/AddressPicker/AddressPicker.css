@@ -427,3 +427,31 @@
     padding-right: 0.625rem;
   }
 }
+
+/*
+ * Below 420 px with more than one wallet: the wallet and the profile alone,
+ * "Main · Profile 1", in the pill's own size; the switcher has the profile's
+ * .dusk name.
+ */
+@media (max-width: 26.24rem) {
+  .address-picker--compact .address-picker__trigger--wallet {
+    padding: 0 0.875rem;
+  }
+
+  .address-picker--compact
+    .address-picker__trigger--wallet
+    .address-picker__avatar,
+  .address-picker--compact
+    .address-picker__trigger--wallet
+    .address-picker__compact-name {
+    display: none;
+  }
+
+  .address-picker--compact
+    .address-picker__trigger--wallet
+    .address-picker__compact-wallet {
+    color: var(--calm-text);
+    font-size: 0.875rem;
+    line-height: 1.2;
+  }
+}

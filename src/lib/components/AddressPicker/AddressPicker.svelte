@@ -245,6 +245,7 @@
   <div
     class="address-picker__trigger"
     class:address-picker__trigger--named={compact && Boolean(shownName)}
+    class:address-picker__trigger--wallet={compact && Boolean(walletName)}
     role="button"
     tabindex="0"
     aria-haspopup="menu"
@@ -257,7 +258,8 @@
     {#if compact}
       <!-- The profile's number, and its name or label: on a narrow screen
         its .dusk name without the ending, and no label. With more than one
-        wallet, the wallet's name under it. -->
+        wallet, the wallet's name under it, and on a phone below 420 px that
+        line alone. -->
       <span aria-hidden="true" class="address-picker__avatar"
         >{profileNumber || "–"}</span
       >

@@ -119,6 +119,35 @@ describe("TopBar", () => {
     expect(name?.declarations.display).toBeUndefined();
   });
 
+  it("fits the profile's pill on a 360 px phone with two wallets: the network's dot, and the wallet and the profile alone", () => {
+    // The bar's padding, the round mark, the search, the network's dot,
+    // Settings and the gaps take 220 px of 360: 140 are left for the pill,
+    // where "Wallet 2 · Profile 1" takes 135 alone, in the pill's size. The
+    // network's name takes 35 px more than its dot, and the profile's number
+    // and .dusk name don't fit beside it: they give way below 420 px.
+    const name = styleRules("../NetworkPill.svelte").find(
+      (rule) => rule.selector === ".network-pill__name" && rule.media
+    );
+    const picker = styleRules(
+      "../../../components/AddressPicker/AddressPicker.css"
+    );
+    const narrow = (/** @type {string} */ part) =>
+      picker.find(
+        (rule) =>
+          rule.selector.includes(".address-picker__trigger--wallet") &&
+          rule.selector.includes(part) &&
+          maxWidthPx(rule.media) >= 419.8
+      )?.declarations;
+
+    expect(maxWidthPx(name?.media ?? "")).toBeGreaterThanOrEqual(419.8);
+    expect(narrow(".address-picker__avatar")?.display).toBe("none");
+    expect(narrow(".address-picker__compact-name")?.display).toBe("none");
+    expect(narrow(".address-picker__compact-wallet")).toMatchObject({
+      color: "var(--calm-text)",
+      "font-size": "0.875rem",
+    });
+  });
+
   it("opens the network's and the profiles' popovers inside a phone's window, under the top bar", () => {
     const onPhones = (/** @type {string} */ media) =>
       maxWidthPx(media) >= 767.8;

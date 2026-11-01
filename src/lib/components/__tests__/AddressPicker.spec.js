@@ -1045,14 +1045,20 @@ describe("AddressPicker", () => {
       expect(
         getAsHTMLElement(container, ".address-picker__trigger")
       ).toHaveAccessibleName("Profile: Profile 1");
+      expect(
+        getAsHTMLElement(container, ".address-picker__trigger")
+      ).not.toHaveClass("address-picker__trigger--wallet");
 
       await rerender({ ...props, compact: true, wallets: walletsOf(2) });
 
       // The small line says which profile the number is, as phones show
-      // no other.
+      // no other, and on a narrow phone it's alone (TopBar.spec.js).
       expect(
         getAsHTMLElement(container, ".address-picker__compact-wallet")
       ).toHaveTextContent(/^Wallet 1 · Profile 1$/);
+      expect(
+        getAsHTMLElement(container, ".address-picker__trigger")
+      ).toHaveClass("address-picker__trigger--wallet");
       expect(
         getAsHTMLElement(container, ".address-picker__trigger")
       ).toHaveAccessibleName("Profile: Profile 1, Wallet 1");

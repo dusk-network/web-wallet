@@ -242,6 +242,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show a gas refund from someone else's bridge call as received, not as a withdrawal from DuskEVM
 - Ask before sending to a contact's `.dusk` name also when it points to another contact's address now [#1005]
 - Take a contact's `.dusk` name as moved only once its lookup ends, and check every contact saved with that name [#1013]
+- Show the wallet and the profile alone in the top bar's pill below 420 px, as "Main · Profile 1", with the network as its dot [#1011]
 
 ## [1.8.0] - 2026-03-25
 
@@ -905,6 +906,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#999]: https://github.com/dusk-network/web-wallet/issues/999
 [#1005]: https://github.com/dusk-network/web-wallet/issues/1005
 [#1010]: https://github.com/dusk-network/web-wallet/issues/1010
+[#1011]: https://github.com/dusk-network/web-wallet/issues/1011
 [#1013]: https://github.com/dusk-network/web-wallet/issues/1013
 
 <!-- VERSIONS -->
