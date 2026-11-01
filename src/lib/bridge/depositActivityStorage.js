@@ -163,8 +163,8 @@ function readRememberedItems(scope = walletDataScope()) {
 
 /**
  * Keeps the newest deposits, by when each was sent: however many older ones
- * a history brings, one on its way stays. They're shown only while their
- * wallet is open.
+ * a history brings, one on its way stays. They're shown while their wallet
+ * is the one open.
  *
  * @param {DepositActivityItem[]} items
  * @param {WalletDataScope} scope
@@ -175,7 +175,7 @@ function writeRememberedItems(items, scope) {
     .slice(0, MAX_STORED_ITEMS);
   storage()?.setItem(scope.name(ACTIVITY_STORAGE_KEY), JSON.stringify(stored));
 
-  if (scope.isOpen()) {
+  if (scope.isShown()) {
     activity.set(stored);
   }
 }

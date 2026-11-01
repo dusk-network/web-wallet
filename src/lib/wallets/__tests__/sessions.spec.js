@@ -13,6 +13,10 @@ import { networks } from "@dusk-network/networks";
 
 import { finalizeWithdrawal, proveWithdrawal } from "$lib/bridge/withdrawals";
 import { keptMigrations } from "$lib/bridge/migrationActivity";
+import {
+  rememberHistoryWithdrawals,
+  withdrawalActivityStore,
+} from "$lib/bridge/withdrawalActivity";
 import { cardRoutes } from "$lib/bridge/cardRoutes";
 import { sendMigration } from "$lib/bridge/routeFlows";
 import { WalletChangedError } from "$lib/errors";
@@ -43,6 +47,14 @@ const evm = vi.hoisted(() => ({
   approve: vi.fn(),
   migrate: vi.fn(),
   waitForTransactionReceipt: vi.fn(),
+}));
+
+/** DuskEVM's explorer, asked for withdrawals by their nonces. */
+const explorer = vi.hoisted(() => ({ findWithdrawalsByNonce: vi.fn() }));
+
+vi.mock("$lib/bridge/blockscoutWithdrawalActivity", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  findWithdrawalsByNonce: explorer.findWithdrawalsByNonce,
 }));
 
 vi.mock(
@@ -81,6 +93,11 @@ const APP = CONFIG.LOCAL_STORAGE_APP_KEY;
 const PASSWORD = "password123";
 const TX = /** @type {`0x${string}`} */ (`0x${"57".repeat(32)}`);
 const MIGRATED = /** @type {`0x${string}`} */ (`0x${"4d".repeat(32)}`);
+const MIGRATED_NEXT = /** @type {`0x${string}`} */ (`0x${"4e".repeat(32)}`);
+const WITHDRAWN = /** @type {`0x${string}`} */ (`0x${"8e".repeat(32)}`);
+const OWNER = /** @type {`0x${string}`} */ (
+  "0x2222222222222222222222222222222222222222"
+);
 const PORTAL = String(
   networks.testnet.duskEvm?.contracts.optimism_portal.contractId
 );
@@ -106,8 +123,13 @@ const BSC = /** @type {any} */ (
   cardRoutes(networks.mainnet).find(({ id }) => id === "bsc-to-dusk")
 );
 
-/** The migrations kept under a wallet's own names. */
-const migrationsOf = (/** @type {string} */ key) =>
+/**
+ * The migrations kept under a wallet's own names.
+ *
+ * @param {string} key
+ * @returns {Array<{ hash: string }>}
+ */
+const migrationsOf = (key) =>
   JSON.parse(
     localStorage.getItem(
       `${APP}-migrations${suffixOf(key, readDirectory().legacy)}`
@@ -146,6 +168,12 @@ describe("Work begun on one wallet", () => {
   beforeEach(() => {
     localStorage.clear();
     setNodeNetwork(networks.testnet);
+
+    for (const fake of [...Object.values(evm), ...Object.values(pkg)]) {
+      fake.mockReset();
+    }
+
+    explorer.findWithdrawalsByNonce.mockReset();
     execute.mockReset();
     execute.mockResolvedValue(
       /** @type {any} */ ({ hash: "aa".repeat(32), nonce: 1n })
@@ -255,5 +283,73 @@ describe("Work begun on one wallet", () => {
     expect(await refused).toEqual(new WalletChangedError());
     expect(evm.approve).not.toHaveBeenCalled();
     expect(evm.migrate).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a migration sent while its wallet was left and opened again, shown, and keeps it as the next one is kept", async () => {
+    const { first, second } = await twoWallets();
+    const recipient = String(get(walletStore).profiles[0].account);
+    const sent = Promise.withResolvers();
+    const migration = { amountLux: 1_000_000_000n, owner: OWNER, recipient };
+
+    evm.allowance.mockResolvedValue(10n ** 30n);
+    evm.migrate
+      .mockReturnValueOnce(sent.promise)
+      .mockResolvedValueOnce(MIGRATED_NEXT);
+    evm.waitForTransactionReceipt.mockResolvedValue({ status: "success" });
+
+    const migrating = sendMigration({ ...migration, route: BSC });
+
+    await vi.waitFor(() => expect(evm.migrate).toHaveBeenCalledOnce());
+    await switchToWallet(first.id);
+    await switchToWallet(second.id);
+    sent.resolve(MIGRATED);
+    await migrating;
+
+    expect(get(keptMigrations)).toMatchObject([
+      { confirmed: true, hash: MIGRATED },
+    ]);
+
+    await sendMigration({ ...migration, route: BSC });
+
+    expect(migrationsOf(second.id).map(({ hash }) => hash)).toEqual([
+      MIGRATED_NEXT,
+      MIGRATED,
+    ]);
+    expect(get(keptMigrations).map(({ hash }) => hash)).toEqual([
+      MIGRATED_NEXT,
+      MIGRATED,
+    ]);
+  });
+
+  it("keeps the withdrawals its history finds while its wallet was left and opened again, and shows them", async () => {
+    const { first, second } = await twoWallets();
+    const looking = Promise.withResolvers();
+
+    explorer.findWithdrawalsByNonce.mockReturnValueOnce(looking.promise);
+
+    const finding = rememberHistoryWithdrawals([
+      { hash: WITHDRAWN, nonce: 7n, recipient: null },
+    ]);
+
+    await switchToWallet(first.id);
+    await switchToWallet(second.id);
+    looking.resolve(
+      new Map([
+        [
+          "7",
+          {
+            account: OWNER,
+            amountWei: 1n,
+            createdAt: 1,
+            transactionHash: TX,
+          },
+        ],
+      ])
+    );
+    await finding;
+
+    expect(get(withdrawalActivityStore)).toMatchObject([
+      { transactionHash: TX, withdrawalHash: WITHDRAWN },
+    ]);
   });
 });

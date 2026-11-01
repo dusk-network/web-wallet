@@ -144,7 +144,7 @@ function readRememberedItems(scope = walletDataScope()) {
 }
 
 /**
- * They're shown only while their wallet is open.
+ * They're shown while their wallet is the one open.
  *
  * @param {WithdrawalActivityItem[]} items
  * @param {WalletDataScope} scope
@@ -153,7 +153,7 @@ function writeRememberedItems(items, scope) {
   const stored = items.slice(0, MAX_STORED_ITEMS);
   storage()?.setItem(scope.name(ACTIVITY_STORAGE_KEY), JSON.stringify(stored));
 
-  if (scope.isOpen()) {
+  if (scope.isShown()) {
     activity.set(stored);
   }
 }

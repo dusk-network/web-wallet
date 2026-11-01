@@ -52,12 +52,14 @@ export const walletDataName = (name) => `${name}${suffix}`;
  * The open wallet's data, taken by work that writes it after it waits, as
  * the work begins:
  * - `name` gives that wallet's names, whichever wallet is open later;
- * - `isOpen` says whether it's still the wallet open, since no other opened
- *   and nothing locked;
+ * - `isOpen` says whether it's still open as it was, since no other opened
+ *   and nothing locked: what the work goes on doing;
+ * - `isShown` says whether that wallet is the one open now, opened again
+ *   since or not: whose records the screens show;
  * - `keeps` says whether it's still on this device: a wallet removed since,
  *   or every wallet after a reset, keeps nothing more.
  *
- * @typedef {{ id: number, isOpen: () => boolean, keeps: () => boolean, name: (name: string) => string }} WalletDataScope
+ * @typedef {{ id: number, isOpen: () => boolean, isShown: () => boolean, keeps: () => boolean, name: (name: string) => string }} WalletDataScope
  * @returns {WalletDataScope}
  */
 export function walletDataScope() {
@@ -68,6 +70,7 @@ export function walletDataScope() {
   return {
     id: at,
     isOpen: () => at === opened,
+    isShown: () => key === openKey && own === suffix,
     keeps: () => !key || key in readDirectory().wallets,
     name: (name) => `${name}${own}`,
   };
@@ -75,8 +78,8 @@ export function walletDataScope() {
 
 /**
  * Whether a record for a scope's wallet is written now: always while it's
- * open, and once another opened only while it's still on this device.
+ * the one open, and otherwise only while it's still on this device.
  *
  * @param {WalletDataScope} scope
  */
-export const writesFor = (scope) => scope.isOpen() || scope.keeps();
+export const writesFor = (scope) => scope.isShown() || scope.keeps();

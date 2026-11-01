@@ -133,8 +133,18 @@ export function historyWithdrawals(rows) {
 /** How long before the explorer is asked again about a withdrawal it didn't list. */
 const LOOKUP_AGAIN_MS = 300_000;
 
-/** @type {Map<string, number>} When each nonce was looked up, by nonce. */
+/**
+ * When each nonce was looked up, by wallet and nonce.
+ *
+ * @type {Map<string, number>}
+ */
 const lookedUp = new Map();
+
+/**
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
+ * @param {bigint} nonce
+ */
+const lookupOf = (scope, nonce) => `${scope.name("")} ${nonce}`;
 
 /**
  * The withdrawals kept here, by their hashes. Those kept without whom they
@@ -166,7 +176,7 @@ function keptWithdrawals(known, scope) {
  * with the withdrawal's hash, so that the history's account sees them
  * without connecting that account. Those remembered learn whom they pay.
  * They're kept for the wallet whose history it is (`scope`, the one open
- * as this begins), and none once another opened.
+ * as this begins), whichever wallet is open once they're found.
  *
  * @param {{ hash: `0x${string}`, nonce: bigint, recipient?: string | null }[]} known
  * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
@@ -181,7 +191,8 @@ export async function rememberHistoryWithdrawals(
   const missing = known.filter(
     ({ hash, nonce }) =>
       !remembered.has(hash) &&
-      now - (lookedUp.get(String(nonce)) ?? -Infinity) >= LOOKUP_AGAIN_MS
+      now - (lookedUp.get(lookupOf(scope, nonce)) ?? -Infinity) >=
+        LOOKUP_AGAIN_MS
   );
 
   if (!missing.length) {
@@ -191,7 +202,7 @@ export async function rememberHistoryWithdrawals(
   // Stamped as the lookup starts, so that another doesn't ask again
   // meanwhile; a lookup that fails is tried again the next time.
   for (const { nonce } of missing) {
-    lookedUp.set(String(nonce), now);
+    lookedUp.set(lookupOf(scope, nonce), now);
   }
 
   /** @type {Awaited<ReturnType<typeof findWithdrawalsByNonce>>} */
@@ -201,15 +212,15 @@ export async function rememberHistoryWithdrawals(
     found = await findWithdrawalsByNonce(missing.map(({ nonce }) => nonce));
   } catch (error) {
     for (const { nonce } of missing) {
-      if (lookedUp.get(String(nonce)) === now) {
-        lookedUp.delete(String(nonce));
+      if (lookedUp.get(lookupOf(scope, nonce)) === now) {
+        lookedUp.delete(lookupOf(scope, nonce));
       }
     }
 
     throw error;
   }
 
-  return scope.isOpen() ? keepFound(missing, found, scope) : [];
+  return keepFound(missing, found, scope);
 }
 
 /**

@@ -12,7 +12,7 @@
  */
 
 import { routeForAccount } from "@dusk-network/networks";
-import { get, writable } from "svelte/store";
+import { writable } from "svelte/store";
 
 import { walletDataScope, writesFor } from "$lib/wallets/dataNames";
 
@@ -110,8 +110,9 @@ export function hydrateMigrations() {
 }
 
 /**
- * Changes the migrations a wallet keeps: in its own place, even once
- * another wallet opened; what's shown with them only while it's open.
+ * Changes the migrations a wallet keeps, as they're kept now: in its own
+ * place, whichever wallet is open; shown with the change while it's the
+ * one open.
  *
  * @param {(items: KeptMigration[]) => KeptMigration[]} change
  * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
@@ -121,10 +122,9 @@ function changeKept(change, scope) {
     return;
   }
 
-  const open = scope.isOpen();
-  const next = change(open ? get(kept) : readKept(scope)).slice(0, MAX_KEPT);
+  const next = change(readKept(scope)).slice(0, MAX_KEPT);
 
-  if (open) {
+  if (scope.isShown()) {
     kept.set(next);
   }
 
@@ -317,11 +317,10 @@ export function keepArrival(hash, found, scope = walletDataScope()) {
     return;
   }
 
-  const open = scope.isOpen();
-  const known = open ? get(arrivals) : readArrivals(scope);
+  const known = readArrivals(scope);
   const next = { ...known, [hash]: { ...known[hash], ...found } };
 
-  if (open) {
+  if (scope.isShown()) {
     arrivals.set(next);
   }
 
