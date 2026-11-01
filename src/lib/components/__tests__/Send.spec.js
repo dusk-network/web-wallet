@@ -1801,6 +1801,81 @@ describe("Send", () => {
       expect(fields.to()).toHaveValue(shieldedAddress);
     });
 
+    it("should take a shielded contact's .dusk name as moved only once its lookup says where it points", async () => {
+      const alice = saveContact({
+        address: otherShielded,
+        checkedAt: 1,
+        duskName: "alice.dusk",
+        name: "Alice",
+      });
+
+      /** @type {(value: DuskNameResolution) => void} */
+      let finishLookup = () => {};
+
+      baseProps.resolveName.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishLookup = resolve;
+        })
+      );
+
+      const { container, getByRole, getByText, queryByRole } = render(
+        Send,
+        baseProps
+      );
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: "alice.dusk" },
+      });
+
+      // Still looked up: nothing asked, and nothing noted.
+      expect(getByText("Looking up alice.dusk…")).toBeInTheDocument();
+      expect(queryByRole("alert")).toBeNull();
+      expect(getContact(alice.id)).not.toHaveProperty("movedTo");
+
+      finishLookup({ address: otherShielded, name: "alice.dusk" });
+
+      await waitFor(() =>
+        expect(container.querySelector(".send__card-title")).toHaveTextContent(
+          "Alice · alice.dusk"
+        )
+      );
+      expect(queryByRole("alert")).toBeNull();
+      expect(getContact(alice.id)).not.toHaveProperty("movedTo");
+      expect(getContact(alice.id)?.checkedAt).toBeGreaterThan(1);
+    });
+
+    it("should note each contact of a .dusk name that points elsewhere now, in one lookup", async () => {
+      const alice = saveContact({
+        address: otherAccount,
+        duskName: "alice.dusk",
+        name: "Alice",
+      });
+      const aliceShielded = saveContact({
+        address: shieldedAddress,
+        duskName: "alice.dusk",
+        name: "Alice (shielded)",
+      });
+
+      baseProps.resolveName.mockResolvedValueOnce({
+        account: nameAccount,
+        address: otherShielded,
+        name: "alice.dusk",
+      });
+
+      const { findByRole, getByRole } = render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: "alice.dusk" },
+      });
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "alice.dusk now points to a different address from the one saved for Alice."
+      );
+      // Each with the new address of its kind, for Contacts and the list here.
+      expect(getContact(alice.id)?.movedTo).toBe(nameAccount);
+      expect(getContact(aliceShielded.id)?.movedTo).toBe(otherShielded);
+    });
+
     it("should ask before it sends to a new address of a contact's .dusk name", async () => {
       const alice = saveContact({
         address: otherAccount,
