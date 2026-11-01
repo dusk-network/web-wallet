@@ -55,6 +55,7 @@
     "@reown/appkit": "1.8.20",
     "@reown/appkit-adapter-wagmi": "1.8.20",
     "@scure/bip39": "2.0.1",
+    "@wagmi/core": "3.4.0",
     "css-doodle": "0.50.2",
     "dexie": "4.0.11",
     "qr-scanner": "1.4.2",
