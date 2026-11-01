@@ -1,5 +1,3 @@
-import { writable } from "svelte/store";
-
 import { duskEvm } from "$lib/web3/walletConnection";
 
 import {
@@ -20,6 +18,11 @@ import {
   walletDataScope,
   writesFor,
 } from "$lib/wallets/dataNames";
+import {
+  recordsInMemory,
+  storeRecords,
+  withRefused,
+} from "$lib/wallets/recordsInMemory";
 
 /**
  * Each wallet's withdrawals are kept under its own name: work that writes
@@ -44,8 +47,7 @@ const VALID_STAGES = new Set([
 
 /** @typedef {import("./withdrawalActivityValues").WithdrawalActivityItem} WithdrawalActivityItem */
 
-/** @type {import("svelte/store").Writable<WithdrawalActivityItem[]>} */
-const activity = writable([]);
+const activity = recordsInMemory(/** @type {WithdrawalActivityItem[]} */ ([]));
 
 export const withdrawalActivityStore = { subscribe: activity.subscribe };
 
@@ -118,10 +120,10 @@ function normalizeStoredItem(value) {
 }
 
 /**
- * @param {WalletDataScope} [scope]
+ * @param {WalletDataScope} scope
  * @returns {WithdrawalActivityItem[]}
  */
-function readRememberedItems(scope = walletDataScope()) {
+function readStoredItems(scope) {
   const localStorage = storage();
 
   if (!localStorage) {
@@ -144,30 +146,46 @@ function readRememberedItems(scope = walletDataScope()) {
 }
 
 /**
- * They're shown while their wallet is the one open.
+ * A wallet's withdrawals: as storage keeps them, with those it refused.
+ *
+ * @param {WalletDataScope} [scope]
+ * @returns {WithdrawalActivityItem[]}
+ */
+const readRememberedItems = (scope = walletDataScope()) =>
+  withRefused(
+    readStoredItems(scope),
+    activity.refusedOf(scope),
+    ({ transactionHash }) => transactionHash
+  );
+
+/**
+ * Keeps them in storage and in this tab, shown while their wallet is the
+ * one open.
  *
  * @param {WithdrawalActivityItem[]} items
  * @param {WalletDataScope} scope
  */
 function writeRememberedItems(items, scope) {
   const stored = items.slice(0, MAX_STORED_ITEMS);
-  storage()?.setItem(scope.name(ACTIVITY_STORAGE_KEY), JSON.stringify(stored));
 
-  if (scope.isShown()) {
-    activity.set(stored);
-  }
+  activity.keep(
+    stored,
+    scope,
+    storeRecords(scope.name(ACTIVITY_STORAGE_KEY), stored)
+  );
 }
 
 /** Forgets every withdrawal kept here, as Reset does. */
 export function forgetWithdrawalActivity() {
   storage()?.removeItem(walletDataName(ACTIVITY_STORAGE_KEY));
   storage()?.removeItem(walletDataName(LEGACY_LAST_WITHDRAWAL_KEY));
-  activity.set([]);
+  activity.clear();
 }
 
 export function hydrateWithdrawalActivity() {
   const items = readRememberedItems();
-  activity.set(items);
+
+  activity.show(items);
   return items;
 }
 
@@ -260,7 +278,11 @@ export function rememberWithdrawalTransaction(
     [item, ...storedItems.filter((each) => each.transactionHash !== hash)],
     scope
   );
-  storage()?.setItem(scope.name(LEGACY_LAST_WITHDRAWAL_KEY), hash);
+  try {
+    storage()?.setItem(scope.name(LEGACY_LAST_WITHDRAWAL_KEY), hash);
+  } catch {
+    // Kept in this tab only.
+  }
 
   return item;
 }

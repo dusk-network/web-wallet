@@ -134,7 +134,7 @@ export function historyWithdrawals(rows) {
 const LOOKUP_AGAIN_MS = 300_000;
 
 /**
- * When each nonce was looked up, by wallet and nonce.
+ * When each nonce was looked up, by wallet, in its time here, and nonce.
  *
  * @type {Map<string, number>}
  */
@@ -144,7 +144,7 @@ const lookedUp = new Map();
  * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
  * @param {bigint} nonce
  */
-const lookupOf = (scope, nonce) => `${scope.name("")} ${nonce}`;
+const lookupOf = (scope, nonce) => `${scope.owner}\n${nonce}`;
 
 /**
  * The withdrawals kept here, by their hashes. Those kept without whom they

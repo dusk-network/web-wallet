@@ -21,7 +21,12 @@ import {
   walletCacheFor,
 } from "$lib/wallet-cache";
 
-import { suffixOf, useWalletDataSuffix } from "./dataNames";
+import {
+  endEveryWallet,
+  endWallet,
+  suffixOf,
+  useWalletDataSuffix,
+} from "./dataNames";
 import { readDirectory } from "./directory";
 
 /**
@@ -55,6 +60,9 @@ export function useWalletData(key) {
  */
 export async function forgetWalletData(key, { accounts, addresses }) {
   const suffix = suffixFor(key);
+
+  // Its time here ends first: work begun before writes nothing more of it.
+  endWallet(key);
   const results = await Promise.allSettled([
     forgetWalletCache(suffix),
     Promise.resolve().then(() => {
@@ -79,6 +87,10 @@ export async function forgetWalletData(key, { accounts, addresses }) {
  */
 export async function forgetOtherWalletsData() {
   const { legacy, wallets } = readDirectory();
+
+  // Every wallet's time here ends first: work begun before writes nothing.
+  endEveryWallet();
+
   const suffixes = Object.keys(wallets)
     .map((key) => suffixOf(key, legacy))
     .filter(Boolean);

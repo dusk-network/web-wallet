@@ -304,6 +304,65 @@ describe("migrations into Dusk", () => {
   });
 });
 
+describe("where storage is full", () => {
+  const APP = CONFIG.LOCAL_STORAGE_APP_KEY;
+
+  /**
+   * Storage refusing the records whose names start with `name`, as a full
+   * one does.
+   *
+   * @param {string} name
+   */
+  function refuse(name) {
+    const setItem = Storage.prototype.setItem;
+
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(
+      /**
+       * @this {Storage}
+       * @param {string} key
+       * @param {string} value
+       */
+      function (key, value) {
+        if (key.startsWith(name)) {
+          throw new DOMException(
+            "The quota has been exceeded.",
+            "QuotaExceededError"
+          );
+        }
+
+        return setItem.call(this, key, value);
+      }
+    );
+  }
+
+  it("a migration stays on screen, and is marked as its receipt says", () => {
+    refuse(`${APP}-migrations`);
+    remember();
+
+    expect(get(activity.keptMigrations)).toMatchObject([{ hash: MIGRATION }]);
+
+    activity.markMigrationConfirmed(MIGRATION);
+
+    expect(get(activity.keptMigrations)).toMatchObject([
+      { confirmed: true, hash: MIGRATION },
+    ]);
+  });
+
+  it("what's known of a transfer out's arrival stays as the next one's is kept", () => {
+    const first = "aa".repeat(32);
+    const next = "bb".repeat(32);
+
+    refuse(`${APP}-transfer-arrivals`);
+    activity.keepArrival(first, { scan: /** @type {any} */ ({ from: 1 }) });
+    activity.keepArrival(next, { arrivedAt: 1, payout: "cc".repeat(32) });
+
+    expect(get(activity.transferArrivals)).toMatchObject({
+      [first]: { scan: { from: 1 } },
+      [next]: { payout: "cc".repeat(32) },
+    });
+  });
+});
+
 describe("following transfers to and from other chains", () => {
   it("reads a migration's chain until it's in a block, a transfer out's until it arrives, carrying on from where it got to, and nothing for the rest", async () => {
     const now = Date.now();

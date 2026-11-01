@@ -11,6 +11,7 @@ import { get } from "svelte/store";
 import { Network } from "@dusk/w3sper";
 import { networks } from "@dusk-network/networks";
 
+import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
 import { finalizeWithdrawal, proveWithdrawal } from "$lib/bridge/withdrawals";
 import { keptMigrations } from "$lib/bridge/migrationActivity";
 import {
@@ -24,9 +25,11 @@ import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { settingsStore, walletStore } from "$lib/stores";
 import { stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
+import { getSeedFromMnemonic, profileGeneratorFrom } from "$lib/wallet";
 
 import { suffixOf } from "../dataNames";
 import { readDirectory } from "../directory";
+import { forgetEveryWalletData } from "../walletData";
 import { addWallet, switchToWallet, unlockWallets } from "..";
 
 // Each wallet's profiles their own accounts, as on the network.
@@ -351,5 +354,35 @@ describe("Work begun on one wallet", () => {
     expect(get(withdrawalActivityStore)).toMatchObject([
       { transactionHash: TX, withdrawalHash: WITHDRAWN },
     ]);
+  });
+
+  it("brings back nothing a lookup begun before a reset finds, for a wallet without a password", async () => {
+    await walletStore.init(await profileGeneratorFrom(getSeedFromMnemonic(A)));
+
+    const looking = Promise.withResolvers();
+
+    explorer.findWithdrawalsByNonce.mockReturnValueOnce(looking.promise);
+
+    const finding = rememberHistoryWithdrawals([
+      { hash: WITHDRAWN, nonce: 7n, recipient: null },
+    ]);
+
+    // Reset, as Settings does it.
+    await forgetEveryWalletData();
+    forgetBridgeRecords({ times: true });
+    walletStore.reset();
+
+    looking.resolve(
+      new Map([
+        [
+          "7",
+          { account: OWNER, amountWei: 1n, createdAt: 1, transactionHash: TX },
+        ],
+      ])
+    );
+    await finding;
+
+    expect(localStorage.getItem("dusk-evm:withdrawal-activity:v1")).toBeNull();
+    expect(get(withdrawalActivityStore)).toEqual([]);
   });
 });

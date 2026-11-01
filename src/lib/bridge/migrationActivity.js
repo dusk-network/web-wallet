@@ -12,9 +12,14 @@
  */
 
 import { routeForAccount } from "@dusk-network/networks";
-import { writable } from "svelte/store";
 
 import { walletDataScope, writesFor } from "$lib/wallets/dataNames";
+import {
+  recordsInMemory,
+  storeRecords,
+  withRefused,
+  withRefusedByKey,
+} from "$lib/wallets/recordsInMemory";
 
 import { cardRoutes } from "./cardRoutes";
 
@@ -94,10 +99,18 @@ function readKept(scope = walletDataScope()) {
   }
 }
 
-const kept = writable(readKept());
+const kept = recordsInMemory(/** @type {KeptMigration[]} */ ([]));
 
 /** The migrations this browser sent, newest first. */
 export const keptMigrations = { subscribe: kept.subscribe };
+
+/**
+ * A wallet's migrations: as storage keeps them, with those it refused.
+ *
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
+ */
+const keptOf = (scope) =>
+  withRefused(readKept(scope), kept.refusedOf(scope), ({ hash }) => hash);
 
 /**
  * Reads the migrations this browser kept again, and what's known of the
@@ -105,14 +118,17 @@ export const keptMigrations = { subscribe: kept.subscribe };
  * opened.
  */
 export function hydrateMigrations() {
-  kept.set(readKept());
-  arrivals.set(readArrivals());
+  const scope = walletDataScope();
+
+  kept.show(keptOf(scope));
+  arrivals.show(arrivalsOf(scope));
 }
 
 /**
- * Changes the migrations a wallet keeps, as they're kept now: in its own
- * place, whichever wallet is open; shown with the change while it's the
- * one open.
+ * Changes the migrations a wallet keeps, as they're kept now, in storage
+ * and in this tab: in its own place, whichever wallet is open; shown with
+ * the change while it's the one open. Nothing, once that wallet's time here
+ * ended.
  *
  * @param {(items: KeptMigration[]) => KeptMigration[]} change
  * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
@@ -122,17 +138,9 @@ function changeKept(change, scope) {
     return;
   }
 
-  const next = change(readKept(scope)).slice(0, MAX_KEPT);
+  const next = change(keptOf(scope)).slice(0, MAX_KEPT);
 
-  if (scope.isShown()) {
-    kept.set(next);
-  }
-
-  try {
-    localStorage.setItem(scope.name(KEY), JSON.stringify(next));
-  } catch {
-    // Kept for this visit only.
-  }
+  kept.keep(next, scope, storeRecords(scope.name(KEY), next));
 }
 
 /**
@@ -299,14 +307,26 @@ function readArrivals(scope = walletDataScope()) {
   }
 }
 
-const arrivals = writable(readArrivals());
+const arrivals = recordsInMemory(
+  /** @type {Record<string, ArrivalSearch>} */ ({})
+);
 
 /** What's known of each transfer out's arrival. */
 export const transferArrivals = { subscribe: arrivals.subscribe };
 
 /**
+ * What a wallet knows of its transfers out's arrivals: as storage keeps it,
+ * with what it refused.
+ *
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
+ */
+const arrivalsOf = (scope) =>
+  withRefusedByKey(readArrivals(scope), arrivals.refusedOf(scope));
+
+/**
  * Keeps what's known of a transfer out's arrival: for the wallet whose
- * search found it (`scope`, taken as the search began).
+ * search found it (`scope`, taken as the search began), in storage and in
+ * this tab. Nothing, once that wallet's time here ended.
  *
  * @param {string} hash Its Dusk transaction
  * @param {ArrivalSearch} found
@@ -317,18 +337,10 @@ export function keepArrival(hash, found, scope = walletDataScope()) {
     return;
   }
 
-  const known = readArrivals(scope);
+  const known = arrivalsOf(scope);
   const next = { ...known, [hash]: { ...known[hash], ...found } };
 
-  if (scope.isShown()) {
-    arrivals.set(next);
-  }
-
-  try {
-    localStorage.setItem(scope.name(ARRIVALS_KEY), JSON.stringify(next));
-  } catch {
-    // Kept for this visit only.
-  }
+  arrivals.keep(next, scope, storeRecords(scope.name(ARRIVALS_KEY), next));
 }
 
 /**
@@ -336,8 +348,8 @@ export function keepArrival(hash, found, scope = walletDataScope()) {
  * wallet's, as Settings › Reset forgets the wallets they're for.
  */
 export function forgetRouteTransfers() {
-  kept.set([]);
-  arrivals.set({});
+  kept.clear();
+  arrivals.clear();
 
   try {
     for (const key of Object.keys(localStorage)) {
@@ -463,3 +475,6 @@ export const routeTransfersOf = async ({ account, known, net, rows, sent }) =>
         ...(await serviceTransfers(rows, known, net)),
       ]
     : [];
+
+// What the wallet open, or the one of before, keeps, shown from the start.
+hydrateMigrations();

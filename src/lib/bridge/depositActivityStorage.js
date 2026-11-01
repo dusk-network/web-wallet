@@ -1,5 +1,3 @@
-import { writable } from "svelte/store";
-
 import { duskEvm } from "$lib/web3/walletConnection";
 import {
   normalizedAddress,
@@ -16,6 +14,11 @@ import {
   walletDataScope,
   writesFor,
 } from "$lib/wallets/dataNames";
+import {
+  recordsInMemory,
+  storeRecords,
+  withRefused,
+} from "$lib/wallets/recordsInMemory";
 
 /**
  * Each wallet's deposits are kept under its own name: work that writes
@@ -57,8 +60,7 @@ const VALID_STAGES = new Set([
  * @property {number} updatedAt
  */
 
-/** @type {import("svelte/store").Writable<DepositActivityItem[]>} */
-const activity = writable([]);
+const activity = recordsInMemory(/** @type {DepositActivityItem[]} */ ([]));
 
 export const depositActivityStore = { subscribe: activity.subscribe };
 
@@ -140,10 +142,10 @@ function normalizeStoredItem(value) {
 }
 
 /**
- * @param {WalletDataScope} [scope]
+ * @param {WalletDataScope} scope
  * @returns {DepositActivityItem[]}
  */
-function readRememberedItems(scope = walletDataScope()) {
+function readStoredItems(scope) {
   const localStorage = storage();
 
   if (!localStorage) return [];
@@ -162,9 +164,22 @@ function readRememberedItems(scope = walletDataScope()) {
 }
 
 /**
+ * A wallet's deposits: as storage keeps them, with those it refused.
+ *
+ * @param {WalletDataScope} [scope]
+ * @returns {DepositActivityItem[]}
+ */
+const readRememberedItems = (scope = walletDataScope()) =>
+  withRefused(
+    readStoredItems(scope),
+    activity.refusedOf(scope),
+    ({ transactionHash }) => transactionHash
+  );
+
+/**
  * Keeps the newest deposits, by when each was sent: however many older ones
- * a history brings, one on its way stays. They're shown while their wallet
- * is the one open.
+ * a history brings, one on its way stays. They're kept in storage and in
+ * this tab, and shown while their wallet is the one open.
  *
  * @param {DepositActivityItem[]} items
  * @param {WalletDataScope} scope
@@ -173,22 +188,24 @@ function writeRememberedItems(items, scope) {
   const stored = items
     .toSorted((a, b) => b.createdAt - a.createdAt)
     .slice(0, MAX_STORED_ITEMS);
-  storage()?.setItem(scope.name(ACTIVITY_STORAGE_KEY), JSON.stringify(stored));
 
-  if (scope.isShown()) {
-    activity.set(stored);
-  }
+  activity.keep(
+    stored,
+    scope,
+    storeRecords(scope.name(ACTIVITY_STORAGE_KEY), stored)
+  );
 }
 
 /** Forgets every deposit kept here, as Reset does. */
 export function forgetDepositActivity() {
   storage()?.removeItem(walletDataName(ACTIVITY_STORAGE_KEY));
-  activity.set([]);
+  activity.clear();
 }
 
 export function hydrateDepositActivity() {
   const items = readRememberedItems();
-  activity.set(items);
+
+  activity.show(items);
   return items;
 }
 
