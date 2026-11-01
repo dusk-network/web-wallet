@@ -11,6 +11,7 @@ import { get } from "svelte/store";
 import { archiveAt } from "$lib/activity/activityHistory";
 import nodeNetwork from "$lib/stores/nodeNetwork";
 import { nodeBaseUrl } from "$lib/url";
+import { walletDataScope } from "$lib/wallets/dataNames";
 
 import {
   keepArrival,
@@ -49,12 +50,14 @@ export const chainRpc =
 /**
  * Whether a migration's transaction went through on its chain: true once it
  * did, false when it reverted, null while it's not in a block. It's kept
- * as confirmed or failed, and not read again.
+ * as confirmed or failed, for the wallet the check began on, and not read
+ * again.
  *
  * @param {import("./migrationActivity").RouteTransfer} transfer
  * @param {ChainRpc} rpc
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  */
-export async function checkMigration(transfer, rpc) {
+export async function checkMigration(transfer, rpc, scope = walletDataScope()) {
   const receipt = await rpc("eth_getTransactionReceipt", [transfer.hash]);
 
   if (!receipt) {
@@ -62,12 +65,12 @@ export async function checkMigration(transfer, rpc) {
   }
 
   if (receipt.status === "0x0") {
-    markMigrationFailed(transfer.hash);
+    markMigrationFailed(transfer.hash, scope);
 
     return false;
   }
 
-  markMigrationConfirmed(transfer.hash);
+  markMigrationConfirmed(transfer.hash, scope);
 
   return true;
 }
@@ -90,25 +93,33 @@ export const toFollow = (transfers) =>
  * Follows the transfers that need a read on their chain: each migration's
  * receipt, oldest first, then the transfers out, all at once, however long
  * ago they were sent. Each payout pays one transfer; where its search got
- * to, and the payout once found, are kept. Nothing is read when none needs
- * it.
+ * to, and the payout once found, are kept, for the wallet the transfers are
+ * of: the one open as this begins. Nothing is read when none needs it, nor
+ * once another wallet opened.
  *
  * @param {import("./migrationActivity").RouteTransfer[]} transfers
  * @param {Record<string, import("./migrationActivity").ArrivalSearch>} arrivals
  * @param {(url: string) => ChainRpc} [rpcFor]
  */
 export async function followTransfers(transfers, arrivals, rpcFor = chainRpc) {
+  const scope = walletDataScope();
   const due = toFollow(transfers).sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
   const out = due.filter(({ kind }) => kind === "service");
   const net = get(nodeNetwork);
 
   for (const transfer of due.filter(({ kind }) => kind === "migration")) {
-    await checkMigration(transfer, rpcFor(transfer.route.chain.rpcUrl)).catch(
-      () => null
-    );
+    if (!scope.isOpen()) {
+      return;
+    }
+
+    await checkMigration(
+      transfer,
+      rpcFor(transfer.route.chain.rpcUrl),
+      scope
+    ).catch(() => null);
   }
 
-  if (!out.length || !net) {
+  if (!out.length || !net || !scope.isOpen()) {
     return;
   }
 
@@ -131,9 +142,9 @@ export async function followTransfers(transfers, arrivals, rpcFor = chainRpc) {
 
   for (const [hash, arrival] of found?.arrivals ?? []) {
     if (arrival.state === "arrived") {
-      keepArrival(hash, { arrivedAt: arrival.at, payout: arrival.hash });
+      keepArrival(hash, { arrivedAt: arrival.at, payout: arrival.hash }, scope);
     } else if (arrival.scan) {
-      keepArrival(hash, { scan: arrival.scan });
+      keepArrival(hash, { scan: arrival.scan }, scope);
     }
   }
 }

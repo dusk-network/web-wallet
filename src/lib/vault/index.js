@@ -209,22 +209,25 @@ const sameRecord = (a, b) =>
   JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 
 /**
+ * A recovery phrase spelled the one way it's sealed and its seed made: its
+ * words, one space between.
+ *
+ * @param {string | null | undefined} m
+ */
+export const normalizedPhrase = (m) =>
+  String(m ?? "")
+    .normalize("NFKD")
+    .trim()
+    .split(/\s+/)
+    .join(" ");
+
+/**
  * Two spellings of one recovery phrase are the same phrase.
  *
  * @param {string | null} a
  * @param {string | null} b
  */
-function samePhrase(a, b) {
-  /** @param {string | null} m */
-  const norm = (m) =>
-    String(m ?? "")
-      .normalize("NFKD")
-      .trim()
-      .split(/\s+/)
-      .join(" ");
-
-  return norm(a) === norm(b);
-}
+const samePhrase = (a, b) => normalizedPhrase(a) === normalizedPhrase(b);
 
 /**
  * The number the next wallet gets: one past the highest here.
@@ -612,6 +615,15 @@ async function openForChange(password, held = []) {
   return { keys, opened, record };
 }
 
+/**
+ * What a change of the vault is asked with: the wallets the tab asking
+ * holds, which the password must open, and `beforeWrite`, called right
+ * before it writes, after everything it waited for: it throws to stop the
+ * change, which then writes nothing.
+ *
+ * @typedef {{ beforeWrite?: () => void, held?: string[] }} ChangeOptions
+ */
+
 const vault = {
   /**
    * Another wallet in the vault, sealed under the password that opens it:
@@ -620,10 +632,10 @@ const vault = {
    *
    * @param {string} mnemonic
    * @param {string} password
-   * @param {{ held?: string[] }} [options]
+   * @param {ChangeOptions} [options]
    * @returns {Promise<{ id: string, n: number }>}
    */
-  add(mnemonic, password, { held = [] } = {}) {
+  add(mnemonic, password, { beforeWrite = () => {}, held = [] } = {}) {
     return alone(async () => {
       const m = String(mnemonic ?? "").trim();
       const { keys, opened, record } = await openForChange(
@@ -647,14 +659,13 @@ const vault = {
         record.wallets.find(
           (w) => isCurrent(w) && opened.some((o) => o.id === w.id)
         ) ?? freshSalt();
+      const sealed = await seal(m, keys, like);
 
+      beforeWrite();
       await writeV2(
         {
           version: VAULT_VERSION,
-          wallets: [
-            ...record.wallets,
-            { ...wallet, ...(await seal(m, keys, like)) },
-          ],
+          wallets: [...record.wallets, { ...wallet, ...sealed }],
         },
         { changed: [{ id: wallet.id, keys, mnemonic: m }] }
       );
@@ -670,10 +681,14 @@ const vault = {
    *
    * @param {string} password
    * @param {string} newPassword
-   * @param {{ held?: string[] }} [options]
+   * @param {ChangeOptions} [options]
    * @returns {Promise<void>}
    */
-  changePassword(password, newPassword, { held = [] } = {}) {
+  changePassword(
+    password,
+    newPassword,
+    { beforeWrite = () => {}, held = [] } = {}
+  ) {
     return alone(async () => {
       const next = String(newPassword ?? "");
 
@@ -702,6 +717,7 @@ const vault = {
         );
       }
 
+      beforeWrite();
       await writeV2(
         { version: VAULT_VERSION, wallets },
         {
@@ -756,9 +772,11 @@ const vault = {
    *
    * @param {string} id
    * @param {string} password
+   * @param {ChangeOptions} [options] `held` isn't asked for: the password
+   *   opens the wallet it removes
    * @returns {Promise<void>}
    */
-  remove(id, password) {
+  remove(id, password, { beforeWrite = () => {} } = {}) {
     return alone(async () => {
       const key = String(id ?? "");
       const { opened, record } = await openForChange(String(password ?? ""));
@@ -776,6 +794,7 @@ const vault = {
         throw new Error(ONLY_WALLET);
       }
 
+      beforeWrite();
       await writeV2(
         {
           version: VAULT_VERSION,

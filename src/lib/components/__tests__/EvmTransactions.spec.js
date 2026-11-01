@@ -339,6 +339,12 @@ vi.mock("$lib/bridge/withdrawalActivity", () => ({
 
 const accountAddress = "0x2222222222222222222222222222222222222222";
 
+/** The wallet the screen is drawn for, which what it finds is kept for. */
+const ITS_WALLET = expect.objectContaining({
+  isOpen: expect.any(Function),
+  name: expect.any(Function),
+});
+
 /** A claim date, as a withdrawal's status gives it: Mon 2 Nov 2026, 03:20:39 UTC. */
 const CLAIM_AT = Date.UTC(2026, 10, 2, 3, 20, 39);
 
@@ -1337,10 +1343,11 @@ describe("EvmTransactions", () => {
     expect(
       (await findAllByText("Proof sent, waiting for Dusk")).length
     ).toBeGreaterThan(0);
-    expect(mocks.recordWithdrawalSubmission).toHaveBeenCalledWith(txHash, {
-      action: "prove",
-      hash: "65".repeat(32),
-    });
+    expect(mocks.recordWithdrawalSubmission).toHaveBeenCalledWith(
+      txHash,
+      { action: "prove", hash: "65".repeat(32) },
+      ITS_WALLET
+    );
     expect(
       queryByRole("button", { name: /^prove on dusk$/i })
     ).not.toBeInTheDocument();
@@ -1679,9 +1686,16 @@ describe("EvmTransactions", () => {
         name: /^DuskEVM to Dusk Sent .+ 0\.1 DUSK Pending$/,
       })
     ).toBeInTheDocument();
-    expect(mocks.rememberHistoryWithdrawals).toHaveBeenCalledWith(known);
+    expect(mocks.rememberHistoryWithdrawals).toHaveBeenCalledWith(
+      known,
+      ITS_WALLET
+    );
     await waitFor(() => {
-      expect(mocks.trackWithdrawalTransaction).toHaveBeenCalledWith(foundHash);
+      expect(mocks.trackWithdrawalTransaction).toHaveBeenCalledWith(
+        foundHash,
+        {},
+        ITS_WALLET
+      );
     });
   });
 

@@ -14,14 +14,14 @@
 import { routeForAccount } from "@dusk-network/networks";
 import { get, writable } from "svelte/store";
 
-import { walletDataName } from "$lib/wallets/dataNames";
+import { walletDataScope, writesFor } from "$lib/wallets/dataNames";
 
 import { cardRoutes } from "./cardRoutes";
 
 /** How many migrations this browser keeps. */
 const MAX_KEPT = 50;
 
-/** The migrations kept, the open wallet's (walletDataName). */
+/** The migrations kept, each wallet's under its own name (walletDataScope). */
 const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`;
 
 const EVM_HASH = /^0x[0-9a-f]{64}$/;
@@ -73,10 +73,13 @@ const FAILURES = {
  *   side.
  */
 
-/** @returns {KeptMigration[]} */
-function readKept() {
+/**
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
+ * @returns {KeptMigration[]}
+ */
+function readKept(scope = walletDataScope()) {
   try {
-    const kept = JSON.parse(localStorage.getItem(walletDataName(KEY)) ?? "[]");
+    const kept = JSON.parse(localStorage.getItem(scope.name(KEY)) ?? "[]");
 
     return Array.isArray(kept)
       ? kept.filter(
@@ -106,31 +109,49 @@ export function hydrateMigrations() {
   arrivals.set(readArrivals());
 }
 
-/** @param {KeptMigration[]} items */
-function writeKept(items) {
-  const next = items.slice(0, MAX_KEPT);
+/**
+ * Changes the migrations a wallet keeps: in its own place, even once
+ * another wallet opened; what's shown with them only while it's open.
+ *
+ * @param {(items: KeptMigration[]) => KeptMigration[]} change
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
+ */
+function changeKept(change, scope) {
+  if (!writesFor(scope)) {
+    return;
+  }
 
-  kept.set(next);
+  const open = scope.isOpen();
+  const next = change(open ? get(kept) : readKept(scope)).slice(0, MAX_KEPT);
+
+  if (open) {
+    kept.set(next);
+  }
 
   try {
-    localStorage.setItem(walletDataName(KEY), JSON.stringify(next));
+    localStorage.setItem(scope.name(KEY), JSON.stringify(next));
   } catch {
     // Kept for this visit only.
   }
 }
 
 /**
- * Keeps a migration this browser sent, to follow it until it's paid.
+ * Keeps a migration this browser sent, to follow it until it's paid: for
+ * the wallet it was sent for (`scope`, taken as it was sent).
  *
  * @param {Omit<KeptMigration, "confirmed" | "failed">} migration
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  */
-export function rememberMigration(migration) {
+export function rememberMigration(migration, scope = walletDataScope()) {
   const hash = migration.hash.toLowerCase();
 
-  writeKept([
-    { ...migration, hash },
-    ...get(kept).filter((item) => item.hash !== hash),
-  ]);
+  changeKept(
+    (items) => [
+      { ...migration, hash },
+      ...items.filter((item) => item.hash !== hash),
+    ],
+    scope
+  );
 }
 
 /**
@@ -138,12 +159,15 @@ export function rememberMigration(migration) {
  *
  * @param {string} hash
  * @param {{ confirmed: true } | { failed: true }} receipt
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
  */
-const markMigration = (hash, receipt) =>
-  writeKept(
-    get(kept).map((item) =>
-      item.hash === hash.toLowerCase() ? { ...item, ...receipt } : item
-    )
+const markMigration = (hash, receipt, scope) =>
+  changeKept(
+    (items) =>
+      items.map((item) =>
+        item.hash === hash.toLowerCase() ? { ...item, ...receipt } : item
+      ),
+    scope
   );
 
 /**
@@ -151,17 +175,19 @@ const markMigration = (hash, receipt) =>
  * paid out next.
  *
  * @param {string} hash
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  */
-export const markMigrationConfirmed = (hash) =>
-  markMigration(hash, { confirmed: true });
+export const markMigrationConfirmed = (hash, scope = walletDataScope()) =>
+  markMigration(hash, { confirmed: true }, scope);
 
 /**
  * Marks a migration whose transaction reverted on its chain.
  *
  * @param {string} hash
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  */
-export const markMigrationFailed = (hash) =>
-  markMigration(hash, { failed: true });
+export const markMigrationFailed = (hash, scope = walletDataScope()) =>
+  markMigration(hash, { failed: true }, scope);
 
 /**
  * The migrations into Dusk: those this browser sent to the account the
@@ -257,11 +283,14 @@ export async function migrationTransfers(rows, sent, net, account) {
 
 const ARRIVALS_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-transfer-arrivals`;
 
-/** @returns {Record<string, ArrivalSearch>} */
-function readArrivals() {
+/**
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
+ * @returns {Record<string, ArrivalSearch>}
+ */
+function readArrivals(scope = walletDataScope()) {
   try {
     const stored = JSON.parse(
-      localStorage.getItem(walletDataName(ARRIVALS_KEY)) ?? "{}"
+      localStorage.getItem(scope.name(ARRIVALS_KEY)) ?? "{}"
     );
 
     return stored && typeof stored === "object" ? stored : {};
@@ -276,21 +305,28 @@ const arrivals = writable(readArrivals());
 export const transferArrivals = { subscribe: arrivals.subscribe };
 
 /**
- * Keeps what's known of a transfer out's arrival.
+ * Keeps what's known of a transfer out's arrival: for the wallet whose
+ * search found it (`scope`, taken as the search began).
  *
  * @param {string} hash Its Dusk transaction
  * @param {ArrivalSearch} found
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  */
-export function keepArrival(hash, found) {
-  const next = {
-    ...get(arrivals),
-    [hash]: { ...get(arrivals)[hash], ...found },
-  };
+export function keepArrival(hash, found, scope = walletDataScope()) {
+  if (!writesFor(scope)) {
+    return;
+  }
 
-  arrivals.set(next);
+  const open = scope.isOpen();
+  const known = open ? get(arrivals) : readArrivals(scope);
+  const next = { ...known, [hash]: { ...known[hash], ...found } };
+
+  if (open) {
+    arrivals.set(next);
+  }
 
   try {
-    localStorage.setItem(walletDataName(ARRIVALS_KEY), JSON.stringify(next));
+    localStorage.setItem(scope.name(ARRIVALS_KEY), JSON.stringify(next));
   } catch {
     // Kept for this visit only.
   }

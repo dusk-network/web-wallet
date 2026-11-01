@@ -300,6 +300,24 @@ describe("The wallets on this device", () => {
         String((await firstProfileOf(B)).account)
       );
     });
+
+    it("adds nothing, and opens nothing, once this tab locks while a wallet is being added", async () => {
+      await vault.setUp(A, PASSWORD);
+      await unlockWallets(PASSWORD);
+
+      const [first] = vault.list() ?? [];
+      const adding = addWallet(B, PASSWORD).catch((error) => error);
+
+      await lockWallets();
+
+      expect(await adding).toEqual(new WalletChangedError());
+      expect(vault.list()).toEqual([first]);
+      expect(get(walletStore)).toMatchObject({
+        initialized: false,
+        walletKey: "",
+        wallets: [],
+      });
+    });
   });
 
   describe("switching", () => {

@@ -38,7 +38,7 @@ const suffixFor = (key) => suffixOf(key, readDirectory().legacy);
  * @param {string} key Its vault ID: "" for a wallet without a password
  */
 export function useWalletData(key) {
-  useWalletDataSuffix(suffixFor(key));
+  useWalletDataSuffix(suffixFor(key), key);
   hydrateMigrations();
 }
 

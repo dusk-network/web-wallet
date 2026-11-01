@@ -13,6 +13,7 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { shortenAddress } from "$lib/dusk/string";
   import { AppAnchorButton, SectionHead } from "$lib/components";
+  import { WalletChangedError } from "$lib/errors";
   import { walletStore } from "$lib/stores";
   import vault from "$lib/vault";
   import {
@@ -72,9 +73,15 @@
       }
 
       await stopRenaming();
-    } catch {
+    } catch (error) {
       saving = false;
-      toast("error", "Couldn't save the name.", mdiAlertOutline);
+      toast(
+        "error",
+        error instanceof WalletChangedError
+          ? error.message
+          : "Couldn't save the name.",
+        mdiAlertOutline
+      );
     }
   }
 

@@ -126,6 +126,9 @@
           .then((height) => ({ height, syncFrom: height }))
       : Promise.resolve({ syncFrom: blockHeight });
 
+  // Added for the wallet open as the page is drawn: none once another opens.
+  const add = walletStore.forThisWallet()(addWallet);
+
   /** The wallet sealed under the password the wallets share, and opened. */
   async function submit() {
     passwordError = password ? "" : "Enter your password.";
@@ -138,7 +141,7 @@
     busy = true;
 
     try {
-      await addWallet(
+      await add(
         mode === "create" ? mnemonicPhrase.join(" ") : importedPhrase,
         password,
         await syncOptions()

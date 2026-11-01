@@ -15,6 +15,7 @@ import {
   normalizedAddress,
 } from "$lib/bridge/withdrawalActivityValues";
 import { errorMessage } from "$lib/dusk/error";
+import { walletDataScope } from "$lib/wallets/dataNames";
 
 /** @typedef {import("./withdrawalActivityValues").WithdrawalActivityItem} WithdrawalActivityItem */
 
@@ -140,9 +141,10 @@ const lookedUp = new Map();
  * pay, as before the history read it, take it from the history.
  *
  * @param {{ hash: `0x${string}`, recipient?: string | null }[]} known
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
  * @returns {Set<string | null>}
  */
-function keptWithdrawals(known) {
+function keptWithdrawals(known, scope) {
   const kept = hydrateWithdrawalActivity();
 
   for (const { hash, recipient } of known) {
@@ -151,7 +153,7 @@ function keptWithdrawals(known) {
       : undefined;
 
     if (item) {
-      updateWithdrawalTransaction(item.transactionHash, { recipient });
+      updateWithdrawalTransaction(item.transactionHash, { recipient }, scope);
     }
   }
 
@@ -163,12 +165,18 @@ function keptWithdrawals(known) {
  * remembered here yet, and remembers them for the account that sent them,
  * with the withdrawal's hash, so that the history's account sees them
  * without connecting that account. Those remembered learn whom they pay.
+ * They're kept for the wallet whose history it is (`scope`, the one open
+ * as this begins), and none once another opened.
  *
  * @param {{ hash: `0x${string}`, nonce: bigint, recipient?: string | null }[]} known
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  * @returns {Promise<WithdrawalActivityItem[]>} Those found
  */
-export async function rememberHistoryWithdrawals(known) {
-  const remembered = keptWithdrawals(known);
+export async function rememberHistoryWithdrawals(
+  known,
+  scope = walletDataScope()
+) {
+  const remembered = keptWithdrawals(known, scope);
   const now = Date.now();
   const missing = known.filter(
     ({ hash, nonce }) =>
@@ -201,22 +209,41 @@ export async function rememberHistoryWithdrawals(known) {
     throw error;
   }
 
+  return scope.isOpen() ? keepFound(missing, found, scope) : [];
+}
+
+/**
+ * Keeps the withdrawals the explorer found by their nonces, each with the
+ * withdrawal's hash and whom it pays, for the wallet whose history it is.
+ *
+ * @param {{ hash: `0x${string}`, nonce: bigint, recipient?: string | null }[]} missing
+ * @param {Awaited<ReturnType<typeof findWithdrawalsByNonce>>} found
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
+ * @returns {WithdrawalActivityItem[]}
+ */
+function keepFound(missing, found, scope) {
   return missing.flatMap(({ hash, nonce, recipient }) => {
     const item = found.get(String(nonce));
     const kept = item
-      ? rememberWithdrawalTransaction(item.transactionHash, {
-          account: item.account,
-          amountWei: item.amountWei ?? undefined,
-          createdAt: item.createdAt,
-          recipient,
-        })
+      ? rememberWithdrawalTransaction(
+          item.transactionHash,
+          {
+            account: item.account,
+            amountWei: item.amountWei ?? undefined,
+            createdAt: item.createdAt,
+            recipient,
+          },
+          scope
+        )
       : null;
 
     return kept
       ? [
-          updateWithdrawalTransaction(kept.transactionHash, {
-            withdrawalHash: hash,
-          }) ?? kept,
+          updateWithdrawalTransaction(
+            kept.transactionHash,
+            { withdrawalHash: hash },
+            scope
+          ) ?? kept,
         ]
       : [];
   });

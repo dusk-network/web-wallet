@@ -87,7 +87,7 @@
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { addBasePath } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
-  import { walletDataName } from "$lib/wallets/dataNames";
+  import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
   import { LAST_WITHDRAWAL_KEY as LAST_WITHDRAWAL_TX_HASH_KEY } from "$lib/bridge/bridgeRecordKeys";
 
   /**
@@ -286,6 +286,12 @@
    */
   const evmLux = (balance) => balance.value / EVM_TO_LUX_SCALE_FACTOR;
 
+  // What this screen sends, it sends from the wallet it was drawn for, and
+  // keeps for that wallet.
+  const forThisWallet = walletStore.forThisWallet();
+  const stillOpen = walletStore.whileOpen();
+  const records = walletDataScope();
+
   async function submitNativeWithdrawal() {
     if (!unshieldedAccount) {
       throw new Error("Dusk account is not available.");
@@ -303,6 +309,7 @@
     });
 
     await switchChain(wagmiConfig, { chainId: duskEvm.id });
+    stillOpen();
 
     const hash = await sendTransaction(wagmiConfig, {
       chainId: duskEvm.id,
@@ -314,9 +321,6 @@
     rememberWithdrawalTxHash(hash);
     return hash;
   }
-
-  // What this screen sends, it sends from the wallet it was drawn for.
-  const forThisWallet = walletStore.forThisWallet();
 
   async function submitNativeDeposit() {
     if (!$account.address) {
@@ -334,17 +338,18 @@
       throw new Error("The DuskDS transaction did not return a hash.");
     }
 
-    const remembered = rememberDepositTransaction(hash, {
-      account: $account.address,
-      amountLux,
-      amountWei,
-    });
+    // Sent: kept for this wallet, whichever is open now.
+    const remembered = rememberDepositTransaction(
+      hash,
+      { account: $account.address, amountLux, amountWei },
+      records
+    );
 
     if (!remembered) {
       throw new Error("The DuskDS transaction returned an invalid hash.");
     }
 
-    void trackDepositTransaction(remembered.transactionHash);
+    void trackDepositTransaction(remembered.transactionHash, records);
     return remembered.transactionHash;
   }
 
@@ -384,18 +389,17 @@
     }
 
     lastWithdrawalTxHash = /** @type {string} */ (hash);
-    localStorage.setItem(
-      walletDataName(LAST_WITHDRAWAL_TX_HASH_KEY),
-      lastWithdrawalTxHash
-    );
-    // It pays this wallet's public account.
+
+    // Sent: kept for this wallet, whichever is open now. It pays this
+    // wallet's public account.
     const remembered = rememberWithdrawalTransaction(
       /** @type {`0x${string}`} */ (lastWithdrawalTxHash),
-      { account: $account.address, amountWei, recipient: unshieldedAddress }
+      { account: $account.address, amountWei, recipient: unshieldedAddress },
+      records
     );
 
     if (remembered) {
-      void trackWithdrawalTransaction(remembered.transactionHash);
+      void trackWithdrawalTransaction(remembered.transactionHash, {}, records);
     }
 
     return hash;

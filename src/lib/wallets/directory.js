@@ -129,7 +129,7 @@ function tell(directory) {
 
 /**
  * A change of the directory, alone across tabs: `apply` gets it as kept
- * now, and gives it as it's to be.
+ * now, and gives it as it's to be; one that throws writes nothing.
  *
  * @param {(directory: WalletDirectory) => WalletDirectory} apply
  * @returns {Promise<WalletDirectory>}
@@ -171,13 +171,17 @@ export const noteActiveWallet = (key, { accounts, addresses }) =>
   }));
 
 /**
- * Names a wallet, or gives it its number back with "".
+ * Names a wallet, or gives it its number back with "". `check`, called as
+ * the name is about to be written, throws to write nothing.
  *
  * @param {string} key
  * @param {string} name
+ * @param {() => void} [check]
  */
-export const setWalletName = (key, name) =>
+export const setWalletName = (key, name, check = () => {}) =>
   change((directory) => {
+    check();
+
     const entry = { ...(directory.wallets[key] ?? walletOf(null)) };
     const next = normalizeWalletName(name);
 

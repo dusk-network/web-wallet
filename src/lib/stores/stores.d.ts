@@ -106,6 +106,12 @@ type WalletStoreContent = {
 /** A wallet to open: its vault ID, number, and profile to show. */
 type WalletToOpen = { key?: string; n?: number; profile?: number };
 
+/** Throws WalletChangedError once the wallet it was taken for isn't open. */
+type StillOpen = {
+  (): void;
+  <T>(value: T): T;
+};
+
 type HeldWallet = { n: number; profileGenerator: ProfileGenerator };
 
 type WalletStoreServices = {
@@ -143,6 +149,12 @@ type WalletStoreServices = {
   holdWallet: (wallet: HeldWallet & { key: string }) => void;
 
   useContract: (contractId: string, wasmPath: string) => Promise<Contract>;
+
+  /**
+   * A check bound to the wallet open now: it throws WalletChangedError once
+   * another wallet opened, or after a lock, and gives back what it's given.
+   */
+  whileOpen: () => StillOpen;
 
   init: (
     profileGenerator: ProfileGenerator,

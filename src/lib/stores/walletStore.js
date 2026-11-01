@@ -206,8 +206,8 @@ const passThruWithEffects = (fn) => (a) => {
  * Keeps what a transaction changed in the cache until the sync sees it: the
  * notes it spent, or the nonce it used, so that a transaction made before
  * then isn't refused. Taken as the transaction begins: the nonce is the
- * sending profile's, and after a lock or a reset since, the cache is left
- * alone.
+ * sending profile's, and after a switch, a lock or a reset since, the cache
+ * is left alone: the sync finds the transaction there.
  *
  * @param {Profile} profile
  * @returns {(txInfo: TransactionInfo) => Promise<TransactionInfo>}
@@ -238,40 +238,59 @@ const updateCacheAfterTransaction = (profile) => {
 };
 
 /**
+ * A transaction's builder whose transaction, once it's built and proved,
+ * goes on only while the wallet it began on is open: the node gets it
+ * after that check, or never.
+ *
+ * @template {object} B
+ * @param {B} builder
+ * @param {<T>(value: T) => T} stillOpen
+ * @returns {B}
+ */
+const builtWhileOpen = (builder, stillOpen) =>
+  new Proxy(builder, {
+    get(target, property) {
+      const value = Reflect.get(target, property);
+
+      if (property === "build" && typeof value === "function") {
+        return async (/** @type {unknown} */ network) =>
+          stillOpen(await value.call(target, network));
+      }
+
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+
+/**
  * Sends a transaction as `profile`, taken once as the send begins: it is
  * built, kept in the cache and recorded in the history as that profile,
- * whichever one is chosen while the wallet syncs before it goes out.
+ * whichever one is chosen while the wallet syncs before it goes out. It
+ * goes out only while the wallet it began on is open: not after a switch
+ * or a lock since, checked once the wallet synced, and again once the
+ * transaction is built and proved.
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
- * @param {(network: import("@dusk/w3sper").Network) => Promise<TransactionInfo>} execute
+ * @param {(network: Pick<import("@dusk/w3sper").Network, "execute">) => Promise<TransactionInfo>} execute
  * @returns {Promise<TransactionInfo>}
  */
 const sendAs = (profile, details, execute) => {
-  const session = walletSession;
+  const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
   const record = recordInHistory(profile, details);
 
-  /**
-   * Goes on only while the wallet it began on is open: not after a switch
-   * or a lock since.
-   *
-   * @type {<T>(value: T) => T}
-   */
-  const stillOpen = (value) => {
-    if (session !== walletSession) {
-      throw new WalletChangedError();
-    }
-
-    return value;
-  };
+  /** @param {import("@dusk/w3sper").Network} network */
+  const sending = (network) => ({
+    /** @param {any} tx */
+    execute: (tx) => network.execute(builtWhileOpen(tx, stillOpen)),
+  });
 
   return sync()
     .catch((error) => {
       throw stillOpen(error);
     })
     .then(networkStore.connect)
-    .then((network) => execute(stillOpen(network)))
+    .then((network) => execute(sending(stillOpen(network))))
     .then(keepInCache)
     .then(passThruWithEffects(observeTxRemoval))
     .then(passThruWithEffects(record));
@@ -603,6 +622,29 @@ function releaseWallet(key) {
 const heldWallet = (key) => held.get(key) ?? null;
 
 /**
+ * A check bound to the wallet open now, for work that acts for it after it
+ * waits, right before it acts: once another wallet opened, or after a
+ * lock, it throws WalletChangedError; otherwise it gives back what it's
+ * given.
+ *
+ * @type {WalletStoreServices["whileOpen"]}
+ */
+function whileOpen() {
+  const session = walletSession;
+
+  /** @type {any} */
+  const stillOpen = (/** @type {unknown} */ value) => {
+    if (session !== walletSession) {
+      throw new WalletChangedError();
+    }
+
+    return value;
+  };
+
+  return stillOpen;
+}
+
+/**
  * What a screen does, bound to the wallet open as it's drawn: asked once
  * another opened, or after a lock, it does nothing and says so
  * (WalletChangedError).
@@ -610,13 +652,18 @@ const heldWallet = (key) => held.get(key) ?? null;
  * @type {WalletStoreServices["forThisWallet"]}
  */
 function forThisWallet() {
-  const session = walletSession;
+  const stillOpen = whileOpen();
 
   return (task) =>
-    (...args) =>
-      session === walletSession
-        ? task(...args)
-        : Promise.reject(new WalletChangedError());
+    (...args) => {
+      try {
+        stillOpen();
+      } catch (error) {
+        return Promise.reject(error);
+      }
+
+      return task(...args);
+    };
 }
 
 /**
@@ -1123,4 +1170,5 @@ export default {
   unstake,
   unstakeFromSozu,
   useContract,
+  whileOpen,
 };

@@ -24,6 +24,7 @@ const pkg = vi.hoisted(() => ({
 
 /** The wallet's account and its signer, which records and never signs. */
 const wallet = vi.hoisted(() => ({
+  forThisWallet: () => (/** @type {any} */ task) => task,
   getDuskEvmProofSubmitter: vi.fn(
     () => /** @type {`0x${string}`} */ (`0x${"97".repeat(20)}`)
   ),

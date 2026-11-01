@@ -11,7 +11,7 @@ import { forgetWalletBridgeRecords } from "$lib/bridge/bridgeRecordKeys";
 import { forgetWalletRouteTransfers } from "$lib/bridge/migrationActivity";
 import { logout } from "$lib/navigation";
 import { settingsStore, walletStore } from "$lib/stores";
-import vault, { NOT_HERE, ONLY_WALLET } from "$lib/vault";
+import vault, { NOT_HERE, ONLY_WALLET, normalizedPhrase } from "$lib/vault";
 import getSeedFromMnemonic from "$lib/wallet/getSeedFromMnemonic";
 import profileGeneratorFrom from "$lib/wallet/profileGeneratorFrom";
 import { walletCacheFor } from "$lib/wallet-cache";
@@ -166,6 +166,7 @@ export async function unlockWallets(password, { signal } = {}) {
 /**
  * Opens another wallet held here, without the password, at one of its
  * profiles, and tells the other tabs; in the wallet open, its profile.
+ * Nothing is told once this tab locked meanwhile.
  *
  * @param {string} key
  * @param {number} [profile]
@@ -176,7 +177,7 @@ export async function switchToWallet(key, profile = 0, options = {}) {
 
   await walletStore.switchWallet(key, profile, options);
 
-  if (key !== before) {
+  if (key !== before && get(walletStore).walletKey === key) {
     await noteOpenWallet();
     tellOtherTabs({ key, profile, type: "switch" });
   }
@@ -188,25 +189,34 @@ export async function switchToWallet(key, profile = 0, options = {}) {
  * wrong password. One made here syncs from `syncFrom`, the block it's made
  * at (`height`); one restored, from the block given, or the first.
  *
+ * It's added only while the wallet open as it began still is: once this
+ * tab locked, or another wallet opened, the vault takes nothing and
+ * nothing opens (WalletChangedError). Locked after the vault took it, it
+ * stays there for the next unlock, and nothing opens.
+ *
  * @param {string} mnemonic
  * @param {string} password
  * @param {{ height?: bigint, syncFrom?: bigint }} [options]
  * @returns {Promise<{ id: string, n: number }>}
  */
 export async function addWallet(mnemonic, password, { height, syncFrom } = {}) {
+  const stillOpen = walletStore.whileOpen();
   const held = get(walletStore).wallets.map(({ key }) => key);
-  const wallet = await vault.add(mnemonic, password, { held });
-
-  walletStore.holdWallet({
-    key: wallet.id,
-    n: wallet.n,
-    profileGenerator: await generatorOf(mnemonic),
+  const phrase = normalizedPhrase(mnemonic);
+  const profileGenerator = await generatorOf(phrase);
+  const wallet = await vault.add(phrase, password, {
+    beforeWrite: stillOpen,
+    held,
   });
+
+  stillOpen();
+  walletStore.holdWallet({ key: wallet.id, n: wallet.n, profileGenerator });
 
   if (height !== undefined) {
     await setWalletHeight(wallet.id, height);
   }
 
+  stillOpen();
   await switchToWallet(wallet.id, 0, { syncFromBlock: syncFrom });
 
   return wallet;
@@ -252,13 +262,58 @@ async function openAnotherThan(key, wallets) {
 }
 
 /**
+ * Whether the wallet a check was taken for is still open.
+ *
+ * @param {() => void} stillOpen
+ */
+function isStillOpen(stillOpen) {
+  try {
+    stillOpen();
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A wallet the vault let go, let go here too, and its data with it: the
+ * open one after another opens. Once this tab locked or another wallet
+ * opened meanwhile (`opened` null), as for a removal in another tab.
+ *
+ * @param {string} key
+ * @param {{ accounts: string[], addresses: string[] }} data What its data is kept by
+ * @param {{ walletKey: string, wallets: Array<{ key: string }> } | null} opened
+ *   The wallets as the removal began
+ */
+async function letGo(key, data, opened) {
+  if (!opened) {
+    await followWallets();
+  } else {
+    if (key === opened.walletKey) {
+      await openAnotherThan(key, opened.wallets);
+    }
+
+    walletStore.releaseWallet(key);
+  }
+
+  await forgetWalletData(key, data);
+  await forgetDirectoryWallet(key);
+}
+
+/**
  * Removes one wallet with the password: its phrase, then its data. The
  * open one goes after another opens. The others stay as they are.
+ *
+ * Its phrase goes only while the wallet open as it began still is: once
+ * this tab locked, or another wallet opened, the vault keeps it
+ * (WalletChangedError).
  *
  * @param {string} key
  * @param {string} password
  */
 export async function removeWallet(key, password) {
+  const stillOpen = walletStore.whileOpen();
   const { walletKey, wallets } = get(walletStore);
   const held = walletStore.heldWallet(key);
 
@@ -269,37 +324,52 @@ export async function removeWallet(key, password) {
   const data = await keptBy(key, held.profileGenerator);
 
   // The vault first: a wrong password changes nothing.
-  await vault.remove(key, password);
-
-  if (key === walletKey) {
-    await openAnotherThan(key, wallets);
-  }
-
-  walletStore.releaseWallet(key);
-  await forgetWalletData(key, data);
-  await forgetDirectoryWallet(key);
+  await vault.remove(key, password, { beforeWrite: stillOpen });
+  await letGo(
+    key,
+    data,
+    isStillOpen(stillOpen) ? { walletKey, wallets } : null
+  );
   tellOtherTabs({ type: "wallets" });
 }
 
 /**
  * Names a wallet, only on this device, or gives it its number back with "".
+ * Nothing is named once this tab locked, or another wallet opened
+ * (WalletChangedError), nor a wallet removed meanwhile (NOT_HERE).
  *
  * @param {string} key
  * @param {string} name
  */
-export const renameWallet = (key, name) => setWalletName(key, name);
+export async function renameWallet(key, name) {
+  const stillOpen = walletStore.whileOpen();
+
+  await setWalletName(key, name, () => {
+    stillOpen();
+
+    if (!vault.list()?.some((wallet) => wallet.id === key)) {
+      throw new Error(NOT_HERE);
+    }
+  });
+}
 
 /**
  * A new password for every wallet here: the current one must open each
- * wallet open in this tab. The other tabs lock.
+ * wallet open in this tab. The other tabs lock. Nothing changes once this
+ * tab locked, or another wallet opened, before it's written
+ * (WalletChangedError).
  *
  * @param {string} password
  * @param {string} newPassword
  */
 export async function changeWalletPassword(password, newPassword) {
+  const stillOpen = walletStore.whileOpen();
   const held = get(walletStore).wallets.map(({ key }) => key);
 
-  await vault.changePassword(password, newPassword, { held });
+  await vault.changePassword(password, newPassword, {
+    beforeWrite: stillOpen,
+    held,
+  });
   tellOtherTabs({ type: "password" });
 }
 

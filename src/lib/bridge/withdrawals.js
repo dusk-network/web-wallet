@@ -615,12 +615,20 @@ const gasOf = ({ gasLimit }) =>
   });
 
 /**
- * Proofs whose claim date was shown, by withdrawal transaction, for a short
- * while: the proof sent is then the one the date was for.
+ * Proofs whose claim date was shown, by the account they were made for and
+ * withdrawal transaction, for a short while: the proof sent is then the one
+ * the date was for, and only by that account.
  *
  * @type {Map<string, PreparedProof>}
  */
 const preparedProofs = new Map();
+
+/**
+ * @param {`0x${string}`} submitter
+ * @param {`0x${string}`} txHash
+ */
+const proofKey = (submitter, txHash) =>
+  `${submitter.toLowerCase()} ${txHash.toLowerCase()}`;
 
 /**
  * The proof of a withdrawal, and when it can be claimed if the proof is made
@@ -632,17 +640,18 @@ const preparedProofs = new Map();
  * @returns {Promise<PreparedProof>}
  */
 export async function prepareProof(txHash) {
+  const submitter = walletStore.getDuskEvmProofSubmitter();
   const prepared = await withdrawals()
     .prepareProof(txHash, {
       gasLimitUpper: get(gasStore).gasLimitUpper,
-      submitter: walletStore.getDuskEvmProofSubmitter(),
+      submitter,
     })
     .catch(inWords);
 
   // Kept only with a date: one read again without leaves in place the proof
   // whose date is still shown.
   if (prepared.claim?.at) {
-    preparedProofs.set(txHash.toLowerCase(), prepared);
+    preparedProofs.set(proofKey(submitter, txHash), prepared);
   }
 
   return prepared;
@@ -658,13 +667,30 @@ export const loadProveNowClaim = (txHash) =>
   prepareProof(txHash).then(({ claim }) => (claim?.at ? claim : null));
 
 /**
+ * Sends a proof or a claim from the wallet open as it begins: once it's
+ * made, nothing goes out after another wallet opened, or a lock
+ * (WalletChangedError).
+ *
+ * @returns {(call: PortalCall) => Promise<string>}
+ */
+function sendForThisWallet() {
+  const send = walletStore.forThisWallet()(
+    walletStore.sendDuskEvmWithdrawalCall
+  );
+
+  return async (call) => (await send(call, gasOf(call))).hash;
+}
+
+/**
  * Proves a withdrawal on Dusk: with the proof whose claim date was shown
- * when there's one from the last two minutes, or else a new one.
+ * when there's one from the last two minutes, or else a new one. It goes
+ * out from the wallet open as it begins, or not at all.
  *
  * @param {`0x${string}`} txHash
  */
 export async function proveWithdrawal(txHash) {
-  const key = txHash.toLowerCase();
+  const send = sendForThisWallet();
+  const key = proofKey(walletStore.getDuskEvmProofSubmitter(), txHash);
   const kept = preparedProofs.get(key);
   const { call } =
     kept && Date.now() - kept.at < PREPARED_PROOF_MS
@@ -673,16 +699,18 @@ export async function proveWithdrawal(txHash) {
 
   preparedProofs.delete(key);
 
-  return (await walletStore.sendDuskEvmWithdrawalCall(call, gasOf(call))).hash;
+  return send(call);
 }
 
 /**
  * Claims a withdrawal on Dusk, once its status, read again, says it's
- * ready to claim for the wallet's account.
+ * ready to claim for the wallet's account. It goes out from that wallet,
+ * open as it begins, or not at all.
  *
  * @param {`0x${string}`} txHash
  */
 export async function finalizeWithdrawal(txHash) {
+  const send = sendForThisWallet();
   const call = await withdrawals()
     .claimCall(txHash, {
       gasLimitUpper: get(gasStore).gasLimitUpper,
@@ -690,5 +718,5 @@ export async function finalizeWithdrawal(txHash) {
     })
     .catch(inWords);
 
-  return (await walletStore.sendDuskEvmWithdrawalCall(call, gasOf(call))).hash;
+  return send(call);
 }
