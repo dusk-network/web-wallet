@@ -9,6 +9,9 @@ on:
       - ready_for_review
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   lint-test:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
@@ -19,6 +22,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setting up Node from `.nvmrc`
         uses: actions/setup-node@v4
@@ -28,8 +33,18 @@ jobs:
           cache-dependency-path: "./package-lock.json"
           scope: "@dusk-network"
 
-      - name: Installing dev dependencies
-        run: npm ci
+      - name: Validate package release ages
+        run: node scripts/verify-package-release-ages.js --days 0.5
+
+      - name: Pin npm
+        run: npm install --global npm@11.18.0 --ignore-scripts
+        working-directory: ${{ runner.temp }}
+
+      - name: Installing dev dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+
+      - name: Verify registry signatures
+        run: npm audit signatures
 
       - name: Sync SvelteKit config
         run: npx svelte-kit sync
