@@ -243,7 +243,8 @@
 
   $: shown = values.slice(0, count);
   $: mnemonic = shown.filter(Boolean).join(" ");
-  $: isValid = shown.every(Boolean) && !phraseProblem(shown);
+  $: isValid =
+    shown.every(Boolean) && !phraseProblem(shown, { pasted: overflow });
   $: said = problem || error;
 </script>
 

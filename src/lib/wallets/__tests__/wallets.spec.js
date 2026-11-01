@@ -12,6 +12,7 @@ import { Bookkeeper, Gas, Network } from "@dusk/w3sper";
 
 import * as navigation from "$lib/navigation";
 import { putLocalTransaction } from "$lib/activity/activityStore";
+import { keptMigrations } from "$lib/bridge/migrationActivity";
 import { contactsNamespace } from "$lib/contacts/contactsVault";
 import { InvalidPasswordError, WalletChangedError } from "$lib/errors";
 import { networkStore, settingsStore, walletStore } from "$lib/stores";
@@ -57,6 +58,16 @@ const B =
   "scheme spot photo card baby mountain device kick cradle pact join borrow";
 const C =
   "cat swing flag economy stadium alone churn speed unique patch report train";
+
+/** A migration kept as this browser kept them before wallets were kept apart. */
+const KEPT_BEFORE = Object.freeze({
+  amountLux: "1",
+  createdAt: 1,
+  hash: `0x${"ab".repeat(32)}`,
+  recipient: "r",
+  routeId: "bsc",
+  sender: "s",
+});
 
 /** @param {string} mnemonic */
 const firstProfileOf = async (mnemonic) =>
@@ -253,6 +264,53 @@ describe("The wallets on this device", () => {
         InvalidPasswordError
       );
       expect(get(walletStore).initialized).toBe(false);
+    });
+
+    it("gives the data kept before to the wallet the settings name, in a vault without a directory", async () => {
+      const { address } = await firstProfileOf(A);
+
+      await vault.setUp(A, PASSWORD);
+      localStorage.setItem(MIGRATIONS, JSON.stringify([KEPT_BEFORE]));
+      settingsStore.update((s) => ({ ...s, userId: String(address) }));
+
+      await unlockWallets(PASSWORD);
+
+      const [wallet] = vault.list() ?? [];
+
+      expect(readDirectory().legacy).toBe(wallet.id);
+      expect(walletDataSuffix()).toBe("");
+      expect(get(keptMigrations)).toMatchObject([{ hash: KEPT_BEFORE.hash }]);
+    });
+
+    it("gives the data kept before to the phrase moved from v1, after an unlock cut short between its move and its place", async () => {
+      const { address } = await firstProfileOf(fixtures.current.mnemonic);
+      const cut = new AbortController();
+      const unlock = vault.unlock.bind(vault);
+
+      localStorage.setItem(V1, fixtures.current.stored);
+      localStorage.setItem(MIGRATIONS, JSON.stringify([KEPT_BEFORE]));
+      settingsStore.update((s) => ({ ...s, userId: String(address) }));
+      vi.spyOn(vault, "unlock").mockImplementationOnce(async (...args) => {
+        const opened = await unlock(...args);
+
+        cut.abort();
+
+        return opened;
+      });
+
+      await expect(
+        unlockWallets(fixtures.current.password, { signal: cut.signal })
+      ).rejects.toThrow();
+      expect(localStorage.getItem(V1)).toBeNull();
+      expect(get(walletStore).initialized).toBe(false);
+
+      await unlockWallets(fixtures.current.password);
+
+      const [moved] = vault.list() ?? [];
+
+      expect(readDirectory().legacy).toBe(moved.id);
+      expect(walletDataSuffix()).toBe("");
+      expect(get(keptMigrations)).toMatchObject([{ hash: KEPT_BEFORE.hash }]);
     });
   });
 

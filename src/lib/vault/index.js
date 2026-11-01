@@ -338,6 +338,14 @@ async function openSealed(sealed, keys) {
 }
 
 /**
+ * Whether a wallet's vault ID is one a phrase moved from v1 is given
+ * (v1WalletId).
+ *
+ * @param {string} id
+ */
+export const isMovedFromV1 = (id) => /^v1-[0-9a-f]{32}$/.test(id);
+
+/**
  * The wallet v1's phrase becomes: named by v1's random salt, so that a move
  * tried again names it the same.
  *

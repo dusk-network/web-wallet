@@ -11,7 +11,12 @@ import { forgetWalletBridgeRecords } from "$lib/bridge/bridgeRecordKeys";
 import { forgetWalletRouteTransfers } from "$lib/bridge/migrationActivity";
 import { logout } from "$lib/navigation";
 import { settingsStore, walletStore } from "$lib/stores";
-import vault, { NOT_HERE, ONLY_WALLET, normalizedPhrase } from "$lib/vault";
+import vault, {
+  NOT_HERE,
+  ONLY_WALLET,
+  isMovedFromV1,
+  normalizedPhrase,
+} from "$lib/vault";
 import getSeedFromMnemonic from "$lib/wallet/getSeedFromMnemonic";
 import profileGeneratorFrom from "$lib/wallet/profileGeneratorFrom";
 import { walletCacheFor } from "$lib/wallet-cache";
@@ -132,6 +137,57 @@ async function placeMovedWallet(key, generator) {
 }
 
 /**
+ * Of the wallets the directory doesn't list yet, which have no data of
+ * their own so far, the one the device's settings name as the wallet it
+ * had: undefined for none.
+ *
+ * @param {Array<{ key: string, profileGenerator: ProfileGenerator }>} unknown
+ */
+async function walletTheSettingsName(unknown) {
+  const { userId } = get(settingsStore);
+
+  for (const wallet of userId ? unknown : []) {
+    const [first] = await profilesOf(wallet.profileGenerator);
+
+    if (String(first.address) === userId) {
+      return wallet;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Which wallet keeps the data of before, decided for the wallets the
+ * directory doesn't list yet, which have none of their own: while no wallet
+ * in the vault keeps it, the one the settings name, as with a vault whose
+ * directory is gone; then the one moved from v1, now or in an unlock cut
+ * short before its place was decided (placeMovedWallet). A wallet the
+ * directory lists keeps the names it has.
+ *
+ * @param {Array<{ key: string, profileGenerator: ProfileGenerator }>} opened
+ * @param {string | null} fromV1
+ */
+async function placeWallets(opened, fromV1) {
+  const { legacy, wallets } = readDirectory();
+  const unknown = opened.filter(({ key }) => !wallets[key]);
+
+  if (!vault.list()?.some(({ id }) => id === legacy)) {
+    const named = await walletTheSettingsName(unknown);
+
+    if (named) {
+      await setLegacyWallet(named.key);
+    }
+  }
+
+  for (const { key, profileGenerator } of opened) {
+    if (key === fromV1 || (isMovedFromV1(key) && !wallets[key])) {
+      await placeMovedWallet(key, profileGenerator);
+    }
+  }
+}
+
+/**
  * Unlocks every wallet the password opens, the phrase of earlier versions
  * moved in first, and opens the one open last. A wrong password throws
  * InvalidPasswordError.
@@ -149,12 +205,7 @@ export async function unlockWallets(password, { signal } = {}) {
 
   signal?.throwIfAborted();
   await forgetWalletsGone(opened.map(({ key }) => key));
-
-  const moved = opened.find(({ key }) => key === fromV1);
-
-  if (moved) {
-    await placeMovedWallet(moved.key, moved.profileGenerator);
-  }
+  await placeWallets(opened, fromV1);
 
   signal?.throwIfAborted();
   await walletStore.open(opened, {

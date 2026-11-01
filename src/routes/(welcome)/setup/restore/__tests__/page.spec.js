@@ -162,6 +162,27 @@ describe("Restore", async () => {
     expect(nextButton).toBeDisabled();
   });
 
+  it("should say a paste of 25 words is one too many, and not take the first 24 as the phrase", async () => {
+    const { getByLabelText, getByRole } = render(Restore);
+    // A public 24-word test phrase, then one word more.
+    const twentyFour = `${"abandon ".repeat(23)}art`;
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await pasteInto(getByLabelText("Word 1"), `${twentyFour} abandon`);
+    await tick();
+
+    expect(getByRole("alert")).toHaveTextContent(
+      "That's 25 words. A recovery phrase has 12 or 24."
+    );
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+    // The same 24 alone are a phrase.
+    await pasteInto(getByLabelText("Word 1"), twentyFour);
+    await tick();
+
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
   it("should initialize the wallet without setting a password", async () => {
     await vault.setUp(mnemonic, pwd);
 
