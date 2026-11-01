@@ -5,6 +5,7 @@ import { createPublicClient, http } from "viem";
 import { activityState, currentActivity } from "$lib/activity";
 import { archiveAt } from "$lib/activity/activityHistory";
 import { bridgeNetwork } from "$lib/bridge/bridgeCalls";
+import { bridgeFacts } from "$lib/bridge/bridgeReads";
 import { networkStore } from "$lib/stores";
 import { nodeBaseUrl } from "$lib/url";
 import { duskEvm, duskEvmAdapterUrl } from "$lib/web3/duskEvm";
@@ -328,7 +329,8 @@ function depositsOf(waiting, depositOf) {
  * (`@dusk-network/app-core/bridge`, loaded then): by the bridge's event
  * from the DuskEVM address of the account that sent each, its equal
  * deposits before it paid first, as its history on Dusk says, however long
- * ago it was sent. Each that arrived is kept completed, with the DuskEVM
+ * ago it was sent. The calls of those deposits are read once their blocks
+ * are final. Each that arrived is kept completed, with the DuskEVM
  * transaction that paid it and when, for the wallet that keeps them.
  *
  * @param {WalletDataScope} scope
@@ -344,6 +346,7 @@ async function readDuskEvm(scope) {
   const { arrivals } = await bridge.depositArrivals({
     archive: archiveAt(nodeBaseUrl()),
     blockTimes: duskEvmBlockTimes,
+    cache: bridgeFacts,
     deposits: depositsOf(waiting, bridge.depositOf),
     network: net,
     taken: kept.flatMap(({ l2TransactionHash }) =>
