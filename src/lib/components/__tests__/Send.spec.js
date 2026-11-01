@@ -10,6 +10,7 @@ import {
 } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 import { tick } from "svelte";
+import { get } from "svelte/store";
 import {
   duskToLux,
   formatDuskExact,
@@ -26,9 +27,18 @@ import {
   removeContact,
   saveContact,
 } from "$lib/contacts";
-import { openTestContacts } from "$lib/test-helpers";
+import { walletStore } from "$lib/stores";
+import { openTestContacts, stubWalletNetwork } from "$lib/test-helpers";
+import vault from "$lib/vault";
+import { addWallet, unlockWallets } from "$lib/wallets";
 
 import { Send } from "..";
+
+// Each wallet's profiles their own accounts, as on the network.
+vi.mock("$lib/mocks/ProtocolDriver", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  generateProfile: (await import("$lib/test-helpers/distinctProfile")).default,
+}));
 
 vi.mock("$lib/dusk/string", async (importOriginal) => {
   /** @type {typeof import("$lib/dusk/string")} */
@@ -1964,6 +1974,60 @@ describe("Send", () => {
       await fireEvent.click(getByRole("button", { name: "The saved address" }));
 
       expect(fields.to()).toHaveValue(otherAccount);
+    });
+  });
+
+  describe("Other wallets here", () => {
+    stubWalletNetwork();
+
+    afterEach(async () => {
+      walletStore.reset();
+      await vault.clear();
+      localStorage.clear();
+      await openTestContacts();
+    });
+
+    it("should name a profile of the other wallet on the To line as the From line names its own, after a contact or a .dusk name", async () => {
+      // Public BIP39 test phrases, never a real wallet's.
+      await vault.setUp(
+        "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+        "password123"
+      );
+      await unlockWallets("password123");
+
+      const account = String(get(walletStore).profiles[0].account);
+
+      // The wallet added is the one open: Wallet 1 is the other.
+      await addWallet(
+        "scheme spot photo card baby mountain device kick cradle pact join borrow",
+        "password123"
+      );
+      baseProps.resolveName.mockResolvedValue({ account, name: "alice.dusk" });
+
+      const { container, getByRole } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
+      const toLine = () => getSummary(container)[1];
+
+      await fireEvent.input(to, { target: { value: account } });
+
+      expect(toLine()).toStrictEqual([
+        "To",
+        `Wallet 1 · Profile 1 ${shortenAddress(account)}`,
+      ]);
+
+      await fireEvent.input(to, { target: { value: "alice.dusk" } });
+
+      await waitFor(() =>
+        expect(toLine()).toStrictEqual([
+          "To",
+          `alice.dusk ${shortenAddress(account)}`,
+        ])
+      );
+
+      saveContact({ address: account, name: "Rent" });
+      await fireEvent.input(to, { target: { value: account } });
+
+      expect(toLine()).toStrictEqual(["To", `Rent ${shortenAddress(account)}`]);
     });
   });
 });

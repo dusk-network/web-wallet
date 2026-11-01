@@ -16,6 +16,7 @@
     toCsv,
   } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
+  import walletAccountNames from "$lib/wallets/accountNames";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
   import TransactionDetail from "./TransactionDetail.svelte";
@@ -108,6 +109,7 @@
     locale,
     // What the network's file calls its routes' accounts.
     net: $nodeNetwork,
+    walletNames: $walletAccountNames,
   };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;
   $: described = state.rows.map((row) => ({

@@ -16,6 +16,7 @@
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
+  import walletAccountNames from "$lib/wallets/accountNames";
   import { duskExplorerBlock, duskExplorerTx, nodeBaseUrl } from "$lib/url";
 
   import { contactNamesOf, contactsStore } from "$lib/contacts";
@@ -60,6 +61,7 @@
     present: {
       contactNames: contactNamesOf($contactsStore),
       net: $nodeNetwork,
+      walletNames: $walletAccountNames,
     },
     profiles: profiles.map((profile, i) => {
       const account = String(profile.account);

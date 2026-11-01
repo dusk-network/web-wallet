@@ -24,7 +24,7 @@
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
-  import { openWalletName } from "$lib/wallets";
+  import { openWalletName, walletAccountNames } from "$lib/wallets";
   import {
     formatDusk,
     formatDuskExact,
@@ -738,6 +738,9 @@
   $: own = ownAccounts.find(
     (account) => recipientAddress && account.address === recipientAddress
   );
+  // A profile of a wallet kept here, as the From line names its own: after
+  // a contact or a `.dusk` name entered.
+  $: walletAccount = $walletAccountNames.get(recipientAddress) ?? "";
   $: contacts = $contactsStore;
 
   // The contact the `.dusk` name entered is saved for: the name is checked
@@ -1265,9 +1268,10 @@
             {#if !addressInfo.isValid}
               <span class="send__muted">Not set</span>
             {:else}
-              {#if contact || recipientName}
+              {#if contact || recipientName || walletAccount}
                 <span class="send__summary-name"
-                  >{contact?.name ?? shownName}</span
+                  >{contact?.name ??
+                    (recipientName ? shownName : walletAccount)}</span
                 >
               {/if}
               <span class="send__summary-code"

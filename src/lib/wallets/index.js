@@ -38,6 +38,7 @@ import { onOtherTabs, tellOtherTabs } from "./tabs";
 import { forgetWalletData } from "./walletData";
 
 export { normalizeWalletName, walletDirectory, walletLabel };
+export { default as walletAccountNames } from "./accountNames";
 
 /**
  * The open wallet's name, as the switcher shows it, when there's more than

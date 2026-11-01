@@ -33,11 +33,14 @@ import { TX_KIND } from "./constants";
  *   contactNames?: Map<string, string>,
  *   locale: string,
  *   net?: import("@dusk-network/networks").Network | null,
+ *   walletNames?: Map<string, string>,
  * }} PresentContext
  *
  * `claims` says when the proved withdrawals can be claimed, by their
- * hashes, as the chain says (withdrawalClaims in $lib/bridge), and `net` is
- * the network's file, for what it calls its routes' accounts.
+ * hashes, as the chain says (withdrawalClaims in $lib/bridge), `net` is
+ * the network's file, for what it calls its routes' accounts, and
+ * `walletNames` what the wallets here call their profiles' accounts and
+ * addresses ($lib/wallets).
  *
  * @typedef {{
  *   claim: import("@dusk-network/networks/duskevm").ClaimDate | null,
@@ -182,15 +185,16 @@ function bridgeTitle(row) {
 /**
  * A row's title and the first part of its line. A counterparty saved as a
  * contact goes by the contact's name, with its `.dusk` name after it, a
- * route's account by what the network's file calls it, and a call to Dusk
- * Domains by what it did.
+ * profile of a wallet here by what the wallets call it, a route's account
+ * by what the network's file calls it, and a call to Dusk Domains by what
+ * it did.
  *
  * @param {ActivityRow} row
  * @param {ActivityIcon} icon
  * @param {PresentContext} context
  * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
  */
-function titleOf(row, icon, { contactNames, net }) {
+function titleOf(row, icon, context) {
   const kindTitle = row.kind ? KIND_TITLES.get(row.kind) : undefined;
 
   if (kindTitle) {
@@ -226,19 +230,18 @@ function titleOf(row, icon, { contactNames, net }) {
     return { title: label, titleIsAddress: false, verb: "Dusk Domains" };
   }
 
-  return counterpartyTitle(row, icon, contactNames, net);
+  return counterpartyTitle(row, icon, context);
 }
 
 /**
  * What a row's other side is called: the contact's name, with its `.dusk`
- * name after it, the verified `.dusk` name, or its route's label; "" for
- * none.
+ * name after it, the verified `.dusk` name, what the wallets here call a
+ * profile of theirs, or its route's label; "" for none.
  *
  * @param {ActivityRow} row
- * @param {Map<string, string>} [contactNames] Contact names by address
- * @param {import("@dusk-network/networks").Network | null} [net]
+ * @param {PresentContext} context
  */
-function nameOf(row, contactNames, net) {
+function nameOf(row, { contactNames, net, walletNames }) {
   const { counterparty } = row;
   const name = row.counterpartyName ?? row.toName;
   const contact = counterparty ? contactNames?.get(counterparty) : undefined;
@@ -250,7 +253,9 @@ function nameOf(row, contactNames, net) {
   return (
     contact ??
     name ??
-    (counterparty ? routeLabel(net, counterparty) : null) ??
+    (counterparty
+      ? (walletNames?.get(counterparty) ?? routeLabel(net, counterparty))
+      : null) ??
     ""
   );
 }
@@ -261,13 +266,12 @@ function nameOf(row, contactNames, net) {
  *
  * @param {ActivityRow} row
  * @param {ActivityIcon} icon
- * @param {Map<string, string>} [contactNames] Contact names by address
- * @param {import("@dusk-network/networks").Network | null} [net]
+ * @param {PresentContext} context
  * @returns {{ title: string, titleIsAddress: boolean, verb: string }}
  */
-function counterpartyTitle(row, icon, contactNames, net) {
+function counterpartyTitle(row, icon, context) {
   const verb = row.direction === "in" ? "Received" : "Sent";
-  const named = nameOf(row, contactNames, net);
+  const named = nameOf(row, context);
 
   if (named) {
     return { title: named, titleIsAddress: false, verb };
@@ -666,15 +670,19 @@ const STATUS_WORDS = {
 };
 
 /**
- * One row as a CSV line. Its words never use the user's contact names:
- * those go in their own column, when asked for.
+ * One row as a CSV line. Its words never use the user's contact names,
+ * which go in their own column when asked for, nor their wallets' names.
  *
  * @param {ActivityRow} row
  * @param {PresentContext} context
  * @param {boolean} withContacts
  */
 function csvLine(row, context, withContacts) {
-  const p = describeRow(row, { ...context, contactNames: undefined });
+  const p = describeRow(row, {
+    ...context,
+    contactNames: undefined,
+    walletNames: undefined,
+  });
   const { time } = row;
   const amount = p.status === "failed" ? 0n : row.value;
   const signed = row.direction === "out" && amount ? -amount : amount;

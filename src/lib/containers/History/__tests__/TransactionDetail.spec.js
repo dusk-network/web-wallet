@@ -20,6 +20,18 @@ import { describeRow, fullDateTime } from "$lib/activity/present";
 
 import TransactionDetail from "../TransactionDetail.svelte";
 
+// What the wallets here call a profile of another wallet's.
+const { OWN } = vi.hoisted(() => ({
+  OWN: "qxwSidLBa1rJ74ngfP4GUCaNsAYjMboDPHzbmiVEMmNNK26hVkYe8QccH6ipYdVRsUDnx9QS1KBeu8ZoMDFpXJJE6YCcHy2AykvJ7eEAGc7PGDgCZFV5YJBxzukADkQ2Bgr",
+}));
+const walletNames = new Map([[OWN, "Wallet 2 · Profile 1"]]);
+
+vi.mock("$lib/wallets/accountNames", async () => ({
+  default: (await import("svelte/store")).readable(
+    new Map([[OWN, "Wallet 2 · Profile 1"]])
+  ),
+}));
+
 const BRIDGE = "ab".repeat(32);
 const EVM = "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A";
 const WITHDRAWAL = "0001".padEnd(64, "0");
@@ -328,6 +340,19 @@ describe("TransactionDetail", () => {
     expect(getByText("Name reservation (step 1 of 2)")).toBeInTheDocument();
     expect(getByText("Dusk Domains")).toBeInTheDocument();
     expect(container.textContent).toContain(store.slice(-6));
+  });
+
+  it("should name a profile of another wallet here as the wallets do, in its headline and its To", () => {
+    const sent = row({
+      amount: "10000000",
+      contractId: undefined,
+      kind: "transfer",
+      to: OWN,
+    });
+    const { container, getByText } = show(sent, { walletNames });
+
+    expect(getByText("Sent to Wallet 2 · Profile 1")).toBeInTheDocument();
+    expect(mainList(container)).toMatch(/To\s*Wallet 2 · Profile 1\s*qxwSid/);
   });
 
   it("should name a migration's payout by its route, with the route's account by what the network's file calls it, on any network", () => {

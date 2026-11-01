@@ -72,6 +72,34 @@ describe("describeRow", () => {
     ).toMatchObject({ line: "Received", title: "Alice" });
   });
 
+  it("names a profile of a wallet kept here as the wallets do, after a contact or a .dusk name", () => {
+    const walletNames = new Map([[ACCOUNT, "Wallet 2 · Profile 1"]]);
+
+    expect(describeRow(row({}), { ...context, walletNames })).toMatchObject({
+      title: "Wallet 2 · Profile 1",
+      titleIsAddress: false,
+    });
+    expect(
+      describeRow(row({ direction: "in", from: ACCOUNT, to: undefined }), {
+        ...context,
+        walletNames,
+      })
+    ).toMatchObject({ line: "Received", title: "Wallet 2 · Profile 1" });
+    expect(
+      describeRow(row({ counterpartyName: "alice-shop.dusk" }), {
+        ...context,
+        walletNames,
+      }).title
+    ).toBe("alice-shop.dusk");
+    expect(
+      describeRow(row({}), {
+        ...context,
+        contactNames: new Map([[ACCOUNT, "Alice"]]),
+        walletNames,
+      }).title
+    ).toBe("Alice");
+  });
+
   it("shows an amount in the one format, and in full for a hover", () => {
     expect(
       describeRow(row({ amount: "1234567891234" }), context).amount
@@ -730,15 +758,17 @@ describe("toCsv", () => {
   });
 
   it("keeps the user's contact names out, unless asked, and then in their own column", () => {
-    const rows = [row({ counterpartyName: "alice-shop.dusk" })];
+    const rows = [row({ counterpartyName: "alice-shop.dusk" }), row({})];
     const withNames = {
       ...context,
       contactNames: new Map([[ACCOUNT, "Alice (landlord, private)"]]),
+      walletNames: new Map([[ACCOUNT, "Savings · Profile 1"]]),
     };
     const plain = toCsv(rows, withNames);
     const asked = toCsv(rows, withNames, { withContacts: true }).split("\r\n");
 
     expect(plain).not.toContain("landlord");
+    expect(plain).not.toContain("Savings");
     expect(plain).toContain(",alice-shop.dusk (Sent),");
     expect(asked[0]).toBe([...CSV_COLUMNS, CSV_CONTACT_COLUMN].join(","));
     expect(asked[1]).toContain(",alice-shop.dusk (Sent),");
