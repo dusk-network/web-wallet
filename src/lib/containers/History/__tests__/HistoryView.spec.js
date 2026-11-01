@@ -70,7 +70,10 @@ const state = {
 };
 
 describe("HistoryView", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
   it("should say times are local, each with its own offset on hover, and keep them on phones", () => {
     const { container, getByText } = render(HistoryView, {
@@ -178,6 +181,9 @@ describe("HistoryView", () => {
   });
 
   it("should give a withdrawal's claim date a line of its own on phones, as it doesn't fit after", () => {
+    // The claim date stays ahead of today, whenever the test runs.
+    vi.useFakeTimers({ now: Date.UTC(2026, 9, 31, 12), toFake: ["Date"] });
+
     const proved = row("b1".repeat(32), WINTER, {
       amount: "0",
       bridge: {
