@@ -178,40 +178,105 @@ describe("WalletTreasury", () => {
       );
     });
 
-    it("should restore a cached spent note when the network reports it unspent", async () => {
-      const spentBefore = await walletCache.getSpentNotesNullifiers();
+    /** A sync whose notes stream brings no new notes. */
+    const noNewNotes = () =>
+      vi.spyOn(AddressSyncer.prototype, "notes").mockResolvedValueOnce(
+        new ReadableStream({
+          start(controller) {
+            controller.close();
+          },
+        })
+      );
+
+    /** @param {Uint8Array[]} nullifiers */
+    const sorted = (nullifiers) => nullifiers.map(String).sort();
+
+    it("should ask the network once a sync which notes are spent, keeping a new spend and undoing one of a rejected block", async () => {
       const unspentBefore = await walletCache.getUnspentNotesNullifiers();
+      const spentBefore = await walletCache.getSpentNotesNullifiers();
+
+      expect(unspentBefore.length).toBeGreaterThan(1);
       expect(spentBefore.length).toBeGreaterThan(1);
-      const restored = spentBefore[0];
-      const stillSpent = new Set(spentBefore.slice(1).map(String));
-      const notes = vi
-        .spyOn(AddressSyncer.prototype, "notes")
-        .mockResolvedValueOnce(
-          new ReadableStream({
-            start(controller) {
-              controller.close();
-            },
-          })
-        );
+
+      // A note spent since the last sync, and one spent in a block that
+      // was then rejected.
+      const [newlySpent, ...stillUnspent] = unspentBefore;
+      const [restored, ...stillSpent] = spentBefore;
+      const onChain = new Set(sorted([newlySpent, ...stillSpent]));
+      const notes = noNewNotes();
       const spent = vi
         .spyOn(AddressSyncer.prototype, "spent")
         .mockImplementation(async (nullifiers) =>
-          nullifiers
-            .filter((n) => stillSpent.has(String(n)))
-            .map((n) => n.buffer)
+          nullifiers.filter((n) => onChain.has(String(n))).map((n) => n.buffer)
         );
+
       try {
         await walletTreasury.update(0n, () => {}, new AbortController().signal);
-        const unspentAfter = (await walletCache.getUnspentNotesNullifiers())
-          .map(String)
-          .sort();
-        const spentAfter = (await walletCache.getSpentNotesNullifiers())
-          .map(String)
-          .sort();
-        expect(unspentAfter).toEqual(
-          [...unspentBefore, restored].map(String).sort()
+
+        expect(sorted(await walletCache.getUnspentNotesNullifiers())).toEqual(
+          sorted([...stillUnspent, restored])
         );
-        expect(spentAfter).toEqual([...stillSpent].sort());
+        expect(sorted(await walletCache.getSpentNotesNullifiers())).toEqual(
+          sorted([...stillSpent, newlySpent])
+        );
+        expect(spent).toHaveBeenCalledOnce();
+        expect(sorted(spent.mock.calls[0][0])).toEqual(
+          sorted([...unspentBefore, ...spentBefore])
+        );
+      } finally {
+        notes.mockRestore();
+        spent.mockRestore();
+      }
+    });
+
+    it("should ask the network about 1,000 notes at most a request", async () => {
+      // A thousand more notes spent before, each with its own nullifier.
+      await db.open();
+      await db.table("spentNotes").bulkPut(
+        Array.from({ length: 1000 }, (_, i) => ({
+          address: "spent-before",
+          note: new ArrayBuffer(8),
+          nullifier: Uint32Array.of(i, 1, 2, 3, 4, 5, 6, 7).buffer,
+        }))
+      );
+      db.close();
+
+      const cached = sorted([
+        ...(await walletCache.getUnspentNotesNullifiers()),
+        ...(await walletCache.getSpentNotesNullifiers()),
+      ]);
+      const notes = noNewNotes();
+      const spent = vi
+        .spyOn(AddressSyncer.prototype, "spent")
+        .mockImplementation(async (nullifiers) =>
+          nullifiers.map((n) => n.buffer)
+        );
+
+      try {
+        await walletTreasury.update(0n, () => {}, new AbortController().signal);
+
+        expect(spent.mock.calls.map(([asked]) => asked.length)).toStrictEqual([
+          1000, 20,
+        ]);
+        expect(sorted(spent.mock.calls.flatMap(([asked]) => asked))).toEqual(
+          cached
+        );
+      } finally {
+        notes.mockRestore();
+        spent.mockRestore();
+      }
+    });
+
+    it("should not ask the network which notes are spent when there are none", async () => {
+      await getCacheDatabase().delete({ disableAutoOpen: false });
+
+      const notes = noNewNotes();
+      const spent = vi.spyOn(AddressSyncer.prototype, "spent");
+
+      try {
+        await walletTreasury.update(0n, () => {}, new AbortController().signal);
+
+        expect(spent).not.toHaveBeenCalled();
       } finally {
         notes.mockRestore();
         spent.mockRestore();
@@ -257,45 +322,40 @@ describe("WalletTreasury", () => {
       notesSpy.mockRestore();
     });
 
-    it.each([1, 2])(
-      "should stop cache writes after reset during spent lookup %i",
-      async (lookup) => {
-        const pending = Promise.withResolvers();
-        const spentSpy = vi.spyOn(AddressSyncer.prototype, "spent");
-        if (lookup === 2) {
-          spentSpy.mockResolvedValueOnce([]);
-        }
-        spentSpy.mockReturnValueOnce(pending.promise);
-        const spendNotesSpy = vi.spyOn(walletCache, "spendNotes");
-        const unspendNotesSpy = vi.spyOn(walletCache, "unspendNotes");
-        const setSyncInfoSpy = vi.spyOn(walletCache, "setSyncInfo");
-        try {
-          const update = walletTreasury
-            .update(0n, () => {}, new AbortController().signal)
-            .then(
-              () => null,
-              (error) => error
-            );
-          await vi.waitUntil(() => spentSpy.mock.calls.length === lookup);
-          walletTreasury.reset();
-          spendNotesSpy.mockClear();
-          unspendNotesSpy.mockClear();
-          setSyncInfoSpy.mockClear();
-          pending.resolve([]);
-          const outcome = await update;
-          expect(spendNotesSpy).not.toHaveBeenCalled();
-          expect(unspendNotesSpy).not.toHaveBeenCalled();
-          expect(setSyncInfoSpy).not.toHaveBeenCalled();
-          expect(outcome).toBeInstanceOf(Error);
-        } finally {
-          pending.resolve([]);
-          spentSpy.mockRestore();
-          spendNotesSpy.mockRestore();
-          unspendNotesSpy.mockRestore();
-          setSyncInfoSpy.mockRestore();
-        }
+    it("should stop cache writes after reset during the spent lookup", async () => {
+      const pending = Promise.withResolvers();
+      const spentSpy = vi
+        .spyOn(AddressSyncer.prototype, "spent")
+        .mockReturnValueOnce(pending.promise);
+      const spendNotesSpy = vi.spyOn(walletCache, "spendNotes");
+      const unspendNotesSpy = vi.spyOn(walletCache, "unspendNotes");
+      const setSyncInfoSpy = vi.spyOn(walletCache, "setSyncInfo");
+      try {
+        const update = walletTreasury
+          .update(0n, () => {}, new AbortController().signal)
+          .then(
+            () => null,
+            (error) => error
+          );
+        await vi.waitUntil(() => spentSpy.mock.calls.length === 1);
+        walletTreasury.reset();
+        spendNotesSpy.mockClear();
+        unspendNotesSpy.mockClear();
+        setSyncInfoSpy.mockClear();
+        pending.resolve([]);
+        const outcome = await update;
+        expect(spendNotesSpy).not.toHaveBeenCalled();
+        expect(unspendNotesSpy).not.toHaveBeenCalled();
+        expect(setSyncInfoSpy).not.toHaveBeenCalled();
+        expect(outcome).toBeInstanceOf(Error);
+      } finally {
+        pending.resolve([]);
+        spentSpy.mockRestore();
+        spendNotesSpy.mockRestore();
+        unspendNotesSpy.mockRestore();
+        setSyncInfoSpy.mockRestore();
       }
-    );
+    });
 
     it("should discard sync metadata resolved after reset", async () => {
       const pending = Promise.withResolvers();

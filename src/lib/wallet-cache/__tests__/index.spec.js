@@ -577,22 +577,6 @@ describe("Wallet cache", () => {
   });
 
   describe("Utilities", () => {
-    it("should expose a method that returns the array of unique nullifiers contained only in the first of the two given sets of nullifiers", () => {
-      /** @type {(source: WalletCacheNote[]) => Uint8Array<ArrayBuffer>[]} */
-      const getNullifiers = (entries) => pluckFrom(entries, "nullifier");
-      const a = getNullifiers(cacheUnspentNotes);
-      const b = getNullifiers(cacheUnspentNotes.slice(0, a.length - 2));
-
-      // ensure we have meaningful data for the test
-      expect(a.length).toBeGreaterThan(0);
-      expect(b.length).toBeGreaterThan(1);
-
-      expect(walletCache.nullifiersDifference(a, b)).toStrictEqual(a.slice(-2));
-      expect(walletCache.nullifiersDifference(b, a)).toStrictEqual([]);
-      expect(walletCache.nullifiersDifference(a, [])).toStrictEqual(a);
-      expect(walletCache.nullifiersDifference([], b)).toStrictEqual([]);
-    });
-
     it("should expose a method to set the balance of a given address", async () => {
       const newBalance = {
         address: "fake-address",

@@ -2,6 +2,9 @@ import notesArrayToMap from "$lib/wallet/notesArrayToMap";
 import { currentWalletCache } from "$lib/wallet-cache";
 import networkStore from "$lib/stores/networkStore";
 
+/** The most nullifiers one request asks about: each fits in a contract call. */
+const NULLIFIERS_PER_REQUEST = 1_000;
+
 class WalletTreasury {
   /** @type {AccountBalance[]} */
   #accountBalances = [];
@@ -256,58 +259,55 @@ class WalletTreasury {
       profiles = [];
       ensureCurrent();
 
-      // gather all unspent nullifiers in the cache
+      // gather all unspent and spent nullifiers in the cache
       const currentUnspentNullifiers =
         await walletCache.getUnspentNotesNullifiers();
       ensureCurrent();
-
-      /**
-       * Retrieving the nullifiers that are now spent.
-       *
-       * Currently `w3sper.js` returns an array of `ArrayBuffer`s
-       * instead of one of `Uint8Array<ArrayBuffer>`s, but we don't
-       * care as `ArrayBuffers` will be written in the
-       * database anyway.
-       */
-      const spentNullifiers = await addressSyncer.spent(
-        currentUnspentNullifiers
-      );
-
-      // update the cache with the spent nullifiers info
-      ensureCurrent();
-      await walletCache.spendNotes(spentNullifiers);
-
-      // gather all spent nullifiers in the cache
       const currentSpentNullifiers =
         await walletCache.getSpentNotesNullifiers();
       ensureCurrent();
 
       /**
-       * Retrieving the nullifiers that are really spent given our
-       * list of spent nullifiers.
-       * We make this check because a block can be rejected and
-       * we may end up having some notes marked as spent in the
-       * cache, while they really aren't.
+       * One request says which of them the network has spent, one for
+       * each 1,000 of them: the unspent ones it has are spent now, and
+       * the spent ones it hasn't are unspent again, as when a block was
+       * rejected. With no notes, nothing is asked.
        *
        * Currently `w3sper.js` returns an array of `ArrayBuffer`s
        * instead of one of `Uint8Array<ArrayBuffer>`s.
        */
-      const reallySpentNullifiers = await addressSyncer.spent(
-        currentSpentNullifiers
-      );
+      const nullifiers = [
+        ...currentUnspentNullifiers,
+        ...currentSpentNullifiers,
+      ];
+      const spentNullifiers = new Set();
 
-      /**
-       * As the previous `addressSyncer.spent` call returns a subset of
-       * our spent nullifiers, we can skip this operation if the lengths
-       * are the same.
-       */
-      ensureCurrent();
-      if (reallySpentNullifiers.length !== currentSpentNullifiers.length) {
-        const nullifiersToUnspend = walletCache.nullifiersDifference(
-          currentSpentNullifiers,
-          reallySpentNullifiers.map((buffer) => new Uint8Array(buffer))
+      for (let i = 0; i < nullifiers.length; i += NULLIFIERS_PER_REQUEST) {
+        const found = await addressSyncer.spent(
+          nullifiers.slice(i, i + NULLIFIERS_PER_REQUEST)
         );
 
+        ensureCurrent();
+        found.forEach((buffer) =>
+          spentNullifiers.add(String(new Uint8Array(buffer)))
+        );
+      }
+
+      /** @param {Uint8Array<ArrayBuffer>} nullifier */
+      const isSpent = (nullifier) => spentNullifiers.has(String(nullifier));
+      const nullifiersSpent = currentUnspentNullifiers.filter(isSpent);
+      const nullifiersToUnspend = currentSpentNullifiers.filter(
+        (nullifier) => !isSpent(nullifier)
+      );
+
+      // update the cache with the spent nullifiers info
+      ensureCurrent();
+      if (nullifiersSpent.length) {
+        await walletCache.spendNotes(nullifiersSpent);
+      }
+
+      ensureCurrent();
+      if (nullifiersToUnspend.length) {
         await walletCache.unspendNotes(nullifiersToUnspend);
       }
 
