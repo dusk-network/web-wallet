@@ -33,7 +33,7 @@ import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { settingsStore, walletStore } from "$lib/stores";
 import { stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
-import { getSeedFromMnemonic, profileGeneratorFrom } from "$lib/wallet";
+import { initializeWallet } from "$lib/wallet";
 
 import { suffixOf, walletDataScope } from "../dataNames";
 import { readDirectory } from "../directory";
@@ -364,35 +364,60 @@ describe("Work begun on one wallet", () => {
     ]);
   });
 
-  it("brings back nothing a lookup begun before a reset finds, for a wallet without a password", async () => {
-    await walletStore.init(await profileGeneratorFrom(getSeedFromMnemonic(A)));
+  it.each([
+    [
+      "a reset",
+      async () => {
+        // As Settings does it.
+        await forgetEveryWalletData();
+        forgetBridgeRecords({ times: true });
+        walletStore.reset();
+      },
+    ],
+    [
+      "a restore of another wallet in its place",
+      async () => {
+        // Under the same names, as neither has a password.
+        await initializeWallet(B, 0n);
+        await vi.waitFor(() => expect(get(walletStore).initialized).toBe(true));
+      },
+    ],
+  ])(
+    "brings back nothing a lookup begun before %s finds, for a wallet without a password",
+    async (_, leave) => {
+      await initializeWallet(A, 0n);
+      await vi.waitFor(() => expect(get(walletStore).initialized).toBe(true));
 
-    const looking = Promise.withResolvers();
+      const looking = Promise.withResolvers();
 
-    explorer.findWithdrawalsByNonce.mockReturnValueOnce(looking.promise);
+      explorer.findWithdrawalsByNonce.mockReturnValueOnce(looking.promise);
 
-    const finding = rememberHistoryWithdrawals([
-      { hash: WITHDRAWN, nonce: 7n, recipient: null },
-    ]);
+      const finding = rememberHistoryWithdrawals([
+        { hash: WITHDRAWN, nonce: 7n, recipient: null },
+      ]);
 
-    // Reset, as Settings does it.
-    await forgetEveryWalletData();
-    forgetBridgeRecords({ times: true });
-    walletStore.reset();
+      await leave();
+      looking.resolve(
+        new Map([
+          [
+            "7",
+            {
+              account: OWNER,
+              amountWei: 1n,
+              createdAt: 1,
+              transactionHash: TX,
+            },
+          ],
+        ])
+      );
+      await finding;
 
-    looking.resolve(
-      new Map([
-        [
-          "7",
-          { account: OWNER, amountWei: 1n, createdAt: 1, transactionHash: TX },
-        ],
-      ])
-    );
-    await finding;
-
-    expect(localStorage.getItem("dusk-evm:withdrawal-activity:v1")).toBeNull();
-    expect(get(withdrawalActivityStore)).toEqual([]);
-  });
+      expect(
+        Object.keys(localStorage).filter((name) => name.startsWith("dusk-evm:"))
+      ).toEqual([]);
+      expect(get(withdrawalActivityStore)).toEqual([]);
+    }
+  );
 
   /**
    * Storage refusing every write whose name `refuses` accepts, as a full

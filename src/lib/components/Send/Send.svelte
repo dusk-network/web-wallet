@@ -481,10 +481,10 @@
   };
 
   /**
-   * The contact a transfer goes to: the one saved with the address it goes
-   * to, or else with the `.dusk` name entered and the kind of address
-   * picked of it, whose address is then compared with the one the name
-   * points to now.
+   * The contact saved with the `.dusk` name entered, of the kind of address
+   * picked of it: the one saved with the address it goes to, else the
+   * first. Its address is the one compared with the address the name
+   * points to now, whichever contact that address is saved for.
    *
    * @param {Contact[]} contacts
    * @param {string} name
@@ -492,14 +492,20 @@
    * @param {"account" | "address"} type The kind of address picked
    * @returns {Contact | null}
    */
-  const contactFor = (contacts, name, address, type) =>
-    contacts.find((contact) => address && contact.address === address) ??
-    (name
-      ? (contacts.find(
+  function contactNamed(contacts, name, address, type) {
+    const named = name
+      ? contacts.filter(
           (contact) =>
             contact.duskName === name.toLowerCase() && contact.type === type
-        ) ?? null)
-      : null);
+        )
+      : [];
+
+    return (
+      named.find((contact) => address && contact.address === address) ??
+      named[0] ??
+      null
+    );
+  }
 
   function saveRecipient() {
     const name = contactName.trim();
@@ -698,27 +704,37 @@
     (account) => recipientAddress && account.address === recipientAddress
   );
   $: contacts = $contactsStore;
-  $: contact = contactFor(
+
+  // The contact the `.dusk` name entered is saved for: the name is checked
+  // against its address.
+  $: nameContact = contactNamed(
     contacts,
     recipientName,
     recipientAddress,
     nameAddressType
   );
 
+  // The contact a transfer goes to: the one saved with the address it goes
+  // to, or else with the `.dusk` name entered.
+  $: contact =
+    contacts.find(
+      (saved) => recipientAddress && saved.address === recipientAddress
+    ) ?? nameContact;
+
   // The address the contact's name points to now, of the kind the contact
   // keeps.
   $: namePointsTo =
-    contact && recipientName && nameLookup && !nameLookup.error
-      ? ((contact.type === "address"
+    nameContact && nameLookup && !nameLookup.error
+      ? ((nameContact.type === "address"
           ? nameLookup.address
           : nameLookup.account) ?? "")
       : null;
 
-  // A contact's name that points elsewhere now: Send asks before it uses
-  // the new address.
+  // A contact's name that points elsewhere now, to another contact's
+  // address too: Send asks before it uses the new address.
   $: isContactMoved =
     namePointsTo !== null &&
-    namePointsTo !== contact?.address &&
+    namePointsTo !== nameContact?.address &&
     newAddressTaken[recipientName.toLowerCase()] !== recipientAddress;
 
   // A contact's saved address, entered or picked: its name is checked.
@@ -728,13 +744,13 @@
 
   // What a lookup of the contact's name found: noted on the contact, still
   // its address or moved, once a lookup.
-  $: if (contact && namePointsTo !== null && nameLookup !== checkedLookup) {
+  $: if (nameContact && namePointsTo !== null && nameLookup !== checkedLookup) {
     checkedLookup = nameLookup;
 
-    if (namePointsTo === contact.address) {
-      markContactNameChecked(contact);
+    if (namePointsTo === nameContact.address) {
+      markContactNameChecked(nameContact);
     } else {
-      markContactNameMoved(contact, namePointsTo);
+      markContactNameMoved(nameContact, namePointsTo);
     }
   }
 
@@ -905,26 +921,26 @@
           <p class="send__hint">Looking up {nameLookup.name}…</p>
         {/if}
 
-        {#if isContactMoved && contact}
+        {#if isContactMoved && nameContact}
           <div class="send__warning" role="alert">
             <p>
               {#if namePointsTo}
                 <strong
                   >{shownName} now points to a different address from the one saved
-                  for {contact.name}.</strong
+                  for {nameContact.name}.</strong
                 >
                 Which do you want to send to?
               {:else}
                 <strong
                   >{shownName} no longer points to the kind of address saved for
-                  {contact.name}.</strong
+                  {nameContact.name}.</strong
                 >
               {/if}
             </p>
             <div class="send__choices">
               <Button
                 on:click={() => {
-                  sendToAddress = contact?.address ?? sendToAddress;
+                  sendToAddress = nameContact?.address ?? sendToAddress;
                 }}
                 text="The saved address"
                 variant="secondary"
