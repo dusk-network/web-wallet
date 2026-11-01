@@ -9,11 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Keep more than one recovery phrase, all unlocked with one password, and switch between them without it [#999]
-- Add a wallet from the profile switcher or Settings, by creating or importing a recovery phrase, and refuse one that's already here [#999]
-- Rename and remove wallets in Settings › Wallets, and change the password of every wallet [#999]
-- Say which wallet is open under the profile, and which wallet a review is from, when there's more than one [#999]
-- Paste a whole recovery phrase into any word box, take 24-word phrases, and say which words, count or checksum are wrong [#999]
+- Keep more than one recovery phrase under one password, and switch between them without it [#999]
+- Add, rename and remove wallets, and change the password of every wallet, in Settings › Wallets [#999]
+- Say which wallet is open, and which wallet a review is from [#999]
+- Paste a whole recovery phrase into any word box, and take 24-word phrases [#999]
 - Accept `.dusk` names as send recipients on mainnet and testnet [#965]
 - Send to the shielded address a `.dusk` name publishes [#965]
 - Show the profiles' verified `.dusk` names in the profile switcher and on the Receive page [#965]
@@ -75,9 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Group the profile switcher's profiles by wallet [#999]
-- Lock every wallet and every tab with Lock, and say that auto-lock and Reset cover every wallet [#999]
-- Follow another tab's wallet switch, and lock on its lock or new password [#999]
+- Lock every wallet and every tab with Lock [#999]
 - Show each Bridge and Migrate route's time for this network: DuskEVM's from its chains, migrations' as measured, and none where none is known
 - Cut the Bridge and Migrate cards, reviews and results to what is needed to act
 - Show Sozu's fees as its contract gives them: its cut of rewards and deposits in the staking comparison, and the deposit fee in the liquid staking summary
