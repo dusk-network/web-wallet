@@ -12,6 +12,7 @@ import {
 } from "$lib/stores";
 import * as walletLib from "$lib/wallet";
 import vault from "$lib/vault";
+import fixtures from "$lib/vault/__tests__/fixtures/login-v1.json";
 
 import Restore from "../+page.svelte";
 
@@ -104,6 +105,28 @@ describe("Restore", async () => {
 
     expect(
       getByText(
+        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
+      )
+    ).toBeInTheDocument();
+
+    await vault.clear();
+  });
+
+  it("should count the phrase of earlier versions still to move as a wallet of its own", async () => {
+    await vault.setUp(
+      "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      pwd
+    );
+    localStorage.setItem(
+      `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`,
+      fixtures.current.stored
+    );
+    settingsStore.update(setUserId(userId));
+
+    const { findByText } = render(Restore);
+
+    expect(
+      await findByText(
         "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
       )
     ).toBeInTheDocument();

@@ -751,6 +751,27 @@ const vault = {
     });
   },
 
+  /**
+   * How many wallets this browser holds, whichever password opens each:
+   * v2's, and v1's phrase while its move is still to come. Reset removes
+   * them all. No password needed.
+   *
+   * @returns {Promise<number>}
+   */
+  async count() {
+    const v2 = readV2();
+    const v1 = parse(localStorage.getItem(V1_KEY));
+    const wallets = isVaultV2(v2) ? v2.wallets.filter(isWallet) : [];
+
+    if (!isSealed(v1)) {
+      return wallets.length;
+    }
+
+    const moved = await v1WalletId(v1);
+
+    return wallets.length + (wallets.some(({ id }) => id === moved) ? 0 : 1);
+  },
+
   /** Whether there's a vault here: a phrase under a password. */
   exists() {
     return (

@@ -6,6 +6,7 @@ import * as navigation from "$lib/navigation";
 import { settingsStore, walletStore } from "$lib/stores";
 import { stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
+import fixtures from "$lib/vault/__tests__/fixtures/login-v1.json";
 import { addWallet, switchToWallet, unlockWallets } from "$lib/wallets";
 
 import Settings from "../+page.svelte";
@@ -17,6 +18,7 @@ vi.mock("$lib/mocks/ProtocolDriver", async (importOriginal) => ({
 }));
 
 const EVENT = `${CONFIG.LOCAL_STORAGE_APP_KEY}-wallet-event`;
+const V1 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`;
 const PASSWORD = "password123";
 
 // Public BIP39 test phrases, never a real wallet's.
@@ -72,6 +74,34 @@ describe("Settings, with more than one wallet", () => {
     expect(logoutSpy).toHaveBeenCalledWith(false);
     expect(get(walletStore).wallets).toEqual([]);
     expect(JSON.parse(localStorage.getItem(EVENT) ?? "{}").type).toBe("lock");
+  });
+
+  it("speaks of every wallet the vault holds, those another password opens too", async () => {
+    // A wallet under one password; the phrase of earlier versions, under
+    // another, moves in as this tab unlocks with that one.
+    await vault.setUp(A, "an older password");
+    localStorage.setItem(V1, fixtures.current.stored);
+    await unlockWallets(fixtures.current.password);
+
+    expect(get(walletStore).wallets).toHaveLength(1);
+    expect(vault.list()).toHaveLength(2);
+
+    const { getByRole, getByText } = render(Settings);
+
+    await vi.waitFor(() =>
+      expect(
+        getByRole("heading", { name: "Reset all wallets" })
+      ).toBeInTheDocument()
+    );
+    expect(
+      getByText(
+        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
+      )
+    ).toBeInTheDocument();
+    expect(getByRole("button", { name: "Lock" })).toBeInTheDocument();
+    expect(
+      getByText("Locks every wallet after this long without use.")
+    ).toBeInTheDocument();
   });
 
   it("shows the block the open wallet was made at, each its own", async () => {

@@ -7,8 +7,16 @@
   /** @type {boolean} */
   export let notice = false;
 
-  // With more than one wallet here, Settings' Reset says the same.
-  const many = (vault.list()?.length ?? 0) > 1;
+  // With more than one wallet here, whichever password opens each,
+  // Settings' Reset says the same.
+  let many = (vault.list()?.length ?? 0) > 1;
+
+  vault.count().then(
+    (count) => {
+      many = count > 1;
+    },
+    () => {}
+  );
 </script>
 
 <section>

@@ -121,11 +121,39 @@
   /** @type {Error | null} */
   let resetError = null;
 
-  $: ({ syncStatus, walletKey, wallets } = $walletStore);
-  $: reset = wallets.length > 1 ? RESET_ALL : RESET_ONE;
+  /**
+   * How many wallets this browser holds, those this tab didn't open too, as
+   * another password opens them: Reset removes them all.
+   */
+  let walletsHere = 0;
 
-  // More than one wallet here: Lock and auto-lock lock them all, and say so.
-  $: several = wallets.length > 1;
+  /**
+   * Counts the wallets here again, as they come and go here or in another
+   * tab: the ones known at once, then the vault's.
+   *
+   * @param {Array<{ key: string }>} held The wallets this tab opened
+   * @param {import("$lib/wallets/directory").WalletDirectory} directory
+   */
+  function countWallets(held, directory) {
+    walletsHere = new Set([
+      ...held.map(({ key }) => key),
+      ...Object.keys(directory.wallets),
+    ]).size;
+    vault.count().then(
+      (count) => {
+        walletsHere = Math.max(count, held.length);
+      },
+      () => {}
+    );
+  }
+
+  $: ({ syncStatus, walletKey, wallets } = $walletStore);
+  $: countWallets(wallets, $walletDirectory);
+
+  // More than one wallet here: Lock and auto-lock lock them all, Reset
+  // removes them all, and they say so.
+  $: several = walletsHere > 1;
+  $: reset = several ? RESET_ALL : RESET_ONE;
 
   // The block the open wallet was made at, when it was made here.
   $: walletHeight = $walletDirectory.wallets[walletKey]?.height;
