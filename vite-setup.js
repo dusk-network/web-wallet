@@ -9,7 +9,6 @@ import { readable } from "svelte/store";
 import { ResizeObserver } from "@juggle/resize-observer";
 import crypto from "node:crypto";
 import { locks } from "node:worker_threads";
-import "jsdom-worker";
 import "vitest-canvas-mock";
 
 // see https://github.com/dumbmatter/fakeIndexedDB?tab=readme-ov-file#jsdom-often-used-with-jest
