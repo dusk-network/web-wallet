@@ -132,8 +132,9 @@
   }
 
   /*
-   * Phones: no chevron, as the profile's pill; below 344 px the dot alone,
-   * with the network's name still there for screen readers.
+   * Phones: no chevron, as the profile's pill; below 420 px the dot alone,
+   * where the profile's pill needs the room, with the network's name still
+   * there for screen readers.
    */
   @media (max-width: 47.99rem) {
     .network-pill__button {
@@ -146,7 +147,7 @@
     }
   }
 
-  @media (max-width: 21.49rem) {
+  @media (max-width: 26.24rem) {
     .network-pill__button {
       justify-content: center;
       width: 44px;

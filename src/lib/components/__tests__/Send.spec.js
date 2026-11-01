@@ -10,6 +10,7 @@ import {
 } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 import { tick } from "svelte";
+import { get } from "svelte/store";
 import {
   duskToLux,
   formatDuskExact,
@@ -26,9 +27,18 @@ import {
   removeContact,
   saveContact,
 } from "$lib/contacts";
-import { openTestContacts } from "$lib/test-helpers";
+import { walletStore } from "$lib/stores";
+import { openTestContacts, stubWalletNetwork } from "$lib/test-helpers";
+import vault from "$lib/vault";
+import { addWallet, unlockWallets } from "$lib/wallets";
 
 import { Send } from "..";
+
+// Each wallet's profiles their own accounts, as on the network.
+vi.mock("$lib/mocks/ProtocolDriver", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  generateProfile: (await import("$lib/test-helpers/distinctProfile")).default,
+}));
 
 vi.mock("$lib/dusk/string", async (importOriginal) => {
   /** @type {typeof import("$lib/dusk/string")} */
@@ -1801,6 +1811,81 @@ describe("Send", () => {
       expect(fields.to()).toHaveValue(shieldedAddress);
     });
 
+    it("should take a shielded contact's .dusk name as moved only once its lookup says where it points", async () => {
+      const alice = saveContact({
+        address: otherShielded,
+        checkedAt: 1,
+        duskName: "alice.dusk",
+        name: "Alice",
+      });
+
+      /** @type {(value: DuskNameResolution) => void} */
+      let finishLookup = () => {};
+
+      baseProps.resolveName.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishLookup = resolve;
+        })
+      );
+
+      const { container, getByRole, getByText, queryByRole } = render(
+        Send,
+        baseProps
+      );
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: "alice.dusk" },
+      });
+
+      // Still looked up: nothing asked, and nothing noted.
+      expect(getByText("Looking up alice.dusk…")).toBeInTheDocument();
+      expect(queryByRole("alert")).toBeNull();
+      expect(getContact(alice.id)).not.toHaveProperty("movedTo");
+
+      finishLookup({ address: otherShielded, name: "alice.dusk" });
+
+      await waitFor(() =>
+        expect(container.querySelector(".send__card-title")).toHaveTextContent(
+          "Alice · alice.dusk"
+        )
+      );
+      expect(queryByRole("alert")).toBeNull();
+      expect(getContact(alice.id)).not.toHaveProperty("movedTo");
+      expect(getContact(alice.id)?.checkedAt).toBeGreaterThan(1);
+    });
+
+    it("should note each contact of a .dusk name that points elsewhere now, in one lookup", async () => {
+      const alice = saveContact({
+        address: otherAccount,
+        duskName: "alice.dusk",
+        name: "Alice",
+      });
+      const aliceShielded = saveContact({
+        address: shieldedAddress,
+        duskName: "alice.dusk",
+        name: "Alice (shielded)",
+      });
+
+      baseProps.resolveName.mockResolvedValueOnce({
+        account: nameAccount,
+        address: otherShielded,
+        name: "alice.dusk",
+      });
+
+      const { findByRole, getByRole } = render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: "alice.dusk" },
+      });
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "alice.dusk now points to a different address from the one saved for Alice."
+      );
+      // Each with the new address of its kind, for Contacts and the list here.
+      expect(getContact(alice.id)?.movedTo).toBe(nameAccount);
+      expect(getContact(aliceShielded.id)?.movedTo).toBe(otherShielded);
+    });
+
     it("should ask before it sends to a new address of a contact's .dusk name", async () => {
       const alice = saveContact({
         address: otherAccount,
@@ -1889,6 +1974,60 @@ describe("Send", () => {
       await fireEvent.click(getByRole("button", { name: "The saved address" }));
 
       expect(fields.to()).toHaveValue(otherAccount);
+    });
+  });
+
+  describe("Other wallets here", () => {
+    stubWalletNetwork();
+
+    afterEach(async () => {
+      walletStore.reset();
+      await vault.clear();
+      localStorage.clear();
+      await openTestContacts();
+    });
+
+    it("should name a profile of the other wallet on the To line as the From line names its own, after a contact or a .dusk name", async () => {
+      // Public BIP39 test phrases, never a real wallet's.
+      await vault.setUp(
+        "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+        "password123"
+      );
+      await unlockWallets("password123");
+
+      const account = String(get(walletStore).profiles[0].account);
+
+      // The wallet added is the one open: Wallet 1 is the other.
+      await addWallet(
+        "scheme spot photo card baby mountain device kick cradle pact join borrow",
+        "password123"
+      );
+      baseProps.resolveName.mockResolvedValue({ account, name: "alice.dusk" });
+
+      const { container, getByRole } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
+      const toLine = () => getSummary(container)[1];
+
+      await fireEvent.input(to, { target: { value: account } });
+
+      expect(toLine()).toStrictEqual([
+        "To",
+        `Wallet 1 · Profile 1 ${shortenAddress(account)}`,
+      ]);
+
+      await fireEvent.input(to, { target: { value: "alice.dusk" } });
+
+      await waitFor(() =>
+        expect(toLine()).toStrictEqual([
+          "To",
+          `alice.dusk ${shortenAddress(account)}`,
+        ])
+      );
+
+      saveContact({ address: account, name: "Rent" });
+      await fireEvent.input(to, { target: { value: account } });
+
+      expect(toLine()).toStrictEqual(["To", `Rent ${shortenAddress(account)}`]);
     });
   });
 });

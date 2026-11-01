@@ -29,6 +29,7 @@
   import { stDuskReceived } from "$lib/sozu";
   import { nodeBaseUrl } from "$lib/url";
   import { duskEvmExplorerTx } from "$lib/web3/duskEvm";
+  import walletAccountNames from "$lib/wallets/accountNames";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
 
@@ -261,6 +262,8 @@
   $: known = target
     ? contractLabel(target, network) || (routeLabel($nodeNetwork, target) ?? "")
     : "";
+  // A profile of a wallet here, as the wallets call it.
+  $: walletName = target ? ($walletAccountNames.get(target) ?? "") : "";
   $: gotStDusk = row.sozu === "stake" && row.status === "executed";
   $: if (`${row.hash} ${gotStDusk}` !== stDuskOf) {
     showStDusk(row, gotStDusk);
@@ -363,6 +366,8 @@
                   ? `${contact.name} · ${duskName}`
                   : (contact?.name ?? duskName)}</span
               >
+            {:else if walletName}
+              <span class="tx-detail__name">{walletName}</span>
             {/if}
             <span class="tx-detail__code"
               >{#each [parts(target)] as [head, middle, tail] (tail)}<b

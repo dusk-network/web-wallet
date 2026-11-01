@@ -10,6 +10,7 @@
     matchesFilters,
   } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
+  import walletAccountNames from "$lib/wallets/accountNames";
   import { addBasePath } from "$lib/navigation";
 
   import ActivityRowItem from "./ActivityRowItem.svelte";
@@ -58,6 +59,7 @@
     contactNames: contactNamesOf($contactsStore),
     locale,
     net: $nodeNetwork,
+    walletNames: $walletAccountNames,
   };
   $: described = state.rows.map((row) => ({
     presentation: describeRow(row, context),

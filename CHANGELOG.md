@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep more than one recovery phrase under one password, and switch between them without it [#999]
 - Add, rename and remove wallets, and change the password of every wallet, in Settings › Wallets [#999]
 - Say which wallet is open, and which wallet a review is from [#999]
+- Name a profile of a wallet kept here, as "Wallet 2 · Profile 1", on Send's To line and in the activity and the history [#1010]
 - Paste a whole recovery phrase into any word box, and take 24-word phrases [#999]
 - Accept `.dusk` names as send recipients on mainnet and testnet [#965]
 - Send to the shielded address a `.dusk` name publishes [#965]
@@ -240,6 +241,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show two shielded payments one block made to the same address as two transactions
 - Show a gas refund from someone else's bridge call as received, not as a withdrawal from DuskEVM
 - Ask before sending to a contact's `.dusk` name also when it points to another contact's address now [#1005]
+- Take a contact's `.dusk` name as moved only once its lookup ends, and check every contact saved with that name [#1013]
+- Show the wallet and the profile alone in the top bar's pill below 420 px, as "Main · Profile 1", with the network as its dot [#1011]
 
 ## [1.8.0] - 2026-03-25
 
@@ -902,6 +905,9 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#973]: https://github.com/dusk-network/web-wallet/pull/973
 [#999]: https://github.com/dusk-network/web-wallet/issues/999
 [#1005]: https://github.com/dusk-network/web-wallet/issues/1005
+[#1010]: https://github.com/dusk-network/web-wallet/issues/1010
+[#1011]: https://github.com/dusk-network/web-wallet/issues/1011
+[#1013]: https://github.com/dusk-network/web-wallet/issues/1013
 
 <!-- VERSIONS -->
 

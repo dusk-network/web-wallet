@@ -24,7 +24,7 @@
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
-  import { openWalletName } from "$lib/wallets";
+  import { openWalletName, walletAccountNames } from "$lib/wallets";
   import {
     formatDusk,
     formatDuskExact,
@@ -173,12 +173,47 @@
    */
   let newAddressTaken = {};
 
-  /** The lookup a contact's name was last noted checked for. */
+  /** The lookup last noted on the contacts of its name. */
   /** @type {DuskNameResolution | null} */
   let checkedLookup = null;
 
   /** The contact whose `.dusk` name was last checked as its address was picked. */
   let savedNameChecked = "";
+
+  /**
+   * Whether a lookup has said where its name points: not while it runs, nor
+   * when it found no address.
+   *
+   * @param {DuskNameResolution | null} lookup
+   * @returns {lookup is DuskNameResolution}
+   */
+  const hasPointed = (lookup) =>
+    Boolean(lookup && !lookup.error && (lookup.account || lookup.address));
+
+  /**
+   * The address a lookup says a contact's name points to now, of the kind
+   * the contact keeps: "" for none of that kind.
+   *
+   * @param {DuskNameResolution} lookup
+   * @param {Contact} saved
+   */
+  const pointedTo = (lookup, saved) =>
+    (saved.type === "address" ? lookup.address : lookup.account) ?? "";
+
+  /**
+   * Notes on a contact what a lookup of its `.dusk` name found: still its
+   * address, or moved.
+   *
+   * @param {Contact} saved
+   * @param {string} pointsTo
+   */
+  function noteName(saved, pointsTo) {
+    if (pointsTo === saved.address) {
+      markContactNameChecked(saved);
+    } else {
+      markContactNameMoved(saved, pointsTo);
+    }
+  }
 
   /**
    * Checks that a contact's `.dusk` name still points to the address saved
@@ -207,15 +242,7 @@
       return;
     }
 
-    const pointsTo =
-      (saved.type === "address" ? resolution.address : resolution.account) ??
-      "";
-
-    if (pointsTo === saved.address) {
-      markContactNameChecked(saved);
-    } else {
-      markContactNameMoved(saved, pointsTo);
-    }
+    noteName(saved, pointedTo(resolution, saved));
   }
 
   /**
@@ -481,6 +508,17 @@
   };
 
   /**
+   * The contacts saved with a `.dusk` name.
+   *
+   * @param {Contact[]} contacts
+   * @param {string} name
+   */
+  const savedWithName = (contacts, name) =>
+    name
+      ? contacts.filter((contact) => contact.duskName === name.toLowerCase())
+      : [];
+
+  /**
    * The contact saved with the `.dusk` name entered, of the kind of address
    * picked of it: the one saved with the address it goes to, else the
    * first. Its address is the one compared with the address the name
@@ -493,12 +531,9 @@
    * @returns {Contact | null}
    */
   function contactNamed(contacts, name, address, type) {
-    const named = name
-      ? contacts.filter(
-          (contact) =>
-            contact.duskName === name.toLowerCase() && contact.type === type
-        )
-      : [];
+    const named = savedWithName(contacts, name).filter(
+      (contact) => contact.type === type
+    );
 
     return (
       named.find((contact) => address && contact.address === address) ??
@@ -703,6 +738,9 @@
   $: own = ownAccounts.find(
     (account) => recipientAddress && account.address === recipientAddress
   );
+  // A profile of a wallet kept here, as the From line names its own: after
+  // a contact or a `.dusk` name entered.
+  $: walletAccount = $walletAccountNames.get(recipientAddress) ?? "";
   $: contacts = $contactsStore;
 
   // The contact the `.dusk` name entered is saved for: the name is checked
@@ -722,12 +760,10 @@
     ) ?? nameContact;
 
   // The address the contact's name points to now, of the kind the contact
-  // keeps.
+  // keeps: null until the lookup has said.
   $: namePointsTo =
-    nameContact && nameLookup && !nameLookup.error
-      ? ((nameContact.type === "address"
-          ? nameLookup.address
-          : nameLookup.account) ?? "")
+    nameContact && hasPointed(nameLookup)
+      ? pointedTo(nameLookup, nameContact)
       : null;
 
   // A contact's name that points elsewhere now, to another contact's
@@ -742,15 +778,13 @@
     checkSavedName(contact);
   }
 
-  // What a lookup of the contact's name found: noted on the contact, still
-  // its address or moved, once a lookup.
-  $: if (nameContact && namePointsTo !== null && nameLookup !== checkedLookup) {
+  // What a lookup of the name entered found, once it has: noted on each
+  // contact saved with the name, still its address or moved, once a lookup.
+  $: if (hasPointed(nameLookup) && nameLookup !== checkedLookup) {
     checkedLookup = nameLookup;
 
-    if (namePointsTo === nameContact.address) {
-      markContactNameChecked(nameContact);
-    } else {
-      markContactNameMoved(nameContact, namePointsTo);
+    for (const saved of savedWithName(contacts, recipientName)) {
+      noteName(saved, pointedTo(nameLookup, saved));
     }
   }
 
@@ -1234,9 +1268,10 @@
             {#if !addressInfo.isValid}
               <span class="send__muted">Not set</span>
             {:else}
-              {#if contact || recipientName}
+              {#if contact || recipientName || walletAccount}
                 <span class="send__summary-name"
-                  >{contact?.name ?? shownName}</span
+                  >{contact?.name ??
+                    (recipientName ? shownName : walletAccount)}</span
                 >
               {/if}
               <span class="send__summary-code"
