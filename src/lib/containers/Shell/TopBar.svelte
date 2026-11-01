@@ -159,7 +159,7 @@
 
   /*
    * The wordmark, a thin line and WALLET in the ledger's type; the round
-   * mark alone where the wordmark doesn't fit, below 374 px.
+   * mark alone below 400 px, where the profile's pill needs the room.
    */
   .top-bar__brand :global(.dusk-glyph) {
     display: none;
@@ -352,7 +352,7 @@
     }
   }
 
-  @media (max-width: 23.37rem) {
+  @media (max-width: 24.99rem) {
     .top-bar__brand :global(.dusk-glyph) {
       display: block;
     }
