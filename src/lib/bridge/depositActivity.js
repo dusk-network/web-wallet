@@ -268,9 +268,18 @@ const isOnItsWay = (item) =>
   !isDepositTerminal(item);
 
 /**
+ * A URL as a network's file has it: without a trailing slash, which one set
+ * for the wallet may end with.
+ *
+ * @param {string | undefined} url
+ */
+const unslashed = (url) => url?.replace(/\/+$/, "");
+
+/**
  * The node's network as the wallet follows DuskEVM on it: the bridge's
  * contracts on Dusk, and DuskEVM's L2 bridge and RPC, as set for local work
- * or as its file has them. Null where they aren't known.
+ * or as its file has them, its URLs as a file has them. Null where they
+ * aren't known.
  *
  * @returns {import("@dusk-network/networks").Network | null}
  */
@@ -284,11 +293,14 @@ function followedNetwork() {
         ...net,
         duskEvm: {
           ...net.duskEvm,
+          blockscoutApiUrl: /** @type {string} */ (
+            unslashed(net.duskEvm.blockscoutApiUrl)
+          ),
           predeploys: {
             ...net.duskEvm.predeploys,
             l2StandardBridge: /** @type {`0x${string}`} */ (l2StandardBridge),
           },
-          rpcUrl,
+          rpcUrl: /** @type {string} */ (unslashed(rpcUrl)),
         },
       }
     : null;

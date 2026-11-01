@@ -30,6 +30,8 @@ const mocks = vi.hoisted(() => ({
   http: vi.fn(),
   /** DuskEVM's L2 bridge, as the wallet has it: the network's, or one set for local work. */
   l2Bridge: "0x4200000000000000000000000000000000000010",
+  /** DuskEVM's RPC, as the wallet has it: the network's, or one set. */
+  l2Rpc: "https://l2.example.test",
   observeDepositStatus: vi.fn(),
   query: vi.fn(),
   request: vi.fn(),
@@ -118,7 +120,9 @@ vi.mock("$lib/web3/duskEvm", () => ({
       return { L2StandardBridge: { address: mocks.l2Bridge } };
     },
     id: 310,
-    rpcUrls: { default: { http: ["https://l2.example.test"] } },
+    get rpcUrls() {
+      return { default: { http: [mocks.l2Rpc] } };
+    },
   },
   duskEvmAdapterUrl: () => "https://l2.example.test/l1",
   duskEvmContractId: () => "",
@@ -177,6 +181,7 @@ describe("DuskEVM deposit tracking", () => {
     mocks.sent = [];
     mocks.txs = {};
     mocks.l2Bridge = "0x4200000000000000000000000000000000000010";
+    mocks.l2Rpc = "https://l2.example.test";
     mocks.connect.mockReset();
     mocks.connect.mockResolvedValue({ query: mocks.query });
     mocks.createPublicClient.mockImplementation(({ transport }) => ({
@@ -559,6 +564,28 @@ describe("DuskEVM deposit tracking", () => {
           .filter(({ method }) => method === "eth_getLogs")
           .map(({ params }) => params[0].address)
       ).toStrictEqual([mocks.l2Bridge]);
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it("finds a deposit arrived on DuskEVM through an RPC set with a trailing slash", async () => {
+    const hash = "93".repeat(32);
+
+    mocks.l2Rpc = "https://l2.example.test/";
+
+    const chain = paidDeposit(hash, {
+      at: Date.now() - 60_000,
+      bridge: mocks.l2Bridge,
+    });
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(chain.answer);
+
+    try {
+      expect(await refreshDepositTransaction(hash)).toStrictEqual(
+        expect.objectContaining({ l2TransactionHash, stage: "completed" })
+      );
     } finally {
       fetch.mockRestore();
     }
