@@ -296,6 +296,47 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
     expect(checksOf(WAITING).length).toBeGreaterThan(20);
   });
 
+  it.each([
+    ["reads the Portal", () => status(SOON, { stage: "ready_to_prove" })],
+    [
+      "fails",
+      () => {
+        throw new Error("DuskEVM didn't answer.");
+      },
+    ],
+  ])(
+    "keeps a proof sent while a check that %s is under way pending, and checks it again at once",
+    async (_, answer) => {
+      pkg.answers.set(SOON, answer);
+      // The check's reads take 3 seconds.
+      pkg.latency.set(SOON, 3_000);
+      kept(SOON, { stage: "ready_to_prove" });
+      tracking.resumeWithdrawalTracking(ACCOUNT);
+
+      await vi.advanceTimersByTimeAsync(1_000);
+
+      // Sent a second into the check, which began before it.
+      tracking.recordWithdrawalSubmission(SOON, {
+        action: "prove",
+        hash: "66".repeat(32),
+      });
+
+      await vi.advanceTimersByTimeAsync(2_500);
+
+      expect(shown(SOON)).toEqual(
+        expect.objectContaining({
+          pendingAction: "prove",
+          pendingTransactionHash: "66".repeat(32),
+          stage: "prove_submitted",
+          trackingError: null,
+        })
+      );
+      expect(
+        checksOf(SOON).map((at) => Math.round(at / 100) * 100)
+      ).toStrictEqual([0, 3_000]);
+    }
+  );
+
   it("goes on checking the others, and a new one, while one check hangs", async () => {
     const NEW = txOf("d4");
 
