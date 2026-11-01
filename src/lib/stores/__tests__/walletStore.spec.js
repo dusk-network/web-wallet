@@ -376,6 +376,30 @@ describe("Wallet store", async () => {
       await vi.runOnlyPendingTimersAsync();
     });
 
+    it("should keep the contacts closed when an unlock is cancelled while its seed is read", async () => {
+      const seedRead = Promise.withResolvers();
+      const seedFrom = vi
+        .spyOn(ProfileGenerator, "seedFrom")
+        .mockReturnValueOnce(seedRead.promise);
+
+      try {
+        const unlocking = walletStore.init(profileGenerator);
+
+        await vi.waitFor(() => expect(seedFrom).toHaveBeenCalled());
+        walletStore.reset();
+        seedRead.resolve(seed);
+        await unlocking;
+
+        expect(get(walletStore).initialized).toBe(false);
+        expect(() =>
+          saveContact({ address: defaultProfile.account.toString(), name: "A" })
+        ).toThrow();
+      } finally {
+        seedFrom.mockRestore();
+        walletStore.reset();
+      }
+    });
+
     it("should not publish profiles from an initialization reset before it completes", async () => {
       const pendingProfile = Promise.withResolvers();
       const delayedGenerator = {

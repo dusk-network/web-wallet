@@ -9,7 +9,10 @@ import {
 } from "vitest";
 import { ETH_BRIDGE_FINALIZED_TOPIC } from "@dusk-network/app-core/bridge";
 import { networks } from "@dusk-network/networks";
-import { evmAddressOf } from "@dusk-network/networks/duskevm";
+import {
+  encodeDepositArgs,
+  evmAddressOf,
+} from "@dusk-network/networks/duskevm";
 
 import { rowOf, rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
@@ -17,12 +20,18 @@ import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { fakeChain, topicOf, wordOf } from "./fixtures/chain";
 
 const mocks = vi.hoisted(() => ({
+  /** The transactions asked of the archive, by hash, as asked. @type {string[]} */
+  asked: [],
   connect: vi.fn(),
   createPublicClient: vi.fn(),
+  /** The archive's last finalized block: none given while null. @type {number | null} */
+  finalized: null,
   getBlock: vi.fn(),
   http: vi.fn(),
   /** DuskEVM's L2 bridge, as the wallet has it: the network's, or one set for local work. */
   l2Bridge: "0x4200000000000000000000000000000000000010",
+  /** DuskEVM's RPC, as the wallet has it: the network's, or one set. */
+  l2Rpc: "https://l2.example.test",
   observeDepositStatus: vi.fn(),
   query: vi.fn(),
   request: vi.fn(),
@@ -30,13 +39,16 @@ const mocks = vi.hoisted(() => ({
   rows: [],
   /** The deposits the archive lists in the account's history, as it gives them. @type {any[]} */
   sent: [],
+  /** The transactions the archive gives, by hash. @type {Record<string, any>} */
+  txs: {},
 }));
 
 const ACCOUNT =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
 
 // The history of ACCOUNT, shown, and its archive, where it sent nothing but
-// the deposits a test lists.
+// the deposits a test lists, with the transactions and the last finalized
+// block it gives.
 vi.mock("$lib/activity", () => ({
   activityState: {
     /** @param {(state: { rows: any[] }) => void} run */
@@ -63,8 +75,25 @@ vi.mock("$lib/activity/activityHistory", () => ({
                 entry.block_height <= Number(range[2] ?? Infinity)
             )
           : [];
+      /** @type {Record<string, any>} */
+      const data = { out: json.length ? { json } : null };
 
-      return { out: json.length ? { json } : null };
+      for (const [, alias, hash] of query.matchAll(
+        /(\w+): tx\(hash: "(\w+)"\)/g
+      )) {
+        mocks.asked.push(hash);
+        data[alias] = mocks.txs[hash] ?? null;
+      }
+
+      if (query.includes("lastBlockPair") && mocks.finalized !== null) {
+        data.pair = {
+          json: {
+            ["last_finalized_block"]: [mocks.finalized, "bb".repeat(32)],
+          },
+        };
+      }
+
+      return data;
     },
   }),
 }));
@@ -91,7 +120,9 @@ vi.mock("$lib/web3/duskEvm", () => ({
       return { L2StandardBridge: { address: mocks.l2Bridge } };
     },
     id: 310,
-    rpcUrls: { default: { http: ["https://l2.example.test"] } },
+    get rpcUrls() {
+      return { default: { http: [mocks.l2Rpc] } };
+    },
   },
   duskEvmAdapterUrl: () => "https://l2.example.test/l1",
   duskEvmContractId: () => "",
@@ -144,9 +175,13 @@ describe("DuskEVM deposit tracking", () => {
   beforeEach(() => {
     localStorage.clear();
     setNodeNetwork(networks.testnet);
+    mocks.asked = [];
+    mocks.finalized = null;
     mocks.rows = [];
     mocks.sent = [];
+    mocks.txs = {};
     mocks.l2Bridge = "0x4200000000000000000000000000000000000010";
+    mocks.l2Rpc = "https://l2.example.test";
     mocks.connect.mockReset();
     mocks.connect.mockResolvedValue({ query: mocks.query });
     mocks.createPublicClient.mockImplementation(({ transport }) => ({
@@ -529,6 +564,92 @@ describe("DuskEVM deposit tracking", () => {
           .filter(({ method }) => method === "eth_getLogs")
           .map(({ params }) => params[0].address)
       ).toStrictEqual([mocks.l2Bridge]);
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it("finds a deposit arrived on DuskEVM through an RPC set with a trailing slash", async () => {
+    const hash = "93".repeat(32);
+
+    mocks.l2Rpc = "https://l2.example.test/";
+
+    const chain = paidDeposit(hash, {
+      at: Date.now() - 60_000,
+      bridge: mocks.l2Bridge,
+    });
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(chain.answer);
+
+    try {
+      expect(await refreshDepositTransaction(hash)).toStrictEqual(
+        expect.objectContaining({ l2TransactionHash, stage: "completed" })
+      );
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it("asks for the call of an equal deposit sent before one on its way until that one's block is final, then no more", async () => {
+    const hash = "94".repeat(32);
+    const at = Date.now() - 60_000;
+    // DuskEVM has no payment of it yet: the one there is another contract's.
+    const chain = paidDeposit(hash, { at, bridge: `0x${"11".repeat(20)}` });
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(chain.answer);
+    // ACCOUNT's equal deposits 10 and 2 blocks before it, sent from another
+    // device: this wallet keeps neither.
+    const [final, recent] = ["9a".repeat(32), "9b".repeat(32)];
+    /** @param {string} each @param {number} height */
+    const archived = (each, height) => {
+      mocks.sent.push({ ...listed(each), ["block_height"]: height });
+      mocks.txs[each] = {
+        blockHeight: height,
+        blockTimestamp: (at - (8512 - height) * 10_000) / 1000,
+        err: null,
+        tx: {
+          callData: {
+            contractId:
+              networks.testnet.duskEvm?.contracts.l1_standard_bridge.contractId,
+            data: Buffer.from(
+              encodeDepositArgs({
+                amountLux: 100_000_000n,
+                to: "0xb0e834d62ca3f5cf0f82619c8515c673818f8c6b",
+              })
+            ).toString("hex"),
+            fnName: "depositETHToWithValue",
+          },
+        },
+      };
+    };
+    /** How many times the archive was asked for each. */
+    const asked = () =>
+      [final, recent].map(
+        (each) => mocks.asked.filter((one) => one === each).length
+      );
+
+    archived(final, 8502);
+    archived(recent, 8510);
+    // The archive has finalized the first one's block, not the second's.
+    mocks.finalized = 8505;
+
+    try {
+      await refreshDepositTransaction(hash);
+      await refreshDepositTransaction(hash);
+
+      expect(asked()).toStrictEqual([1, 2]);
+
+      // Its block final now, the second is asked for once more, then no more.
+      mocks.finalized = 8515;
+
+      for (let i = 0; i < 3; i += 1) {
+        await refreshDepositTransaction(hash);
+      }
+
+      expect(asked()).toStrictEqual([1, 3]);
+      expect(getRememberedDepositTransaction(hash)?.stage).toBe("l1_pending");
     } finally {
       fetch.mockRestore();
     }

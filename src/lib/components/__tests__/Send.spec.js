@@ -1860,5 +1860,35 @@ describe("Send", () => {
 
       expect(fieldsOf(again.getByRole).send()).toBeEnabled();
     });
+
+    it("should ask before it sends to a contact's .dusk name that points to another contact's address now", async () => {
+      const alice = saveContact({
+        address: otherAccount,
+        duskName: "alice.dusk",
+        name: "Alice",
+      });
+
+      saveContact({ address: nameAccount, name: "Bob" });
+      baseProps.resolveName.mockResolvedValue({
+        account: nameAccount,
+        name: "alice.dusk",
+      });
+
+      const { container, findByRole, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), { target: { value: "alice.dusk" } });
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "alice.dusk now points to a different address from the one saved for Alice. Which do you want to send to?"
+      );
+      expect(fields.send()).toBeDisabled();
+      expect(container.querySelector(".send__card")).toBeNull();
+      expect(getContact(alice.id)?.movedTo).toBe(nameAccount);
+
+      await fireEvent.click(getByRole("button", { name: "The saved address" }));
+
+      expect(fields.to()).toHaveValue(otherAccount);
+    });
   });
 });

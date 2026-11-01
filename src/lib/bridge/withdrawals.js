@@ -18,7 +18,11 @@ import { get } from "svelte/store";
 import { toHex } from "viem";
 
 import { bridgeNetwork } from "$lib/bridge/bridgeCalls";
-import { batchedFetch, loadBridgeDriver } from "$lib/bridge/bridgeReads";
+import {
+  batchedFetch,
+  bridgeFacts,
+  loadBridgeDriver,
+} from "$lib/bridge/bridgeReads";
 import { normalizedTxHash } from "$lib/bridge/withdrawalActivityValues";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { errorMessage } from "$lib/dusk/error";
@@ -260,14 +264,6 @@ export function withdrawalNetwork() {
   return /** @type {{ net: Network }} */ (withSetContracts.get(net)).net;
 }
 
-/**
- * What a deployment doesn't change, as the withdrawals' reads keep it for
- * the session: each game's hub, each game type's hub, each hub's clock.
- *
- * @type {Map<string, string>}
- */
-const deploymentFacts = new Map();
-
 /** @type {{ key: string, net: unknown, withdrawals: ReturnType<typeof createWithdrawals> } | null} */
 let current = null;
 
@@ -342,7 +338,7 @@ function withdrawals() {
       key,
       net,
       withdrawals: createWithdrawals({
-        cache: deploymentFacts,
+        cache: bridgeFacts,
         drivers: {
           disputeGameFactory: () =>
             loadBridgeDriver(config.disputeGameFactoryDataDriverUrl),

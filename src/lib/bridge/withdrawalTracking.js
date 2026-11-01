@@ -259,18 +259,53 @@ async function refreshStatus(remembered, scope) {
         : { pendingAction: null, pendingTransactionHash: null }),
     };
 
-    return updateWithdrawalTransaction(
-      remembered.transactionHash,
-      patch,
-      scope
-    );
+    return keepChecked(remembered, patch, scope);
   } catch (error) {
-    return updateWithdrawalTransaction(
-      remembered.transactionHash,
+    return keepChecked(
+      remembered,
       failedCheckPatch(remembered, errorMessage(error)),
       scope
     );
   }
+}
+
+/**
+ * What a check says of the proof or the claim sent, and of reading it:
+ * only of one it saw.
+ */
+const SUBMISSION_FIELDS = [
+  "actionError",
+  "pendingAction",
+  "pendingTransactionHash",
+  "stage",
+  "trackingError",
+];
+
+/**
+ * Keeps what a check read of a withdrawal, which was `seen` as the check
+ * began. A proof or a claim sent since stays pending as it was sent: the
+ * check read the chain before it, and the next one, made at once, reads
+ * it.
+ *
+ * @param {any} seen
+ * @param {Record<string, any>} patch
+ * @param {WalletDataScope} scope
+ */
+function keepChecked(seen, patch, scope) {
+  const sent = getRememberedWithdrawalTransaction(
+    seen.transactionHash,
+    scope
+  )?.pendingTransactionHash;
+  const read =
+    sent && sent !== seen.pendingTransactionHash
+      ? Object.fromEntries(
+          Object.entries(patch).filter(
+            ([key]) => !SUBMISSION_FIELDS.includes(key)
+          )
+        )
+      : patch;
+
+  return updateWithdrawalTransaction(seen.transactionHash, read, scope);
 }
 
 /**

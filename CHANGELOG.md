@@ -189,6 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep a withdrawal's proof or claim pending when it's sent while a check runs, so Prove and Claim don't come back
 - Keep looking for a bridge transfer's payment on BNB Smart Chain or DuskEVM after a search missed it, rather than waiting for it for good
 - Send nothing to Reown, WalletConnect or Coinbase, nor load their fonts, until Connect is pressed on the Bridge or Migrate page or a wallet was connected before, and leave out the Coinbase wallet SDKs and their telemetry
 - Stop transaction attempts when prerequisite synchronization fails or is cancelled [#953].
@@ -238,6 +239,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show an unshield as an unshield to a profile that only received its change
 - Show two shielded payments one block made to the same address as two transactions
 - Show a gas refund from someone else's bridge call as received, not as a withdrawal from DuskEVM
+- Ask before sending to a contact's `.dusk` name also when it points to another contact's address now [#1005]
 
 ## [1.8.0] - 2026-03-25
 
@@ -899,6 +901,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#969]: https://github.com/dusk-network/web-wallet/issues/969
 [#973]: https://github.com/dusk-network/web-wallet/pull/973
 [#999]: https://github.com/dusk-network/web-wallet/issues/999
+[#1005]: https://github.com/dusk-network/web-wallet/issues/1005
 
 <!-- VERSIONS -->
 

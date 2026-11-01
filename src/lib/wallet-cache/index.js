@@ -15,9 +15,6 @@ const bufferToUint8Array = (buffer) => new Uint8Array(new Uint8Array(buffer));
 const getAddressesFrom = (profiles) =>
   profiles.map(({ address }) => String(address));
 
-/** @type {(nullifiers: Uint8Array[]) => string[]} */
-const nullifiersToString = (nullifiers) => nullifiers.map(String);
-
 /** @type {(v: WalletCacheDbPendingNoteInfo[]) => WalletCachePendingNoteInfo[]} */
 const restorePendingInfo = (entries) =>
   entries.map((entry) => ({
@@ -261,33 +258,6 @@ class WalletCache {
       field: "address",
       values: addresses,
     }).then(restoreNullifiers);
-  }
-
-  /**
-   * Returns the array of unique nullifiers contained only
-   * in the first of the two given nullifiers arrays.
-   *
-   * @see {@link https://en.wikipedia.org/wiki/Complement_(set_theory)#Relative_complement}
-   *
-   * @param {Uint8Array<ArrayBuffer>[]} a
-   * @param {Uint8Array<ArrayBuffer>[]} b
-   * @returns {Uint8Array<ArrayBuffer>[]}
-   */
-  nullifiersDifference(a, b) {
-    if (a.length === 0 || b.length === 0) {
-      return a;
-    }
-
-    const result = [];
-    const lookup = new Set(nullifiersToString(b));
-
-    for (const entry of a) {
-      if (!lookup.has(entry.toString())) {
-        result.push(entry);
-      }
-    }
-
-    return result;
   }
 
   /**

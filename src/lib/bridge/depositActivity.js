@@ -5,6 +5,7 @@ import { createPublicClient, http } from "viem";
 import { activityState, currentActivity } from "$lib/activity";
 import { archiveAt } from "$lib/activity/activityHistory";
 import { bridgeNetwork } from "$lib/bridge/bridgeCalls";
+import { bridgeFacts } from "$lib/bridge/bridgeReads";
 import { networkStore } from "$lib/stores";
 import { nodeBaseUrl } from "$lib/url";
 import { duskEvm, duskEvmAdapterUrl } from "$lib/web3/duskEvm";
@@ -267,9 +268,18 @@ const isOnItsWay = (item) =>
   !isDepositTerminal(item);
 
 /**
+ * A URL as a network's file has it: without a trailing slash, which one set
+ * for the wallet may end with.
+ *
+ * @param {string | undefined} url
+ */
+const unslashed = (url) => url?.replace(/\/+$/, "");
+
+/**
  * The node's network as the wallet follows DuskEVM on it: the bridge's
  * contracts on Dusk, and DuskEVM's L2 bridge and RPC, as set for local work
- * or as its file has them. Null where they aren't known.
+ * or as its file has them, its URLs as a file has them. Null where they
+ * aren't known.
  *
  * @returns {import("@dusk-network/networks").Network | null}
  */
@@ -283,11 +293,14 @@ function followedNetwork() {
         ...net,
         duskEvm: {
           ...net.duskEvm,
+          blockscoutApiUrl: /** @type {string} */ (
+            unslashed(net.duskEvm.blockscoutApiUrl)
+          ),
           predeploys: {
             ...net.duskEvm.predeploys,
             l2StandardBridge: /** @type {`0x${string}`} */ (l2StandardBridge),
           },
-          rpcUrl,
+          rpcUrl: /** @type {string} */ (unslashed(rpcUrl)),
         },
       }
     : null;
@@ -328,7 +341,8 @@ function depositsOf(waiting, depositOf) {
  * (`@dusk-network/app-core/bridge`, loaded then): by the bridge's event
  * from the DuskEVM address of the account that sent each, its equal
  * deposits before it paid first, as its history on Dusk says, however long
- * ago it was sent. Each that arrived is kept completed, with the DuskEVM
+ * ago it was sent. The calls of those deposits are read once their blocks
+ * are final. Each that arrived is kept completed, with the DuskEVM
  * transaction that paid it and when, for the wallet that keeps them.
  *
  * @param {WalletDataScope} scope
@@ -344,6 +358,7 @@ async function readDuskEvm(scope) {
   const { arrivals } = await bridge.depositArrivals({
     archive: archiveAt(nodeBaseUrl()),
     blockTimes: duskEvmBlockTimes,
+    cache: bridgeFacts,
     deposits: depositsOf(waiting, bridge.depositOf),
     network: net,
     taken: kept.flatMap(({ l2TransactionHash }) =>

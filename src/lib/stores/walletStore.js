@@ -457,15 +457,21 @@ const claimRewards = async (amount, gas) => {
 const startHistory = () => historyOf(unsafeGetCurrentProfile());
 
 /**
- * Opens the wallet's contacts with the key its seed makes: they stay
- * closed when there's none.
+ * Opens the wallet's contacts with the key its seed makes, for the unlock
+ * `session` is: they stay closed when there's none, or once that unlock
+ * was cancelled.
  *
  * @param {ProfileGenerator} profileGenerator
  * @param {Profile} firstProfile
+ * @param {number} session
  */
-async function openContactsOf(profileGenerator, firstProfile) {
+async function openContactsOf(profileGenerator, firstProfile, session) {
   try {
     const seed = await ProfileGenerator.seedFrom(profileGenerator);
+
+    if (session !== walletSession) {
+      return;
+    }
 
     await openContacts({
       account: String(firstProfile.account),
@@ -496,7 +502,7 @@ async function init(
 
   // The contacts open with the wallet, and close when it locks.
   if (session === walletSession) {
-    await openContactsOf(profileGeneratorInstance, profiles[0]);
+    await openContactsOf(profileGeneratorInstance, profiles[0], session);
   }
 
   const [balance, stakeInfo, minimumStake] = await Promise.all([
