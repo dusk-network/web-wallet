@@ -39,9 +39,9 @@ import { readDirectory } from "./directory";
 const suffixFor = (key) => suffixOf(key, readDirectory().legacy);
 
 /**
- * Makes the names the wallet `key`'s, as it opens, and reads what it keeps
+ * Makes the names the wallet `key`'s, as it opens, and shows what it keeps
  * of the bridge's transfers and migrations: from then on, while it's open,
- * what the screens show of them is what's true of them, written from there.
+ * storage's with this tab's changes over them ($lib/wallets/walletRecords).
  *
  * @param {string} key Its vault ID: "" for a wallet without a password
  */

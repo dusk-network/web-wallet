@@ -153,14 +153,14 @@ export const walletDataName = (name) => `${name}${suffix}`;
  * - `isOpen` says whether it's still open as it was, since no other opened
  *   and nothing locked: what the work goes on doing;
  * - `isShown` says whether that wallet, in the same incarnation, is the one
- *   open in this tab now: whose records the screens show, kept in memory;
+ *   open in this tab now: whose records the screens show, with this tab's
+ *   changes storage hasn't kept; taken before any wallet opened in this
+ *   tab, the names of before, the only ones then, until one opens;
  * - `keeps` says whether its incarnation is still here: a write lands only
- *   then;
- * - `owner` names that wallet in that incarnation;
- * - `before` says it was taken before any wallet opened in this tab, when
- *   the names of before are the only ones, written as they always were.
+ *   then, and always for the names of before, written as they always were;
+ * - `owner` names that wallet in that incarnation.
  *
- * @typedef {{ before: boolean, id: number, isOpen: () => boolean, isShown: () => boolean, keeps: () => boolean, name: (name: string) => string, owner: string }} WalletDataScope
+ * @typedef {{ id: number, isOpen: () => boolean, isShown: () => boolean, keeps: () => boolean, name: (name: string) => string, owner: string }} WalletDataScope
  * @returns {WalletDataScope}
  */
 export function walletDataScope() {
@@ -170,10 +170,10 @@ export function walletDataScope() {
   const id = openId;
 
   return {
-    before: at === 0,
     id: at,
     isOpen: () => at === opened,
-    isShown: () => at > 0 && id !== null && key === openKey && id === openId,
+    isShown: () =>
+      at === 0 ? opened === 0 : id !== null && key === openKey && id === openId,
     keeps: () =>
       at === 0 || (id !== null && !ended.has(id) && incarnationOf(key) === id),
     name: (name) => `${name}${own}`,

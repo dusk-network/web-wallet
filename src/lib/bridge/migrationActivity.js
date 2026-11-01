@@ -15,7 +15,11 @@ import { routeForAccount } from "@dusk-network/networks";
 import { writable } from "svelte/store";
 
 import { walletDataScope } from "$lib/wallets/dataNames";
-import { changeRecords } from "$lib/wallets/walletRecords";
+import {
+  changeRecords,
+  openRecords,
+  walletRecords,
+} from "$lib/wallets/walletRecords";
 
 import { cardRoutes } from "./cardRoutes";
 
@@ -100,16 +104,21 @@ const kept = writable(/** @type {KeptMigration[]} */ ([]));
 /** The migrations this browser sent, newest first. */
 export const keptMigrations = { subscribe: kept.subscribe };
 
-/** A wallet's migrations ($lib/wallets/walletRecords). */
-const migrations = { name: KEY, read: readKept, store: kept };
+/** A wallet's migrations, by hash ($lib/wallets/walletRecords). */
+const migrations = walletRecords({
+  keyOf: (/** @type {KeptMigration} */ item) => item.hash,
+  name: KEY,
+  read: readKept,
+  store: kept,
+});
 
 /**
  * Reads the migrations the open wallet kept, and what's known of its
  * transfers out, as it opens.
  */
 export function hydrateMigrations() {
-  kept.set(readKept());
-  arrivals.set(readArrivals());
+  openRecords(migrations);
+  openRecords(arrivalRecords);
 }
 
 /**
@@ -291,6 +300,13 @@ const arrivals = writable(/** @type {Record<string, ArrivalSearch>} */ ({}));
 /** What's known of each transfer out's arrival. */
 export const transferArrivals = { subscribe: arrivals.subscribe };
 
+/** A wallet's arrivals, by hash ($lib/wallets/walletRecords). */
+const arrivalRecords = walletRecords({
+  name: ARRIVALS_KEY,
+  read: readArrivals,
+  store: arrivals,
+});
+
 /**
  * Keeps what's known of a transfer out's arrival, for the wallet whose
  * search found it (`scope`, taken as the search began): its own, whichever
@@ -301,11 +317,10 @@ export const transferArrivals = { subscribe: arrivals.subscribe };
  * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
  */
 export function keepArrival(hash, found, scope = walletDataScope()) {
-  changeRecords(
-    { name: ARRIVALS_KEY, read: readArrivals, store: arrivals },
-    scope,
-    (known) => ({ ...known, [hash]: { ...known[hash], ...found } })
-  );
+  changeRecords(arrivalRecords, scope, (known) => ({
+    ...known,
+    [hash]: { ...known[hash], ...found },
+  }));
 }
 
 /**

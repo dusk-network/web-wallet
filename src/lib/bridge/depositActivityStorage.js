@@ -12,7 +12,12 @@ import {
 import { DEPOSIT_ACTIVITY_KEY as ACTIVITY_STORAGE_KEY } from "$lib/bridge/bridgeRecordKeys";
 import { isDepositTerminal } from "$lib/bridge/depositLifecycle";
 import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
-import { changeRecords, recordsOf } from "$lib/wallets/walletRecords";
+import {
+  changeRecords,
+  openRecords,
+  recordsOf,
+  walletRecords,
+} from "$lib/wallets/walletRecords";
 
 /**
  * Each wallet's deposits are kept under its own name: work that writes
@@ -157,12 +162,13 @@ function readStoredItems(scope) {
   }
 }
 
-/** A wallet's deposits ($lib/wallets/walletRecords). */
-const deposits = {
+/** A wallet's deposits, by transaction ($lib/wallets/walletRecords). */
+const deposits = walletRecords({
+  keyOf: (/** @type {DepositActivityItem} */ item) => item.transactionHash,
   name: ACTIVITY_STORAGE_KEY,
   read: readStoredItems,
   store: activity,
-};
+});
 
 /**
  * A wallet's deposits: the open one's as shown, another's as kept.
@@ -194,12 +200,7 @@ export function forgetDepositActivity() {
 }
 
 /** Reads the open wallet's deposits, as it opens. */
-export function hydrateDepositActivity() {
-  const items = readStoredItems(walletDataScope());
-
-  activity.set(items);
-  return items;
-}
+export const hydrateDepositActivity = () => openRecords(deposits);
 
 /**
  * @param {string} transactionHash

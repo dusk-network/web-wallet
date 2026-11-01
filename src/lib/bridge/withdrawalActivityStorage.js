@@ -16,7 +16,12 @@ import {
   LAST_WITHDRAWAL_KEY as LEGACY_LAST_WITHDRAWAL_KEY,
 } from "$lib/bridge/bridgeRecordKeys";
 import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
-import { changeRecords, recordsOf } from "$lib/wallets/walletRecords";
+import {
+  changeRecords,
+  openRecords,
+  recordsOf,
+  walletRecords,
+} from "$lib/wallets/walletRecords";
 
 /**
  * Each wallet's withdrawals are kept under its own name: work that writes
@@ -139,12 +144,13 @@ function readStoredItems(scope) {
   }
 }
 
-/** A wallet's withdrawals ($lib/wallets/walletRecords). */
-const withdrawals = {
+/** A wallet's withdrawals, by transaction ($lib/wallets/walletRecords). */
+const withdrawals = walletRecords({
+  keyOf: (/** @type {WithdrawalActivityItem} */ item) => item.transactionHash,
   name: ACTIVITY_STORAGE_KEY,
   read: readStoredItems,
   store: activity,
-};
+});
 
 /**
  * A wallet's withdrawals: the open one's as shown, another's as kept.
@@ -170,12 +176,7 @@ export function forgetWithdrawalActivity() {
 }
 
 /** Reads the open wallet's withdrawals, as it opens. */
-export function hydrateWithdrawalActivity() {
-  const items = readStoredItems(walletDataScope());
-
-  activity.set(items);
-  return items;
-}
+export const hydrateWithdrawalActivity = () => openRecords(withdrawals);
 
 /**
  * The withdrawals a wallet keeps: the open one's by default, as shown.
