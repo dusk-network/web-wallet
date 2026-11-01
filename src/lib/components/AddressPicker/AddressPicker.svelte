@@ -281,8 +281,13 @@
           >
         {/if}
         {#if walletName}
+          <!-- Where the number isn't beside it, a long wallet's name is cut
+            short, never the profile. -->
           <span class="address-picker__compact-wallet" title={walletLine}
-            >{walletLine}</span
+            ><span class="address-picker__pill-wallet">{walletName}</span>
+            <span class="address-picker__pill-profile"
+              >· {displayedAddress}</span
+            ></span
           >
         {/if}
       </span>

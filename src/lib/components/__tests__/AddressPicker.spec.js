@@ -6,6 +6,7 @@ import { Profile } from "@dusk/w3sper";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { shortenAddress } from "$lib/dusk/string";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
+import readStyleRules from "$lib/dusk/test-helpers/styleRules";
 
 import { AddressPicker } from "..";
 
@@ -1030,6 +1031,50 @@ describe("AddressPicker", () => {
       expect(
         without.queryByRole("menuitem", { name: "Add wallet" })
       ).toBeNull();
+    });
+
+    it("cuts a long wallet's name short in the narrow top bar's pill, never the profile its number stands for", () => {
+      const name = "Savings for the shop and house";
+      const [open, other] = walletsOf(2);
+      const { container } = render(AddressPicker, {
+        ...props,
+        compact: true,
+        wallets: [{ ...open, label: name }, other],
+      });
+      // Below 420 px, where the pill shows no number (TopBar.spec.js).
+      const narrow = readStyleRules(
+        "../AddressPicker/AddressPicker.css",
+        import.meta.url
+      ).filter(
+        (rule) =>
+          Number(/max-width: ([\d.]+)rem/.exec(rule.media)?.[1] ?? 0) * 16 >=
+          419.8
+      );
+      const ruleOf = (/** @type {string} */ part) =>
+        narrow.find(
+          (rule) =>
+            rule.selector.includes(".address-picker__trigger--wallet") &&
+            rule.selector.endsWith(part)
+        )?.declarations;
+
+      expect(
+        getAsHTMLElement(container, ".address-picker__compact-wallet")
+      ).toHaveTextContent(`${name} · Profile 1`);
+      expect(
+        getAsHTMLElement(container, ".address-picker__pill-wallet")
+      ).toHaveTextContent(new RegExp(`^${name}$`));
+      expect(
+        getAsHTMLElement(container, ".address-picker__pill-profile")
+      ).toHaveTextContent(/^· Profile 1$/);
+      // The line in a row: the name gives way, with an ellipsis; the profile
+      // keeps its width.
+      expect(ruleOf(".address-picker__compact-wallet")?.display).toBe("flex");
+      expect(ruleOf(".address-picker__pill-wallet")).toMatchObject({
+        "min-width": "0",
+        overflow: "hidden",
+        "text-overflow": "ellipsis",
+      });
+      expect(ruleOf(".address-picker__pill-profile")?.flex).toBe("none");
     });
 
     it("shows the open wallet's name under the profile's in the top bar's pill with more than one wallet, and says it", async () => {

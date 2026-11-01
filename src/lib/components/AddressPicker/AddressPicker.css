@@ -450,8 +450,25 @@
   .address-picker--compact
     .address-picker__trigger--wallet
     .address-picker__compact-wallet {
+    display: flex;
+    gap: 0.25em;
     color: var(--calm-text);
     font-size: 0.875rem;
     line-height: 1.2;
+  }
+
+  /* With no number beside it, a long wallet's name gives way, never the profile. */
+  .address-picker--compact
+    .address-picker__trigger--wallet
+    .address-picker__pill-wallet {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .address-picker--compact
+    .address-picker__trigger--wallet
+    .address-picker__pill-profile {
+    flex: none;
   }
 }
