@@ -17,7 +17,7 @@
   import {
     depositActivityStore,
     followHistoryDeposits,
-    hydrateDepositActivity,
+    rememberedDeposits,
     resumeDepositTracking,
   } from "$lib/bridge/depositActivity";
   import { DEPOSIT, WITHDRAWAL, routeTime } from "$lib/bridge/routeTimes";
@@ -33,13 +33,13 @@
   } from "$lib/bridge/withdrawals";
   import {
     historyWithdrawals,
-    hydrateWithdrawalActivity,
     loadWithdrawalActivity,
     mergeWithdrawalActivity,
     recordWithdrawalSubmission,
     refreshWithdrawalTransaction,
     rememberHistoryWithdrawals,
     rememberWithdrawalTransaction,
+    rememberedWithdrawals,
     resumeWithdrawalTracking,
     trackWithdrawalTransaction,
     withdrawalActivityStore,
@@ -49,7 +49,6 @@
 
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import {
-    hydrateMigrations,
     keptMigrations,
     transferArrivals,
   } from "$lib/bridge/migrationActivity";
@@ -634,10 +633,9 @@
 
   onMount(() => {
     void bridgeTimes.load();
-    rememberedActivity = hydrateWithdrawalActivity();
+    rememberedActivity = rememberedWithdrawals();
     rebuildActivity();
-    keptDeposits = hydrateDepositActivity();
-    hydrateMigrations();
+    keptDeposits = rememberedDeposits();
 
     const unsubscribeDeposits = depositActivityStore.subscribe((items) => {
       keptDeposits = items;

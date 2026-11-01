@@ -12,6 +12,10 @@ import { get } from "svelte/store";
 import { ProfileGenerator } from "@dusk/w3sper";
 
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
+import {
+  keptMigrations,
+  rememberMigration,
+} from "$lib/bridge/migrationActivity";
 import * as navigation from "$lib/navigation";
 import * as wallet from "$lib/wallet";
 import { settingsStore, walletStore } from "$lib/stores";
@@ -22,6 +26,7 @@ import {
 } from "$lib/wallet";
 import vault from "$lib/vault";
 import fixtures from "$lib/vault/__tests__/fixtures/login-v1.json";
+import { useWalletData } from "$lib/wallets/walletData";
 
 import UnlockWallet from "../+page.svelte";
 
@@ -228,6 +233,39 @@ describe("Unlock Wallet", async () => {
       expect(initSpy).toHaveBeenCalledWith(expect.any(ProfileGenerator));
       expect(gotoSpy).toHaveBeenCalledTimes(1);
       expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+    });
+
+    it("should keep what the wallet records, though kept from before wallets had incarnations, once its phrase unlocks it", async () => {
+      const migration = {
+        amountLux: "1",
+        createdAt: 1,
+        hash: "0xab",
+        recipient: "r",
+        routeId: "bsc-to-dusk",
+        sender: "s",
+      };
+
+      settingsStore.update(setUserId(userId));
+      localStorage.removeItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-incarnation:`);
+
+      // Its data opens as `init` opens it.
+      initSpy.mockImplementationOnce(async () => useWalletData(""));
+
+      const { container } = render(UnlockWallet, {});
+      const form = getAsHTMLElement(container, "form");
+
+      await fireEvent.input(getTextInput(container), {
+        target: { value: mnemonic },
+      });
+      await fireEvent.submit(form, { currentTarget: form });
+      await waitForGoto();
+      rememberMigration(migration);
+
+      expect(get(keptMigrations)).toMatchObject([migration]);
+      expect(
+        stored(`${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`)
+      ).toMatchObject([migration]);
+      localStorage.removeItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`);
     });
 
     it("should trim and lower case the entered mnemonic before validating it", async () => {

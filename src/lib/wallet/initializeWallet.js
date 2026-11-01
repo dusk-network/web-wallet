@@ -4,6 +4,7 @@ import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
 import { keepOnlyContactsOf } from "$lib/contacts";
 import { settingsStore, walletStore } from "$lib/stores";
 import vault from "$lib/vault";
+import { startIncarnation } from "$lib/wallets/dataNames";
 import { startDirectory } from "$lib/wallets/directory";
 import { forgetOtherWalletsData } from "$lib/wallets/walletData";
 
@@ -46,6 +47,8 @@ async function initializeWallet(mnemonic, syncFrom) {
   const [wallet] = vault.list() ?? [];
   const key = wallet?.id ?? "";
 
+  // Its incarnation first: where it can't be kept, it isn't set up.
+  startIncarnation(key);
   await startDirectory(key);
 
   walletStore.clearLocalDataAndInit(profileGenerator, syncFrom, { key, n: 1 });

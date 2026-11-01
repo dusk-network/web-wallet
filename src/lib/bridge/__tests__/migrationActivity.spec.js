@@ -335,7 +335,16 @@ describe("where storage is full", () => {
     );
   }
 
-  it("a migration stays on screen, and is marked as its receipt says", () => {
+  /** A wallet open, set up first. */
+  async function openWallet() {
+    const names = await import("$lib/wallets/dataNames");
+
+    names.startIncarnation("k");
+    names.useWalletDataSuffix("", "k");
+  }
+
+  it("a migration stays on screen, and is marked as its receipt says", async () => {
+    await openWallet();
     refuse(`${APP}-migrations`);
     remember();
 
@@ -348,10 +357,11 @@ describe("where storage is full", () => {
     ]);
   });
 
-  it("what's known of a transfer out's arrival stays as the next one's is kept", () => {
+  it("what's known of a transfer out's arrival stays as the next one's is kept", async () => {
     const first = "aa".repeat(32);
     const next = "bb".repeat(32);
 
+    await openWallet();
     refuse(`${APP}-transfer-arrivals`);
     activity.keepArrival(first, { scan: /** @type {any} */ ({ from: 1 }) });
     activity.keepArrival(next, { arrivedAt: 1, payout: "cc".repeat(32) });

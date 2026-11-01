@@ -1,3 +1,5 @@
+import { writable } from "svelte/store";
+
 import { duskEvm } from "$lib/web3/walletConnection";
 
 import {
@@ -13,21 +15,13 @@ import {
   WITHDRAWAL_ACTIVITY_KEY as ACTIVITY_STORAGE_KEY,
   LAST_WITHDRAWAL_KEY as LEGACY_LAST_WITHDRAWAL_KEY,
 } from "$lib/bridge/bridgeRecordKeys";
-import {
-  walletDataName,
-  walletDataScope,
-  writesFor,
-} from "$lib/wallets/dataNames";
-import {
-  recordsInMemory,
-  storeRecords,
-  withRefused,
-} from "$lib/wallets/recordsInMemory";
+import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
+import { changeRecords, recordsOf } from "$lib/wallets/walletRecords";
 
 /**
  * Each wallet's withdrawals are kept under its own name: work that writes
  * them after it waits takes its wallet's as it begins (`scope`), and keeps
- * them there whichever wallet is open by then.
+ * them there whichever wallet is open by then ($lib/wallets/walletRecords).
  *
  * @typedef {import("$lib/wallets/dataNames").WalletDataScope} WalletDataScope
  */
@@ -47,7 +41,7 @@ const VALID_STAGES = new Set([
 
 /** @typedef {import("./withdrawalActivityValues").WithdrawalActivityItem} WithdrawalActivityItem */
 
-const activity = recordsInMemory(/** @type {WithdrawalActivityItem[]} */ ([]));
+const activity = writable(/** @type {WithdrawalActivityItem[]} */ ([]));
 
 export const withdrawalActivityStore = { subscribe: activity.subscribe };
 
@@ -145,49 +139,50 @@ function readStoredItems(scope) {
   }
 }
 
+/** A wallet's withdrawals ($lib/wallets/walletRecords). */
+const withdrawals = {
+  name: ACTIVITY_STORAGE_KEY,
+  read: readStoredItems,
+  store: activity,
+};
+
 /**
- * A wallet's withdrawals: as storage keeps them, with those it refused.
+ * A wallet's withdrawals: the open one's as shown, another's as kept.
  *
  * @param {WalletDataScope} [scope]
  * @returns {WithdrawalActivityItem[]}
  */
 const readRememberedItems = (scope = walletDataScope()) =>
-  withRefused(
-    readStoredItems(scope),
-    activity.refusedOf(scope),
-    ({ transactionHash }) => transactionHash
-  );
+  recordsOf(withdrawals, scope);
 
 /**
- * Keeps them in storage and in this tab, shown while their wallet is the
- * one open.
- *
  * @param {WithdrawalActivityItem[]} items
  * @param {WalletDataScope} scope
  */
-function writeRememberedItems(items, scope) {
-  const stored = items.slice(0, MAX_STORED_ITEMS);
-
-  activity.keep(
-    stored,
-    scope,
-    storeRecords(scope.name(ACTIVITY_STORAGE_KEY), stored)
-  );
-}
+const writeRememberedItems = (items, scope) =>
+  changeRecords(withdrawals, scope, () => items.slice(0, MAX_STORED_ITEMS));
 
 /** Forgets every withdrawal kept here, as Reset does. */
 export function forgetWithdrawalActivity() {
   storage()?.removeItem(walletDataName(ACTIVITY_STORAGE_KEY));
   storage()?.removeItem(walletDataName(LEGACY_LAST_WITHDRAWAL_KEY));
-  activity.clear();
+  activity.set([]);
 }
 
+/** Reads the open wallet's withdrawals, as it opens. */
 export function hydrateWithdrawalActivity() {
-  const items = readRememberedItems();
+  const items = readStoredItems(walletDataScope());
 
-  activity.show(items);
+  activity.set(items);
   return items;
 }
+
+/**
+ * The withdrawals a wallet keeps: the open one's by default, as shown.
+ *
+ * @param {WalletDataScope} [scope]
+ */
+export const rememberedWithdrawals = (scope) => readRememberedItems(scope);
 
 /**
  * Whom a withdrawal pays on Dusk: as now said, else as said before.
@@ -266,7 +261,7 @@ export function rememberWithdrawalTransaction(
 ) {
   const hash = normalizedTxHash(transactionHash);
 
-  if (!hash || !writesFor(scope)) {
+  if (!hash || !scope.keeps()) {
     return null;
   }
 
@@ -300,7 +295,7 @@ export function updateWithdrawalTransaction(
 ) {
   const hash = normalizedTxHash(transactionHash);
 
-  if (!hash || !writesFor(scope)) return null;
+  if (!hash || !scope.keeps()) return null;
 
   const storedItems = readRememberedItems(scope);
   const existing = storedItems.find((item) => item.transactionHash === hash);

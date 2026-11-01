@@ -27,7 +27,7 @@ import {
 } from "$lib/dusk-domains/verifiedNames";
 import { walletCacheFor } from "$lib/wallet-cache";
 
-import { walletDataName } from "../dataNames";
+import { startIncarnation, walletDataName } from "../dataNames";
 import { setLegacyWallet, startDirectory } from "../directory";
 import {
   forgetEveryWalletData,
@@ -151,6 +151,9 @@ const NONE = {
 describe("Each wallet's data", () => {
   beforeEach(async () => {
     localStorage.clear();
+    // Both set up here, each with its incarnation.
+    startIncarnation(ONE.key);
+    startIncarnation(TWO.key);
     await startDirectory(ONE.key);
   });
 

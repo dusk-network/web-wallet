@@ -21,6 +21,7 @@ import getSeedFromMnemonic from "$lib/wallet/getSeedFromMnemonic";
 import profileGeneratorFrom from "$lib/wallet/profileGeneratorFrom";
 import { walletCacheFor } from "$lib/wallet-cache";
 
+import { keepIncarnation, startIncarnation } from "./dataNames";
 import {
   forgetDirectoryWallet,
   normalizeWalletName,
@@ -207,11 +208,27 @@ export async function unlockWallets(password, { signal } = {}) {
   await forgetWalletsGone(opened.map(({ key }) => key));
   await placeWallets(opened, fromV1);
 
+  // A wallet kept from before incarnations has its own from now on.
+  for (const { key } of opened) {
+    keepIncarnation(key);
+  }
+
   signal?.throwIfAborted();
   await walletStore.open(opened, {
     active: readDirectory().active || fromV1 || undefined,
   });
   await noteOpenWallet();
+}
+
+/**
+ * Opens the wallet without a password, its phrase this device's: one kept
+ * from before incarnations has its own from now on.
+ *
+ * @param {ProfileGenerator} profileGenerator
+ */
+export async function unlockWithoutPassword(profileGenerator) {
+  keepIncarnation("");
+  await walletStore.init(profileGenerator);
 }
 
 /**
@@ -255,8 +272,12 @@ export async function addWallet(mnemonic, password, { height, syncFrom } = {}) {
   const held = get(walletStore).wallets.map(({ key }) => key);
   const phrase = normalizedPhrase(mnemonic);
   const profileGenerator = await generatorOf(phrase);
+  // Its incarnation first: where it can't be kept, it isn't added.
   const wallet = await vault.add(phrase, password, {
-    beforeWrite: stillOpen,
+    beforeWrite: (id) => {
+      stillOpen();
+      startIncarnation(String(id));
+    },
     held,
   });
 

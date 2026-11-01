@@ -626,10 +626,11 @@ async function openForChange(password, held = []) {
 /**
  * What a change of the vault is asked with: the wallets the tab asking
  * holds, which the password must open, and `beforeWrite`, called right
- * before it writes, after everything it waited for: it throws to stop the
- * change, which then writes nothing.
+ * before it writes, after everything it waited for, with the vault ID of
+ * a wallet it adds: it throws to stop the change, which then writes
+ * nothing.
  *
- * @typedef {{ beforeWrite?: () => void, held?: string[] }} ChangeOptions
+ * @typedef {{ beforeWrite?: (id?: string) => void, held?: string[] }} ChangeOptions
  */
 
 const vault = {
@@ -669,7 +670,7 @@ const vault = {
         ) ?? freshSalt();
       const sealed = await seal(m, keys, like);
 
-      beforeWrite();
+      beforeWrite(wallet.id);
       await writeV2(
         {
           version: VAULT_VERSION,

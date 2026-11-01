@@ -8,6 +8,7 @@ import {
   getRememberedWithdrawalActivity,
   hydrateWithdrawalActivity,
   rememberWithdrawalTransaction,
+  rememberedWithdrawals,
   updateWithdrawalTransaction,
 } from "$lib/bridge/withdrawalActivityStorage";
 import {
@@ -33,6 +34,7 @@ export {
   getRememberedWithdrawalActivity,
   hydrateWithdrawalActivity,
   rememberWithdrawalTransaction,
+  rememberedWithdrawals,
 };
 export {
   recordWithdrawalSubmission,
@@ -155,7 +157,7 @@ const lookupOf = (scope, nonce) => `${scope.owner}\n${nonce}`;
  * @returns {Set<string | null>}
  */
 function keptWithdrawals(known, scope) {
-  const kept = hydrateWithdrawalActivity();
+  const kept = rememberedWithdrawals(scope);
 
   for (const { hash, recipient } of known) {
     const item = recipient

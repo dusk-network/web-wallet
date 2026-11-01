@@ -13,7 +13,15 @@ import { networks } from "@dusk-network/networks";
 
 import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
 import { finalizeWithdrawal, proveWithdrawal } from "$lib/bridge/withdrawals";
-import { keptMigrations } from "$lib/bridge/migrationActivity";
+import {
+  keptMigrations,
+  rememberMigration,
+} from "$lib/bridge/migrationActivity";
+import {
+  getRememberedWithdrawalTransaction,
+  rememberWithdrawalTransaction,
+  updateWithdrawalTransaction,
+} from "$lib/bridge/withdrawalActivityStorage";
 import {
   rememberHistoryWithdrawals,
   withdrawalActivityStore,
@@ -27,9 +35,9 @@ import { stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import { getSeedFromMnemonic, profileGeneratorFrom } from "$lib/wallet";
 
-import { suffixOf } from "../dataNames";
+import { suffixOf, walletDataScope } from "../dataNames";
 import { readDirectory } from "../directory";
-import { forgetEveryWalletData } from "../walletData";
+import { forgetEveryWalletData, forgetWalletData } from "../walletData";
 import { addWallet, switchToWallet, unlockWallets } from "..";
 
 // Each wallet's profiles their own accounts, as on the network.
@@ -384,5 +392,164 @@ describe("Work begun on one wallet", () => {
 
     expect(localStorage.getItem("dusk-evm:withdrawal-activity:v1")).toBeNull();
     expect(get(withdrawalActivityStore)).toEqual([]);
+  });
+
+  /**
+   * Storage refusing every write whose name `refuses` accepts, as a full
+   * one does.
+   *
+   * @param {(name: string) => boolean} refuses
+   */
+  function fill(refuses) {
+    const setItem = Storage.prototype.setItem;
+
+    return vi.spyOn(Storage.prototype, "setItem").mockImplementation(
+      /**
+       * @this {Storage}
+       * @param {string} name
+       * @param {string} value
+       */
+      function (name, value) {
+        if (refuses(name)) {
+          throw new DOMException(
+            "The quota has been exceeded.",
+            "QuotaExceededError"
+          );
+        }
+
+        return setItem.call(this, name, value);
+      }
+    );
+  }
+
+  /** The withdrawals kept under every name, for any wallet. */
+  const withdrawalsKept = () =>
+    Object.keys(localStorage).filter((name) =>
+      name.startsWith("dusk-evm:withdrawal-activity:v1")
+    );
+
+  it("keeps on screen a submission storage refused for a withdrawal it kept before, as it's read again", async () => {
+    await twoWallets();
+    rememberWithdrawalTransaction(TX, { account: OWNER });
+    updateWithdrawalTransaction(TX, { stage: "ready_to_prove" });
+
+    const full = fill((name) => name.startsWith("dusk-evm:withdrawal"));
+
+    updateWithdrawalTransaction(TX, {
+      pendingAction: "prove",
+      pendingTransactionHash: "aa".repeat(32),
+      stage: "prove_submitted",
+    });
+
+    expect(getRememberedWithdrawalTransaction(TX)).toMatchObject({
+      pendingTransactionHash: "aa".repeat(32),
+      stage: "prove_submitted",
+    });
+    expect(get(withdrawalActivityStore)).toMatchObject([
+      { stage: "prove_submitted" },
+    ]);
+    full.mockRestore();
+  });
+
+  it("brings back nothing a lookup begun before a reset with storage full finds, once the reset freed it", async () => {
+    await twoWallets();
+
+    const looking = Promise.withResolvers();
+
+    explorer.findWithdrawalsByNonce.mockReturnValueOnce(looking.promise);
+
+    const finding = rememberHistoryWithdrawals([
+      { hash: WITHDRAWN, nonce: 7n, recipient: null },
+    ]);
+    const full = fill(() => true);
+
+    // Reset, as Settings does it, with storage full; it frees storage.
+    await forgetEveryWalletData();
+    forgetBridgeRecords({ times: true });
+    await vault.clear();
+    walletStore.reset();
+    full.mockRestore();
+
+    looking.resolve(
+      new Map([
+        [
+          "7",
+          { account: OWNER, amountWei: 1n, createdAt: 1, transactionHash: TX },
+        ],
+      ])
+    );
+    await finding;
+
+    expect(withdrawalsKept()).toEqual([]);
+    expect(get(withdrawalActivityStore)).toEqual([]);
+  });
+
+  it("lets no late write land for either wallet as one tab resets while another removes one", async () => {
+    const { first, second } = await twoWallets();
+    // Work begun on each wallet, which writes later.
+    const secondScope = walletDataScope();
+
+    await switchToWallet(first.id);
+
+    const firstScope = walletDataScope();
+    const migration = {
+      amountLux: "1",
+      createdAt: 1,
+      hash: MIGRATED,
+      recipient: "r",
+      routeId: "bsc-to-dusk",
+      sender: OWNER,
+    };
+
+    // The other tab: the same storage, its own memory.
+    vi.resetModules();
+
+    const otherTab = await import("../walletData");
+    const setItem = Storage.prototype.setItem;
+    const removeItem = Storage.prototype.removeItem;
+    let resetThere = false;
+
+    // The other tab resets as this one ends a wallet's time here: after it
+    // read what it reads, before it writes.
+    const resetFirst = (/** @type {string} */ name) => {
+      if (!resetThere && /-(wallet-marks|incarnation:)/.test(name)) {
+        resetThere = true;
+        void otherTab.forgetEveryWalletData();
+      }
+    };
+
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(
+      /**
+       * @this {Storage}
+       * @param {string} name
+       * @param {string} value
+       */
+      function (name, value) {
+        resetFirst(name);
+
+        return setItem.call(this, name, value);
+      }
+    );
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(
+      /**
+       * @this {Storage}
+       * @param {string} name
+       */
+      function (name) {
+        resetFirst(name);
+
+        return removeItem.call(this, name);
+      }
+    );
+
+    await forgetWalletData(first.id, { accounts: [], addresses: [] });
+
+    expect(resetThere).toBe(true);
+
+    rememberMigration(migration, firstScope);
+    rememberMigration(migration, secondScope);
+
+    expect(migrationsOf(first.id)).toEqual([]);
+    expect(migrationsOf(second.id)).toEqual([]);
   });
 });

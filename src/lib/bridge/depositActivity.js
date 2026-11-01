@@ -12,7 +12,6 @@ import {
   depositActivityStore,
   getRememberedDepositActivity,
   getRememberedDepositTransaction,
-  hydrateDepositActivity,
   pendingDepositAmountLux,
   rememberDepositTransaction,
   rememberedDeposits,
@@ -57,9 +56,9 @@ class DuskDepositExecutionError extends Error {}
 export {
   depositActivityStore,
   getRememberedDepositActivity,
-  hydrateDepositActivity,
   pendingDepositAmountLux,
   rememberDepositTransaction,
+  rememberedDeposits,
 };
 
 function trackingClients() {
@@ -336,9 +335,7 @@ function depositsOf(waiting, depositOf) {
  */
 async function readDuskEvm(scope) {
   const net = followedNetwork();
-  const kept = scope.isOpen()
-    ? hydrateDepositActivity()
-    : rememberedDeposits(scope);
+  const kept = rememberedDeposits(scope);
   const waiting = kept.filter(isOnItsWay);
 
   if (!net || !waiting.length) return;
@@ -638,7 +635,7 @@ function followDeposit(item, scope) {
  */
 export function resumeDepositTracking(account) {
   const scope = walletDataScope();
-  const kept = hydrateDepositActivity().filter(
+  const kept = rememberedDeposits().filter(
     (item) => item.account === null || item.account === account?.toLowerCase()
   );
 
@@ -695,7 +692,7 @@ function keepHistoryDeposit(row, kept) {
 export function followHistoryDeposits(rows) {
   const scope = walletDataScope();
   const kept = new Map(
-    hydrateDepositActivity().map((item) => [item.transactionHash, item])
+    rememberedDeposits().map((item) => [item.transactionHash, item])
   );
   /** @type {Set<string>} */
   const hashes = new Set();

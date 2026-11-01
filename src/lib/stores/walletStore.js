@@ -700,7 +700,7 @@ function reset() {
   resetSession();
 
   // No wallet open: the names of before, until one opens.
-  useWalletDataSuffix("");
+  useWalletDataSuffix("", "", false);
   set(initialState);
 }
 

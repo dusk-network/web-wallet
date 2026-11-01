@@ -4,70 +4,110 @@
  * whose data is kept as it was before this device kept more than one
  * wallet (the directory's `legacy`) has none; every other wallet has
  * ":<its vault ID>".
- */
-
-/**
- * Each wallet's time on this device, as marks that change as it ends: every
- * wallet's as a reset, or a wallet set up in place of every one, ends them,
- * and one wallet's as it's removed. A wallet made again with the same vault
- * ID, or the same names, is another time of it. Kept beside the wallets'
- * data, in every tab: `{ all?: string, wallets?: Record<string, string> }`.
- */
-const MARKS = `${CONFIG.LOCAL_STORAGE_APP_KEY}-wallet-marks`;
-
-/** @returns {{ all?: string, wallets?: Record<string, string> }} */
-function readMarks() {
-  try {
-    const marks = JSON.parse(localStorage.getItem(MARKS) ?? "{}");
-
-    return marks && typeof marks === "object" ? marks : {};
-  } catch {
-    return {};
-  }
-}
-
-/**
- * The time on this device of the wallet `key` is: "" for one without a
- * password.
  *
- * @param {string} key
+ * Each wallet, one without a password too, has an incarnation here: a
+ * random ID under a name of its own (`<app>-incarnation:<vault ID>`),
+ * written as it's set up or added, before anything else of it, and only
+ * removed: by its removal, and by a reset. Work that writes a wallet's
+ * records takes its incarnation as it begins, and writes only while it's
+ * still there: a wallet removed since, or made again, gets none of it.
  */
-const timeOf = (key) => {
-  const { all = "", wallets = {} } = readMarks();
 
-  return `${all} ${wallets[key] ?? ""}`;
-};
+const INCARNATION = `${CONFIG.LOCAL_STORAGE_APP_KEY}-incarnation:`;
 
-/** @param {{ all?: string, wallets?: Record<string, string> }} marks */
-function writeMarks(marks) {
+/** The incarnations this tab ended, gone from them at once. */
+const ended = new Set();
+
+/**
+ * A wallet's incarnation here: null for none.
+ *
+ * @param {string} key Its vault ID: "" for a wallet without a password
+ * @returns {string | null}
+ */
+export function incarnationOf(key) {
   try {
-    localStorage.setItem(MARKS, JSON.stringify(marks));
+    return localStorage.getItem(`${INCARNATION}${key}`);
   } catch {
-    // Unwritable storage keeps nothing a late write would add to either.
+    return null;
   }
 }
 
-/** Ends every wallet's time here: a reset, or a wallet set up in place. */
-export const endEveryWallet = () => writeMarks({ all: crypto.randomUUID() });
+/**
+ * Starts a wallet's incarnation, as it's set up or added: throws where it
+ * can't be kept, and then it isn't set up.
+ *
+ * @param {string} key Its vault ID: "" for a wallet without a password
+ */
+export function startIncarnation(key) {
+  localStorage.setItem(`${INCARNATION}${key}`, crypto.randomUUID());
+}
 
 /**
- * Ends one wallet's time here, as it's removed.
+ * Starts the incarnation of a wallet the vault holds that has none, as one
+ * kept before wallets had them: where storage allows it.
  *
  * @param {string} key Its vault ID
  */
-export function endWallet(key) {
-  const marks = readMarks();
+export function keepIncarnation(key) {
+  if (incarnationOf(key) === null) {
+    try {
+      startIncarnation(key);
+    } catch {
+      // Nothing of it is written in this time, as storage is full anyway.
+    }
+  }
+}
 
-  writeMarks({
-    ...marks,
-    wallets: { ...marks.wallets, [key]: crypto.randomUUID() },
-  });
+/**
+ * Ends the incarnation kept under `name`: in this tab at once, then here.
+ *
+ * @param {string} name
+ */
+function endNamed(name) {
+  try {
+    const id = localStorage.getItem(name);
+
+    if (id !== null) {
+      ended.add(id);
+    }
+
+    localStorage.removeItem(name);
+  } catch {
+    // Nothing is kept where storage can't be read.
+  }
+}
+
+/**
+ * Ends a wallet's incarnation, as it's removed.
+ *
+ * @param {string} key Its vault ID
+ */
+export const endIncarnation = (key) => endNamed(`${INCARNATION}${key}`);
+
+/** Ends every wallet's incarnation, as a reset does. */
+export function endEveryIncarnation() {
+  let names = /** @type {string[]} */ ([]);
+
+  try {
+    names = Object.keys(localStorage);
+  } catch {
+    // Nothing is kept where storage can't be read.
+  }
+
+  for (const name of names) {
+    if (name.startsWith(INCARNATION)) {
+      endNamed(name);
+    }
+  }
 }
 
 let suffix = "";
 
 /** The open wallet's vault ID: "" for none, or one without a password. */
 let openKey = "";
+
+/** The open wallet's incarnation as it opened: null with none open. */
+let openId = /** @type {string | null} */ (null);
 
 /** How many times a wallet opened here, or every one locked. */
 let opened = 0;
@@ -86,14 +126,16 @@ export const suffixOf = (key, legacy) =>
 
 /**
  * Makes the names the open wallet's, as it opens, or none's as every wallet
- * locks.
+ * locks (`open` false).
  *
  * @param {string} next Its ending (suffixOf)
  * @param {string} [key] Its vault ID
+ * @param {boolean} [open]
  */
-export function useWalletDataSuffix(next, key = "") {
+export function useWalletDataSuffix(next, key = "", open = true) {
   suffix = next;
   openKey = key;
+  openId = open ? incarnationOf(key) : null;
   opened += 1;
 }
 
@@ -110,36 +152,31 @@ export const walletDataName = (name) => `${name}${suffix}`;
  * - `name` gives that wallet's names, whichever wallet is open later;
  * - `isOpen` says whether it's still open as it was, since no other opened
  *   and nothing locked: what the work goes on doing;
- * - `isShown` says whether that wallet is the one open now, opened again
- *   since or not: whose records the screens show;
- * - `keeps` says whether that wallet is still here in the same time it was,
- *   which neither a reset nor its removal ended: a wallet without a
- *   password too;
- * - `owner` names that wallet in that time, as records kept in memory are.
+ * - `isShown` says whether that wallet, in the same incarnation, is the one
+ *   open in this tab now: whose records the screens show, kept in memory;
+ * - `keeps` says whether its incarnation is still here: a write lands only
+ *   then;
+ * - `owner` names that wallet in that incarnation;
+ * - `before` says it was taken before any wallet opened in this tab, when
+ *   the names of before are the only ones, written as they always were.
  *
- * @typedef {{ id: number, isOpen: () => boolean, isShown: () => boolean, keeps: () => boolean, name: (name: string) => string, owner: string }} WalletDataScope
+ * @typedef {{ before: boolean, id: number, isOpen: () => boolean, isShown: () => boolean, keeps: () => boolean, name: (name: string) => string, owner: string }} WalletDataScope
  * @returns {WalletDataScope}
  */
 export function walletDataScope() {
   const at = opened;
   const own = suffix;
   const key = openKey;
-  const time = timeOf(key);
+  const id = openId;
 
   return {
+    before: at === 0,
     id: at,
     isOpen: () => at === opened,
-    isShown: () => key === openKey && own === suffix,
-    keeps: () => timeOf(key) === time,
+    isShown: () => at > 0 && id !== null && key === openKey && id === openId,
+    keeps: () =>
+      at === 0 || (id !== null && !ended.has(id) && incarnationOf(key) === id),
     name: (name) => `${name}${own}`,
-    owner: `${key}\n${own}\n${time}`,
+    owner: `${key}\n${id}`,
   };
 }
-
-/**
- * Whether a record for a scope's wallet is written now: only while that
- * wallet is still here in the time the work began in.
- *
- * @param {WalletDataScope} scope
- */
-export const writesFor = (scope) => scope.keeps();

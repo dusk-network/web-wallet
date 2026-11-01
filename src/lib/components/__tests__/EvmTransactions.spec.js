@@ -267,7 +267,7 @@ vi.mock("$lib/bridge/routeTracking", async (importOriginal) => ({
 vi.mock("$lib/bridge/depositActivity", () => ({
   depositActivityStore: mocks.depositActivityStore,
   followHistoryDeposits: mocks.followHistoryDeposits,
-  hydrateDepositActivity: mocks.hydrateDepositActivity,
+  rememberedDeposits: mocks.hydrateDepositActivity,
   resumeDepositTracking: mocks.resumeDepositTracking,
 }));
 
@@ -289,11 +289,11 @@ vi.mock("$lib/bridge/withdrawals", () => ({
 
 vi.mock("$lib/bridge/withdrawalActivity", () => ({
   historyWithdrawals: mocks.historyWithdrawals,
-  hydrateWithdrawalActivity: mocks.hydrateWithdrawalActivity,
   loadWithdrawalActivity: mocks.loadWithdrawalActivity,
   mergeWithdrawalActivity: mocks.mergeWithdrawalActivity,
   recordWithdrawalSubmission: mocks.recordWithdrawalSubmission,
   refreshWithdrawalTransaction: mocks.refreshWithdrawalTransaction,
+  rememberedWithdrawals: mocks.hydrateWithdrawalActivity,
   rememberHistoryWithdrawals: mocks.rememberHistoryWithdrawals,
   rememberWithdrawalTransaction: mocks.rememberWithdrawalTransaction,
   resumeWithdrawalTracking: mocks.resumeWithdrawalTracking,
@@ -607,6 +607,8 @@ describe("EvmTransactions", () => {
         sent(`0x${"cc".repeat(32)}`, "an-earlier-wallets-account"),
       ])
     );
+    // Read as the wallet opens.
+    (await import("$lib/bridge/migrationActivity")).hydrateMigrations();
     mocks.setPageSearch(`?tx=0x${"bb".repeat(32)}`);
 
     const { findByRole, getAllByRole } = render(EvmTransactions, {

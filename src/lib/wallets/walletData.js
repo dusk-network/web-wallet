@@ -9,10 +9,12 @@
 
 import { forgetWalletActivity } from "$lib/activity/activityStore";
 import { forgetWalletBridgeRecords } from "$lib/bridge/bridgeRecordKeys";
+import { hydrateDepositActivity } from "$lib/bridge/depositActivityStorage";
 import {
   forgetWalletRouteTransfers,
   hydrateMigrations,
 } from "$lib/bridge/migrationActivity";
+import { hydrateWithdrawalActivity } from "$lib/bridge/withdrawalActivityStorage";
 import { forgetContactsOf } from "$lib/contacts";
 import { forgetVerifiedNamesOf } from "$lib/dusk-domains/verifiedNames";
 import {
@@ -22,8 +24,8 @@ import {
 } from "$lib/wallet-cache";
 
 import {
-  endEveryWallet,
-  endWallet,
+  endEveryIncarnation,
+  endIncarnation,
   suffixOf,
   useWalletDataSuffix,
 } from "./dataNames";
@@ -37,14 +39,17 @@ import { readDirectory } from "./directory";
 const suffixFor = (key) => suffixOf(key, readDirectory().legacy);
 
 /**
- * Makes the names the wallet `key`'s, as it opens, and reads its kept
- * migrations again. Its bridge transfers are read as Bridge shows them.
+ * Makes the names the wallet `key`'s, as it opens, and reads what it keeps
+ * of the bridge's transfers and migrations: from then on, while it's open,
+ * what the screens show of them is what's true of them, written from there.
  *
  * @param {string} key Its vault ID: "" for a wallet without a password
  */
 export function useWalletData(key) {
   useWalletDataSuffix(suffixFor(key), key);
   hydrateMigrations();
+  hydrateDepositActivity();
+  hydrateWithdrawalActivity();
 }
 
 /**
@@ -61,8 +66,9 @@ export function useWalletData(key) {
 export async function forgetWalletData(key, { accounts, addresses }) {
   const suffix = suffixFor(key);
 
-  // Its time here ends first: work begun before writes nothing more of it.
-  endWallet(key);
+  // Its incarnation ends first: work begun before writes nothing of it.
+  endIncarnation(key);
+
   const results = await Promise.allSettled([
     forgetWalletCache(suffix),
     Promise.resolve().then(() => {
@@ -88,8 +94,8 @@ export async function forgetWalletData(key, { accounts, addresses }) {
 export async function forgetOtherWalletsData() {
   const { legacy, wallets } = readDirectory();
 
-  // Every wallet's time here ends first: work begun before writes nothing.
-  endEveryWallet();
+  // Every wallet's incarnation ends first: work begun before writes nothing.
+  endEveryIncarnation();
 
   const suffixes = Object.keys(wallets)
     .map((key) => suffixOf(key, legacy))

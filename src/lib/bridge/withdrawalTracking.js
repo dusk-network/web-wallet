@@ -1,6 +1,6 @@
 import {
   getRememberedWithdrawalTransaction,
-  hydrateWithdrawalActivity,
+  rememberedWithdrawals,
   updateWithdrawalTransaction,
   withdrawalActivityStore,
 } from "$lib/bridge/withdrawalActivityStorage";
@@ -616,7 +616,7 @@ export function trackWithdrawalTransaction(
 /** @param {string | null | undefined} account */
 export function resumeWithdrawalTracking(account) {
   const normalizedAccount = account?.toLowerCase() ?? null;
-  const withdrawals = hydrateWithdrawalActivity()
+  const withdrawals = rememberedWithdrawals()
     .filter(
       (item) =>
         !isSettled(item) &&

@@ -27,7 +27,7 @@
     validateMnemonic,
   } from "$lib/wallet";
   import vault from "$lib/vault";
-  import { unlockWallets } from "$lib/wallets";
+  import { unlockWallets, unlockWithoutPassword } from "$lib/wallets";
 
   /** @type {(seed: Uint8Array<ArrayBuffer>) => Promise<ProfileGenerator>} */
   async function checkLocalData(seed) {
@@ -60,7 +60,7 @@
       .then(checkLocalData)
       .then(async (profileGenerator) => {
         controller.signal.throwIfAborted();
-        await walletStore.init(profileGenerator);
+        await unlockWithoutPassword(profileGenerator);
       });
 
   // One password unlocks every wallet in the vault; without one, the
