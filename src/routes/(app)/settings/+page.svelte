@@ -40,8 +40,22 @@
   import { clearDirectory } from "$lib/wallets/directory";
   import { forgetEveryWalletData } from "$lib/wallets/walletData";
 
-  const confirmResetWalletMessage =
-    "This removes every recovery phrase on this device. Confirm you've saved each one before resetting. Proceed?";
+  // With one wallet, as before there were more.
+  const RESET_ONE = {
+    body: "Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.",
+    button: "Reset Wallet",
+    confirm:
+      "Confirm you've saved your recovery phrase before resetting the wallet. Proceed?",
+    heading: "Reset wallet",
+  };
+
+  const RESET_ALL = {
+    body: "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+    button: "Reset all wallets",
+    confirm:
+      "This removes every wallet from this browser. Confirm you've saved each recovery phrase before resetting. Proceed?",
+    heading: "Reset all wallets",
+  };
 
   // Every wallet's data goes, and every phrase: the wallets' own first,
   // while the directory still lists them.
@@ -79,7 +93,7 @@
 
   function handleResetWalletClick() {
     // eslint-disable-next-line no-alert
-    if (confirm(confirmResetWalletMessage)) {
+    if (confirm(reset.confirm)) {
       resetError = null;
       resetWallet();
     }
@@ -108,6 +122,7 @@
   let resetError = null;
 
   $: ({ syncStatus, walletKey, wallets } = $walletStore);
+  $: reset = wallets.length > 1 ? RESET_ALL : RESET_ONE;
 
   // More than one wallet here: Lock and auto-lock lock them all, and say so.
   $: several = wallets.length > 1;
@@ -342,14 +357,9 @@
     </article>
     <hr />
     <article class="settings-group">
-      <SectionHead>Reset wallet</SectionHead>
+      <SectionHead>{reset.heading}</SectionHead>
       <div class="settings-group__multi-control-content">
-        <p>
-          Resetting removes every recovery phrase on this device, with the
-          cache, settings, contacts and connected EVM wallets, not your funds.
-          You'll need each recovery phrase to restore access, so make sure
-          they're stored securely.
-        </p>
+        <p>{reset.body}</p>
         <ErrorDetails
           error={resetError}
           summary="Couldn't reset the wallet. Try again."
@@ -362,7 +372,7 @@
           data-tooltip-text="Not allowed to reset while syncing"
           data-tooltip-type="warning"
           on:click={handleResetWalletClick}
-          text="Reset Wallet"
+          text={reset.button}
         />
       </div>
     </article>

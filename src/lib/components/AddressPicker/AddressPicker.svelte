@@ -50,9 +50,10 @@
   /**
    * The wallets here, each with its profiles under its name, as "Wallet 1"
    * and "Wallet 2": the open one's are `profiles`, another's its public
-   * accounts as it last showed them. None lists the profiles alone.
+   * accounts and shielded addresses as it last showed them, which copy as
+   * the open one's do. None lists the profiles alone.
    *
-   * @type {Array<{ accounts: string[], key: string, label: string, open: boolean }>}
+   * @type {Array<{ accounts: string[], addresses?: string[], key: string, label: string, open: boolean }>}
    */
   export let wallets = [];
 
@@ -223,6 +224,10 @@
   // With more than one wallet, the open one's name, under the profile's.
   $: walletName =
     wallets.length > 1 ? (wallets.find((w) => w.open)?.label ?? "") : "";
+
+  // The pill's small line: the wallet's name, and the profile its number
+  // stands for.
+  $: walletLine = walletName ? `${walletName} · ${displayedAddress}` : "";
 </script>
 
 {#if expanded && !compact}
@@ -274,8 +279,8 @@
           >
         {/if}
         {#if walletName}
-          <span class="address-picker__compact-wallet" title={walletName}
-            >{walletName}</span
+          <span class="address-picker__compact-wallet" title={walletLine}
+            >{walletLine}</span
           >
         {/if}
       </span>
@@ -336,7 +341,12 @@
                   {/each}
                 {:else}
                   {#each wallet.accounts.length ? wallet.accounts : ["", ""] as account, index (`${wallet.key}-${index}`)}
-                    {@render otherProfile(wallet.key, account, index)}
+                    {@render otherProfile(
+                      wallet.key,
+                      account,
+                      wallet.addresses?.[index] ?? "",
+                      index
+                    )}
                   {/each}
                 {/if}
               </ul>
@@ -379,6 +389,38 @@
   {/if}
 {/snippet}
 
+{#snippet copyButtons(
+  /** @type {string} */ account,
+  /** @type {string} */ address
+)}
+  <div class="address-picker__copy-buttons">
+    {#if account}
+      <button
+        aria-label="Copy public address"
+        class="address-picker__copy-button"
+        type="button"
+        title="Copy public address"
+        on:click={() => handleCopyAddress(account)}
+      >
+        <Icon path={mdiContentCopy} />
+        <span>Public</span>
+      </button>
+    {/if}
+    {#if address}
+      <button
+        aria-label="Copy shielded address"
+        class="address-picker__copy-button"
+        type="button"
+        title="Copy shielded address"
+        on:click={() => handleCopyAddress(address)}
+      >
+        <Icon path={mdiContentCopy} />
+        <span>Shielded</span>
+      </button>
+    {/if}
+  </div>
+{/snippet}
+
 {#snippet ownProfile(/** @type {Profile} */ profile)}
   {@const account = profile.account.toString()}
   <li
@@ -413,28 +455,7 @@
           {@render profileName(account, getKnownName(account))}
         {/await}
       </button>
-      <div class="address-picker__copy-buttons">
-        <button
-          aria-label="Copy public address"
-          class="address-picker__copy-button"
-          type="button"
-          title="Copy public address"
-          on:click={() => handleCopyAddress(account)}
-        >
-          <Icon path={mdiContentCopy} />
-          <span>Public</span>
-        </button>
-        <button
-          aria-label="Copy shielded address"
-          class="address-picker__copy-button"
-          type="button"
-          title="Copy shielded address"
-          on:click={() => handleCopyAddress(profile.address.toString())}
-        >
-          <Icon path={mdiContentCopy} />
-          <span>Shielded</span>
-        </button>
-      </div>
+      {@render copyButtons(account, profile.address.toString())}
     </div>
   </li>
 {/snippet}
@@ -442,6 +463,7 @@
 {#snippet otherProfile(
   /** @type {string} */ key,
   /** @type {string} */ account,
+  /** @type {string} */ address,
   /** @type {number} */ index
 )}
   <li class="address-picker__profile" role="none">
@@ -462,6 +484,8 @@
         <span class="address-picker__profile-header">Profile {index + 1}</span>
         {@render profileName(account, account ? getKnownName(account) : "")}
       </button>
+      <!-- What it last showed copies: nothing where nothing is known. -->
+      {@render copyButtons(account, address)}
     </div>
   </li>
 {/snippet}

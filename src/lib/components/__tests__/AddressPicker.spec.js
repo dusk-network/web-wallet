@@ -913,12 +913,16 @@ describe("AddressPicker", () => {
   describe("Wallets", () => {
     const OTHER_ACCOUNTS = ["other-account-one", "other-account-two"];
 
+    // The other wallet's second shielded address wasn't seen.
+    const OTHER_ADDRESSES = ["other-address-one"];
+
     /** @param {number} count */
     const walletsOf = (count) =>
       [
         { accounts: [], key: "k1", label: "Wallet 1", open: true },
         {
           accounts: OTHER_ACCOUNTS,
+          addresses: OTHER_ADDRESSES,
           key: "k2",
           label: "Savings",
           open: false,
@@ -946,7 +950,7 @@ describe("AddressPicker", () => {
       );
     });
 
-    it("lists another wallet's profiles as it last showed them, and opens that wallet at the one picked", async () => {
+    it("lists another wallet's profiles as it last showed them, copies what they showed, and opens that wallet at the one picked", async () => {
       const switchWallet = vi.fn();
       const setCurrentProfile = vi.fn();
       const { container, getByRole } = render(AddressPicker, {
@@ -957,12 +961,36 @@ describe("AddressPicker", () => {
       await open(container);
 
       const other = getByRole("group", { name: "Savings" });
+      const [first, second] = other.querySelectorAll(
+        ".address-picker__profile"
+      );
 
       expect(other).toHaveTextContent(shortenAddress(OTHER_ACCOUNTS[1]));
-      // No copy buttons for a wallet that isn't open.
+
+      // Copied as they last showed: none where nothing was seen.
       expect(
-        other.querySelectorAll(".address-picker__copy-button")
-      ).toHaveLength(0);
+        Array.from(
+          first.querySelectorAll(".address-picker__copy-button"),
+          (button) => button.textContent?.trim()
+        )
+      ).toEqual(["Public", "Shielded"]);
+      expect(
+        Array.from(
+          second.querySelectorAll(".address-picker__copy-button"),
+          (button) => button.textContent?.trim()
+        )
+      ).toEqual(["Public"]);
+
+      await fireEvent.click(
+        getAsHTMLElement(
+          /** @type {HTMLElement} */ (first),
+          "[aria-label='Copy shielded address']"
+        )
+      );
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        OTHER_ADDRESSES[0]
+      );
 
       await fireEvent.click(
         /** @type {HTMLElement} */ (
@@ -1020,12 +1048,30 @@ describe("AddressPicker", () => {
 
       await rerender({ ...props, compact: true, wallets: walletsOf(2) });
 
+      // The small line says which profile the number is, as phones show
+      // no other.
       expect(
         getAsHTMLElement(container, ".address-picker__compact-wallet")
-      ).toHaveTextContent("Wallet 1");
+      ).toHaveTextContent(/^Wallet 1 · Profile 1$/);
       expect(
         getAsHTMLElement(container, ".address-picker__trigger")
       ).toHaveAccessibleName("Profile: Profile 1, Wallet 1");
+
+      await rerender({
+        ...props,
+        compact: true,
+        getName: () => Promise.resolve("alice.dusk"),
+        wallets: walletsOf(2),
+      });
+
+      await waitFor(() =>
+        expect(
+          getAsHTMLElement(container, ".address-picker__trigger")
+        ).toHaveAccessibleName("Profile: alice.dusk (Profile 1), Wallet 1")
+      );
+      expect(
+        getAsHTMLElement(container, ".address-picker__compact-wallet")
+      ).toHaveTextContent(/^Wallet 1 · Profile 1$/);
     });
   });
 });

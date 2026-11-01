@@ -3,14 +3,15 @@
 <script>
   /**
    * Remove wallet, as Settings chose it (`?wallet=`, its vault ID): what
-   * goes, and the password. The other wallets stay as they are. A wallet
-   * that went meanwhile, here or in another tab, or the only one, is for
-   * Settings.
+   * goes, a box ticked to say its recovery phrase is at hand, and the
+   * password; Remove waits for both. The other wallets stay as they are. A
+   * wallet that went meanwhile, here or in another tab, or the only one, is
+   * for Settings.
    */
   import { mdiArrowLeft, mdiCheck } from "@mdi/js";
   import { page } from "$app/stores";
 
-  import { Button } from "$lib/dusk/components";
+  import { Agreement, Button } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { shortenAddress } from "$lib/dusk/string";
   import { AppAnchorButton, UnlockPasswordField } from "$lib/components";
@@ -20,6 +21,9 @@
   import { removeWallet, walletDirectory, walletLabel } from "$lib/wallets";
 
   let password = "";
+
+  /** Whether the box saying its recovery phrase is at hand is ticked. */
+  let hasPhrase = false;
 
   let passwordError = "";
 
@@ -43,7 +47,7 @@
     passwordError = password ? "" : "Enter your password.";
     formError = "";
 
-    if (busy || !wallet || passwordError) {
+    if (busy || !wallet || !hasPhrase || passwordError) {
       return;
     }
 
@@ -98,11 +102,8 @@
       </p>
     </header>
     <p>
-      This removes {wallet.label} from this device: its recovery phrase, contacts
-      and activity. Your other wallets stay as they are.
-    </p>
-    <p class="remove-wallet__note">
-      Your funds stay on Dusk. The recovery phrase brings this wallet back.
+      {wallet.label} leaves this device, with its contacts and activity. Its funds
+      and stake stay on Dusk.
     </p>
     <form
       class="remove-wallet__form"
@@ -114,12 +115,18 @@
         bind:value={password}
         disabled={busy}
       />
+      <Agreement
+        bind:checked={hasPhrase}
+        disabled={busy}
+        label={`I have ${wallet.label}'s recovery phrase. It brings this wallet back.`}
+        name="has-recovery-phrase"
+      />
       {#if formError}
         <p class="remove-wallet__error" role="alert">{formError}</p>
       {/if}
       <Button
         className="remove-wallet__button"
-        disabled={busy}
+        disabled={busy || !hasPhrase || !password}
         text={busy ? "Removing…" : "Remove wallet"}
         type="submit"
       />
@@ -168,11 +175,6 @@
       font-weight: 400;
     }
 
-    &__note {
-      color: var(--calm-muted);
-      font-size: 0.875rem;
-    }
-
     &__form {
       display: flex;
       flex-direction: column;
@@ -185,7 +187,8 @@
       line-height: 1.4;
     }
 
-    & :global(.remove-wallet__button) {
+    /* Red once it can remove: until then, as any button that can't. */
+    & :global(.remove-wallet__button:not(:disabled)) {
       background-color: var(--status-error-bg-color);
       border-color: var(--badge-error-color);
       color: var(--badge-error-color);

@@ -51,7 +51,7 @@ describe("Settings › Wallets", () => {
 
   it("lists each wallet by its name, with Rename, Remove while there's another, Add wallet and Change password", async () => {
     const { first } = await twoWallets();
-    const { getAllByRole, getByRole, getByText } = render(WalletsSettings);
+    const { getAllByRole, getByRole } = render(WalletsSettings);
 
     expect(
       getAllByRole("listitem").map(
@@ -73,12 +73,9 @@ describe("Settings › Wallets", () => {
       "href",
       addBasePath("/settings/password")
     );
-    expect(
-      getByText("Changes the password for every wallet here.")
-    ).toBeInTheDocument();
   });
 
-  it("renames a wallet in its own field, only on this device: Enter saves, Escape leaves it as it was", async () => {
+  it("renames a wallet in its own field, its name in it, only on this device: Enter saves, Escape leaves it as it was", async () => {
     const { first } = await twoWallets();
     const { getByLabelText, getByRole, getByText, queryByLabelText } =
       render(WalletsSettings);
@@ -88,11 +85,19 @@ describe("Settings › Wallets", () => {
     const field = getByLabelText("Name");
 
     expect(field).toHaveFocus();
+    expect(field).toHaveValue("Wallet 1");
     expect(field).toHaveAttribute("placeholder", "Wallet 1");
     expect(getByText("Only on this device.")).toBeInTheDocument();
 
-    await fireEvent.input(field, { target: { value: "  Savings   jar " } });
-    await fireEvent.keyDown(field, { key: "Escape" });
+    // Saved as it shows, it keeps its number, with no name.
+    await fireEvent.keyDown(field, { key: "Enter" });
+    expect(get(walletDirectory).wallets[first.id]).not.toHaveProperty("name");
+    await fireEvent.click(getByRole("button", { name: "Rename Wallet 1" }));
+
+    await fireEvent.input(getByLabelText("Name"), {
+      target: { value: "  Savings   jar " },
+    });
+    await fireEvent.keyDown(getByLabelText("Name"), { key: "Escape" });
 
     expect(queryByLabelText("Name")).toBeNull();
     expect(get(walletDirectory).wallets[first.id]).not.toHaveProperty("name");
@@ -111,6 +116,11 @@ describe("Settings › Wallets", () => {
         getByRole("button", { name: "Rename Savings jar" })
       ).toBeInTheDocument()
     );
+
+    // Named, its field opens with the name in it.
+    await fireEvent.click(getByRole("button", { name: "Rename Savings jar" }));
+
+    expect(getByLabelText("Name")).toHaveValue("Savings jar");
   });
 
   it("offers no removal of the only wallet, and says a wallet without a password can't have another", async () => {

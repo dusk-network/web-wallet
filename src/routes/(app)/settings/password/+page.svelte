@@ -102,7 +102,8 @@
   <header class="change-password__header">
     <h1 use:pageTitle>Change password</h1>
     <p class="change-password__lead">
-      Every recovery phrase here is encrypted again with the new password.
+      Every wallet in this browser then opens with the new password. Your
+      recovery phrases stay the same.
     </p>
   </header>
   <form

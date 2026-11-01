@@ -42,7 +42,7 @@
     type="password"
   />
   <p class="unlock-password__hint" id="{id}-hint">
-    One password unlocks every wallet here.
+    One password unlocks every wallet in this browser.
   </p>
   {#if error}
     <p class="unlock-password__error" id="{id}-error" role="alert">

@@ -3,8 +3,9 @@
    * Settings › Wallets: the wallets here, each by its name only this device
    * knows, as the switcher shows them, with Rename and, while there's
    * another, Remove; then Add wallet and Change password, which take the
-   * password the wallets share. Rename opens a field for the name, with
-   * Save and Cancel (Enter and Escape).
+   * password the wallets share. Rename opens a field with the wallet's
+   * name in it, "Wallet 2" for one without, with Save and Cancel (Enter and
+   * Escape): saved empty, or as its number's, it has no name.
    */
   import { mdiAlertOutline, mdiCheck, mdiPlus } from "@mdi/js";
   import { tick } from "svelte";
@@ -41,9 +42,21 @@
   /** @param {string} key */
   async function startRenaming(key) {
     renaming = key;
-    draft = normalizeWalletName($walletDirectory.wallets[key]?.name);
+    draft = rows.find((row) => row.key === key)?.label ?? "";
     await tick();
     document.getElementById(`wallet-name-${key}`)?.focus();
+  }
+
+  /**
+   * The name a wallet is given: "" for none, as its number's is.
+   *
+   * @param {string} key
+   */
+  function nameTyped(key) {
+    const name = normalizeWalletName(draft);
+    const n = rows.find((row) => row.key === key)?.n;
+
+    return name === walletLabel({ n }) ? "" : name;
   }
 
   async function stopRenaming() {
@@ -62,7 +75,7 @@
     }
 
     const key = renaming;
-    const name = normalizeWalletName(draft);
+    const name = nameTyped(key);
 
     saving = true;
 
@@ -205,9 +218,6 @@
         variant="tertiary"
       />
     </div>
-    <p class="settings-group__note">
-      Changes the password for every wallet here.
-    </p>
   {:else}
     <p class="settings-group__note">
       Adding a wallet needs a password. Restore this wallet with one first.

@@ -61,6 +61,7 @@
   // Each wallet under its name, with what it showed when it was last open.
   $: walletGroups = wallets.map(({ key, n }) => ({
     accounts: $walletDirectory.wallets[key]?.accounts ?? [],
+    addresses: $walletDirectory.wallets[key]?.addresses ?? [],
     key,
     label: walletLabel({ n, name: $walletDirectory.wallets[key]?.name }),
     open: key === walletKey,

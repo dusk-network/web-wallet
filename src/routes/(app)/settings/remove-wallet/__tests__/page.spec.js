@@ -76,23 +76,38 @@ describe("Remove wallet", () => {
     vi.restoreAllMocks();
   });
 
-  it("says what goes, asks for the password, and takes only that wallet", async () => {
+  it("says what goes, waits for the phrase's box and the password, and takes only that wallet", async () => {
     const { getByLabelText, getByRole, getByText } = render(RemoveWallet);
 
     expect(
       getByText(
-        "This removes Wallet 1 from this device: its recovery phrase, contacts and activity. Your other wallets stay as they are."
+        "Wallet 1 leaves this device, with its contacts and activity. Its funds and stake stay on Dusk."
       )
     ).toBeInTheDocument();
 
     const password = getByLabelText("Password you unlock with");
+    const remove = getByRole("button", { name: "Remove wallet" });
 
-    await fireEvent.click(getByRole("button", { name: "Remove wallet" }));
-
-    expect(getByRole("alert")).toHaveTextContent("Enter your password.");
+    expect(remove).toBeDisabled();
 
     await fireEvent.input(password, { target: { value: "password12" } });
-    await fireEvent.click(getByRole("button", { name: "Remove wallet" }));
+
+    expect(remove).toBeDisabled();
+
+    await fireEvent.click(
+      getByLabelText(
+        "I have Wallet 1's recovery phrase. It brings this wallet back."
+      )
+    );
+    await fireEvent.input(password, { target: { value: "" } });
+
+    expect(remove).toBeDisabled();
+
+    await fireEvent.input(password, { target: { value: "password12" } });
+
+    expect(remove).toBeEnabled();
+
+    await fireEvent.click(remove);
 
     await vi.waitFor(() =>
       expect(getByRole("alert")).toHaveTextContent("Wrong password.")

@@ -45,7 +45,7 @@ describe("Settings, with more than one wallet", () => {
     vi.restoreAllMocks();
   });
 
-  it("says Lock, which locks every wallet in every tab, and that auto-lock locks them all", async () => {
+  it("says Lock, which locks every wallet in every tab, that auto-lock locks them all, and that Reset takes them all", async () => {
     await vault.setUp(A, PASSWORD);
     await unlockWallets(PASSWORD);
     await addWallet(B, PASSWORD);
@@ -54,6 +54,17 @@ describe("Settings, with more than one wallet", () => {
 
     expect(
       getByText("Locks every wallet after this long without use.")
+    ).toBeInTheDocument();
+    expect(
+      getByRole("heading", { name: "Reset all wallets" })
+    ).toBeInTheDocument();
+    expect(
+      getByText(
+        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
+      )
+    ).toBeInTheDocument();
+    expect(
+      getByRole("button", { name: "Reset all wallets" })
     ).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Lock" }));

@@ -70,7 +70,7 @@ describe("Add wallet", () => {
 
     expect(getByRole("heading", { level: 1 })).toHaveTextContent("Add wallet");
     expect(
-      getByText("Your password unlocks every wallet here.")
+      getByText("Your password unlocks every wallet in this browser.")
     ).toBeInTheDocument();
     expect(getByRole("button", { name: /Create wallet/ })).toBeInTheDocument();
     expect(getByRole("button", { name: /Import wallet/ })).toBeInTheDocument();
@@ -112,7 +112,7 @@ describe("Add wallet", () => {
 
     expect(password).not.toHaveAttribute("placeholder");
     expect(password).toHaveAccessibleDescription(
-      "One password unlocks every wallet here."
+      "One password unlocks every wallet in this browser."
     );
 
     await fireEvent.input(password, { target: { value: "password12" } });

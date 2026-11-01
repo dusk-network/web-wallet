@@ -552,10 +552,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
         class="settings-group__multi-control-content"
       >
         <p>
-          Resetting removes every recovery phrase on this device, with the
-          cache, settings, contacts and connected EVM wallets, not your funds.
-          You'll need each recovery phrase to restore access, so make sure
-          they're stored securely.
+          Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.
         </p>
          
         <!---->
@@ -1153,10 +1150,7 @@ exports[`Settings > should render the settings page displaying the status of the
         class="settings-group__multi-control-content"
       >
         <p>
-          Resetting removes every recovery phrase on this device, with the
-          cache, settings, contacts and connected EVM wallets, not your funds.
-          You'll need each recovery phrase to restore access, so make sure
-          they're stored securely.
+          Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.
         </p>
          
         <!---->
@@ -1737,10 +1731,7 @@ exports[`Settings > should render the settings page displaying the status of the
         class="settings-group__multi-control-content"
       >
         <p>
-          Resetting removes every recovery phrase on this device, with the
-          cache, settings, contacts and connected EVM wallets, not your funds.
-          You'll need each recovery phrase to restore access, so make sure
-          they're stored securely.
+          Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.
         </p>
          
         <!---->
@@ -2401,10 +2392,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
         class="settings-group__multi-control-content"
       >
         <p>
-          Resetting removes every recovery phrase on this device, with the
-          cache, settings, contacts and connected EVM wallets, not your funds.
-          You'll need each recovery phrase to restore access, so make sure
-          they're stored securely.
+          Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.
         </p>
          
         <!---->

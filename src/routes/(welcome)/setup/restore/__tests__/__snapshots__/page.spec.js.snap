@@ -48,11 +48,14 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
         class="dusk-card__body-container"
       >
         <!---->
+        <!---->
         <p>
-          This removes every recovery phrase on this device, with each wallet's
-      cache, contacts and activity. Your funds stay on Dusk. Make sure you have
-      each recovery phrase saved: it's the only way back into its wallet.
+          Initializing a new wallet will replace your existing local wallet cache,
+        erasing any stored data. Ensure you have securely backed up your current
+        wallet's recovery phrase to prevent loss. Proceeding without a backup
+        can lead to irreversible loss of access to your assets.
         </p>
+        <!---->
          
         <div
           class="actions svelte-17crhcd"
@@ -222,25 +225,31 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
         class="mnemonic-input svelte-1dhzni7"
       >
         <div
-          aria-label="How many words"
-          class="mnemonic-input__count svelte-1dhzni7"
-          role="group"
+          class="mnemonic-input__top svelte-1dhzni7"
         >
-          <button
-            aria-pressed="true"
-            class="mnemonic-input__count-button svelte-1dhzni7 mnemonic-input__count-button--on"
-            type="button"
+          <div
+            aria-label="How many words"
+            class="mnemonic-input__count svelte-1dhzni7"
+            role="group"
           >
-            12 words
-          </button>
-          <button
-            aria-pressed="false"
-            class="mnemonic-input__count-button svelte-1dhzni7"
-            type="button"
-          >
-            24 words
-          </button>
-          
+            <button
+              aria-pressed="true"
+              class="mnemonic-input__count-button svelte-1dhzni7 mnemonic-input__count-button--on"
+              type="button"
+            >
+              12 words
+            </button>
+            <button
+              aria-pressed="false"
+              class="mnemonic-input__count-button svelte-1dhzni7"
+              type="button"
+            >
+              24 words
+            </button>
+            
+          </div>
+           
+          <!---->
         </div>
          
         <p

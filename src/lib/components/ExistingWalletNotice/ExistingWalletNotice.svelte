@@ -2,18 +2,31 @@
   import { Button } from "$lib/dusk/components";
   import { AppAnchorButton } from "$lib/components";
   import { WarningCard } from "$lib/containers/Cards";
+  import vault from "$lib/vault";
 
   /** @type {boolean} */
   export let notice = false;
+
+  // With more than one wallet here, Settings' Reset says the same.
+  const many = (vault.list()?.length ?? 0) > 1;
 </script>
 
 <section>
   <WarningCard heading="Existing Wallet Detected">
-    <p>
-      This removes every recovery phrase on this device, with each wallet's
-      cache, contacts and activity. Your funds stay on Dusk. Make sure you have
-      each recovery phrase saved: it's the only way back into its wallet.
-    </p>
+    {#if many}
+      <p>
+        Removes every wallet from this browser, with its settings and contacts.
+        Your funds stay on Dusk. You need each wallet's recovery phrase to get
+        back in.
+      </p>
+    {:else}
+      <p>
+        Initializing a new wallet will replace your existing local wallet cache,
+        erasing any stored data. Ensure you have securely backed up your current
+        wallet's recovery phrase to prevent loss. Proceeding without a backup
+        can lead to irreversible loss of access to your assets.
+      </p>
+    {/if}
     <div class="actions">
       <AppAnchorButton
         className="actions__action"

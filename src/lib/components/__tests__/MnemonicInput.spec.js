@@ -100,6 +100,39 @@ describe("MnemonicInput", () => {
     expect(getByRole("alert")).toHaveTextContent("Word 3 is missing.");
   });
 
+  it("puts what's copied in the boxes with Paste, as a paste into the first box, where the browser lets a page read it", async () => {
+    const readText = vi
+      .fn()
+      .mockResolvedValueOnce(TWELVE)
+      .mockResolvedValueOnce(`${TWENTY_FOUR} abandon`);
+
+    Object.assign(navigator, { clipboard: { readText } });
+
+    const { getAllByRole, getByRole } = render(MnemonicInput);
+    const paste = getByRole("button", { name: "Paste recovery phrase" });
+
+    await fireEvent.click(paste);
+    await vi.waitFor(() =>
+      expect(getAllByRole("textbox").map(valueOf)).toEqual(TWELVE.split(" "))
+    );
+
+    await fireEvent.click(paste);
+    await vi.waitFor(() =>
+      expect(getByRole("alert")).toHaveTextContent(
+        "That's 25 words. A recovery phrase has 12 or 24."
+      )
+    );
+
+    cleanup();
+    Object.assign(navigator, { clipboard: undefined });
+
+    expect(
+      render(MnemonicInput).queryByRole("button", {
+        name: "Paste recovery phrase",
+      })
+    ).toBeNull();
+  });
+
   it("tells of each change, and shows a refusal from outside where its own problems show", async () => {
     const changed = vi.fn();
     const { getByLabelText, getByRole, rerender } = render(MnemonicInput, {

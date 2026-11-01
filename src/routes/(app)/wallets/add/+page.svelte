@@ -199,7 +199,9 @@
   <header class="add-wallet__header">
     <h1 use:pageTitle>Add wallet</h1>
     {#if step === "choose"}
-      <p class="add-wallet__lead">Your password unlocks every wallet here.</p>
+      <p class="add-wallet__lead">
+        Your password unlocks every wallet in this browser.
+      </p>
     {:else}
       <p class="add-wallet__lead">{landing}</p>
     {/if}

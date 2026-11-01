@@ -11,9 +11,14 @@
    * - What's wrong with the words is said in one plain sentence after a
    *   paste and when the focus leaves the boxes, and goes as soon as
    *   something's typed. `error`, from outside, shows there too.
+   * - Paste, where the browser lets a page read what's copied, puts it in
+   *   the boxes as a paste into the first box does.
    */
   import { createEventDispatcher, tick } from "svelte";
+  import { mdiAlertOutline, mdiContentPaste } from "@mdi/js";
 
+  import { Button } from "$lib/dusk/components";
+  import { toast } from "$lib/dusk/components/Toast/store";
   import { randomUUID } from "$lib/dusk/string";
 
   import { RECOVERY_WORDS, phraseProblem, wordsOf } from "./phraseProblem";
@@ -228,6 +233,30 @@
     }
   }
 
+  // As on the Restore page before: only where a page can read what's copied.
+  const canPaste =
+    typeof navigator !== "undefined" &&
+    typeof navigator.clipboard?.readText === "function";
+
+  /** What's copied, put in the boxes as a paste into the first box is. */
+  async function pasteCopied() {
+    try {
+      const words = wordsOf(await navigator.clipboard.readText());
+
+      if (words.length) {
+        takeWords(0, words);
+      }
+    } catch (refusal) {
+      toast(
+        "error",
+        refusal instanceof Error && refusal.name === "NotAllowedError"
+          ? "Clipboard access denied"
+          : String(refusal instanceof Error ? refusal.message : refusal),
+        mdiAlertOutline
+      );
+    }
+  }
+
   /** @param {number} next 12 or 24 */
   function setCount(next) {
     count = next;
@@ -249,17 +278,29 @@
 </script>
 
 <div class="mnemonic-input">
-  <div aria-label="How many words" class="mnemonic-input__count" role="group">
-    {#each [12, 24] as n (n)}
-      <button
-        aria-pressed={count === n}
-        class="mnemonic-input__count-button"
-        class:mnemonic-input__count-button--on={count === n}
+  <div class="mnemonic-input__top">
+    <div aria-label="How many words" class="mnemonic-input__count" role="group">
+      {#each [12, 24] as n (n)}
+        <button
+          aria-pressed={count === n}
+          class="mnemonic-input__count-button"
+          class:mnemonic-input__count-button--on={count === n}
+          {disabled}
+          on:click={() => setCount(n)}
+          type="button">{n} words</button
+        >
+      {/each}
+    </div>
+    {#if canPaste}
+      <Button
+        aria-label="Paste recovery phrase"
         {disabled}
-        on:click={() => setCount(n)}
-        type="button">{n} words</button
-      >
-    {/each}
+        icon={{ path: mdiContentPaste }}
+        on:click={pasteCopied}
+        text="Paste"
+        variant="tertiary"
+      />
+    {/if}
   </div>
   <p class="mnemonic-input__hint" id="{id}-hint">
     Paste the whole phrase into any box.
@@ -309,6 +350,14 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  .mnemonic-input__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
   }
 
   .mnemonic-input__count {

@@ -88,6 +88,29 @@ describe("Restore", async () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
+  it("should say that it removes every wallet from this browser where there's more than one", async () => {
+    // Public BIP39 test phrases, never a real wallet's.
+    await vault.setUp(
+      "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      pwd
+    );
+    await vault.add(
+      "scheme spot photo card baby mountain device kick cradle pact join borrow",
+      pwd
+    );
+    settingsStore.update(setUserId(userId));
+
+    const { getByText } = render(Restore);
+
+    expect(
+      getByText(
+        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
+      )
+    ).toBeInTheDocument();
+
+    await vault.clear();
+  });
+
   it("should render the Terms of Service step of the Restore flow if there is no userId saved in localStorage", () => {
     const { container } = render(Restore);
 

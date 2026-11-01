@@ -478,7 +478,7 @@ describe("Settings", () => {
 
       expect(
         getByText(
-          /^Resetting removes every recovery phrase on this device, with the cache, settings, contacts and connected EVM wallets, not your funds\./
+          /^Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds\./
         )
       ).toBeInTheDocument();
 
