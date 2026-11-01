@@ -209,9 +209,7 @@ export async function unlockWallets(password, { signal } = {}) {
   await placeWallets(opened, fromV1);
 
   // A wallet kept from before incarnations has its own from now on.
-  for (const { key } of opened) {
-    keepIncarnation(key);
-  }
+  await Promise.all(opened.map(({ key }) => keepIncarnation(key)));
 
   signal?.throwIfAborted();
   await walletStore.open(opened, {
@@ -227,7 +225,7 @@ export async function unlockWallets(password, { signal } = {}) {
  * @param {ProfileGenerator} profileGenerator
  */
 export async function unlockWithoutPassword(profileGenerator) {
-  keepIncarnation("");
+  await keepIncarnation("");
   await walletStore.init(profileGenerator);
 }
 

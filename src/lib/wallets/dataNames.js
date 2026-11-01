@@ -11,12 +11,24 @@
  * removed: by its removal, and by a reset. Work that writes a wallet's
  * records takes its incarnation as it begins, and writes only while it's
  * still there: a wallet removed since, or made again, gets none of it.
+ * A wallet kept from before incarnations gets its own as it unlocks; where
+ * storage refuses it, the tab has one of its own meanwhile (`own`).
  */
 
 const INCARNATION = `${CONFIG.LOCAL_STORAGE_APP_KEY}-incarnation:`;
 
 /** The incarnations this tab ended, gone from them at once. */
 const ended = new Set();
+
+/**
+ * This tab's own incarnations, by wallet: one made where storage refused
+ * to keep a wallet's at its first unlock here, until this tab locks. While
+ * no tab keeps one for that wallet, it's the wallet's; once one is kept,
+ * by this tab or another, that one is, as a reset or a removal locks every
+ * tab. Once one was kept and is gone, it has ended (`seenKept`).
+ */
+const own = new Map();
+const seenKept = new Set();
 
 /**
  * A wallet's incarnation here: null for none.
@@ -43,17 +55,69 @@ export function startIncarnation(key) {
 }
 
 /**
- * Starts the incarnation of a wallet the vault holds that has none, as one
- * kept before wallets had them: where storage allows it.
+ * Starts the incarnation of a wallet here that has none, as one kept
+ * before wallets had them, as it unlocks: alone across tabs, so two tabs
+ * unlocking it at once start one. Where storage refuses it, this tab has
+ * its own (`own`).
  *
- * @param {string} key Its vault ID
+ * @param {string} key Its vault ID: "" for a wallet without a password
+ * @returns {Promise<void>}
  */
-export function keepIncarnation(key) {
-  if (incarnationOf(key) === null) {
+export async function keepIncarnation(key) {
+  const keep = () => {
+    if (incarnationOf(key) === null) {
+      try {
+        startIncarnation(key);
+      } catch {
+        own.set(key, own.get(key) ?? crypto.randomUUID());
+      }
+    }
+  };
+
+  await (navigator.locks?.request
+    ? navigator.locks.request(`${INCARNATION}${key}`, keep)
+    : keep());
+}
+
+/**
+ * Whether `id` is still the wallet `key`'s incarnation here: as kept, or,
+ * as this tab's own, while none is kept, then as the one kept.
+ *
+ * @param {string} key
+ * @param {string | null} id
+ */
+function holds(key, id) {
+  if (id === null || ended.has(id)) {
+    return false;
+  }
+
+  const kept = incarnationOf(key);
+
+  if (own.get(key) !== id) {
+    return kept === id;
+  }
+
+  if (kept !== null) {
+    seenKept.add(id);
+  }
+
+  return kept !== null || !seenKept.has(id);
+}
+
+/**
+ * Keeps this tab's own incarnation of a wallet, where none is kept and
+ * storage takes it now.
+ *
+ * @param {string} key
+ * @param {string | null} id
+ */
+function keepOwn(key, id) {
+  if (id !== null && own.get(key) === id && incarnationOf(key) === null) {
     try {
-      startIncarnation(key);
+      localStorage.setItem(`${INCARNATION}${key}`, id);
+      seenKept.add(id);
     } catch {
-      // Nothing of it is written in this time, as storage is full anyway.
+      // Still this tab's own, until storage takes it.
     }
   }
 }
@@ -78,15 +142,34 @@ function endNamed(name) {
 }
 
 /**
+ * Ends this tab's own incarnations: those of the wallet `key`, or all.
+ *
+ * @param {string} [key]
+ */
+function endOwn(key) {
+  for (const [wallet, id] of own) {
+    if (key === undefined || wallet === key) {
+      ended.add(id);
+      own.delete(wallet);
+    }
+  }
+}
+
+/**
  * Ends a wallet's incarnation, as it's removed.
  *
  * @param {string} key Its vault ID
  */
-export const endIncarnation = (key) => endNamed(`${INCARNATION}${key}`);
+export function endIncarnation(key) {
+  endOwn(key);
+  endNamed(`${INCARNATION}${key}`);
+}
 
 /** Ends every wallet's incarnation, as a reset does. */
 export function endEveryIncarnation() {
   let names = /** @type {string[]} */ ([]);
+
+  endOwn();
 
   try {
     names = Object.keys(localStorage);
@@ -126,7 +209,7 @@ export const suffixOf = (key, legacy) =>
 
 /**
  * Makes the names the open wallet's, as it opens, or none's as every wallet
- * locks (`open` false).
+ * locks (`open` false), which ends this tab's own incarnations.
  *
  * @param {string} next Its ending (suffixOf)
  * @param {string} [key] Its vault ID
@@ -135,8 +218,12 @@ export const suffixOf = (key, legacy) =>
 export function useWalletDataSuffix(next, key = "", open = true) {
   suffix = next;
   openKey = key;
-  openId = open ? incarnationOf(key) : null;
+  openId = open ? (own.get(key) ?? incarnationOf(key)) : null;
   opened += 1;
+
+  if (!open) {
+    own.clear();
+  }
 }
 
 /**
@@ -158,14 +245,16 @@ export const walletDataName = (name) => `${name}${suffix}`;
  *   tab, the names of before, the only ones then, until one opens;
  * - `keeps` says whether its incarnation is still here: a write lands only
  *   then, and always for the names of before, written as they always were;
+ * - `keepIncarnation` keeps this tab's own incarnation of it, as a write
+ *   is about to land, where none is kept and storage takes it;
  * - `owner` names that wallet in that incarnation.
  *
- * @typedef {{ id: number, isOpen: () => boolean, isShown: () => boolean, keeps: () => boolean, name: (name: string) => string, owner: string }} WalletDataScope
+ * @typedef {{ id: number, isOpen: () => boolean, isShown: () => boolean, keepIncarnation: () => void, keeps: () => boolean, name: (name: string) => string, owner: string }} WalletDataScope
  * @returns {WalletDataScope}
  */
 export function walletDataScope() {
   const at = opened;
-  const own = suffix;
+  const ending = suffix;
   const key = openKey;
   const id = openId;
 
@@ -174,9 +263,9 @@ export function walletDataScope() {
     isOpen: () => at === opened,
     isShown: () =>
       at === 0 ? opened === 0 : id !== null && key === openKey && id === openId,
-    keeps: () =>
-      at === 0 || (id !== null && !ended.has(id) && incarnationOf(key) === id),
-    name: (name) => `${name}${own}`,
+    keepIncarnation: () => keepOwn(key, id),
+    keeps: () => at === 0 || holds(key, id),
+    name: (name) => `${name}${ending}`,
     owner: `${key}\n${id}`,
   };
 }

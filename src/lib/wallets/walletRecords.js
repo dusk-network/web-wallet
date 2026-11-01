@@ -171,6 +171,22 @@ export const recordsOf = (records, scope) =>
   scope.isShown() ? shownOf(records, scope) : records.read(scope);
 
 /**
+ * Writes records to storage: whether it took them.
+ *
+ * @param {string} name
+ * @param {unknown} value
+ */
+function storageTakes(name, value) {
+  try {
+    localStorage.setItem(name, JSON.stringify(value));
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Changes a wallet's records, as work for it begun as `scope` was taken
  * finds them: nothing once its incarnation ended.
  *
@@ -185,17 +201,15 @@ export function changeRecords(records, scope, change) {
     return null;
   }
 
+  // An incarnation storage refused as the wallet unlocked is kept first.
+  scope.keepIncarnation();
+
   const shown = scope.isShown();
   const before = recordsOf(records, scope);
   const after = change(before);
-  let kept = true;
-
-  try {
-    localStorage.setItem(scope.name(records.name), JSON.stringify(after));
-  } catch {
-    // The open wallet's stay this tab's to keep; another's change is lost.
-    kept = false;
-  }
+  // Where storage refuses them, the open wallet's stay this tab's to keep,
+  // and another's change is lost.
+  const kept = storageTakes(scope.name(records.name), after);
 
   if (shown) {
     if (kept) {
