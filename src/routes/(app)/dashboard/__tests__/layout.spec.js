@@ -102,11 +102,9 @@ describe("Dashboard Layout", () => {
     });
 
     it("should return a promise that resolves with an empty object if the expected properties in the returned data are missing", async () => {
-      /* eslint-disable camelcase */
       const wrongResponse1 = new Response(JSON.stringify({ market_data: {} }), {
         status: 200,
       });
-      /* eslint-enable camelcase */
       const wrongResponse2 = new Response(JSON.stringify({}), { status: 200 });
 
       fetchMock

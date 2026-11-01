@@ -5,8 +5,6 @@ import { networkStore } from "$lib/stores";
 
 const createEmptyObject = () => ({});
 
-/* eslint-disable camelcase */
-
 const coinGeckoParams = new URLSearchParams({
   community_data: "false",
   developer_data: "false",
@@ -15,8 +13,6 @@ const coinGeckoParams = new URLSearchParams({
   sparkline: "false",
   tickers: "false",
 });
-
-/* eslint-enable camelcase */
 
 /** @type {import('./$types').LayoutLoad} */
 export async function load({ fetch }) {

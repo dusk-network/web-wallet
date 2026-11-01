@@ -48,9 +48,7 @@ function answer(node, query, accounts, details) {
   if (query.includes("pair: lastBlockPair { json }")) {
     data.pair = {
       json: {
-        // eslint-disable-next-line camelcase
         last_block: [node.finalized + 1, "aa"],
-        // eslint-disable-next-line camelcase
         last_finalized_block: [node.finalized, "bb"],
       },
     };

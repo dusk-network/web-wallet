@@ -63,7 +63,6 @@
     "web-streams-polyfill": "4.2.0"
   },
   "devDependencies": {
-    "@dusk-network/eslint-config": "4.0.1",
     "@dusk-network/prettier-config": "1.1.0",
     "@eslint/js": "9.39.4",
     "@juggle/resize-observer": "3.4.0",
@@ -79,7 +78,6 @@
     "core-js": "3.49.0",
     "eslint": "9.39.4",
     "eslint-config-prettier": "10.1.8",
-    "eslint-import-resolver-typescript": "4.4.4",
     "eslint-plugin-svelte": "3.16.0",
     "fake-indexeddb": "6.2.5",
     "globals": "17.4.0",

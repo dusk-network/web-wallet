@@ -63,7 +63,6 @@
                   chainId: $account.chainId,
                 });
               } catch (e) {
-                // eslint-disable-next-line no-console
                 console.error("getBalance failed", e);
                 evmDuskBalance = undefined;
               }

@@ -1090,8 +1090,6 @@ describe("Wallet store", async () => {
       expect(get(walletStore).syncStatus.error).toBeNull();
     });
 
-    /* eslint-disable vitest/expect-expect */
-
     it("should neither start nor record a history while it is turned off", async () => {
       vi.useRealTimers();
       vi.stubEnv("VITE_FEATURE_TRANSACTION_HISTORY", "false");
@@ -1390,8 +1388,6 @@ describe("Wallet store", async () => {
       expect(executeSpy).not.toHaveBeenCalled();
       expect(treasuryUpdateSpy).not.toHaveBeenCalled();
     });
-
-    /* eslint-enable vitest/expect-expect */
   });
 
   describe("Wallet store services", () => {

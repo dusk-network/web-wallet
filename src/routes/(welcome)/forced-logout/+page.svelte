@@ -4,7 +4,6 @@
   import { WarningCard } from "$lib/containers/Cards";
 
   onMount(() => {
-    // eslint-disable-next-line no-alert
     alert(
       [
         "You have been automatically logged out as another ",

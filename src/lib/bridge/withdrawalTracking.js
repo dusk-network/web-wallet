@@ -224,7 +224,6 @@ async function reconcilePendingSubmission(remembered, status) {
   const actionError = `${action === "prove" ? "Proof" : "Finalization"} transaction failed: ${execution.error}`;
 
   // The card shows a short line; the raw error stays in the console.
-  // eslint-disable-next-line no-console
   console.error(actionError);
 
   return { actionError, pending: false, status };

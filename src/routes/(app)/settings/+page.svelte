@@ -92,7 +92,6 @@
   }
 
   function handleResetWalletClick() {
-    // eslint-disable-next-line no-alert
     if (confirm(reset.confirm)) {
       resetError = null;
       resetWallet();

@@ -2,7 +2,6 @@
   import { AnchorButton, Wizard, WizardStep } from "$lib/dusk/components";
   import { mdiSendCheck } from "@mdi/js";
   function progressStepOne() {
-    // eslint-disable-next-line no-console
     console.log("Step 1");
   }
 </script>
