@@ -1110,7 +1110,8 @@
                   Public: the amount and both accounts are visible on chain.
                 {/if}
               </p>
-              {#if !contact && !own && !isSavingContact}
+              <!-- Not for an account of this wallet or another kept here. -->
+              {#if !contact && !own && !walletAccount && !isSavingContact}
                 <Button
                   on:click={() => {
                     isSavingContact = true;
