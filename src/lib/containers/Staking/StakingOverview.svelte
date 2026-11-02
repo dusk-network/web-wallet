@@ -37,6 +37,9 @@
   /** Whether the history holds staking. */
   export let hasPastStaking = false;
 
+  /** Whether a staking transaction sent from here is still pending. */
+  export let pending = false;
+
   /** What was read from Sozu, and whether this network has it. */
   /** @type {import("$lib/sozu/sozuStore").SozuState} */
   export let sozu;
@@ -76,6 +79,7 @@
     hasLiquid,
     hasPastStaking,
     maxFee,
+    pending,
     publicBalance,
     reward: stakeInfo.reward,
     staked,
@@ -184,6 +188,7 @@
               {/if}
               {#if hasLiquid}
                 <AppAnchorButton
+                  disabled={pending}
                   href="/dashboard/stake?flow=liquid&action=unstake"
                   text="Unstake from Sozu"
                   variant="secondary"
@@ -196,6 +201,10 @@
           </div>
         {/if}
       </div>
+
+      {#if pending}
+        <p class="staking__note">A staking transaction is pending.</p>
+      {/if}
 
       {#if isMaturing}
         <p class="staking__note">
@@ -216,6 +225,7 @@
     <div class="staking__start">
       <AppAnchorButton
         className="compare__go"
+        disabled={pending}
         href="/dashboard/stake?flow=native"
         text={hasStake ? "Stake more" : "Stake natively"}
         variant="secondary"
@@ -223,6 +233,7 @@
       {#if sozu.available}
         <AppAnchorButton
           className="compare__go"
+          disabled={pending}
           href="/dashboard/stake?flow=liquid"
           text="Stake with Sozu"
           variant="secondary"

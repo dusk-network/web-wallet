@@ -52,6 +52,17 @@ describe("stakeActions", () => {
     });
   });
 
+  it("offers neither, and says nothing of why, while a staking transaction is pending", () => {
+    expect(
+      stakeActions({
+        ...base,
+        pending: true,
+        reward: 5n * DUSK,
+        staked: 1_000n * DUSK,
+      })
+    ).toStrictEqual({ canClaim: false, canUnstake: false, reasons: [] });
+  });
+
   it("says when the public balance can't pay the fee", () => {
     expect(
       stakeActions({

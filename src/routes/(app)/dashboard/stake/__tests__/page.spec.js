@@ -487,6 +487,79 @@ describe("Staking", () => {
     expect(getByRole("link", { name: "Unstake from Sozu" })).toBeVisible();
   });
 
+  it("turns its buttons off while a staking transaction is pending, and on once it settles", async () => {
+    const account = String(initialStore.currentProfile.account);
+
+    await act(() =>
+      sozu.store?.update((s) => ({
+        ...s,
+        status: {
+          ...SOZU_STATUS,
+          position: { balance: 1_500_000_000_000n, stDusk: 487_800_000_000n },
+        },
+      }))
+    );
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      pendingStakes: [{ account, hash: "ab".repeat(32) }],
+    });
+
+    const { container, getByRole } = render(Staking);
+    const links = ["Unstake from Sozu", "Stake more", "Stake with Sozu"];
+
+    expect(getByRole("button", { name: "Unstake" })).toBeDisabled();
+    expect(getByRole("button", { name: "Claim rewards" })).toBeDisabled();
+
+    for (const name of links) {
+      expect(getByRole("link", { name })).toHaveAttribute(
+        "aria-disabled",
+        "true"
+      );
+    }
+
+    expect(textOf(container.querySelector(".staking__summary"))).toContain(
+      "A staking transaction is pending."
+    );
+    expect(container.querySelector(".staking__reason")).toBeNull();
+
+    await act(() =>
+      mockedWalletStore.setMockedStoreValue({
+        ...initialStore,
+        pendingStakes: [],
+      })
+    );
+
+    expect(getByRole("button", { name: "Unstake" })).toBeEnabled();
+    expect(getByRole("button", { name: "Claim rewards" })).toBeEnabled();
+
+    for (const name of links) {
+      expect(getByRole("link", { name })).toHaveAttribute(
+        "aria-disabled",
+        "false"
+      );
+    }
+
+    expect(textOf(container.querySelector(".staking__summary"))).not.toContain(
+      "pending"
+    );
+  });
+
+  it("leaves its buttons on while another account's staking transaction is pending", () => {
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      pendingStakes: [{ account: "another-account", hash: "ab".repeat(32) }],
+    });
+
+    const { getByRole } = render(Staking);
+
+    expect(getByRole("button", { name: "Unstake" })).toBeEnabled();
+    expect(getByRole("button", { name: "Claim rewards" })).toBeEnabled();
+    expect(getByRole("link", { name: "Stake more" })).toHaveAttribute(
+      "aria-disabled",
+      "false"
+    );
+  });
+
   it("hides the amounts while balances are hidden", () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 

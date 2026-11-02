@@ -60,6 +60,7 @@ const initialState = {
   currentProfile: null,
   initialized: false,
   minimumStake: 0n,
+  pendingStakes: [],
   profiles: [],
   stakeInfo: {
     amount: null,
@@ -183,8 +184,13 @@ const recordInHistory = (profile, details) => {
 const isOwn = (to, profile) =>
   to === String(profile.account) || to === String(profile.address);
 
-/** @type {(txInfo: TransactionInfo) => void} */
-const observeTxRemoval = (txInfo) => {
+/**
+ * Syncs once the node takes a transaction out of its queue, and reads the
+ * balances and the stake again: done when they are.
+ *
+ * @type {(txInfo: TransactionInfo) => Promise<unknown>}
+ */
+const observeTxRemoval = (txInfo) =>
   networkStore.connect().then((network) =>
     network.transactions
       .withId(txInfo.hash)
@@ -193,7 +199,42 @@ const observeTxRemoval = (txInfo) => {
       .catch(() => {}) // Background sync errors are reported in syncStatus.
       .finally(updateStaticInfo)
   );
-};
+
+/**
+ * Holds Staking's buttons for a staking transaction `profile` sent, until
+ * `settled`: the node took it out of its queue, and the stake was read
+ * again. Should the node never say so, for no longer than an automatic
+ * sync's interval, when the wallet reads the stake again by itself.
+ *
+ * @param {Profile} profile
+ * @param {string} hash
+ * @param {Promise<unknown>} settled
+ */
+function holdStaking(profile, hash, settled) {
+  const session = walletSession;
+
+  const release = () => {
+    clearTimeout(timeoutId);
+
+    if (session === walletSession) {
+      update((store) => ({
+        ...store,
+        pendingStakes: store.pendingStakes.filter((sent) => sent.hash !== hash),
+      }));
+    }
+  };
+
+  const timeoutId = setTimeout(release, AUTO_SYNC_INTERVAL);
+
+  update((store) => ({
+    ...store,
+    pendingStakes: [
+      ...store.pendingStakes,
+      { account: String(profile.account), hash },
+    ],
+  }));
+  settled.then(release, release);
+}
 
 /** @type {<T>(fn: (v: T) => any) => (a: T) => T} */
 const passThruWithEffects = (fn) => (a) => {
@@ -267,14 +308,16 @@ const builtWhileOpen = (builder, stillOpen) =>
  * whichever one is chosen while the wallet syncs before it goes out. It
  * goes out only while the wallet it began on is open: not after a switch
  * or a lock since, checked once the wallet synced, and again once the
- * transaction is built and proved.
+ * transaction is built and proved. A staking transaction holds Staking's
+ * buttons until it settles.
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
  * @param {(network: Pick<import("@dusk/w3sper").Network, "execute">) => Promise<TransactionInfo>} execute
+ * @param {{ staking?: boolean }} [options]
  * @returns {Promise<TransactionInfo>}
  */
-const sendAs = (profile, details, execute) => {
+const sendAs = (profile, details, execute, { staking = false } = {}) => {
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
   const record = recordInHistory(profile, details);
@@ -285,6 +328,15 @@ const sendAs = (profile, details, execute) => {
     execute: (tx) => network.execute(builtWhileOpen(tx, stillOpen)),
   });
 
+  /** @param {TransactionInfo} txInfo */
+  const followRemoval = (txInfo) => {
+    const settled = observeTxRemoval(txInfo);
+
+    if (staking) {
+      holdStaking(profile, txInfo.hash, settled);
+    }
+  };
+
   return sync()
     .catch((error) => {
       throw stillOpen(error);
@@ -292,7 +344,7 @@ const sendAs = (profile, details, execute) => {
     .then(networkStore.connect)
     .then((network) => execute(sending(stillOpen(network))))
     .then(keepInCache)
-    .then(passThruWithEffects(observeTxRemoval))
+    .then(passThruWithEffects(followRemoval))
     .then(passThruWithEffects(record));
 };
 
@@ -449,7 +501,8 @@ const claimRewards = async (amount, gas) => {
       privacy: "public",
     },
     (network) =>
-      network.execute(bookkeeper.as(profile).withdraw(amount).gas(gas))
+      network.execute(bookkeeper.as(profile).withdraw(amount).gas(gas)),
+    { staking: true }
   );
 };
 
@@ -753,7 +806,8 @@ const stake = async (amount, gas) => {
       kind: TX_KIND.STAKE,
       privacy: "public",
     },
-    (network) => network.execute(bookkeeper.as(profile).stake(amount).gas(gas))
+    (network) => network.execute(bookkeeper.as(profile).stake(amount).gas(gas)),
+    { staking: true }
   );
 };
 
@@ -795,7 +849,8 @@ const callSozu = async (poolId, fnName, amount, gas) => {
       return await network.execute(
         builder.to(profile.account).deposit(deposit).gas(gas)
       );
-    }
+    },
+    { staking: true }
   );
 };
 
@@ -819,7 +874,8 @@ const topUpStake = async (amount, gas) => {
       kind: TX_KIND.STAKE,
       privacy: "public",
     },
-    (network) => network.execute(bookkeeper.as(profile).topup(amount).gas(gas))
+    (network) => network.execute(bookkeeper.as(profile).topup(amount).gas(gas)),
+    { staking: true }
   );
 };
 
@@ -1081,7 +1137,8 @@ const unstake = async (amount, gas) => {
       privacy: "public",
     },
     (network) =>
-      network.execute(bookkeeper.as(profile).unstake(amount).gas(gas))
+      network.execute(bookkeeper.as(profile).unstake(amount).gas(gas)),
+    { staking: true }
   );
 };
 

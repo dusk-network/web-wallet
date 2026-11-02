@@ -123,7 +123,13 @@
   $: flow = url.searchParams.get("flow");
   $: liquidAction = actionOf(url);
   $: ({ customGasLimit, customGasPrice, language } = $settingsStore);
-  $: ({ balance, currentProfile, minimumStake, stakeInfo } = $walletStore);
+  $: ({ balance, currentProfile, minimumStake, pendingStakes, stakeInfo } =
+    $walletStore);
+  // A staking transaction this profile sent waits to settle: Staking's
+  // buttons wait with it.
+  $: isStakePending = pendingStakes.some(
+    ({ account }) => account === String(currentProfile?.account)
+  );
   $: ({ networkName } = $networkStore);
   $: hasStake = stakeInfo.amount !== null;
   $: publicBalance = balance.unshielded.value;
@@ -215,6 +221,7 @@
       locale={language}
       maxFee={unstakeGas.settings.gasLimit * unstakeGas.settings.gasPrice}
       {minimumStake}
+      pending={isStakePending}
       onRetryHistory={() => {
         walletStore
           .startHistory()

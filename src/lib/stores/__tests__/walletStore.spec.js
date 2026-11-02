@@ -160,6 +160,7 @@ describe("Wallet store", async () => {
     currentProfile: null,
     initialized: false,
     minimumStake: 0n,
+    pendingStakes: [],
     profiles: [],
     stakeInfo: {
       amount: null,
@@ -1180,6 +1181,173 @@ describe("Wallet store", async () => {
 
     it("should expose a method to unstake the staked amount", async () => {
       await walletStoreTransferCheck("unstake", [amount, gas]);
+    });
+
+    describe("Staking's buttons", () => {
+      /** @param {string} hash */
+      const leaveQueue = (hash) =>
+        dispatchEvent(
+          new CustomEvent("transaction::removed", {
+            detail: { id: hash, name: "transactions", once: true },
+          })
+        );
+
+      it.each(
+        /** @type {const} */ ([
+          "stake",
+          "topUpStake",
+          "unstake",
+          "claimRewards",
+        ])
+      )(
+        "should be held from a %s's send until the node took it out of its queue and the stake was read again",
+        async (method) => {
+          vi.useRealTimers();
+
+          const hash = `${method}-tx`;
+          const fresh = { ...stakeInfo, reward: 1n };
+
+          /** @type {StakeInfo | null} */
+          let stakeInfoAtRelease = null;
+          let wasHeld = false;
+
+          executeSpy.mockResolvedValueOnce({
+            buffer: new Uint8Array(),
+            hash,
+            nonce: 1n,
+          });
+          stakeInfoSpy.mockResolvedValueOnce(fresh);
+
+          const unsubscribe = walletStore.subscribe((store) => {
+            if (wasHeld && !store.pendingStakes.length) {
+              stakeInfoAtRelease ??= store.stakeInfo;
+            }
+
+            wasHeld ||= store.pendingStakes.length > 0;
+          });
+
+          try {
+            await walletStore[method](amount, gas);
+
+            expect(get(walletStore).pendingStakes).toStrictEqual([
+              { account: String(defaultProfile.account), hash },
+            ]);
+
+            leaveQueue(hash);
+            await vi.waitUntil(() => !get(walletStore).pendingStakes.length);
+
+            // Let go once the stake read again shows.
+            expect(stakeInfoAtRelease).toBe(fresh);
+          } finally {
+            unsubscribe();
+            vi.useFakeTimers();
+          }
+        }
+      );
+
+      it("should be held by a stake with Sozu and an unstake from it", async () => {
+        vi.useRealTimers();
+
+        const pool = "72".repeat(32);
+
+        try {
+          for (const method of /** @type {const} */ ([
+            "stakeWithSozu",
+            "unstakeFromSozu",
+          ])) {
+            const hash = `${method}-tx`;
+
+            executeSpy.mockResolvedValueOnce({
+              buffer: new Uint8Array(),
+              hash,
+              nonce: 1n,
+            });
+
+            await walletStore[method](pool, amount, gas);
+
+            expect(get(walletStore).pendingStakes).toStrictEqual([
+              { account: String(defaultProfile.account), hash },
+            ]);
+
+            leaveQueue(hash);
+            await vi.waitUntil(() => !get(walletStore).pendingStakes.length);
+          }
+        } finally {
+          vi.useFakeTimers();
+        }
+      });
+
+      it("should not be held by a transfer", async () => {
+        vi.useRealTimers();
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "transfer-tx",
+          nonce: 1n,
+        });
+
+        try {
+          await walletStore.transfer(toMoonlight, amount, memo, gas);
+
+          expect(get(walletStore).pendingStakes).toStrictEqual([]);
+
+          leaveQueue("transfer-tx");
+          await vi.waitUntil(() => stakeInfoSpy.mock.calls.length === 1);
+        } finally {
+          vi.useFakeTimers();
+        }
+      });
+
+      it("should be let go after an automatic sync's interval, should the node never say the stake left its queue", async () => {
+        // Only the timeouts are the test's: the stores work as they do.
+        vi.useRealTimers();
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "lost-tx",
+          nonce: 1n,
+        });
+
+        try {
+          await walletStore.stake(amount, gas);
+
+          expect(get(walletStore).pendingStakes).toHaveLength(1);
+
+          await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
+
+          expect(get(walletStore).pendingStakes).toHaveLength(1);
+
+          await vi.advanceTimersByTimeAsync(1);
+
+          expect(get(walletStore).pendingStakes).toStrictEqual([]);
+        } finally {
+          vi.useRealTimers();
+          vi.useFakeTimers();
+        }
+      });
+
+      it("should be let go on a lock", async () => {
+        vi.useRealTimers();
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "locked-tx",
+          nonce: 1n,
+        });
+
+        try {
+          await walletStore.unstake(amount, gas);
+
+          expect(get(walletStore).pendingStakes).toHaveLength(1);
+
+          walletStore.reset();
+
+          expect(get(walletStore).pendingStakes).toStrictEqual([]);
+        } finally {
+          vi.useFakeTimers();
+        }
+      });
     });
 
     it("should deposit through the configured DuskEVM bridge function", async () => {

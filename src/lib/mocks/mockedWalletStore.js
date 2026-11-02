@@ -23,6 +23,7 @@ const content = {
   currentProfile,
   initialized: true,
   minimumStake: 1_000_000_000_000n,
+  pendingStakes: [],
   profiles,
   stakeInfo,
   syncStatus: {

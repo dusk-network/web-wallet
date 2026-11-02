@@ -88,6 +88,12 @@ type WalletStoreContent = {
   currentProfile: Profile | null;
   initialized: boolean;
   minimumStake: bigint;
+  /**
+   * The staking transactions sent and not settled yet: in the node's queue,
+   * or out of it with the stake not read again. Each with the public account
+   * that sent it.
+   */
+  pendingStakes: Array<{ account: string; hash: string }>;
   profiles: Array<Profile>;
   stakeInfo: StakeInfo;
   syncStatus: {
