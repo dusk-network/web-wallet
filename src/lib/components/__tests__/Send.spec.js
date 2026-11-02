@@ -2102,21 +2102,18 @@ describe("Send", () => {
       );
     });
 
-    it("should name a contact saved for the other wallet's profile first, on the card and the Done screen", async () => {
+    it("should offer no Save to contacts for the other wallet's profile, and name a contact saved for it first, on the card and the Done screen", async () => {
       const { account } = await holdOtherWallet();
-      const { container, getByRole } = render(Send, baseProps);
+      const { container, getByRole, queryByRole } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
 
-      await fireEvent.input(fieldsOf(getByRole).to(), {
-        target: { value: account },
-      });
+      await fireEvent.input(to, { target: { value: account } });
 
       expect(cardTitle(container)).toBe("Wallet 1 · Profile 1");
+      expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
 
-      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
-      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
-        target: { value: "Rent" },
-      });
-      await fireEvent.click(getByRole("button", { name: "Save" }));
+      saveContact({ address: account, name: "Rent" });
+      await fireEvent.input(to, { target: { value: account } });
 
       expect(cardTitle(container)).toBe("Rent");
 
