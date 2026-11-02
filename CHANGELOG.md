@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add, rename and remove wallets, and change the password of every wallet, in Settings › Wallets [#999]
 - Say which wallet is open, and which wallet a review is from [#999]
 - Name a profile of a wallet kept here, as "Wallet 2 · Profile 1", on Send's To line and in the activity and the history [#1010]
+- Name a profile of a wallet kept here on Send's address card and Done screen too [#1010]
 - Paste a whole recovery phrase into any word box, and take 24-word phrases [#999]
 - Accept `.dusk` names as send recipients on mainnet and testnet [#965]
 - Send to the shielded address a `.dusk` name publishes [#965]

@@ -22,6 +22,7 @@ import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import { addBasePath } from "$lib/navigation";
 import { networks } from "@dusk-network/networks";
 import {
+  contactsWritten,
   getContact,
   listContacts,
   removeContact,
@@ -1981,13 +1982,19 @@ describe("Send", () => {
     stubWalletNetwork();
 
     afterEach(async () => {
+      // The contacts a test saved are kept before everything goes.
+      await contactsWritten();
       walletStore.reset();
       await vault.clear();
       localStorage.clear();
       await openTestContacts();
     });
 
-    it("should name a profile of the other wallet on the To line as the From line names its own, after a contact or a .dusk name", async () => {
+    /**
+     * Two wallets here, the one added open: Wallet 1's first profile, its
+     * public account and its shielded address.
+     */
+    const holdOtherWallet = async () => {
       // Public BIP39 test phrases, never a real wallet's.
       await vault.setUp(
         "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
@@ -1995,13 +2002,36 @@ describe("Send", () => {
       );
       await unlockWallets("password123");
 
-      const account = String(get(walletStore).profiles[0].account);
+      const [{ account, address }] = get(walletStore).profiles;
 
       // The wallet added is the one open: Wallet 1 is the other.
       await addWallet(
         "scheme spot photo card baby mountain device kick cradle pact join borrow",
         "password123"
       );
+
+      return { account: String(account), address: String(address) };
+    };
+
+    /** @param {HTMLElement} container */
+    const cardTitle = (container) =>
+      container.querySelector(".send__card-title")?.textContent?.trim();
+
+    /**
+     * Sends 1 DUSK to the address entered, as on a laptop.
+     *
+     * @param {(role: string, options: object) => HTMLElement} getByRole
+     */
+    const sendOne = async (getByRole) => {
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.amount(), { target: { value: "1" } });
+      await fireEvent.click(fields.send());
+    };
+
+    it("should name a profile of the other wallet on the To line as the From line names its own, after a contact or a .dusk name", async () => {
+      const { account } = await holdOtherWallet();
+
       baseProps.resolveName.mockResolvedValue({ account, name: "alice.dusk" });
 
       const { container, getByRole } = render(Send, baseProps);
@@ -2028,6 +2058,75 @@ describe("Send", () => {
       await fireEvent.input(to, { target: { value: account } });
 
       expect(toLine()).toStrictEqual(["To", `Rent ${shortenAddress(account)}`]);
+    });
+
+    it("should name a profile of the other wallet on the address card, after a .dusk name", async () => {
+      const { account, address } = await holdOtherWallet();
+
+      baseProps.resolveName.mockResolvedValue({ account, name: "alice.dusk" });
+
+      const { container, getByRole } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
+
+      await fireEvent.input(to, { target: { value: account } });
+
+      expect(cardTitle(container)).toBe("Wallet 1 · Profile 1");
+
+      await fireEvent.input(to, { target: { value: address } });
+
+      expect(cardTitle(container)).toBe("Wallet 1 · Profile 1, shielded");
+
+      await fireEvent.input(to, { target: { value: "alice.dusk" } });
+
+      await waitFor(() =>
+        expect(cardTitle(container)).toBe(
+          "alice.dusk points to a public account"
+        )
+      );
+    });
+
+    it("should name the profile of the other wallet sent to on the Done screen", async () => {
+      const { account } = await holdOtherWallet();
+      const { getByRole } = render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: account },
+      });
+
+      await sendOne(getByRole);
+
+      await waitFor(() =>
+        expect(getByRole("status")).toHaveTextContent(
+          "Sending… 1 DUSK to Wallet 1 · Profile 1 This usually takes under a minute."
+        )
+      );
+    });
+
+    it("should name a contact saved for the other wallet's profile first, on the card and the Done screen", async () => {
+      const { account } = await holdOtherWallet();
+      const { container, getByRole } = render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: account },
+      });
+
+      expect(cardTitle(container)).toBe("Wallet 1 · Profile 1");
+
+      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "Rent" },
+      });
+      await fireEvent.click(getByRole("button", { name: "Save" }));
+
+      expect(cardTitle(container)).toBe("Rent");
+
+      await sendOne(getByRole);
+
+      await waitFor(() =>
+        expect(getByRole("status")).toHaveTextContent(
+          "Sending… 1 DUSK to Rent This usually takes under a minute."
+        )
+      );
     });
   });
 });
