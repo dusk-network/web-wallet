@@ -734,12 +734,13 @@
       ? `your ${own.label}`
       : recipientName
         ? shownName
-        : shortenAddress(recipientAddress);
+        : walletAccount || shortenAddress(recipientAddress);
   $: own = ownAccounts.find(
     (account) => recipientAddress && account.address === recipientAddress
   );
-  // A profile of a wallet kept here, as the From line names its own: after
-  // a contact or a `.dusk` name entered.
+  // A profile of a wallet kept here, as the From line names its own: on the
+  // card, the To line and the Done screen, after a contact or a `.dusk` name
+  // entered.
   $: walletAccount = $walletAccountNames.get(recipientAddress) ?? "";
   $: contacts = $contactsStore;
 
@@ -1016,6 +1017,8 @@
                   : isShielded
                     ? "a shielded address"
                     : "a public account"}
+              {:else if walletAccount}
+                {walletAccount}
               {:else}
                 {isShielded ? "A shielded address" : "A public account"}
               {/if}
