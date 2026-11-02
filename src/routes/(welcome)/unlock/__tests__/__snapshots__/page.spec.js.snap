@@ -76,13 +76,15 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
           <!---->
           <input
             aria-label="Recovery phrase"
-            autocomplete="current-password"
+            autocapitalize="none"
+            autocomplete="off"
             autofocus=""
-            class="dusk-textbox dusk-textbox-password"
+            class="dusk-textbox dusk-textbox-text"
             name="Recovery phrase"
             placeholder="Recovery phrase"
             required=""
-            type="password"
+            spellcheck="false"
+            type="text"
           />
           
           <!---->

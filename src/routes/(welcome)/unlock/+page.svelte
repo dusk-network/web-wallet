@@ -145,6 +145,9 @@
         class="login__form"
         on:submit|preventDefault={handleUnlockWalletSubmit}
       >
+        <!-- A recovery phrase is no password: no password field, so that
+          the browser offers no save, and text it keeps no record of, as
+          Restore's word boxes take it. -->
         <Textbox
           bind:this={fldSecret}
           bind:value={secretText}
@@ -152,8 +155,10 @@
           aria-label={modeLabel}
           placeholder={modeLabel}
           required
-          type="password"
-          autocomplete="current-password"
+          type={hasPassword ? "password" : "text"}
+          autocapitalize={hasPassword ? undefined : "none"}
+          autocomplete={hasPassword ? "current-password" : "off"}
+          spellcheck={hasPassword ? undefined : "false"}
           autofocus
         />
         {#if error instanceof InvalidMnemonicError}
