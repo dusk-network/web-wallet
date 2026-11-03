@@ -100,6 +100,144 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
     <hr />
      
     <article
+      class="settings-group profile-names"
+    >
+      <!---->
+      <h2
+        class="section-head"
+      >
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--open"
+        >
+          [
+        </span>
+        Profiles
+        <!---->
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--close"
+        >
+          ]
+        </span>
+        
+      </h2>
+      
+      <!---->
+       
+      <h3
+        class="profile-names__subtitle svelte-isnd6w"
+      >
+        Names on this device
+      </h3>
+       
+      <ul
+        class="profile-names__list svelte-isnd6w"
+      >
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 1
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 1 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 2
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 2 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 3
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 3 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        
+      </ul>
+    </article>
+    <!---->
+     
+    <hr />
+     
+    <article
       class="settings-group"
     >
       <!---->
@@ -698,6 +836,144 @@ exports[`Settings > should render the settings page displaying the status of the
     <hr />
      
     <article
+      class="settings-group profile-names"
+    >
+      <!---->
+      <h2
+        class="section-head"
+      >
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--open"
+        >
+          [
+        </span>
+        Profiles
+        <!---->
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--close"
+        >
+          ]
+        </span>
+        
+      </h2>
+      
+      <!---->
+       
+      <h3
+        class="profile-names__subtitle svelte-isnd6w"
+      >
+        Names on this device
+      </h3>
+       
+      <ul
+        class="profile-names__list svelte-isnd6w"
+      >
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 1
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 1 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 2
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 2 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 3
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 3 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        
+      </ul>
+    </article>
+    <!---->
+     
+    <hr />
+     
+    <article
       class="settings-group"
     >
       <!---->
@@ -1273,6 +1549,144 @@ exports[`Settings > should render the settings page displaying the status of the
         Adding a wallet needs a password. Restore this wallet with one first.
       </p>
       <!---->
+    </article>
+    <!---->
+     
+    <hr />
+     
+    <article
+      class="settings-group profile-names"
+    >
+      <!---->
+      <h2
+        class="section-head"
+      >
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--open"
+        >
+          [
+        </span>
+        Profiles
+        <!---->
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--close"
+        >
+          ]
+        </span>
+        
+      </h2>
+      
+      <!---->
+       
+      <h3
+        class="profile-names__subtitle svelte-isnd6w"
+      >
+        Names on this device
+      </h3>
+       
+      <ul
+        class="profile-names__list svelte-isnd6w"
+      >
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 1
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 1 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 2
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 2 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 3
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 3 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        
+      </ul>
     </article>
     <!---->
      
@@ -1860,6 +2274,144 @@ exports[`Settings > should show the wallet creation block height under Advanced 
     <hr />
      
     <article
+      class="settings-group profile-names"
+    >
+      <!---->
+      <h2
+        class="section-head"
+      >
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--open"
+        >
+          [
+        </span>
+        Profiles
+        <!---->
+        <span
+          aria-hidden="true"
+          class="section-head__bracket section-head__bracket--close"
+        >
+          ]
+        </span>
+        
+      </h2>
+      
+      <!---->
+       
+      <h3
+        class="profile-names__subtitle svelte-isnd6w"
+      >
+        Names on this device
+      </h3>
+       
+      <ul
+        class="profile-names__list svelte-isnd6w"
+      >
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 1
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 1 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 2
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 2 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        <li
+          class="profile-names__profile svelte-isnd6w"
+        >
+          <span
+            class="profile-names__line svelte-isnd6w"
+          >
+            <span
+              class="profile-names__title svelte-isnd6w"
+            >
+              Profile 3
+            </span>
+             
+            <span
+              class="profile-names__account svelte-isnd6w"
+              title="undefined"
+            >
+              undefined
+            </span>
+          </span>
+           
+          <!---->
+          <input
+            aria-label="Profile 3 name"
+            autocomplete="off"
+            class="dusk-textbox dusk-textbox-text profile-names__field"
+            maxlength="32"
+            placeholder="Name, only on this device"
+            type="text"
+          />
+          
+          <!---->
+        </li>
+        
+      </ul>
+    </article>
+    <!---->
+     
+    <hr />
+     
+    <article
       class="settings-group"
     >
       <!---->
@@ -2266,6 +2818,80 @@ exports[`Settings > should show the wallet creation block height under Advanced 
           <!---->
         </div>
         <!---->
+         
+        <div
+          aria-labelledby="settings-resync"
+          class="settings-group__control settings-group__control--with-label"
+          role="group"
+        >
+          <span
+            id="settings-resync"
+          >
+            Resync
+          </span>
+           
+          <p
+            class="settings-group__note"
+          >
+            Syncs this wallet again from the block you choose, after clearing
+              its synced balances and history on this device. It can take a
+              while. Contacts, settings and names stay.
+          </p>
+           
+          <label
+            class="settings-group__control settings-group__control--with-label"
+          >
+            <span>
+              From
+            </span>
+             
+            <select
+              class="dusk-select settings-group__control settings-group__control--with-label"
+            >
+              <!---->
+              <!---->
+              <option
+                value="creation"
+              >
+                Creation block, 123
+              </option>
+              <option
+                value="genesis"
+              >
+                Genesis, block 0
+              </option>
+              <option
+                value="typed"
+              >
+                Another block
+              </option>
+              
+              <!---->
+              <!---->
+            </select>
+            <!---->
+          </label>
+           
+          <!---->
+           
+          <div
+            class="settings-group__buttons"
+          >
+            <button
+              class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--default"
+              type="button"
+            >
+              <span
+                class="dusk-button__text"
+              >
+                Resync
+              </span>
+              <!---->
+            </button>
+            <!---->
+          </div>
+          <!---->
+        </div>
       </div>
       <!---->
     </article>

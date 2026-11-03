@@ -87,6 +87,11 @@
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { addBasePath } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
+  import {
+    CHECK_EVM_WALLET_FIRST,
+    describeFailure,
+    outcomeUnknown,
+  } from "$lib/transactions";
   import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
   import { LAST_WITHDRAWAL_KEY as LAST_WITHDRAWAL_TX_HASH_KEY } from "$lib/bridge/bridgeRecordKeys";
 
@@ -311,11 +316,15 @@
     await switchChain(wagmiConfig, { chainId: duskEvm.id });
     stillOpen();
 
+    // Once the EVM wallet was asked to send it, it may have, whatever
+    // went wrong but its own refusals (describeFailure).
     const hash = await sendTransaction(wagmiConfig, {
       chainId: duskEvm.id,
       data: withdrawal.data,
       to: withdrawal.to,
       value: withdrawal.value,
+    }).catch((error) => {
+      throw outcomeUnknown(error);
     });
 
     rememberWithdrawalTxHash(hash);
@@ -334,8 +343,11 @@
     );
     const { hash } = response;
 
+    // Sent: what's wrong with it from here doesn't say it wasn't.
     if (typeof hash !== "string") {
-      throw new Error("The DuskDS transaction did not return a hash.");
+      throw outcomeUnknown(
+        new Error("The DuskDS transaction did not return a hash.")
+      );
     }
 
     // Sent: kept for this wallet, whichever is open now.
@@ -346,7 +358,9 @@
     );
 
     if (!remembered) {
-      throw new Error("The DuskDS transaction returned an invalid hash.");
+      throw outcomeUnknown(
+        new Error("The DuskDS transaction returned an invalid hash.")
+      );
     }
 
     void trackDepositTransaction(remembered.transactionHash, records);
@@ -969,6 +983,8 @@
   {:else}
     <div class="bridge-result">
       <OperationResult
+        describeError={(error) =>
+          describeFailure(error, { checkFirst: CHECK_EVM_WALLET_FIRST })}
         errorMessage="Bridging failed"
         {operation}
         pendingMessage="Processing transaction"

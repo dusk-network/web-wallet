@@ -13,6 +13,7 @@ import {
   activityState,
   clearActivityStore,
   currentActivity,
+  forgetWalletActivity,
   getShieldedHistory,
   isHistoryEnabled,
   stopActivity,
@@ -22,6 +23,7 @@ import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
 import WalletChangedError from "$lib/errors/wallet-changed-error";
 import { forgetRouteTransfers } from "$lib/bridge/migrationActivity";
 import { SOZU_FN, sozuCall } from "@dusk-network/networks/sozu";
+import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
 import { useWalletDataSuffix } from "$lib/wallets/dataNames";
@@ -360,7 +362,10 @@ const updateCacheAfterTransaction = (profile) => {
         .updateCachedPendingNotes(txInfo.nullifiers, txInfo.hash)
         .catch(() => {});
     } else {
-      await treasury.updateCachedNonce(profile, txInfo.nonce);
+      // It went out: a failure to keep its nonce mustn't say it didn't.
+      await treasury.updateCachedNonce(profile, txInfo.nonce).catch((error) => {
+        throw outcomeUnknown(error);
+      });
     }
 
     return txInfo;
@@ -973,7 +978,7 @@ const topUpStake = async (amount, gas) => {
 };
 
 /** @type {WalletStoreServices["sync"]} */
-async function sync(fromBlock) {
+async function sync(fromBlock, { clear = false } = {}) {
   const session = walletSession;
   const store = get(walletStore);
 
@@ -1033,7 +1038,7 @@ async function sync(fromBlock) {
       }
 
       ensureCurrent();
-      if (from === 0n) {
+      if (from === 0n || clear) {
         await treasury.clearCache();
       }
       ensureCurrent();
@@ -1120,6 +1125,76 @@ async function sync(fromBlock) {
   }
 
   await syncPromise;
+}
+
+/**
+ * The block a resync syncs the open wallet from, while it runs: null for
+ * none.
+ */
+const resyncFrom = writable(/** @type {bigint | null} */ (null));
+
+/**
+ * Syncs the open wallet again from `fromBlock`, once what it synced is
+ * cleared: its cache of notes, balances and where the sync got to, and its
+ * public history, which the archive gives again. Its shielded history keeps
+ * the heights it asks the archive among, and is worked out again from the
+ * notes found. The contacts, settings, names, the vault and the other
+ * wallets stay as they are. The sync under way, if any, stops for it, and
+ * one resync runs at a time: another is refused meanwhile, and so is a
+ * block below 0 or past the network's latest, before anything is cleared.
+ * Once another wallet opened, or after a lock, it stops
+ * (WalletChangedError).
+ *
+ * @type {WalletStoreServices["resync"]}
+ */
+async function resync(fromBlock) {
+  const { initialized, profiles } = get(walletStore);
+
+  if (!initialized) {
+    throw new Error(
+      "The wallet store needs to be initialized with a profile generator"
+    );
+  }
+
+  if (typeof fromBlock !== "bigint" || fromBlock < 0n) {
+    throw new RangeError("A block height is 0 or more.");
+  }
+
+  if (get(resyncFrom) !== null) {
+    throw new Error("The wallet is syncing again already.");
+  }
+
+  const stillOpen = whileOpen();
+
+  resyncFrom.set(fromBlock);
+
+  try {
+    // A block the network doesn't have yet clears nothing either.
+    if (fromBlock > (await networkStore.getCurrentBlockHeight())) {
+      throw new RangeError("The network has no block at that height yet.");
+    }
+
+    stillOpen();
+    stopActivity();
+    await forgetWalletActivity(
+      {
+        accounts: profiles.map((profile) => String(profile.account)),
+        addresses: [],
+      },
+      ["entries", "meta"]
+    );
+    stillOpen();
+
+    // This sync takes the place of the one under way at once, and clears
+    // the cache before it finds any note.
+    abortSync();
+    await sync(fromBlock, { clear: true }).catch((error) => {
+      throw stillOpen(error);
+    });
+    await updateStaticInfo();
+  } finally {
+    resyncFrom.set(null);
+  }
 }
 
 /** @type {WalletStoreServices["transfer"]} */
@@ -1312,6 +1387,8 @@ export default {
   refreshBalance,
   releaseWallet,
   reset,
+  resync,
+  resyncing: { subscribe: resyncFrom.subscribe },
   sendDuskEvmWithdrawalCall,
   setCurrentProfile,
   shield,

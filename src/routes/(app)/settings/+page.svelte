@@ -1,7 +1,12 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { mdiArrowLeft, mdiChevronDown } from "@mdi/js";
+  import {
+    mdiAlertOutline,
+    mdiArrowLeft,
+    mdiCheck,
+    mdiChevronDown,
+  } from "@mdi/js";
   import {
     Anchor,
     Button,
@@ -9,7 +14,9 @@
     Icon,
     Select,
     Switch,
+    Textbox,
   } from "$lib/dusk/components";
+  import { toast } from "$lib/dusk/components/Toast/store";
   import {
     AppAnchorButton,
     CopyField,
@@ -22,6 +29,7 @@
   import {
     gasPriceStore,
     gasStore,
+    networkStore,
     settingsStore,
     walletStore,
   } from "$lib/stores";
@@ -32,11 +40,12 @@
   } from "$lib/contracts";
   import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
   import { deleteContacts } from "$lib/contacts";
-  import { WalletsSettings } from "$lib/containers/Wallets";
+  import { ProfileNames, WalletsSettings } from "$lib/containers/Wallets";
+  import { WalletChangedError } from "$lib/errors";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
   import { logout, pageTitle } from "$lib/navigation";
   import vault from "$lib/vault";
-  import { lockWallets, walletDirectory } from "$lib/wallets";
+  import { lockWallets, openWalletName, walletDirectory } from "$lib/wallets";
   import { clearDirectory } from "$lib/wallets/directory";
   import { forgetEveryWalletData } from "$lib/wallets/walletData";
 
@@ -117,6 +126,92 @@
 
   let isAdvancedOpen = false;
 
+  const { resyncing } = walletStore;
+
+  /**
+   * Where a resync starts: the block the wallet was made at, the first
+   * block, or one typed.
+   *
+   * @type {"creation" | "genesis" | "typed"}
+   */
+  let resyncChoice = "creation";
+
+  /** The block typed for a resync to start at, as typed: none at first. */
+  let resyncTypedText = "";
+
+  /**
+   * The network's latest block, which a block typed can't be past: null
+   * until it's read, or while it can't be.
+   *
+   * @type {bigint | null}
+   */
+  let networkHeight = null;
+
+  /** @type {"failed" | "reading" | ""} */
+  let networkHeightState = "";
+
+  /** Whether the resync waits for its confirmation. */
+  let isConfirmingResync = false;
+
+  /**
+   * Asks again before a resync, for the start and the wallet given.
+   *
+   * @param {...unknown} _
+   */
+  // eslint-disable-next-line no-unused-vars
+  function askAgain(..._) {
+    isConfirmingResync = false;
+  }
+
+  /**
+   * Reads the network's latest block as a block is to be typed, which
+   * can't be past it: once, or again after it couldn't be read.
+   */
+  function readNetworkHeight() {
+    if (resyncChoice !== "typed" || networkHeight !== null) {
+      return;
+    }
+
+    networkHeightState = "reading";
+    networkStore.getCurrentBlockHeight().then(
+      (height) => {
+        networkHeight = height;
+        networkHeightState = "";
+      },
+      () => {
+        networkHeightState = "failed";
+      }
+    );
+  }
+
+  /**
+   * Syncs the open wallet again from the block chosen: what it synced here
+   * is cleared first.
+   *
+   * @param {bigint} from
+   */
+  function resync(from) {
+    isConfirmingResync = false;
+    walletStore.resync(from).then(
+      () => {
+        toast(
+          "success",
+          `Resynced from block ${numberFormatter(from)}.`,
+          mdiCheck
+        );
+      },
+      (error) => {
+        toast(
+          "error",
+          error instanceof WalletChangedError
+            ? error.message
+            : "Couldn't resync. Try again.",
+          mdiAlertOutline
+        );
+      }
+    );
+  }
+
   /** @type {Error | null} */
   let resetError = null;
 
@@ -184,6 +279,55 @@
   }
 
   $: numberFormatter = createNumberFormatter(language);
+
+  // A wallet whose creation block isn't known here resyncs from the first
+  // block, or one typed.
+  $: if (!walletCreationBlockHeight && resyncChoice === "creation") {
+    resyncChoice = "genesis";
+  }
+
+  /** @type {SelectOption[]} */
+  $: resyncOptions = [
+    ...(walletCreationBlockHeight
+      ? [
+          {
+            label: `Creation block, ${numberFormatter(walletCreationBlockHeight)}`,
+            value: "creation",
+          },
+        ]
+      : []),
+    { label: "Genesis, block 0", value: "genesis" },
+    { label: "Another block", value: "typed" },
+  ];
+  // A block typed: a whole number, 0 or more; null for none yet, or one
+  // that isn't.
+  $: resyncTyped = /^\d+$/.test(resyncTypedText.trim())
+    ? BigInt(resyncTypedText.trim())
+    : null;
+  $: resyncStart =
+    resyncChoice === "creation"
+      ? walletCreationBlockHeight
+      : resyncChoice === "genesis"
+        ? 0n
+        : resyncTyped;
+
+  $: isResyncTypedInvalid =
+    resyncChoice === "typed" &&
+    resyncTypedText.trim() !== "" &&
+    resyncTyped === null;
+  $: isResyncTypedPast =
+    resyncChoice === "typed" &&
+    resyncTyped !== null &&
+    networkHeight !== null &&
+    resyncTyped > networkHeight;
+  $: canResync =
+    $resyncing === null &&
+    resyncStart !== null &&
+    (resyncChoice !== "typed" ||
+      (networkHeight !== null && !isResyncTypedPast));
+
+  // Another start, or another wallet open, is asked about again.
+  $: askAgain(resyncStart, walletKey);
 </script>
 
 <section class="settings">
@@ -193,6 +337,8 @@
 
   <div class="settings__content">
     <WalletsSettings />
+    <hr />
+    <ProfileNames />
     <hr />
     <article class="settings-group">
       <SectionHead>Preferences</SectionHead>
@@ -339,6 +485,103 @@
               />
             </div>
           {/if}
+          <div
+            aria-labelledby="settings-resync"
+            class="settings-group__control settings-group__control--with-label"
+            role="group"
+          >
+            <span id="settings-resync">Resync</span>
+            <p class="settings-group__note">
+              Syncs this wallet again from the block you choose, after clearing
+              its synced balances and history on this device. It can take a
+              while. Contacts, settings and names stay.
+            </p>
+            <label
+              class="settings-group__control settings-group__control--with-label"
+              for={undefined}
+            >
+              <span>From</span>
+              <Select
+                className="settings-group__control settings-group__control--with-label"
+                disabled={$resyncing !== null}
+                on:change={readNetworkHeight}
+                options={resyncOptions}
+                bind:value={resyncChoice}
+              />
+            </label>
+            {#if resyncChoice === "typed"}
+              <Textbox
+                aria-describedby="settings-resync-height"
+                aria-invalid={isResyncTypedInvalid || isResyncTypedPast}
+                aria-label="Block height"
+                autocomplete="off"
+                bind:value={resyncTypedText}
+                className="settings-group__control"
+                disabled={$resyncing !== null}
+                inputmode="numeric"
+                placeholder="Block height"
+                type="text"
+              />
+              <p
+                class="settings-group__note"
+                class:settings-group__note--error={isResyncTypedInvalid ||
+                  isResyncTypedPast ||
+                  networkHeightState === "failed"}
+                id="settings-resync-height"
+              >
+                {#if networkHeightState === "failed"}
+                  Couldn't read the network's latest block.
+                {:else if isResyncTypedInvalid}
+                  Enter a block height of 0 or more.
+                {:else if networkHeight !== null}
+                  The maximum is {numberFormatter(networkHeight)}, the network's
+                  latest block.
+                {/if}
+              </p>
+            {/if}
+            {#if $resyncing !== null}
+              <p class="settings-group__note" role="status">
+                Resyncing from block {numberFormatter($resyncing)}. It can take
+                a while.
+              </p>
+            {:else if isConfirmingResync}
+              <p>
+                Resync {$openWalletName || "this wallet"} from block {numberFormatter(
+                  resyncStart ?? 0n
+                )}? Its balances and history clear, then fill in again as it
+                syncs.
+              </p>
+              <div class="settings-group__buttons">
+                <Button
+                  on:click={() => {
+                    if (resyncStart !== null) {
+                      resync(resyncStart);
+                    }
+                  }}
+                  text="Resync"
+                  variant="secondary"
+                />
+                <Button
+                  on:click={() => {
+                    isConfirmingResync = false;
+                  }}
+                  text="Cancel"
+                  variant="tertiary"
+                />
+              </div>
+            {:else}
+              <div class="settings-group__buttons">
+                <Button
+                  disabled={!canResync}
+                  on:click={() => {
+                    isConfirmingResync = true;
+                  }}
+                  text="Resync"
+                  variant="secondary"
+                />
+              </div>
+            {/if}
+          </div>
         </div>
       {/if}
     </article>
@@ -527,6 +770,16 @@
         color: var(--muted-color);
         font-size: 0.875em;
         line-height: 1.4;
+
+        &--error {
+          color: var(--badge-error-color);
+        }
+      }
+
+      &__buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
       }
 
       &:last-of-type {

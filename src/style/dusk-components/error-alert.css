@@ -12,3 +12,16 @@
     gap: var(--small-gap);
   }
 }
+
+/* A heading, and a sentence on what happened and what to do, over Details. */
+.dusk-error-alert__text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--small-gap);
+  text-align: center;
+}
+
+.dusk-error-alert__description {
+  margin: 0;
+}

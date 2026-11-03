@@ -157,6 +157,7 @@ describe("Settings", () => {
       ])
     ).toStrictEqual([
       ["[Wallets]", true],
+      ["[Profiles]", true],
       ["[Preferences]", true],
       ["Advanced", false],
       ["[Support]", true],

@@ -6,6 +6,7 @@
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import { profileLabel } from "$lib/wallet";
+  import { openProfileNames } from "$lib/wallets";
 
   /** History's filters, as its address can give them; "all" is each default. */
   const FILTERS = {
@@ -98,7 +99,12 @@
   $: account = currentProfile
     ? {
         address: String(currentProfile.account),
-        label: profileLabel(profiles, currentProfile, networkName),
+        label: profileLabel(
+          profiles,
+          currentProfile,
+          networkName,
+          $openProfileNames
+        ),
       }
     : null;
   $: kind = kindOf(url);

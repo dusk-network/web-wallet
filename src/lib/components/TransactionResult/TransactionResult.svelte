@@ -3,6 +3,7 @@
 <script>
   import { isHistoryEnabled } from "$lib/activity";
   import { Suspense } from "$lib/dusk/components";
+  import { CHECK_BALANCE_FIRST, describeFailure } from "$lib/transactions";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import TransactionStatus from "../TransactionStatus/TransactionStatus.svelte";
@@ -43,10 +44,20 @@
   function handleGoHomeClick() {
     onBeforeLeave?.();
   }
+
+  /** @param {Error} error */
+  const describe = (error) =>
+    describeFailure(
+      error,
+      hasHistory ? {} : { checkFirst: CHECK_BALANCE_FIRST }
+    );
 </script>
 
+<!-- A send that failed before it went out says why in plain words, with
+  its own message under Details. -->
 <Suspense
   className="transaction-result"
+  describeError={describe}
   {errorMessage}
   gap="large"
   pendingMessage="Processing transaction"
@@ -71,14 +82,26 @@
       variant="tertiary"
     />
   </svelte:fragment>
-  <AppAnchorButton
-    className="transaction-result__button"
-    href={leaveHref}
-    on:click={handleGoHomeClick}
-    slot="error-extra-content"
-    text={leaveText}
-    variant="tertiary"
-  />
+  <svelte:fragment slot="error-extra-content" let:error>
+    <!-- Whether it went out is for History to say. -->
+    {#if hasHistory && describe(error).outcomeUnknown}
+      <AppAnchorButton
+        className="transaction-result__button"
+        href="/dashboard/transactions"
+        on:click={handleGoHomeClick}
+        text="Open History"
+        variant="secondary"
+      />
+    {:else}
+      <AppAnchorButton
+        className="transaction-result__button"
+        href={leaveHref}
+        on:click={handleGoHomeClick}
+        text={leaveText}
+        variant="tertiary"
+      />
+    {/if}
+  </svelte:fragment>
 </Suspense>
 
 <style lang="postcss">

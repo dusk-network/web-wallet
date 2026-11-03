@@ -15,6 +15,7 @@
   } from "$lib/stores";
   import { nodeBaseUrl } from "$lib/url";
   import { profileLabel } from "$lib/wallet";
+  import { openProfileNames } from "$lib/wallets";
 
   /** @type {"shielded" | "unshielded"} */
   let spendableSource = "unshielded";
@@ -93,7 +94,12 @@
   $: publicAddress = currentProfile ? currentProfile.account.toString() : "";
   $: knownNames = pastNames($activityState.rows);
   $: ownAccounts = $walletStore.profiles.flatMap((profile) => {
-    const label = profileLabel($walletStore.profiles, profile, networkName);
+    const label = profileLabel(
+      $walletStore.profiles,
+      profile,
+      networkName,
+      $openProfileNames
+    );
 
     return [
       { address: String(profile.account), label },

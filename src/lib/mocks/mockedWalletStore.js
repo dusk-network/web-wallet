@@ -1,4 +1,5 @@
 import { ProfileGenerator } from "@dusk/w3sper";
+import { writable } from "svelte/store";
 
 import { stakeInfo } from "$lib/mock-data";
 
@@ -37,6 +38,11 @@ const content = {
   wallets: [{ key: "", n: 1 }],
 };
 
-const mockedWalletStore = mockReadableStore(content);
+const mockedWalletStore = {
+  ...mockReadableStore(content),
+
+  /** The block a resync syncs from, while it runs: null for none. */
+  resyncing: writable(/** @type {bigint | null} */ (null)),
+};
 
 export default mockedWalletStore;

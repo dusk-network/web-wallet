@@ -65,13 +65,15 @@
   $: ({ networkName } = $networkStore);
   $: ({ currentProfile, profiles, walletKey, wallets } = $walletStore);
 
-  // Each wallet under its name, with what it showed when it was last open.
+  // Each wallet under its name, with what it showed when it was last open,
+  // and the names its profiles were given here.
   $: walletGroups = wallets.map(({ key, n }) => ({
     accounts: $walletDirectory.wallets[key]?.accounts ?? [],
     addresses: $walletDirectory.wallets[key]?.addresses ?? [],
     key,
     label: walletLabel({ n, name: $walletDirectory.wallets[key]?.name }),
     open: key === walletKey,
+    profileNames: $walletDirectory.wallets[key]?.profileNames ?? [],
   }));
 </script>
 

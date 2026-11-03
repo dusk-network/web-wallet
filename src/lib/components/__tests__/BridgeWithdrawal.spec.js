@@ -4,7 +4,13 @@ import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 
 import { Bridge } from "..";
-import { decodeFunctionData, parseAbi } from "viem";
+import {
+  BaseError,
+  InsufficientFundsError,
+  UserRejectedRequestError,
+  decodeFunctionData,
+  parseAbi,
+} from "viem";
 import { networks } from "@dusk-network/networks";
 import { duskRecipientOf } from "@dusk-network/networks/duskevm";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
@@ -171,5 +177,75 @@ describe("Bridge withdrawal", () => {
       account: PAID,
       kind: "account",
     });
+  });
+
+  /**
+   * The failure screen's heading and sentence, once it shows.
+   *
+   * @param {import("@testing-library/svelte").RenderResult<any>} rendered
+   */
+  async function failureOf(rendered) {
+    await vi.waitFor(() =>
+      expect(rendered.container.querySelector(".dusk-error-alert")).toBeTruthy()
+    );
+
+    const alert = /** @type {HTMLElement} */ (
+      rendered.container.querySelector(".dusk-error-alert")
+    );
+
+    return [
+      alert.querySelector(".dusk-error-alert__summary")?.textContent,
+      alert.querySelector(".dusk-error-alert__description")?.textContent,
+    ];
+  }
+
+  it("says to try again when DuskEVM couldn't be reached before the EVM wallet was asked to send it, and after, that it may have gone out and to check the EVM wallet", async () => {
+    mocks.switchChain.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    expect(await failureOf(await sendWithdrawal())).toStrictEqual([
+      "Bridging failed",
+      "Couldn't reach the network. Check your connection and try again.",
+    ]);
+    expect(mocks.sendTransaction).not.toHaveBeenCalled();
+    cleanup();
+
+    mocks.sendTransaction.mockRejectedValueOnce(
+      new TypeError("Failed to fetch")
+    );
+
+    const rendered = await sendWithdrawal();
+
+    expect(await failureOf(rendered)).toStrictEqual([
+      "Not confirmed",
+      "It may have reached the network. Check your EVM wallet's activity before you send it again.",
+    ]);
+    expect(rendered.container).not.toHaveTextContent(/try again/i);
+  });
+
+  it("says the balance doesn't cover it, without naming the shielded one, when the EVM wallet's doesn't cover it and its gas", async () => {
+    mocks.sendTransaction.mockRejectedValueOnce(
+      // As the node's refusal reaches the wallet, through viem.
+      new InsufficientFundsError({
+        cause: new BaseError("Insufficient funds.", {
+          details: "insufficient funds for gas * price + value",
+        }),
+      })
+    );
+
+    expect(await failureOf(await sendWithdrawal())).toStrictEqual([
+      "Bridging failed",
+      "The balance doesn't cover it and its fee, so nothing was sent. Lower the amount and try again.",
+    ]);
+  });
+
+  it("says nothing was sent when it was declined in the EVM wallet", async () => {
+    mocks.sendTransaction.mockRejectedValue(
+      new UserRejectedRequestError(new Error("User denied transaction."))
+    );
+
+    expect(await failureOf(await sendWithdrawal())).toStrictEqual([
+      "Bridging failed",
+      "It was declined in your EVM wallet, so nothing was sent.",
+    ]);
   });
 });
