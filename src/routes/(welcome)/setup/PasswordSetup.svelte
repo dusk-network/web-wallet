@@ -93,29 +93,27 @@
 </Banner>
 
 <style lang="postcss">
+  /* Under a field, as the wallet's hints are. */
   .confirm-password {
     &--meta {
-      display: inline-block;
-      font-size: 0.75em;
-      margin-top: 0.8em;
-      margin-left: 1em;
-      opacity: 0.5;
+      display: block;
+      margin-top: 0.5rem;
+      color: var(--calm-muted);
+      font-size: 0.84375rem;
 
       &--error {
-        color: var(--error-color);
-        opacity: 1;
+        color: var(--calm-danger);
       }
     }
   }
 
   .password-strength {
-    font-size: 0.75em;
-    margin: 0.8em 0 0 1em;
-    opacity: 0.5;
+    margin-top: 0.5rem;
+    color: var(--calm-muted);
+    font-size: 0.84375rem;
 
     &--weak {
-      color: var(--banner-warning-color);
-      opacity: 1;
+      color: var(--calm-pending);
     }
   }
 

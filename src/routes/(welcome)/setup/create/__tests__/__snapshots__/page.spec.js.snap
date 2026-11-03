@@ -17,12 +17,7 @@ exports[`Create > correctly renders the Mnemonic Preview page 1`] = `
     class="h1"
     slot="heading"
   >
-    Backup
-    <br />
-     
-    <mark>
-      Recovery Phrase
-    </mark>
+    Backup Recovery Phrase
   </h2>
   <!---->
    
@@ -260,7 +255,7 @@ exports[`Create > correctly renders the Mnemonic Preview page 1`] = `
     <!---->
      
     <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
       type="button"
     >
       <!---->
@@ -332,12 +327,7 @@ exports[`Create > correctly renders the Mnemonic Verification page 1`] = `
     class="h1"
     slot="heading"
   >
-    Backup
-    <br />
-     
-    <mark>
-      Recovery Phrase
-    </mark>
+    Backup Recovery Phrase
   </h2>
   <!---->
    
@@ -758,7 +748,7 @@ exports[`Create > correctly renders the Mnemonic Verification page 1`] = `
     <!---->
      
     <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
       disabled=""
       type="button"
     >
@@ -827,12 +817,7 @@ exports[`Create > doesn't let the user proceed if they have entered mismatching 
     class="h1"
     slot="heading"
   >
-    Backup
-    <br />
-     
-    <mark>
-      Recovery Phrase
-    </mark>
+    Backup Recovery Phrase
   </h2>
   <!---->
    
@@ -1293,7 +1278,7 @@ exports[`Create > doesn't let the user proceed if they have entered mismatching 
     <!---->
      
     <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
       disabled=""
       type="button"
     >
@@ -1362,12 +1347,7 @@ exports[`Create > ensures that the Undo button on the Mnemonic Validate step wor
     class="h1"
     slot="heading"
   >
-    Backup
-    <br />
-     
-    <mark>
-      Recovery Phrase
-    </mark>
+    Backup Recovery Phrase
   </h2>
   <!---->
    
@@ -1798,7 +1778,7 @@ exports[`Create > ensures that the Undo button on the Mnemonic Validate step wor
     <!---->
      
     <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
       disabled=""
       type="button"
     >
@@ -1879,12 +1859,7 @@ exports[`Create > ensures the All Done step renders as expected 1`] = `
     class="h1"
     slot="heading"
   >
-    Welcome to
-    <br />
-     
-    <mark>
-      Dusk
-    </mark>
+    Welcome to Dusk
   </h2>
   <!---->
    
@@ -2018,7 +1993,7 @@ exports[`Create > ensures the All Done step renders as expected 1`] = `
     <!---->
      
     <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
       type="button"
     >
       <!---->
@@ -2082,12 +2057,7 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
     class="h1"
     slot="heading"
   >
-    Network
-    <br />
-     
-    <mark>
-      Syncing
-    </mark>
+    Network Syncing
   </h2>
   <!---->
    
@@ -2338,7 +2308,7 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
     <!---->
      
     <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
       type="button"
     >
       <!---->
@@ -2402,11 +2372,7 @@ exports[`Create > ensures the Password step renders as expected 1`] = `
     class="h1"
     slot="heading"
   >
-    <mark>
-      Password
-    </mark>
-    <br />
-     Setup
+    Password Setup
   </h2>
   <!---->
    
@@ -2654,7 +2620,7 @@ exports[`Create > ensures the Password step renders as expected 1`] = `
     <!---->
      
     <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
       disabled=""
       type="button"
     >
@@ -2723,11 +2689,7 @@ exports[`Create > ensures the Password step renders as expected 2`] = `
     class="h1"
     slot="heading"
   >
-    <mark>
-      Password
-    </mark>
-    <br />
-     Setup
+    Password Setup
   </h2>
   <!---->
    
@@ -2930,7 +2892,7 @@ exports[`Create > ensures the Password step renders as expected 2`] = `
     <!---->
      
     <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
       type="button"
     >
       <!---->
@@ -2994,12 +2956,7 @@ exports[`Create > lets the user proceed if they have entered a matching Mnemonic
     class="h1"
     slot="heading"
   >
-    Backup
-    <br />
-     
-    <mark>
-      Recovery Phrase
-    </mark>
+    Backup Recovery Phrase
   </h2>
   <!---->
    
@@ -3431,7 +3388,7 @@ exports[`Create > lets the user proceed if they have entered a matching Mnemonic
     <!---->
      
     <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
       type="button"
     >
       <!---->
@@ -3491,12 +3448,7 @@ exports[`Create > should render the \`Securely store your mnemonic phrase!\` agr
     class="h1"
     slot="heading"
   >
-    Backup
-    <br />
-     
-    <mark>
-      Recovery Phrase
-    </mark>
+    Backup Recovery Phrase
   </h2>
   <!---->
    
@@ -3730,7 +3682,7 @@ exports[`Create > should render the \`Securely store your mnemonic phrase!\` agr
     <!---->
      
     <button
-      class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+      class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
       disabled=""
       type="button"
     >
@@ -3788,7 +3740,7 @@ exports[`Create > should render the \`Securely store your mnemonic phrase!\` agr
 
 exports[`Create > should render the Existing Wallet notice step of the Create flow if there is a userId saved in localStorage 1`] = `
 <div
-  class="onboarding-wrapper svelte-1vxhu6z"
+  class="onboarding-wrapper"
 >
   <section>
     <!---->
@@ -3892,7 +3844,7 @@ exports[`Create > should render the Existing Wallet notice step of the Create fl
 
 exports[`Create > should render the Terms of Service step of the Create flow if there is no userId saved in localStorage 1`] = `
 <div
-  class="onboarding-wrapper svelte-1vxhu6z"
+  class="onboarding-wrapper"
 >
   <section>
     <!---->

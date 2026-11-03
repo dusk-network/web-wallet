@@ -130,10 +130,7 @@
 </script>
 
 <section class="login">
-  <h2 class="h1">
-    Unleash <mark>RWA</mark> and<br />
-    <mark>Decentralized Finance</mark>
-  </h2>
+  <h2 class="h1">Unleash RWA and Decentralized Finance</h2>
   <div class="login">
     <IconHeadingCard
       tag="article"
@@ -216,8 +213,6 @@
   }
 
   .login {
-    height: 100%;
-    overflow-y: auto;
     gap: var(--large-gap);
 
     &__form {

@@ -237,7 +237,7 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
       <!---->
        
       <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+        class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
         <!---->
@@ -519,7 +519,7 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
       <!---->
        
       <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+        class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
         <!---->

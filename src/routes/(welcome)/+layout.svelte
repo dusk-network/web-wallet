@@ -1,10 +1,8 @@
 <script>
   import { Button, ErrorDetails, Throbber } from "$lib/dusk/components";
-  import { AppImage, Banner } from "$lib/components";
-  import { TestnetStrip } from "$lib/containers/Shell";
-  import { networkStore, settingsStore } from "$lib/stores";
-
-  const { darkMode } = $settingsStore;
+  import { Banner } from "$lib/components";
+  import { WelcomeShell } from "$lib/containers/Shell";
+  import { networkStore } from "$lib/stores";
 
   let retryKey = 0;
 
@@ -16,47 +14,38 @@
   }
 </script>
 
-<div class="welcome-layout__strip"><TestnetStrip /></div>
-
-<header class="welcome-layout__header">
-  <AppImage
-    src={darkMode ? "/dusk_logo_light.svg" : "/dusk_logo.svg"}
-    alt="Dusk Logo"
-    width="129"
-    height="31"
-  />
-</header>
-
-{#key retryKey}
-  {#await networkStore.connect().then(() => networkStore.init())}
-    <div class="welcome-layout__loading">
-      <Throbber />
-      <strong>Connecting to the network</strong>
-    </div>
-  {:then}
-    <slot />
-  {:catch error}
-    <div class="welcome-layout__error-container">
-      <Banner
-        className="welcome-layout__error"
-        title="Network Connection Issue"
-        variant="error"
-      >
-        <p>
-          The Web Wallet is currently unable to connect to the network. Please
-          click "Retry" to attempt connecting again or check back in a few
-          minutes.
-        </p>
-        <ErrorDetails {error} summary="Error details" />
-      </Banner>
-      <Button
-        className="welcome-layout__retry-button"
-        text="Retry"
-        on:click={handleRetry}
-      />
-    </div>
-  {/await}
-{/key}
+<WelcomeShell>
+  {#key retryKey}
+    {#await networkStore.connect().then(() => networkStore.init())}
+      <div class="welcome-layout__loading">
+        <Throbber />
+        <strong>Connecting to the network</strong>
+      </div>
+    {:then}
+      <slot />
+    {:catch error}
+      <div class="welcome-layout__error-container">
+        <Banner
+          className="welcome-layout__error"
+          title="Network Connection Issue"
+          variant="error"
+        >
+          <p>
+            The Web Wallet is currently unable to connect to the network. Please
+            click "Retry" to attempt connecting again or check back in a few
+            minutes.
+          </p>
+          <ErrorDetails {error} summary="Error details" />
+        </Banner>
+        <Button
+          className="welcome-layout__retry-button"
+          text="Retry"
+          on:click={handleRetry}
+        />
+      </div>
+    {/await}
+  {/key}
+</WelcomeShell>
 
 <style lang="postcss">
   .welcome-layout__error-container {
@@ -67,14 +56,6 @@
     width: 100%;
   }
   :global {
-    .welcome-layout__header {
-      align-items: center;
-      border-bottom: 1px solid var(--surface-border-color-subtle);
-      display: flex;
-      min-height: 3rem;
-      padding-bottom: 0.875rem;
-    }
-
     .welcome-layout__loading {
       width: 100%;
       display: flex;

@@ -7,16 +7,7 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
   <h2
     class="h1"
   >
-    Unleash 
-    <mark>
-      RWA
-    </mark>
-     and
-    <br />
-     
-    <mark>
-      Decentralized Finance
-    </mark>
+    Unleash RWA and Decentralized Finance
   </h2>
    
   <div
@@ -162,16 +153,7 @@ exports[`Unlock Wallet > Password workflow > should show the password field and 
   <h2
     class="h1"
   >
-    Unleash 
-    <mark>
-      RWA
-    </mark>
-     and
-    <br />
-     
-    <mark>
-      Decentralized Finance
-    </mark>
+    Unleash RWA and Decentralized Finance
   </h2>
    
   <div

@@ -99,7 +99,8 @@
   }
 
   /**
-   * Returns the common props for the wizard buttons
+   * Returns the common props for the wizard buttons: Next primary, as a
+   * flow's way on is in the wallet, and Back tertiary.
    * @param {WizardButtonProps | Undefined} wizardButtonProps
    * @param {String} defaultLabel
    * @param {String} defaultIconPath
@@ -118,7 +119,8 @@
       disabled: wizardButtonProps?.disabled ?? stepCondition,
       icon: getButtonIcon(wizardButtonProps, defaultIconPath, isNextButton),
       text: wizardButtonProps?.label ?? defaultLabel,
-      variant: wizardButtonProps?.variant ?? "tertiary",
+      variant:
+        wizardButtonProps?.variant ?? (isNextButton ? "primary" : "tertiary"),
     };
   }
 </script>

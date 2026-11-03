@@ -81,17 +81,11 @@
       }}
       nextButton={{ disabled: !agreementAccepted }}
     >
-      <h2 class="h1" slot="heading">
-        Backup<br />
-        <mark>Recovery Phrase</mark>
-      </h2>
+      <h2 class="h1" slot="heading">Backup Recovery Phrase</h2>
       <MnemonicPreSetup bind:isValid={agreementAccepted} />
     </WizardStep>
     <WizardStep step={1} {key} showStepper={true}>
-      <h2 class="h1" slot="heading">
-        Backup<br />
-        <mark>Recovery Phrase</mark>
-      </h2>
+      <h2 class="h1" slot="heading">Backup Recovery Phrase</h2>
       <MnemonicPhrase bind:mnemonicPhrase />
     </WizardStep>
     <WizardStep
@@ -107,10 +101,7 @@
         disabled: !isValidMnemonic,
       }}
     >
-      <h2 class="h1" slot="heading">
-        Backup<br />
-        <mark>Recovery Phrase</mark>
-      </h2>
+      <h2 class="h1" slot="heading">Backup Recovery Phrase</h2>
       <MnemonicValidate
         bind:isValid={isValidMnemonic}
         bind:enteredMnemonicPhrase
@@ -128,10 +119,7 @@
         disabled: !isValidPassword,
       }}
     >
-      <h2 class="h1" slot="heading">
-        <mark>Password</mark><br />
-        Setup
-      </h2>
+      <h2 class="h1" slot="heading">Password Setup</h2>
       <PasswordSetup
         bind:password
         bind:isValid={isValidPassword}
@@ -159,10 +147,7 @@
         disabled: false,
       }}
     >
-      <h2 class="h1" slot="heading">
-        Network<br />
-        <mark>Syncing</mark>
-      </h2>
+      <h2 class="h1" slot="heading">Network Syncing</h2>
       <NetworkSync {currentBlockHeight} />
     </WizardStep>
     <WizardStep
@@ -177,18 +162,8 @@
         disabled: false,
       }}
     >
-      <h2 class="h1" slot="heading">
-        Welcome to<br />
-        <mark>Dusk</mark>
-      </h2>
+      <h2 class="h1" slot="heading">Welcome to Dusk</h2>
       <AllSet />
     </WizardStep>
   </Wizard>
 {/if}
-
-<style>
-  .onboarding-wrapper {
-    height: 100%;
-    overflow-y: auto;
-  }
-</style>

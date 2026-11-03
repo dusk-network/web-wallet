@@ -8,10 +8,7 @@
 </script>
 
 <section class="maintenance">
-  <h2 class="h1">
-    Unleash <mark>RWA</mark> and<br />
-    Decentralized <mark>Finance</mark>
-  </h2>
+  <h2 class="h1">Unleash RWA and Decentralized Finance</h2>
   <div class="maintenance">
     <IconHeadingCard
       tag="article"
@@ -43,8 +40,6 @@
   }
 
   .maintenance {
-    height: 100%;
-    overflow-y: auto;
     gap: var(--large-gap);
   }
 

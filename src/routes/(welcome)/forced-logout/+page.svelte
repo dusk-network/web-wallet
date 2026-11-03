@@ -33,8 +33,7 @@
   .forced-logout {
     display: flex;
     flex-direction: column;
-    flex: 1;
-    justify-content: space-between;
+    gap: var(--large-gap);
   }
 
   p + p {

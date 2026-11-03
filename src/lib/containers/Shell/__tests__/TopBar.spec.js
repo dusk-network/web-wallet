@@ -57,6 +57,20 @@ describe("TopBar", () => {
     );
   });
 
+  it("shows the brand alone before a wallet opens, leading nowhere", () => {
+    const { container, getByRole } = render(TopBar, {
+      activeTab: null,
+      bare: true,
+      tabs: [],
+    });
+    const brand = getByRole("img", { name: "Dusk Wallet" });
+
+    expect(brand).toHaveClass("top-bar__brand");
+    expect(brand.querySelector("svg.dusk-wordmark")).toBeInTheDocument();
+    expect(brand).toHaveTextContent(/^Wallet$/);
+    expect(container.querySelectorAll("a, button, nav")).toHaveLength(0);
+  });
+
   it("shows the DUSK wordmark, a line and WALLET, named for screen readers", () => {
     const { getByRole } = render(TopBar, { activeTab: "home", tabs });
     const brand = getByRole("link", { name: "Dusk Wallet, home" });
