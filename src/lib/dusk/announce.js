@@ -2,7 +2,8 @@
 /** @type {HTMLElement | null} */
 let region = null;
 
-let timer = 0;
+let saying = 0;
+let clearing = 0;
 
 /**
  * Says `words` to screen readers, once, from the app's one polite live
@@ -21,13 +22,14 @@ export function announce(words, forMs) {
 
   const live = region;
 
-  clearTimeout(timer);
+  clearTimeout(saying);
+  clearTimeout(clearing);
   live.textContent = "";
   // A moment after the region is there and empty, so it's heard.
-  timer = window.setTimeout(() => {
+  saying = window.setTimeout(() => {
     live.textContent = words;
-    timer = window.setTimeout(() => {
-      live.textContent = "";
-    }, forMs);
   }, 50);
+  clearing = window.setTimeout(() => {
+    live.textContent = "";
+  }, 50 + forMs);
 }

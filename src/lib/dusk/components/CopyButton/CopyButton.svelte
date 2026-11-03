@@ -50,14 +50,21 @@
   /** @type {string | undefined} */
   export let className = undefined;
 
-  /** Whether it says Copied, for a moment after it copied. */
-  let copied = false;
+  /**
+   * What it just copied: it says Copied for a moment, while that's still
+   * the value it shows.
+   *
+   * @type {string | undefined}
+   */
+  let justCopied = undefined;
 
   let timer = 0;
 
   async function copy() {
+    const copying = value;
+
     try {
-      await navigator.clipboard.writeText(value);
+      await navigator.clipboard.writeText(copying);
     } catch (error) {
       toast(
         "error",
@@ -70,17 +77,18 @@
       return;
     }
 
-    copied = true;
+    justCopied = copying;
     announce("Copied", COPIED_FOR);
     clearTimeout(timer);
     timer = window.setTimeout(() => {
-      copied = false;
+      justCopied = undefined;
     }, COPIED_FOR);
   }
 
   onDestroy(() => clearTimeout(timer));
 
   // Copied where it was pressed: the icon a check, the word Copied.
+  $: copied = justCopied !== undefined && justCopied === value;
   $: label = copied ? "Copied" : `Copy ${name}`;
   $: path = copied ? mdiCheck : mdiContentCopy;
   $: word = text && copied ? "Copied" : text;

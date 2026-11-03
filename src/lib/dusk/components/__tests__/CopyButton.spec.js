@@ -126,4 +126,22 @@ describe("CopyButton", () => {
       expect(heard()).toBe("");
     }
   );
+
+  it("should not say Copied for a value it didn't copy", async () => {
+    clipboardThat();
+
+    const { getByRole, rerender } = render(CopyButton, {
+      name: "address",
+      value,
+    });
+
+    await fireEvent.click(getByRole("button", { name: "Copy address" }));
+    await vi.advanceTimersByTimeAsync(50);
+    expect(getByRole("button", { name: "Copied" })).toBeInTheDocument();
+
+    // Receive switched to the other address within the 1.5 s.
+    await rerender({ name: "address", value: "another address" });
+    expect(getByRole("button", { name: "Copy address" })).toBeInTheDocument();
+    expect(iconOf(getByRole("button"))).toBe(mdiContentCopy);
+  });
 });
