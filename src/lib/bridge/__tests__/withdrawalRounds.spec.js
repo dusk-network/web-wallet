@@ -156,6 +156,14 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
     vi.unstubAllGlobals();
   });
 
+  it("starts a new withdrawal with its proof not rejected", () => {
+    const item = storage.rememberWithdrawalTransaction(WAITING, {
+      account: ACCOUNT,
+    });
+
+    expect(item?.proofRejected).toBe(false);
+  });
+
   /**
    * Keeps a withdrawal as an earlier session left it.
    *
