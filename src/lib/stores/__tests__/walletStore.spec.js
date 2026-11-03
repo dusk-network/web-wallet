@@ -1436,7 +1436,7 @@ describe("Wallet store", async () => {
         }
       });
 
-      it("should be let go once the history has it from a block and the stake was read, should the node's queue not say so", async () => {
+      it("should be let go once the history has it from a block and a sync from then read the stake, should the node's queue not say so", async () => {
         vi.useRealTimers();
 
         const network = await networkStore.connect();
@@ -1466,17 +1466,32 @@ describe("Wallet store", async () => {
 
           expect(get(walletStore).pendingStakes).toHaveLength(1);
 
-          stakeInfoSpy.mockResolvedValueOnce(fresh);
+          // The stake is read from what the wallet synced: it waits for a
+          // sync that starts once the history has it.
+          const slow = Promise.withResolvers();
+          const syncsBefore = treasuryUpdateSpy.mock.calls.length;
+
+          treasuryUpdateSpy.mockImplementationOnce(() => slow.promise);
+          stakeInfoSpy.mockResolvedValue(fresh);
           shown.state.set({
             ...emptyActivity,
             loaded: true,
             rows: [{ hash: "seen-tx", source: "public" }],
           });
+          await vi.waitUntil(
+            () => treasuryUpdateSpy.mock.calls.length > syncsBefore
+          );
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          expect(get(walletStore).pendingStakes).toHaveLength(1);
+
+          slow.resolve(undefined);
           await vi.waitUntil(() => !get(walletStore).pendingStakes.length);
 
           expect(get(walletStore).stakeInfo).toBe(fresh);
         } finally {
           removed.mockRestore();
+          stakeInfoSpy.mockResolvedValue(stakeInfo);
           shown.state.set(emptyActivity);
           vi.useFakeTimers();
         }

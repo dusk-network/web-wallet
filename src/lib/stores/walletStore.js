@@ -229,8 +229,8 @@ const refreshOnRemoval = (txInfo, after) =>
  * node took it out of its queue (`refreshed`), or else at each automatic
  * sync's interval, a sync the hold starts and waits for. Not when the
  * queue can't be followed, nor when the sync fails: the stake read then is
- * the one from before. Also once the history has it from a block and the
- * stake is read then. After two intervals without one, the buttons come
+ * the one from before. Also once the history has it from a block, after a
+ * sync that started then read the stake. After two intervals without one, the buttons come
  * back all the same, the stake said to be maybe out of date (`stale`)
  * until it's read.
  *
@@ -308,13 +308,19 @@ function holdStaking(profile, hash, after, refreshed) {
       rows.some((row) => row.hash === txHash && row.source !== "sent")
     ) {
       isInBlock = true;
-      updateStaticInfo().then(([, stake]) => {
-        if (stake.status === "fulfilled") {
+      // The stake is read from what the wallet synced: a sync from now.
+      syncAfter(syncNumber)
+        .then(updateStaticInfo)
+        .then(([, stake]) => {
+          if (stake.status !== "fulfilled") {
+            throw stake.reason;
+          }
+
           release();
-        } else {
+        })
+        .catch(() => {
           isInBlock = false;
-        }
-      });
+        });
     }
   });
 }
