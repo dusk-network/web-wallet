@@ -171,19 +171,27 @@ describe("Create", async () => {
     );
   });
 
-  it("should call it the recovery phrase, and say how to check it", async () => {
-    const { container, getByRole, getAllByRole, getByText } = render(
-      Create,
-      baseOptions
-    );
+  it("should call it the recovery phrase, warn that anyone with its words can take the DUSK, and say how to check it", async () => {
+    const { container, getByLabelText, getByRole, getAllByRole, getByText } =
+      render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     const agreementStep = container.textContent ?? "";
 
     expect(agreementStep).toMatch(/Keep it safe/);
-    expect(agreementStep).toMatch(/my recovery phrase\./);
+    expect(agreementStep).toMatch(/my recovery phrase/);
     expect(agreementStep).not.toMatch(/mnemonic/i);
+    expect(
+      getByLabelText(
+        "I understand that without my recovery phrase I cannot access my wallet and its assets."
+      )
+    ).toHaveAttribute("type", "checkbox");
+    expect(
+      getByLabelText(
+        "Anyone with these 12 words can take my DUSK. Dusk will never ask for them."
+      )
+    ).toHaveAttribute("type", "checkbox");
 
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
