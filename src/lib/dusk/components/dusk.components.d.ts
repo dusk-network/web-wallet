@@ -43,12 +43,6 @@ type StepperVariant = "primary" | "secondary";
 
 type SuspenseErrorVariant = "alert" | "details";
 
-type TabItem = {
-  icon?: IconProp;
-  id: string;
-  label?: string;
-};
-
 type TextboxTypes =
   | "email"
   | "hidden"

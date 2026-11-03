@@ -11,13 +11,11 @@
   import Cards from "./Cards.svelte";
   import Checkboxes from "./Checkboxes.svelte";
   import CopyField from "./CopyField.svelte";
-  import DashboardNavs from "./DashboardNavs.svelte";
   import ExclusiveChoices from "./ExclusiveChoices.svelte";
   import ProgressBars from "./ProgressBars.svelte";
   import Selects from "./Selects.svelte";
   import Steppers from "./Steppers.svelte";
   import Switches from "./Switches.svelte";
-  import Tabboxes from "./Tabboxes.svelte";
   import Textboxes from "./Textboxes.svelte";
   import Throbbers from "./Throbbers.svelte";
   import Toasts from "./Toasts.svelte";
@@ -34,13 +32,11 @@
     Cards: Cards,
     Checkboxes: Checkboxes,
     "Copy Field": CopyField,
-    "Dashboard Navs": DashboardNavs,
     "Exclusive Choices": ExclusiveChoices,
     "Progress bars": ProgressBars,
     Selects: Selects,
     Steppers: Steppers,
     Switches: Switches,
-    Tabboxes: Tabboxes,
     Textboxes: Textboxes,
     Throbbers: Throbbers,
     Toasts: Toasts,

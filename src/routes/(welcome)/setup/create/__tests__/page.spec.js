@@ -514,14 +514,12 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    expect(container.firstElementChild).toMatchSnapshot();
+    // Once the wallet is open.
+    await vi.waitFor(() => {
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+    });
 
-    /*
-     * We wait for the `clearLocalDataAndInit` call inside `initializeWallet`
-     * as the promise is not awaited and can happen after the test ends
-     * invalidating the checks of other tests.
-     */
-    await vi.waitUntil(() => clearAndInitSpy.mock.calls.length === 1);
+    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should initialize the wallet without setting a password", async () => {
@@ -562,11 +560,11 @@ describe("Create", async () => {
     expect(initWalletSpy).toHaveBeenCalledTimes(1);
     expect(initWalletSpy).toHaveBeenCalledWith(mnemonic, currentBlockHeight);
 
-    await vi.waitUntil(() => clearAndInitSpy.mock.calls.length === 1);
-
-    expect(get(settingsStore).walletCreationBlockHeight).toBe(
-      currentBlockHeight
-    );
+    await vi.waitFor(() => {
+      expect(get(settingsStore).walletCreationBlockHeight).toBe(
+        currentBlockHeight
+      );
+    });
     expect(clearAndInitSpy).toHaveBeenCalledTimes(1);
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
@@ -581,6 +579,69 @@ describe("Create", async () => {
 
     expect(gotoSpy).toHaveBeenCalledTimes(1);
     expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("should go on from All set only once the wallet is open, and say so when it can't open", async () => {
+    /** @param {() => Promise<void>} open */
+    const toAllSet = async (open) => {
+      clearAndInitSpy.mockImplementationOnce(open);
+
+      const rendered = render(Create, baseOptions);
+      const { getByRole, getAllByRole } = rendered;
+
+      await fireEvent.click(getByRole("button", { name: "Accept" }));
+      await fireEvent.click(getAllByRole("checkbox")[0]);
+      await fireEvent.click(getAllByRole("checkbox")[1]);
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      for (const word of mnemonic.split(" ")) {
+        await fireEvent.click(getByRole("button", { name: word }));
+      }
+
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("switch"));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await vi.waitUntil(() => clearAndInitSpy.mock.calls.length === 1);
+
+      return rendered;
+    };
+    const opening = Promise.withResolvers();
+    const { getByRole } = await toAllSet(
+      () => /** @type {Promise<void>} */ (opening.promise)
+    );
+
+    // All set, while the wallet opens.
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+    opening.resolve(undefined);
+
+    await vi.waitFor(() => {
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+    });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
+
+    expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+
+    cleanup();
+    clearAndInitSpy.mockClear();
+    gotoSpy.mockClear();
+
+    const failed = await toAllSet(() =>
+      Promise.reject(new Error("some error"))
+    );
+
+    await vi.waitFor(() => {
+      expect(failed.getByText("The wallet couldn't open")).toBeInTheDocument();
+    });
+    expect(
+      failed.getByText("Restore it with the recovery phrase you wrote down.")
+    ).toBeInTheDocument();
+    expect(failed.queryByText("You are all set!")).toBeNull();
+    expect(failed.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(gotoSpy).not.toHaveBeenCalled();
   });
 
   it("should initialize the wallet encrypted mnemonic saved in localStorage", async () => {
@@ -630,11 +691,11 @@ describe("Create", async () => {
     expect(initWalletSpy).toHaveBeenCalledTimes(1);
     expect(initWalletSpy).toHaveBeenCalledWith(mnemonic, currentBlockHeight);
 
-    await vi.waitUntil(() => clearAndInitSpy.mock.calls.length === 1);
-
-    expect(get(settingsStore).walletCreationBlockHeight).toBe(
-      currentBlockHeight
-    );
+    await vi.waitFor(() => {
+      expect(get(settingsStore).walletCreationBlockHeight).toBe(
+        currentBlockHeight
+      );
+    });
     expect(clearAndInitSpy).toHaveBeenCalledTimes(1);
     // The vault's one wallet, which keeps the data under the names of before.
     expect(clearAndInitSpy).toHaveBeenCalledWith(

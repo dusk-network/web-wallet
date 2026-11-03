@@ -9,7 +9,6 @@ export { default as BalanceValue } from "./BalanceValue/BalanceValue.svelte";
 export { default as BigIntInput } from "./BigIntInput/BigIntInput.svelte";
 export { default as Bridge } from "./Bridge/Bridge.svelte";
 export { default as CopyField } from "./CopyField/CopyField.svelte";
-export { default as DashboardNav } from "./DashboardNav/DashboardNav.svelte";
 export { default as DepositResult } from "./DepositResult/DepositResult.svelte";
 export { default as DuskIcon } from "./DuskIcon/DuskIcon.svelte";
 export { default as EvmTransactions } from "./EvmTransactions/EvmTransactions.svelte";

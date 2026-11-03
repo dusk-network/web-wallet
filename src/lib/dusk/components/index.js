@@ -16,7 +16,6 @@ export { default as Select } from "./Select/Select.svelte";
 export { default as Stepper } from "./Stepper/Stepper.svelte";
 export { default as Suspense } from "./Suspense/Suspense.svelte";
 export { default as Switch } from "./Switch/Switch.svelte";
-export { default as Tabs } from "./Tabs/Tabs.svelte";
 export { default as Textbox } from "./Textbox/Textbox.svelte";
 export { default as Throbber } from "./Throbber/Throbber.svelte";
 export { default as Toast } from "./Toast/Toast.svelte";

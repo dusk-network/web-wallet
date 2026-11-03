@@ -2,7 +2,7 @@
 
 <script>
   import { fade } from "svelte/transition";
-  import { Wizard, WizardStep } from "$lib/dusk/components";
+  import { ErrorAlert, Wizard, WizardStep } from "$lib/dusk/components";
 
   import { ExistingWalletNotice } from "$lib/components";
   import { goto } from "$lib/navigation";
@@ -51,6 +51,15 @@
 
   /** @type {string[]} */
   let enteredMnemonicPhrase = [];
+
+  /**
+   * Whether the wallet made here is open: All set goes on to it only then,
+   * as the wallet's pages are only for an open wallet.
+   */
+  let isWalletOpen = false;
+
+  /** @type {Error | null} */
+  let openError = null;
 
   const { userId } = $settingsStore;
   const { currentBlockHeight } = data;
@@ -136,13 +145,22 @@
       }}
       nextButton={{
         action: async () => {
-          await initializeWallet(mnemonicPhrase.join(" "), currentBlockHeight);
-          settingsStore.update((settings) => ({
-            ...settings,
-            walletCreationBlockHeight: currentBlockHeight,
-          }));
-
-          mnemonicPhrase = [];
+          try {
+            await initializeWallet(
+              mnemonicPhrase.join(" "),
+              currentBlockHeight
+            );
+            settingsStore.update((settings) => ({
+              ...settings,
+              walletCreationBlockHeight: currentBlockHeight,
+            }));
+            isWalletOpen = true;
+          } catch (error) {
+            openError =
+              error instanceof Error ? error : new Error(String(error));
+          } finally {
+            mnemonicPhrase = [];
+          }
         },
         disabled: false,
       }}
@@ -159,11 +177,19 @@
         action: async () => {
           await goto("/dashboard");
         },
-        disabled: false,
+        disabled: !isWalletOpen,
       }}
     >
       <h2 class="h1" slot="heading">Welcome to Dusk</h2>
-      <AllSet />
+      {#if openError}
+        <ErrorAlert
+          description="Restore it with the recovery phrase you wrote down."
+          error={openError}
+          summary="The wallet couldn't open"
+        />
+      {:else}
+        <AllSet />
+      {/if}
     </WizardStep>
   </Wizard>
 {/if}
