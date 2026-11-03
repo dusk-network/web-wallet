@@ -10,7 +10,6 @@
   import { page } from "$app/stores";
   import { onMount, tick } from "svelte";
   import { mdiArrowRight, mdiWalletOutline } from "@mdi/js";
-  import { fade } from "svelte/transition";
 
   import { activityState } from "$lib/activity";
   import bridgeTimes from "$lib/bridge/bridgeTimes";
@@ -788,7 +787,7 @@
     </nav>
   </div>
 
-  <div class="bridge-activity" in:fade|global>
+  <div class="bridge-activity">
     <p class="bridge-activity__lede">
       {#if hasDuskEvm}
         Transfers between Dusk and other chains{#if currentAccount}, for DuskEVM
