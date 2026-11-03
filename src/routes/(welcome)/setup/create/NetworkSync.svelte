@@ -16,7 +16,7 @@
 </script>
 
 <IconHeadingCard icons={[mdiCubeOutline]} heading="Ready to sync">
-  <p>Next, the wallet syncs with the network. There is nothing to note.</p>
+  <p>Next, the wallet syncs with the network.</p>
 
   <!-- For experts: where the wallet starts, which Settings keeps too. -->
   <details class="network-sync__advanced">
@@ -27,7 +27,7 @@
         Settings shows it too, under Advanced.
       </p>
       <CopyField
-        name="Block Height"
+        name="Block height"
         displayValue={numberFormatter(currentBlockHeight)}
         rawValue={String(currentBlockHeight)}
       />

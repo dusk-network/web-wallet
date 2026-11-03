@@ -161,11 +161,11 @@ describe("Create", async () => {
         "Your keys stay in this browser, and only you hold them: Dusk can't recover them. The wallet has no analytics, and gets the DUSK price from CoinGecko."
       )
     ).toBeInTheDocument();
-    expect(getByRole("link", { name: "Terms of Use" })).toHaveAttribute(
+    expect(getByRole("link", { name: "Terms of use" })).toHaveAttribute(
       "href",
       "https://dusk.network/terms-of-use/"
     );
-    expect(getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
+    expect(getByRole("link", { name: "Privacy policy" })).toHaveAttribute(
       "href",
       "https://dusk.network/privacy-policy/"
     );
@@ -222,7 +222,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     expect(getByRole("heading", { level: 2 }).innerHTML).toBe(
-      "Backup Recovery Phrase"
+      "Back up your recovery phrase"
     );
     expect(getByRole("link", { name: "Back" })).toHaveClass(
       "dusk-anchor-button--variant--tertiary"
@@ -446,11 +446,7 @@ describe("Create", async () => {
       container.querySelector("details")
     );
 
-    expect(
-      getByText(
-        "Next, the wallet syncs with the network. There is nothing to note."
-      )
-    ).toBeVisible();
+    expect(getByText("Next, the wallet syncs with the network.")).toBeVisible();
     expect(advanced.open).toBe(false);
     expect(advanced.querySelector("summary")).toHaveTextContent("Advanced");
     expect(advanced).toContainElement(getByRole("textbox", { hidden: true }));
@@ -474,7 +470,7 @@ describe("Create", async () => {
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const password = getByPlaceholderText("Set Password");
+    const password = getByPlaceholderText("Set password");
     const hint = () => container.querySelector(".password-strength");
 
     await fireInput(password, "pass");
@@ -617,8 +613,8 @@ describe("Create", async () => {
     // Set Password step
     expect(vault.exists()).toBe(false);
 
-    await fireInput(asInput(getByPlaceholderText("Set Password")), pwd);
-    await fireInput(asInput(getByPlaceholderText("Confirm Password")), pwd);
+    await fireInput(asInput(getByPlaceholderText("Set password")), pwd);
+    await fireInput(asInput(getByPlaceholderText("Confirm password")), pwd);
 
     expect(vault.exists()).toBe(false);
 

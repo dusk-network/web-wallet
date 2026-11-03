@@ -205,7 +205,7 @@
           </Banner>
         {/if}
         <Button
-          text="Unlock Wallet"
+          text="Unlock wallet"
           type="submit"
           disabled={pending || (!hasPassword && !isPhraseValid)}
         />
@@ -213,7 +213,7 @@
           <AppAnchorButton
             variant="tertiary"
             href="/setup/restore"
-            text="Forgot Password?"
+            text="Forgot password?"
           />
         {/if}
       </form>

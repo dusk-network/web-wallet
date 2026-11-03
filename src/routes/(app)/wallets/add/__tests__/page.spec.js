@@ -104,7 +104,7 @@ describe("Add wallet", () => {
 
     // Where it syncs from, then the password.
     await vi.waitFor(() =>
-      expect(getByText("Block Height")).toBeInTheDocument()
+      expect(getByText("Block height")).toBeInTheDocument()
     );
     await fireEvent.click(getByRole("button", { name: "Next" }));
 

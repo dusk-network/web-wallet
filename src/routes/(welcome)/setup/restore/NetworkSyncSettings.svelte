@@ -72,13 +72,13 @@
 <ToggleableCard
   bind:isToggled
   iconPath={mdiCubeOutline}
-  heading="Block Height"
+  heading="Block height"
   on:toggle={clearTyped}
 >
   <Textbox
     aria-describedby="block-height-hint"
     aria-invalid={isWrong}
-    aria-label="Block Height"
+    aria-label="Block height"
     autocomplete="off"
     bind:value={typed}
     className={makeClassName({

@@ -50,7 +50,7 @@
     type="password"
     autocomplete="new-password"
     bind:value={password}
-    placeholder="Set Password"
+    placeholder="Set password"
   />
   {#if strength}
     <p
@@ -67,7 +67,7 @@
       type="password"
       autocomplete="new-password"
       bind:value={confirmPassword}
-      placeholder="Confirm Password"
+      placeholder="Confirm password"
     />
     {#if password.length < 8}
       <span class="confirm-password--meta"

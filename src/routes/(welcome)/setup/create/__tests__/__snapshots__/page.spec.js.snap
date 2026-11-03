@@ -17,7 +17,7 @@ exports[`Create > correctly renders the Mnemonic Preview page 1`] = `
     class="h1"
     slot="heading"
   >
-    Backup Recovery Phrase
+    Back up your recovery phrase
   </h2>
   <!---->
    
@@ -125,7 +125,7 @@ exports[`Create > correctly renders the Mnemonic Preview page 1`] = `
           <h3
             class="h4"
           >
-            Keep this SAFE
+            Keep it safe
           </h3>
         </div>
       </header>
@@ -327,7 +327,7 @@ exports[`Create > correctly renders the Mnemonic Verification page 1`] = `
     class="h1"
     slot="heading"
   >
-    Backup Recovery Phrase
+    Back up your recovery phrase
   </h2>
   <!---->
    
@@ -817,7 +817,7 @@ exports[`Create > doesn't let the user proceed if they have entered mismatching 
     class="h1"
     slot="heading"
   >
-    Backup Recovery Phrase
+    Back up your recovery phrase
   </h2>
   <!---->
    
@@ -1347,7 +1347,7 @@ exports[`Create > ensures that the Undo button on the Mnemonic Validate step wor
     class="h1"
     slot="heading"
   >
-    Backup Recovery Phrase
+    Back up your recovery phrase
   </h2>
   <!---->
    
@@ -2057,7 +2057,7 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
     class="h1"
     slot="heading"
   >
-    Network Syncing
+    Sync
   </h2>
   <!---->
    
@@ -2183,7 +2183,7 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
     >
       <!---->
       <p>
-        Next, the wallet syncs with the network. There is nothing to note.
+        Next, the wallet syncs with the network.
       </p>
        
       <details
@@ -2208,7 +2208,7 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
           >
             <!---->
             <input
-              aria-label="Block Height"
+              aria-label="Block height"
               class="dusk-textbox dusk-textbox-text copy-field__content"
               readonly=""
               type="text"
@@ -2217,7 +2217,7 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
             <!---->
              
             <button
-              aria-label="Copy Block Height"
+              aria-label="Copy Block height"
               class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
               data-tooltip-id="main-tooltip"
               data-tooltip-text="Copy to clipboard"
@@ -2372,7 +2372,7 @@ exports[`Create > ensures the Password step renders as expected 1`] = `
     class="h1"
     slot="heading"
   >
-    Password Setup
+    Set a password
   </h2>
   <!---->
    
@@ -2512,7 +2512,7 @@ exports[`Create > ensures the Password step renders as expected 1`] = `
       <input
         autocomplete="new-password"
         class="dusk-textbox dusk-textbox-password password-input"
-        placeholder="Set Password"
+        placeholder="Set password"
         type="password"
       />
       
@@ -2527,7 +2527,7 @@ exports[`Create > ensures the Password step renders as expected 1`] = `
         <input
           autocomplete="new-password"
           class="dusk-textbox dusk-textbox-password password-input"
-          placeholder="Confirm Password"
+          placeholder="Confirm password"
           type="password"
         />
         
@@ -2689,7 +2689,7 @@ exports[`Create > ensures the Password step renders as expected 2`] = `
     class="h1"
     slot="heading"
   >
-    Password Setup
+    Set a password
   </h2>
   <!---->
    
@@ -2956,7 +2956,7 @@ exports[`Create > lets the user proceed if they have entered a matching Mnemonic
     class="h1"
     slot="heading"
   >
-    Backup Recovery Phrase
+    Back up your recovery phrase
   </h2>
   <!---->
    
@@ -3448,7 +3448,7 @@ exports[`Create > should render the \`Securely store your mnemonic phrase!\` agr
     class="h1"
     slot="heading"
   >
-    Backup Recovery Phrase
+    Back up your recovery phrase
   </h2>
   <!---->
    
@@ -3773,7 +3773,7 @@ exports[`Create > should render the Existing Wallet notice step of the Create fl
             <h3
               class="h4"
             >
-              Existing Wallet Detected
+              Existing wallet detected
             </h3>
           </div>
         </header>
@@ -3863,7 +3863,7 @@ exports[`Create > should render the Terms of Service step of the Create flow if 
             <h3
               class="h4"
             >
-              Terms & Privacy Policy
+              Terms & privacy policy
             </h3>
              
             <!---->
@@ -3891,7 +3891,7 @@ exports[`Create > should render the Terms of Service step of the Create flow if 
             target="_blank"
           >
             <!---->
-            Terms of Use
+            Terms of use
             
             <!---->
           </a>
@@ -3904,7 +3904,7 @@ exports[`Create > should render the Terms of Service step of the Create flow if 
             target="_blank"
           >
             <!---->
-            Privacy Policy
+            Privacy policy
             
             <!---->
           </a>

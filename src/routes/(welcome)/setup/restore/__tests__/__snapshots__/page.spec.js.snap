@@ -36,7 +36,7 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
             <h3
               class="h4"
             >
-              Existing Wallet Detected
+              Existing wallet detected
             </h3>
           </div>
         </header>
@@ -116,7 +116,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
     class="h1"
     slot="heading"
   >
-    Enter Recovery Phrase
+    Enter your recovery phrase
   </h2>
   <!---->
    
@@ -201,7 +201,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
           <h3
             class="h4"
           >
-            Enter your recovery phrase
+            Recovery phrase
           </h3>
            
           <!---->
@@ -652,7 +652,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
             <h3
               class="h4"
             >
-              Terms & Privacy Policy
+              Terms & privacy policy
             </h3>
              
             <!---->
@@ -680,7 +680,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
             target="_blank"
           >
             <!---->
-            Terms of Use
+            Terms of use
             
             <!---->
           </a>
@@ -693,7 +693,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
             target="_blank"
           >
             <!---->
-            Privacy Policy
+            Privacy policy
             
             <!---->
           </a>

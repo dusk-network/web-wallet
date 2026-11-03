@@ -17,6 +17,6 @@
   $: enteredMnemonicPhrase = mnemonic ? mnemonic.split(" ") : [];
 </script>
 
-<IconHeadingCard gap="medium" heading="Enter your recovery phrase">
+<IconHeadingCard gap="medium" heading="Recovery phrase">
   <MnemonicInput bind:isValid bind:mnemonic {initialWords} />
 </IconHeadingCard>

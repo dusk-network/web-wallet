@@ -27,7 +27,7 @@
 </script>
 
 <section>
-  <WarningCard heading="Existing Wallet Detected">
+  <WarningCard heading="Existing wallet detected">
     {#if many}
       <p>
         Removes every wallet from this browser, with its settings and contacts.

@@ -27,7 +27,7 @@
   $: isValid = syncStarted && !syncStatus.isInProgress && !syncStatus.error;
 </script>
 
-<IconHeadingCard icons={[mdiCubeOutline]} heading="Network Sync">
+<IconHeadingCard icons={[mdiCubeOutline]} heading="Network sync">
   {#if syncStatus.error && !syncStatus.isInProgress}
     <ErrorAlert error={syncStatus.error} summary="Sync failed" />
     <Button

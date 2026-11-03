@@ -389,7 +389,7 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
             <span
               class="dusk-button__text"
             >
-              Unlock Wallet
+              Unlock wallet
             </span>
             <!---->
           </button>
@@ -533,7 +533,7 @@ exports[`Unlock Wallet > Password workflow > should show the password field and 
             <span
               class="dusk-button__text"
             >
-              Unlock Wallet
+              Unlock wallet
             </span>
             <!---->
           </button>
@@ -548,7 +548,7 @@ exports[`Unlock Wallet > Password workflow > should show the password field and 
             <span
               class="dusk-anchor-button__text"
             >
-              Forgot Password?
+              Forgot password?
             </span>
             
             <!---->

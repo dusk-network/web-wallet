@@ -11,7 +11,7 @@
   }
 </script>
 
-<WarningCard heading="Keep this SAFE">
+<WarningCard heading="Keep it safe">
   <p class="mnemonic-card__notice">
     Please make sure to write your phrase down and save it in a secure location.
   </p>

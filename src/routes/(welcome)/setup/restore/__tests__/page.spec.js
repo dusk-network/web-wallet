@@ -384,8 +384,8 @@ describe("Restore", async () => {
     // Set Password step
     expect(vault.exists()).toBe(false);
 
-    await fireInput(asInput(getByPlaceholderText("Set Password")), pwd);
-    await fireInput(asInput(getByPlaceholderText("Confirm Password")), pwd);
+    await fireInput(asInput(getByPlaceholderText("Set password")), pwd);
+    await fireInput(asInput(getByPlaceholderText("Confirm password")), pwd);
 
     expect(vault.exists()).toBe(false);
 

@@ -27,7 +27,7 @@
       <div class="welcome-layout__error-container">
         <Banner
           className="welcome-layout__error"
-          title="Network Connection Issue"
+          title="Network connection issue"
           variant="error"
         >
           <p>
