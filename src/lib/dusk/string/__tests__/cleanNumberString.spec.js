@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cleanNumberString } from "../";
 
-describe("calculateAdaptiveCharCount", () => {
+describe("cleanNumberString", () => {
   it("should return a valid string represantation of a number when the decimal separator is `,`", () => {
     expect(cleanNumberString("12153,566,68468,,,351", ",")).toBe(
       "12153,56668468351"
