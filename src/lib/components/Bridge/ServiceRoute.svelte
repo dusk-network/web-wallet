@@ -28,6 +28,7 @@
   import { shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { settingsStore, walletStore } from "$lib/stores";
+  import { failureSentence } from "$lib/transactions";
   import { account, modal } from "$lib/web3/walletConnection";
   import { notRunning } from "$lib/bridge/cardRoutes";
   import { sendServiceTransfer, serviceLine } from "$lib/bridge/routeFlows";
@@ -380,6 +381,7 @@
 {:else}
   <div class="route-result">
     <OperationResult
+      describeError={failureSentence}
       errorMessage="The transfer didn't go through"
       {operation}
       pendingMessage="Sending…"

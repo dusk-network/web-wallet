@@ -261,6 +261,32 @@ describe("the Bridge card's routes to and from other chains", () => {
     expect(mocks.approve).not.toHaveBeenCalled();
   });
 
+  it("says in plain words why a transfer out failed before it went out, with the node's own words under Details", async () => {
+    const reason = `Tx ${"ab".repeat(32)} not accepted: gas price lower than minimum 1`;
+
+    mocks.executeSend.mockRejectedValue(new Error(reason));
+    connect({ address: EVM, chainId: 1 });
+
+    const { container, findByText, getByRole } = render(Bridge, props);
+
+    await fireEvent.input(getByRole("textbox", { name: "Amount, in DUSK" }), {
+      target: { value: "2" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+
+    expect(
+      await findByText(
+        "The network refused it: the gas price is under its minimum. Raise it and try again."
+      )
+    ).toBeInTheDocument();
+    expect(container).toHaveTextContent("The transfer didn't go through");
+    expect(container.querySelector("details summary")).toHaveTextContent(
+      /^Details$/
+    );
+    expect(container.querySelector("details")).toHaveTextContent(reason);
+  });
+
   it("says testnet's Sepolia routes aren't running, as a link to one opens it", async () => {
     setNodeNetwork(networks.testnet);
 

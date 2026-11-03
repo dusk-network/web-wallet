@@ -75,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refuse an unstake from Sozu too small to burn any stDUSK, saying the least
 - Name each profile in Settings, only on this device, and show the name in the top bar, the profile switcher, Send and its review [#773]
 - Resync the open wallet from its creation block, genesis or a block typed, in Settings › Advanced [#531]
+- Say in a plain sentence why a send, stake, unstake, shield or bridge transfer failed before it went out, with the error itself under Details [#881]
 
 ### Changed
 
@@ -915,6 +916,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#537]: https://github.com/dusk-network/web-wallet/issues/537
 [#773]: https://github.com/dusk-network/web-wallet/issues/773
 [#784]: https://github.com/dusk-network/web-wallet/issues/784
+[#881]: https://github.com/dusk-network/web-wallet/issues/881
 [#928]: https://github.com/dusk-network/web-wallet/issues/928
 [#932]: https://github.com/dusk-network/web-wallet/issues/932
 [#939]: https://github.com/dusk-network/web-wallet/issues/939

@@ -1,3 +1,4 @@
+export { default as failureSentence } from "./failureSentence";
 export {
   FOLLOW_INTERVAL,
   FOLLOW_TIMEOUT,

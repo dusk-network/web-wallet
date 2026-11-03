@@ -17,6 +17,14 @@
   /** @type {string} */
   export let errorMessage = "Operation failed";
 
+  /**
+   * What an error means, in a sentence that says what to do: none by
+   * default.
+   *
+   * @type {((error: Error) => string) | undefined}
+   */
+  export let describeError = undefined;
+
   /** @type {Function|undefined} */
   export let onBeforeLeave = undefined;
 
@@ -35,6 +43,7 @@
 
 <Suspense
   className={classes}
+  {describeError}
   {errorMessage}
   gap="large"
   {pendingMessage}

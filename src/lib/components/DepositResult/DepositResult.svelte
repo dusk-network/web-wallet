@@ -1,6 +1,7 @@
 <script>
   import { AppAnchorButton } from "$lib/components";
   import { Suspense } from "$lib/dusk/components";
+  import { failureSentence } from "$lib/transactions";
 
   import DepositProgress from "../EvmTransactions/DepositProgress.svelte";
 
@@ -10,6 +11,7 @@
 
 <Suspense
   className="deposit-result"
+  describeError={failureSentence}
   errorMessage="Deposit submission failed"
   gap="large"
   pendingMessage="Submitting on DuskDS"
