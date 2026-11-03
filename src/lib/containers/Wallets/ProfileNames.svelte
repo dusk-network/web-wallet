@@ -34,13 +34,14 @@
   /**
    * The names the fields last started from, and the wallet they're of: a
    * field still showing its name follows a new one, as from another tab,
-   * and one being typed in keeps what's typed.
+   * and one being typed in, or saved, keeps what's typed.
    */
   let shown = /** @type {string[]} */ ([]);
   let shownFor = /** @type {string | null} */ (null);
 
   /**
-   * The name each profile is being saved with, while it is.
+   * The name each profile was last asked to be saved with, while it's
+   * being saved: what it has once the saves waiting are done.
    *
    * @type {Array<string | undefined>}
    */
@@ -53,7 +54,7 @@
    */
   function follow(key, count, names) {
     drafts = Array.from({ length: count }, (_, i) =>
-      key !== shownFor || drafts[i] === shown[i]
+      key !== shownFor || (saving[i] === undefined && drafts[i] === shown[i])
         ? (names[i] ?? "")
         : (drafts[i] ?? "")
     );
@@ -69,9 +70,10 @@
     // The field shows the name as it's kept.
     drafts[index] = name;
 
+    // Nothing to save when it's the name the profile has, or will have once
+    // a save under way is done.
     if (
-      name === normalizeWalletName($openProfileNames[index]) ||
-      saving[index] === name
+      name === (saving[index] ?? normalizeWalletName($openProfileNames[index]))
     ) {
       return;
     }
@@ -90,7 +92,10 @@
         mdiAlertOutline
       );
     } finally {
-      saving[index] = undefined;
+      // A later name being saved still is.
+      if (saving[index] === name) {
+        saving[index] = undefined;
+      }
     }
   }
 

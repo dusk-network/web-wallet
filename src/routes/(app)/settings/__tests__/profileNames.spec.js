@@ -201,6 +201,40 @@ describe("Settings › Profiles", () => {
     ).toHaveTextContent("alice.dusk");
   });
 
+  it("keeps the name typed last, when it's the one there was, though a save before it waits for the other tabs", async () => {
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+
+    const settings = render(Settings);
+
+    await nameProfile(settings, 1, "Savings");
+
+    // Another tab writes the wallets' names meanwhile: this one's wait.
+    const busy = Promise.withResolvers();
+    const held = Promise.withResolvers();
+
+    navigator.locks.request(`${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`, () => {
+      held.resolve(undefined);
+
+      return busy.promise;
+    });
+    await held.promise;
+
+    await nameProfile(settings, 1, "Travel", "enter");
+    // Back to the name there was, before that save could be.
+    await nameProfile(settings, 1, "Savings");
+
+    busy.resolve(undefined);
+    await vi.waitFor(() => expect(toasts).toHaveLength(3));
+    await settle();
+
+    expect(fieldsOf(settings)).toEqual(["Savings", ""]);
+
+    const { pillName } = await openSwitcher();
+
+    expect(pillName).toHaveTextContent("Savings");
+  });
+
   it("keeps a name to 32 characters", async () => {
     await vault.setUp(A, PASSWORD);
     await unlockWallets(PASSWORD);
