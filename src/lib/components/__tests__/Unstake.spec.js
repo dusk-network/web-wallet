@@ -8,6 +8,8 @@ import {
   vi,
 } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { CONFIRM_DELAY } from "$lib/dusk/motion";
+import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { settingsStore } from "$lib/stores";
 
 import { Unstake } from "..";
@@ -192,6 +194,7 @@ describe("Unstake", () => {
         target: { value: "100,5" },
       });
       await fireEvent.click(getByRole("button", { name: "Next" }));
+      await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Unstake" }));
 
       expect(baseProps.execute).toHaveBeenCalledWith(
@@ -261,6 +264,7 @@ describe("Unstake", () => {
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
+      await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Unstake" }));
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
@@ -286,6 +290,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
       await fireEvent.click(getByRole("button", { name: "Next" }));
+      await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Unstake" }));
 
       // It settled: nothing staked now, and the fee paid.
@@ -304,6 +309,29 @@ describe("Unstake", () => {
       ).toBeTruthy();
     });
 
+    it("should take no click on Unstake for half a second once the review shows, so a double click on Next can't send", async () => {
+      const { getByRole } = render(Unstake, { ...baseProps, ...unstakeProps });
+
+      await vi.advanceTimersToNextTimerAsync();
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      // Next's second click lands where Unstake now is, and so does Enter.
+      await fireEvent.click(getByRole("button", { name: "Unstake" }));
+      await fireEvent.click(getByRole("button", { name: "Unstake" }), {
+        detail: 0,
+      });
+      await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
+      await fireEvent.click(getByRole("button", { name: "Unstake" }));
+
+      expect(baseProps.execute).not.toHaveBeenCalled();
+      expect(getByRole("button", { name: "Unstake" })).toBeEnabled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      await fireEvent.click(getByRole("button", { name: "Unstake" }));
+
+      expect(baseProps.execute).toHaveBeenCalledOnce();
+    });
+
     it("should send the amount the review shows, though the stake is read again while it shows", async () => {
       const { container, getByRole, rerender } = render(Unstake, {
         ...baseProps,
@@ -319,6 +347,7 @@ describe("Unstake", () => {
         "278 DUSK",
       ]);
 
+      await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Unstake" }));
 
       expect(baseProps.execute).toHaveBeenCalledOnce();
@@ -393,6 +422,7 @@ describe("Unstake", () => {
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
+      await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
@@ -418,6 +448,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
       await fireEvent.click(getByRole("button", { name: "Next" }));
+      await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
       await rerender({ maxWithdrawAmount: 0n });
       await vi.advanceTimersToNextTimerAsync();

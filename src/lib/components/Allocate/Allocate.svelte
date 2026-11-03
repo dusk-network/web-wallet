@@ -1,7 +1,6 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { fade } from "svelte/transition";
   import { onMount } from "svelte";
   import {
     mdiArrowUpBoldBoxOutline,
@@ -227,7 +226,7 @@
         disabled: isNextButtonDisabled,
       }}
     >
-      <div in:fade|global class="operation__allocate">
+      <div class="operation__allocate">
         <p>Move DUSK between your public and shielded accounts.</p>
 
         <fieldset class="operation__fieldset">
@@ -336,12 +335,13 @@
         },
       }}
       nextButton={{
+        confirm: true,
         icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
         label: "Send",
         variant: "primary",
       }}
     >
-      <div in:fade|global class="operation__allocate">
+      <div class="operation__allocate">
         <Badge
           className="operation__review-notice"
           text="Review transaction"

@@ -274,7 +274,10 @@
               .filter(Boolean)
               .join(" · ")
           : notRunning(net)}</span
-      ><Icon className="swap-route__chevron" path={mdiChevronDown} /></summary
+      ><Icon
+        className="swap-route__chevron section-chevron"
+        path={mdiChevronDown}
+      /></summary
     >
     <dl>
       <div>
@@ -370,6 +373,7 @@
         variant="secondary"
       />
       <Button
+        confirm
         disabled={arrivesLux === 0n || !isConnected || !isGasValid}
         icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
         on:click={send}

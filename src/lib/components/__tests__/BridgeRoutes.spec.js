@@ -3,6 +3,8 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { networks } from "@dusk-network/networks";
 import { tick } from "svelte";
 
+import { CONFIRM_DELAY } from "$lib/dusk/motion";
+import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { Bridge } from "..";
@@ -100,6 +102,9 @@ const direction = (container) =>
 
 describe("the Bridge card's routes to and from other chains", () => {
   beforeEach(() => {
+    // Send and Migrate take a click half a second after they show: on this
+    // clock.
+    vi.useFakeTimers({ toFake: ["performance"] });
     setNodeNetwork(networks.mainnet);
     mocks.account?.set({
       address: undefined,
@@ -111,7 +116,37 @@ describe("the Bridge card's routes to and from other chains", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.useRealTimers();
     localStorage.clear();
+  });
+
+  it("takes no click on Send for half a second once the review shows, so a double click on Review can't send", async () => {
+    connect({ address: EVM, chainId: 1 });
+
+    const { getByRole } = render(Bridge, props);
+
+    await fireEvent.input(getByRole("textbox", { name: "Amount, in DUSK" }), {
+      target: { value: "2" },
+    });
+    await afterConfirmDelay();
+    mocks.executeSend.mockResolvedValue("ab".repeat(32));
+
+    // Review's second click lands where Send now is, and so does Enter.
+    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: "Send" }), {
+      detail: 0,
+    });
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+
+    expect(mocks.executeSend).not.toHaveBeenCalled();
+    expect(getByRole("button", { name: "Send" })).toBeEnabled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+
+    expect(mocks.executeSend).toHaveBeenCalledOnce();
   });
 
   it("opens on mainnet on Dusk to BNB Smart Chain, which pays the connected wallet's address, never a typed one", async () => {
@@ -150,6 +185,7 @@ describe("the Bridge card's routes to and from other chains", () => {
     expect(container).toHaveTextContent(EVM);
 
     mocks.executeSend.mockResolvedValue("ab".repeat(32));
+    await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Send" }));
 
     // A public transfer to the route's account, the address as the memo.
@@ -209,6 +245,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       `Amount 2.5 DUSK From BNB Smart Chain ${EVM} To Your public account on Dusk ${ACCOUNT}`
     );
 
+    await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Migrate" }));
     await vi.waitFor(() => expect(mocks.migrate).toHaveBeenCalled());
 
@@ -255,6 +292,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
     expect(container).toHaveTextContent("Migrate, in your wallet");
 
+    await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Migrate" }));
     await vi.waitFor(() => expect(mocks.migrate).toHaveBeenCalled());
 
@@ -273,6 +311,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       target: { value: "2" },
     });
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Send" }));
 
     expect(

@@ -12,6 +12,8 @@ import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { formatTimestamp } from "../EvmTransactions/withdrawalPresentation";
 import { networks } from "@dusk-network/networks";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { CONFIRM_DELAY } from "$lib/dusk/motion";
+import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { walletStore } from "$lib/stores";
 
 const mocks = vi.hoisted(() => {
@@ -402,6 +404,9 @@ function emptyActivity() {
 
 describe("EvmTransactions", () => {
   beforeEach(() => {
+    // Prove and Claim on Dusk take a click half a second after they show:
+    // on this clock.
+    vi.useFakeTimers({ toFake: ["performance"] });
     mocks.finalizeWithdrawal.mockReset();
     mocks.loadDuskTransactionExecution.mockReset();
     mocks.loadWithdrawalActivity.mockReset();
@@ -502,6 +507,7 @@ describe("EvmTransactions", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
   });
 
   it("lists migrations into Dusk and transfers out to BNB Smart Chain on mainnet, without DuskEVM's parts", async () => {
@@ -1203,9 +1209,12 @@ describe("EvmTransactions", () => {
       target: document.body,
     });
 
-    await fireEvent.click(
-      await findByRole("button", { name: /^DuskEVM to Dusk / })
-    );
+    const actionButton = await findByRole("button", {
+      name: /^DuskEVM to Dusk /,
+    });
+
+    await afterConfirmDelay();
+    await fireEvent.click(actionButton);
 
     expect(
       getByRole("link", { name: "View duskevm transaction hash in Blockscout" })
@@ -1309,6 +1318,7 @@ describe("EvmTransactions", () => {
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     await findByRole("button", { name: /^prove on dusk$/i });
     await fireEvent.input(input, { target: { value: editedHash } });
+    await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: /^prove on dusk$/i }));
 
     await waitFor(() => {
@@ -1339,9 +1349,12 @@ describe("EvmTransactions", () => {
       target: { value: txHash },
     });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
-    await fireEvent.click(
-      await findByRole("button", { name: /^prove on dusk$/i })
-    );
+    const actionButton = await findByRole("button", {
+      name: /^prove on dusk$/i,
+    });
+
+    await afterConfirmDelay();
+    await fireEvent.click(actionButton);
     expect(
       (await findAllByText("Proof sent, waiting for Dusk")).length
     ).toBeGreaterThan(0);
@@ -1384,9 +1397,12 @@ describe("EvmTransactions", () => {
       target: { value: txHash },
     });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
-    await fireEvent.click(
-      await findByRole("button", { name: /^prove on dusk$/i })
-    );
+    const actionButton = await findByRole("button", {
+      name: /^prove on dusk$/i,
+    });
+
+    await afterConfirmDelay();
+    await fireEvent.click(actionButton);
     await findAllByText("Proof sent, waiting for Dusk");
 
     const pending = mocks
@@ -1451,7 +1467,10 @@ describe("EvmTransactions", () => {
         target: { value: txHash },
       });
       await fireEvent.click(getByRole("button", { name: /^check$/i }));
-      await fireEvent.click(await findByRole("button", { name: button }));
+      const actionButton = await findByRole("button", { name: button });
+
+      await afterConfirmDelay();
+      await fireEvent.click(actionButton);
 
       // The banner is that one line.
       expect(
@@ -1492,9 +1511,12 @@ describe("EvmTransactions", () => {
       target: { value: txHash },
     });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
-    await fireEvent.click(
-      await findByRole("button", { name: /^claim on dusk$/i })
-    );
+    const actionButton = await findByRole("button", {
+      name: /^claim on dusk$/i,
+    });
+
+    await afterConfirmDelay();
+    await fireEvent.click(actionButton);
 
     expect(
       (await findByText(WITHDRAWAL_GAS_REFUSAL))
@@ -1529,9 +1551,12 @@ describe("EvmTransactions", () => {
       target: document.body,
     });
 
-    await fireEvent.click(
-      await findByRole("button", { name: /0\.1 DUSK.*Failed/i })
-    );
+    const actionButton = await findByRole("button", {
+      name: /0\.1 DUSK.*Failed/i,
+    });
+
+    await afterConfirmDelay();
+    await fireEvent.click(actionButton);
 
     expect(
       await findByText("Your DUSK is still on DuskEVM.")
@@ -1591,7 +1616,7 @@ describe("EvmTransactions", () => {
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalledWith(editedHash);
   });
 
-  it("lists the withdrawals the history knows without an EVM wallet, with their claim date and a Claim button", async () => {
+  it("lists the withdrawals the history knows without an EVM wallet, with their claim date and a Claim button that takes no click for half a second once its steps open", async () => {
     const waitingHash = `0x${"64".repeat(32)}`;
     const readyHash = `0x${"65".repeat(32)}`;
     const otherHash = `0x${"66".repeat(32)}`;
@@ -1658,9 +1683,19 @@ describe("EvmTransactions", () => {
     const claim = await findByRole("button", { name: /^claim on dusk$/i });
 
     await waitFor(() => expect(claim).toHaveFocus());
+
+    // A second Enter on Claim, or a click, as the steps open: not yet.
+    await fireEvent.click(claim, { detail: 0 });
+    await fireEvent.click(claim);
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
+    await fireEvent.click(claim, { detail: 0 });
+
+    expect(mocks.finalizeWithdrawal).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
     await fireEvent.click(claim);
 
-    expect(mocks.finalizeWithdrawal).toHaveBeenCalledWith(readyHash);
+    expect(mocks.finalizeWithdrawal).toHaveBeenCalledExactlyOnceWith(readyHash);
   });
 
   it("finds on DuskEVM's explorer the history's withdrawals not remembered yet, and follows them", async () => {

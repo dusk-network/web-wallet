@@ -1330,13 +1330,17 @@
           </dd>
         </div>
       </dl>
-      <Button
-        className="send__send"
-        disabled={!canSend}
-        on:click={send}
-        text={sendAmountInLux > 0n ? `Send ${amountText} DUSK` : "Send"}
-        variant="primary"
-      />
+      <!-- A phone's review is a step of its own: Send shows anew with it. -->
+      {#key step}
+        <Button
+          className="send__send"
+          confirm
+          disabled={!canSend}
+          on:click={send}
+          text={sendAmountInLux > 0n ? `Send ${amountText} DUSK` : "Send"}
+          variant="primary"
+        />
+      {/key}
       <p class="send__final">Sends can't be undone.</p>
       {#if step === "review"}
         <Button

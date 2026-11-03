@@ -2,7 +2,6 @@
 
 <script>
   import { createEventDispatcher, onMount } from "svelte";
-  import { fade } from "svelte/transition";
 
   import { BALANCE_MASK } from "$lib/constants";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
@@ -314,6 +313,7 @@
       }}
       nextButton={{
         action: send,
+        confirm: true,
         icon: {
           path: operationCtaIconPath,
           position: "before",
@@ -323,7 +323,7 @@
       }}
     >
       {#if reviewed}
-        <div in:fade|global class="operation__unstake">
+        <div class="operation__unstake">
           <ReviewWallet />
           <ReviewAmount
             label={operationOverviewLabel}

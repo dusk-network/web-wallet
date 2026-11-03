@@ -1,5 +1,8 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+
+import { CONFIRM_DELAY } from "$lib/dusk/motion";
+import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 
 import { NativeStake } from "..";
 import {
@@ -129,9 +132,15 @@ describe("checkAmount", () => {
 });
 
 describe("NativeStake", () => {
+  // Stake takes a click half a second after it shows: on this clock.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["performance"] });
+  });
+
   afterEach(() => {
     cleanup();
     baseProps.execute.mockClear();
+    vi.useRealTimers();
   });
 
   it("states what native staking takes, the lock and the burn in plain words, with no consensus key nor recovery phrase", () => {
@@ -175,6 +184,7 @@ describe("NativeStake", () => {
       "Total Up to 1,200.55 DUSK",
     ]);
 
+    await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Stake 1,200.5 DUSK" }));
 
     expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
@@ -248,6 +258,7 @@ describe("NativeStake", () => {
     await fireEvent.input(getByLabelText("Amount to add"), {
       target: { value: "10" },
     });
+    await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Stake 10 DUSK" }));
 
     expect(baseProps.execute).toHaveBeenCalledWith(10n * DUSK, 1n, 50_000_000n);
@@ -284,6 +295,35 @@ describe("NativeStake", () => {
 
     expect(container.querySelector(".stake-flow")).not.toHaveClass(
       "stake-flow--review"
+    );
+  });
+
+  it("takes no click on Stake for half a second once a phone's review shows, so a double tap on Review can't stake", async () => {
+    const { getByLabelText, getByRole } = render(NativeStake, baseProps);
+    const stake = () => getByRole("button", { name: "Stake 1,000 DUSK" });
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1000" },
+    });
+    await afterConfirmDelay();
+
+    // Review's second tap lands where Stake now is, and so does Enter.
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await fireEvent.click(stake());
+    await fireEvent.click(stake(), { detail: 0 });
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
+    await fireEvent.click(stake());
+
+    expect(baseProps.execute).not.toHaveBeenCalled();
+    expect(stake()).toBeEnabled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    await fireEvent.click(stake());
+
+    expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
+      1_000n * DUSK,
+      1n,
+      50_000_000n
     );
   });
 

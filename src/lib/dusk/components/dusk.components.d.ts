@@ -20,6 +20,8 @@ type WizardButtonProps = {
   variant?: ButtonVariant;
   label?: string;
   action?: () => void;
+  /** It sends, stakes, signs or approves: see Button's `confirm`. */
+  confirm?: boolean;
 };
 
 type GapSize = "small" | "default" | "medium" | "large";

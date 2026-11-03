@@ -1,7 +1,6 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { fade } from "svelte/transition";
   import TermsOfService from "../TermsOfService.svelte";
   import PasswordSetup from "../PasswordSetup.svelte";
   import NetworkSyncing from "./NetworkSyncSettings.svelte";
@@ -60,11 +59,11 @@
 </script>
 
 {#if !notice && userId}
-  <div class="onboarding-wrapper" in:fade|global>
+  <div class="onboarding-wrapper">
     <ExistingWalletNotice bind:notice flow="restore" />
   </div>
 {:else if !tosAccepted}
-  <div class="onboarding-wrapper" in:fade|global>
+  <div class="onboarding-wrapper">
     <TermsOfService bind:tosAccepted />
   </div>
 {:else}

@@ -17,8 +17,9 @@ import {
   formatDuskPlain,
 } from "$lib/dusk/currency";
 import { timeLabel } from "$lib/activity/present";
+import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { shortenAddress } from "$lib/dusk/string";
-import { getAsHTMLElement } from "$lib/dusk/test-helpers";
+import { afterConfirmDelay, getAsHTMLElement } from "$lib/dusk/test-helpers";
 import { addBasePath } from "$lib/navigation";
 import { networks } from "@dusk-network/networks";
 import {
@@ -701,6 +702,7 @@ describe("Send", () => {
         await fireEvent.input(fields.memo(), { target: { value: memo } });
       }
 
+      await afterConfirmDelay();
       await fireEvent.click(fields.send());
       await vi.advanceTimersToNextTimerAsync();
     };
@@ -754,6 +756,33 @@ describe("Send", () => {
       expect(container.querySelector(".send")).not.toHaveClass("send--review");
 
       await fireEvent.click(fields.review());
+      await afterConfirmDelay();
+      await fireEvent.click(fields.send());
+
+      expect(baseProps.execute).toHaveBeenCalledOnce();
+    });
+
+    it("should take no click on Send for half a second once a phone's review shows, so a double tap on Review can't send", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), {
+        target: { value: shieldedAddress },
+      });
+      await fireEvent.input(fields.amount(), { target: { value: amount } });
+      await afterConfirmDelay();
+
+      // Review's second tap lands where Send now is, and so does Enter.
+      await fireEvent.click(fields.review());
+      await fireEvent.click(fields.send());
+      await fireEvent.click(fields.send(), { detail: 0 });
+      await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
+      await fireEvent.click(fields.send());
+
+      expect(baseProps.execute).not.toHaveBeenCalled();
+      expect(fields.send()).toBeEnabled();
+
+      await vi.advanceTimersByTimeAsync(1);
       await fireEvent.click(fields.send());
 
       expect(baseProps.execute).toHaveBeenCalledOnce();
@@ -853,6 +882,7 @@ describe("Send", () => {
 
       expect(getSummary(container)).toContainEqual(["Memo", evmAddress]);
 
+      await afterConfirmDelay();
       await fireEvent.click(fields.send());
       await vi.advanceTimersToNextTimerAsync();
 
@@ -919,8 +949,18 @@ describe("Send", () => {
       const fields = fieldsOf(getByRole);
 
       await fireEvent.input(fields.amount(), { target: { value: amount } });
+      await afterConfirmDelay();
       await fireEvent.click(fields.send());
     };
+
+    // Send takes a click half a second after it shows: on this clock.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["performance"] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
 
     it("should send to the account a name resolves to, with its name and address shown", async () => {
       /** @type {(value: DuskNameResolution) => void} */
@@ -2026,8 +2066,18 @@ describe("Send", () => {
       const fields = fieldsOf(getByRole);
 
       await fireEvent.input(fields.amount(), { target: { value: "1" } });
+      await afterConfirmDelay();
       await fireEvent.click(fields.send());
     };
+
+    // Send takes a click half a second after it shows: on this clock.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["performance"] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
 
     it("should name a profile of the other wallet on the To line as the From line names its own, after a contact or a .dusk name", async () => {
       const { account } = await holdOtherWallet();

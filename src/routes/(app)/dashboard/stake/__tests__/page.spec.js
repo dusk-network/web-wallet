@@ -11,6 +11,8 @@ import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore, walletStore } from "$lib/stores";
 
+import { afterConfirmDelay } from "$lib/dusk/test-helpers";
+
 import Staking from "../+page.svelte";
 
 const page = vi.hoisted(() => ({
@@ -156,6 +158,7 @@ const textOf = (element) => element?.textContent?.replace(/\s+/g, " ").trim();
 describe("Staking", () => {
   afterEach(async () => {
     cleanup();
+    vi.useRealTimers();
     settingsStore.reset();
     mockedWalletStore.setMockedStoreValue(initialStore);
     open("");
@@ -717,6 +720,8 @@ describe("Staking", () => {
   });
 
   it("reads Sozu again before a stake goes, and stakes on the terms it read", async () => {
+    // Stake takes a click half a second after it shows: on this clock.
+    vi.useFakeTimers({ toFake: ["performance"] });
     open("?flow=liquid");
     await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
     sozu.check.mockResolvedValue(SOZU_STATUS);
@@ -729,6 +734,7 @@ describe("Staking", () => {
     await fireEvent.input(getByLabelText("Stake amount"), {
       target: { value: "100" },
     });
+    await afterConfirmDelay();
     await fireEvent.click(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })
     );

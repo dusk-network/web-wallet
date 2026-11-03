@@ -835,7 +835,7 @@
     <details class="swap-route">
       <summary
         ><Icon path={mdiClockOutline} /><span>{routeLine}</span><Icon
-          className="swap-route__chevron"
+          className="swap-route__chevron section-chevron"
           path={mdiChevronDown}
         /></summary
       >
@@ -968,6 +968,7 @@
           variant="secondary"
         />
         <Button
+          confirm
           disabled={isNextButtonDisabled || !isConnected}
           icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
           on:click={send}

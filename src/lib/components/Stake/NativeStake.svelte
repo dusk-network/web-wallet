@@ -330,15 +330,19 @@
           </dd>
         </div>
       </dl>
-      <Button
-        className="stake-flow__send"
-        disabled={!canStake}
-        on:click={stake}
-        text={canStake
-          ? `Stake ${formatDuskExact(shownAmount, language)} DUSK`
-          : "Stake"}
-        variant="primary"
-      />
+      <!-- A phone's review is a step of its own: Stake shows anew with it. -->
+      {#key isReviewing}
+        <Button
+          className="stake-flow__send"
+          confirm
+          disabled={!canStake}
+          on:click={stake}
+          text={canStake
+            ? `Stake ${formatDuskExact(shownAmount, language)} DUSK`
+            : "Stake"}
+          variant="primary"
+        />
+      {/key}
     </svelte:fragment>
   </StakeFlow>
 {/if}
