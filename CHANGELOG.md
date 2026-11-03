@@ -247,6 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show the wallet and the profile alone in the top bar's pill below 420 px, as "Main · Profile 1", with the network as its dot [#1011]
 - Keep browsers from offering to save the recovery phrase typed on Unlock as a password [#534]
 - Turn Staking's buttons off while a stake, unstake or claim is pending [#537]
+- Give every field and select an edge that stands out on its surface, in dark mode too, and every field Send's height [#536]
 
 ## [1.8.0] - 2026-03-25
 
@@ -897,6 +898,7 @@ dusk-network/rusk#3958: https://github.com/dusk-network/rusk/issues/3958
 dusk-network/rusk#3982: https://github.com/dusk-network/rusk/issues/3982
 dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#534]: https://github.com/dusk-network/web-wallet/issues/534
+[#536]: https://github.com/dusk-network/web-wallet/issues/536
 [#537]: https://github.com/dusk-network/web-wallet/issues/537
 [#784]: https://github.com/dusk-network/web-wallet/issues/784
 [#928]: https://github.com/dusk-network/web-wallet/issues/928

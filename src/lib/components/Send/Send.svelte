@@ -1486,13 +1486,14 @@
     }
   }
 
+  /* Compact, with a field's edge and surface. */
   .send__contacts {
     align-self: flex-start;
     min-height: 2.25rem;
     padding: 0 0.75rem;
-    border: 0 none;
+    border: 1px solid var(--calm-field-edge);
     border-radius: 0.625rem;
-    background-color: var(--calm-s1);
+    background-color: var(--calm-field);
     color: var(--calm-text);
     font-size: 0.875rem;
   }

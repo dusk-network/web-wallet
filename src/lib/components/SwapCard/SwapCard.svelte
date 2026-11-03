@@ -124,16 +124,19 @@
     line-height: 1.45;
   }
 
+  /* A field around its amount: a field's edge, and its focus. */
   .swap-card :global(.swap-panel) {
     position: relative;
     padding: 0.875rem 1rem 0.75rem;
     border-radius: 1.125rem;
     background: var(--calm-field);
-    box-shadow: inset 0 0 0 1px var(--calm-line);
+    box-shadow: inset 0 0 0 1px var(--calm-field-edge);
   }
 
   .swap-card :global(.swap-panel:focus-within) {
-    box-shadow: inset 0 0 0 1px var(--calm-line2);
+    box-shadow:
+      inset 0 0 0 1px var(--calm-focus),
+      0 0 0 2px var(--focus-ring-color);
   }
 
   .swap-card :global(.swap-panel__head) {

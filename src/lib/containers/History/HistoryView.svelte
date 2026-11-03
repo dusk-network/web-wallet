@@ -412,11 +412,12 @@
     gap: 0.5rem;
     margin: 1.25rem 0 0.875rem;
 
+    /* Compact, with a field's edge and surface. */
     & :global(.history__select) {
       height: 2.25rem;
       border-radius: 0.625rem;
-      background-color: var(--calm-s1);
-      border: 0 none;
+      background-color: var(--calm-field);
+      border: 1px solid var(--calm-field-edge);
       color: var(--calm-text);
       font-size: 0.84375rem;
     }

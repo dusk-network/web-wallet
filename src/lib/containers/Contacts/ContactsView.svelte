@@ -356,9 +356,15 @@
     height: 2.75rem;
     margin: 1.25rem 0 0.75rem;
     padding: 0 0.875rem;
+    border: 1px solid var(--calm-field-edge);
     border-radius: 0.75rem;
-    background: var(--calm-s1);
+    background: var(--calm-field);
     color: var(--calm-muted);
+
+    &:focus-within {
+      border-color: var(--calm-focus);
+      box-shadow: 0 0 0 2px var(--focus-ring-color);
+    }
 
     & :global(.dusk-icon) {
       width: 1.125rem;
