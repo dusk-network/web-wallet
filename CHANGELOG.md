@@ -189,6 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Word the screens before a wallet opens plainly and in sentence case, each headed with what it is
 - Label the password switch Use a password, and show a switch that's off as a ring
 - Keep the Testnet strip on the error pages, and give Not found a Home button
+- Show the DUSK wordmark, not the round mark alone, on phones before a wallet opens
 
 ### Removed
 

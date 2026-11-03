@@ -174,8 +174,10 @@
   }
 
   /*
-   * The wordmark, a thin line and WALLET in the ledger's type; the round
-   * mark alone below 400 px, where the profile's pill needs the room.
+   * The wordmark, a thin line and WALLET in the ledger's type; in the
+   * wallet, the round mark alone below 400 px, where the profile's pill
+   * needs the room. Before a wallet opens the wordmark stays, to say whose
+   * site this is.
    */
   .top-bar__brand :global(.dusk-glyph) {
     display: none;
@@ -369,11 +371,11 @@
   }
 
   @media (max-width: 24.99rem) {
-    .top-bar__brand :global(.dusk-glyph) {
+    a.top-bar__brand :global(.dusk-glyph) {
       display: block;
     }
 
-    .top-bar__brand :global(.dusk-wordmark) {
+    a.top-bar__brand :global(.dusk-wordmark) {
       display: none;
     }
   }
