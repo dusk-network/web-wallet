@@ -21,8 +21,6 @@ Run `npm install` from the root folder to get the necessary dependencies.
 
 As the application uses the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API), in development mode [`@vitejs/plugin-basic-ssl`](https://github.com/vitejs/vite-plugin-basic-ssl) is used to create a self-signed certificate to run the application in HTTPS. Being the certificate self-signed you need to create an exception in the browser to allow it to use the certificate.
 
-The staging environment is at https://web-wallet-staging-oxs3z.ondigitalocean.app/
-
 ## Browser support
 
 Web Wallet supports browser releases from the previous two years. The current
