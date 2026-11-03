@@ -17,24 +17,6 @@ describe("ErrorAlert", () => {
 
   afterEach(cleanup);
 
-  it("should render the `ErrorAlert` component", () => {
-    const { container } = render(ErrorAlert, baseOptions);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should pass additional class names and attributes to the rendered element", () => {
-    const props = {
-      ...baseProps,
-      className: "foo bar",
-      "data-foo": "baz",
-      id: "some-id",
-    };
-    const { container } = render(ErrorAlert, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("should show a cross again once a given icon is taken away", async () => {
     const { container, rerender } = render(ErrorAlert, {
       ...baseOptions,

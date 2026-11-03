@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import bridgeTimes from "$lib/bridge/bridgeTimes";
+import { resumeWithdrawalTracking } from "$lib/bridge/withdrawalActivity";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
@@ -98,6 +99,14 @@ describe("Bridge withdrawal", () => {
     cleanup();
     vi.clearAllMocks();
     vi.useRealTimers();
+  });
+
+  it("takes up tracking the connected wallet's withdrawals as it opens", () => {
+    render(Bridge, props);
+
+    expect(resumeWithdrawalTracking).toHaveBeenCalledWith(
+      "0x2222222222222222222222222222222222222222"
+    );
   });
 
   async function sendWithdrawal() {

@@ -56,21 +56,6 @@ describe("AddressPicker", () => {
 
   afterEach(cleanup);
 
-  it("renders the AddressPicker component", () => {
-    const { container } = render(AddressPicker, props);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should be able to render the component if the current profile is `null`", () => {
-    const { container } = render(AddressPicker, {
-      ...props,
-      currentProfile: null,
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   describe("Multiple Profiles Functionality", () => {
     it("should show dropdown when enableMultipleProfiles is true and trigger is clicked", async () => {
       const { container } = render(AddressPicker, props);

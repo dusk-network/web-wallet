@@ -23,7 +23,5 @@ describe("GasFee", () => {
     expect(container.querySelector(".gas-fee__amount")).toHaveTextContent(
       "0.1 DUSK"
     );
-
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

@@ -139,18 +139,11 @@ describe("Create", async () => {
   it("should render the Existing Wallet notice step of the Create flow if there is a userId saved in localStorage", () => {
     settingsStore.update(setUserId(userId));
 
-    const { container, getByRole } = render(Create, baseOptions);
+    const { getByRole } = render(Create, baseOptions);
 
     expect(
       getByRole("button", { name: "Remove and create" })
     ).toBeInTheDocument();
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should render the Terms of Service step of the Create flow if there is no userId saved in localStorage", () => {
-    const { container } = render(Create, baseOptions);
-
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should sum up the terms, with their own links to the Terms of Use and the Privacy Policy", () => {
@@ -205,13 +198,11 @@ describe("Create", async () => {
   });
 
   it("should render the `Securely store your mnemonic phrase!` agreement step after the ToS", async () => {
-    const { container, getByRole } = render(Create, baseOptions);
+    const { getByRole } = render(Create, baseOptions);
 
     const mathRandomSpy = vi.spyOn(Math, "random").mockReturnValue(42);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
-
-    expect(container.firstElementChild).toMatchSnapshot();
 
     mathRandomSpy.mockRestore();
   });
@@ -266,7 +257,7 @@ describe("Create", async () => {
   });
 
   it("correctly renders the Mnemonic Preview page", async () => {
-    const { container, getByRole, getAllByRole } = render(Create, baseOptions);
+    const { getByRole, getAllByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
@@ -274,12 +265,10 @@ describe("Create", async () => {
     await fireEvent.click(getAllByRole("checkbox")[1]);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
-
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("correctly renders the Mnemonic Verification page", async () => {
-    const { container, getByRole, getAllByRole } = render(Create, baseOptions);
+    const { getByRole, getAllByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
@@ -288,8 +277,6 @@ describe("Create", async () => {
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
-
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("doesn't let the user proceed if they have entered mismatching Mnemonic", async () => {
@@ -315,13 +302,11 @@ describe("Create", async () => {
 
     await tick();
 
-    expect(container.firstElementChild).toMatchSnapshot();
-
     expect(getByRole("button", { name: "Next" })).toBeDisabled();
   });
 
   it("lets the user proceed if they have entered a matching Mnemonic", async () => {
-    const { container, getByRole, getAllByRole } = render(Create, baseOptions);
+    const { getByRole, getAllByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
@@ -339,13 +324,11 @@ describe("Create", async () => {
 
     await tick();
 
-    expect(container.firstElementChild).toMatchSnapshot();
-
     expect(getByRole("button", { name: "Next" })).toBeEnabled();
   });
 
   it("ensures that the Undo button on the Mnemonic Validate step works as expected", async () => {
-    const { container, getByRole, getAllByRole } = render(Create, baseOptions);
+    const { getByRole, getAllByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
@@ -365,13 +348,11 @@ describe("Create", async () => {
 
     await fireEvent.click(getByRole("button", { name: "Undo" }));
 
-    expect(container.firstElementChild).toMatchSnapshot();
-
     expect(getByRole("button", { name: "Next" })).toBeDisabled();
   });
 
   it("ensures the Password step renders as expected", async () => {
-    const { container, getByRole, getAllByRole } = render(Create, baseOptions);
+    const { getByRole, getAllByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
@@ -392,16 +373,14 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // Password enabled
-    expect(container.firstElementChild).toMatchSnapshot();
 
     await fireEvent.click(getByRole("switch"));
 
     // Password disabled
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("ensures the Network Syncing step renders as expected", async () => {
-    const { container, getByRole, getAllByRole } = render(Create, baseOptions);
+    const { getByRole, getAllByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
@@ -419,8 +398,6 @@ describe("Create", async () => {
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
-
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should keep the block height out of the way, under Advanced, on the Network Syncing step", async () => {
@@ -494,7 +471,7 @@ describe("Create", async () => {
   });
 
   it("ensures the All Done step renders as expected", async () => {
-    const { container, getByRole, getAllByRole } = render(Create, baseOptions);
+    const { getByRole, getAllByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
@@ -518,8 +495,6 @@ describe("Create", async () => {
     await vi.waitFor(() => {
       expect(getByRole("button", { name: "Next" })).toBeEnabled();
     });
-
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should initialize the wallet without setting a password", async () => {

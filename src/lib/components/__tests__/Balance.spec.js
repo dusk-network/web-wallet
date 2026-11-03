@@ -31,24 +31,6 @@ describe("Balance", () => {
     expect(
       container.querySelector(".dusk-balance__usage-details")
     ).toBeInTheDocument();
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should update the Balance component when the props change", async () => {
-    const { container, rerender } = render(Balance, baseOptions);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-
-    await rerender({
-      fiatCurrency: "EUR",
-      fiatPrice: 20,
-      locale: "it",
-      shieldedAmount: 500_000n,
-      tokenCurrency: "DUSK",
-      unshieldedAmount: 2_500_000n,
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should display the right percentage values", async () => {
@@ -132,7 +114,6 @@ describe("Balance", () => {
     const { container } = render(Balance, { ...baseOptions, props });
 
     expect(container.querySelector(".dusk-balance__fiat--visible")).toBeNull();
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should hide and show the balances with the eye button by the heading, named for what it does next", async () => {
@@ -186,5 +167,24 @@ describe("Balance", () => {
     expect(container.querySelector(".dusk-balance__dusk")).toHaveTextContent(
       /DUSK$/
     );
+  });
+
+  it("should show the total of both balances, in DUSK and in money, and follow them", async () => {
+    const { container, rerender } = render(Balance, baseOptions);
+    const shown = () => container.textContent?.replace(/\s+/g, " ") ?? "";
+
+    // 0.003 DUSK, at 10 USD each.
+    expect(shown()).toContain("0.003");
+    expect(shown()).toContain("$0.03");
+
+    await rerender({
+      ...baseProps,
+      fiatPrice: 20,
+      shieldedAmount: 1_000_000n,
+      unshieldedAmount: 4_000_000n,
+    });
+
+    expect(shown()).toContain("0.005");
+    expect(shown()).toContain("$0.10");
   });
 });

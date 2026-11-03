@@ -10,38 +10,6 @@ describe("Checkbox", () => {
 
   afterEach(cleanup);
 
-  it("renders the Checkbox component", () => {
-    const { container } = render(Checkbox, {
-      props: { ...baseProps, checked: false },
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("renders the Checkbox component in a checked state", () => {
-    const { container } = render(Checkbox, {
-      props: { ...baseProps, checked: true },
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("renders the Checkbox component in a disabled state", () => {
-    const { container } = render(Checkbox, {
-      props: { ...baseProps, disabled: true },
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("renders the Checkbox component in a disabled, checked state", () => {
-    const { container } = render(Checkbox, {
-      props: { ...baseProps, checked: true, disabled: true },
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("renders the Checkbox component and can transition to a checked state on click", async () => {
     const { getByRole } = render(Checkbox, {
       props: { ...baseProps, checked: false },

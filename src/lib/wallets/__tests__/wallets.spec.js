@@ -522,6 +522,28 @@ describe("The wallets on this device", () => {
     });
   });
 
+  describe("removing the open wallet when no other will open", () => {
+    it("locks", async () => {
+      const { second } = await twoWallets();
+      const refusal = new Error("It won't open");
+      const switching = vi
+        .spyOn(walletStore, "switchWallet")
+        .mockRejectedValueOnce(refusal);
+
+      try {
+        await expect(removeWallet(second.id, PASSWORD)).rejects.toThrow(
+          refusal
+        );
+      } finally {
+        switching.mockRestore();
+      }
+
+      // Nothing stays open: not the one going, nor half of another.
+      expect(get(walletStore).walletKey).toBe("");
+      expect(get(walletStore).profiles).toEqual([]);
+    });
+  });
+
   describe("naming", () => {
     it("names a wallet only on this device, and gives it its number back with none", async () => {
       const { first } = await twoWallets();

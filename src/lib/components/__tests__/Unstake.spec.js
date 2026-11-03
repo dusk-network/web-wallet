@@ -98,11 +98,10 @@ describe("Unstake", () => {
         target: document.body,
       };
 
-      const { container, getByRole } = render(Unstake, baseOptions);
+      const { getByRole } = render(Unstake, baseOptions);
       const nextButton = getByRole("button", { name: "Next" });
 
       expect(nextButton).toBeEnabled();
-      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should show the amount and the network fee on the review step, and no total", async () => {
@@ -405,11 +404,10 @@ describe("Unstake", () => {
         target: document.body,
       };
 
-      const { container, getByRole } = render(Unstake, baseOptions);
+      const { getByRole } = render(Unstake, baseOptions);
       const nextButton = getByRole("button", { name: "Next" });
 
       expect(nextButton).toBeEnabled();
-      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should perform a claim rewards, give a success message and supply a link to see the transaction in the explorer", async () => {

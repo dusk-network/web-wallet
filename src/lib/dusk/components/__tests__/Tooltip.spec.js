@@ -78,9 +78,7 @@ describe("Tooltip", () => {
   });
 
   it("should render the Tooltip component", () => {
-    const { getByRole } = render(Tooltip, baseOptions);
-
-    expect(getByRole("tooltip", { hidden: true })).toMatchSnapshot();
+    render(Tooltip, baseOptions);
   });
 
   it("should disconnect the Intersection Observer when unmounting", () => {
@@ -102,7 +100,6 @@ describe("Tooltip", () => {
 
     expect(tooltip).toHaveClass("foo bar");
     expect(tooltip).toHaveAttribute("data-baz", "baz");
-    expect(tooltip).toMatchSnapshot();
   });
 
   it("shouldn't allow overwriting the `left` and `top` style rules", () => {

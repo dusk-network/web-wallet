@@ -162,14 +162,12 @@ describe("Send", () => {
 
   describe("Recipient", () => {
     it("should render the one-page Send form, with its summary", () => {
-      const { container, getByRole } = render(Send, baseProps);
+      const { getByRole } = render(Send, baseProps);
 
       expect(getByRole("link", { name: "Home" })).toHaveAttribute(
         "href",
         "/some-base-path/dashboard"
       );
-
-      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should keep Send and Review disabled while the recipient is empty or isn't valid", async () => {

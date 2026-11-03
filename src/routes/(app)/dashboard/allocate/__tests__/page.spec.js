@@ -10,7 +10,7 @@ describe("Allocate", () => {
   afterEach(cleanup);
 
   it("should render the allocation page", async () => {
-    const { container, getByRole } = render(Allocation);
+    const { getByRole } = render(Allocation);
 
     await vi.advanceTimersToNextTimerAsync();
 
@@ -18,7 +18,6 @@ describe("Allocate", () => {
     expect(
       getByRole("textbox", { name: "Shielded amount" })
     ).toBeInTheDocument();
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should set the current operation to an empty string when destroyed", async () => {

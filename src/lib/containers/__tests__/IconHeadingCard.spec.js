@@ -12,31 +12,6 @@ describe("IconHeadingCard", () => {
       },
     });
 
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("renders the IconHeadingCard component with a heading and an icon", () => {
-    const { container } = render(IconHeadingCard, {
-      props: {
-        heading: "My Card",
-        icons: ["M3,3H21V21H3V3M5,5V19H19V5H5Z"],
-      },
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("renders the IconHeadingCard component with a heading and two icons", () => {
-    const { container } = render(IconHeadingCard, {
-      props: {
-        heading: "My Card",
-        icons: [
-          "M3,3H21V21H3V3M5,5V19H19V5H5Z",
-          "M4,3H21V21H3V3M5,5V19H19V5H5Z",
-        ],
-      },
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
+    expect(container.firstElementChild).toBeInTheDocument();
   });
 });

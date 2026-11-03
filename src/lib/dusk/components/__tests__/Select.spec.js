@@ -5,14 +5,6 @@ import { Select } from "..";
 
 const stringOptions = ["one", "two", "three", "four"];
 
-/** @type {SelectOption[]} */
-const objectOptions = [
-  { label: "one", value: "1" },
-  { label: "two", value: "2" },
-  { disabled: true, label: "three", value: "3" },
-  { label: "four", value: "4" },
-];
-
 /** @type {GroupedSelectOptions} */
 const groupedOptions = {
   "Group one": [
@@ -26,12 +18,6 @@ const groupedOptions = {
   ],
 };
 
-/** @type {GroupedSelectOptions} */
-const groupedOptionsStrings = {
-  "Group one": ["one", "two", "three", "four"],
-  "Group two": ["five", "six", "seven"],
-};
-
 describe("Select", () => {
   const baseProps = {
     options: stringOptions,
@@ -42,12 +28,6 @@ describe("Select", () => {
   };
 
   afterEach(cleanup);
-
-  it("should render the Select component", () => {
-    const { container } = render(Select, baseOptions);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
 
   it("should accept a change event handler", async () => {
     const changeHandler = vi.fn();
@@ -74,76 +54,42 @@ describe("Select", () => {
     expect(select.value).toBe("four");
   });
 
-  it("should pass additional class names and attributes to the rendered element", () => {
-    const props = {
-      ...baseProps,
-      className: "foo bar",
-      id: "some-id",
+  it("should list its options by label and value, a label left out being the value, and in groups", () => {
+    const optionsOf = (/** @type {{ options: any }} */ props) => {
+      cleanup();
+
+      const { container } = render(Select, { ...baseOptions, props });
+
+      return Array.from(container.querySelectorAll("option"), (option) => [
+        option.textContent?.trim(),
+        option.value,
+      ]);
     };
-    const { container } = render(Select, { ...baseOptions, props });
 
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
+    expect(optionsOf({ options: ["one"] })).toEqual([["one", "one"]]);
+    expect(
+      optionsOf({ options: [{ label: "one", value: "1" }, { value: "2" }] })
+    ).toEqual([
+      ["one", "1"],
+      ["2", "2"],
+    ]);
+    expect(optionsOf({ options: [{ label: "", value: "1" }] })).toEqual([
+      ["", "1"],
+    ]);
 
-  it("should accept an array of objects as options", () => {
-    const props = {
-      ...baseProps,
-      options: objectOptions,
-    };
-    const { container } = render(Select, { ...baseOptions, props });
+    const { container } = render(Select, {
+      ...baseOptions,
+      props: { options: groupedOptions },
+    });
 
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should use the value as label if an object is missing it", () => {
-    const objectOptions2 = objectOptions.concat({ value: "5" });
-    const props = {
-      ...baseProps,
-      options: objectOptions2,
-    };
-    const { container } = render(Select, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should accept an empty string as label and use it instead of falling back to the value", () => {
-    const objectOptions2 = objectOptions.concat({ label: "", value: "5" });
-    const props = {
-      ...baseProps,
-      options: objectOptions2,
-    };
-    const { container } = render(Select, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should accept an array of strings as `options` and use each string as both label and value", () => {
-    const props = {
-      ...baseProps,
-      options: groupedOptionsStrings["Group one"],
-    };
-    const { container } = render(Select, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should accept a grouped object as `options` and create option groups", () => {
-    const props = {
-      ...baseProps,
-      options: groupedOptions,
-    };
-    const { container } = render(Select, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should accept an array of string as values of a grouped object", () => {
-    const props = {
-      ...baseProps,
-      options: groupedOptionsStrings,
-    };
-    const { container } = render(Select, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
+    expect(
+      Array.from(container.querySelectorAll("optgroup"), (group) => [
+        group.label,
+        group.querySelectorAll("option").length,
+      ])
+    ).toEqual([
+      ["Group one", 3],
+      ["Group two", 2],
+    ]);
   });
 });

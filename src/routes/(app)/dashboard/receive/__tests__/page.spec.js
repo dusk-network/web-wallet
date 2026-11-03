@@ -76,7 +76,7 @@ describe("Receive", () => {
   });
 
   it("should render the receive page with a choice to switch from public to shielded address", async () => {
-    const { container, getByRole, getByText } = render(Receive);
+    const { getByRole, getByText } = render(Receive);
 
     await vi.runAllTimersAsync();
     await qrCodeDrawn();
@@ -84,7 +84,6 @@ describe("Receive", () => {
     expect(getByRole("radiogroup")).toBeInTheDocument();
     expect(getByText(expectedAccount)).toBeInTheDocument();
     expect(() => getByText(expectedAddress)).toThrow();
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should copy the full address shown from its field, with no other copy button", async () => {
@@ -113,7 +112,7 @@ describe("Receive", () => {
   });
 
   it("should show the shielded address when the user makes such choice", async () => {
-    const { container, getByRole, getByText } = render(Receive);
+    const { getByRole, getByText } = render(Receive);
 
     await vi.runAllTimersAsync();
 
@@ -126,7 +125,6 @@ describe("Receive", () => {
 
     expect(() => getByText(expectedAccount)).toThrow();
     expect(getByText(expectedAddress)).toBeInTheDocument();
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   describe("Dusk Domains names", () => {

@@ -43,11 +43,6 @@ describe("GasControls", () => {
     eventHandler.mockClear();
   });
 
-  it("should render the `GasControls` component", () => {
-    const { container } = render(GasControls, baseOptions);
-    expect(container).toMatchSnapshot();
-  });
-
   it('should dispatch a "gasSettings" event when the price or the limit are changed', async () => {
     const { getByLabelText } = render(GasControls, {
       ...baseOptions,

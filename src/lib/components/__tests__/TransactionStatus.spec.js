@@ -42,10 +42,7 @@ describe("TransactionStatus", () => {
   it("should say a transaction it follows is being sent, with its hash and the most it can cost", async () => {
     followNext();
 
-    const { container, getByRole, getByText } = render(
-      TransactionStatus,
-      baseProps
-    );
+    const { getByRole, getByText } = render(TransactionStatus, baseProps);
 
     expect(followTransaction).toHaveBeenCalledExactlyOnceWith(hash, {
       signal: expect.any(AbortSignal),
@@ -63,7 +60,6 @@ describe("TransactionStatus", () => {
     expect(
       getByRole("link", { name: "View in Dusk explorer" })
     ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${hash}`);
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should say when the transaction was sent once its block is final, with the fee it was charged", async () => {

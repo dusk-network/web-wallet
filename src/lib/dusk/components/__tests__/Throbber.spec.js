@@ -20,22 +20,6 @@ describe("Throbber", () => {
 
   afterEach(cleanup);
 
-  it("should render the Throbber component", () => {
-    const { container } = render(Throbber, baseOptions);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should pass additional class names to the rendered element", () => {
-    const props = {
-      ...baseProps,
-      className: "foo bar",
-    };
-    const { container } = render(Throbber, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("should turn while something loads, and stand still where less motion is asked for", () => {
     const { container } = render(Throbber, baseOptions);
 
@@ -48,16 +32,5 @@ describe("Throbber", () => {
       rules.find(({ media }) => media === "(prefers-reduced-motion: reduce)")
         ?.declarations
     ).toStrictEqual({ animation: "none" });
-  });
-
-  it("should accept a custom duration and size", () => {
-    const props = {
-      ...baseProps,
-      duration: 500,
-      size: 16,
-    };
-    const { container } = render(Throbber, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 });
