@@ -25,6 +25,7 @@
   } from "$lib/components";
   import { LEGAL_LINKS } from "$lib/constants";
   import { currencies, formatFee } from "$lib/dusk/currency";
+  import { section } from "$lib/dusk/motion";
   import { createNumberFormatter } from "$lib/dusk/number";
   import {
     gasPriceStore,
@@ -421,13 +422,14 @@
           type="button"
         >
           <span>Advanced</span>
-          <Icon className="settings-group__toggle-icon" path={mdiChevronDown} />
+          <Icon className="section-chevron" path={mdiChevronDown} />
         </button>
       </h2>
       {#if isAdvancedOpen}
         <div
           class="settings-group__multi-control-content"
           id="settings-advanced"
+          transition:section={{ open: isAdvancedOpen }}
         >
           <label
             class="settings-group__control settings-group__control--switch"
@@ -760,10 +762,6 @@
         letter-spacing: inherit;
         text-transform: inherit;
         cursor: pointer;
-      }
-
-      &__toggle[aria-expanded="true"] .settings-group__toggle-icon {
-        transform: rotate(180deg);
       }
 
       &__note {

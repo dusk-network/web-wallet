@@ -7,7 +7,7 @@
   export let className = undefined;
 
   /**
-   * The animation duration in milliseconds.
+   * How long a turn takes, in milliseconds.
    * @type {Number}
    */
   export let duration = 1800;
@@ -31,22 +31,14 @@
   ].join("");
 </script>
 
+<!-- It turns in CSS, which stops it where less motion is asked for. -->
 <svg
   class={makeClassName(["dusk-throbber", className])}
   height={`${size}px`}
   role="progressbar"
+  style:--dusk-throbber-duration={`${duration}ms`}
   viewBox="0 0 128 128"
   width={`${size}px`}
 >
-  <g>
-    <path d={path} />
-    <animateTransform
-      attributeName="transform"
-      dur={`${duration}ms`}
-      from="0 64 64"
-      repeatCount="indefinite"
-      to="360 64 64"
-      type="rotate"
-    />
-  </g>
+  <path d={path} />
 </svg>

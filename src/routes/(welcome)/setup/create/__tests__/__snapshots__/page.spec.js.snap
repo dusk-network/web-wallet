@@ -2218,6 +2218,7 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
             
             <!---->
              
+            <!---->
             <button
               aria-label="Copy Block height"
               class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
@@ -2242,6 +2243,7 @@ exports[`Create > ensures the Network Syncing step renders as expected 1`] = `
               <!---->
               <!---->
             </button>
+            
             <!---->
           </div>
           <!---->

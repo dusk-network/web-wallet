@@ -9,6 +9,7 @@
   } from "@mdi/js";
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import { BalanceValue, SectionHead } from "$lib/components";
+  import { sidePanel } from "$lib/dusk/motion";
   import { removeContact } from "$lib/contacts";
   import { shortAddress } from "$lib/activity/present";
   import { addBasePath, pageTitle } from "$lib/navigation";
@@ -52,6 +53,12 @@
   let prefill = null;
 
   /**
+   * Whether the panel shows, until it's gone: the list keeps its room while
+   * it fades out.
+   */
+  let isPanelShown = false;
+
+  /**
    * @param {string | null} id
    * @param {boolean} [edit]
    */
@@ -76,9 +83,12 @@
   $: open = contacts.find((contact) => contact.id === selected) ?? null;
   $: panel =
     selected === "new" ? "new" : open ? (editing ? "edit" : "detail") : null;
+  $: if (panel) {
+    isPanelShown = true;
+  }
 </script>
 
-<div class="contacts" class:contacts--open={panel}>
+<div class="contacts" class:contacts--open={isPanelShown}>
   <section aria-labelledby="contacts-title" class="contacts__main">
     <header class="contacts__header">
       <h1 class="contacts__title" id="contacts-title" use:pageTitle>
@@ -267,46 +277,51 @@
     {/if}
   </section>
 
-  {#if panel === "new"}
-    <div class="contacts__panel">
-      <ContactForm
-        on:cancel={() => {
-          prefill = null;
-          select(null);
-        }}
-        on:saved={(event) => {
-          prefill = null;
-          select(event.detail.id);
-        }}
-        {prefill}
-        {resolveName}
-      />
-    </div>
-  {:else if panel === "edit" && open}
-    <div class="contacts__panel">
-      {#key open.id}
+  <!-- One panel, which fades in and out; what it shows changes in place. -->
+  {#if panel}
+    <div
+      class="contacts__panel"
+      on:outroend={() => {
+        isPanelShown = Boolean(panel);
+      }}
+      transition:sidePanel={{ open: Boolean(panel) }}
+    >
+      {#if panel === "new"}
         <ContactForm
-          contact={open}
-          on:cancel={() => select(open?.id ?? null)}
-          on:delete={(event) => {
-            removeContact(event.detail.id);
+          on:cancel={() => {
+            prefill = null;
             select(null);
           }}
-          on:saved={(event) => select(event.detail.id)}
+          on:saved={(event) => {
+            prefill = null;
+            select(event.detail.id);
+          }}
+          {prefill}
           {resolveName}
         />
-      {/key}
-    </div>
-  {:else if open}
-    <div class="contacts__panel">
-      <ContactDetail
-        contact={open}
-        {locale}
-        on:close={() => select(null)}
-        on:edit={() => select(open?.id ?? null, true)}
-        {resolveName}
-        {rows}
-      />
+      {:else if panel === "edit" && open}
+        {#key open.id}
+          <ContactForm
+            contact={open}
+            on:cancel={() => select(open?.id ?? null)}
+            on:delete={(event) => {
+              removeContact(event.detail.id);
+              select(null);
+            }}
+            on:saved={(event) => select(event.detail.id)}
+            {resolveName}
+          />
+        {/key}
+      {:else if open}
+        <ContactDetail
+          contact={open}
+          {locale}
+          on:close={() => select(null)}
+          on:edit={() => select(open?.id ?? null, true)}
+          {resolveName}
+          {rows}
+        />
+      {/if}
     </div>
   {/if}
 </div>

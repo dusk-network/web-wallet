@@ -1,8 +1,7 @@
 <script>
-  import { mdiAlertOutline, mdiContentCopy, mdiOpenInNew } from "@mdi/js";
+  import { mdiOpenInNew } from "@mdi/js";
 
-  import { AnchorButton, Button } from "$lib/dusk/components";
-  import { toast } from "$lib/dusk/components/Toast/store";
+  import { AnchorButton, CopyButton } from "$lib/dusk/components";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import { shortened } from "./withdrawalPresentation";
@@ -21,30 +20,16 @@
 
   /** @type {boolean} */
   export let external = true;
-
-  async function copyValue() {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast("success", `${name} copied`, mdiContentCopy);
-    } catch (error) {
-      toast(
-        "error",
-        error instanceof Error ? error.message : String(error),
-        mdiAlertOutline
-      );
-    }
-  }
 </script>
 
 <div class="withdrawal-hash">
   <code>{shortened(value)}</code>
   <span class="withdrawal-hash__actions">
-    <Button
-      aria-label={`Copy ${name.toLowerCase()}`}
+    <CopyButton
       data-tooltip-id="main-tooltip"
       data-tooltip-text="Copy to clipboard"
-      icon={{ path: mdiContentCopy }}
-      on:click={copyValue}
+      name={name.toLowerCase()}
+      {value}
       variant="tertiary"
     />
     {#if href}

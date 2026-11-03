@@ -48,6 +48,17 @@
   --ledger-letter-spacing: 0.08em;
 
   /*
+   * Motion, as in every Dusk app: fast for feedback and every exit, base
+   * for anything that arrives or opens, and never farther than the shift.
+   * $lib/dusk/motion has the same numbers for Svelte's transitions.
+   */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --motion-ease-exit: cubic-bezier(0.32, 0, 0.67, 0);
+  --motion-shift: 4px;
+
+  /*
    * Compatibility bridge for app-local components that still consume the
    * pre-Duskit token names, mapped onto the calm look.
    */
@@ -229,6 +240,13 @@
   --on-background-color: var(--calm-text);
   --on-surface-color: var(--calm-text);
   --focus-ring-color: color-mix(in srgb, var(--chain-blue) 35%, transparent);
+}
+
+/* Less motion: nothing travels or changes size; opacity and colour may. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-shift: 0px;
+  }
 }
 
 /*

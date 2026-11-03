@@ -4,13 +4,17 @@
     mdiAlertCircleOutline,
     mdiCheck,
     mdiClose,
-    mdiContentCopy,
     mdiOpenInNew,
     mdiSendOutline,
     mdiTimerSand,
   } from "@mdi/js";
-  import { AnchorButton, Button, Icon, Textbox } from "$lib/dusk/components";
-  import { toast } from "$lib/dusk/components/Toast/store";
+  import {
+    AnchorButton,
+    Button,
+    CopyButton,
+    Icon,
+    Textbox,
+  } from "$lib/dusk/components";
   import { BalanceValue, SectionHead } from "$lib/components";
   import { fetchTxNonce } from "@dusk-network/app-core/history";
   import { archiveAt } from "$lib/activity/activityHistory";
@@ -96,23 +100,6 @@
     value.length > 12
       ? [value.slice(0, 6), value.slice(6, -6), value.slice(-6)]
       : ["", value, ""];
-
-  /**
-   * @param {string} value
-   * @param {string} [what]
-   */
-  async function copy(value, what = "transaction ID") {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast(
-        "success",
-        `${what[0].toUpperCase()}${what.slice(1)} copied`,
-        mdiContentCopy
-      );
-    } catch {
-      toast("error", `Couldn't copy the ${what}`, mdiAlertCircleOutline);
-    }
-  }
 
   /**
    * The row the nonce shown is of, with whether it can have one: a new row,
@@ -376,11 +363,12 @@
                   class="tx-detail__tail">{tail}</b
                 >{/each}</span
             >
-            <button
-              class="tx-detail__copy"
-              on:click={() => copy(String(target), "address")}
-              type="button"><Icon path={mdiContentCopy} />Copy</button
-            >
+            <CopyButton
+              className="tx-detail__copy"
+              name="address"
+              text="Copy"
+              value={String(target)}
+            />
             {#if canSave && !isSavingContact}
               <Button
                 className="tx-detail__save"
@@ -454,11 +442,12 @@
             {:else}
               <span class="tx-detail__code">{shortenAddress(arrival)}</span>
             {/if}
-            <button
-              class="tx-detail__copy"
-              on:click={() => copy(arrival, "DuskEVM transaction ID")}
-              type="button"><Icon path={mdiContentCopy} />Copy</button
-            >
+            <CopyButton
+              className="tx-detail__copy"
+              name="DuskEVM transaction ID"
+              text="Copy"
+              value={arrival}
+            />
           </dd>
         </div>
       {/if}
@@ -529,11 +518,12 @@
                 class="tx-detail__tail">{tail}</b
               >{/each}</span
           >
-          <button
-            class="tx-detail__copy"
-            on:click={() => copy(row.hash)}
-            type="button"><Icon path={mdiContentCopy} />Copy</button
-          >
+          <CopyButton
+            className="tx-detail__copy"
+            name="transaction ID"
+            text="Copy"
+            value={row.hash}
+          />
         </dd>
       </div>
     </dl>
@@ -557,11 +547,12 @@
                     >{/each}</span
                 >
               </span>
-              <button
-                class="tx-detail__copy"
-                on:click={() => copy(contract, "contract ID")}
-                type="button"><Icon path={mdiContentCopy} />Copy</button
-              >
+              <CopyButton
+                className="tx-detail__copy"
+                name="contract ID"
+                text="Copy"
+                value={contract}
+              />
             </dd>
           </div>
         {/if}
@@ -868,7 +859,7 @@
     text-underline-offset: 2px;
   }
 
-  .tx-detail__copy {
+  .tx-detail :global(.tx-detail__copy) {
     all: unset;
     display: inline-flex;
     align-items: center;

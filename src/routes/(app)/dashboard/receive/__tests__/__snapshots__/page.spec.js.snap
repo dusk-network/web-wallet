@@ -111,9 +111,10 @@ exports[`Receive > should render the receive page with a choice to switch from p
               </span>
             </samp>
              
+            <!---->
             <button
               aria-label="Copy address"
-              class="receive__icon-button receive__copy-button svelte-hh88gv"
+              class="receive__icon-button receive__copy-button"
               title="Copy address"
               type="button"
             >
@@ -129,7 +130,11 @@ exports[`Receive > should render the receive page with a choice to switch from p
               </svg>
               
               <!---->
+               
+              <!---->
             </button>
+            
+            <!---->
           </div>
            
           <p
@@ -302,9 +307,10 @@ exports[`Receive > should show the shielded address when the user makes such cho
               </span>
             </samp>
              
+            <!---->
             <button
               aria-label="Copy address"
-              class="receive__icon-button receive__copy-button svelte-hh88gv"
+              class="receive__icon-button receive__copy-button"
               title="Copy address"
               type="button"
             >
@@ -320,7 +326,11 @@ exports[`Receive > should show the shielded address when the user makes such cho
               </svg>
               
               <!---->
+               
+              <!---->
             </button>
+            
+            <!---->
           </div>
            
           <p

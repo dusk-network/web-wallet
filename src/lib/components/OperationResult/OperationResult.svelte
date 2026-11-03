@@ -28,8 +28,8 @@
   /** @type {Function|undefined} */
   export let onBeforeLeave = undefined;
 
-  /** @type {string} */
-  export let pendingMessage = "";
+  /** What it waits for, in words shown with the throbber. */
+  export let pendingMessage = "Loading…";
 
   /** @type {string} */
   export let successMessage = "Operation completed";

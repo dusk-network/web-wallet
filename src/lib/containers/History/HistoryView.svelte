@@ -5,6 +5,7 @@
   import { mdiTrayArrowDown } from "@mdi/js";
   import { Button, Icon, Select } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
+  import { sidePanel } from "$lib/dusk/motion";
   import { pageTitle } from "$lib/navigation";
   import {
     csvFileName,
@@ -79,6 +80,12 @@
   /** Whether an export holds the user's own contact names. */
   let withContacts = false;
 
+  /**
+   * Whether the details show, until they're gone: the list keeps their
+   * room while they fade out.
+   */
+  let isDetailShown = false;
+
   /** @param {ActivityRow} row */
   function select(row) {
     dispatch("select", row.hash === selected ? null : row.hash);
@@ -131,6 +138,9 @@
     locale,
   });
   $: open = described.find(({ row }) => row.hash === selected) ?? null;
+  $: if (open) {
+    isDetailShown = true;
+  }
   $: incomplete = shown.filter(({ row }) => row.incomplete).length;
   $: incompleteText = [
     state.error ? "Couldn't reach the network's history." : "",
@@ -154,7 +164,7 @@
   }
 </script>
 
-<div class="history" class:history--open={open}>
+<div class="history" class:history--open={isDetailShown}>
   <section aria-labelledby="history-title" class="history__main">
     <header class="history__header">
       <h1 class="history__title" id="history-title" use:pageTitle>History</h1>
@@ -343,7 +353,13 @@
   </section>
 
   {#if open}
-    <div class="history__detail">
+    <div
+      class="history__detail"
+      on:outroend={() => {
+        isDetailShown = Boolean(open);
+      }}
+      transition:sidePanel={{ open: Boolean(open) }}
+    >
       <TransactionDetail
         {account}
         {locale}

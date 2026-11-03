@@ -1,9 +1,9 @@
 <script>
-  import { slide } from "svelte/transition";
   import { Button } from "$lib/dusk/components";
   import { GasControls, GasFee } from "$lib/components";
   import { areValidGasSettings } from "$lib/contracts";
   import { formatDuskExact } from "$lib/dusk/currency";
+  import { section } from "$lib/dusk/motion";
   import { settingsStore } from "$lib/stores";
   import { onMount } from "svelte";
 
@@ -57,8 +57,9 @@
       />
     </dd>
   </dl>
+  <!-- It opens and closes the same way. -->
   {#if isExpanded}
-    <div in:slide|global class="gas-settings">
+    <div class="gas-settings" transition:section={{ open: isExpanded }}>
       <GasControls
         on:gasSettings
         {limit}

@@ -317,7 +317,11 @@ describe("TransactionDetail", () => {
     expect(getByText("Registered a .dusk name")).toBeInTheDocument();
     expect(getByText("Dusk Domains")).toBeInTheDocument();
     expect(container.textContent).toContain(store.slice(-6));
-    expect(getAllByRole("button", { name: "Copy" })).toHaveLength(2);
+    expect(
+      getAllByRole("button", { name: /^Copy/ }).map((button) =>
+        button.getAttribute("aria-label")
+      )
+    ).toStrictEqual(["Copy transaction ID", "Copy contract ID"]);
   });
 
   it("should name the contract of a call that moved no DUSK, which has no counterparty", () => {

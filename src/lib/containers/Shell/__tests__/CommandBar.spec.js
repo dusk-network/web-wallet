@@ -3,6 +3,8 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
+import { toast } from "$lib/dusk/components/Toast/store";
+
 import CommandBar from "../CommandBar.svelte";
 
 const mocks = vi.hoisted(() => ({
@@ -34,6 +36,8 @@ vi.mock("$lib/navigation", async (importOriginal) => ({
   .../** @type {typeof import("$lib/navigation")} */ (await importOriginal()),
   goto: mocks.goto,
 }));
+
+vi.mock("$lib/dusk/components/Toast/store", () => ({ toast: vi.fn() }));
 
 const writeText = vi.fn().mockResolvedValue(undefined);
 
@@ -145,17 +149,28 @@ describe("CommandBar", () => {
     );
   });
 
-  it("copies an address looked up on the network with Shift+Enter", async () => {
+  it("copies an address looked up on the network with Shift+Enter, and says Copied in its row, in no toast", async () => {
     const { findByRole, getByRole } = render(CommandBar, { pages });
     const input = getByRole("combobox");
 
     await fireEvent.input(input, { target: { value: ALICE } });
     await fireEvent.keyDown(input, { key: "Enter" });
-    await findByRole("option", { name: /Send to this address/ });
+
+    const result = await findByRole("option", {
+      name: /Send to this address/,
+    });
+
     await fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
 
     expect(writeText).toHaveBeenCalledWith(ALICE);
     expect(mocks.goto).not.toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(document.querySelector("[aria-live='polite']")).toHaveTextContent(
+        "Copied"
+      )
+    );
+    expect(result).toHaveTextContent(/Copied$/);
+    expect(toast).not.toHaveBeenCalled();
   });
 
   it("says a name isn't registered", async () => {

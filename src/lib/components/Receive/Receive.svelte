@@ -1,17 +1,12 @@
 <svelte:options immutable={true} />
 
 <script>
-  import {
-    mdiAlertOutline,
-    mdiArrowLeft,
-    mdiContentCopy,
-    mdiInformationOutline,
-  } from "@mdi/js";
+  import { mdiArrowLeft, mdiInformationOutline } from "@mdi/js";
   import { onMount } from "svelte";
 
   import { AppAnchorButton } from "$lib/components";
-  import { Icon, QrCode } from "$lib/dusk/components";
-  import { toast } from "$lib/dusk/components/Toast/store";
+  import { CopyButton, Icon, QrCode } from "$lib/dusk/components";
+  import { section } from "$lib/dusk/motion";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
 
   /** @type {string} */
@@ -60,27 +55,6 @@
   });
 
   /**
-   * Copies the name or the full address, saying whether that worked.
-   *
-   * @param {string} value
-   * @param {"Address" | "Name"} what
-   */
-  async function copy(value, what) {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast("success", `${what} copied`, mdiContentCopy);
-    } catch (err) {
-      toast(
-        "error",
-        err instanceof Error && err.name === "NotAllowedError"
-          ? "Clipboard access denied"
-          : `Failed to copy ${what.toLowerCase()}`,
-        mdiAlertOutline
-      );
-    }
-  }
-
-  /**
    * What the name reaches, for the note behind its info button.
    *
    * @param {string} shownName
@@ -120,15 +94,12 @@
             >
               <Icon path={mdiInformationOutline} />
             </button>
-            <button
-              aria-label="Copy name"
-              class="receive__icon-button receive__copy-button"
+            <CopyButton
+              className="receive__icon-button receive__copy-button"
+              name="name"
               title="Copy name"
-              type="button"
-              on:click={() => copy(shownName, "Name")}
-            >
-              <Icon path={mdiContentCopy} />
-            </button>
+              value={shownName}
+            />
           </div>
         {/if}
       {:catch}
@@ -139,15 +110,12 @@
           <span aria-hidden="true">{shortenAddress(address)}</span>
           <span class="sr-only">{address}</span>
         </samp>
-        <button
-          aria-label="Copy address"
-          class="receive__icon-button receive__copy-button"
+        <CopyButton
+          className="receive__icon-button receive__copy-button"
+          name="address"
           title="Copy address"
-          type="button"
-          on:click={() => copy(address, "Address")}
-        >
-          <Icon path={mdiContentCopy} />
-        </button>
+          value={address}
+        />
       </div>
       <p class="receive__reveal">
         {addressType === "account"
@@ -155,8 +123,12 @@
           : "Payments to this shielded address don't show on chain who receives them or how much. Whoever pays you sees what they send."}
       </p>
       {#await name then shownName}
-        {#if shownName}
-          <p class="receive__note" hidden={!isNoteShown} id={noteId}>
+        {#if shownName && isNoteShown}
+          <p
+            class="receive__note"
+            id={noteId}
+            transition:section={{ open: isNoteShown }}
+          >
             {getNote(shownName, addressType)}
           </p>
         {/if}
@@ -244,7 +216,7 @@
       font-size: 0.8125rem;
     }
 
-    &__icon-button {
+    :global(&__icon-button) {
       all: unset;
       display: flex;
       flex-shrink: 0;
@@ -270,13 +242,13 @@
       }
     }
 
-    &__copy-button {
+    :global(&__copy-button) {
       margin-left: auto;
     }
 
     /* On phones, taps of at least 44 px. */
     @media (max-width: 30rem) {
-      &__icon-button {
+      :global(&__icon-button) {
         width: 44px;
         height: 44px;
       }
