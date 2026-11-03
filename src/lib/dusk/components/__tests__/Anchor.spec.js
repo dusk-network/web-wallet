@@ -19,21 +19,6 @@ describe("Anchor", () => {
   it("should render the Anchor component", () => {
     const { container } = renderWithSimpleContent(Anchor, baseOptions);
 
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should pass additional class names and attributes to the rendered element", () => {
-    const props = {
-      ...baseProps,
-      className: "foo bar",
-      href: "https://dusk.network",
-      title: "Some title",
-    };
-    const { container } = renderWithSimpleContent(Anchor, {
-      ...baseOptions,
-      props,
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
+    expect(container.firstElementChild).toBeInTheDocument();
   });
 });

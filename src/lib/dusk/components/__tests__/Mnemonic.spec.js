@@ -24,28 +24,6 @@ const mnemonic = [
 describe("Mnemonic", () => {
   afterEach(cleanup);
 
-  it('should render the "Mnemonic" component in the authenticate state', async () => {
-    const { container } = render(Mnemonic, {
-      props: {
-        enteredMnemonicPhrase,
-        type: "authenticate",
-      },
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it('should render the "Mnemonic" component in the validate state', () => {
-    const { container } = render(Mnemonic, {
-      props: {
-        mnemonicPhrase: mnemonic,
-        type: "validate",
-      },
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it.each([5, 12])(
     "should allow editing %i prefilled authentication words",
     async (count) => {

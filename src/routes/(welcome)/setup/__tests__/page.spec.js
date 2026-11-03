@@ -11,12 +11,6 @@ describe("Setup", () => {
     settingsStore.reset();
   });
 
-  it("should render the Setup page", () => {
-    const { container } = render(Setup, {});
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("should show the wallet's name, its ways in and its version, and no picture that could look broken", () => {
     const { container, getByRole } = render(Setup, {});
 

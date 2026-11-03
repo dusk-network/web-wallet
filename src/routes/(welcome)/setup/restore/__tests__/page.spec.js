@@ -82,14 +82,6 @@ describe("Restore", async () => {
     initWalletSpy.mockRestore();
   });
 
-  it("should render the Existing Wallet notice step of the Restore flow if there is a userId saved in localStorage", () => {
-    settingsStore.update(setUserId(userId));
-
-    const { container } = render(Restore);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("should say what restoring removes from this browser and what stays, with Back first and a button that says what it does", async () => {
     settingsStore.update(setUserId(userId));
 
@@ -156,21 +148,13 @@ describe("Restore", async () => {
     await vault.clear();
   });
 
-  it("should render the Terms of Service step of the Restore flow if there is no userId saved in localStorage", () => {
-    const { container } = render(Restore);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("should render the Mnemonic Authenticate step after accepting the Existing Wallet Notice and the Terms of Service", async () => {
     settingsStore.update(setUserId(userId));
 
-    const { container, getByRole } = render(Restore);
+    const { getByRole } = render(Restore);
 
     await fireEvent.click(getByRole("button", { name: "Remove and restore" }));
     await fireEvent.click(getByRole("button", { name: "Accept" }));
-
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("should allow the user to proceed to password setup after a valid mnemonic has been pasted into any box", async () => {

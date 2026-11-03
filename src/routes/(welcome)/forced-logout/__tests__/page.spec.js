@@ -15,7 +15,7 @@ describe("Forced logout page", () => {
   });
 
   it("should render the page alert the user about the forced logout on mount", () => {
-    const { container, getByText } = render(LogoutPage);
+    const { getByText } = render(LogoutPage);
     const why =
       "Your DUSK is safe on the network. Another tab or window created, restored or reset a wallet in this browser, so this tab locked.";
 
@@ -27,6 +27,5 @@ describe("Forced logout page", () => {
         "If your wallet is no longer here, restore it with its recovery phrase. It then syncs again in full."
       )
     ).toBeInTheDocument();
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 });

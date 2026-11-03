@@ -113,12 +113,6 @@ describe("Main layout", async () => {
     }
   );
 
-  it("should render the main layout", () => {
-    const { container } = render(MainLayout);
-
-    expect(container).toMatchSnapshot();
-  });
-
   it('should add and remove the "dark" class name to the `html` element when the `darkMode` value changes in thesettings store', () => {
     expect(isDarkMode()).toBe(false);
     expect(hasDarkClass()).toBe(false);

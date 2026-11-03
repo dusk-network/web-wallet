@@ -16,10 +16,9 @@ describe("AppImage", () => {
   afterEach(cleanup);
 
   it("should render an HTML image forwarding all attributes but with the base path prepended to the `src` if it's an absolute URL", async () => {
-    const { container, getByRole, rerender } = render(AppImage, baseProps);
+    const { getByRole, rerender } = render(AppImage, baseProps);
     const imgA = getByRole("img");
 
-    expect(container.firstElementChild).toMatchSnapshot();
     expect(imgA).toHaveAttribute("alt", baseProps.alt);
     expect(imgA).toHaveClass("foo bar");
     expect(imgA).toHaveAttribute("height", baseProps.height);

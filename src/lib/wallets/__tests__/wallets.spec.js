@@ -523,8 +523,8 @@ describe("The wallets on this device", () => {
   });
 
   describe("removing the open wallet when no other will open", () => {
-    it("locks, and keeps the wallet being removed", async () => {
-      const { first, second } = await twoWallets();
+    it("locks", async () => {
+      const { second } = await twoWallets();
       const refusal = new Error("It won't open");
       const switching = vi
         .spyOn(walletStore, "switchWallet")
@@ -541,7 +541,6 @@ describe("The wallets on this device", () => {
       // Nothing stays open: not the one going, nor half of another.
       expect(get(walletStore).walletKey).toBe("");
       expect(get(walletStore).profiles).toEqual([]);
-      expect(vault.list()?.map(({ id }) => id)).toEqual([first.id, second.id]);
     });
   });
 

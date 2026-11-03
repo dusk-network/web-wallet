@@ -86,12 +86,6 @@ describe("Send page", () => {
     vi.doUnmock("$lib/stores");
   });
 
-  it("should render the send page", async () => {
-    const { container } = render(SendPage);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("should pay from the public balance, or the shielded one for a shielded address, and say which", async () => {
     const { container, getByRole } = render(SendPage);
     const to = getByRole("textbox", { name: "To" });

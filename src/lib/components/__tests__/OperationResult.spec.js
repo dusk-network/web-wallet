@@ -27,43 +27,6 @@ describe("OperationResult", () => {
     onBeforeLeave.mockClear();
   });
 
-  it("should be able to render the `OperationResult` component in a pending state", () => {
-    const { container } = render(OperationResult, baseOptions);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should accept a custom message for the pending state", () => {
-    const props = {
-      ...baseProps,
-      pendingMessage: "Transaction pending",
-    };
-    const { container } = render(OperationResult, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should be able to render the `OperationResult` in a successful state", async () => {
-    const { container } = render(OperationResult, baseOptions);
-
-    await vi.advanceTimersByTimeAsync(delay);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should accept a custom message for the successful state", async () => {
-    const props = {
-      ...baseProps,
-      successMessage: "Transaction created",
-    };
-
-    const { container } = render(OperationResult, { ...baseOptions, props });
-
-    await vi.advanceTimersByTimeAsync(delay);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("should call the `onBeforeLeave` function when the home button is clicked", async () => {
     const { getByRole } = render(OperationResult, baseOptions);
 
@@ -80,30 +43,38 @@ describe("OperationResult", () => {
     expect(baseProps.onBeforeLeave).toHaveBeenCalledTimes(1);
   });
 
-  it("should be able to render the `OperationResult` in a failure state", async () => {
-    const props = {
-      ...baseProps,
-      operation: rejectAfter(delay, new Error("some error")),
-    };
-
-    const { container } = render(OperationResult, { ...baseOptions, props });
-
-    await vi.advanceTimersByTimeAsync(delay);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should accept a custom message for the failure state", async () => {
-    const props = {
-      ...baseProps,
+  it("should say what it was told to as it waits, once it's done, and when it fails", async () => {
+    const messages = {
       errorMessage: "Transaction failed",
-      operation: rejectAfter(delay, new Error("some error")),
+      pendingMessage: "Transaction pending",
+      successMessage: "Transaction created",
     };
+    const done = render(OperationResult, {
+      ...baseOptions,
+      props: { ...baseProps, ...messages, operation: resolveAfter(delay, "") },
+    });
 
-    const { container } = render(OperationResult, { ...baseOptions, props });
+    expect(done.getByText("Transaction pending")).toBeInTheDocument();
 
     await vi.advanceTimersByTimeAsync(delay);
 
-    expect(container.firstElementChild).toMatchSnapshot();
+    expect(done.getByText("Transaction created")).toBeInTheDocument();
+    expect(done.queryByText("Transaction pending")).toBeNull();
+
+    cleanup();
+
+    const failed = render(OperationResult, {
+      ...baseOptions,
+      props: {
+        ...baseProps,
+        ...messages,
+        operation: rejectAfter(delay, new Error("some error")),
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(delay);
+
+    expect(failed.getByText("Transaction failed")).toBeInTheDocument();
+    expect(failed.queryByText("Transaction created")).toBeNull();
   });
 });

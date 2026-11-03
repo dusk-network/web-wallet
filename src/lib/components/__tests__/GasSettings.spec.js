@@ -38,20 +38,12 @@ describe("GasSettings", () => {
 
   afterEach(cleanup);
 
-  it("renders the GasSettings component closed", () => {
-    const { container } = render(GasSettings, baseOptions);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("renders the GasSettings component opened", async () => {
-    const { container, getByRole } = render(GasSettings, baseOptions);
+    const { getByRole } = render(GasSettings, baseOptions);
 
     const next = getByRole("button", { name: "Edit" });
 
     await fireEvent.click(next);
-
-    expect(container.firstElementChild).toMatchSnapshot();
   });
 
   it("gives the most it can cost exactly, as text to copy, once its limit and price show", async () => {

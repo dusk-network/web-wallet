@@ -52,7 +52,6 @@ describe("QrCode", () => {
     expect(imgElement).toHaveAttribute("height", defaultSize.toString());
     expect(imgElement).toHaveAttribute("width", defaultSize.toString());
     expect(imgElement).toHaveAttribute("src", mockBase64Value);
-    expect(container.firstElementChild).toMatchSnapshot();
     expect(toDataUrlMock).toHaveBeenCalledTimes(1);
     expect(toDataUrlMock).toHaveBeenNthCalledWith(1, baseProps.value, {
       color: {

@@ -98,16 +98,6 @@ describe("Settings", () => {
     vi.doUnmock("$lib/stores");
   });
 
-  it("should render the settings page displaying the status of the network", async () => {
-    const { container } = render(Settings, {});
-
-    expect(container.firstElementChild).toMatchSnapshot();
-
-    await networkStore.disconnect();
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("should label its controls without colons, and link the wallet's issues", async () => {
     const rendered = render(Settings, {});
     const { getByLabelText, getByRole, getByText } = rendered;
@@ -191,7 +181,6 @@ describe("Settings", () => {
     await openAdvanced(rendered);
 
     expect(rendered.getByDisplayValue("123")).toBeInTheDocument();
-    expect(rendered.container.firstElementChild).toMatchSnapshot();
 
     settingsStore.reset();
   });
@@ -535,7 +524,7 @@ describe("Settings", () => {
     it("should show an error if clearing local data fails", async () => {
       clearDataSpy.mockRejectedValueOnce(new Error("Clear data error"));
 
-      const { container, getByRole } = render(Settings);
+      const { getByRole } = render(Settings);
       const resetButton = getByRole("button", { name: /reset wallet/i });
 
       await fireEvent.click(resetButton);
@@ -547,7 +536,6 @@ describe("Settings", () => {
 
       expect(settingsResetSpy).not.toHaveBeenCalled();
       expect(logoutSpy).not.toHaveBeenCalled();
-      expect(container.firstElementChild).toMatchSnapshot();
     });
   });
 });

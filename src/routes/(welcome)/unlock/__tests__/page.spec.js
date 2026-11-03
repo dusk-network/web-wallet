@@ -162,12 +162,6 @@ describe("Unlock Wallet", async () => {
   });
 
   describe("Mnemonic phrase workflow", () => {
-    it("should render the Unlock Wallet page and show the field to enter the mnemonic phrase, if there is no login info stored", () => {
-      const { container } = render(UnlockWallet, {});
-
-      expect(container.firstElementChild).toMatchSnapshot();
-    });
-
     it("should take the recovery phrase in Restore's word boxes, which browsers keep no record of, not in a password field they offer to save", () => {
       const { container, getAllByRole, getByRole } = render(UnlockWallet, {});
       const boxes = getAllByRole("textbox");
@@ -378,12 +372,11 @@ describe("Unlock Wallet", async () => {
     afterAll(() => vault.clear());
 
     it("should show the password field and the link to restore the wallet if there is login info stored", () => {
-      const { container, getByRole } = render(UnlockWallet, {});
+      const { getByRole } = render(UnlockWallet, {});
 
       expect(getByRole("heading", { level: 2 })).toHaveTextContent(
         "Unlock your wallet"
       );
-      expect(container.firstElementChild).toMatchSnapshot();
     });
 
     it("should take the password in a password field, as the current password", () => {

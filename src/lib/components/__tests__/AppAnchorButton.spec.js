@@ -14,13 +14,9 @@ describe("AppAnchorButton", () => {
   afterEach(cleanup);
 
   it("should render an `AnchorButton` with the base path prepended to the `href` attribute, if the `href` represents an absolute URL", async () => {
-    const { container, getByRole, rerender } = render(
-      AppAnchorButton,
-      baseProps
-    );
+    const { getByRole, rerender } = render(AppAnchorButton, baseProps);
     const anchorA = getByRole("link");
 
-    expect(container.firstElementChild).toMatchSnapshot();
     expect(anchorA).toHaveAttribute("href", `${base}${baseProps.href}`);
     expect(anchorA).toHaveClass("foo bar");
     expect(anchorA).toHaveAttribute("id", baseProps.id);

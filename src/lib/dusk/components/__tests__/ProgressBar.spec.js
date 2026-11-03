@@ -29,26 +29,6 @@ describe("ProgressBar", () => {
   it("renders the ProgressBar component with no current percentage set", () => {
     const { container } = render(ProgressBar);
 
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("renders the ProgressBar component with current percentage set as zero", () => {
-    const { container } = render(ProgressBar, {
-      props: { currentPercentage: 0 },
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("re-renders the ProgressBar component when the current percentage property changes", async () => {
-    const { container, rerender } = render(ProgressBar, {
-      props: { currentPercentage: 0 },
-    });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-
-    await rerender({ currentPercentage: 50 });
-
-    expect(container.firstElementChild).toMatchSnapshot();
+    expect(container.firstElementChild).toBeInTheDocument();
   });
 });

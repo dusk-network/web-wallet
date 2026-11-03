@@ -18,6 +18,6 @@ describe("ScanQR", () => {
   it("renders the ScanQR component", () => {
     const { container } = render(ScanQR, baseOptions);
 
-    expect(container.firstElementChild).toMatchSnapshot();
+    expect(container.firstElementChild).toBeInTheDocument();
   });
 });

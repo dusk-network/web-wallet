@@ -23,7 +23,6 @@ describe("AppAnchor", () => {
     const renderA = renderWithSimpleContent(AppAnchor, baseOptions);
     const anchorA = renderA.getByRole("link");
 
-    expect(renderA.container.firstElementChild).toMatchSnapshot();
     expect(anchorA).toHaveAttribute("href", `${base}${baseProps.href}`);
     expect(anchorA).toHaveClass("foo bar");
     expect(anchorA).toHaveAttribute("id", baseProps.id);

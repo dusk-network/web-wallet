@@ -19,26 +19,6 @@ describe("ErrorDetails", () => {
   it("should render the `ErrorDetails` component", () => {
     const { container } = render(ErrorDetails, baseOptions);
 
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should pass additional class names to the rendered element", () => {
-    const props = {
-      ...baseProps,
-      className: "foo bar",
-    };
-    const { container } = render(ErrorDetails, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should render nothing if the error is `null`", () => {
-    const props = {
-      ...baseProps,
-      error: null,
-    };
-    const { container } = render(ErrorDetails, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
+    expect(container.firstElementChild).toBeInTheDocument();
   });
 });

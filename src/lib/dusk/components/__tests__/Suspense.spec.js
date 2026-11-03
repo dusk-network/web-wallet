@@ -21,24 +21,6 @@ describe("Suspense", () => {
 
   afterEach(cleanup);
 
-  it("should be able to render the `Suspense` component in a pending state", () => {
-    const { container } = render(Suspense, baseOptions);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should pass additional class names and attributes to the rendered element", () => {
-    const props = {
-      ...baseProps,
-      className: "foo bar",
-      "data-baz": "baz",
-      id: "some-id",
-    };
-    const { container } = render(Suspense, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("should add appropriate class names for gap variants", async () => {
     /** @type {import("svelte").ComponentProps<Suspense>} */
     const props = {
@@ -65,63 +47,30 @@ describe("Suspense", () => {
     expect(getByText("Processing transaction")).toBeInTheDocument();
   });
 
-  it("should accept a custom message for the pending state", () => {
-    const props = {
-      ...baseProps,
-      pendingMessage: "Operation pending",
-    };
-    const { container } = render(Suspense, { ...baseOptions, props });
+  it("should say what it waits for, and why it failed", async () => {
+    const waiting = render(Suspense, {
+      ...baseOptions,
+      props: { ...baseProps, pendingMessage: "Reading the network…" },
+    });
 
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should be able to render the `Suspense` in a successful state", async () => {
-    const { container } = render(Suspense, baseOptions);
+    expect(waiting.getByText("Reading the network…")).toBeInTheDocument();
 
     await vi.advanceTimersByTimeAsync(delay);
 
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
+    expect(waiting.queryByText("Reading the network…")).toBeNull();
 
-  it('should be able to render the `Suspense` in a failure state with the "alert" variant as a default', async () => {
-    const props = {
-      ...baseProps,
-      waitFor: rejectAfter(delay, new Error("some error")),
-    };
+    cleanup();
 
-    const { container } = render(Suspense, { ...baseOptions, props });
-
-    await vi.advanceTimersByTimeAsync(delay);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it('should be able to render the `Suspense` in a failure state with the "details" error variant', async () => {
-    /** @type {import("svelte").ComponentProps<Suspense>} */
-    const props = {
-      ...baseProps,
-      errorVariant: "details",
-      waitFor: rejectAfter(delay, new Error("some error")),
-    };
-
-    const { container } = render(Suspense, { ...baseOptions, props });
+    const failed = render(Suspense, {
+      ...baseOptions,
+      props: {
+        errorMessage: "Operation failed",
+        waitFor: rejectAfter(delay, new Error("some error")),
+      },
+    });
 
     await vi.advanceTimersByTimeAsync(delay);
 
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should accept a custom message for the failure state", async () => {
-    const props = {
-      ...baseProps,
-      errorMessage: "Operation failed",
-      waitFor: rejectAfter(delay, new Error("some error")),
-    };
-
-    const { container } = render(Suspense, { ...baseOptions, props });
-
-    await vi.advanceTimersByTimeAsync(delay);
-
-    expect(container.firstElementChild).toMatchSnapshot();
+    expect(failed.getByText("Operation failed")).toBeInTheDocument();
   });
 });

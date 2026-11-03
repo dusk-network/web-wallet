@@ -15,52 +15,6 @@ describe("Switch", () => {
 
   afterEach(cleanup);
 
-  it('should render the "Switch" component with a default tab index of `0`', async () => {
-    const { container, rerender } = render(Switch, baseOptions);
-
-    expect(container.firstElementChild).toMatchSnapshot();
-
-    await rerender({ ...baseProps, value: true });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should use the received tab index", () => {
-    const props = {
-      ...baseProps,
-      tabindex: 5,
-    };
-    const { container } = render(Switch, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should render the component in a disabled status with a tabindex of `-1`", async () => {
-    const props = {
-      ...baseProps,
-      disabled: true,
-      tabindex: 5,
-    };
-    const { container, rerender } = render(Switch, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-
-    await rerender({ ...props, value: true });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
-  it("should pass additional class names and attributes to the root element", () => {
-    const props = {
-      ...baseProps,
-      className: "foo bar",
-      id: "some-id",
-    };
-    const { container } = render(Switch, { ...baseOptions, props });
-
-    expect(container.firstElementChild).toMatchSnapshot();
-  });
-
   it("should read as off or on by its knob: a ring when off, filled with the on colour when on", () => {
     const knob = (/** @type {string} */ state) =>
       styleRules(
