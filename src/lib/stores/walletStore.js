@@ -23,6 +23,7 @@ import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
 import WalletChangedError from "$lib/errors/wallet-changed-error";
 import { forgetRouteTransfers } from "$lib/bridge/migrationActivity";
 import { SOZU_FN, sozuCall } from "@dusk-network/networks/sozu";
+import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
 import { useWalletDataSuffix } from "$lib/wallets/dataNames";
@@ -361,7 +362,10 @@ const updateCacheAfterTransaction = (profile) => {
         .updateCachedPendingNotes(txInfo.nullifiers, txInfo.hash)
         .catch(() => {});
     } else {
-      await treasury.updateCachedNonce(profile, txInfo.nonce);
+      // It went out: a failure to keep its nonce mustn't say it didn't.
+      await treasury.updateCachedNonce(profile, txInfo.nonce).catch((error) => {
+        throw outcomeUnknown(error);
+      });
     }
 
     return txInfo;

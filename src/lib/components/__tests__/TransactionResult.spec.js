@@ -194,7 +194,9 @@ describe("TransactionResult", () => {
       operation: Promise.reject(new Error("Something no one expected")),
     });
 
-    expect(await findByText("Try again.")).toBeInTheDocument();
+    expect(
+      await findByText("Something went wrong before it was sent. Try again.")
+    ).toBeInTheDocument();
 
     const details = /** @type {HTMLDetailsElement} */ (
       container.querySelector("details")

@@ -4,7 +4,7 @@ import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 
 import { Bridge } from "..";
-import { decodeFunctionData, parseAbi } from "viem";
+import { UserRejectedRequestError, decodeFunctionData, parseAbi } from "viem";
 import { networks } from "@dusk-network/networks";
 import { duskRecipientOf } from "@dusk-network/networks/duskevm";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
@@ -171,5 +171,59 @@ describe("Bridge withdrawal", () => {
       account: PAID,
       kind: "account",
     });
+  });
+
+  /**
+   * The failure screen's heading and sentence, once it shows.
+   *
+   * @param {import("@testing-library/svelte").RenderResult<any>} rendered
+   */
+  async function failureOf(rendered) {
+    await vi.waitFor(() =>
+      expect(rendered.container.querySelector(".dusk-error-alert")).toBeTruthy()
+    );
+
+    const alert = /** @type {HTMLElement} */ (
+      rendered.container.querySelector(".dusk-error-alert")
+    );
+
+    return [
+      alert.querySelector(".dusk-error-alert__summary")?.textContent,
+      alert.querySelector(".dusk-error-alert__description")?.textContent,
+    ];
+  }
+
+  it("says to try again when DuskEVM couldn't be reached before the EVM wallet was asked to send it, and after, that it may have gone out and to check History", async () => {
+    mocks.switchChain.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    expect(await failureOf(await sendWithdrawal())).toStrictEqual([
+      "Bridging failed",
+      "Couldn't reach the network. Check your connection and try again.",
+    ]);
+    expect(mocks.sendTransaction).not.toHaveBeenCalled();
+    cleanup();
+
+    mocks.sendTransaction.mockRejectedValueOnce(
+      new TypeError("Failed to fetch")
+    );
+
+    const rendered = await sendWithdrawal();
+
+    expect(await failureOf(rendered)).toStrictEqual([
+      "Not confirmed",
+      "It may have reached the network. Check History before you send it again.",
+    ]);
+    expect(rendered.container).not.toHaveTextContent(/try again/i);
+  });
+
+  it("says nothing was sent when it was declined in the EVM wallet", async () => {
+    mocks.sendTransaction.mockRejectedValue(
+      new UserRejectedRequestError(new Error("User denied transaction."))
+    );
+
+    expect(await failureOf(await sendWithdrawal())).toStrictEqual([
+      "Bridging failed",
+      "It was declined in your EVM wallet, so nothing was sent.",
+    ]);
   });
 });

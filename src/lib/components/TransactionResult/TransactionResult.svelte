@@ -3,7 +3,7 @@
 <script>
   import { isHistoryEnabled } from "$lib/activity";
   import { Suspense } from "$lib/dusk/components";
-  import { failureSentence } from "$lib/transactions";
+  import { describeFailure } from "$lib/transactions";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import TransactionStatus from "../TransactionStatus/TransactionStatus.svelte";
@@ -50,7 +50,7 @@
   its own message under Details. -->
 <Suspense
   className="transaction-result"
-  describeError={failureSentence}
+  describeError={describeFailure}
   {errorMessage}
   gap="large"
   pendingMessage="Processing transaction"

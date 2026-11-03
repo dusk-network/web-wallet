@@ -4,11 +4,11 @@ import { networkFor } from "@dusk-network/networks";
 import {
   AccountSyncer,
   AddressSyncer,
-  Network,
   useAsProtocolDriver,
 } from "@dusk/w3sper";
 
 import { rejectAfter } from "$lib/dusk/promise";
+import SendingNetwork from "$lib/transactions/SendingNetwork";
 
 import { setNodeNetwork } from "./nodeNetwork";
 import { makeNodeUrl } from "$lib/url";
@@ -29,8 +29,13 @@ function getNetworkUrl() {
 
 const networkUrl = getNetworkUrl();
 
-/** @type {Network} */
-const network = new Network(networkUrl);
+/**
+ * The node's network, which marks what a send ran into once its
+ * transaction may have gone out (SendingNetwork).
+ *
+ * @type {import("@dusk/w3sper").Network}
+ */
+const network = new SendingNetwork(networkUrl);
 
 /**
  * Where this browser keeps the name of the network the node gave last, for

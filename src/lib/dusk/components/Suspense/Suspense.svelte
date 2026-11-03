@@ -14,9 +14,10 @@
 
   /**
    * What an error means, in a sentence that says what to do, shown with
-   * the alert: none by default.
+   * the alert, and the heading over it, where it isn't `errorMessage`: none
+   * by default.
    *
-   * @type {((error: Error) => string) | undefined}
+   * @type {((error: Error) => { heading?: string, sentence: string }) | undefined}
    */
   export let describeError = undefined;
 
@@ -51,16 +52,18 @@
     {@const error = getErrorFrom(thrownError)}
     {@const ErrorComponent =
       errorVariant === "alert" ? ErrorAlert : ErrorDetails}
+    {@const described =
+      errorVariant === "alert" ? describeError?.(error) : undefined}
     {@const extraProps =
       errorVariant === "alert"
-        ? { description: describeError?.(error) ?? "", gap }
+        ? { description: described?.sentence ?? "", gap }
         : {}}
     <slot name="error-content" {error}>
       <svelte:component
         this={ErrorComponent}
         className="dusk-suspense__error"
         {error}
-        summary={errorMessage}
+        summary={described?.heading ?? errorMessage}
         {...extraProps}
       />
       <slot name="error-extra-content" {error} />
