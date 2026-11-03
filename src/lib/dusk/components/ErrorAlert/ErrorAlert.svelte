@@ -19,6 +19,9 @@
   /** @type {string} */
   export let summary;
 
+  /** The icon over it: a cross, unless what happened isn't known. */
+  export let icon = mdiCloseThick;
+
   /**
    * What the error means, in a sentence that says what to do: with one,
    * the summary is a heading over it, and the error's own message is under
@@ -36,7 +39,7 @@
 </script>
 
 <div {...$$restProps} class={classes}>
-  <Icon className="dusk-error-alert__icon" path={mdiCloseThick} size="large" />
+  <Icon className="dusk-error-alert__icon" path={icon} size="large" />
   {#if description}
     <div class="dusk-error-alert__text">
       <b class="dusk-error-alert__summary">{summary}</b>

@@ -3,7 +3,7 @@
 <script>
   import { isHistoryEnabled } from "$lib/activity";
   import { Suspense } from "$lib/dusk/components";
-  import { describeFailure } from "$lib/transactions";
+  import { describeFailure, isOutcomeUnknown } from "$lib/transactions";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import TransactionStatus from "../TransactionStatus/TransactionStatus.svelte";
@@ -75,14 +75,26 @@
       variant="tertiary"
     />
   </svelte:fragment>
-  <AppAnchorButton
-    className="transaction-result__button"
-    href={leaveHref}
-    on:click={handleGoHomeClick}
-    slot="error-extra-content"
-    text={leaveText}
-    variant="tertiary"
-  />
+  <svelte:fragment slot="error-extra-content" let:error>
+    <!-- Whether it went out is for History to say. -->
+    {#if hasHistory && isOutcomeUnknown(error)}
+      <AppAnchorButton
+        className="transaction-result__button"
+        href="/dashboard/transactions"
+        on:click={handleGoHomeClick}
+        text="Open History"
+        variant="secondary"
+      />
+    {:else}
+      <AppAnchorButton
+        className="transaction-result__button"
+        href={leaveHref}
+        on:click={handleGoHomeClick}
+        text={leaveText}
+        variant="tertiary"
+      />
+    {/if}
+  </svelte:fragment>
 </Suspense>
 
 <style lang="postcss">

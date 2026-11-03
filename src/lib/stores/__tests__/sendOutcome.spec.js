@@ -10,6 +10,7 @@ import {
 import { cleanup, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { Gas, Network, ProfileGenerator, ShieldTransfer } from "@dusk/w3sper";
+import { mdiCloseThick, mdiTimerSand } from "@mdi/js";
 
 import { TransactionResult } from "$lib/components";
 import { stubWalletNetwork } from "$lib/test-helpers";
@@ -88,6 +89,7 @@ describe("A send that fails", () => {
   /** The result screen of a shield, as the send goes. */
   async function shieldResult() {
     const rendered = render(TransactionResult, {
+      hasHistory: true,
       maxFee: 1n,
       operation: walletStore
         .shield(1n, new Gas({ limit: 1n, price: 1n }))
@@ -106,6 +108,13 @@ describe("A send that fails", () => {
       heading: alert.querySelector(".dusk-error-alert__summary")?.textContent,
       sentence: alert.querySelector(".dusk-error-alert__description")
         ?.textContent,
+      icon: alert
+        .querySelector(".dusk-error-alert__icon path")
+        ?.getAttribute("d"),
+      links: [...rendered.container.querySelectorAll("a")].map((a) => [
+        a.textContent?.trim(),
+        a.getAttribute("href"),
+      ]),
       text: rendered.container.textContent ?? "",
     };
   }
@@ -115,6 +124,8 @@ describe("A send that fails", () => {
 
     expect(await shieldResult()).toMatchObject({
       heading: "Transaction failed",
+      icon: mdiCloseThick,
+      links: [["Home", "/some-base-path/dashboard"]],
       sentence:
         "Couldn't reach the network. Check your connection and try again.",
     });
@@ -133,6 +144,11 @@ describe("A send that fails", () => {
     expect(result.text).not.toMatch(/try again|transaction failed/i);
     // What it ran into, under Details.
     expect(result.text).toContain("Failed to fetch");
+    // Not a cross, and the way on is to History.
+    expect(result.icon).toBe(mdiTimerSand);
+    expect(result.links).toStrictEqual([
+      ["Open History", "/some-base-path/dashboard/transactions"],
+    ]);
   });
 
   it("says the same once it went out and keeping its nonce failed", async () => {

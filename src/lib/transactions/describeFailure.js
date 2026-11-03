@@ -13,6 +13,8 @@
  * under Details either way.
  */
 
+import { mdiTimerSand } from "@mdi/js";
+
 import { isOutcomeUnknown } from "./outcomeUnknown";
 
 /**
@@ -83,7 +85,7 @@ const UNREACHABLE =
 
 /**
  * @param {Error} error What the send rejected with
- * @returns {{ heading?: string, sentence: string }}
+ * @returns {{ heading?: string, icon?: string, sentence: string }}
  */
 export default function describeFailure(error) {
   const text = `${error?.name ?? ""}: ${error?.message ?? ""}`;
@@ -96,6 +98,7 @@ export default function describeFailure(error) {
   if (isOutcomeUnknown(error)) {
     return {
       heading: "Not confirmed",
+      icon: mdiTimerSand,
       sentence:
         "It may have reached the network. Check History before you send it again.",
     };

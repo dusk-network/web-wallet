@@ -1,7 +1,8 @@
 <script>
   import { AppAnchorButton } from "$lib/components";
   import { Suspense } from "$lib/dusk/components";
-  import { describeFailure } from "$lib/transactions";
+  import { isHistoryEnabled } from "$lib/activity";
+  import { describeFailure, isOutcomeUnknown } from "$lib/transactions";
 
   import DepositProgress from "../EvmTransactions/DepositProgress.svelte";
 
@@ -20,12 +21,17 @@
   <svelte:fragment slot="success-content" let:result={transactionHash}>
     <DepositProgress {transactionHash} />
   </svelte:fragment>
-  <AppAnchorButton
-    href="/dashboard"
-    slot="error-extra-content"
-    text="Home"
-    variant="tertiary"
-  />
+  <svelte:fragment slot="error-extra-content" let:error>
+    {#if isHistoryEnabled() && isOutcomeUnknown(error)}
+      <AppAnchorButton
+        href="/dashboard/transactions"
+        text="Open History"
+        variant="secondary"
+      />
+    {:else}
+      <AppAnchorButton href="/dashboard" text="Home" variant="tertiary" />
+    {/if}
+  </svelte:fragment>
 </Suspense>
 
 <style lang="postcss">

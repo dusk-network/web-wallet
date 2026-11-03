@@ -17,7 +17,7 @@
    * the alert, and the heading over it, where it isn't `errorMessage`: none
    * by default.
    *
-   * @type {((error: Error) => { heading?: string, sentence: string }) | undefined}
+   * @type {((error: Error) => { heading?: string, icon?: string, sentence: string }) | undefined}
    */
   export let describeError = undefined;
 
@@ -56,7 +56,11 @@
       errorVariant === "alert" ? describeError?.(error) : undefined}
     {@const extraProps =
       errorVariant === "alert"
-        ? { description: described?.sentence ?? "", gap }
+        ? {
+            description: described?.sentence ?? "",
+            gap,
+            ...(described?.icon ? { icon: described.icon } : {}),
+          }
         : {}}
     <slot name="error-content" {error}>
       <svelte:component
