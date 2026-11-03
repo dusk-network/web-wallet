@@ -1140,8 +1140,10 @@ const resyncFrom = writable(/** @type {bigint | null} */ (null));
  * the heights it asks the archive among, and is worked out again from the
  * notes found. The contacts, settings, names, the vault and the other
  * wallets stay as they are. The sync under way, if any, stops for it, and
- * one resync runs at a time: another is refused meanwhile. Once another
- * wallet opened, or after a lock, it stops (WalletChangedError).
+ * one resync runs at a time: another is refused meanwhile, and so is a
+ * block below 0 or past the network's latest, before anything is cleared.
+ * Once another wallet opened, or after a lock, it stops
+ * (WalletChangedError).
  *
  * @type {WalletStoreServices["resync"]}
  */
@@ -1154,6 +1156,10 @@ async function resync(fromBlock) {
     );
   }
 
+  if (typeof fromBlock !== "bigint" || fromBlock < 0n) {
+    throw new RangeError("A block height is 0 or more.");
+  }
+
   if (get(resyncFrom) !== null) {
     throw new Error("The wallet is syncing again already.");
   }
@@ -1163,6 +1169,12 @@ async function resync(fromBlock) {
   resyncFrom.set(fromBlock);
 
   try {
+    // A block the network doesn't have yet clears nothing either.
+    if (fromBlock > (await networkStore.getCurrentBlockHeight())) {
+      throw new RangeError("The network has no block at that height yet.");
+    }
+
+    stillOpen();
     stopActivity();
     await forgetWalletActivity(
       {

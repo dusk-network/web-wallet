@@ -258,6 +258,42 @@ describe("Settings › Resync", () => {
     expect(notesFrom()).toEqual([123n, 0n]);
   });
 
+  it("starts a block typed empty, and refuses one below 0 or past the network's latest before it clears anything", async () => {
+    const { second } = await twoWallets();
+
+    await keepDataOf(second);
+    notesSpy.mockClear();
+
+    const { group } = await openResync();
+
+    await fireEvent.change(
+      within(group).getByRole("combobox", { name: "From" }),
+      {
+        target: { value: "typed" },
+      }
+    );
+
+    const height = within(group).getByRole("textbox", { name: "Block height" });
+    const resync = within(group).getByRole("button", { name: "Resync" });
+
+    // Nothing in it until one is typed.
+    expect(height).toHaveValue("");
+    expect(resync).toBeDisabled();
+
+    await fireEvent.input(height, { target: { value: "-1" } });
+
+    expect(height).toHaveAttribute("aria-invalid", "true");
+    expect(group).toHaveTextContent("Enter a block height of 0 or more.");
+    expect(resync).toBeDisabled();
+
+    // Nor does the wallet, asked for them.
+    await expect(walletStore.resync(-1n)).rejects.toThrow(RangeError);
+    await expect(walletStore.resync(124n)).rejects.toThrow(RangeError);
+
+    expect(await dataOf(second)).toEqual(ALL);
+    expect(notesSpy).not.toHaveBeenCalled();
+  });
+
   it("starts no resync while one runs", async () => {
     await twoWallets();
     notesSpy.mockClear();

@@ -14,11 +14,11 @@
     Icon,
     Select,
     Switch,
+    Textbox,
   } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     AppAnchorButton,
-    BigIntInput,
     CopyField,
     GasControls,
     SectionHead,
@@ -136,8 +136,8 @@
    */
   let resyncChoice = "creation";
 
-  /** The block typed for a resync to start at. */
-  let resyncTyped = 0n;
+  /** The block typed for a resync to start at, as typed: none at first. */
+  let resyncTypedText = "";
 
   /**
    * The network's latest block, which a block typed can't be past: null
@@ -299,6 +299,11 @@
     { label: "Genesis, block 0", value: "genesis" },
     { label: "Another block", value: "typed" },
   ];
+  // A block typed: a whole number, 0 or more; null for none yet, or one
+  // that isn't.
+  $: resyncTyped = /^\d+$/.test(resyncTypedText.trim())
+    ? BigInt(resyncTypedText.trim())
+    : null;
   $: resyncStart =
     resyncChoice === "creation"
       ? walletCreationBlockHeight
@@ -306,12 +311,18 @@
         ? 0n
         : resyncTyped;
 
+  $: isResyncTypedInvalid =
+    resyncChoice === "typed" &&
+    resyncTypedText.trim() !== "" &&
+    resyncTyped === null;
   $: isResyncTypedPast =
     resyncChoice === "typed" &&
+    resyncTyped !== null &&
     networkHeight !== null &&
     resyncTyped > networkHeight;
   $: canResync =
     $resyncing === null &&
+    resyncStart !== null &&
     (resyncChoice !== "typed" ||
       (networkHeight !== null && !isResyncTypedPast));
 
@@ -499,23 +510,29 @@
               />
             </label>
             {#if resyncChoice === "typed"}
-              <BigIntInput
+              <Textbox
                 aria-describedby="settings-resync-height"
-                aria-invalid={isResyncTypedPast}
+                aria-invalid={isResyncTypedInvalid || isResyncTypedPast}
                 aria-label="Block height"
-                bind:value={resyncTyped}
+                autocomplete="off"
+                bind:value={resyncTypedText}
                 className="settings-group__control"
                 disabled={$resyncing !== null}
-                maxValue={networkHeight ?? undefined}
+                inputmode="numeric"
+                placeholder="Block height"
+                type="text"
               />
               <p
                 class="settings-group__note"
-                class:settings-group__note--error={isResyncTypedPast ||
+                class:settings-group__note--error={isResyncTypedInvalid ||
+                  isResyncTypedPast ||
                   networkHeightState === "failed"}
                 id="settings-resync-height"
               >
                 {#if networkHeightState === "failed"}
                   Couldn't read the network's latest block.
+                {:else if isResyncTypedInvalid}
+                  Enter a block height of 0 or more.
                 {:else if networkHeight !== null}
                   The maximum is {numberFormatter(networkHeight)}, the network's
                   latest block.
@@ -530,13 +547,17 @@
             {:else if isConfirmingResync}
               <p>
                 Resync {$openWalletName || "this wallet"} from block {numberFormatter(
-                  resyncStart
+                  resyncStart ?? 0n
                 )}? Its balances and history clear, then fill in again as it
                 syncs.
               </p>
               <div class="settings-group__buttons">
                 <Button
-                  on:click={() => resync(resyncStart)}
+                  on:click={() => {
+                    if (resyncStart !== null) {
+                      resync(resyncStart);
+                    }
+                  }}
                   text="Resync"
                   variant="secondary"
                 />
