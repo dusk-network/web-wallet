@@ -245,6 +245,10 @@
     min-height: 44px;
   }
 
+  .dusk-icon-button:not(.dusk-icon-button--labeled) {
+    min-width: 44px;
+  }
+
   .liquid-stake__tab {
     min-height: 44px;
   }
