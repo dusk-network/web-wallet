@@ -79,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Link to the explorer at its own domain
 - Open and close sections, show Copied on the button, and fade messages in place, the same way everywhere
 - Lock every wallet and every tab with Lock [#999]
 - Show a chevron on Technical details

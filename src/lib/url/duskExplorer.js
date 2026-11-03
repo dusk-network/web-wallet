@@ -5,7 +5,7 @@ import nodeNetwork from "$lib/stores/nodeNetwork";
 /**
  * A page of the Dusk explorer of the node's network, as its file in
  * `@dusk-network/networks` gives the explorer: "/transactions/transaction?id=…"
- * on "https://apps.testnet.dusk.network/explorer". Without a file, the
+ * on "https://explorer.testnet.dusk.network". Without a file, the
  * explorer beside the wallet.
  *
  * @param {string} path
