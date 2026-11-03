@@ -152,10 +152,10 @@ const collectRegistryPackages = (lockfile, exemptions) => {
     }
 
     if (!packages.has(name)) {
-      packages.set(name, { origin, versions: new Set() });
+      packages.set(name, { origin, versions: new Map() });
     }
 
-    packages.get(name).versions.add(entry.version);
+    packages.get(name).versions.set(entry.version, entry.resolved);
     entryCount += 1;
   }
 
@@ -219,9 +219,7 @@ const fetchPackageMetadata = async (name, origin) => {
           accept: "application/json",
           "user-agent": "dusk-lockfile-release-age-check/1",
         },
-        // A package's whole record can be over 10 MB (@solana/assertions'
-        // is), and a CI runner can take more than half a minute to fetch it.
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(30_000),
       });
 
       if (response.ok) {
@@ -247,6 +245,41 @@ const fetchPackageMetadata = async (name, origin) => {
   throw lastError;
 };
 
+/*
+ * When a package's record won't come (@solana/assertions' is 11.8 MB, and CI
+ * runners have failed to fetch it in minutes), a version's tarball still
+ * tells when it was published: the registry dates it a few seconds after
+ * the publication, never before, so a version can only seem younger.
+ */
+const fetchTarballDate = async (tarball) => {
+  let lastError;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(tarball, {
+        headers: { "user-agent": "dusk-lockfile-release-age-check/1" },
+        method: "HEAD",
+        signal: AbortSignal.timeout(30_000),
+      });
+      const lastModified = response.headers.get("last-modified");
+
+      if (response.ok && lastModified) {
+        return new Date(lastModified).toISOString();
+      }
+
+      lastError = new Error(
+        `Registry returned no date (HTTP ${response.status}) for ${tarball}`
+      );
+    } catch (error) {
+      lastError = error;
+    }
+
+    await wait(250 * 2 ** attempt);
+  }
+
+  throw lastError;
+};
+
 const verifyReleaseAges = async ({
   concurrency,
   cutoff,
@@ -256,6 +289,7 @@ const verifyReleaseAges = async ({
 }) => {
   const queue = [...packages.entries()];
   const failures = [];
+  const datedByTarball = [];
   const usedExceptions = new Set();
   let queueIndex = 0;
 
@@ -269,11 +303,29 @@ const verifyReleaseAges = async ({
       try {
         metadata = await fetchPackageMetadata(name, origin);
       } catch (error) {
-        failures.push(`${name}: ${error.message}`);
-        continue;
+        if ([...versions.values()].some((tarball) => !tarball)) {
+          failures.push(`${name}: ${error.message}`);
+          continue;
+        }
+
+        try {
+          const time = {};
+
+          for (const [version, tarball] of versions) {
+            time[version] = await fetchTarballDate(tarball);
+          }
+
+          metadata = { time };
+          datedByTarball.push(name);
+        } catch (tarballError) {
+          failures.push(
+            `${name}: ${error.message}; its tarball gave no date either: ${tarballError.message}`
+          );
+          continue;
+        }
       }
 
-      for (const version of versions) {
+      for (const version of versions.keys()) {
         const published = metadata.time?.[version];
         const publishedAt = Date.parse(published);
 
@@ -313,7 +365,7 @@ const verifyReleaseAges = async ({
     }
   }
 
-  return failures;
+  return { datedByTarball, failures };
 };
 
 const main = async () => {
@@ -327,7 +379,7 @@ const main = async () => {
     lockfile,
     exemptions.map(patternToRegExp)
   );
-  const failures = await verifyReleaseAges({
+  const { datedByTarball, failures } = await verifyReleaseAges({
     concurrency: options.concurrency,
     cutoff,
     exceptions,
@@ -346,6 +398,12 @@ const main = async () => {
   console.log(
     `Verified ${entryCount} lockfile entries across ${packages.size} registry packages are at least ${options.days} days old; ${exemptCount} entries of ${exemptions.join(", ") || "no exempt packages"} (.npmrc's min-release-age-exclude) are exempt.`
   );
+
+  if (datedByTarball.length > 0) {
+    console.log(
+      `Dated by their tarballs, as their registry records didn't come: ${datedByTarball.sort().join(", ")}.`
+    );
+  }
 };
 
 main().catch((error) => {
