@@ -13,7 +13,12 @@
     MismatchedWalletError,
   } from "$lib/errors";
 
-  import { AppAnchor, AppAnchorButton, Banner } from "$lib/components";
+  import {
+    AppAnchor,
+    AppAnchorButton,
+    Banner,
+    MnemonicInput,
+  } from "$lib/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { goto } from "$lib/navigation";
   import {
@@ -73,8 +78,14 @@
   /** @type {Textbox} */
   let fldSecret;
 
-  /** @type {string} */
+  /** The password, or the phrase's words with a space between. */
   let secretText = "";
+
+  /** Whether the word boxes hold a recovery phrase. */
+  let isPhraseValid = false;
+
+  /** What's wrong with the words, said under the boxes. */
+  let phraseError = "";
 
   /** @type {Error} */
   let error;
@@ -94,9 +105,13 @@
   beforeNavigate(cancelUnlock);
   onDestroy(cancelUnlock);
 
-  /** @type {import("svelte/elements").FormEventHandler<HTMLFormElement>} */
+  /** Unlocks with the password or the phrase given, once. */
   function handleUnlockWalletSubmit() {
-    if (pending || controller.signal.aborted) {
+    if (
+      pending ||
+      controller.signal.aborted ||
+      (!hasPassword && !isPhraseValid)
+    ) {
       return;
     }
     pending = true;
@@ -122,9 +137,14 @@
           goto("/setup/restore");
           return;
         }
+        if (err instanceof InvalidMnemonicError) {
+          phraseError =
+            "These words aren't a valid recovery phrase. Check each word.";
+          return;
+        }
         error = err instanceof Error ? err : getErrorFrom(err);
-        fldSecret.focus();
-        fldSecret.select();
+        fldSecret?.focus();
+        fldSecret?.select();
       });
   }
 </script>
@@ -142,30 +162,33 @@
         class="login__form"
         on:submit|preventDefault={handleUnlockWalletSubmit}
       >
-        <!-- A recovery phrase is no password: no password field, so that
-          the browser offers no save, and text it keeps no record of, as
-          Restore's word boxes take it. -->
-        <Textbox
-          bind:this={fldSecret}
-          bind:value={secretText}
-          name={modeLabel}
-          aria-label={modeLabel}
-          placeholder={modeLabel}
-          required
-          type={hasPassword ? "password" : "text"}
-          autocapitalize={hasPassword ? undefined : "none"}
-          autocomplete={hasPassword ? "current-password" : "off"}
-          spellcheck={hasPassword ? undefined : "false"}
-          autofocus
-        />
-        {#if error instanceof InvalidMnemonicError}
-          <Banner title="Invalid recovery phrase" variant="error">
-            <p>
-              Please ensure you have entered your 12-word recovery phrase, with
-              a space separating each word.
-            </p>
-          </Banner>
-        {:else if error instanceof InvalidPasswordError}
+        {#if hasPassword}
+          <Textbox
+            bind:this={fldSecret}
+            bind:value={secretText}
+            name={modeLabel}
+            aria-label={modeLabel}
+            placeholder={modeLabel}
+            required
+            type="password"
+            autocomplete="current-password"
+            autofocus
+          />
+        {:else}
+          <!-- A recovery phrase is no password: Restore's word boxes, which
+            browsers offer no save for and keep no record of. -->
+          <MnemonicInput
+            bind:isValid={isPhraseValid}
+            bind:mnemonic={secretText}
+            error={phraseError}
+            label={modeLabel}
+            on:change={() => {
+              phraseError = "";
+            }}
+            on:complete={handleUnlockWalletSubmit}
+          />
+        {/if}
+        {#if error instanceof InvalidPasswordError}
           <Banner title="Invalid password" variant="error">
             <p>
               Please ensure the password entered matches the one you have set up
@@ -183,7 +206,11 @@
             <p>{error.message}</p>
           </Banner>
         {/if}
-        <Button text="Unlock Wallet" type="submit" disabled={pending} />
+        <Button
+          text="Unlock Wallet"
+          type="submit"
+          disabled={pending || (!hasPassword && !isPhraseValid)}
+        />
         {#if modeLabel === "Password"}
           <AppAnchorButton
             variant="tertiary"

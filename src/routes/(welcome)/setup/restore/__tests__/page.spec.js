@@ -204,7 +204,7 @@ describe("Restore", async () => {
     await tick();
 
     expect(getByRole("alert")).toHaveTextContent(
-      "That isn't a valid recovery phrase. Check each word."
+      "These words aren't a valid recovery phrase. Check each word."
     );
     expect(nextButton).toBeDisabled();
   });

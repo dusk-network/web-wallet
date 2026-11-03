@@ -185,6 +185,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Take the amount to unstake or claim as the other amount fields do, with a decimal point or comma, and say what's wrong with it in their words [#784]
 - Show the screens before a wallet opens as the wallet: its top bar, page, type, cards, buttons and dark colours
 - Start a restore's block height empty, say which block to give, and go on only with one
+- Take the recovery phrase on Unlock in Restore's word boxes, with no autocorrect
 
 ### Removed
 
