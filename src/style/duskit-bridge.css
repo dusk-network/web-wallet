@@ -221,7 +221,15 @@
 
   --chain-blue: #71b1ff;
 
-  /* Over Duskit's own ring for the dark theme. */
+  /*
+   * Over Duskit's own dark page, surfaces, text and ring: the calm ones, as
+   * in the light theme.
+   */
+  --page-background-color: var(--calm-s0);
+  --background-color: var(--calm-s0);
+  --surface-color: var(--calm-s1);
+  --on-background-color: var(--calm-text);
+  --on-surface-color: var(--calm-text);
   --focus-ring-color: color-mix(in srgb, var(--chain-blue) 35%, transparent);
 }
 
