@@ -126,10 +126,13 @@
   $: ({ balance, currentProfile, minimumStake, pendingStakes, stakeInfo } =
     $walletStore);
   // A staking transaction this profile sent waits to settle: Staking's
-  // buttons wait with it.
-  $: isStakePending = pendingStakes.some(
+  // buttons wait with it, or, once the wallet stopped waiting, its amounts
+  // may be out of date.
+  $: ownStakes = pendingStakes.filter(
     ({ account }) => account === String(currentProfile?.account)
   );
+  $: isStakePending = ownStakes.some(({ stale }) => !stale);
+  $: isStakeStale = ownStakes.some(({ stale }) => stale);
   $: ({ networkName } = $networkStore);
   $: hasStake = stakeInfo.amount !== null;
   $: publicBalance = balance.unshielded.value;
@@ -222,6 +225,7 @@
       maxFee={unstakeGas.settings.gasLimit * unstakeGas.settings.gasPrice}
       {minimumStake}
       pending={isStakePending}
+      stale={isStakeStale}
       onRetryHistory={() => {
         walletStore
           .startHistory()

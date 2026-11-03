@@ -1298,10 +1298,13 @@ describe("Wallet store", async () => {
         }
       });
 
-      it("should be let go after an automatic sync's interval, should the node never say the stake left its queue", async () => {
+      it("should be let go once a sync after the send it starts at an automatic sync's interval ended, should the node never say the stake left its queue", async () => {
         // Only the timeouts are the test's: the stores work as they do.
         vi.useRealTimers();
         vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+        const slow = Promise.withResolvers();
+        const fresh = { ...stakeInfo, reward: 1n };
 
         executeSpy.mockResolvedValueOnce({
           buffer: new Uint8Array(),
@@ -1318,10 +1321,65 @@ describe("Wallet store", async () => {
 
           expect(get(walletStore).pendingStakes).toHaveLength(1);
 
+          // The sync then runs a while, and reads the stake after the send.
+          treasuryUpdateSpy.mockImplementationOnce(() => slow.promise);
+          stakeInfoSpy.mockResolvedValue(fresh);
           await vi.advanceTimersByTimeAsync(1);
 
-          expect(get(walletStore).pendingStakes).toStrictEqual([]);
+          expect(get(walletStore).syncStatus.isInProgress).toBe(true);
+          expect(get(walletStore).pendingStakes).toStrictEqual([
+            { account: String(defaultProfile.account), hash: "lost-tx" },
+          ]);
+
+          slow.resolve(undefined);
+          await vi.waitUntil(() => !get(walletStore).pendingStakes.length);
+
+          expect(get(walletStore).stakeInfo).toBe(fresh);
         } finally {
+          slow.resolve(undefined);
+          stakeInfoSpy.mockResolvedValue(stakeInfo);
+          vi.useRealTimers();
+          vi.useFakeTimers();
+        }
+      });
+
+      it("should let the buttons come back after two intervals without a sync after the send, saying the stake may be out of date, and go once one ends", async () => {
+        vi.useRealTimers();
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "stale-tx",
+          nonce: 1n,
+        });
+
+        const sent = {
+          account: String(defaultProfile.account),
+          hash: "stale-tx",
+        };
+
+        try {
+          await walletStore.unstake(amount, gas);
+
+          // The node can't be reached for a while.
+          treasuryUpdateSpy.mockRejectedValue(new Error("Node unreachable"));
+          await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL);
+          await vi.waitUntil(() => get(walletStore).syncStatus.error !== null);
+
+          expect(get(walletStore).pendingStakes).toStrictEqual([sent]);
+
+          await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL);
+
+          expect(get(walletStore).pendingStakes).toStrictEqual([
+            { ...sent, stale: true },
+          ]);
+
+          // It can again: the stake is read, and the note goes.
+          treasuryUpdateSpy.mockReset();
+          await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL);
+          await vi.waitUntil(() => !get(walletStore).pendingStakes.length);
+        } finally {
+          treasuryUpdateSpy.mockReset();
           vi.useRealTimers();
           vi.useFakeTimers();
         }

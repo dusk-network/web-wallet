@@ -224,39 +224,71 @@ const refreshOnRemoval = (txInfo, after) =>
 
 /**
  * Holds Staking's buttons for a staking transaction `profile` sent, until
- * `refreshed`: the node took it out of its queue, and a sync that started
- * after it was sent read the stake again. Not when the queue can't be
- * followed, nor when that sync fails: the stake read then is the one from
- * before. Should neither happen, for no longer than an automatic sync's
- * interval.
+ * a sync that started after it was sent read the stake again: once the
+ * node took it out of its queue (`refreshed`), or else at each automatic
+ * sync's interval, a sync the hold starts and waits for. Not when the
+ * queue can't be followed, nor when the sync fails: the stake read then is
+ * the one from before. After two intervals without one, the buttons come
+ * back all the same, the stake said to be maybe out of date (`stale`)
+ * until it's read.
  *
  * @param {Profile} profile
  * @param {string} hash
+ * @param {number} after The number of the last sync started as it was sent
  * @param {Promise<unknown>} refreshed
  */
-function holdStaking(profile, hash, refreshed) {
+function holdStaking(profile, hash, after, refreshed) {
   const session = walletSession;
+  let isDone = false;
+  let refreshId = 0;
+
+  const isCurrent = () => !isDone && session === walletSession;
+
+  /**
+   * @param {(stakes: WalletStoreContent["pendingStakes"]) => WalletStoreContent["pendingStakes"]} change
+   */
+  const changeStakes = (change) =>
+    update((store) => ({
+      ...store,
+      pendingStakes: change(store.pendingStakes),
+    }));
 
   const release = () => {
-    clearTimeout(timeoutId);
-
-    if (session === walletSession) {
-      update((store) => ({
-        ...store,
-        pendingStakes: store.pendingStakes.filter((sent) => sent.hash !== hash),
-      }));
+    if (isCurrent()) {
+      isDone = true;
+      window.clearTimeout(refreshId);
+      window.clearTimeout(deadlineId);
+      changeStakes((stakes) => stakes.filter((sent) => sent.hash !== hash));
     }
   };
 
-  const timeoutId = setTimeout(release, AUTO_SYNC_INTERVAL);
+  const refresh = () => {
+    if (isCurrent()) {
+      syncAfter(after)
+        .then(updateStaticInfo)
+        .then(release, () => {
+          if (isCurrent()) {
+            refreshId = window.setTimeout(refresh, AUTO_SYNC_INTERVAL);
+          }
+        });
+    }
+  };
 
-  update((store) => ({
-    ...store,
-    pendingStakes: [
-      ...store.pendingStakes,
-      { account: String(profile.account), hash },
-    ],
-  }));
+  const deadlineId = window.setTimeout(() => {
+    if (isCurrent()) {
+      changeStakes((stakes) =>
+        stakes.map((sent) =>
+          sent.hash === hash ? { ...sent, stale: true } : sent
+        )
+      );
+    }
+  }, 2 * AUTO_SYNC_INTERVAL);
+
+  refreshId = window.setTimeout(refresh, AUTO_SYNC_INTERVAL);
+  changeStakes((stakes) => [
+    ...stakes,
+    { account: String(profile.account), hash },
+  ]);
   refreshed.then(release, () => {});
 }
 
@@ -354,13 +386,14 @@ const sendAs = (profile, details, execute, { staking = false } = {}) => {
 
   /** @param {TransactionInfo} txInfo */
   const followRemoval = (txInfo) => {
-    const refreshed = refreshOnRemoval(txInfo, syncNumber);
+    const after = syncNumber;
+    const refreshed = refreshOnRemoval(txInfo, after);
 
     // Background sync errors are reported in syncStatus.
     refreshed.catch(() => {});
 
     if (staking) {
-      holdStaking(profile, txInfo.hash, refreshed);
+      holdStaking(profile, txInfo.hash, after, refreshed);
     }
   };
 

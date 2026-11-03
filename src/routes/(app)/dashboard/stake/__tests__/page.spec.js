@@ -544,6 +544,34 @@ describe("Staking", () => {
     );
   });
 
+  it("turns its buttons on again once it gave up reading the stake after a staking transaction, saying the amounts may be out of date", () => {
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      pendingStakes: [
+        {
+          account: String(initialStore.currentProfile.account),
+          hash: "ab".repeat(32),
+          stale: true,
+        },
+      ],
+    });
+
+    const { container, getByRole } = render(Staking);
+
+    expect(getByRole("button", { name: "Unstake" })).toBeEnabled();
+    expect(getByRole("button", { name: "Claim rewards" })).toBeEnabled();
+    expect(getByRole("link", { name: "Stake more" })).toHaveAttribute(
+      "aria-disabled",
+      "false"
+    );
+    expect(textOf(container.querySelector(".staking__summary"))).toContain(
+      "Your stake couldn't be read again. These amounts may be out of date."
+    );
+    expect(textOf(container.querySelector(".staking__summary"))).not.toContain(
+      "pending"
+    );
+  });
+
   it("leaves its buttons on while another account's staking transaction is pending", () => {
     mockedWalletStore.setMockedStoreValue({
       ...initialStore,
