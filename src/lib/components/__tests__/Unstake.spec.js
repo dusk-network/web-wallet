@@ -8,7 +8,6 @@ import {
   vi,
 } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import { luxToDusk } from "$lib/dusk/currency";
 import { settingsStore } from "$lib/stores";
 
 import { Unstake } from "..";
@@ -128,11 +127,11 @@ describe("Unstake", () => {
         ...baseProps,
         ...unstakeProps,
       });
-      const amountInput = getByRole("spinbutton");
+      const amountInput = getByRole("textbox", { name: "Amount" });
 
       await vi.advanceTimersToNextTimerAsync();
 
-      expect(amountInput).toHaveValue(null);
+      expect(amountInput).toHaveValue("");
       expect(amountInput).toHaveAttribute("placeholder", "••••");
       expect(amountInput).toHaveAccessibleDescription("hidden");
       expect(getByRole("button", { name: "Next" })).toBeEnabled();
@@ -149,21 +148,89 @@ describe("Unstake", () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       const { getByRole } = render(Unstake, { ...baseProps, ...unstakeProps });
-      const amountInput = getByRole("spinbutton");
+      const amountInput = getByRole("textbox", { name: "Amount" });
 
       await vi.advanceTimersToNextTimerAsync();
 
-      expect(amountInput).toHaveValue(null);
+      expect(amountInput).toHaveValue("");
 
-      await fireEvent.input(amountInput, { target: { value: 100 } });
+      await fireEvent.input(amountInput, { target: { value: "100" } });
 
-      expect(amountInput).toHaveValue(100);
-      expect(amountInput).not.toHaveAccessibleDescription();
+      expect(amountInput).toHaveValue("100");
+      expect(amountInput).not.toHaveAccessibleDescription("hidden");
 
-      await fireEvent.click(getByRole("button", { name: "Use max" }));
+      await fireEvent.input(amountInput, { target: { value: "" } });
+      await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(amountInput).toHaveValue(
-        luxToDusk(unstakeProps.maxWithdrawAmount)
+      expect(amountInput).toHaveValue("278");
+    });
+
+    it("should take an amount as the other amount fields do: as text, with a decimal point or comma", async () => {
+      const { container, getByRole } = render(Unstake, {
+        ...baseProps,
+        ...unstakeProps,
+      });
+      const amountInput = getByRole("textbox", { name: "Amount" });
+
+      expect(amountInput).toHaveAttribute("type", "text");
+      expect(amountInput).toHaveAttribute("inputmode", "decimal");
+      expect(container.querySelector("input[type='number']")).toBeNull();
+
+      for (const typed of ["100,5", "100.5"]) {
+        await fireEvent.input(amountInput, { target: { value: typed } });
+        await fireEvent.click(getByRole("button", { name: "Next" }));
+
+        expect(getReviewAmounts(container)[0]).toStrictEqual([
+          "Unstake Amount",
+          "100.5 DUSK",
+        ]);
+
+        await fireEvent.click(getByRole("button", { name: "Back" }));
+      }
+
+      await fireEvent.input(getByRole("textbox", { name: "Amount" }), {
+        target: { value: "100,5" },
+      });
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Unstake" }));
+
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        100_500_000_000n,
+        baseProps.gasSettings.gasPrice,
+        baseProps.gasSettings.gasLimit
+      );
+    });
+
+    it("should say what's wrong with an amount in the other amount fields' words, and not go on", async () => {
+      const { getByRole, rerender } = render(Unstake, {
+        ...baseProps,
+        ...unstakeProps,
+      });
+      const amountInput = getByRole("textbox", { name: "Amount" });
+      const errorOf = async (/** @type {string} */ typed) => {
+        await fireEvent.input(amountInput, { target: { value: typed } });
+
+        return getByRole("button", { name: "Next" }).hasAttribute("disabled")
+          ? (document.querySelector(".operation__error")?.textContent?.trim() ??
+              "")
+          : null;
+      };
+
+      expect(await errorOf("ten")).toBe("Enter an amount such as 10 or 10.5.");
+      expect(await errorOf("1.0000000001")).toBe(
+        "Enter an amount such as 10 or 10.5."
+      );
+      expect(await errorOf("0")).toBe("Enter an amount greater than 0.");
+      expect(await errorOf("278,5")).toBe("That's more than you have staked.");
+      expect(await errorOf("277.5")).toBe(
+        "Leave at least 1 DUSK staked, or unstake it all."
+      );
+      expect(await errorOf("277")).toBeNull();
+
+      await rerender({ availableBalance: 0n });
+
+      expect(await errorOf("278")).toBe(
+        "The network fee is paid from the public balance, and it's empty."
       );
     });
 
@@ -290,6 +357,22 @@ describe("Unstake", () => {
       expect(getByText("8dcf6f…3db55e")).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
+    });
+
+    it("should say when an amount is more than the rewards", async () => {
+      const { getByRole } = render(Unstake, {
+        ...baseProps,
+        ...claimRewardsProps,
+      });
+
+      await fireEvent.input(getByRole("textbox", { name: "Amount" }), {
+        target: { value: "345,1" },
+      });
+
+      expect(getByRole("alert")).toHaveTextContent(
+        "That's more than your rewards."
+      );
+      expect(getByRole("button", { name: "Next" })).toBeDisabled();
     });
 
     it("should not allow to claim rewards, if wrong gas settings are provided", async () => {

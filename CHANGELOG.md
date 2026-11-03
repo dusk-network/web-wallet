@@ -182,6 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep showing in History the amount a failed send tried to move
 - Pause the 5-minute sync while the wallet's tab is hidden, and sync once it shows again
 - Show no EVM address for a bridge transfer whose memo isn't text
+- Take the amount to unstake or claim as the other amount fields do, with a decimal point or comma, and say what's wrong with it in their words [#784]
 
 ### Removed
 
@@ -897,6 +898,7 @@ dusk-network/rusk#3982: https://github.com/dusk-network/rusk/issues/3982
 dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#534]: https://github.com/dusk-network/web-wallet/issues/534
 [#537]: https://github.com/dusk-network/web-wallet/issues/537
+[#784]: https://github.com/dusk-network/web-wallet/issues/784
 [#928]: https://github.com/dusk-network/web-wallet/issues/928
 [#932]: https://github.com/dusk-network/web-wallet/issues/932
 [#939]: https://github.com/dusk-network/web-wallet/issues/939
