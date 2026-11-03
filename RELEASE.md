@@ -119,14 +119,7 @@ git tag -a web-wallet-v1.1.0 -m "Web Wallet: Release v1.1.0"
 git push origin web-wallet-v1.1.0
 ```
 
-### 8. Verify Staging Environments
-
-- Wait for staging environments to rebuild automatically
-- Verify the application works as expected on all staging environments
-- Check that the version number displayed matches the released version
-- Test all features mentioned in the changelog
-
-### 9. Progressive Deployment on Production
+### 8. Progressive Deployment on Production
 
 Deploy the new version progressively through each environment:
 
@@ -144,7 +137,7 @@ Deploy the new version progressively through each environment:
    - Deploy to production after successful testnet validation
    - Monitor deployment closely
 
-### 10. Troubleshooting Deployment
+### 9. Troubleshooting Deployment
 
 If errors occur during deployment:
 
@@ -153,14 +146,14 @@ If errors occur during deployment:
 - Verify environment variables are correctly set
 - Confirm that all dependencies are properly resolved
 
-### 11. Final Validation
+### 10. Final Validation
 
 - Confirm the application works correctly across all production environments
 - Verify the product version displayed in the UI matches the released version
 - Test all key user flows and features on different devices and browsers
 - Monitor error logs and performance metrics
 
-### 12. Announce the Release
+### 11. Announce the Release
 
 - Notify marketing team to prepare community announcement
 - Directly inform stakeholders whose requested features or fixes are included
@@ -186,7 +179,6 @@ If critical issues are discovered after deployment:
 - [ ] Update CHANGELOG.md
 - [ ] Open and get approval on PR
 - [ ] Create and push annotated tag
-- [ ] Verify staging deployment
 - [ ] Deploy to devnet and verify
 - [ ] Deploy to testnet and verify
 - [ ] Deploy to mainnet and verify
