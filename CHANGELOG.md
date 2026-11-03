@@ -188,6 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Take the recovery phrase on Unlock in Restore's word boxes, with no autocorrect
 - Word the screens before a wallet opens plainly and in sentence case, each headed with what it is
 - Label the password switch Use a password, and show a switch that's off as a ring
+- Keep the Testnet strip on the error pages, and give Not found a Home button
 
 ### Removed
 

@@ -111,6 +111,17 @@ export const networkLabel = (name) =>
     : "Connecting";
 
 /**
+ * The network a page is on: the one the node names, or until it does, as
+ * on a page that can't reach it, the one it named last in this browser.
+ *
+ * @param {{ lastNetworkName?: string, networkName: string }} network
+ */
+export const shownNetwork = ({ lastNetworkName, networkName }) =>
+  networkName && networkName !== "unknown"
+    ? networkName
+    : (lastNetworkName ?? "unknown");
+
+/**
  * Whether a network is a test network, whose DUSK has no value: any known
  * network but mainnet.
  *

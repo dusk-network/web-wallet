@@ -4,16 +4,18 @@
   import TestnetStrip from "./TestnetStrip.svelte";
   import TopBar from "./TopBar.svelte";
   import keyboardInset from "./keyboardInset";
-  import { isTestNetwork } from "./navigation";
+  import { isTestNetwork, shownNetwork } from "./navigation";
 
   /**
    * The screens before a wallet opens, as the wallet itself: its top bar
    * with the brand alone, and on a test network its strip, over a column
    * as wide as Settings', on the wallet's page. A flow's buttons stay in
-   * view as the wallet's do, above a phone's keyboard.
+   * view as the wallet's do, above a phone's keyboard. The error pages,
+   * which can't reach the node, keep the strip of the network it named
+   * last.
    */
 
-  $: ({ networkName } = $networkStore);
+  $: networkName = shownNetwork($networkStore);
 </script>
 
 <div

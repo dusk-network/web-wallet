@@ -92,6 +92,44 @@ describe("Network store", async () => {
     vi.resetModules();
   });
 
+  it("should remember the network its node named, for the pages shown while it can't be reached", async () => {
+    const key = `${CONFIG.LOCAL_STORAGE_APP_KEY}-network`;
+
+    localStorage.removeItem(key);
+    vi.resetModules();
+
+    let store = (await import("..")).networkStore;
+
+    expect(get(store)).toMatchObject({
+      lastNetworkName: "unknown",
+      networkName: "unknown",
+    });
+
+    const network = await store.connect();
+
+    network.node = /** @type {any} */ ({
+      info: Promise.resolve({
+        chain: { toString: () => "testnet" },
+        chainId: 2,
+      }),
+    });
+    await store.init();
+
+    expect(localStorage.getItem(key)).toBe("testnet");
+
+    // A page loaded later, before the node answers, or with no node.
+    vi.resetModules();
+    store = (await import("..")).networkStore;
+
+    expect(get(store)).toMatchObject({
+      lastNetworkName: "testnet",
+      networkName: "unknown",
+    });
+
+    localStorage.removeItem(key);
+    vi.resetModules();
+  });
+
   it("should expose a method to connect to the network and update the store's connection status", async () => {
     const store = (await import("..")).networkStore;
 

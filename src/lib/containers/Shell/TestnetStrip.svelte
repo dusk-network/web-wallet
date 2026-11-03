@@ -1,9 +1,9 @@
 <script>
   import { networkStore } from "$lib/stores";
 
-  import { isTestNetwork, networkLabel } from "./navigation";
+  import { isTestNetwork, networkLabel, shownNetwork } from "./navigation";
 
-  $: ({ networkName } = $networkStore);
+  $: networkName = shownNetwork($networkStore);
 </script>
 
 <!-- On a test network the wallet says so at the top, as the bridge does. -->
