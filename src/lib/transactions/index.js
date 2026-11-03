@@ -1,5 +1,9 @@
-export { default as describeFailure } from "./describeFailure";
-export { isOutcomeUnknown, outcomeUnknown } from "./outcomeUnknown";
+export {
+  CHECK_BALANCE_FIRST,
+  CHECK_EVM_WALLET_FIRST,
+  default as describeFailure,
+} from "./describeFailure";
+export { outcomeUnknown } from "./outcomeUnknown";
 export {
   FOLLOW_INTERVAL,
   FOLLOW_TIMEOUT,

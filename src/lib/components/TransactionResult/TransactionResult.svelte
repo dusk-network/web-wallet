@@ -3,7 +3,7 @@
 <script>
   import { isHistoryEnabled } from "$lib/activity";
   import { Suspense } from "$lib/dusk/components";
-  import { describeFailure, isOutcomeUnknown } from "$lib/transactions";
+  import { CHECK_BALANCE_FIRST, describeFailure } from "$lib/transactions";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import TransactionStatus from "../TransactionStatus/TransactionStatus.svelte";
@@ -44,13 +44,20 @@
   function handleGoHomeClick() {
     onBeforeLeave?.();
   }
+
+  /** @param {Error} error */
+  const describe = (error) =>
+    describeFailure(
+      error,
+      hasHistory ? {} : { checkFirst: CHECK_BALANCE_FIRST }
+    );
 </script>
 
 <!-- A send that failed before it went out says why in plain words, with
   its own message under Details. -->
 <Suspense
   className="transaction-result"
-  describeError={describeFailure}
+  describeError={describe}
   {errorMessage}
   gap="large"
   pendingMessage="Processing transaction"
@@ -77,7 +84,7 @@
   </svelte:fragment>
   <svelte:fragment slot="error-extra-content" let:error>
     <!-- Whether it went out is for History to say. -->
-    {#if hasHistory && isOutcomeUnknown(error)}
+    {#if hasHistory && describe(error).outcomeUnknown}
       <AppAnchorButton
         className="transaction-result__button"
         href="/dashboard/transactions"

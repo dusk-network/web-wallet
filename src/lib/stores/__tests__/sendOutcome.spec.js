@@ -87,9 +87,9 @@ describe("A send that fails", () => {
     );
 
   /** The result screen of a shield, as the send goes. */
-  async function shieldResult() {
+  async function shieldResult(hasHistory = true) {
     const rendered = render(TransactionResult, {
-      hasHistory: true,
+      hasHistory,
       maxFee: 1n,
       operation: walletStore
         .shield(1n, new Gas({ limit: 1n, price: 1n }))
@@ -149,6 +149,32 @@ describe("A send that fails", () => {
     expect(result.links).toStrictEqual([
       ["Open History", "/some-base-path/dashboard/transactions"],
     ]);
+  });
+
+  it("says a refusal the node gave as it was asked to broadcast it is one, with the way home", async () => {
+    executeUntil(
+      "propagate",
+      new Error(
+        "Tx 4f4f not accepted: this transaction is invalid Value spent larger than account holds"
+      )
+    );
+
+    expect(await shieldResult()).toMatchObject({
+      heading: "Transaction failed",
+      icon: mdiCloseThick,
+      links: [["Home", "/some-base-path/dashboard"]],
+    });
+  });
+
+  it("says to check the balance first where there's no History", async () => {
+    executeUntil("propagate", new TypeError("Failed to fetch"));
+
+    expect(await shieldResult(false)).toMatchObject({
+      heading: "Not confirmed",
+      links: [["Home", "/some-base-path/dashboard"]],
+      sentence:
+        "It may have reached the network. Wait a few minutes and check your balance before you send it again.",
+    });
   });
 
   it("says the same once it went out and keeping its nonce failed", async () => {

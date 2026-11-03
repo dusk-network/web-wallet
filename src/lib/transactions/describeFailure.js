@@ -83,11 +83,24 @@ const NOTHING_SENT = [
 const UNREACHABLE =
   /TimeoutError|failed to fetch|fetch failed|networkerror|network error|load failed|timed out|time-?out|connection (refused|reset|closed)|unable to connect|websocket|"isTrusted"|bad gateway|service unavailable|unexpected \[5\d\d\]|status: 5\d\d|http request failed/i;
 
+/** What to check first where there's no History to: the balance. */
+export const CHECK_BALANCE_FIRST =
+  "Wait a few minutes and check your balance before you send it again.";
+
+/** What to check first for a withdrawal, which History doesn't show. */
+export const CHECK_EVM_WALLET_FIRST =
+  "Check your EVM wallet's activity before you send it again.";
+
 /**
  * @param {Error} error What the send rejected with
- * @returns {{ heading?: string, icon?: string, sentence: string }}
+ * @param {{ checkFirst?: string }} [options] What to check before sending
+ *   it again, once it may have gone out: History, unless said otherwise
+ * @returns {{ heading?: string, icon?: string, outcomeUnknown?: boolean, sentence: string }}
  */
-export default function describeFailure(error) {
+export default function describeFailure(
+  error,
+  { checkFirst = "Check History before you send it again." } = {}
+) {
   const text = `${error?.name ?? ""}: ${error?.message ?? ""}`;
   const nothingSent = NOTHING_SENT.find(([pattern]) => pattern.test(text));
 
@@ -99,8 +112,8 @@ export default function describeFailure(error) {
     return {
       heading: "Not confirmed",
       icon: mdiTimerSand,
-      sentence:
-        "It may have reached the network. Check History before you send it again.",
+      outcomeUnknown: true,
+      sentence: `It may have reached the network. ${checkFirst}`,
     };
   }
 

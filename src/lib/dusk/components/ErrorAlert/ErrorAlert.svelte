@@ -19,8 +19,12 @@
   /** @type {string} */
   export let summary;
 
-  /** The icon over it: a cross, unless what happened isn't known. */
-  export let icon = mdiCloseThick;
+  /**
+   * The icon over it: a cross, unless what happened isn't known.
+   *
+   * @type {string | undefined}
+   */
+  export let icon = undefined;
 
   /**
    * What the error means, in a sentence that says what to do: with one,
@@ -39,7 +43,11 @@
 </script>
 
 <div {...$$restProps} class={classes}>
-  <Icon className="dusk-error-alert__icon" path={icon} size="large" />
+  <Icon
+    className="dusk-error-alert__icon"
+    path={icon ?? mdiCloseThick}
+    size="large"
+  />
   {#if description}
     <div class="dusk-error-alert__text">
       <b class="dusk-error-alert__summary">{summary}</b>

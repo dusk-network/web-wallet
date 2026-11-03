@@ -199,7 +199,7 @@ describe("Bridge withdrawal", () => {
     ];
   }
 
-  it("says to try again when DuskEVM couldn't be reached before the EVM wallet was asked to send it, and after, that it may have gone out and to check History", async () => {
+  it("says to try again when DuskEVM couldn't be reached before the EVM wallet was asked to send it, and after, that it may have gone out and to check the EVM wallet", async () => {
     mocks.switchChain.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
     expect(await failureOf(await sendWithdrawal())).toStrictEqual([
@@ -217,7 +217,7 @@ describe("Bridge withdrawal", () => {
 
     expect(await failureOf(rendered)).toStrictEqual([
       "Not confirmed",
-      "It may have reached the network. Check History before you send it again.",
+      "It may have reached the network. Check your EVM wallet's activity before you send it again.",
     ]);
     expect(rendered.container).not.toHaveTextContent(/try again/i);
   });

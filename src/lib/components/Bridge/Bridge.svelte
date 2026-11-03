@@ -87,7 +87,11 @@
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { addBasePath } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
-  import { describeFailure, outcomeUnknown } from "$lib/transactions";
+  import {
+    CHECK_EVM_WALLET_FIRST,
+    describeFailure,
+    outcomeUnknown,
+  } from "$lib/transactions";
   import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
   import { LAST_WITHDRAWAL_KEY as LAST_WITHDRAWAL_TX_HASH_KEY } from "$lib/bridge/bridgeRecordKeys";
 
@@ -979,7 +983,8 @@
   {:else}
     <div class="bridge-result">
       <OperationResult
-        describeError={describeFailure}
+        describeError={(error) =>
+          describeFailure(error, { checkFirst: CHECK_EVM_WALLET_FIRST })}
         errorMessage="Bridging failed"
         {operation}
         pendingMessage="Processing transaction"

@@ -59,7 +59,7 @@
         ? {
             description: described?.sentence ?? "",
             gap,
-            ...(described?.icon ? { icon: described.icon } : {}),
+            icon: described?.icon,
           }
         : {}}
     <slot name="error-content" {error}>

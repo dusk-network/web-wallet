@@ -2,17 +2,26 @@
   import { AppAnchorButton } from "$lib/components";
   import { Suspense } from "$lib/dusk/components";
   import { isHistoryEnabled } from "$lib/activity";
-  import { describeFailure, isOutcomeUnknown } from "$lib/transactions";
+  import { CHECK_BALANCE_FIRST, describeFailure } from "$lib/transactions";
 
   import DepositProgress from "../EvmTransactions/DepositProgress.svelte";
 
   /** @type {Promise<string>} */
   export let operation;
+
+  const hasHistory = isHistoryEnabled();
+
+  /** @param {Error} error */
+  const describe = (error) =>
+    describeFailure(
+      error,
+      hasHistory ? {} : { checkFirst: CHECK_BALANCE_FIRST }
+    );
 </script>
 
 <Suspense
   className="deposit-result"
-  describeError={describeFailure}
+  describeError={describe}
   errorMessage="Deposit submission failed"
   gap="large"
   pendingMessage="Submitting on DuskDS"
@@ -22,7 +31,7 @@
     <DepositProgress {transactionHash} />
   </svelte:fragment>
   <svelte:fragment slot="error-extra-content" let:error>
-    {#if isHistoryEnabled() && isOutcomeUnknown(error)}
+    {#if hasHistory && describe(error).outcomeUnknown}
       <AppAnchorButton
         href="/dashboard/transactions"
         text="Open History"
