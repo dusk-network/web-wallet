@@ -11,6 +11,7 @@ import { claimDay } from "$lib/bridge/claimDate";
 import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
 import { formatTimestamp } from "../EvmTransactions/withdrawalPresentation";
 import { networks } from "@dusk-network/networks";
+import { recordAnimations } from "$lib/dusk/test-helpers";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
@@ -689,6 +690,29 @@ describe("EvmTransactions", () => {
       expect(mocks.loadWithdrawalActivity).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  it("shows its page at once, with no fade", async () => {
+    mocks.loadWithdrawalActivity.mockImplementation(emptyActivity);
+
+    const animations = recordAnimations();
+
+    try {
+      const { getByLabelText } = render(EvmTransactions, {
+        target: document.body,
+      });
+
+      await tick();
+
+      const page = getByLabelText("Find by transaction hash").closest(
+        ".bridge-activity"
+      );
+
+      expect(page).toBeInTheDocument();
+      expect(animations.runs.filter((run) => run.element === page)).toEqual([]);
+    } finally {
+      animations.restore();
     }
   });
 
