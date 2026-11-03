@@ -57,10 +57,11 @@ const NOTHING_SENT = [
     "The network refused it: some of the shielded DUSK it spends is spent already. Wait for the wallet to sync and try again.",
   ],
 
-  // The shielded notes the wallet has don't cover it.
+  // What pays for it doesn't cover it, as the wallet finds before it sends
+  // it: its shielded notes, or the EVM wallet's balance for a withdrawal.
   [
-    /insufficient (funds|balance)/i,
-    "The shielded balance doesn't cover it and its fee, so nothing was sent. Lower the amount and try again.",
+    /InsufficientFundsError|insufficient (funds|balance)/i,
+    "The balance doesn't cover it and its fee, so nothing was sent. Lower the amount and try again.",
   ],
 
   // Its keys, signature or proof.

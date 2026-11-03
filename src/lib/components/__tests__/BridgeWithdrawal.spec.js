@@ -4,7 +4,13 @@ import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 
 import { Bridge } from "..";
-import { UserRejectedRequestError, decodeFunctionData, parseAbi } from "viem";
+import {
+  BaseError,
+  InsufficientFundsError,
+  UserRejectedRequestError,
+  decodeFunctionData,
+  parseAbi,
+} from "viem";
 import { networks } from "@dusk-network/networks";
 import { duskRecipientOf } from "@dusk-network/networks/duskevm";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
@@ -214,6 +220,22 @@ describe("Bridge withdrawal", () => {
       "It may have reached the network. Check History before you send it again.",
     ]);
     expect(rendered.container).not.toHaveTextContent(/try again/i);
+  });
+
+  it("says the balance doesn't cover it, without naming the shielded one, when the EVM wallet's doesn't cover it and its gas", async () => {
+    mocks.sendTransaction.mockRejectedValueOnce(
+      // As the node's refusal reaches the wallet, through viem.
+      new InsufficientFundsError({
+        cause: new BaseError("Insufficient funds.", {
+          details: "insufficient funds for gas * price + value",
+        }),
+      })
+    );
+
+    expect(await failureOf(await sendWithdrawal())).toStrictEqual([
+      "Bridging failed",
+      "The balance doesn't cover it and its fee, so nothing was sent. Lower the amount and try again.",
+    ]);
   });
 
   it("says nothing was sent when it was declined in the EVM wallet", async () => {

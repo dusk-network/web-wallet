@@ -121,7 +121,7 @@ describe("TransactionResult", () => {
     [
       "too little shielded DUSK",
       new Error("Insufficient funds"),
-      "The shielded balance doesn't cover it and its fee, so nothing was sent. Lower the amount and try again.",
+      "The balance doesn't cover it and its fee, so nothing was sent. Lower the amount and try again.",
     ],
     [
       "a refusal for the gas price",
