@@ -159,6 +159,7 @@
         {:else}
           <Button
             {...getButtonProps(nextButton, "Next", mdiArrowRight, true)}
+            confirm={nextButton?.confirm ?? false}
             on:click={handleNext}
           />
         {/if}

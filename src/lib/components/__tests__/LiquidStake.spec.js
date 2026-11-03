@@ -1,6 +1,14 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from "@testing-library/svelte";
 
+import { CONFIRM_DELAY } from "$lib/dusk/motion";
+import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { settingsStore } from "$lib/stores";
 
 import { LiquidStake } from "..";
@@ -88,11 +96,18 @@ const baseProps = {
 const textOf = (element) => element?.textContent?.replace(/\s+/g, " ").trim();
 
 describe("LiquidStake", () => {
+  // Stake and Unstake take a click half a second after they show: on this
+  // clock.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["performance"] });
+  });
+
   afterEach(() => {
     cleanup();
     baseProps.execute.mockClear();
     baseProps.onRetry.mockClear();
     baseProps.recheck.mockClear();
+    vi.useRealTimers();
   });
 
   it("names Sozu, a third party, with its site and no more", () => {
@@ -162,7 +177,11 @@ describe("LiquidStake", () => {
     expect(textOf(container.querySelector(".liquid-stake__contract"))).toBe(
       "Contract Sozu pool · 728839…3078f2 Copy"
     );
+    expect(
+      getByRole("button", { name: "Copy contract ID" })
+    ).toBeInTheDocument();
 
+    await afterConfirmDelay();
     await fireEvent.click(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })
     );
@@ -382,6 +401,7 @@ describe("LiquidStake", () => {
       "Total Up to 0.01 DUSK",
     ]);
 
+    await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Unstake 15 DUSK" }));
 
     expect(baseProps.execute).toHaveBeenCalledWith(
@@ -439,6 +459,7 @@ describe("LiquidStake", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await rerender({ gas: gasAt(3n) });
+    await afterConfirmDelay();
     await fireEvent.click(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })
     );
@@ -478,6 +499,7 @@ describe("LiquidStake", () => {
 
     expect(total()).toBe("Total Up to 0.01 DUSK");
 
+    await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Unstake 1 DUSK" }));
 
     // An unstake doesn't wait for Sozu's terms: it has none to read.
@@ -603,6 +625,7 @@ describe("LiquidStake", () => {
         await fireEvent.input(getByLabelText("Stake amount"), {
           target: { value: "100" },
         });
+        await afterConfirmDelay();
         await fireEvent.click(
           getByRole("button", { name: "Stake 100 DUSK with Sozu" })
         );
@@ -621,6 +644,7 @@ describe("LiquidStake", () => {
         ).toContain(shows);
 
         // Confirmed again, on the same terms: it goes.
+        await afterConfirmDelay();
         await fireEvent.click(
           getByRole("button", { name: "Stake 100 DUSK with Sozu" })
         );
@@ -638,6 +662,45 @@ describe("LiquidStake", () => {
       }
     );
 
+    it("takes no click for half a second once the changed terms show, so a double click can't confirm figures not seen", async () => {
+      const { container, getByLabelText, getByRole, recheck } = renderReading(
+        statusWith({}, RAISED)
+      );
+      const stake = () =>
+        getByRole("button", { name: "Stake 100 DUSK with Sozu" });
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+      await afterConfirmDelay();
+      await fireEvent.click(stake());
+      // On the page's clock, which only the test moves on.
+      await waitFor(() => expect(changedNote(container)).toBeTruthy());
+
+      // The second click of a double click, and Enter, as the new figures show.
+      await fireEvent.click(stake());
+      await fireEvent.click(stake(), { detail: 0 });
+      await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
+      await fireEvent.click(stake());
+
+      expect(recheck).toHaveBeenCalledOnce();
+      expect(baseProps.execute).not.toHaveBeenCalled();
+      expect(stake()).toBeEnabled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      await fireEvent.click(stake());
+
+      await vi.waitFor(() =>
+        expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
+          "stake",
+          POOL,
+          100n * DUSK,
+          1n,
+          5_000_000n
+        )
+      );
+    });
+
     it("keeps the stake off when Sozu paused deposits since the summary showed", async () => {
       const { container, getByLabelText, getByRole, getByText } = renderReading(
         statusWith({}, FEES, { maintenance: true, synchronization: false })
@@ -646,6 +709,7 @@ describe("LiquidStake", () => {
       await fireEvent.input(getByLabelText("Stake amount"), {
         target: { value: "100" },
       });
+      await afterConfirmDelay();
       await fireEvent.click(
         getByRole("button", { name: "Stake 100 DUSK with Sozu" })
       );
@@ -675,6 +739,7 @@ describe("LiquidStake", () => {
         await fireEvent.input(getByLabelText("Stake amount"), {
           target: { value: "100" },
         });
+        await afterConfirmDelay();
         await fireEvent.click(
           getByRole("button", { name: "Stake 100 DUSK with Sozu" })
         );
@@ -719,6 +784,7 @@ describe("LiquidStake", () => {
       await fireEvent.input(getByLabelText("Stake amount"), {
         target: { value: "100" },
       });
+      await afterConfirmDelay();
       await fireEvent.click(
         getByRole("button", { name: "Stake 100 DUSK with Sozu" })
       );
@@ -741,6 +807,7 @@ describe("LiquidStake", () => {
         target: { value: "100" },
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
+      await afterConfirmDelay();
       await fireEvent.click(
         getByRole("button", { name: "Stake 100 DUSK with Sozu" })
       );
@@ -761,6 +828,7 @@ describe("LiquidStake", () => {
       await fireEvent.input(getByLabelText("Stake amount"), {
         target: { value: "100" },
       });
+      await afterConfirmDelay();
       await fireEvent.click(
         getByRole("button", { name: "Stake 100 DUSK with Sozu" })
       );
@@ -774,6 +842,7 @@ describe("LiquidStake", () => {
       expect(container.querySelector(".liquid-stake__changed")).toBeNull();
 
       recheck.mockResolvedValue(statusWith());
+      await afterConfirmDelay();
       await fireEvent.click(
         getByRole("button", { name: "Stake 50 DUSK with Sozu" })
       );
@@ -799,6 +868,7 @@ describe("LiquidStake", () => {
       await fireEvent.input(getByLabelText("Stake amount"), {
         target: { value: "100" },
       });
+      await afterConfirmDelay();
       await fireEvent.click(
         getByRole("button", { name: "Stake 100 DUSK with Sozu" })
       );
@@ -810,6 +880,7 @@ describe("LiquidStake", () => {
       expect(baseProps.execute).not.toHaveBeenCalled();
 
       recheck.mockResolvedValue(statusWith());
+      await afterConfirmDelay();
       await fireEvent.click(
         getByRole("button", { name: "Stake 100 DUSK with Sozu" })
       );
@@ -838,6 +909,7 @@ describe("LiquidStake", () => {
 
       const button = getByRole("button", { name: "Stake 100 DUSK with Sozu" });
 
+      await afterConfirmDelay();
       await fireEvent.click(button);
 
       expect(button).toBeDisabled();

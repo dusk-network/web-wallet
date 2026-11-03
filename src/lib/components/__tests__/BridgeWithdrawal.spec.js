@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
+import { CONFIRM_DELAY } from "$lib/dusk/motion";
+import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 
 import { Bridge } from "..";
 import {
@@ -85,6 +87,8 @@ describe("Bridge withdrawal", () => {
   };
 
   beforeEach(() => {
+    // Send takes a click half a second after it shows: on this clock.
+    vi.useFakeTimers({ toFake: ["performance"] });
     setNodeNetwork(networks.testnet);
     mocks.sendTransaction.mockResolvedValue(`0x${"57".repeat(32)}`);
     mocks.switchChain.mockResolvedValue(undefined);
@@ -93,6 +97,7 @@ describe("Bridge withdrawal", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   async function sendWithdrawal() {
@@ -107,10 +112,38 @@ describe("Bridge withdrawal", () => {
     await fireEvent.click(
       rendered.getByRole("button", { name: "Review bridge" })
     );
+    await afterConfirmDelay();
     await fireEvent.click(rendered.getByRole("button", { name: "Send" }));
 
     return rendered;
   }
+
+  it("takes no click on Send for half a second once the review shows, so a double click on Review can't send", async () => {
+    const { getByRole } = render(Bridge, props);
+
+    await fireEvent.click(getByRole("button", { name: "Swap From and To" }));
+    await fireEvent.input(getByRole("textbox"), { target: { value: "1" } });
+    await afterConfirmDelay();
+
+    // Review's second click lands where Send now is, and so does Enter.
+    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: "Send" }), {
+      detail: 0,
+    });
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+
+    expect(mocks.sendTransaction).not.toHaveBeenCalled();
+    expect(getByRole("button", { name: "Send" })).toBeEnabled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+
+    await vi.waitFor(() =>
+      expect(mocks.sendTransaction).toHaveBeenCalledOnce()
+    );
+  });
 
   /** @param {number | null} maturitySeconds */
   const timesFor = (maturitySeconds) => ({

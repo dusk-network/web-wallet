@@ -313,7 +313,10 @@
     <summary
       ><Icon path={mdiClockOutline} /><span
         >{route.running ? routeLine : notRunning(net)}</span
-      ><Icon className="swap-route__chevron" path={mdiChevronDown} /></summary
+      ><Icon
+        className="swap-route__chevron section-chevron"
+        path={mdiChevronDown}
+      /></summary
     >
     <dl>
       <div>
@@ -390,6 +393,7 @@
         variant="secondary"
       />
       <Button
+        confirm
         disabled={approved === undefined || !isConnected}
         icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
         on:click={send}

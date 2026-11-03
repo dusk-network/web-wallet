@@ -380,7 +380,7 @@ describe("AddressPicker", () => {
       );
     });
 
-    it("should show success toast when copy is successful", async () => {
+    it("should say Copied on the button, and in no toast, when copy is successful", async () => {
       const mockToast = vi.mocked(toast);
 
       const { container } = render(AddressPicker, props);
@@ -403,11 +403,11 @@ describe("AddressPicker", () => {
       }
 
       expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
-      expect(mockToast).toHaveBeenCalledWith(
-        "success",
-        "Address copied",
-        expect.any(String)
+      await vi.waitFor(() =>
+        expect(firstCopyButton).toHaveAccessibleName("Copied")
       );
+      expect(firstCopyButton).toHaveTextContent("Copied");
+      expect(mockToast).not.toHaveBeenCalled();
     });
   });
 
@@ -972,15 +972,15 @@ describe("AddressPicker", () => {
       expect(
         Array.from(
           first.querySelectorAll(".address-picker__copy-button"),
-          (button) => button.textContent?.trim()
+          (button) => button.getAttribute("aria-label")
         )
-      ).toEqual(["Public", "Shielded"]);
+      ).toEqual(["Copy public address", "Copy shielded address"]);
       expect(
         Array.from(
           second.querySelectorAll(".address-picker__copy-button"),
-          (button) => button.textContent?.trim()
+          (button) => button.getAttribute("aria-label")
         )
-      ).toEqual(["Public"]);
+      ).toEqual(["Copy public address"]);
 
       await fireEvent.click(
         getAsHTMLElement(

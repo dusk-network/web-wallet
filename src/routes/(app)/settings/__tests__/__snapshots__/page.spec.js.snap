@@ -552,7 +552,7 @@ exports[`Settings > Resetting the wallet > should show an error if clearing loca
            
           <!---->
           <svg
-            class="dusk-icon dusk-icon--size--default settings-group__toggle-icon"
+            class="dusk-icon dusk-icon--size--default section-chevron"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >
@@ -1288,7 +1288,7 @@ exports[`Settings > should render the settings page displaying the status of the
            
           <!---->
           <svg
-            class="dusk-icon dusk-icon--size--default settings-group__toggle-icon"
+            class="dusk-icon dusk-icon--size--default section-chevron"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >
@@ -2007,7 +2007,7 @@ exports[`Settings > should render the settings page displaying the status of the
            
           <!---->
           <svg
-            class="dusk-icon dusk-icon--size--default settings-group__toggle-icon"
+            class="dusk-icon dusk-icon--size--default section-chevron"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >
@@ -2726,7 +2726,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
            
           <!---->
           <svg
-            class="dusk-icon dusk-icon--size--default settings-group__toggle-icon"
+            class="dusk-icon dusk-icon--size--default section-chevron"
             role="graphics-symbol"
             viewBox="0 0 24 24"
           >
@@ -2742,6 +2742,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
       <div
         class="settings-group__multi-control-content"
         id="settings-advanced"
+        style=""
       >
         <label
           class="settings-group__control settings-group__control--switch"
@@ -2789,6 +2790,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
             
             <!---->
              
+            <!---->
             <button
               aria-label="Copy Block Height"
               class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
@@ -2813,6 +2815,7 @@ exports[`Settings > should show the wallet creation block height under Advanced 
               <!---->
               <!---->
             </button>
+            
             <!---->
           </div>
           <!---->

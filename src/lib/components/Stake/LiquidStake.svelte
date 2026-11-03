@@ -3,12 +3,7 @@
 <script>
   import { onDestroy, onMount, tick } from "svelte";
   import { get } from "svelte/store";
-  import {
-    mdiAlertCircleOutline,
-    mdiContentCopy,
-    mdiPercentOutline,
-    mdiWaterOutline,
-  } from "@mdi/js";
+  import { mdiPercentOutline, mdiWaterOutline } from "@mdi/js";
 
   import { contractLabel } from "$lib/activity/knownContracts";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
@@ -20,8 +15,7 @@
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
-  import { Button, Icon, Textbox } from "$lib/dusk/components";
-  import { toast } from "$lib/dusk/components/Toast/store";
+  import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
   import { SOZU_URL } from "$lib/sozu/config";
   import {
     feePercent,
@@ -143,15 +137,6 @@
     forgetTerms();
     amountText = formatDuskPlain(lux).replace(".", getDecimalSeparator());
     document.getElementById(`${id}-amount`)?.focus();
-  }
-
-  async function copyContract() {
-    try {
-      await navigator.clipboard.writeText(status?.contracts.pool ?? "");
-      toast("success", "Contract ID copied", mdiContentCopy);
-    } catch {
-      toast("error", "Couldn't copy the contract ID", mdiAlertCircleOutline);
-    }
   }
 
   /**
@@ -698,11 +683,12 @@
               <code title={status.contracts.pool}
                 >{shortenAddress(status.contracts.pool)}</code
               >
-              <Button
-                aria-label="Copy the contract ID"
-                on:click={copyContract}
+              <CopyButton
+                icon={false}
+                name="contract ID"
                 size="small"
                 text="Copy"
+                value={status.contracts.pool}
                 variant="tertiary"
               />
             </dd>
@@ -722,19 +708,23 @@
           <strong>{termsError}, so nothing was sent.</strong> Try again.
         </p>
       {/if}
-      <Button
-        className="stake-flow__send"
-        disabled={!canSend || isChecking}
-        on:click={send}
-        text={canSend
-          ? isStake
-            ? `Stake ${formatDuskExact(shownAmount, language)} DUSK with Sozu`
-            : `Unstake ${formatDuskExact(shownAmount, language)} DUSK`
-          : isStake
-            ? "Stake with Sozu"
-            : "Unstake"}
-        variant="primary"
-      />
+      <!-- It shows anew with a phone's review, and with terms that changed. -->
+      {#key `${isReviewing} ${termsChanged}`}
+        <Button
+          className="stake-flow__send"
+          confirm
+          disabled={!canSend || isChecking}
+          on:click={send}
+          text={canSend
+            ? isStake
+              ? `Stake ${formatDuskExact(shownAmount, language)} DUSK with Sozu`
+              : `Unstake ${formatDuskExact(shownAmount, language)} DUSK`
+            : isStake
+              ? "Stake with Sozu"
+              : "Unstake"}
+          variant="primary"
+        />
+      {/key}
     </svelte:fragment>
   </StakeFlow>
 {/if}

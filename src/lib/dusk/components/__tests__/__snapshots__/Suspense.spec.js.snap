@@ -63,22 +63,13 @@ exports[`Suspense > should accept a custom message for the pending state 1`] = `
     class="dusk-throbber dusk-suspense__throbber"
     height="64px"
     role="progressbar"
+    style="--dusk-throbber-duration: 1800ms;"
     viewBox="0 0 128 128"
     width="64px"
   >
-    <g>
-      <path
-        d="M75.4 126.63a11.43 11.43 0 0 1-2.1-22.65 40.9 40.9 0 0 0 30.5-30.6 11.4 11.4 0 1 1 22.27 4.87h.02a63.77 63.77 0 0 1-47.8 48.05v-.02a11.38 11.38 0 0 1-2.93.37z"
-      />
-      <animatetransform
-        attributeName="transform"
-        dur="1800ms"
-        from="0 64 64"
-        repeatCount="indefinite"
-        to="360 64 64"
-        type="rotate"
-      />
-    </g>
+    <path
+      d="M75.4 126.63a11.43 11.43 0 0 1-2.1-22.65 40.9 40.9 0 0 0 30.5-30.6 11.4 11.4 0 1 1 22.27 4.87h.02a63.77 63.77 0 0 1-47.8 48.05v-.02a11.38 11.38 0 0 1-2.93.37z"
+    />
   </svg>
   <!---->
    
@@ -102,29 +93,20 @@ exports[`Suspense > should be able to render the \`Suspense\` component in a pen
     class="dusk-throbber dusk-suspense__throbber"
     height="64px"
     role="progressbar"
+    style="--dusk-throbber-duration: 1800ms;"
     viewBox="0 0 128 128"
     width="64px"
   >
-    <g>
-      <path
-        d="M75.4 126.63a11.43 11.43 0 0 1-2.1-22.65 40.9 40.9 0 0 0 30.5-30.6 11.4 11.4 0 1 1 22.27 4.87h.02a63.77 63.77 0 0 1-47.8 48.05v-.02a11.38 11.38 0 0 1-2.93.37z"
-      />
-      <animatetransform
-        attributeName="transform"
-        dur="1800ms"
-        from="0 64 64"
-        repeatCount="indefinite"
-        to="360 64 64"
-        type="rotate"
-      />
-    </g>
+    <path
+      d="M75.4 126.63a11.43 11.43 0 0 1-2.1-22.65 40.9 40.9 0 0 0 30.5-30.6 11.4 11.4 0 1 1 22.27 4.87h.02a63.77 63.77 0 0 1-47.8 48.05v-.02a11.38 11.38 0 0 1-2.93.37z"
+    />
   </svg>
   <!---->
    
   <span
     class="dusk-suspense__pending-message"
   >
-    
+    Loading…
   </span>
   
   <!---->
@@ -241,29 +223,20 @@ exports[`Suspense > should pass additional class names and attributes to the ren
     class="dusk-throbber dusk-suspense__throbber"
     height="64px"
     role="progressbar"
+    style="--dusk-throbber-duration: 1800ms;"
     viewBox="0 0 128 128"
     width="64px"
   >
-    <g>
-      <path
-        d="M75.4 126.63a11.43 11.43 0 0 1-2.1-22.65 40.9 40.9 0 0 0 30.5-30.6 11.4 11.4 0 1 1 22.27 4.87h.02a63.77 63.77 0 0 1-47.8 48.05v-.02a11.38 11.38 0 0 1-2.93.37z"
-      />
-      <animatetransform
-        attributeName="transform"
-        dur="1800ms"
-        from="0 64 64"
-        repeatCount="indefinite"
-        to="360 64 64"
-        type="rotate"
-      />
-    </g>
+    <path
+      d="M75.4 126.63a11.43 11.43 0 0 1-2.1-22.65 40.9 40.9 0 0 0 30.5-30.6 11.4 11.4 0 1 1 22.27 4.87h.02a63.77 63.77 0 0 1-47.8 48.05v-.02a11.38 11.38 0 0 1-2.93.37z"
+    />
   </svg>
   <!---->
    
   <span
     class="dusk-suspense__pending-message"
   >
-    
+    Loading…
   </span>
   
   <!---->

@@ -1,7 +1,6 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { fade } from "svelte/transition";
   import { ErrorAlert, Wizard, WizardStep } from "$lib/dusk/components";
 
   import { ExistingWalletNotice } from "$lib/components";
@@ -70,11 +69,11 @@
 </script>
 
 {#if !notice && userId}
-  <div class="onboarding-wrapper" in:fade|global>
+  <div class="onboarding-wrapper">
     <ExistingWalletNotice bind:notice flow="create" />
   </div>
 {:else if !tosAccepted}
-  <div class="onboarding-wrapper" in:fade|global>
+  <div class="onboarding-wrapper">
     <TermsOfService bind:tosAccepted />
   </div>
 {:else}

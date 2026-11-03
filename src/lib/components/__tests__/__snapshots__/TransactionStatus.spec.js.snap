@@ -63,6 +63,7 @@ exports[`TransactionStatus > should say a transaction it follows is being sent, 
         <span
           class="withdrawal-hash__actions svelte-10wl9jh"
         >
+          <!---->
           <button
             aria-label="Copy transaction hash"
             class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button"
@@ -87,6 +88,7 @@ exports[`TransactionStatus > should say a transaction it follows is being sent, 
             <!---->
             <!---->
           </button>
+          
           <!---->
            
           <!---->

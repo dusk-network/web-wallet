@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { formatFee } from "$lib/dusk/currency";
-import { settingsStore } from "$lib/stores";
+import { CONFIRM_DELAY } from "$lib/dusk/motion";
+import { settingsStore, walletStore } from "$lib/stores";
 
 import { Allocate } from "..";
 
@@ -50,6 +51,38 @@ describe("Allocate", () => {
     cleanup();
     settingsStore.reset();
     separator.value = ".";
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("should take no click on Send for half a second once the review shows, so a double click on Next can't shield", async () => {
+    vi.useFakeTimers({ toFake: ["performance"] });
+
+    const shield = vi
+      .spyOn(walletStore, "shield")
+      .mockReturnValue(new Promise(() => {}));
+    const { getByRole } = render(Allocate, baseProps);
+
+    await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
+      target: { value: "2500" },
+    });
+
+    // Next's second click lands where Send now is, and so does Enter.
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: "Send" }), {
+      detail: 0,
+    });
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+
+    expect(shield).not.toHaveBeenCalled();
+    expect(getByRole("button", { name: "Send" })).toBeEnabled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+
+    expect(shield).toHaveBeenCalledOnce();
   });
 
   it("should write the amounts with the language's decimal separator, and take a comma or a point", async () => {

@@ -14,6 +14,7 @@ exports[`CopyField > renders the CopyField component 1`] = `
   
   <!---->
    
+  <!---->
   <button
     aria-label="Copy Sample Information"
     class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
@@ -38,6 +39,7 @@ exports[`CopyField > renders the CopyField component 1`] = `
     <!---->
     <!---->
   </button>
+  
   <!---->
 </div>
 `;
@@ -56,6 +58,7 @@ exports[`CopyField > renders the CopyField component with the copy button disabl
   
   <!---->
    
+  <!---->
   <button
     aria-label="Copy Sample Information"
     class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
@@ -81,6 +84,7 @@ exports[`CopyField > renders the CopyField component with the copy button disabl
     <!---->
     <!---->
   </button>
+  
   <!---->
 </div>
 `;
@@ -100,6 +104,7 @@ exports[`CopyField > should pass additional class names and attributes to the re
   
   <!---->
    
+  <!---->
   <button
     aria-label="Copy Sample Information"
     class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button copy-field__button"
@@ -124,6 +129,7 @@ exports[`CopyField > should pass additional class names and attributes to the re
     <!---->
     <!---->
   </button>
+  
   <!---->
 </div>
 `;

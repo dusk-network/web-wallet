@@ -27,8 +27,13 @@
   /** @type {GapSize} */
   export let gap = "default";
 
-  /** @type {string} */
-  export let pendingMessage = "";
+  /**
+   * What it waits for, in words shown with the throbber from the first
+   * moment.
+   *
+   * @type {string}
+   */
+  export let pendingMessage = "Loading…";
 
   /** @type {Promise<any>} */
   export let waitFor;

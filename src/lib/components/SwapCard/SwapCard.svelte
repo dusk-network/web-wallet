@@ -334,13 +334,9 @@
     height: 1rem;
   }
 
+  /* It turns as the route opens and closes (sections.css). */
   .swap-card :global(.swap-route > summary .swap-route__chevron) {
     margin-left: auto;
-    transition: transform 0.15s ease;
-  }
-
-  .swap-card :global(.swap-route[open] > summary .swap-route__chevron) {
-    transform: rotate(180deg);
   }
 
   .swap-card :global(.swap-route dl) {

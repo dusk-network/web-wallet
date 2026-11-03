@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher, onMount, tick } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import {
     mdiAlertOutline,
     mdiClose,
@@ -8,6 +8,8 @@
   } from "@mdi/js";
   import { Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
+  import { announce } from "$lib/dusk/announce";
+  import { COPIED_FOR } from "$lib/dusk/motion";
   import { activityState } from "$lib/activity";
   import { fetchTxDetails } from "@dusk-network/app-core/history";
   import { archiveAt } from "$lib/activity/activityHistory";
@@ -47,6 +49,11 @@
   /** @type {Element | null} */
   const opener = document.activeElement;
 
+  /** The result copied last, which says Copied for a moment. */
+  let copiedId = "";
+
+  let copiedTimer = 0;
+
   const close = () => dispatch("close");
 
   $: ({ networkName } = $networkStore);
@@ -85,16 +92,35 @@
   }
 
   /**
-   * @param {string} value
+   * Copies a result's address or ID, and says Copied in its row.
+   *
+   * @param {import("./search").SearchResult} result
    */
-  async function copy(value) {
+  async function copy(result) {
     try {
-      await navigator.clipboard.writeText(value);
-      toast("success", "Copied", mdiContentCopy);
+      await navigator.clipboard.writeText(String(result.value));
     } catch {
       toast("error", "Couldn't copy", mdiContentCopy);
+
+      return;
     }
+
+    copiedId = result.id;
+    announce("Copied", COPIED_FOR);
+    clearTimeout(copiedTimer);
+    copiedTimer = window.setTimeout(() => {
+      copiedId = "";
+    }, COPIED_FOR);
   }
+
+  /**
+   * What a result's row says at its end: what Enter does there, if it isn't
+   * opening it.
+   *
+   * @param {import("./search").SearchResult} result
+   */
+  const hintOf = (result) =>
+    result.hint || (!result.href && result.value ? "Copy" : "");
 
   /**
    * Opens a block in the Dusk explorer, which goes by the block's hash: the
@@ -137,7 +163,7 @@
    */
   function activate(result, { copyOnly = false } = {}) {
     if (copyOnly && result.value) {
-      copy(result.value);
+      copy(result);
     } else if (result.block) {
       openBlock(result.block);
     } else if (result.external && result.href) {
@@ -146,7 +172,7 @@
       close();
       goto(result.href);
     } else if (result.value) {
-      copy(result.value);
+      copy(result);
     }
   }
 
@@ -338,6 +364,8 @@
       }
     };
   });
+
+  onDestroy(() => clearTimeout(copiedTimer));
 </script>
 
 <div
@@ -420,10 +448,11 @@
             class:command-bar__detail--end={result.sub}>{result.detail}</span
           >
         {/if}
-        {#if result.hint}
-          <span class="command-bar__hint">{result.hint}</span>
-        {:else if !result.href && result.value}
-          <span class="command-bar__hint">Copy</span>
+        <!-- A result copied says so here, as a copy button does. -->
+        {#if copiedId === result.id}
+          <span class="command-bar__hint">Copied</span>
+        {:else if hintOf(result)}
+          <span class="command-bar__hint">{hintOf(result)}</span>
         {/if}
       </li>
     {/each}

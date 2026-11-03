@@ -1,0 +1,60 @@
+/*
+ * Sections open and close the same way everywhere: over base, their height
+ * and opacity together, and back over fast. Those Svelte shows use
+ * `transition:section` from $lib/dusk/motion; a <details> does it here,
+ * where the browser can (elsewhere it opens and closes at once).
+ *
+ * Error details are left out: they open as they always did.
+ */
+details:not(.dusk-error-details) {
+  interpolate-size: allow-keywords;
+
+  &::details-content {
+    block-size: 0;
+    opacity: 0;
+    overflow: clip;
+    overflow-clip-margin: 0.25rem;
+    transition:
+      block-size var(--motion-fast) var(--motion-ease-exit),
+      opacity var(--motion-fast) var(--motion-ease-exit),
+      content-visibility var(--motion-fast) var(--motion-ease-exit)
+        allow-discrete;
+  }
+
+  &[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--motion-ease);
+  }
+}
+
+/* A section's chevron turns with it. */
+.section-chevron {
+  transition: transform var(--motion-fast) var(--motion-ease-exit);
+}
+
+[aria-expanded="true"] > .section-chevron,
+details[open] > summary > .section-chevron {
+  transform: rotate(180deg);
+  transition-duration: var(--motion-base);
+  transition-timing-function: var(--motion-ease);
+}
+
+/*
+ * With less motion, sections open and close at once, their content fading
+ * in, and chevrons turn at once.
+ */
+@media (prefers-reduced-motion: reduce) {
+  details:not(.dusk-error-details)::details-content {
+    transition: none;
+  }
+
+  details:not(.dusk-error-details)[open]::details-content {
+    transition: opacity var(--motion-fast) var(--motion-ease);
+  }
+
+  .section-chevron {
+    transition: none;
+  }
+}

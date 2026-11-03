@@ -37,6 +37,13 @@ describe("Receive", () => {
   /** Lets a name lookup settle. */
   const settle = () => new Promise((resolve) => setTimeout(resolve));
 
+  /**
+   * The button that says Copied, once the copy is written.
+   *
+   * @param {() => HTMLElement} getCopied
+   */
+  const findCopied = (getCopied) => vi.waitFor(getCopied);
+
   beforeEach(() => {
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -63,11 +70,11 @@ describe("Receive", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledExactlyOnceWith(
       address
     );
-    expect(toast).toHaveBeenCalledExactlyOnceWith(
-      "success",
-      "Address copied",
-      expect.any(String)
-    );
+    // Said on the button itself, not in a message.
+    expect(
+      await findCopied(() => getByRole("button", { name: "Copied" }))
+    ).toBeInTheDocument();
+    expect(toast).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -122,20 +129,15 @@ describe("Receive", () => {
       expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
         "alice.dusk"
       );
-      expect(toast).toHaveBeenLastCalledWith(
-        "success",
-        "Name copied",
-        expect.any(String)
-      );
+      // The name's button says it, the address's stays as it was.
+      expect(
+        await findCopied(() => getByRole("button", { name: "Copied" }))
+      ).toHaveAttribute("title", "Copy name");
 
       await fireEvent.click(getByRole("button", { name: "Copy address" }));
 
       expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(address);
-      expect(toast).toHaveBeenLastCalledWith(
-        "success",
-        "Address copied",
-        expect.any(String)
-      );
+      expect(toast).not.toHaveBeenCalled();
     }
   );
 
@@ -156,14 +158,12 @@ describe("Receive", () => {
         name: "alice.dusk",
       });
       const info = getByRole("button", { name: "About this name" });
-      const shownNote = getAsHTMLElement(container, ".receive__note");
+      const shownNote = () => container.querySelector(".receive__note");
 
       expect(info.tagName).toBe("BUTTON");
       expect(info).toHaveAttribute("type", "button");
-      expect(info).toHaveAttribute("aria-controls", shownNote.id);
       expect(info).toHaveAttribute("aria-expanded", "false");
-      expect(shownNote).toHaveTextContent(note);
-      expect(shownNote).not.toBeVisible();
+      expect(shownNote()).toBeNull();
 
       info.focus();
 
@@ -172,20 +172,21 @@ describe("Receive", () => {
       await fireEvent.click(info);
 
       expect(info).toHaveAttribute("aria-expanded", "true");
-      expect(shownNote).toBeVisible();
+      expect(shownNote()).toHaveTextContent(note);
+      expect(info).toHaveAttribute("aria-controls", shownNote()?.id);
 
       await fireEvent.click(info);
 
       expect(info).toHaveAttribute("aria-expanded", "false");
-      expect(shownNote).not.toBeVisible();
+      expect(shownNote()).toBeNull();
     }
   );
 
   it.each([
     ["Copy address", "NotAllowedError", "Clipboard access denied"],
-    ["Copy address", "Error", "Failed to copy address"],
+    ["Copy address", "Error", "Couldn't copy the address"],
     ["Copy name", "NotAllowedError", "Clipboard access denied"],
-    ["Copy name", "Error", "Failed to copy name"],
+    ["Copy name", "Error", "Couldn't copy the name"],
   ])(
     "should say so, and not that it copied, when %s fails with a %s",
     async (buttonName, errorName, message) => {
@@ -200,11 +201,14 @@ describe("Receive", () => {
 
       await fireEvent.click(getByRole("button", { name: buttonName }));
 
-      expect(toast).toHaveBeenCalledExactlyOnceWith(
-        "error",
-        message,
-        expect.any(String)
+      await vi.waitFor(() =>
+        expect(toast).toHaveBeenCalledExactlyOnceWith(
+          "error",
+          message,
+          expect.any(String)
+        )
       );
+      expect(getByRole("button", { name: buttonName })).toBeInTheDocument();
     }
   );
 

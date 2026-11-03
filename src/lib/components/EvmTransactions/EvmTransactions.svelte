@@ -23,6 +23,7 @@
   import { DEPOSIT, WITHDRAWAL, routeTime } from "$lib/bridge/routeTimes";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { errorMessage } from "$lib/dusk/error";
+  import { section } from "$lib/dusk/motion";
   import { addBasePath } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
   import {
@@ -885,7 +886,11 @@
                 {/if}
               </div>
               {#if row.id === openId}
-                <div class="bridge-row__details" id="bridge-details-{row.hash}">
+                <div
+                  class="bridge-row__details"
+                  id="bridge-details-{row.hash}"
+                  transition:section={{ open: row.id === openId }}
+                >
                   {#if row.kind === "withdrawal"}
                     <WithdrawalLifecycle
                       {isChecking}

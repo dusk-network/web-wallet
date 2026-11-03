@@ -1,15 +1,13 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import {
-    mdiAlertCircleOutline,
     mdiCheckCircleOutline,
     mdiChevronRight,
     mdiClose,
-    mdiContentCopy,
     mdiPencilOutline,
     mdiSendOutline,
   } from "@mdi/js";
-  import { AnchorButton, Button, Icon } from "$lib/dusk/components";
+  import { AnchorButton, Button, CopyButton, Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { FullAddress, SectionHead } from "$lib/components";
   import {
@@ -140,15 +138,6 @@
       `${contact.name} now has the new address`,
       mdiCheckCircleOutline
     );
-  }
-
-  async function copyAddress() {
-    try {
-      await navigator.clipboard.writeText(contact.address);
-      toast("success", "Address copied", mdiContentCopy);
-    } catch {
-      toast("error", "Couldn't copy the address", mdiAlertCircleOutline);
-    }
   }
 
   $: activity = activityWith(rows, contact.address, {
@@ -287,12 +276,12 @@
           {/if}
         </div>
       {/if}
-      <Button
+      <CopyButton
         className="contact-detail__copy"
-        icon={{ path: mdiContentCopy }}
-        on:click={copyAddress}
+        name="address"
         size="small"
         text="Copy address"
+        value={contact.address}
         variant="secondary"
       />
     </div>

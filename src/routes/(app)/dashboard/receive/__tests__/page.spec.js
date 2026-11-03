@@ -154,7 +154,7 @@ describe("Receive", () => {
       expect(renderedAddress).toBeInstanceOf(HTMLElement);
       expect(getShownName(container)).toBe("alice.dusk");
       expect(getByText(expectedAccount)).toBeInTheDocument();
-      expect(getNote(container)).not.toBeVisible();
+      expect(getNote(container)).toBeNull();
       expect(getPrimaryName).toHaveBeenCalledExactlyOnceWith(
         expectedAccount,
         "unknown",
@@ -197,6 +197,14 @@ describe("Receive", () => {
 
         expect(getByText(expectedAddress)).toBeInTheDocument();
         expect(getShownName(container)).toBe(shieldedName);
+
+        // What the name reaches, behind its info button.
+        if (shieldedName) {
+          await fireEvent.click(
+            getByRole("button", { name: "About this name" })
+          );
+        }
+
         expect(getNote(container)?.textContent?.trim() ?? "").toBe(
           shieldedNote
         );

@@ -34,7 +34,7 @@ describe("The welcome screens' layout", () => {
     expect(getByRole("note")).toHaveTextContent("Testnet");
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector(".welcome-shell__content")).toContainElement(
-      getByText("Connecting to the network")
+      getByText("Connecting to the network…")
     );
   });
 });

@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { CONFIRM_DELAY } from "$lib/dusk/motion";
   import { makeClassName } from "$lib/dusk/string";
 
   import Icon from "../Icon/Icon.svelte";
@@ -10,6 +11,15 @@
 
   /** @type {String | Undefined} */
   export let className = undefined;
+
+  /**
+   * Whether it sends, stakes, signs or approves: for a moment after it
+   * shows, it ignores clicks and Enter, and looks as always meanwhile, so
+   * a double click on the button before it can't land on it.
+   *
+   * @type {Boolean}
+   */
+  export let confirm = false;
 
   /** @type {IconProp | Undefined} */
   export let icon = undefined;
@@ -26,6 +36,21 @@
   /** @type {"button" | "reset" | "submit" | "toggle"} */
   export let type = "button";
 
+  const shownAt = performance.now();
+
+  /**
+   * Stops a click, or Enter, that comes too soon after a confirm shows,
+   * before anything else hears it.
+   *
+   * @param {MouseEvent} event
+   */
+  function holdTooSoon(event) {
+    if (confirm && performance.now() - shownAt < CONFIRM_DELAY) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }
+
   $: classes = makeClassName([
     "dusk-button",
     `dusk-button--type--${type}`,
@@ -41,6 +66,7 @@
   {...$$restProps}
   aria-pressed={type === "toggle" ? active : undefined}
   class={classes}
+  on:click|capture={holdTooSoon}
   on:click
   on:mousedown
   on:mouseup

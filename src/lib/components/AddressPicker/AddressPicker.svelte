@@ -3,14 +3,8 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import { makeClassName, randomUUID, shortenAddress } from "$lib/dusk/string";
-  import {
-    mdiAlertOutline,
-    mdiChevronDown,
-    mdiContentCopy,
-    mdiPlus,
-  } from "@mdi/js";
-  import { Icon } from "$lib/dusk/components";
-  import { toast } from "$lib/dusk/components/Toast/store";
+  import { mdiChevronDown, mdiPlus } from "@mdi/js";
+  import { CopyButton, Icon } from "$lib/dusk/components";
   import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
   import { normalizeWalletName, profileNameAt } from "$lib/wallets/directory";
 
@@ -127,24 +121,6 @@
   function handleAddWallet() {
     dispatch("addWallet");
     closeDropDown();
-  }
-
-  /**
-   * @param {string} address
-   */
-  async function handleCopyAddress(address) {
-    try {
-      await navigator.clipboard.writeText(address);
-      toast("success", "Address copied", mdiContentCopy);
-    } catch (err) {
-      toast(
-        "error",
-        err instanceof Error && err.name === "NotAllowedError"
-          ? "Clipboard access denied"
-          : "Failed to copy address",
-        mdiAlertOutline
-      );
-    }
   }
 
   /**
@@ -420,28 +396,22 @@
 )}
   <div class="address-picker__copy-buttons">
     {#if account}
-      <button
-        aria-label="Copy public address"
-        class="address-picker__copy-button"
-        type="button"
+      <CopyButton
+        className="address-picker__copy-button"
+        name="public address"
+        text="Public"
         title="Copy public address"
-        on:click={() => handleCopyAddress(account)}
-      >
-        <Icon path={mdiContentCopy} />
-        <span>Public</span>
-      </button>
+        value={account}
+      />
     {/if}
     {#if address}
-      <button
-        aria-label="Copy shielded address"
-        class="address-picker__copy-button"
-        type="button"
+      <CopyButton
+        className="address-picker__copy-button"
+        name="shielded address"
+        text="Shielded"
         title="Copy shielded address"
-        on:click={() => handleCopyAddress(address)}
-      >
-        <Icon path={mdiContentCopy} />
-        <span>Shielded</span>
-      </button>
+        value={address}
+      />
     {/if}
   </div>
 {/snippet}

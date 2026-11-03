@@ -226,6 +226,7 @@
       <div class="status-actions">
         {#if selectedStage === "ready_to_prove"}
           <Button
+            confirm
             disabled={isSubmitting}
             text={isSubmitting ? "Submitting" : "Prove on Dusk"}
             on:click={() => dispatch("prove")}
@@ -233,6 +234,7 @@
           />
         {:else}
           <Button
+            confirm
             disabled={isSubmitting}
             text={isSubmitting ? "Submitting" : "Claim on Dusk"}
             on:click={() => dispatch("finalize")}

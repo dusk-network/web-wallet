@@ -54,6 +54,17 @@ describe("Suspense", () => {
     expect(container.firstElementChild).toHaveClass("dusk-suspense--large-gap");
   });
 
+  it("should say what it waits for beside the throbber from the first moment, as Loading… unless told", async () => {
+    const { container, getByText, rerender } = render(Suspense, baseOptions);
+
+    expect(container.querySelector(".dusk-throbber")).toBeInTheDocument();
+    expect(getByText("Loading…")).toBeInTheDocument();
+
+    await rerender({ ...baseProps, pendingMessage: "Processing transaction" });
+
+    expect(getByText("Processing transaction")).toBeInTheDocument();
+  });
+
   it("should accept a custom message for the pending state", () => {
     const props = {
       ...baseProps,
