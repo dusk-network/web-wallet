@@ -219,7 +219,9 @@ const fetchPackageMetadata = async (name, origin) => {
           accept: "application/json",
           "user-agent": "dusk-lockfile-release-age-check/1",
         },
-        signal: AbortSignal.timeout(30_000),
+        // A package's whole record can be over 10 MB (@solana/assertions'
+        // is), and a CI runner can take more than half a minute to fetch it.
+        signal: AbortSignal.timeout(120_000),
       });
 
       if (response.ok) {
