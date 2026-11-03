@@ -249,7 +249,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep browsers from offering to save the recovery phrase typed on Unlock as a password [#534]
 - Turn Staking's buttons off while a stake, unstake or claim is pending [#537]
 - Give every field and select an edge that stands out on its surface, in dark mode too, and every field Send's height [#536]
-- Centre the numbers in a flow's steps, and show a tick in a ticked box
+- Centre the numbers in a flow's steps, line up an agreement's boxes with their text, and show a tick in a ticked box [#478]
 
 ## [1.8.0] - 2026-03-25
 
@@ -899,6 +899,7 @@ dusk-network/rusk#3955: https://github.com/dusk-network/rusk/issues/3955
 dusk-network/rusk#3958: https://github.com/dusk-network/rusk/issues/3958
 dusk-network/rusk#3982: https://github.com/dusk-network/rusk/issues/3982
 dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
+[#478]: https://github.com/dusk-network/web-wallet/issues/478
 [#534]: https://github.com/dusk-network/web-wallet/issues/534
 [#536]: https://github.com/dusk-network/web-wallet/issues/536
 [#537]: https://github.com/dusk-network/web-wallet/issues/537
