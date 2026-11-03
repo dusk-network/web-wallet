@@ -88,8 +88,8 @@ fieldset {
 }
 
 .dusk-checkbox:enabled:focus-visible {
-  box-shadow: 0 0 0 3px var(--focus-ring-color);
-  outline: 0 none;
+  outline: 2px solid var(--calm-focus);
+  outline-offset: 2px;
 }
 
 .sr-only {
