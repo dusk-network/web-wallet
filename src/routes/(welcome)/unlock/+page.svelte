@@ -189,13 +189,11 @@
           />
         {/if}
         {#if error instanceof InvalidPasswordError}
-          <Banner title="Invalid password" variant="error">
+          <Banner title="Wrong password." variant="error">
             <p>
-              Please ensure the password entered matches the one you have set up
-              while setting up the wallet. If you have forgotten your password,
-              you can <AppAnchor className="text-link" href="/setup/restore"
-                >restore</AppAnchor
-              > your wallet.
+              Forgot it? <AppAnchor className="text-link" href="/setup/restore"
+                >Restore with your recovery phrase</AppAnchor
+              >.
             </p>
           </Banner>
         {:else if error}

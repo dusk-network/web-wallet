@@ -7,6 +7,13 @@
   /** @type {boolean} */
   export let notice = false;
 
+  /**
+   * What goes on past the notice, which its button names.
+   *
+   * @type {"create" | "restore"}
+   */
+  export let flow = "restore";
+
   // With more than one wallet here, whichever password opens each,
   // Settings' Reset says the same.
   let many = (vault.list()?.length ?? 0) > 1;
@@ -29,10 +36,9 @@
       </p>
     {:else}
       <p>
-        Initializing a new wallet will replace your existing local wallet cache,
-        erasing any stored data. Ensure you have securely backed up your current
-        wallet's recovery phrase to prevent loss. Proceeding without a backup
-        can lead to irreversible loss of access to your assets.
+        This removes the wallet from this browser, with its settings and
+        contacts. Your DUSK stays on the network. The wallet comes back only
+        with its recovery phrase.
       </p>
     {/if}
     <div class="actions">
@@ -40,11 +46,12 @@
         className="actions__action"
         href="/setup"
         text="Back"
-        variant="tertiary"
+        variant="primary"
       />
       <Button
         className="actions__action"
-        text="Proceed"
+        text={flow === "create" ? "Remove and create" : "Remove and restore"}
+        variant="tertiary"
         on:click={() => {
           notice = true;
         }}

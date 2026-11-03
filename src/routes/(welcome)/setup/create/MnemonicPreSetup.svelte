@@ -33,5 +33,5 @@
   title="Dusk will not save and cannot retrieve your recovery phrase."
   variant="warning"
 >
-  <p>To proceed, please check all the relevant boxes.</p>
+  <p>Tick both boxes to continue.</p>
 </Banner>

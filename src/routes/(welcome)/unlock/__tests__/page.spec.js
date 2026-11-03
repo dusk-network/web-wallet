@@ -7,7 +7,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { ProfileGenerator } from "@dusk/w3sper";
 
@@ -411,7 +411,14 @@ describe("Unlock Wallet", async () => {
       );
 
       expect(openSpy).not.toHaveBeenCalled();
-      expect(errorElement?.textContent).toMatch("Invalid password");
+      expect(errorElement).toHaveTextContent(
+        "Wrong password. Forgot it? Restore with your recovery phrase."
+      );
+      expect(
+        within(/** @type {HTMLElement} */ (errorElement)).getByRole("link", {
+          name: "Restore with your recovery phrase",
+        })
+      ).toHaveAttribute("href", expect.stringMatching(/\/setup\/restore$/));
       expect(textInput).toHaveFocus();
       expect(selectedText).toBe(textInput.value);
     });
@@ -486,7 +493,7 @@ describe("Unlock Wallet", async () => {
       });
       await fireEvent.submit(getAsHTMLElement(container, "form"));
       await vi.waitUntil(getErrorElement);
-      expect(getErrorElement()?.textContent).toContain("Invalid password");
+      expect(getErrorElement()?.textContent).toContain("Wrong password.");
       expect(openSpy).not.toHaveBeenCalled();
       expect(gotoSpy).not.toHaveBeenCalled();
     });
@@ -545,7 +552,7 @@ describe("Unlock Wallet", async () => {
       await unlockWith(`${fixtures.legacy.password}!`);
       await vi.waitUntil(getErrorElement);
 
-      expect(getErrorElement()?.textContent).toContain("Invalid password");
+      expect(getErrorElement()?.textContent).toContain("Wrong password.");
       expect(localStorage.getItem(V1)).toBe(fixtures.legacy.stored);
       expect(localStorage.getItem(V2)).toBeNull();
       expect(openSpy).not.toHaveBeenCalled();

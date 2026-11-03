@@ -61,7 +61,7 @@
 
 {#if !notice && userId}
   <div class="onboarding-wrapper" in:fade|global>
-    <ExistingWalletNotice bind:notice />
+    <ExistingWalletNotice bind:notice flow="restore" />
   </div>
 {:else if !tosAccepted}
   <div class="onboarding-wrapper" in:fade|global>

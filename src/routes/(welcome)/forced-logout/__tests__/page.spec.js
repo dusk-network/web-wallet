@@ -15,10 +15,18 @@ describe("Forced logout page", () => {
   });
 
   it("should render the page alert the user about the forced logout on mount", () => {
-    const { container } = render(LogoutPage);
+    const { container, getByText } = render(LogoutPage);
+    const why =
+      "Your DUSK is safe on the network. Another tab or window created, restored or reset a wallet in this browser, so this tab locked.";
 
     expect(window.alert).toHaveBeenCalledTimes(1);
-    expect(window.alert).toHaveBeenCalledWith(expect.any(String));
+    expect(window.alert).toHaveBeenCalledWith(why);
+    expect(getByText(why)).toBeInTheDocument();
+    expect(
+      getByText(
+        "If your wallet is no longer here, restore it with its recovery phrase. It then syncs again in full."
+      )
+    ).toBeInTheDocument();
     expect(container.firstElementChild).toMatchSnapshot();
   });
 });

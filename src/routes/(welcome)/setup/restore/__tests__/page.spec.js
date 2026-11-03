@@ -90,6 +90,27 @@ describe("Restore", async () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
+  it("should say what restoring removes from this browser and what stays, with Back first and a button that says what it does", async () => {
+    settingsStore.update(setUserId(userId));
+
+    const { getByRole, getByText } = render(Restore);
+    const back = getByRole("link", { name: "Back" });
+    const remove = getByRole("button", { name: "Remove and restore" });
+
+    expect(
+      getByText(
+        "This removes the wallet from this browser, with its settings and contacts. Your DUSK stays on the network. The wallet comes back only with its recovery phrase."
+      )
+    ).toBeInTheDocument();
+    expect(back).toHaveAttribute("href", expect.stringMatching(/\/setup$/));
+    expect(back).toHaveClass("dusk-anchor-button--variant--primary");
+    expect(remove).toHaveClass("dusk-button--variant--tertiary");
+
+    await fireEvent.click(remove);
+
+    expect(getByRole("button", { name: "Accept" })).toBeInTheDocument();
+  });
+
   it("should say that it removes every wallet from this browser where there's more than one", async () => {
     // Public BIP39 test phrases, never a real wallet's.
     await vault.setUp(
@@ -146,7 +167,7 @@ describe("Restore", async () => {
 
     const { container, getByRole } = render(Restore);
 
-    await fireEvent.click(getByRole("button", { name: "Proceed" }));
+    await fireEvent.click(getByRole("button", { name: "Remove and restore" }));
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     expect(container.firstElementChild).toMatchSnapshot();

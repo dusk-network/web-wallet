@@ -50,10 +50,9 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
         <!---->
         <!---->
         <p>
-          Initializing a new wallet will replace your existing local wallet cache,
-        erasing any stored data. Ensure you have securely backed up your current
-        wallet's recovery phrase to prevent loss. Proceeding without a backup
-        can lead to irreversible loss of access to your assets.
+          This removes the wallet from this browser, with its settings and
+        contacts. Your DUSK stays on the network. The wallet comes back only
+        with its recovery phrase.
         </p>
         <!---->
          
@@ -62,7 +61,7 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
         >
           <a
             aria-disabled="false"
-            class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default actions__action"
+            class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default actions__action"
             href="/some-base-path/setup"
           >
             <!---->
@@ -77,13 +76,13 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
           <!---->
            
           <button
-            class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default actions__action"
+            class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default actions__action"
             type="button"
           >
             <span
               class="dusk-button__text"
             >
-              Proceed
+              Remove and restore
             </span>
             <!---->
           </button>

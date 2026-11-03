@@ -139,8 +139,11 @@ describe("Create", async () => {
   it("should render the Existing Wallet notice step of the Create flow if there is a userId saved in localStorage", () => {
     settingsStore.update(setUserId(userId));
 
-    const { container } = render(Create, baseOptions);
+    const { container, getByRole } = render(Create, baseOptions);
 
+    expect(
+      getByRole("button", { name: "Remove and create" })
+    ).toBeInTheDocument();
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
@@ -222,13 +225,15 @@ describe("Create", async () => {
   });
 
   it("should not allow the user proceed unless both agreement checks are selected on the `Securely store your mnemonic phrase!` step", async () => {
-    const { getByRole, getAllByRole } = render(Create, baseOptions);
+    const { getByRole, getAllByRole, getByText } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     const firstCheckbox = getAllByRole("checkbox")[0];
     const secondCheckbox = getAllByRole("checkbox")[1];
     const nextButton = getByRole("button", { name: "Next" });
+
+    expect(getByText("Tick both boxes to continue.")).toBeInTheDocument();
 
     // Select the first checkbox
     await fireEvent.click(firstCheckbox);
