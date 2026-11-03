@@ -87,8 +87,8 @@ fieldset {
   outline: 0 none;
 }
 
-.dusk-checkbox:enabled:focus {
-  border-color: var(--calm-focus);
+.dusk-checkbox:enabled:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus-ring-color);
   outline: 0 none;
 }
 

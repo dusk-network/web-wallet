@@ -249,6 +249,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep browsers from offering to save the recovery phrase typed on Unlock as a password [#534]
 - Turn Staking's buttons off while a stake, unstake or claim is pending [#537]
 - Give every field and select an edge that stands out on its surface, in dark mode too, and every field Send's height [#536]
+- Centre the numbers in a flow's steps, and show a tick in a ticked box
 
 ## [1.8.0] - 2026-03-25
 

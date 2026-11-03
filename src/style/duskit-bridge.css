@@ -175,11 +175,12 @@
   --stepper-on-rail-color: var(--calm-text);
   --stepper-on-rail-variant-secondary-color: var(--calm-text);
 
-  --checkbox-control-size: 1.2em;
-  --checkbox-control-border-radius: 20%;
-  --checkbox-control-border-width: 0.2em;
-  --checkbox-control-border-color: var(--calm-text);
+  --checkbox-control-size: 1.125rem;
+  --checkbox-control-border-radius: 0.25rem;
+  --checkbox-control-border-width: 0.125rem;
+  --checkbox-control-border-color: var(--calm-field-edge);
   --checkbox-control-checked-bg-color: var(--calm-text);
+  --checkbox-control-tick-color: var(--calm-on-pill);
 
   --fieldset-background-color: var(--background-color-alt);
   --fieldset-border-radius: var(--control-border-radius-size);

@@ -172,7 +172,11 @@
       .dusk names, and dates in UTC and local time.
     </p>
     <label class="history__option">
-      <input bind:checked={withContacts} type="checkbox" />
+      <input
+        bind:checked={withContacts}
+        type="checkbox"
+        class="dusk-checkbox"
+      />
       Include my contact names in the export, in their own column
     </label>
     {#if incomplete}
