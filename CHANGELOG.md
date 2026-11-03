@@ -203,6 +203,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Make every button of a size as tall with an icon as without, an icon alone a circle of that height, and show the whole of g, p and y in their labels [#916]
 - Go on from All set to a wallet just made only once it's open, rather than back to the start
 - Keep a withdrawal's proof or claim pending when it's sent while a check runs, so Prove and Claim don't come back
 - Keep looking for a bridge transfer's payment on BNB Smart Chain or DuskEVM after a search missed it, rather than waiting for it for good
@@ -918,6 +919,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 [#773]: https://github.com/dusk-network/web-wallet/issues/773
 [#784]: https://github.com/dusk-network/web-wallet/issues/784
 [#881]: https://github.com/dusk-network/web-wallet/issues/881
+[#916]: https://github.com/dusk-network/web-wallet/issues/916
 [#928]: https://github.com/dusk-network/web-wallet/issues/928
 [#932]: https://github.com/dusk-network/web-wallet/issues/932
 [#939]: https://github.com/dusk-network/web-wallet/issues/939
