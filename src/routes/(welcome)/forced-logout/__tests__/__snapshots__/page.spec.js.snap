@@ -51,15 +51,14 @@ exports[`Forced logout page > should render the page alert the user about the fo
         <p
           class="svelte-1fm0dc9"
         >
-          Another tab or window unlocked a different wallet and replaced the local
-        cache.
+          Your DUSK is safe on the network. Another tab or window created, restored or reset a wallet in this browser, so this tab locked.
         </p>
          
         <p
           class="svelte-1fm0dc9"
         >
-          When you log in again with the recovery phrase you used in this session,
-        you will need to wait for a full sync.
+          If your wallet is no longer here, restore it with its recovery phrase.
+        It then syncs again in full.
         </p>
       </div>
       

@@ -49,6 +49,11 @@ type NetworkStoreContent = {
   /** The chain ID the node gives: 0 local, 1 mainnet, 2 testnet, 3 devnet. */
   chainId: number | null;
   get connected(): boolean;
+  /**
+   * The network the node named last in this browser, for the pages shown
+   * while it can't be reached: "unknown" before it ever was.
+   */
+  lastNetworkName: string;
   /** The network's contracts and routes, or null for a chain without a file. */
   net: import("@dusk-network/networks").Network | null;
   networkName: string;

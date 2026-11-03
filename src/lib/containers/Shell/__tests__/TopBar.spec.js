@@ -69,6 +69,18 @@ describe("TopBar", () => {
     expect(brand.querySelector("svg.dusk-wordmark")).toBeInTheDocument();
     expect(brand).toHaveTextContent(/^Wallet$/);
     expect(container.querySelectorAll("a, button, nav")).toHaveLength(0);
+
+    // On a phone too the wordmark stays, to say whose site this is: only
+    // the wallet's own bar, a link, shows the round mark alone there.
+    const phone = styleRules("../TopBar.svelte").filter(
+      (rule) => rule.media && /dusk-(glyph|wordmark)/.test(rule.selector)
+    );
+
+    expect(phone.length).toBeGreaterThan(0);
+
+    for (const rule of phone) {
+      expect(rule.selector).toMatch(/^a\.top-bar__brand /);
+    }
   });
 
   it("shows the DUSK wordmark, a line and WALLET, named for screen readers", () => {
@@ -101,7 +113,7 @@ describe("TopBar", () => {
     const narrow =
       bar.find(
         (rule) =>
-          rule.selector === ".top-bar__brand :global(.dusk-wordmark)" &&
+          rule.selector === "a.top-bar__brand :global(.dusk-wordmark)" &&
           rule.declarations.display === "none"
       )?.media ?? "";
 
@@ -112,7 +124,7 @@ describe("TopBar", () => {
       ruleOf(".top-bar__brand :global(.dusk-glyph)")?.declarations.display
     ).toBe("none");
     expect(
-      ruleOf(".top-bar__brand :global(.dusk-glyph)", narrow)?.declarations
+      ruleOf("a.top-bar__brand :global(.dusk-glyph)", narrow)?.declarations
         .display
     ).toBe("block");
     // Nothing shrinks under its content to make room.

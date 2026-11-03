@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
+import styleRules from "$lib/dusk/test-helpers/styleRules";
+
 import { Switch } from "..";
 
 describe("Switch", () => {
@@ -57,6 +59,26 @@ describe("Switch", () => {
     const { container } = render(Switch, { ...baseOptions, props });
 
     expect(container.firstElementChild).toMatchSnapshot();
+  });
+
+  it("should read as off or on by its knob: a ring when off, filled with the on colour when on", () => {
+    const knob = (/** @type {string} */ state) =>
+      styleRules(
+        "../../../../style/dusk-components/switch.css",
+        import.meta.url
+      ).find(
+        (rule) =>
+          rule.selector === `.dusk-switch[aria-checked="${state}"]::after`
+      )?.declarations ?? {};
+
+    expect(knob("false")).toMatchObject({
+      "background-color": "transparent",
+      "box-shadow": expect.stringContaining("var(--calm-field-edge)"),
+    });
+    expect(knob("true")).toMatchObject({
+      "background-color": "var(--secondary-color)",
+      transform: "translateX(100%)",
+    });
   });
 
   describe("Event handlers", () => {

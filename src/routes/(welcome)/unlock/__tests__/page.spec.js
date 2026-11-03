@@ -7,7 +7,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { ProfileGenerator } from "@dusk/w3sper";
 
@@ -29,6 +29,12 @@ import fixtures from "$lib/vault/__tests__/fixtures/login-v1.json";
 import { useWalletData } from "$lib/wallets/walletData";
 
 import UnlockWallet from "../+page.svelte";
+
+// The same IDs each run, for the snapshots.
+vi.mock("$lib/dusk/string", async (importOriginal) => ({
+  .../** @type {typeof import("$lib/dusk/string")} */ (await importOriginal()),
+  randomUUID: () => "some-generated-id",
+}));
 
 const V1 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`;
 const V2 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-v2`;
@@ -162,37 +168,66 @@ describe("Unlock Wallet", async () => {
       expect(container.firstElementChild).toMatchSnapshot();
     });
 
-    it("should take the recovery phrase in a text field the browser keeps no record of, not in a password field it offers to save", () => {
-      const { container } = render(UnlockWallet, {});
-      const field = getTextInput(container);
+    it("should take the recovery phrase in Restore's word boxes, which browsers keep no record of, not in a password field they offer to save", () => {
+      const { container, getAllByRole, getByRole } = render(UnlockWallet, {});
+      const boxes = getAllByRole("textbox");
 
-      expect(field).toHaveAttribute("type", "text");
-      expect(field).toHaveAttribute("autocomplete", "off");
-      expect(field).toHaveAttribute("autocapitalize", "none");
-      expect(field).toHaveAttribute("spellcheck", "false");
+      expect(getByRole("group", { name: "Recovery phrase" })).toContainElement(
+        boxes[0]
+      );
+      expect(boxes).toHaveLength(12);
+      expect(getByRole("button", { name: "24 words" })).toBeInTheDocument();
+
+      for (const box of boxes) {
+        expect(box).toHaveAttribute("type", "text");
+        expect(box).toHaveAttribute("autocomplete", "off");
+        expect(box).toHaveAttribute("autocorrect", "off");
+        expect(box).toHaveAttribute("autocapitalize", "none");
+        expect(box).toHaveAttribute("spellcheck", "false");
+      }
+
       expect(container.querySelector("input[type='password']")).toBeNull();
     });
 
-    it("should show an error message if the user enters an invalid mnemonic", async () => {
-      const { container } = render(UnlockWallet, {});
+    it("should unlock with the whole phrase pasted into any box", async () => {
+      settingsStore.update(setUserId(userId));
+
+      const { getByLabelText, getByRole } = render(UnlockWallet, {});
+      const unlock = getByRole("button", { name: /unlock/i });
+
+      expect(unlock).toBeDisabled();
+
+      await fireEvent.paste(getByLabelText("Word 7"), {
+        clipboardData: { getData: () => mnemonic },
+      });
+      await fireEvent.click(unlock);
+      await waitForGoto();
+
+      expect(initSpy).toHaveBeenCalledTimes(1);
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+    });
+
+    it("should say when the words aren't a valid recovery phrase, and not unlock", async () => {
+      settingsStore.update(setUserId(userId));
+
+      const { container, getByLabelText, getByRole } = render(UnlockWallet, {});
       const form = getAsHTMLElement(container, "form");
-      const textInput = getTextInput(container);
 
-      expect(getErrorElement()).toBeNull();
+      // Twelve recovery words, though not a phrase: its last word is wrong.
+      await fireEvent.paste(getByLabelText("Word 1"), {
+        clipboardData: { getData: () => "abandon ".repeat(12) },
+      });
 
-      await fireEvent.input(textInput, { target: { value: "foo bar" } });
-      await fireEvent.submit(form, { currentTarget: form });
-
-      const errorElement = await vi.waitUntil(getErrorElement);
-      const selectedText = textInput.value.substring(
-        Number(textInput.selectionStart),
-        Number(textInput.selectionEnd)
+      expect(getByRole("alert")).toHaveTextContent(
+        "These words aren't a valid recovery phrase. Check each word."
       );
+      expect(getByRole("button", { name: /unlock/i })).toBeDisabled();
+
+      await fireEvent.submit(form, { currentTarget: form });
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(initSpy).not.toHaveBeenCalled();
-      expect(errorElement?.textContent).toMatch("Invalid recovery phrase");
-      expect(textInput).toHaveFocus();
-      expect(selectedText).toBe(textInput.value);
+      expect(gotoSpy).not.toHaveBeenCalled();
     });
 
     it("should redirect to the Restore flow if the user inputs a valid mnemonic with no prior wallet created", async () => {
@@ -343,8 +378,11 @@ describe("Unlock Wallet", async () => {
     afterAll(() => vault.clear());
 
     it("should show the password field and the link to restore the wallet if there is login info stored", () => {
-      const { container } = render(UnlockWallet, {});
+      const { container, getByRole } = render(UnlockWallet, {});
 
+      expect(getByRole("heading", { level: 2 })).toHaveTextContent(
+        "Unlock your wallet"
+      );
       expect(container.firstElementChild).toMatchSnapshot();
     });
 
@@ -373,7 +411,14 @@ describe("Unlock Wallet", async () => {
       );
 
       expect(openSpy).not.toHaveBeenCalled();
-      expect(errorElement?.textContent).toMatch("Invalid password");
+      expect(errorElement).toHaveTextContent(
+        "Wrong password. Forgot it? Restore with your recovery phrase."
+      );
+      expect(
+        within(/** @type {HTMLElement} */ (errorElement)).getByRole("link", {
+          name: "Restore with your recovery phrase",
+        })
+      ).toHaveAttribute("href", expect.stringMatching(/\/setup\/restore$/));
       expect(textInput).toHaveFocus();
       expect(selectedText).toBe(textInput.value);
     });
@@ -448,7 +493,7 @@ describe("Unlock Wallet", async () => {
       });
       await fireEvent.submit(getAsHTMLElement(container, "form"));
       await vi.waitUntil(getErrorElement);
-      expect(getErrorElement()?.textContent).toContain("Invalid password");
+      expect(getErrorElement()?.textContent).toContain("Wrong password.");
       expect(openSpy).not.toHaveBeenCalled();
       expect(gotoSpy).not.toHaveBeenCalled();
     });
@@ -507,7 +552,7 @@ describe("Unlock Wallet", async () => {
       await unlockWith(`${fixtures.legacy.password}!`);
       await vi.waitUntil(getErrorElement);
 
-      expect(getErrorElement()?.textContent).toContain("Invalid password");
+      expect(getErrorElement()?.textContent).toContain("Wrong password.");
       expect(localStorage.getItem(V1)).toBe(fixtures.legacy.stored);
       expect(localStorage.getItem(V2)).toBeNull();
       expect(openSpy).not.toHaveBeenCalled();

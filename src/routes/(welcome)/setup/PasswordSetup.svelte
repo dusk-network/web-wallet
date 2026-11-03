@@ -42,7 +42,11 @@
   }
 </script>
 
-<ToggleableCard heading="Password" iconPath={mdiKeyOutline} bind:isToggled>
+<ToggleableCard
+  heading="Use a password"
+  iconPath={mdiKeyOutline}
+  bind:isToggled
+>
   <p>Please store your password safely.</p>
   <Textbox
     aria-describedby={strength ? strengthId : undefined}
@@ -50,7 +54,7 @@
     type="password"
     autocomplete="new-password"
     bind:value={password}
-    placeholder="Set Password"
+    placeholder="Set password"
   />
   {#if strength}
     <p
@@ -67,7 +71,7 @@
       type="password"
       autocomplete="new-password"
       bind:value={confirmPassword}
-      placeholder="Confirm Password"
+      placeholder="Confirm password"
     />
     {#if password.length < 8}
       <span class="confirm-password--meta"

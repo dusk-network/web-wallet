@@ -62,7 +62,7 @@
 
 {#if !notice && userId}
   <div class="onboarding-wrapper" in:fade|global>
-    <ExistingWalletNotice bind:notice />
+    <ExistingWalletNotice bind:notice flow="create" />
   </div>
 {:else if !tosAccepted}
   <div class="onboarding-wrapper" in:fade|global>
@@ -81,11 +81,11 @@
       }}
       nextButton={{ disabled: !agreementAccepted }}
     >
-      <h2 class="h1" slot="heading">Backup Recovery Phrase</h2>
+      <h2 class="h1" slot="heading">Back up your recovery phrase</h2>
       <MnemonicPreSetup bind:isValid={agreementAccepted} />
     </WizardStep>
     <WizardStep step={1} {key} showStepper={true}>
-      <h2 class="h1" slot="heading">Backup Recovery Phrase</h2>
+      <h2 class="h1" slot="heading">Back up your recovery phrase</h2>
       <MnemonicPhrase bind:mnemonicPhrase />
     </WizardStep>
     <WizardStep
@@ -101,7 +101,7 @@
         disabled: !isValidMnemonic,
       }}
     >
-      <h2 class="h1" slot="heading">Backup Recovery Phrase</h2>
+      <h2 class="h1" slot="heading">Back up your recovery phrase</h2>
       <MnemonicValidate
         bind:isValid={isValidMnemonic}
         bind:enteredMnemonicPhrase
@@ -119,7 +119,7 @@
         disabled: !isValidPassword,
       }}
     >
-      <h2 class="h1" slot="heading">Password Setup</h2>
+      <h2 class="h1" slot="heading">Set a password</h2>
       <PasswordSetup
         bind:password
         bind:isValid={isValidPassword}
@@ -147,7 +147,7 @@
         disabled: false,
       }}
     >
-      <h2 class="h1" slot="heading">Network Syncing</h2>
+      <h2 class="h1" slot="heading">Sync</h2>
       <NetworkSync {currentBlockHeight} />
     </WizardStep>
     <WizardStep

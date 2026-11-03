@@ -324,6 +324,7 @@
           aria-label="Word {i + 1}"
           autocapitalize="none"
           autocomplete="off"
+          autocorrect="off"
           bind:this={inputs[i]}
           {disabled}
           enterkeyhint={i === count - 1 ? "done" : "next"}

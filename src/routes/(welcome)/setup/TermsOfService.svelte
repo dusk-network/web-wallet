@@ -9,7 +9,7 @@
 </script>
 
 <section>
-  <IconHeadingCard heading="Terms &amp; Privacy Policy">
+  <IconHeadingCard heading="Terms &amp; privacy policy">
     <p>
       Your keys stay in this browser, and only you hold them: Dusk can't recover
       them. The wallet has no analytics, and gets the DUSK price from CoinGecko.
@@ -19,12 +19,12 @@
         className="text-link"
         href={LEGAL_LINKS.TERMS_OF_USE}
         rel="noopener noreferrer"
-        target="_blank">Terms of Use</AppAnchor
+        target="_blank">Terms of use</AppAnchor
       > and the <AppAnchor
         className="text-link"
         href={LEGAL_LINKS.PRIVACY_POLICY}
         rel="noopener noreferrer"
-        target="_blank">Privacy Policy</AppAnchor
+        target="_blank">Privacy policy</AppAnchor
       >.
     </p>
     <div class="actions">

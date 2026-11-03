@@ -32,12 +32,28 @@ const networkUrl = getNetworkUrl();
 /** @type {Network} */
 const network = new Network(networkUrl);
 
+/**
+ * Where this browser keeps the name of the network the node gave last, for
+ * the pages shown while it can't be reached.
+ */
+const LAST_NETWORK = `${CONFIG.LOCAL_STORAGE_APP_KEY}-network`;
+
+/** @returns {string} */
+function readLastNetwork() {
+  try {
+    return globalThis.localStorage?.getItem(LAST_NETWORK) || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 /** @type {NetworkStoreContent} */
 const initialState = {
   chainId: null,
   get connected() {
     return network.connected;
   },
+  lastNetworkName: readLastNetwork(),
   net: null,
   networkName: "unknown",
 };
@@ -134,13 +150,21 @@ async function init() {
   const info = await network.node.info;
   const chainId = Number(info.chainId);
   const net = networkFor(chainId);
+  const networkName = info.chain.toString();
+
+  try {
+    localStorage.setItem(LAST_NETWORK, networkName);
+  } catch {
+    // Kept for this page only.
+  }
 
   setNodeNetwork(net);
   set({
     ...initialState,
     chainId,
+    lastNetworkName: networkName,
     net,
-    networkName: info.chain.toString(),
+    networkName,
   });
 }
 

@@ -139,8 +139,11 @@ describe("Create", async () => {
   it("should render the Existing Wallet notice step of the Create flow if there is a userId saved in localStorage", () => {
     settingsStore.update(setUserId(userId));
 
-    const { container } = render(Create, baseOptions);
+    const { container, getByRole } = render(Create, baseOptions);
 
+    expect(
+      getByRole("button", { name: "Remove and create" })
+    ).toBeInTheDocument();
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
@@ -158,29 +161,37 @@ describe("Create", async () => {
         "Your keys stay in this browser, and only you hold them: Dusk can't recover them. The wallet has no analytics, and gets the DUSK price from CoinGecko."
       )
     ).toBeInTheDocument();
-    expect(getByRole("link", { name: "Terms of Use" })).toHaveAttribute(
+    expect(getByRole("link", { name: "Terms of use" })).toHaveAttribute(
       "href",
       "https://dusk.network/terms-of-use/"
     );
-    expect(getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
+    expect(getByRole("link", { name: "Privacy policy" })).toHaveAttribute(
       "href",
       "https://dusk.network/privacy-policy/"
     );
   });
 
-  it("should call it the recovery phrase, and say how to check it", async () => {
-    const { container, getByRole, getAllByRole, getByText } = render(
-      Create,
-      baseOptions
-    );
+  it("should call it the recovery phrase, warn that anyone with its words can take the DUSK, and say how to check it", async () => {
+    const { container, getByLabelText, getByRole, getAllByRole, getByText } =
+      render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     const agreementStep = container.textContent ?? "";
 
     expect(agreementStep).toMatch(/Keep it safe/);
-    expect(agreementStep).toMatch(/my recovery phrase\./);
+    expect(agreementStep).toMatch(/my recovery phrase/);
     expect(agreementStep).not.toMatch(/mnemonic/i);
+    expect(
+      getByLabelText(
+        "I understand that without my recovery phrase I cannot access my wallet and its assets."
+      )
+    ).toHaveAttribute("type", "checkbox");
+    expect(
+      getByLabelText(
+        "Anyone with these 12 words can take my DUSK. Dusk will never ask for them."
+      )
+    ).toHaveAttribute("type", "checkbox");
 
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
@@ -211,7 +222,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     expect(getByRole("heading", { level: 2 }).innerHTML).toBe(
-      "Backup Recovery Phrase"
+      "Back up your recovery phrase"
     );
     expect(getByRole("link", { name: "Back" })).toHaveClass(
       "dusk-anchor-button--variant--tertiary"
@@ -222,13 +233,15 @@ describe("Create", async () => {
   });
 
   it("should not allow the user proceed unless both agreement checks are selected on the `Securely store your mnemonic phrase!` step", async () => {
-    const { getByRole, getAllByRole } = render(Create, baseOptions);
+    const { getByRole, getAllByRole, getByText } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     const firstCheckbox = getAllByRole("checkbox")[0];
     const secondCheckbox = getAllByRole("checkbox")[1];
     const nextButton = getByRole("button", { name: "Next" });
+
+    expect(getByText("Tick both boxes to continue.")).toBeInTheDocument();
 
     // Select the first checkbox
     await fireEvent.click(firstCheckbox);
@@ -433,11 +446,7 @@ describe("Create", async () => {
       container.querySelector("details")
     );
 
-    expect(
-      getByText(
-        "Next, the wallet syncs with the network. There is nothing to note."
-      )
-    ).toBeVisible();
+    expect(getByText("Next, the wallet syncs with the network.")).toBeVisible();
     expect(advanced.open).toBe(false);
     expect(advanced.querySelector("summary")).toHaveTextContent("Advanced");
     expect(advanced).toContainElement(getByRole("textbox", { hidden: true }));
@@ -461,7 +470,7 @@ describe("Create", async () => {
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const password = getByPlaceholderText("Set Password");
+    const password = getByPlaceholderText("Set password");
     const hint = () => container.querySelector(".password-strength");
 
     await fireInput(password, "pass");
@@ -604,8 +613,8 @@ describe("Create", async () => {
     // Set Password step
     expect(vault.exists()).toBe(false);
 
-    await fireInput(asInput(getByPlaceholderText("Set Password")), pwd);
-    await fireInput(asInput(getByPlaceholderText("Confirm Password")), pwd);
+    await fireInput(asInput(getByPlaceholderText("Set password")), pwd);
+    await fireInput(asInput(getByPlaceholderText("Confirm password")), pwd);
 
     expect(vault.exists()).toBe(false);
 

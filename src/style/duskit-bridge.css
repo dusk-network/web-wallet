@@ -189,9 +189,6 @@
   --divider-background-color: var(--background-color);
   --divider-border-color: var(--surface-border-color);
 
-  --home-box-color: var(--calm-s3);
-  --home-grid-color: var(--calm-s1);
-
   --banner-info-color: var(--calm-muted);
   --banner-warning-color: var(--calm-pending);
   --banner-error-color: var(--calm-danger);

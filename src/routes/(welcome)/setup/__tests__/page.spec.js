@@ -1,11 +1,9 @@
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 
 import { settingsStore } from "$lib/stores";
 
 import Setup from "../+page.svelte";
-
-vi.mock("css-doodle", () => ({}));
 
 describe("Setup", () => {
   afterEach(() => {
@@ -13,14 +11,22 @@ describe("Setup", () => {
     settingsStore.reset();
   });
 
-  afterAll(() => {
-    vi.doUnmock("css-doodle");
-  });
-
   it("should render the Setup page", () => {
     const { container } = render(Setup, {});
 
     expect(container.firstElementChild).toMatchSnapshot();
+  });
+
+  it("should show the wallet's name, its ways in and its version, and no picture that could look broken", () => {
+    const { container, getByRole } = render(Setup, {});
+
+    expect(getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Dusk Web Wallet"
+    );
+    expect(container.querySelector("footer")).toHaveTextContent(
+      "Web Wallet v0.1.5"
+    );
+    expect(container.querySelector("css-doodle, img, canvas")).toBeNull();
   });
 
   it("should offer a first-time visitor to create or restore a wallet, and nothing to unlock", () => {

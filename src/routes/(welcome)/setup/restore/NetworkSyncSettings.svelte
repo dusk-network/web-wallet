@@ -3,16 +3,22 @@
 <script>
   import { mdiCubeOutline } from "@mdi/js";
 
+  import { Textbox } from "$lib/dusk/components";
   import { createNumberFormatter } from "$lib/dusk/number";
   import { makeClassName } from "$lib/dusk/string";
 
-  import { AppAnchor, Banner, BigIntInput } from "$lib/components";
+  import { AppAnchor, Banner } from "$lib/components";
   import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { ToggleableCard } from "$lib/containers/Cards";
 
   import { networkStore, settingsStore } from "$lib/stores";
 
-  /** @type {bigint} */
+  /**
+   * The block the wallet syncs from: the one typed while the switch is on,
+   * else the first.
+   *
+   * @type {bigint}
+   */
   export let blockHeight = 0n;
 
   /** @type {boolean} */
@@ -27,11 +33,17 @@
   /** @type {boolean} */
   let errorFetchingCurrentNetworkBlock;
 
+  /**
+   * The block as typed: empty each time the switch goes on, as no block
+   * suits every wallet.
+   */
+  let typed = "";
+
   const { language } = $settingsStore;
   const numberFormatter = createNumberFormatter(language);
 
-  const resetBlockHeight = () => {
-    blockHeight = 0n;
+  const clearTyped = () => {
+    typed = "";
   };
 
   networkStore
@@ -43,24 +55,43 @@
       errorFetchingCurrentNetworkBlock = true;
     });
 
-  $: {
-    isValid =
-      !isToggled || (blockHeight >= 0 && blockHeight <= currentNetworkBlock);
-  }
+  $: typedHeight = /^\d+$/.test(typed.trim()) ? BigInt(typed.trim()) : null;
 
-  $: inputClasses = makeClassName({
-    "block-height-input": true,
-    "block-height-input--invalid": !isValid,
-  });
+  $: blockHeight = isToggled && typedHeight !== null ? typedHeight : 0n;
+
+  // On, it takes a block up to the network's latest, and none while empty.
+  $: isValid =
+    !isToggled ||
+    (typedHeight !== null &&
+      currentNetworkBlock !== undefined &&
+      typedHeight <= currentNetworkBlock);
+
+  $: isWrong = typed.trim() !== "" && !isValid;
 </script>
 
 <ToggleableCard
   bind:isToggled
   iconPath={mdiCubeOutline}
-  heading="Block Height"
-  on:toggle={resetBlockHeight}
+  heading="Block height"
+  on:toggle={clearTyped}
 >
-  <BigIntInput className={inputClasses} bind:value={blockHeight} />
+  <Textbox
+    aria-describedby="block-height-hint"
+    aria-invalid={isWrong}
+    aria-label="Block height"
+    autocomplete="off"
+    bind:value={typed}
+    className={makeClassName({
+      "block-height-input": true,
+      "block-height-input--invalid": isWrong,
+    })}
+    inputmode="numeric"
+    type="text"
+  />
+
+  <span class="block-height-meta" id="block-height-hint"
+    >The block your wallet was made at, or earlier. Not sure? Leave this off.</span
+  >
 
   {#if currentNetworkBlock}
     <span class="block-height-meta"
@@ -78,10 +109,10 @@
   {/if}
 </ToggleableCard>
 
-<Banner title="Syncing from a custom block height is optional." variant="info">
+<Banner title="Syncing from a later block is faster." variant="info">
   <p>
-    Doing so can significantly reduce sync times. However, setting a wrong block
-    can lead to wrong balance or missing transactions. Find out more in our <AppAnchor
+    A wrong block can lead to a wrong balance or missing transactions. Find out
+    more in our <AppAnchor
       className="text-link"
       href={DOCUMENTATION_LINKS.RESTORE_BLOCK_HEIGHT}
       rel="noopener noreferrer"

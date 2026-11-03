@@ -3,26 +3,23 @@
   import { AppAnchorButton } from "$lib/components";
   import { WarningCard } from "$lib/containers/Cards";
 
+  // What locked this tab: another one set up a wallet here, in place of
+  // the ones here, or reset them, as the settings it changed say.
+  const WHY =
+    "Your DUSK is safe on the network. Another tab or window created, restored or reset a wallet in this browser, so this tab locked.";
+
   onMount(() => {
-    alert(
-      [
-        "You have been automatically logged out as another ",
-        "tab or window unlocked a different wallet.",
-      ].join("")
-    );
+    alert(WHY);
   });
 </script>
 
 <section class="forced-logout">
   <WarningCard heading="You have been automatically logged out">
     <div>
+      <p>{WHY}</p>
       <p>
-        Another tab or window unlocked a different wallet and replaced the local
-        cache.
-      </p>
-      <p>
-        When you log in again with the recovery phrase you used in this session,
-        you will need to wait for a full sync.
+        If your wallet is no longer here, restore it with its recovery phrase.
+        It then syncs again in full.
       </p>
     </div>
   </WarningCard>

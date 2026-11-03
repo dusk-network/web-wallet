@@ -36,7 +36,7 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
             <h3
               class="h4"
             >
-              Existing Wallet Detected
+              Existing wallet detected
             </h3>
           </div>
         </header>
@@ -50,10 +50,9 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
         <!---->
         <!---->
         <p>
-          Initializing a new wallet will replace your existing local wallet cache,
-        erasing any stored data. Ensure you have securely backed up your current
-        wallet's recovery phrase to prevent loss. Proceeding without a backup
-        can lead to irreversible loss of access to your assets.
+          This removes the wallet from this browser, with its settings and
+        contacts. Your DUSK stays on the network. The wallet comes back only
+        with its recovery phrase.
         </p>
         <!---->
          
@@ -62,7 +61,7 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
         >
           <a
             aria-disabled="false"
-            class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--tertiary dusk-anchor-button--size--default actions__action"
+            class="dusk-anchor dusk-anchor--on-surface dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default actions__action"
             href="/some-base-path/setup"
           >
             <!---->
@@ -77,13 +76,13 @@ exports[`Restore > should render the Existing Wallet notice step of the Restore 
           <!---->
            
           <button
-            class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default actions__action"
+            class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default actions__action"
             type="button"
           >
             <span
               class="dusk-button__text"
             >
-              Proceed
+              Remove and restore
             </span>
             <!---->
           </button>
@@ -117,7 +116,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
     class="h1"
     slot="heading"
   >
-    Enter Recovery Phrase
+    Enter your recovery phrase
   </h2>
   <!---->
    
@@ -202,7 +201,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
           <h3
             class="h4"
           >
-            Enter your recovery phrase
+            Recovery phrase
           </h3>
            
           <!---->
@@ -274,6 +273,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 1"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -295,6 +295,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 2"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -316,6 +317,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 3"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -337,6 +339,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 4"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -358,6 +361,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 5"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -379,6 +383,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 6"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -400,6 +405,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 7"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -421,6 +427,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 8"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -442,6 +449,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 9"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -463,6 +471,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 10"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -484,6 +493,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 11"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="next"
               inputmode="text"
@@ -505,6 +515,7 @@ exports[`Restore > should render the Mnemonic Authenticate step after accepting 
               aria-label="Word 12"
               autocapitalize="none"
               autocomplete="off"
+              autocorrect="off"
               class="svelte-1dhzni7"
               enterkeyhint="done"
               inputmode="text"
@@ -641,7 +652,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
             <h3
               class="h4"
             >
-              Terms & Privacy Policy
+              Terms & privacy policy
             </h3>
              
             <!---->
@@ -669,7 +680,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
             target="_blank"
           >
             <!---->
-            Terms of Use
+            Terms of use
             
             <!---->
           </a>
@@ -682,7 +693,7 @@ exports[`Restore > should render the Terms of Service step of the Restore flow i
             target="_blank"
           >
             <!---->
-            Privacy Policy
+            Privacy policy
             
             <!---->
           </a>

@@ -61,7 +61,7 @@
 
 {#if !notice && userId}
   <div class="onboarding-wrapper" in:fade|global>
-    <ExistingWalletNotice bind:notice />
+    <ExistingWalletNotice bind:notice flow="restore" />
   </div>
 {:else if !tosAccepted}
   <div class="onboarding-wrapper" in:fade|global>
@@ -82,7 +82,7 @@
         disabled: !isValidMnemonic,
       }}
     >
-      <h2 class="h1" slot="heading">Enter Recovery Phrase</h2>
+      <h2 class="h1" slot="heading">Enter your recovery phrase</h2>
       <MnemonicAuthenticate
         bind:enteredMnemonicPhrase={mnemonicPhrase}
         bind:isValid={isValidMnemonic}
@@ -99,7 +99,7 @@
         disabled: !isValidPassword,
       }}
     >
-      <h2 class="h1" slot="heading">Password Setup</h2>
+      <h2 class="h1" slot="heading">Set a password</h2>
       <PasswordSetup
         bind:password
         bind:isValid={isValidPassword}
@@ -118,7 +118,7 @@
         disabled: !isValidBlockHeight,
       }}
     >
-      <h2 class="h1" slot="heading">Network Syncing</h2>
+      <h2 class="h1" slot="heading">Sync</h2>
       <NetworkSyncing bind:isValid={isValidBlockHeight} bind:blockHeight />
     </WizardStep>
     <WizardStep
@@ -128,7 +128,7 @@
       hideBackButton={true}
       nextButton={{ disabled: !isSyncCompleted }}
     >
-      <h2 class="h1" slot="heading">Network Syncing</h2>
+      <h2 class="h1" slot="heading">Sync</h2>
       <NetworkSyncProgress
         bind:isValid={isSyncCompleted}
         fromBlock={blockHeight}

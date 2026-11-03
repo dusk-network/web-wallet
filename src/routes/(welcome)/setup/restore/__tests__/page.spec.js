@@ -7,6 +7,7 @@ import { ProfileGenerator } from "@dusk/w3sper";
 import * as navigation from "$lib/navigation";
 import {
   mnemonicPhraseResetStore,
+  networkStore,
   settingsStore,
   walletStore,
 } from "$lib/stores";
@@ -89,6 +90,27 @@ describe("Restore", async () => {
     expect(container.firstElementChild).toMatchSnapshot();
   });
 
+  it("should say what restoring removes from this browser and what stays, with Back first and a button that says what it does", async () => {
+    settingsStore.update(setUserId(userId));
+
+    const { getByRole, getByText } = render(Restore);
+    const back = getByRole("link", { name: "Back" });
+    const remove = getByRole("button", { name: "Remove and restore" });
+
+    expect(
+      getByText(
+        "This removes the wallet from this browser, with its settings and contacts. Your DUSK stays on the network. The wallet comes back only with its recovery phrase."
+      )
+    ).toBeInTheDocument();
+    expect(back).toHaveAttribute("href", expect.stringMatching(/\/setup$/));
+    expect(back).toHaveClass("dusk-anchor-button--variant--primary");
+    expect(remove).toHaveClass("dusk-button--variant--tertiary");
+
+    await fireEvent.click(remove);
+
+    expect(getByRole("button", { name: "Accept" })).toBeInTheDocument();
+  });
+
   it("should say that it removes every wallet from this browser where there's more than one", async () => {
     // Public BIP39 test phrases, never a real wallet's.
     await vault.setUp(
@@ -145,7 +167,7 @@ describe("Restore", async () => {
 
     const { container, getByRole } = render(Restore);
 
-    await fireEvent.click(getByRole("button", { name: "Proceed" }));
+    await fireEvent.click(getByRole("button", { name: "Remove and restore" }));
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     expect(container.firstElementChild).toMatchSnapshot();
@@ -203,7 +225,7 @@ describe("Restore", async () => {
     await tick();
 
     expect(getByRole("alert")).toHaveTextContent(
-      "That isn't a valid recovery phrase. Check each word."
+      "These words aren't a valid recovery phrase. Check each word."
     );
     expect(nextButton).toBeDisabled();
   });
@@ -250,8 +272,11 @@ describe("Restore", async () => {
     // Set Password step
     await fireEvent.click(getByRole("switch"));
 
+    // The click doesn't wait for Next's action, which clears the vault.
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    expect(vault.exists()).toBe(false);
+    await vi.waitFor(() => {
+      expect(vault.exists()).toBe(false);
+    });
 
     // Block Height Step
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -281,6 +306,89 @@ describe("Restore", async () => {
     expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
   });
 
+  it("should ask whether to use a password with a switch that says so: on with the password's fields, off without", async () => {
+    const { getByLabelText, getByRole, queryByPlaceholderText } =
+      render(Restore);
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await pasteInto(getByLabelText("Word 1"), mnemonic);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    const usePassword = getByRole("switch", { name: "Use a password" });
+
+    expect(usePassword).toHaveAttribute("aria-checked", "true");
+    expect(queryByPlaceholderText("Set password")).toBeInTheDocument();
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+    await fireEvent.click(usePassword);
+
+    expect(usePassword).toHaveAttribute("aria-checked", "false");
+    expect(queryByPlaceholderText("Set password")).toBeNull();
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
+  it("should start the block height empty, and go on only with a block up to the network's latest", async () => {
+    const heightSpy = vi
+      .spyOn(networkStore, "getCurrentBlockHeight")
+      .mockResolvedValue(1_000_000n);
+    const { getByLabelText, getByRole } = render(Restore);
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await pasteInto(getByLabelText("Word 1"), mnemonic);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    // No password, then the block height.
+    await fireEvent.click(getByRole("switch"));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    const nextButton = getByRole("button", { name: "Next" });
+
+    // Off, the wallet syncs from the first block.
+    expect(nextButton).toBeEnabled();
+
+    await fireEvent.click(getByRole("switch"));
+
+    const field = getByRole("textbox", { name: /block height/i });
+
+    expect(field).toHaveValue("");
+    expect(field).toHaveAccessibleDescription(
+      "The block your wallet was made at, or earlier. Not sure? Leave this off."
+    );
+    expect(nextButton).toBeDisabled();
+
+    // Past the network's latest block, or not a block at all.
+    for (const typed of ["1000001", "12a", " "]) {
+      await fireInput(field, typed);
+
+      expect(nextButton).toBeDisabled();
+    }
+
+    await fireInput(field, "999000");
+    await vi.waitFor(() => expect(nextButton).toBeEnabled());
+
+    // Turned off and on again, it's empty again.
+    await fireEvent.click(getByRole("switch"));
+    await fireEvent.click(getByRole("switch"));
+
+    expect(getByRole("textbox", { name: /block height/i })).toHaveValue("");
+    expect(nextButton).toBeDisabled();
+
+    await fireInput(getByRole("textbox", { name: /block height/i }), "999000");
+    await fireEvent.click(nextButton);
+
+    expect(initWalletSpy).toHaveBeenCalledWith(mnemonic, 999000n);
+
+    await vi.waitUntil(() => clearAndInitSpy.mock.calls.length === 1);
+
+    expect(clearAndInitSpy).toHaveBeenCalledWith(
+      expect.any(ProfileGenerator),
+      999000n,
+      { key: "", n: 1 }
+    );
+
+    heightSpy.mockRestore();
+  });
+
   it("should initialize the wallet with the encrypted mnemonic saved in localStorage", async () => {
     const { getByLabelText, getByPlaceholderText, getByRole } = render(Restore);
 
@@ -300,8 +408,8 @@ describe("Restore", async () => {
     // Set Password step
     expect(vault.exists()).toBe(false);
 
-    await fireInput(asInput(getByPlaceholderText("Set Password")), pwd);
-    await fireInput(asInput(getByPlaceholderText("Confirm Password")), pwd);
+    await fireInput(asInput(getByPlaceholderText("Set password")), pwd);
+    await fireInput(asInput(getByPlaceholderText("Confirm password")), pwd);
 
     expect(vault.exists()).toBe(false);
 

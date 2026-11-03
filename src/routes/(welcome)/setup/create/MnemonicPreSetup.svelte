@@ -24,8 +24,7 @@
   <Agreement
     name="mnemonic_agreement_two"
     bind:checked={agreementTwoChecked}
-    label="I understand that securing my recovery phrase is my own responsibility.
-        Only I have access to my recovery phrase."
+    label="Anyone with these 12 words can take my DUSK. Dusk will never ask for them."
   />
 </IconHeadingCard>
 
@@ -33,5 +32,5 @@
   title="Dusk will not save and cannot retrieve your recovery phrase."
   variant="warning"
 >
-  <p>To proceed, please check all the relevant boxes.</p>
+  <p>Tick both boxes to continue.</p>
 </Banner>

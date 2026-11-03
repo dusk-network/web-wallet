@@ -91,7 +91,7 @@ export function phraseProblem(words, { pasted = 0 } = {}) {
 
   return validateMnemonic(typed.join(" "), wordlist)
     ? ""
-    : "That isn't a valid recovery phrase. Check each word.";
+    : "These words aren't a valid recovery phrase. Check each word.";
 }
 
 /**
