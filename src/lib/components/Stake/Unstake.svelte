@@ -98,6 +98,23 @@
   // What screen readers read with the amount while it's hidden.
   const hiddenNoteId = `${id}-hidden-note`;
 
+  /**
+   * What the review shows and its button sends: the amount and the gas as
+   * Next opened the review. A stake read again later changes neither, while
+   * the review shows nor once the transaction settled. Null while the
+   * amount can be edited.
+   *
+   * @type {{ amount: bigint, gasLimit: bigint, gasPrice: bigint } | null}
+   */
+  let reviewed = null;
+
+  /**
+   * The transaction, sent once, as the review's button is pressed.
+   *
+   * @type {Promise<string> | null}
+   */
+  let sent = null;
+
   const steps = [{ label: "Amount" }, { label: "Review" }, { label: "Done" }];
 
   const dispatch = createEventDispatcher();
@@ -129,6 +146,19 @@
   function setWithdrawAmount(event) {
     amountText = /** @type {HTMLInputElement} */ (event.currentTarget).value;
     isAmountChosen = true;
+  }
+
+  function review() {
+    reviewed = { amount: withdrawAmountInLux, gasLimit, gasPrice };
+    activeStep++;
+  }
+
+  function send() {
+    if (reviewed && !sent) {
+      sent = execute(reviewed.amount, reviewed.gasPrice, reviewed.gasLimit);
+    }
+
+    activeStep++;
   }
 
   onMount(() => {
@@ -210,7 +240,7 @@
         disabled: false,
       }}
       nextButton={{
-        action: () => activeStep++,
+        action: review,
         disabled: isNextButtonDisabled,
       }}
     >
@@ -276,11 +306,14 @@
       step={1}
       {key}
       backButton={{
-        action: () => activeStep--,
+        action: () => {
+          reviewed = null;
+          activeStep--;
+        },
         disabled: false,
       }}
       nextButton={{
-        action: () => activeStep++,
+        action: send,
         icon: {
           path: operationCtaIconPath,
           position: "before",
@@ -289,28 +322,34 @@
         variant: "primary",
       }}
     >
-      <div in:fade|global class="operation__unstake">
-        <ReviewWallet />
-        <ReviewAmount
-          label={operationOverviewLabel}
-          value={formatDuskExact(withdrawAmountInLux, language)}
-        />
-        <ReviewAmount
-          label="Network fee (at most)"
-          value={formatFee(maxGasFee, language, { max: true })}
-        />
-      </div>
+      {#if reviewed}
+        <div in:fade|global class="operation__unstake">
+          <ReviewWallet />
+          <ReviewAmount
+            label={operationOverviewLabel}
+            value={formatDuskExact(reviewed.amount, language)}
+          />
+          <ReviewAmount
+            label="Network fee (at most)"
+            value={formatFee(reviewed.gasLimit * reviewed.gasPrice, language, {
+              max: true,
+            })}
+          />
+        </div>
+      {/if}
     </WizardStep>
 
     <!-- OPERATION RESULT STEP  -->
     <WizardStep step={2} {key} showNavigation={false}>
-      <TransactionResult
-        leaveHref="/dashboard/stake"
-        leaveText="Back to staking"
-        maxFee={maxGasFee}
-        onBeforeLeave={resetOperation}
-        operation={execute(withdrawAmountInLux, gasPrice, gasLimit)}
-      />
+      {#if reviewed && sent}
+        <TransactionResult
+          leaveHref="/dashboard/stake"
+          leaveText="Back to staking"
+          maxFee={reviewed.gasLimit * reviewed.gasPrice}
+          onBeforeLeave={resetOperation}
+          operation={sent}
+        />
+      {/if}
     </WizardStep>
   </Wizard>
 </div>

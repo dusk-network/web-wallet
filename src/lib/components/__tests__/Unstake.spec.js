@@ -278,6 +278,57 @@ describe("Unstake", () => {
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
     });
 
+    it("should send once, and nothing more once the stake read again after it settles shows less", async () => {
+      const { container, getByRole, rerender } = render(Unstake, {
+        ...baseProps,
+        ...unstakeProps,
+      });
+
+      await vi.advanceTimersToNextTimerAsync();
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Unstake" }));
+
+      // It settled: nothing staked now, and the fee paid.
+      await rerender({ availableBalance: 9_999_000_000_000n });
+      await rerender({ maxWithdrawAmount: 0n });
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(baseProps.execute).toHaveBeenCalledOnce();
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        unstakeProps.maxWithdrawAmount,
+        baseProps.gasSettings.gasPrice,
+        baseProps.gasSettings.gasLimit
+      );
+      expect(
+        container.querySelector(".tx-result, [role='status']")
+      ).toBeTruthy();
+    });
+
+    it("should send the amount the review shows, though the stake is read again while it shows", async () => {
+      const { container, getByRole, rerender } = render(Unstake, {
+        ...baseProps,
+        ...unstakeProps,
+      });
+
+      await vi.advanceTimersToNextTimerAsync();
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await rerender({ maxWithdrawAmount: 100_000_000_000n });
+
+      expect(getReviewAmounts(container)[0]).toStrictEqual([
+        "Unstake Amount",
+        "278 DUSK",
+      ]);
+
+      await fireEvent.click(getByRole("button", { name: "Unstake" }));
+
+      expect(baseProps.execute).toHaveBeenCalledOnce();
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        278_000_000_000n,
+        baseProps.gasSettings.gasPrice,
+        baseProps.gasSettings.gasLimit
+      );
+    });
+
     it("should not allow to unstake, if wrong gas settings are provided", async () => {
       /** @type {import("svelte").ComponentProps<Unstake>} */
       const props = {
@@ -357,6 +408,26 @@ describe("Unstake", () => {
       expect(getByText("8dcf6f…3db55e")).toBeInTheDocument();
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
+    });
+
+    it("should claim once, and nothing more once the rewards read again after it settles are none", async () => {
+      const { getByRole, rerender } = render(Unstake, {
+        ...baseProps,
+        ...claimRewardsProps,
+      });
+
+      await vi.advanceTimersToNextTimerAsync();
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
+      await rerender({ maxWithdrawAmount: 0n });
+      await vi.advanceTimersToNextTimerAsync();
+
+      expect(baseProps.execute).toHaveBeenCalledOnce();
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        claimRewardsProps.maxWithdrawAmount,
+        baseProps.gasSettings.gasPrice,
+        baseProps.gasSettings.gasLimit
+      );
     });
 
     it("should say when an amount is more than the rewards", async () => {
