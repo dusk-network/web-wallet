@@ -48,14 +48,36 @@ const history = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("$lib/activity", async (importOriginal) => ({
-  .../** @type {typeof import("$lib/activity")} */ (await importOriginal()),
-  activityFor: vi.fn(() => history.session),
-  clearActivityStore: vi.fn(async () => {}),
-  currentActivity: vi.fn(() => history.session),
-  getShieldedHistory: vi.fn(async () => ({ entries: [] })),
-  stopActivity: vi.fn(),
+const emptyActivity = {
+  complete: false,
+  error: null,
+  hasMore: false,
+  loaded: false,
+  rows: [],
+  syncing: false,
+};
+
+/** The history the wallet shows, as the test sets it. */
+const shown = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any>} */
+  state: /** @type {any} */ (null),
 }));
+
+vi.mock("$lib/activity", async (importOriginal) => {
+  const { writable } = await import("svelte/store");
+
+  shown.state = writable({ loaded: false, rows: [] });
+
+  return {
+    .../** @type {typeof import("$lib/activity")} */ (await importOriginal()),
+    activityFor: vi.fn(() => history.session),
+    activityState: { subscribe: shown.state.subscribe },
+    clearActivityStore: vi.fn(async () => {}),
+    currentActivity: vi.fn(() => history.session),
+    getShieldedHistory: vi.fn(async () => ({ entries: [] })),
+    stopActivity: vi.fn(),
+  };
+});
 
 describe("Wallet store", async () => {
   const AUTO_SYNC_INTERVAL = !isNaN(Number(VITE_SYNC_INTERVAL))
@@ -1410,6 +1432,52 @@ describe("Wallet store", async () => {
           ]);
         } finally {
           removed.mockRestore();
+          vi.useFakeTimers();
+        }
+      });
+
+      it("should be let go once the history has it from a block and the stake was read, should the node's queue not say so", async () => {
+        vi.useRealTimers();
+
+        const network = await networkStore.connect();
+        const scope = Object.getPrototypeOf(network.transactions.withId(""));
+        const removed = vi
+          .spyOn(scope, "removed")
+          .mockRejectedValueOnce(new Error("Unable to subscribe"));
+        const fresh = { ...stakeInfo, reward: 1n };
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "Seen-TX",
+          nonce: 1n,
+        });
+
+        try {
+          await walletStore.stake(amount, gas);
+          await vi.waitUntil(() => removed.mock.calls.length === 1);
+
+          // The wallet's own record of it says nothing of a block.
+          shown.state.set({
+            ...emptyActivity,
+            loaded: true,
+            rows: [{ hash: "seen-tx", source: "sent" }],
+          });
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          expect(get(walletStore).pendingStakes).toHaveLength(1);
+
+          stakeInfoSpy.mockResolvedValueOnce(fresh);
+          shown.state.set({
+            ...emptyActivity,
+            loaded: true,
+            rows: [{ hash: "seen-tx", source: "public" }],
+          });
+          await vi.waitUntil(() => !get(walletStore).pendingStakes.length);
+
+          expect(get(walletStore).stakeInfo).toBe(fresh);
+        } finally {
+          removed.mockRestore();
+          shown.state.set(emptyActivity);
           vi.useFakeTimers();
         }
       });

@@ -10,6 +10,7 @@ import { configuredBridge } from "$lib/bridge/bridgeCalls";
 import {
   TX_KIND,
   activityFor,
+  activityState,
   clearActivityStore,
   currentActivity,
   getShieldedHistory,
@@ -228,7 +229,8 @@ const refreshOnRemoval = (txInfo, after) =>
  * node took it out of its queue (`refreshed`), or else at each automatic
  * sync's interval, a sync the hold starts and waits for. Not when the
  * queue can't be followed, nor when the sync fails: the stake read then is
- * the one from before. After two intervals without one, the buttons come
+ * the one from before. Also once the history has it from a block and the
+ * stake is read then. After two intervals without one, the buttons come
  * back all the same, the stake said to be maybe out of date (`stale`)
  * until it's read.
  *
@@ -243,6 +245,11 @@ function holdStaking(profile, hash, after, refreshed) {
   let refreshId = 0;
 
   const isCurrent = () => !isDone && session === walletSession;
+  const txHash = hash.toLowerCase();
+  let isInBlock = false;
+
+  /** @type {() => void} */
+  let stopWatching = () => {};
 
   /**
    * @param {(stakes: WalletStoreContent["pendingStakes"]) => WalletStoreContent["pendingStakes"]} change
@@ -258,6 +265,7 @@ function holdStaking(profile, hash, after, refreshed) {
       isDone = true;
       window.clearTimeout(refreshId);
       window.clearTimeout(deadlineId);
+      stopWatching();
       changeStakes((stakes) => stakes.filter((sent) => sent.hash !== hash));
     }
   };
@@ -290,6 +298,25 @@ function holdStaking(profile, hash, after, refreshed) {
     { account: String(profile.account), hash },
   ]);
   refreshed.then(release, () => {});
+
+  // The history has it from a block: it left the queue, said so or not.
+  stopWatching = activityState.subscribe(({ rows }) => {
+    if (!isCurrent()) {
+      stopWatching();
+    } else if (
+      !isInBlock &&
+      rows.some((row) => row.hash === txHash && row.source !== "sent")
+    ) {
+      isInBlock = true;
+      updateStaticInfo().then(([, stake]) => {
+        if (stake.status === "fulfilled") {
+          release();
+        } else {
+          isInBlock = false;
+        }
+      });
+    }
+  });
 }
 
 /** @type {<T>(fn: (v: T) => any) => (a: T) => T} */
