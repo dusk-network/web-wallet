@@ -3,6 +3,7 @@
   import {
     mdiAlertCircleOutline,
     mdiCheck,
+    mdiChevronDown,
     mdiClose,
     mdiOpenInNew,
     mdiSendOutline,
@@ -529,7 +530,12 @@
     </dl>
 
     <details class="tx-detail__tech">
-      <summary>Technical details</summary>
+      <summary
+        >Technical details<Icon
+          className="section-chevron"
+          path={mdiChevronDown}
+        /></summary
+      >
       <dl class="tx-detail__list tx-detail__list--tech">
         {#if contract}
           <div class="tx-detail__wide">
@@ -903,6 +909,8 @@
       min-height: 44px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
       font-size: 0.875rem;
       cursor: pointer;
     }

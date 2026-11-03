@@ -124,6 +124,14 @@ describe("TransactionDetail", () => {
     setNodeNetwork(null);
   });
 
+  it("should show with a chevron that Technical details opens", () => {
+    const { container } = show(row({}));
+
+    expect(
+      container.querySelector(".tx-detail__tech summary .section-chevron")
+    ).toBeInTheDocument();
+  });
+
   it("should say which .dusk name a registration registered, with Dusk Domains' contract under Technical details only", () => {
     setNodeNetwork(networks.testnet);
 
