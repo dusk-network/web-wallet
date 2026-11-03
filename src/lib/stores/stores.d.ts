@@ -187,6 +187,15 @@ type WalletStoreServices = {
   reset: () => void;
 
   /**
+   * Syncs the open wallet again from a block, once what it synced is
+   * cleared: one at a time.
+   */
+  resync: (fromBlock: bigint) => Promise<void>;
+
+  /** The block a resync syncs from, while it runs: null for none. */
+  resyncing: Readable<bigint | null>;
+
+  /**
    * Proves or claims a DuskEVM withdrawal: the Portal's call as
    * `@dusk-network/app-core/duskevm-withdrawals` gave it, signed as it is.
    */
@@ -222,8 +231,11 @@ type WalletStoreServices = {
     options?: { syncFromBlock?: bigint }
   ) => Promise<void>;
 
-  /** Rejects on sync failure or cancellation; syncStatus also records current-session errors. */
-  sync: (fromBlock?: bigint) => Promise<void>;
+  /**
+   * Rejects on sync failure or cancellation; syncStatus also records
+   * current-session errors. `clear` clears the cache first.
+   */
+  sync: (fromBlock?: bigint, options?: { clear?: boolean }) => Promise<void>;
 
   /** `toName` is the `.dusk` name typed for `to`, kept in the history. */
   transfer: (

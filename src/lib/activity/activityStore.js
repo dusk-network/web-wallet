@@ -452,13 +452,17 @@ export async function putArchiveRefusal(url, at = Date.now()) {
 /**
  * Forget one wallet's history, a removed wallet's: its accounts' public
  * history, sync states and own transactions, and its addresses' shielded
- * history, on every network. Nothing of another wallet's, and the reset
- * count stays.
+ * history, on every network; or only the parts `tables` names, as a resync
+ * does. Nothing of another wallet's, and the reset count stays.
  *
  * @param {{ accounts: string[], addresses: string[] }} wallet Its profiles'
  *   public accounts and shielded addresses
+ * @param {Array<"entries" | "local" | "meta" | "shielded">} [tables]
  */
-export async function forgetWalletActivity({ accounts, addresses }) {
+export async function forgetWalletActivity(
+  { accounts, addresses },
+  tables = ["entries", "local", "meta", "shielded"]
+) {
   const own = new Set([...accounts, ...addresses].map(String).filter(Boolean));
 
   if (!own.size) {
@@ -473,12 +477,8 @@ export async function forgetWalletActivity({ accounts, addresses }) {
     return key !== LIFECYCLE && at > 0 && own.has(key.slice(at + 2));
   };
 
-  await db.transaction("rw", ["entries", "local", "meta", "shielded"], () =>
-    Promise.all(
-      ["entries", "local", "meta", "shielded"].map((name) =>
-        db.table(name).filter(isOwn).delete()
-      )
-    )
+  await db.transaction("rw", tables, () =>
+    Promise.all(tables.map((name) => db.table(name).filter(isOwn).delete()))
   );
 }
 

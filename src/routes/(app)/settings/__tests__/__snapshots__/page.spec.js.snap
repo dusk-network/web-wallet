@@ -2818,6 +2818,80 @@ exports[`Settings > should show the wallet creation block height under Advanced 
           <!---->
         </div>
         <!---->
+         
+        <div
+          aria-labelledby="settings-resync"
+          class="settings-group__control settings-group__control--with-label"
+          role="group"
+        >
+          <span
+            id="settings-resync"
+          >
+            Resync
+          </span>
+           
+          <p
+            class="settings-group__note"
+          >
+            Syncs this wallet again from the block you choose, after clearing
+              its synced balances and history on this device. It can take a
+              while. Contacts, settings and names stay.
+          </p>
+           
+          <label
+            class="settings-group__control settings-group__control--with-label"
+          >
+            <span>
+              From
+            </span>
+             
+            <select
+              class="dusk-select settings-group__control settings-group__control--with-label"
+            >
+              <!---->
+              <!---->
+              <option
+                value="creation"
+              >
+                Creation block, 123
+              </option>
+              <option
+                value="genesis"
+              >
+                Genesis, block 0
+              </option>
+              <option
+                value="typed"
+              >
+                Another block
+              </option>
+              
+              <!---->
+              <!---->
+            </select>
+            <!---->
+          </label>
+           
+          <!---->
+           
+          <div
+            class="settings-group__buttons"
+          >
+            <button
+              class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--default"
+              type="button"
+            >
+              <span
+                class="dusk-button__text"
+              >
+                Resync
+              </span>
+              <!---->
+            </button>
+            <!---->
+          </div>
+          <!---->
+        </div>
       </div>
       <!---->
     </article>

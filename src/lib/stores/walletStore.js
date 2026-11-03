@@ -13,6 +13,7 @@ import {
   activityState,
   clearActivityStore,
   currentActivity,
+  forgetWalletActivity,
   getShieldedHistory,
   isHistoryEnabled,
   stopActivity,
@@ -973,7 +974,7 @@ const topUpStake = async (amount, gas) => {
 };
 
 /** @type {WalletStoreServices["sync"]} */
-async function sync(fromBlock) {
+async function sync(fromBlock, { clear = false } = {}) {
   const session = walletSession;
   const store = get(walletStore);
 
@@ -1033,7 +1034,7 @@ async function sync(fromBlock) {
       }
 
       ensureCurrent();
-      if (from === 0n) {
+      if (from === 0n || clear) {
         await treasury.clearCache();
       }
       ensureCurrent();
@@ -1120,6 +1121,64 @@ async function sync(fromBlock) {
   }
 
   await syncPromise;
+}
+
+/**
+ * The block a resync syncs the open wallet from, while it runs: null for
+ * none.
+ */
+const resyncFrom = writable(/** @type {bigint | null} */ (null));
+
+/**
+ * Syncs the open wallet again from `fromBlock`, once what it synced is
+ * cleared: its cache of notes, balances and where the sync got to, and its
+ * public history, which the archive gives again. Its shielded history keeps
+ * the heights it asks the archive among, and is worked out again from the
+ * notes found. The contacts, settings, names, the vault and the other
+ * wallets stay as they are. The sync under way, if any, stops for it, and
+ * one resync runs at a time: another is refused meanwhile. Once another
+ * wallet opened, or after a lock, it stops (WalletChangedError).
+ *
+ * @type {WalletStoreServices["resync"]}
+ */
+async function resync(fromBlock) {
+  const { initialized, profiles } = get(walletStore);
+
+  if (!initialized) {
+    throw new Error(
+      "The wallet store needs to be initialized with a profile generator"
+    );
+  }
+
+  if (get(resyncFrom) !== null) {
+    throw new Error("The wallet is syncing again already.");
+  }
+
+  const stillOpen = whileOpen();
+
+  resyncFrom.set(fromBlock);
+
+  try {
+    stopActivity();
+    await forgetWalletActivity(
+      {
+        accounts: profiles.map((profile) => String(profile.account)),
+        addresses: [],
+      },
+      ["entries", "meta"]
+    );
+    stillOpen();
+
+    // This sync takes the place of the one under way at once, and clears
+    // the cache before it finds any note.
+    abortSync();
+    await sync(fromBlock, { clear: true }).catch((error) => {
+      throw stillOpen(error);
+    });
+    await updateStaticInfo();
+  } finally {
+    resyncFrom.set(null);
+  }
 }
 
 /** @type {WalletStoreServices["transfer"]} */
@@ -1312,6 +1371,8 @@ export default {
   refreshBalance,
   releaseWallet,
   reset,
+  resync,
+  resyncing: { subscribe: resyncFrom.subscribe },
   sendDuskEvmWithdrawalCall,
   setCurrentProfile,
   shield,
