@@ -53,20 +53,21 @@
 <style lang="postcss">
   .setup-content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
 
     &__wrapper {
+      flex: 1;
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
-      height: 100%;
     }
 
     &__options {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
       gap: 1.25rem;
-      height: 100%;
 
       &-group {
         display: flex;

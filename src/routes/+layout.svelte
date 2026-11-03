@@ -67,11 +67,8 @@
 
 <style>
   .app {
-    height: 100%;
-    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    overflow-y: hidden;
+    min-height: 100%;
   }
 </style>

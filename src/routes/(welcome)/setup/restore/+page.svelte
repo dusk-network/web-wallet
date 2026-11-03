@@ -82,10 +82,7 @@
         disabled: !isValidMnemonic,
       }}
     >
-      <h2 class="h1" slot="heading">
-        Enter<br />
-        <mark>Recovery Phrase</mark>
-      </h2>
+      <h2 class="h1" slot="heading">Enter Recovery Phrase</h2>
       <MnemonicAuthenticate
         bind:enteredMnemonicPhrase={mnemonicPhrase}
         bind:isValid={isValidMnemonic}
@@ -102,10 +99,7 @@
         disabled: !isValidPassword,
       }}
     >
-      <h2 class="h1" slot="heading">
-        <mark>Password</mark><br />
-        Setup
-      </h2>
+      <h2 class="h1" slot="heading">Password Setup</h2>
       <PasswordSetup
         bind:password
         bind:isValid={isValidPassword}
@@ -124,10 +118,7 @@
         disabled: !isValidBlockHeight,
       }}
     >
-      <h2 class="h1" slot="heading">
-        Network<br />
-        <mark>Syncing</mark>
-      </h2>
+      <h2 class="h1" slot="heading">Network Syncing</h2>
       <NetworkSyncing bind:isValid={isValidBlockHeight} bind:blockHeight />
     </WizardStep>
     <WizardStep
@@ -137,10 +128,7 @@
       hideBackButton={true}
       nextButton={{ disabled: !isSyncCompleted }}
     >
-      <h2 class="h1" slot="heading">
-        Network<br />
-        <mark>Syncing</mark>
-      </h2>
+      <h2 class="h1" slot="heading">Network Syncing</h2>
       <NetworkSyncProgress
         bind:isValid={isSyncCompleted}
         fromBlock={blockHeight}
@@ -158,18 +146,8 @@
         disabled: false,
       }}
     >
-      <h2 class="h1" slot="heading">
-        Welcome to<br />
-        <mark>Dusk</mark>
-      </h2>
+      <h2 class="h1" slot="heading">Welcome to Dusk</h2>
       <AllSet />
     </WizardStep>
   </Wizard>
 {/if}
-
-<style>
-  .onboarding-wrapper {
-    height: 100%;
-    overflow-y: auto;
-  }
-</style>

@@ -49,9 +49,7 @@ const setUserId = (userId) => (settings) => ({ ...settings, userId });
 
 /** @param {HTMLElement} container */
 const getTextInput = (container) =>
-  /** @type {HTMLInputElement} */ (
-    container.querySelector("[type='password']")
-  );
+  /** @type {HTMLInputElement} */ (container.querySelector("form input"));
 
 describe("Unlock Wallet", async () => {
   const mnemonic = generateMnemonic();
@@ -162,6 +160,17 @@ describe("Unlock Wallet", async () => {
       const { container } = render(UnlockWallet, {});
 
       expect(container.firstElementChild).toMatchSnapshot();
+    });
+
+    it("should take the recovery phrase in a text field the browser keeps no record of, not in a password field it offers to save", () => {
+      const { container } = render(UnlockWallet, {});
+      const field = getTextInput(container);
+
+      expect(field).toHaveAttribute("type", "text");
+      expect(field).toHaveAttribute("autocomplete", "off");
+      expect(field).toHaveAttribute("autocapitalize", "none");
+      expect(field).toHaveAttribute("spellcheck", "false");
+      expect(container.querySelector("input[type='password']")).toBeNull();
     });
 
     it("should show an error message if the user enters an invalid mnemonic", async () => {
@@ -337,6 +346,14 @@ describe("Unlock Wallet", async () => {
       const { container } = render(UnlockWallet, {});
 
       expect(container.firstElementChild).toMatchSnapshot();
+    });
+
+    it("should take the password in a password field, as the current password", () => {
+      const { container } = render(UnlockWallet, {});
+      const field = getTextInput(container);
+
+      expect(field).toHaveAttribute("type", "password");
+      expect(field).toHaveAttribute("autocomplete", "current-password");
     });
 
     it("should show an error message if the user enters the wrong password", async () => {

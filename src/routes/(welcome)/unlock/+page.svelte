@@ -130,10 +130,7 @@
 </script>
 
 <section class="login">
-  <h2 class="h1">
-    Unleash <mark>RWA</mark> and<br />
-    <mark>Decentralized Finance</mark>
-  </h2>
+  <h2 class="h1">Unleash RWA and Decentralized Finance</h2>
   <div class="login">
     <IconHeadingCard
       tag="article"
@@ -145,6 +142,9 @@
         class="login__form"
         on:submit|preventDefault={handleUnlockWalletSubmit}
       >
+        <!-- A recovery phrase is no password: no password field, so that
+          the browser offers no save, and text it keeps no record of, as
+          Restore's word boxes take it. -->
         <Textbox
           bind:this={fldSecret}
           bind:value={secretText}
@@ -152,8 +152,10 @@
           aria-label={modeLabel}
           placeholder={modeLabel}
           required
-          type="password"
-          autocomplete="current-password"
+          type={hasPassword ? "password" : "text"}
+          autocapitalize={hasPassword ? undefined : "none"}
+          autocomplete={hasPassword ? "current-password" : "off"}
+          spellcheck={hasPassword ? undefined : "false"}
           autofocus
         />
         {#if error instanceof InvalidMnemonicError}
@@ -211,8 +213,6 @@
   }
 
   .login {
-    height: 100%;
-    overflow-y: auto;
     gap: var(--large-gap);
 
     &__form {

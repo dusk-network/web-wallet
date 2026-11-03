@@ -7,12 +7,12 @@
   import { BALANCE_MASK } from "$lib/constants";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
-    duskToLux,
     formatDusk,
     formatDuskExact,
+    formatDuskPlain,
     formatFee,
-    luxToDusk,
   } from "$lib/dusk/currency";
+  import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID } from "$lib/dusk/string";
   import { settingsStore } from "$lib/stores";
 
@@ -24,16 +24,18 @@
     WizardStep,
   } from "$lib/dusk/components";
   import {
-    Banner,
-    DuskIcon,
+    BalanceValue,
     GasSettings,
     ReviewAmount,
     ReviewWallet,
     TransactionResult,
   } from "$lib/components";
 
-  import { toast } from "$lib/dusk/components/Toast/store";
-  import { mdiAlertOutline } from "@mdi/js";
+  import {
+    checkAmount,
+    normalizeDuskInput,
+    parseDuskInput,
+  } from "./stakeAmount";
 
   /** @type {(...args: any[]) => Promise<string>} */
   export let execute;
@@ -71,12 +73,20 @@
   let defaultGas = gasSettings;
   let isGasValid = false;
 
+  const id = randomUUID();
+
   /**
-   * We are forced to keep `amount`
-   * as number if we want to use
-   * Svelte's binding.
+   * An amount in DUSK as the field shows it, with the language's decimal
+   * separator.
+   *
+   * @param {bigint} lux
    */
-  let withdrawAmount = luxToDusk(maxWithdrawAmount);
+  const asTyped = (lux) =>
+    formatDuskPlain(lux).replace(".", getDecimalSeparator());
+
+  // The amount as typed, as in the other amount fields: it starts at all
+  // that can be withdrawn.
+  let amountText = asTyped(maxWithdrawAmount);
 
   /**
    * Whether the user typed an amount or used the maximum. The amount
@@ -86,7 +96,24 @@
   let isAmountChosen = false;
 
   // What screen readers read with the amount while it's hidden.
-  const hiddenNoteId = `${randomUUID()}-hidden-note`;
+  const hiddenNoteId = `${id}-hidden-note`;
+
+  /**
+   * What the review shows and its button sends: the amount and the gas as
+   * Next opened the review. A stake read again later changes neither, while
+   * the review shows nor once the transaction settled. Null while the
+   * amount can be edited.
+   *
+   * @type {{ amount: bigint, gasLimit: bigint, gasPrice: bigint } | null}
+   */
+  let reviewed = null;
+
+  /**
+   * The transaction, sent once, as the review's button is pressed.
+   *
+   * @type {Promise<string> | null}
+   */
+  let sent = null;
 
   const steps = [{ label: "Amount" }, { label: "Review" }, { label: "Done" }];
 
@@ -110,38 +137,37 @@
   };
 
   function setMaxAmount() {
-    if (!isGasValid) {
-      toast("error", "Please set valid gas settings first", mdiAlertOutline);
-      return;
-    }
-
-    if (availableBalance < maxGasFee) {
-      toast(
-        "error",
-        "You don't have enough DUSK to cover the transaction fee",
-        mdiAlertOutline
-      );
-      return;
-    }
-
-    withdrawAmount = luxToDusk(maxWithdrawAmount);
+    amountText = asTyped(maxWithdrawAmount);
     isAmountChosen = true;
+    document.getElementById(`${id}-amount`)?.focus();
   }
 
   /** @param {Event} event */
   function setWithdrawAmount(event) {
-    withdrawAmount = /** @type {HTMLInputElement} */ (event.currentTarget)
-      .valueAsNumber;
+    amountText = /** @type {HTMLInputElement} */ (event.currentTarget).value;
     isAmountChosen = true;
+  }
+
+  function review() {
+    reviewed = { amount: withdrawAmountInLux, gasLimit, gasPrice };
+    activeStep++;
+  }
+
+  function send() {
+    if (reviewed && !sent) {
+      sent = execute(reviewed.amount, reviewed.gasPrice, reviewed.gasLimit);
+    }
+
+    activeStep++;
   }
 
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
 
-  $: withdrawAmountInLux = withdrawAmount ? duskToLux(withdrawAmount) : 0n;
   $: ({ hideBalances, language } = $settingsStore);
   $: isAmountHidden = hideBalances && !isAmountChosen;
+  $: isUnstake = minStakeRequirement !== undefined;
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
@@ -159,26 +185,45 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
 
-  // Check if the available balance is sufficient to cover the max gas fee.
-  // This is a prerequisite for any transaction.
-  $: isBalanceSufficientForGas = availableBalance >= maxGasFee;
-
-  // Validate that the unstake amount is within allowable limits:
-  // - If unstaking, the remaining amount after unstaking must be at least the minimum stake requirement.
-  // - If unstaking everything, the above condition is not applicable.
-  // - At most the maximum amount available to withdraw
-  $: isWithdrawAmountValid =
-    minStakeRequirement !== undefined
-      ? (withdrawAmountInLux === maxWithdrawAmount ||
-          maxWithdrawAmount - withdrawAmountInLux >= minStakeRequirement) &&
-        withdrawAmountInLux <= maxWithdrawAmount
-      : withdrawAmountInLux <= maxWithdrawAmount;
-
-  $: isNextButtonDisabled = !(
-    isWithdrawAmountValid &&
-    isGasValid &&
-    isBalanceSufficientForGas
+  // A decimal comma, as the language or a phone's keyboard gives it, reads
+  // as the amount meant, as in the other amount fields.
+  $: amount = parseDuskInput(
+    normalizeDuskInput(amountText, getDecimalSeparator())
   );
+
+  // At most all that can be withdrawn, with the fee paid from the public
+  // balance, and said as the other amount fields say it.
+  $: checked = checkAmount({
+    action: "unstake",
+    amount,
+    available: availableBalance,
+    fee: maxGasFee,
+    locale: language,
+    most: {
+      amount: maxWithdrawAmount,
+      error: isUnstake
+        ? "That's more than you have staked."
+        : "That's more than your rewards.",
+    },
+    text: amountText,
+  });
+
+  // An unstake leaves at least the minimum staked, or nothing.
+  $: leavesTooLittle =
+    isUnstake &&
+    checked.ok &&
+    amount !== maxWithdrawAmount &&
+    maxWithdrawAmount - /** @type {bigint} */ (amount) <
+      /** @type {bigint} */ (minStakeRequirement);
+
+  $: check = leavesTooLittle
+    ? {
+        error: `Leave at least ${formatDusk(/** @type {bigint} */ (minStakeRequirement), language)} DUSK staked, or unstake it all.`,
+        ok: false,
+      }
+    : checked;
+  $: withdrawAmountInLux = amount !== null && check.ok ? amount : 0n;
+  $: isNextButtonDisabled = !(check.ok && isGasValid);
 </script>
 
 <div class="operation">
@@ -195,39 +240,54 @@
         disabled: false,
       }}
       nextButton={{
-        action: () => activeStep++,
+        action: review,
         disabled: isNextButtonDisabled,
       }}
     >
-      <div class="operation__amount-wrapper">
-        <p>Amount:</p>
-        <Button
-          size="small"
-          variant="tertiary"
-          on:click={setMaxAmount}
-          text="Use max"
-        />
-      </div>
-
-      <div class="operation__input-wrapper">
-        <Textbox
-          className="operation__input-field"
-          value={isAmountHidden ? "" : withdrawAmount}
-          placeholder={isAmountHidden ? BALANCE_MASK : undefined}
-          aria-describedby={isAmountHidden ? hiddenNoteId : undefined}
-          on:input={setWithdrawAmount}
-          type="number"
-          min={minStakeRequirement !== undefined
-            ? maxWithdrawAmount - withdrawAmountInLux >= minStakeRequirement
-            : undefined}
-          max={luxToDusk(maxWithdrawAmount)}
-          required
-          step="0.000000001"
-        />
-        <DuskIcon />
-        {#if isAmountHidden}
-          <span hidden id={hiddenNoteId}>hidden</span>
-        {/if}
+      <div class="operation__field">
+        <label class="operation__label" for="{id}-amount">Amount</label>
+        <div class="operation__amount">
+          <Textbox
+            aria-describedby={isAmountHidden
+              ? hiddenNoteId
+              : `${id}-available ${id}-check`}
+            aria-invalid={Boolean(check.error)}
+            autocomplete="off"
+            className="operation__input"
+            id="{id}-amount"
+            inputmode="decimal"
+            on:input={setWithdrawAmount}
+            placeholder={isAmountHidden ? BALANCE_MASK : undefined}
+            type="text"
+            value={isAmountHidden ? "" : amountText}
+          />
+          <span aria-hidden="true" class="operation__unit">DUSK</span>
+          <Button
+            disabled={maxWithdrawAmount <= 0n}
+            on:click={setMaxAmount}
+            size="small"
+            text="Max"
+            title={isUnstake ? "All you have staked" : "All your rewards"}
+            variant="secondary"
+          />
+          {#if isAmountHidden}
+            <span hidden id={hiddenNoteId}>hidden</span>
+          {/if}
+        </div>
+        <p class="operation__hint" id="{id}-available">
+          {isUnstake ? "Staked" : "Rewards"}
+          <BalanceValue
+            exact={formatDuskExact(maxWithdrawAmount, language)}
+            value={formatDusk(maxWithdrawAmount, language)}
+          /> DUSK
+        </p>
+        <div id="{id}-check">
+          {#if check.error}
+            <p class="operation__error" role="alert">
+              <strong>{check.error}</strong>
+            </p>
+          {/if}
+        </div>
       </div>
 
       <GasSettings
@@ -239,27 +299,6 @@
         priceLower={gasLimits.gasPriceLower}
         on:gasSettings={setGasValues}
       />
-
-      {#if !isBalanceSufficientForGas}
-        <Banner variant="error" title="Insufficient balance for gas fees">
-          <p>Add funds or lower the gas limit.</p>
-        </Banner>
-      {:else if withdrawAmountInLux > maxWithdrawAmount}
-        <Banner
-          variant="error"
-          title="Withdraw amount exceeds available balance"
-        />
-      {:else if minStakeRequirement && maxWithdrawAmount !== withdrawAmountInLux && maxWithdrawAmount - withdrawAmountInLux < minStakeRequirement}
-        <Banner
-          variant="error"
-          title="Remaining staked amount below minimum requirement"
-        >
-          <p>
-            Leave at least {formatDusk(minStakeRequirement, language)} DUSK staked,
-            or unstake it all.
-          </p>
-        </Banner>
-      {/if}
     </WizardStep>
 
     <!-- OPERATION OVERVIEW STEP  -->
@@ -267,11 +306,14 @@
       step={1}
       {key}
       backButton={{
-        action: () => activeStep--,
+        action: () => {
+          reviewed = null;
+          activeStep--;
+        },
         disabled: false,
       }}
       nextButton={{
-        action: () => activeStep++,
+        action: send,
         icon: {
           path: operationCtaIconPath,
           position: "before",
@@ -280,28 +322,34 @@
         variant: "primary",
       }}
     >
-      <div in:fade|global class="operation__unstake">
-        <ReviewWallet />
-        <ReviewAmount
-          label={operationOverviewLabel}
-          value={formatDuskExact(withdrawAmountInLux, language)}
-        />
-        <ReviewAmount
-          label="Network fee (at most)"
-          value={formatFee(maxGasFee, language, { max: true })}
-        />
-      </div>
+      {#if reviewed}
+        <div in:fade|global class="operation__unstake">
+          <ReviewWallet />
+          <ReviewAmount
+            label={operationOverviewLabel}
+            value={formatDuskExact(reviewed.amount, language)}
+          />
+          <ReviewAmount
+            label="Network fee (at most)"
+            value={formatFee(reviewed.gasLimit * reviewed.gasPrice, language, {
+              max: true,
+            })}
+          />
+        </div>
+      {/if}
     </WizardStep>
 
     <!-- OPERATION RESULT STEP  -->
     <WizardStep step={2} {key} showNavigation={false}>
-      <TransactionResult
-        leaveHref="/dashboard/stake"
-        leaveText="Back to staking"
-        maxFee={maxGasFee}
-        onBeforeLeave={resetOperation}
-        operation={execute(withdrawAmountInLux, gasPrice, gasLimit)}
-      />
+      {#if reviewed && sent}
+        <TransactionResult
+          leaveHref="/dashboard/stake"
+          leaveText="Back to staking"
+          maxFee={reviewed.gasLimit * reviewed.gasPrice}
+          onBeforeLeave={resetOperation}
+          operation={sent}
+        />
+      {/if}
     </WizardStep>
   </Wizard>
 </div>
@@ -314,19 +362,48 @@
       gap: 1.2em;
     }
 
-    &__amount-wrapper,
-    &__input-wrapper {
+    /* As the other amount fields: Send's, and staking's. */
+    &__field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    &__label {
+      color: var(--calm-muted);
+      font-size: 0.875rem;
+    }
+
+    &__amount {
       display: flex;
       align-items: center;
-      width: 100%;
+      gap: 0.5rem;
+
+      & :global(.operation__input) {
+        flex: 1;
+        min-width: 0;
+        height: 3.25rem;
+        font-size: 1.25rem;
+        font-variant-numeric: tabular-nums;
+      }
     }
 
-    &__amount-wrapper {
-      justify-content: space-between;
+    &__unit {
+      color: var(--calm-muted);
     }
 
-    &__input-wrapper {
-      column-gap: var(--default-gap);
+    &__hint {
+      color: var(--calm-muted);
+      font-size: 0.84375rem;
+    }
+
+    &__error {
+      font-size: 0.875rem;
+
+      & strong {
+        color: var(--calm-danger);
+        font-weight: 500;
+      }
     }
   }
 </style>

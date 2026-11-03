@@ -24,6 +24,13 @@
   /** @type {boolean} */
   export let settingsOpen = false;
 
+  /**
+   * The bar with the brand alone, for the screens before a wallet opens:
+   * no pages, search, network, profile or settings to go to, and a brand
+   * that leads nowhere.
+   */
+  export let bare = false;
+
   const dispatch = createEventDispatcher();
 
   /**
@@ -69,69 +76,78 @@
 </script>
 
 <header class="top-bar">
-  <a
-    aria-label="Dusk Wallet, home"
-    class="top-bar__brand"
-    href={addBasePath("/dashboard")}
-  >
-    <DuskGlyph />
-    <DuskWordmark />
-    <span aria-hidden="true" class="top-bar__divider"></span>
-    <span class="top-bar__app">Wallet</span>
-  </a>
-
-  <nav aria-label="Wallet pages" class="top-bar__tabs">
-    {#each tabs as tab (tab.id)}
-      <a
-        aria-current={tab.id === activeTab ? "page" : undefined}
-        class="top-bar__tab"
-        class:top-bar__tab--on={tab.id === activeTab}
-        href={addBasePath(tab.href)}>{tab.label}</a
-      >
-    {/each}
-  </nav>
-
-  <button
-    aria-keyshortcuts="Control+K Meta+K /"
-    aria-label="Search names, addresses and transactions"
-    class="top-bar__search"
-    on:click={() => dispatch("search")}
-    type="button"
-  >
-    <Icon path={mdiMagnify} />
-    <span class="top-bar__search-text"
-      >Search names, addresses, transactions</span
+  {#if bare}
+    <span aria-label="Dusk Wallet" class="top-bar__brand" role="img">
+      <DuskGlyph />
+      <DuskWordmark />
+      <span aria-hidden="true" class="top-bar__divider"></span>
+      <span class="top-bar__app">Wallet</span>
+    </span>
+  {:else}
+    <a
+      aria-label="Dusk Wallet, home"
+      class="top-bar__brand"
+      href={addBasePath("/dashboard")}
     >
-    <kbd class="top-bar__kbd">Ctrl K</kbd>
-  </button>
+      <DuskGlyph />
+      <DuskWordmark />
+      <span aria-hidden="true" class="top-bar__divider"></span>
+      <span class="top-bar__app">Wallet</span>
+    </a>
 
-  <NetworkPill />
+    <nav aria-label="Wallet pages" class="top-bar__tabs">
+      {#each tabs as tab (tab.id)}
+        <a
+          aria-current={tab.id === activeTab ? "page" : undefined}
+          class="top-bar__tab"
+          class:top-bar__tab--on={tab.id === activeTab}
+          href={addBasePath(tab.href)}>{tab.label}</a
+        >
+      {/each}
+    </nav>
 
-  <AddressPicker
-    {canAddWallet}
-    compact
-    {currentProfile}
-    getKnownName={(account) => getVerifiedName(networkName, account)}
-    getName={lookUpNamesOn(networkName)}
-    {profiles}
-    wallets={walletGroups}
-    on:addWallet={() => goto("/wallets/add")}
-    on:setCurrentProfile={(event) =>
-      walletStore.setCurrentProfile(event.detail.profile)}
-    on:switchWallet={handleSwitchWallet}
-  />
+    <button
+      aria-keyshortcuts="Control+K Meta+K /"
+      aria-label="Search names, addresses and transactions"
+      class="top-bar__search"
+      on:click={() => dispatch("search")}
+      type="button"
+    >
+      <Icon path={mdiMagnify} />
+      <span class="top-bar__search-text"
+        >Search names, addresses, transactions</span
+      >
+      <kbd class="top-bar__kbd">Ctrl K</kbd>
+    </button>
 
-  <a
-    aria-current={settingsOpen ? "page" : undefined}
-    aria-label="Settings"
-    class="top-bar__settings"
-    class:top-bar__settings--on={settingsOpen}
-    data-tooltip-id="main-tooltip"
-    data-tooltip-text="Settings"
-    href={addBasePath("/settings")}
-  >
-    <Icon path={mdiCogOutline} />
-  </a>
+    <NetworkPill />
+
+    <AddressPicker
+      {canAddWallet}
+      compact
+      {currentProfile}
+      getKnownName={(account) => getVerifiedName(networkName, account)}
+      getName={lookUpNamesOn(networkName)}
+      {profiles}
+      wallets={walletGroups}
+      on:addWallet={() => goto("/wallets/add")}
+      on:setCurrentProfile={(event) =>
+        walletStore.setCurrentProfile(event.detail.profile)}
+      on:switchWallet={handleSwitchWallet}
+    />
+
+    <a
+      aria-current={settingsOpen ? "page" : undefined}
+      aria-label="Settings"
+      class="top-bar__settings"
+      class:top-bar__settings--on={settingsOpen}
+      data-tooltip-id="main-tooltip"
+      data-tooltip-text="Settings"
+      href={addBasePath("/settings")}
+    >
+      <Icon path={mdiCogOutline} />
+    </a>
+  {/if}
 </header>
 
 <style lang="postcss">

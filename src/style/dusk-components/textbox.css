@@ -1,15 +1,20 @@
+/*
+ * Every field looks as Send's do: the field's own surface, 52 px tall, and
+ * an edge that reads as one on every surface it sits on (--calm-field-edge,
+ * 3:1 or more, in light and dark).
+ */
 .dusk-textbox {
   font-family: inherit;
   font-size: var(--control-font-size);
   letter-spacing: 0;
   padding: 0.625em 0.875em;
   background-color: var(--non-button-control-bg-color);
-  border-color: var(--calm-line2);
+  border-color: var(--calm-field-edge);
   border-radius: 0.75rem;
   border-style: solid;
   border-width: var(--control-border-size);
   color: var(--non-button-control-text-color);
-  min-height: 44px;
+  min-height: 3.25rem;
 }
 
 .dusk-textbox:disabled,

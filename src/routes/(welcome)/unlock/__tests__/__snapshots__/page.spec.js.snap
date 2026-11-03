@@ -7,16 +7,7 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
   <h2
     class="h1"
   >
-    Unleash 
-    <mark>
-      RWA
-    </mark>
-     and
-    <br />
-     
-    <mark>
-      Decentralized Finance
-    </mark>
+    Unleash RWA and Decentralized Finance
   </h2>
    
   <div
@@ -76,13 +67,15 @@ exports[`Unlock Wallet > Mnemonic phrase workflow > should render the Unlock Wal
           <!---->
           <input
             aria-label="Recovery phrase"
-            autocomplete="current-password"
+            autocapitalize="none"
+            autocomplete="off"
             autofocus=""
-            class="dusk-textbox dusk-textbox-password"
+            class="dusk-textbox dusk-textbox-text"
             name="Recovery phrase"
             placeholder="Recovery phrase"
             required=""
-            type="password"
+            spellcheck="false"
+            type="text"
           />
           
           <!---->
@@ -160,16 +153,7 @@ exports[`Unlock Wallet > Password workflow > should show the password field and 
   <h2
     class="h1"
   >
-    Unleash 
-    <mark>
-      RWA
-    </mark>
-     and
-    <br />
-     
-    <mark>
-      Decentralized Finance
-    </mark>
+    Unleash RWA and Decentralized Finance
   </h2>
    
   <div

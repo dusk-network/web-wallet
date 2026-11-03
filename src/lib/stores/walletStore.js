@@ -10,6 +10,7 @@ import { configuredBridge } from "$lib/bridge/bridgeCalls";
 import {
   TX_KIND,
   activityFor,
+  activityState,
   clearActivityStore,
   currentActivity,
   getShieldedHistory,
@@ -43,6 +44,9 @@ let syncController = null;
 /** @type {Promise<void> | null} */
 let syncPromise = null;
 
+/** How many syncs started: the number of the one running, or the last. */
+let syncNumber = 0;
+
 let walletSession = 0;
 
 /** @type {WalletStoreContent} */
@@ -60,6 +64,7 @@ const initialState = {
   currentProfile: null,
   initialized: false,
   minimumStake: 0n,
+  pendingStakes: [],
   profiles: [],
   stakeInfo: {
     amount: null,
@@ -183,17 +188,142 @@ const recordInHistory = (profile, details) => {
 const isOwn = (to, profile) =>
   to === String(profile.account) || to === String(profile.address);
 
-/** @type {(txInfo: TransactionInfo) => void} */
-const observeTxRemoval = (txInfo) => {
-  networkStore.connect().then((network) =>
-    network.transactions
-      .withId(txInfo.hash)
-      .once.removed()
-      .then(() => sync())
-      .catch(() => {}) // Background sync errors are reported in syncStatus.
-      .finally(updateStaticInfo)
-  );
-};
+/**
+ * A sync that started after the `after`-th, ended: the one running if it
+ * did, or else one more, once that one ends. What it reads is what the
+ * node had after the `after`-th started, as after a transaction sent then.
+ *
+ * @param {number} after
+ * @returns {Promise<void>}
+ */
+async function syncAfter(after) {
+  const joined = syncPromise ? syncNumber : syncNumber + 1;
+
+  await sync();
+
+  if (joined <= after) {
+    await sync();
+  }
+}
+
+/**
+ * Once the node takes a transaction out of its queue: a sync that started
+ * after it was sent, and the balances and the stake read again. It rejects
+ * when the queue can't be followed, or that sync fails: the balances and
+ * the stake are read all the same, as they were.
+ *
+ * @param {TransactionInfo} txInfo
+ * @param {number} after The number of the last sync started as it was sent
+ * @returns {Promise<void>}
+ */
+const refreshOnRemoval = (txInfo, after) =>
+  networkStore
+    .connect()
+    .then((network) => network.transactions.withId(txInfo.hash).once.removed())
+    .then(() => syncAfter(after))
+    .finally(updateStaticInfo);
+
+/**
+ * Holds Staking's buttons for a staking transaction `profile` sent, until
+ * a sync that started after it was sent read the stake again: once the
+ * node took it out of its queue (`refreshed`), or else at each automatic
+ * sync's interval, a sync the hold starts and waits for. Not when the
+ * queue can't be followed, nor when the sync fails: the stake read then is
+ * the one from before. Also once the history has it from a block, after a
+ * sync that started then read the stake. After two intervals without one, the buttons come
+ * back all the same, the stake said to be maybe out of date (`stale`)
+ * until it's read.
+ *
+ * @param {Profile} profile
+ * @param {string} hash
+ * @param {number} after The number of the last sync started as it was sent
+ * @param {Promise<unknown>} refreshed
+ */
+function holdStaking(profile, hash, after, refreshed) {
+  const session = walletSession;
+  let isDone = false;
+  let refreshId = 0;
+
+  const isCurrent = () => !isDone && session === walletSession;
+  const txHash = hash.toLowerCase();
+  let isInBlock = false;
+
+  /** @type {() => void} */
+  let stopWatching = () => {};
+
+  /**
+   * @param {(stakes: WalletStoreContent["pendingStakes"]) => WalletStoreContent["pendingStakes"]} change
+   */
+  const changeStakes = (change) =>
+    update((store) => ({
+      ...store,
+      pendingStakes: change(store.pendingStakes),
+    }));
+
+  const release = () => {
+    if (isCurrent()) {
+      isDone = true;
+      window.clearTimeout(refreshId);
+      window.clearTimeout(deadlineId);
+      stopWatching();
+      changeStakes((stakes) => stakes.filter((sent) => sent.hash !== hash));
+    }
+  };
+
+  const refresh = () => {
+    if (isCurrent()) {
+      syncAfter(after)
+        .then(updateStaticInfo)
+        .then(release, () => {
+          if (isCurrent()) {
+            refreshId = window.setTimeout(refresh, AUTO_SYNC_INTERVAL);
+          }
+        });
+    }
+  };
+
+  const deadlineId = window.setTimeout(() => {
+    if (isCurrent()) {
+      changeStakes((stakes) =>
+        stakes.map((sent) =>
+          sent.hash === hash ? { ...sent, stale: true } : sent
+        )
+      );
+    }
+  }, 2 * AUTO_SYNC_INTERVAL);
+
+  refreshId = window.setTimeout(refresh, AUTO_SYNC_INTERVAL);
+  changeStakes((stakes) => [
+    ...stakes,
+    { account: String(profile.account), hash },
+  ]);
+  refreshed.then(release, () => {});
+
+  // The history has it from a block: it left the queue, said so or not.
+  stopWatching = activityState.subscribe(({ rows }) => {
+    if (!isCurrent()) {
+      stopWatching();
+    } else if (
+      !isInBlock &&
+      rows.some((row) => row.hash === txHash && row.source !== "sent")
+    ) {
+      isInBlock = true;
+      // The stake is read from what the wallet synced: a sync from now.
+      syncAfter(syncNumber)
+        .then(updateStaticInfo)
+        .then(([, stake]) => {
+          if (stake.status !== "fulfilled") {
+            throw stake.reason;
+          }
+
+          release();
+        })
+        .catch(() => {
+          isInBlock = false;
+        });
+    }
+  });
+}
 
 /** @type {<T>(fn: (v: T) => any) => (a: T) => T} */
 const passThruWithEffects = (fn) => (a) => {
@@ -267,14 +397,16 @@ const builtWhileOpen = (builder, stillOpen) =>
  * whichever one is chosen while the wallet syncs before it goes out. It
  * goes out only while the wallet it began on is open: not after a switch
  * or a lock since, checked once the wallet synced, and again once the
- * transaction is built and proved.
+ * transaction is built and proved. A staking transaction holds Staking's
+ * buttons until it settles.
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
  * @param {(network: Pick<import("@dusk/w3sper").Network, "execute">) => Promise<TransactionInfo>} execute
+ * @param {{ staking?: boolean }} [options]
  * @returns {Promise<TransactionInfo>}
  */
-const sendAs = (profile, details, execute) => {
+const sendAs = (profile, details, execute, { staking = false } = {}) => {
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
   const record = recordInHistory(profile, details);
@@ -285,6 +417,19 @@ const sendAs = (profile, details, execute) => {
     execute: (tx) => network.execute(builtWhileOpen(tx, stillOpen)),
   });
 
+  /** @param {TransactionInfo} txInfo */
+  const followRemoval = (txInfo) => {
+    const after = syncNumber;
+    const refreshed = refreshOnRemoval(txInfo, after);
+
+    // Background sync errors are reported in syncStatus.
+    refreshed.catch(() => {});
+
+    if (staking) {
+      holdStaking(profile, txInfo.hash, after, refreshed);
+    }
+  };
+
   return sync()
     .catch((error) => {
       throw stillOpen(error);
@@ -292,7 +437,7 @@ const sendAs = (profile, details, execute) => {
     .then(networkStore.connect)
     .then((network) => execute(sending(stillOpen(network))))
     .then(keepInCache)
-    .then(passThruWithEffects(observeTxRemoval))
+    .then(passThruWithEffects(followRemoval))
     .then(passThruWithEffects(record));
 };
 
@@ -449,7 +594,8 @@ const claimRewards = async (amount, gas) => {
       privacy: "public",
     },
     (network) =>
-      network.execute(bookkeeper.as(profile).withdraw(amount).gas(gas))
+      network.execute(bookkeeper.as(profile).withdraw(amount).gas(gas)),
+    { staking: true }
   );
 };
 
@@ -753,7 +899,8 @@ const stake = async (amount, gas) => {
       kind: TX_KIND.STAKE,
       privacy: "public",
     },
-    (network) => network.execute(bookkeeper.as(profile).stake(amount).gas(gas))
+    (network) => network.execute(bookkeeper.as(profile).stake(amount).gas(gas)),
+    { staking: true }
   );
 };
 
@@ -795,7 +942,8 @@ const callSozu = async (poolId, fnName, amount, gas) => {
       return await network.execute(
         builder.to(profile.account).deposit(deposit).gas(gas)
       );
-    }
+    },
+    { staking: true }
   );
 };
 
@@ -819,7 +967,8 @@ const topUpStake = async (amount, gas) => {
       kind: TX_KIND.STAKE,
       privacy: "public",
     },
-    (network) => network.execute(bookkeeper.as(profile).topup(amount).gas(gas))
+    (network) => network.execute(bookkeeper.as(profile).topup(amount).gas(gas)),
+    { staking: true }
   );
 };
 
@@ -835,6 +984,7 @@ async function sync(fromBlock) {
   }
 
   if (!syncPromise) {
+    syncNumber++;
     set({
       ...store,
       syncStatus: {
@@ -1081,7 +1231,8 @@ const unstake = async (amount, gas) => {
       privacy: "public",
     },
     (network) =>
-      network.execute(bookkeeper.as(profile).unstake(amount).gas(gas))
+      network.execute(bookkeeper.as(profile).unstake(amount).gas(gas)),
+    { staking: true }
   );
 };
 

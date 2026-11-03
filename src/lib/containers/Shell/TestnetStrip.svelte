@@ -37,9 +37,4 @@
     margin: 0 0.375rem;
     opacity: 0.5;
   }
-
-  /* On the welcome card: the full width of its top edge. */
-  :global(.welcome-layout__strip) .testnet-strip {
-    margin: -1rem -1rem 0;
-  }
 </style>

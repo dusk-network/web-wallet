@@ -92,11 +92,10 @@
 
 <style lang="postcss">
   :global {
+    /* Under the field, as the wallet's hints are. */
     .block-height-meta {
-      display: inline-block;
-      font-size: 0.75em;
-      margin-left: 1em;
-      opacity: 0.5;
+      color: var(--calm-muted);
+      font-size: 0.84375rem;
     }
 
     .block-height-input--invalid {

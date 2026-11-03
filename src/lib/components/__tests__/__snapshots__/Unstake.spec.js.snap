@@ -87,57 +87,72 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
     <!---->
      
     <div
-      class="operation__amount-wrapper svelte-g5cixq"
+      class="operation__field svelte-g5cixq"
     >
-      <p>
-        Amount:
+      <label
+        class="operation__label svelte-g5cixq"
+        for="some-generated-id-amount"
+      >
+        Amount
+      </label>
+       
+      <div
+        class="operation__amount svelte-g5cixq"
+      >
+        <!---->
+        <input
+          aria-describedby="some-generated-id-available some-generated-id-check"
+          aria-invalid="false"
+          autocomplete="off"
+          class="dusk-textbox dusk-textbox-text operation__input"
+          id="some-generated-id-amount"
+          inputmode="decimal"
+          type="text"
+        />
+        
+        <!---->
+         
+        <span
+          aria-hidden="true"
+          class="operation__unit svelte-g5cixq"
+        >
+          DUSK
+        </span>
+         
+        <button
+          class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--small"
+          title="All your rewards"
+          type="button"
+        >
+          <span
+            class="dusk-button__text"
+          >
+            Max
+          </span>
+          <!---->
+        </button>
+        <!---->
+         
+        <!---->
+      </div>
+       
+      <p
+        class="operation__hint svelte-g5cixq"
+        id="some-generated-id-available"
+      >
+        Rewards 
+        <!---->
+        345
+        
+        <!---->
+         DUSK
       </p>
        
-      <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
-        type="button"
+      <div
+        id="some-generated-id-check"
       >
-        <span
-          class="dusk-button__text"
-        >
-          Use max
-        </span>
         <!---->
-      </button>
-      <!---->
-    </div>
-     
-    <div
-      class="operation__input-wrapper svelte-g5cixq"
-    >
-      <!---->
-      <input
-        class="dusk-textbox dusk-textbox-number operation__input-field"
-        max="345"
-        required=""
-        step="0.000000001"
-        type="number"
-      />
-      
-      <!---->
-       
-      <!---->
-      <svg
-        aria-label="DUSK"
-        class="dusk-icon dusk-icon--size--default"
-        data-tooltip-id="main-tooltip"
-        data-tooltip-text="DUSK"
-        role="img"
-        viewBox="0 0 24 24"
-      >
-        <path
-          d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-        />
-      </svg>
-      
-      <!---->
-       
-      <!---->
+      </div>
     </div>
      
     <div
@@ -185,8 +200,6 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
       <!---->
     </div>
     <!---->
-     
-    <!---->
     <!---->
      
     <!---->
@@ -224,7 +237,7 @@ exports[`Unstake > Claim Rewards operation > should render the claim rewards vie
       <!---->
        
       <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+        class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
         <!---->
@@ -356,58 +369,72 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
     <!---->
      
     <div
-      class="operation__amount-wrapper svelte-g5cixq"
+      class="operation__field svelte-g5cixq"
     >
-      <p>
-        Amount:
+      <label
+        class="operation__label svelte-g5cixq"
+        for="some-generated-id-amount"
+      >
+        Amount
+      </label>
+       
+      <div
+        class="operation__amount svelte-g5cixq"
+      >
+        <!---->
+        <input
+          aria-describedby="some-generated-id-available some-generated-id-check"
+          aria-invalid="false"
+          autocomplete="off"
+          class="dusk-textbox dusk-textbox-text operation__input"
+          id="some-generated-id-amount"
+          inputmode="decimal"
+          type="text"
+        />
+        
+        <!---->
+         
+        <span
+          aria-hidden="true"
+          class="operation__unit svelte-g5cixq"
+        >
+          DUSK
+        </span>
+         
+        <button
+          class="dusk-button dusk-button--type--button dusk-button--variant--secondary dusk-button--size--small"
+          title="All you have staked"
+          type="button"
+        >
+          <span
+            class="dusk-button__text"
+          >
+            Max
+          </span>
+          <!---->
+        </button>
+        <!---->
+         
+        <!---->
+      </div>
+       
+      <p
+        class="operation__hint svelte-g5cixq"
+        id="some-generated-id-available"
+      >
+        Staked 
+        <!---->
+        278
+        
+        <!---->
+         DUSK
       </p>
        
-      <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--small"
-        type="button"
+      <div
+        id="some-generated-id-check"
       >
-        <span
-          class="dusk-button__text"
-        >
-          Use max
-        </span>
         <!---->
-      </button>
-      <!---->
-    </div>
-     
-    <div
-      class="operation__input-wrapper svelte-g5cixq"
-    >
-      <!---->
-      <input
-        class="dusk-textbox dusk-textbox-number operation__input-field"
-        max="278"
-        min="false"
-        required=""
-        step="0.000000001"
-        type="number"
-      />
-      
-      <!---->
-       
-      <!---->
-      <svg
-        aria-label="DUSK"
-        class="dusk-icon dusk-icon--size--default"
-        data-tooltip-id="main-tooltip"
-        data-tooltip-text="DUSK"
-        role="img"
-        viewBox="0 0 24 24"
-      >
-        <path
-          d="M12.335 0.005a12.186 12.186 0 0 0 -2.58 0.204C4.2 1.259 0 6.14 0 11.999 0 17.859 4.203 22.74 9.759 23.79c0.726 0.138 1.476 0.21 2.241 0.21 6.789 0 12.261 -5.64 11.991 -12.49C23.741 5.249 18.599 0.173 12.335 0.005Zm0.207 21.58c-0.204 0.012 -0.336 -0.222 -0.21 -0.384 1.974 -2.541 3.153 -5.733 3.153 -9.202 0 -3.468 -1.176 -6.663 -3.153 -9.202 -0.126 -0.162 0.003 -0.396 0.207 -0.384 5.052 0.282 9.06 4.465 9.06 9.586 0 5.121 -4.005 9.304 -9.057 9.586Z"
-        />
-      </svg>
-      
-      <!---->
-       
-      <!---->
+      </div>
     </div>
      
     <div
@@ -455,8 +482,6 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
       <!---->
     </div>
     <!---->
-     
-    <!---->
     <!---->
      
     <!---->
@@ -494,7 +519,7 @@ exports[`Unstake > Unstake operation > should render the unstake view 1`] = `
       <!---->
        
       <button
-        class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+        class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
         type="button"
       >
         <!---->

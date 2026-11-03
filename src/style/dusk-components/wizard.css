@@ -26,10 +26,11 @@
 }
 
 /*
- * In the wallet a flow's buttons stay in view: at the bottom of the window,
- * above a phone's keyboard, and above the tab bar where there is one.
+ * In the wallet, and before it opens, a flow's buttons stay in view: at the
+ * bottom of the window, above a phone's keyboard, and above the tab bar
+ * where there is one.
  */
-.shell .dusk-wizard__step-navigation {
+:is(.shell, .welcome-shell) .dusk-wizard__step-navigation {
   position: sticky;
   bottom: var(--keyboard-inset, 0px);
   z-index: 3;
@@ -39,8 +40,14 @@
   box-shadow: 0 -1px 0 var(--calm-line);
 }
 
-.shell .dusk-card .dusk-wizard__step-navigation {
+:is(.shell, .welcome-shell) .dusk-card .dusk-wizard__step-navigation {
   background: var(--calm-s1);
+}
+
+/* Before a wallet opens, a flow is as long as its steps, as in the wallet. */
+.welcome-shell .dusk-wizard--full-height {
+  height: auto;
+  overflow-y: visible;
 }
 
 @media (max-width: 47.99rem) {

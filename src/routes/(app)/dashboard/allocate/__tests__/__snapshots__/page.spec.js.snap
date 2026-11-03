@@ -280,7 +280,7 @@ exports[`Allocate > should render the allocation page 1`] = `
           <!---->
            
           <button
-            class="dusk-button dusk-button--type--button dusk-button--variant--tertiary dusk-button--size--default dusk-icon-button--labeled"
+            class="dusk-button dusk-button--type--button dusk-button--variant--primary dusk-button--size--default dusk-icon-button--labeled"
             disabled=""
             type="button"
           >

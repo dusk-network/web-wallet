@@ -205,6 +205,22 @@ describe("Create", async () => {
     mathRandomSpy.mockRestore();
   });
 
+  it("should title each step on one line, and go on with a primary Next beside Back, as the wallet's flows do", async () => {
+    const { getByRole } = render(Create, baseOptions);
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+
+    expect(getByRole("heading", { level: 2 }).innerHTML).toBe(
+      "Backup Recovery Phrase"
+    );
+    expect(getByRole("link", { name: "Back" })).toHaveClass(
+      "dusk-anchor-button--variant--tertiary"
+    );
+    expect(getByRole("button", { name: "Next" })).toHaveClass(
+      "dusk-button--variant--primary"
+    );
+  });
+
   it("should not allow the user proceed unless both agreement checks are selected on the `Securely store your mnemonic phrase!` step", async () => {
     const { getByRole, getAllByRole } = render(Create, baseOptions);
 

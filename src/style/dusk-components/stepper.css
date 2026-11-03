@@ -1,5 +1,5 @@
 .dusk-stepper {
-  --step-size: 1.375em;
+  --step-size: 1.375rem;
 
   position: relative;
   width: 100%;
@@ -7,7 +7,6 @@
   row-gap: 0.75rem;
   grid-template-columns: repeat(var(--columns), 1fr);
   justify-content: space-between;
-  padding-top: 0.125rem;
 }
 
 .dusk-stepper::before,
@@ -44,11 +43,13 @@
   place-items: center;
   width: var(--step-size);
   height: var(--step-size);
-  font-variant-numeric: tabular-nums;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   line-height: 1;
-  background-color: var(--stepper-rail-color);
+  /* The rail's tint on the page's colour: solid, so the rail stays behind. */
+  --step-tint: var(--stepper-rail-color);
+  background:
+    linear-gradient(var(--step-tint), var(--step-tint)), var(--background-color);
   color: var(--stepper-on-rail-color);
   border: 1px solid var(--surface-border-color);
   border-radius: 50%;
@@ -59,17 +60,18 @@
 .dusk-stepper__step-number {
   display: block;
   line-height: 1;
-  transform: translateY(0.035em);
+  /* The font's digits sit 4% of their size low in the line. */
+  transform: translateY(-0.04em);
 }
 
 .dusk-stepper--variant--secondary
   .dusk-stepper__step:not(.dusk-stepper__step--processed) {
-  background-color: var(--stepper-rail-color-variant-secondary);
+  --step-tint: var(--stepper-rail-color-variant-secondary);
   color: var(--stepper-on-rail-variant-secondary-color);
 }
 
 .dusk-stepper__step--processed {
-  background-color: var(--stepper-filler-color);
+  background: var(--stepper-filler-color);
   border-color: var(--stepper-filler-color);
   color: var(--stepper-on-filler-color);
 }
