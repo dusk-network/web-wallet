@@ -317,8 +317,10 @@ const verifyReleaseAges = async ({
 
           metadata = { time };
           datedByTarball.push(name);
-        } catch {
-          failures.push(`${name}: ${error.message}`);
+        } catch (tarballError) {
+          failures.push(
+            `${name}: ${error.message}; its tarball gave no date either: ${tarballError.message}`
+          );
           continue;
         }
       }
