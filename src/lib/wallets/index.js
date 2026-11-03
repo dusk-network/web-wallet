@@ -1,8 +1,8 @@
 /**
  * The wallets on this device, as one password unlocks them all: unlocking,
  * switching between them without the password, adding one, removing one,
- * naming one, a new password for all of them, and a lock, each told to the
- * other tabs, which follow.
+ * naming one or its profiles, a new password for all of them, and a lock,
+ * each told to the other tabs, which follow.
  */
 
 import { derived, get } from "svelte/store";
@@ -26,8 +26,10 @@ import {
   forgetDirectoryWallet,
   normalizeWalletName,
   noteActiveWallet,
+  profileNameAt,
   readDirectory,
   setLegacyWallet,
+  setProfileName,
   setWalletHeight,
   setWalletName,
   walletDirectory,
@@ -37,8 +39,20 @@ import { profilesOf } from "./profiles";
 import { onOtherTabs, tellOtherTabs } from "./tabs";
 import { forgetWalletData } from "./walletData";
 
-export { normalizeWalletName, walletDirectory, walletLabel };
+export { normalizeWalletName, profileNameAt, walletDirectory, walletLabel };
 export { default as walletAccountNames } from "./accountNames";
+
+/**
+ * The names the open wallet's profiles were given here, by profile: "" for
+ * one without.
+ *
+ * @type {import("svelte/store").Readable<string[]>}
+ */
+export const openProfileNames = derived(
+  [walletStore, walletDirectory],
+  ([{ walletKey }, directory]) =>
+    directory.wallets[walletKey]?.profileNames ?? []
+);
 
 /**
  * The open wallet's name, as the switcher shows it, when there's more than
@@ -422,6 +436,28 @@ export async function renameWallet(key, name) {
     stillOpen();
 
     if (!vault.list()?.some((wallet) => wallet.id === key)) {
+      throw new Error(NOT_HERE);
+    }
+  });
+}
+
+/**
+ * Names one of the open wallet's profiles, only on this device, or gives it
+ * its number back with "". Nothing is named once this tab locked, or
+ * another wallet opened (WalletChangedError), nor a wallet removed
+ * meanwhile (NOT_HERE).
+ *
+ * @param {string} key The wallet's vault ID: "" for one without a password
+ * @param {number} index The profile's
+ * @param {string} name
+ */
+export async function renameProfile(key, index, name) {
+  const stillOpen = walletStore.whileOpen();
+
+  await setProfileName(key, index, name, () => {
+    stillOpen();
+
+    if (key && !vault.list()?.some((wallet) => wallet.id === key)) {
       throw new Error(NOT_HERE);
     }
   });

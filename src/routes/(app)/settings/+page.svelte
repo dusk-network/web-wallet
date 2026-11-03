@@ -32,7 +32,7 @@
   } from "$lib/contracts";
   import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
   import { deleteContacts } from "$lib/contacts";
-  import { WalletsSettings } from "$lib/containers/Wallets";
+  import { ProfileNames, WalletsSettings } from "$lib/containers/Wallets";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
   import { logout, pageTitle } from "$lib/navigation";
   import vault from "$lib/vault";
@@ -193,6 +193,8 @@
 
   <div class="settings__content">
     <WalletsSettings />
+    <hr />
+    <ProfileNames />
     <hr />
     <article class="settings-group">
       <SectionHead>Preferences</SectionHead>

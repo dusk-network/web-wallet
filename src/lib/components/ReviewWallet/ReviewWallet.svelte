@@ -1,18 +1,20 @@
 <script>
   /**
    * The wallet a review is from, with its profile, when there's more than
-   * one wallet here: "From Wallet 2 · Profile 1". It's the wallet open as
-   * the review is drawn: another wallet draws the review again.
+   * one wallet here: "From Wallet 2 · Profile 1", or the name the profile
+   * was given here. It's the wallet open as the review is drawn: another
+   * wallet draws the review again.
    */
   import { networkStore, walletStore } from "$lib/stores";
   import profileLabel from "$lib/wallet/profileLabel";
-  import { openWalletName } from "$lib/wallets";
+  import { openProfileNames, openWalletName } from "$lib/wallets";
 
   $: ({ currentProfile, profiles } = $walletStore);
   $: profile = profileLabel(
     profiles,
     currentProfile,
-    $networkStore.networkName
+    $networkStore.networkName,
+    $openProfileNames
   );
 </script>
 

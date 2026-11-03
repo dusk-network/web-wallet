@@ -12,6 +12,7 @@
   import { Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
+  import { normalizeWalletName, profileNameAt } from "$lib/wallets/directory";
 
   import Overlay from "./Overlay.svelte";
 
@@ -51,9 +52,11 @@
    * The wallets here, each with its profiles under its name, as "Wallet 1"
    * and "Wallet 2": the open one's are `profiles`, another's its public
    * accounts and shielded addresses as it last showed them, which copy as
-   * the open one's do. None lists the profiles alone.
+   * the open one's do. Each with the names its profiles were given here, by
+   * profile: "" for one without, which goes by its number, "Profile 2".
+   * None lists the profiles alone, by their numbers.
    *
-   * @type {Array<{ accounts: string[], addresses?: string[], key: string, label: string, open: boolean }>}
+   * @type {Array<{ accounts: string[], addresses?: string[], key: string, label: string, open: boolean, profileNames?: string[] }>}
    */
   export let wallets = [];
 
@@ -172,9 +175,20 @@
 
   $: profileNumber = currentProfile ? profiles.indexOf(currentProfile) + 1 : 0;
 
+  // The names the open wallet's profiles were given here.
+  $: profileNames = wallets.find((wallet) => wallet.open)?.profileNames ?? [];
+
+  // The profile's name here, or "Profile 1": the pill's, while it has no
+  // `.dusk` name.
   $: displayedAddress = currentProfile
-    ? `Profile ${profileNumber}`
+    ? profileNameAt(profileNames, profileNumber - 1)
     : "No profile selected";
+
+  // Whether it has a name given here, which the pill shows where it shows a
+  // `.dusk` name, rather than a label its number says already.
+  $: isNamedHere = Boolean(
+    currentProfile && normalizeWalletName(profileNames[profileNumber - 1])
+  );
 
   $: currentAccount = currentProfile ? currentProfile.account.toString() : "";
 
@@ -211,7 +225,7 @@
   $: followName(currentName, currentAccount);
 
   // The pill's name: "Profile: alice.dusk (Profile 1)", or the profile's
-  // label while it has no name.
+  // label while it has no `.dusk` name: its name here, or its number.
   $: triggerLabel = currentProfile
     ? `Profile: ${shownName ? `${shownName} (${displayedAddress})` : displayedAddress}${walletName ? `, ${walletName}` : ""}`
     : "Profile: none selected";
@@ -244,7 +258,8 @@
 >
   <div
     class="address-picker__trigger"
-    class:address-picker__trigger--named={compact && Boolean(shownName)}
+    class:address-picker__trigger--named={compact &&
+      Boolean(shownName || isNamedHere)}
     class:address-picker__trigger--wallet={compact && Boolean(walletName)}
     role="button"
     tabindex="0"
@@ -257,9 +272,9 @@
   >
     {#if compact}
       <!-- The profile's number, and its name or label: on a narrow screen
-        its .dusk name without the ending, and no label. With more than one
-        wallet, the wallet's name under it, and on a phone below 420 px that
-        line alone. -->
+        its .dusk name without the ending, or its name given here, and no
+        label. With more than one wallet, the wallet's name under it, and on
+        a phone below 420 px that line alone. -->
       <span aria-hidden="true" class="address-picker__avatar"
         >{profileNumber || "–"}</span
       >
@@ -276,7 +291,9 @@
           >
         {:else}
           <span
-            class="address-picker__compact-name address-picker__compact-name--label"
+            class="address-picker__compact-name"
+            class:address-picker__compact-name--label={!isNamedHere}
+            title={isNamedHere ? displayedAddress : undefined}
             >{displayedAddress}</span
           >
         {/if}
@@ -352,7 +369,8 @@
                       wallet.key,
                       account,
                       wallet.addresses?.[index] ?? "",
-                      index
+                      index,
+                      profileNameAt(wallet.profileNames, index)
                     )}
                   {/each}
                 {/if}
@@ -449,7 +467,7 @@
         <!-- The profile, with its name under it, or its account,
           shortened, while it has none. -->
         <span class="address-picker__profile-header">
-          Profile {profiles.indexOf(profile) + 1}
+          {profileNameAt(profileNames, profiles.indexOf(profile))}
           {#if profile === currentProfile}
             <span class="address-picker__current-indicator">(Current)</span>
           {/if}
@@ -471,7 +489,8 @@
   /** @type {string} */ key,
   /** @type {string} */ account,
   /** @type {string} */ address,
-  /** @type {number} */ index
+  /** @type {number} */ index,
+  /** @type {string} */ label
 )}
   <li class="address-picker__profile" role="none">
     <div class="address-picker__profile-container">
@@ -488,7 +507,7 @@
           )}
       >
         <!-- Its name as last verified here: no lookup until it opens. -->
-        <span class="address-picker__profile-header">Profile {index + 1}</span>
+        <span class="address-picker__profile-header">{label}</span>
         {@render profileName(account, account ? getKnownName(account) : "")}
       </button>
       <!-- What it last showed copies: nothing where nothing is known. -->

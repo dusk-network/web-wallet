@@ -16,6 +16,7 @@
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
+  import { openProfileNames, profileNameAt } from "$lib/wallets";
   import walletAccountNames from "$lib/wallets/accountNames";
   import { duskExplorerBlock, duskExplorerTx, nodeBaseUrl } from "$lib/url";
 
@@ -69,7 +70,7 @@
       return {
         account,
         address: String(profile.address),
-        label: `Profile ${i + 1}`,
+        label: profileNameAt($openProfileNames, i),
         name: getVerifiedName(networkName, account),
       };
     }),

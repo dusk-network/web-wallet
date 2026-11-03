@@ -4,13 +4,14 @@
  * the last time it was open: its wallet ID (its first public account, which
  * its contacts are kept by), its profiles' public accounts and shielded
  * addresses, which its history is kept by, and the block it was made at,
- * for one made here. With them, the wallet open last,
+ * for one made here; and the names its profiles were given here, by
+ * profile, "" for one without. With them, the wallet open last,
  * which the next unlock opens, and the wallet whose data is kept under the
  * names this device used before it kept more than one (`legacy`): the one
  * moved from earlier versions, or set up first. Nothing here is secret: the
  * phrases are in the vault.
  *
- * `${APP_KEY}-wallets`: { active, legacy, wallets: { [key]: { walletId, accounts, addresses, name?, height? } } }
+ * `${APP_KEY}-wallets`: { active, legacy, wallets: { [key]: { walletId, accounts, addresses, name?, height?, profileNames? } } }
  */
 
 import { readable } from "svelte/store";
@@ -18,7 +19,7 @@ import { readable } from "svelte/store";
 const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`;
 
 /**
- * @typedef {{ accounts: string[], addresses: string[], height?: string, name?: string, walletId: string }} DirectoryWallet
+ * @typedef {{ accounts: string[], addresses: string[], height?: string, name?: string, profileNames?: string[], walletId: string }} DirectoryWallet
  * @typedef {{ active: string, legacy: string, wallets: Record<string, DirectoryWallet> }} WalletDirectory
  */
 
@@ -49,11 +50,41 @@ export const walletLabel = (wallet) =>
   normalizeWalletName(wallet?.name) || `Wallet ${Number(wallet?.n) || 1}`;
 
 /**
+ * What a wallet's profile is called: the name it was given here, as a
+ * wallet's name is kept, or "Profile 2" by its number.
+ *
+ * @param {string[] | undefined} names The wallet's profile names
+ * @param {number} index The profile's
+ */
+export const profileNameAt = (names, index) =>
+  normalizeWalletName(names?.[index]) || `Profile ${index + 1}`;
+
+/**
+ * A wallet's profile names as kept: one per profile, "" for one without,
+ * none after the last one named; undefined for none.
+ *
+ * @param {unknown} names
+ * @returns {string[] | undefined}
+ */
+function profileNamesOf(names) {
+  const kept = Array.isArray(names)
+    ? Array.from(names, (name) => normalizeWalletName(name))
+    : [];
+
+  while (kept.length && !kept.at(-1)) {
+    kept.pop();
+  }
+
+  return kept.length ? kept : undefined;
+}
+
+/**
  * @param {any} entry
  * @returns {DirectoryWallet}
  */
 function walletOf(entry) {
   const name = normalizeWalletName(entry?.name);
+  const profileNames = profileNamesOf(entry?.profileNames);
 
   /** @param {unknown} list */
   const strings = (list) => (Array.isArray(list) ? list.map(String) : []);
@@ -65,6 +96,7 @@ function walletOf(entry) {
       ? { height: entry.height }
       : {}),
     ...(name ? { name } : {}),
+    ...(profileNames ? { profileNames } : {}),
     walletId: typeof entry?.walletId === "string" ? entry.walletId : "",
   };
 }
@@ -192,6 +224,38 @@ export const setWalletName = (key, name, check = () => {}) =>
       wallets: {
         ...directory.wallets,
         [key]: next ? { ...entry, name: next } : entry,
+      },
+    };
+  });
+
+/**
+ * Names one of a wallet's profiles, or gives it its number back with "".
+ * `check`, called as the name is about to be written, throws to write
+ * nothing.
+ *
+ * @param {string} key
+ * @param {number} index The profile's
+ * @param {string} name
+ * @param {() => void} [check]
+ */
+export const setProfileName = (key, index, name, check = () => {}) =>
+  change((directory) => {
+    check();
+
+    const entry = { ...(directory.wallets[key] ?? walletOf(null)) };
+    const names = Array.from(
+      { length: Math.max(entry.profileNames?.length ?? 0, index + 1) },
+      (_, i) => (i === index ? name : (entry.profileNames?.[i] ?? ""))
+    );
+    const profileNames = profileNamesOf(names);
+
+    delete entry.profileNames;
+
+    return {
+      ...directory,
+      wallets: {
+        ...directory.wallets,
+        [key]: profileNames ? { ...entry, profileNames } : entry,
       },
     };
   });
