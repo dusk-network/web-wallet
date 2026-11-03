@@ -81,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Open and close sections, show Copied on the button, and fade messages in place, the same way everywhere
 - Lock every wallet and every tab with Lock [#999]
+- Show a chevron on Technical details
 - Show each Bridge and Migrate route's time for this network: DuskEVM's from its chains, migrations' as measured, and none where none is known
 - Cut the Bridge and Migrate cards, reviews and results to what is needed to act
 - Show Sozu's fees as its contract gives them: its cut of rewards and deposits in the staking comparison, and the deposit fee in the liquid staking summary
