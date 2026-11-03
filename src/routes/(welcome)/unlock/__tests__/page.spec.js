@@ -378,8 +378,11 @@ describe("Unlock Wallet", async () => {
     afterAll(() => vault.clear());
 
     it("should show the password field and the link to restore the wallet if there is login info stored", () => {
-      const { container } = render(UnlockWallet, {});
+      const { container, getByRole } = render(UnlockWallet, {});
 
+      expect(getByRole("heading", { level: 2 })).toHaveTextContent(
+        "Unlock your wallet"
+      );
       expect(container.firstElementChild).toMatchSnapshot();
     });
 

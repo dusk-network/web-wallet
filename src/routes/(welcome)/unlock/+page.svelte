@@ -150,7 +150,7 @@
 </script>
 
 <section class="login">
-  <h2 class="h1">Unleash RWA and Decentralized Finance</h2>
+  <h2 class="h1">Unlock your wallet</h2>
   <div class="login">
     <IconHeadingCard
       tag="article"

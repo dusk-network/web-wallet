@@ -1,27 +1,19 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { mdiWrenchClock } from "@mdi/js";
-
-  import { AnchorButton } from "$lib/dusk/components";
-  import { IconHeadingCard } from "$lib/containers/Cards";
+  import { AnchorButton, Card } from "$lib/dusk/components";
 </script>
 
 <section class="maintenance">
-  <h2 class="h1">Unleash RWA and Decentralized Finance</h2>
+  <h2 class="h1">Wallet maintenance</h2>
   <div class="maintenance">
-    <IconHeadingCard
-      tag="article"
-      gap="medium"
-      heading="Wallet maintenance"
-      icons={[mdiWrenchClock]}
-    >
+    <Card tag="article" gap="medium">
       <p>
         Dusk web-wallet is undergoing some essential maintenance and will return
         soon. Need an alternative? Rusk wallet is our terminal wallet
         application.
       </p>
-    </IconHeadingCard>
+    </Card>
   </div>
   <footer class="maintenance-footer">
     <AnchorButton
