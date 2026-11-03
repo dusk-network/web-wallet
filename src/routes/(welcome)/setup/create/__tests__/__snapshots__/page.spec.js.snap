@@ -2465,7 +2465,7 @@ exports[`Create > ensures the Password step renders as expected 1`] = `
         <h3
           class="h4"
         >
-          Password
+          Use a password
         </h3>
          
         <div
@@ -2474,7 +2474,7 @@ exports[`Create > ensures the Password step renders as expected 1`] = `
           <div
             aria-checked="true"
             aria-disabled="false"
-            aria-label="Password"
+            aria-label="Use a password"
             class="dusk-switch dusk-switch--on-surface"
             role="switch"
             tabindex="0"
@@ -2782,7 +2782,7 @@ exports[`Create > ensures the Password step renders as expected 2`] = `
         <h3
           class="h4"
         >
-          Password
+          Use a password
         </h3>
          
         <div
@@ -2791,7 +2791,7 @@ exports[`Create > ensures the Password step renders as expected 2`] = `
           <div
             aria-checked="false"
             aria-disabled="false"
-            aria-label="Password"
+            aria-label="Use a password"
             class="dusk-switch dusk-switch--on-surface"
             role="switch"
             tabindex="0"

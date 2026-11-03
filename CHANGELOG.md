@@ -187,6 +187,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Start a restore's block height empty, say which block to give, and go on only with one
 - Take the recovery phrase on Unlock in Restore's word boxes, with no autocorrect
 - Word the screens before a wallet opens plainly and in sentence case, each headed with what it is
+- Label the password switch Use a password, and show a switch that's off as a ring
 
 ### Removed
 

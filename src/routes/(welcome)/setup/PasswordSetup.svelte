@@ -42,7 +42,11 @@
   }
 </script>
 
-<ToggleableCard heading="Password" iconPath={mdiKeyOutline} bind:isToggled>
+<ToggleableCard
+  heading="Use a password"
+  iconPath={mdiKeyOutline}
+  bind:isToggled
+>
   <p>Please store your password safely.</p>
   <Textbox
     aria-describedby={strength ? strengthId : undefined}

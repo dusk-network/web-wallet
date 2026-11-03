@@ -303,6 +303,27 @@ describe("Restore", async () => {
     expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
   });
 
+  it("should ask whether to use a password with a switch that says so: on with the password's fields, off without", async () => {
+    const { getByLabelText, getByRole, queryByPlaceholderText } =
+      render(Restore);
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await pasteInto(getByLabelText("Word 1"), mnemonic);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    const usePassword = getByRole("switch", { name: "Use a password" });
+
+    expect(usePassword).toHaveAttribute("aria-checked", "true");
+    expect(queryByPlaceholderText("Set password")).toBeInTheDocument();
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+    await fireEvent.click(usePassword);
+
+    expect(usePassword).toHaveAttribute("aria-checked", "false");
+    expect(queryByPlaceholderText("Set password")).toBeNull();
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
   it("should start the block height empty, and go on only with a block up to the network's latest", async () => {
     const heightSpy = vi
       .spyOn(networkStore, "getCurrentBlockHeight")
