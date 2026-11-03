@@ -43,6 +43,9 @@ let syncController = null;
 /** @type {Promise<void> | null} */
 let syncPromise = null;
 
+/** How many syncs started: the number of the one running, or the last. */
+let syncNumber = 0;
+
 let walletSession = 0;
 
 /** @type {WalletStoreContent} */
@@ -185,32 +188,53 @@ const isOwn = (to, profile) =>
   to === String(profile.account) || to === String(profile.address);
 
 /**
- * Syncs once the node takes a transaction out of its queue, and reads the
- * balances and the stake again: done when they are.
+ * A sync that started after the `after`-th, ended: the one running if it
+ * did, or else one more, once that one ends. What it reads is what the
+ * node had after the `after`-th started, as after a transaction sent then.
  *
- * @type {(txInfo: TransactionInfo) => Promise<unknown>}
+ * @param {number} after
+ * @returns {Promise<void>}
  */
-const observeTxRemoval = (txInfo) =>
-  networkStore.connect().then((network) =>
-    network.transactions
-      .withId(txInfo.hash)
-      .once.removed()
-      .then(() => sync())
-      .catch(() => {}) // Background sync errors are reported in syncStatus.
-      .finally(updateStaticInfo)
-  );
+async function syncAfter(after) {
+  const joined = syncPromise ? syncNumber : syncNumber + 1;
+
+  await sync();
+
+  if (joined <= after) {
+    await sync();
+  }
+}
+
+/**
+ * Once the node takes a transaction out of its queue: a sync that started
+ * after it was sent, and the balances and the stake read again. It rejects
+ * when the queue can't be followed, or that sync fails: the balances and
+ * the stake are read all the same, as they were.
+ *
+ * @param {TransactionInfo} txInfo
+ * @param {number} after The number of the last sync started as it was sent
+ * @returns {Promise<void>}
+ */
+const refreshOnRemoval = (txInfo, after) =>
+  networkStore
+    .connect()
+    .then((network) => network.transactions.withId(txInfo.hash).once.removed())
+    .then(() => syncAfter(after))
+    .finally(updateStaticInfo);
 
 /**
  * Holds Staking's buttons for a staking transaction `profile` sent, until
- * `settled`: the node took it out of its queue, and the stake was read
- * again. Should the node never say so, for no longer than an automatic
- * sync's interval, when the wallet reads the stake again by itself.
+ * `refreshed`: the node took it out of its queue, and a sync that started
+ * after it was sent read the stake again. Not when the queue can't be
+ * followed, nor when that sync fails: the stake read then is the one from
+ * before. Should neither happen, for no longer than an automatic sync's
+ * interval.
  *
  * @param {Profile} profile
  * @param {string} hash
- * @param {Promise<unknown>} settled
+ * @param {Promise<unknown>} refreshed
  */
-function holdStaking(profile, hash, settled) {
+function holdStaking(profile, hash, refreshed) {
   const session = walletSession;
 
   const release = () => {
@@ -233,7 +257,7 @@ function holdStaking(profile, hash, settled) {
       { account: String(profile.account), hash },
     ],
   }));
-  settled.then(release, release);
+  refreshed.then(release, () => {});
 }
 
 /** @type {<T>(fn: (v: T) => any) => (a: T) => T} */
@@ -330,10 +354,13 @@ const sendAs = (profile, details, execute, { staking = false } = {}) => {
 
   /** @param {TransactionInfo} txInfo */
   const followRemoval = (txInfo) => {
-    const settled = observeTxRemoval(txInfo);
+    const refreshed = refreshOnRemoval(txInfo, syncNumber);
+
+    // Background sync errors are reported in syncStatus.
+    refreshed.catch(() => {});
 
     if (staking) {
-      holdStaking(profile, txInfo.hash, settled);
+      holdStaking(profile, txInfo.hash, refreshed);
     }
   };
 
@@ -891,6 +918,7 @@ async function sync(fromBlock) {
   }
 
   if (!syncPromise) {
+    syncNumber++;
     set({
       ...store,
       syncStatus: {

@@ -1327,6 +1327,90 @@ describe("Wallet store", async () => {
         }
       });
 
+      it("should stay held when the node's queue can't be followed, rather than let go on the stake read before the send", async () => {
+        vi.useRealTimers();
+
+        const network = await networkStore.connect();
+        const scope = Object.getPrototypeOf(network.transactions.withId(""));
+        const removed = vi
+          .spyOn(scope, "removed")
+          .mockRejectedValueOnce(new Error("Unable to subscribe"));
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "unfollowed-tx",
+          nonce: 1n,
+        });
+
+        try {
+          await walletStore.stake(amount, gas);
+          await vi.waitUntil(() => removed.mock.calls.length === 1);
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          expect(get(walletStore).pendingStakes).toStrictEqual([
+            { account: String(defaultProfile.account), hash: "unfollowed-tx" },
+          ]);
+        } finally {
+          removed.mockRestore();
+          vi.useFakeTimers();
+        }
+      });
+
+      it("should stay held when the sync after the node took it out of its queue fails", async () => {
+        vi.useRealTimers();
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "unsynced-tx",
+          nonce: 1n,
+        });
+
+        try {
+          await walletStore.unstake(amount, gas);
+          treasuryUpdateSpy.mockRejectedValueOnce(
+            new Error("Node unreachable")
+          );
+          leaveQueue("unsynced-tx");
+          await vi.waitUntil(() => get(walletStore).syncStatus.error !== null);
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          expect(get(walletStore).pendingStakes).toStrictEqual([
+            { account: String(defaultProfile.account), hash: "unsynced-tx" },
+          ]);
+        } finally {
+          vi.useFakeTimers();
+        }
+      });
+
+      it("should let go only once a sync that started after the send ended, not the one running as it went out", async () => {
+        vi.useRealTimers();
+
+        const running = Promise.withResolvers();
+
+        executeSpy.mockImplementationOnce(async () => {
+          // A sync starts as the transaction goes out, and runs on.
+          treasuryUpdateSpy.mockImplementationOnce(() => running.promise);
+          walletStore.sync().catch(() => {});
+
+          return { buffer: new Uint8Array(), hash: "raced-tx", nonce: 1n };
+        });
+
+        try {
+          await walletStore.stake(amount, gas);
+
+          const before = treasuryUpdateSpy.mock.calls.length;
+
+          leaveQueue("raced-tx");
+          running.resolve(undefined);
+          await vi.waitUntil(() => !get(walletStore).pendingStakes.length);
+
+          expect(treasuryUpdateSpy).toHaveBeenCalledTimes(before + 1);
+        } finally {
+          running.resolve(undefined);
+          vi.useFakeTimers();
+        }
+      });
+
       it("should be let go on a lock", async () => {
         vi.useRealTimers();
 
