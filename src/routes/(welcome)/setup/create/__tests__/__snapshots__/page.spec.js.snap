@@ -1937,6 +1937,7 @@ exports[`Create > ensures the All Done step renders as expected 1`] = `
   <!---->
    
   <!---->
+  <!---->
   <div
     class="dusk-card dusk-card--gap-medium"
   >
@@ -1983,6 +1984,7 @@ exports[`Create > ensures the All Done step renders as expected 1`] = `
     <!---->
     
   </div>
+  
   
   <!---->
    

@@ -15,7 +15,8 @@ import profileGeneratorFrom from "./profileGeneratorFrom";
  * Starts a wallet restored or made here, in place of every wallet on this
  * device. Of the contacts here it keeps only its own: those kept in plain
  * text before stay only when it's the wallet this device had. So do the
- * bridge's transfers kept here. Every other wallet's data goes.
+ * bridge's transfers kept here. Every other wallet's data goes. It resolves
+ * once the wallet is open, before its first sync ends.
  *
  * @param {string} mnemonic
  * @param {bigint} [syncFrom]
@@ -51,7 +52,10 @@ async function initializeWallet(mnemonic, syncFrom) {
   startIncarnation(key);
   await startDirectory(key);
 
-  walletStore.clearLocalDataAndInit(profileGenerator, syncFrom, { key, n: 1 });
+  await walletStore.clearLocalDataAndInit(profileGenerator, syncFrom, {
+    key,
+    n: 1,
+  });
 }
 
 export default initializeWallet;
