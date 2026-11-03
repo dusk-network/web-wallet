@@ -220,7 +220,7 @@ describe("CommandBar", () => {
       expect(open).toHaveBeenCalledWith("", "_blank");
       await vi.waitFor(() =>
         expect(tab.location.href).toBe(
-          `https://apps.testnet.dusk.network/explorer/blocks/block?id=${hash}`
+          `https://explorer.testnet.dusk.network/blocks/block?id=${hash}`
         )
       );
       expect(tab.opener).toBeNull();

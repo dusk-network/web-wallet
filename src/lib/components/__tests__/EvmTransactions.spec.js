@@ -589,7 +589,7 @@ describe("EvmTransactions", () => {
       getByRole("link", { name: "View dusk payout hash in Dusk explorer" })
     ).toHaveAttribute(
       "href",
-      `https://apps.dusk.network/explorer/transactions/transaction?id=${"b1".repeat(32)}`
+      `https://explorer.dusk.network/transactions/transaction?id=${"b1".repeat(32)}`
     );
   });
 
@@ -1249,7 +1249,7 @@ describe("EvmTransactions", () => {
       })
     ).toHaveAttribute(
       "href",
-      `https://apps.testnet.dusk.network/explorer/transactions/transaction?id=${proof}`
+      `https://explorer.testnet.dusk.network/transactions/transaction?id=${proof}`
     );
   });
 

@@ -66,7 +66,7 @@ describe("DepositLifecycle", () => {
 
     expect(dusk).toHaveAttribute(
       "href",
-      `https://apps.testnet.dusk.network/explorer/transactions/transaction?id=${"ab".repeat(32)}`
+      `https://explorer.testnet.dusk.network/transactions/transaction?id=${"ab".repeat(32)}`
     );
     expect(dusk).toHaveAttribute("target", "_blank");
     expect(
