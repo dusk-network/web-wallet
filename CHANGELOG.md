@@ -191,6 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove the Migrate page, whose address now opens the Bridge
 - Remove testnet's BEP-20 migration on Sepolia
 - Remove the line about what a failed call to Sozu is charged
+- Remove the grey animation panel from the welcome page
 
 ### Fixed
 

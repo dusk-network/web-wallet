@@ -1,8 +1,6 @@
 <svelte:options immutable={true} />
 
 <script>
-  import "css-doodle";
-  import Animation from "./Animation.svelte";
   import { AppAnchorButton } from "$lib/components";
   import { settingsStore } from "$lib/stores";
   import { mdiKeyOutline, mdiRestore, mdiWalletOutline } from "@mdi/js";
@@ -38,7 +36,6 @@
           icon={{ path: mdiRestore }}
         />
       </div>
-      <Animation />
     </div>
   </div>
 </section>
