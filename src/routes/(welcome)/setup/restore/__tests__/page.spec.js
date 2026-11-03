@@ -272,8 +272,11 @@ describe("Restore", async () => {
     // Set Password step
     await fireEvent.click(getByRole("switch"));
 
+    // The click doesn't wait for Next's action, which clears the vault.
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    expect(vault.exists()).toBe(false);
+    await vi.waitFor(() => {
+      expect(vault.exists()).toBe(false);
+    });
 
     // Block Height Step
     await fireEvent.click(getByRole("button", { name: "Next" }));
