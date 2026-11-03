@@ -134,6 +134,45 @@ describe("Add wallet", () => {
     expect(get(walletStore).walletKey).toBe(added.id);
   });
 
+  it("imports one from the first block when its block height is off, though one was typed before going back", async () => {
+    const switchSpy = vi.spyOn(walletStore, "switchWallet");
+    const { getByLabelText, getByRole } = render(AddWallet);
+
+    await fireEvent.click(getByRole("button", { name: /Import wallet/ }));
+    await pasteInto(getByLabelText("Word 1"), B);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await vi.waitFor(() => getByRole("switch"));
+
+    // A block typed, then back from the password to the block height.
+    await fireEvent.click(getByRole("switch"));
+
+    expect(getByRole("textbox", { name: /block height/i })).toHaveValue("");
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+
+    await fireEvent.input(getByRole("textbox", { name: /block height/i }), {
+      target: { value: "5" },
+    });
+    await vi.waitFor(() =>
+      expect(getByRole("button", { name: "Next" })).toBeEnabled()
+    );
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+
+    expect(getByRole("switch")).toHaveAttribute("aria-checked", "false");
+
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.input(getByLabelText("Password you unlock with"), {
+      target: { value: PASSWORD },
+    });
+    await fireEvent.click(getByRole("button", { name: "Import wallet" }));
+
+    await vi.waitFor(() => expect(gotoSpy).toHaveBeenCalledWith("/dashboard"));
+
+    const [, added] = vault.list() ?? [];
+
+    expect(switchSpy).toHaveBeenCalledWith(added.id, 0, { syncFromBlock: 0n });
+  });
+
   it("creates one: its phrase written down and tapped back, then sealed, made at the block it's made at", async () => {
     const { container, getAllByRole, getByLabelText, getByRole } =
       render(AddWallet);
