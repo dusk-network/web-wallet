@@ -582,6 +582,13 @@ describe("transfers on the routes to and from other chains", () => {
     expect(
       matchesFilters(describeRow(out, withRoutes), out, { kind: "bridge" })
     ).toBe(true);
+    // What's bridged out was sent too, so Sent never looks as if it's gone.
+    expect(
+      matchesFilters(describeRow(out, withRoutes), out, { kind: "sent" })
+    ).toBe(true);
+    expect(
+      matchesFilters(describeRow(out, withRoutes), out, { kind: "received" })
+    ).toBe(false);
 
     // A send to an account that only pays migrations out isn't a transfer
     // out, though it goes by the account's name.

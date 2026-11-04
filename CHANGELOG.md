@@ -11,20 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Show what arrived on a finished transfer out in Bridge › Activity
-- Say a transfer is taking longer than usual in Bridge › Activity
-- Say what arrived on the Bridge's Sent screen while it's open
-
 ### Removed
 
 ### Fixed
-
-- Go back to the review, in plain words, when a wallet refuses an approval or a migration
-- Offer to ask again when an EVM wallet refuses to change chain
-- Stop a migration if the EVM wallet changes account after the review
-- Close a Bridge review if the address it pays changes
-- Give a wallet adding a chain the network's own RPC
-- Move focus and announce the steps of a Bridge transfer
 
 ## [1.9.0] - 2026-11-05
 
@@ -100,6 +89,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Show what arrived on a finished transfer out in Bridge › Activity
+- Say a transfer is taking longer than usual in Bridge › Activity
+- Say what arrived on the Bridge's Sent screen while it's open
+- Show on a Bridge review what an approval allows, the bridge's account, and what the wallet holds for network fees
+- Say Arrived for every finished Bridge transfer, and list transfers out under Sent and in under Received
 - Link to the explorer at its own domain
 - Open and close sections, show Copied on the button, and fade messages in place, the same way everywhere
 - Lock every wallet and every tab with Lock [#999]
@@ -227,6 +221,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Go back to the review, in plain words, when a wallet refuses an approval or a migration
+- Offer to ask again when an EVM wallet refuses to change chain
+- Stop a migration if the EVM wallet changes account after the review
+- Close a Bridge review if the address it pays changes
+- Give a wallet adding a chain the network's own RPC
+- Move focus and announce the steps of a Bridge transfer
+- Say why an amount with too many decimals won't do on the Bridge
+- Start a new transfer from the Bridge tab once one is sent
 - Keep the balance out of Send's and staking's amount errors and History's row labels, and the fee and gas used off a transaction's page, while balances are hidden
 - Announce a wrong password to screen readers
 - Stop asking a connecting EVM wallet to add DuskEVM on mainnet, or a chain its route doesn't use

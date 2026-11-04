@@ -63,7 +63,7 @@
     {/if}
   {/if}
   {#if transfer.payout}
-    <dt>{isMigration ? "Paid" : "Arrived"}</dt>
+    <dt>Arrived</dt>
     <dd>
       {formatTimestamp(
         (transfer.paidAt ?? transfer.arrivedAt)

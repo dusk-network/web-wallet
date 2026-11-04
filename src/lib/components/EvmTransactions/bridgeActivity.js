@@ -343,7 +343,9 @@ function routeTransferLine(transfer, { locale, time }) {
 
   switch (transfer.stage) {
     case "paid":
-      return transfer.paidAt ? `Paid ${day(transfer.paidAt)}` : "Paid on Dusk";
+      return transfer.paidAt
+        ? `Arrived ${day(transfer.paidAt)}`
+        : "Arrived on Dusk";
     case "arrived":
       return transfer.arrivedAt
         ? `Arrived ${day(transfer.arrivedAt)}`

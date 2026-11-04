@@ -466,6 +466,9 @@
   };
 
   /** Where the card is: the form, the review, or what came of it. */
+  /** How often the Bridge tab asked for a new transfer: a route starts over. */
+  let restarts = 0;
+
   /** @type {"form" | "result" | "review"} */
   let step = "form";
 
@@ -652,7 +655,10 @@
       <a
         aria-current="page"
         class="swap-tab"
-        href={addBasePath("/dashboard/bridge")}>Bridge</a
+        href={addBasePath("/dashboard/bridge")}
+        on:click={() => {
+          restarts += 1;
+        }}>Bridge</a
       >
       <a class="swap-tab" href={addBasePath(withdrawalStatusHref())}>Activity</a
       >
@@ -662,7 +668,7 @@
   {#if !route}
     <p class="bridge__none">The bridge has no routes on this network.</p>
   {:else if route.kind === "migration"}
-    {#key route.id}
+    {#key `${route.id} ${restarts}`}
       <MigrationRoute
         {canFlip}
         {fromChoices}
@@ -675,7 +681,7 @@
       />
     {/key}
   {:else if route.kind === "service"}
-    {#key route.id}
+    {#key `${route.id} ${restarts}`}
       <ServiceRoute
         {canFlip}
         {fromChoices}

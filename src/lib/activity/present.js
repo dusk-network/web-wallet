@@ -480,7 +480,12 @@ export const matchesFilters = (
   row,
   { kind = "all", privacy = "all", since = null }
 ) =>
-  (kind === "all" || presentation.category === kind) &&
+  (kind === "all" ||
+    presentation.category === kind ||
+    // What's bridged was sent or received too.
+    (presentation.category === "bridge" &&
+      ((kind === "sent" && row.direction === "out") ||
+        (kind === "received" && row.direction === "in")))) &&
   (privacy === "all" || presentation.privacy.toLowerCase() === privacy) &&
   // A row with no time yet isn't in a range of days.
   (since === null || (row.time !== null && row.time >= since));
