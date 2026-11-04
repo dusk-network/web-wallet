@@ -355,7 +355,10 @@
       return;
     }
 
-    sendAmount = formatDuskPlain(maxSpendableAmount);
+    sendAmount = formatDuskPlain(maxSpendableAmount).replace(
+      ".",
+      getDecimalSeparator()
+    );
     isMaxAmount = true;
   }
 

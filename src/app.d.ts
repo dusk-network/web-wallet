@@ -25,5 +25,6 @@ declare namespace App {
   interface PageState {
     /** At a phone's review of a send, a step of its own in the history. */
     sendReview?: boolean;
+    routeReview?: boolean;
   }
 }

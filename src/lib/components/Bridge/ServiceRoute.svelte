@@ -7,6 +7,8 @@
    * fee to the connected EVM wallet's address there. The address comes from
    * the wallet, never typed.
    */
+  import { pushState } from "$app/navigation";
+  import { page } from "$app/stores";
   import { createEventDispatcher } from "svelte";
   import {
     mdiArrowDown,
@@ -80,6 +82,18 @@
 
   const dispatch = createEventDispatcher();
 
+  /** Whether the swap keeps focus: the direction just changed by it. */
+  export let focusSwap = false;
+
+  const takeFocusIf = (
+    /** @type {HTMLElement} */ node,
+    /** @type {boolean} */ yes
+  ) => {
+    if (yes) {
+      node.focus();
+    }
+  };
+
   /** A step's heading takes focus as it shows, so a screen reader goes there. */
   const takeFocus = (/** @type {HTMLElement} */ node) => node.focus();
 
@@ -131,18 +145,49 @@
     step = "result";
   }
 
+  function openReview() {
+    note = "";
+    reviewedFor = address;
+    step = "review";
+  }
+
+  function leaveReview() {
+    if ($page.state?.routeReview) {
+      history.back();
+    }
+
+    step = "form";
+  }
+
+  /**
+   * The step a phone's Back or Forward takes the history to: a review only of
+   * what can still be reviewed.
+   *
+   * @param {boolean} isAtReview
+   */
+  function followHistory(isAtReview) {
+    if (step === "review" && !isAtReview) {
+      step = "form";
+    } else if (step === "form" && isAtReview && primary?.ready && isConnected) {
+      openReview();
+    }
+  }
+
   function primaryAction() {
     if (!isConnected) {
       modal.open(route.chain.chainId);
     } else if (primary.ready) {
-      note = "";
-      reviewedFor = address;
-      step = "review";
+      if (!$page.state?.routeReview) {
+        pushState("", { routeReview: true });
+      }
+
+      openReview();
     }
   }
 
   $: ({ hideBalances, language } = $settingsStore);
   $: isAmountMasked = hideBalances && isMaxAmount;
+  $: followHistory(Boolean($page.state?.routeReview));
   $: ({ address, isConnected } = $account);
   $: chainName = route.chain.name;
   $: amountLux =
@@ -192,13 +237,13 @@
               : { label: "Review bridge", ready: true };
   // A review needs the address it pays: without a wallet, back to the form.
   $: if (step === "review" && !isConnected) {
-    step = "form";
+    leaveReview();
   }
   // It pays one address: another is reviewed again.
   $: if (step === "review" && isConnected && address !== reviewedFor) {
     note =
       "Your EVM wallet switched to another account, so nothing was sent. Review again.";
-    step = "form";
+    leaveReview();
   }
 </script>
 
@@ -259,11 +304,15 @@
     </div>
   </div>
 
+  <p class="route-amount-reason sr-only" role="status">
+    {amount !== "" && !primary.ready ? primary.label : ""}
+  </p>
   <div class="swap-flip">
     {#if canFlip}
       <button
         aria-label="Swap From and To"
         class="swap-flip__button"
+        use:takeFocusIf={focusSwap}
         on:click={() => dispatch("flip")}
         type="button"><Icon path={mdiArrowDown} /></button
       >
@@ -284,7 +333,10 @@
       />
     </div>
     <div class="swap-amount">
-      <output class:swap-amount__empty={arrivesLux === 0n} for="service-amount"
+      <output
+        aria-live="off"
+        class:swap-amount__empty={arrivesLux === 0n}
+        for="service-amount"
         >{#if arrivesLux === 0n}0{:else}<BalanceValue
             hidden={isAmountMasked}
             value={formatDuskExact(arrivesLux, language)}
@@ -415,12 +467,7 @@
       </div>
       <div>
         <dt>Through</dt>
-        <dd>
-          <span
-            >The bridge's account on Dusk, with your address as the memo</span
-          >
-          <span class="route-review__address">{route.account}</span>
-        </dd>
+        <dd>The bridge's account, which pays your address</dd>
       </div>
     </dl>
     <ReviewAmount
@@ -433,12 +480,27 @@
         ? BALANCE_MASK
         : formatTotal(total, unshieldedBalance, language)}
     />
+    <details class="route-review__check">
+      <summary>Addresses to check</summary>
+      <dl class="route-review__ends">
+        <div>
+          <dt>Bridge account</dt>
+          <dd><span class="route-review__address">{route.account}</span></dd>
+        </div>
+        <div>
+          <dt>Memo</dt>
+          <dd><span class="route-review__address">{address}</span></dd>
+        </div>
+      </dl>
+      <p class="route-review__public">
+        <b>Public on Dusk and {chainName}, and linked:</b> your public account,
+        your {chainName} address and the amount.
+      </p>
+    </details>
     <div class="route-review__actions">
       <Button
         icon={{ path: mdiArrowLeft }}
-        on:click={() => {
-          step = "form";
-        }}
+        on:click={leaveReview}
         text="Back"
         variant="secondary"
       />
@@ -466,6 +528,7 @@
           bind:heading={sentHeading}
           {hash}
           masked={hideBalances}
+          {route}
           sentText={timeText
             ? `It usually arrives on ${chainName} in ${timeText.replace(/^~/, "about ")}.`
             : `It arrives on ${chainName} once the bridge pays it out.`}
@@ -492,6 +555,19 @@
   .route-review__title:focus,
   .route-result:focus {
     outline: none;
+  }
+
+  .route-review__check {
+    font-size: 0.875em;
+
+    summary {
+      cursor: pointer;
+      padding-block: 0.25em;
+    }
+  }
+
+  .route-review__public {
+    margin: 0.5em 0 0;
   }
 
   .route-note {

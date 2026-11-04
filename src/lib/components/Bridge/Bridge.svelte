@@ -436,6 +436,7 @@
         : null;
 
     if (next && next.id !== route?.id) {
+      flipped = "";
       routeId = next.id;
       amount = "";
       step = "form";
@@ -449,6 +450,12 @@
     if (back) {
       routeId = back.id;
       step = "form";
+      flipped =
+        back.kind === "migration"
+          ? `From ${back.chain.name} to Dusk`
+          : back.kind === "service"
+            ? `From Dusk to ${back.chain.name}`
+            : "From the other side";
     }
   }
 
@@ -466,6 +473,9 @@
   };
 
   /** Where the card is: the form, the review, or what came of it. */
+  /** The direction the swap just changed to, as a screen reader hears it. */
+  let flipped = "";
+
   /** How often the Bridge tab asked for a new transfer: a route starts over. */
   let restarts = 0;
 
@@ -665,12 +675,14 @@
     </nav>
   </div>
 
+  <p class="sr-only" role="status">{flipped}</p>
   {#if !route}
     <p class="bridge__none">The bridge has no routes on this network.</p>
   {:else if route.kind === "migration"}
     {#key `${route.id} ${restarts}`}
       <MigrationRoute
         {canFlip}
+        focusSwap={Boolean(flipped)}
         {fromChoices}
         net={$nodeNetwork}
         on:flip={flip}
@@ -684,6 +696,7 @@
     {#key `${route.id} ${restarts}`}
       <ServiceRoute
         {canFlip}
+        focusSwap={Boolean(flipped)}
         {fromChoices}
         gasLimits={transferGasLimits}
         gasSettings={transferGasSettings}

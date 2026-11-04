@@ -65,6 +65,28 @@ describe("walletConnection", () => {
     vi.mocked(createAppKit).mockClear();
   });
 
+  it("should keep the connected address from WalletConnect's name lookup", async () => {
+    vi.resetModules();
+
+    const { setNodeNetwork: setNet } = await import("$lib/stores/nodeNetwork");
+    const { startWalletConnection: start } =
+      await import("../walletConnection");
+
+    setNet(networks.mainnet);
+    vi.mocked(createAppKit).mockClear();
+
+    const kit = /** @type {any} */ ({ subscribeEvents: vi.fn() });
+
+    vi.mocked(createAppKit).mockReturnValueOnce(kit);
+    await start();
+
+    expect(await kit.fetchIdentity({ address: "0x1" })).toStrictEqual({
+      avatar: null,
+      name: null,
+    });
+    vi.mocked(createAppKit).mockClear();
+  });
+
   it("should then offer wallets only, without analytics or the Coinbase SDKs' telemetry, once", async () => {
     setNodeNetwork(networks.testnet);
     await startWalletConnection();
