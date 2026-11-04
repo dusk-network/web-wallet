@@ -218,6 +218,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Keep the balance out of Send's and staking's amount errors and History's row labels, and the fee and gas used off a transaction's page, while balances are hidden
 - Announce a wrong password to screen readers
+- Stop asking a connecting EVM wallet to add DuskEVM on mainnet, or a chain its route doesn't use
 - Say "No Sozu fee" where a network fee still applies
 - Say contacts are saved in this wallet, not just on this device
 - Refuse a mistyped account at Send's To field and in Contacts

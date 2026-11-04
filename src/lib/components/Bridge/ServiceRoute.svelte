@@ -115,7 +115,7 @@
 
   function primaryAction() {
     if (!isConnected) {
-      modal.open();
+      modal.open(route.chain.chainId);
     } else if (primary.ready) {
       step = "review";
     }

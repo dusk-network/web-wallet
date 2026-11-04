@@ -47,6 +47,71 @@ describe("DuskEVM", () => {
     expect(duskEvmAdapterUrl()).toBe(`${evm.rpcUrl}/l1`);
   });
 
+  it("leaves mainnet without DuskEVM until its file has the routes, whatever is set", async () => {
+    vi.stubEnv("VITE_EVM_CHAIN_ID", "744");
+    vi.stubEnv("VITE_EVM_BRIDGE_RPC_URL", "https://rpc.evm.example.test");
+    vi.stubEnv(
+      "VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL",
+      "https://explorer.evm.example.test"
+    );
+    vi.stubEnv(
+      "VITE_EVM_BRIDGE_CONTRACT_ADDRESS",
+      "0x4200000000000000000000000000000000000010"
+    );
+
+    const {
+      duskEvm,
+      duskEvmAdapterUrl,
+      duskEvmContractId,
+      duskEvmDriverUrl,
+      duskEvmExplorerTx,
+      duskEvmNetwork,
+    } = await on(networks.mainnet);
+
+    expect(duskEvmNetwork()).toBeNull();
+    expect(duskEvm.id).toBeUndefined();
+    expect(duskEvm.rpcUrls.default.http).toStrictEqual([undefined]);
+    expect(duskEvm.contracts.L2StandardBridge.address).toBeUndefined();
+    expect(duskEvmAdapterUrl()).toBeUndefined();
+    expect(duskEvmExplorerTx("0xabc")).toBeNull();
+    expect(duskEvmContractId("optimism_portal", "ab".repeat(32))).toBe("");
+    expect(duskEvmDriverUrl("optimismPortal", "/drivers/set.wasm")).toBe("");
+
+    // The day its file has the routes, what's set counts again.
+    const { testnet } = networks;
+    const live = await on({
+      ...networks.mainnet,
+      duskEvm: testnet.duskEvm,
+      routes: { ...networks.mainnet.routes, duskEvm: testnet.routes.duskEvm },
+    });
+
+    expect(live.duskEvm.id).toBe(744);
+  });
+
+  it("has no DuskEVM from a file that has its contracts, but not its routes", async () => {
+    const { duskEvm, duskEvmNetwork } = await on({
+      ...networks.testnet,
+      routes: { ...networks.testnet.routes, duskEvm: [] },
+    });
+
+    expect(duskEvmNetwork()).toBeNull();
+    expect(duskEvm.id).toBeUndefined();
+  });
+
+  it("takes what's set on a devnet or a local node, to set one up", async () => {
+    vi.stubEnv("VITE_EVM_CHAIN_ID", "310");
+    vi.stubEnv("VITE_EVM_BRIDGE_RPC_URL", "https://l2.example.test");
+
+    for (const net of [networks.devnet, null]) {
+      const { duskEvm } = await on(net);
+
+      expect(duskEvm.id).toBe(310);
+      expect(duskEvm.rpcUrls.default.http).toStrictEqual([
+        "https://l2.example.test",
+      ]);
+    }
+  });
+
   it("takes what's set for local work over the network's", async () => {
     vi.stubEnv("VITE_EVM_CHAIN_ID", "310");
     vi.stubEnv("VITE_EVM_BRIDGE_RPC_URL", "https://l2.example.test");

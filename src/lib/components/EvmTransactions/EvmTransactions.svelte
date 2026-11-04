@@ -743,7 +743,8 @@
   }
   // DuskEVM's parts, and its reads: only on a network that has it.
   $: hasDuskEvm =
-    Boolean($nodeNetwork?.duskEvm) || finalizationConfig.configured;
+    Boolean($nodeNetwork?.routes.duskEvm.length) ||
+    finalizationConfig.configured;
   $: groups = groupBridgeActivity([
     ...transfers.map((transfer) =>
       routeTransferRow(transfer, {

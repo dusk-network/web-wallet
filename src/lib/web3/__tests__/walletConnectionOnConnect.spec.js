@@ -11,6 +11,7 @@ function stubAppKit() {
     emit: (/** @type {any} */ event) =>
       listeners.forEach((listener) => listener(event)),
     open: vi.fn(),
+    switchNetwork: vi.fn(),
     subscribeEvents: vi.fn((/** @type {(event: any) => void} */ listener) => {
       listeners.push(listener);
 
@@ -94,6 +95,32 @@ describe("the EVM wallet connection, on Connect", () => {
       pages.splice(0).map((connection) => connection.settledDeletes())
     );
     localStorage.clear();
+  });
+
+  it("should connect on the chain the page asks for, with no other chain to ask the wallet for", async () => {
+    const appKit = stubAppKit();
+    const { modal } = await load();
+
+    await modal.open(11155111);
+
+    expect(appKit.switchNetwork).toHaveBeenCalledOnce();
+    expect(appKit.switchNetwork.mock.calls[0][0]).toMatchObject({
+      id: 11155111,
+    });
+    expect(appKit.switchNetwork.mock.invocationCallOrder[0]).toBeLessThan(
+      appKit.open.mock.invocationCallOrder[0]
+    );
+  });
+
+  it("should leave the dialog's chain alone for a page that needs none, or a chain this network's routes don't reach", async () => {
+    const appKit = stubAppKit();
+    const { modal } = await load();
+
+    await modal.open();
+    await modal.open(744);
+
+    expect(appKit.switchNetwork).not.toHaveBeenCalled();
+    expect(appKit.open).toHaveBeenCalledTimes(2);
   });
 
   it("should load AppKit only as its dialog opens, once, and then open it", async () => {
