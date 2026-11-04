@@ -5,6 +5,7 @@ import { tick } from "svelte";
 
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
+import { settingsStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { Bridge } from "..";
@@ -118,6 +119,66 @@ describe("the Bridge card's routes to and from other chains", () => {
     vi.clearAllMocks();
     vi.useRealTimers();
     localStorage.clear();
+  });
+
+  it("hides what Max fills in on a route while balances are hidden, and shows what's typed", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      connect({ address: EVM, chainId: 1 });
+
+      const { container, getByRole } = render(Bridge, props);
+      const amount = getByRole("textbox", { name: "Amount, in DUSK" });
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(amount).toHaveValue("••••");
+      expect(container.querySelector("output")).toHaveTextContent(
+        "•••• hidden"
+      );
+
+      await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+
+      expect(container).toHaveTextContent("•••• DUSK to");
+      expect(container.querySelector(".route-review")).not.toHaveTextContent(
+        /\d DUSK arrives/
+      );
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
+  });
+
+  it("hides what Max fills in on a migration while balances are hidden", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      mocks.getBalanceOfCoin.mockResolvedValue(5n * DUSK * DUSK);
+      connect({ address: EVM, chainId: 56 });
+
+      const { container, findByRole, getByRole } = render(Bridge, {
+        ...props,
+        linkedRoute: "bsc-to-dusk",
+      });
+      const amount = await findByRole("textbox", {
+        name: "Amount, in BEP20 DUSK",
+      });
+
+      await vi.waitFor(() =>
+        expect(getByRole("button", { name: "Max" })).toBeEnabled()
+      );
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(amount).toHaveValue("••••");
+      expect(container.querySelector("output")).toHaveTextContent(
+        "•••• hidden"
+      );
+
+      await fireEvent.input(amount, { target: { value: "•••" } });
+
+      expect(amount).toHaveValue("");
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
   });
 
   it("takes no click on Send for half a second once the review shows, so a double click on Review can't send", async () => {

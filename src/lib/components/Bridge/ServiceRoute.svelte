@@ -35,6 +35,7 @@
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
+  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
@@ -78,6 +79,17 @@
   /** @type {string} */
   let amount = "";
 
+  /** Whether Max filled the amount in: it's hidden with the balances. */
+  let isMaxAmount = false;
+
+  /** @param {Event} event */
+  function typeAmount(event) {
+    amount = withoutBalanceMask(
+      /** @type {HTMLInputElement} */ (event.currentTarget).value
+    );
+    isMaxAmount = false;
+  }
+
   let { gasLimit, gasPrice } = gasSettings;
   let defaultGas = gasSettings;
 
@@ -109,7 +121,8 @@
     }
   }
 
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
+  $: isAmountMasked = hideBalances && isMaxAmount;
   $: ({ address, isConnected } = $account);
   $: chainName = route.chain.name;
   $: amountLux =
@@ -174,13 +187,14 @@
         aria-describedby="service-balance-label service-balance"
         aria-invalid={amount !== "" && amountLux === 0n}
         autocomplete="off"
-        bind:value={amount}
         disabled={!route.running}
         id="service-amount"
         inputmode="decimal"
+        on:input={typeAmount}
         placeholder="0"
         spellcheck="false"
         type="text"
+        value={isAmountMasked ? BALANCE_MASK : amount}
       />
       <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
     </div>
@@ -201,6 +215,7 @@
               ".",
               getDecimalSeparator()
             );
+            isMaxAmount = true;
           }}
           type="button">Max</button
         >
@@ -234,9 +249,10 @@
     </div>
     <div class="swap-amount">
       <output class:swap-amount__empty={arrivesLux === 0n} for="service-amount"
-        >{arrivesLux === 0n
-          ? "0"
-          : formatDuskExact(arrivesLux, language)}</output
+        >{#if arrivesLux === 0n}0{:else}<BalanceValue
+            hidden={isAmountMasked}
+            value={formatDuskExact(arrivesLux, language)}
+          />{/if}</output
       >
       <span class="swap-token"
         ><NetworkMark id={route.destination} />{route.chain.tokenLabel ??
@@ -292,7 +308,12 @@
       </div>
       <div>
         <dt>Leaves your public balance</dt>
-        <dd>up to {formatFee(total, language, { max: true })} DUSK</dd>
+        <dd>
+          up to <BalanceValue
+            hidden={isAmountMasked}
+            value={formatFee(total, language, { max: true })}
+          /> DUSK
+        </dd>
       </div>
     </dl>
     <div class="route-gas">
@@ -329,10 +350,12 @@
     <h2 class="route-review__title">Review</h2>
     <ReviewWallet />
     <p class="route-review__line">
-      {serviceLine(
-        { chain: chainName, feeLux: route.feeLux, sentLux: amountLux },
-        language
-      )}
+      {isAmountMasked
+        ? `${BALANCE_MASK} DUSK to ${chainName}, less the ${formatDuskExact(route.feeLux, language)} DUSK bridge fee.`
+        : serviceLine(
+            { chain: chainName, feeLux: route.feeLux, sentLux: amountLux },
+            language
+          )}
     </p>
     {#if timeText}
       <p class="route-review__time">
@@ -361,7 +384,9 @@
     />
     <ReviewAmount
       label="Total (at most)"
-      value={formatTotal(total, unshieldedBalance, language)}
+      value={isAmountMasked
+        ? BALANCE_MASK
+        : formatTotal(total, unshieldedBalance, language)}
     />
     <div class="route-review__actions">
       <Button
