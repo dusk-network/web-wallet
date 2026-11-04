@@ -171,6 +171,30 @@ describe("NativeStake", () => {
     }
   });
 
+  it("hides what Max fills in while balances are hidden, not the minimum it can fill in", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container, getByLabelText, getByRole } = render(
+        NativeStake,
+        baseProps
+      );
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(getByLabelText("Stake amount")).toHaveValue("");
+      expect(container.textContent).not.toContain("1,482.95");
+      expect(getByRole("button", { name: "Stake •••• DUSK" })).toBeEnabled();
+
+      await fireEvent.click(getByRole("button", { name: "Use 1,000" }));
+
+      expect(getByLabelText("Stake amount")).toHaveValue("1000");
+      expect(getByRole("button", { name: "Stake 1,000 DUSK" })).toBeEnabled();
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
+  });
+
   it("states what native staking takes, the lock and the burn in plain words, with no consensus key nor recovery phrase", () => {
     const { container, getByRole } = render(NativeStake, baseProps);
     const facts = Array.from(

@@ -147,7 +147,7 @@ describe("Send page", () => {
     expect(available(container)).toHaveTextContent(/public balance$/);
   });
 
-  it("should hide the balance it pays from, but not the amount or the summary, while balances are hidden", async () => {
+  it("should hide the balance it pays from, and what Max fills in, while balances are hidden", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     const { container, getByRole } = render(SendPage);
@@ -171,11 +171,22 @@ describe("Send page", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    expect(amount).toHaveValue(formatDuskPlain(balance.unshielded.value - fee));
+    expect(amount).toHaveValue("");
+    expect(container).not.toHaveTextContent(
+      formatDuskPlain(balance.unshielded.value - fee)
+    );
     expect(container.querySelector(".send__summary")).toHaveTextContent(
-      /Amount [\d,.]+ DUSK/
+      /Amount •••• hidden DUSK/
     );
     expect(available(container)).toHaveTextContent(/•••• hidden/);
+
+    // An amount typed shows.
+    await fireEvent.input(amount, { target: { value: "1" } });
+
+    expect(amount).toHaveValue("1");
+    expect(container.querySelector(".send__summary")).toHaveTextContent(
+      /Amount 1 DUSK/
+    );
   });
 
   it("should start a transfer from the default gas limit of its recipient", async () => {

@@ -229,6 +229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Copy a transaction ID from search with Shift+Enter
 - Go back to the filled form on a phone's Back from Send's Review
 - Hide the fee and the amount on the screen after sending, while balances are hidden
+- Hide what Max fills in, while balances are hidden, until an amount is typed
 - Announce every wrong password, not just the first
 - Describe Receive's QR code as the account or address it is
 - Keep Settings' headings whole, and its Back and Lock inside its margins, on a phone

@@ -141,11 +141,11 @@ describe("Unstake", () => {
 
       expect(getReviewAmounts(container)[0]).toStrictEqual([
         "Unstake Amount",
-        "278 DUSK",
+        "•••• DUSK",
       ]);
     });
 
-    it("should show the amount once it's typed or set to the maximum, while balances are hidden", async () => {
+    it("should show the amount once it's typed, not when Max fills it in, while balances are hidden", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       const { getByRole } = render(Unstake, { ...baseProps, ...unstakeProps });
@@ -163,7 +163,8 @@ describe("Unstake", () => {
       await fireEvent.input(amountInput, { target: { value: "" } });
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(amountInput).toHaveValue("278");
+      expect(amountInput).toHaveValue("");
+      expect(amountInput).toHaveAccessibleDescription("hidden");
     });
 
     it("should take an amount as the other amount fields do: as text, with a decimal point or comma", async () => {

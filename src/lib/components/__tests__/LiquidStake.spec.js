@@ -356,6 +356,38 @@ describe("LiquidStake", () => {
     }
   });
 
+  it("hides what Max fills in while balances are hidden, and shows what's typed over it", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container, getByLabelText, getByRole } = render(
+        LiquidStake,
+        baseProps
+      );
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(getByLabelText("Stake amount")).toHaveValue("");
+      expect(getByLabelText("Stake amount")).toHaveAttribute(
+        "placeholder",
+        "••••"
+      );
+      expect(getByRole("button", { name: /^Stake •••• DUSK/ })).toBeEnabled();
+      for (const row of container.querySelectorAll(".stake-flow__rows dd")) {
+        expect(textOf(row)).not.toMatch(/\d (st)?DUSK/);
+      }
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "5" },
+      });
+
+      expect(getByLabelText("Stake amount")).toHaveValue("5");
+      expect(getByRole("button", { name: /^Stake 5 DUSK/ })).toBeEnabled();
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
+  });
+
   it("says when a stake is more than the public balance, with the fee", async () => {
     const { container, getByLabelText, getByRole } = render(
       LiquidStake,

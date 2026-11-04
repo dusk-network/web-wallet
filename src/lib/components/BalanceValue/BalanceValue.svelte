@@ -19,10 +19,18 @@
    */
   export let exact = undefined;
 
+  /**
+   * Whether it's hidden, where that isn't simply while balances are: an
+   * amount typed stays, one Max filled in doesn't.
+   *
+   * @type {boolean | undefined}
+   */
+  export let hidden = undefined;
+
   $: ({ hideBalances } = $settingsStore);
 </script>
 
-{#if hideBalances}
+{#if hidden ?? hideBalances}
   <span aria-hidden="true">{BALANCE_MASK}</span>
   <span class="sr-only">hidden</span>
 {:else if exact && exact !== value}

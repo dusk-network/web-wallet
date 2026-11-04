@@ -137,7 +137,8 @@
 
   function setMaxAmount() {
     amountText = asTyped(maxWithdrawAmount);
-    isAmountChosen = true;
+    // Hidden with the balances, as it starts: nothing was typed.
+    isAmountChosen = false;
     document.getElementById(`${id}-amount`)?.focus();
   }
 
@@ -327,7 +328,9 @@
           <ReviewWallet />
           <ReviewAmount
             label={operationOverviewLabel}
-            value={formatDuskExact(reviewed.amount, language)}
+            value={isAmountHidden
+              ? BALANCE_MASK
+              : formatDuskExact(reviewed.amount, language)}
           />
           <ReviewAmount
             label="Network fee (at most)"

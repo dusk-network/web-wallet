@@ -22,6 +22,7 @@
     isDuskName,
   } from "@duskdomains/sdk/names";
   import { pushState } from "$app/navigation";
+  import { page } from "$app/stores";
   import { BALANCE_MASK } from "$lib/constants";
   import { addBasePath, pageTitle } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
@@ -114,6 +115,9 @@
 
   /** The amount as typed, in DUSK: nothing until it is. */
   let sendAmount = "";
+
+  /** Whether Max filled the amount in: it's hidden with the balances. */
+  let isMaxAmount = false;
 
   /** @type {string} */
   let sendToAddress = initialRecipient;
@@ -352,6 +356,13 @@
     }
 
     sendAmount = formatDuskPlain(maxSpendableAmount);
+    isMaxAmount = true;
+  }
+
+  /** @param {Event} event */
+  function typeAmount(event) {
+    sendAmount = /** @type {HTMLInputElement} */ (event.currentTarget).value;
+    isMaxAmount = false;
   }
 
   /**
@@ -623,6 +634,20 @@
     }
     step = "done";
   }
+
+  /**
+   * The step where a phone's Back or Forward takes the history: a review
+   * only of what can still be sent.
+   *
+   * @param {boolean} isAtReview
+   */
+  function followHistory(isAtReview) {
+    if (step !== "done") {
+      step = isAtReview && canSend ? "review" : "form";
+    }
+  }
+
+  $: followHistory(Boolean($page.state?.sendReview));
 
   // The gas settings depend on the recipient (public or shielded): the
   // form takes new ones while it shows, unless the gas was edited here, and
@@ -909,17 +934,10 @@
   $: shownName = nameLookup?.name ?? recipientName;
 
   $: ({ hideBalances, language } = $settingsStore);
+  $: isAmountMasked = hideBalances && isMaxAmount;
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
 </script>
-
-<svelte:window
-  on:popstate={() => {
-    if (step === "review") {
-      step = "form";
-    }
-  }}
-/>
 
 {#if step === "done" && sent}
   <TransactionResult
@@ -1300,17 +1318,23 @@
         <label class="send__label" for="{id}-amount">Amount</label>
         <div class="send__amount">
           <Textbox
-            aria-describedby="{id}-amount-error"
+            aria-describedby={isAmountMasked
+              ? `${id}-amount-hidden`
+              : `${id}-amount-error`}
             aria-invalid={amountError ? "true" : undefined}
             autocomplete="off"
-            bind:value={sendAmount}
             className="send__amount-input"
             id="{id}-amount"
             inputmode="decimal"
-            placeholder="0"
-            required
+            on:input={typeAmount}
+            placeholder={isAmountMasked ? BALANCE_MASK : "0"}
+            required={!isAmountMasked}
             type="text"
+            value={isAmountMasked ? "" : sendAmount}
           />
+          {#if isAmountMasked}
+            <span hidden id="{id}-amount-hidden">hidden</span>
+          {/if}
           <span aria-hidden="true" class="send__unit">DUSK</span>
           <Button
             on:click={setMaxAmount}
@@ -1416,7 +1440,9 @@
         </div>
         <div>
           <dt>Amount</dt>
-          <dd>{amountText} DUSK</dd>
+          <dd>
+            <BalanceValue hidden={isAmountMasked} value={amountText} /> DUSK
+          </dd>
         </div>
         {#if transactionMemo}
           <div>
@@ -1456,7 +1482,10 @@
         <div>
           <dt>Total</dt>
           <dd>
-            Up to {formatTotal(totalAmount, availableBalance, language)} DUSK
+            Up to <BalanceValue
+              hidden={isAmountMasked}
+              value={formatTotal(totalAmount, availableBalance, language)}
+            /> DUSK
           </dd>
         </div>
       </dl>
@@ -1467,7 +1496,9 @@
           confirm
           disabled={!canSend}
           on:click={send}
-          text={sendAmountInLux > 0n ? `Send ${amountText} DUSK` : "Send"}
+          text={sendAmountInLux > 0n
+            ? `Send ${isAmountMasked ? BALANCE_MASK : amountText} DUSK`
+            : "Send"}
           variant="primary"
         />
       {/key}
@@ -1495,7 +1526,7 @@
           on:click={() => {
             // A step of its own in the history: a phone's Back returns to
             // the form, with what's filled in.
-            pushState("", {});
+            pushState("", { sendReview: true });
             step = "review";
             window.scrollTo(0, 0);
           }}
