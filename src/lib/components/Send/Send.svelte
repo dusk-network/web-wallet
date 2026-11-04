@@ -156,6 +156,22 @@
   let nameLookup = null;
 
   /**
+   * The name asked last, as an object for each time it's asked: an answer
+   * counts for that ask alone, so an old one can't come back, or overwrite a
+   * newer one, when the same name is entered again.
+   *
+   * @type {{ name: string } | null}
+   */
+  let nameAsk = null;
+
+  /**
+   * The answer to an ask.
+   *
+   * @type {{ ask: { name: string }, result: DuskNameResolution } | null}
+   */
+  let nameAnswer = null;
+
+  /**
    * The address the user picked for each `.dusk` name with both a public
    * account and a shielded address. A pick stays with its name, through
    * lookups of the same name, until the user makes another; any other name
@@ -350,19 +366,22 @@
    * @param {string} name
    */
   function lookUpName(name) {
-    if (!name) {
-      nameLookup = null;
-      return;
+    const ask = name ? { name } : null;
+
+    nameAsk = ask;
+
+    if (ask) {
+      resolveName(name).then((result) => {
+        if (nameAsk === ask) {
+          nameAnswer = { ask, result };
+        }
+      });
     }
+  }
 
-    const lookup = { name };
-
-    nameLookup = lookup;
-    resolveName(name).then((result) => {
-      if (nameLookup === lookup) {
-        nameLookup = result;
-      }
-    });
+  function lookUpNameAgain() {
+    nameAnswer = null;
+    lookUpName(recipientName);
   }
 
   /**
@@ -663,6 +682,17 @@
 
   $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";
 
+  // What's known of the name in the field, read from the name itself: with
+  // another name typed, the answer for the one before is out at once, so its
+  // address can't be sent to. A lookup that set this itself would run too late,
+  // after what reads it, as Svelte can't see an assignment inside a function
+  // when it orders these statements.
+  $: nameLookup = !recipientName
+    ? null
+    : nameAnswer?.ask === nameAsk && nameAsk?.name === recipientName
+      ? nameAnswer.result
+      : { name: recipientName };
+
   $: lookUpName(recipientName);
 
   $: nameAddressType = getNameAddressType(nameLookup, namePicks);
@@ -945,7 +975,7 @@
             {/if}
             {#if nameLookup.error === "lookup-failed"}
               <Button
-                on:click={() => lookUpName(recipientName)}
+                on:click={lookUpNameAgain}
                 size="small"
                 text="Try again"
                 variant="secondary"

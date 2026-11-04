@@ -960,6 +960,136 @@ describe("Send", () => {
       vi.useRealTimers();
     });
 
+    it("should drop the recipient at once when another name replaces a resolved one, and send only to the new one", async () => {
+      /** @type {(answer: object) => void} */
+      let answerNewName = () => {};
+
+      baseProps.resolveName.mockImplementation((input) =>
+        input === "first.dusk"
+          ? Promise.resolve({ account: nameAccount, name: input })
+          : new Promise((resolve) => {
+              answerNewName = resolve;
+            })
+      );
+
+      const { container, findByText, getByRole, queryByText } = render(
+        Send,
+        baseProps
+      );
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), { target: { value: "first.dusk" } });
+      await fireEvent.input(fields.amount(), { target: { value: "1" } });
+      await findByText("first.dusk points to a public account");
+      expect(fields.send()).toBeEnabled();
+
+      // While the new name is looked up, nothing can go to the old address,
+      // and nothing says the new name points to it.
+      await fireEvent.input(fields.to(), { target: { value: "second.dusk" } });
+      expect(fields.send()).toBeDisabled();
+      expect(
+        queryByText("second.dusk points to a public account")
+      ).not.toBeInTheDocument();
+      expect(container.textContent).not.toContain(nameAccount);
+      expect(container.textContent).not.toContain(shortenAddress(nameAccount));
+      await fireEvent.click(fields.send());
+      expect(baseProps.execute).not.toHaveBeenCalled();
+
+      answerNewName({ account: otherAccount, name: "second.dusk" });
+      await findByText("second.dusk points to a public account");
+      expect(fields.send()).toBeEnabled();
+      expect(getSummary(container)[1][1]).toContain(
+        shortenAddress(otherAccount)
+      );
+    });
+
+    it("should look a name up afresh when it's entered again, and keep Send off until the answer comes", async () => {
+      /** @type {((answer: object) => void)[]} */
+      const answers = [];
+
+      baseProps.resolveName.mockImplementation(
+        () => new Promise((resolve) => answers.push(resolve))
+      );
+
+      const { container, findByText, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), { target: { value: "first.dusk" } });
+      await fireEvent.input(fields.amount(), { target: { value: "1" } });
+      answers[0]({ account: nameAccount, name: "first.dusk" });
+      await findByText("first.dusk points to a public account");
+      expect(fields.send()).toBeEnabled();
+
+      // Cleared and entered again: the old answer doesn't come back.
+      await fireEvent.input(fields.to(), { target: { value: "" } });
+      await fireEvent.input(fields.to(), { target: { value: "first.dusk" } });
+      expect(fields.send()).toBeDisabled();
+      expect(container.textContent).not.toContain(shortenAddress(nameAccount));
+
+      // Moved meanwhile: the new answer is the one that counts.
+      answers[1]({ account: otherAccount, name: "first.dusk" });
+      await findByText("first.dusk points to a public account");
+      expect(fields.send()).toBeEnabled();
+      expect(getSummary(container)[1][1]).toContain(
+        shortenAddress(otherAccount)
+      );
+    });
+
+    it("should leave out an older answer for the same name when it comes after a newer one", async () => {
+      /** @type {((answer: object) => void)[]} */
+      const answers = [];
+
+      baseProps.resolveName.mockImplementation(
+        () => new Promise((resolve) => answers.push(resolve))
+      );
+
+      const { container, findByText, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), { target: { value: "first.dusk" } });
+      await fireEvent.input(fields.to(), { target: { value: "" } });
+      await fireEvent.input(fields.to(), { target: { value: "first.dusk" } });
+
+      answers[1]({ account: otherAccount, name: "first.dusk" });
+      await findByText("first.dusk points to a public account");
+
+      answers[0]({ account: nameAccount, name: "first.dusk" });
+      await new Promise((resolve) => setTimeout(resolve));
+
+      expect(container.textContent).not.toContain(shortenAddress(nameAccount));
+      expect(getSummary(container)[1][1]).toContain(
+        shortenAddress(otherAccount)
+      );
+    });
+
+    it("should leave out a late answer for a name that has been replaced", async () => {
+      /** @type {(answer: object) => void} */
+      let answerFirst = () => {};
+
+      baseProps.resolveName.mockImplementation((input) =>
+        input === "first.dusk"
+          ? new Promise((resolve) => {
+              answerFirst = resolve;
+            })
+          : Promise.resolve({ account: otherAccount, name: input })
+      );
+
+      const { container, findByText, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), { target: { value: "first.dusk" } });
+      await fireEvent.input(fields.to(), { target: { value: "second.dusk" } });
+      await findByText("second.dusk points to a public account");
+
+      answerFirst({ account: nameAccount, name: "first.dusk" });
+      await new Promise((resolve) => setTimeout(resolve));
+
+      expect(container.textContent).not.toContain(shortenAddress(nameAccount));
+      expect(getSummary(container)[1][1]).toContain(
+        shortenAddress(otherAccount)
+      );
+    });
+
     it("should send to the account a name resolves to, with its name and address shown", async () => {
       /** @type {(value: DuskNameResolution) => void} */
       let finishLookup = () => {};
