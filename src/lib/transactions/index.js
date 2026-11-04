@@ -2,6 +2,7 @@ export {
   CHECK_BALANCE_FIRST,
   CHECK_EVM_WALLET_FIRST,
   default as describeFailure,
+  isDeclinedInWallet,
 } from "./describeFailure";
 export { outcomeUnknown } from "./outcomeUnknown";
 export {

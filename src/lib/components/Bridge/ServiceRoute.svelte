@@ -76,6 +76,9 @@
 
   const dispatch = createEventDispatcher();
 
+  /** A step's heading takes focus as it shows, so a screen reader goes there. */
+  const takeFocus = (/** @type {HTMLElement} */ node) => node.focus();
+
   /** @type {string} */
   let amount = "";
 
@@ -99,6 +102,13 @@
   /** @type {Promise<string>} */
   let operation = Promise.resolve("");
 
+  /** Why the review closed, for the form it went back to. */
+  let note = "";
+
+  /** The address the review open pays. */
+  /** @type {string | undefined} */
+  let reviewedFor;
+
   // What this screen sends, it sends from the wallet it was drawn for.
   const forThisWallet = walletStore.forThisWallet();
 
@@ -117,6 +127,8 @@
     if (!isConnected) {
       modal.open(route.chain.chainId);
     } else if (primary.ready) {
+      note = "";
+      reviewedFor = address;
       step = "review";
     }
   }
@@ -167,9 +179,18 @@
   $: if (step === "review" && !isConnected) {
     step = "form";
   }
+  // It pays one address: another is reviewed again.
+  $: if (step === "review" && isConnected && address !== reviewedFor) {
+    note =
+      "Your EVM wallet switched to another account, so nothing was sent. Review again.";
+    step = "form";
+  }
 </script>
 
 {#if step === "form"}
+  {#if note}
+    <p class="route-note" role="alert">{note}</p>
+  {/if}
   <div class="swap-panel">
     <div class="swap-panel__head">
       <span class="swap-panel__label">From</span>
@@ -347,7 +368,7 @@
   </div>
 {:else if step === "review"}
   <div class="route-review">
-    <h2 class="route-review__title">Review</h2>
+    <h2 class="route-review__title" tabindex="-1" use:takeFocus>Review</h2>
     <ReviewWallet />
     <p class="route-review__line">
       {isAmountMasked
@@ -408,7 +429,7 @@
     </div>
   </div>
 {:else}
-  <div class="route-result">
+  <div class="route-result" role="status" tabindex="-1" use:takeFocus>
     <OperationResult
       describeError={describeFailure}
       errorMessage="The transfer didn't go through"
@@ -443,6 +464,17 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 0.5rem;
+  }
+
+  .route-review__title:focus,
+  .route-result:focus {
+    outline: none;
+  }
+
+  .route-note {
+    margin: 0 0 0.75em;
+    font-size: 0.875em;
+    color: var(--on-surface-color);
   }
 
   .route-review__title {

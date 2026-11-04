@@ -67,6 +67,7 @@
     text="Home"
     variant="tertiary"
   />
+  <slot name="error-actions" slot="error-actions" />
 </Suspense>
 
 <style lang="postcss">

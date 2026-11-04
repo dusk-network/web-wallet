@@ -14,12 +14,13 @@
  */
 
 import { waitForTransactionReceipt } from "@wagmi/core";
+import { get } from "svelte/store";
 
 import { executeSend } from "$lib/contracts";
 import { formatDuskExact } from "$lib/dusk/currency";
 import { walletStore } from "$lib/stores";
 import { allowance, approve, migrate } from "$lib/web3/migration";
-import { wagmiConfig } from "$lib/web3/walletConnection";
+import { account, wagmiConfig } from "$lib/web3/walletConnection";
 import { walletDataScope } from "$lib/wallets/dataNames";
 
 import {
@@ -29,6 +30,23 @@ import {
 } from "./migrationActivity";
 
 const WEI_PER_LUX = 1_000_000_000n;
+
+/** What a migration stops with once the wallet isn't on the account reviewed. */
+export const EVM_ACCOUNT_CHANGED = "EVM_ACCOUNT_CHANGED";
+
+/**
+ * Nothing goes out from any account but the one reviewed: an account changed
+ * between two steps would pay from one the review never showed.
+ *
+ * @param {`0x${string}`} owner
+ */
+function stillOnAccount(owner) {
+  if (get(account).address?.toLowerCase() !== owner.toLowerCase()) {
+    throw Object.assign(new Error("The EVM wallet changed account."), {
+      code: EVM_ACCOUNT_CHANGED,
+    });
+  }
+}
 
 /**
  * What a transfer to a route's account comes to, in one line, as the
@@ -83,13 +101,15 @@ async function approveIfShort(route, owner, amountLux, onApproving, stillOpen) {
   }
 
   stillOpen();
+  stillOnAccount(owner);
   onApproving();
 
   const hash = await approve(
     route.contract,
     /** @type {`0x${string}`} */ (token),
     amountLux * WEI_PER_LUX,
-    chainId
+    chainId,
+    owner
   );
   const approved = await waitForTransactionReceipt(wagmiConfig, {
     chainId,
@@ -134,13 +154,15 @@ export async function sendMigration({
     stillOpen
   );
   stillOpen();
+  stillOnAccount(owner);
   onStep("migrating");
 
   const hash = await migrate(
     amountLux * WEI_PER_LUX,
     chainId,
     recipient,
-    route.contract
+    route.contract,
+    owner
   );
 
   // Sent: kept for its wallet, whichever is open now.

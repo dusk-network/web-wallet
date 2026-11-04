@@ -2,12 +2,8 @@
 
 <script>
   import { onDestroy } from "svelte";
-  import {
-    getBalance,
-    switchChain,
-    watchBlocks,
-    watchChainId,
-  } from "@wagmi/core";
+  import { getBalance, watchBlocks, watchChainId } from "@wagmi/core";
+  import { askToSwitch, forgetChainRefusal } from "$lib/bridge/chainSwitch";
   import { account, wagmiConfig } from "$lib/web3/walletConnection";
   import { Bridge } from "$lib/components";
   import {
@@ -27,13 +23,6 @@
    */
   /** @type {GetBalanceReturnType | undefined}  */
   let evmDuskBalance;
-
-  /**
-   * @param {number} id
-   */
-  async function switchChainHandler(id) {
-    await switchChain(wagmiConfig, { chainId: id });
-  }
 
   /** Stops reading the balance on each block. */
   let unwatchBalance = () => {};
@@ -98,15 +87,16 @@
     keptOn = target;
     unwatchChain();
     unwatchChain = () => {};
+    forgetChainRefusal();
 
     if (target) {
       if ($account.chainId !== target) {
-        switchChainHandler(target).catch(() => {});
+        askToSwitch(target);
       }
 
       unwatchChain = watchChainId(wagmiConfig, {
-        async onChange() {
-          await switchChainHandler(target).catch(() => {});
+        onChange() {
+          askToSwitch(target);
         },
       });
     }

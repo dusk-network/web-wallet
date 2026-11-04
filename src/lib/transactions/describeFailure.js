@@ -17,6 +17,9 @@ import { mdiTimerSand } from "@mdi/js";
 
 import { isOutcomeUnknown } from "./outcomeUnknown";
 
+/** How an EVM wallet says it was turned down. */
+const DECLINED = /UserRejectedRequestError|user rejected|user denied/i;
+
 /**
  * What sends nothing, by what it says: the node's or the wallet's own
  * refusals, which hold also once the transaction was handed over.
@@ -32,10 +35,7 @@ const NOTHING_SENT = [
   ],
 
   // Declined in the EVM wallet that was to send it.
-  [
-    /UserRejectedRequestError|user rejected|user denied/i,
-    "It was declined in your EVM wallet, so nothing was sent.",
-  ],
+  [DECLINED, "It was declined in your EVM wallet, so nothing was sent."],
 
   // The node's reasons for refusing it, where the wallet knows them.
   [
@@ -96,6 +96,16 @@ export const CHECK_BALANCE_FIRST =
 /** What to check first for a withdrawal, which History doesn't show. */
 export const CHECK_EVM_WALLET_FIRST =
   "Check your EVM wallet's activity before you send it again.";
+
+/**
+ * Whether the person turned it down in their EVM wallet.
+ *
+ * @param {unknown} error
+ */
+export const isDeclinedInWallet = (error) =>
+  DECLINED.test(
+    `${/** @type {Error} */ (error)?.name ?? ""}: ${/** @type {Error} */ (error)?.message ?? ""}`
+  );
 
 /**
  * @param {Error} error What the send rejected with

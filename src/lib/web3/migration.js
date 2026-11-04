@@ -4,7 +4,7 @@ import migrationABI from "./abi/migrationABI.json";
 import { wagmiConfig } from "./walletConnection";
 
 /**
- * Retrieves the allowance amount for a stable coin for a given spender and account.
+ * Retrieves the allowance amount for DUSK for a given spender and account.
  *
  * @param {`0x${string}`} userAddress - The address of the user to check if it gave an allowance to the migration contract.
  * @param {`0x${string}`} stableCoinAddress - contract address for the coin.
@@ -39,12 +39,13 @@ export const allowance = async (
 };
 
 /**
- * Approves a spender to transfer a specified amount of stable coin on behalf of the caller.
+ * Approves a spender to transfer a specified amount of DUSK on behalf of the caller.
  *
  * @param {`0x${string}`} migrationContract - migration contract address for the the coin.
  * @param {`0x${string}`} stableCoinAddress - contract address for the coin.
- * @param {bigint} value - The amount of stable coin to approve.
+ * @param {bigint} value - The amount of DUSK to approve.
  * @param {number} [chainId] - the chain the coin is on
+ * @param {`0x${string}`} [owner] - the account reviewed: it signs, or nothing does
  * @returns {Promise<`0x${string}`>} - Transaction hash.
  * @throws {Error} - Throws an error if there is an issue with the approval transaction.
  */
@@ -52,11 +53,13 @@ export const approve = async (
   migrationContract,
   stableCoinAddress,
   value,
-  chainId
+  chainId,
+  owner
 ) => {
   try {
     return await writeContract(wagmiConfig, {
       abi: ERC20Abi,
+      account: owner,
       address: stableCoinAddress,
       args: [migrationContract, value],
       chainId,
@@ -65,19 +68,19 @@ export const approve = async (
   } catch (e) {
     const errorMessage =
       e instanceof Error
-        ? `An error occurred while approving the stable coin: ${e.message}`
-        : "An unexpected error occurred while approving the stable coin";
+        ? `An error occurred while approving the DUSK: ${e.message}`
+        : "An unexpected error occurred while approving the DUSK";
     throw new Error(errorMessage);
   }
 };
 
 /**
- * Retrieves the balance of the stable coin for a given account.
+ * Retrieves the balance of the DUSK for a given account.
  *
  * @param {`0x${string}`} userAddress - The address of the account to check the balance for.
  * @param {`0x${string}`} stableCoinAddress - contract address for the coin.
  * @param {number} [chainId] - the chain the coin is on
- * @returns {Promise<bigint>} - A promise that resolves to the balance of the stable coin.
+ * @returns {Promise<bigint>} - A promise that resolves to the balance of the DUSK.
  * @throws {Error} - Throws an error if there is an issue with retrieving the balance.
  */
 export const getBalanceOfCoin = async (
@@ -110,16 +113,19 @@ export const getBalanceOfCoin = async (
  * @param {number} chainId - the id of the smart contract
  * @param {string} mainnetDuskAddress - the wallet address where tokens should be migrated to
  * @param {`0x${string}`} migrationContract - the migration contract address
+ * @param {`0x${string}`} [owner] - the account reviewed: it signs, or nothing does
  * @returns {Promise<`0x${string}`>} - The transaction hash.
  */
 export const migrate = async (
   amount,
   chainId,
   mainnetDuskAddress,
-  migrationContract
+  migrationContract,
+  owner
 ) => {
   const { request } = await simulateContract(wagmiConfig, {
     abi: migrationABI,
+    account: owner,
     address: migrationContract,
     args: [amount, mainnetDuskAddress],
     chainId: chainId,

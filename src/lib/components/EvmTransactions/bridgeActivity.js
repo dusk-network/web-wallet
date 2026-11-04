@@ -344,9 +344,28 @@ function routeTransferLine(transfer, { locale, time }) {
         `The migration failed on ${transfer.route.chain.name}`
       );
     default:
+      if (
+        time &&
+        transfer.at &&
+        Date.now() - transfer.at > 2 * time.seconds * 1000
+      ) {
+        return `${sent} · taking longer than usual`;
+      }
+
       return usual ? `${sent} · takes ${usual}` : sent;
   }
 }
+
+/**
+ * What a row shows for a transfer: what arrived once it has, as the fee came
+ * out of what was sent, and what was sent until then.
+ *
+ * @param {import("$lib/bridge/migrationActivity").RouteTransfer} transfer
+ */
+const shownLux = ({ amountLux, feeLux, stage }) =>
+  stage === "arrived" && feeLux && amountLux > feeLux
+    ? amountLux - feeLux
+    : amountLux;
 
 /**
  * A transfer between Dusk and another chain as a row: a migration into
@@ -372,7 +391,7 @@ export function routeTransferRow(transfer, options) {
     action: null,
     amount:
       transfer.amountLux > 0n
-        ? `${formatDusk(transfer.amountLux, options.locale)} DUSK`
+        ? `${formatDusk(shownLux(transfer), options.locale)} DUSK`
         : "",
     forOther: false,
     from: route.origin,

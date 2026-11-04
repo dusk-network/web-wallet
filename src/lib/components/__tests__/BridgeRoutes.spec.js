@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   executeSend: vi.fn(),
   getBalanceOfCoin: vi.fn(),
   migrate: vi.fn(),
+  switchChain: vi.fn(),
   waitForTransactionReceipt: vi.fn(),
 }));
 
@@ -56,6 +57,7 @@ vi.mock("$lib/web3/walletConnection", async () => {
 
 vi.mock("@wagmi/core", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
+  switchChain: mocks.switchChain,
   waitForTransactionReceipt: mocks.waitForTransactionReceipt,
 }));
 
@@ -316,13 +318,15 @@ describe("the Bridge card's routes to and from other chains", () => {
       migration.contract,
       networks.mainnet.routes.chains.bsc.token,
       wei,
-      56
+      56,
+      EVM
     );
     expect(mocks.migrate).toHaveBeenCalledWith(
       wei,
       56,
       ACCOUNT,
-      migration.contract
+      migration.contract,
+      EVM
     );
     // Kept for Bridge › Activity until it's paid.
     expect(
@@ -358,6 +362,212 @@ describe("the Bridge card's routes to and from other chains", () => {
     await vi.waitFor(() => expect(mocks.migrate).toHaveBeenCalled());
 
     expect(mocks.approve).not.toHaveBeenCalled();
+  });
+
+  describe("when the wallet or its account changes course", () => {
+    const REFUSED = new Error(
+      "An error occurred while approving the DUSK: User rejected the request."
+    );
+
+    /** A migration of 1 ERC20 DUSK, up to its review. */
+    async function toReview() {
+      mocks.getBalanceOfCoin.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.waitForTransactionReceipt.mockResolvedValue({ status: "success" });
+      connect({ address: EVM, chainId: 1 });
+
+      const view = render(Bridge, {
+        ...props,
+        linkedRoute: "ethereum-to-dusk",
+      });
+
+      await fireEvent.input(
+        await view.findByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
+        { target: { value: "1" } }
+      );
+      await fireEvent.click(
+        view.getByRole("button", { name: "Review migration" })
+      );
+      await view.findByRole("button", { name: "Migrate" });
+      await afterConfirmDelay();
+
+      return view;
+    }
+
+    it("goes back to the review, in plain words, when the approval is refused", async () => {
+      mocks.allowance.mockResolvedValue(0n);
+      mocks.approve.mockRejectedValue(REFUSED);
+
+      const { container, findByRole, getByRole, queryByText } =
+        await toReview();
+
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "You cancelled the approval in your wallet. Nothing moved."
+      );
+      expect(getByRole("button", { name: "Migrate" })).toBeInTheDocument();
+      expect(queryByText("The migration didn't go through")).toBeNull();
+      expect(container).not.toHaveTextContent("Request Arguments");
+      expect(mocks.migrate).not.toHaveBeenCalled();
+    });
+
+    it("says the approval stands when only the migration is refused, and asks only for that next", async () => {
+      mocks.allowance.mockResolvedValueOnce(0n);
+      mocks.approve.mockResolvedValue(`0x${"aa".repeat(32)}`);
+      mocks.migrate.mockRejectedValueOnce(
+        new Error("User rejected the request.")
+      );
+
+      const { container, findByRole, getByRole } = await toReview();
+
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "You cancelled the migration in your wallet. The approval went through, so next time it only asks to migrate. Nothing moved."
+      );
+
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      await fireEvent.click(getByRole("button", { name: "Back" }));
+      await fireEvent.click(getByRole("button", { name: "Review migration" }));
+      await findByRole("button", { name: "Migrate" });
+
+      await vi.waitFor(() =>
+        expect(container).toHaveTextContent("Migrate, in your wallet")
+      );
+    });
+
+    it("migrates from no account but the one reviewed: another one after the approval stops it", async () => {
+      mocks.allowance.mockResolvedValue(0n);
+      mocks.approve.mockImplementation(async () => {
+        connect({
+          address: "0x3333333333333333333333333333333333333333",
+          chainId: 1,
+        });
+
+        return `0x${"aa".repeat(32)}`;
+      });
+
+      const { findByRole, getByRole } = await toReview();
+
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "Your EVM wallet switched to another account, so nothing moved. Review again."
+      );
+      expect(mocks.migrate).not.toHaveBeenCalled();
+      expect(
+        getByRole("button", { name: "Review migration" })
+      ).toBeInTheDocument();
+    });
+
+    it("signs with the account reviewed, so the wallet can't use another", async () => {
+      mocks.allowance.mockResolvedValue(0n);
+      mocks.approve.mockResolvedValue(`0x${"aa".repeat(32)}`);
+      mocks.migrate.mockResolvedValue(`0x${"bb".repeat(32)}`);
+
+      const { getByRole } = await toReview();
+
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+      await vi.waitFor(() => expect(mocks.migrate).toHaveBeenCalled());
+
+      expect(mocks.approve.mock.calls[0].at(-1)).toBe(EVM);
+      expect(mocks.migrate.mock.calls[0].at(-1)).toBe(EVM);
+    });
+
+    it("closes a review when the account changes under it, and says why", async () => {
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+
+      const { findByRole, getByRole, queryByRole } = await toReview();
+
+      connect({
+        address: "0x3333333333333333333333333333333333333333",
+        chainId: 1,
+      });
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "Your EVM wallet switched to another account, so nothing moved. Review again."
+      );
+      expect(queryByRole("button", { name: "Migrate" })).toBeNull();
+      expect(
+        getByRole("button", { name: "Review migration" })
+      ).toBeInTheDocument();
+    });
+
+    it("closes the review of a transfer out when the address it pays changes", async () => {
+      connect({ address: EVM, chainId: 56 });
+
+      const view = render(Bridge, { ...props, linkedRoute: "dusk-to-bsc" });
+
+      await fireEvent.input(
+        await view.findByRole("textbox", { name: "Amount, in DUSK" }),
+        { target: { value: "2" } }
+      );
+      await fireEvent.click(
+        view.getByRole("button", { name: "Review bridge" })
+      );
+      await view.findByRole("button", { name: "Send" });
+
+      connect({
+        address: "0x3333333333333333333333333333333333333333",
+        chainId: 56,
+      });
+
+      expect(await view.findByRole("alert")).toHaveTextContent(
+        "Your EVM wallet switched to another account, so nothing was sent. Review again."
+      );
+      expect(view.queryByRole("button", { name: "Send" })).toBeNull();
+    });
+
+    it("offers to ask again when the wallet refuses to change chain, and asks", async () => {
+      mocks.getBalanceOfCoin.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.switchChain.mockRejectedValueOnce(
+        new Error("User rejected the request.")
+      );
+      connect({ address: EVM, chainId: 1 });
+
+      const { askToSwitch } = await import("$lib/bridge/chainSwitch");
+      const { findByRole, getByRole } = render(Bridge, {
+        ...props,
+        linkedRoute: "bsc-to-dusk",
+      });
+
+      await askToSwitch(56);
+
+      const again = await findByRole("button", {
+        name: "Switch to BNB Smart Chain",
+      });
+
+      expect(again).toBeEnabled();
+
+      mocks.switchChain.mockResolvedValueOnce({ id: 56 });
+      await fireEvent.click(again);
+
+      expect(mocks.switchChain).toHaveBeenCalledTimes(2);
+      await vi.waitFor(() =>
+        expect(
+          getByRole("button", { name: "Switching to BNB Smart Chain…" })
+        ).toBeDisabled()
+      );
+    });
+
+    it("moves focus to the review, and says each step where a screen reader hears it", async () => {
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.migrate.mockResolvedValue(`0x${"cc".repeat(32)}`);
+
+      const { container, getByRole } = await toReview();
+
+      expect(document.activeElement).toBe(
+        getByRole("heading", { name: "Review" })
+      );
+
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+      await vi.waitFor(() =>
+        expect(container.querySelector("[role='status']")).toHaveTextContent(
+          "Migration sent"
+        )
+      );
+    });
   });
 
   it("says in plain words why a transfer out failed before it went out, with the node's own words under Details", async () => {
