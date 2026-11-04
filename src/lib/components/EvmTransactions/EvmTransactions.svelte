@@ -48,12 +48,9 @@
   import { walletDataScope } from "$lib/wallets/dataNames";
 
   import nodeNetwork from "$lib/stores/nodeNetwork";
-  import {
-    keptMigrations,
-    transferArrivals,
-  } from "$lib/bridge/migrationActivity";
+  import { keptMigrations } from "$lib/bridge/migrationActivity";
   import { routeTransfers } from "$lib/bridge/routeHistory";
-  import { followTransfers, toFollow } from "$lib/bridge/routeTracking";
+  import { followRouteTransfers } from "$lib/bridge/routeFollowing";
 
   import Banner from "../Banner/Banner.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
@@ -378,23 +375,6 @@
     activity.some(({ stage }) => stage !== "finalized" && stage !== "failed") ||
     deposits.some(({ stage }) => stage !== "completed" && stage !== "failed");
 
-  /** Whether the transfers to and from other chains are being followed. */
-  let following = false;
-
-  async function follow() {
-    if (following) {
-      return;
-    }
-
-    following = true;
-
-    try {
-      await followTransfers(transfers, $transferArrivals);
-    } finally {
-      following = false;
-    }
-  }
-
   async function refreshActivity() {
     if (!hasDuskEvm) {
       return;
@@ -683,9 +663,8 @@
       if (isDuskEvmUnderWay()) {
         void refreshActivity();
       }
-
-      void follow();
     }, POLL_INTERVAL_MS);
+    const stopFollowing = followRouteTransfers();
 
     return () => {
       unsubscribe();
@@ -693,6 +672,7 @@
       unsubscribeActivity();
       unsubscribeHistory();
       window.clearInterval(timer);
+      stopFollowing();
     };
   });
 
@@ -712,14 +692,6 @@
   // The public account the wallet shows: the migrations listed pay it.
   $: duskAccount = $walletStore.currentProfile?.account.toString() ?? "";
   $: transfers = $routeTransfers;
-  // Followed as soon as one is under way, as the history or this browser
-  // gives it, then on the timer.
-  $: underWay = toFollow(transfers)
-    .map(({ hash }) => hash)
-    .join(" ");
-  $: if (underWay) {
-    void follow();
-  }
   $: if (
     linkedTransfer &&
     transfers.some(({ hash }) => hash === linkedTransfer)

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { networks } from "@dusk-network/networks";
 import { tick } from "svelte";
 
+import { cardRoutes } from "$lib/bridge/cardRoutes";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { settingsStore } from "$lib/stores";
@@ -19,6 +20,10 @@ const mocks = vi.hoisted(() => ({
   account: /** @type {import("svelte/store").Writable<any> | null} */ (null),
   allowance: vi.fn(),
   approve: vi.fn(),
+  followTransfers: vi.fn(async () => {}),
+  transfers: /** @type {import("svelte/store").Writable<any[]> | null} */ (
+    null
+  ),
   executeSend: vi.fn(),
   getBalanceOfCoin: vi.fn(),
   migrate: vi.fn(),
@@ -33,6 +38,19 @@ vi.mock("$lib/bridge/bridgeTimes", async () => {
     default: { load: vi.fn(), subscribe: readable({ chain: null }).subscribe },
   };
 });
+
+vi.mock("$lib/bridge/routeHistory", async () => {
+  const { writable } = await import("svelte/store");
+
+  mocks.transfers = writable([]);
+
+  return { routeTransfers: mocks.transfers };
+});
+
+vi.mock("$lib/bridge/routeTracking", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  followTransfers: mocks.followTransfers,
+}));
 
 vi.mock("$lib/web3/walletConnection", async () => {
   const { writable } = await import("svelte/store");
@@ -362,6 +380,162 @@ describe("the Bridge card's routes to and from other chains", () => {
     await vi.waitFor(() => expect(mocks.migrate).toHaveBeenCalled());
 
     expect(mocks.approve).not.toHaveBeenCalled();
+  });
+
+  describe("once it's sent, for as long as the screen is open", () => {
+    const HASH = "ab".repeat(32);
+    // A wallet may answer with any capitals: it's kept in lower case.
+    const MIGRATED = `0x${"BB".repeat(32)}`;
+    /** @param {string} id */
+    const routeOf = (id) =>
+      cardRoutes(networks.mainnet).find((r) => r.id === id);
+
+    /** A transfer out of 2 DUSK, sent. */
+    async function sendOut() {
+      connect({ address: EVM, chainId: 56 });
+      mocks.executeSend.mockResolvedValue(HASH);
+
+      const view = render(Bridge, { ...props, linkedRoute: "dusk-to-bsc" });
+
+      await fireEvent.input(
+        await view.findByRole("textbox", { name: "Amount, in DUSK" }),
+        { target: { value: "2" } }
+      );
+      await fireEvent.click(
+        view.getByRole("button", { name: "Review bridge" })
+      );
+      await afterConfirmDelay();
+      await fireEvent.click(view.getByRole("button", { name: "Send" }));
+      await view.findByText("Sent");
+
+      return view;
+    }
+
+    /** @param {Record<string, unknown>} fields */
+    const out = (fields) => ({
+      amountLux: 2n * DUSK,
+      at: Date.now(),
+      feeLux: DUSK,
+      hash: HASH,
+      kind: "service",
+      recipient: EVM,
+      route: routeOf("dusk-to-bsc"),
+      stage: "sent",
+      ...fields,
+    });
+
+    afterEach(() => {
+      mocks.transfers?.set([]);
+    });
+
+    it("says what arrived once a transfer out has, where a screen reader hears it", async () => {
+      const { findByText, getByRole } = await sendOut();
+
+      mocks.transfers?.set([out({ stage: "sent" })]);
+      await tick();
+
+      expect(getByRole("status")).toHaveTextContent("Sent");
+      expect(getByRole("status")).toHaveTextContent("It usually arrives");
+
+      mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
+
+      await findByText("Arrived");
+      expect(getByRole("status")).toHaveTextContent(
+        "1 DUSK arrived on BNB Smart Chain."
+      );
+      expect(getByRole("link", { name: "View in activity" })).toHaveAttribute(
+        "href",
+        expect.stringContaining(HASH)
+      );
+    });
+
+    it("says a migration is in the public balance once it's paid", async () => {
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.getBalanceOfCoin.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.migrate.mockResolvedValue(MIGRATED);
+      mocks.waitForTransactionReceipt.mockResolvedValue({ status: "success" });
+      connect({ address: EVM, chainId: 1 });
+
+      const { findByRole, findByText, getByRole } = render(Bridge, {
+        ...props,
+        linkedRoute: "ethereum-to-dusk",
+      });
+
+      await fireEvent.input(
+        await findByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
+        { target: { value: "2,5" } }
+      );
+      await fireEvent.click(getByRole("button", { name: "Review migration" }));
+      await findByRole("button", { name: "Migrate" });
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+      await findByText("Migration sent");
+
+      mocks.transfers?.set([
+        {
+          amountLux: 2_500_000_000n,
+          at: Date.now(),
+          hash: MIGRATED.toLowerCase(),
+          kind: "migration",
+          paidAt: Date.now(),
+          payout: "dd",
+          recipient: ACCOUNT,
+          route: routeOf("ethereum-to-dusk"),
+          stage: "paid",
+        },
+      ]);
+
+      await findByText("Arrived");
+      expect(getByRole("status")).toHaveTextContent(
+        "2.5 DUSK arrived in your public balance on Dusk."
+      );
+    });
+
+    it("says so when a transfer takes twice its usual time, or fails", async () => {
+      const { findByText, getByRole } = await sendOut();
+
+      mocks.transfers?.set([out({ at: Date.now() - 86_400_000 })]);
+
+      await findByText("It's taking longer than usual.");
+
+      mocks.transfers?.set([
+        out({
+          failure: "The bridge didn't take this transfer",
+          stage: "failed",
+        }),
+      ]);
+
+      await findByText("The bridge didn't take this transfer.");
+      expect(getByRole("status")).not.toHaveTextContent("It usually arrives");
+    });
+
+    it("keeps amounts hidden while balances are", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      const { findByText, getByRole } = await sendOut();
+
+      mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
+
+      await findByText("Arrived");
+      expect(getByRole("status")).toHaveTextContent(
+        "It arrived on BNB Smart Chain."
+      );
+      expect(getByRole("status")).not.toHaveTextContent("1 DUSK");
+    });
+
+    it("looks for the payout only while the screen is open", async () => {
+      const { unmount } = await sendOut();
+
+      mocks.transfers?.set([out({ stage: "sent" })]);
+      await vi.waitFor(() => expect(mocks.followTransfers).toHaveBeenCalled());
+
+      unmount();
+      mocks.followTransfers.mockClear();
+      mocks.transfers?.set([out({ hash: "cd".repeat(32), stage: "sent" })]);
+      await tick();
+
+      expect(mocks.followTransfers).not.toHaveBeenCalled();
+    });
   });
 
   describe("when the wallet or its account changes course", () => {

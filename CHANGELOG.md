@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Show what arrived on a finished transfer out in Bridge › Activity
 - Say a transfer is taking longer than usual in Bridge › Activity
+- Say what arrived on the Bridge's Sent screen while it's open
 
 ### Removed
 
