@@ -2,7 +2,7 @@
 
 <script>
   import { onDestroy } from "svelte";
-  import { getBalance, watchBlocks, watchChainId } from "@wagmi/core";
+  import { getBalance, watchBlocks } from "@wagmi/core";
   import { askToSwitch, forgetChainRefusal } from "$lib/bridge/chainSwitch";
   import { account, wagmiConfig } from "$lib/web3/walletConnection";
   import { Bridge } from "$lib/components";
@@ -61,46 +61,33 @@
       : () => {};
   }
 
-  /** Stops keeping the wallet on its chain. */
-  let unwatchChain = () => {};
-
-  /** The chain a wallet is kept on, or none. */
-  /** @type {number | undefined} */
-  let keptOn;
+  /** Where the wallet was last asked to move from, and to. */
+  let askedFor = "";
 
   /**
-   * Keeps a connected wallet on the chain the route picked uses (DuskEVM's,
-   * or a migration's), moving it back when it changes chain: none to keep,
-   * nor a connection to ask, while none is connected or the route needs no
-   * chain.
+   * Keeps the wallet on the chain the route picked uses (a withdrawal's or a
+   * migration's), asking once each time it's elsewhere, whether the page knows
+   * that chain or not: none to keep while none is connected or the route needs
+   * no chain.
    *
    * @param {boolean} connected
-   * @param {number | undefined} chainId
+   * @param {number | undefined} now
+   * @param {number | undefined} target
    */
-  function keepOnChain(connected, chainId) {
-    const target = connected ? chainId : undefined;
+  function keepOnChain(connected, now, target) {
+    const elsewhere = connected && target !== undefined && now !== target;
+    const key = elsewhere ? `${now}:${target}` : "";
 
-    if (target === keptOn) {
+    if (key === askedFor) {
       return;
     }
 
-    keptOn = target;
-    unwatchChain();
-    unwatchChain = () => {};
-    forgetChainRefusal();
+    askedFor = key;
 
-    if (target) {
-      if ($account.chainId !== target) {
-        askToSwitch(target);
-      }
-
-      unwatchChain = watchChainId(wagmiConfig, {
-        onChange(now) {
-          if (now !== target) {
-            askToSwitch(target);
-          }
-        },
-      });
+    if (elsewhere) {
+      askToSwitch(/** @type {number} */ (target));
+    } else {
+      forgetChainRefusal();
     }
   }
 
@@ -109,11 +96,10 @@
   let evmChainId;
 
   onDestroy(() => {
-    unwatchChain();
     unwatchBalance();
   });
 
-  $: keepOnChain($account.isConnected, evmChainId);
+  $: keepOnChain($account.isConnected, $account.chainId, evmChainId);
 
   $: balanceChainId = $account.isConnected ? $account.chain?.id : undefined;
   $: watchBalance(balanceChainId);
