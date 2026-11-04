@@ -473,6 +473,33 @@ describe("the Bridge card's routes to and from other chains", () => {
       ).toBeInTheDocument();
     });
 
+    it("asks for no migration once the page was left while the approval was signed", async () => {
+      /** @type {(hash: string) => void} */
+      let signed = () => {};
+
+      mocks.allowance.mockResolvedValue(0n);
+      mocks.approve.mockReturnValue(
+        new Promise((resolve) => {
+          signed = resolve;
+        })
+      );
+
+      const { getByRole, unmount } = await toReview();
+
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+      await vi.waitFor(() => expect(mocks.approve).toHaveBeenCalled());
+
+      unmount();
+      signed(`0x${"aa".repeat(32)}`);
+      await vi.waitFor(() =>
+        expect(mocks.waitForTransactionReceipt).toHaveBeenCalled()
+      );
+      await tick();
+      await tick();
+
+      expect(mocks.migrate).not.toHaveBeenCalled();
+    });
+
     it("migrates from no account but the one reviewed: another one after the approval stops it", async () => {
       mocks.allowance.mockResolvedValue(0n);
       mocks.approve.mockImplementation(async () => {

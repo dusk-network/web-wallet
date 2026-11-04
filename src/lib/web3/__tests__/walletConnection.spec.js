@@ -72,6 +72,8 @@ describe("walletConnection", () => {
 
     expect(vi.mocked(createAppKit)).toHaveBeenCalledOnce();
     expect(vi.mocked(createAppKit).mock.calls[0][0]).toMatchObject({
+      // AppKit's own sheet for an unknown chain can't be closed: the card asks.
+      allowUnsupportedChain: true,
       enableBaseAccount: false,
       enableCoinbase: false,
       features: { analytics: false, email: false, socials: false },

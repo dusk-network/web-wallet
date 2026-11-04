@@ -95,8 +95,10 @@
       }
 
       unwatchChain = watchChainId(wagmiConfig, {
-        onChange() {
-          askToSwitch(target);
+        onChange(now) {
+          if (now !== target) {
+            askToSwitch(target);
+          }
         },
       });
     }

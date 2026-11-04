@@ -132,6 +132,7 @@ async function approveIfShort(route, owner, amountLux, onApproving, stillOpen) {
  *   owner: `0x${string}`,
  *   recipient: string,
  *   route: import("./cardRoutes").CardRoute & { kind: "migration" },
+ *   stillHere?: () => void,
  * }} migration
  * @returns {Promise<`0x${string}`>}
  */
@@ -141,9 +142,16 @@ export async function sendMigration({
   owner,
   recipient,
   route,
+  stillHere = () => {},
 }) {
   const { chainId, name } = route.chain;
-  const stillOpen = walletStore.whileOpen();
+  const walletStillOpen = walletStore.whileOpen();
+  // Nothing more is asked of the wallet once the wallet here, or the screen
+  // that says what's going on, is gone.
+  const stillOpen = () => {
+    walletStillOpen();
+    stillHere();
+  };
   const scope = walletDataScope();
 
   await approveIfShort(

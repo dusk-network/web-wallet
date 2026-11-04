@@ -307,6 +307,8 @@ async function start(reset) {
   wagmiConfig = wagmiAdapter.wagmiConfig;
   appKit = createAppKit({
     adapters: [wagmiAdapter],
+    // AppKit's own sheet for an unknown chain can't be closed: the card asks.
+    allowUnsupportedChain: true,
     customRpcUrls,
     defaultNetwork: networks[0],
     // The Coinbase and Base Account SDKs send their own telemetry.

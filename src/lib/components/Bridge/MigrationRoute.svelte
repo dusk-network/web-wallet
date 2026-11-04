@@ -7,7 +7,7 @@
    * route's migration contract, which the route's payout account pays out
    * on Dusk to this profile's public account.
    */
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onDestroy } from "svelte";
   import {
     mdiArrowDown,
     mdiArrowLeft,
@@ -106,6 +106,13 @@
 
   /** @type {Promise<string>} */
   let operation = Promise.resolve("");
+
+  /** Whether this screen is gone: it then asks the wallet for nothing more. */
+  let left = false;
+
+  onDestroy(() => {
+    left = true;
+  });
 
   /** Whether what failed can't have gone out, so it can be tried again. */
   let canGoBack = false;
@@ -250,6 +257,11 @@
       owner: /** @type {`0x${string}`} */ (address),
       recipient,
       route,
+      stillHere() {
+        if (left) {
+          throw new Error("The screen was left.");
+        }
+      },
     }).catch((error) => {
       if (stoppedBy(error)) {
         return "";
