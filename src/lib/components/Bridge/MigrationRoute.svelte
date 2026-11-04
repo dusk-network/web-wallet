@@ -8,6 +8,7 @@
    * on Dusk to this profile's public account.
    */
   import { createEventDispatcher, onDestroy } from "svelte";
+  import { formatUnits } from "viem";
   import {
     mdiArrowDown,
     mdiArrowLeft,
@@ -34,6 +35,7 @@
     sendMigration,
   } from "$lib/bridge/routeFlows";
   import { askToSwitch, chainSwitchRefused } from "$lib/bridge/chainSwitch";
+  import { getNativeBalance } from "$lib/web3/migration";
   import { describeFailure, isDeclinedInWallet } from "$lib/transactions";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
@@ -45,7 +47,11 @@
   import RouteTransferResult from "./RouteTransferResult.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
-  import { normalizeDuskInput, parseDuskInput } from "../Stake/stakeAmount";
+  import {
+    hasTooManyDecimals,
+    normalizeDuskInput,
+    parseDuskInput,
+  } from "../Stake/stakeAmount";
 
   /** @type {import("$lib/bridge/cardRoutes").CardRoute & { kind: "migration" }} */
   export let route;
@@ -81,6 +87,20 @@
   /** Whether Max filled the amount in: it's hidden with the balances. */
   let isMaxAmount = false;
 
+  /**
+   * An amount of the chain's own currency, rounded as a wallet shows it.
+   *
+   * @param {bigint} wei
+   */
+  function feeText(wei) {
+    const { decimals } = route.chain.currency;
+    const shown = Number(formatUnits(wei, decimals));
+
+    return shown > 0 && shown < 0.0001
+      ? "less than 0.0001"
+      : shown.toLocaleString(language, { maximumFractionDigits: 4 });
+  }
+
   /** @param {Event} event */
   function typeAmount(event) {
     note = "";
@@ -93,6 +113,14 @@
   /** The token's balance in the wallet, in wei, once read. */
   /** @type {bigint | undefined} */
   let balance;
+
+  /**
+   * What the wallet holds to pay network fees with: undefined until it's
+   * read, null when it couldn't be.
+   *
+   * @type {bigint | null | undefined}
+   */
+  let feeBalance;
 
   /** Whether the contract may take the amount without an approval first. */
   /** @type {boolean | undefined} */
@@ -172,6 +200,18 @@
 
   function readApproval() {
     approved = undefined;
+    feeBalance = undefined;
+    getNativeBalance(
+      /** @type {`0x${string}`} */ (address),
+      route.chain.chainId
+    ).then(
+      (wei) => {
+        feeBalance = wei;
+      },
+      () => {
+        feeBalance = null;
+      }
+    );
     isApproved(route, /** @type {`0x${string}`} */ (address), amountLux).then(
       (yes) => {
         approved = yes;
@@ -294,6 +334,7 @@
   $: ({ address, chainId, isConnected } = $account);
   $: follow(isConnected ? address : undefined, chainId);
   $: chainName = route.chain.name;
+  $: feeUnit = route.chain.currency.symbol;
   $: unit = route.chain.tokenLabel ?? "DUSK";
   $: typed = normalizeDuskInput(amount, getDecimalSeparator());
   $: amountLux = parseDuskInput(typed) ?? 0n;
@@ -322,7 +363,12 @@
             : amount === ""
               ? { label: "Enter an amount", ready: false }
               : amountLux === 0n
-                ? { label: "Check the amount", ready: false }
+                ? {
+                    label: hasTooManyDecimals(typed)
+                      ? "Use at most 9 decimals"
+                      : "Check the amount",
+                    ready: false,
+                  }
                 : amountLux > balanceLux
                   ? { label: `Not enough ${unit}`, ready: false }
                   : { label: "Review migration", ready: true };
@@ -522,9 +568,29 @@
               : "Approve the amount, then migrate, in your wallet"}
         </dd>
       </div>
+      {#if approved === false}
+        <div>
+          <dt>Approval</dt>
+          <dd>
+            <span>The migration contract, for exactly this amount</span>
+            <span class="route-review__address">{route.contract}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Token</dt>
+          <dd>
+            <span>{unit}</span>
+            <span class="route-review__address">{route.chain.token}</span>
+          </dd>
+        </div>
+      {/if}
       <div>
         <dt>Network fees</dt>
-        <dd>On {chainName}, as your wallet shows</dd>
+        <dd>
+          {typeof feeBalance === "bigint"
+            ? `You have ${feeText(feeBalance)} ${feeUnit} for them`
+            : `On ${chainName}, as your wallet shows`}
+        </dd>
       </div>
       {#if timeText}
         <div>
@@ -543,7 +609,13 @@
         text="Back"
         variant="secondary"
       />
-      {#if chainId === route.chain.chainId}
+      {#if feeBalance === 0n}
+        <Button
+          disabled
+          text={`No ${feeUnit} for the network fee`}
+          variant="primary"
+        />
+      {:else if chainId === route.chain.chainId}
         <Button
           confirm
           disabled={approved === undefined || !isConnected}

@@ -78,7 +78,7 @@ describe("RouteTransferDetails", () => {
 
     expect(terms(container)).toStrictEqual([
       "BNB Smart Chain transaction",
-      "Paid",
+      "Arrived",
       "Dusk payout",
     ]);
   });
@@ -91,7 +91,7 @@ describe("RouteTransferDetails", () => {
     expect(terms(container)).toStrictEqual([
       "Sent",
       "BNB Smart Chain transaction",
-      "Paid",
+      "Arrived",
       "Dusk payout",
     ]);
   });

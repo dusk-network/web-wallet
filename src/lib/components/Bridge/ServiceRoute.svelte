@@ -43,7 +43,11 @@
   import RouteTransferResult from "./RouteTransferResult.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
-  import { normalizeDuskInput, parseDuskInput } from "../Stake/stakeAmount";
+  import {
+    hasTooManyDecimals,
+    normalizeDuskInput,
+    parseDuskInput,
+  } from "../Stake/stakeAmount";
 
   /** @type {import("$lib/bridge/cardRoutes").CardRoute & { kind: "service" }} */
   export let route;
@@ -167,7 +171,13 @@
       ? { label: "Connect an EVM wallet", ready: true }
       : amountLux === 0n
         ? {
-            label: amount ? "Check the amount" : "Enter an amount",
+            label: !amount
+              ? "Enter an amount"
+              : hasTooManyDecimals(
+                    normalizeDuskInput(amount, getDecimalSeparator())
+                  )
+                ? "Use at most 9 decimals"
+                : "Check the amount",
             ready: false,
           }
         : amountLux <= route.feeLux
@@ -401,6 +411,15 @@
         <dd>
           <span>Your {chainName} address</span>
           <span class="route-review__address">{address}</span>
+        </dd>
+      </div>
+      <div>
+        <dt>Through</dt>
+        <dd>
+          <span
+            >The bridge's account on Dusk, with your address as the memo</span
+          >
+          <span class="route-review__address">{route.account}</span>
         </dd>
       </div>
     </dl>

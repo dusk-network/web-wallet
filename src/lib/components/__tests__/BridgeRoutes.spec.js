@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   ),
   executeSend: vi.fn(),
   getBalanceOfCoin: vi.fn(),
+  getNativeBalance: vi.fn(async () => DUSK * DUSK),
   migrate: vi.fn(),
   switchChain: vi.fn(),
   waitForTransactionReceipt: vi.fn(),
@@ -83,6 +84,7 @@ vi.mock("$lib/web3/migration", () => ({
   allowance: mocks.allowance,
   approve: mocks.approve,
   getBalanceOfCoin: mocks.getBalanceOfCoin,
+  getNativeBalance: mocks.getNativeBalance,
   migrate: mocks.migrate,
 }));
 
@@ -535,6 +537,166 @@ describe("the Bridge card's routes to and from other chains", () => {
       await tick();
 
       expect(mocks.followTransfers).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("what a review says before anything is signed", () => {
+    /** A migration of 1 ERC20 DUSK, up to its review. */
+    async function reviewMigration() {
+      mocks.getBalanceOfCoin.mockResolvedValue(5n * DUSK * DUSK);
+      connect({ address: EVM, chainId: 1 });
+
+      const view = render(Bridge, {
+        ...props,
+        linkedRoute: "ethereum-to-dusk",
+      });
+
+      await fireEvent.input(
+        await view.findByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
+        { target: { value: "1" } }
+      );
+      await fireEvent.click(
+        view.getByRole("button", { name: "Review migration" })
+      );
+
+      return view;
+    }
+
+    const ethereum = () => networks.mainnet.routes.chains.ethereum;
+
+    it("names the contract an approval lets take the amount, and the token", async () => {
+      mocks.allowance.mockResolvedValue(0n);
+
+      const { container, findByText } = await reviewMigration();
+
+      await findByText("Approve the amount, then migrate, in your wallet");
+
+      const contract = /** @type {any} */ (
+        networks.mainnet.routes.migrations.find((m) => m.chain === "ethereum")
+      ).contract;
+
+      expect(container).toHaveTextContent(
+        `Approval The migration contract, for exactly this amount ${contract}`
+      );
+      expect(container).toHaveTextContent(
+        `Token ERC20 DUSK ${ethereum().token}`
+      );
+    });
+
+    it("says what the wallet holds for the network fee, and asks nothing without any", async () => {
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.getNativeBalance.mockResolvedValueOnce(12_345n * 10n ** 14n);
+
+      let view = await reviewMigration();
+
+      await vi.waitFor(() =>
+        expect(view.container).toHaveTextContent(
+          "Network fees You have 1.2345 ETH for them"
+        )
+      );
+      expect(mocks.getNativeBalance).toHaveBeenCalledWith(EVM, 1);
+      cleanup();
+
+      mocks.getNativeBalance.mockResolvedValueOnce(0n);
+      view = await reviewMigration();
+
+      expect(
+        await view.findByRole("button", { name: "No ETH for the network fee" })
+      ).toBeDisabled();
+      expect(view.queryByRole("button", { name: "Migrate" })).toBeNull();
+    });
+
+    it("says nothing it doesn't know when the balance can't be read", async () => {
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.getNativeBalance.mockRejectedValueOnce(new Error("No answer."));
+
+      const { container, findByRole } = await reviewMigration();
+
+      await findByRole("button", { name: "Migrate" });
+      await vi.waitFor(() =>
+        expect(container).toHaveTextContent(
+          "Network fees On Ethereum, as your wallet shows"
+        )
+      );
+    });
+
+    it("names the bridge's account a transfer out goes through", async () => {
+      connect({ address: EVM, chainId: 56 });
+
+      const { container, findByRole, getByRole } = render(Bridge, {
+        ...props,
+        linkedRoute: "dusk-to-bsc",
+      });
+
+      await fireEvent.input(
+        await findByRole("textbox", { name: "Amount, in DUSK" }),
+        { target: { value: "2" } }
+      );
+      await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+
+      const service = /** @type {any} */ (
+        networks.mainnet.routes.services.find((s) => s.chain === "bsc")
+      );
+
+      expect(container).toHaveTextContent(
+        `Through The bridge's account on Dusk, with your address as the memo ${service.account}`
+      );
+    });
+
+    it("says why an amount with too many decimals won't do, on both routes", async () => {
+      connect({ address: EVM, chainId: 56 });
+
+      const out = render(Bridge, { ...props, linkedRoute: "dusk-to-bsc" });
+
+      await fireEvent.input(
+        await out.findByRole("textbox", { name: "Amount, in DUSK" }),
+        { target: { value: "1.0123456789" } }
+      );
+
+      expect(
+        out.getByRole("button", { name: "Use at most 9 decimals" })
+      ).toBeDisabled();
+      cleanup();
+
+      const view = await reviewMigration();
+
+      await fireEvent.click(await view.findByRole("button", { name: "Back" }));
+      await fireEvent.input(
+        view.getByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
+        { target: { value: "1.0123456789" } }
+      );
+
+      expect(
+        view.getByRole("button", { name: "Use at most 9 decimals" })
+      ).toBeDisabled();
+    });
+
+    it("starts a new transfer from the Bridge tab once one is sent", async () => {
+      connect({ address: EVM, chainId: 56 });
+      mocks.executeSend.mockResolvedValue("ab".repeat(32));
+
+      const { findByRole, findByText, getByRole, getAllByRole } = render(
+        Bridge,
+        { ...props, linkedRoute: "dusk-to-bsc" }
+      );
+
+      await fireEvent.input(
+        await findByRole("textbox", { name: "Amount, in DUSK" }),
+        { target: { value: "2" } }
+      );
+      await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Send" }));
+      await findByText("Sent");
+
+      const tab = getAllByRole("link", { name: "Bridge" })[0];
+
+      tab.addEventListener("click", (event) => event.preventDefault());
+      await fireEvent.click(tab);
+
+      expect(
+        await findByRole("textbox", { name: "Amount, in DUSK" })
+      ).toHaveValue("");
     });
   });
 

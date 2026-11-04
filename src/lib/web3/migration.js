@@ -1,4 +1,9 @@
-import { readContract, simulateContract, writeContract } from "@wagmi/core";
+import {
+  getBalance,
+  readContract,
+  simulateContract,
+  writeContract,
+} from "@wagmi/core";
 import ERC20Abi from "./abi/erc_bep_20.json";
 import migrationABI from "./abi/migrationABI.json";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
@@ -107,6 +112,16 @@ export const getBalanceOfCoin = async (
     throw new Error(errorMessage);
   }
 };
+/**
+ * What an account holds of its chain's own currency, which pays its fees.
+ *
+ * @param {`0x${string}`} owner
+ * @param {number} chainId
+ * @returns {Promise<bigint>}
+ */
+export const getNativeBalance = async (owner, chainId) =>
+  (await getBalance(wagmiConfig, { address: owner, chainId })).value;
+
 /**
  *  Migrates the approved amount to the given account
  *

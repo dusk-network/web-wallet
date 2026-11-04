@@ -76,7 +76,7 @@ describe("routeTransferRow", () => {
       )
     ).toMatchObject({
       group: "done",
-      line: `Paid ${claimDay(CLAIM_AT, "en")}`,
+      line: `Arrived ${claimDay(CLAIM_AT, "en")}`,
       when: CLAIM_AT,
     });
   });

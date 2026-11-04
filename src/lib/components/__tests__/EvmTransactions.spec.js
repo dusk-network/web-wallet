@@ -555,7 +555,7 @@ describe("EvmTransactions", () => {
       ])
     );
     const paid = await findByRole("button", {
-      name: `BNB Smart Chain to Dusk Paid ${claimDay(paidAt, "en")} 5 DUSK`,
+      name: `BNB Smart Chain to Dusk Arrived ${claimDay(paidAt, "en")} 5 DUSK`,
     });
     const sent = getByRole("button", {
       name: `Dusk to BNB Smart Chain Sent ${claimDay(sentAt, "en")} · takes ~10 hours 200,001 DUSK Pending`,

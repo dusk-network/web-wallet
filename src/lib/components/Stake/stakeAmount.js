@@ -10,6 +10,16 @@ import { formatDusk, formatFee } from "$lib/dusk/currency/formatDusk";
 const LUX_DECIMALS = 9;
 
 /**
+ * Whether a normalized amount is only wrong by having more decimals than a
+ * Lux has.
+ *
+ * @param {string} text
+ */
+export const hasTooManyDecimals = (text) =>
+  /^\d*\.\d+$/.test(text.trim()) &&
+  text.trim().split(".")[1].length > LUX_DECIMALS;
+
+/**
  * An amount typed in DUSK, in lux: digits, with up to nine decimals after a
  * point. Null when it isn't one.
  *
