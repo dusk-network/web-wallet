@@ -1,5 +1,7 @@
 import { ProfileGenerator } from "@dusk/w3sper";
 
+import isAccountKey from "./isAccountKey";
+
 /**
  * Validates if an input is a shielded or an public address, with feedback on failure or success.
  * Additionally, checks for self-referential input.
@@ -14,6 +16,10 @@ import { ProfileGenerator } from "@dusk/w3sper";
  */
 export default function getAddressInfo(input, shieldedAddress, publicAddress) {
   const type = ProfileGenerator.typeOf(input);
+
+  if (type === "account" && !isAccountKey(input)) {
+    return { isValid: false };
+  }
 
   if (type === "account" || type === "address") {
     const isSelfReferential =

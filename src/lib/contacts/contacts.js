@@ -21,6 +21,8 @@
 import { ProfileGenerator } from "@dusk/w3sper";
 import { writable } from "svelte/store";
 
+import isAccountKey from "$lib/wallet/isAccountKey";
+
 import {
   contactsNamespace,
   deriveContactsKey,
@@ -530,7 +532,11 @@ const newId = () =>
 export function addressType(address) {
   const type = ProfileGenerator.typeOf(address);
 
-  return type === "account" || type === "address" ? type : "unknown";
+  if (type === "account") {
+    return isAccountKey(address) ? type : "unknown";
+  }
+
+  return type === "address" ? type : "unknown";
 }
 
 /**

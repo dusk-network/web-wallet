@@ -159,9 +159,9 @@ describe("TransactionResult", () => {
       "The wallet changed or locked before it went out, so nothing was sent. Try again.",
     ],
     [
-      "a signing error",
+      "an address it can't read",
       named("DriverDeserializeError", "Failed to deserialize the buffer"),
-      "The wallet couldn't sign it, so nothing was sent. Reload the page and try again.",
+      "The wallet couldn't read the address, so nothing was sent. Check it and try again.",
     ],
     [
       "a proof the network refused",

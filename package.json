@@ -57,6 +57,7 @@
     "@floating-ui/dom": "1.7.6",
     "@hdauven/dusk-multicall": "npm:@jsr/hdauven__dusk-multicall@0.1.0",
     "@mdi/js": "7.4.47",
+    "@noble/curves": "1.8.0",
     "@reown/appkit": "1.8.20",
     "@reown/appkit-adapter-wagmi": "1.8.20",
     "@scure/bip39": "2.0.1",
