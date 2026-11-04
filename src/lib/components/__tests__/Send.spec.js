@@ -1,3 +1,4 @@
+import { settingsStore } from "$lib/stores";
 import {
   afterAll,
   afterEach,
@@ -576,6 +577,25 @@ describe("Send", () => {
       });
       expect(queryByText("That memo is too long.")).not.toBeInTheDocument();
       expect(fields.send()).toBeEnabled();
+    });
+
+    it("should keep the balance out of what it says about the amount while balances are hidden", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      try {
+        const { container, findByText, getByRole } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await fireEvent.input(fields.to(), { target: { value: otherAccount } });
+        await fireEvent.input(fields.amount(), {
+          target: { value: "99999999" },
+        });
+
+        expect(await findByText("More than you have.")).toBeInTheDocument();
+        expect(container.textContent).not.toMatch(/More than your/);
+      } finally {
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+      }
     });
 
     it("should require a valid EVM address in memo if sending to BEP20 bridge", async () => {
@@ -1764,7 +1784,9 @@ describe("Send", () => {
         await findByRole("button", { name: "Save to contacts" })
       );
 
-      expect(getByText("Saved only on this device.")).toBeInTheDocument();
+      expect(
+        getByText("Saved only in this wallet, on this device.")
+      ).toBeInTheDocument();
 
       await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
         target: { value: "Alice" },

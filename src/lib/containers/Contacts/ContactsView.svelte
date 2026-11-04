@@ -101,7 +101,7 @@
         variant="primary"
       />
     </header>
-    <p class="contacts__note">Saved only on this device.</p>
+    <p class="contacts__note">Saved only in this wallet, on this device.</p>
 
     {#if contacts.length}
       <label class="contacts__search">

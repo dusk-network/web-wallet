@@ -564,7 +564,8 @@
           {:else if !isStake}
             <div class="liquid-stake__estimate">
               <p>
-                The DUSK comes back in the same transaction. No fee, no waiting.
+                The DUSK comes back in the same transaction. No Sozu fee, no
+                waiting.
               </p>
             </div>
           {/if}
@@ -631,7 +632,7 @@
           </div>
           <div>
             <dt>Getting it back</dt>
-            <dd>Unstake any time. No fee, no waiting.</dd>
+            <dd>Unstake any time. No Sozu fee, no waiting.</dd>
           </div>
         {:else}
           <div>

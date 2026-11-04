@@ -487,6 +487,7 @@ describe("Unlock Wallet", async () => {
       await fireEvent.submit(getAsHTMLElement(container, "form"));
       await vi.waitUntil(getErrorElement);
       expect(getErrorElement()?.textContent).toContain("Wrong password.");
+      expect(getErrorElement()).toHaveAttribute("role", "alert");
       expect(openSpy).not.toHaveBeenCalled();
       expect(gotoSpy).not.toHaveBeenCalled();
     });

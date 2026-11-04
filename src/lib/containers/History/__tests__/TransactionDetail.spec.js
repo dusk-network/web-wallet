@@ -499,6 +499,28 @@ describe("TransactionDetail", () => {
     });
   });
 
+  it("should show the fee, and hide it with the balances, here and under Technical details", () => {
+    const shown = show(row({ amount: "1000000000", feePaid: "1856398" }));
+
+    expect(shown.container.textContent).toContain("0.0019");
+    expect(shown.container.textContent).toContain("0.001856398");
+    cleanup();
+
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container } = show(
+        row({ amount: "1000000000", feePaid: "1856398" })
+      );
+
+      expect(container.textContent).toContain("Network fee paid");
+      expect(container.textContent).not.toContain("0.0019");
+      expect(container.textContent).not.toContain("0.001856398");
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
+  });
+
   it("should hide the stDUSK a stake got with the balances, here and under Technical details", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
