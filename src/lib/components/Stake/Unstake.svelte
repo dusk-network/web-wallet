@@ -3,7 +3,7 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
 
-  import { BALANCE_MASK } from "$lib/constants";
+  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
     formatDusk,
@@ -144,7 +144,9 @@
 
   /** @param {Event} event */
   function setWithdrawAmount(event) {
-    amountText = /** @type {HTMLInputElement} */ (event.currentTarget).value;
+    amountText = withoutBalanceMask(
+      /** @type {HTMLInputElement} */ (event.currentTarget).value
+    );
     isAmountChosen = true;
   }
 
@@ -257,9 +259,8 @@
             id="{id}-amount"
             inputmode="decimal"
             on:input={setWithdrawAmount}
-            placeholder={isAmountHidden ? BALANCE_MASK : undefined}
             type="text"
-            value={isAmountHidden ? "" : amountText}
+            value={isAmountHidden ? BALANCE_MASK : amountText}
           />
           <span aria-hidden="true" class="operation__unit">DUSK</span>
           <Button

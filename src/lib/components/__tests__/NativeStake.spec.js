@@ -182,7 +182,7 @@ describe("NativeStake", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(getByLabelText("Stake amount")).toHaveValue("");
+      expect(getByLabelText("Stake amount")).toHaveValue("••••");
       expect(container.textContent).not.toContain("1,482.95");
       expect(getByRole("button", { name: "Stake •••• DUSK" })).toBeEnabled();
 

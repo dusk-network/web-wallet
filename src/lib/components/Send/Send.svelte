@@ -23,7 +23,7 @@
   } from "@duskdomains/sdk/names";
   import { pushState } from "$app/navigation";
   import { page } from "$app/stores";
-  import { BALANCE_MASK } from "$lib/constants";
+  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import { addBasePath, pageTitle } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
@@ -361,7 +361,9 @@
 
   /** @param {Event} event */
   function typeAmount(event) {
-    sendAmount = /** @type {HTMLInputElement} */ (event.currentTarget).value;
+    sendAmount = withoutBalanceMask(
+      /** @type {HTMLInputElement} */ (event.currentTarget).value
+    );
     isMaxAmount = false;
   }
 
@@ -1327,10 +1329,10 @@
             id="{id}-amount"
             inputmode="decimal"
             on:input={typeAmount}
-            placeholder={isAmountMasked ? BALANCE_MASK : "0"}
-            required={!isAmountMasked}
+            placeholder="0"
+            required
             type="text"
-            value={isAmountMasked ? "" : sendAmount}
+            value={isAmountMasked ? BALANCE_MASK : sendAmount}
           />
           {#if isAmountMasked}
             <span hidden id="{id}-amount-hidden">hidden</span>

@@ -490,8 +490,7 @@ describe("Send", () => {
 
         await fireEvent.click(getByRole("button", { name: "Max" }));
 
-        expect(fields.amount()).toHaveValue("");
-        expect(fields.amount()).toHaveAttribute("placeholder", "••••");
+        expect(fields.amount()).toHaveValue("••••");
         expect(shown()).not.toContain(exact);
         expect(shown()).not.toContain(
           formatDuskExact(baseProps.availableBalance, "en")
@@ -528,6 +527,14 @@ describe("Send", () => {
 
         expect(fields.amount()).toHaveValue("1");
         expect(fields.send()).toHaveAccessibleName("Send 1 DUSK");
+
+        // Deleting the dots clears it, on a keyboard that only says so by
+        // changing the field.
+        await fireEvent.click(getByRole("button", { name: "Max" }));
+        await fireEvent.input(fields.amount(), { target: { value: "•••" } });
+
+        expect(fields.amount()).toHaveValue("");
+        expect(fields.send()).toBeDisabled();
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
       }

@@ -132,8 +132,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      expect(amountInput).toHaveValue("");
-      expect(amountInput).toHaveAttribute("placeholder", "••••");
+      expect(amountInput).toHaveValue("••••");
       expect(amountInput).toHaveAccessibleDescription("hidden");
       expect(getByRole("button", { name: "Next" })).toBeEnabled();
 
@@ -153,7 +152,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      expect(amountInput).toHaveValue("");
+      expect(amountInput).toHaveValue("••••");
 
       await fireEvent.input(amountInput, { target: { value: "100" } });
 
@@ -163,8 +162,13 @@ describe("Unstake", () => {
       await fireEvent.input(amountInput, { target: { value: "" } });
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(amountInput).toHaveValue("");
+      expect(amountInput).toHaveValue("••••");
       expect(amountInput).toHaveAccessibleDescription("hidden");
+
+      // Deleting the dots clears it.
+      await fireEvent.input(amountInput, { target: { value: "•••" } });
+
+      expect(amountInput).toHaveValue("");
     });
 
     it("should take an amount as the other amount fields do: as text, with a decimal point or comma", async () => {

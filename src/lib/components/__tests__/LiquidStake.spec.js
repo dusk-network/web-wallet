@@ -367,11 +367,7 @@ describe("LiquidStake", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(getByLabelText("Stake amount")).toHaveValue("");
-      expect(getByLabelText("Stake amount")).toHaveAttribute(
-        "placeholder",
-        "••••"
-      );
+      expect(getByLabelText("Stake amount")).toHaveValue("••••");
       expect(getByRole("button", { name: /^Stake •••• DUSK/ })).toBeEnabled();
       for (const row of container.querySelectorAll(".stake-flow__rows dd")) {
         expect(textOf(row)).not.toMatch(/\d (st)?DUSK/);

@@ -13,7 +13,7 @@
     formatDuskPlain,
     formatTotal,
   } from "$lib/dusk/currency";
-  import { BALANCE_MASK } from "$lib/constants";
+  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
@@ -149,7 +149,9 @@
   /** @param {Event} event */
   function typeAmount(event) {
     forgetTerms();
-    amountText = /** @type {HTMLInputElement} */ (event.currentTarget).value;
+    amountText = withoutBalanceMask(
+      /** @type {HTMLInputElement} */ (event.currentTarget).value
+    );
     isMaxAmount = false;
   }
 
@@ -529,9 +531,8 @@
             id="{id}-amount"
             inputmode="decimal"
             on:input={typeAmount}
-            placeholder={isAmountMasked ? BALANCE_MASK : undefined}
             type="text"
-            value={isAmountMasked ? "" : amountText}
+            value={isAmountMasked ? BALANCE_MASK : amountText}
           />
           {#if isAmountMasked}
             <span hidden id="{id}-amount-hidden">hidden</span>

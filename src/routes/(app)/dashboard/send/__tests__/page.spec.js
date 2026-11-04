@@ -171,7 +171,7 @@ describe("Send page", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    expect(amount).toHaveValue("");
+    expect(amount).toHaveValue("••••");
     expect(container).not.toHaveTextContent(
       formatDuskPlain(balance.unshielded.value - fee)
     );

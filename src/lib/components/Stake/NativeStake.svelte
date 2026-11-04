@@ -10,7 +10,11 @@
     mdiServerOutline,
   } from "@mdi/js";
 
-  import { BALANCE_MASK, DOCUMENTATION_LINKS } from "$lib/constants";
+  import {
+    BALANCE_MASK,
+    DOCUMENTATION_LINKS,
+    withoutBalanceMask,
+  } from "$lib/constants";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
     formatDusk,
@@ -89,7 +93,9 @@
 
   /** @param {Event} event */
   function typeAmount(event) {
-    amountText = /** @type {HTMLInputElement} */ (event.currentTarget).value;
+    amountText = withoutBalanceMask(
+      /** @type {HTMLInputElement} */ (event.currentTarget).value
+    );
     isMaxAmount = false;
   }
 
@@ -190,9 +196,8 @@
           id="{id}-amount"
           inputmode="decimal"
           on:input={typeAmount}
-          placeholder={isAmountMasked ? BALANCE_MASK : undefined}
           type="text"
-          value={isAmountMasked ? "" : amountText}
+          value={isAmountMasked ? BALANCE_MASK : amountText}
         />
         {#if isAmountMasked}
           <span hidden id="{id}-amount-hidden">hidden</span>
