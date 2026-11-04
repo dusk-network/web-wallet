@@ -287,7 +287,16 @@ async function start(reset) {
     /** @type {[import("@reown/appkit/networks").AppKitNetwork, ...import("@reown/appkit/networks").AppKitNetwork[]]} */ (
       chains
     );
+  // A wallet that adds a chain keeps the RPC it's given, so it's the network's
+  // own, not WalletConnect's with this project's ID in it.
+  const customRpcUrls = Object.fromEntries(
+    chains.map((chain) => [
+      `eip155:${chain.id}`,
+      [{ url: chain.rpcUrls.default.http[0] }],
+    ])
+  );
   const wagmiAdapter = new WagmiAdapter({
+    customRpcUrls,
     networks,
     projectId: VITE_REOWN_PROJECT_ID,
     transports: Object.fromEntries(
@@ -298,6 +307,9 @@ async function start(reset) {
   wagmiConfig = wagmiAdapter.wagmiConfig;
   appKit = createAppKit({
     adapters: [wagmiAdapter],
+    // AppKit's own sheet for an unknown chain can't be closed: the card asks.
+    allowUnsupportedChain: true,
+    customRpcUrls,
     defaultNetwork: networks[0],
     // The Coinbase and Base Account SDKs send their own telemetry.
     enableBaseAccount: false,

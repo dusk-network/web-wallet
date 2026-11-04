@@ -81,7 +81,11 @@ vi.mock("$lib/web3/walletConnection", async () => {
   const { duskEvm } = await import("$lib/web3/duskEvm");
 
   return {
-    account: writable({ address: undefined, isConnected: false }),
+    // The account the migrations below are reviewed for.
+    account: writable({
+      address: "0x2222222222222222222222222222222222222222",
+      isConnected: true,
+    }),
     duskEvm,
     modal: { open: vi.fn() },
     wagmiConfig: {},

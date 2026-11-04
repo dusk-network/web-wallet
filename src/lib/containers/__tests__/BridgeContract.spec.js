@@ -1,12 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 import { tick } from "svelte";
-import {
-  getBalance,
-  switchChain,
-  watchBlocks,
-  watchChainId,
-} from "@wagmi/core";
+import { getBalance, switchChain, watchBlocks } from "@wagmi/core";
 
 import { account } from "$lib/web3/walletConnection";
 
@@ -127,7 +122,6 @@ vi.mock("@wagmi/core", async (importOriginal) => {
     getGasPrice: vi.fn(() => Promise.resolve(1n)),
     switchChain: vi.fn(() => Promise.resolve()),
     watchBlocks: vi.fn(wagmi.watchBlocks),
-    watchChainId: vi.fn(() => () => {}),
   };
 });
 
@@ -255,32 +249,41 @@ describe("BridgeContract", () => {
     }
   );
 
-  it("should follow the wallet's chain only while one is connected, the connection unloaded until then", async () => {
-    const unwatch = vi.fn();
-
-    vi.mocked(watchChainId).mockReturnValue(unwatch);
-
+  it("should ask the wallet back each time it moves off the route's chain, known to the page or not, and only then", async () => {
     const { unmount } = render(BridgeContract);
 
     await tick();
-
-    expect(watchChainId).not.toHaveBeenCalled();
-
     setAccount(CONNECTED);
     await tick();
 
-    expect(watchChainId).toHaveBeenCalledOnce();
+    expect(switchChain).not.toHaveBeenCalled();
 
-    // Another account, still connected: the same watch.
-    setAccount({ ...CONNECTED, address: `0x${"3".repeat(40)}` });
+    setAccount({ ...CONNECTED, chain: undefined, chainId: 137 });
+    await vi.waitFor(() => expect(switchChain).toHaveBeenCalledOnce());
+    expect(switchChain).toHaveBeenLastCalledWith(evm.config, {
+      chainId: CONNECTED.chainId,
+    });
+
+    // Another account on the same chain: it isn't asked again.
+    setAccount({
+      ...CONNECTED,
+      address: `0x${"3".repeat(40)}`,
+      chain: undefined,
+      chainId: 137,
+    });
     await tick();
 
-    expect(watchChainId).toHaveBeenCalledOnce();
+    expect(switchChain).toHaveBeenCalledOnce();
+
+    setAccount({ ...CONNECTED, chain: undefined, chainId: 42_161 });
+    await vi.waitFor(() => expect(switchChain).toHaveBeenCalledTimes(2));
 
     setAccount(DISCONNECTED);
     await tick();
+    setAccount({ ...DISCONNECTED, chainId: 137 });
+    await tick();
 
-    expect(unwatch).toHaveBeenCalledOnce();
+    expect(switchChain).toHaveBeenCalledTimes(2);
 
     unmount();
   });

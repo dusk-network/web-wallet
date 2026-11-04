@@ -7,7 +7,7 @@
    * route's migration contract, which the route's payout account pays out
    * on Dusk to this profile's public account.
    */
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onDestroy } from "svelte";
   import {
     mdiArrowDown,
     mdiArrowLeft,
@@ -28,7 +28,13 @@
   import { account, modal } from "$lib/web3/walletConnection";
   import { getBalanceOfCoin } from "$lib/web3/migration";
   import { notRunning } from "$lib/bridge/cardRoutes";
-  import { isApproved, sendMigration } from "$lib/bridge/routeFlows";
+  import {
+    isApproved,
+    EVM_ACCOUNT_CHANGED,
+    sendMigration,
+  } from "$lib/bridge/routeFlows";
+  import { askToSwitch, chainSwitchRefused } from "$lib/bridge/chainSwitch";
+  import { describeFailure, isDeclinedInWallet } from "$lib/transactions";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
@@ -63,6 +69,11 @@
 
   const dispatch = createEventDispatcher();
   const WEI_PER_LUX = 1_000_000_000n;
+  const ACCOUNT_CHANGED_NOTE =
+    "Your EVM wallet switched to another account, so nothing moved. Review again.";
+
+  /** A step's heading takes focus as it shows, so a screen reader goes there. */
+  const takeFocus = (/** @type {HTMLElement} */ node) => node.focus();
 
   /** @type {string} */
   let amount = "";
@@ -72,6 +83,7 @@
 
   /** @param {Event} event */
   function typeAmount(event) {
+    note = "";
     amount = withoutBalanceMask(
       /** @type {HTMLInputElement} */ (event.currentTarget).value
     );
@@ -95,6 +107,23 @@
 
   /** @type {Promise<string>} */
   let operation = Promise.resolve("");
+
+  /** Whether this screen is gone: it then asks the wallet for nothing more. */
+  let left = false;
+
+  onDestroy(() => {
+    left = true;
+  });
+
+  /** Whether what failed can't have gone out, so it can be tried again. */
+  let canGoBack = false;
+
+  /** What just stopped it, for the screen it went back to. */
+  let note = "";
+
+  /** The account the review open is for. */
+  /** @type {string | undefined} */
+  let reviewedFor;
 
   /** What the balance shown is read for: an account on a chain. */
   let readFor = "";
@@ -138,9 +167,8 @@
     );
   }
 
-  function review() {
+  function readApproval() {
     approved = undefined;
-    step = "review";
     isApproved(route, /** @type {`0x${string}`} */ (address), amountLux).then(
       (yes) => {
         approved = yes;
@@ -151,10 +179,77 @@
     );
   }
 
+  function review() {
+    note = "";
+    reviewedFor = address;
+    step = "review";
+    readApproval();
+  }
+
   // What this screen sends, it sends for the wallet it was drawn for.
   const forThisWallet = walletStore.forThisWallet();
 
+  /**
+   * What stopped it, when that isn't a failure: refused in the wallet, or the
+   * wallet on another account. Nothing moved, so it goes back a step.
+   *
+   * @param {unknown} error
+   */
+  function stoppedBy(error) {
+    if (
+      /** @type {{ code?: string }} */ (error)?.code === EVM_ACCOUNT_CHANGED
+    ) {
+      note = ACCOUNT_CHANGED_NOTE;
+      step = "form";
+
+      return true;
+    }
+
+    if (isDeclinedInWallet(error)) {
+      note =
+        sending === "approving"
+          ? "You cancelled the approval in your wallet. Nothing moved."
+          : approved
+            ? "You cancelled the migration in your wallet. Nothing moved."
+            : "You cancelled the migration in your wallet. The approval went through, so next time it only asks to migrate. Nothing moved.";
+      step = "review";
+      readApproval();
+
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * What a failure means. Once the migration was in the wallet's hands, it
+   * went out, so it isn't said to have stopped before it was sent.
+   *
+   * @param {Error} error
+   */
+  function describeError(error) {
+    const failedOnChain = error.message.includes("didn't go through");
+
+    if (sending !== "confirming") {
+      return failedOnChain
+        ? { sentence: `${chainName} refused the approval, so nothing moved.` }
+        : describeFailure(error, {
+            checkFirst:
+              "Check your EVM wallet and Activity before you send it again.",
+          });
+    }
+
+    return failedOnChain
+      ? { sentence: `${chainName} refused it, so your tokens didn't move.` }
+      : {
+          heading: "Not confirmed",
+          sentence: `It was sent to ${chainName}. Check Activity before you try again.`,
+        };
+  }
+
   function send() {
+    note = "";
+    sending = "";
     operation = forThisWallet(sendMigration)({
       amountLux,
       onStep: (now) => {
@@ -163,6 +258,20 @@
       owner: /** @type {`0x${string}`} */ (address),
       recipient,
       route,
+      stillHere() {
+        if (left) {
+          throw new Error("The screen was left.");
+        }
+      },
+    }).catch((error) => {
+      if (stoppedBy(error)) {
+        return "";
+      }
+
+      canGoBack =
+        sending !== "confirming" && !describeFailure(error).outcomeUnknown;
+
+      throw error;
     });
     step = "result";
   }
@@ -170,6 +279,8 @@
   function primaryAction() {
     if (!isConnected) {
       modal.open(route.chain.chainId);
+    } else if (chainId !== route.chain.chainId) {
+      askToSwitch(route.chain.chainId);
     } else if (primary.ready) {
       review();
     }
@@ -198,7 +309,9 @@
     : !isConnected
       ? { label: "Connect an EVM wallet", ready: true }
       : chainId !== route.chain.chainId
-        ? { label: `Switching to ${chainName}…`, ready: false }
+        ? $chainSwitchRefused
+          ? { label: `Switch to ${chainName}`, ready: true }
+          : { label: `Switching to ${chainName}…`, ready: false }
         : balanceLux === undefined
           ? { label: "Checking the balance…", ready: false }
           : balanceLux === 0n
@@ -215,9 +328,17 @@
   $: if (step === "review" && !isConnected) {
     step = "form";
   }
+  // It's for one account: on another, it's reviewed again.
+  $: if (step === "review" && isConnected && address !== reviewedFor) {
+    note = ACCOUNT_CHANGED_NOTE;
+    step = "form";
+  }
 </script>
 
 {#if step === "form"}
+  {#if note}
+    <p class="route-note" role="alert">{note}</p>
+  {/if}
   <div class="swap-panel">
     <div class="swap-panel__head">
       <span class="swap-panel__label">From</span>
@@ -254,7 +375,7 @@
           {#if !isConnected}
             connect a wallet to see it
           {:else if balanceLux === undefined}
-            checking
+            {$chainSwitchRefused ? "switch network to see it" : "checking"}
           {:else}
             <BalanceValue
               exact={formatDuskExact(balanceLux, language)}
@@ -362,7 +483,10 @@
   </div>
 {:else if step === "review"}
   <div class="route-review">
-    <h2 class="route-review__title">Review</h2>
+    <h2 class="route-review__title" tabindex="-1" use:takeFocus>Review</h2>
+    {#if note}
+      <p class="route-note" role="alert">{note}</p>
+    {/if}
     <ReviewWallet />
     <ReviewAmount
       label="Amount"
@@ -410,24 +534,35 @@
       <Button
         icon={{ path: mdiArrowLeft }}
         on:click={() => {
+          note = "";
           step = "form";
         }}
         text="Back"
         variant="secondary"
       />
-      <Button
-        confirm
-        disabled={approved === undefined || !isConnected}
-        icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
-        on:click={send}
-        text="Migrate"
-        variant="primary"
-      />
+      {#if chainId === route.chain.chainId}
+        <Button
+          confirm
+          disabled={approved === undefined || !isConnected}
+          icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
+          on:click={send}
+          text="Migrate"
+          variant="primary"
+        />
+      {:else}
+        <Button
+          disabled={!primary.ready}
+          on:click={primaryAction}
+          text={primary.label}
+          variant="primary"
+        />
+      {/if}
     </div>
   </div>
 {:else}
-  <div class="route-result">
+  <div class="route-result" role="status" tabindex="-1" use:takeFocus>
     <OperationResult
+      {describeError}
       errorMessage="The migration didn't go through"
       {operation}
       pendingMessage={sending === "approving"
@@ -449,6 +584,11 @@
           variant="tertiary"
         />
       </svelte:fragment>
+      <svelte:fragment slot="error-actions">
+        {#if canGoBack}
+          <Button on:click={review} text="Back" variant="secondary" />
+        {/if}
+      </svelte:fragment>
     </OperationResult>
   </div>
 {/if}
@@ -460,6 +600,17 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 0.5rem;
+  }
+
+  .route-review__title:focus,
+  .route-result:focus {
+    outline: none;
+  }
+
+  .route-note {
+    margin: 0 0 0.75em;
+    font-size: 0.875em;
+    color: var(--on-surface-color);
   }
 
   .route-review__title {

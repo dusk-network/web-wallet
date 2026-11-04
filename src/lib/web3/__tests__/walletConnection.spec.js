@@ -45,6 +45,26 @@ describe("walletConnection", () => {
     vi.unstubAllEnvs();
   });
 
+  it("should give a wallet adding a chain the network's own RPC, not WalletConnect's with this project's ID", async () => {
+    vi.resetModules();
+
+    const { setNodeNetwork: setNet } = await import("$lib/stores/nodeNetwork");
+    const { startWalletConnection: start } =
+      await import("../walletConnection");
+
+    setNet(networks.mainnet);
+    vi.mocked(createAppKit).mockClear();
+    await start();
+
+    expect(
+      vi.mocked(createAppKit).mock.calls[0][0].customRpcUrls
+    ).toStrictEqual({
+      "eip155:1": [{ url: networks.mainnet.routes.chains.ethereum.rpcUrl }],
+      "eip155:56": [{ url: networks.mainnet.routes.chains.bsc.rpcUrl }],
+    });
+    vi.mocked(createAppKit).mockClear();
+  });
+
   it("should then offer wallets only, without analytics or the Coinbase SDKs' telemetry, once", async () => {
     setNodeNetwork(networks.testnet);
     await startWalletConnection();
@@ -52,6 +72,8 @@ describe("walletConnection", () => {
 
     expect(vi.mocked(createAppKit)).toHaveBeenCalledOnce();
     expect(vi.mocked(createAppKit).mock.calls[0][0]).toMatchObject({
+      // AppKit's own sheet for an unknown chain can't be closed: the card asks.
+      allowUnsupportedChain: true,
       enableBaseAccount: false,
       enableCoinbase: false,
       features: { analytics: false, email: false, socials: false },

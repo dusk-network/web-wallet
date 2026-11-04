@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { networks } from "@dusk-network/networks";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
@@ -79,6 +79,64 @@ describe("routeTransferRow", () => {
       line: `Paid ${claimDay(CLAIM_AT, "en")}`,
       when: CLAIM_AT,
     });
+  });
+});
+
+describe("routeTransferRow, on a transfer out", () => {
+  const route = /** @type {import("$lib/bridge/cardRoutes").CardRoute} */ (
+    cardRoutes(networks.mainnet).find(({ id }) => id === "dusk-to-bsc")
+  );
+  const NOW = Date.UTC(2026, 10, 5, 12);
+  /**
+   * @param {Partial<import("$lib/bridge/migrationActivity").RouteTransfer>} fields
+   * @returns {import("$lib/bridge/migrationActivity").RouteTransfer}
+   */
+  const transfer = (fields) => ({
+    amountLux: 5_000_000_000n,
+    at: NOW - 60_000,
+    feeLux: 1_000_000_000n,
+    hash: "aa".repeat(32),
+    kind: "service",
+    recipient: "0x2222222222222222222222222222222222222222",
+    route,
+    stage: "sent",
+    ...fields,
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shows what arrived once it has, and what was sent until then", () => {
+    expect(routeTransferRow(transfer({ stage: "sent" }), options).amount).toBe(
+      "5 DUSK"
+    );
+    expect(
+      routeTransferRow(
+        transfer({
+          arrivedAt: NOW,
+          payout: `0x${"bb".repeat(32)}`,
+          stage: "arrived",
+        }),
+        options
+      ).amount
+    ).toBe("4 DUSK");
+  });
+
+  it("says it's taking longer than usual once it's taken twice its usual time, not how long it takes", () => {
+    vi.useFakeTimers({ now: NOW });
+
+    const time = /** @type {const} */ ({ seconds: 3600, source: "network" });
+    const at = (/** @type {number} */ ms) => NOW - ms;
+
+    expect(
+      routeTransferRow(transfer({ at: at(3_600_000) }), { ...options, time })
+        .line
+    ).toBe(`Sent ${claimDay(at(3_600_000), "en")} · takes ~1 hour`);
+    expect(
+      routeTransferRow(transfer({ at: at(7_300_000) }), { ...options, time })
+        .line
+    ).toBe(`Sent ${claimDay(at(7_300_000), "en")} · taking longer than usual`);
   });
 });
 
