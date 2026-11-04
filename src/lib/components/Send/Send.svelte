@@ -156,14 +156,20 @@
   let nameLookup = null;
 
   /**
-   * The answer to the name asked last, with the name as typed.
+   * The name asked last, as an object for each time it's asked: an answer
+   * counts for that ask alone, so an old one can't come back, or overwrite a
+   * newer one, when the same name is entered again.
    *
-   * @type {{ asked: string, result: DuskNameResolution } | null}
+   * @type {{ name: string } | null}
+   */
+  let nameAsk = null;
+
+  /**
+   * The answer to an ask.
+   *
+   * @type {{ ask: { name: string }, result: DuskNameResolution } | null}
    */
   let nameAnswer = null;
-
-  /** The name asked last: a late answer to an older one is left out. */
-  let askedName = "";
 
   /**
    * The address the user picked for each `.dusk` name with both a public
@@ -360,12 +366,14 @@
    * @param {string} name
    */
   function lookUpName(name) {
-    askedName = name;
+    const ask = name ? { name } : null;
 
-    if (name) {
+    nameAsk = ask;
+
+    if (ask) {
       resolveName(name).then((result) => {
-        if (askedName === name) {
-          nameAnswer = { asked: name, result };
+        if (nameAsk === ask) {
+          nameAnswer = { ask, result };
         }
       });
     }
@@ -681,7 +689,7 @@
   // when it orders these statements.
   $: nameLookup = !recipientName
     ? null
-    : nameAnswer?.asked === recipientName
+    : nameAnswer?.ask === nameAsk && nameAsk?.name === recipientName
       ? nameAnswer.result
       : { name: recipientName };
 
