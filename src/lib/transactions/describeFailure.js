@@ -66,9 +66,15 @@ const NOTHING_SENT = [
     "The balance doesn't cover it and its fee, so nothing was sent. Lower the amount and try again.",
   ],
 
+  // The address, which the wallet reads as it builds the transaction.
+  [
+    /DriverDeserializeError|failed to deserialize/i,
+    "The wallet couldn't read the address, so nothing was sent. Check it and try again.",
+  ],
+
   // Its keys, signature or proof.
   [
-    /invalid (proof|signature)|cannot verify the (proof|signature)|Driver\w*Error|failed to (archive|unarchive|deserialize)|unknown error code|\bprov(er|ing)\b|RuntimeError/i,
+    /invalid (proof|signature)|cannot verify the (proof|signature)|Driver\w*Error|failed to (archive|unarchive)|unknown error code|\bprov(er|ing)\b|RuntimeError/i,
     "The wallet couldn't sign it, so nothing was sent. Reload the page and try again.",
   ],
 

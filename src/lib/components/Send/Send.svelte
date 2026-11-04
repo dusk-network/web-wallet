@@ -663,12 +663,19 @@
   $: isMemoValidForBridge =
     !isSendingToBep20Bridge || (transactionMemo !== "" && isMemoValid);
 
+  // What the network takes.
+  const MAX_MEMO_BYTES = 512;
+
+  $: isMemoTooLong =
+    new TextEncoder().encode(transactionMemo).length > MAX_MEMO_BYTES;
+
   $: isAmountReady =
     isSendAmountValid &&
     isGasValid &&
     isTotalAmountWithinAvailableBalance &&
     isBalanceSufficientForGas &&
-    isMemoValidForBridge;
+    isMemoValidForBridge &&
+    !isMemoTooLong;
 
   // A pasted recipient often brings spaces or line breaks, which no address
   // or name has.
@@ -718,15 +725,40 @@
     publicAddress
   );
 
-  // A name typed without .dusk, as "alice": Send offers alice.dusk as it's
-  // typed, and looks it up once taken. It isn't a wrong address.
-  $: bareName =
+  // The contacts a typed name can mean, by the start of their name or of a
+  // word in it. The field takes out spaces, so they aren't compared.
+  $: namedContacts =
     sendToAddress && !recipientName && !addressInfo.isValid
+      ? contacts
+          .filter((contact) => {
+            const q = sendToAddress.toLowerCase();
+            const name = contact.name.toLowerCase();
+
+            return (
+              name.replace(/\s/g, "").startsWith(q) ||
+              name.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(q))
+            );
+          })
+          .slice(0, 3)
+      : [];
+
+  // A name typed without .dusk, as "alice": Send offers alice.dusk as it's
+  // typed, and looks it up once taken. It isn't a wrong address. A contact's
+  // name comes first: the guess would be somebody else's.
+  $: bareName =
+    sendToAddress &&
+    !recipientName &&
+    !addressInfo.isValid &&
+    !namedContacts.length
       ? asDuskName(sendToAddress)
       : null;
 
   $: isRecipientInvalid =
-    isRecipientChecked && !recipientName && !addressInfo.isValid && !bareName;
+    isRecipientChecked &&
+    !recipientName &&
+    !addressInfo.isValid &&
+    !bareName &&
+    !namedContacts.length;
 
   $: blocklistedRecipient = getBlocklistedRecipient(recipientAddress);
   $: isRecipientBlocklisted = Boolean(blocklistedRecipient);
@@ -950,6 +982,20 @@
           <p class="send__error" id={invalidRecipientId} role="alert">
             <strong>Not a valid address.</strong> Check it, or paste it again.
           </p>
+        {:else if namedContacts.length}
+          {#each namedContacts as named (named.id)}
+            <button
+              class="send__link"
+              on:click={() => {
+                sendToAddress = named.address;
+                isRecipientChecked = true;
+              }}
+              type="button"
+              >Your contact {named.name} · {shortenAddress(
+                named.address
+              )}</button
+            >
+          {/each}
         {:else if bareName}
           <button
             class="send__link"
@@ -1262,7 +1308,12 @@
           id="{id}-memo"
           type="multiline"
         />
-        {#if isMemoValid === false}
+        {#if isMemoTooLong}
+          <p class="send__error" role="alert">
+            <strong>That memo is too long.</strong>
+            {MAX_MEMO_BYTES} bytes at most.
+          </p>
+        {:else if isMemoValid === false}
           <p class="send__error" role="alert">
             <strong>Not an EVM address.</strong> EVM addresses are 40 hexadecimal
             characters, optionally prefixed with "0x".

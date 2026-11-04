@@ -18,6 +18,7 @@
  * brings back what Reset deleted.
  */
 
+import { isAccount } from "@dusk-network/networks/account";
 import { ProfileGenerator } from "@dusk/w3sper";
 import { writable } from "svelte/store";
 
@@ -530,7 +531,11 @@ const newId = () =>
 export function addressType(address) {
   const type = ProfileGenerator.typeOf(address);
 
-  return type === "account" || type === "address" ? type : "unknown";
+  if (type === "account") {
+    return isAccount(address) ? type : "unknown";
+  }
+
+  return type === "address" ? type : "unknown";
 }
 
 /**

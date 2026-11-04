@@ -22,6 +22,12 @@ import {
   sealContacts,
 } from "../contactsVault";
 
+// The accounts here are made up, so none is a key: a test says when it matters.
+vi.mock("@dusk-network/networks/account", async (importOriginal) => ({
+  ...(await importOriginal()),
+  isAccount: vi.fn(() => true),
+}));
+
 const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-encrypted-contacts`;
 const PLAIN_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts`;
 const ACCOUNT =

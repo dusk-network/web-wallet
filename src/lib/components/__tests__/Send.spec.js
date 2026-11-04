@@ -37,6 +37,12 @@ import { addWallet, unlockWallets } from "$lib/wallets";
 import { Send } from "..";
 
 // Each wallet's profiles their own accounts, as on the network.
+// The accounts here are made up, so none is a key: a test says when it matters.
+vi.mock("@dusk-network/networks/account", async (importOriginal) => ({
+  ...(await importOriginal()),
+  isAccount: vi.fn(() => true),
+}));
+
 vi.mock("$lib/mocks/ProtocolDriver", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
   generateProfile: (await import("$lib/test-helpers/distinctProfile")).default,
@@ -545,6 +551,31 @@ describe("Send", () => {
           `More than your ${formatDuskExact(baseProps.availableBalance, "en")} DUSK.`
         )
       ).toBeInTheDocument();
+    });
+
+    it("should say when a memo is over the network's limit, counting bytes, and keep Send off", async () => {
+      const { findByText, getByRole, queryByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), { target: { value: otherAccount } });
+      await fireEvent.input(fields.amount(), { target: { value: "1" } });
+
+      await fireEvent.input(fields.memo(), {
+        target: { value: "x".repeat(513) },
+      });
+      expect(await findByText("That memo is too long.")).toBeInTheDocument();
+      expect(fields.send()).toBeDisabled();
+
+      await fireEvent.input(fields.memo(), {
+        target: { value: "€".repeat(171) },
+      });
+      expect(await findByText("That memo is too long.")).toBeInTheDocument();
+
+      await fireEvent.input(fields.memo(), {
+        target: { value: "x".repeat(512) },
+      });
+      expect(queryByText("That memo is too long.")).not.toBeInTheDocument();
+      expect(fields.send()).toBeEnabled();
     });
 
     it("should require a valid EVM address in memo if sending to BEP20 bridge", async () => {
@@ -1864,6 +1895,46 @@ describe("Send", () => {
 
       expect(queryByRole("textbox", { name: "Contact name" })).toBeNull();
       expect(listContacts()).toStrictEqual([]);
+    });
+
+    it("should offer a contact by name before a .dusk name, which would be somebody else's", async () => {
+      saveContact({ address: otherAccount, name: "Alice" });
+      saveContact({ address: otherAccount, name: "Jan (flour)" });
+
+      const { getByRole, queryByRole, queryByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      /** @param {string} name */
+      const offer = (name) =>
+        `Your contact ${name} · ${shortenAddress(otherAccount)}`;
+
+      await fireEvent.input(fields.to(), { target: { value: "alice" } });
+      await fireEvent.blur(fields.to());
+
+      expect(getByRole("button", { name: offer("Alice") })).toBeInTheDocument();
+      expect(
+        queryByRole("button", { name: "Did you mean alice.dusk?" })
+      ).not.toBeInTheDocument();
+      expect(queryByText("Not a valid address.")).not.toBeInTheDocument();
+
+      // The field takes out spaces, and a word further in counts too.
+      await fireEvent.input(fields.to(), { target: { value: "Jan (flour)" } });
+      expect(
+        getByRole("button", { name: offer("Jan (flour)") })
+      ).toBeInTheDocument();
+      await fireEvent.input(fields.to(), { target: { value: "flour" } });
+      expect(
+        getByRole("button", { name: offer("Jan (flour)") })
+      ).toBeInTheDocument();
+
+      // With no contact by that name, the guess is still offered.
+      await fireEvent.input(fields.to(), { target: { value: "bob" } });
+      expect(
+        getByRole("button", { name: "Did you mean bob.dusk?" })
+      ).toBeInTheDocument();
+
+      await fireEvent.input(fields.to(), { target: { value: "alice" } });
+      await fireEvent.click(getByRole("button", { name: offer("Alice") }));
+      expect(fields.to()).toHaveValue(otherAccount);
     });
 
     it("should send to a contact picked from the list", async () => {

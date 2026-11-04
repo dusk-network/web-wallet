@@ -216,6 +216,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse a mistyped account at Send's To field and in Contacts
+- Say when a memo is over the network's limit, under the field
+- Offer a typed contact's name before any `.dusk` name
 - Drop Send's recipient at once when another `.dusk` name replaces a resolved one
 - Update Home and Unstake when a stake or an unstake with Sozu finishes
 - Make every button of a size as tall with an icon as without, an icon alone a circle of that height, and show the whole of g, p and y in their labels [#916]
