@@ -13,6 +13,7 @@
     contactsStore,
     markContactNameChecked,
     markContactNameMoved,
+    passesForDuskName,
     saveContact,
   } from "$lib/contacts";
   import {
@@ -20,6 +21,9 @@
     closeDuskName,
     isDuskName,
   } from "@duskdomains/sdk/names";
+  import { pushState } from "$app/navigation";
+  import { page } from "$app/stores";
+  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import { addBasePath, pageTitle } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
@@ -111,6 +115,9 @@
 
   /** The amount as typed, in DUSK: nothing until it is. */
   let sendAmount = "";
+
+  /** Whether Max filled the amount in: it's hidden with the balances. */
+  let isMaxAmount = false;
 
   /** @type {string} */
   let sendToAddress = initialRecipient;
@@ -304,6 +311,8 @@
   /** Whether the recipient is being saved to the contacts, and as what. */
   let isSavingContact = false;
   let contactName = "";
+  // The recipient a contact's name is being typed for.
+  let savingContactFor = "";
 
   /**
    * The options shown for a `.dusk` name with both addresses, by type,
@@ -347,6 +356,15 @@
     }
 
     sendAmount = formatDuskPlain(maxSpendableAmount);
+    isMaxAmount = true;
+  }
+
+  /** @param {Event} event */
+  function typeAmount(event) {
+    sendAmount = withoutBalanceMask(
+      /** @type {HTMLInputElement} */ (event.currentTarget).value
+    );
+    isMaxAmount = false;
   }
 
   /**
@@ -572,7 +590,7 @@
     const name = contactName.trim();
 
     // Never one of the wallet's own accounts.
-    if (name && !own) {
+    if (name && !own && !isFalseContactName) {
       saveContact({
         address: recipientAddress,
         checkedAt: recipientName ? Date.now() : null,
@@ -610,10 +628,28 @@
             gasPrice,
             gasLimit
           ),
-      what: `${amountText} DUSK to ${recipientLabel}`,
+      what: `${hideBalances ? BALANCE_MASK : amountText} DUSK to ${recipientLabel}`,
     };
+    // The review's place in the history goes with it.
+    if (step === "review") {
+      history.back();
+    }
     step = "done";
   }
+
+  /**
+   * The step where a phone's Back or Forward takes the history: a review
+   * only of what can still be sent.
+   *
+   * @param {boolean} isAtReview
+   */
+  function followHistory(isAtReview) {
+    if (step !== "done") {
+      step = isAtReview && canSend ? "review" : "form";
+    }
+  }
+
+  $: followHistory(Boolean($page.state?.sendReview));
 
   // The gas settings depend on the recipient (public or shielded): the
   // form takes new ones while it shows, unless the gas was edited here, and
@@ -864,6 +900,14 @@
     contactName = "";
   }
 
+  // A name typed for one recipient isn't for the next.
+  $: if (isSavingContact && recipientAddress !== savingContactFor) {
+    isSavingContact = false;
+    contactName = "";
+  }
+
+  $: isFalseContactName = passesForDuskName(contactName, recipientName);
+
   $: suggestion =
     nameLookup?.error === "not-registered"
       ? closeDuskName(recipientName, [
@@ -892,6 +936,7 @@
   $: shownName = nameLookup?.name ?? recipientName;
 
   $: ({ hideBalances, language } = $settingsStore);
+  $: isAmountMasked = hideBalances && isMaxAmount;
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
 </script>
@@ -921,7 +966,9 @@
               ? invalidRecipientId
               : undefined}
             aria-invalid={isRecipientInvalid}
+            autocapitalize="off"
             autocomplete="off"
+            autocorrect="off"
             bind:value={sendToAddress}
             className={sendToAddressTextboxClasses}
             id="{id}-to"
@@ -1197,6 +1244,7 @@
               {#if !contact && !own && !walletAccount && !isSavingContact}
                 <Button
                   on:click={() => {
+                    savingContactFor = recipientAddress;
                     isSavingContact = true;
                   }}
                   size="small"
@@ -1226,12 +1274,17 @@
                     variant="secondary"
                   />
                   <Button
-                    disabled={!contactName.trim()}
+                    disabled={!contactName.trim() || isFalseContactName}
                     text="Save"
                     type="submit"
                     variant="primary"
                   />
                 </div>
+                {#if isFalseContactName}
+                  <p class="send__hint" role="alert">
+                    That looks like a .dusk name. Choose another name.
+                  </p>
+                {/if}
                 <p class="send__hint">
                   Saved only in this wallet, on this device.
                 </p>
@@ -1267,17 +1320,23 @@
         <label class="send__label" for="{id}-amount">Amount</label>
         <div class="send__amount">
           <Textbox
-            aria-describedby="{id}-amount-error"
+            aria-describedby={isAmountMasked
+              ? `${id}-amount-hidden`
+              : `${id}-amount-error`}
             aria-invalid={amountError ? "true" : undefined}
             autocomplete="off"
-            bind:value={sendAmount}
             className="send__amount-input"
             id="{id}-amount"
             inputmode="decimal"
+            on:input={typeAmount}
             placeholder="0"
             required
             type="text"
+            value={isAmountMasked ? BALANCE_MASK : sendAmount}
           />
+          {#if isAmountMasked}
+            <span hidden id="{id}-amount-hidden">hidden</span>
+          {/if}
           <span aria-hidden="true" class="send__unit">DUSK</span>
           <Button
             on:click={setMaxAmount}
@@ -1364,19 +1423,28 @@
             {:else}
               {#if contact || recipientName || walletAccount}
                 <span class="send__summary-name"
-                  >{contact?.name ??
-                    (recipientName ? shownName : walletAccount)}</span
+                  >{contact && recipientName
+                    ? `${contact.name} · ${shownName}`
+                    : (contact?.name ??
+                      (recipientName ? shownName : walletAccount))}</span
                 >
               {/if}
-              <span class="send__summary-code"
-                >{shortenAddress(recipientAddress)}</span
-              >
+              <!-- A phone's review is the last it sees of it before it goes. -->
+              {#if step === "review"}
+                <FullAddress address={recipientAddress} />
+              {:else}
+                <span class="send__summary-code"
+                  >{shortenAddress(recipientAddress)}</span
+                >
+              {/if}
             {/if}
           </dd>
         </div>
         <div>
           <dt>Amount</dt>
-          <dd>{amountText} DUSK</dd>
+          <dd>
+            <BalanceValue hidden={isAmountMasked} value={amountText} /> DUSK
+          </dd>
         </div>
         {#if transactionMemo}
           <div>
@@ -1416,7 +1484,10 @@
         <div>
           <dt>Total</dt>
           <dd>
-            Up to {formatTotal(totalAmount, availableBalance, language)} DUSK
+            Up to <BalanceValue
+              hidden={isAmountMasked}
+              value={formatTotal(totalAmount, availableBalance, language)}
+            /> DUSK
           </dd>
         </div>
       </dl>
@@ -1427,7 +1498,9 @@
           confirm
           disabled={!canSend}
           on:click={send}
-          text={sendAmountInLux > 0n ? `Send ${amountText} DUSK` : "Send"}
+          text={sendAmountInLux > 0n
+            ? `Send ${isAmountMasked ? BALANCE_MASK : amountText} DUSK`
+            : "Send"}
           variant="primary"
         />
       {/key}
@@ -1438,6 +1511,7 @@
           icon={{ path: mdiArrowLeft }}
           on:click={() => {
             step = "form";
+            history.back();
           }}
           text="Back"
           variant="secondary"
@@ -1452,6 +1526,9 @@
           className="send__review"
           disabled={!canSend}
           on:click={() => {
+            // A step of its own in the history: a phone's Back returns to
+            // the form, with what's filled in.
+            pushState("", { sendReview: true });
             step = "review";
             window.scrollTo(0, 0);
           }}

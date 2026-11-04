@@ -478,6 +478,31 @@ describe("Unlock Wallet", async () => {
       }
     );
 
+    it("should say a wrong password anew on each try, for screen readers to announce it", async () => {
+      settingsStore.update(setUserId(userId));
+      const { container } = render(UnlockWallet);
+      const form = getAsHTMLElement(container, "form");
+
+      await fireEvent.input(getTextInput(container), {
+        target: { value: "wrong" },
+      });
+      await fireEvent.submit(form);
+
+      const first = await vi.waitUntil(getErrorElement);
+
+      await fireEvent.input(getTextInput(container), {
+        target: { value: "wrong again" },
+      });
+      await fireEvent.submit(form);
+
+      expect(getErrorElement()).toBeNull();
+
+      const second = await vi.waitUntil(getErrorElement);
+
+      expect(second).not.toBe(first);
+      expect(second).toHaveAttribute("role", "alert");
+    });
+
     it("should not ignore extra whitespace added to a password", async () => {
       settingsStore.update(setUserId(userId));
       const { container } = render(UnlockWallet);

@@ -30,13 +30,22 @@
   import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { addBasePath } from "$lib/navigation";
-  import { addressType, contactsStore, saveContact } from "$lib/contacts";
+  import {
+    addressType,
+    contactsStore,
+    passesForDuskName,
+    saveContact,
+  } from "$lib/contacts";
   import { stDuskReceived } from "$lib/sozu";
   import { nodeBaseUrl } from "$lib/url";
   import { duskEvmExplorerTx } from "$lib/web3/duskEvm";
   import walletAccountNames from "$lib/wallets/accountNames";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
+
+  // Anyone can send a memo, and these would show its text out of order, as
+  // "exe.png" for "gnp.exe".
+  const BIDI_CONTROLS = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
 
   /** @type {ActivityRow} */
   export let row;
@@ -80,10 +89,10 @@
   function saveCounterparty() {
     const name = contactName.trim();
 
-    if (name && p.counterparty) {
+    if (name && p.counterparty && !isFalseContactName) {
       saveContact({
         address: p.counterparty,
-        duskName: duskName?.endsWith(".dusk") ? duskName : null,
+        duskName: savedFromName,
         name,
       });
       isSavingContact = false;
@@ -225,6 +234,8 @@
       : p.title;
   $: counterpartyLabel = row.direction === "in" ? "From" : "To";
   $: duskName = row.counterpartyName ?? row.toName;
+  $: savedFromName = duskName?.endsWith(".dusk") ? duskName : null;
+  $: isFalseContactName = passesForDuskName(contactName, savedFromName);
   $: contact =
     $contactsStore.find((saved) => saved.address === p.counterparty) ?? null;
   $: canSave =
@@ -402,13 +413,18 @@
                     variant="secondary"
                   />
                   <Button
-                    disabled={!contactName.trim()}
+                    disabled={!contactName.trim() || isFalseContactName}
                     size="small"
                     text="Save"
                     type="submit"
                     variant="primary"
                   />
                 </div>
+                {#if isFalseContactName}
+                  <p class="tx-detail__note" role="alert">
+                    That looks like a .dusk name. Choose another name.
+                  </p>
+                {/if}
                 <p class="tx-detail__note">
                   Saved only in this wallet, on this device.
                 </p>
@@ -497,7 +513,7 @@
       {#if row.memo}
         <div>
           <dt>Memo</dt>
-          <dd class="tx-detail__memo">{row.memo}</dd>
+          <dd class="tx-detail__memo">{row.memo.replace(BIDI_CONTROLS, "")}</dd>
         </div>
       {/if}
       <div>
@@ -588,7 +604,7 @@
         {#if gasUsed}
           <div>
             <dt>Gas used</dt>
-            <dd>{gasUsed}</dd>
+            <dd><BalanceValue value={gasUsed} /></dd>
           </div>
         {/if}
         {#if row.gasPrice}

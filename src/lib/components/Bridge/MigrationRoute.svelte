@@ -32,6 +32,7 @@
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
+  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "../NetworkPicker/NetworkPicker.svelte";
@@ -65,6 +66,17 @@
 
   /** @type {string} */
   let amount = "";
+
+  /** Whether Max filled the amount in: it's hidden with the balances. */
+  let isMaxAmount = false;
+
+  /** @param {Event} event */
+  function typeAmount(event) {
+    amount = withoutBalanceMask(
+      /** @type {HTMLInputElement} */ (event.currentTarget).value
+    );
+    isMaxAmount = false;
+  }
 
   /** The token's balance in the wallet, in wei, once read. */
   /** @type {bigint | undefined} */
@@ -163,7 +175,8 @@
     }
   }
 
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
+  $: isAmountMasked = hideBalances && isMaxAmount;
   $: ({ address, chainId, isConnected } = $account);
   $: follow(isConnected ? address : undefined, chainId);
   $: chainName = route.chain.name;
@@ -223,13 +236,14 @@
         aria-invalid={amount !== "" &&
           (amountLux === 0n || amountLux > (balanceLux ?? 0n))}
         autocomplete="off"
-        bind:value={amount}
         disabled={!canType}
         id="migration-amount"
         inputmode="decimal"
+        on:input={typeAmount}
         placeholder="0"
         spellcheck="false"
         type="text"
+        value={isAmountMasked ? BALANCE_MASK : amount}
       />
       <span class="swap-token"><NetworkMark id={route.origin} />{unit}</span>
     </div>
@@ -257,6 +271,7 @@
               ".",
               getDecimalSeparator()
             );
+            isMaxAmount = true;
           }}
           type="button">Max</button
         >
@@ -301,7 +316,10 @@
     </div>
     <div class="swap-amount">
       <output class:swap-amount__empty={amountLux === 0n} for="migration-amount"
-        >{amountLux === 0n ? "0" : formatDuskExact(amountLux, language)}</output
+        >{#if amountLux === 0n}0{:else}<BalanceValue
+            hidden={isAmountMasked}
+            value={formatDuskExact(amountLux, language)}
+          />{/if}</output
       >
       <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
     </div>
@@ -346,7 +364,12 @@
   <div class="route-review">
     <h2 class="route-review__title">Review</h2>
     <ReviewWallet />
-    <ReviewAmount label="Amount" value={formatDuskExact(amountLux, language)} />
+    <ReviewAmount
+      label="Amount"
+      value={isAmountMasked
+        ? BALANCE_MASK
+        : formatDuskExact(amountLux, language)}
+    />
     <dl class="route-review__ends">
       <div>
         <dt>From</dt>

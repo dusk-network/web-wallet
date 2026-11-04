@@ -69,6 +69,9 @@
 <div class="receive">
   <figure class="receive__address-qr-figure" bind:this={figureElement}>
     <QrCode
+      alt={addressType === "account"
+        ? "QR code for your public account"
+        : "QR code for your shielded address"}
       value={address}
       className="receive__qr"
       width={Math.min(qrWidth, maxQrWidth)}

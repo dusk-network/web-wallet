@@ -20,3 +20,10 @@ type Network = import("@dusk/w3sper").Network;
 type Profile = import("@dusk/w3sper").Profile;
 type ProfileGenerator = import("@dusk/w3sper").ProfileGenerator;
 type StakeInfo = import("@dusk/w3sper").StakeInfo;
+
+declare namespace App {
+  interface PageState {
+    /** At a phone's review of a send, a step of its own in the history. */
+    sendReview?: boolean;
+  }
+}

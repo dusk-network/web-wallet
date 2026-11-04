@@ -3,7 +3,7 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
 
-  import { BALANCE_MASK } from "$lib/constants";
+  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
     formatDusk,
@@ -137,13 +137,16 @@
 
   function setMaxAmount() {
     amountText = asTyped(maxWithdrawAmount);
-    isAmountChosen = true;
+    // Hidden with the balances, as it starts: nothing was typed.
+    isAmountChosen = false;
     document.getElementById(`${id}-amount`)?.focus();
   }
 
   /** @param {Event} event */
   function setWithdrawAmount(event) {
-    amountText = /** @type {HTMLInputElement} */ (event.currentTarget).value;
+    amountText = withoutBalanceMask(
+      /** @type {HTMLInputElement} */ (event.currentTarget).value
+    );
     isAmountChosen = true;
   }
 
@@ -256,9 +259,8 @@
             id="{id}-amount"
             inputmode="decimal"
             on:input={setWithdrawAmount}
-            placeholder={isAmountHidden ? BALANCE_MASK : undefined}
             type="text"
-            value={isAmountHidden ? "" : amountText}
+            value={isAmountHidden ? BALANCE_MASK : amountText}
           />
           <span aria-hidden="true" class="operation__unit">DUSK</span>
           <Button
@@ -327,7 +329,9 @@
           <ReviewWallet />
           <ReviewAmount
             label={operationOverviewLabel}
-            value={formatDuskExact(reviewed.amount, language)}
+            value={isAmountHidden
+              ? BALANCE_MASK
+              : formatDuskExact(reviewed.amount, language)}
           />
           <ReviewAmount
             label="Network fee (at most)"

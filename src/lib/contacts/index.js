@@ -13,6 +13,7 @@ export {
   markContactNameChecked,
   markContactNameMoved,
   openContacts,
+  passesForDuskName,
   removeContact,
   saveContact,
 } from "./contacts";

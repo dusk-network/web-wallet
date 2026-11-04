@@ -10,6 +10,9 @@
   /** @type {String | Undefined} */
   export let className = undefined;
 
+  /** @type {string} */
+  export let alt = "QR code";
+
   /** @type {String} */
   export let value = "";
 
@@ -48,7 +51,7 @@
 {:then url}
   <AppImage
     {...$$restProps}
-    alt="Key QR code"
+    {alt}
     className={makeClassName(["dusk-qr-code", className])}
     height={width}
     src={url}

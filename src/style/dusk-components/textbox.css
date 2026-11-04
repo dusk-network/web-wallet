@@ -17,9 +17,13 @@
   min-height: 3.25rem;
 }
 
-.dusk-textbox:disabled,
-.dusk-textbox::placeholder {
+.dusk-textbox:disabled {
   opacity: 0.58;
+}
+
+.dusk-textbox::placeholder {
+  color: var(--calm-muted);
+  opacity: 1;
 }
 
 .dusk-textbox:not(:focus):invalid {

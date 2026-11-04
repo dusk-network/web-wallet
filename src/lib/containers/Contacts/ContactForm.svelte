@@ -3,7 +3,12 @@
   import { mdiClose, mdiInformationOutline } from "@mdi/js";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { FullAddress, SectionHead } from "$lib/components";
-  import { addressType, findContact, saveContact } from "$lib/contacts";
+  import {
+    addressType,
+    findContact,
+    passesForDuskName,
+    saveContact,
+  } from "$lib/contacts";
   import { isDuskName } from "@duskdomains/sdk/names";
 
   /**
@@ -91,7 +96,9 @@
     kind = options[0];
   }
   $: address = duskName ? (resolution?.[kind] ?? "") : entered;
-  $: isValid = name.trim() !== "" && addressType(address) !== "unknown";
+  $: isFalseName = passesForDuskName(name, duskName);
+  $: isValid =
+    name.trim() !== "" && !isFalseName && addressType(address) !== "unknown";
   $: other = address ? findContact(address) : null;
   $: isTaken = other !== null && other.id !== contact?.id;
 
@@ -137,6 +144,13 @@
       Name
       <Textbox bind:value={name} maxlength={40} required type="text" />
     </label>
+
+    {#if isFalseName}
+      <p class="contact-form__error" role="alert">
+        That looks like a .dusk name. Enter it as the address below, or choose
+        another name.
+      </p>
+    {/if}
 
     <label class="contact-form__label">
       Address or .dusk name

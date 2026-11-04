@@ -21,6 +21,7 @@ import { timeLabel } from "$lib/activity/present";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { shortenAddress } from "$lib/dusk/string";
 import { afterConfirmDelay, getAsHTMLElement } from "$lib/dusk/test-helpers";
+import { page } from "$app/stores";
 import { addBasePath } from "$lib/navigation";
 import { networks } from "@dusk-network/networks";
 import {
@@ -102,6 +103,18 @@ const getSummary = (container) =>
 
 // The contacts open with a wallet, as when it unlocks.
 beforeAll(() => openTestContacts());
+
+// The page's history state, as the tests move it.
+vi.mock("$app/stores", async () => {
+  const { writable } = await import("svelte/store");
+
+  return { page: writable({ state: {} }) };
+});
+
+const historyAt = (/** @type {{ sendReview?: boolean }} */ state) =>
+  /** @type {import("svelte/store").Writable<any>} */ (
+    /** @type {unknown} */ (page)
+  ).set({ state });
 
 describe("Send", () => {
   const lastTxId =
@@ -443,9 +456,15 @@ describe("Send", () => {
       expect(fields.send()).toBeEnabled();
       expect(queryByRole("alert")).toBeNull();
 
+      await fireEvent.input(fields.amount(), { target: { value: "1,000.5" } });
+
+      expect(amount()).toBe("1,000.5 DUSK");
+
+      // A lone comma before three digits could mean 1 or 1000.
       await fireEvent.input(fields.amount(), { target: { value: "1,000" } });
 
-      expect(amount()).toBe("1,000 DUSK");
+      expect(getByRole("alert")).toHaveTextContent("Enter an amount such as");
+      expect(fields.send()).toBeDisabled();
 
       await fireEvent.input(fields.amount(), {
         target: { value: "0,0000000001" },
@@ -454,6 +473,71 @@ describe("Send", () => {
       expect(getByRole("alert")).toHaveTextContent(
         "DUSK has 9 decimals at most."
       );
+    });
+
+    it("should hide what Max fills in while balances are hidden, send it all the same, and show what's typed", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      try {
+        const { container, getByRole } = render(Send, {
+          ...baseProps,
+          initialRecipient: shieldedAddress,
+        });
+        const fields = fieldsOf(getByRole);
+        const max = baseProps.availableBalance - fee;
+        const exact = formatDuskExact(max, "en");
+        const shown = () => container.textContent;
+
+        await fireEvent.click(getByRole("button", { name: "Max" }));
+
+        expect(fields.amount()).toHaveValue("••••");
+        expect(shown()).not.toContain(exact);
+        expect(shown()).not.toContain(
+          formatDuskExact(baseProps.availableBalance, "en")
+        );
+        expect(fields.send()).toHaveAccessibleName("Send •••• DUSK");
+
+        await afterConfirmDelay();
+        await fireEvent.click(fields.send());
+
+        expect(baseProps.execute).toHaveBeenCalledWith(
+          shieldedAddress,
+          max,
+          expect.anything(),
+          expect.anything(),
+          expect.anything()
+        );
+      } finally {
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+      }
+    });
+
+    it("should show an amount typed over what Max filled in, with balances hidden", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      try {
+        const { getByRole } = render(Send, {
+          ...baseProps,
+          initialRecipient: shieldedAddress,
+        });
+        const fields = fieldsOf(getByRole);
+
+        await fireEvent.click(getByRole("button", { name: "Max" }));
+        await fireEvent.input(fields.amount(), { target: { value: "1" } });
+
+        expect(fields.amount()).toHaveValue("1");
+        expect(fields.send()).toHaveAccessibleName("Send 1 DUSK");
+
+        // Deleting the dots clears it, on a keyboard that only says so by
+        // changing the field.
+        await fireEvent.click(getByRole("button", { name: "Max" }));
+        await fireEvent.input(fields.amount(), { target: { value: "•••" } });
+
+        expect(fields.amount()).toHaveValue("");
+        expect(fields.send()).toBeDisabled();
+      } finally {
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+      }
     });
 
     it("should set the most it can send with Max, leaving room for the fee", async () => {
@@ -799,6 +883,10 @@ describe("Send", () => {
 
       expect(container.querySelector(".send")).toHaveClass("send--review");
       expect(queryByRole("button", { name: "Review" })).toBeNull();
+      // The address in full, on the last it shows before it goes.
+      expect(container.querySelector(".send__summary")).toHaveTextContent(
+        shieldedAddress
+      );
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
 
@@ -809,6 +897,47 @@ describe("Send", () => {
       await fireEvent.click(fields.send());
 
       expect(baseProps.execute).toHaveBeenCalledOnce();
+    });
+
+    it("should follow a phone's Back and Forward between the filled form and its review", async () => {
+      const { container, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const isReview = () =>
+        container.querySelector(".send")?.classList.contains("send--review");
+
+      await fireEvent.input(fields.to(), {
+        target: { value: shieldedAddress },
+      });
+      await fireEvent.input(fields.amount(), { target: { value: "1" } });
+      await fireEvent.click(fields.review());
+
+      expect(isReview()).toBe(true);
+
+      // The history at the form again, as Back leaves it.
+      historyAt({});
+      await tick();
+
+      expect(isReview()).toBe(false);
+      expect(fields.to()).toHaveValue(shieldedAddress);
+      expect(fields.amount()).toHaveValue("1");
+
+      // And at the review, as Forward does.
+      historyAt({ sendReview: true });
+      await tick();
+
+      expect(isReview()).toBe(true);
+
+      historyAt({});
+    });
+
+    it("should stay on the form when the history is at a review of a form it no longer has", async () => {
+      historyAt({ sendReview: true });
+
+      const { container } = render(Send, baseProps);
+
+      expect(container.querySelector(".send")).not.toHaveClass("send--review");
+
+      historyAt({});
     });
 
     it("should take no click on Send for half a second once a phone's review shows, so a double tap on Review can't send", async () => {
@@ -1916,6 +2045,42 @@ describe("Send", () => {
       await fireEvent.input(to, { target: { value: otherAccount } });
 
       expect(queryByRole("textbox", { name: "Contact name" })).toBeNull();
+      expect(listContacts()).toStrictEqual([]);
+    });
+
+    it("should drop a contact's name half typed when the recipient changes", async () => {
+      const { findByRole, getByRole, queryByRole } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
+
+      await fireEvent.input(to, { target: { value: nameAccount } });
+      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "Mum" },
+      });
+      await fireEvent.input(to, { target: { value: otherAccount } });
+
+      expect(queryByRole("textbox", { name: "Contact name" })).toBeNull();
+
+      await fireEvent.click(
+        await findByRole("button", { name: "Save to contacts" })
+      );
+
+      expect(getByRole("textbox", { name: "Contact name" })).toHaveValue("");
+    });
+
+    it("should refuse a contact's name that passes for a .dusk name the recipient isn't", async () => {
+      const { getByRole, getByText } = render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: otherAccount },
+      });
+      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "alice.dusk" },
+      });
+
+      expect(getByText(/looks like a \.dusk name/)).toBeInTheDocument();
+      expect(getByRole("button", { name: "Save" })).toBeDisabled();
       expect(listContacts()).toStrictEqual([]);
     });
 

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { fullDateTime, timeLabel } from "$lib/activity/present";
 import styleRules from "$lib/dusk/test-helpers/styleRules";
+import { settingsStore } from "$lib/stores";
 
 import HistoryView from "../HistoryView.svelte";
 
@@ -103,6 +104,32 @@ describe("HistoryView", () => {
       `· ${timeLabel(WINTER, "en")} · Public`,
       `· ${timeLabel(SUMMER, "en")} · Public`,
     ]);
+  });
+
+  it("should leave a row's amount out of its name while balances are hidden", () => {
+    const names = (/** @type {HTMLElement} */ container) =>
+      Array.from(container.querySelectorAll(".history__open"), (open) =>
+        open.getAttribute("aria-label")
+      );
+    const shown = render(HistoryView, { locale: "en", state });
+
+    expect(names(shown.container)[0]).toContain("0.1 DUSK");
+    shown.unmount();
+
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container } = render(HistoryView, { locale: "en", state });
+
+      expect(names(container).length).toBeGreaterThan(0);
+
+      for (const name of names(container)) {
+        expect(name).toContain("amount hidden");
+        expect(name).not.toMatch(/\d DUSK/);
+      }
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
   });
 
   it("should close the details on Escape, and give the focus back to their row", async () => {

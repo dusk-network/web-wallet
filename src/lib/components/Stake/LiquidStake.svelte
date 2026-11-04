@@ -13,6 +13,7 @@
     formatDuskPlain,
     formatTotal,
   } from "$lib/dusk/currency";
+  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
@@ -82,6 +83,10 @@
 
   /** The amount typed, and the one typed for the other action. */
   let amountText = "";
+
+  /** Whether Max filled the amount in: it's hidden with the balances. */
+  let isMaxAmount = false;
+  let isOtherMax = false;
   let otherText = "";
   let isReviewing = false;
   let { gasLimit, gasPrice } = gas[action].settings;
@@ -113,6 +118,7 @@
     if (next !== action) {
       forgetTerms();
       [amountText, otherText] = [otherText, amountText];
+      [isMaxAmount, isOtherMax] = [isOtherMax, isMaxAmount];
       action = next;
     }
 
@@ -136,7 +142,17 @@
   function fill(lux) {
     forgetTerms();
     amountText = formatDuskPlain(lux).replace(".", getDecimalSeparator());
+    isMaxAmount = true;
     document.getElementById(`${id}-amount`)?.focus();
+  }
+
+  /** @param {Event} event */
+  function typeAmount(event) {
+    forgetTerms();
+    amountText = withoutBalanceMask(
+      /** @type {HTMLInputElement} */ (event.currentTarget).value
+    );
+    isMaxAmount = false;
   }
 
   /**
@@ -281,8 +297,8 @@
         ),
         what:
           order.action === "stake"
-            ? `${formatDuskExact(order.lux, language)} DUSK to Sozu`
-            : `${formatDuskExact(order.lux, language)} DUSK unstaked from Sozu`,
+            ? `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK to Sozu`
+            : `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK unstaked from Sozu`,
       };
     }
   }
@@ -318,7 +334,8 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
 
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
+  $: isAmountMasked = hideBalances && isMaxAmount;
   $: ({ status } = sozu);
   // Sozu's switches, each on its own: no deposits while it's under
   // maintenance, or while that can't be checked, and calls that can fail
@@ -356,6 +373,7 @@
     amount,
     available: availableBalance,
     fee: maxGasFee,
+    hidden: hideBalances,
     locale: language,
     minimum: least ?? 0n,
     most: isStake
@@ -372,6 +390,9 @@
       : checked;
   $: canSend = Boolean(status) && check.ok && isGasValid && !isStakeOff;
   $: shownAmount = amount !== null && check.ok ? amount : 0n;
+  $: shownText = isAmountMasked
+    ? BALANCE_MASK
+    : formatDuskExact(shownAmount, language);
   // What is typed shows in the summary, muted while it can't be sent.
   $: typedAmount = amount ?? 0n;
   $: depositFee = depositRate ? sozuFee(typedAmount, depositRate) : null;
@@ -500,17 +521,22 @@
         >
         <div class="liquid-stake__amount">
           <Textbox
-            aria-describedby="{id}-available {id}-check"
+            aria-describedby={isAmountMasked
+              ? `${id}-amount-hidden`
+              : `${id}-available ${id}-check`}
             aria-invalid={Boolean(check.error)}
             autocomplete="off"
-            bind:value={amountText}
             className="liquid-stake__input"
             disabled={!status || isStakeOff}
             id="{id}-amount"
             inputmode="decimal"
-            on:input={forgetTerms}
+            on:input={typeAmount}
             type="text"
+            value={isAmountMasked ? BALANCE_MASK : amountText}
           />
+          {#if isAmountMasked}
+            <span hidden id="{id}-amount-hidden">hidden</span>
+          {/if}
           <span aria-hidden="true" class="liquid-stake__unit">DUSK</span>
           <Button
             disabled={!status || isStakeOff || most <= 0n}
@@ -553,8 +579,14 @@
           {:else if estimate !== null}
             <div class="liquid-stake__estimate">
               <p>
-                You get about {formatDusk(estimate, language)} stDUSK, worth about
-                {formatDusk(stake.worth, language)} DUSK now.
+                You get about <BalanceValue
+                  hidden={isAmountMasked}
+                  value={formatDusk(estimate, language)}
+                /> stDUSK, worth about
+                <BalanceValue
+                  hidden={isAmountMasked}
+                  value={formatDusk(stake.worth, language)}
+                /> DUSK now.
               </p>
               <p>
                 stDUSK is Sozu's token for your share. Its DUSK value follows
@@ -608,14 +640,24 @@
         <div>
           <dt>{isStake ? "Stake with Sozu" : "Unstake from Sozu"}</dt>
           <dd class:stake-flow__muted={isTypedOff}>
-            {formatDuskExact(typedAmount, language)} DUSK
+            <BalanceValue
+              hidden={isAmountMasked}
+              value={formatDuskExact(typedAmount, language)}
+            /> DUSK
           </dd>
         </div>
         {#if isStake}
           <div>
             <dt>You get about</dt>
             <dd>
-              {estimate === null ? "—" : formatDusk(estimate, language)} stDUSK
+              {#if estimate === null}
+                —
+              {:else}
+                <BalanceValue
+                  hidden={isAmountMasked}
+                  value={formatDusk(estimate, language)}
+                />
+              {/if} stDUSK
             </dd>
           </div>
           <div>
@@ -700,7 +742,10 @@
         <div>
           <dt>Total</dt>
           <dd class:stake-flow__muted={isTypedOff}>
-            Up to {formatTotal(total, availableBalance, language)} DUSK
+            Up to <BalanceValue
+              hidden={isAmountMasked}
+              value={formatTotal(total, availableBalance, language)}
+            /> DUSK
           </dd>
         </div>
       </dl>
@@ -718,8 +763,8 @@
           on:click={send}
           text={canSend
             ? isStake
-              ? `Stake ${formatDuskExact(shownAmount, language)} DUSK with Sozu`
-              : `Unstake ${formatDuskExact(shownAmount, language)} DUSK`
+              ? `Stake ${shownText} DUSK with Sozu`
+              : `Unstake ${shownText} DUSK`
             : isStake
               ? "Stake with Sozu"
               : "Unstake"}

@@ -8,6 +8,7 @@ import { toast } from "$lib/dusk/components/Toast/store";
 import CommandBar from "../CommandBar.svelte";
 
 const mocks = vi.hoisted(() => ({
+  fetchTxDetails: vi.fn(),
   goto: vi.fn(),
   resolveDuskName: vi.fn(),
 }));
@@ -26,6 +27,11 @@ vi.mock("$lib/stores", async (importOriginal) => {
     walletStore: { ...original.walletStore, ...mockedWalletStore },
   };
 });
+
+vi.mock("@dusk-network/app-core/history", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  fetchTxDetails: mocks.fetchTxDetails,
+}));
 
 vi.mock("$lib/dusk-domains", async (importOriginal) => ({
   .../** @type {typeof import("$lib/dusk-domains")} */ (await importOriginal()),
@@ -147,6 +153,30 @@ describe("CommandBar", () => {
       "testnet",
       expect.any(String)
     );
+  });
+
+  it("copies a transaction's ID looked up on the network with Shift+Enter", async () => {
+    const hash = "ab".repeat(32);
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    mocks.fetchTxDetails.mockResolvedValue(
+      new Map([[hash, { success: true }]])
+    );
+
+    const { findByRole, getByRole } = render(CommandBar, { pages });
+    const input = getByRole("combobox");
+
+    await fireEvent.input(input, { target: { value: hash } });
+    await fireEvent.keyDown(input, { key: "Enter" });
+
+    const result = await findByRole("option", { name: /in Dusk explorer/ });
+
+    await fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+
+    expect(writeText).toHaveBeenCalledWith(hash);
+    expect(open).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(result).toHaveTextContent(/Copied$/));
+    open.mockRestore();
   });
 
   it("copies an address looked up on the network with Shift+Enter, and says Copied in its row, in no toast", async () => {

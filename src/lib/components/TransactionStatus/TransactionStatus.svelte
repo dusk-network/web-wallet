@@ -19,6 +19,7 @@
   import { settingsStore } from "$lib/stores";
   import { followTransaction } from "$lib/transactions";
 
+  import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import WithdrawalHash from "../EvmTransactions/WithdrawalHash.svelte";
 
   /**
@@ -141,10 +142,14 @@
       </dd>
       {#if outcome}
         <dt>Network fee</dt>
-        <dd>{formatFee(outcome.fee, language)} DUSK</dd>
+        <dd>
+          <BalanceValue value={formatFee(outcome.fee, language)} /> DUSK
+        </dd>
       {:else}
         <dt>Network fee (at most)</dt>
-        <dd>{formatFee(maxFee, language, { max: true })} DUSK</dd>
+        <dd>
+          <BalanceValue value={formatFee(maxFee, language, { max: true })} /> DUSK
+        </dd>
       {/if}
     </dl>
     {#if outcome?.error}
