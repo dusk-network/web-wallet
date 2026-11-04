@@ -821,6 +821,26 @@ describe("Send", () => {
       expect(baseProps.execute).toHaveBeenCalledOnce();
     });
 
+    it("should go back to the filled form on a phone's Back, from its review", async () => {
+      const { container, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.to(), {
+        target: { value: shieldedAddress },
+      });
+      await fireEvent.input(fields.amount(), { target: { value: "1" } });
+      await fireEvent.click(fields.review());
+
+      expect(container.querySelector(".send")).toHaveClass("send--review");
+
+      await fireEvent(window, new PopStateEvent("popstate"));
+
+      expect(container.querySelector(".send")).not.toHaveClass("send--review");
+      expect(fields.to()).toHaveValue(shieldedAddress);
+      expect(fields.amount()).toHaveValue("1");
+      expect(fields.review()).toBeEnabled();
+    });
+
     it("should take no click on Send for half a second once a phone's review shows, so a double tap on Review can't send", async () => {
       const { getByRole } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);

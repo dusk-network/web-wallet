@@ -21,6 +21,8 @@
     closeDuskName,
     isDuskName,
   } from "@duskdomains/sdk/names";
+  import { pushState } from "$app/navigation";
+  import { BALANCE_MASK } from "$lib/constants";
   import { addBasePath, pageTitle } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
@@ -613,8 +615,12 @@
             gasPrice,
             gasLimit
           ),
-      what: `${amountText} DUSK to ${recipientLabel}`,
+      what: `${hideBalances ? BALANCE_MASK : amountText} DUSK to ${recipientLabel}`,
     };
+    // The review's place in the history goes with it.
+    if (step === "review") {
+      history.back();
+    }
     step = "done";
   }
 
@@ -907,6 +913,14 @@
   $: isShielded = addressInfo.type === "address";
 </script>
 
+<svelte:window
+  on:popstate={() => {
+    if (step === "review") {
+      step = "form";
+    }
+  }}
+/>
+
 {#if step === "done" && sent}
   <TransactionResult
     maxFee={sent.maxFee}
@@ -932,7 +946,9 @@
               ? invalidRecipientId
               : undefined}
             aria-invalid={isRecipientInvalid}
+            autocapitalize="off"
             autocomplete="off"
+            autocorrect="off"
             bind:value={sendToAddress}
             className={sendToAddressTextboxClasses}
             id="{id}-to"
@@ -1381,8 +1397,10 @@
             {:else}
               {#if contact || recipientName || walletAccount}
                 <span class="send__summary-name"
-                  >{contact?.name ??
-                    (recipientName ? shownName : walletAccount)}</span
+                  >{contact && recipientName
+                    ? `${contact.name} · ${shownName}`
+                    : (contact?.name ??
+                      (recipientName ? shownName : walletAccount))}</span
                 >
               {/if}
               <!-- A phone's review is the last it sees of it before it goes. -->
@@ -1460,6 +1478,7 @@
           icon={{ path: mdiArrowLeft }}
           on:click={() => {
             step = "form";
+            history.back();
           }}
           text="Back"
           variant="secondary"
@@ -1474,6 +1493,9 @@
           className="send__review"
           disabled={!canSend}
           on:click={() => {
+            // A step of its own in the history: a phone's Back returns to
+            // the form, with what's filled in.
+            pushState("", {});
             step = "review";
             window.scrollTo(0, 0);
           }}

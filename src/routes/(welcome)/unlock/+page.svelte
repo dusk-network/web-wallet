@@ -87,8 +87,8 @@
   /** What's wrong with the words, said under the boxes. */
   let phraseError = "";
 
-  /** @type {Error} */
-  let error;
+  /** @type {Error | null} */
+  let error = null;
 
   const controller = new AbortController();
   let pending = false;
@@ -119,6 +119,9 @@
     const unlock = hasPassword
       ? unlockWallets(secretText, { signal: controller.signal })
       : unlockWithPhrase(secretText.trim());
+
+    // Gone until this try's answer: an alert that's said again is announced.
+    error = null;
 
     unlock
       .then(() => {

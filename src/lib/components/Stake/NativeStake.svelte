@@ -10,7 +10,7 @@
     mdiServerOutline,
   } from "@mdi/js";
 
-  import { DOCUMENTATION_LINKS } from "$lib/constants";
+  import { BALANCE_MASK, DOCUMENTATION_LINKS } from "$lib/constants";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
     formatDusk,
@@ -85,7 +85,7 @@
       sent = {
         maxFee: maxGasFee,
         operation: execute(amount, gasPrice, gasLimit),
-        what: `${formatDuskExact(amount, language)} DUSK to your stake`,
+        what: `${hideBalances ? BALANCE_MASK : formatDuskExact(amount, language)} DUSK to your stake`,
       };
     }
   }

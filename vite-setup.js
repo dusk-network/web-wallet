@@ -163,6 +163,7 @@ vi.mock("$app/navigation", () => ({
   invalidateAll: () => Promise.resolve(),
   preloadCode: () => Promise.resolve(),
   preloadData: () => Promise.resolve(),
+  pushState: () => {},
 }));
 
 // Mock SvelteKit runtime module $app/stores

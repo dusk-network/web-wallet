@@ -610,6 +610,13 @@
     font-size: 0.8125rem;
   }
 
+  /* A touch keyboard has neither. */
+  @media (hover: none) {
+    .command-bar__note {
+      display: none;
+    }
+  }
+
   .command-bar__note {
     border-top: 1px solid var(--calm-line);
     color: var(--calm-subtle);

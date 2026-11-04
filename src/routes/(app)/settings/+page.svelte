@@ -687,6 +687,12 @@
       &__content {
         overflow-y: auto;
         scrollbar-color: var(--surface-border-color) transparent;
+
+        /* Room for the opening bracket a head hangs left of its edge. */
+        @media (max-width: 47.99rem) {
+          margin-left: -0.75rem;
+          padding-left: 0.75rem;
+        }
       }
 
       &__header h1 {
@@ -790,6 +796,10 @@
       flex-direction: row;
       justify-content: space-between;
       gap: var(--default-gap);
+      box-sizing: border-box;
+      width: min(100%, 44rem);
+      margin: 0 auto;
+      padding: 0 1.5rem;
 
       & > * {
         flex: 1;

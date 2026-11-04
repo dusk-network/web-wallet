@@ -13,6 +13,7 @@
     formatDuskPlain,
     formatTotal,
   } from "$lib/dusk/currency";
+  import { BALANCE_MASK } from "$lib/constants";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
@@ -281,8 +282,8 @@
         ),
         what:
           order.action === "stake"
-            ? `${formatDuskExact(order.lux, language)} DUSK to Sozu`
-            : `${formatDuskExact(order.lux, language)} DUSK unstaked from Sozu`,
+            ? `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK to Sozu`
+            : `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK unstaked from Sozu`,
       };
     }
   }

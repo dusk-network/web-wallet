@@ -3,6 +3,8 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { timeLabel } from "$lib/activity/present";
 
+import { settingsStore } from "$lib/stores";
+
 import { TransactionStatus } from "..";
 
 const { followTransaction } = vi.hoisted(() => ({
@@ -87,6 +89,32 @@ describe("TransactionStatus", () => {
     expect(getByText("0.0019 DUSK")).toBeInTheDocument();
     expect(queryByText("Network fee (at most)")).not.toBeInTheDocument();
     expect(queryByText("Details")).not.toBeInTheDocument();
+  });
+
+  it("should hide the fee with the balances, before the block and after", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const following = followNext();
+      const { container, getByText } = render(TransactionStatus, baseProps);
+
+      expect(getByText("Network fee (at most)")).toBeInTheDocument();
+      expect(container.textContent).not.toMatch(/\d DUSK/);
+
+      following.resolve({
+        blockHeight: 4_687_200n,
+        error: null,
+        fee: 1_854_795n,
+        timestamp: 1,
+      });
+      await vi.waitFor(() =>
+        expect(getByText("Network fee")).toBeInTheDocument()
+      );
+
+      expect(container.textContent).not.toContain("0.0019");
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
   });
 
   it("should show a transaction that failed, the fee it was charged and why", async () => {

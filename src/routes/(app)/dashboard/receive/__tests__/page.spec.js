@@ -54,7 +54,7 @@ describe("Receive", () => {
   // The QR code shows once its PNG is made, which Node deflates on its
   // threadpool: running the fake timers doesn't wait for that.
   const qrCodeDrawn = () =>
-    vi.waitFor(() => screen.getByRole("img", { name: "Key QR code" }));
+    vi.waitFor(() => screen.getByRole("img", { name: /^QR code for your/ }));
 
   beforeEach(() => {
     getPrimaryName.mockResolvedValue("");
