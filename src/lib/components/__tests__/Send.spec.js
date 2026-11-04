@@ -513,15 +513,9 @@ describe("Send", () => {
     });
 
     it("should fill in Max as this language writes decimals, so it's never taken for a thousands group", async () => {
-      const real = Number.prototype.toLocaleString;
       const language = vi
-        .spyOn(Number.prototype, "toLocaleString")
-        .mockImplementation(
-          /** @this {number} */
-          function (.../** @type {any[]} */ args) {
-            return this.valueOf() === 0.1 ? "0,1" : real.apply(this, args);
-          }
-        );
+        .spyOn(window.navigator, "language", "get")
+        .mockReturnValue("nl-NL");
 
       try {
         const { getByRole } = render(Send, baseProps);
