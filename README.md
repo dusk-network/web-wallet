@@ -68,6 +68,8 @@ these variables set DuskEVM's values instead: `VITE_BRIDGE_CONTRACT_ID`,
 `VITE_EVM_ANCHOR_STATE_REGISTRY_CONTRACT_ID`, their `*_DATA_DRIVER_URL`s,
 `VITE_EVM_CHAIN_ID`, `VITE_EVM_BRIDGE_RPC_URL`, `VITE_EVM_L1_BRIDGE_RPC_URL`,
 `VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL` and `VITE_EVM_BRIDGE_CONTRACT_ADDRESS`.
+On mainnet they count for nothing until its file has DuskEVM's routes, so a
+wallet is never offered a chain that isn't live.
 
 The transaction history is on unless `VITE_FEATURE_TRANSACTION_HISTORY` is
 `false`. It reads the public account's history from the node's archive

@@ -4,6 +4,10 @@
  * value can be set for local work through env. It's read as it's used, so
  * it follows the network the node gives; where that has no DuskEVM, its
  * values are undefined and `duskEvmNetwork()` is null.
+ *
+ * A network without DuskEVM's routes in its file has no DuskEVM. On mainnet
+ * nothing set changes that, so a wallet is never offered a chain that isn't
+ * live; a devnet or a local node can still set one up.
  */
 
 import { get } from "svelte/store";
@@ -11,11 +15,22 @@ import { get } from "svelte/store";
 import nodeNetwork from "$lib/stores/nodeNetwork";
 
 /** @param {unknown} value */
-const setting = (value) =>
-  typeof value === "string" && value.trim() ? value.trim() : undefined;
+const setting = (value) => {
+  const net = get(nodeNetwork);
+  const isMainnetWithout =
+    net?.name === "mainnet" && !net.routes.duskEvm.length;
+
+  return !isMainnetWithout && typeof value === "string" && value.trim()
+    ? value.trim()
+    : undefined;
+};
 
 /** DuskEVM on the node's network, as its file has it, or null. */
-export const duskEvmNetwork = () => get(nodeNetwork)?.duskEvm ?? null;
+export const duskEvmNetwork = () => {
+  const net = get(nodeNetwork);
+
+  return net?.routes.duskEvm.length ? (net.duskEvm ?? null) : null;
+};
 
 /**
  * A DuskEVM contract on Dusk, by its name in duskevm-genesis

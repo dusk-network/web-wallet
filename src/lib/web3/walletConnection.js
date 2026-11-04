@@ -122,7 +122,12 @@ export const connectionBlocked = { subscribe: blocked.subscribe };
  * isn't yet: a failure to load shows as `connectionFailed`.
  */
 export const modal = {
-  async open() {
+  /**
+   * @param {number} [chainId] The chain the page connects a wallet for. A
+   *   wallet is asked for the dialog's chain as it connects, and a wallet
+   *   that refuses to add it doesn't connect, so it's the one the page needs.
+   */
+  async open(chainId) {
     const reset = resets;
 
     try {
@@ -139,6 +144,13 @@ export const modal = {
     }
 
     if (reset === resets) {
+      const chain = evmChains().find(({ id }) => id === chainId);
+
+      // A connected wallet would be asked to switch: the page does that.
+      if (chain && !getAccount(wagmiConfig).isConnected) {
+        await appKit?.switchNetwork(chain);
+      }
+
       await appKit?.open();
     }
   },

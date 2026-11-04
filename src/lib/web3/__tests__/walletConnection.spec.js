@@ -35,6 +35,16 @@ describe("walletConnection", () => {
     expect(evmChains()).toStrictEqual([]);
   });
 
+  it("should never offer wallets a DuskEVM chain the network's routes don't reach, whatever is set", () => {
+    vi.stubEnv("VITE_EVM_CHAIN_ID", "744");
+    vi.stubEnv("VITE_EVM_BRIDGE_RPC_URL", "https://rpc.evm.example.test");
+    setNodeNetwork(networks.mainnet);
+
+    expect(evmChains().map(({ id }) => id)).toStrictEqual([56, 1]);
+
+    vi.unstubAllEnvs();
+  });
+
   it("should then offer wallets only, without analytics or the Coinbase SDKs' telemetry, once", async () => {
     setNodeNetwork(networks.testnet);
     await startWalletConnection();
