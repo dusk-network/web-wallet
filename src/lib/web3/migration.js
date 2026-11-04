@@ -1,6 +1,7 @@
 import { readContract, simulateContract, writeContract } from "@wagmi/core";
 import ERC20Abi from "./abi/erc_bep_20.json";
 import migrationABI from "./abi/migrationABI.json";
+import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 import { wagmiConfig } from "./walletConnection";
 
 /**
@@ -132,5 +133,9 @@ export const migrate = async (
     functionName: "migrate",
   });
 
-  return await writeContract(wagmiConfig, request);
+  // Once the wallet was asked to send it, it may have gone out whatever went
+  // wrong, but its own refusals (describeFailure).
+  return await writeContract(wagmiConfig, request).catch((error) => {
+    throw outcomeUnknown(error);
+  });
 };

@@ -107,6 +107,9 @@
   /** @type {Promise<string>} */
   let operation = Promise.resolve("");
 
+  /** Whether what failed can't have gone out, so it can be tried again. */
+  let canGoBack = false;
+
   /** What just stopped it, for the screen it went back to. */
   let note = "";
 
@@ -222,7 +225,10 @@
     if (sending !== "confirming") {
       return failedOnChain
         ? { sentence: `${chainName} refused the approval, so nothing moved.` }
-        : describeFailure(error);
+        : describeFailure(error, {
+            checkFirst:
+              "Check your EVM wallet and Activity before you send it again.",
+          });
     }
 
     return failedOnChain
@@ -248,6 +254,9 @@
       if (stoppedBy(error)) {
         return "";
       }
+
+      canGoBack =
+        sending !== "confirming" && !describeFailure(error).outcomeUnknown;
 
       throw error;
     });
@@ -554,7 +563,7 @@
         />
       </svelte:fragment>
       <svelte:fragment slot="error-actions">
-        {#if sending !== "confirming"}
+        {#if canGoBack}
           <Button on:click={review} text="Back" variant="secondary" />
         {/if}
       </svelte:fragment>

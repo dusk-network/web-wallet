@@ -52,15 +52,15 @@
   {#if !isMigration && transfer.feeLux}
     <dt>Bridge fee</dt>
     <dd>{formatDuskExact(transfer.feeLux, language)} DUSK, from the amount</dd>
-    <dt>{transfer.stage === "arrived" ? "Sent" : "You receive"}</dt>
-    <dd>
-      {formatDuskExact(
-        transfer.stage === "arrived"
-          ? transfer.amountLux
-          : transfer.amountLux - transfer.feeLux,
-        language
-      )} DUSK
-    </dd>
+    {#if transfer.stage === "arrived"}
+      <dt>Amount sent</dt>
+      <dd>{formatDuskExact(transfer.amountLux, language)} DUSK</dd>
+    {:else if transfer.stage !== "failed" && transfer.amountLux > transfer.feeLux}
+      <dt>You receive</dt>
+      <dd>
+        {formatDuskExact(transfer.amountLux - transfer.feeLux, language)} DUSK
+      </dd>
+    {/if}
   {/if}
   {#if transfer.payout}
     <dt>{isMigration ? "Paid" : "Arrived"}</dt>

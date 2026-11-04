@@ -436,6 +436,43 @@ describe("the Bridge card's routes to and from other chains", () => {
       );
     });
 
+    it("never offers to send it again when the wallet's answer got lost, as it may have gone out", async () => {
+      const { outcomeUnknown } = await import("$lib/transactions");
+
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.migrate.mockRejectedValue(
+        outcomeUnknown(new Error("The request took too long to respond."))
+      );
+
+      const { container, findByText, getByRole, queryByRole } =
+        await toReview();
+
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+      await findByText("Not confirmed");
+      expect(container).toHaveTextContent(
+        "It may have reached the network. Check your EVM wallet and Activity before you send it again."
+      );
+      expect(queryByRole("button", { name: "Back" })).toBeNull();
+      expect(queryByRole("button", { name: "Migrate" })).toBeNull();
+    });
+
+    it("offers to go back when it failed before it went out", async () => {
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.migrate.mockRejectedValueOnce(
+        new Error("The contract would revert.")
+      );
+
+      const { findByRole, getByRole } = await toReview();
+
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+      await fireEvent.click(await findByRole("button", { name: "Back" }));
+
+      expect(
+        await findByRole("button", { name: "Migrate" })
+      ).toBeInTheDocument();
+    });
+
     it("migrates from no account but the one reviewed: another one after the approval stops it", async () => {
       mocks.allowance.mockResolvedValue(0n);
       mocks.approve.mockImplementation(async () => {
