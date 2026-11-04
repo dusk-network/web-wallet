@@ -37,12 +37,12 @@
   import { describeFailure, isDeclinedInWallet } from "$lib/transactions";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
-  import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "../NetworkPicker/NetworkPicker.svelte";
   import OperationResult from "../OperationResult/OperationResult.svelte";
+  import RouteTransferResult from "./RouteTransferResult.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
   import { normalizeDuskInput, parseDuskInput } from "../Stake/stakeAmount";
@@ -107,6 +107,9 @@
 
   /** @type {Promise<string>} */
   let operation = Promise.resolve("");
+
+  /** The result's heading, once it's sent. */
+  let sentHeading = "Migration sent";
 
   /** Whether this screen is gone: it then asks the wallet for nothing more. */
   let left = false;
@@ -570,18 +573,17 @@
         : sending === "confirming"
           ? `Waiting for ${chainName}…`
           : "Migrate in your wallet"}
-      successMessage="Migration sent"
+      successMessage={sentHeading}
     >
       <svelte:fragment slot="success-content" let:result={hash}>
-        <p>
-          {timeText
+        <RouteTransferResult
+          bind:heading={sentHeading}
+          {hash}
+          masked={hideBalances}
+          sentText={timeText
             ? `It arrives on Dusk in ${timeText}.`
             : "It arrives on Dusk once the bridge pays it out."}
-        </p>
-        <AppAnchorButton
-          href={`/dashboard/bridge/transactions?tx=${hash}`}
-          text="Track in activity"
-          variant="tertiary"
+          {time}
         />
       </svelte:fragment>
       <svelte:fragment slot="error-actions">

@@ -15,7 +15,7 @@ import {
   isDepositStalled,
 } from "$lib/bridge/depositLifecycle";
 import { routeTimeText } from "$lib/bridge/routeTimes";
-import { formatDusk } from "$lib/dusk/currency";
+import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
 import { shortenAddress } from "$lib/dusk/string";
 
 import { claimDateOf } from "./withdrawalPresentation";
@@ -321,6 +321,16 @@ export function depositRow(item, options) {
 }
 
 /**
+ * Whether a transfer has taken more than twice its usual time.
+ *
+ * @param {import("$lib/bridge/migrationActivity").RouteTransfer} transfer
+ * @param {RouteTime | null | undefined} time
+ * @param {number} [now]
+ */
+const isLate = (transfer, time, now = Date.now()) =>
+  Boolean(time && transfer.at && now - transfer.at > 2 * time.seconds * 1000);
+
+/**
  * What a transfer between Dusk and another chain's row says, by its stage.
  *
  * @param {import("$lib/bridge/migrationActivity").RouteTransfer} transfer
@@ -344,11 +354,7 @@ function routeTransferLine(transfer, { locale, time }) {
         `The migration failed on ${transfer.route.chain.name}`
       );
     default:
-      if (
-        time &&
-        transfer.at &&
-        Date.now() - transfer.at > 2 * time.seconds * 1000
-      ) {
+      if (isLate(transfer, time)) {
         return `${sent} · taking longer than usual`;
       }
 
@@ -366,6 +372,46 @@ const shownLux = ({ amountLux, feeLux, stage }) =>
   stage === "arrived" && feeLux && amountLux > feeLux
     ? amountLux - feeLux
     : amountLux;
+
+/**
+ * How a transfer just sent is getting on, in words, where there's more to say
+ * than that it's on its way: `null` otherwise.
+ *
+ * @param {import("$lib/bridge/migrationActivity").RouteTransfer} transfer
+ * @param {{ locale?: string, masked?: boolean, now?: number, time?: RouteTime | null }} options
+ * @returns {{ heading?: string, sentence: string } | null}
+ */
+export function transferOutcome(
+  transfer,
+  { locale, masked = false, now = Date.now(), time }
+) {
+  const { failure, route, stage } = transfer;
+  const what = masked
+    ? "It"
+    : `${formatDuskExact(shownLux(transfer), locale)} DUSK`;
+
+  switch (stage) {
+    case "arrived":
+      return {
+        heading: "Arrived",
+        sentence: `${what} arrived on ${route.chain.name}.`,
+      };
+    case "paid":
+      return {
+        heading: "Arrived",
+        sentence: `${what} arrived in your public balance on Dusk.`,
+      };
+    case "failed":
+      return {
+        heading: "It didn't go through",
+        sentence: `${failure ?? `The migration failed on ${route.chain.name}`}.`,
+      };
+    default:
+      return isLate(transfer, time, now)
+        ? { sentence: "It's taking longer than usual." }
+        : null;
+  }
+}
 
 /**
  * A transfer between Dusk and another chain as a row: a migration into

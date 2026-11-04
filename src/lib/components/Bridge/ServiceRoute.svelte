@@ -34,13 +34,13 @@
   import { sendServiceTransfer, serviceLine } from "$lib/bridge/routeFlows";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
-  import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "../NetworkPicker/NetworkPicker.svelte";
   import OperationResult from "../OperationResult/OperationResult.svelte";
+  import RouteTransferResult from "./RouteTransferResult.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
   import { normalizeDuskInput, parseDuskInput } from "../Stake/stakeAmount";
@@ -103,6 +103,9 @@
   /** @type {Promise<string>} */
   let operation = Promise.resolve("");
 
+  /** The result's heading, once it's sent. */
+  let sentHeading = "Sent";
+
   /** Why the review closed, for the form it went back to. */
   let note = "";
 
@@ -144,7 +147,8 @@
   $: total = amountLux + fee;
   $: arrivesLux = amountLux > route.feeLux ? amountLux - route.feeLux : 0n;
   $: isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
-  $: timeText = routeTimeText(routeTime(route, { net }));
+  $: time = routeTime(route, { net });
+  $: timeText = routeTimeText(time);
 
   // The node's price can arrive while the form is open: the form takes it,
   // unless the gas was edited here, and keeps the gas a review shows.
@@ -436,18 +440,17 @@
       errorMessage="The transfer didn't go through"
       {operation}
       pendingMessage="Sending…"
-      successMessage="Sent"
+      successMessage={sentHeading}
     >
       <svelte:fragment slot="success-content" let:result={hash}>
-        <p>
-          {timeText
+        <RouteTransferResult
+          bind:heading={sentHeading}
+          {hash}
+          masked={hideBalances}
+          sentText={timeText
             ? `It usually arrives on ${chainName} in ${timeText.replace(/^~/, "about ")}.`
             : `It arrives on ${chainName} once the bridge pays it out.`}
-        </p>
-        <AppAnchorButton
-          href={`/dashboard/bridge/transactions?tx=${hash}`}
-          text="Track in activity"
-          variant="tertiary"
+          {time}
         />
       </svelte:fragment>
     </OperationResult>
