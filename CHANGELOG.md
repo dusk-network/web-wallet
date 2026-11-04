@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Removed
+
+### Fixed
+
+## [1.9.0] - 2026-11-05
+
+### Added
+
 - Keep more than one recovery phrase under one password, and switch between them without it [#999]
 - Add, rename and remove wallets, and change the password of every wallet, in Settings › Wallets [#999]
 - Say which wallet is open, and which wallet a review is from [#999]
@@ -944,6 +954,7 @@ dusk-network/rusk#3984: https://github.com/dusk-network/rusk/issues/3984
 <!-- VERSIONS -->
 
 [Unreleased]: https://github.com/dusk-network/web-wallet/tree/main
+[1.9.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.9.0
 [1.8.0]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.8.0
 [1.7.3]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.3
 [1.7.2]: https://github.com/dusk-network/web-wallet/tree/web-wallet-v1.7.2
