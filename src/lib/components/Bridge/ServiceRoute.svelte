@@ -87,6 +87,7 @@
 
   /** @param {Event} event */
   function typeAmount(event) {
+    note = "";
     amount = withoutBalanceMask(
       /** @type {HTMLInputElement} */ (event.currentTarget).value
     );

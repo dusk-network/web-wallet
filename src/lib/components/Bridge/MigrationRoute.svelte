@@ -83,6 +83,7 @@
 
   /** @param {Event} event */
   function typeAmount(event) {
+    note = "";
     amount = withoutBalanceMask(
       /** @type {HTMLInputElement} */ (event.currentTarget).value
     );
@@ -539,14 +540,23 @@
         text="Back"
         variant="secondary"
       />
-      <Button
-        confirm
-        disabled={approved === undefined || !isConnected}
-        icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
-        on:click={send}
-        text="Migrate"
-        variant="primary"
-      />
+      {#if chainId === route.chain.chainId}
+        <Button
+          confirm
+          disabled={approved === undefined || !isConnected}
+          icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
+          on:click={send}
+          text="Migrate"
+          variant="primary"
+        />
+      {:else}
+        <Button
+          disabled={!primary.ready}
+          on:click={primaryAction}
+          text={primary.label}
+          variant="primary"
+        />
+      {/if}
     </div>
   </div>
 {:else}

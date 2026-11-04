@@ -500,6 +500,55 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(mocks.migrate).not.toHaveBeenCalled();
     });
 
+    it("asks for the route's chain on a review the wallet left, and sends nothing until it's back", async () => {
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.migrate.mockResolvedValue(`0x${"cc".repeat(32)}`);
+      mocks.switchChain.mockRejectedValueOnce(
+        new Error("User rejected the request.")
+      );
+
+      const { askToSwitch } = await import("$lib/bridge/chainSwitch");
+      const { findByRole, getByRole, queryByRole } = await toReview();
+
+      connect({ address: EVM, chainId: 56 });
+      await askToSwitch(1);
+
+      const again = await findByRole("button", { name: "Switch to Ethereum" });
+
+      expect(queryByRole("button", { name: "Migrate" })).toBeNull();
+
+      mocks.switchChain.mockResolvedValueOnce({ id: 1 });
+      await fireEvent.click(again);
+      expect(mocks.switchChain).toHaveBeenCalledTimes(2);
+
+      connect({ address: EVM, chainId: 1 });
+      await afterConfirmDelay();
+
+      expect(
+        await findByRole("button", { name: "Migrate" })
+      ).toBeInTheDocument();
+      expect(getByRole("heading", { name: "Review" })).toBeInTheDocument();
+      expect(mocks.migrate).not.toHaveBeenCalled();
+    });
+
+    it("forgets why a review closed once the amount changes", async () => {
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+
+      const { findByRole, getByRole, queryByRole } = await toReview();
+
+      connect({
+        address: "0x3333333333333333333333333333333333333333",
+        chainId: 1,
+      });
+      await findByRole("alert");
+      await fireEvent.input(
+        getByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
+        { target: { value: "2" } }
+      );
+
+      expect(queryByRole("alert")).toBeNull();
+    });
+
     it("migrates from no account but the one reviewed: another one after the approval stops it", async () => {
       mocks.allowance.mockResolvedValue(0n);
       mocks.approve.mockImplementation(async () => {
