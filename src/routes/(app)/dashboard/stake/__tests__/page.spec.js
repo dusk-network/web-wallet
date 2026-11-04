@@ -104,6 +104,7 @@ const sozu = vi.hoisted(() => ({
   /** @type {import("vitest").Mock<() => Promise<any>>} */
   check: vi.fn(async () => null),
   load: vi.fn(() => Promise.resolve()),
+  readAfter: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
   store: null,
 }));
@@ -126,6 +127,7 @@ vi.mock("$lib/sozu", async (importOriginal) => {
     sozuStore: {
       check: sozu.check,
       load: sozu.load,
+      readAfter: sozu.readAfter,
       reset: () => {},
       subscribe: sozu.store.subscribe,
     },
@@ -163,6 +165,7 @@ describe("Staking", () => {
     mockedWalletStore.setMockedStoreValue(initialStore);
     open("");
     sozu.load.mockClear();
+    sozu.readAfter.mockClear();
     sozu.check.mockReset();
     vi.restoreAllMocks();
     sozu.store?.set({
@@ -718,6 +721,44 @@ describe("Staking", () => {
       "Total Up to 0.01 DUSK"
     );
   });
+
+  it.each([
+    ["stake", "stakeWithSozu", "Stake amount", "Stake 100 DUSK with Sozu"],
+    ["unstake", "unstakeFromSozu", "Unstake amount", "Unstake 100 DUSK"],
+  ])(
+    "reads Sozu again after a %s's transaction",
+    async (action, service, label, name) => {
+      // The button takes a click half a second after it shows: on this clock.
+      vi.useFakeTimers({ toFake: ["performance"] });
+      open(`?flow=liquid&action=${action}`);
+      await act(() =>
+        sozu.store?.update((s) => ({
+          ...s,
+          status: {
+            ...SOZU_STATUS,
+            position: { balance: 200_000_000_000n, stDusk: 200_000_000_000n },
+          },
+        }))
+      );
+      sozu.check.mockResolvedValue(SOZU_STATUS);
+      vi.spyOn(
+        walletStore,
+        /** @type {"stakeWithSozu" | "unstakeFromSozu"} */ (service)
+      ).mockResolvedValue(/** @type {any} */ ({ hash: "a-hash" }));
+
+      const { getByLabelText, getByRole } = render(Staking);
+
+      await fireEvent.input(getByLabelText(label), {
+        target: { value: "100" },
+      });
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name }));
+
+      await vi.waitFor(() =>
+        expect(sozu.readAfter).toHaveBeenCalledWith("a-hash")
+      );
+    }
+  );
 
   it("reads Sozu again before a stake goes, and stakes on the terms it read", async () => {
     // Stake takes a click half a second after it shows: on this clock.
