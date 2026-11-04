@@ -156,6 +156,16 @@
   let nameLookup = null;
 
   /**
+   * The answer to the name asked last, with the name as typed.
+   *
+   * @type {{ asked: string, result: DuskNameResolution } | null}
+   */
+  let nameAnswer = null;
+
+  /** The name asked last: a late answer to an older one is left out. */
+  let askedName = "";
+
+  /**
    * The address the user picked for each `.dusk` name with both a public
    * account and a shielded address. A pick stays with its name, through
    * lookups of the same name, until the user makes another; any other name
@@ -350,19 +360,20 @@
    * @param {string} name
    */
   function lookUpName(name) {
-    if (!name) {
-      nameLookup = null;
-      return;
+    askedName = name;
+
+    if (name) {
+      resolveName(name).then((result) => {
+        if (askedName === name) {
+          nameAnswer = { asked: name, result };
+        }
+      });
     }
+  }
 
-    const lookup = { name };
-
-    nameLookup = lookup;
-    resolveName(name).then((result) => {
-      if (nameLookup === lookup) {
-        nameLookup = result;
-      }
-    });
+  function lookUpNameAgain() {
+    nameAnswer = null;
+    lookUpName(recipientName);
   }
 
   /**
@@ -663,6 +674,17 @@
 
   $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";
 
+  // What's known of the name in the field, read from the name itself: with
+  // another name typed, the answer for the one before is out at once, so its
+  // address can't be sent to. A lookup that set this itself would run too late,
+  // after what reads it, as Svelte can't see an assignment inside a function
+  // when it orders these statements.
+  $: nameLookup = !recipientName
+    ? null
+    : nameAnswer?.asked === recipientName
+      ? nameAnswer.result
+      : { name: recipientName };
+
   $: lookUpName(recipientName);
 
   $: nameAddressType = getNameAddressType(nameLookup, namePicks);
@@ -945,7 +967,7 @@
             {/if}
             {#if nameLookup.error === "lookup-failed"}
               <Button
-                on:click={() => lookUpName(recipientName)}
+                on:click={lookUpNameAgain}
                 size="small"
                 text="Try again"
                 variant="secondary"
