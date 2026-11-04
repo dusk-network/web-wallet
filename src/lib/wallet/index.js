@@ -4,7 +4,6 @@ export { default as encryptBuffer } from "./encryptBuffer";
 export { default as encryptMnemonic } from "./encryptMnemonic";
 export { default as generateMnemonic } from "./generateMnemonic";
 export { default as getAddressInfo } from "./getAddressInfo";
-export { default as isAccountKey } from "./isAccountKey";
 export { default as getPasswordStrength } from "./getPasswordStrength";
 export { default as getSeedFromMnemonic } from "./getSeedFromMnemonic";
 export { default as initializeWallet } from "./initializeWallet";

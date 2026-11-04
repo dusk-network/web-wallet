@@ -1311,7 +1311,7 @@
         {#if isMemoTooLong}
           <p class="send__error" role="alert">
             <strong>That memo is too long.</strong>
-            {MAX_MEMO_BYTES} characters at most.
+            {MAX_MEMO_BYTES} bytes at most.
           </p>
         {:else if isMemoValid === false}
           <p class="send__error" role="alert">

@@ -18,10 +18,9 @@
  * brings back what Reset deleted.
  */
 
+import { isAccount } from "@dusk-network/networks/account";
 import { ProfileGenerator } from "@dusk/w3sper";
 import { writable } from "svelte/store";
-
-import isAccountKey from "$lib/wallet/isAccountKey";
 
 import {
   contactsNamespace,
@@ -533,7 +532,7 @@ export function addressType(address) {
   const type = ProfileGenerator.typeOf(address);
 
   if (type === "account") {
-    return isAccountKey(address) ? type : "unknown";
+    return isAccount(address) ? type : "unknown";
   }
 
   return type === "address" ? type : "unknown";

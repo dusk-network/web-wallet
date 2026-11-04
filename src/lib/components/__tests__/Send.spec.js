@@ -38,7 +38,10 @@ import { Send } from "..";
 
 // Each wallet's profiles their own accounts, as on the network.
 // The accounts here are made up, so none is a key: a test says when it matters.
-vi.mock("$lib/wallet/isAccountKey", () => ({ default: vi.fn(() => true) }));
+vi.mock("@dusk-network/networks/account", async (importOriginal) => ({
+  ...(await importOriginal()),
+  isAccount: vi.fn(() => true),
+}));
 
 vi.mock("$lib/mocks/ProtocolDriver", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
