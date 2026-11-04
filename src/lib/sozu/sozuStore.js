@@ -1,5 +1,6 @@
 import { get, writable } from "svelte/store";
 import { networkStore, walletStore } from "$lib/stores";
+import { followTransaction } from "$lib/transactions";
 import { nodeBaseUrl } from "$lib/url";
 
 import { sozuContractsFor } from "./config";
@@ -119,6 +120,20 @@ function load({ force = false } = {}) {
 }
 
 /**
+ * Reads again once a stake's or an unstake's block is final, wherever the
+ * user has gone by then, so that Home and Unstake show what it changed.
+ *
+ * @param {string} hash
+ * @returns {Promise<void>}
+ */
+function readAfter(hash) {
+  return followTransaction(hash).then(
+    () => load({ force: true }),
+    () => load({ force: true })
+  );
+}
+
+/**
  * Reads Sozu again now, as before a stake is sent: the status read, or null
  * when it couldn't be read, though the store keeps showing the last one.
  *
@@ -154,10 +169,11 @@ function reset() {
   store.set(initialState);
 }
 
-/** @type {import("svelte/store").Readable<SozuState> & { check: typeof check, load: typeof load, reset: typeof reset }} */
+/** @type {import("svelte/store").Readable<SozuState> & { check: typeof check, load: typeof load, readAfter: typeof readAfter, reset: typeof reset }} */
 export default {
   check,
   load,
+  readAfter,
   reset,
   subscribe: store.subscribe,
 };

@@ -71,7 +71,11 @@
         poolId,
         amount,
         new Gas({ limit: gasLimit, price: gasPrice })
-      ).then(({ hash }) => hash)
+      ).then(({ hash }) => {
+        void sozuStore.readAfter(hash);
+
+        return hash;
+      })
   );
 
   /** @type {bigint | undefined} */

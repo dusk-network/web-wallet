@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { readSozuStatus } = vi.hoisted(() => ({
+const { followTransaction, readSozuStatus } = vi.hoisted(() => ({
+  followTransaction: vi.fn(),
   readSozuStatus: vi.fn(async () => /** @type {SozuStatus | null} */ (null)),
 }));
 
 vi.mock("../status", () => ({ readSozuStatus }));
+vi.mock("$lib/transactions", () => ({ followTransaction }));
 
 vi.mock("$lib/stores", async () => {
   const { readable } = await import("svelte/store");
@@ -20,6 +22,46 @@ describe("sozuStore", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     readSozuStatus.mockClear();
+  });
+
+  it("should read again once a transaction's block is final, and not before", async () => {
+    const { default: sozuStore } = await import("../sozuStore");
+
+    await sozuStore.load({ force: true });
+    readSozuStatus.mockClear();
+
+    /** @type {(value: null) => void} */
+    let final = () => {};
+
+    followTransaction.mockReturnValueOnce(
+      new Promise((resolve) => {
+        final = resolve;
+      })
+    );
+
+    const after = sozuStore.readAfter("a-hash");
+
+    await Promise.resolve();
+
+    expect(followTransaction).toHaveBeenCalledWith("a-hash");
+    expect(readSozuStatus).not.toHaveBeenCalled();
+
+    final(null);
+    await after;
+
+    expect(readSozuStatus).toHaveBeenCalledOnce();
+  });
+
+  it("should read again even if following the transaction failed", async () => {
+    const { default: sozuStore } = await import("../sozuStore");
+
+    await sozuStore.load({ force: true });
+    readSozuStatus.mockClear();
+    followTransaction.mockRejectedValueOnce(new Error("no connection"));
+
+    await sozuStore.readAfter("a-hash");
+
+    expect(readSozuStatus).toHaveBeenCalledOnce();
   });
 
   it("should read Sozu through the node's base path", async () => {
