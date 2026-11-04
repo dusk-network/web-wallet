@@ -74,6 +74,12 @@ export function normalizeDuskInput(text, decimalSeparator = ".") {
     return value.replaceAll(",", "");
   }
 
+  // A point before three digits, where the language groups with one, could
+  // mean a thousand as well as one: refused, as a comma is below.
+  if (decimalSeparator === "," && /^[1-9]\d{0,2}\.\d{3}$/.test(value)) {
+    return value.replace(".", ",");
+  }
+
   if (/^\d*,\d*$/.test(value)) {
     const isEither =
       decimalSeparator !== "," && /^[1-9]\d{0,2},\d{3}$/.test(value);

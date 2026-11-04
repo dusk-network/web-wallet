@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { simulateContract, writeContract } from "@wagmi/core";
+import { getPublicClient, simulateContract, writeContract } from "@wagmi/core";
 
 import { describeFailure } from "$lib/transactions";
 
-import { migrate } from "../migration";
+import { getMigrationFee, migrate } from "../migration";
 
 vi.mock("@wagmi/core", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
+  getPublicClient: vi.fn(),
   simulateContract: vi.fn(),
   writeContract: vi.fn(),
 }));
@@ -62,5 +63,46 @@ describe("migrate", () => {
 
     expect(await failureOf(send)).not.toHaveProperty("outcomeUnknown");
     expect(writeContract).toHaveBeenCalledOnce();
+  });
+});
+
+describe("getMigrationFee", () => {
+  const facts = {
+    amount: 5n,
+    chainId: 56,
+    migrationContract: /** @type {`0x${string}`} */ (CONTRACT),
+    owner: /** @type {`0x${string}`} */ (OWNER),
+    recipient: "account",
+    stableCoinAddress: /** @type {`0x${string}`} */ (CONTRACT),
+  };
+
+  /** @param {(call: any) => Promise<bigint>} estimate */
+  const onChain = (estimate) =>
+    vi.mocked(getPublicClient).mockReturnValue(
+      /** @type {any} */ ({
+        estimateContractGas: estimate,
+        getGasPrice: async () => 10n,
+      })
+    );
+
+  it("adds the approval to a migration that can't be estimated before it", async () => {
+    onChain(async ({ functionName }) =>
+      functionName === "approve" ? 50_000n : 1n
+    );
+
+    // What a migration takes when it can't be asked yet.
+    expect(await getMigrationFee({ ...facts, approved: false })).toBe(
+      10n * (50_000n + 70_000n)
+    );
+  });
+
+  it("asks what the migration takes once it's approved, and falls back without an answer", async () => {
+    onChain(async () => 60_000n);
+    expect(await getMigrationFee({ ...facts, approved: true })).toBe(600_000n);
+
+    onChain(async () => {
+      throw new Error("It would revert.");
+    });
+    expect(await getMigrationFee({ ...facts, approved: true })).toBe(700_000n);
   });
 });

@@ -6,12 +6,15 @@
    */
   import { onMount } from "svelte";
 
+  import { currentActivity } from "$lib/activity";
   import { followRouteTransfers } from "$lib/bridge/routeFollowing";
   import { routeTransfers } from "$lib/bridge/routeHistory";
   import { settingsStore } from "$lib/stores";
+  import { duskExplorerTx } from "$lib/url";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import { transferOutcome } from "../EvmTransactions/bridgeActivity";
+  import WithdrawalHash from "../EvmTransactions/WithdrawalHash.svelte";
 
   /** The transaction sent. */
   /** @type {string} */
@@ -24,6 +27,9 @@
   /** Whether balances are hidden. */
   /** @type {boolean} */
   export let masked;
+
+  /** @type {import("$lib/bridge/cardRoutes").CardRoute} */
+  export let route;
 
   /** What it says until there's more to say. */
   /** @type {string} */
@@ -38,9 +44,14 @@
 
   onMount(() => {
     const stop = followRouteTransfers();
+    // A payout into Dusk shows in the history: read sooner than the page does.
     const timer = setInterval(() => {
       now = Date.now();
-    }, 30_000);
+
+      if (!outcome?.heading && document.visibilityState !== "hidden") {
+        void currentActivity()?.refresh();
+      }
+    }, 15_000);
 
     return () => {
       stop();
@@ -61,9 +72,20 @@
       })
     : null;
   $: heading = outcome?.heading ?? sentHeading;
+  $: isMigration = route.kind === "migration";
 </script>
 
 <p>{outcome?.sentence ?? sentText}</p>
+<WithdrawalHash
+  explorerName={isMigration ? `${route.chain.name} explorer` : "Dusk explorer"}
+  href={isMigration
+    ? `${route.chain.explorerUrl}/tx/${hash}`
+    : duskExplorerTx(hash)}
+  name={isMigration
+    ? `${route.chain.name} transaction hash`
+    : "Dusk transaction hash"}
+  value={hash}
+/>
 <AppAnchorButton
   href={`/dashboard/bridge/transactions?tx=${hash}`}
   text={outcome?.heading ? "View in activity" : "Track in activity"}

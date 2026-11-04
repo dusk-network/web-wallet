@@ -29,6 +29,7 @@
     finalizeWithdrawal,
     getWithdrawalFinalizationConfig,
     isWithdrawalTxHash,
+    loadWithdrawalStatus,
     proveWithdrawal,
   } from "$lib/bridge/withdrawals";
   import {
@@ -434,9 +435,11 @@
    * @param {`0x${string}`} hash
    */
   function rememberCheckedTransaction(hash) {
-    const remembered = rememberWithdrawalTransaction(hash, {
-      account: currentAccount,
-    });
+    const remembered = rememberWithdrawalTransaction(
+      hash,
+      { account: currentAccount },
+      records
+    );
 
     if (remembered) {
       selectedTransactionHash = remembered.transactionHash;
@@ -463,12 +466,40 @@
 
     if (!checkedHash) return;
 
-    const remembered = rememberCheckedTransaction(checkedHash);
-
-    if (!remembered || !finalizationIsConfigured()) return;
+    if (!finalizationIsConfigured()) return;
 
     const request = ++statusRequest;
+
     isChecking = true;
+
+    // Nothing is listed for a hash that isn't a withdrawal: only one already
+    // listed goes without asking.
+    if (!activity.some((item) => item.transactionHash === checkedHash)) {
+      try {
+        await loadWithdrawalStatus(checkedHash);
+      } catch (error) {
+        if (request === statusRequest && records.isOpen()) {
+          hashError = errorMessage(error);
+          isChecking = false;
+        }
+
+        return;
+      }
+
+      // Another check began, the page closed or another wallet opened: this
+      // one's answer is for none of them.
+      if (request !== statusRequest || !records.isOpen()) {
+        return;
+      }
+    }
+
+    const remembered = rememberCheckedTransaction(checkedHash);
+
+    if (!remembered) {
+      isChecking = false;
+
+      return;
+    }
 
     try {
       const updated = await refreshWithdrawalTransaction(checkedHash, records);
@@ -487,6 +518,38 @@
     } finally {
       if (request === statusRequest) {
         isChecking = false;
+      }
+    }
+  }
+
+  /** What a row that just finished says, where a screen reader hears it. */
+  let finished = "";
+
+  /** @type {Record<string, string>} */
+  const stages = {};
+
+  /**
+   * Says when a transfer on the list finishes, not those that came finished.
+   *
+   * @param {import("$lib/bridge/migrationActivity").RouteTransfer[]} list
+   */
+  function announceFinished(list) {
+    for (const transfer of list) {
+      const before = stages[transfer.hash];
+
+      stages[transfer.hash] = transfer.stage;
+
+      if (
+        before &&
+        before !== transfer.stage &&
+        ["arrived", "failed", "paid"].includes(transfer.stage)
+      ) {
+        const { line, title } = routeTransferRow(transfer, {
+          locale: language,
+          time: null,
+        });
+
+        finished = `${title}: ${line}`;
       }
     }
   }
@@ -673,6 +736,7 @@
       unsubscribeHistory();
       window.clearInterval(timer);
       stopFollowing();
+      statusRequest += 1;
     };
   });
 
@@ -692,6 +756,7 @@
   // The public account the wallet shows: the migrations listed pay it.
   $: duskAccount = $walletStore.currentProfile?.account.toString() ?? "";
   $: transfers = $routeTransfers;
+  $: announceFinished(transfers);
   $: if (
     linkedTransfer &&
     transfers.some(({ hash }) => hash === linkedTransfer)
@@ -761,6 +826,7 @@
   </div>
 
   <div class="bridge-activity">
+    <p class="sr-only" role="status">{finished}</p>
     <p class="bridge-activity__lede">
       {#if hasDuskEvm}
         Transfers between Dusk and other chains{#if currentAccount}, for DuskEVM

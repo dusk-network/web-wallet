@@ -67,6 +67,14 @@ describe("normalizeDuskInput", () => {
     expect(parseDuskInput(normalizeDuskInput("1,000"))).toBeNull();
     expect(normalizeDuskInput("0,100")).toBe("0.100");
 
+    // A point before three digits, where the language groups with one, could
+    // mean a thousand as well as one: refused too.
+    expect(parseDuskInput(normalizeDuskInput("1.000", ","))).toBeNull();
+    expect(parseDuskInput(normalizeDuskInput("12.500", ","))).toBeNull();
+    expect(normalizeDuskInput("1.5", ",")).toBe("1.5");
+    expect(normalizeDuskInput("0.100", ",")).toBe("0.100");
+    expect(normalizeDuskInput("1.000")).toBe("1.000");
+
     // Anything else stays as typed, for the parser to refuse.
     for (const text of ["1,00,0", "1e3", "1.2.3", "abc", "1,5,"]) {
       expect(normalizeDuskInput(text)).toBe(text);

@@ -7,6 +7,8 @@
    * route's migration contract, which the route's payout account pays out
    * on Dusk to this profile's public account.
    */
+  import { pushState } from "$app/navigation";
+  import { page } from "$app/stores";
   import { createEventDispatcher, onDestroy } from "svelte";
   import { formatUnits } from "viem";
   import {
@@ -35,7 +37,7 @@
     sendMigration,
   } from "$lib/bridge/routeFlows";
   import { askToSwitch, chainSwitchRefused } from "$lib/bridge/chainSwitch";
-  import { getNativeBalance } from "$lib/web3/migration";
+  import { getMigrationFee, getNativeBalance } from "$lib/web3/migration";
   import { describeFailure, isDeclinedInWallet } from "$lib/transactions";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
@@ -78,6 +80,18 @@
   const ACCOUNT_CHANGED_NOTE =
     "Your EVM wallet switched to another account, so nothing moved. Review again.";
 
+  /** Whether the swap keeps focus: the direction just changed by it. */
+  export let focusSwap = false;
+
+  const takeFocusIf = (
+    /** @type {HTMLElement} */ node,
+    /** @type {boolean} */ yes
+  ) => {
+    if (yes) {
+      node.focus();
+    }
+  };
+
   /** A step's heading takes focus as it shows, so a screen reader goes there. */
   const takeFocus = (/** @type {HTMLElement} */ node) => node.focus();
 
@@ -96,9 +110,10 @@
     const { decimals } = route.chain.currency;
     const shown = Number(formatUnits(wei, decimals));
 
-    return shown > 0 && shown < 0.0001
-      ? "less than 0.0001"
-      : shown.toLocaleString(language, { maximumFractionDigits: 4 });
+    return shown.toLocaleString(
+      language,
+      shown < 1 ? { maximumSignificantDigits: 2 } : { maximumFractionDigits: 4 }
+    );
   }
 
   /** @param {Event} event */
@@ -124,6 +139,10 @@
 
   /** How many times it was read: only the last answer counts. */
   let feeReads = 0;
+
+  /** About what it costs in network fees, once it's estimated. */
+  /** @type {bigint | null} */
+  let feeEstimate = null;
 
   /** Whether the contract may take the amount without an approval first. */
   /** @type {boolean | undefined} */
@@ -205,12 +224,12 @@
     approved = undefined;
     feeBalance = undefined;
 
-    const read = ++feeReads;
+    feeEstimate = null;
 
-    getNativeBalance(
-      /** @type {`0x${string}`} */ (address),
-      route.chain.chainId
-    ).then(
+    const read = ++feeReads;
+    const owner = /** @type {`0x${string}`} */ (address);
+
+    getNativeBalance(owner, route.chain.chainId).then(
       (wei) => {
         if (read === feeReads) {
           feeBalance = wei;
@@ -222,9 +241,25 @@
         }
       }
     );
-    isApproved(route, /** @type {`0x${string}`} */ (address), amountLux).then(
+    isApproved(route, owner, amountLux).then(
       (yes) => {
         approved = yes;
+        getMigrationFee({
+          amount: amountLux * WEI_PER_LUX,
+          approved: yes,
+          chainId: route.chain.chainId,
+          migrationContract: route.contract,
+          owner,
+          recipient,
+          stableCoinAddress: /** @type {`0x${string}`} */ (route.chain.token),
+        }).then(
+          (wei) => {
+            if (read === feeReads) {
+              feeEstimate = wei;
+            }
+          },
+          () => {}
+        );
       },
       () => {
         approved = false;
@@ -237,6 +272,35 @@
     reviewedFor = address;
     step = "review";
     readApproval();
+  }
+
+  /** A step of its own in the history: a phone's Back returns to the form. */
+  function goToReview() {
+    pushState("", { routeReview: true });
+    review();
+  }
+
+  function leaveReview() {
+    if ($page.state?.routeReview) {
+      history.back();
+    }
+
+    step = "form";
+  }
+
+  /**
+   * The step a phone's Back or Forward takes the history to: a review only of
+   * what can still be reviewed.
+   *
+   * @param {boolean} isAtReview
+   */
+  function followHistory(isAtReview) {
+    if (step === "review" && !isAtReview) {
+      note = "";
+      step = "form";
+    } else if (step === "form" && isAtReview && primary?.ready && isConnected) {
+      review();
+    }
   }
 
   // What this screen sends, it sends for the wallet it was drawn for.
@@ -335,7 +399,7 @@
     } else if (chainId !== route.chain.chainId) {
       askToSwitch(route.chain.chainId);
     } else if (primary.ready) {
-      review();
+      goToReview();
     }
   }
 
@@ -343,6 +407,7 @@
   $: isAmountMasked = hideBalances && isMaxAmount;
   $: ({ address, chainId, isConnected } = $account);
   $: follow(isConnected ? address : undefined, chainId);
+  $: followHistory(Boolean($page.state?.routeReview));
   $: chainName = route.chain.name;
   $: feeUnit = route.chain.currency.symbol;
   $: unit = route.chain.tokenLabel ?? "DUSK";
@@ -470,11 +535,15 @@
     {/if}
   </div>
 
+  <p class="route-amount-reason sr-only" role="status">
+    {amount !== "" && !primary.ready ? primary.label : ""}
+  </p>
   <div class="swap-flip">
     {#if canFlip}
       <button
         aria-label="Swap From and To"
         class="swap-flip__button"
+        use:takeFocusIf={focusSwap}
         on:click={() => dispatch("flip")}
         type="button"><Icon path={mdiArrowDown} /></button
       >
@@ -495,7 +564,10 @@
       />
     </div>
     <div class="swap-amount">
-      <output class:swap-amount__empty={amountLux === 0n} for="migration-amount"
+      <output
+        aria-live="off"
+        class:swap-amount__empty={amountLux === 0n}
+        for="migration-amount"
         >{#if amountLux === 0n}0{:else}<BalanceValue
             hidden={isAmountMasked}
             value={formatDuskExact(amountLux, language)}
@@ -582,9 +654,42 @@
         <div>
           <dt>Approval</dt>
           <dd>
-            <span>The migration contract, for exactly this amount</span>
-            <span class="route-review__address">{route.contract}</span>
+            You allow the migration contract to take exactly this amount.
+            Nothing moves yet.
           </dd>
+        </div>
+      {/if}
+      <div>
+        <dt>Network fees</dt>
+        <dd>
+          {typeof feeBalance === "bigint"
+            ? feeEstimate
+              ? `About ${feeText(feeEstimate)} ${feeUnit}, from your ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit}. No bridge fee`
+              : `You have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit} for them. No bridge fee`
+            : `On ${chainName}, as your wallet shows. No bridge fee`}
+        </dd>
+      </div>
+      {#if timeText}
+        <div>
+          <dt>Arrives</dt>
+          <dd>
+            {isAmountMasked
+              ? ""
+              : `${formatDuskExact(amountLux, language)} DUSK `}on Dusk in {timeText}
+          </dd>
+        </div>
+      {/if}
+    </dl>
+    <details class="route-review__check">
+      <summary>Addresses to check</summary>
+      <dl class="route-review__ends">
+        <div>
+          <dt>Network</dt>
+          <dd>{chainName}, chain ID {route.chain.chainId}</dd>
+        </div>
+        <div>
+          <dt>Migration contract</dt>
+          <dd><span class="route-review__address">{route.contract}</span></dd>
         </div>
         <div>
           <dt>Token</dt>
@@ -593,28 +698,18 @@
             <span class="route-review__address">{route.chain.token}</span>
           </dd>
         </div>
-      {/if}
-      <div>
-        <dt>Network fees</dt>
-        <dd>
-          {typeof feeBalance === "bigint"
-            ? `You have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit} for them`
-            : `On ${chainName}, as your wallet shows`}
-        </dd>
-      </div>
-      {#if timeText}
-        <div>
-          <dt>Arrives</dt>
-          <dd>On Dusk in {timeText}</dd>
-        </div>
-      {/if}
-    </dl>
+      </dl>
+      <p class="route-review__public">
+        <b>Public on {chainName} and Dusk, and linked:</b> your {chainName} address,
+        your public account and the amount.
+      </p>
+    </details>
     <div class="route-review__actions">
       <Button
         icon={{ path: mdiArrowLeft }}
         on:click={() => {
           note = "";
-          step = "form";
+          leaveReview();
         }}
         text="Back"
         variant="secondary"
@@ -662,6 +757,7 @@
           bind:heading={sentHeading}
           {hash}
           masked={hideBalances}
+          {route}
           sentText={timeText
             ? `It arrives on Dusk in ${timeText}.`
             : "It arrives on Dusk once the bridge pays it out."}
@@ -689,6 +785,19 @@
   .route-review__title:focus,
   .route-result:focus {
     outline: none;
+  }
+
+  .route-review__check {
+    font-size: 0.875em;
+
+    summary {
+      cursor: pointer;
+      padding-block: 0.25em;
+    }
+  }
+
+  .route-review__public {
+    margin: 0.5em 0 0;
   }
 
   .route-note {

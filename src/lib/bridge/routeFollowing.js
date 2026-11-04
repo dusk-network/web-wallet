@@ -11,7 +11,7 @@ import { routeTransfers } from "./routeHistory";
 import { followTransfers, toFollow } from "./routeTracking";
 
 /** How often it looks while a transfer is under way. */
-const FOLLOW_MS = 30_000;
+const FOLLOW_MS = 15_000;
 
 /** @returns {() => void} Stops */
 export function followRouteTransfers() {

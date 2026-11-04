@@ -327,6 +327,12 @@ async function start(reset) {
     themeMode: "dark",
   });
 
+  // The page shows no name or avatar from it, so the connected address stays
+  // off WalletConnect's servers.
+  if (appKit) {
+    appKit.fetchIdentity = async () => ({ avatar: null, name: null });
+  }
+
   appKit?.subscribeEvents((event) => {
     for (const handler of eventHandlers) {
       handler(event);

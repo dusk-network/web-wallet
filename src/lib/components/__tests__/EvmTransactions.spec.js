@@ -1035,6 +1035,56 @@ describe("EvmTransactions", () => {
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
   });
 
+  it("lists nothing for a hash that isn't a withdrawal, and says so", async () => {
+    mocks.loadWithdrawalStatus.mockRejectedValueOnce(
+      new Error("Withdrawal transaction was not found.")
+    );
+
+    const { findByRole, getByLabelText, getByRole, queryByRole } = render(
+      EvmTransactions,
+      { target: document.body }
+    );
+
+    await fireEvent.input(getByLabelText("Find by transaction hash"), {
+      target: { value: `0x${"ab".repeat(32)}` },
+    });
+    await fireEvent.click(getByRole("button", { name: /^check$/i }));
+
+    expect(await findByRole("alert")).toHaveTextContent(
+      "Withdrawal transaction was not found."
+    );
+    expect(queryByRole("button", { name: /^DuskEVM to Dusk/ })).toBeNull();
+  });
+
+  it("keeps nothing from a check whose page closed before the answer", async () => {
+    /** @type {(status: unknown) => void} */
+    let answer = () => {};
+
+    mocks.loadWithdrawalStatus.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+
+    const hash = `0x${"ac".repeat(32)}`;
+    const { getByLabelText, getByRole, unmount } = render(EvmTransactions, {
+      target: document.body,
+    });
+
+    await fireEvent.input(getByLabelText("Find by transaction hash"), {
+      target: { value: hash },
+    });
+    await fireEvent.click(getByRole("button", { name: /^check$/i }));
+    unmount();
+    answer({ stage: "pending" });
+    await tick();
+    await tick();
+
+    expect(JSON.stringify(Object.entries(localStorage)).includes(hash)).toBe(
+      false
+    );
+  });
+
   it("leaves the linked deposit closed when a hash was checked before its account connects", async () => {
     const depositHash = "cd".repeat(32);
 

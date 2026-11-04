@@ -1,5 +1,6 @@
 import {
   getBalance,
+  getPublicClient,
   readContract,
   simulateContract,
   writeContract,
@@ -121,6 +122,63 @@ export const getBalanceOfCoin = async (
  */
 export const getNativeBalance = async (owner, chainId) =>
   (await getBalance(wagmiConfig, { address: owner, chainId })).value;
+
+/** About what a migration takes, where it can't be asked before its approval. */
+const MIGRATE_GAS_FALLBACK = 70_000n;
+
+/**
+ * About what a migration costs in network fees, its approval too where it
+ * needs one, at the chain's price now.
+ *
+ * @param {{
+ *   amount: bigint,
+ *   approved: boolean,
+ *   chainId: number,
+ *   migrationContract: `0x${string}`,
+ *   owner: `0x${string}`,
+ *   recipient: string,
+ *   stableCoinAddress: `0x${string}`,
+ * }} migration
+ * @returns {Promise<bigint>}
+ */
+export async function getMigrationFee({
+  amount,
+  approved,
+  chainId,
+  migrationContract,
+  owner,
+  recipient,
+  stableCoinAddress,
+}) {
+  const client = /** @type {import("viem").PublicClient} */ (
+    getPublicClient(wagmiConfig, { chainId })
+  );
+  const [price, approval, migration] = await Promise.all([
+    client.getGasPrice(),
+    approved
+      ? 0n
+      : client.estimateContractGas({
+          abi: ERC20Abi,
+          account: owner,
+          address: stableCoinAddress,
+          args: [migrationContract, amount],
+          functionName: "approve",
+        }),
+    approved
+      ? client
+          .estimateContractGas({
+            abi: migrationABI,
+            account: owner,
+            address: migrationContract,
+            args: [amount, recipient],
+            functionName: "migrate",
+          })
+          .catch(() => MIGRATE_GAS_FALLBACK)
+      : MIGRATE_GAS_FALLBACK,
+  ]);
+
+  return price * (approval + migration);
+}
 
 /**
  *  Migrates the approved amount to the given account

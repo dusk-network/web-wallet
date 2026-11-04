@@ -239,7 +239,9 @@
   }
 
   .swap-card :global(.swap-link) {
-    padding: 0;
+    /* A bigger target for a finger, without moving the line it's on. */
+    padding: 0.75rem 0.5rem;
+    margin: -0.75rem -0.5rem;
     border: 0;
     background: none;
     color: inherit;
@@ -263,6 +265,7 @@
   }
 
   .swap-card :global(.swap-recipient b) {
+    white-space: nowrap;
     color: var(--calm-text);
     font-weight: 600;
   }
