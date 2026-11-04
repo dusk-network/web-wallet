@@ -122,6 +122,9 @@
    */
   let feeBalance;
 
+  /** How many times it was read: only the last answer counts. */
+  let feeReads = 0;
+
   /** Whether the contract may take the amount without an approval first. */
   /** @type {boolean | undefined} */
   let approved;
@@ -201,15 +204,22 @@
   function readApproval() {
     approved = undefined;
     feeBalance = undefined;
+
+    const read = ++feeReads;
+
     getNativeBalance(
       /** @type {`0x${string}`} */ (address),
       route.chain.chainId
     ).then(
       (wei) => {
-        feeBalance = wei;
+        if (read === feeReads) {
+          feeBalance = wei;
+        }
       },
       () => {
-        feeBalance = null;
+        if (read === feeReads) {
+          feeBalance = null;
+        }
       }
     );
     isApproved(route, /** @type {`0x${string}`} */ (address), amountLux).then(
@@ -588,7 +598,7 @@
         <dt>Network fees</dt>
         <dd>
           {typeof feeBalance === "bigint"
-            ? `You have ${feeText(feeBalance)} ${feeUnit} for them`
+            ? `You have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit} for them`
             : `On ${chainName}, as your wallet shows`}
         </dd>
       </div>

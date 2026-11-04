@@ -141,6 +141,7 @@ describe("the Bridge card's routes to and from other chains", () => {
     vi.clearAllMocks();
     vi.useRealTimers();
     localStorage.clear();
+    settingsStore.update((store) => ({ ...store, hideBalances: false }));
   });
 
   it("hides what Max fills in on a route while balances are hidden, and shows what's typed", async () => {
@@ -604,6 +605,48 @@ describe("the Bridge card's routes to and from other chains", () => {
         await view.findByRole("button", { name: "No ETH for the network fee" })
       ).toBeDisabled();
       expect(view.queryByRole("button", { name: "Migrate" })).toBeNull();
+    });
+
+    it("keeps what the wallet holds hidden while balances are", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.getNativeBalance.mockResolvedValueOnce(12_345n * 10n ** 14n);
+
+      const { container, findByRole } = await reviewMigration();
+
+      await findByRole("button", { name: "Migrate" });
+      await vi.waitFor(() =>
+        expect(container).toHaveTextContent(/Network fees You have \S+ ETH/)
+      );
+      expect(container).not.toHaveTextContent("1.2345");
+    });
+
+    it("goes by the last review's reading, however late an older one answers", async () => {
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+
+      /** @type {(wei: bigint) => void} */
+      let answerOld = () => {};
+
+      mocks.getNativeBalance.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answerOld = resolve;
+        })
+      );
+
+      const { findByRole, getByRole, queryByRole } = await reviewMigration();
+
+      await fireEvent.click(await findByRole("button", { name: "Back" }));
+      mocks.getNativeBalance.mockResolvedValueOnce(DUSK * DUSK);
+      await fireEvent.click(getByRole("button", { name: "Review migration" }));
+      await findByRole("button", { name: "Migrate" });
+
+      answerOld(0n);
+      await tick();
+      await tick();
+
+      expect(
+        queryByRole("button", { name: "No ETH for the network fee" })
+      ).toBeNull();
     });
 
     it("says nothing it doesn't know when the balance can't be read", async () => {
