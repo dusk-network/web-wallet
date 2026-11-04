@@ -275,7 +275,7 @@ describe("Staking", () => {
     // Sozu pays an unstake out at once.
     expect(rows[3].slice(1)).toStrictEqual([
       "Any time, with no waiting period",
-      "The DUSK comes back in the same transaction. No fee, no waiting.",
+      "The DUSK comes back in the same transaction. No Sozu fee, no waiting.",
     ]);
     expect(rows[4][1]).toBe(
       "If your node misses its turn, part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost)."

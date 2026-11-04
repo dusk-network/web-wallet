@@ -168,6 +168,7 @@
             bind:value={secretText}
             name={modeLabel}
             aria-label={modeLabel}
+            aria-invalid={error instanceof InvalidPasswordError}
             placeholder={modeLabel}
             required
             type="password"
@@ -189,7 +190,7 @@
           />
         {/if}
         {#if error instanceof InvalidPasswordError}
-          <Banner title="Wrong password." variant="error">
+          <Banner role="alert" title="Wrong password." variant="error">
             <p>
               Forgot it? <AppAnchor className="text-link" href="/setup/restore"
                 >Restore with your recovery phrase</AppAnchor

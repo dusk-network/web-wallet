@@ -409,7 +409,9 @@
                     variant="primary"
                   />
                 </div>
-                <p class="tx-detail__note">Saved only on this device.</p>
+                <p class="tx-detail__note">
+                  Saved only in this wallet, on this device.
+                </p>
               </form>
             {/if}
           </dd>
@@ -501,12 +503,13 @@
       <div>
         <dt>Network fee paid</dt>
         <dd>
-          {row.fee !== null
-            ? `${formatFee(row.fee, locale)} DUSK`
-            : p.icon === "received" ||
-                (p.category === "bridge" && row.direction === "in")
-              ? "Paid by the sender"
-              : "Not known yet"}
+          {#if row.fee !== null}
+            <BalanceValue value={formatFee(row.fee, locale)} /> DUSK
+          {:else if p.icon === "received" || (p.category === "bridge" && row.direction === "in")}
+            Paid by the sender
+          {:else}
+            Not known yet
+          {/if}
         </dd>
       </div>
       <div class="tx-detail__wide">
@@ -597,7 +600,9 @@
         {#if row.fee !== null}
           <div>
             <dt>Fee paid</dt>
-            <dd>{formatDuskExact(row.fee, locale)} DUSK</dd>
+            <dd>
+              <BalanceValue value={formatDuskExact(row.fee, locale)} /> DUSK
+            </dd>
           </div>
         {/if}
         {#if stDusk !== null}

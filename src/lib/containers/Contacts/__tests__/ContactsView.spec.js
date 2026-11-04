@@ -93,7 +93,9 @@ describe("ContactsView", () => {
         )
     );
 
-    expect(getByText("Saved only on this device.")).toBeInTheDocument();
+    expect(
+      getByText("Saved only in this wallet, on this device.")
+    ).toBeInTheDocument();
     expect(cells).toEqual([
       [
         "A Alice's shop Sent 40 DUSK · Today",

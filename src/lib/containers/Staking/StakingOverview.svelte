@@ -360,7 +360,8 @@
           <td data-way="Native staking">Any time, with no waiting period</td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
-              The DUSK comes back in the same transaction. No fee, no waiting.
+              The DUSK comes back in the same transaction. No Sozu fee, no
+              waiting.
             </td>
           {/if}
         </tr>

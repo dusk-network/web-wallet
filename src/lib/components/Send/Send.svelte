@@ -285,13 +285,20 @@
       return "Enter an amount greater than 0.";
     }
 
+    // With balances hidden, these don't say what's held.
     if (amount > availableBalance) {
-      return `More than your ${formatDuskExact(availableBalance, language)} DUSK.`;
+      return hideBalances
+        ? "More than you have."
+        : `More than your ${formatDuskExact(availableBalance, language)} DUSK.`;
     }
 
-    return amount > maxSpendableAmount
-      ? `That leaves too little for the network fee: send up to ${formatDuskExact(maxSpendableAmount, language)} DUSK.`
-      : "";
+    if (amount <= maxSpendableAmount) {
+      return "";
+    }
+
+    return hideBalances
+      ? "That leaves too little for the network fee."
+      : `That leaves too little for the network fee: send up to ${formatDuskExact(maxSpendableAmount, language)} DUSK.`;
   }
 
   /** Whether the recipient is being saved to the contacts, and as what. */
@@ -884,7 +891,7 @@
   // A name as the lookup gives it, once it has: in its canonical form.
   $: shownName = nameLookup?.name ?? recipientName;
 
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
 </script>
@@ -1225,7 +1232,9 @@
                     variant="primary"
                   />
                 </div>
-                <p class="send__hint">Saved only on this device.</p>
+                <p class="send__hint">
+                  Saved only in this wallet, on this device.
+                </p>
               </form>
             {/if}
           </div>

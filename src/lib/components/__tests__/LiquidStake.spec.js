@@ -162,7 +162,7 @@ describe("LiquidStake", () => {
       "Stake with Sozu 100 DUSK",
       "You get about 32.4378 stDUSK",
       "Deposit fee 0.25% · 0.25 DUSK",
-      "Getting it back Unstake any time. No fee, no waiting.",
+      "Getting it back Unstake any time. No Sozu fee, no waiting.",
       "Fee paid from Public balance",
       "Total Up to 100.005 DUSK",
     ]);
@@ -377,7 +377,7 @@ describe("LiquidStake", () => {
     );
     // Sozu pays it out at once.
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "The DUSK comes back in the same transaction. No fee, no waiting."
+      "The DUSK comes back in the same transaction. No Sozu fee, no waiting."
     );
 
     await fireEvent.input(getByLabelText("Unstake amount"), {
