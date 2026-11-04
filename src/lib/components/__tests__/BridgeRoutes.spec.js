@@ -813,6 +813,37 @@ describe("the Bridge card's routes to and from other chains", () => {
       at({});
     });
 
+    it("takes the review's step in the history along when an account change closes it, and adds none on top", async () => {
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+
+      const { page } = await import("$app/stores");
+      const back = vi.spyOn(history, "back").mockImplementation(() => {});
+      const at = (/** @type {object} */ state) =>
+        /** @type {any} */ (page).set({ state });
+      const { findByRole } = await reviewMigration();
+
+      await findByRole("button", { name: "Migrate" });
+      at({ routeReview: true });
+      await tick();
+
+      connect({
+        address: "0x3333333333333333333333333333333333333333",
+        chainId: 1,
+      });
+      await findByRole("alert");
+      expect(back).toHaveBeenCalledOnce();
+
+      // With the marker still there, a new review uses it, stacking none.
+      mocks.pushState.mockClear();
+      await fireEvent.click(
+        await findByRole("button", { name: "Review migration" })
+      );
+
+      expect(mocks.pushState).not.toHaveBeenCalled();
+      at({});
+      back.mockRestore();
+    });
+
     it("keeps focus on the swap once the direction changes, and says which it is", async () => {
       connect({ address: EVM, chainId: 56 });
 

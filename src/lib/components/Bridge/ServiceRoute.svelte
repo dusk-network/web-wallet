@@ -177,7 +177,10 @@
     if (!isConnected) {
       modal.open(route.chain.chainId);
     } else if (primary.ready) {
-      pushState("", { routeReview: true });
+      if (!$page.state?.routeReview) {
+        pushState("", { routeReview: true });
+      }
+
       openReview();
     }
   }
@@ -234,13 +237,13 @@
               : { label: "Review bridge", ready: true };
   // A review needs the address it pays: without a wallet, back to the form.
   $: if (step === "review" && !isConnected) {
-    step = "form";
+    leaveReview();
   }
   // It pays one address: another is reviewed again.
   $: if (step === "review" && isConnected && address !== reviewedFor) {
     note =
       "Your EVM wallet switched to another account, so nothing was sent. Review again.";
-    step = "form";
+    leaveReview();
   }
 </script>
 

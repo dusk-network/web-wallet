@@ -276,7 +276,10 @@
 
   /** A step of its own in the history: a phone's Back returns to the form. */
   function goToReview() {
-    pushState("", { routeReview: true });
+    if (!$page.state?.routeReview) {
+      pushState("", { routeReview: true });
+    }
+
     review();
   }
 
@@ -317,7 +320,7 @@
       /** @type {{ code?: string }} */ (error)?.code === EVM_ACCOUNT_CHANGED
     ) {
       note = ACCOUNT_CHANGED_NOTE;
-      step = "form";
+      leaveReview();
 
       return true;
     }
@@ -450,12 +453,12 @@
   $: canType = route.running && isConnected && Boolean(balanceLux);
   // A review needs its wallet: without one, back to the form.
   $: if (step === "review" && !isConnected) {
-    step = "form";
+    leaveReview();
   }
   // It's for one account: on another, it's reviewed again.
   $: if (step === "review" && isConnected && address !== reviewedFor) {
     note = ACCOUNT_CHANGED_NOTE;
-    step = "form";
+    leaveReview();
   }
 </script>
 

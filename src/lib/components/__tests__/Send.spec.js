@@ -512,6 +512,30 @@ describe("Send", () => {
       }
     });
 
+    it("should fill in Max as this language writes decimals, so it's never taken for a thousands group", async () => {
+      const real = Number.prototype.toLocaleString;
+      const language = vi
+        .spyOn(Number.prototype, "toLocaleString")
+        .mockImplementation(
+          /** @this {number} */
+          function (.../** @type {any[]} */ args) {
+            return this.valueOf() === 0.1 ? "0,1" : real.apply(this, args);
+          }
+        );
+
+      try {
+        const { getByRole } = render(Send, baseProps);
+
+        await fireEvent.click(getByRole("button", { name: "Max" }));
+
+        expect(
+          /** @type {HTMLInputElement} */ (fieldsOf(getByRole).amount()).value
+        ).not.toContain(".");
+      } finally {
+        language.mockRestore();
+      }
+    });
+
     it("should show an amount typed over what Max filled in, with balances hidden", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
