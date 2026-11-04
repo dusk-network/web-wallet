@@ -521,6 +521,27 @@ describe("TransactionDetail", () => {
     }
   });
 
+  it("should hide the gas used with the balances, as the fee can be worked out from it", async () => {
+    const hiding = row({ gasLimit: "2500000", gasSpent: "1855255" });
+
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container } = show(hiding);
+
+      expect(techList(container)).toContain("Gas used");
+      expect(techList(container)).not.toContain("1,855,255");
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
+  });
+
+  it("should show a memo in the order it was written, whatever controls it carries", () => {
+    const { getByText } = show(row({ memo: "invoice \u202Egnp.exe\u202C" }));
+
+    expect(getByText("invoice gnp.exe")).toBeInTheDocument();
+  });
+
   it("should hide the stDUSK a stake got with the balances, here and under Technical details", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 

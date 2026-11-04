@@ -443,9 +443,15 @@ describe("Send", () => {
       expect(fields.send()).toBeEnabled();
       expect(queryByRole("alert")).toBeNull();
 
+      await fireEvent.input(fields.amount(), { target: { value: "1,000.5" } });
+
+      expect(amount()).toBe("1,000.5 DUSK");
+
+      // A lone comma before three digits could mean 1 or 1000.
       await fireEvent.input(fields.amount(), { target: { value: "1,000" } });
 
-      expect(amount()).toBe("1,000 DUSK");
+      expect(getByRole("alert")).toHaveTextContent("Enter an amount such as");
+      expect(fields.send()).toBeDisabled();
 
       await fireEvent.input(fields.amount(), {
         target: { value: "0,0000000001" },
@@ -799,6 +805,10 @@ describe("Send", () => {
 
       expect(container.querySelector(".send")).toHaveClass("send--review");
       expect(queryByRole("button", { name: "Review" })).toBeNull();
+      // The address in full, on the last it shows before it goes.
+      expect(container.querySelector(".send__summary")).toHaveTextContent(
+        shieldedAddress
+      );
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
 
@@ -1916,6 +1926,42 @@ describe("Send", () => {
       await fireEvent.input(to, { target: { value: otherAccount } });
 
       expect(queryByRole("textbox", { name: "Contact name" })).toBeNull();
+      expect(listContacts()).toStrictEqual([]);
+    });
+
+    it("should drop a contact's name half typed when the recipient changes", async () => {
+      const { findByRole, getByRole, queryByRole } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
+
+      await fireEvent.input(to, { target: { value: nameAccount } });
+      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "Mum" },
+      });
+      await fireEvent.input(to, { target: { value: otherAccount } });
+
+      expect(queryByRole("textbox", { name: "Contact name" })).toBeNull();
+
+      await fireEvent.click(
+        await findByRole("button", { name: "Save to contacts" })
+      );
+
+      expect(getByRole("textbox", { name: "Contact name" })).toHaveValue("");
+    });
+
+    it("should refuse a contact's name that passes for a .dusk name the recipient isn't", async () => {
+      const { getByRole, getByText } = render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: otherAccount },
+      });
+      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "alice.dusk" },
+      });
+
+      expect(getByText(/looks like a \.dusk name/)).toBeInTheDocument();
+      expect(getByRole("button", { name: "Save" })).toBeDisabled();
       expect(listContacts()).toStrictEqual([]);
     });
 

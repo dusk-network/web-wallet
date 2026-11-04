@@ -107,7 +107,7 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
 
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
   $: maxGasFee = gasLimit * gasPrice;
   $: maxStake =
     availableBalance > maxGasFee ? availableBalance - maxGasFee : 0n;
@@ -121,6 +121,7 @@
     amount,
     available: availableBalance,
     fee: maxGasFee,
+    hidden: hideBalances,
     locale: language,
     minimum,
     text: amountText,

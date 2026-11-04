@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 
+import { settingsStore } from "$lib/stores";
+
 import { NativeStake } from "..";
 import {
   checkAmount,
@@ -59,10 +61,11 @@ describe("normalizeDuskInput", () => {
     expect(normalizeDuskInput("1,000.5")).toBe("1000.5");
     expect(normalizeDuskInput("1,000,000")).toBe("1000000");
 
-    // A lone comma before three digits groups them, unless the language
-    // writes decimals with a comma.
-    expect(normalizeDuskInput("1,000")).toBe("1000");
+    // A lone comma before three digits is a decimal comma where the language
+    // writes decimals with one. Elsewhere it could mean either, so it's refused.
     expect(normalizeDuskInput("1,000", ",")).toBe("1.000");
+    expect(parseDuskInput(normalizeDuskInput("1,000"))).toBeNull();
+    expect(normalizeDuskInput("0,100")).toBe("0.100");
 
     // Anything else stays as typed, for the parser to refuse.
     for (const text of ["1,00,0", "1e3", "1.2.3", "abc", "1,5,"]) {
@@ -100,6 +103,13 @@ describe("checkAmount", () => {
       isMinimum: false,
       ok: true,
     });
+  });
+
+  it("doesn't let an amount give away the balance while balances are hidden", () => {
+    expect(check("1483", { hidden: true }).error).toBe(
+      "That leaves too little for the network fee."
+    );
+    expect(check("1484", { hidden: true }).error).toBe("More than you have.");
   });
 
   it("caps an amount on its own, and then only the fee is paid from the balance", () => {
@@ -141,6 +151,24 @@ describe("NativeStake", () => {
     cleanup();
     baseProps.execute.mockClear();
     vi.useRealTimers();
+  });
+
+  it("doesn't say by how much a stake is over the balance while balances are hidden", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container, getByLabelText } = render(NativeStake, baseProps);
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "1500" },
+      });
+
+      expect(
+        container.querySelector(".native-stake__error")?.textContent?.trim()
+      ).toBe("More than you have.");
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
   });
 
   it("states what native staking takes, the lock and the burn in plain words, with no consensus key nor recovery phrase", () => {

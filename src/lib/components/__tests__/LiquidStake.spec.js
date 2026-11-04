@@ -333,6 +333,29 @@ describe("LiquidStake", () => {
     expect(await rows(null)).toBe("Deposit fee Taken from the deposit");
   });
 
+  it("doesn't let an amount give away the balance while balances are hidden", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container, getByLabelText } = render(LiquidStake, baseProps);
+      const error = async (/** @type {string} */ value) => {
+        await fireEvent.input(getByLabelText("Stake amount"), {
+          target: { value },
+        });
+
+        return textOf(container.querySelector(".liquid-stake__error"));
+      };
+
+      expect(await error("172")).toBe(
+        "That leaves too little for the network fee."
+      );
+      expect(await error("999")).toBe("More than you have.");
+      expect(textOf(container)).not.toMatch(/\d DUSK more/);
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
+  });
+
   it("says when a stake is more than the public balance, with the fee", async () => {
     const { container, getByLabelText, getByRole } = render(
       LiquidStake,

@@ -318,7 +318,7 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
 
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
   $: ({ status } = sozu);
   // Sozu's switches, each on its own: no deposits while it's under
   // maintenance, or while that can't be checked, and calls that can fail
@@ -356,6 +356,7 @@
     amount,
     available: availableBalance,
     fee: maxGasFee,
+    hidden: hideBalances,
     locale: language,
     minimum: least ?? 0n,
     most: isStake

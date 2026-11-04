@@ -23,6 +23,7 @@ import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { openTestContacts } from "$lib/test-helpers";
 
 import { ContactsView } from "..";
+import ContactForm from "../ContactForm.svelte";
 
 const ACCOUNT =
   "zTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE4FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
@@ -387,5 +388,52 @@ describe("ContactsView", () => {
     await fireEvent.click(getByRole("button", { name: "Delete Savings" }));
 
     expect(getContact(savings.id)).toBeNull();
+  });
+
+  it("won't save a contact named like a .dusk name it isn't saved from", async () => {
+    const resolveName = vi.fn().mockResolvedValue({
+      account: OTHER,
+      name: "alice.dusk",
+    });
+    const { findByText, getByRole, getByText, queryByText } = render(
+      ContactForm,
+      { resolveName }
+    );
+    const save = () => getByRole("button", { name: "Save contact" });
+    /** @param {string} value */
+    const name = (value) =>
+      fireEvent.input(getByRole("textbox", { name: "Name" }), {
+        target: { value },
+      });
+
+    await fireEvent.input(
+      getByRole("textbox", { name: "Address or .dusk name" }),
+      { target: { value: OTHER } }
+    );
+
+    for (const value of [
+      "alice.dusk",
+      "ALICE.Dusk",
+      " alice.dusk ",
+      "alice.dusk.",
+    ]) {
+      await name(value);
+      expect(getByText(/looks like a \.dusk name/)).toBeInTheDocument();
+      expect(save()).toBeDisabled();
+    }
+
+    await name("Alice");
+    expect(queryByText(/looks like a \.dusk name/)).toBeNull();
+    expect(save()).toBeEnabled();
+
+    // Saved from that very name, it's what the contact is.
+    await name("alice.dusk");
+    await fireEvent.input(
+      getByRole("textbox", { name: "Address or .dusk name" }),
+      { target: { value: "alice.dusk" } }
+    );
+    await findByText(/points to a public account/);
+    expect(queryByText(/looks like a \.dusk name/)).toBeNull();
+    expect(save()).toBeEnabled();
   });
 });

@@ -216,11 +216,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Keep the balance out of Send's amount error, and the fee off a transaction's page, while balances are hidden
+- Keep the balance out of Send's and staking's amount errors and History's row labels, and the fee and gas used off a transaction's page, while balances are hidden
 - Announce a wrong password to screen readers
 - Say "No Sozu fee" where a network fee still applies
 - Say contacts are saved in this wallet, not just on this device
 - Refuse a mistyped account at Send's To field and in Contacts
+- Refuse a contact name that looks like a .dusk name it isn't saved from
+- Refuse 1,000 as an amount where it could mean 1 or 1000
+- Show the full address on a phone's Review
+- Drop a half-typed contact name when the recipient changes
+- Show a memo's text in the order it was written
+- Copy a transaction ID from search with Shift+Enter
 - Say when a memo is over the network's limit, under the field
 - Offer a typed contact's name before any `.dusk` name
 - Drop Send's recipient at once when another `.dusk` name replaces a resolved one

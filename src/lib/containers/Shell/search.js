@@ -216,6 +216,7 @@ export function searchLocally(
           label: title,
           labelIsCode: titleIsAddress,
           sub: row.fnName || undefined,
+          value: row.hash,
         };
       })
   );

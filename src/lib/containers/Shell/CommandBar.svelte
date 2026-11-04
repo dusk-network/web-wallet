@@ -156,7 +156,7 @@
 
   /**
    * Opens a result: its page, or Send for a person. With Shift, a result
-   * that has an address copies it instead.
+   * that has an address or an ID copies it instead.
    *
    * @param {import("./search").SearchResult} result
    * @param {{ copyOnly?: boolean }} [options]
@@ -269,6 +269,7 @@
               href: duskExplorerTx(hash),
               id: `lookup:${hash}`,
               label: `View ${shortAddress(hash)} in Dusk explorer`,
+              value: hash,
             }),
           ],
         }

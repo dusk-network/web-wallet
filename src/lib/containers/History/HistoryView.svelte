@@ -16,6 +16,7 @@
     timeLabel,
     toCsv,
   } from "$lib/activity/present";
+  import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import walletAccountNames from "$lib/wallets/accountNames";
 
@@ -266,7 +267,9 @@
                     aria-label={[
                       p.title,
                       p.line,
-                      `${p.amount.sign}${p.amount.text} DUSK`,
+                      $settingsStore.hideBalances
+                        ? "amount hidden"
+                        : `${p.amount.sign}${p.amount.text} DUSK`,
                       time === null ? "" : fullDateTime(time, locale),
                       p.privacy,
                     ]

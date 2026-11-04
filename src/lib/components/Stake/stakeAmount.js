@@ -40,8 +40,9 @@ export function parseDuskInput(text) {
  * as a phone's keyboard or the language gives it, made a point, and digit
  * grouping left out where it can't be decimals. "1,5" is 1.5, "1.000,5" and
  * "1,000.5" are 1000.5, and "1,000,000" is a million. A lone comma before
- * three digits groups them, unless the language writes decimals with a
- * comma. Anything else stays as typed.
+ * three digits is a decimal comma if the language writes decimals with one.
+ * Otherwise it could mean either, so it stays as typed, as anything else
+ * does, for the parser to refuse.
  *
  * @param {string} text
  * @param {string} [decimalSeparator] The language's: "." or ","
@@ -64,10 +65,10 @@ export function normalizeDuskInput(text, decimalSeparator = ".") {
   }
 
   if (/^\d*,\d*$/.test(value)) {
-    const isGrouping =
+    const isEither =
       decimalSeparator !== "," && /^[1-9]\d{0,2},\d{3}$/.test(value);
 
-    return isGrouping ? value.replace(",", "") : value.replace(",", ".");
+    return isEither ? value : value.replace(",", ".");
   }
 
   return value;
@@ -118,6 +119,7 @@ function exampleError(minimum, locale) {
  *   amount: bigint | null,
  *   available: bigint,
  *   fee: bigint,
+ *   hidden?: boolean,
  *   locale: string,
  *   minimum?: bigint,
  *   most?: { amount: bigint, error: string },
@@ -139,6 +141,7 @@ export function checkAmount({
   amount,
   available,
   fee,
+  hidden = false,
   locale,
   minimum = 0n,
   most,
@@ -171,6 +174,15 @@ export function checkAmount({
   }
 
   const needed = (most ? 0n : amount) + fee;
+
+  // With balances hidden, these don't say what's held.
+  if (needed > available && hidden && !most) {
+    return fail(
+      amount > available
+        ? "More than you have."
+        : "That leaves too little for the network fee."
+    );
+  }
 
   if (needed > available) {
     return fail(
