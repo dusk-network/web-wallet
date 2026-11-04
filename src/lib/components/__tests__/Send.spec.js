@@ -513,24 +513,25 @@ describe("Send", () => {
     });
 
     it("should fill in Max as this language writes decimals, so it's never taken for a thousands group", async () => {
-      const real = Number.prototype.toLocaleString;
       const language = vi
-        .spyOn(Number.prototype, "toLocaleString")
-        .mockImplementation(
-          /** @this {number} */
-          function (.../** @type {any[]} */ args) {
-            return this.valueOf() === 0.1 ? "0,1" : real.apply(this, args);
-          }
-        );
+        .spyOn(window.navigator, "language", "get")
+        .mockReturnValue("nl-NL");
 
       try {
-        const { getByRole } = render(Send, baseProps);
+        const { getByRole, getByText } = render(Send, baseProps);
 
         await fireEvent.click(getByRole("button", { name: "Max" }));
 
         expect(
           /** @type {HTMLInputElement} */ (fieldsOf(getByRole).amount()).value
         ).not.toContain(".");
+
+        // Nor does what it asks for instead write them another way.
+        await fireEvent.input(fieldsOf(getByRole).amount(), {
+          target: { value: "1.001" },
+        });
+
+        expect(getByText("Enter an amount such as 10 or 10,5.")).toBeTruthy();
       } finally {
         language.mockRestore();
       }

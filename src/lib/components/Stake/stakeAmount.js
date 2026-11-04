@@ -3,6 +3,7 @@
  * are typed, in the words the pages show.
  */
 
+import { normalizeAmount, parseDusk } from "@dusk-network/app-core/amounts";
 import { leastSozuStake } from "@dusk-network/networks/sozu";
 
 import { formatDusk, formatFee } from "$lib/dusk/currency/formatDusk";
@@ -26,69 +27,18 @@ export const hasTooManyDecimals = (text) =>
  * @param {string} text
  * @returns {bigint | null}
  */
-export function parseDuskInput(text) {
-  const value = text.trim();
-
-  if (!/^(\d+(\.\d*)?|\.\d+)$/.test(value)) {
-    return null;
-  }
-
-  const [whole, fraction = ""] = value.split(".");
-
-  if (fraction.length > LUX_DECIMALS) {
-    return null;
-  }
-
-  return (
-    BigInt(whole || "0") * 10n ** BigInt(LUX_DECIMALS) +
-    BigInt(fraction.padEnd(LUX_DECIMALS, "0"))
-  );
-}
+export const parseDuskInput = (text) => parseDusk(text);
 
 /**
- * An amount as typed, in the form parseDuskInput reads: a decimal comma,
- * as a phone's keyboard or the language gives it, made a point, and digit
- * grouping left out where it can't be decimals. "1,5" is 1.5, "1.000,5" and
- * "1,000.5" are 1000.5, and "1,000,000" is a million. A lone comma before
- * three digits is a decimal comma if the language writes decimals with one.
- * Otherwise it could mean either, so it stays as typed, as anything else
- * does, for the parser to refuse.
+ * An amount as typed, in the form parseDuskInput reads. What could mean
+ * either of two amounts stays as typed, for the parser to refuse.
  *
  * @param {string} text
  * @param {string} [decimalSeparator] The language's: "." or ","
  * @returns {string}
  */
-export function normalizeDuskInput(text, decimalSeparator = ".") {
-  const value = text.trim();
-
-  // Groups of three after a first group that doesn't start with a zero.
-  if (/^[1-9]\d{0,2}(,\d{3})+\.\d*$/.test(value)) {
-    return value.replaceAll(",", "");
-  }
-
-  if (/^[1-9]\d{0,2}(\.\d{3})+,\d*$/.test(value)) {
-    return value.replaceAll(".", "").replace(",", ".");
-  }
-
-  if (/^[1-9]\d{0,2}(,\d{3}){2,}$/.test(value)) {
-    return value.replaceAll(",", "");
-  }
-
-  // A point before three digits, where the language groups with one, could
-  // mean a thousand as well as one: refused, as a comma is below.
-  if (decimalSeparator === "," && /^[1-9]\d{0,2}\.\d{3}$/.test(value)) {
-    return value.replace(".", ",");
-  }
-
-  if (/^\d*,\d*$/.test(value)) {
-    const isEither =
-      decimalSeparator !== "," && /^[1-9]\d{0,2},\d{3}$/.test(value);
-
-    return isEither ? value : value.replace(",", ".");
-  }
-
-  return value;
-}
+export const normalizeDuskInput = (text, decimalSeparator = ".") =>
+  normalizeAmount(text, decimalSeparator);
 
 /**
  * The least an unstake from Sozu can be: what burns at least 1 lux of

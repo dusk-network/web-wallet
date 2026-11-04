@@ -1,5 +1,5 @@
 /**
- * DUSK as the wallet shows it, as `@dusk-network/networks/format` writes
+ * DUSK as the wallet shows it, as `@dusk-network/app-core/amounts` writes
  * it for every Dusk app: at most four decimals, but two significant digits
  * under 0.01, without trailing zeros and with the thousands grouped in the
  * language's way; an amount under review shows every decimal it has.
@@ -14,7 +14,7 @@
 import {
   formatDusk as format,
   formatDuskPlain as plain,
-} from "@dusk-network/networks/format";
+} from "@dusk-network/app-core/amounts";
 
 /** Decimals an amount shows, from 0.01 DUSK. */
 export const DUSK_DISPLAY_DECIMALS = 4;

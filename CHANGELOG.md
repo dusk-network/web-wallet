@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Read `1.000.000` as a million on browsers that write decimals with a comma
+- Fix Max on browsers whose language writes its own digits
+- Write Send's amount example in the browser's language
+
 ## [1.9.0] - 2026-11-05
 
 ### Added

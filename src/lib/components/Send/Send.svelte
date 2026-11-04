@@ -285,7 +285,7 @@
     if (amount === null) {
       return /^\d*\.\d{10,}$/.test(typed)
         ? "DUSK has 9 decimals at most."
-        : "Enter an amount such as 10 or 10.5.";
+        : `Enter an amount such as 10 or 10${getDecimalSeparator()}5.`;
     }
 
     if (amount === 0n) {
