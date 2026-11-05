@@ -400,7 +400,7 @@
   }
 
   /* Phones: Max takes a tap 44 px tall, its pill and its row as they are. */
-  @media (max-width: 47.99rem) {
+  @media (max-width: 47.99rem), (pointer: coarse) {
     .swap-card :global(.swap-mini) {
       box-sizing: border-box;
       min-height: 44px;

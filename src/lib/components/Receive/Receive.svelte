@@ -248,7 +248,7 @@
     }
 
     /* On phones, taps of at least 44 px. */
-    @media (max-width: 30rem) {
+    @media (max-width: 30rem), (pointer: coarse) {
       :global(&__icon-button) {
         width: 44px;
         height: 44px;

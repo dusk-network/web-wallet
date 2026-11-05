@@ -158,7 +158,7 @@
   }
 
   /* Phones: the eye takes a tap 44 px across, where it is, over the total. */
-  @media (max-width: 47.99rem) {
+  @media (max-width: 47.99rem), (pointer: coarse) {
     .home-balance__toggle {
       position: relative;
       z-index: 1;

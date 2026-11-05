@@ -30,10 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bring back what was typed in a form with the browser's Back after leaving it for another page
 - Close the profile menu on any navigation, and only close it on a tap outside
 - Say "Sending…" and what's sent in one tense on an unstake from Sozu, and clear Pending and refresh the balances as a transaction is final
-- Keep thumb-sized targets and a shorter header on a phone held sideways, and tidy what's left of the phone: Bridge reviews write addresses as Send does, and Copy and Save to contacts are one size
+- Keep thumb-sized targets and a shorter header on a phone held sideways, and give the network pill and Send's contacts a thumb's height too
+- Write addresses on Bridge reviews as Send does, and size Copy and Save to contacts alike
 - Show the fee's Edit with the form on a phone when the fee is what's short, and let Staking through to it
 - Warn on a contact's name in use, and on the wallet's own address
-- Refuse the password you have as the new one
+- Refuse the password you have as the new one, and show Password changed for 5 seconds
+- Show a message on the screen wherever the page is scrolled, without taking a tap from what's under it
 - Show the address in full on Receive, with a button that says Copy address, then Copied
 - Make the recovery words larger, and leave the balance bar empty at 0
 - Say a name's limit once it's reached

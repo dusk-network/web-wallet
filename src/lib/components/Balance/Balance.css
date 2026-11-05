@@ -56,7 +56,7 @@
 }
 
 /* On phones, a tap of 44 px around the eye, which doesn't move it. */
-@media (max-width: 30rem) {
+@media (max-width: 30rem), (pointer: coarse) {
   .dusk-balance__toggle {
     position: relative;
   }

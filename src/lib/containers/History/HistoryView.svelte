@@ -729,4 +729,10 @@
       height: 2.75rem;
     }
   }
+
+  @media (pointer: coarse) {
+    .history__kind {
+      height: 2.75rem;
+    }
+  }
 </style>

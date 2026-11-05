@@ -5,20 +5,28 @@ import styleRules from "$lib/dusk/test-helpers/styleRules";
 /** A phone's widths, as the wallet's phone layout takes them. */
 const PHONES = "(max-width: 47.99rem)";
 
+/** Those, and a phone held sideways, which has a desktop's width. */
+const THUMBS = `${PHONES}, (pointer: coarse)`;
+
 /**
  * @param {string} file
  * @param {string} selector
+ * @param {string} [media]
  */
-const onPhones = (file, selector) =>
+const onPhones = (file, selector, media = PHONES) =>
   styleRules(file, import.meta.url).find(
     (rule) =>
-      rule.media === PHONES && rule.selector.replace(/\s+/g, " ") === selector
+      rule.media === media && rule.selector.replace(/\s+/g, " ") === selector
   )?.declarations;
 
 describe("tap areas on phones", () => {
   it("gives the Bridge card's Max 44 px, keeping its pill and its row as they are", () => {
     expect(
-      onPhones("../SwapCard/SwapCard.svelte", ".swap-card :global(.swap-mini)")
+      onPhones(
+        "../SwapCard/SwapCard.svelte",
+        ".swap-card :global(.swap-mini)",
+        THUMBS
+      )
     ).toStrictEqual({
       "background-clip": "padding-box",
       "border-block": "8px solid transparent",
@@ -32,7 +40,8 @@ describe("tap areas on phones", () => {
     expect(
       onPhones(
         "../../containers/Home/HomeBalance.svelte",
-        ".home-balance__toggle"
+        ".home-balance__toggle",
+        THUMBS
       )
     ).toStrictEqual({
       height: "44px",
@@ -73,5 +82,36 @@ describe("tap areas on phones", () => {
         ({ media }) => media === "(pointer: coarse)"
       )?.declarations
     ).toStrictEqual({ "min-height": "44px", "min-width": "44px" });
+  });
+
+  it.each([
+    ["../Send/Send.svelte", ".send__contacts", "min-height"],
+    [
+      "../../containers/Shell/NetworkPill.svelte",
+      ".network-pill__button",
+      "height",
+    ],
+    [
+      "../../containers/Home/ActivityPanel.svelte",
+      ".activity-panel__filter",
+      "height",
+    ],
+  ])(
+    "gives %s's %s its 44 px by thumb, however it's held",
+    (file, selector, side) => {
+      const size = onPhones(file, selector, THUMBS)?.[side];
+
+      expect(size === "44px" || size === "2.75rem").toBe(true);
+    }
+  );
+
+  it("keeps History's kinds at a thumb's height, held sideways too", () => {
+    expect(
+      onPhones(
+        "../../containers/History/HistoryView.svelte",
+        ".history__kind",
+        "(pointer: coarse)"
+      )
+    ).toStrictEqual({ height: "2.75rem" });
   });
 });

@@ -1866,6 +1866,12 @@
     font-size: 0.875rem;
   }
 
+  @media (max-width: 47.99rem), (pointer: coarse) {
+    .send__contacts {
+      min-height: 44px;
+    }
+  }
+
   .send__card {
     display: flex;
     flex-direction: column;
