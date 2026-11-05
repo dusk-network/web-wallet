@@ -70,6 +70,7 @@ type NetworkStoreServices = {
   getLatestBlock: () => Promise<{ height: bigint; timestamp: bigint }>;
   getLastFinalizedBlockHeight: () => Promise<bigint>;
   init: () => Promise<void>;
+  reconnect: () => Promise<Network>;
   registerDataDriver: (id: string, driver: any) => Promise<DataDriverRegistry>;
 };
 

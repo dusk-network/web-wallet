@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Stop "Connecting to the network…" spinning without end when the node doesn't answer: say so after five seconds, offer Try again, and report it after ten
+- Open a new connection on Try again, instead of waiting for the one that didn't answer
+- Take half the time to connect on a first visit
+- Offer Try again when the wallet's own files fail to load
 - Read `1.000.000` as a million on browsers that write decimals with a comma
 - Fix Max on browsers whose language writes its own digits
 - Write Send's amount example in the browser's language

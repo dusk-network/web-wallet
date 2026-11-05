@@ -7,7 +7,6 @@ import {
   useAsProtocolDriver,
 } from "@dusk/w3sper";
 
-import { rejectAfter } from "$lib/dusk/promise";
 import SendingNetwork from "$lib/transactions/SendingNetwork";
 
 import { setNodeNetwork } from "./nodeNetwork";
@@ -32,10 +31,21 @@ const networkUrl = getNetworkUrl();
 /**
  * The node's network, which marks what a send ran into once its
  * transaction may have gone out (SendingNetwork).
- *
- * @type {import("@dusk/w3sper").Network}
  */
 const network = new SendingNetwork(networkUrl);
+
+/** How long connecting, or the node's saying what it is, can take. */
+const CONNECT_TIMEOUT = 10_000;
+
+/** How long the node gets to say what it is before it's asked again. */
+const ASK_AGAIN_AFTER = 3000;
+
+/**
+ * The attempt to connect under way, which whoever needs the network shares.
+ *
+ * @type {{ promise: Promise<any>, stop: (reason: Error) => void } | null}
+ */
+let attempt = null;
 
 /**
  * Where this browser keeps the name of the network the node gave last, for
@@ -77,23 +87,78 @@ const checkBlock = (height, hash) =>
     .then(() => network.query(`checkBlock(height: ${height}, hash: "${hash}")`))
     .then(({ checkBlock: result }) => result);
 
+/**
+ * Starts an attempt to connect: wallet core first, as w3sper would otherwise
+ * ask the node for it, then the socket. One that fails leaves nothing behind
+ * for the next one to wait for.
+ */
+function startConnecting() {
+  /** @type {PromiseWithResolvers<never>} */
+  const { promise: stopped, reject: stop } = Promise.withResolvers();
+  const timer = setTimeout(
+    () => stop(new Error("Timed out while connecting to the network")),
+    CONNECT_TIMEOUT
+  );
+  let isOver = false;
+
+  const promise = Promise.race([
+    fetch(wasmPath)
+      .then((response) => {
+        // What isn't the wallet core would stay loaded as if it were.
+        if (!response.ok) {
+          throw new Error("The wallet core couldn't be loaded");
+        }
+
+        return response.arrayBuffer();
+      })
+      .then((buffer) => {
+        if (isOver) {
+          return network;
+        }
+
+        useAsProtocolDriver(new Uint8Array(buffer));
+
+        return network.connect();
+      }),
+    stopped,
+  ])
+    .catch(async (error) => {
+      isOver = true;
+
+      await network.abandon();
+
+      throw error;
+    })
+    .finally(() => {
+      clearTimeout(timer);
+      attempt = null;
+    });
+
+  attempt = { promise, stop };
+
+  return promise;
+}
+
 /** @type {NetworkStoreServices["connect"]} */
 const connect = async () =>
-  network.connected
-    ? network
-    : Promise.race([
-        fetch(wasmPath)
-          .then((response) => response.arrayBuffer())
-          .then((buffer) => {
-            useAsProtocolDriver(new Uint8Array(buffer));
+  attempt ? attempt.promise : network.connected ? network : startConnecting();
 
-            return network.connect();
-          }),
-        rejectAfter(
-          10000,
-          new Error("Timed out while connecting to the network")
-        ),
-      ]);
+/**
+ * Connects anew, not waiting any longer for the attempt under way, if any.
+ *
+ * @type {NetworkStoreServices["reconnect"]}
+ */
+const reconnect = async () => {
+  if (attempt) {
+    const { promise, stop } = attempt;
+
+    stop(new Error("Stopped to try again"));
+
+    await promise.catch(() => {});
+  }
+
+  return connect();
+};
 
 /** @type {NetworkStoreServices["disconnect"]} */
 const disconnect = () => network.disconnect();
@@ -146,13 +211,38 @@ const getLastFinalizedBlockHeight = () =>
     .then((height) => (height === undefined ? 0n : BigInt(height)));
 
 /**
+ * What the node says it is, needing no socket. A request that gets no answer
+ * doesn't hold everything up: it's asked again meanwhile, and after the time
+ * connecting has, there's no answer.
+ *
+ * @returns {Promise<any>}
+ */
+function readNodeInfo() {
+  /** @type {PromiseWithResolvers<any>} */
+  const { promise, reject, resolve } = Promise.withResolvers();
+  const ask = () => Promise.resolve(network.node.info).then(resolve, reject);
+  const asking = setInterval(ask, ASK_AGAIN_AFTER);
+  const timer = setTimeout(
+    () => reject(new Error("Timed out while connecting to the network")),
+    CONNECT_TIMEOUT
+  );
+
+  ask();
+
+  return promise.finally(() => {
+    clearInterval(asking);
+    clearTimeout(timer);
+  });
+}
+
+/**
  * Names the network by the chain ID its node gives, never by its address:
  * a custom node of a network gets that network's contracts and routes.
  *
  * @type {NetworkStoreServices["init"]}
  */
 async function init() {
-  const info = await network.node.info;
+  const info = await readNodeInfo();
   const chainId = Number(info.chainId);
   const net = networkFor(chainId);
   const networkName = info.chain.toString();
@@ -189,6 +279,7 @@ export default {
   getLastFinalizedBlockHeight,
   getLatestBlock,
   init,
+  reconnect,
   registerDataDriver,
   subscribe,
 };
