@@ -266,9 +266,12 @@ describe("Send", () => {
       const { getByRole, queryByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
 
-      await fireEvent.input(fields.to(), {
-        target: { value: invalidAddress.slice(0, 20) },
-      });
+      // A key at a time.
+      for (const end of [1, 2, 3, 4, 5]) {
+        await fireEvent.input(fields.to(), {
+          target: { value: invalidAddress.slice(0, end) },
+        });
+      }
 
       expect(queryByText("Not a valid address.")).toBeNull();
       expect(fields.to()).toHaveAttribute("aria-invalid", "false");
@@ -391,6 +394,79 @@ describe("Send", () => {
       expect(getAsHTMLElement(container, ".send__card")).toHaveTextContent(
         "A public account"
       );
+    });
+  });
+
+  describe("What the recipient field says", () => {
+    it("names an EVM address, and turns nothing red without saying why", async () => {
+      const { getByRole, getByText, queryByRole } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
+
+      // Typed, it's on its way to being something.
+      await fireEvent.input(to, { target: { value: "0" } });
+
+      expect(to).not.toHaveClass("send__to-input--invalid");
+      expect(queryByRole("alert")).toBeNull();
+
+      // All of it at once, as a paste is, however the keyboard does it.
+      await fireEvent.input(to, {
+        target: { value: `0x${"ab".repeat(20)}` },
+      });
+
+      expect(getByText("That's an EVM address.")).toBeInTheDocument();
+      expect(to).toHaveClass("send__to-input--invalid");
+
+      await fireEvent.input(to, { target: { value: "not-an-address!" } });
+
+      expect(getByText("Not a valid address.")).toBeInTheDocument();
+      expect(to).toHaveClass("send__to-input--invalid");
+    });
+
+    it("offers contacts one way at a time: links for what's typed, or the list", async () => {
+      const contact = saveContact({
+        address: otherAccount,
+        name: "Estudio Marta",
+      });
+
+      try {
+        const { getByRole, queryByRole } = render(Send, baseProps);
+        const to = fieldsOf(getByRole).to();
+
+        expect(
+          queryByRole("combobox", { name: "Send to a contact" })
+        ).toBeInTheDocument();
+
+        await fireEvent.input(to, { target: { value: "estu" } });
+
+        expect(
+          getByRole("button", { name: /^Your contact Estudio Marta/ })
+        ).toBeInTheDocument();
+        expect(
+          queryByRole("combobox", { name: "Send to a contact" })
+        ).toBeNull();
+        expect(to).not.toHaveClass("send__to-input--invalid");
+      } finally {
+        removeContact(contact.id);
+      }
+    });
+
+    it("calls a profile with a name by its name, and one without 'your' profile", async () => {
+      const ownAccount = otherAccount;
+      /** @param {string} label */
+      const card = async (label) => {
+        const { container } = render(Send, {
+          ...baseProps,
+          initialRecipient: ownAccount,
+          ownAccounts: [{ address: ownAccount, label }],
+        });
+        const title = container.querySelector(".send__card-title");
+
+        return title?.textContent?.trim();
+      };
+
+      expect(await card("Estudio Sofía, S.L.")).toBe("Estudio Sofía, S.L.");
+      cleanup();
+      expect(await card("Profile 2")).toBe("Your Profile 2");
     });
   });
 
@@ -710,6 +786,59 @@ describe("Send", () => {
           `More than your ${formatDuskExact(baseProps.availableBalance, "en")} DUSK.`
         )
       ).toBeInTheDocument();
+    });
+
+    it("should say in characters how much of a memo has to go, and how much room is left near the limit", async () => {
+      const { findByText, getByRole, queryByText } = render(Send, {
+        ...baseProps,
+        initialRecipient: shieldedAddress,
+      });
+      const fields = fieldsOf(getByRole);
+      const memo = (/** @type {string} */ value) =>
+        fireEvent.input(fields.memo(), { target: { value } });
+
+      await memo("x".repeat(400));
+
+      expect(queryByText(/more character/)).toBeNull();
+
+      await memo("x".repeat(500));
+
+      expect(await findByText(/Room for 12 more characters\./)).toBeTruthy();
+
+      await memo("x".repeat(511));
+
+      expect(await findByText(/Room for 1 more character\./)).toBeTruthy();
+
+      await memo("x".repeat(515));
+
+      expect(await findByText(/Take out 3 characters\./)).toBeTruthy();
+
+      // What goes is characters, however many bytes each takes: 171 of these
+      // are 513 bytes, and one less fits.
+      await memo("€".repeat(171));
+
+      expect(await findByText(/Take out 1 character\./)).toBeTruthy();
+      expect(queryByText(/bytes/)).toBeNull();
+    });
+
+    it("should show a memo's hidden characters as codes on its review, and send it as it was typed", async () => {
+      const { container, getByRole, getByText } = render(Send, {
+        ...baseProps,
+        initialRecipient: shieldedAddress,
+      });
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.amount(), { target: { value: "1" } });
+      await fireEvent.input(fields.memo(), {
+        target: { value: "pay \u202E0001\u202C" },
+      });
+
+      expect(container.querySelector(".send__summary-memo")).toHaveTextContent(
+        "pay \\u202e0001\\u202c"
+      );
+      expect(
+        getByText("It has hidden characters, shown here as codes.")
+      ).toBeTruthy();
     });
 
     it("should say when a memo is over the network's limit, counting bytes, and keep Send off", async () => {

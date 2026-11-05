@@ -18,6 +18,7 @@ export { default as GasControls } from "./GasControls/GasControls.svelte";
 export { default as GasFee } from "./GasFee/GasFee.svelte";
 export { default as GasSettings } from "./GasSettings/GasSettings.svelte";
 export { default as LiquidStake } from "./Stake/LiquidStake.svelte";
+export { default as MemoText } from "./MemoText/MemoText.svelte";
 export { default as MnemonicInput } from "./MnemonicInput/MnemonicInput.svelte";
 export { default as NativeStake } from "./Stake/NativeStake.svelte";
 export { default as OperationResult } from "./OperationResult/OperationResult.svelte";

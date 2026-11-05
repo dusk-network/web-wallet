@@ -536,10 +536,24 @@ describe("TransactionDetail", () => {
     }
   });
 
-  it("should show a memo in the order it was written, whatever controls it carries", () => {
-    const { getByText } = show(row({ memo: "invoice \u202Egnp.exe\u202C" }));
+  it("should show a memo in the order it was written, its hidden characters as codes, and say so", () => {
+    const { getByText, queryByText } = show(
+      row({ memo: "invoice \u202Egnp.exe\u202C" })
+    );
 
-    expect(getByText("invoice gnp.exe")).toBeInTheDocument();
+    expect(getByText("invoice \\u202egnp.exe\\u202c")).toBeInTheDocument();
+    expect(
+      getByText("It has hidden characters, shown here as codes.")
+    ).toBeInTheDocument();
+
+    cleanup();
+
+    show(row({ memo: "Factura 33, abril" }));
+
+    expect(getByText("Factura 33, abril")).toBeInTheDocument();
+    expect(
+      queryByText("It has hidden characters, shown here as codes.")
+    ).toBeNull();
   });
 
   it("should hide the stDUSK a stake got with the balances, here and under Technical details", async () => {

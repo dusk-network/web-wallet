@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Close a transaction, a contact or the search with phone Back, staying on the page, and leave the password screen out of Back once the wallet is open
 - Bring back what was typed in a form with the browser's Back after leaving it for another page
 - Close the profile menu on any navigation, and only close it on a tap outside
+- Show a memo's hidden characters as codes, and say so, on Send's review, the Sent screen and in History, so that text can't read as something it isn't
+- Keep Send inside a phone's screen with a long contact name, and Review in reach
+- Name an EVM address on Send, and say what's wrong with an address as soon as it's pasted: no red text without a reason
+- Offer contacts on Send one way at a time, and say how long a memo can be in characters
 - Read `1 000` as a thousand where the language writes it so, in every amount field, in the language the wallet writes amounts in
 - Say why an amount can't be read: which two amounts `1.000` could be, or that DUSK has 9 decimals
 - Say "More than your 0 DUSK" on Send with no coins, not to lower the gas limit

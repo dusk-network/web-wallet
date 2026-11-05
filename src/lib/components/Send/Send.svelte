@@ -60,6 +60,7 @@
     Banner,
     FullAddress,
     GasSettings,
+    MemoText,
     ScanQR,
     SectionHead,
     TransactionResult,
@@ -387,6 +388,25 @@
       /** @type {HTMLInputElement} */ (event.currentTarget).value
     );
     isMaxAmount = false;
+  }
+
+  /** How long the recipient typed was, to tell a paste from a key. */
+  let typedLength = 0;
+
+  /**
+   * Much more at once than a key gives is a paste, however a phone's keyboard
+   * does it: what's wrong with it is said at once.
+   *
+   * @param {Event} event
+   */
+  function handleRecipientInput({ target }) {
+    const { length } = /** @type {HTMLInputElement} */ (target).value;
+
+    if (length - typedLength > 1) {
+      isRecipientChecked = true;
+    }
+
+    typedLength = length;
   }
 
   /**
@@ -780,8 +800,40 @@
   // What the network takes.
   const MAX_MEMO_BYTES = 512;
 
-  $: isMemoTooLong =
-    new TextEncoder().encode(transactionMemo).length > MAX_MEMO_BYTES;
+  /** @param {string} text */
+  const bytesOf = (text) => new TextEncoder().encode(text).length;
+
+  /**
+   * How many characters of a memo over the limit have to go.
+   *
+   * @param {string} text
+   */
+  function charactersOver(text) {
+    const characters = Array.from(text);
+    let bytes = bytesOf(text);
+    let over = 0;
+
+    while (bytes > MAX_MEMO_BYTES) {
+      over += 1;
+      bytes -= bytesOf(characters[characters.length - over]);
+    }
+
+    return over;
+  }
+
+  /**
+   * An error that appears under the sticky Review stays in view, all of it.
+   *
+   * @param {HTMLElement} element
+   */
+  const staysInView = (element) => {
+    element.scrollIntoView?.({ block: "nearest" });
+  };
+
+  $: memoBytes = bytesOf(transactionMemo);
+  $: isMemoTooLong = memoBytes > MAX_MEMO_BYTES;
+  // Said in characters, once there aren't many left.
+  $: memoRoom = MAX_MEMO_BYTES - memoBytes;
 
   $: isAmountReady =
     isSendAmountValid &&
@@ -907,13 +959,17 @@
       ? `${contact.name} (${shownName})`
       : contact.name
     : own && !recipientName
-      ? `your ${own.label}`
+      ? ownLabel.replace(/^Your/, "your")
       : recipientName
         ? shownName
         : walletAccount || shortenAddress(recipientAddress);
   $: own = ownAccounts.find(
     (account) => recipientAddress && account.address === recipientAddress
   );
+  // "Your Profile 2", where it goes by its number; a name stands on its own.
+  $: ownLabel = /^Profile \d/.test(own?.label ?? "")
+    ? `Your ${own?.label}`
+    : (own?.label ?? "");
   // A profile of a wallet kept here, as the From line names its own: on the
   // card, the To line and the Done screen, after a contact or a `.dusk` name
   // entered.
@@ -1000,7 +1056,7 @@
     "send__to-input--blocked": isRecipientBlocklisted,
     "send__to-input--invalid": recipientName
       ? nameLookup?.error
-      : sendToAddress && !addressInfo.isValid && !bareName,
+      : isRecipientInvalid,
   });
 
   // A name as the lookup gives it, once it has: in its canonical form.
@@ -1047,6 +1103,7 @@
             on:blur={() => {
               isRecipientChecked = true;
             }}
+            on:input={handleRecipientInput}
             on:keydown={handleRecipientKeyDown}
             on:paste={() => {
               isRecipientChecked = true;
@@ -1075,7 +1132,8 @@
           {/if}
         </div>
 
-        {#if contacts.length}
+        <!-- While what's typed names contacts, they're offered as links. -->
+        {#if contacts.length && !namedContacts.length}
           <select
             aria-label="Send to a contact"
             class="send__contacts"
@@ -1106,7 +1164,12 @@
 
         {#if isRecipientInvalid}
           <p class="send__error" id={invalidRecipientId} role="alert">
-            <strong>Not a valid address.</strong> Check it, or paste it again.
+            {#if isValidEvmAddress(sendToAddress)}
+              <strong>That's an EVM address.</strong> To send to an EVM wallet, use
+              the Bridge.
+            {:else}
+              <strong>Not a valid address.</strong> Check it, or paste it again.
+            {/if}
           </p>
         {:else if namedContacts.length}
           {#each namedContacts as named (named.id)}
@@ -1212,7 +1275,7 @@
               {#if contact}
                 {contact.name}{recipientName ? ` · ${shownName}` : ""}
               {:else if own && !recipientName}
-                Your {own.label}
+                {ownLabel}
               {:else if recipientName}
                 {shownName} points to {isChoice
                   ? "two addresses"
@@ -1449,9 +1512,12 @@
           type="multiline"
         />
         {#if isMemoTooLong}
-          <p class="send__error" role="alert">
+          <p class="send__error send__memo-error" role="alert" use:staysInView>
             <strong>That memo is too long.</strong>
-            {MAX_MEMO_BYTES} bytes at most.
+            Take out {charactersOver(transactionMemo)}
+            {charactersOver(transactionMemo) === 1
+              ? "character"
+              : "characters"}.
           </p>
         {:else if isMemoValid === false}
           <p class="send__error" role="alert">
@@ -1465,6 +1531,10 @@
         {:else}
           <p class="send__hint">
             Visible on chain, for good: don't put personal details in it.
+            {#if memoRoom <= 100}
+              Room for {memoRoom} more
+              {memoRoom === 1 ? "character" : "characters"}.
+            {/if}
           </p>
         {/if}
       </div>
@@ -1523,7 +1593,9 @@
         {#if transactionMemo}
           <div>
             <dt>Memo</dt>
-            <dd class="send__summary-memo">{transactionMemo}</dd>
+            <dd class="send__summary-memo">
+              <MemoText text={transactionMemo} />
+            </dd>
           </div>
         {/if}
       </dl>
@@ -1723,8 +1795,12 @@
   }
 
   /* Compact, with a field's edge and surface. */
+  /* However long a contact's name, the box stays on the screen: the phone's
+    own list shows each name in full. */
   .send__contacts {
     align-self: flex-start;
+    min-width: 0;
+    max-width: 100%;
     min-height: 2.25rem;
     padding: 0 0.75rem;
     border: 1px solid var(--calm-field-edge);
@@ -1745,6 +1821,7 @@
   }
 
   .send__card-title {
+    overflow-wrap: anywhere;
     font-weight: 500;
     overflow-wrap: anywhere;
   }
@@ -1976,8 +2053,14 @@
     font-size: 0.75rem;
   }
 
-  .send__summary-memo {
-    overflow-wrap: anywhere;
+  /* Lines of text someone reads: from the left, as any text. */
+  .send__rows dd.send__summary-memo {
+    align-items: stretch;
+    text-align: left;
+  }
+
+  .send__memo-error {
+    scroll-margin-block-end: 6rem;
   }
 
   .send__muted {

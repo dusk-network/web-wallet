@@ -16,7 +16,7 @@
     Icon,
     Textbox,
   } from "$lib/dusk/components";
-  import { BalanceValue, SectionHead } from "$lib/components";
+  import { BalanceValue, MemoText, SectionHead } from "$lib/components";
   import { fetchTxNonce } from "@dusk-network/app-core/history";
   import { archiveAt } from "$lib/activity/activityHistory";
   import { claimText } from "@dusk-network/networks/duskevm";
@@ -42,10 +42,6 @@
   import walletAccountNames from "$lib/wallets/accountNames";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
-
-  // Anyone can send a memo, and these would show its text out of order, as
-  // "exe.png" for "gnp.exe".
-  const BIDI_CONTROLS = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
 
   /** @type {ActivityRow} */
   export let row;
@@ -513,7 +509,9 @@
       {#if row.memo}
         <div>
           <dt>Memo</dt>
-          <dd class="tx-detail__memo">{row.memo.replace(BIDI_CONTROLS, "")}</dd>
+          <!-- Anyone can send a memo, and hidden characters would show it out
+            of order, as "exe.png" for "gnp.exe". -->
+          <dd class="tx-detail__memo"><MemoText text={row.memo} /></dd>
         </div>
       {/if}
       <div>

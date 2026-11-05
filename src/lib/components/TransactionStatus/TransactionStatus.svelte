@@ -21,6 +21,7 @@
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import WithdrawalHash from "../EvmTransactions/WithdrawalHash.svelte";
+  import MemoText from "../MemoText/MemoText.svelte";
 
   /**
    * The hash of the transaction sent, if there is one to follow.
@@ -134,7 +135,7 @@
     <dl class="transaction-status__details">
       {#if memo}
         <dt>Memo</dt>
-        <dd class="transaction-status__memo">{memo}</dd>
+        <dd class="transaction-status__memo"><MemoText text={memo} /></dd>
       {/if}
       <dt>Transaction</dt>
       <dd>
