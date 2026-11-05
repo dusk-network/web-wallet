@@ -3,13 +3,21 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { ProfileGenerator } from "@dusk/w3sper";
 import { networks } from "@dusk-network/networks";
 import { tick } from "svelte";
+import { get } from "svelte/store";
 
 import { cardRoutes } from "$lib/bridge/cardRoutes";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
+import { InvalidPasswordError } from "$lib/errors";
+import {
+  cancelSendPassword,
+  sendPasswordAsk,
+  setSendPasswordLimit,
+} from "$lib/security/sendPassword";
 import { settingsStore, walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { stubWalletNetwork } from "$lib/test-helpers";
+import vault from "$lib/vault";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 
 import { Bridge } from "..";
@@ -527,6 +535,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await back.findByRole("button", { name: "Migrate" });
       await afterConfirmDelay();
       await fireEvent.click(back.getByRole("button", { name: "Migrate" }));
+      await vi.waitFor(() => expect(mocks.migrate).toHaveBeenCalled());
       await lockAndUnlock();
 
       expect(
@@ -559,6 +568,86 @@ describe("the Bridge card's routes to and from other chains", () => {
             .container
         )
       ).toStrictEqual(["ethereum", "duskDs"]);
+    });
+  });
+
+  describe("the password on big sends", () => {
+    const PASSWORD = "the password here";
+    const PHRASE =
+      "cat swing flag economy stadium alone churn speed unique patch report train";
+
+    beforeEach(async () => {
+      await vault.setUp(PHRASE, PASSWORD);
+      setSendPasswordLimit(DUSK);
+    });
+
+    afterEach(async () => {
+      cancelSendPassword();
+      setSendPasswordLimit(null);
+      await vault.clear();
+    });
+
+    /** The review of a migration of `value` DUSK, ready to be sent. */
+    async function migrationOf(/** @type {string} */ value) {
+      mocks.getBalanceOfCoin.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.migrate.mockResolvedValue(`0x${"cc".repeat(32)}`);
+      mocks.waitForTransactionReceipt.mockResolvedValue({ status: "success" });
+      connect({ address: EVM, chainId: 56 });
+
+      const view = render(Bridge, { ...props, linkedRoute: "bsc-to-dusk" });
+
+      await fireEvent.input(
+        await view.findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
+        { target: { value } }
+      );
+      await fireEvent.click(
+        view.getByRole("button", { name: "Review migration" })
+      );
+      await view.findByRole("button", { name: "Migrate" });
+      await afterConfirmDelay();
+      await fireEvent.click(view.getByRole("button", { name: "Migrate" }));
+
+      return view;
+    }
+
+    it("asks before a migration above the amount chosen, signed in the EVM wallet too, and nothing goes until it's given", async () => {
+      await migrationOf("2");
+      await vi.waitFor(() => expect(get(sendPasswordAsk)).not.toBeNull());
+
+      expect(mocks.allowance).toHaveBeenCalled();
+      expect(mocks.migrate).not.toHaveBeenCalled();
+      expect(mocks.approve).not.toHaveBeenCalled();
+
+      await expect(get(sendPasswordAsk)?.answer("wrong")).rejects.toThrow(
+        InvalidPasswordError
+      );
+
+      expect(mocks.migrate).not.toHaveBeenCalled();
+
+      await get(sendPasswordAsk)?.answer(PASSWORD);
+
+      await vi.waitFor(() => expect(mocks.migrate).toHaveBeenCalledOnce());
+    });
+
+    it("goes back to the review when it isn't given, with nothing moved", async () => {
+      const { findByRole } = await migrationOf("2");
+
+      await vi.waitFor(() => expect(get(sendPasswordAsk)).not.toBeNull());
+      get(sendPasswordAsk)?.cancel();
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "It waits for your password, so nothing moved."
+      );
+      expect(await findByRole("button", { name: "Migrate" })).toBeVisible();
+      expect(mocks.migrate).not.toHaveBeenCalled();
+    });
+
+    it("asks nothing up to the amount chosen", async () => {
+      await migrationOf("1");
+
+      await vi.waitFor(() => expect(mocks.migrate).toHaveBeenCalledOnce());
+      expect(get(sendPasswordAsk)).toBeNull();
     });
   });
 

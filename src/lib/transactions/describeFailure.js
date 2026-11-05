@@ -221,6 +221,15 @@ export default function describeFailure(
 ) {
   const text = `${error?.name ?? ""}: ${error?.message ?? ""}`;
   const handedOver = isOutcomeUnknown(error);
+
+  if (error?.name === "SendPasswordDeclinedError") {
+    return {
+      canRetry: true,
+      heading: "Not sent",
+      sentence: "It waits for your password, so nothing was sent.",
+    };
+  }
+
   const cameFirst = CAME_FIRST.find(([pattern]) => pattern.test(text));
 
   if (cameFirst) {

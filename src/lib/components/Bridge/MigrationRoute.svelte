@@ -27,6 +27,7 @@
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { shortenAddress } from "$lib/dusk/string";
+  import { SendPasswordDeclinedError } from "$lib/errors";
   import { formDraft } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
   import { account, modal } from "$lib/web3/walletConnection";
@@ -453,6 +454,14 @@
     ) {
       note = ACCOUNT_CHANGED_NOTE;
       leaveReview();
+
+      return true;
+    }
+
+    if (error instanceof SendPasswordDeclinedError) {
+      note = "It waits for your password, so nothing moved.";
+      step = "review";
+      readApproval();
 
       return true;
     }

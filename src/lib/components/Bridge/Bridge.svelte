@@ -86,6 +86,7 @@
   import { cleanNumberString, shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { addBasePath, formDraft, gasToKeep, keptGas } from "$lib/navigation";
+  import { sendPasswordFor } from "$lib/security/sendPassword";
   import { settingsStore, walletStore } from "$lib/stores";
   import {
     CHECK_EVM_WALLET_FIRST,
@@ -319,6 +320,10 @@
     if (!$account.address) {
       throw new Error("DuskEVM account is not available.");
     }
+
+    // Above the amount chosen in Settings, the password comes first.
+    await sendPasswordFor(amountLux, $walletStore.walletKey);
+    stillOpen();
 
     // It pays this wallet's public account.
     const withdrawal = withdrawalStart({

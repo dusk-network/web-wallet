@@ -1,10 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { get } from "svelte/store";
 import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { resumeWithdrawalTracking } from "$lib/bridge/withdrawalActivity";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
+import {
+  cancelSendPassword,
+  sendPasswordAsk,
+  setSendPasswordLimit,
+} from "$lib/security/sendPassword";
+import vault from "$lib/vault";
 
 import { Bridge } from "..";
 import {
@@ -269,6 +276,51 @@ describe("Bridge withdrawal", () => {
     ]);
     expect(rendered.container).not.toHaveTextContent(/try again/i);
     expect(rendered.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  describe("the password on big sends", () => {
+    const PASSWORD = "the password here";
+    const PHRASE =
+      "cat swing flag economy stadium alone churn speed unique patch report train";
+
+    beforeEach(async () => {
+      await vault.setUp(PHRASE, PASSWORD);
+      setSendPasswordLimit(0n);
+    });
+
+    afterEach(async () => {
+      cancelSendPassword();
+      setSendPasswordLimit(null);
+      await vault.clear();
+    });
+
+    it("asks before a withdrawal above the amount chosen, signed in the EVM wallet too, and nothing goes until it's given", async () => {
+      await sendWithdrawal();
+      await vi.waitFor(() => expect(get(sendPasswordAsk)).not.toBeNull());
+
+      expect(mocks.switchChain).not.toHaveBeenCalled();
+      expect(mocks.sendTransaction).not.toHaveBeenCalled();
+
+      await get(sendPasswordAsk)?.answer(PASSWORD);
+
+      await vi.waitFor(() =>
+        expect(mocks.sendTransaction).toHaveBeenCalledOnce()
+      );
+    });
+
+    it("says nothing was sent when it isn't given, and offers to try again", async () => {
+      const rendered = await sendWithdrawal();
+
+      await vi.waitFor(() => expect(get(sendPasswordAsk)).not.toBeNull());
+      get(sendPasswordAsk)?.cancel();
+
+      expect(await failureOf(rendered)).toStrictEqual([
+        "Not sent",
+        "It waits for your password, so nothing was sent.",
+      ]);
+      expect(rendered.getByRole("button", { name: "Try again" })).toBeVisible();
+      expect(mocks.sendTransaction).not.toHaveBeenCalled();
+    });
   });
 
   it("says the balance doesn't cover it, without naming the shielded one, when the EVM wallet's doesn't cover it and its gas", async () => {

@@ -256,6 +256,55 @@ describe("vault", () => {
     });
   });
 
+  describe("checking the password", () => {
+    it("takes the password that opens a wallet here, and gives nothing back", async () => {
+      const vault = await restart();
+      const wallet = await vault.setUp(OTHER, "a password");
+
+      await expect(vault.check("a password")).resolves.toBeUndefined();
+      await expect(
+        vault.check("a password", wallet.id)
+      ).resolves.toBeUndefined();
+    });
+
+    it("refuses a wrong one, or one that doesn't open the wallet named, and changes nothing", async () => {
+      const vault = await restart();
+      const wallet = await vault.setUp(OTHER, "a password");
+      const before = localStorage.getItem(V2);
+
+      await expect(vault.check("wrong")).rejects.toThrow("Wrong password");
+      await expect(vault.check("wrong", wallet.id)).rejects.toThrow(
+        "Wrong password"
+      );
+      await expect(
+        vault.check("a password", "not a wallet here")
+      ).rejects.toThrow("Wrong password");
+      await expect(vault.check("")).rejects.toThrow("Wrong password");
+      expect(localStorage.getItem(V2)).toBe(before);
+    });
+
+    it("checks each wallet here: all of them under one password", async () => {
+      const vault = await restart();
+      const first = await vault.setUp(OTHER, "a password");
+      const second = await vault.add(THIRD, "a password");
+
+      await expect(
+        vault.check("a password", first.id)
+      ).resolves.toBeUndefined();
+      await expect(
+        vault.check("a password", second.id)
+      ).resolves.toBeUndefined();
+    });
+
+    it("says there's nothing to check against without a vault", async () => {
+      const vault = await restart();
+
+      await expect(vault.check("a password")).rejects.toThrow(
+        "There's no wallet here."
+      );
+    });
+  });
+
   describe("unlocking", () => {
     it("refuses a wrong password with nothing about the vault, and changes nothing", async () => {
       const vault = await restart();

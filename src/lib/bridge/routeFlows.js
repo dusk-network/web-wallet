@@ -18,6 +18,7 @@ import { get } from "svelte/store";
 
 import { executeSend } from "$lib/contracts";
 import { formatDuskExact } from "$lib/dusk/currency";
+import { sendPasswordFor } from "$lib/security/sendPassword";
 import { walletStore } from "$lib/stores";
 import { allowance, approve, migrate } from "$lib/web3/migration";
 import { account, wagmiConfig } from "$lib/web3/walletConnection";
@@ -199,6 +200,10 @@ export async function sendMigration({
     stillHere();
   };
   const scope = walletDataScope();
+
+  // Above the amount chosen in Settings, the password comes first.
+  await sendPasswordFor(amountLux, get(walletStore).walletKey);
+  stillOpen();
 
   await approveIfShort(
     route,

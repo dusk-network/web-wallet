@@ -741,6 +741,26 @@ const vault = {
   },
 
   /**
+   * Checks the password against the vault, for what asks for it again while a
+   * wallet is open: it must open the wallet `id`, the one open, or a wallet
+   * here, for no ID. It gives nothing back: a wrong one throws
+   * InvalidPasswordError.
+   *
+   * @param {string} password
+   * @param {string} [id]
+   * @returns {Promise<void>}
+   */
+  check(password, id = "") {
+    return alone(async () => {
+      const { opened } = await openVault(String(password ?? ""));
+
+      if (!opened.length || (id && !opened.some((w) => w.id === id))) {
+        throw new InvalidPasswordError();
+      }
+    });
+  },
+
+  /**
    * Removes every wallet's phrase, v1's too, as a reset does.
    *
    * @returns {Promise<void>}

@@ -23,6 +23,10 @@ import { forgetVerifiedNames } from "$lib/dusk-domains/verifiedNames";
 import WalletChangedError from "$lib/errors/wallet-changed-error";
 import { forgetRouteTransfers } from "$lib/bridge/migrationActivity";
 import { SOZU_FN, sozuCall } from "@dusk-network/networks/sozu";
+import {
+  cancelSendPassword,
+  sendPasswordFor,
+} from "$lib/security/sendPassword";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
@@ -403,15 +407,23 @@ const builtWhileOpen = (builder, stillOpen) =>
  * goes out only while the wallet it began on is open: not after a switch
  * or a lock since, checked once the wallet synced, and again once the
  * transaction is built and proved. A staking transaction holds Staking's
- * buttons until it settles.
+ * buttons until it settles. Every transaction of the wallet's comes this way:
+ * what it moves out (`moves`, none for what comes back to the public balance)
+ * and the most its gas costs ask for the password first, above the amount
+ * chosen in Settings.
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
  * @param {(network: Pick<import("@dusk/w3sper").Network, "execute">) => Promise<TransactionInfo>} execute
- * @param {{ staking?: boolean }} [options]
+ * @param {{ gas: Gas, moves?: bigint, staking?: boolean }} options
  * @returns {Promise<TransactionInfo>}
  */
-const sendAs = (profile, details, execute, { staking = false } = {}) => {
+const sendAs = (
+  profile,
+  details,
+  execute,
+  { gas, moves = 0n, staking = false }
+) => {
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
   const record = recordInHistory(profile, details);
@@ -435,7 +447,12 @@ const sendAs = (profile, details, execute, { staking = false } = {}) => {
     }
   };
 
-  return sync()
+  const password = sendPasswordFor(
+    moves + gas.total,
+    get(walletStore).walletKey
+  );
+
+  return (password ? password.then(() => sync()) : sync())
     .catch((error) => {
       throw stillOpen(error);
     })
@@ -606,7 +623,7 @@ const claimRewards = async (amount, gas) => {
     },
     (network) =>
       network.execute(bookkeeper.as(profile).withdraw(amount).gas(gas)),
-    { staking: true }
+    { gas, staking: true }
   );
 };
 
@@ -847,6 +864,7 @@ const refreshBalance = () =>
  */
 function resetSession() {
   walletSession++;
+  cancelSendPassword(new WalletChangedError());
   abortSync();
   stopActivity();
   closeContacts();
@@ -894,7 +912,9 @@ const shield = async (amount, gas) => {
       kind: TX_KIND.SHIELD,
       privacy: "public",
     },
-    (network) => network.execute(bookkeeper.as(profile).shield(amount).gas(gas))
+    (network) =>
+      network.execute(bookkeeper.as(profile).shield(amount).gas(gas)),
+    { gas, moves: amount }
   );
 };
 
@@ -911,7 +931,7 @@ const stake = async (amount, gas) => {
       privacy: "public",
     },
     (network) => network.execute(bookkeeper.as(profile).stake(amount).gas(gas)),
-    { staking: true }
+    { gas, moves: amount, staking: true }
   );
 };
 
@@ -954,7 +974,11 @@ const callSozu = async (poolId, fnName, amount, gas) => {
         builder.to(profile.account).deposit(deposit).gas(gas)
       );
     },
-    { staking: true }
+    {
+      gas,
+      moves: fnName === SOZU_FN.STAKE ? amount : 0n,
+      staking: true,
+    }
   );
 };
 
@@ -979,7 +1003,7 @@ const topUpStake = async (amount, gas) => {
       privacy: "public",
     },
     (network) => network.execute(bookkeeper.as(profile).topup(amount).gas(gas)),
-    { staking: true }
+    { gas, moves: amount, staking: true }
   );
 };
 
@@ -1233,7 +1257,8 @@ const transfer = async (to, amount, memo, gas, { toName } = {}) => {
       }
 
       return await network.execute(tx);
-    }
+    },
+    { gas, moves: amount }
   );
 };
 
@@ -1278,7 +1303,8 @@ const depositEvmFunctionCall = async (
       return await network.execute(
         builder.to(profile.account).deposit(BigInt(amount)).gas(gas)
       );
-    }
+    },
+    { gas, moves: BigInt(amount) }
   );
 };
 
@@ -1295,7 +1321,8 @@ const unshield = async (amount, gas) => {
       privacy: "shielded",
     },
     (network) =>
-      network.execute(bookkeeper.as(profile).unshield(amount).gas(gas))
+      network.execute(bookkeeper.as(profile).unshield(amount).gas(gas)),
+    { gas, moves: amount }
   );
 };
 
@@ -1313,7 +1340,7 @@ const unstake = async (amount, gas) => {
     },
     (network) =>
       network.execute(bookkeeper.as(profile).unstake(amount).gas(gas)),
-    { staking: true }
+    { gas, staking: true }
   );
 };
 
@@ -1373,7 +1400,8 @@ const sendDuskEvmWithdrawalCall = async (
       return await network.execute(
         builder.to(profile.account).deposit(deposit).gas(gas)
       );
-    }
+    },
+    { gas }
   );
 };
 

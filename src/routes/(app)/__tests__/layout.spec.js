@@ -13,6 +13,10 @@ import { ProfileGenerator } from "@dusk/w3sper";
 
 import * as navigation from "$lib/navigation";
 import * as routeHistory from "$lib/bridge/routeHistory";
+import {
+  sendPasswordFor,
+  setSendPasswordLimit,
+} from "$lib/security/sendPassword";
 import { settingsStore, walletStore } from "$lib/stores";
 import vault from "$lib/vault";
 
@@ -72,6 +76,29 @@ describe("App layout.svelte, on a wallet open", () => {
   afterEach(() => {
     cleanup();
     walletStore.reset();
+  });
+
+  it("should ask for the password on a big send over whatever shows, and stop asking once the wallet's pages are gone", async () => {
+    const PHRASE =
+      "scheme spot photo card baby mountain device kick cradle pact join borrow";
+
+    await vault.setUp(PHRASE, "the password here");
+    setSendPasswordLimit(0n);
+
+    const { findByRole, queryByRole } = render(Layout);
+    const asking = sendPasswordFor(1n, "");
+
+    expect(
+      await findByRole("dialog", { name: "Enter your password" })
+    ).toBeInTheDocument();
+
+    cleanup();
+
+    await expect(asking).rejects.toThrow("The password wasn't given.");
+    expect(queryByRole("dialog")).toBeNull();
+
+    setSendPasswordLimit(null);
+    await vault.clear();
   });
 
   it("should keep the profile the wallet is on, for an unlock to come back to", async () => {

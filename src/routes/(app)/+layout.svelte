@@ -9,6 +9,11 @@
   } from "$lib/navigation";
   import { followRouteHistory } from "$lib/bridge/routeHistory";
   import { Shell } from "$lib/containers/Shell";
+  import { SendPasswordDialog } from "$lib/containers/Wallets";
+  import {
+    cancelSendPassword,
+    sendPasswordAsk,
+  } from "$lib/security/sendPassword";
   import { gasPriceStore, settingsStore, walletStore } from "$lib/stores";
   import vault from "$lib/vault";
   import { followOtherTabs, noteOpenWallet } from "$lib/wallets";
@@ -39,6 +44,9 @@
 
   onDestroy(() => stopInactivityTimer());
 
+  // Nothing goes on asking for the password once the wallet's pages are gone.
+  onDestroy(() => cancelSendPassword());
+
   $: autoLockTimeout = hasPassword
     ? $settingsStore.autoLockMinutes * 60_000
     : INACTIVITY_TIMEOUT;
@@ -67,3 +75,10 @@
     <slot />
   {/key}
 </Shell>
+
+{#if $sendPasswordAsk}
+  <!-- A dialog per ask: what's typed for one doesn't stay for the next. -->
+  {#key $sendPasswordAsk}
+    <SendPasswordDialog ask={$sendPasswordAsk} />
+  {/key}
+{/if}

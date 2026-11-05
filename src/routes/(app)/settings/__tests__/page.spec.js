@@ -26,6 +26,10 @@ import {
   walletStore,
 } from "$lib/stores";
 import vault from "$lib/vault";
+import {
+  sendPasswordLimit,
+  setSendPasswordLimit,
+} from "$lib/security/sendPassword";
 import { contactsWritten, listContacts, saveContact } from "$lib/contacts";
 import { openTestContacts } from "$lib/test-helpers";
 
@@ -443,6 +447,17 @@ describe("Settings", () => {
       expect(settingsResetSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledWith(false);
+    });
+
+    it("should turn off the password on big sends, as the settings go", async () => {
+      setSendPasswordLimit(1n);
+
+      const { getByRole } = render(Settings);
+
+      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
+      await resetDone();
+
+      expect(sendPasswordLimit()).toBeNull();
     });
 
     it("should keep no place or anything typed for what comes after", async () => {

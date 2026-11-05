@@ -41,7 +41,11 @@
   } from "$lib/contracts";
   import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
   import { deleteContacts } from "$lib/contacts";
-  import { ProfileNames, WalletsSettings } from "$lib/containers/Wallets";
+  import {
+    ProfileNames,
+    SendPasswordSetting,
+    WalletsSettings,
+  } from "$lib/containers/Wallets";
   import { WalletChangedError } from "$lib/errors";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
   import {
@@ -50,6 +54,7 @@
     logout,
     pageTitle,
   } from "$lib/navigation";
+  import { setSendPasswordLimit } from "$lib/security/sendPassword";
   import vault from "$lib/vault";
   import { lockWallets, openWalletName, walletDirectory } from "$lib/wallets";
   import { clearDirectory } from "$lib/wallets/directory";
@@ -85,6 +90,7 @@
         await vault.clear();
         clearDirectory();
         settingsStore.reset();
+        setSendPasswordLimit(null);
         await logout(false);
         forgetPlace();
         forgetDrafts();
@@ -414,6 +420,7 @@
             </p>
           {/if}
         {/if}
+        <SendPasswordSetting />
       </div>
     </article>
     <hr />
