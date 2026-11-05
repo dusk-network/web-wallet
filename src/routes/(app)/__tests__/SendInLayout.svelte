@@ -4,6 +4,9 @@
   import { Send } from "$lib/components";
 
   import Layout from "../+layout.svelte";
+
+  /** @type {any} */
+  export let send;
 </script>
 
-<Layout><Send {...$$restProps} /></Layout>
+<Layout><Send {...send} /></Layout>

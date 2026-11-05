@@ -103,18 +103,20 @@ describe("A wallet form in the app", () => {
     const [first] = vault.list() ?? [];
     const second = await addWallet(B, PASSWORD);
     const { getByRole } = render(SendInLayout, {
-      availableBalance: 1_000_000_000_000n,
-      execute: vi.fn(),
-      gasLimits: {
-        gasLimitLower: 10_000_000n,
-        gasLimitUpper: 2_900_000_000n,
-        gasPriceLower: 1n,
+      send: {
+        availableBalance: 1_000_000_000_000n,
+        execute: vi.fn(),
+        gasLimits: {
+          gasLimitLower: 10_000_000n,
+          gasLimitUpper: 2_900_000_000n,
+          gasPriceLower: 1n,
+        },
+        gasSettings: { gasLimit: 20_000_000n, gasPrice: 1n },
+        publicAddress: "own-public-account",
+        resolveName: vi.fn(),
+        shieldedAddress: "own-shielded-address",
+        shieldedBalance: 500_000_000_000n,
       },
-      gasSettings: { gasLimit: 20_000_000n, gasPrice: 1n },
-      publicAddress: "own-public-account",
-      resolveName: vi.fn(),
-      shieldedAddress: "own-shielded-address",
-      shieldedBalance: 500_000_000_000n,
     });
     /** The form's fields, as they are now. */
     const typed = () =>

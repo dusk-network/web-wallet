@@ -166,10 +166,10 @@ describe("A transfer's amounts, as its details say them", () => {
 
   it("writes the gas paid short, as other wallets do, with all its decimals on hover", () => {
     const ledger = ledgerOf(
-      {
+      /** @type {any} */ ({
         item: { ...migration(PAID_AT), gasWei: "42205000675280" },
         kind: "migration",
-      },
+      }),
       { locale: "en", rows: [], steps: new Map() }
     );
     const { container } = render(TransferLedger, {

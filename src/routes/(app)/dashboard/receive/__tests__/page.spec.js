@@ -147,7 +147,10 @@ describe("Receive", () => {
       setNodeNetwork(networks.testnet);
       mockedWalletStore.setMockedStoreValue({
         ...before,
-        currentProfile: { account: ACCOUNT, address: expectedAddress },
+        currentProfile: /** @type {any} */ ({
+          account: ACCOUNT,
+          address: expectedAddress,
+        }),
       });
     });
 
