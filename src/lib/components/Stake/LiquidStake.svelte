@@ -359,7 +359,7 @@
         what:
           order.action === "stake"
             ? `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK to Sozu`
-            : `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK unstaked from Sozu`,
+            : `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK from Sozu`,
       };
       reviewHistory.settle(operation, () => {
         canTryAgain = true;

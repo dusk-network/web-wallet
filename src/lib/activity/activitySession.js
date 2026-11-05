@@ -51,6 +51,15 @@ export const ACTIVITY_PAGE = 50;
 /** The wait after a transaction went through before the archive is asked for it. */
 export const AFTER_TX_MS = 20_000;
 
+/**
+ * The same, for a send of the last two minutes, when a block usually has it:
+ * what shows it Pending stops saying so about as the chain does.
+ */
+export const SOON_AFTER_TX_MS = 5000;
+
+/** How long a send is looked for that often. */
+const LOOKED_FOR_SOONER_MS = 120_000;
+
 /** How long a session waits to ask again for a shielded history it couldn't have yet. */
 export const SHIELDED_RETRY_MS = 60_000;
 
@@ -412,7 +421,16 @@ export class ActivitySession {
       this.#runAgain = false;
       await this.#run();
     } else if (this.#waitsForArchive()) {
-      this.refreshSoon();
+      this.refreshSoon(
+        this.#local.some(
+          (r) =>
+            r.status === "submitted" &&
+            !r.settled &&
+            Date.now() - r.submittedAt < LOOKED_FOR_SOONER_MS
+        )
+          ? SOON_AFTER_TX_MS
+          : AFTER_TX_MS
+      );
     }
   }
 
@@ -488,7 +506,7 @@ export class ActivitySession {
     );
     await this.#reload();
     this.#emit();
-    this.refreshSoon();
+    this.refreshSoon(SOON_AFTER_TX_MS);
   }
 
   /**

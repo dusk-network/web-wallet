@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Close a transaction, a contact or the search with phone Back, staying on the page, and leave the password screen out of Back once the wallet is open
 - Bring back what was typed in a form with the browser's Back after leaving it for another page
 - Close the profile menu on any navigation, and only close it on a tap outside
+- Say "Sending…" and what's sent in one tense on an unstake from Sozu, and clear Pending and refresh the balances as a transaction is final
 - Warn on a contact's name in use, and on the wallet's own address
 - Refuse the password you have as the new one
 - Show the address in full on Receive, with a button that says Copy address, then Copied

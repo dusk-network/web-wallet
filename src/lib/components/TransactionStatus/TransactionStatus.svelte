@@ -8,6 +8,7 @@
     mdiTimerSand,
   } from "@mdi/js";
 
+  import { currentActivity } from "$lib/activity";
   import { timeLabel } from "$lib/activity/present";
   import { formatFee } from "$lib/dusk/currency";
   import {
@@ -16,7 +17,7 @@
     ErrorDetails,
     Icon,
   } from "$lib/dusk/components";
-  import { settingsStore } from "$lib/stores";
+  import { settingsStore, walletStore } from "$lib/stores";
   import { followTransaction } from "$lib/transactions";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
@@ -89,6 +90,12 @@
           outcome = result;
           outcomeAt = Date.now();
           status = result ? (result.error ? "failed" : "completed") : "late";
+
+          // It's final, so History and the balances can say so as this does.
+          if (result) {
+            void currentActivity()?.refresh();
+            void walletStore.refreshBalance();
+          }
         }
       });
   }

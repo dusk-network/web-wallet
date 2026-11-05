@@ -420,6 +420,28 @@ describe("LiquidStake", () => {
     }
   });
 
+  it("says what's on its way in no tense of its own, under Sending…", async () => {
+    const execute = vi.fn().mockResolvedValue("ab".repeat(32));
+    const { findByText, getByLabelText, getByRole } = render(LiquidStake, {
+      ...baseProps,
+      action: "unstake",
+      execute,
+      sozu: {
+        ...baseProps.sozu,
+        status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
+      },
+    });
+
+    await fireEvent.input(getByLabelText("Unstake amount"), {
+      target: { value: "1" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await afterConfirmDelay();
+    await fireEvent.click(getByRole("button", { name: "Unstake 1 DUSK" }));
+
+    expect(await findByText("1 DUSK from Sozu")).toBeInTheDocument();
+  });
+
   it("refuses an unstake too small to burn any stDUSK, saying the least, unless it's all there is", async () => {
     const unstakeOf = (/** @type {bigint} */ balance) =>
       render(LiquidStake, {

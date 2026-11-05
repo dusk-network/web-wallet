@@ -359,6 +359,62 @@ describe("ActivitySession", () => {
     });
   });
 
+  it("looks for a send every few seconds at first, and less often once it's been a while", async () => {
+    fakeArchive();
+
+    const session = sessionFor();
+
+    await session.start();
+
+    vi.useFakeTimers({
+      now: Date.now(),
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+    });
+
+    try {
+      const refresh = vi.spyOn(session, "refresh");
+
+      await session.recordSent({
+        amount: "2000000000",
+        hash: "ab".repeat(32),
+        kind: "transfer",
+        memo: "",
+        privacy: "public",
+        to: B,
+      });
+
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS - 1);
+
+      expect(refresh).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(refresh).toHaveBeenCalledOnce();
+
+      await vi.waitFor(() => expect(vi.getTimerCount()).toBeGreaterThan(0));
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+
+      expect(refresh).toHaveBeenCalledTimes(2);
+
+      // Past two minutes with no sign of it: as often as before.
+      vi.setSystemTime(Date.now() + 120_000);
+      await vi.waitFor(() => expect(vi.getTimerCount()).toBeGreaterThan(0));
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+      await vi.waitFor(() => expect(vi.getTimerCount()).toBeGreaterThan(0));
+      refresh.mockClear();
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+
+      expect(refresh).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(sessions.AFTER_TX_MS);
+
+      expect(refresh).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+      session.stop();
+    }
+  });
+
   it("tells nobody anything once stopped", async () => {
     fakeArchive();
 

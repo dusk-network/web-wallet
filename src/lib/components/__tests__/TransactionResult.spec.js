@@ -3,17 +3,24 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 import { WalletChangedError } from "$lib/errors";
+import { walletStore } from "$lib/stores";
 import { outcomeUnknown } from "$lib/transactions";
 
 import { TransactionResult } from "..";
 
-const { followTransaction } = vi.hoisted(() => ({
+const { followTransaction, refreshHistory } = vi.hoisted(() => ({
   followTransaction: vi.fn(),
+  refreshHistory: vi.fn(),
 }));
 
 vi.mock("$lib/transactions", async (importOriginal) => ({
   ...(await importOriginal()),
   followTransaction,
+}));
+
+vi.mock("$lib/activity", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  currentActivity: () => ({ refresh: refreshHistory }),
 }));
 
 describe("TransactionResult", () => {
@@ -66,6 +73,39 @@ describe("TransactionResult", () => {
     await clickLink(getByRole("link", { name: "Home" }));
 
     expect(onBeforeLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it("should have History and the balances read again as a transaction is final, to say as it does", async () => {
+    const refreshBalance = vi
+      .spyOn(walletStore, "refreshBalance")
+      .mockResolvedValue();
+
+    /** @type {PromiseWithResolvers<any>} */
+    const following = Promise.withResolvers();
+
+    refreshHistory.mockClear();
+    followTransaction.mockReturnValue(following.promise);
+
+    const { findByRole } = render(TransactionResult, {
+      ...baseProps,
+      operation: Promise.resolve(hash),
+    });
+
+    expect(await findByRole("status")).toHaveTextContent(/^Sending… /);
+    expect(refreshHistory).not.toHaveBeenCalled();
+    expect(refreshBalance).not.toHaveBeenCalled();
+
+    following.resolve({
+      blockHeight: 12n,
+      error: null,
+      fee: 1n,
+      timestamp: Date.now(),
+    });
+
+    await vi.waitFor(() => expect(refreshHistory).toHaveBeenCalledOnce());
+    expect(refreshBalance).toHaveBeenCalledOnce();
+
+    refreshBalance.mockRestore();
   });
 
   it("should show why the transaction couldn't be sent, with a way home", async () => {
