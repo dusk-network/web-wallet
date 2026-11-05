@@ -10,6 +10,7 @@ import { cardRoutes } from "$lib/bridge/cardRoutes";
 import { formatDuskPlain } from "$lib/dusk/currency";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
+import styleRules from "$lib/dusk/test-helpers/styleRules";
 import { InvalidPasswordError } from "$lib/errors";
 import {
   cancelSendPassword,
@@ -1156,6 +1157,26 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(
         getByText("That leaves too little to unstake later.")
       ).toBeInTheDocument();
+    });
+
+    it("keeps what's said under the From panel's amount clear of the flip button over its edge", () => {
+      const clears = styleRules(
+        "../SwapCard/SwapCard.svelte",
+        import.meta.url
+      ).find(
+        (rule) =>
+          /\.swap-panel:has\(~ \.swap-flip\)/.test(rule.selector) &&
+          rule.media === ""
+      );
+      // The flip button reaches 1.375rem into the panel above it.
+      const reach = 1.375;
+
+      for (const line of [".swap-note", ".swap-error", ".swap-recipient"]) {
+        expect(clears?.selector).toContain(`> ${line}`);
+      }
+      expect(
+        parseFloat(clears?.declarations["padding-bottom"] ?? "0")
+      ).toBeGreaterThan(reach);
     });
   });
 
