@@ -1,11 +1,12 @@
 .dusk-toast {
   display: flex;
   flex-direction: column;
-  position: absolute;
+  position: fixed;
   right: 20px;
   bottom: 100px;
   z-index: 5;
   row-gap: 0.625em;
+  pointer-events: none;
 }
 
 .dusk-toast__item {

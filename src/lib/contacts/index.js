@@ -1,6 +1,7 @@
 export {
   addressType,
   closeContacts,
+  contactCalled,
   contactNamesOf,
   contactsStore,
   contactsWritten,

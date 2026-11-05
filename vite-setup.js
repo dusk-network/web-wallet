@@ -3,7 +3,7 @@
  */
 
 import * as matchers from "@testing-library/jest-dom/matchers";
-import { expect, vi } from "vitest";
+import { afterEach, expect, vi } from "vitest";
 
 import { readable } from "svelte/store";
 import { ResizeObserver } from "@juggle/resize-observer";
@@ -136,6 +136,11 @@ if (!Element.prototype.getAnimations) {
 
 // Add custom jest matchers
 expect.extend(matchers);
+
+// What a tab keeps goes with it: each test is a tab of its own.
+afterEach(() => {
+  sessionStorage.clear();
+});
 
 // Mock SvelteKit runtime module $app/environment
 vi.mock("$app/environment", () => ({

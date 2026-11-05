@@ -206,7 +206,7 @@
     font-size: 0.875rem;
   }
 
-  @media (max-width: 47.99rem) {
+  @media (max-width: 47.99rem), (pointer: coarse) {
     .activity-panel__filter {
       height: 2.75rem;
       padding: 0 1rem;

@@ -6,6 +6,8 @@ import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { getGasSettings } from "$lib/contracts";
 import { formatDusk, formatDuskPlain } from "$lib/dusk/currency";
 import { gasPriceStore, settingsStore } from "$lib/stores";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { networks } from "@dusk-network/networks";
 
 import SendPage from "../+page.svelte";
 
@@ -71,6 +73,9 @@ const OTHER =
 const available = (container) =>
   container.querySelector(".send__amount + .send__hint");
 
+// The profiles' addresses here are made up, so none is two keys.
+vi.mock("$lib/wallet/isShieldedAddress", () => ({ default: () => true }));
+
 describe("Send page", () => {
   afterEach(() => {
     cleanup();
@@ -84,6 +89,84 @@ describe("Send page", () => {
     vi.doUnmock("$lib/dusk-domains");
     vi.doUnmock("$lib/dusk/string");
     vi.doUnmock("$lib/stores");
+  });
+
+  describe("opened from a link", () => {
+    /** @param {string} query */
+    const openLink = (query) =>
+      openAt(
+        new URL(`http://localhost/some-base-path/dashboard/send?${query}`)
+      );
+
+    /** @param {(role: string, options: object) => HTMLElement} getByRole */
+    const fieldsAre = (getByRole) =>
+      ["To", "Amount", /^Memo/].map(
+        (name) =>
+          /** @type {HTMLInputElement} */ (getByRole("textbox", { name })).value
+      );
+
+    afterEach(() => setNodeNetwork(null));
+
+    it("should open filled in, with what the link asks", () => {
+      setNodeNetwork(networks.testnet);
+      openLink(`to=${OTHER}&amount=0.15&memo=Factura+33&network=testnet`);
+
+      const { getByRole } = render(SendPage);
+
+      expect(fieldsAre(getByRole)).toStrictEqual([OTHER, "0.15", "Factura 33"]);
+    });
+
+    it("should say a link for another network is one, and fill in nothing", () => {
+      setNodeNetwork(networks.testnet);
+      openLink(`to=${OTHER}&amount=0.15&memo=Factura+33&network=mainnet`);
+
+      const { getByRole, getByText } = render(SendPage);
+
+      expect(
+        getByText("This request is for Mainnet. You are on Testnet.")
+      ).toBeInTheDocument();
+      expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
+    });
+
+    it.each([
+      ["no recipient", "amount=0.15&memo=Factura+33"],
+      ["an empty recipient", "to=&amount=0.15"],
+      ["a network there's no file for", `to=${OTHER}&network=nowhere`],
+    ])(
+      "should say a link with %s can't be read, and fill in nothing",
+      (_, query) => {
+        setNodeNetwork(networks.testnet);
+        openLink(query);
+
+        const { getByRole, getByText } = render(SendPage);
+
+        expect(getByText(/^That link can't be read/)).toBeInTheDocument();
+        expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
+      }
+    );
+
+    it("should start the form over for another link while it shows, and open as ever without one", async () => {
+      setNodeNetwork(networks.testnet);
+      openLink(`to=${OTHER}&amount=0.15`);
+
+      const { getByRole } = render(SendPage);
+
+      await act(() =>
+        openAt(
+          new URL(
+            `http://localhost/some-base-path/dashboard/send?to=${OTHER}&amount=0.5`
+          )
+        )
+      );
+
+      expect(fieldsAre(getByRole)[1]).toBe("0.5");
+
+      await act(() =>
+        openAt(new URL("http://localhost/some-base-path/dashboard/send"))
+      );
+
+      expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
+    });
   });
 
   it("should pay from the public balance, or the shielded one for a shielded address, and say which", async () => {

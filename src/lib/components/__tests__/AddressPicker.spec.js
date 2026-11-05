@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { Profile } from "@dusk/w3sper";
 
@@ -9,6 +15,19 @@ import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 import readStyleRules from "$lib/dusk/test-helpers/styleRules";
 
 import { AddressPicker } from "..";
+
+const pageStore = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any> | null} */
+  page: null,
+}));
+
+vi.mock("$app/stores", async () => {
+  const { writable } = await import("svelte/store");
+
+  pageStore.page = writable({ url: new URL("http://localhost/") });
+
+  return { page: pageStore.page };
+});
 
 // Mock the toast module
 vi.mock("$lib/dusk/components/Toast/store", () => ({
@@ -42,6 +61,62 @@ const getShownText = (element) => {
 
 describe("AddressPicker", () => {
   const { currentProfile, profiles } = get(mockedWalletStore);
+
+  describe("the list open over a page", () => {
+    /** @param {HTMLElement} container */
+    const trigger = (container) =>
+      /** @type {HTMLElement} */ (
+        container.querySelector(".address-picker__trigger")
+      );
+
+    it("closes on a tap outside, and what's under the tap doesn't get it", async () => {
+      const opened = vi.fn();
+      const row = document.createElement("button");
+
+      row.addEventListener("click", opened);
+      document.body.append(row);
+
+      const { container } = render(AddressPicker, {
+        compact: true,
+        currentProfile,
+        profiles,
+      });
+
+      await fireEvent.click(trigger(container));
+
+      expect(trigger(container)).toHaveAttribute("aria-expanded", "true");
+
+      await fireEvent.click(row);
+
+      expect(trigger(container)).toHaveAttribute("aria-expanded", "false");
+      expect(opened).not.toHaveBeenCalled();
+
+      // Closed, the page is the page.
+      await fireEvent.click(row);
+
+      expect(opened).toHaveBeenCalledOnce();
+
+      row.remove();
+    });
+
+    it("closes as the page changes", async () => {
+      const { container } = render(AddressPicker, {
+        compact: true,
+        currentProfile,
+        profiles,
+      });
+
+      await fireEvent.click(trigger(container));
+
+      expect(trigger(container)).toHaveAttribute("aria-expanded", "true");
+
+      await act(() =>
+        pageStore.page?.set({ url: new URL("http://localhost/another-page") })
+      );
+
+      expect(trigger(container)).toHaveAttribute("aria-expanded", "false");
+    });
+  });
 
   const props = { currentProfile, profiles };
 

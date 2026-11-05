@@ -20,6 +20,7 @@ import vault from "$lib/vault";
 import * as shuffleArray from "$lib/dusk/array";
 
 import Create from "../+page.svelte";
+import NetworkSync from "../NetworkSync.svelte";
 import { load } from "../+page.js";
 
 const getKey = (/** @type {string} */ key) => (/** @type {any} */ value) =>
@@ -400,6 +401,18 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
   });
 
+  it("should write the block height in the language set, whatever the browser's", () => {
+    settingsStore.update((store) => ({ ...store, language: "de-DE" }));
+
+    const { getByDisplayValue } = render(NetworkSync, {
+      currentBlockHeight: 1_234_567n,
+    });
+
+    expect(navigator.language).not.toMatch(/^de/);
+    expect(getByDisplayValue("1.234.567")).toBeInTheDocument();
+    settingsStore.reset();
+  });
+
   it("should keep the block height out of the way, under Advanced, on the Network Syncing step", async () => {
     const { container, getByRole, getAllByRole, getByText } = render(
       Create,
@@ -553,7 +566,7 @@ describe("Create", async () => {
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
     expect(gotoSpy).toHaveBeenCalledTimes(1);
-    expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+    expect(gotoSpy).toHaveBeenCalledWith("/dashboard", { replaceState: true });
   });
 
   it("should go on from All set only once the wallet is open, and say so when it can't open", async () => {
@@ -598,7 +611,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
-    expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+    expect(gotoSpy).toHaveBeenCalledWith("/dashboard", { replaceState: true });
 
     cleanup();
     clearAndInitSpy.mockClear();
@@ -690,6 +703,6 @@ describe("Create", async () => {
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
     expect(gotoSpy).toHaveBeenCalledTimes(1);
-    expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+    expect(gotoSpy).toHaveBeenCalledWith("/dashboard", { replaceState: true });
   });
 });

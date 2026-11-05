@@ -1,9 +1,9 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { mdiArrowLeft, mdiKeyOutline } from "@mdi/js";
+  import { mdiArrowLeft, mdiFingerprint, mdiKeyOutline } from "@mdi/js";
   import { beforeNavigate } from "$app/navigation";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
 
   import { getErrorFrom } from "$lib/dusk/error";
   import { Button, Textbox } from "$lib/dusk/components";
@@ -11,6 +11,7 @@
     InvalidMnemonicError,
     InvalidPasswordError,
     MismatchedWalletError,
+    PasskeyGoneError,
   } from "$lib/errors";
 
   import {
@@ -20,7 +21,7 @@
     MnemonicInput,
   } from "$lib/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
-  import { goto } from "$lib/navigation";
+  import { goto, lockedHere, takePlace } from "$lib/navigation";
   import {
     mnemonicPhraseResetStore,
     settingsStore,
@@ -32,7 +33,11 @@
     validateMnemonic,
   } from "$lib/wallet";
   import vault from "$lib/vault";
-  import { unlockWallets, unlockWithoutPassword } from "$lib/wallets";
+  import {
+    unlockWallets,
+    unlockWithPasskey,
+    unlockWithoutPassword,
+  } from "$lib/wallets";
 
   /** @type {(seed: Uint8Array<ArrayBuffer>) => Promise<ProfileGenerator>} */
   async function checkLocalData(seed) {
@@ -105,6 +110,83 @@
   beforeNavigate(cancelUnlock);
   onDestroy(cancelUnlock);
 
+  /** Whether fingerprint or face unlock is on here. */
+  let hasPasskey = hasPassword && Boolean(vault.passkey());
+
+  /** What's to say of fingerprint or face unlock, after trying it. */
+  let passkeyProblem = "";
+
+  /** Whether they turned it down: it's for them to ask for again, from here. */
+  let isDeclined = false;
+
+  /**
+   * Unlocks with fingerprint or face. One that wasn't pressed for, as the wallet
+   * opens, says nothing of being cancelled or refused: the password is there.
+   *
+   * @param {boolean} [asked] Whether it was pressed for
+   */
+  function unlockByPasskey(asked = false) {
+    if (pending || controller.signal.aborted) {
+      return;
+    }
+
+    pending = true;
+    passkeyProblem = "";
+    unlockWithPasskey({ signal: controller.signal })
+      .then(() => {
+        controller.signal.throwIfAborted();
+        pending = false;
+
+        return goto(takePlace() ?? "/dashboard", { replaceState: true });
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        pending = false;
+        isDeclined = true;
+
+        if (err instanceof PasskeyGoneError) {
+          hasPasskey = false;
+          passkeyProblem =
+            "Fingerprint or face unlock is off now. Use your password, and turn it on again in Settings.";
+        } else if (asked) {
+          passkeyProblem =
+            "That didn't unlock the wallet. Try again, or use your password.";
+        }
+
+        fldSecret?.focus();
+      });
+  }
+
+  /** Goes straight to it, for someone here: never a prompt for no one. */
+  function askIfHere() {
+    if (
+      hasPasskey &&
+      !isDeclined &&
+      !secretText &&
+      document.visibilityState === "visible" &&
+      document.hasFocus()
+    ) {
+      unlockByPasskey();
+    }
+  }
+
+  /** Asked again as the tab comes back, as after it locked by itself. */
+  function handleVisibilityChange() {
+    if (document.visibilityState === "visible") {
+      askIfHere();
+    }
+  }
+
+  onMount(() => {
+    // As the wallet opens, or reloads: not the moment it locks.
+    if (!lockedHere()) {
+      askIfHere();
+    }
+  });
+
   /** Unlocks with the password or the phrase given, once. */
   function handleUnlockWalletSubmit() {
     if (
@@ -127,7 +209,9 @@
       .then(() => {
         controller.signal.throwIfAborted();
         pending = false;
-        return goto("/dashboard");
+        // Where a lock, a reload or a link left off.
+        // In this page's place: Back from there isn't a password to give.
+        return goto(takePlace() ?? "/dashboard", { replaceState: true });
       })
       .catch((err) => {
         if (controller.signal.aborted) {
@@ -152,9 +236,23 @@
   }
 </script>
 
+<svelte:document on:visibilitychange={handleVisibilityChange} />
+
 <section class="login">
   <h2 class="h1">Unlock your wallet</h2>
   <div class="login">
+    {#if hasPasskey}
+      <Button
+        disabled={pending}
+        icon={{ path: mdiFingerprint }}
+        on:click={() => unlockByPasskey(true)}
+        text="Use fingerprint or face"
+        variant="primary"
+      />
+    {/if}
+    {#if passkeyProblem}
+      <Banner role="alert" title={passkeyProblem} variant="warning" />
+    {/if}
     <IconHeadingCard
       tag="article"
       gap="medium"
@@ -176,7 +274,7 @@
             required
             type="password"
             autocomplete="current-password"
-            autofocus
+            autofocus={!hasPasskey}
           />
         {:else}
           <!-- A recovery phrase is no password: Restore's word boxes, which
@@ -212,6 +310,7 @@
           text="Unlock wallet"
           type="submit"
           disabled={pending || (!hasPassword && !isPhraseValid)}
+          variant={hasPasskey ? "secondary" : "primary"}
         />
         {#if modeLabel === "Password"}
           <AppAnchorButton
@@ -225,7 +324,7 @@
   </div>
   <footer class="login-footer">
     <AppAnchorButton
-      href="/setup"
+      href={hasPasskey ? "/setup?choose" : "/setup"}
       variant="tertiary"
       icon={{ path: mdiArrowLeft }}
       text="Back"

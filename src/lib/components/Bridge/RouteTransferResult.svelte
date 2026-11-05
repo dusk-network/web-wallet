@@ -13,6 +13,7 @@
   import { duskExplorerTx } from "$lib/url";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
+  import ArrivalNotice from "./ArrivalNotice.svelte";
   import { transferOutcome } from "../EvmTransactions/bridgeActivity";
   import WithdrawalHash from "../EvmTransactions/WithdrawalHash.svelte";
 
@@ -76,6 +77,9 @@
 </script>
 
 <p>{outcome?.sentence ?? sentText}</p>
+{#if !outcome?.heading}
+  <ArrivalNotice />
+{/if}
 <WithdrawalHash
   explorerName={isMigration ? `${route.chain.name} explorer` : "Dusk explorer"}
   href={isMigration

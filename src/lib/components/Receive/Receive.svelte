@@ -1,13 +1,21 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { mdiArrowLeft, mdiInformationOutline } from "@mdi/js";
+  import {
+    mdiAlertOutline,
+    mdiArrowLeft,
+    mdiInformationOutline,
+    mdiShareVariantOutline,
+    mdiTrayArrowDown,
+  } from "@mdi/js";
+  import * as QRCode from "qrcode";
   import { onMount } from "svelte";
 
-  import { AppAnchorButton } from "$lib/components";
-  import { CopyButton, Icon, QrCode } from "$lib/dusk/components";
+  import { AppAnchorButton, FullAddress } from "$lib/components";
+  import { Button, CopyButton, Icon, QrCode } from "$lib/dusk/components";
+  import { toast } from "$lib/dusk/components/Toast/store";
   import { section } from "$lib/dusk/motion";
-  import { randomUUID, shortenAddress } from "$lib/dusk/string";
+  import { randomUUID } from "$lib/dusk/string";
 
   /** @type {string} */
   export let address = "";
@@ -29,6 +37,21 @@
    * @type {"account" | "address"}
    */
   export let addressType = "account";
+
+  /**
+   * What's asked of whoever pays, in place of the address alone: what the QR
+   * holds, and the link Share sends.
+   *
+   * @type {{ dusk: string, link: string } | null}
+   */
+  export let request = null;
+
+  /** Called as the request leaves the wallet, by Share or Download QR. */
+  /** @type {() => void} */
+  export let onUse = () => {};
+
+  // Where a browser has a share sheet: most phones, some computers.
+  const canShare = typeof navigator.share === "function";
 
   /** @type {HTMLElement} */
   let figureElement;
@@ -64,21 +87,60 @@
     type === "account"
       ? `People who send to ${shownName} reach this public account.`
       : `People who pay ${shownName} choose public or shielded. Anyone can see this address belongs to ${shownName}.`;
+
+  /** The address, or what's asked, through the phone's share sheet. */
+  async function share() {
+    const text = request?.link ?? address;
+
+    try {
+      await navigator.share({
+        text,
+        title: request ? "Dusk payment request" : "My Dusk address",
+      });
+      onUse();
+    } catch (error) {
+      // Closing the sheet is an answer, not a failure.
+      if (error instanceof Error && error.name !== "AbortError") {
+        toast("error", "Couldn't share that", mdiAlertOutline);
+      }
+    }
+  }
+
+  /** What the QR holds, as a picture large enough to print. */
+  async function downloadQr() {
+    try {
+      const link = document.createElement("a");
+
+      link.href = await QRCode.toDataURL(qrValue, {
+        color: { dark: "#101", light: "#fff" },
+        width: 1024,
+      });
+      link.download = `dusk-${addressType === "account" ? "public" : "shielded"}-${request ? "request" : "receive"}-qr.png`;
+      link.click();
+      onUse();
+    } catch {
+      toast("error", "Couldn't make the QR picture", mdiAlertOutline);
+    }
+  }
+
+  $: qrValue = request?.dusk ?? address;
 </script>
 
 <div class="receive">
   <figure class="receive__address-qr-figure" bind:this={figureElement}>
     <QrCode
-      alt={addressType === "account"
-        ? "QR code for your public account"
-        : "QR code for your shielded address"}
-      value={address}
+      alt={request
+        ? "QR code for your payment request"
+        : addressType === "account"
+          ? "QR code for your public account"
+          : "QR code for your shielded address"}
+      value={qrValue}
       className="receive__qr"
       width={Math.min(qrWidth, maxQrWidth)}
     />
 
-    <!-- The name, when there is one to show with the address, and the
-      address, shortened, each on one line with a button to copy it. -->
+    <!-- The name, when there is one to show with the address, on one line
+      with a button to copy it, and the address in full, to read and to copy. -->
     <figcaption class="receive__fields">
       {#await name then shownName}
         {#if shownName}
@@ -108,16 +170,28 @@
       {:catch}
         <!-- A failed lookup shows no name. -->
       {/await}
-      <div class="receive__field">
-        <samp class="receive__address" title={address}>
-          <span aria-hidden="true">{shortenAddress(address)}</span>
-          <span class="sr-only">{address}</span>
-        </samp>
-        <CopyButton
-          className="receive__icon-button receive__copy-button"
-          name="address"
-          title="Copy address"
-          value={address}
+      <p class="receive__full-address"><FullAddress {address} /></p>
+      <CopyButton
+        className="receive__copy-address"
+        name="address"
+        text="Copy address"
+        value={address}
+        variant="secondary"
+      />
+      <div class="receive__share">
+        {#if canShare}
+          <Button
+            icon={{ path: mdiShareVariantOutline }}
+            on:click={share}
+            text="Share"
+            variant="secondary"
+          />
+        {/if}
+        <Button
+          icon={{ path: mdiTrayArrowDown }}
+          on:click={downloadQr}
+          text="Download QR"
+          variant="secondary"
         />
       </div>
       <p class="receive__reveal">
@@ -140,6 +214,8 @@
       {/await}
     </figcaption>
   </figure>
+
+  <slot />
 
   {#if !hideBackButton}
     <div class="receive__buttons">
@@ -187,6 +263,24 @@
       width: 100%;
     }
 
+    &__full-address {
+      text-align: center;
+    }
+
+    :global(&__copy-address) {
+      width: 100%;
+    }
+
+    &__share {
+      display: flex;
+      gap: var(--small-gap);
+      width: 100%;
+
+      & :global(.dusk-button) {
+        flex: 1;
+      }
+    }
+
     &__field {
       display: flex;
       align-items: center;
@@ -199,8 +293,7 @@
     }
 
     /* Both stay on one line: a long name ends in an ellipsis. */
-    &__name,
-    &__address {
+    &__name {
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -212,11 +305,6 @@
       font-family: var(--main-font-family);
       font-size: 1rem;
       font-weight: 500;
-    }
-
-    &__address {
-      color: var(--muted-color);
-      font-size: 0.8125rem;
     }
 
     :global(&__icon-button) {
@@ -250,7 +338,7 @@
     }
 
     /* On phones, taps of at least 44 px. */
-    @media (max-width: 30rem) {
+    @media (max-width: 30rem), (pointer: coarse) {
       :global(&__icon-button) {
         width: 44px;
         height: 44px;

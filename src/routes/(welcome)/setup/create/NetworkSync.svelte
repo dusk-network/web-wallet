@@ -7,12 +7,11 @@
   import { createNumberFormatter } from "$lib/dusk/number";
   import { settingsStore } from "$lib/stores";
   import { mdiCubeOutline } from "@mdi/js";
-  $: ({ language } = $settingsStore);
 
   /** @type {bigint} */
   export let currentBlockHeight;
 
-  const numberFormatter = createNumberFormatter(language);
+  const numberFormatter = createNumberFormatter($settingsStore.language);
 </script>
 
 <IconHeadingCard icons={[mdiCubeOutline]} heading="Ready to sync">

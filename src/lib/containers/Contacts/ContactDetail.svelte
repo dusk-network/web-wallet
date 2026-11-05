@@ -160,7 +160,17 @@
   });
 </script>
 
-<aside aria-labelledby="contact-detail-title" class="contact-detail">
+<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+<aside
+  aria-labelledby="contact-detail-title"
+  class="contact-detail"
+  on:keydown={(event) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      dispatch("close");
+    }
+  }}
+>
   <header class="contact-detail__header">
     <span aria-hidden="true" class="contact-detail__avatar"
       >{Array.from(contact.name.trim())[0]?.toLocaleUpperCase() ?? "?"}</span

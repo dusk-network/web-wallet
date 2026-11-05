@@ -650,12 +650,15 @@ describe("Staking", () => {
           name: "Less than 1,000 DUSK? Use liquid staking (Sozu, third party)",
         })
       ).toHaveAttribute("href", "/some-base-path/dashboard/stake?flow=liquid");
-      expect(getByRole("button", { name: "Stake" })).toBeDisabled();
+      expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
       await fireEvent.click(getByRole("button", { name: "Use 1,000" }));
 
       expect(amount).toHaveValue("1000");
       expect(container.querySelector(".native-stake__error")).toBeNull();
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
       expect(
         getByRole("button", { name: "Stake 1,000 DUSK" })
       ).toBeInTheDocument();
@@ -670,11 +673,11 @@ describe("Staking", () => {
       expect(getByLabelText("Stake amount")).toHaveValue("");
       expect(queryByRole("button", { name: "Use 1,000" })).toBeNull();
       expect(textOf(container.querySelector(".native-stake__note"))).toBe(
-        "Your public balance doesn't cover the 1,000 DUSK minimum and the network fee. Less than 1,000 DUSK? Use liquid staking (Sozu, third party)"
+        "Your public balance doesn't cover the 1,000 DUSK minimum, this fee and the fee to unstake later. Less than 1,000 DUSK? Use liquid staking (Sozu, third party)"
       );
     });
 
-    it("says how much more an amount needs, with the network fee", async () => {
+    it("says how much more an amount needs, with this fee and the fee to unstake later", async () => {
       open("?flow=native");
       withoutStake(1_483n);
 
@@ -685,9 +688,62 @@ describe("Staking", () => {
       });
 
       expect(textOf(container.querySelector(".native-stake__error"))).toBe(
-        "That's 0.05 DUSK more than the public balance, with the network fee."
+        "That's 0.1 DUSK more than the public balance, with this fee and the fee to unstake later."
       );
     });
+
+    it("keeps the fee to unstake, at this network's gas, with Max", async () => {
+      open("?flow=native");
+      withoutStake(1_483n);
+
+      const { getByLabelText, getByRole } = render(Staking);
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(getByLabelText("Stake amount")).toHaveValue("1482.9");
+    });
+  });
+
+  it("shows what's held with Sozu on its form, from the whole history, asked for as it opens and for no other flow", async () => {
+    const whole = vi.fn(async () => ({
+      rows: [
+        {
+          hash: "a1",
+          sozu: "stake",
+          status: "executed",
+          success: true,
+          value: 90n * 1_000_000_000n,
+        },
+      ],
+      shieldedWaiting: true,
+    }));
+    const sozuFacts = vi.fn(async () => new Map());
+    const startHistory = vi
+      .spyOn(walletStore, "startHistory")
+      .mockReturnValue(/** @type {any} */ ({ sozuFacts, whole }));
+
+    open("?flow=native");
+
+    const flows = render(Staking);
+
+    await vi.waitFor(() =>
+      expect(flows.container.firstElementChild).toBeTruthy()
+    );
+
+    expect(whole).not.toHaveBeenCalled();
+
+    flows.unmount();
+    open("?flow=liquid");
+
+    const { container } = render(Staking);
+
+    await vi.waitFor(() =>
+      expect(
+        container.querySelector(".liquid-stake__position")
+      ).toHaveTextContent("Put in 90 DUSK")
+    );
+    expect(whole).toHaveBeenCalledExactlyOnceWith({ publicOnly: true });
+    startHistory.mockRestore();
   });
 
   it("stakes with Sozu from liquid staking", async () => {
@@ -706,9 +762,7 @@ describe("Staking", () => {
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
       "You get about 32.4378 stDUSK, worth about 99.75 DUSK now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
     );
-    expect(
-      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
-    ).toBeEnabled();
+    expect(getByRole("button", { name: "Review" })).toBeEnabled();
     // A stake's own gas: up to 5,000,000 at the node's price.
     expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
       "Total Up to 100.005 DUSK"
@@ -751,6 +805,7 @@ describe("Staking", () => {
       await fireEvent.input(getByLabelText(label), {
         target: { value: "100" },
       });
+      await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name }));
 
@@ -775,6 +830,7 @@ describe("Staking", () => {
     await fireEvent.input(getByLabelText("Stake amount"), {
       target: { value: "100" },
     });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
     await fireEvent.click(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })

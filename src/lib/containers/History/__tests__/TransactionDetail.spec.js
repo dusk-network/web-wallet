@@ -408,11 +408,21 @@ describe("TransactionDetail", () => {
     );
   });
 
-  it("should round the fee paid in its list, and give it exactly under Technical details", () => {
+  it("should keep a failed transaction's error from reordering what's read: its contract can write anything", () => {
+    const { container } = show({
+      ...row({}),
+      error: "refused \u202E0001\u202C",
+    });
+
+    expect(container.querySelector(".tx-detail__error")?.textContent).toContain(
+      "refused \\u202e0001\\u202c"
+    );
+  });
+
+  it("should give the fee paid to the last digit, in its list and under Technical details", () => {
     const { container } = show(row({ feePaid: "4419010" }));
 
-    expect(mainList(container)).toMatch(/Network fee paid\s*0\.0044 DUSK/);
-    expect(mainList(container)).not.toContain("0.00441901");
+    expect(mainList(container)).toMatch(/Network fee paid\s*0\.00441901 DUSK/);
     expect(techList(container)).toMatch(/^.*\bFee paid\s+0\.00441901 DUSK/);
     expect(techList(container)).not.toContain("exactly");
   });
@@ -502,7 +512,6 @@ describe("TransactionDetail", () => {
   it("should show the fee, and hide it with the balances, here and under Technical details", () => {
     const shown = show(row({ amount: "1000000000", feePaid: "1856398" }));
 
-    expect(shown.container.textContent).toContain("0.0019");
     expect(shown.container.textContent).toContain("0.001856398");
     cleanup();
 
@@ -514,7 +523,6 @@ describe("TransactionDetail", () => {
       );
 
       expect(container.textContent).toContain("Network fee paid");
-      expect(container.textContent).not.toContain("0.0019");
       expect(container.textContent).not.toContain("0.001856398");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -536,10 +544,24 @@ describe("TransactionDetail", () => {
     }
   });
 
-  it("should show a memo in the order it was written, whatever controls it carries", () => {
-    const { getByText } = show(row({ memo: "invoice \u202Egnp.exe\u202C" }));
+  it("should show a memo in the order it was written, its hidden characters as codes, and say so", () => {
+    const { getByText, queryByText } = show(
+      row({ memo: "invoice \u202Egnp.exe\u202C" })
+    );
 
-    expect(getByText("invoice gnp.exe")).toBeInTheDocument();
+    expect(getByText("invoice \\u202egnp.exe\\u202c")).toBeInTheDocument();
+    expect(
+      getByText("It has hidden characters, shown here as codes.")
+    ).toBeInTheDocument();
+
+    cleanup();
+
+    show(row({ memo: "Factura 33, abril" }));
+
+    expect(getByText("Factura 33, abril")).toBeInTheDocument();
+    expect(
+      queryByText("It has hidden characters, shown here as codes.")
+    ).toBeNull();
   });
 
   it("should hide the stDUSK a stake got with the balances, here and under Technical details", async () => {

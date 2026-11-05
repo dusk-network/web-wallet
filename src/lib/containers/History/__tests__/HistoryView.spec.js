@@ -70,6 +70,17 @@ const state = {
   syncing: false,
 };
 
+/** What runs as a navigation ends. */
+const navigation = vi.hoisted(() => ({
+  /** @type {Array<() => void>} */
+  after: [],
+}));
+
+vi.mock("$app/navigation", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  afterNavigate: (/** @type {() => void} */ run) => navigation.after.push(run),
+}));
+
 describe("HistoryView", () => {
   afterEach(() => {
     cleanup();
@@ -153,9 +164,16 @@ describe("HistoryView", () => {
     await fireEvent.keyDown(close, { key: "Escape" });
 
     expect(first).toHaveFocus();
+
+    // Going back through the browser's history takes the focus away, as the
+    // sheet's step goes: it comes back as that ends.
+    first.blur();
+    navigation.after.forEach((run) => run());
+
+    expect(first).toHaveFocus();
   });
 
-  it("should say when rows aren't looked up yet, and that an export marks them", () => {
+  it("should say when rows aren't looked up yet", () => {
     const { getByRole } = render(HistoryView, {
       locale: "en",
       state: {
@@ -166,11 +184,8 @@ describe("HistoryView", () => {
     });
 
     expect(getByRole("status")).toHaveTextContent(
-      "Couldn't reach the network's history. A row has no date or fee yet. An export marks it \"Not looked up yet\"."
+      "Couldn't reach the network's history. A row has no date or fee yet."
     );
-    expect(
-      getByRole("checkbox", { name: /Include my contact names/ })
-    ).not.toBeChecked();
   });
 
   it("should name each row's button with its amount and date", () => {

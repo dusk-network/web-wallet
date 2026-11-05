@@ -11,6 +11,7 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { settingsStore } from "$lib/stores";
+import { outcomeUnknown } from "$lib/transactions";
 
 import { Unstake } from "..";
 import { mdiDatabaseArrowDownOutline, mdiGiftOpenOutline } from "@mdi/js";
@@ -67,6 +68,24 @@ describe("Unstake", () => {
     cleanup();
     baseProps.execute.mockClear();
     settingsStore.reset();
+  });
+
+  it("should start with all it can take in the language set, whatever the browser's, for Next to take it", async () => {
+    settingsStore.update((store) => ({ ...store, language: "de-DE" }));
+
+    const { getByRole } = render(Unstake, {
+      ...baseProps,
+      availableBalance: 10_000_000_000_000n,
+      maxWithdrawAmount: 1_123_000_000n,
+      minStakeRequirement: 1_000_000_000n,
+      operationCtaIconPath: mdiDatabaseArrowDownOutline,
+      operationCtaLabel: "Unstake",
+      operationOverviewLabel: "Amount to unstake",
+    });
+
+    expect(navigator.language).not.toMatch(/^de/);
+    expect(getByRole("textbox", { name: /Amount/ })).toHaveValue("1,123");
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
   });
 
   describe("Unstake operation", () => {
@@ -225,7 +244,7 @@ describe("Unstake", () => {
 
       expect(await errorOf("ten")).toBe("Enter an amount such as 10 or 10.5.");
       expect(await errorOf("1.0000000001")).toBe(
-        "Enter an amount such as 10 or 10.5."
+        "DUSK has 9 decimals at most."
       );
       expect(await errorOf("0")).toBe("Enter an amount greater than 0.");
       expect(await errorOf("278,5")).toBe("That's more than you have staked.");
@@ -237,7 +256,7 @@ describe("Unstake", () => {
       await rerender({ availableBalance: 0n });
 
       expect(await errorOf("278")).toBe(
-        "The network fee is paid from the public balance, and it's empty."
+        "The network fee is paid from the public balance, and it's empty: 0.02 DUSK short. Add that much to it first."
       );
     });
 
@@ -398,6 +417,60 @@ describe("Unstake", () => {
 
     afterAll(() => {
       vi.useRealTimers();
+    });
+
+    it("should go back to the review with Try again when nothing went out, and send what it shows", async () => {
+      const execute = vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+        .mockResolvedValue(lastTxId);
+      const { container, findByRole, getByRole } = render(Unstake, {
+        ...baseProps,
+        ...claimRewardsProps,
+        execute,
+      });
+
+      await vi.advanceTimersToNextTimerAsync();
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
+
+      await fireEvent.click(await findByRole("button", { name: "Try again" }));
+
+      expect(getReviewAmounts(container)[0][0]).toBe(
+        claimRewardsProps.operationOverviewLabel
+      );
+      expect(execute).toHaveBeenCalledOnce();
+
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
+
+      expect(execute).toHaveBeenCalledTimes(2);
+      expect(execute).toHaveBeenLastCalledWith(
+        claimRewardsProps.maxWithdrawAmount,
+        baseProps.gasSettings.gasPrice,
+        baseProps.gasSettings.gasLimit
+      );
+      expect(await findByRole("status")).toHaveTextContent(/^Sending… /);
+    });
+
+    it("should offer no Try again when it may have gone out", async () => {
+      const execute = vi
+        .fn()
+        .mockRejectedValue(outcomeUnknown(new TypeError("Failed to fetch")));
+      const { findByRole, getByRole, queryByRole } = render(Unstake, {
+        ...baseProps,
+        ...claimRewardsProps,
+        execute,
+      });
+
+      await vi.advanceTimersToNextTimerAsync();
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
+
+      expect(await findByRole("link", { name: "Open History" })).toBeVisible();
+      expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });
 
     it("should render the claim rewards view", () => {

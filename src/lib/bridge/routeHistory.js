@@ -3,7 +3,8 @@
  * Dusk and another chain waits on it: a migration is paid on Dusk, and only
  * the history shows its payout; a transfer out shows once its send is in a
  * block. Each read carries on from where the last one got to. None is made
- * while nothing waits, or while the page is hidden. A change in the public
+ * while nothing waits, or while the page is hidden, unless they asked to be
+ * told when it arrives ($lib/bridge/arrivalNotice). A change in the public
  * balance, as the wallet's sync finds one, reads it too: a payout of a
  * migration sent elsewhere is seen then. And a read that finds new public
  * transactions reads the balance again at once, as a send does.
@@ -15,6 +16,7 @@ import { activityState, currentActivity } from "$lib/activity";
 import { walletStore } from "$lib/stores";
 import nodeNetwork from "$lib/stores/nodeNetwork";
 
+import { followsWhileAway } from "./arrivalNotice";
 import {
   keptMigrations,
   routeTransfersOf,
@@ -172,7 +174,7 @@ export function followRouteHistory({
       stopTimer();
     } else if (timer === undefined) {
       timer = setInterval(() => {
-        if (document.visibilityState !== "hidden") {
+        if (document.visibilityState !== "hidden" || followsWhileAway()) {
           read();
         }
       }, FOLLOW_MS);

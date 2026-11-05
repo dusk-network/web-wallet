@@ -1,4 +1,5 @@
 <script>
+  import { displayText } from "@dusk-network/app-core/text";
   import { createEventDispatcher, onMount } from "svelte";
   import {
     mdiAlertCircleOutline,
@@ -16,7 +17,12 @@
     Icon,
     Textbox,
   } from "$lib/dusk/components";
-  import { BalanceValue, SectionHead } from "$lib/components";
+  import {
+    BalanceValue,
+    FieldLimit,
+    MemoText,
+    SectionHead,
+  } from "$lib/components";
   import { fetchTxNonce } from "@dusk-network/app-core/history";
   import { archiveAt } from "$lib/activity/activityHistory";
   import { claimText } from "@dusk-network/networks/duskevm";
@@ -27,7 +33,7 @@
   import { contractLabel } from "$lib/activity/knownContracts";
   import { fullDateTime, routeLabel } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
-  import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
+  import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { addBasePath } from "$lib/navigation";
   import {
@@ -42,10 +48,6 @@
   import walletAccountNames from "$lib/wallets/accountNames";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
-
-  // Anyone can send a memo, and these would show its text out of order, as
-  // "exe.png" for "gnp.exe".
-  const BIDI_CONTROLS = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
 
   /** @type {ActivityRow} */
   export let row;
@@ -420,6 +422,7 @@
                     variant="primary"
                   />
                 </div>
+                <FieldLimit limit={40} value={contactName} />
                 {#if isFalseContactName}
                   <p class="tx-detail__note" role="alert">
                     That looks like a .dusk name. Choose another name.
@@ -513,14 +516,16 @@
       {#if row.memo}
         <div>
           <dt>Memo</dt>
-          <dd class="tx-detail__memo">{row.memo.replace(BIDI_CONTROLS, "")}</dd>
+          <!-- Anyone can send a memo, and hidden characters would show it out
+            of order, as "exe.png" for "gnp.exe". -->
+          <dd class="tx-detail__memo"><MemoText text={row.memo} /></dd>
         </div>
       {/if}
       <div>
         <dt>Network fee paid</dt>
         <dd>
           {#if row.fee !== null}
-            <BalanceValue value={formatFee(row.fee, locale)} /> DUSK
+            <BalanceValue value={formatDuskExact(row.fee, locale)} /> DUSK
           {:else if p.icon === "received" || (p.category === "bridge" && row.direction === "in")}
             Paid by the sender
           {:else}
@@ -644,7 +649,9 @@
         {#if row.error}
           <div class="tx-detail__wide">
             <dt>Error</dt>
-            <dd class="tx-detail__error">{row.error}</dd>
+            <dd class="tx-detail__error">
+              {displayText(row.error, { lineBreaks: true }).text}
+            </dd>
           </div>
         {/if}
       </dl>
@@ -907,6 +914,14 @@
 
     &:focus-visible {
       outline: 2px solid var(--calm-focus);
+    }
+  }
+
+  /* Beside each other, they're one size, and a thumb's on a phone. */
+  @media (max-width: 30rem), (pointer: coarse) {
+    .tx-detail :global(.tx-detail__copy),
+    .tx-detail__list :global(.tx-detail__save) {
+      min-height: 44px;
     }
   }
 

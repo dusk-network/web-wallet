@@ -46,6 +46,7 @@ type StepperVariant = "primary" | "secondary";
 type SuspenseErrorVariant = "alert" | "details";
 
 type TextboxTypes =
+  | "date"
   | "email"
   | "hidden"
   | "multiline"

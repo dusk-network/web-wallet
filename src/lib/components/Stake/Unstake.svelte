@@ -13,7 +13,9 @@
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID } from "$lib/dusk/string";
+  import { formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { settingsStore } from "$lib/stores";
+  import { nothingWentOut } from "$lib/transactions";
 
   import {
     Button,
@@ -30,11 +32,7 @@
     TransactionResult,
   } from "$lib/components";
 
-  import {
-    checkAmount,
-    normalizeDuskInput,
-    parseDuskInput,
-  } from "./stakeAmount";
+  import { checkAmount, readDuskInput } from "./stakeAmount";
 
   /** @type {(...args: any[]) => Promise<string>} */
   export let execute;
@@ -67,12 +65,22 @@
    */
   export let minStakeRequirement;
 
+  const draft = formDraft(
+    minStakeRequirement === undefined ? "stake-claim" : "stake-unstake"
+  );
+
+  /** What was typed before a lock, a reload or a failed send. */
+  const typedBefore = draft.read();
+
   let activeStep = 0;
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
   let defaultGas = gasSettings;
   let isGasValid = false;
 
   const id = randomUUID();
+
+  // What's worked out as the form opens needs it before what follows it does.
+  let { language } = $settingsStore;
 
   /**
    * An amount in DUSK as the field shows it, with the language's decimal
@@ -81,18 +89,18 @@
    * @param {bigint} lux
    */
   const asTyped = (lux) =>
-    formatDuskPlain(lux).replace(".", getDecimalSeparator());
+    formatDuskPlain(lux).replace(".", getDecimalSeparator(language));
 
   // The amount as typed, as in the other amount fields: it starts at all
   // that can be withdrawn.
-  let amountText = asTyped(maxWithdrawAmount);
+  let amountText = typedBefore?.amount || asTyped(maxWithdrawAmount);
 
   /**
    * Whether the user typed an amount or used the maximum. The amount
    * starts at all they can withdraw, so while balances are hidden, it
    * stays hidden until they do.
    */
-  let isAmountChosen = false;
+  let isAmountChosen = Boolean(typedBefore?.amount);
 
   // What screen readers read with the amount while it's hidden.
   const hiddenNoteId = `${id}-hidden-note`;
@@ -113,6 +121,9 @@
    * @type {Promise<string> | null}
    */
   let sent = null;
+
+  /** @type {WizardStep} */
+  let resultStep;
 
   const steps = [{ label: "Amount" }, { label: "Review" }, { label: "Done" }];
 
@@ -157,15 +168,43 @@
 
   function send() {
     if (reviewed && !sent) {
+      // It goes out now, as far as a reload can tell: nothing brings it back.
+      draft.clear();
       sent = execute(reviewed.amount, reviewed.gasPrice, reviewed.gasLimit);
+      sent.catch((error) => {
+        if (nothingWentOut(error)) {
+          draft.keep(typed);
+        }
+      });
     }
 
     activeStep++;
   }
 
+  /**
+   * Back to the review of what failed with nothing sent.
+   *
+   * @param {MouseEvent} event
+   */
+  function tryAgain(event) {
+    sent = null;
+    activeStep--;
+    resultStep.back(event);
+  }
+
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
+
+  // What's typed, kept as it's typed, for as long as it hasn't gone out: the
+  // amount it starts with isn't.
+  $: typed = {
+    amount: isAmountChosen ? amountText : "",
+    gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+  };
+  $: if (!sent) {
+    draft.save(typed);
+  }
 
   $: ({ hideBalances, language } = $settingsStore);
   $: isAmountHidden = hideBalances && !isAmountChosen;
@@ -189,9 +228,7 @@
 
   // A decimal comma, as the language or a phone's keyboard gives it, reads
   // as the amount meant, as in the other amount fields.
-  $: amount = parseDuskInput(
-    normalizeDuskInput(amountText, getDecimalSeparator())
-  );
+  $: amount = readDuskInput(amountText, language);
 
   // At most all that can be withdrawn, with the fee paid from the public
   // balance, and said as the other amount fields say it.
@@ -200,6 +237,7 @@
     amount,
     available: availableBalance,
     fee: maxGasFee,
+    hidden: hideBalances,
     locale: language,
     most: {
       amount: maxWithdrawAmount,
@@ -344,13 +382,14 @@
     </WizardStep>
 
     <!-- OPERATION RESULT STEP  -->
-    <WizardStep step={2} {key} showNavigation={false}>
+    <WizardStep bind:this={resultStep} step={2} {key} showNavigation={false}>
       {#if reviewed && sent}
         <TransactionResult
           leaveHref="/dashboard/stake"
           leaveText="Back to staking"
           maxFee={reviewed.gasLimit * reviewed.gasPrice}
           onBeforeLeave={resetOperation}
+          onRetry={tryAgain}
           operation={sent}
         />
       {/if}

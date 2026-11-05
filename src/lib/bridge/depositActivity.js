@@ -661,6 +661,27 @@ export function resumeDepositTracking(account) {
   return kept.filter((item) => !isDepositTerminal(item));
 }
 
+/** How long after it's sent a deposit is followed from anywhere in the wallet. */
+const FOLLOWED_FOR_MS = 86_400_000;
+
+/**
+ * Takes up the deposits this wallet sent in the last day that are still under
+ * way, for whoever asked to be told when they arrive, from whichever page the
+ * wallet opens on. No EVM wallet is needed: the DuskEVM address each pays is the
+ * deposit's own. A stuck one costs no reads for long.
+ *
+ * @param {number} [now]
+ */
+export function resumeRecentDeposits(now = Date.now()) {
+  const scope = walletDataScope();
+
+  for (const item of rememberedDeposits()) {
+    if (!isDepositTerminal(item) && now - item.createdAt < FOLLOWED_FOR_MS) {
+      void trackDepositTransaction(item.transactionHash, scope);
+    }
+  }
+}
+
 /**
  * A deposit in the history, as this browser keeps deposits: kept for the
  * DuskEVM address it names, where it wasn't; a final one with its Dusk

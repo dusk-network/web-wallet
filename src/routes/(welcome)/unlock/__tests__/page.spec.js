@@ -2,6 +2,7 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -24,8 +25,13 @@ import {
   getSeedFromMnemonic,
   profileGeneratorFrom,
 } from "$lib/wallet";
+import {
+  fakeAuthenticator,
+  removeFakeAuthenticator,
+} from "$lib/test-helpers/fakeAuthenticator";
 import vault from "$lib/vault";
 import fixtures from "$lib/vault/__tests__/fixtures/login-v1.json";
+import { noteActiveWallet } from "$lib/wallets/directory";
 import { useWalletData } from "$lib/wallets/walletData";
 
 import UnlockWallet from "../+page.svelte";
@@ -38,6 +44,7 @@ vi.mock("$lib/dusk/string", async (importOriginal) => ({
 
 const V1 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`;
 const V2 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-v2`;
+const PASSKEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-passkey`;
 
 /** @param {string} key */
 const stored = (key) => JSON.parse(localStorage.getItem(key) ?? "null");
@@ -107,6 +114,196 @@ describe("Unlock Wallet", async () => {
     gotoSpy.mockRestore();
     initSpy.mockRestore();
     openSpy.mockRestore();
+  });
+
+  describe("with fingerprint or face unlock on", () => {
+    /** @type {ReturnType<typeof fakeAuthenticator>} */
+    let device;
+
+    /** @type {import("vitest").MockInstance} */
+    let focus;
+
+    beforeEach(async () => {
+      localStorage.clear();
+      sessionStorage.clear();
+      device = fakeAuthenticator();
+      focus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+      await vault.setUp(mnemonic, pwd);
+      await vault.addPasskey(device.passkey(), pwd);
+      settingsStore.update(setUserId(userId));
+    });
+
+    afterEach(() => {
+      cleanup();
+      focus.mockRestore();
+      removeFakeAuthenticator();
+      localStorage.clear();
+    });
+
+    /** @param {import("@testing-library/svelte").RenderResult<any>} view */
+    const fingerprint = (view) =>
+      view.getByRole("button", { name: "Use fingerprint or face" });
+
+    it("should go straight to it as the wallet opens, unlock what the password unlocks, and go where it left off", async () => {
+      const place = vi
+        .spyOn(navigation, "takePlace")
+        .mockReturnValueOnce("/dashboard/send?to=abc");
+
+      render(UnlockWallet);
+
+      await waitForGoto();
+
+      expect(device.get).toHaveBeenCalledOnce();
+      expectOpened();
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
+        "/dashboard/send?to=abc",
+        { replaceState: true }
+      );
+      place.mockRestore();
+    });
+
+    it("should say nothing of one turned down as it opens, leave the password to work, and ask again only as it's pressed", async () => {
+      device.personAnswers("NotAllowedError");
+
+      const view = render(UnlockWallet);
+
+      await vi.waitFor(() => expect(device.get).toHaveBeenCalledOnce());
+      await vi.waitFor(() => expect(fingerprint(view)).toBeEnabled());
+
+      expect(view.queryByRole("alert")).toBeNull();
+      expect(openSpy).not.toHaveBeenCalled();
+
+      // The tab coming back doesn't ask again for what they turned down.
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      expect(device.get).toHaveBeenCalledOnce();
+
+      await fireEvent.click(fingerprint(view));
+      await vi.waitFor(() => expect(device.get).toHaveBeenCalledTimes(2));
+
+      // Asked for, and turned down: it says so, and the password's there.
+      expect(await view.findByRole("alert")).toHaveTextContent(
+        "That didn't unlock the wallet. Try again, or use your password."
+      );
+
+      await fireEvent.input(getTextInput(view.container), {
+        target: { value: pwd },
+      });
+      await fireEvent.submit(getAsHTMLElement(view.container, "form"));
+      await waitForGoto();
+
+      expectOpened();
+    });
+
+    it("should work as ever by the password once the passkey is gone from the device, and lose nothing", async () => {
+      device.forget();
+
+      const view = render(UnlockWallet);
+
+      await vi.waitFor(() => expect(fingerprint(view)).toBeEnabled());
+
+      expect(vault.passkey()).not.toBeNull();
+
+      await fireEvent.input(getTextInput(view.container), {
+        target: { value: pwd },
+      });
+      await fireEvent.submit(getAsHTMLElement(view.container, "form"));
+      await waitForGoto();
+
+      expectOpened();
+    });
+
+    it("should leave it to be asked for right after a lock, and ask as the tab comes back", async () => {
+      const locked = vi.spyOn(navigation, "lockedHere").mockReturnValue(true);
+      const view = render(UnlockWallet);
+
+      await vi.waitFor(() => expect(fingerprint(view)).toBeEnabled());
+
+      expect(device.get).not.toHaveBeenCalled();
+
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      await waitForGoto();
+
+      expect(device.get).toHaveBeenCalledOnce();
+      locked.mockRestore();
+    });
+
+    it("should never ask for a tab no one's looking at, and ask as they come to it", async () => {
+      const visibility = vi
+        .spyOn(document, "visibilityState", "get")
+        .mockReturnValue("hidden");
+      const view = render(UnlockWallet);
+
+      await vi.waitFor(() => expect(fingerprint(view)).toBeEnabled());
+
+      expect(device.get).not.toHaveBeenCalled();
+
+      visibility.mockReturnValue("visible");
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      await waitForGoto();
+      visibility.mockRestore();
+    });
+
+    it("should say it's off when it opens nothing any more, and offer it no more", async () => {
+      const stored = JSON.parse(
+        /** @type {string} */ (localStorage.getItem(PASSKEY))
+      );
+      const other = device.passkey();
+
+      // A record whose keys another passkey's PRF wrapped.
+      localStorage.setItem(
+        PASSKEY,
+        JSON.stringify({
+          ...stored,
+          credentialId: other.credentialId,
+          prfSalt: other.prfSalt,
+        })
+      );
+
+      const view = render(UnlockWallet);
+
+      expect(await view.findByRole("alert")).toHaveTextContent(
+        "Fingerprint or face unlock is off now."
+      );
+      expect(
+        view.queryByRole("button", { name: "Use fingerprint or face" })
+      ).toBeNull();
+      expect(vault.passkey()).toBeNull();
+      expect(openSpy).not.toHaveBeenCalled();
+    });
+
+    it("should lead Back to the chooser, past going straight to it", async () => {
+      device.personAnswers("NotAllowedError");
+
+      const view = render(UnlockWallet);
+
+      await vi.waitFor(() => expect(fingerprint(view)).toBeEnabled());
+
+      expect(view.getByRole("link", { name: "Back" })).toHaveAttribute(
+        "href",
+        expect.stringMatching(/\/setup\?choose$/)
+      );
+    });
+  });
+
+  it("should offer no fingerprint without it turned on, and ask the device nothing", async () => {
+    const device = fakeAuthenticator();
+
+    localStorage.clear();
+    await vault.setUp(mnemonic, pwd);
+
+    const view = render(UnlockWallet);
+
+    expect(
+      view.queryByRole("button", { name: "Use fingerprint or face" })
+    ).toBeNull();
+    expect(device.get).not.toHaveBeenCalled();
+
+    cleanup();
+    removeFakeAuthenticator();
+    localStorage.clear();
   });
 
   it("should discard an unlock whose profile derivation finishes after leaving", async () => {
@@ -198,7 +395,9 @@ describe("Unlock Wallet", async () => {
       await waitForGoto();
 
       expect(initSpy).toHaveBeenCalledTimes(1);
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+        replaceState: true,
+      });
     });
 
     it("should say when the words aren't a valid recovery phrase, and not unlock", async () => {
@@ -270,7 +469,9 @@ describe("Unlock Wallet", async () => {
       expect(initSpy).toHaveBeenCalledTimes(1);
       expect(initSpy).toHaveBeenCalledWith(expect.any(ProfileGenerator));
       expect(gotoSpy).toHaveBeenCalledTimes(1);
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+        replaceState: true,
+      });
     });
 
     it("should keep what the wallet records, though kept from before wallets had incarnations, once its phrase unlocks it", async () => {
@@ -362,7 +563,9 @@ describe("Unlock Wallet", async () => {
       expect(initSpy).toHaveBeenCalledTimes(1);
       expect(initSpy).toHaveBeenCalledWith(expect.any(ProfileGenerator));
       expect(gotoSpy).toHaveBeenCalledTimes(1);
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+        replaceState: true,
+      });
     });
   });
 
@@ -436,7 +639,9 @@ describe("Unlock Wallet", async () => {
         expect(getErrorElement()).toBeNull();
         expect(openSpy).toHaveBeenCalledTimes(1);
         expectOpened();
-        expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+        expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+          replaceState: true,
+        });
       }
     );
 
@@ -455,7 +660,9 @@ describe("Unlock Wallet", async () => {
       expect(openSpy).toHaveBeenCalledTimes(1);
       expectOpened();
       expect(gotoSpy).toHaveBeenCalledTimes(1);
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+        replaceState: true,
+      });
     });
 
     it.each([` ${pwd}`, `${pwd} `, `\t${pwd}\t`])(
@@ -471,7 +678,9 @@ describe("Unlock Wallet", async () => {
           await fireEvent.submit(getAsHTMLElement(container, "form"));
           await waitForGoto();
           expect(openSpy).toHaveBeenCalledTimes(1);
-          expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+          expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+            replaceState: true,
+          });
         } finally {
           await vault.setUp(mnemonic, pwd);
         }
@@ -518,6 +727,133 @@ describe("Unlock Wallet", async () => {
     });
   });
 
+  describe("Keeping one's place", () => {
+    beforeEach(async () => {
+      await vault.setUp(mnemonic, pwd);
+      settingsStore.update(setUserId(userId));
+    });
+
+    afterEach(async () => {
+      await vault.clear();
+    });
+
+    /** Unlocks with the password. */
+    const unlock = async () => {
+      const { container } = render(UnlockWallet);
+
+      await fireEvent.input(getTextInput(container), {
+        target: { value: pwd },
+      });
+      await fireEvent.submit(getAsHTMLElement(container, "form"));
+      await waitForGoto();
+    };
+
+    it("should return to the page a lock, a reload or a link left off at, with its target", async () => {
+      navigation.keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: "?to=alice.dusk",
+      });
+
+      await unlock();
+
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
+        "/dashboard/send/?to=alice.dusk",
+        { replaceState: true }
+      );
+    });
+
+    it("should open at Home once that page was returned to", async () => {
+      navigation.keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: "",
+      });
+
+      await unlock();
+      gotoSpy.mockClear();
+      cleanup();
+      await unlock();
+
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith("/dashboard", {
+        replaceState: true,
+      });
+    });
+
+    it("should open at Home for anything kept that isn't a page of the wallet", async () => {
+      sessionStorage.setItem(
+        `${CONFIG.LOCAL_STORAGE_APP_KEY}-place`,
+        "//elsewhere.test/dashboard"
+      );
+
+      await unlock();
+
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith("/dashboard", {
+        replaceState: true,
+      });
+    });
+
+    it("should keep the place through a wrong password", async () => {
+      navigation.keepPlace({
+        pathname: "/some-base-path/dashboard/stake/",
+        search: "?flow=native",
+      });
+
+      const { container } = render(UnlockWallet);
+      const input = getTextInput(container);
+
+      await fireEvent.input(input, { target: { value: "wrong" } });
+      await fireEvent.submit(getAsHTMLElement(container, "form"));
+      await vi.waitUntil(() => getErrorElement(), { timeout: 5_000 });
+
+      expect(gotoSpy).not.toHaveBeenCalled();
+
+      await fireEvent.input(input, { target: { value: pwd } });
+      await fireEvent.submit(getAsHTMLElement(container, "form"));
+      await waitForGoto();
+
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
+        "/dashboard/stake/?flow=native",
+        { replaceState: true }
+      );
+    });
+
+    it("should open the wallet on the profile it was on, and only that wallet", async () => {
+      const [{ id }] = /** @type {Array<{ id: string }>} */ (vault.list());
+
+      await noteActiveWallet(id, { accounts: [], addresses: [] });
+      navigation.keepProfile(id, 1);
+
+      await unlock();
+
+      expect(openSpy.mock.calls[0][1]).toMatchObject({
+        active: id,
+        profile: 1,
+      });
+
+      cleanup();
+      gotoSpy.mockClear();
+      openSpy.mockClear();
+      navigation.keepProfile("another wallet", 1);
+
+      await unlock();
+
+      expect(openSpy.mock.calls[0][1]).not.toHaveProperty("profile");
+    });
+
+    it("should keep no password or recovery phrase in this tab", async () => {
+      navigation.keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: "",
+      });
+
+      await unlock();
+
+      const tab = JSON.stringify({ ...sessionStorage });
+
+      expect(tab).not.toContain(pwd);
+      expect(tab).not.toContain(mnemonic.split(" ")[0]);
+    });
+  });
+
   describe("The move of the one recovery phrase earlier versions kept", () => {
     afterEach(async () => {
       await vault.clear();
@@ -558,7 +894,9 @@ describe("Unlock Wallet", async () => {
         );
         expect(openSpy).toHaveBeenCalledTimes(1);
         expectOpened();
-        expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+        expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+          replaceState: true,
+        });
       }
     );
 
@@ -591,7 +929,9 @@ describe("Unlock Wallet", async () => {
 
       expect(moved.id).toMatch(/^v1-/);
       expectOpened();
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+        replaceState: true,
+      });
 
       // The names of before are its own now, emptied of the other wallet's.
       expect(

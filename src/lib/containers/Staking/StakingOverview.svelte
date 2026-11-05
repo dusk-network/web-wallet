@@ -10,6 +10,7 @@
   import { duskPerStDusk, feePercent } from "@dusk-network/networks/sozu";
   import { sozuRateEstimate } from "@dusk-network/networks/rates";
   import { ratePercent } from "$lib/staking/rewardRate";
+  import { settingsStore } from "$lib/stores";
 
   import ActivityPanel from "../Home/ActivityPanel.svelte";
   import { stakeActions } from "./stakeActions";
@@ -33,6 +34,13 @@
   /** The most an unstake or a claim costs. */
   /** @type {bigint} */
   export let maxFee;
+
+  /**
+   * The least an unstake or a claim can be made to cost, in its form.
+   *
+   * @type {bigint | undefined}
+   */
+  export let leastFee = undefined;
 
   /** Whether the history holds staking. */
   export let hasPastStaking = false;
@@ -82,8 +90,11 @@
   $: locked = stakeInfo.amount?.locked ?? 0n;
   $: hasStake = stakeInfo.amount !== null;
   $: actions = stakeActions({
+    leastFee,
     hasLiquid,
     hasPastStaking,
+    hidden: $settingsStore.hideBalances,
+    locale,
     maxFee,
     pending,
     publicBalance,

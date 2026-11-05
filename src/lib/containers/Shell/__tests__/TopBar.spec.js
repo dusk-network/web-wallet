@@ -215,7 +215,9 @@ describe("TopBar", () => {
     });
 
     await fireEvent.click(
-      getByRole("button", { name: "Search names, addresses and transactions" })
+      getByRole("button", {
+        name: "Search names, addresses, amounts and transactions",
+      })
     );
 
     expect(search).toHaveBeenCalledOnce();

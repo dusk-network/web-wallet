@@ -7,7 +7,12 @@ import {
   withBridge,
 } from "$lib/activity/__tests__/fixtures/rows";
 
-import { lookupKind, lookupName, searchLocally } from "../search";
+import {
+  isAmountQuery,
+  lookupKind,
+  lookupName,
+  searchLocally,
+} from "../search";
 
 const ALICE =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
@@ -61,7 +66,8 @@ describe("searchLocally", () => {
         value: OWN,
       }),
     ]);
-    // Enter sends to a person; Shift+Enter copies the address.
+    // Enter sends to a person; Shift+Enter copies the address. Their payments
+    // come under them.
     expect(searchLocally("alice", index)).toEqual([
       expect.objectContaining({
         group: "People",
@@ -69,6 +75,11 @@ describe("searchLocally", () => {
         href: `/dashboard/send?to=${ALICE}`,
         label: "alice.dusk",
         value: ALICE,
+      }),
+      expect.objectContaining({
+        detail: "+0.5 DUSK",
+        group: "Transactions",
+        label: "alice.dusk",
       }),
     ]);
     expect(searchLocally("dc3f73", index)).toEqual([
@@ -123,6 +134,135 @@ describe("searchLocally", () => {
         label: "Withdrawal proved",
         sub: "proveWithdrawalTransaction",
       }),
+    ]);
+  });
+});
+
+describe("searchLocally for what was paid", () => {
+  const MARTA =
+    "qxwSidKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+
+  /** @type {Contact} */
+  const marta = {
+    address: MARTA,
+    createdAt: 1,
+    id: "marta",
+    name: "Estudio Marta",
+    type: "account",
+    updatedAt: 1,
+  };
+
+  /** @type {import("../search").SearchIndex} */
+  const paid = {
+    ...index,
+    contacts: [marta],
+    history: rowsOf([
+      {
+        amount: "120500000000",
+        direction: "in",
+        from: MARTA,
+        hash: "a1".repeat(32),
+        status: "executed",
+      },
+      {
+        amount: "120000000000",
+        direction: "in",
+        from: ALICE,
+        hash: "a2".repeat(32),
+        status: "executed",
+      },
+      {
+        amount: "12345678",
+        counterparty: MARTA,
+        hash: "a3".repeat(32),
+        status: "executed",
+      },
+      {
+        amount: "1000000000000",
+        counterparty: ALICE,
+        counterpartyName: "alice.dusk",
+        hash: "a4".repeat(32),
+        status: "executed",
+      },
+      {
+        amount: "1000000000",
+        counterparty: ALICE,
+        counterpartyName: "alice.dusk",
+        hash: "a5".repeat(32),
+        status: "executed",
+      },
+    ]),
+    locale: "es-ES",
+    present: { contactNames: new Map([[MARTA, marta.name]]) },
+  };
+
+  /**
+   * What a search finds of the transactions, as hashes' first byte.
+   *
+   * @param {string} query
+   * @param {import("../search").SearchIndex} [where]
+   */
+  const paymentsFor = (query, where = paid) =>
+    searchLocally(query, where)
+      .filter(({ group }) => group === "Transactions")
+      .map(({ detail, label, value }) => [value?.slice(0, 2), label, detail]);
+
+  it("finds a payment by its amount as it's written here, with the amount typed first, to the lux", () => {
+    expect(paymentsFor("120")).toEqual([
+      ["a2", expect.anything(), "+120 DUSK"],
+      ["a1", "Estudio Marta", "+120,5 DUSK"],
+    ]);
+  });
+
+  it("finds an amount the row shows cut, with a comma or a point", () => {
+    expect(paymentsFor("0,0123")).toEqual([
+      ["a3", "Estudio Marta", "−0,0123 DUSK"],
+    ]);
+    expect(paymentsFor("0.0123")).toEqual([
+      ["a3", "Estudio Marta", "−0,0123 DUSK"],
+    ]);
+  });
+
+  it("looks for both amounts that a text can mean", () => {
+    expect(paymentsFor("1.000").map(([hash]) => hash)).toEqual(["a4", "a5"]);
+    expect(
+      paymentsFor("1 000", { ...paid, locale: "fr-FR" }).map(([hash]) => hash)
+    ).toEqual(["a4"]);
+  });
+
+  it("finds nothing for an amount no payment has, and doesn't take it for a name", () => {
+    expect(paymentsFor("7,5")).toEqual([]);
+    expect(lookupKind("7,5")).toBeNull();
+    expect(lookupKind("0.0123")).toBeNull();
+    expect(lookupKind("1 000")).toBeNull();
+    expect(lookupKind("120")).toBe("name");
+    expect(isAmountQuery("0.0123", "en")).toBe(true);
+    expect(isAmountQuery("alice", "en")).toBe(false);
+  });
+
+  it("lists a contact's payments under the contact, by name, by address or by a .dusk name a row has", () => {
+    expect(
+      searchLocally("Estudio", paid).map(({ group, value }) => [
+        group,
+        value?.slice(0, 2),
+      ])
+    ).toEqual([
+      ["Contacts", undefined],
+      ["Transactions", "a1"],
+      ["Transactions", "a3"],
+    ]);
+    expect(paymentsFor("qxwSid").map(([hash]) => hash)).toEqual(["a1", "a3"]);
+    expect(paymentsFor("alice").map(([hash]) => hash)).toEqual([
+      "a2",
+      "a4",
+      "a5",
+    ]);
+  });
+
+  it("hides what they moved while balances are hidden", () => {
+    expect(paymentsFor("120", { ...paid, hideBalances: true })).toEqual([
+      ["a2", expect.anything(), "+•••• DUSK"],
+      ["a1", "Estudio Marta", "+•••• DUSK"],
     ]);
   });
 });
@@ -187,7 +327,7 @@ describe("searchLocally for a block, a memo or a label", () => {
 });
 
 describe("searchLocally with contacts", () => {
-  it("finds contacts by name, .dusk name or address, and shows a saved person as the contact only", () => {
+  it("finds contacts by name, .dusk name or address, and shows a saved person as the contact, with their payments", () => {
     /** @type {Contact} */
     const contact = {
       address: ALICE,
@@ -207,9 +347,11 @@ describe("searchLocally with contacts", () => {
         href: "/dashboard/contacts?contact=alice",
         label: "Alice",
       }),
+      expect.objectContaining({ detail: "+0.5 DUSK", group: "Transactions" }),
     ]);
     expect(searchLocally(ALICE.slice(4, 14), withContacts)).toEqual([
       expect.objectContaining({ group: "Contacts", label: "Alice" }),
+      expect.objectContaining({ group: "Transactions" }),
     ]);
   });
 });

@@ -2,6 +2,7 @@
 
 <script>
   import { onMount } from "svelte";
+  import { page } from "$app/stores";
   import {
     mdiAlertCircleOutline,
     mdiClockOutline,
@@ -20,28 +21,32 @@
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
+    formatFee,
     formatTotal,
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID } from "$lib/dusk/string";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { settingsStore } from "$lib/stores";
-  import { addBasePath } from "$lib/navigation";
+  import {
+    addBasePath,
+    formDraft,
+    gasToKeep,
+    keptGas,
+    reviewStep,
+  } from "$lib/navigation";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
   import TransactionResult from "../TransactionResult/TransactionResult.svelte";
   import StakeFlow from "./StakeFlow.svelte";
-  import {
-    checkAmount,
-    normalizeDuskInput,
-    parseDuskInput,
-  } from "./stakeAmount";
+  import { checkAmount, readDuskInput } from "./stakeAmount";
 
   /**
    * Native staking: the amount, checked as it is typed against the minimum
-   * and the public balance, what staking natively takes, and a summary
-   * with the button that stakes. With a stake already, it adds to it.
+   * and the public balance, what staking natively takes, and a summary with
+   * Review; then the review, with the button that stakes. With a stake
+   * already, it adds to it.
    */
 
   /** @type {(amount: bigint, gasPrice: bigint, gasLimit: bigint) => Promise<string>} */
@@ -63,30 +68,47 @@
   /** @type {ContractGasSettings} */
   export let gasSettings;
 
+  /** The most it costs to unstake later, which the public balance keeps. */
+  /** @type {bigint} */
+  export let unstakeFee;
+
   /** Where liquid staking is, when this network has it. */
   /** @type {string | undefined} */
   export let liquidHref = undefined;
 
   const id = randomUUID();
 
-  let amountText = "";
+  const draft = formDraft("stake-native");
+
+  /** What was typed before a lock, a reload or a failed stake. */
+  const typedBefore = draft.read();
+
+  let amountText = typedBefore?.amount ?? "";
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = false;
+  let isMaxAmount = typedBefore?.isMax ?? false;
   let isReviewing = false;
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
   let defaultGas = gasSettings;
   let isGasValid = false;
 
   /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
   let sent = null;
 
+  /** Whether the stake failed with nothing sent: it can be tried again. */
+  let canTryAgain = false;
+
+  const reviewHistory = reviewStep("stakeReview");
+
   /**
    * @param {bigint} lux
    * @param {boolean} [isMax]
    */
   function fill(lux, isMax = false) {
-    amountText = formatDuskPlain(lux).replace(".", getDecimalSeparator());
+    amountText = formatDuskPlain(lux).replace(
+      ".",
+      getDecimalSeparator(language)
+    );
     isMaxAmount = isMax;
     document.getElementById(`${id}-amount`)?.focus();
   }
@@ -101,17 +123,63 @@
 
   function stake() {
     if (amount !== null && check.ok && isGasValid) {
+      // It goes out now, as far as a reload can tell: nothing brings it back.
+      draft.clear();
+
+      const operation = execute(amount, gasPrice, gasLimit);
+
       sent = {
         maxFee: maxGasFee,
-        operation: execute(amount, gasPrice, gasLimit),
+        operation,
         what: `${hideBalances ? BALANCE_MASK : formatDuskExact(amount, language)} DUSK to your stake`,
       };
+      reviewHistory.settle(operation, () => {
+        canTryAgain = true;
+        draft.keep(typed);
+      });
+    }
+  }
+
+  /** Back to the review of a stake that failed with nothing sent. */
+  function tryAgain() {
+    sent = null;
+    canTryAgain = false;
+    isReviewing = true;
+    reviewHistory.enter();
+  }
+
+  /**
+   * The step where the browser's Back or Forward takes the history: a review
+   * only of what can still be staked, and from a stake that failed with
+   * nothing sent, the form, with what's filled in.
+   *
+   * @param {boolean} isAtReview
+   */
+  function followHistory(isAtReview) {
+    if (!sent) {
+      isReviewing = isAtReview && canStake;
+    } else if (canTryAgain && !isAtReview) {
+      sent = null;
+      canTryAgain = false;
+      isReviewing = false;
     }
   }
 
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
+
+  $: followHistory(Boolean($page.state?.stakeReview));
+
+  // What's typed, kept as it's typed, for as long as it hasn't gone out.
+  $: typed = {
+    amount: amountText,
+    gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+    isMax: isMaxAmount,
+  };
+  $: if (!sent) {
+    draft.save(typed);
+  }
 
   // The default gas can change while the page shows, as when the node's
   // price arrives: the page takes it unless its gas was edited here, and
@@ -129,19 +197,22 @@
   $: ({ hideBalances, language } = $settingsStore);
   $: isAmountMasked = hideBalances && isMaxAmount;
   $: maxGasFee = gasLimit * gasPrice;
+  // Max keeps this fee, and the one to unstake later: all of it staked, there
+  // would be no way to pay for getting it back.
   $: maxStake =
-    availableBalance > maxGasFee ? availableBalance - maxGasFee : 0n;
+    availableBalance > maxGasFee + unstakeFee
+      ? availableBalance - maxGasFee - unstakeFee
+      : 0n;
   $: minimum = hasStake ? 0n : minimumStake;
   // A decimal comma, as the language or a phone's keyboard gives it, reads
   // as the amount meant.
-  $: amount = parseDuskInput(
-    normalizeDuskInput(amountText, getDecimalSeparator())
-  );
+  $: amount = readDuskInput(amountText, language);
   $: check = checkAmount({
     amount,
     available: availableBalance,
     fee: maxGasFee,
     hidden: hideBalances,
+    keep: unstakeFee,
     locale: language,
     minimum,
     text: amountText,
@@ -165,6 +236,7 @@
       leaveHref="/dashboard/stake"
       leaveText="Back to staking"
       maxFee={sent.maxFee}
+      onRetry={tryAgain}
       operation={sent.operation}
       what={sent.what}
     />
@@ -172,11 +244,16 @@
 {:else}
   <StakeFlow
     canReview={canStake}
+    isFeeShort={availableBalance >=
+      gasLimits.gasLimitLower * gasLimits.gasPriceLower &&
+      availableBalance < maxGasFee}
     {isReviewing}
     on:back={() => {
+      reviewHistory.leave();
       isReviewing = false;
     }}
     on:review={() => {
+      reviewHistory.enter();
       isReviewing = true;
     }}
     title={hasStake ? "Stake more" : "Native staking"}
@@ -196,6 +273,7 @@
           id="{id}-amount"
           inputmode="decimal"
           on:input={typeAmount}
+          placeholder="0"
           type="text"
           value={isAmountMasked ? BALANCE_MASK : amountText}
         />
@@ -203,31 +281,41 @@
           <span hidden id="{id}-amount-hidden">hidden</span>
         {/if}
         <span aria-hidden="true" class="native-stake__unit">DUSK</span>
+        <Button
+          disabled={maxStake <= 0n}
+          on:click={() => fill(maxStake, true)}
+          size="small"
+          text="Max"
+          title="All of it, less the network fee and the fee to unstake later"
+          variant="secondary"
+        />
       </div>
-      <div class="native-stake__fills">
-        {#if !hasStake && maxStake >= minimumStake}
+      {#if !hasStake && maxStake >= minimumStake}
+        <div class="native-stake__fills">
           <Button
             on:click={() => fill(minimumStake)}
             size="small"
             text="Use {minimumText}"
             variant="secondary"
           />
-        {/if}
-        <Button
-          disabled={maxStake <= 0n}
-          on:click={() => fill(maxStake, true)}
-          size="small"
-          text="Max"
-          title="All of it, less the network fee"
-          variant="secondary"
-        />
-      </div>
+        </div>
+      {/if}
       <p class="native-stake__hint" id="{id}-available">
         {hasStake ? "" : `Minimum ${minimumText} DUSK · `}Available <BalanceValue
           exact={formatDuskExact(availableBalance, language)}
           value={formatDusk(availableBalance, language)}
         /> DUSK from your public balance
       </p>
+      {#if isMaxAmount && !check.error}
+        <p class="native-stake__hint">
+          Max keeps {formatFee(maxGasFee + unstakeFee, language, { max: true })} DUSK:
+          up to {formatFee(maxGasFee, language, { max: true })} for this fee and {formatFee(
+            unstakeFee,
+            language,
+            { max: true }
+          )} to unstake later.
+        </p>
+      {/if}
       <div id="{id}-error">
         {#if check.error}
           <div class="native-stake__error" role="alert">
@@ -245,8 +333,8 @@
         {:else if isBelowMinimum && !amountText}
           <div class="native-stake__note">
             <p>
-              Your public balance doesn't cover the {minimumText} DUSK minimum and
-              the network fee.
+              Your public balance doesn't cover the {minimumText} DUSK minimum, this
+              fee and the fee to unstake later.
             </p>
             {#if liquidHref}
               <a
@@ -363,8 +451,9 @@
           </dd>
         </div>
       </dl>
-      <!-- A phone's review is a step of its own: Stake shows anew with it. -->
-      {#key isReviewing}
+      <!-- A step of its own: nothing goes before it, and Stake, new with it,
+        takes no click meant for Review. -->
+      {#if isReviewing}
         <Button
           className="stake-flow__send"
           confirm
@@ -375,7 +464,7 @@
             : "Stake"}
           variant="primary"
         />
-      {/key}
+      {/if}
     </svelte:fragment>
   </StakeFlow>
 {/if}

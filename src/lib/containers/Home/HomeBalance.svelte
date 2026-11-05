@@ -33,7 +33,7 @@
   export let fiatPrice = undefined;
 
   $: total = shielded + unshielded;
-  $: publicShare = total ? Number((unshielded * 1000n) / total) / 10 : 100;
+  $: publicShare = total ? Number((unshielded * 1000n) / total) / 10 : 0;
   $: hideBalances = $settingsStore.hideBalances === true;
   $: toggleLabel = hideBalances ? "Show balances" : "Hide balances";
   $: fiat =
@@ -88,9 +88,15 @@
       /> DUSK
     </p>
   {/if}
-  <div aria-hidden="true" class="home-balance__bar">
+  <div
+    aria-hidden="true"
+    class="home-balance__bar"
+    class:home-balance__bar--empty={!total}
+  >
     <i class="home-balance__bar-public" style:flex-grow={publicShare}></i>
-    <i class="home-balance__bar-shielded" style:flex-grow={100 - publicShare}
+    <i
+      class="home-balance__bar-shielded"
+      style:flex-grow={total ? 100 - publicShare : 0}
     ></i>
   </div>
   <p class="home-balance__legend">
@@ -152,7 +158,7 @@
   }
 
   /* Phones: the eye takes a tap 44 px across, where it is, over the total. */
-  @media (max-width: 47.99rem) {
+  @media (max-width: 47.99rem), (pointer: coarse) {
     .home-balance__toggle {
       position: relative;
       z-index: 1;
@@ -204,6 +210,15 @@
       display: block;
       min-width: 3px;
       border-radius: 3px;
+    }
+  }
+
+  /* Nothing held: an empty bar, not a full one. */
+  .home-balance__bar--empty {
+    background: var(--calm-line);
+
+    & i {
+      min-width: 0;
     }
   }
 

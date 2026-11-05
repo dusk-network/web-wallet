@@ -3,6 +3,7 @@ export {
   CHECK_EVM_WALLET_FIRST,
   default as describeFailure,
   isDeclinedInWallet,
+  nothingWentOut,
 } from "./describeFailure";
 export { outcomeUnknown } from "./outcomeUnknown";
 export {

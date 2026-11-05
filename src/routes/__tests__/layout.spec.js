@@ -4,6 +4,7 @@ import { get } from "svelte/store";
 
 import { settingsStore } from "$lib/stores";
 import * as navigation from "$lib/navigation";
+import { forgetArrivalTitle, transferEnded } from "$lib/bridge/arrivalNotice";
 
 import MainLayout from "../+layout.svelte";
 
@@ -112,6 +113,22 @@ describe("Main layout", async () => {
       }
     }
   );
+
+  it("should say what ended first in the tab's title, for whoever is away, and its own again after", async () => {
+    render(MainLayout);
+
+    const own = document.title;
+
+    vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    transferEnded({ id: "a", title: "2 DUSK arrived on BSC" });
+    await vi.waitFor(() =>
+      expect(document.title).toBe(`2 DUSK arrived on BSC · ${own}`)
+    );
+
+    forgetArrivalTitle();
+    await vi.waitFor(() => expect(document.title).toBe(own));
+    vi.restoreAllMocks();
+  });
 
   it('should add and remove the "dark" class name to the `html` element when the `darkMode` value changes in thesettings store', () => {
     expect(isDarkMode()).toBe(false);

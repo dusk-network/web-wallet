@@ -59,6 +59,17 @@ const show = (props = {}) =>
     ...props,
   });
 
+/** What runs as a navigation ends. */
+const navigation = vi.hoisted(() => ({
+  /** @type {Array<() => void>} */
+  after: [],
+}));
+
+vi.mock("$app/navigation", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  afterNavigate: (/** @type {() => void} */ run) => navigation.after.push(run),
+}));
+
 // The contacts open with a wallet, as when it unlocks.
 beforeAll(() => openTestContacts());
 
@@ -235,6 +246,39 @@ describe("ContactsView", () => {
     expect(names()).toEqual(["Savings"]);
   });
 
+  it("closes a contact with Escape, wherever the focus is in it, and gives the focus back to its row", async () => {
+    const select = vi.fn();
+    const { findByRole, getByRole } = render(ContactsView, {
+      events: { select },
+      props: {
+        contacts: get(contactsStore),
+        locale: "en",
+        resolveName,
+        rows,
+        selected: shop.id,
+      },
+    });
+    const close = await findByRole("button", { name: "Close the contact" });
+
+    expect(close).toHaveFocus();
+
+    await fireEvent.keyDown(close, { key: "Escape" });
+
+    expect(select).toHaveBeenCalledOnce();
+    expect(select.mock.lastCall?.[0].detail).toStrictEqual({
+      edit: false,
+      id: null,
+    });
+    expect(getByRole("button", { expanded: true })).toHaveFocus();
+
+    // Going back through the browser's history takes the focus away, as the
+    // sheet's step goes: it comes back as that ends.
+    getByRole("button", { expanded: true }).blur();
+    navigation.after.forEach((run) => run());
+
+    expect(getByRole("button", { expanded: true })).toHaveFocus();
+  });
+
   it("shows a contact's full address and checks that its .dusk name still points there", async () => {
     const { container, findByText, getByRole } = show({ selected: shop.id });
 
@@ -388,6 +432,74 @@ describe("ContactsView", () => {
     await fireEvent.click(getByRole("button", { name: "Delete Savings" }));
 
     expect(getContact(savings.id)).toBeNull();
+  });
+
+  it("warns of a name in use and of the wallet's own address, and saves all the same", async () => {
+    const OWN =
+      "4ozNeBzeQq5XZGoMYTBKfSG9pmPBa4UWxbfHV3BSDtgeMMz2Xw8oZgVAhN16yC94CUQkg7iAe8fpQT4CsF41iKy6";
+    const twin = saveContact({ address: OTHER, name: "Estudio Marta" });
+
+    try {
+      const { getByRole, getByText, queryByText } = render(ContactForm, {
+        own: [OWN],
+        resolveName,
+      });
+      const save = () => getByRole("button", { name: "Save contact" });
+      /** @param {string} value */
+      const name = (value) =>
+        fireEvent.input(getByRole("textbox", { name: "Name" }), {
+          target: { value },
+        });
+
+      await name("estudio marta ");
+
+      expect(
+        getByText(/^You already have a contact called Estudio Marta\./)
+      ).toBeInTheDocument();
+
+      await name("Estudio Lena");
+
+      expect(queryByText(/^You already have a contact/)).toBeNull();
+
+      await fireEvent.input(
+        getByRole("textbox", { name: "Address or .dusk name" }),
+        { target: { value: OWN } }
+      );
+
+      expect(getByText("This is your own address.")).toBeInTheDocument();
+      expect(save()).toBeEnabled();
+    } finally {
+      removeContact(twin.id);
+    }
+  });
+
+  it("doesn't call a contact its own twin as it's edited", async () => {
+    const contact = saveContact({ address: OTHER, name: "Estudio Marta" });
+
+    try {
+      const { queryByText } = render(ContactForm, { contact, resolveName });
+
+      expect(queryByText(/^You already have a contact/)).toBeNull();
+    } finally {
+      removeContact(contact.id);
+    }
+  });
+
+  it("says a name is at the most it can be, once it is", async () => {
+    const { getByRole, getByText, queryByText } = render(ContactForm, {
+      resolveName,
+    });
+    const field = getByRole("textbox", { name: "Name" });
+
+    expect(field).toHaveAttribute("maxlength", "40");
+
+    await fireEvent.input(field, { target: { value: "x".repeat(39) } });
+
+    expect(queryByText("40 characters at most.")).toBeNull();
+
+    await fireEvent.input(field, { target: { value: "x".repeat(40) } });
+
+    expect(getByText("40 characters at most.")).toBeInTheDocument();
   });
 
   it("won't save a contact named like a .dusk name it isn't saved from", async () => {

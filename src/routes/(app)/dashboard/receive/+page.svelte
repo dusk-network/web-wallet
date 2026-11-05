@@ -4,14 +4,20 @@
   import { onMount } from "svelte";
 
   import { getPrimaryName } from "$lib/dusk-domains";
+  import { rememberRequest } from "$lib/payment-requests";
   import { networkStore, walletStore } from "$lib/stores";
-  import { Receive } from "$lib/components";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
+  import { PaymentRequests, Receive, RequestPayment } from "$lib/components";
   import { ExclusiveChoice } from "$lib/dusk/components";
   import { PageCard } from "$lib/containers/Cards";
   import { nodeBaseUrl } from "$lib/url";
 
   let addressToShow = "public";
   let isMounted = false;
+
+  /** What's asked of whoever pays, once it can be paid. */
+  /** @type {{ dusk: string, link: string, lux: bigint | null, memo: string } | null} */
+  let request = null;
 
   const options = [
     { disabled: false, label: "Public", value: "public" },
@@ -21,6 +27,18 @@
   onMount(() => {
     isMounted = true;
   });
+
+  /** Keeps what's asked in the list as it leaves the wallet. */
+  function keepRequest() {
+    if (request) {
+      rememberRequest({
+        lux: request.lux,
+        memo: request.memo,
+        network: $nodeNetwork?.name ?? "",
+        to: currentAddress,
+      });
+    }
+  }
 
   /** @type {"account" | "address"} */
   $: addressProp = addressToShow === "public" ? "account" : "address";
@@ -45,5 +63,21 @@
 
 <PageCard gap="medium" heading="Receive">
   <ExclusiveChoice {options} bind:value={addressToShow} />
-  <Receive address={currentAddress} addressType={addressProp} {name} />
+  <Receive
+    address={currentAddress}
+    addressType={addressProp}
+    {name}
+    onUse={keepRequest}
+    {request}
+  >
+    <RequestPayment address={currentAddress} bind:request onUse={keepRequest} />
+    {#if currentProfile}
+      <PaymentRequests
+        addresses={[
+          currentProfile.account.toString(),
+          currentProfile.address.toString(),
+        ]}
+      />
+    {/if}
+  </Receive>
 </PageCard>

@@ -110,6 +110,23 @@ export function readNativeRewardRate({
 }
 
 /**
+ * What the node says of what's staked, for the line of what a rate is made of:
+ * null when it couldn't be read.
+ *
+ * @param {{ fetch?: typeof fetch, nodeUrl: string }} options
+ * @returns {Promise<any[] | null>}
+ */
+export function readProvisioners({
+  fetch: fetchFn = globalThis.fetch,
+  nodeUrl,
+}) {
+  return fetchFn(`${nodeUrl}/on/node/provisioners`, { method: "POST" })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((read) => (Array.isArray(read) ? read : null))
+    .catch(() => null);
+}
+
+/**
  * A yearly rate as the wallet says it: "23%", in the language's way.
  *
  * @param {number} rate A fraction

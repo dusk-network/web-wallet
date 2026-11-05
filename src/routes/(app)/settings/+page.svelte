@@ -41,10 +41,22 @@
   } from "$lib/contracts";
   import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
   import { deleteContacts } from "$lib/contacts";
-  import { ProfileNames, WalletsSettings } from "$lib/containers/Wallets";
+  import {
+    PasskeySetting,
+    ProfileNames,
+    SendPasswordSetting,
+    WalletsSettings,
+  } from "$lib/containers/Wallets";
   import { WalletChangedError } from "$lib/errors";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
-  import { logout, pageTitle } from "$lib/navigation";
+  import {
+    forgetDrafts,
+    forgetPlace,
+    logout,
+    pageTitle,
+  } from "$lib/navigation";
+  import { signalPasskeyGone } from "$lib/security/passkey";
+  import { setSendPasswordLimit } from "$lib/security/sendPassword";
   import vault from "$lib/vault";
   import { lockWallets, openWalletName, walletDirectory } from "$lib/wallets";
   import { clearDirectory } from "$lib/wallets/directory";
@@ -77,10 +89,17 @@
         await deleteContacts();
         forgetBridgeRecords({ times: true });
         await forgetEvmWallets();
+
+        const passkey = vault.passkey();
+
         await vault.clear();
+        signalPasskeyGone(passkey);
         clearDirectory();
         settingsStore.reset();
+        setSendPasswordLimit(null);
         await logout(false);
+        forgetPlace();
+        forgetDrafts();
       })
       .catch((err) => {
         resetError = err;
@@ -407,6 +426,8 @@
             </p>
           {/if}
         {/if}
+        <PasskeySetting />
+        <SendPasswordSetting />
       </div>
     </article>
     <hr />

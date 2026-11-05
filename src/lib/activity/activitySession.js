@@ -18,6 +18,7 @@ import {
   settleSends,
 } from "@dusk-network/app-core/activity";
 import { StaleHistoryError } from "@dusk-network/app-core/history";
+import { sozuFacts } from "@dusk-network/app-core/sozu";
 import { ProfileGenerator } from "@dusk/w3sper";
 import { get } from "svelte/store";
 
@@ -26,6 +27,7 @@ import { sozuPools } from "$lib/sozu/config";
 
 import {
   activityNetworkKey,
+  archiveAt,
   nameFacts,
   noteActivityUnavailable,
   publicHistory,
@@ -51,8 +53,24 @@ export const ACTIVITY_PAGE = 50;
 /** The wait after a transaction went through before the archive is asked for it. */
 export const AFTER_TX_MS = 20_000;
 
+/**
+ * The same, for a send of the last two minutes, when a block usually has it:
+ * what shows it Pending stops saying so about as the chain does.
+ */
+export const SOON_AFTER_TX_MS = 5000;
+
+/** How long a send is looked for that often. */
+const LOOKED_FOR_SOONER_MS = 120_000;
+
 /** How long a session waits to ask again for a shielded history it couldn't have yet. */
 export const SHIELDED_RETRY_MS = 60_000;
+
+/** A whole read's runs, and the requests of each: a long history in the end. */
+const WHOLE_RUNS = 64;
+const WHOLE_RUN_REQUESTS = 64;
+
+/** All of what's kept. */
+const ALL_KEPT = { limit: Number.MAX_SAFE_INTEGER - 1 };
 
 /**
  * @typedef {{
@@ -105,6 +123,10 @@ export class ActivitySession {
 
   /** @type {import("@dusk-network/app-core/history").HistoryState | null} */
   #meta = null;
+
+  /** What each stake and unstake with Sozu did, read once. */
+  /** @type {Map<string, string>} */
+  #factsKept = new Map();
 
   /** @type {Map<string, string | null>} */
   #names = new Map();
@@ -412,17 +434,28 @@ export class ActivitySession {
       this.#runAgain = false;
       await this.#run();
     } else if (this.#waitsForArchive()) {
-      this.refreshSoon();
+      this.refreshSoon(
+        this.#local.some(
+          (r) =>
+            r.status === "submitted" &&
+            !r.settled &&
+            Date.now() - r.submittedAt < LOOKED_FOR_SOONER_MS
+        )
+          ? SOON_AFTER_TX_MS
+          : AFTER_TX_MS
+      );
     }
   }
 
   /**
-   * The rows, newest first: the bridge's calls read on the bridge the
-   * wallet sends them to, and Sozu's calls on the pools its hub named too.
+   * The rows of what's given, newest first: the bridge's calls read on the
+   * bridge the wallet sends them to, and Sozu's calls on the pools its hub
+   * named too.
    *
+   * @param {{ entries: ActivityEntry[], local: ActivityLocalRecord[], meta: import("@dusk-network/app-core/history").HistoryState | null, shielded: import("@dusk-network/app-core/shielded").ShieldedEntry[] }} of
    * @returns {ActivityRow[]}
    */
-  get rows() {
+  #rowsOf({ entries, local, meta, shielded }) {
     const { account, profileIndex } = this.options;
 
     return activityRows({
@@ -430,12 +463,103 @@ export class ActivitySession {
       nameCall: nameFacts,
       names: this.#names,
       network: bridgeNetwork(),
-      pending: this.#local,
+      pending: local,
       pools: get(sozuPools),
       profileIndex,
-      public: this.#entries,
+      public: entries,
+      shielded,
+      state: meta,
+    });
+  }
+
+  /**
+   * The rows read so far, newest first.
+   *
+   * @returns {ActivityRow[]}
+   */
+  get rows() {
+    return this.#rowsOf({
+      entries: this.#entries,
+      local: this.#local,
+      meta: this.#meta,
       shielded: this.#shielded,
-      state: this.#meta,
+    });
+  }
+
+  /**
+   * All of the account's rows, read to its first block, with each one's time,
+   * outcome and fee: for what can't be said from part of it. A run that another
+   * overtook goes on from where that one got to. Without `publicOnly`, its
+   * shielded history too, and `shieldedWaiting` says it isn't whole yet.
+   *
+   * @param {{ publicOnly?: boolean }} [options]
+   * @returns {Promise<{ rows: ActivityRow[], shieldedWaiting: boolean }>}
+   */
+  async whole({ publicOnly = false } = {}) {
+    if ((await this.#epoch) === undefined) {
+      throw new Error("The activity store is out of reach");
+    }
+
+    const history = await this.#publicHistory();
+    let complete = false;
+
+    // At least one run: newer blocks than the last one read may hold more.
+    for (let run = 0; run < WHOLE_RUNS && !complete; run += 1) {
+      await history
+        .sync({ maxDetailRequests: 0, maxRequests: WHOLE_RUN_REQUESTS })
+        .catch((error) => {
+          if (!(error instanceof StaleHistoryError)) {
+            throw error;
+          }
+        });
+      ({ complete } = await history.read({ limit: 1 }));
+    }
+
+    if (!complete) {
+      throw new Error("The history is too long to read at once");
+    }
+
+    let read = await history.read(ALL_KEPT);
+    const missing = read.entries.filter(history.needsDetails);
+
+    if (missing.length) {
+      await history.fillDetails(missing);
+      read = await history.read(ALL_KEPT);
+    }
+
+    const local = await listLocalTransactions(this.ownerKey);
+    const shielded =
+      publicOnly || !this.options.shielded
+        ? null
+        : await this.options.shielded().catch(() => null);
+
+    if (this.#stopped) {
+      throw new Error("Another profile opened");
+    }
+
+    return {
+      rows: this.#rowsOf({
+        entries: read.entries,
+        local,
+        meta: read.state,
+        shielded: shielded?.entries ?? this.#shielded,
+      }),
+      shieldedWaiting: !shielded || Boolean(shielded.pending),
+    };
+  }
+
+  /**
+   * What each stake and unstake with Sozu in `rows` did, from the pool's event
+   * in its transaction, read once.
+   *
+   * @param {ActivityRow[]} rows
+   */
+  sozuFacts(rows) {
+    return sozuFacts({
+      account: this.options.account,
+      archive: archiveAt(this.options.nodeUrl),
+      cache: this.#factsKept,
+      rows,
     });
   }
 
@@ -488,7 +612,7 @@ export class ActivitySession {
     );
     await this.#reload();
     this.#emit();
-    this.refreshSoon();
+    this.refreshSoon(SOON_AFTER_TX_MS);
   }
 
   /**

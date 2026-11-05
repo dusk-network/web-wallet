@@ -3,7 +3,7 @@
  * - a migration into Dusk, from the connected EVM wallet on its chain: an
  *   approval of the exact amount when the migration contract may take less,
  *   then `migrate(amount, account)`, with this profile's public account as
- *   the recipient;
+ *   the recipient; an approval not used up can be revoked;
  * - a transfer out, from this profile's public account: a public transfer to
  *   the route's account, with the connected EVM wallet's address as the
  *   memo, where the route pays it out.
@@ -18,6 +18,7 @@ import { get } from "svelte/store";
 
 import { executeSend } from "$lib/contracts";
 import { formatDuskExact } from "$lib/dusk/currency";
+import { sendPasswordFor } from "$lib/security/sendPassword";
 import { walletStore } from "$lib/stores";
 import { allowance, approve, migrate } from "$lib/web3/migration";
 import { account, wagmiConfig } from "$lib/web3/walletConnection";
@@ -67,6 +68,22 @@ export function serviceLine({ chain, feeLux, sentLux }, locale) {
 }
 
 /**
+ * What the migration contract may take from `owner` as the chain says now, in
+ * wei: an approval not used up. Nothing here keeps a record of it.
+ *
+ * @param {import("./cardRoutes").CardRoute & { kind: "migration" }} route
+ * @param {`0x${string}`} owner
+ * @returns {Promise<bigint>}
+ */
+export const approvedWei = async (route, owner) =>
+  allowance(
+    owner,
+    /** @type {`0x${string}`} */ (route.chain.token),
+    route.contract,
+    route.chain.chainId
+  );
+
+/**
  * Whether the migration contract may take the amount from `owner` already,
  * with no approval first.
  *
@@ -75,13 +92,59 @@ export function serviceLine({ chain, feeLux, sentLux }, locale) {
  * @param {bigint} amountLux
  */
 export const isApproved = async (route, owner, amountLux) =>
-  (await allowance(
-    owner,
-    /** @type {`0x${string}`} */ (route.chain.token),
+  (await approvedWei(route, owner)) >= amountLux * WEI_PER_LUX;
+
+/**
+ * Revokes what the migration contract may take from `owner`: a transaction the
+ * EVM wallet signs, approving nothing, once it's in a block. With the chain
+ * saying it's used up or revoked elsewhere since it was read, there's nothing
+ * to sign. Nothing is asked of the wallet once the wallet here, or the screen
+ * that says what's going on, is gone.
+ *
+ * @param {{
+ *   onInBlock?: () => void,
+ *   owner: `0x${string}`,
+ *   route: import("./cardRoutes").CardRoute & { kind: "migration" },
+ *   stillHere?: () => void,
+ * }} revoke
+ * @returns {Promise<void>}
+ */
+export async function revokeApproval({
+  onInBlock = () => {},
+  owner,
+  route,
+  stillHere = () => {},
+}) {
+  const { chainId, name, token } = route.chain;
+  const walletStillOpen = walletStore.whileOpen();
+
+  if ((await approvedWei(route, owner).catch(() => 1n)) === 0n) {
+    return;
+  }
+
+  walletStillOpen();
+  stillHere();
+  stillOnAccount(owner);
+
+  const hash = await approve(
     route.contract,
-    route.chain.chainId
-  )) >=
-  amountLux * WEI_PER_LUX;
+    /** @type {`0x${string}`} */ (token),
+    0n,
+    chainId,
+    owner
+  );
+
+  onInBlock();
+
+  const revoked = await waitForTransactionReceipt(wagmiConfig, {
+    chainId,
+    hash,
+  });
+
+  if (revoked.status !== "success") {
+    throw new Error(`The revoke didn't go through on ${name}.`);
+  }
+}
 
 /**
  * Approves the exact amount for the migration contract, when it may take
@@ -154,6 +217,10 @@ export async function sendMigration({
   };
   const scope = walletDataScope();
 
+  // Above the amount chosen in Settings, the password comes first.
+  await sendPasswordFor(amountLux, get(walletStore).walletKey);
+  stillOpen();
+
   await approveIfShort(
     route,
     owner,
@@ -198,7 +265,13 @@ export async function sendMigration({
     throw new Error(`The migration didn't go through on ${name}.`);
   }
 
-  markMigrationConfirmed(hash, scope);
+  markMigrationConfirmed(
+    hash,
+    scope,
+    migrated.gasUsed && migrated.effectiveGasPrice
+      ? migrated.gasUsed * migrated.effectiveGasPrice
+      : undefined
+  );
 
   return hash;
 }

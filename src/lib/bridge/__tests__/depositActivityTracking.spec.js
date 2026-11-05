@@ -147,6 +147,8 @@ let followHistoryDeposits;
 let depositTrackingPollInterval;
 /** @type {typeof import("../depositActivity").resumeDepositTracking} */
 let resumeDepositTracking;
+/** @type {typeof import("../depositActivity").resumeRecentDeposits} */
+let resumeRecentDeposits;
 /** @type {typeof import("../depositActivityStorage").hydrateDepositActivity} */
 let hydrateDepositActivity;
 /** @type {typeof import("../depositActivityStorage").getRememberedDepositTransaction} */
@@ -163,6 +165,7 @@ describe("DuskEVM deposit tracking", () => {
       followHistoryDeposits,
       refreshDepositTransaction,
       resumeDepositTracking,
+      resumeRecentDeposits,
     } = await import("../depositActivity"));
     ({
       getRememberedDepositTransaction,
@@ -312,6 +315,41 @@ describe("DuskEVM deposit tracking", () => {
       ).toBe(1_784_193_690_000)
     );
     expect(mocks.getBlock).toHaveBeenCalledTimes(3);
+  });
+
+  it("takes up what's under way from anywhere in the wallet, whichever EVM wallet it pays, none being connected, and leaves what's done or a day old", async () => {
+    const NOW = Date.UTC(2026, 10, 5);
+    const account = "0x1111111111111111111111111111111111111111";
+    const asked = /** @type {string[]} */ ([]);
+    const send = (/** @type {string} */ fill, /** @type {object} */ fields) =>
+      rememberDepositTransaction(fill.repeat(32), {
+        account,
+        amountLux: 1000n,
+        createdAt: NOW - 60_000,
+        ...fields,
+      });
+
+    send("a1", {});
+    send("a2", { createdAt: NOW - 2 * 86_400_000 });
+    send("a3", {});
+    updateDepositTransaction("a3".repeat(32), { stage: "completed" });
+
+    mocks.connect.mockImplementation(async () => ({
+      query: (/** @type {string} */ query) => {
+        asked.push(query);
+
+        return mocks.query(query);
+      },
+    }));
+    mocks.query.mockResolvedValue({ tx: null });
+
+    resumeRecentDeposits(NOW);
+
+    await vi.waitFor(() => expect(asked.length).toBeGreaterThan(0));
+
+    expect(asked.join()).toContain("a1".repeat(32));
+    expect(asked.join()).not.toContain("a2".repeat(32));
+    expect(asked.join()).not.toContain("a3".repeat(32));
   });
 
   it("keeps the newest deposits, one on its way among them, when a history brings more than are kept", () => {

@@ -53,15 +53,18 @@
   import { routeTransfers } from "$lib/bridge/routeHistory";
   import { followRouteTransfers } from "$lib/bridge/routeFollowing";
 
+  import ArrivalNotice from "../Bridge/ArrivalNotice.svelte";
   import Banner from "../Banner/Banner.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
   import SwapCard from "../SwapCard/SwapCard.svelte";
   import DepositLifecycle from "./DepositLifecycle.svelte";
   import RouteTransferDetails from "./RouteTransferDetails.svelte";
+  import TransferLedger from "./TransferLedger.svelte";
   import WithdrawalLifecycle from "./WithdrawalLifecycle.svelte";
   import {
     depositRow,
     groupBridgeActivity,
+    ledgerOf,
     routeTransferRow,
     withdrawalDuskTransactions,
     withdrawalRow,
@@ -875,6 +878,9 @@
       <p class="bridge-activity__note">No transfers yet.</p>
     {/if}
 
+    {#if groups.some(({ group }) => group === "progress")}
+      <ArrivalNotice />
+    {/if}
     {#each groups as { group, head, rows } (group)}
       <section aria-labelledby="bridge-group-{group}">
         <h2 class="bridge-activity__head" id="bridge-group-{group}">{head}</h2>
@@ -924,11 +930,19 @@
                 {/if}
               </div>
               {#if row.id === openId}
+                {@const ledger = ledgerOf(row, {
+                  locale: $settingsStore.language,
+                  rows: $activityState.rows,
+                  steps: withdrawalSteps,
+                })}
                 <div
                   class="bridge-row__details"
                   id="bridge-details-{row.hash}"
                   transition:section={{ open: row.id === openId }}
                 >
+                  {#if ledger}
+                    <TransferLedger {ledger} />
+                  {/if}
                   {#if row.kind === "withdrawal"}
                     <WithdrawalLifecycle
                       {isChecking}

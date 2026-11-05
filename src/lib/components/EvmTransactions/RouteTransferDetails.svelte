@@ -6,9 +6,7 @@
    * was sent and with what, where it's paid, and what paid it. A migration
    * known only by its payout says when it was paid, not when it was sent.
    */
-  import { formatDuskExact } from "$lib/dusk/currency";
   import { duskExplorerTx } from "$lib/url";
-  import { settingsStore } from "$lib/stores";
 
   import WithdrawalHash from "./WithdrawalHash.svelte";
   import { formatTimestamp } from "./withdrawalPresentation";
@@ -16,7 +14,6 @@
   /** @type {import("$lib/bridge/migrationActivity").RouteTransfer} */
   export let transfer;
 
-  $: ({ language } = $settingsStore);
   $: ({ chain } = transfer.route);
   $: isMigration = transfer.kind === "migration";
   /** @param {string} hash A transaction on the other chain */
@@ -48,19 +45,6 @@
   {#if transfer.recipient}
     <dt>{isMigration ? "To" : `${chain.name} address`}</dt>
     <dd class="route-transfer__code">{transfer.recipient}</dd>
-  {/if}
-  {#if !isMigration && transfer.feeLux}
-    <dt>Bridge fee</dt>
-    <dd>{formatDuskExact(transfer.feeLux, language)} DUSK, from the amount</dd>
-    {#if transfer.stage === "arrived"}
-      <dt>Amount sent</dt>
-      <dd>{formatDuskExact(transfer.amountLux, language)} DUSK</dd>
-    {:else if transfer.stage !== "failed" && transfer.amountLux > transfer.feeLux}
-      <dt>You receive</dt>
-      <dd>
-        {formatDuskExact(transfer.amountLux - transfer.feeLux, language)} DUSK
-      </dd>
-    {/if}
   {/if}
   {#if transfer.payout}
     <dt>Arrived</dt>

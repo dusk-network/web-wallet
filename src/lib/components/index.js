@@ -15,13 +15,17 @@ export { default as EvmTransactions } from "./EvmTransactions/EvmTransactions.sv
 export { default as ExistingWalletNotice } from "./ExistingWalletNotice/ExistingWalletNotice.svelte";
 export { default as FullAddress } from "./FullAddress/FullAddress.svelte";
 export { default as GasControls } from "./GasControls/GasControls.svelte";
+export { default as FieldLimit } from "./FieldLimit/FieldLimit.svelte";
 export { default as GasFee } from "./GasFee/GasFee.svelte";
 export { default as GasSettings } from "./GasSettings/GasSettings.svelte";
 export { default as LiquidStake } from "./Stake/LiquidStake.svelte";
+export { default as MemoText } from "./MemoText/MemoText.svelte";
 export { default as MnemonicInput } from "./MnemonicInput/MnemonicInput.svelte";
 export { default as NativeStake } from "./Stake/NativeStake.svelte";
 export { default as OperationResult } from "./OperationResult/OperationResult.svelte";
+export { default as PaymentRequests } from "./Receive/PaymentRequests.svelte";
 export { default as Receive } from "./Receive/Receive.svelte";
+export { default as RequestPayment } from "./Receive/RequestPayment.svelte";
 export { default as ReviewAmount } from "./ReviewAmount/ReviewAmount.svelte";
 export { default as ReviewWallet } from "./ReviewWallet/ReviewWallet.svelte";
 export { default as Send } from "./Send/Send.svelte";

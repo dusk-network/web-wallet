@@ -17,7 +17,7 @@ import { stubWalletNetwork } from "$lib/test-helpers";
 import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 import WalletTreasury from "$lib/wallet-treasury";
 
-import { walletStore } from "..";
+import { networkStore, walletStore } from "..";
 
 /**
  * Sends that fail on the way to the node: before it was asked to broadcast
@@ -91,6 +91,7 @@ describe("A send that fails", () => {
     const rendered = render(TransactionResult, {
       hasHistory,
       maxFee: 1n,
+      onRetry: () => {},
       operation: walletStore
         .shield(1n, new Gas({ limit: 1n, price: 1n }))
         .then(({ hash }) => hash),
@@ -115,6 +116,9 @@ describe("A send that fails", () => {
         a.textContent?.trim(),
         a.getAttribute("href"),
       ]),
+      offersRetry: Boolean(
+        rendered.queryByRole("button", { name: "Try again" })
+      ),
       text: rendered.container.textContent ?? "",
     };
   }
@@ -126,6 +130,7 @@ describe("A send that fails", () => {
       heading: "Transaction failed",
       icon: mdiCloseThick,
       links: [["Home", "/some-base-path/dashboard"]],
+      offersRetry: true,
       sentence:
         "Couldn't reach the network. Check your connection and try again.",
     });
@@ -137,6 +142,7 @@ describe("A send that fails", () => {
 
     expect(result).toMatchObject({
       heading: "Not confirmed",
+      offersRetry: false,
       sentence:
         "It may have reached the network. Check History before you send it again.",
     });
@@ -163,6 +169,7 @@ describe("A send that fails", () => {
       heading: "Transaction failed",
       icon: mdiCloseThick,
       links: [["Home", "/some-base-path/dashboard"]],
+      offersRetry: true,
     });
   });
 
@@ -172,6 +179,7 @@ describe("A send that fails", () => {
     expect(await shieldResult(false)).toMatchObject({
       heading: "Not confirmed",
       links: [["Home", "/some-base-path/dashboard"]],
+      offersRetry: false,
       sentence:
         "It may have reached the network. Wait a few minutes and check your balance before you send it again.",
     });
@@ -186,8 +194,38 @@ describe("A send that fails", () => {
 
     expect(await shieldResult()).toMatchObject({
       heading: "Not confirmed",
+      offersRetry: false,
       sentence:
         "It may have reached the network. Check History before you send it again.",
     });
+  });
+
+  it("says the same once it went out and anything else fails after it", async () => {
+    executeUntil("propagate", null);
+
+    const { connect } = networkStore;
+    let connections = 0;
+
+    // Connecting to send goes as ever: following what went out doesn't.
+    const connecting = vi
+      .spyOn(networkStore, "connect")
+      .mockImplementation(() => {
+        connections += 1;
+
+        if (connections > 1) {
+          throw new Error("Couldn't follow it.");
+        }
+
+        return connect();
+      });
+
+    expect(await shieldResult()).toMatchObject({
+      heading: "Not confirmed",
+      offersRetry: false,
+      sentence:
+        "It may have reached the network. Check History before you send it again.",
+    });
+
+    connecting.mockRestore();
   });
 });

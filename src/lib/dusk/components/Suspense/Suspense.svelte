@@ -77,6 +77,5 @@
       />
       <slot name="error-extra-content" {error} />
     </slot>
-    <slot name="error-actions" />
   {/await}
 </div>

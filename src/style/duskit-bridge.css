@@ -253,7 +253,7 @@
  * Phones: everything that is tapped is at least 44 px tall, and the small
  * round buttons 44 px wide.
  */
-@media (max-width: 47.99rem) {
+@media (max-width: 47.99rem), (pointer: coarse) {
   .dusk-button,
   .dusk-anchor-button,
   .dusk-select,

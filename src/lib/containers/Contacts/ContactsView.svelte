@@ -1,4 +1,5 @@
 <script>
+  import { afterNavigate } from "$app/navigation";
   import { createEventDispatcher } from "svelte";
   import {
     mdiAccountPlusOutline,
@@ -63,6 +64,30 @@
    * @param {boolean} [edit]
    */
   const select = (id, edit = false) => dispatch("select", { edit, id });
+
+  /**
+   * The row to give the focus back to as the step closing a contact ends:
+   * going back through the browser's history takes it away.
+   *
+   * @type {HTMLElement | null}
+   */
+  let focusBack = null;
+
+  afterNavigate(() => {
+    focusBack?.focus();
+    focusBack = null;
+  });
+
+  /**
+   * Closes the contact shown, and gives the focus back to its row.
+   *
+   * @param {string} id
+   */
+  function closeDetail(id) {
+    select(null);
+    focusBack = document.querySelector(`.contacts__open[data-contact="${id}"]`);
+    focusBack?.focus();
+  }
 
   /** @param {Contact} contact */
   const sendHref = (contact) =>
@@ -194,6 +219,7 @@
                 <button
                   aria-expanded={contact.id === selected}
                   class="contacts__open"
+                  data-contact={contact.id}
                   on:click={() =>
                     select(contact.id === selected ? null : contact.id)}
                   type="button"
@@ -296,6 +322,7 @@
             prefill = null;
             select(event.detail.id);
           }}
+          {own}
           {prefill}
           {resolveName}
         />
@@ -309,6 +336,7 @@
               select(null);
             }}
             on:saved={(event) => select(event.detail.id)}
+            {own}
             {resolveName}
           />
         {/key}
@@ -316,7 +344,7 @@
         <ContactDetail
           contact={open}
           {locale}
-          on:close={() => select(null)}
+          on:close={() => closeDetail(open?.id ?? "")}
           on:edit={() => select(open?.id ?? null, true)}
           {resolveName}
           {rows}

@@ -7,6 +7,7 @@
   } from "$lib/bridge/depositActivity";
   import { AppAnchorButton } from "$lib/components";
 
+  import ArrivalNotice from "../Bridge/ArrivalNotice.svelte";
   import DepositLifecycle from "./DepositLifecycle.svelte";
 
   /** @type {string} */
@@ -28,6 +29,9 @@
 
 <div class="deposit-progress">
   <DepositLifecycle {deposit} />
+  {#if deposit?.stage !== "completed" && deposit?.stage !== "failed"}
+    <ArrivalNotice />
+  {/if}
   <div class="deposit-progress__actions">
     <AppAnchorButton
       href={`/dashboard/bridge/transactions?tx=${transactionHash}`}

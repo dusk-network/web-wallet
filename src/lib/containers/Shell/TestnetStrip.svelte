@@ -33,6 +33,13 @@
     white-space: nowrap;
   }
 
+  @media (max-height: 30rem) and (orientation: landscape) {
+    .testnet-strip {
+      height: 1.5rem;
+      line-height: 1.4375rem;
+    }
+  }
+
   .testnet-strip__separator {
     margin: 0 0.375rem;
     opacity: 0.5;

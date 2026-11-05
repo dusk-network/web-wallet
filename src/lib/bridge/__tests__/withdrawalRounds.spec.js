@@ -185,6 +185,27 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
   /** @param {`0x${string}`} tx */
   const shown = (tx) => storage.getRememberedWithdrawalTransaction(tx);
 
+  it("takes up every withdrawal not settled from anywhere in the wallet, whichever EVM wallet sent it, none being connected", async () => {
+    pkg.answers.set(WAITING, () =>
+      status(WAITING, { reason: "no-output", stage: "waiting_for_output" })
+    );
+    pkg.answers.set(SOON, provedUntil(SOON, START + 90_000));
+    kept(WAITING, {
+      account: "0x2222222222222222222222222222222222222222",
+      stage: "waiting_for_output",
+    });
+    kept(SOON, { proofGame: GAME, stage: "proven_waiting" });
+    kept(LATER, { stage: "finalized" });
+
+    tracking.resumeUnsettledWithdrawals();
+
+    await vi.advanceTimersByTimeAsync(5 * 60_000);
+
+    expect(checksOf(WAITING).length).toBeGreaterThan(0);
+    expect(shown(SOON)?.stage).toBe("ready_to_finalize");
+    expect(checksOf(LATER)).toStrictEqual([]);
+  });
+
   it("checks the ones due together, with one read of the latest block, and a proof waiting for its claim date less often", async () => {
     pkg.answers.set(WAITING, () =>
       status(WAITING, { reason: "no-output", stage: "waiting_for_output" })

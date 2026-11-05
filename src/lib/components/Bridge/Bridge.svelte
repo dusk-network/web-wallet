@@ -10,7 +10,7 @@
     mdiChevronDown,
     mdiClockOutline,
   } from "@mdi/js";
-  import { formatUnits, parseUnits } from "viem";
+  import { formatUnits } from "viem";
   import {
     estimateGas,
     getGasPrice,
@@ -25,11 +25,16 @@
     BalanceValue,
     Banner,
     DepositResult,
+    FullAddress,
     GasSettings,
     OperationResult,
     ReviewAmount,
     ReviewWallet,
   } from "$lib/components";
+  import {
+    amountProblem,
+    readDuskInput,
+  } from "$lib/components/Stake/stakeAmount";
   import NetworkMark from "$lib/components/NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "$lib/components/NetworkPicker/NetworkPicker.svelte";
   import SwapCard from "$lib/components/SwapCard/SwapCard.svelte";
@@ -45,7 +50,9 @@
     toChoices as toChoicesOf,
   } from "$lib/bridge/cardRoutes";
 
+  import ArrivalNotice from "./ArrivalNotice.svelte";
   import MigrationRoute from "./MigrationRoute.svelte";
+  import RouteStatusLine from "./RouteStatusLine.svelte";
   import ServiceRoute from "./ServiceRoute.svelte";
   import {
     account,
@@ -82,14 +89,16 @@
     formatFee,
     formatTotal,
   } from "$lib/dusk/currency";
-  import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
-  import { cleanNumberString, shortenAddress } from "$lib/dusk/string";
+  import { getDecimalSeparator } from "$lib/dusk/number";
+  import { shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { addBasePath } from "$lib/navigation";
+  import { addBasePath, formDraft, gasToKeep, keptGas } from "$lib/navigation";
+  import { sendPasswordFor } from "$lib/security/sendPassword";
   import { settingsStore, walletStore } from "$lib/stores";
   import {
     CHECK_EVM_WALLET_FIRST,
     describeFailure,
+    nothingWentOut,
     outcomeUnknown,
   } from "$lib/transactions";
   import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
@@ -125,6 +134,14 @@
   /** @type {bigint} */
   export let unshieldedBalance;
 
+  /**
+   * What the public balance has to keep for what the wallet holds elsewhere,
+   * which Max leaves in it (`$lib/wallet-reserve`).
+   *
+   * @type {import("$lib/wallet-reserve").FeeToKeep}
+   */
+  export let keepForLater = { lux: 0n, why: "" };
+
   /** @type {import('@wagmi/core').GetBalanceReturnType | undefined} */
   export let evmDuskBalance;
 
@@ -147,8 +164,21 @@
    */
   export let evmChainId = undefined;
 
+  const draft = formDraft("bridge");
+
+  /**
+   * The route and what was typed before a lock, a reload or a failed transfer,
+   * unless a link to another route opens the page now.
+   *
+   * @type {any}
+   */
+  const typedBefore = ((before) =>
+    before && (!linkedRoute || before.link === linkedRoute) ? before : null)(
+    draft.read()
+  );
+
   /** @type {string} */
-  let amount = "";
+  let amount = typedBefore?.amount ?? "";
 
   /** @type {string} */
   let lastWithdrawalTxHash = "";
@@ -166,7 +196,7 @@
   let isGasValid = true;
 
   /** @type {ContractGasSettings} */
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
 
   /** Whether the first step, where the gas can be edited, shows. */
   let isEditing = true;
@@ -245,7 +275,10 @@
    * @param {bigint} lux
    */
   const toAmountText = (lux) =>
-    formatUnits(lux > 0n ? lux : 0n, 9).replace(".", getDecimalSeparator());
+    formatUnits(lux > 0n ? lux : 0n, 9).replace(
+      ".",
+      getDecimalSeparator(language)
+    );
 
   /**
    * Bridges all it can: on DuskDS what the public balance holds past the
@@ -254,7 +287,11 @@
    */
   async function setMaxAmount() {
     if (isDepositing) {
-      amount = toAmountText(unshieldedBalance - fee);
+      const all = unshieldedBalance - fee;
+
+      amount = toAmountText(
+        all > keepForLater.lux ? all - keepForLater.lux : all
+      );
       return;
     }
 
@@ -291,6 +328,21 @@
    */
   const evmLux = (balance) => balance.value / EVM_TO_LUX_SCALE_FACTOR;
 
+  /**
+   * The most a withdrawal's fee is taken to be, in whole LUX, for what the
+   * password goes by: the EVM wallet sets what it pays, in DUSK. Twice the
+   * estimate, as Max leaves, or what Max leaves with none, if that's more.
+   */
+  function withdrawalFeeBound() {
+    const estimated = (withdrawalFeeWei ?? 0n) * 2n;
+    const wei =
+      estimated > WITHDRAWAL_FEE_RESERVE_WEI
+        ? estimated
+        : WITHDRAWAL_FEE_RESERVE_WEI;
+
+    return (wei + EVM_TO_LUX_SCALE_FACTOR - 1n) / EVM_TO_LUX_SCALE_FACTOR;
+  }
+
   // What this screen sends, it sends from the wallet it was drawn for, and
   // keeps for that wallet.
   const forThisWallet = walletStore.forThisWallet();
@@ -305,6 +357,14 @@
     if (!$account.address) {
       throw new Error("DuskEVM account is not available.");
     }
+
+    // Above the amount chosen in Settings, with its fee, the password comes
+    // first.
+    await sendPasswordFor(
+      amountLux + withdrawalFeeBound(),
+      $walletStore.walletKey
+    );
+    stillOpen();
 
     // It pays this wallet's public account.
     const withdrawal = withdrawalStart({
@@ -421,7 +481,7 @@
 
   /** The route picked, by its ID; until one is, the one the card opens on. */
   /** @type {string | null} */
-  let routeId = null;
+  let routeId = typedBefore?.routeId ?? null;
 
   /**
    * Picks the route a From or a To choice makes, and starts its form over.
@@ -482,6 +542,9 @@
   /** @type {"form" | "result" | "review"} */
   let step = "form";
 
+  /** Whether this card's own transfer was asked for, and hasn't failed since. */
+  let isSent = false;
+
   /** What Send started: shown once the card moves on to it. */
   /** @type {Promise<string>} */
   let operation = Promise.resolve("");
@@ -502,8 +565,22 @@
   }
 
   function send() {
+    // It goes out now, as far as a reload can tell: nothing brings it back.
+    isSent = true;
+    draft.clear();
     operation = bridge();
+    operation.catch((error) => {
+      if (nothingWentOut(error)) {
+        draft.keep(typed);
+      }
+    });
     step = "result";
+  }
+
+  /** Back to the review of a transfer that failed with nothing sent. */
+  function tryAgain() {
+    isSent = false;
+    review();
   }
 
   function primaryAction() {
@@ -512,6 +589,23 @@
     } else if (primary.ready) {
       review();
     }
+  }
+
+  // The route picked, and what's typed on the card's own routes, kept as it's
+  // typed, for as long as it hasn't gone out: another route keeps its own.
+  $: typedHere =
+    route?.kind === "migration" || route?.kind === "service" ? "" : amount;
+  $: typed =
+    routeId || typedHere
+      ? {
+          amount: typedHere,
+          gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+          link: linkedRoute,
+          routeId,
+        }
+      : {};
+  $: if (!isSent) {
+    draft.save(typed);
   }
 
   $: list = cardRoutes($nodeNetwork);
@@ -526,7 +620,7 @@
       : route.kind === "service"
         ? undefined
         : duskEvm.id;
-  $: amount = slashDecimals(cleanNumberString(amount, getDecimalSeparator()));
+  $: problem = amountProblem(amount, language);
   $: fee = gasLimit * gasPrice;
 
   // The default gas can change while the form is open, as when the node's
@@ -555,25 +649,17 @@
     $account.address,
     $depositActivityStore
   );
-  $: {
-    // viem expects a dot as decimal separator.
-    // We also guard against incomplete inputs like "1." or ",5".
-    const normalized = amount.replace(",", ".");
-    const trimmed = normalized.endsWith(".")
-      ? normalized.slice(0, -1)
-      : normalized;
-    const safe = trimmed.startsWith(".") ? `0${trimmed}` : trimmed;
-
-    try {
-      amountLux = safe ? parseUnits(safe, 9) : 0n;
-    } catch {
-      amountLux = 0n;
-    }
-
-    // Convert Lux (1e9) to EVM base units (1e18)
-    amountWei = amountLux * EVM_TO_LUX_SCALE_FACTOR;
-  }
+  $: amountLux = readDuskInput(amount, language) ?? 0n;
+  // Lux (1e9) in EVM base units (1e18).
+  $: amountWei = amountLux * EVM_TO_LUX_SCALE_FACTOR;
   $: totalDepositLux = amountLux + fee;
+  // Too little left of the public balance for what the wallet holds elsewhere.
+  $: leavesTooLittle =
+    isDepositing &&
+    keepForLater.lux > 0n &&
+    amountLux > 0n &&
+    totalDepositLux <= unshieldedBalance &&
+    unshieldedBalance - totalDepositLux < keepForLater.lux;
   $: hasEnoughUnshielded =
     !isDepositing || unshieldedBalance >= totalDepositLux;
   $: hasEnoughEvm =
@@ -653,7 +739,7 @@
     return unsubscribeAccount;
   });
 
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
   // The contract a deposit calls on Dusk, as the network's file names it.
   $: ({ name: networkName } = $nodeNetwork ?? { name: "" });
   $: depositContract = networkName ? configuredBridge().bridge : "";
@@ -698,6 +784,7 @@
         {canFlip}
         focusSwap={Boolean(flipped)}
         {fromChoices}
+        {keepForLater}
         gasLimits={transferGasLimits}
         gasSettings={transferGasSettings}
         net={$nodeNetwork}
@@ -779,7 +866,20 @@
           >
         </p>
       {/if}
-      {#if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
+      {#if problem}
+        <p class="swap-error" role="alert">{problem}</p>
+      {:else if leavesTooLittle}
+        <p class="swap-error" role="status">
+          That leaves too little {keepForLater.why}.
+        </p>
+      {:else if isDepositing && keepForLater.lux > 0n && amountLux > 0n && unshieldedBalance - totalDepositLux === keepForLater.lux}
+        <p class="swap-note">
+          Max keeps {hideBalances
+            ? "the fee"
+            : `${formatFee(keepForLater.lux, language, { max: true })} DUSK`}
+          {keepForLater.why}.
+        </p>
+      {:else if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
         <p class="swap-error" role="alert">
           {isDepositing
             ? "Your public balance must cover the amount and the fee."
@@ -853,7 +953,12 @@
 
     <details class="swap-route">
       <summary
-        ><Icon path={mdiClockOutline} /><span>{routeLine}</span><Icon
+        ><Icon path={mdiClockOutline} /><span class="swap-route__sum"
+          ><span>{routeLine}</span>{#if route}<RouteStatusLine
+              {amountLux}
+              {route}
+            />{/if}</span
+        ><Icon
           className="swap-route__chevron section-chevron"
           path={mdiChevronDown}
         /></summary
@@ -927,18 +1032,18 @@
           <dt>From</dt>
           <dd>
             <span>{isDepositing ? "Your public account" : "DuskEVM"}</span>
-            <span class="bridge-review__address"
-              >{isDepositing ? unshieldedAddress : address}</span
-            >
+            <FullAddress
+              address={(isDepositing ? unshieldedAddress : address) ?? ""}
+            />
           </dd>
         </div>
         <div>
           <dt>To</dt>
           <dd>
             <span>{isDepositing ? "DuskEVM" : "Your public account"}</span>
-            <span class="bridge-review__address"
-              >{isDepositing ? address : unshieldedAddress}</span
-            >
+            <FullAddress
+              address={(isDepositing ? address : unshieldedAddress) ?? ""}
+            />
           </dd>
         </div>
         {#if isDepositing && depositContract}
@@ -998,7 +1103,7 @@
     </div>
   {:else if isDepositing}
     <div class="bridge-result">
-      <DepositResult {operation} />
+      <DepositResult onRetry={tryAgain} {operation} />
     </div>
   {:else}
     <div class="bridge-result">
@@ -1012,6 +1117,7 @@
       >
         <svelte:fragment slot="success-content" let:result={hash}>
           <p>{withdrawalNext}</p>
+          <ArrivalNotice />
           {#if hash}
             <AnchorButton
               href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}
@@ -1024,6 +1130,11 @@
               text="Track withdrawal"
               variant="tertiary"
             />
+          {/if}
+        </svelte:fragment>
+        <svelte:fragment slot="error-actions" let:error>
+          {#if describeFailure(error).canRetry}
+            <Button on:click={tryAgain} text="Try again" variant="primary" />
           {/if}
         </svelte:fragment>
       </OperationResult>

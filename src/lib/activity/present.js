@@ -8,10 +8,10 @@
 import {
   formatDusk,
   formatDuskExact,
-  formatDuskPlain,
   formatFee,
 } from "$lib/dusk/currency/formatDusk";
 
+import { displayText } from "@dusk-network/app-core/text";
 import { labelFor, routeForAccount } from "@dusk-network/networks";
 import { claimText } from "@dusk-network/networks/duskevm";
 import { formatTime } from "@dusk-network/networks/format";
@@ -220,11 +220,13 @@ function titleOf(row, icon, context) {
   const call = icon === "call" ? row.nameCall : null;
 
   if (call) {
+    // What a transaction carries is anyone's text: it can't reorder itself.
+    const name = call.name ? displayText(call.name).text : "";
     const label =
-      call.kind === "registration" && call.name
-        ? `Registered ${call.name}`
-        : call.kind === "reservation" && call.name
-          ? `Reserved ${call.name}`
+      call.kind === "registration" && name
+        ? `Registered ${name}`
+        : call.kind === "reservation" && name
+          ? `Reserved ${name}`
           : (NAME_CALLS[call.kind] ?? "Dusk Domains");
 
     return { title: label, titleIsAddress: false, verb: "Dusk Domains" };
@@ -279,7 +281,9 @@ function counterpartyTitle(row, icon, context) {
 
   if (icon === "call") {
     return {
-      title: row.fnName ? `Called ${row.fnName}` : "Contract call",
+      title: row.fnName
+        ? `Called ${displayText(row.fnName).text}`
+        : "Contract call",
       titleIsAddress: false,
       verb: "Contract",
     };
@@ -621,154 +625,3 @@ export function timeLabel(time, locale) {
  */
 export const fullDateTime = (time, locale) =>
   formatTime(time, { date: "full", locale: locale || undefined });
-
-/**
- * A field of a CSV line, quoted when it holds a separator, a quote or a
- * line break.
- *
- * @param {unknown} value
- */
-function csvField(value) {
-  const text = String(value ?? "");
-
-  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-}
-
-/**
- * A field of text someone else chose, as a memo or a name: never read as a
- * formula by a spreadsheet.
- *
- * @param {unknown} value
- */
-const csvText = (value) => {
-  const text = String(value ?? "");
-
-  return csvField(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text);
-};
-
-/** The columns of an export. */
-export const CSV_COLUMNS = Object.freeze([
-  "Date (UTC)",
-  "Date (local)",
-  "Block",
-  "Transaction ID",
-  "Direction",
-  "Type",
-  "What",
-  "Counterparty name",
-  "Counterparty",
-  "Amount (DUSK)",
-  "Fee paid (DUSK)",
-  "Memo",
-  "Status",
-]);
-
-/** The column an export adds with the user's own contact names. */
-export const CSV_CONTACT_COLUMN = "Your contact name";
-
-/** @type {Record<ActivityRow["status"], string>} */
-const STATUS_WORDS = {
-  executed: "Completed",
-  failed: "Failed",
-  pending: "Pending",
-  unknown: "Unknown",
-};
-
-/**
- * One row as a CSV line. Its words never use the user's contact names,
- * which go in their own column when asked for, nor their wallets' names.
- *
- * @param {ActivityRow} row
- * @param {PresentContext} context
- * @param {boolean} withContacts
- */
-function csvLine(row, context, withContacts) {
-  const p = describeRow(row, {
-    ...context,
-    contactNames: undefined,
-    walletNames: undefined,
-  });
-  const { time } = row;
-  const amount = p.status === "failed" ? 0n : row.value;
-  const signed = row.direction === "out" && amount ? -amount : amount;
-  const dates =
-    time === null
-      ? ["", ""]
-      : [new Date(time).toISOString(), fullDateTime(time, context.locale)];
-
-  return [
-    ...dates.map(csvField),
-    csvField(row.blockHeight ?? ""),
-    csvField(row.hash),
-    csvField(row.direction),
-    csvField(p.privacy),
-    csvText(p.titleIsAddress ? p.line : `${p.title} (${p.line})`),
-    csvText(row.counterpartyName ?? row.toName ?? ""),
-    csvField(p.counterparty ?? ""),
-    csvField(formatDuskPlain(signed)),
-    csvField(row.fee !== null ? formatDuskPlain(row.fee) : ""),
-    csvText(row.memo ?? ""),
-    csvField(csvStatus(row)),
-    ...(withContacts ? [csvText(contactOf(p, context))] : []),
-  ].join(",");
-}
-
-/**
- * A row's status in an export, or that its time, fee or outcome isn't
- * looked up yet.
- *
- * @param {ActivityRow} row
- */
-const csvStatus = (row) =>
-  row.incomplete ? "Not looked up yet" : STATUS_WORDS[row.status];
-
-/**
- * The user's own name for a row's counterparty, if it is a contact.
- *
- * @param {ActivityPresentation} p
- * @param {PresentContext} context
- */
-const contactOf = (p, context) =>
-  (p.counterparty && context.contactNames?.get(p.counterparty)) || "";
-
-/**
- * An export's file name: the network, the profile and the day where the
- * user is, as the wallet extension names its own:
- * "dusk-activity-testnet-profile-1-2026-10-29.csv".
- *
- * @param {{ network?: string, profileIndex?: number }} what
- * @param {Date} [now]
- */
-export function csvFileName({ network, profileIndex = 0 }, now = new Date()) {
-  const slug = String(network ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  const day = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
-    .map((part) => String(part).padStart(2, "0"))
-    .join("-");
-  const profile = `profile-${Math.max(0, Math.floor(Number(profileIndex) || 0)) + 1}`;
-
-  return `${["dusk-activity", slug || "wallet", profile, day].join("-")}.csv`;
-}
-
-/**
- * The rows as CSV, one line each with the columns of CSV_COLUMNS, and the
- * user's contact names in CSV_CONTACT_COLUMN only `withContacts`. Amounts
- * are exact, with a minus for what left the account; a failed transaction
- * moved nothing, so its amount is 0 and its fee stands on its own. A row
- * not looked up yet says so in its status.
- *
- * @param {ActivityRow[]} rows
- * @param {PresentContext} context
- * @param {{ withContacts?: boolean }} [options]
- */
-export function toCsv(rows, context, { withContacts = false } = {}) {
-  const lines = rows.map((row) => csvLine(row, context, withContacts));
-  const columns = withContacts
-    ? [...CSV_COLUMNS, CSV_CONTACT_COLUMN]
-    : CSV_COLUMNS;
-
-  return [columns.map(csvField).join(","), ...lines].join("\r\n");
-}

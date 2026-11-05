@@ -5,7 +5,7 @@
   import { ContactsView } from "$lib/containers/Contacts";
   import { appPath } from "$lib/containers/Shell";
   import { resolveDuskName } from "$lib/dusk-domains";
-  import { goto } from "$lib/navigation";
+  import { sheetStep } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import { nodeBaseUrl } from "$lib/url";
 
@@ -20,7 +20,17 @@
     resolveDuskName(name, networkName, nodeBaseUrl());
 
   /**
-   * Opens a contact, its form or a new one, or closes it, in the address.
+   * How many sheets an address has open: a contact, and its form over it.
+   *
+   * @param {URL} at
+   */
+  const sheetsAt = (at) =>
+    Number(at.searchParams.has("contact")) +
+    Number(at.searchParams.get("edit") === "1");
+
+  /**
+   * Opens a contact, its form or a new one, or closes it, in the address, each
+   * a step of its own in the browser's history, so that Back closes it.
    *
    * @param {CustomEvent<{ edit: boolean, id: string | null }>} event
    */
@@ -38,11 +48,11 @@
       next.searchParams.set("edit", "1");
     }
 
-    goto(`${appPath(next.pathname)}${next.search}`, {
-      keepFocus: true,
-      noScroll: true,
-      replaceState: true,
-    });
+    sheetStep(
+      `${appPath(next.pathname)}${next.search}`,
+      sheetsAt(url),
+      sheetsAt(next)
+    );
   }
 
   $: ({ url } = $page);

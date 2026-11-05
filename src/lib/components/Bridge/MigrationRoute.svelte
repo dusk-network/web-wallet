@@ -9,7 +9,7 @@
    */
   import { pushState } from "$app/navigation";
   import { page } from "$app/stores";
-  import { createEventDispatcher, onDestroy } from "svelte";
+  import { createEventDispatcher, onDestroy, tick } from "svelte";
   import { formatUnits } from "viem";
   import {
     mdiArrowDown,
@@ -27,16 +27,20 @@
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { shortenAddress } from "$lib/dusk/string";
+  import { SendPasswordDeclinedError } from "$lib/errors";
+  import { formDraft } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
   import { account, modal } from "$lib/web3/walletConnection";
   import { getBalanceOfCoin } from "$lib/web3/migration";
   import { notRunning } from "$lib/bridge/cardRoutes";
   import {
+    approvedWei,
     isApproved,
     EVM_ACCOUNT_CHANGED,
+    revokeApproval,
     sendMigration,
   } from "$lib/bridge/routeFlows";
-  import { askToSwitch, chainSwitchRefused } from "$lib/bridge/chainSwitch";
+  import { askToSwitch, isAskingToSwitch } from "$lib/bridge/chainSwitch";
   import { getMigrationFee, getNativeBalance } from "$lib/web3/migration";
   import { describeFailure, isDeclinedInWallet } from "$lib/transactions";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
@@ -46,14 +50,12 @@
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "../NetworkPicker/NetworkPicker.svelte";
   import OperationResult from "../OperationResult/OperationResult.svelte";
+  import RouteStatusLine from "./RouteStatusLine.svelte";
   import RouteTransferResult from "./RouteTransferResult.svelte";
+  import FullAddress from "../FullAddress/FullAddress.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
-  import {
-    hasTooManyDecimals,
-    normalizeDuskInput,
-    parseDuskInput,
-  } from "../Stake/stakeAmount";
+  import { amountProblem, readDuskInput } from "../Stake/stakeAmount";
 
   /** @type {import("$lib/bridge/cardRoutes").CardRoute & { kind: "migration" }} */
   export let route;
@@ -77,6 +79,9 @@
 
   const dispatch = createEventDispatcher();
   const WEI_PER_LUX = 1_000_000_000n;
+
+  /** Past what any token has: an approval with no limit, as wallets give one. */
+  const NO_LIMIT = 2n ** 255n;
   const ACCOUNT_CHANGED_NOTE =
     "Your EVM wallet switched to another account, so nothing moved. Review again.";
 
@@ -95,11 +100,16 @@
   /** A step's heading takes focus as it shows, so a screen reader goes there. */
   const takeFocus = (/** @type {HTMLElement} */ node) => node.focus();
 
+  const draft = formDraft(`bridge-${route.id}`);
+
+  /** What was typed before a lock, a reload or a failed migration. */
+  const typedBefore = draft.read();
+
   /** @type {string} */
-  let amount = "";
+  let amount = typedBefore?.amount ?? "";
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = false;
+  let isMaxAmount = typedBefore?.isMax ?? false;
 
   /**
    * An amount of the chain's own currency, rounded as a wallet shows it.
@@ -148,6 +158,29 @@
   /** @type {boolean | undefined} */
   let approved;
 
+  /**
+   * What an approval from before lets the contract take, in wei, as the review
+   * read it: what it's for and what stays of it, when it covers the amount.
+   *
+   * @type {bigint}
+   */
+  let reviewedApproval = 0n;
+
+  /**
+   * What the contract may take as the form shows, in wei, read on the chain:
+   * undefined until it's read, as when it can't be.
+   *
+   * @type {bigint | undefined}
+   */
+  let openApproval;
+
+  /** How many times it was read: only the last answer counts. */
+  let openApprovalReads = 0;
+
+  /** Where its revoke is. */
+  /** @type {"" | "in-block" | "signing"} */
+  let revoking = "";
+
   /** @type {"form" | "result" | "review"} */
   let step = "form";
 
@@ -168,8 +201,21 @@
     left = true;
   });
 
+  /** For what acts after it waits, right before it asks the wallet. */
+  function stillHere() {
+    if (left) {
+      throw new Error("The screen was left.");
+    }
+  }
+
   /** Whether what failed can't have gone out, so it can be tried again. */
   let canGoBack = false;
+
+  /**
+   * Whether the migration failed with nothing sent as the approval, read again
+   * then, no longer covers it, as once it was used elsewhere.
+   */
+  let isApprovalShort = false;
 
   /** What just stopped it, for the screen it went back to. */
   let note = "";
@@ -220,8 +266,97 @@
     );
   }
 
+  /**
+   * Reads on the chain what the contract may take from `owner`: none without
+   * one, as away from the form or on another chain.
+   *
+   * @param {string | undefined} owner
+   */
+  function readOpenApproval(owner) {
+    const read = ++openApprovalReads;
+
+    if (!owner) {
+      openApproval = undefined;
+
+      return;
+    }
+
+    approvedWei(route, /** @type {`0x${string}`} */ (owner)).then(
+      (wei) => {
+        if (read === openApprovalReads) {
+          openApproval = wei;
+        }
+      },
+      () => {
+        if (read === openApprovalReads) {
+          openApproval = undefined;
+        }
+      }
+    );
+  }
+
+  /**
+   * What's approved, as the screen says it: for less than a lux, that.
+   *
+   * @param {bigint} wei
+   */
+  const approvalText = (wei) =>
+    wei < WEI_PER_LUX
+      ? `less than ${formatDuskExact(1n, language)}`
+      : formatDuskExact(wei / WEI_PER_LUX, language);
+
+  /** On to the review of the amount the approval open still lets go. */
+  async function finish() {
+    amount = formatDuskPlain(finishLux).replace(
+      ".",
+      getDecimalSeparator(language)
+    );
+    isMaxAmount = true;
+    note = "";
+    await tick();
+
+    if (primary.ready) {
+      goToReview();
+    }
+  }
+
+  /** Asks the wallet to take back what the contract may take: a transaction. */
+  async function revoke() {
+    const owner = /** @type {`0x${string}`} */ (address);
+
+    note = "";
+    revoking = "signing";
+
+    try {
+      await forThisWallet(revokeApproval)({
+        onInBlock: () => {
+          revoking = "in-block";
+        },
+        owner,
+        route,
+        stillHere,
+      });
+
+      note = "The approval is revoked.";
+    } catch (error) {
+      note =
+        /** @type {{ code?: string }} */ (error)?.code === EVM_ACCOUNT_CHANGED
+          ? ACCOUNT_CHANGED_NOTE
+          : isDeclinedInWallet(error)
+            ? "You cancelled the revoke in your wallet. The approval stands."
+            : "The approval wasn't revoked. Check your EVM wallet's activity before you try again.";
+    } finally {
+      revoking = "";
+
+      if (!left) {
+        readOpenApproval(step === "form" ? address : undefined);
+      }
+    }
+  }
+
   function readApproval() {
     approved = undefined;
+    reviewedApproval = 0n;
     feeBalance = undefined;
 
     feeEstimate = null;
@@ -241,9 +376,12 @@
         }
       }
     );
-    isApproved(route, owner, amountLux).then(
-      (yes) => {
+    approvedWei(route, owner).then(
+      (wei) => {
+        const yes = wei >= amountLux * WEI_PER_LUX;
+
         approved = yes;
+        reviewedApproval = wei;
         getMigrationFee({
           amount: amountLux * WEI_PER_LUX,
           approved: yes,
@@ -269,6 +407,7 @@
 
   function review() {
     note = "";
+    isApprovalShort = false;
     reviewedFor = address;
     step = "review";
     readApproval();
@@ -325,6 +464,14 @@
       return true;
     }
 
+    if (error instanceof SendPasswordDeclinedError) {
+      note = "It waits for your password, so nothing moved.";
+      step = "review";
+      readApproval();
+
+      return true;
+    }
+
     if (isDeclinedInWallet(error)) {
       note =
         sending === "approving"
@@ -353,10 +500,15 @@
     if (sending !== "confirming") {
       return failedOnChain
         ? { sentence: `${chainName} refused the approval, so nothing moved.` }
-        : describeFailure(error, {
-            checkFirst:
-              "Check your EVM wallet and Activity before you send it again.",
-          });
+        : isApprovalShort
+          ? {
+              sentence:
+                "Your approval no longer covers this amount, so nothing was sent. Approve again to migrate it.",
+            }
+          : describeFailure(error, {
+              checkFirst:
+                "Check your EVM wallet and Activity before you send it again.",
+            });
     }
 
     return failedOnChain
@@ -368,6 +520,10 @@
   }
 
   function send() {
+    const owner = /** @type {`0x${string}`} */ (address);
+
+    // It goes out now, as far as a reload can tell: nothing brings it back.
+    draft.clear();
     note = "";
     sending = "";
     operation = forThisWallet(sendMigration)({
@@ -375,21 +531,27 @@
       onStep: (now) => {
         sending = now;
       },
-      owner: /** @type {`0x${string}`} */ (address),
+      owner,
       recipient,
       route,
-      stillHere() {
-        if (left) {
-          throw new Error("The screen was left.");
-        }
-      },
-    }).catch((error) => {
+      stillHere,
+    }).catch(async (error) => {
       if (stoppedBy(error)) {
         return "";
       }
 
       canGoBack =
-        sending !== "confirming" && !describeFailure(error).outcomeUnknown;
+        sending !== "confirming" && Boolean(describeFailure(error).canRetry);
+
+      if (canGoBack) {
+        draft.keep(toKeep);
+      }
+
+      // Why, where the chain can say: an approval used up since it was read.
+      isApprovalShort =
+        canGoBack &&
+        sending === "migrating" &&
+        !(await isApproved(route, owner, amountLux).catch(() => true));
 
       throw error;
     });
@@ -406,16 +568,41 @@
     }
   }
 
+  // What's typed, kept as it's typed, for as long as it hasn't gone out.
+  $: toKeep = { amount, isMax: isMaxAmount };
+  $: if (step !== "result") {
+    draft.save(toKeep);
+  }
+
   $: ({ hideBalances, language } = $settingsStore);
   $: isAmountMasked = hideBalances && isMaxAmount;
+  // What the Sent screen says is on its way.
+  $: sentWhat = hideBalances
+    ? "It"
+    : `${formatDuskExact(amountLux, language)} DUSK`;
   $: ({ address, chainId, isConnected } = $account);
   $: follow(isConnected ? address : undefined, chainId);
   $: followHistory(Boolean($page.state?.routeReview));
+  $: readOpenApproval(
+    step === "form" && isConnected && chainId === route.chain.chainId
+      ? address
+      : undefined
+  );
+  $: hasOpenApproval = typeof openApproval === "bigint" && openApproval > 0n;
+  // What Finish fills in: all the approval lets go, of what the wallet holds.
+  $: finishLux =
+    hasOpenApproval && balanceLux !== undefined
+      ? /** @type {bigint} */ (openApproval) / WEI_PER_LUX < balanceLux
+        ? /** @type {bigint} */ (openApproval) / WEI_PER_LUX
+        : balanceLux
+      : 0n;
+  // What stays approved once the amount reviewed went, under an earlier approval.
+  $: approvalLeft = reviewedApproval - amountLux * WEI_PER_LUX;
   $: chainName = route.chain.name;
   $: feeUnit = route.chain.currency.symbol;
   $: unit = route.chain.tokenLabel ?? "DUSK";
-  $: typed = normalizeDuskInput(amount, getDecimalSeparator());
-  $: amountLux = parseDuskInput(typed) ?? 0n;
+  $: amountLux = readDuskInput(amount, language) ?? 0n;
+  $: problem = amountProblem(amount, language);
   $: balanceLux = balance === undefined ? undefined : balance / WEI_PER_LUX;
   $: time = routeTime(route, { net });
   $: timeText = routeTimeText(time);
@@ -431,9 +618,9 @@
     : !isConnected
       ? { label: "Connect an EVM wallet", ready: true }
       : chainId !== route.chain.chainId
-        ? $chainSwitchRefused
-          ? { label: `Switch to ${chainName}`, ready: true }
-          : { label: `Switching to ${chainName}…`, ready: false }
+        ? $isAskingToSwitch
+          ? { label: `Switching to ${chainName}…`, ready: false }
+          : { label: `Switch to ${chainName}`, ready: true }
         : balanceLux === undefined
           ? { label: "Checking the balance…", ready: false }
           : balanceLux === 0n
@@ -442,7 +629,7 @@
               ? { label: "Enter an amount", ready: false }
               : amountLux === 0n
                 ? {
-                    label: hasTooManyDecimals(typed)
+                    label: problem.includes("decimals")
                       ? "Use at most 9 decimals"
                       : "Check the amount",
                     ready: false,
@@ -465,6 +652,46 @@
 {#if step === "form"}
   {#if note}
     <p class="route-note" role="alert">{note}</p>
+  {/if}
+  {#if hasOpenApproval && openApproval !== undefined}
+    <div class="route-approval">
+      <p class="route-approval__title">Open approval</p>
+      <p>
+        {#if openApproval >= NO_LIMIT}
+          The migration contract may still take any amount of {unit} from this wallet.
+        {:else}
+          The migration contract may still take <BalanceValue
+            value={approvalText(openApproval)}
+          />
+          {unit} from this wallet.
+        {/if}
+      </p>
+      {#if revoking}
+        <p role="status">
+          {revoking === "signing"
+            ? "Revoke in your wallet"
+            : `Waiting for ${chainName}…`}
+        </p>
+      {:else}
+        <div class="route-approval__actions">
+          {#if finishLux > 0n}
+            <Button
+              on:click={finish}
+              size="small"
+              text="Finish"
+              variant="secondary"
+            />
+          {/if}
+          <Button
+            confirm
+            on:click={revoke}
+            size="small"
+            text="Revoke"
+            variant="tertiary"
+          />
+        </div>
+      {/if}
+    </div>
   {/if}
   <div class="swap-panel">
     <div class="swap-panel__head">
@@ -502,7 +729,7 @@
           {#if !isConnected}
             connect a wallet to see it
           {:else if balanceLux === undefined}
-            {$chainSwitchRefused ? "switch network to see it" : "checking"}
+            {$isAskingToSwitch ? "checking" : "switch network to see it"}
           {:else}
             <BalanceValue
               exact={formatDuskExact(balanceLux, language)}
@@ -517,7 +744,7 @@
           on:click={() => {
             amount = formatDuskPlain(balanceLux ?? 0n).replace(
               ".",
-              getDecimalSeparator()
+              getDecimalSeparator(language)
             );
             isMaxAmount = true;
           }}
@@ -525,6 +752,9 @@
         >
       </span>
     </div>
+    {#if problem}
+      <p class="swap-error" role="alert">{problem}</p>
+    {/if}
     {#if isConnected && address}
       <p class="swap-recipient">
         from <b title={address}>{shortenAddress(address)}</b> ·
@@ -584,8 +814,9 @@
 
   <details class="swap-route">
     <summary
-      ><Icon path={mdiClockOutline} /><span
-        >{route.running ? routeLine : notRunning(net)}</span
+      ><Icon path={mdiClockOutline} /><span class="swap-route__sum"
+        ><span>{route.running ? routeLine : notRunning(net)}</span
+        ><RouteStatusLine {amountLux} {route} /></span
       ><Icon
         className="swap-route__chevron section-chevron"
         path={mdiChevronDown}
@@ -633,14 +864,14 @@
         <dt>From</dt>
         <dd>
           <span>{chainName}</span>
-          <span class="route-review__address">{address}</span>
+          <FullAddress address={address ?? ""} />
         </dd>
       </div>
       <div>
         <dt>To</dt>
         <dd>
           <span>Your public account on Dusk</span>
-          <span class="route-review__address">{recipient}</span>
+          <FullAddress address={recipient} />
         </dd>
       </div>
       <div>
@@ -659,6 +890,29 @@
           <dd>
             You allow the migration contract to take exactly this amount.
             Nothing moves yet.
+          </dd>
+        </div>
+      {:else if approved}
+        <div>
+          <dt>Approval</dt>
+          <dd>
+            <span>
+              {#if reviewedApproval >= NO_LIMIT}
+                An earlier approval with no limit covers this, so you aren't
+                asked to approve. It stays approved after it.
+              {:else}
+                An earlier approval of <BalanceValue
+                  value={approvalText(reviewedApproval)}
+                />
+                {unit} covers this, so you aren't asked to approve.
+                {#if approvalLeft > 0n}
+                  <BalanceValue value={approvalText(approvalLeft)} />
+                  {unit} stays approved after it.
+                {:else}
+                  None of it stays approved after it.
+                {/if}
+              {/if}
+            </span>
           </dd>
         </div>
       {/if}
@@ -692,13 +946,13 @@
         </div>
         <div>
           <dt>Migration contract</dt>
-          <dd><span class="route-review__address">{route.contract}</span></dd>
+          <dd><FullAddress address={route.contract} /></dd>
         </div>
         <div>
           <dt>Token</dt>
           <dd>
             <span>{unit}</span>
-            <span class="route-review__address">{route.chain.token}</span>
+            <FullAddress address={route.chain.token ?? ""} />
           </dd>
         </div>
       </dl>
@@ -762,14 +1016,18 @@
           masked={hideBalances}
           {route}
           sentText={timeText
-            ? `It arrives on Dusk in ${timeText}.`
-            : "It arrives on Dusk once the bridge pays it out."}
+            ? `${sentWhat} arrives on Dusk in ${timeText}.`
+            : `${sentWhat} arrives on Dusk once the bridge pays it out.`}
           {time}
         />
       </svelte:fragment>
       <svelte:fragment slot="error-actions">
         {#if canGoBack}
-          <Button on:click={review} text="Back" variant="secondary" />
+          <Button
+            on:click={review}
+            text={isApprovalShort ? "Approve again" : "Try again"}
+            variant="primary"
+          />
         {/if}
       </svelte:fragment>
     </OperationResult>
@@ -809,6 +1067,29 @@
     color: var(--on-surface-color);
   }
 
+  /* An approval not used up: a fact about the wallet, above the form. */
+  .route-approval {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--calm-line);
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .route-approval__title {
+    font-weight: 500;
+  }
+
+  .route-approval__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
   .route-review__title {
     margin: 0;
     font-size: 1.125rem;
@@ -838,13 +1119,6 @@
       gap: 0.125rem;
       margin: 0;
     }
-  }
-
-  .route-review__address {
-    color: var(--calm-muted);
-    font-family: var(--mono-font-family, monospace);
-    font-size: 0.8125rem;
-    overflow-wrap: anywhere;
   }
 
   .route-review__actions {

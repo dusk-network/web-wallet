@@ -6,9 +6,6 @@ import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { nameFacts } from "../activityHistory";
 import {
-  CSV_COLUMNS,
-  CSV_CONTACT_COLUMN,
-  csvFileName,
   dayLabel,
   describeRow,
   fullDateTime,
@@ -16,7 +13,6 @@ import {
   matchesFilters,
   routeLabel,
   timeLabel,
-  toCsv,
 } from "../present";
 import { rowOf, rowsOf, withBridge } from "./fixtures/rows";
 
@@ -705,98 +701,5 @@ describe("dayLabel and groupByDay", () => {
       ["Sat 24 Oct", 1],
       ["Time not known yet", 1],
     ]);
-  });
-});
-
-describe("csvFileName", () => {
-  it("names an export by the network, the profile and the day where the user is, as the extension does", () => {
-    // Past midnight in Amsterdam, still the day before in UTC.
-    const day = new Date(2026, 9, 29, 0, 46);
-
-    expect(csvFileName({ network: "testnet", profileIndex: 0 }, day)).toBe(
-      "dusk-activity-testnet-profile-1-2026-10-29.csv"
-    );
-    expect(csvFileName({ network: "Mainnet", profileIndex: 1 }, day)).toBe(
-      "dusk-activity-mainnet-profile-2-2026-10-29.csv"
-    );
-    expect(csvFileName({ network: "My node / 1" }, day)).toBe(
-      "dusk-activity-my-node-1-profile-1-2026-10-29.csv"
-    );
-    expect(csvFileName({}, day)).toBe(
-      "dusk-activity-wallet-profile-1-2026-10-29.csv"
-    );
-  });
-});
-
-describe("toCsv", () => {
-  it("keeps every decimal, without grouping", () => {
-    const [, line] = toCsv(
-      [row({ amount: "1234567891234", feePaid: "1853542" })],
-      context
-    ).split("\r\n");
-
-    expect(line).toContain(",-1234.567891234,0.001853542,");
-  });
-
-  it("holds a line per row, failed ones with nothing moved and the fee on its own", () => {
-    const csv = toCsv(
-      [
-        row({ counterpartyName: "alice-shop.dusk", memo: "Order 1042" }),
-        row({
-          feePaid: "3700000",
-          hash: "bb".repeat(32),
-          memo: "=HYPERLINK(1)",
-          status: "failed",
-          success: false,
-        }),
-      ],
-      context
-    ).split("\r\n");
-
-    expect(csv[0]).toBe(CSV_COLUMNS.join(","));
-    expect(csv[1]).toContain(`2026-10-26T13:32:00.000Z`);
-    expect(csv[1]).toContain(`,${"aa".repeat(32)},out,Public,`);
-    expect(csv[1]).toContain(
-      `,alice-shop.dusk,${ACCOUNT},-25,,Order 1042,Completed`
-    );
-
-    // A memo is never read as a formula.
-    expect(csv[2]).toContain(`,0,0.0037,'=HYPERLINK(1),Failed`);
-  });
-
-  it("keeps the user's contact names out, unless asked, and then in their own column", () => {
-    const rows = [row({ counterpartyName: "alice-shop.dusk" }), row({})];
-    const withNames = {
-      ...context,
-      contactNames: new Map([[ACCOUNT, "Alice (landlord, private)"]]),
-      walletNames: new Map([[ACCOUNT, "Savings · Profile 1"]]),
-    };
-    const plain = toCsv(rows, withNames);
-    const asked = toCsv(rows, withNames, { withContacts: true }).split("\r\n");
-
-    expect(plain).not.toContain("landlord");
-    expect(plain).not.toContain("Savings");
-    expect(plain).toContain(",alice-shop.dusk (Sent),");
-    expect(asked[0]).toBe([...CSV_COLUMNS, CSV_CONTACT_COLUMN].join(","));
-    expect(asked[1]).toContain(",alice-shop.dusk (Sent),");
-    expect(asked[1]).toMatch(/,Completed,"Alice \(landlord, private\)"$/);
-  });
-
-  it("marks a row not looked up yet, and leaves an undated one out of a range of days", () => {
-    const pending = row({
-      status: "unknown",
-      success: null,
-      timestamp: undefined,
-    });
-    const [, line] = toCsv([pending], context).split("\r\n");
-
-    expect(line).toMatch(/^,,4687000,/);
-    expect(line).toMatch(/,Not looked up yet$/);
-    expect(
-      matchesFilters(describeRow(pending, context), pending, { since: 0 })
-    ).toBe(false);
-    expect(matchesFilters(describeRow(pending, context), pending, {})).toBe(
-      true
-    );
   });
 });

@@ -1,16 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { tick } from "svelte";
 
+import { page } from "$app/stores";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 
 import { settingsStore } from "$lib/stores";
+import { outcomeUnknown } from "$lib/transactions";
 
 import { NativeStake } from "..";
 import {
+  amountProblem,
   checkAmount,
-  normalizeDuskInput,
-  parseDuskInput,
+  readDuskInput,
 } from "../Stake/stakeAmount";
 
 // The transaction sent stays pending.
@@ -22,6 +25,18 @@ vi.mock("$lib/transactions", async (importOriginal) => ({
   ...(await importOriginal()),
   followTransaction,
 }));
+
+// The page's history state, as the tests move it.
+vi.mock("$app/stores", async () => {
+  const { writable } = await import("svelte/store");
+
+  return { page: writable({ state: {} }) };
+});
+
+const historyAt = (/** @type {{ stakeReview?: boolean }} */ state) =>
+  /** @type {import("svelte/store").Writable<any>} */ (
+    /** @type {unknown} */ (page)
+  ).set({ state });
 
 const HASH = "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
 const DUSK = 1_000_000_000n;
@@ -37,48 +52,75 @@ const baseProps = {
   gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n },
   liquidHref: "/dashboard/stake?flow=liquid",
   minimumStake: 1_000n * DUSK,
+  unstakeFee: 50_000_000n,
 };
 
-describe("parseDuskInput", () => {
+describe("readDuskInput", () => {
   it("reads DUSK as lux, with up to nine decimals and nothing else", () => {
-    expect(parseDuskInput("1000")).toBe(1_000n * DUSK);
-    expect(parseDuskInput(" 1000.5 ")).toBe(1_000_500_000_000n);
-    expect(parseDuskInput(".000000001")).toBe(1n);
-    expect(parseDuskInput("12.")).toBe(12n * DUSK);
+    expect(readDuskInput("1000", "en")).toBe(1_000n * DUSK);
+    expect(readDuskInput(" 1000.5 ", "en")).toBe(1_000_500_000_000n);
+    expect(readDuskInput(".000000001", "en")).toBe(1n);
+    expect(readDuskInput("12.", "en")).toBe(12n * DUSK);
 
     for (const text of ["", "1,000", "1e3", "-1", "1.0000000001", "abc"]) {
-      expect(parseDuskInput(text)).toBeNull();
+      expect(readDuskInput(text, "en")).toBeNull();
     }
   });
-});
 
-describe("normalizeDuskInput", () => {
   it("reads a decimal comma as a point, and leaves digit grouping out where it can't be decimals", () => {
-    expect(normalizeDuskInput("1,5")).toBe("1.5");
-    expect(normalizeDuskInput(" 0,25 ")).toBe("0.25");
-    expect(normalizeDuskInput("0,123")).toBe("0.123");
-    expect(normalizeDuskInput("1.000,5")).toBe("1000.5");
-    expect(normalizeDuskInput("1,000.5")).toBe("1000.5");
-    expect(normalizeDuskInput("1,000,000")).toBe("1000000");
+    expect(readDuskInput("1,5", "en")).toBe(1_500_000_000n);
+    expect(readDuskInput(" 0,25 ", "en")).toBe(250_000_000n);
+    expect(readDuskInput("0,123", "en")).toBe(123_000_000n);
+    expect(readDuskInput("1.000,5", "en")).toBe(1_000_500_000_000n);
+    expect(readDuskInput("1,000.5", "en")).toBe(1_000_500_000_000n);
+    expect(readDuskInput("1,000,000", "en")).toBe(1_000_000n * DUSK);
 
     // A lone comma before three digits is a decimal comma where the language
     // writes decimals with one. Elsewhere it could mean either, so it's refused.
-    expect(normalizeDuskInput("1,000", ",")).toBe("1.000");
-    expect(parseDuskInput(normalizeDuskInput("1,000"))).toBeNull();
-    expect(normalizeDuskInput("0,100")).toBe("0.100");
+    expect(readDuskInput("1,000", "de")).toBe(DUSK);
+    expect(readDuskInput("0,100", "en")).toBe(100_000_000n);
 
     // A point before three digits, where the language groups with one, could
     // mean a thousand as well as one: refused too.
-    expect(parseDuskInput(normalizeDuskInput("1.000", ","))).toBeNull();
-    expect(parseDuskInput(normalizeDuskInput("12.500", ","))).toBeNull();
-    expect(normalizeDuskInput("1.5", ",")).toBe("1.5");
-    expect(normalizeDuskInput("0.100", ",")).toBe("0.100");
-    expect(normalizeDuskInput("1.000")).toBe("1.000");
+    expect(readDuskInput("1.000", "de")).toBeNull();
+    expect(readDuskInput("12.500", "de")).toBeNull();
+    expect(readDuskInput("1.5", "de")).toBe(1_500_000_000n);
+    expect(readDuskInput("0.100", "de")).toBe(100_000_000n);
+    expect(readDuskInput("1.000", "en")).toBe(DUSK);
 
-    // Anything else stays as typed, for the parser to refuse.
     for (const text of ["1,00,0", "1e3", "1.2.3", "abc", "1,5,"]) {
-      expect(normalizeDuskInput(text)).toBe(text);
+      expect(readDuskInput(text, "en")).toBeNull();
     }
+  });
+
+  it("reads the language's own groups, as it writes them", () => {
+    for (const space of [" ", "\u00a0", "\u202f"]) {
+      expect(readDuskInput(`1${space}000`, "fr-FR")).toBe(1_000n * DUSK);
+      expect(readDuskInput(`1${space}000,5`, "fr-FR")).toBe(1_000_500_000_000n);
+    }
+
+    expect(readDuskInput("1'000.5", "de-CH")).toBe(1_000_500_000_000n);
+    // Not English's.
+    expect(readDuskInput("1 000", "en")).toBeNull();
+  });
+});
+
+describe("amountProblem", () => {
+  it("says why an amount can't be read, in the language's own writing", () => {
+    expect(amountProblem("", "de")).toBe("");
+    expect(amountProblem("10,5", "de")).toBe("");
+    expect(amountProblem("1.000", "de")).toBe(
+      "Is that 1000 or 1,000? Write the one you mean."
+    );
+    expect(amountProblem("0,1234567891", "de")).toBe(
+      "DUSK has 9 decimals at most."
+    );
+    expect(amountProblem("ten", "de")).toBe(
+      "Enter an amount such as 10 or 10,5."
+    );
+    expect(amountProblem("ten", "en", "1000")).toBe(
+      "Enter an amount such as 1000 or 1000.5."
+    );
   });
 });
 
@@ -92,7 +134,12 @@ describe("checkAmount", () => {
 
   /** @param {string} text */
   const check = (text, extra = {}) =>
-    checkAmount({ ...base, amount: parseDuskInput(text), text, ...extra });
+    checkAmount({
+      ...base,
+      amount: readDuskInput(text, "en"),
+      text,
+      ...extra,
+    });
 
   it("says what is wrong with an amount, in the words the page shows", () => {
     expect(check("")).toStrictEqual({ error: "", isMinimum: false, ok: false });
@@ -113,6 +160,18 @@ describe("checkAmount", () => {
     });
   });
 
+  it("keeps what a stake must leave for its way out, and says so", () => {
+    const keep = 50_000_000n;
+
+    expect(check("1482.95", { keep }).error).toBe(
+      "That's 0.05 DUSK more than the public balance, with this fee and the fee to unstake later."
+    );
+    expect(check("1482.95", { hidden: true, keep }).error).toBe(
+      "That leaves too little for this fee and the fee to unstake later."
+    );
+    expect(check("1482.9", { keep }).ok).toBe(true);
+  });
+
   it("doesn't let an amount give away the balance while balances are hidden", () => {
     expect(check("1483", { hidden: true }).error).toBe(
       "That leaves too little for the network fee."
@@ -130,10 +189,39 @@ describe("checkAmount", () => {
       "Enter an amount such as 10 or 10.5."
     );
     expect(check("5", { available: 0n, minimum: 0n, most }).error).toBe(
-      "The network fee is paid from the public balance, and it's empty."
+      "The network fee is paid from the public balance, and it's empty: 0.05 DUSK short. Add that much to it first."
     );
-    expect(check("5", { available: 1n, minimum: 0n, most }).error).toBe(
-      "The public balance doesn't cover the network fee."
+    expect(
+      check("5", { available: 49_000_000n, minimum: 0n, most }).error
+    ).toBe(
+      "The public balance doesn't cover the network fee: 0.001 DUSK short. Add that much to it first."
+    );
+    // Lowering it is offered only where it can get that low.
+    expect(
+      check("5", {
+        available: 49_000_000n,
+        leastFee: 49_000_001n,
+        minimum: 0n,
+        most,
+      }).error
+    ).toBe(
+      "The public balance doesn't cover the network fee: 0.001 DUSK short. Add that much to it first."
+    );
+    expect(
+      check("5", {
+        available: 49_000_000n,
+        leastFee: 49_000_000n,
+        minimum: 0n,
+        most,
+      }).error
+    ).toBe(
+      "The public balance doesn't cover the network fee: 0.001 DUSK short. Add that much to it first, or lower the fee."
+    );
+    expect(
+      check("5", { available: 49_000_000n, hidden: true, minimum: 0n, most })
+        .error
+    ).toBe(
+      "The public balance doesn't cover the network fee: •••• DUSK short."
     );
     expect(check("5", { minimum: 0n, most }).ok).toBe(true);
   });
@@ -191,12 +279,19 @@ describe("NativeStake", () => {
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       expect(getByLabelText("Stake amount")).toHaveValue("••••");
-      expect(container.textContent).not.toContain("1,482.95");
+      expect(container.textContent).not.toContain("1,482.9");
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
       expect(getByRole("button", { name: "Stake •••• DUSK" })).toBeEnabled();
 
+      await fireEvent.click(getByRole("button", { name: "Back" }));
       await fireEvent.click(getByRole("button", { name: "Use 1,000" }));
 
       expect(getByLabelText("Stake amount")).toHaveValue("1000");
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
       expect(getByRole("button", { name: "Stake 1,000 DUSK" })).toBeEnabled();
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -244,6 +339,7 @@ describe("NativeStake", () => {
       "Total Up to 1,200.55 DUSK",
     ]);
 
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Stake 1,200.5 DUSK" }));
 
@@ -276,7 +372,7 @@ describe("NativeStake", () => {
     expect(stake).toHaveClass("stake-flow__muted");
     expect(total).toHaveTextContent("Up to 100.05 DUSK");
     expect(total).toHaveClass("stake-flow__muted");
-    expect(getByRole("button", { name: "Stake" })).toBeDisabled();
+    expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
     await fireEvent.input(getByLabelText("Stake amount"), {
       target: { value: "1000" },
@@ -300,6 +396,9 @@ describe("NativeStake", () => {
     expect(container.querySelector(".stake-flow__rows dd")).toHaveTextContent(
       "1,000.5 DUSK"
     );
+
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
     expect(getByRole("button", { name: "Stake 1,000.5 DUSK" })).toBeEnabled();
   });
 
@@ -318,23 +417,68 @@ describe("NativeStake", () => {
     await fireEvent.input(getByLabelText("Amount to add"), {
       target: { value: "10" },
     });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Stake 10 DUSK" }));
 
     expect(baseProps.execute).toHaveBeenCalledWith(10n * DUSK, 1n, 50_000_000n);
   });
 
-  it("fills in all of the public balance but the fee with Max", async () => {
-    const { getByLabelText, getByRole } = render(NativeStake, baseProps);
+  it("fills in all of the public balance but this fee and the fee to unstake later with Max", async () => {
+    const { container, getByLabelText, getByRole } = render(
+      NativeStake,
+      baseProps
+    );
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    expect(getByLabelText("Stake amount")).toHaveValue("1482.95");
-    expect(getByRole("button", { name: "Stake 1,482.95 DUSK" })).toBeEnabled();
+    expect(getByLabelText("Stake amount")).toHaveValue("1482.9");
+    expect(container).toHaveTextContent(
+      "Max keeps 0.1 DUSK: up to 0.05 for this fee and 0.05 to unstake later."
+    );
+    expect(getByRole("button", { name: "Max" })).toHaveAttribute(
+      "title",
+      "All of it, less the network fee and the fee to unstake later"
+    );
+
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(getByRole("button", { name: "Stake 1,482.9 DUSK" })).toBeEnabled();
   });
 
-  it("reviews the summary on its own page on phones, and goes back", async () => {
+  it("refuses an amount typed that leaves too little to unstake, as Max would", async () => {
     const { container, getByLabelText, getByRole } = render(
+      NativeStake,
+      baseProps
+    );
+
+    // All but this stake's own fee: the most it took before.
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1482.95" },
+    });
+
+    expect(container.querySelector(".native-stake__error")).toHaveTextContent(
+      "That's 0.05 DUSK more than the public balance, with this fee and the fee to unstake later."
+    );
+    expect(getByRole("button", { name: "Review" })).toBeDisabled();
+  });
+
+  it("offers the minimum only with enough left to unstake it, and says why not", () => {
+    const { container, getByRole, queryByRole } = render(NativeStake, {
+      ...baseProps,
+      availableBalance: 1_000n * DUSK + 50_000_000n,
+    });
+
+    // It would cover the minimum and this stake's fee, with nothing left.
+    expect(queryByRole("button", { name: "Use 1,000" })).toBeNull();
+    expect(getByRole("button", { name: "Max" })).toBeEnabled();
+    expect(container.querySelector(".native-stake__note")).toHaveTextContent(
+      "Your public balance doesn't cover the 1,000 DUSK minimum, this fee and the fee to unstake later."
+    );
+  });
+
+  it("reviews the summary on its own before anything goes, and goes back", async () => {
+    const { container, getByLabelText, getByRole, queryByRole } = render(
       NativeStake,
       baseProps
     );
@@ -345,20 +489,74 @@ describe("NativeStake", () => {
     await fireEvent.input(getByLabelText("Stake amount"), {
       target: { value: "1000" },
     });
+    await afterConfirmDelay();
+
+    // One button beside the form, and it doesn't stake.
+    expect(queryByRole("button", { name: /^Stake/ })).toBeNull();
+
     await fireEvent.click(review);
 
+    expect(baseProps.execute).not.toHaveBeenCalled();
     expect(container.querySelector(".stake-flow")).toHaveClass(
       "stake-flow--review"
     );
+    expect(queryByRole("button", { name: "Review" })).toBeNull();
+    expect(getByRole("heading", { name: /Review/ })).toHaveFocus();
 
     await fireEvent.click(getByRole("button", { name: "Back" }));
 
     expect(container.querySelector(".stake-flow")).not.toHaveClass(
       "stake-flow--review"
     );
+    expect(getByLabelText("Stake amount")).toHaveValue("1000");
   });
 
-  it("takes no click on Stake for half a second once a phone's review shows, so a double tap on Review can't stake", async () => {
+  it("follows the browser's Back and Forward between the filled form and its review", async () => {
+    const { container, getByLabelText, getByRole } = render(
+      NativeStake,
+      baseProps
+    );
+    const isReview = () =>
+      container
+        .querySelector(".stake-flow")
+        ?.classList.contains("stake-flow--review");
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1000" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(isReview()).toBe(true);
+
+    // The history at the form again, as Back leaves it.
+    historyAt({});
+    await tick();
+
+    expect(isReview()).toBe(false);
+    expect(getByLabelText("Stake amount")).toHaveValue("1000");
+
+    // And at the review, as Forward does.
+    historyAt({ stakeReview: true });
+    await tick();
+
+    expect(isReview()).toBe(true);
+
+    historyAt({});
+  });
+
+  it("stays on the form when the history is at a review of a form it no longer has", async () => {
+    historyAt({ stakeReview: true });
+
+    const { container } = render(NativeStake, baseProps);
+
+    expect(container.querySelector(".stake-flow")).not.toHaveClass(
+      "stake-flow--review"
+    );
+
+    historyAt({});
+  });
+
+  it("takes no click on Stake for half a second once the review shows, so a double click on Review can't stake", async () => {
     const { getByLabelText, getByRole } = render(NativeStake, baseProps);
     const stake = () => getByRole("button", { name: "Stake 1,000 DUSK" });
 
@@ -385,6 +583,87 @@ describe("NativeStake", () => {
       1n,
       50_000_000n
     );
+  });
+
+  describe("once it failed", () => {
+    /** @param {Error} failure */
+    const staked = async (failure) => {
+      const execute = vi
+        .fn()
+        .mockRejectedValueOnce(failure)
+        .mockResolvedValue(HASH);
+      const view = render(NativeStake, { ...baseProps, execute });
+
+      await fireEvent.input(view.getByLabelText("Stake amount"), {
+        target: { value: "1000" },
+      });
+      await fireEvent.click(view.getByRole("button", { name: "Review" }));
+      await afterConfirmDelay();
+      await fireEvent.click(
+        view.getByRole("button", { name: "Stake 1,000 DUSK" })
+      );
+      await view.findByText(/^(Transaction failed|Not confirmed)$/);
+
+      return { ...view, execute };
+    };
+
+    afterEach(() => {
+      historyAt({});
+    });
+
+    it("goes back to the review with Try again, the amount kept, when nothing went out", async () => {
+      const { container, execute, findByText, getByLabelText, getByRole } =
+        await staked(new TypeError("Failed to fetch"));
+
+      expect(
+        getByRole("link", { name: "Back to staking" })
+      ).toBeInTheDocument();
+
+      await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+      expect(container.querySelector(".stake-flow")).toHaveClass(
+        "stake-flow--review"
+      );
+      expect(getByLabelText("Stake amount")).toHaveValue("1000");
+      expect(execute).toHaveBeenCalledOnce();
+
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Stake 1,000 DUSK" }));
+
+      expect(execute).toHaveBeenCalledTimes(2);
+      expect(await findByText("1,000 DUSK to your stake")).toBeInTheDocument();
+    });
+
+    it("goes back to the form with Back in the browser, when nothing went out", async () => {
+      historyAt({ stakeReview: true });
+
+      const { container, getByLabelText } = await staked(
+        new TypeError("Failed to fetch")
+      );
+
+      historyAt({});
+      await tick();
+
+      expect(container.querySelector(".stake-flow")).not.toHaveClass(
+        "stake-flow--review"
+      );
+      expect(getByLabelText("Stake amount")).toHaveValue("1000");
+    });
+
+    it("offers no Try again when it may have gone out", async () => {
+      const { container, execute, getByRole, queryByRole } = await staked(
+        outcomeUnknown(new TypeError("Failed to fetch"))
+      );
+
+      expect(queryByRole("button", { name: "Try again" })).toBeNull();
+      expect(getByRole("link", { name: "Open History" })).toBeInTheDocument();
+
+      historyAt({});
+      await tick();
+
+      expect(container.querySelector(".stake-flow")).toBeNull();
+      expect(execute).toHaveBeenCalledOnce();
+    });
   });
 
   it("keeps the gas a review shows when the node's price changes, and takes it after", async () => {

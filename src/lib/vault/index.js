@@ -25,10 +25,28 @@
  * Every change of the two runs alone across this browser's tabs, under the
  * login lock. Nothing the password doesn't open is changed or removed, but
  * by a reset (`clear`) or a new setup in place of every wallet (`setUp`).
+ *
+ * `${APP_KEY}-login-passkey` holds what fingerprint or face unlock opens the
+ * vault with, on this device alone, when it's turned on:
+ * `{ version: 1, credentialId, transports, prfSalt, keys: [{ salt, iterations, iv, wrapped }] }`.
+ * `wrapped` is a key the password's PBKDF2 made for the vault's phrases of that
+ * salt, as AES-GCM-256 keeps it under a key from the passkey's PRF output (HKDF-
+ * SHA-256, over `prfSalt`), bound to the credential and the salt. The password
+ * itself is kept nowhere, and neither is any phrase. The PRF output only comes
+ * from the authenticator, for this origin and this credential, once it has
+ * verified the person: without that, what's stored here opens nothing, and the
+ * vault is as it would be without it, for anyone to guess the password of. The
+ * password stays the root: it opens the vault as ever, this adds nothing to what
+ * the vault holds, and losing the passkey or this record loses nothing. A new
+ * password, a wallet removed, a reset or a new setup drops the record first:
+ * the keys it holds open nothing the vault holds after a new password anyway,
+ * as that gives the phrases a new salt. What asks for the password while a wallet
+ * is open (`check`, and every change here) never takes this in its place.
  */
 
 import { base64ToBytes, bytesToBase64 } from "$lib/dusk/base64";
 import InvalidPasswordError from "$lib/errors/invalid-password-error";
+import PasskeyGoneError from "$lib/errors/passkey-gone-error";
 import getDerivedKey from "$lib/wallet/getDerivedKey";
 import {
   CURRENT_WALLET_ENCRYPTION_VERSION,
@@ -37,7 +55,12 @@ import {
 
 const V1_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`;
 const V2_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-v2`;
+const PASSKEY_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-passkey`;
 const VAULT_VERSION = 2;
+const PASSKEY_VERSION = 1;
+
+/** What the key that wraps the vault's keys is derived for. */
+const PASSKEY_KEY_INFO = "dusk-web-wallet/passkey-unlock/v1";
 
 const NO_VAULT = "There's no wallet here. Restore it with its recovery phrase.";
 const NOT_SAVED = "The wallet couldn't be saved. Try again.";
@@ -61,6 +84,9 @@ export const NOT_HERE = "That wallet isn't here.";
  * @typedef {{ id: string, n: number, mnemonic: string }} OpenedWallet
  * @typedef {(salt: string, iterations: number) => Promise<CryptoKey>} Keyring
  * @typedef {{ id: string, keys: Keyring, mnemonic: string }} Change
+ * @typedef {{ credentialId: string, prfSalt: string, transports: string[] }} Passkey
+ * @typedef {{ iterations: number, iv: string, salt: string, wrapped: string }} WrappedKey
+ * @typedef {Passkey & { keys: WrappedKey[], version: 1 }} PasskeyRecord
  */
 
 const decode = /** @type {(value: string) => Uint8Array<ArrayBuffer>} */ (
@@ -419,6 +445,114 @@ async function writeV2(next, { changed = [], gone = [] }) {
 }
 
 /**
+ * The record of fingerprint or face unlock: null for none, or one this version
+ * can't read.
+ *
+ * @returns {PasskeyRecord | null}
+ */
+function readPasskey() {
+  const record = parse(localStorage.getItem(PASSKEY_KEY));
+
+  return record &&
+    record.version === PASSKEY_VERSION &&
+    typeof record.credentialId === "string" &&
+    typeof record.prfSalt === "string" &&
+    Array.isArray(record.keys) &&
+    record.keys.length > 0
+    ? record
+    : null;
+}
+
+/** Fingerprint or face unlock stops: the vault is as it was without it. */
+const dropPasskey = () => localStorage.removeItem(PASSKEY_KEY);
+
+/**
+ * The key that wraps the vault's keys, from a passkey's PRF output: it can wrap
+ * and unwrap, and never leaves WebCrypto.
+ *
+ * @param {Uint8Array<ArrayBuffer>} prf
+ * @param {string} prfSalt
+ */
+async function wrappingKey(prf, prfSalt) {
+  const material = await crypto.subtle.importKey("raw", prf, "HKDF", false, [
+    "deriveKey",
+  ]);
+
+  return crypto.subtle.deriveKey(
+    {
+      hash: "SHA-256",
+      info: utf8(PASSKEY_KEY_INFO),
+      name: "HKDF",
+      salt: decode(prfSalt),
+    },
+    material,
+    { length: 256, name: "AES-GCM" },
+    false,
+    ["wrapKey", "unwrapKey"]
+  );
+}
+
+/**
+ * What a wrapped key is bound to: it opens as this key of this credential alone.
+ *
+ * @param {string} credentialId
+ * @param {string} salt
+ * @param {number} iterations
+ */
+const wrapBinding = (credentialId, salt, iterations) =>
+  utf8(`${PASSKEY_KEY_INFO}\n${credentialId}\n${salt}\n${iterations}`);
+
+/**
+ * The keys a passkey's record gives, with that key to unwrap them: they decrypt,
+ * and never leave WebCrypto. None for a salt it doesn't hold.
+ *
+ * @param {PasskeyRecord} record
+ * @param {CryptoKey} wrapping
+ * @returns {Keyring}
+ */
+function wrappedKeyring({ credentialId, keys }, wrapping) {
+  /** @type {Map<string, Promise<CryptoKey>>} */
+  const unwrapped = new Map();
+
+  return async (salt, iterations) => {
+    const id = `${salt}:${iterations}`;
+    const known = unwrapped.get(id);
+
+    if (known) {
+      return known;
+    }
+
+    const held = keys.find(
+      (key) => key.salt === salt && key.iterations === iterations
+    );
+
+    if (!held) {
+      throw new PasskeyGoneError();
+    }
+
+    const key = crypto.subtle.unwrapKey(
+      "raw",
+      decode(held.wrapped),
+      wrapping,
+      {
+        additionalData: wrapBinding(credentialId, salt, iterations),
+        iv: decode(held.iv),
+        name: "AES-GCM",
+      },
+      { length: 256, name: "AES-GCM" },
+      false,
+      ["decrypt"]
+    );
+
+    // One that doesn't open fails each phrase that has it, on its own.
+    key.catch(() => {});
+    unwrapped.set(id, key);
+
+    return key;
+  };
+}
+
+/**
  * The wallets in `wallets` that the keyring opens, with their phrases.
  *
  * @param {VaultWallet[]} wallets
@@ -671,6 +805,17 @@ const vault = {
       const sealed = await seal(m, keys, like);
 
       beforeWrite(wallet.id);
+
+      // A key of its own: fingerprint or face unlock wouldn't open this one.
+      if (
+        !readPasskey()?.keys.some(
+          ({ iterations, salt }) =>
+            salt === like.salt && iterations === iterationsOf(like)
+        )
+      ) {
+        dropPasskey();
+      }
+
       await writeV2(
         {
           version: VAULT_VERSION,
@@ -727,6 +872,9 @@ const vault = {
       }
 
       beforeWrite();
+
+      // Before the write: it never outlives the password it came from.
+      dropPasskey();
       await writeV2(
         { version: VAULT_VERSION, wallets },
         {
@@ -741,15 +889,188 @@ const vault = {
   },
 
   /**
+   * Checks the password against the vault, for what asks for it again while a
+   * wallet is open: it must open the wallet `id`, the one open, or a wallet
+   * here, for no ID. It gives nothing back: a wrong one throws
+   * InvalidPasswordError.
+   *
+   * @param {string} password
+   * @param {string} [id]
+   * @returns {Promise<void>}
+   */
+  check(password, id = "") {
+    return alone(async () => {
+      const { opened } = await openVault(String(password ?? ""));
+
+      if (!opened.length || (id && !opened.some((w) => w.id === id))) {
+        throw new InvalidPasswordError();
+      }
+    });
+  },
+
+  /**
    * Removes every wallet's phrase, v1's too, as a reset does.
    *
    * @returns {Promise<void>}
    */
   clear() {
     return alone(async () => {
+      dropPasskey();
       localStorage.removeItem(V2_KEY);
       localStorage.removeItem(V1_KEY);
     });
+  },
+
+  /**
+   * The passkey that can open the vault on this device, as anyone can read it:
+   * null while it's not turned on.
+   *
+   * @returns {Passkey | null}
+   */
+  passkey() {
+    const record = vault.exists() ? readPasskey() : null;
+
+    return (
+      record && {
+        credentialId: record.credentialId,
+        prfSalt: record.prfSalt,
+        transports: Array.isArray(record.transports) ? record.transports : [],
+      }
+    );
+  },
+
+  /**
+   * Turns fingerprint or face unlock on: the password must open every wallet in
+   * `held`, and the keys it makes for what it opens are kept wrapped by the
+   * passkey's PRF output, once they've been seen to open the same phrases.
+   *
+   * @param {Passkey & { prf: Uint8Array<ArrayBuffer> }} passkey
+   * @param {string} password
+   * @param {ChangeOptions} [options]
+   * @returns {Promise<void>}
+   */
+  addPasskey(
+    { credentialId, prf, prfSalt, transports },
+    password,
+    { beforeWrite = () => {}, held = [] } = {}
+  ) {
+    return alone(async () => {
+      const typed = String(password ?? "");
+      const { opened, record } = await openForChange(typed, held);
+      const wrapping = await wrappingKey(prf, prfSalt);
+      const own = record.wallets.filter((w) =>
+        opened.some(({ id }) => id === w.id)
+      );
+
+      /** @type {WrappedKey[]} */
+      const keys = [];
+
+      for (const wallet of own) {
+        const iterations = iterationsOf(wallet);
+        const { salt } = wallet;
+
+        if (
+          !keys.some(
+            (key) => key.salt === salt && key.iterations === iterations
+          )
+        ) {
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const wrapped = await crypto.subtle.wrapKey(
+            "raw",
+            await getDerivedKey(typed, decode(salt), iterations, true),
+            wrapping,
+            {
+              additionalData: wrapBinding(credentialId, salt, iterations),
+              iv,
+              name: "AES-GCM",
+            }
+          );
+
+          keys.push({
+            iterations,
+            iv: bytesToBase64(iv),
+            salt,
+            wrapped: bytesToBase64(new Uint8Array(wrapped)),
+          });
+        }
+      }
+
+      /** @type {PasskeyRecord} */
+      const next = {
+        credentialId,
+        keys,
+        prfSalt,
+        transports,
+        version: PASSKEY_VERSION,
+      };
+      const again = await openWallets(own, wrappedKeyring(next, wrapping));
+
+      if (
+        again.length !== opened.length ||
+        !opened.every(({ id, mnemonic }) =>
+          again.some((w) => w.id === id && w.mnemonic === mnemonic)
+        )
+      ) {
+        throw new Error(NOT_SAVED);
+      }
+
+      beforeWrite();
+      localStorage.setItem(PASSKEY_KEY, JSON.stringify(next));
+
+      if (!sameRecord(readPasskey(), next)) {
+        dropPasskey();
+
+        throw new Error(NOT_SAVED);
+      }
+    });
+  },
+
+  /**
+   * Turns fingerprint or face unlock off. It needs no password: nothing is
+   * opened by it, and the password opens the vault as ever.
+   *
+   * @returns {Promise<void>}
+   */
+  removePasskey() {
+    return alone(async () => dropPasskey());
+  },
+
+  /**
+   * Every wallet the passkey's record opens with its PRF output, as `unlock`
+   * gives them for the password. Nothing's moved from v1, which takes the
+   * password. A record gone or replaced while the person was asked, or one that
+   * opens nothing, is refused with PasskeyGoneError, and a record that opens
+   * nothing goes: the password opens the vault.
+   *
+   * @param {Uint8Array<ArrayBuffer>} prf
+   * @param {string} credentialId The credential that gave it
+   * @param {{ signal?: AbortSignal }} [options]
+   * @returns {Promise<{ fromV1: null, wallets: OpenedWallet[] }>}
+   */
+  unlockWithPasskey(prf, credentialId, { signal } = {}) {
+    return alone(async () => {
+      const record = readPasskey();
+      const v2 = readV2();
+
+      if (!record || record.credentialId !== credentialId || !isVaultV2(v2)) {
+        throw new PasskeyGoneError();
+      }
+
+      const opened = await openWallets(
+        v2.wallets.filter(isWallet),
+        wrappedKeyring(record, await wrappingKey(prf, record.prfSalt))
+      );
+
+      if (!opened.length) {
+        dropPasskey();
+
+        throw new PasskeyGoneError();
+      }
+
+      opened.sort(byNumber);
+
+      return { fromV1: null, wallets: opened };
+    }, signal);
   },
 
   /**
@@ -825,6 +1146,7 @@ const vault = {
       }
 
       beforeWrite();
+      dropPasskey();
       await writeV2(
         {
           version: VAULT_VERSION,
@@ -856,6 +1178,7 @@ const vault = {
       const keys = keyring(p);
       const wallet = { id: newWalletId(), n: 1 };
 
+      dropPasskey();
       await writeV2(
         {
           version: VAULT_VERSION,

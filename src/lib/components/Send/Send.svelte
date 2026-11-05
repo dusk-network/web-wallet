@@ -10,6 +10,7 @@
   } from "@mdi/js";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
+    contactCalled,
     contactsStore,
     markContactNameChecked,
     markContactNameMoved,
@@ -21,23 +22,32 @@
     closeDuskName,
     isDuskName,
   } from "@duskdomains/sdk/names";
-  import { pushState } from "$app/navigation";
   import { page } from "$app/stores";
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
-  import { addBasePath, pageTitle } from "$lib/navigation";
+  import {
+    addBasePath,
+    formDraft,
+    gasToKeep,
+    keptGas,
+    pageTitle,
+    reviewStep,
+  } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
+  import { readPaymentLink } from "$lib/payment-requests";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
   import { openWalletName, walletAccountNames } from "$lib/wallets";
   import {
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
+    formatFee,
     formatTotal,
   } from "$lib/dusk/currency";
   import {
-    normalizeDuskInput,
-    parseDuskInput,
+    amountProblem,
+    readDuskInput,
   } from "$lib/components/Stake/stakeAmount";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import {
@@ -52,8 +62,10 @@
     AppAnchor,
     BalanceValue,
     Banner,
+    FieldLimit,
     FullAddress,
     GasSettings,
+    MemoText,
     ScanQR,
     SectionHead,
     TransactionResult,
@@ -93,6 +105,14 @@
   /** @type {GasStoreContent} */
   export let gasLimits;
 
+  /**
+   * What the public balance has to keep for what the wallet holds elsewhere,
+   * which Max leaves in it (`$lib/wallet-reserve`).
+   *
+   * @type {import("$lib/wallet-reserve").FeeToKeep}
+   */
+  export let keepForLater = { lux: 0n, why: "" };
+
   /** @type {string} */
   export let shieldedAddress;
 
@@ -102,8 +122,17 @@
   /** @type {undefined | string} */
   export let bep20BridgeAddress = undefined;
 
-  /** The recipient the page starts with, as from Send again. */
+  /** The recipient the page starts with, as from Send again or a link. */
   export let initialRecipient = "";
+
+  /** The amount a link opened the page with, as the amount field reads it. */
+  export let initialAmount = "";
+
+  /** The memo a link opened the page with. */
+  export let initialMemo = "";
+
+  /** Why the link the page was opened with fills in nothing. */
+  export let initialProblem = "";
 
   /**
    * `.dusk` names of past counterparties, for "Did you mean …?" along with
@@ -113,17 +142,49 @@
    */
   export let knownNames = [];
 
+  const draft = formDraft("send");
+
+  /** What the page was opened for, to tell another link from this one. */
+  const openedFor = initialRecipient
+    ? [initialRecipient, initialAmount, initialMemo].join("\n")
+    : "";
+
+  /**
+   * What was typed before a lock, a reload or a failed send, unless a link to
+   * someone else, or for something else, opens the page now. A link refused is
+   * one too: what it opens on is no transfer of anyone's asking.
+   *
+   * @type {any}
+   */
+  const typedBefore = ((before) =>
+    before &&
+    !initialProblem &&
+    (!initialRecipient || before.link === openedFor)
+      ? before
+      : null)(draft.read());
+
   /** The amount as typed, in DUSK: nothing until it is. */
-  let sendAmount = "";
+  let sendAmount = typedBefore?.amount ?? initialAmount;
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = false;
+  let isMaxAmount = typedBefore?.isMax ?? false;
 
   /** @type {string} */
-  let sendToAddress = initialRecipient;
+  let sendToAddress = typedBefore?.to ?? initialRecipient;
 
   /** @type {string} */
-  let memo = "";
+  let memo = typedBefore?.memo ?? initialMemo;
+
+  /** Why the last link given fills in nothing: another network's, or unreadable. */
+  let linkProblem = initialProblem;
+
+  /** Whether a link filled the form in, until what's in To changes. */
+  let isFromLink = Boolean(
+    !typedBefore && initialRecipient && (initialAmount || initialMemo)
+  );
+
+  /** The recipient that link gave. */
+  let linkRecipient = initialRecipient;
 
   /** @type {import("qr-scanner").default} */
   let scanner;
@@ -132,7 +193,7 @@
   let scanQrComponent;
 
   /**
-   * Where the transfer is: the form, its review (phones only), or sent.
+   * Where the transfer is: the form, its review, or sent.
    *
    * @type {"done" | "form" | "review"}
    */
@@ -145,13 +206,16 @@
    */
   let sent = null;
 
+  /** Whether the transfer failed with nothing sent: it can be tried again. */
+  let canTryAgain = false;
+
   /**
    * Whether a recipient that isn't valid is pointed out: once it is pasted,
    * left or confirmed with Enter, not while it is being typed.
    *
    * @type {boolean}
    */
-  let isRecipientChecked = false;
+  let isRecipientChecked = Boolean(typedBefore?.to || initialRecipient);
 
   /** @type {boolean} */
   let isGasValid = false;
@@ -186,7 +250,7 @@
    *
    * @type {Record<string, "account" | "address">}
    */
-  let namePicks = {};
+  let namePicks = typedBefore?.picks ?? {};
 
   /**
    * Names the user chose to send to although a contact keeps another
@@ -276,16 +340,12 @@
    * @param {bigint | null} amount
    */
   function amountErrorOf(text, amount) {
-    const typed = text.trim();
-
-    if (!typed) {
+    if (!text.trim()) {
       return "";
     }
 
     if (amount === null) {
-      return /^\d*\.\d{10,}$/.test(typed)
-        ? "DUSK has 9 decimals at most."
-        : `Enter an amount such as 10 or 10${getDecimalSeparator()}5.`;
+      return amountProblem(text, language);
     }
 
     if (amount === 0n) {
@@ -328,13 +388,14 @@
   // Without the allocation page there is nowhere to link to for shielding.
   const canShield = import.meta.env.VITE_FEATURE_ALLOCATE === "true";
 
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
   let defaultGas = gasSettings;
 
   /** The least a transfer sends: one LUX. */
   const minAmount = 1n;
 
   const dispatch = createEventDispatcher();
+  const reviewHistory = reviewStep("sendReview");
 
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
@@ -355,9 +416,9 @@
       return;
     }
 
-    sendAmount = formatDuskPlain(maxSpendableAmount).replace(
+    sendAmount = formatDuskPlain(maxKeeping).replace(
       ".",
-      getDecimalSeparator()
+      getDecimalSeparator(language)
     );
     isMaxAmount = true;
   }
@@ -370,6 +431,69 @@
     isMaxAmount = false;
   }
 
+  /** How long the recipient typed was, to tell a paste from a key. */
+  let typedLength = 0;
+
+  /** Whether the browser said a paste is coming, over a longer recipient too. */
+  let isPasting = false;
+
+  /**
+   * What's put in To whole, as pasted, scanned or finished: a link asking for
+   * a payment fills in what it asks, and one for another network says so and
+   * fills in nothing. Anything else is a recipient as it is, leaving what's
+   * typed in the other fields. What's filled in is checked as if it were typed.
+   *
+   * @param {string} text
+   */
+  async function takeRecipient(text) {
+    const asked = readPaymentLink(text, $nodeNetwork, language);
+
+    // The field holds what was given until now: what takes its place, or
+    // nothing, then shows, whatever it held before.
+    await tick();
+
+    linkProblem = asked?.problem ?? "";
+    sendToAddress = asked ? asked.to : text;
+    linkRecipient = sendToAddress;
+    isFromLink = Boolean(asked?.amount || asked?.memo);
+    isRecipientChecked = Boolean(sendToAddress);
+    typedLength = sendToAddress.length;
+
+    if (asked?.to) {
+      isMaxAmount = false;
+      sendAmount = asked.amount;
+      memo = asked.memo;
+    }
+  }
+
+  /**
+   * Much more at once than a key gives is a paste, however a phone's keyboard
+   * does it: what's wrong with it is said at once, and a link is read.
+   *
+   * @param {Event} event
+   */
+  function handleRecipientInput({ target }) {
+    const { value } = /** @type {HTMLInputElement} */ (target);
+
+    if (isPasting || value.length - typedLength > 1) {
+      isPasting = false;
+      takeRecipient(value);
+    } else {
+      linkProblem = "";
+      isFromLink = false;
+      typedLength = value.length;
+    }
+  }
+
+  /** A link typed out reads as it's finished: not at each key on the way. */
+  function finishRecipient() {
+    if (/^(dusk:|https?:\/\/)/i.test(sendToAddress.trim())) {
+      takeRecipient(sendToAddress);
+    }
+
+    isRecipientChecked = true;
+  }
+
   /**
    * Enter checks the recipient and moves on to the amount: no address or
    * name has a line break.
@@ -379,7 +503,7 @@
   function handleRecipientKeyDown(event) {
     if (event.key === "Enter" && !event.isComposing) {
       event.preventDefault();
-      isRecipientChecked = true;
+      finishRecipient();
 
       if (addressInfo.isValid) {
         document.getElementById(`${id}-amount`)?.focus();
@@ -612,47 +736,97 @@
   function send() {
     const toName = recipientName ? nameLookup?.name : undefined;
 
+    // It goes out now, as far as a reload can tell: nothing brings it back.
+    draft.clear();
+
+    const operation = toName
+      ? execute(
+          recipientAddress,
+          sendAmountInLux,
+          transactionMemo,
+          gasPrice,
+          gasLimit,
+          toName
+        )
+      : execute(
+          recipientAddress,
+          sendAmountInLux,
+          transactionMemo,
+          gasPrice,
+          gasLimit
+        );
+
     sent = {
       maxFee: maxGasFee,
       memo: transactionMemo,
-      operation: toName
-        ? execute(
-            recipientAddress,
-            sendAmountInLux,
-            transactionMemo,
-            gasPrice,
-            gasLimit,
-            toName
-          )
-        : execute(
-            recipientAddress,
-            sendAmountInLux,
-            transactionMemo,
-            gasPrice,
-            gasLimit
-          ),
+      operation,
       what: `${hideBalances ? BALANCE_MASK : amountText} DUSK to ${recipientLabel}`,
     };
-    // The review's place in the history goes with it.
-    if (step === "review") {
-      history.back();
-    }
     step = "done";
+    reviewHistory.settle(operation, () => {
+      canTryAgain = true;
+      draft.keep(typed);
+    });
   }
 
   /**
-   * The step where a phone's Back or Forward takes the history: a review
-   * only of what can still be sent.
+   * The review, where the summary takes the page and the focus: a step of its
+   * own in the history, so that Back returns to the form, with what's filled
+   * in.
+   */
+  async function showReview() {
+    reviewHistory.enter();
+    step = "review";
+    window.scrollTo(0, 0);
+    await tick();
+    document.getElementById(`${id}-summary`)?.focus();
+  }
+
+  function goToReview() {
+    if (canSend) {
+      showReview();
+    }
+  }
+
+  /** Back to the review of a transfer that failed with nothing sent. */
+  function tryAgain() {
+    sent = null;
+    canTryAgain = false;
+    showReview();
+  }
+
+  /**
+   * The step where the browser's Back or Forward takes the history: a review
+   * only of what can still be sent, and from a transfer that failed with
+   * nothing sent, the form, with what's filled in.
    *
    * @param {boolean} isAtReview
    */
   function followHistory(isAtReview) {
     if (step !== "done") {
       step = isAtReview && canSend ? "review" : "form";
+    } else if (canTryAgain && !isAtReview) {
+      sent = null;
+      canTryAgain = false;
+      step = "form";
     }
   }
 
   $: followHistory(Boolean($page.state?.sendReview));
+
+  // What's typed, kept as it's typed, for as long as it hasn't gone out.
+  $: typed = {
+    amount: sendAmount,
+    gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+    isMax: isMaxAmount,
+    link: openedFor,
+    memo,
+    picks: namePicks,
+    to: sendToAddress,
+  };
+  $: if (step !== "done" && publicAddress !== undefined) {
+    draft.save(typed);
+  }
 
   // The gas settings depend on the recipient (public or shielded): the
   // form takes new ones while it shows, unless the gas was edited here, and
@@ -668,10 +842,9 @@
   }
 
   // A comma keyboard's "1,5" and digit grouping read as the amount meant.
-  $: typedAmount = normalizeDuskInput(sendAmount, getDecimalSeparator());
-  $: parsedAmount = parseDuskInput(typedAmount);
+  $: parsedAmount = readDuskInput(sendAmount, language);
   $: sendAmountInLux = parsedAmount ?? 0n;
-  $: amountError = amountErrorOf(typedAmount, parsedAmount);
+  $: amountError = amountErrorOf(sendAmount, parsedAmount);
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
@@ -683,11 +856,32 @@
   // Check if the available balance is sufficient to cover the max gas fee.
   // This is a prerequisite for any transaction.
   $: isBalanceSufficientForGas = availableBalance >= maxGasFee;
+  // Whether the fee's Edit can bring it down to what's there.
+  $: canLowerFee =
+    !isBalanceSufficientForGas &&
+    availableBalance >= gasLimits.gasLimitLower * gasLimits.gasPriceLower;
 
   // Determine the maximum amount spendable for the transfer.
   // If the available balance is less than the max gas fee, set it to 0n to avoid negative values.
   $: maxSpendableAmount =
     availableBalance >= maxGasFee ? availableBalance - maxGasFee : 0n;
+
+  // A shielded send leaves the public balance as it is.
+  $: toKeep = isShielded ? 0n : keepForLater.lux;
+
+  // What Max fills in: all of it, less what's kept for later if there's more
+  // than that.
+  $: maxKeeping =
+    maxSpendableAmount > toKeep
+      ? maxSpendableAmount - toKeep
+      : maxSpendableAmount;
+
+  // Too little left of the public balance for what the wallet holds elsewhere.
+  $: leavesTooLittle =
+    toKeep > 0n &&
+    sendAmountInLux > 0n &&
+    sendAmountInLux <= maxSpendableAmount &&
+    sendAmountInLux > maxSpendableAmount - toKeep;
 
   // Validate that the send amount is within allowable limits:
   // - At least the minimum send requirement.
@@ -712,8 +906,40 @@
   // What the network takes.
   const MAX_MEMO_BYTES = 512;
 
-  $: isMemoTooLong =
-    new TextEncoder().encode(transactionMemo).length > MAX_MEMO_BYTES;
+  /** @param {string} text */
+  const bytesOf = (text) => new TextEncoder().encode(text).length;
+
+  /**
+   * How many characters of a memo over the limit have to go.
+   *
+   * @param {string} text
+   */
+  function charactersOver(text) {
+    const characters = Array.from(text);
+    let bytes = bytesOf(text);
+    let over = 0;
+
+    while (bytes > MAX_MEMO_BYTES) {
+      over += 1;
+      bytes -= bytesOf(characters[characters.length - over]);
+    }
+
+    return over;
+  }
+
+  /**
+   * An error that appears under the sticky Review stays in view, all of it.
+   *
+   * @param {HTMLElement} element
+   */
+  const staysInView = (element) => {
+    element.scrollIntoView?.({ block: "nearest" });
+  };
+
+  $: memoBytes = bytesOf(transactionMemo);
+  $: isMemoTooLong = memoBytes > MAX_MEMO_BYTES;
+  // Said in characters, once there aren't many left.
+  $: memoRoom = MAX_MEMO_BYTES - memoBytes;
 
   $: isAmountReady =
     isSendAmountValid &&
@@ -731,6 +957,15 @@
 
   $: if (!sendToAddress) {
     isRecipientChecked = false;
+  }
+
+  // Another recipient, as a contact picked, is no more the link's doing.
+  $: if (sendToAddress) {
+    linkProblem = "";
+  }
+
+  $: if (sendToAddress !== linkRecipient) {
+    isFromLink = false;
   }
 
   $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";
@@ -839,13 +1074,17 @@
       ? `${contact.name} (${shownName})`
       : contact.name
     : own && !recipientName
-      ? `your ${own.label}`
+      ? ownLabel.replace(/^Your/, "your")
       : recipientName
         ? shownName
         : walletAccount || shortenAddress(recipientAddress);
   $: own = ownAccounts.find(
     (account) => recipientAddress && account.address === recipientAddress
   );
+  // "Your Profile 2", where it goes by its number; a name stands on its own.
+  $: ownLabel = /^Profile \d/.test(own?.label ?? "")
+    ? `Your ${own?.label}`
+    : (own?.label ?? "");
   // A profile of a wallet kept here, as the From line names its own: on the
   // card, the To line and the Done screen, after a contact or a `.dusk` name
   // entered.
@@ -932,7 +1171,7 @@
     "send__to-input--blocked": isRecipientBlocklisted,
     "send__to-input--invalid": recipientName
       ? nameLookup?.error
-      : sendToAddress && !addressInfo.isValid && !bareName,
+      : isRecipientInvalid,
   });
 
   // A name as the lookup gives it, once it has: in its canonical form.
@@ -948,11 +1187,16 @@
   <TransactionResult
     maxFee={sent.maxFee}
     memo={sent.memo}
+    onRetry={tryAgain}
     operation={sent.operation}
     what={sent.what}
   />
 {:else}
-  <div class="send" class:send--review={step === "review"}>
+  <div
+    class="send"
+    class:send--fee-short={canLowerFee}
+    class:send--review={step === "review"}
+  >
     <section aria-labelledby="{id}-title" class="send__form">
       <a class="send__back" href={addBasePath("/dashboard")}
         ><Icon path={mdiArrowLeft} />Home</a
@@ -975,14 +1219,14 @@
             bind:value={sendToAddress}
             className={sendToAddressTextboxClasses}
             id="{id}-to"
-            on:blur={() => {
-              isRecipientChecked = true;
-            }}
+            on:blur={finishRecipient}
+            on:input={handleRecipientInput}
             on:keydown={handleRecipientKeyDown}
             on:paste={() => {
+              isPasting = true;
               isRecipientChecked = true;
             }}
-            placeholder="Address or .dusk name"
+            placeholder="Address, .dusk name or payment link"
             spellcheck="false"
             type="text"
           />
@@ -1006,7 +1250,8 @@
           {/if}
         </div>
 
-        {#if contacts.length}
+        <!-- While what's typed names contacts, they're offered as links. -->
+        {#if contacts.length && !namedContacts.length}
           <select
             aria-label="Send to a contact"
             class="send__contacts"
@@ -1035,9 +1280,16 @@
           </select>
         {/if}
 
-        {#if isRecipientInvalid}
+        {#if linkProblem}
+          <p class="send__error" role="alert"><strong>{linkProblem}</strong></p>
+        {:else if isRecipientInvalid}
           <p class="send__error" id={invalidRecipientId} role="alert">
-            <strong>Not a valid address.</strong> Check it, or paste it again.
+            {#if isValidEvmAddress(sendToAddress)}
+              <strong>That's an EVM address.</strong> To send to an EVM wallet, use
+              the Bridge.
+            {:else}
+              <strong>Not a valid address.</strong> Check it, or paste it again.
+            {/if}
           </p>
         {:else if namedContacts.length}
           {#each namedContacts as named (named.id)}
@@ -1061,6 +1313,12 @@
             }}
             type="button">Did you mean {bareName}?</button
           >
+        {/if}
+
+        {#if isFromLink}
+          <p class="send__hint" role="status">
+            Filled in from the link. Check it before you send.
+          </p>
         {/if}
 
         {#if nameLookup?.error}
@@ -1143,7 +1401,7 @@
               {#if contact}
                 {contact.name}{recipientName ? ` · ${shownName}` : ""}
               {:else if own && !recipientName}
-                Your {own.label}
+                {ownLabel}
               {:else if recipientName}
                 {shownName} points to {isChoice
                   ? "two addresses"
@@ -1283,9 +1541,16 @@
                     variant="primary"
                   />
                 </div>
+                <FieldLimit limit={40} value={contactName} />
                 {#if isFalseContactName}
                   <p class="send__hint" role="alert">
                     That looks like a .dusk name. Choose another name.
+                  </p>
+                {:else if contactCalled(contactName)}
+                  <p class="send__hint" role="alert">
+                    You already have a contact called {contactCalled(
+                      contactName
+                    )?.name}. Only the address will tell them apart.
                   </p>
                 {/if}
                 <p class="send__hint">
@@ -1305,9 +1570,7 @@
         <ScanQR
           bind:this={scanQrComponent}
           bind:scanner
-          on:scan={(event) => {
-            sendToAddress = event.detail;
-          }}
+          on:scan={(event) => takeRecipient(event.detail)}
         />
         {#if addressInfo.isSelfReferential}
           <Banner variant="warning" title="This is your own address." />
@@ -1354,14 +1617,27 @@
             value={formatDusk(availableBalance, language)}
           /> DUSK from your {isShielded ? "shielded" : "public"} balance
         </p>
-        {#if !isBalanceSufficientForGas}
-          <p class="send__error" role="alert">
-            <strong>Not enough for the network fee.</strong> Add funds or lower the
-            gas limit.
+        {#if leavesTooLittle}
+          <p class="send__hint send__keep" role="status">
+            That leaves too little {keepForLater.why}.
           </p>
-        {:else if amountError}
+        {:else if isMaxAmount && toKeep > 0n && sendAmountInLux === maxKeeping}
+          <p class="send__hint">
+            Max keeps {hideBalances
+              ? "the fee"
+              : `${formatFee(toKeep, language, { max: true })} DUSK`}
+            {keepForLater.why}.
+          </p>
+        {/if}
+        {#if amountError && (isBalanceSufficientForGas || sendAmountInLux > availableBalance || parsedAmount === null)}
           <p class="send__error" id="{id}-amount-error" role="alert">
             {amountError}
+          </p>
+        {:else if !isBalanceSufficientForGas && availableBalance > 0n}
+          <p class="send__error" role="alert">
+            <strong>Not enough for the network fee.</strong> Add DUSK{canLowerFee
+              ? ", or lower the fee under Edit"
+              : ""}.
           </p>
         {/if}
       </div>
@@ -1380,9 +1656,12 @@
           type="multiline"
         />
         {#if isMemoTooLong}
-          <p class="send__error" role="alert">
+          <p class="send__error send__memo-error" role="alert" use:staysInView>
             <strong>That memo is too long.</strong>
-            {MAX_MEMO_BYTES} bytes at most.
+            Take out {charactersOver(transactionMemo)}
+            {charactersOver(transactionMemo) === 1
+              ? "character"
+              : "characters"}.
           </p>
         {:else if isMemoValid === false}
           <p class="send__error" role="alert">
@@ -1396,13 +1675,19 @@
         {:else}
           <p class="send__hint">
             Visible on chain, for good: don't put personal details in it.
+            {#if memoRoom <= 100}
+              Room for {memoRoom} more
+              {memoRoom === 1 ? "character" : "characters"}.
+            {/if}
           </p>
         {/if}
       </div>
     </section>
 
     <aside aria-labelledby="{id}-summary" class="send__summary">
-      <SectionHead id="{id}-summary">Summary</SectionHead>
+      <SectionHead id="{id}-summary" tabindex="-1"
+        >{step === "review" ? "Review" : "Summary"}</SectionHead
+      >
       <dl class="send__rows">
         <div>
           <dt>From</dt>
@@ -1432,7 +1717,7 @@
                       (recipientName ? shownName : walletAccount))}</span
                 >
               {/if}
-              <!-- A phone's review is the last it sees of it before it goes. -->
+              <!-- The review is the last it shows of it before it goes. -->
               {#if step === "review"}
                 <FullAddress address={recipientAddress} />
               {:else}
@@ -1452,10 +1737,17 @@
         {#if transactionMemo}
           <div>
             <dt>Memo</dt>
-            <dd class="send__summary-memo">{transactionMemo}</dd>
+            <dd class="send__summary-memo">
+              <MemoText text={transactionMemo} />
+            </dd>
           </div>
         {/if}
       </dl>
+      {#if step === "review" && leavesTooLittle}
+        <p class="send__keep" role="status">
+          That leaves too little {keepForLater.why}.
+        </p>
+      {/if}
       {#if addressInfo.isValid && !isShielded}
         <p class="send__visible">
           {transactionMemo
@@ -1494,8 +1786,9 @@
           </dd>
         </div>
       </dl>
-      <!-- A phone's review is a step of its own: Send shows anew with it. -->
-      {#key step}
+      {#if step === "review"}
+        <!-- A step of its own: nothing goes before it, and Send, new with it,
+          takes no click meant for Review. -->
         <Button
           className="send__send"
           confirm
@@ -1506,9 +1799,7 @@
             : "Send"}
           variant="primary"
         />
-      {/key}
-      <p class="send__final">Sends can't be undone.</p>
-      {#if step === "review"}
+        <p class="send__final">Sends can't be undone.</p>
         <Button
           className="send__back"
           icon={{ path: mdiArrowLeft }}
@@ -1519,27 +1810,19 @@
           text="Back"
           variant="secondary"
         />
+      {:else}
+        <!-- On a phone, the one thing of the summary that shows with the form. -->
+        <div class="send__review-bar">
+          <Button
+            className="send__review"
+            disabled={!canSend}
+            on:click={goToReview}
+            text="Review"
+            variant="primary"
+          />
+        </div>
       {/if}
     </aside>
-
-    <!-- Phones review before they send: the summary takes the page. -->
-    {#if step === "form"}
-      <div class="send__phone-bar">
-        <Button
-          className="send__review"
-          disabled={!canSend}
-          on:click={() => {
-            // A step of its own in the history: a phone's Back returns to
-            // the form, with what's filled in.
-            pushState("", { sendReview: true });
-            step = "review";
-            window.scrollTo(0, 0);
-          }}
-          text="Review"
-          variant="primary"
-        />
-      </div>
-    {/if}
   </div>
 {/if}
 
@@ -1661,8 +1944,12 @@
   }
 
   /* Compact, with a field's edge and surface. */
+  /* However long a contact's name, the box stays on the screen: the phone's
+    own list shows each name in full. */
   .send__contacts {
     align-self: flex-start;
+    min-width: 0;
+    max-width: 100%;
     min-height: 2.25rem;
     padding: 0 0.75rem;
     border: 1px solid var(--calm-field-edge);
@@ -1670,6 +1957,12 @@
     background-color: var(--calm-field);
     color: var(--calm-text);
     font-size: 0.875rem;
+  }
+
+  @media (max-width: 47.99rem), (pointer: coarse) {
+    .send__contacts {
+      min-height: 44px;
+    }
   }
 
   .send__card {
@@ -1683,6 +1976,7 @@
   }
 
   .send__card-title {
+    overflow-wrap: anywhere;
     font-weight: 500;
     overflow-wrap: anywhere;
   }
@@ -1914,8 +2208,19 @@
     font-size: 0.75rem;
   }
 
-  .send__summary-memo {
-    overflow-wrap: anywhere;
+  /* Lines of text someone reads: from the left, as any text. */
+  .send__rows dd.send__summary-memo {
+    align-items: stretch;
+    text-align: left;
+  }
+
+  .send__memo-error {
+    scroll-margin-block-end: 6rem;
+  }
+
+  .send__keep {
+    color: var(--calm-danger);
+    font-size: 0.84375rem;
   }
 
   .send__muted {
@@ -1936,16 +2241,30 @@
     font-size: 0.8125rem;
   }
 
+  .send__summary :global(.section-head:focus) {
+    outline: none;
+  }
+
   .send__summary :global(.send__send),
+  .send__summary :global(.send__review),
   .send__summary :global(.send__back) {
     width: 100%;
   }
 
-  .send__phone-bar {
+  /* The review: the summary takes the page, in a column of its own. */
+  .send--review {
+    grid-template-columns: minmax(0, 30rem);
+    justify-content: center;
+  }
+
+  .send--review .send__form {
     display: none;
   }
 
-  /* Phones: the form, then a review of it before it is sent. */
+  .send--review .send__summary {
+    position: static;
+  }
+
   @media (max-width: 63.99rem) {
     .send {
       padding: 1.75rem 1.5rem 2rem;
@@ -1959,31 +2278,33 @@
       padding: 1rem 1rem 0;
     }
 
-    .send__summary {
-      position: static;
+    .send--review {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* The form first: of the summary, only Review, kept above the keyboard. */
+    .send:not(.send--review) .send__summary {
+      display: contents;
+    }
+
+    .send:not(.send--review) .send__summary > :global(:not(.send__review-bar)) {
       display: none;
     }
 
-    .send--review .send__form {
-      display: none;
+    /* What's short is the fee: its Edit is the way on, with the form. */
+    .send--fee-short:not(.send--review)
+      .send__summary
+      > :global(.gas-settings) {
+      display: block;
     }
 
-    .send--review .send__summary {
-      display: flex;
-    }
-
-    .send__phone-bar {
+    .send__review-bar {
       position: sticky;
       bottom: var(--keyboard-inset, 0px);
       z-index: 3;
-      display: block;
       padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
       background: var(--calm-s0);
       box-shadow: 0 -1px 0 var(--calm-line);
-
-      & :global(.send__review) {
-        width: 100%;
-      }
     }
   }
 </style>

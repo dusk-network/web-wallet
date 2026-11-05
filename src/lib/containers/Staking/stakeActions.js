@@ -10,18 +10,27 @@ import { feeError } from "$lib/components/Stake/stakeAmount";
  * @param {{
  *   hasLiquid?: boolean,
  *   hasPastStaking: boolean,
+ *   hidden?: boolean,
+ *   leastFee?: bigint,
+ *   locale?: string,
  *   maxFee: bigint,
  *   pending?: boolean,
  *   publicBalance: bigint,
  *   reward: bigint,
  *   staked: bigint,
- * }} state `maxFee` is the most an unstake or a claim costs; `hasLiquid`
- *   says whether something is staked with Sozu, which these don't touch.
+ * }} state `maxFee` is the most an unstake or a claim costs, as it starts;
+ *   `leastFee` as low as its form lets it go, which is enough to go on to that
+ *   form; `hasLiquid` says whether something is staked with Sozu, which these
+ *   don't touch; `hidden`, whether balances are, which what's missing would
+ *   give away.
  * @returns {{ canClaim: boolean, canUnstake: boolean, reasons: string[] }}
  */
 export function stakeActions({
   hasLiquid = false,
   hasPastStaking,
+  hidden = false,
+  leastFee = undefined,
+  locale = "en",
   maxFee,
   pending = false,
   publicBalance,
@@ -35,7 +44,7 @@ export function stakeActions({
   const when = hasLiquid ? "natively" : hasPastStaking ? "right now" : "yet";
   const hasStake = staked > 0n;
   const hasReward = reward > 0n;
-  const canPay = publicBalance >= maxFee;
+  const canPay = publicBalance >= (leastFee ?? maxFee);
 
   /** @type {string[]} */
   const reasons = [];
@@ -47,7 +56,9 @@ export function stakeActions({
   }
 
   if ((hasStake || hasReward) && !canPay) {
-    reasons.push(feeError(publicBalance));
+    reasons.push(
+      feeError({ available: publicBalance, fee: maxFee, hidden, locale })
+    );
   }
 
   return {

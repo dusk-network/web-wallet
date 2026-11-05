@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { page } from "$app/stores";
   import { createEventDispatcher, onMount } from "svelte";
   import { makeClassName, randomUUID, shortenAddress } from "$lib/dusk/string";
   import { mdiChevronDown, mdiPlus } from "@mdi/js";
@@ -78,6 +79,23 @@
   function toggleDropDown() {
     expanded = !expanded;
   }
+
+  /** The page the list opened on. */
+  let shownHref = "";
+
+  /**
+   * Any navigation closes the list: it would stay over the next page.
+   *
+   * @param {string} href
+   */
+  function followPage(href) {
+    if (href !== shownHref) {
+      shownHref = href;
+      closeDropDown();
+    }
+  }
+
+  $: followPage(String($page?.url ?? ""));
 
   /** @type {import("svelte/elements").MouseEventHandler<HTMLDivElement>} */
   function handleTriggerClick() {
@@ -228,6 +246,7 @@
   use:handlePageClick={{
     callback: closeDropDown,
     enabled: expanded,
+    swallow: true,
   }}
   class={classes}
   class:address-picker--expanded={expanded}

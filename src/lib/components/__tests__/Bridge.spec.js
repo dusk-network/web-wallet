@@ -2,9 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { tick } from "svelte";
 
+import { ProfileGenerator } from "@dusk/w3sper";
+
 import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { formatFee } from "$lib/dusk/currency";
-import { settingsStore } from "$lib/stores";
+import { afterConfirmDelay } from "$lib/dusk/test-helpers";
+import { settingsStore, walletStore } from "$lib/stores";
+import { stubWalletNetwork } from "$lib/test-helpers";
+import { outcomeUnknown } from "$lib/transactions";
 import { account } from "$lib/web3/walletConnection";
 
 import { Bridge } from "..";
@@ -159,6 +164,118 @@ describe("Bridge", () => {
     );
   });
 
+  describe("a deposit's own form", () => {
+    const seed = new Uint8Array(64).fill(5);
+    const generator = new ProfileGenerator(async () => seed);
+
+    /** A lock or a reload: the wallet goes before what shows it. */
+    async function lockAndUnlock() {
+      walletStore.reset();
+      cleanup();
+      await walletStore.init(generator);
+    }
+
+    /** @param {import("@testing-library/svelte").RenderResult<any>} view */
+    async function sendDeposit({ getByRole }) {
+      await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Send" }));
+    }
+
+    beforeEach(async () => {
+      vi.useFakeTimers({ toFake: ["performance"] });
+      stubWalletNetwork();
+      await walletStore.init(generator);
+    });
+
+    afterEach(() => {
+      cleanup();
+      walletStore.reset();
+      vi.useRealTimers();
+    });
+
+    it("should bring the amount and the direction back after a lock, and let them go as it's sent", async () => {
+      const typed = render(Bridge, baseProps);
+
+      await fireEvent.input(typed.getByLabelText("Amount"), {
+        target: { value: "12" },
+      });
+      await lockAndUnlock();
+
+      const back = render(Bridge, baseProps);
+
+      expect(back.getByLabelText("Amount")).toHaveValue("12");
+      expect(getDirection(back.container)).toStrictEqual(["duskDs", "duskEvm"]);
+
+      const deposit = vi
+        .spyOn(walletStore, "depositEvmFunctionCall")
+        .mockReturnValue(new Promise(() => {}));
+
+      await sendDeposit(back);
+
+      expect(deposit).toHaveBeenCalledOnce();
+
+      await lockAndUnlock();
+
+      expect(render(Bridge, baseProps).getByLabelText("Amount")).toHaveValue(
+        ""
+      );
+
+      deposit.mockRestore();
+    });
+
+    it("should go back to its review with Try again when nothing went out, and keep what's typed", async () => {
+      const deposit = vi
+        .spyOn(walletStore, "depositEvmFunctionCall")
+        .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+        .mockReturnValue(new Promise(() => {}));
+      const typed = render(Bridge, baseProps);
+
+      await fireEvent.input(typed.getByLabelText("Amount"), {
+        target: { value: "12" },
+      });
+      await sendDeposit(typed);
+      await fireEvent.click(
+        await typed.findByRole("button", { name: "Try again" })
+      );
+
+      expect(typed.getByRole("heading", { name: "Review" })).toBeVisible();
+
+      await lockAndUnlock();
+
+      expect(render(Bridge, baseProps).getByLabelText("Amount")).toHaveValue(
+        "12"
+      );
+
+      deposit.mockRestore();
+    });
+
+    it("should offer no Try again when it may have gone out, and keep nothing", async () => {
+      const deposit = vi
+        .spyOn(walletStore, "depositEvmFunctionCall")
+        .mockRejectedValueOnce(
+          outcomeUnknown(new TypeError("Failed to fetch"))
+        );
+      const typed = render(Bridge, baseProps);
+
+      await fireEvent.input(typed.getByLabelText("Amount"), {
+        target: { value: "12" },
+      });
+      await sendDeposit(typed);
+
+      expect(await typed.findByText("Not confirmed")).toBeInTheDocument();
+      expect(typed.queryByRole("button", { name: "Try again" })).toBeNull();
+
+      await lockAndUnlock();
+
+      expect(render(Bridge, baseProps).getByLabelText("Amount")).toHaveValue(
+        ""
+      );
+
+      deposit.mockRestore();
+    });
+  });
+
   it("should label the amount, with what is available and a way to use it all", async () => {
     const { getByLabelText, getByRole, getByText } = render(Bridge, baseProps);
     const amount = getByLabelText("Amount");
@@ -170,6 +287,37 @@ describe("Bridge", () => {
 
     // The public balance, past the deposit's fee.
     expect(amount).toHaveValue("999.98");
+  });
+
+  it("should keep what's needed to get at what's elsewhere on a deposit's Max, say so, and warn of an amount over that", async () => {
+    const { getByLabelText, getByRole, getByText, queryByText } = render(
+      Bridge,
+      {
+        ...baseProps,
+        keepForLater: { lux: 60_000_000n, why: "to claim your withdrawal" },
+      }
+    );
+    const amount = getByLabelText("Amount");
+
+    await fireEvent.click(getByRole("button", { name: "Max" }));
+
+    // The public balance, past the deposit's fee and what's kept.
+    expect(amount).toHaveValue("999.92");
+    expect(
+      getByText("Max keeps 0.06 DUSK to claim your withdrawal.")
+    ).toBeInTheDocument();
+    expect(queryByText(/too little/)).toBeNull();
+
+    await fireEvent.input(amount, { target: { value: "999.95" } });
+
+    expect(
+      getByText("That leaves too little to claim your withdrawal.")
+    ).toBeInTheDocument();
+    expect(queryByText(/^Max keeps/)).toBeNull();
+
+    await fireEvent.input(amount, { target: { value: "999.9" } });
+
+    expect(queryByText(/too little|^Max keeps/)).toBeNull();
   });
 
   it("should leave room for a withdrawal's fee when using it all", async () => {
@@ -493,10 +641,26 @@ describe("Bridge", () => {
     ).toBeInTheDocument();
   });
 
+  it("should say how the route is doing under it, as not knowing when that can't be read, and offer the route all the same", async () => {
+    const { container, getByRole } = render(Bridge, baseProps);
+
+    await vi.waitFor(() =>
+      expect(container.querySelector(".swap-route__status")).toHaveTextContent(
+        "Last payout not known right now."
+      )
+    );
+    expect(
+      container.querySelector(".swap-route__status--warn")
+    ).not.toBeInTheDocument();
+    expect(getByRole("button", { name: /Connect|Review|Enter/ })).toBeVisible();
+  });
+
   it("should say each way's time on this network the same in the route row, the To list, the review and once sent", async () => {
     const { container, getByRole, getByText } = render(Bridge, baseProps);
     const summary = () =>
-      container.querySelector(".swap-route summary")?.textContent?.trim();
+      container
+        .querySelector(".swap-route__sum > span:first-child")
+        ?.textContent?.trim();
     const notes = async () => {
       await fireEvent.click(
         getByRole("button", { name: /^To: .*Choose the network/ })
@@ -551,7 +715,9 @@ describe("Bridge", () => {
 
     const { container, getByRole, getByText } = render(Bridge, baseProps);
     const summary = () =>
-      container.querySelector(".swap-route summary")?.textContent?.trim();
+      container
+        .querySelector(".swap-route__sum > span:first-child")
+        ?.textContent?.trim();
 
     // DuskEVM trailing Dusk by five minutes: the deposit says so.
     expect(summary()).toBe("~5 min · fee up to 0.02 DUSK");

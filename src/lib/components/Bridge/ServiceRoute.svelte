@@ -29,8 +29,9 @@
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
+  import { formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
-  import { describeFailure } from "$lib/transactions";
+  import { describeFailure, nothingWentOut } from "$lib/transactions";
   import { account, modal } from "$lib/web3/walletConnection";
   import { notRunning } from "$lib/bridge/cardRoutes";
   import { sendServiceTransfer, serviceLine } from "$lib/bridge/routeFlows";
@@ -42,14 +43,12 @@
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "../NetworkPicker/NetworkPicker.svelte";
   import OperationResult from "../OperationResult/OperationResult.svelte";
+  import RouteStatusLine from "./RouteStatusLine.svelte";
   import RouteTransferResult from "./RouteTransferResult.svelte";
+  import FullAddress from "../FullAddress/FullAddress.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
-  import {
-    hasTooManyDecimals,
-    normalizeDuskInput,
-    parseDuskInput,
-  } from "../Stake/stakeAmount";
+  import { amountProblem, readDuskInput } from "../Stake/stakeAmount";
 
   /** @type {import("$lib/bridge/cardRoutes").CardRoute & { kind: "service" }} */
   export let route;
@@ -72,6 +71,14 @@
 
   /** @type {bigint} */
   export let unshieldedBalance;
+
+  /**
+   * What the public balance has to keep for what the wallet holds elsewhere,
+   * which Max leaves in it (`$lib/wallet-reserve`).
+   *
+   * @type {import("$lib/wallet-reserve").FeeToKeep}
+   */
+  export let keepForLater = { lux: 0n, why: "" };
 
   /** A public transfer's gas, as the wallet starts it. */
   /** @type {ContractGasSettings} */
@@ -97,11 +104,16 @@
   /** A step's heading takes focus as it shows, so a screen reader goes there. */
   const takeFocus = (/** @type {HTMLElement} */ node) => node.focus();
 
+  const draft = formDraft(`bridge-${route.id}`);
+
+  /** What was typed before a lock, a reload or a failed transfer. */
+  const typedBefore = draft.read();
+
   /** @type {string} */
-  let amount = "";
+  let amount = typedBefore?.amount ?? "";
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = false;
+  let isMaxAmount = typedBefore?.isMax ?? false;
 
   /** @param {Event} event */
   function typeAmount(event) {
@@ -112,7 +124,7 @@
     isMaxAmount = false;
   }
 
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
   let defaultGas = gasSettings;
 
   /** @type {"form" | "result" | "review"} */
@@ -135,12 +147,19 @@
   const forThisWallet = walletStore.forThisWallet();
 
   function send() {
+    // It goes out now, as far as a reload can tell: nothing brings it back.
+    draft.clear();
     operation = forThisWallet(sendServiceTransfer)({
       amountLux,
       gasLimit,
       gasPrice,
       recipient: /** @type {`0x${string}`} */ (address),
       route,
+    });
+    operation.catch((error) => {
+      if (nothingWentOut(error)) {
+        draft.keep(typed);
+      }
     });
     step = "result";
   }
@@ -185,15 +204,31 @@
     }
   }
 
+  // What's typed, kept as it's typed, for as long as it hasn't gone out.
+  $: typed = {
+    amount,
+    gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+    isMax: isMaxAmount,
+  };
+  $: if (step !== "result") {
+    draft.save(typed);
+  }
+
   $: ({ hideBalances, language } = $settingsStore);
   $: isAmountMasked = hideBalances && isMaxAmount;
   $: followHistory(Boolean($page.state?.routeReview));
   $: ({ address, isConnected } = $account);
   $: chainName = route.chain.name;
-  $: amountLux =
-    parseDuskInput(normalizeDuskInput(amount, getDecimalSeparator())) ?? 0n;
+  $: amountLux = readDuskInput(amount, language) ?? 0n;
+  $: problem = amountProblem(amount, language);
   $: fee = gasLimit * gasPrice;
   $: total = amountLux + fee;
+  // Too little left of the public balance for what the wallet holds elsewhere.
+  $: leavesTooLittle =
+    keepForLater.lux > 0n &&
+    amountLux > 0n &&
+    total <= unshieldedBalance &&
+    unshieldedBalance - total < keepForLater.lux;
   $: arrivesLux = amountLux > route.feeLux ? amountLux - route.feeLux : 0n;
   $: isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   $: time = routeTime(route, { net });
@@ -218,9 +253,7 @@
         ? {
             label: !amount
               ? "Enter an amount"
-              : hasTooManyDecimals(
-                    normalizeDuskInput(amount, getDecimalSeparator())
-                  )
+              : problem.includes("decimals")
                 ? "Use at most 9 decimals"
                 : "Check the amount",
             ready: false,
@@ -292,16 +325,31 @@
           class="swap-mini"
           disabled={!route.running || unshieldedBalance <= fee}
           on:click={() => {
-            amount = formatDuskPlain(unshieldedBalance - fee).replace(
-              ".",
-              getDecimalSeparator()
-            );
+            const all = unshieldedBalance - fee;
+
+            amount = formatDuskPlain(
+              all > keepForLater.lux ? all - keepForLater.lux : all
+            ).replace(".", getDecimalSeparator(language));
             isMaxAmount = true;
           }}
           type="button">Max</button
         >
       </span>
     </div>
+    {#if problem}
+      <p class="swap-error" role="alert">{problem}</p>
+    {:else if leavesTooLittle}
+      <p class="swap-error" role="status">
+        That leaves too little {keepForLater.why}.
+      </p>
+    {:else if keepForLater.lux > 0n && amountLux > 0n && unshieldedBalance - total === keepForLater.lux}
+      <p class="swap-note">
+        Max keeps {hideBalances
+          ? "the fee"
+          : `${formatFee(keepForLater.lux, language, { max: true })} DUSK`}
+        {keepForLater.why}.
+      </p>
+    {/if}
   </div>
 
   <p class="route-amount-reason sr-only" role="status">
@@ -369,15 +417,17 @@
 
   <details class="swap-route">
     <summary
-      ><Icon path={mdiClockOutline} /><span
-        >{route.running
-          ? [
-              timeText,
-              `${formatDuskExact(route.feeLux, language)} DUSK bridge fee`,
-            ]
-              .filter(Boolean)
-              .join(" · ")
-          : notRunning(net)}</span
+      ><Icon path={mdiClockOutline} /><span class="swap-route__sum"
+        ><span
+          >{route.running
+            ? [
+                timeText,
+                `${formatDuskExact(route.feeLux, language)} DUSK bridge fee`,
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            : notRunning(net)}</span
+        ><RouteStatusLine {amountLux} {route} /></span
       ><Icon
         className="swap-route__chevron section-chevron"
         path={mdiChevronDown}
@@ -455,14 +505,14 @@
         <dt>From</dt>
         <dd>
           <span>Your public account on Dusk</span>
-          <span class="route-review__address">{unshieldedAddress}</span>
+          <FullAddress address={unshieldedAddress} />
         </dd>
       </div>
       <div>
         <dt>To</dt>
         <dd>
           <span>Your {chainName} address</span>
-          <span class="route-review__address">{address}</span>
+          <FullAddress address={address ?? ""} />
         </dd>
       </div>
       <div>
@@ -485,11 +535,11 @@
       <dl class="route-review__ends">
         <div>
           <dt>Bridge account</dt>
-          <dd><span class="route-review__address">{route.account}</span></dd>
+          <dd><FullAddress address={route.account} /></dd>
         </div>
         <div>
           <dt>Memo</dt>
-          <dd><span class="route-review__address">{address}</span></dd>
+          <dd><FullAddress address={address ?? ""} /></dd>
         </div>
       </dl>
       <p class="route-review__public">
@@ -534,6 +584,11 @@
             : `It arrives on ${chainName} once the bridge pays it out.`}
           {time}
         />
+      </svelte:fragment>
+      <svelte:fragment slot="error-actions" let:error>
+        {#if describeFailure(error).canRetry}
+          <Button on:click={openReview} text="Try again" variant="primary" />
+        {/if}
       </svelte:fragment>
     </OperationResult>
   </div>
@@ -617,13 +672,6 @@
       gap: 0.125rem;
       margin: 0;
     }
-  }
-
-  .route-review__address {
-    color: var(--calm-muted);
-    font-family: var(--mono-font-family, monospace);
-    font-size: 0.8125rem;
-    overflow-wrap: anywhere;
   }
 
   .route-review__actions {

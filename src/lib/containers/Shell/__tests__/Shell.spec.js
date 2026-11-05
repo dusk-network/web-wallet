@@ -7,22 +7,37 @@ import { pageTitle } from "$lib/navigation";
 import Shell from "../Shell.svelte";
 
 const mocks = vi.hoisted(() => ({
+  goto: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
   network: null,
   startHistory: vi.fn(),
+  /** @type {import("svelte/store").Writable<any> | null} */
+  state: null,
   url: new URL("http://localhost"),
 }));
 
 vi.mock("$app/stores", async () => {
-  const { readable } = await import("svelte/store");
+  const { derived, writable } = await import("svelte/store");
+
+  mocks.state = writable({});
 
   return {
     page: {
       subscribe: (/** @type {(value: any) => void} */ run) =>
-        readable({ url: mocks.url }).subscribe(run),
+        derived(
+          /** @type {import("svelte/store").Writable<any>} */ (mocks.state),
+          (state) => ({ state, url: mocks.url })
+        ).subscribe(run),
     },
   };
 });
+
+vi.mock("$app/navigation", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  goto: mocks.goto,
+  pushState: (/** @type {string} */ _, /** @type {any} */ state) =>
+    mocks.state?.set(state),
+}));
 
 vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {typeof import("$lib/stores")} */
@@ -48,8 +63,61 @@ vi.mock("$lib/stores", async (importOriginal) => {
 describe("Shell", () => {
   afterEach(() => {
     cleanup();
+    mocks.goto.mockClear();
     mocks.startHistory.mockClear();
+    mocks.state?.set({});
     mocks.url = new URL("http://localhost");
+  });
+
+  describe("the search, as a step of its own in the browser's history", () => {
+    it("closes with Back, and nothing else moves", async () => {
+      const { queryByRole } = render(Shell);
+
+      await fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
+
+      expect(queryByRole("dialog", { name: "Search" })).toBeInTheDocument();
+
+      // The browser's Back: the step before it.
+      await act(() => mocks.state?.set({}));
+
+      expect(queryByRole("dialog", { name: "Search" })).toBeNull();
+    });
+
+    it("takes its step back as it's closed on the screen", async () => {
+      const back = vi.spyOn(history, "back").mockImplementation(() => {});
+      const { getByRole, queryByRole } = render(Shell);
+
+      await fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
+      await fireEvent.click(getByRole("button", { name: "Close search" }));
+
+      expect(queryByRole("dialog", { name: "Search" })).toBeNull();
+      expect(back).toHaveBeenCalledOnce();
+
+      back.mockRestore();
+    });
+
+    it("gives its step to the page a result opens: Back from there returns to where it opened", async () => {
+      const back = vi.spyOn(history, "back").mockImplementation(() => {});
+      const { container, getByRole, queryByRole } = render(Shell);
+
+      await fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
+      await fireEvent.input(
+        /** @type {HTMLElement} */ (
+          container.querySelector(".command-bar__input")
+        ),
+        { target: { value: "settings" } }
+      );
+      await fireEvent.click(getByRole("option", { name: /Settings/ }));
+
+      expect(queryByRole("dialog", { name: "Search" })).toBeNull();
+      expect(back).not.toHaveBeenCalled();
+      expect(mocks.goto).toHaveBeenCalledExactlyOnceWith(
+        expect.stringMatching(/\/settings$/),
+        { replaceState: true }
+      );
+
+      back.mockRestore();
+    });
   });
 
   it("finds the Bridge by Migrate, with no page of its own for it", async () => {

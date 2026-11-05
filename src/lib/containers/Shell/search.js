@@ -1,13 +1,22 @@
 /**
  * What the search finds on this device: the wallet's pages and actions, its
- * profiles, its contacts, the people in its history and its transactions,
- * by hash, memo or the label of their contract or account, and a block by
- * its height. Nothing here asks the network.
+ * profiles, its contacts, the people in its history and its transactions, by
+ * hash, memo, amount, who they're with or the label of their contract or
+ * account, and a block by its height. Nothing here asks the network.
  */
 
 import { ProfileGenerator } from "@dusk/w3sper";
+import {
+  decimalSeparator,
+  normalizeAmount,
+  parseDusk,
+  unclearAmount,
+} from "@dusk-network/app-core/amounts";
+import { displayText } from "@dusk-network/app-core/text";
 import { labelFor, networks } from "@dusk-network/networks";
 import { asDuskName, isDuskName } from "@duskdomains/sdk/names";
+
+import { BALANCE_MASK } from "$lib/constants/balanceMask";
 
 import { contractLabel } from "$lib/activity/knownContracts";
 import { describeRow, shortAddress } from "$lib/activity/present";
@@ -32,6 +41,7 @@ import { describeRow, shortAddress } from "$lib/activity/present";
  *
  * @typedef {{
  *   contacts?: Contact[],
+ *   hideBalances?: boolean,
  *   history: ActivityRow[],
  *   locale: string,
  *   network?: string,
@@ -102,6 +112,50 @@ function peopleOf(history, locale) {
 }
 
 /**
+ * The amounts of DUSK a query can mean, as what a row shows starts with what's
+ * typed: "120" is from 120 up to 121, as "0,0123" is from 0.0123 up to 0.0124,
+ * in lux. Empty for what isn't an amount. In a language that writes decimals
+ * with a comma, "1.000" can be either of two: both are looked for.
+ *
+ * @param {string} query
+ * @param {string} locale
+ * @returns {{ from: bigint, to: bigint }[]}
+ */
+function amountsMeant(query, locale) {
+  const decimal = decimalSeparator(locale);
+  const typed = query.trim();
+  const either = unclearAmount(typed, decimal);
+
+  return (either ? [either.grouped, either.decimal] : [typed]).flatMap(
+    (text) => {
+      const plain = normalizeAmount(text, decimal, locale);
+      const lux = parseDusk(plain);
+      const decimals = plain.split(".")[1]?.length ?? 0;
+
+      return lux ? [{ from: lux, to: lux + 10n ** BigInt(9 - decimals) }] : [];
+    }
+  );
+}
+
+/**
+ * Whether a query reads as an amount of DUSK.
+ *
+ * @param {string} query
+ * @param {string} locale
+ */
+export const isAmountQuery = (query, locale) =>
+  amountsMeant(query, locale).length > 0;
+
+/**
+ * What a row moved, as it shows it: what a withdrawal's proof or claim is for,
+ * where the transaction itself moved none of it.
+ *
+ * @param {ActivityRow} row
+ */
+const luxOf = ({ bridge, value }) =>
+  value === 0n ? (bridge?.amount ?? 0n) : value;
+
+/**
  * The results for a query, by group, at most GROUP_LIMIT each.
  *
  * @param {string} query
@@ -112,6 +166,7 @@ export function searchLocally(
   query,
   {
     contacts = [],
+    hideBalances = false,
     history,
     locale,
     network = "",
@@ -161,17 +216,20 @@ export function searchLocally(
         value: p.account,
       }))
   );
+
+  const foundContacts = contacts.filter((c) =>
+    has(`${c.name} ${c.duskName ?? ""} ${c.address}`, q)
+  );
+
   add(
-    contacts
-      .filter((c) => has(`${c.name} ${c.duskName ?? ""} ${c.address}`, q))
-      .map((contact) => ({
-        detail: contact.duskName ?? shortAddress(contact.address),
-        detailIsCode: !contact.duskName,
-        group: "Contacts",
-        href: `/dashboard/contacts?contact=${encodeURIComponent(contact.id)}`,
-        id: `contact:${contact.id}`,
-        label: contact.name,
-      }))
+    foundContacts.map((contact) => ({
+      detail: contact.duskName ?? shortAddress(contact.address),
+      detailIsCode: !contact.duskName,
+      group: "Contacts",
+      href: `/dashboard/contacts?contact=${encodeURIComponent(contact.id)}`,
+      id: `contact:${contact.id}`,
+      label: contact.name,
+    }))
   );
 
   // People saved as contacts show as contacts.
@@ -193,29 +251,59 @@ export function searchLocally(
         value: person.address,
       }))
   );
+
+  // The transactions by what they're known by, by amount and by who they're
+  // with: those of the contacts found, and whoever History names so.
+  const amounts = amountsMeant(query, locale);
+  const foundPeople = new Set(foundContacts.map(({ address }) => address));
+
+  /** @param {ActivityRow} row */
+  const hasAmountMeant = (row) => {
+    const lux = luxOf(row);
+
+    return amounts.some(({ from, to }) => lux >= from && lux < to);
+  };
+
+  /** @param {ActivityRow} row */
+  const isHash = (row) => q.length >= 4 && row.hash.includes(q);
+
   add(
     history
+      .map((row) => ({
+        row,
+        shown: describeRow(row, { ...present, locale }),
+      }))
       .filter(
-        (row) =>
-          (q.length >= 4 && row.hash.includes(q)) ||
-          (q.length >= 3 && has(knownBy(row, network), q))
+        ({ row, shown }) =>
+          isHash(row) ||
+          (q.length >= 3 &&
+            has(`${knownBy(row, network)} ${shown.title}`, q)) ||
+          (q.length >= 4 && has(shown.counterparty ?? "", q)) ||
+          foundPeople.has(shown.counterparty ?? "") ||
+          hasAmountMeant(row)
       )
-      .map((row) => {
-        // Named as History names it, with a call's method under it.
-        const { title, titleIsAddress } = describeRow(row, {
-          ...present,
-          locale,
-        });
+      // The amount typed, to the lux, before those that only start with it.
+      .sort(
+        (a, b) =>
+          Number(amounts.some(({ from }) => luxOf(b.row) === from)) -
+          Number(amounts.some(({ from }) => luxOf(a.row) === from))
+      )
+      .map(({ row, shown }) => {
+        // Named as History names it, with a call's method under it, and
+        // what it moved unless it's found by its hash.
+        const { amount, title, titleIsAddress } = shown;
 
         return {
-          detail: shortAddress(row.hash),
-          detailIsCode: true,
+          detail: isHash(row)
+            ? shortAddress(row.hash)
+            : `${amount.sign}${hideBalances ? BALANCE_MASK : amount.text} DUSK`,
+          detailIsCode: isHash(row),
           group: /** @type {const} */ ("Transactions"),
           href: `/dashboard/transactions?tx=${row.hash}`,
           id: `tx:${row.hash}`,
           label: title,
           labelIsCode: titleIsAddress,
-          sub: row.fnName || undefined,
+          sub: row.fnName ? displayText(row.fnName).text : undefined,
           value: row.hash,
         };
       })
@@ -259,7 +347,10 @@ export function lookupKind(query) {
     return "address";
   }
 
-  return asDuskName(q) ? "name" : null;
+  // Digits and a separator are an amount: no name anyone means.
+  return /^\d[\d\s.,]*[\s.,][\d\s.,]*$/.test(q) || !asDuskName(q)
+    ? null
+    : "name";
 }
 
 /**

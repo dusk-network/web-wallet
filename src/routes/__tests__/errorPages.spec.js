@@ -1,5 +1,7 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, within } from "@testing-library/svelte";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import { renderWithSimpleContent } from "$lib/dusk/test-helpers";
 import { networkStore } from "$lib/stores";
@@ -52,6 +54,11 @@ describe("The error pages", () => {
       .mockRejectedValue(
         new Error("Timed out while connecting to the network")
       );
+    const init = vi
+      .spyOn(networkStore, "init")
+      .mockRejectedValue(
+        new Error("Timed out while connecting to the network")
+      );
     const { container, findByText } = render(WelcomeLayout);
 
     expect(await findByText("Network connection issue")).toBeInTheDocument();
@@ -60,6 +67,27 @@ describe("The error pages", () => {
     );
 
     connect.mockRestore();
+    init.mockRestore();
+  });
+
+  it("say so when the wallet itself didn't load, as when the network changes under it, and offer to try again", () => {
+    const { body } = new DOMParser().parseFromString(
+      readFileSync(resolve("src/error.html"), "utf8"),
+      "text/html"
+    );
+    const { container } = render(ErrorPage);
+
+    container.innerHTML = body.innerHTML;
+
+    expect(
+      within(container).getByRole("heading", { level: 1 })
+    ).toHaveTextContent("The wallet didn't load");
+
+    // Its own address: the browser loads the page again.
+    expect(within(container).getByText("Try again")).toHaveAttribute(
+      "href",
+      ""
+    );
   });
 
   it("keep the strip on the maintenance page", () => {

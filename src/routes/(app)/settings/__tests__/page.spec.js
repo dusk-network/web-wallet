@@ -26,6 +26,10 @@ import {
   walletStore,
 } from "$lib/stores";
 import vault from "$lib/vault";
+import {
+  sendPasswordLimit,
+  setSendPasswordLimit,
+} from "$lib/security/sendPassword";
 import { contactsWritten, listContacts, saveContact } from "$lib/contacts";
 import { openTestContacts } from "$lib/test-helpers";
 
@@ -389,6 +393,19 @@ describe("Settings", () => {
     expect(logoutSpy).toHaveBeenCalledWith(false);
   });
 
+  it("should start over at Home after a lock on purpose", async () => {
+    window.history.replaceState(null, "", "/some-base-path/settings/");
+
+    const { getByRole } = render(Settings);
+
+    await fireEvent.click(getByRole("button", { name: "Lock Wallet" }));
+    await vi.advanceTimersToNextTimerAsync();
+
+    expect(navigation.takePlace()).toBeNull();
+
+    window.history.replaceState(null, "", "/");
+  });
+
   describe("Resetting the wallet", () => {
     const clearDataSpy = vi
       .spyOn(walletStore, "clearLocalData")
@@ -430,6 +447,34 @@ describe("Settings", () => {
       expect(settingsResetSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledWith(false);
+    });
+
+    it("should turn off the password on big sends, as the settings go", async () => {
+      setSendPasswordLimit(1n);
+
+      const { getByRole } = render(Settings);
+
+      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
+      await resetDone();
+
+      expect(sendPasswordLimit()).toBeNull();
+    });
+
+    it("should keep no place or anything typed for what comes after", async () => {
+      navigation.keepPlace({ pathname: "/dashboard/send/", search: "" });
+      navigation.keepProfile("", 1);
+      sessionStorage.setItem(
+        `${CONFIG.LOCAL_STORAGE_APP_KEY}-draft-send`,
+        JSON.stringify({ owner: "someone", values: { amount: "1" } })
+      );
+
+      const { getByRole } = render(Settings);
+
+      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
+      await resetDone();
+      await vi.waitFor(() => expect(navigation.takePlace()).toBeNull());
+
+      expect(sessionStorage.length).toBe(0);
     });
 
     it("should delete the contacts of every wallet on this device, and those kept in plain text before", async () => {

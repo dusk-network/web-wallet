@@ -578,6 +578,27 @@ export function listContacts(query = "") {
 export const getContact = (id) => book[id] ?? null;
 
 /**
+ * The contact with a name, whatever its capitals, but for the one being edited,
+ * or null.
+ *
+ * @param {string} name
+ * @param {string} [exceptId]
+ * @returns {Contact | null}
+ */
+export function contactCalled(name, exceptId) {
+  const sought = name.trim().toLowerCase();
+
+  return (
+    (sought &&
+      listContacts().find(
+        (contact) =>
+          contact.id !== exceptId && contact.name.toLowerCase() === sought
+      )) ||
+    null
+  );
+}
+
+/**
  * The contact a recipient is: one saved with that address, or with that
  * `.dusk` name.
  *

@@ -2,6 +2,7 @@ import { get } from "svelte/store";
 
 import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
 import { keepOnlyContactsOf } from "$lib/contacts";
+import { setSendPasswordLimit } from "$lib/security/sendPassword";
 import { settingsStore, walletStore } from "$lib/stores";
 import vault from "$lib/vault";
 import { startIncarnation } from "$lib/wallets/dataNames";
@@ -25,6 +26,7 @@ async function initializeWallet(mnemonic, syncFrom) {
   const knownWallet = get(settingsStore).userId;
 
   settingsStore.reset();
+  setSendPasswordLimit(null);
 
   const profileGenerator = await profileGeneratorFrom(
     getSeedFromMnemonic(mnemonic)

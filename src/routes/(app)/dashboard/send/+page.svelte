@@ -1,11 +1,13 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { feeToKeep } from "$lib/wallet-reserve";
   import { page } from "$app/stores";
   import { activityState } from "$lib/activity";
   import { Send } from "$lib/components";
   import { executeSend, getGasLimits, getGasSettings } from "$lib/contracts";
   import { resolveDuskName } from "$lib/dusk-domains";
+  import { ownWalletUrl, readPaymentLink } from "$lib/payment-requests";
   import {
     gasPriceStore,
     gasStore,
@@ -13,6 +15,7 @@
     settingsStore,
     walletStore,
   } from "$lib/stores";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
   import { nodeBaseUrl } from "$lib/url";
   import { profileLabel } from "$lib/wallet";
   import { openProfileNames } from "$lib/wallets";
@@ -58,10 +61,39 @@
 
   const { networkName } = $networkStore;
 
-  // The recipient the page opens with, as from Send again or a contact; the
-  // form starts again with another one, as from the search while it shows.
+  /** What an address of this page has for it to be a request. */
+  const REQUEST_FIELDS = [
+    "amount",
+    "amountLux",
+    "label",
+    "memo",
+    "network",
+    "to",
+  ];
+
+  /**
+   * What the page's address asks of its form: a recipient, as from Send again
+   * or a contact, or a link's amount and memo with it, or why a link fills in
+   * nothing. It's read as any link is, whichever address it's opened at.
+   *
+   * @param {URL} at
+   * @param {import("@dusk-network/networks").Network | null} net
+   * @param {string} language
+   */
+  const askedBy = (at, net, language) =>
+    REQUEST_FIELDS.some((field) => at.searchParams.has(field))
+      ? readPaymentLink(
+          `${ownWalletUrl()}/dashboard/send${at.search}`,
+          net,
+          language
+        )
+      : null;
+
+  // The form starts again with another request, as from the search while it
+  // shows.
   $: ({ url } = $page);
-  $: initialRecipient = url.searchParams.get("to") ?? "";
+  $: asked = askedBy(url, $nodeNetwork, $settingsStore.language);
+  $: askedKey = JSON.stringify(asked);
 
   /**
    * Names resolve through the wallet's own node: the origin of its
@@ -108,14 +140,18 @@
   });
 </script>
 
-{#key initialRecipient}
+{#key askedKey}
   <Send
     availableBalance={spendable}
     bep20BridgeAddress={BEP20_BRIDGE_ADDRESS}
     execute={send}
     {gasLimits}
     {gasSettings}
-    {initialRecipient}
+    initialAmount={asked?.amount ?? ""}
+    initialMemo={asked?.memo ?? ""}
+    initialProblem={asked?.problem ?? ""}
+    initialRecipient={asked?.to ?? ""}
+    keepForLater={$feeToKeep}
     {knownNames}
     on:keyChange={keyChangeHandler}
     {ownAccounts}

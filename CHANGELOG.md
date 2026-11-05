@@ -9,15 +9,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Unlock with fingerprint or face, off by default, turned on in Settings with the password, on browsers and devices with a passkey's PRF: going straight to it as the wallet opens. The password keeps working, and big sends still ask for it
+- Show a stake with Sozu in figures on its form: put in, taken out, worth now, deposit fees and rewards so far, what an amount earns in a year, and a line of what the rate is made of
+- Tell me when it arrives, on a transfer's Sent screen and in Bridge › Activity, by a browser notification where one can be had, asked for only when pressed, and in the tab's title whoever's away
+- Say how a route is doing under it on the Bridge: whether it's paying out, its last payout, and what it can pay
+- Share on Receive, where the browser has a share sheet: the address, or the request's link
+- Request payment on Receive, with a QR to download and an https link that opens Send filled in, and a list of your requests saying what matched what came in
+- Read `dusk:` and https payment links pasted or scanned into Send's To, or opened directly and through an unlock, filling in the amount and memo; one for another network says so and fills in nothing
+- Keep the fee to unstake, or to prove and claim a withdrawal, on Send's and the Bridge's Max, say so, and warn of an amount that leaves too little for it
+- List a transfer's exact amounts in its details under Bridge › Activity: sent, bridge fee, network fee, received and gas
+- Search finds a payment by its amount, and lists a contact's payments under the contact
+- Ask for the password again on any send above an amount chosen in Settings, off by default: sends, stakes, shielding, the bridge and contract calls, checked against the vault
+- Come back to the same page and profile after a lock or a reload, and through a link, with what was typed in a form that moves money, until it goes out
+- Show an approval not used up on the Bridge's migration form, read on the chain, with Finish and Revoke
+- Try again on a send, stake, shield or bridge transfer that failed with nothing sent, back to its review with all that was filled in, and Back from the failure back to the form
+
 ### Changed
+
+- Make History's Export the universal CSV tax tools read, of a quarter or chosen dates, in UTC, named after the profile, with transfers between your profiles marked and stakes with Sozu as trades; euro values from CoinGecko for the past year and a BOM for Excel on request
+- Review a send or a stake before it goes, at every screen width: the first press no longer sends
+- Say on the review of a stake with Sozu that its deposit fee doesn't come back, and how much it is
 
 ### Removed
 
 ### Fixed
 
+- Close a contact with Escape, and give the focus back to a contact's or a transaction's row once it's closed
+- Say so when the camera won't start for a scan on Send, and read a scanned code as a pasted one
+- Write the gas paid short in a transfer's details under Bridge › Activity, with all its decimals on hover
+- Close a transaction, a contact or the search with phone Back, staying on the page, and leave the password screen out of Back once the wallet is open
+- Bring back what was typed in a form with the browser's Back after leaving it for another page
+- Close the profile menu on any navigation, and only close it on a tap outside
+- Say "Sending…" and what's sent in one tense on an unstake from Sozu, and clear Pending and refresh the balances as a transaction is final
+- Keep thumb-sized targets and a shorter header on a phone held sideways, and give the network pill and Send's contacts a thumb's height too
+- Write addresses on Bridge reviews as Send does, and size Copy and Save to contacts alike
+- Show the fee's Edit with the form on a phone when lowering the fee can help, offer that only then, and let Staking through to it
+- Warn on a contact's name in use, and on the wallet's own address
+- Refuse the password you have as the new one, and show Password changed for 5 seconds
+- Show a message on the screen wherever the page is scrolled, without taking a tap from what's under it
+- Show the address in full on Receive, with a button that says Copy address, then Copied
+- Make the recovery words larger, and leave the balance bar empty at 0
+- Say a name's limit once it's reached
+- Check a shielded address properly on Send: one that only has the right length is refused
+- Show a memo's hidden characters as codes, and say so, on Send's review, the Sent screen and in History, so that text can't read as something it isn't, and keep a call's name and an error's details from reordering what's read
+- Show a transaction's network fee to the last digit in its details and on its Sent screen
+- Keep Send inside a phone's screen with a long contact name, and Review in reach
+- Name an EVM address on Send, and say what's wrong with an address as soon as it's pasted: no red text without a reason
+- Offer contacts on Send one way at a time, and say how long a memo can be in characters
+- Read `1 000` as a thousand where the language writes it so, in every amount field, in the language the wallet writes amounts in
+- Say why an amount can't be read: which two amounts `1.000` could be, or that DUSK has 9 decimals
+- Say "More than your 0 DUSK" on Send with no coins, not to lower the gas limit
+- Keep Change clear of the Swap arrow on the Bridge's way back
+- Say the amount on the Sent screen of a migration
+- Stop two tabs on the Bridge asking the EVM wallet to switch networks without end: it's asked as a route opens or a wallet connects, and the card offers to switch
+- Show the DuskEVM balance on a withdrawal whichever chain the EVM wallet is on
+- Count a withdrawal's fee in what the password on big sends goes by
+- Ask nothing of the EVM wallet for a Revoke once the wallet locked or switched, or the screen was left, while what's approved was read again
+- Keep what's typed in a form through a switch of profile, for the lock or reload after it
+- Stop "Connecting to the network…" spinning without end when the node doesn't answer: say so after five seconds, offer Try again, and report it after ten
+- Open a new connection on Try again, instead of waiting for the one that didn't answer
+- Take half the time to connect on a first visit
+- Offer Try again when the wallet's own files fail to load
 - Read `1.000.000` as a million on browsers that write decimals with a comma
 - Fix Max on browsers whose language writes its own digits
 - Write Send's amount example in the browser's language
+- Keep the fee to unstake later when Max fills in a stake, native or with Sozu, and refuse an amount that leaves too little for it
+- Say how much DUSK is missing when the public balance can't pay for an unstake or a claim
+- Say to check History, not to try again, when the node refuses a send because another transaction from the account came first
+- Say on a migration's review when an earlier approval covers the amount, so Approve is skipped, and how much of it stays approved
+- Say on a migration, when the EVM wallet's error proves nothing was sent, that it wasn't and why, and offer to approve again once the approval was used up, instead of saying it may have reached the network
 
 ## [1.9.0] - 2026-11-05
 

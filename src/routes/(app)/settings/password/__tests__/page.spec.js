@@ -8,7 +8,9 @@ import {
   vi,
 } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { get } from "svelte/store";
 
+import { toastList, toastTimer } from "$lib/dusk/components/Toast/store";
 import * as navigation from "$lib/navigation";
 import { walletStore } from "$lib/stores";
 import { stubWalletNetwork } from "$lib/test-helpers";
@@ -55,6 +57,26 @@ describe("Change password", () => {
     vi.restoreAllMocks();
   });
 
+  it("refuses the password it has as the new one, and changes nothing", async () => {
+    const { getByLabelText, getByRole } = render(ChangePassword);
+
+    await fireEvent.input(getByLabelText("Current password"), {
+      target: { value: PASSWORD },
+    });
+    await fireEvent.input(getByLabelText("New password"), {
+      target: { value: PASSWORD },
+    });
+    await fireEvent.input(getByLabelText("Confirm password"), {
+      target: { value: PASSWORD },
+    });
+    await fireEvent.click(getByRole("button", { name: "Change password" }));
+
+    expect(getByRole("alert")).toHaveTextContent(
+      "That's the password you have. Choose a new one."
+    );
+    expect(gotoSpy).not.toHaveBeenCalled();
+  });
+
   it("seals every wallet again with the new password, once the fields are right and the current one is", async () => {
     const { getByLabelText, getByRole } = render(ChangePassword);
     const [current, next, again] = [
@@ -90,5 +112,41 @@ describe("Change password", () => {
 
     expect((await vault.unlock("a new password")).wallets).toHaveLength(2);
     await expect(vault.unlock(PASSWORD)).rejects.toThrow("Wrong password");
+  });
+
+  it("says the password changed for long enough to see it, once the page has moved on", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    toastList.set([]);
+    toastTimer.set(2000);
+
+    const said = () =>
+      get(toastList).some(({ message }) => message === "Password changed.");
+
+    try {
+      const { getByLabelText, getByRole } = render(ChangePassword);
+
+      await fireEvent.input(getByLabelText("Current password"), {
+        target: { value: PASSWORD },
+      });
+      await fireEvent.input(getByLabelText("New password"), {
+        target: { value: "a new password" },
+      });
+      await fireEvent.input(getByLabelText("Confirm password"), {
+        target: { value: "a new password" },
+      });
+      await fireEvent.click(getByRole("button", { name: "Change password" }));
+      await vi.waitFor(() => expect(gotoSpy).toHaveBeenCalledWith("/settings"));
+
+      expect(said()).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(3500);
+      expect(said()).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(said()).toBe(false);
+    } finally {
+      toastTimer.set(0);
+      vi.useRealTimers();
+    }
   });
 });

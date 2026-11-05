@@ -142,6 +142,89 @@ describe("Network store", async () => {
     expect(network).toBeInstanceOf(Network);
   });
 
+  describe("What the node says it is", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /**
+     * The store, on a network whose node answers each time as given, and then
+     * no more.
+     *
+     * @param {Array<() => Promise<any>>} answers
+     */
+    async function storeWithAnswers(answers) {
+      vi.resetModules();
+
+      const store = (await import("..")).networkStore;
+      const network = await store.connect();
+      const asked = vi.fn(() => answers.shift()?.() ?? new Promise(() => {}));
+
+      network.node = /** @type {any} */ ({
+        get info() {
+          return asked();
+        },
+      });
+
+      return { asked, store };
+    }
+
+    const testnet = {
+      chain: { toString: () => "testnet" },
+      chainId: 2,
+    };
+
+    it("is asked again while it doesn't answer, and the first answer counts", async () => {
+      vi.useFakeTimers();
+
+      const { asked, store } = await storeWithAnswers([
+        () => new Promise(() => {}),
+        () => Promise.resolve(testnet),
+      ]);
+      const init = store.init();
+
+      expect(asked).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(3000);
+      await init;
+
+      expect(asked).toHaveBeenCalledTimes(2);
+      expect(get(store)).toMatchObject({ networkName: "testnet" });
+    });
+
+    it("doesn't hold everything up for longer than connecting can take", async () => {
+      vi.useFakeTimers();
+
+      const { store } = await storeWithAnswers([]);
+      const init = store.init();
+      const failed = expect(init).rejects.toThrow(
+        "Timed out while connecting to the network"
+      );
+
+      await vi.advanceTimersByTimeAsync(10_000);
+      await failed;
+    });
+
+    it("takes what w3sper kept of an answer before, as it gives that as it is", async () => {
+      const { store } = await storeWithAnswers([]);
+      const network = await store.connect();
+
+      network.node = /** @type {any} */ ({ info: testnet });
+
+      await store.init();
+
+      expect(get(store)).toMatchObject({ networkName: "testnet" });
+    });
+
+    it("says at once when the node answers with an error", async () => {
+      const { store } = await storeWithAnswers([
+        () => Promise.reject(new Error("Unexpected answer")),
+      ]);
+
+      await expect(store.init()).rejects.toThrow("Unexpected answer");
+    });
+  });
+
   describe("Connection and disconnection", () => {
     it("should expose a method to disconnect from the network and update the store's connection status", async () => {
       const store = (await import("..")).networkStore;

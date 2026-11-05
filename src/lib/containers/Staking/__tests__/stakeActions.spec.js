@@ -63,7 +63,23 @@ describe("stakeActions", () => {
     ).toStrictEqual({ canClaim: false, canUnstake: false, reasons: [] });
   });
 
-  it("says when the public balance can't pay the fee", () => {
+  it("lets one go on to the form while the balance can pay the least its fee can be lowered to", () => {
+    const short = {
+      ...base,
+      leastFee: 35_000_000n,
+      reward: DUSK,
+      staked: 1_000n * DUSK,
+    };
+
+    expect(
+      stakeActions({ ...short, publicBalance: 40_000_000n })
+    ).toStrictEqual({ canClaim: true, canUnstake: true, reasons: [] });
+    expect(
+      stakeActions({ ...short, publicBalance: 30_000_000n })
+    ).toMatchObject({ canClaim: false, canUnstake: false });
+  });
+
+  it("says when the public balance can't pay the fee, and how much is missing, but for what would give it away", () => {
     expect(
       stakeActions({
         ...base,
@@ -75,8 +91,29 @@ describe("stakeActions", () => {
       canClaim: false,
       canUnstake: false,
       reasons: [
-        "The network fee is paid from the public balance, and it's empty.",
+        "The network fee is paid from the public balance, and it's empty: 0.05 DUSK short. Add that much to it first.",
       ],
     });
+    expect(
+      stakeActions({
+        ...base,
+        publicBalance: 40_000_000n,
+        reward: DUSK,
+        staked: 1_000n * DUSK,
+      }).reasons
+    ).toStrictEqual([
+      "The public balance doesn't cover the network fee: 0.01 DUSK short. Add that much to it first.",
+    ]);
+    expect(
+      stakeActions({
+        ...base,
+        hidden: true,
+        publicBalance: 40_000_000n,
+        reward: DUSK,
+        staked: 1_000n * DUSK,
+      }).reasons
+    ).toStrictEqual([
+      "The public balance doesn't cover the network fee: •••• DUSK short.",
+    ]);
   });
 });

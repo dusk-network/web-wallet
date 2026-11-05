@@ -110,15 +110,13 @@
 
     <button
       aria-keyshortcuts="Control+K Meta+K /"
-      aria-label="Search names, addresses and transactions"
+      aria-label="Search names, addresses, amounts and transactions"
       class="top-bar__search"
       on:click={() => dispatch("search")}
       type="button"
     >
       <Icon path={mdiMagnify} />
-      <span class="top-bar__search-text"
-        >Search names, addresses, transactions</span
-      >
+      <span class="top-bar__search-text">Search names, addresses, amounts</span>
       <kbd class="top-bar__kbd">Ctrl K</kbd>
     </button>
 
@@ -369,6 +367,15 @@
     .top-bar__settings {
       width: 44px;
       height: 44px;
+    }
+  }
+
+  /* A phone held sideways has desktop's width, and still a thumb. */
+  @media (pointer: coarse) {
+    .top-bar__search,
+    .top-bar__settings {
+      min-width: 44px;
+      min-height: 44px;
     }
   }
 

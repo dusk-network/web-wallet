@@ -32,11 +32,13 @@
     ReviewWallet,
     TransactionResult,
   } from "$lib/components";
+  import { formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
+  import { nothingWentOut } from "$lib/transactions";
   import { Gas } from "@dusk/w3sper";
   import { BALANCE_MASK } from "$lib/constants";
   import Banner from "../Banner/Banner.svelte";
-  import { normalizeDuskInput, parseDuskInput } from "../Stake/stakeAmount";
+  import { readDuskInput } from "../Stake/stakeAmount";
 
   /** @type {ContractGasSettings} */
   export let gasSettings;
@@ -47,6 +49,11 @@
   /** @type {string} */
   export let shieldedAddress;
 
+  const draft = formDraft("allocate");
+
+  /** What was typed before a lock, a reload or a failed send. */
+  const typedBefore = draft.read();
+
   /** @type {string} */
   export let unshieldedAddress;
 
@@ -56,6 +63,10 @@
   /** @type {bigint} */
   export let unshieldedBalance;
 
+  // What's brought back as the form opens is read in it, before what follows
+  // it is.
+  let { language } = $settingsStore;
+
   /**
    * An amount as its field shows it: every decimal, with the language's
    * decimal separator and no grouping.
@@ -63,7 +74,7 @@
    * @param {bigint} lux
    */
   const fieldText = (lux) =>
-    formatDuskPlain(lux).replace(".", getDecimalSeparator());
+    formatDuskPlain(lux).replace(".", getDecimalSeparator(language));
 
   /**
    * Takes the amount typed in one field, with a decimal point or comma, and
@@ -73,9 +84,7 @@
    */
   function handleBalanceChange(event) {
     const { name, value } = /** @type {HTMLInputElement} */ (event.target);
-    const lux = parseDuskInput(
-      normalizeDuskInput(value, getDecimalSeparator())
-    );
+    const lux = readDuskInput(value, language);
     const isShieldedAmount = name === "shielded-amount";
 
     typedAmount = name;
@@ -107,10 +116,22 @@
   async function allocate() {
     const gas = new Gas({ limit: gasLimit, price: gasPrice });
 
+    // It goes out now, as far as a reload can tell: nothing brings it back.
+    isSent = true;
+    draft.clear();
+
     if (difference !== 0n) {
-      const transactionInfo = isShielding
-        ? await forThisWallet(walletStore.shield)(difference, gas)
-        : await forThisWallet(walletStore.unshield)(-difference, gas);
+      const transactionInfo = await (
+        isShielding
+          ? forThisWallet(walletStore.shield)(difference, gas)
+          : forThisWallet(walletStore.unshield)(-difference, gas)
+      ).catch((error) => {
+        if (nothingWentOut(error)) {
+          draft.keep(typed);
+        }
+
+        throw error;
+      });
 
       return transactionInfo.hash;
     }
@@ -124,16 +145,22 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
 
+  /** @type {WizardStep} */
+  let resultStep;
+
   /** @type {boolean} */
   let isNextButtonDisabled = false;
 
   /** @type {boolean} */
   let isGasValid = false;
 
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
 
   /** Whether the first step, where the gas can be edited, shows. */
   let isEditing = true;
+
+  /** Whether the transaction was asked for, and hasn't failed since. */
+  let isSent = false;
 
   let defaultGas = gasSettings;
 
@@ -164,6 +191,28 @@
   // other.
   let shieldedText = fieldText(shielded);
   let unshieldedText = fieldText(totalBalance - shielded);
+
+  // What was typed before, in the field it was typed in, read as it's typed.
+  if (typedBefore?.field) {
+    handleBalanceChange(
+      /** @type {any} */ ({
+        target: { name: typedBefore.field, value: typedBefore.value },
+      })
+    );
+  }
+
+  // What's typed, kept as it's typed, for as long as it hasn't gone out.
+  $: typed = typedAmount
+    ? {
+        field: typedAmount,
+        gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+        value:
+          typedAmount === "shielded-amount" ? shieldedText : unshieldedText,
+      }
+    : {};
+  $: if (!isSent) {
+    draft.save(typed);
+  }
 
   $: ({ hideBalances, language } = $settingsStore);
   $: isShieldedHidden = hideBalances && typedAmount !== "shielded-amount";
@@ -386,8 +435,15 @@
         />
       </div>
     </WizardStep>
-    <WizardStep step={2} {key} showNavigation={false}>
-      <TransactionResult maxFee={fee} operation={allocate()} />
+    <WizardStep bind:this={resultStep} step={2} {key} showNavigation={false}>
+      <TransactionResult
+        maxFee={fee}
+        onRetry={(event) => {
+          isSent = false;
+          resultStep.back(event);
+        }}
+        operation={allocate()}
+      />
     </WizardStep>
   </Wizard>
 </div>

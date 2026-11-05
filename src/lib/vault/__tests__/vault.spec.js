@@ -111,6 +111,9 @@ async function restart() {
   return (await import("..")).default;
 }
 
+/** v1's record as main wrote it. */
+const currentRecord = () => current.stored;
+
 describe("vault", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -256,6 +259,55 @@ describe("vault", () => {
     });
   });
 
+  describe("checking the password", () => {
+    it("takes the password that opens a wallet here, and gives nothing back", async () => {
+      const vault = await restart();
+      const wallet = await vault.setUp(OTHER, "a password");
+
+      await expect(vault.check("a password")).resolves.toBeUndefined();
+      await expect(
+        vault.check("a password", wallet.id)
+      ).resolves.toBeUndefined();
+    });
+
+    it("refuses a wrong one, or one that doesn't open the wallet named, and changes nothing", async () => {
+      const vault = await restart();
+      const wallet = await vault.setUp(OTHER, "a password");
+      const before = localStorage.getItem(V2);
+
+      await expect(vault.check("wrong")).rejects.toThrow("Wrong password");
+      await expect(vault.check("wrong", wallet.id)).rejects.toThrow(
+        "Wrong password"
+      );
+      await expect(
+        vault.check("a password", "not a wallet here")
+      ).rejects.toThrow("Wrong password");
+      await expect(vault.check("")).rejects.toThrow("Wrong password");
+      expect(localStorage.getItem(V2)).toBe(before);
+    });
+
+    it("checks each wallet here: all of them under one password", async () => {
+      const vault = await restart();
+      const first = await vault.setUp(OTHER, "a password");
+      const second = await vault.add(THIRD, "a password");
+
+      await expect(
+        vault.check("a password", first.id)
+      ).resolves.toBeUndefined();
+      await expect(
+        vault.check("a password", second.id)
+      ).resolves.toBeUndefined();
+    });
+
+    it("says there's nothing to check against without a vault", async () => {
+      const vault = await restart();
+
+      await expect(vault.check("a password")).rejects.toThrow(
+        "There's no wallet here."
+      );
+    });
+  });
+
   describe("unlocking", () => {
     it("refuses a wrong password with nothing about the vault, and changes nothing", async () => {
       const vault = await restart();
@@ -369,6 +421,281 @@ describe("vault", () => {
       await expect(vault.unlock("password123")).rejects.toThrow(
         "There's no wallet here"
       );
+    });
+  });
+
+  describe("fingerprint or face unlock", () => {
+    const PASSKEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-passkey`;
+    const PHRASE =
+      "scheme spot photo card baby mountain device kick cradle pact join borrow";
+    const PASSWORD = "the password";
+    const CREDENTIAL = "a-credential";
+
+    /** @param {number} fill */
+    const bytes32 = (fill) => new Uint8Array(32).fill(fill);
+
+    const PRF = bytes32(7);
+    const passkey = {
+      credentialId: CREDENTIAL,
+      prfSalt: btoa(String.fromCharCode(...bytes32(9))),
+      transports: ["internal"],
+    };
+
+    /** A vault with this on, for one wallet. */
+    async function withPasskey() {
+      const vault = await restart();
+      const wallet = await vault.setUp(PHRASE, PASSWORD);
+
+      await vault.addPasskey({ ...passkey, prf: PRF }, PASSWORD);
+
+      return { vault, wallet };
+    }
+
+    it("opens every wallet the password opens, as the password would, from the PRF output and a key that opens only with it", async () => {
+      const { vault, wallet } = await withPasskey();
+      const added = await vault.add(OTHER, PASSWORD);
+      const unlocked = await vault.unlockWithPasskey(PRF, CREDENTIAL);
+
+      expect(unlocked).toStrictEqual(await vault.unlock(PASSWORD));
+      expect(unlocked.wallets.map(({ id }) => id)).toStrictEqual([
+        wallet.id,
+        added.id,
+      ]);
+
+      // After a reload too.
+      expect(
+        await (await restart()).unlockWithPasskey(PRF, CREDENTIAL)
+      ).toStrictEqual(unlocked);
+    });
+
+    it("gives what asks who's there nothing to ask with but the credential: not the keys", async () => {
+      const { vault } = await withPasskey();
+
+      expect(vault.passkey()).toStrictEqual(passkey);
+    });
+
+    it("keeps no password and no phrase, only keys that can't open without the PRF output", async () => {
+      await withPasskey();
+
+      const text = /** @type {string} */ (localStorage.getItem(PASSKEY));
+      const record = JSON.parse(text);
+
+      expect(text).not.toContain(PASSWORD);
+      expect(text).not.toContain(btoa(PASSWORD));
+      expect(text).not.toContain(PHRASE.split(" ")[0]);
+      expect(record).toMatchObject({
+        credentialId: CREDENTIAL,
+        prfSalt: passkey.prfSalt,
+        transports: ["internal"],
+        version: 1,
+      });
+      expect(Object.keys(record).toSorted()).toStrictEqual([
+        "credentialId",
+        "keys",
+        "prfSalt",
+        "transports",
+        "version",
+      ]);
+      // An AES-256 key and its tag: nothing that can be read or guessed at.
+      expect(record.keys).toHaveLength(1);
+      expect(atob(record.keys[0].wrapped)).toHaveLength(48);
+    });
+
+    it("opens nothing with any other PRF output, as an attacker with the browser's storage has, and the password opens the vault all the same", async () => {
+      const { vault } = await withPasskey();
+      const stored = localStorage.getItem(V2);
+
+      await expect(
+        vault.unlockWithPasskey(bytes32(8), CREDENTIAL)
+      ).rejects.toMatchObject({ name: "PasskeyGoneError" });
+
+      // It goes: nothing goes straight to what can't open.
+      expect(vault.passkey()).toBeNull();
+      expect(localStorage.getItem(PASSKEY)).toBeNull();
+      expect(localStorage.getItem(V2)).toBe(stored);
+      expect(phrases(await vault.unlock(PASSWORD))).toStrictEqual([PHRASE]);
+    });
+
+    it("doesn't take a record's keys over to another credential, or to other salts", async () => {
+      const { vault } = await withPasskey();
+      const record = JSON.parse(
+        /** @type {string} */ (localStorage.getItem(PASSKEY))
+      );
+
+      await expect(
+        vault.unlockWithPasskey(PRF, "another-credential")
+      ).rejects.toMatchObject({ name: "PasskeyGoneError" });
+
+      // The record says it's another's, and the key is bound to this one's.
+      localStorage.setItem(
+        PASSKEY,
+        JSON.stringify({ ...record, credentialId: "another-credential" })
+      );
+      await expect(
+        vault.unlockWithPasskey(PRF, "another-credential")
+      ).rejects.toMatchObject({ name: "PasskeyGoneError" });
+    });
+
+    it("never stands in for the password: checking it, and every change, still take it", async () => {
+      const { vault, wallet } = await withPasskey();
+
+      await vault.unlockWithPasskey(PRF, CREDENTIAL);
+
+      await expect(vault.check("wrong", wallet.id)).rejects.toMatchObject({
+        name: "InvalidPasswordError",
+      });
+      await expect(vault.check(PASSWORD, wallet.id)).resolves.toBeUndefined();
+      await expect(vault.add(OTHER, "wrong")).rejects.toMatchObject({
+        name: "InvalidPasswordError",
+      });
+      await expect(
+        vault.changePassword("wrong", "new password")
+      ).rejects.toMatchObject({ name: "InvalidPasswordError" });
+      await expect(
+        vault.addPasskey({ ...passkey, prf: PRF }, "wrong")
+      ).rejects.toMatchObject({ name: "InvalidPasswordError" });
+
+      // A wrong password changed nothing.
+      await expect(
+        vault.unlockWithPasskey(PRF, CREDENTIAL)
+      ).resolves.toBeTruthy();
+    });
+
+    it("writes nothing for a wrong password turning it on, and needs the password to open each wallet held", async () => {
+      const vault = await restart();
+
+      await vault.setUp(PHRASE, PASSWORD);
+
+      await expect(
+        vault.addPasskey({ ...passkey, prf: PRF }, "wrong")
+      ).rejects.toMatchObject({ name: "InvalidPasswordError" });
+      expect(localStorage.getItem(PASSKEY)).toBeNull();
+
+      await expect(
+        vault.addPasskey({ ...passkey, prf: PRF }, PASSWORD, {
+          held: ["another-wallet"],
+        })
+      ).rejects.toMatchObject({ name: "InvalidPasswordError" });
+      expect(vault.passkey()).toBeNull();
+    });
+
+    it("drops it with a new password, and a copy of it kept from before opens nothing of what's sealed anew", async () => {
+      const { vault } = await withPasskey();
+      const before = /** @type {string} */ (localStorage.getItem(PASSKEY));
+
+      await vault.changePassword(PASSWORD, "new password");
+
+      expect(localStorage.getItem(PASSKEY)).toBeNull();
+      expect(vault.passkey()).toBeNull();
+      await expect(
+        vault.unlockWithPasskey(PRF, CREDENTIAL)
+      ).rejects.toMatchObject({ name: "PasskeyGoneError" });
+
+      // Put back by someone with the old storage: the salt it's for is gone.
+      localStorage.setItem(PASSKEY, before);
+      await expect(
+        vault.unlockWithPasskey(PRF, CREDENTIAL)
+      ).rejects.toMatchObject({ name: "PasskeyGoneError" });
+      expect(vault.passkey()).toBeNull();
+
+      await expect(vault.unlock(PASSWORD)).rejects.toMatchObject({
+        name: "InvalidPasswordError",
+      });
+      expect(phrases(await vault.unlock("new password"))).toStrictEqual([
+        PHRASE,
+      ]);
+    });
+
+    it("drops it as a wallet is removed, keeps the others, and takes it again from the password", async () => {
+      const { vault } = await withPasskey();
+      const added = await vault.add(OTHER, PASSWORD);
+
+      await vault.remove(added.id, PASSWORD);
+
+      expect(vault.passkey()).toBeNull();
+      expect(localStorage.getItem(PASSKEY)).toBeNull();
+      expect(phrases(await vault.unlock(PASSWORD))).toStrictEqual([PHRASE]);
+
+      await vault.addPasskey({ ...passkey, prf: PRF }, PASSWORD);
+
+      expect(
+        phrases(await vault.unlockWithPasskey(PRF, CREDENTIAL))
+      ).toStrictEqual([PHRASE]);
+    });
+
+    it("drops it with a reset, and with a new setup in place of every wallet", async () => {
+      const { vault } = await withPasskey();
+
+      await vault.clear();
+
+      expect(localStorage.getItem(PASSKEY)).toBeNull();
+      expect(vault.passkey()).toBeNull();
+
+      await vault.setUp(PHRASE, PASSWORD);
+      await vault.addPasskey({ ...passkey, prf: PRF }, PASSWORD);
+      await vault.setUp(OTHER, "another password");
+
+      expect(localStorage.getItem(PASSKEY)).toBeNull();
+    });
+
+    it("leaves it for a change that stopped before it wrote", async () => {
+      const { vault } = await withPasskey();
+      const stop = new Error("Stopped");
+
+      await expect(
+        vault.changePassword(PASSWORD, "new password", {
+          beforeWrite: () => {
+            throw stop;
+          },
+        })
+      ).rejects.toBe(stop);
+
+      expect(vault.passkey()).toStrictEqual(passkey);
+    });
+
+    it("turns off without the password, opening nothing, and the password opens the vault", async () => {
+      const { vault } = await withPasskey();
+
+      await vault.removePasskey();
+
+      expect(vault.passkey()).toBeNull();
+      expect(phrases(await vault.unlock(PASSWORD))).toStrictEqual([PHRASE]);
+    });
+
+    it("opens no wallet sealed under another password, whichever the password opened when it was turned on", async () => {
+      const { vault, wallet } = await withPasskey();
+      const v2 = JSON.parse(/** @type {string} */ (localStorage.getItem(V2)));
+      const elsewhere = await restart();
+
+      // A wallet sealed apart, as a phrase of an older password stays.
+      localStorage.setItem(V1, currentRecord());
+      localStorage.setItem(V2, JSON.stringify(v2));
+
+      const opened = await elsewhere.unlockWithPasskey(PRF, CREDENTIAL);
+
+      expect(opened.fromV1).toBeNull();
+      expect(opened.wallets.map(({ id }) => id)).toStrictEqual([wallet.id]);
+      // Moved only with its password.
+      expect(localStorage.getItem(V1)).toBe(currentRecord());
+      expect(vault.passkey()).toStrictEqual(passkey);
+    });
+
+    it("reads nothing of a record it can't read, for any place that asks", async () => {
+      const vault = await restart();
+
+      await vault.setUp(PHRASE, PASSWORD);
+
+      for (const text of ["not json", "{}", '{"version":2,"keys":[1]}']) {
+        localStorage.setItem(PASSKEY, text);
+
+        expect(vault.passkey()).toBeNull();
+      }
+
+      // And it's nothing without a vault to open.
+      await vault.addPasskey({ ...passkey, prf: PRF }, PASSWORD);
+      localStorage.removeItem(V2);
+
+      expect(vault.passkey()).toBeNull();
     });
   });
 

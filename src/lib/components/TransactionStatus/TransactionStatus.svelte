@@ -8,19 +8,21 @@
     mdiTimerSand,
   } from "@mdi/js";
 
+  import { currentActivity } from "$lib/activity";
   import { timeLabel } from "$lib/activity/present";
-  import { formatFee } from "$lib/dusk/currency";
+  import { formatDuskExact, formatFee } from "$lib/dusk/currency";
   import {
     AnchorButton,
     Button,
     ErrorDetails,
     Icon,
   } from "$lib/dusk/components";
-  import { settingsStore } from "$lib/stores";
+  import { settingsStore, walletStore } from "$lib/stores";
   import { followTransaction } from "$lib/transactions";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import WithdrawalHash from "../EvmTransactions/WithdrawalHash.svelte";
+  import MemoText from "../MemoText/MemoText.svelte";
 
   /**
    * The hash of the transaction sent, if there is one to follow.
@@ -88,6 +90,12 @@
           outcome = result;
           outcomeAt = Date.now();
           status = result ? (result.error ? "failed" : "completed") : "late";
+
+          // It's final, so History and the balances can say so as this does.
+          if (result) {
+            void currentActivity()?.refresh();
+            void walletStore.refreshBalance();
+          }
         }
       });
   }
@@ -134,7 +142,7 @@
     <dl class="transaction-status__details">
       {#if memo}
         <dt>Memo</dt>
-        <dd class="transaction-status__memo">{memo}</dd>
+        <dd class="transaction-status__memo"><MemoText text={memo} /></dd>
       {/if}
       <dt>Transaction</dt>
       <dd>
@@ -143,7 +151,7 @@
       {#if outcome}
         <dt>Network fee</dt>
         <dd>
-          <BalanceValue value={formatFee(outcome.fee, language)} /> DUSK
+          <BalanceValue value={formatDuskExact(outcome.fee, language)} /> DUSK
         </dd>
       {:else}
         <dt>Network fee (at most)</dt>

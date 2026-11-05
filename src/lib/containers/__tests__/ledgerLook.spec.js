@@ -102,12 +102,30 @@ describe("The ledger look", () => {
     expectLedgerLook(panel.container);
     cleanup();
 
+    const nothing = render(HomeBalance, {
+      fiatCurrency: "USD",
+      locale: "en",
+      shielded: 0n,
+      unshielded: 0n,
+    });
+
+    // Nothing held: an empty bar, not a full one.
+    expect(
+      nothing.container.querySelector(".home-balance__bar--empty")
+    ).not.toBeNull();
+    cleanup();
+
     const balance = render(HomeBalance, {
       fiatCurrency: "USD",
       locale: "en",
       shielded: 0n,
       unshielded: 173n * DUSK,
     });
+
+    expect(
+      balance.container.querySelector(".home-balance__bar--empty")
+    ).toBeNull();
+
     const cards = render(ExplainerCards, {
       liquid: DUSK / 2n,
       locale: "en",

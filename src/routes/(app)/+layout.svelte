@@ -3,11 +3,18 @@
 
   import {
     INACTIVITY_TIMEOUT,
+    keepProfile,
     logout,
     startInactivityTimer,
   } from "$lib/navigation";
+  import { followArrivals } from "$lib/bridge/arrivalFollowing";
   import { followRouteHistory } from "$lib/bridge/routeHistory";
   import { Shell } from "$lib/containers/Shell";
+  import { SendPasswordDialog } from "$lib/containers/Wallets";
+  import {
+    cancelSendPassword,
+    sendPasswordAsk,
+  } from "$lib/security/sendPassword";
   import { gasPriceStore, settingsStore, walletStore } from "$lib/stores";
   import vault from "$lib/vault";
   import { followOtherTabs, noteOpenWallet } from "$lib/wallets";
@@ -33,10 +40,16 @@
   // A migration's payout reaches the history while the wallet is open.
   onMount(() => followRouteHistory());
 
+  // What ends is said to whoever isn't looking.
+  onMount(() => followArrivals());
+
   // Another tab's switch, removal, new password or lock reaches this one.
   onMount(() => followOtherTabs());
 
   onDestroy(() => stopInactivityTimer());
+
+  // Nothing goes on asking for the password once the wallet's pages are gone.
+  onDestroy(() => cancelSendPassword());
 
   $: autoLockTimeout = hasPassword
     ? $settingsStore.autoLockMinutes * 60_000
@@ -45,7 +58,12 @@
   // Only a new time restarts the timer.
   $: restartInactivityTimer(autoLockTimeout);
 
-  $: ({ initialized, walletKey } = $walletStore);
+  $: ({ currentProfile, initialized, profiles, walletKey } = $walletStore);
+
+  // The profile a reload or a lock comes back to.
+  $: if (initialized && currentProfile) {
+    keepProfile(walletKey, profiles.indexOf(currentProfile));
+  }
 
   // The wallet open, the one the next unlock opens.
   $: openWallet = initialized ? walletKey : "";
@@ -61,3 +79,10 @@
     <slot />
   {/key}
 </Shell>
+
+{#if $sendPasswordAsk}
+  <!-- A dialog per ask: what's typed for one doesn't stay for the next. -->
+  {#key $sendPasswordAsk}
+    <SendPasswordDialog ask={$sendPasswordAsk} />
+  {/key}
+{/if}

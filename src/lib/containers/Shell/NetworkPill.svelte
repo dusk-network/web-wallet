@@ -147,6 +147,13 @@
     }
   }
 
+  /* A thumb's. What the style sheets ask for can't reach past the reset above. */
+  @media (max-width: 47.99rem), (pointer: coarse) {
+    .network-pill__button {
+      height: 44px;
+    }
+  }
+
   @media (max-width: 26.24rem) {
     .network-pill__button {
       justify-content: center;

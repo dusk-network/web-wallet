@@ -3,7 +3,7 @@
   import { activityState, isHistoryEnabled } from "$lib/activity";
   import { HistoryView } from "$lib/containers/History";
   import { appPath } from "$lib/containers/Shell";
-  import { goto } from "$lib/navigation";
+  import { sheetStep } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import { profileLabel } from "$lib/wallet";
   import { openProfileNames } from "$lib/wallets";
@@ -40,16 +40,17 @@
     );
 
   /**
-   * Goes to History as `next` says, in place of the address now.
+   * Goes to History as `next` says: a step of its own in the browser's history
+   * as details open, so that Back closes them.
    *
    * @param {URL} next
    */
-  const replace = (next) =>
-    goto(`${appPath(next.pathname)}${next.search}`, {
-      keepFocus: true,
-      noScroll: true,
-      replaceState: true,
-    });
+  const go = (next) =>
+    sheetStep(
+      `${appPath(next.pathname)}${next.search}`,
+      Number(url.searchParams.has("tx")),
+      Number(next.searchParams.has("tx"))
+    );
 
   /**
    * Opens a transaction's details, or closes them, in the address.
@@ -69,7 +70,7 @@
       next.searchParams.delete("tx");
     }
 
-    replace(next);
+    go(next);
   }
 
   /**
@@ -89,7 +90,7 @@
       }
     }
 
-    replace(next);
+    go(next);
   }
 
   $: ({ url } = $page);
@@ -127,9 +128,9 @@
     on:filter={(event) => filter(event.detail)}
     on:select={(event) => select(event.detail)}
     {privacy}
-    profileIndex={currentProfile ? profiles.indexOf(currentProfile) : 0}
     {range}
     selected={url.searchParams.get("tx")}
+    shieldedAddress={currentProfile ? String(currentProfile.address) : ""}
     state={$activityState}
   />
 {:else}

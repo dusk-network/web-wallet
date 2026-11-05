@@ -92,6 +92,60 @@ afterEach(() => {
 });
 
 describe("ActivitySession", () => {
+  it("reads the whole history for what can't be said from part of it, past the rows shown, with each one's time", async () => {
+    fakeArchive({ finalized: FINALIZED });
+
+    const shielded = vi.fn(async () => ({ entries: [shieldedEntry] }));
+    const session = sessionFor({ shielded });
+    const { rows, shieldedWaiting } = await session.whole();
+    const count = [...accounts[A].sender, ...accounts[A].receiver].length;
+
+    expect(rows.filter(({ source }) => source !== "shielded").length).toBe(
+      new Set(
+        [...accounts[A].sender, ...accounts[A].receiver].map(
+          (entry) => entry.origin
+        )
+      ).size
+    );
+    expect(count).toBeGreaterThan(0);
+    expect(rows.every(({ incomplete }) => !incomplete)).toBe(true);
+    expect(rows.map(({ hash }) => hash)).toContain(shieldedEntry.hash);
+    expect(shieldedWaiting).toBe(false);
+  });
+
+  it("says a shielded history that couldn't be read, or isn't whole, is still to come, and asks for none for the public side alone", async () => {
+    fakeArchive({ finalized: FINALIZED });
+
+    const shielded = vi.fn(async () => ({ entries: [], pending: true }));
+    const session = sessionFor({ shielded });
+
+    await expect(session.whole()).resolves.toMatchObject({
+      shieldedWaiting: true,
+    });
+
+    shielded.mockRejectedValueOnce(new Error("not synced"));
+
+    await expect(session.whole()).resolves.toMatchObject({
+      shieldedWaiting: true,
+    });
+
+    shielded.mockClear();
+    await session.whole({ publicOnly: true });
+
+    expect(shielded).not.toHaveBeenCalled();
+  });
+
+  it("gives nothing of the whole history once another profile took over", async () => {
+    fakeArchive({ finalized: FINALIZED });
+
+    const session = sessionFor();
+    const reading = session.whole();
+
+    session.stop();
+
+    await expect(reading).rejects.toThrow();
+  });
+
   it("paints the kept history at once, then syncs, names the counterparties and adds the shielded history", async () => {
     const node = fakeArchive({ finalized: 4_656_000 });
     const sender = entryOfA(4657992).events[0].data.sender;
@@ -357,6 +411,62 @@ describe("ActivitySession", () => {
       source: "shielded",
       status: "executed",
     });
+  });
+
+  it("looks for a send every few seconds at first, and less often once it's been a while", async () => {
+    fakeArchive();
+
+    const session = sessionFor();
+
+    await session.start();
+
+    vi.useFakeTimers({
+      now: Date.now(),
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+    });
+
+    try {
+      const refresh = vi.spyOn(session, "refresh");
+
+      await session.recordSent({
+        amount: "2000000000",
+        hash: "ab".repeat(32),
+        kind: "transfer",
+        memo: "",
+        privacy: "public",
+        to: B,
+      });
+
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS - 1);
+
+      expect(refresh).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(refresh).toHaveBeenCalledOnce();
+
+      await vi.waitFor(() => expect(vi.getTimerCount()).toBeGreaterThan(0));
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+
+      expect(refresh).toHaveBeenCalledTimes(2);
+
+      // Past two minutes with no sign of it: as often as before.
+      vi.setSystemTime(Date.now() + 120_000);
+      await vi.waitFor(() => expect(vi.getTimerCount()).toBeGreaterThan(0));
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+      await vi.waitFor(() => expect(vi.getTimerCount()).toBeGreaterThan(0));
+      refresh.mockClear();
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+
+      expect(refresh).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(sessions.AFTER_TX_MS);
+
+      expect(refresh).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+      session.stop();
+    }
   });
 
   it("tells nobody anything once stopped", async () => {
