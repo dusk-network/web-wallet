@@ -212,6 +212,58 @@ describe("the password on big sends", () => {
     await expect(elsewhere).rejects.toBeInstanceOf(SendPasswordDeclinedError);
   });
 
+  it("leaves a newer ask alone when an older one's check ends after that was cancelled, and that send still goes on the password", async () => {
+    await vault.clear();
+
+    const { id } = await vault.setUp(PHRASE, PASSWORD);
+
+    /** @type {PromiseWithResolvers<void>} */
+    const checking = Promise.withResolvers();
+    const checkSpy = vi
+      .spyOn(vault, "check")
+      .mockImplementationOnce(async () => checking.promise);
+    const older = sendPasswordFor(2n * DUSK, id);
+    const answering = asked()?.answer(PASSWORD);
+
+    // Escape, with the check still running, and another send asking.
+    asked()?.cancel();
+
+    await expect(older).rejects.toBeInstanceOf(SendPasswordDeclinedError);
+
+    const newer = sendPasswordFor(3n * DUSK, id);
+    const newerAsk = asked();
+
+    checking.resolve();
+    await answering;
+
+    expect(asked()).toBe(newerAsk);
+
+    checkSpy.mockRestore();
+    await newerAsk?.answer(PASSWORD);
+
+    expect(asked()).toBeNull();
+    await expect(newer).resolves.toBeUndefined();
+  });
+
+  it("leaves a newer ask alone when an older one is cancelled again", async () => {
+    await vault.clear();
+
+    const { id } = await vault.setUp(PHRASE, PASSWORD);
+    const older = sendPasswordFor(2n * DUSK, id);
+    const olderAsk = asked();
+    const newer = sendPasswordFor(3n * DUSK, id);
+    const newerAsk = asked();
+
+    await expect(older).rejects.toBeInstanceOf(SendPasswordDeclinedError);
+
+    olderAsk?.cancel();
+
+    expect(asked()).toBe(newerAsk);
+
+    newerAsk?.cancel();
+    await expect(newer).rejects.toBeInstanceOf(SendPasswordDeclinedError);
+  });
+
   it("asks nothing while it's off, as it is unless it's turned on", async () => {
     setSendPasswordLimit(null);
 

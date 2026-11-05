@@ -96,18 +96,34 @@ export const isApproved = async (route, owner, amountLux) =>
 
 /**
  * Revokes what the migration contract may take from `owner`: a transaction the
- * EVM wallet signs, approving nothing, once it's in a block.
+ * EVM wallet signs, approving nothing, once it's in a block. With the chain
+ * saying it's used up or revoked elsewhere since it was read, there's nothing
+ * to sign. Nothing is asked of the wallet once the wallet here, or the screen
+ * that says what's going on, is gone.
  *
  * @param {{
  *   onInBlock?: () => void,
  *   owner: `0x${string}`,
  *   route: import("./cardRoutes").CardRoute & { kind: "migration" },
+ *   stillHere?: () => void,
  * }} revoke
  * @returns {Promise<void>}
  */
-export async function revokeApproval({ onInBlock = () => {}, owner, route }) {
+export async function revokeApproval({
+  onInBlock = () => {},
+  owner,
+  route,
+  stillHere = () => {},
+}) {
   const { chainId, name, token } = route.chain;
+  const walletStillOpen = walletStore.whileOpen();
 
+  if ((await approvedWei(route, owner).catch(() => 1n)) === 0n) {
+    return;
+  }
+
+  walletStillOpen();
+  stillHere();
   stillOnAccount(owner);
 
   const hash = await approve(

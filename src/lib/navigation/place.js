@@ -169,13 +169,24 @@ export function formDraft(name) {
   /** @type {string | null} */
   let owner = null;
 
-  const clear = () => kept.remove(key);
+  /**
+   * What's kept now.
+   *
+   * @type {Record<string, unknown> | null}
+   */
+  let held = null;
+
+  const clear = () => {
+    held = null;
+    kept.remove(key);
+  };
 
   /** @param {Record<string, unknown>} values */
   const write = (values) => {
     if (isEmpty(values)) {
       clear();
     } else if (owner) {
+      held = values;
       kept.write(
         key,
         JSON.stringify({ owner, values: withoutPhrases(values) })
@@ -183,7 +194,20 @@ export function formDraft(name) {
     }
   };
 
+  // A form stays open through a switch of profile, with what's typed in it: a
+  // lock or a reload comes back on that profile, so that's who it's kept for.
+  const stopFollowing = walletStore.subscribe(() => {
+    const now = draftOwner();
+
+    if (held && now && now !== owner) {
+      owner = now;
+      write(held);
+    }
+  });
+
   onDestroy(() => {
+    stopFollowing();
+
     if (!isKept && get(walletStore).initialized) {
       clear();
     }

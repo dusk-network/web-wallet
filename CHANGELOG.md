@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Count a withdrawal's fee in what the password on big sends goes by
+- Ask nothing of the EVM wallet for a Revoke once the wallet locked or switched, or the screen was left, while what's approved was read again
+- Keep what's typed in a form through a switch of profile, for the lock or reload after it
 - Stop "Connecting to the network…" spinning without end when the node doesn't answer: say so after five seconds, offer Try again, and report it after ten
 - Open a new connection on Try again, instead of waiting for the one that didn't answer
 - Take half the time to connect on a first visit

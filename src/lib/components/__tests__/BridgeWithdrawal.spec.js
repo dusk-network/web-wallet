@@ -27,6 +27,11 @@ import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { PAID } from "$lib/bridge/__tests__/fixtures/withdrawal-recipient";
 
 const mocks = vi.hoisted(() => ({
+  estimateGas: vi.fn(
+    /** @returns {Promise<bigint>} */ () =>
+      Promise.reject(new Error("No estimate"))
+  ),
+  getGasPrice: vi.fn(async () => 1n),
   sendTransaction: vi.fn(),
   switchChain: vi.fn(),
 }));
@@ -61,6 +66,8 @@ vi.mock("$lib/web3/walletConnection", async () => {
 
 vi.mock("@wagmi/core", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
+  estimateGas: mocks.estimateGas,
+  getGasPrice: mocks.getGasPrice,
   sendTransaction: mocks.sendTransaction,
   switchChain: mocks.switchChain,
 }));
@@ -306,6 +313,57 @@ describe("Bridge withdrawal", () => {
       await vi.waitFor(() =>
         expect(mocks.sendTransaction).toHaveBeenCalledOnce()
       );
+    });
+
+    describe("with the fee counted, in DUSK as it's paid", () => {
+      const AMOUNT = 1_000_000_000n;
+      const RESERVE = 10_000_000n;
+
+      /**
+       * Whether a withdrawal of 1 DUSK asks, with `limit` as the amount chosen:
+       * asking shows before anything's asked of the EVM wallet.
+       *
+       * @param {bigint} limit
+       */
+      async function asksAt(limit) {
+        setSendPasswordLimit(limit);
+        await sendWithdrawal();
+        await vi.waitFor(() =>
+          expect(
+            get(sendPasswordAsk) ?? mocks.sendTransaction.mock.calls[0]
+          ).toBeTruthy()
+        );
+
+        const asked = get(sendPasswordAsk) !== null;
+
+        cancelSendPassword();
+        cleanup();
+        mocks.sendTransaction.mockClear();
+
+        return asked;
+      }
+
+      it("asks for an amount at the limit, as the fee takes it above that", async () => {
+        expect(await asksAt(AMOUNT)).toBe(true);
+      });
+
+      it("goes by the most a fee is taken to be with no estimate, as Max does", async () => {
+        expect(await asksAt(AMOUNT + RESERVE - 1n)).toBe(true);
+        expect(await asksAt(AMOUNT + RESERVE)).toBe(false);
+      });
+
+      it("goes by twice the estimate, in whole lux, as the EVM wallet sets what it pays", async () => {
+        // 0.02 DUSK and a wei: twice that is above what's taken with no estimate.
+        mocks.estimateGas.mockResolvedValue(20_000_000_000_000_001n);
+
+        try {
+          expect(await asksAt(AMOUNT + 40_000_000n)).toBe(true);
+          expect(await asksAt(AMOUNT + 40_000_001n)).toBe(false);
+        } finally {
+          mocks.estimateGas.mockReset();
+          mocks.estimateGas.mockRejectedValue(new Error("No estimate"));
+        }
+      });
     });
 
     it("says nothing was sent when it isn't given, and offers to try again", async () => {

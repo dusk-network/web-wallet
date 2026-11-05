@@ -88,17 +88,29 @@ export function sendPasswordFor(lux, wallet) {
   cancelSendPassword();
 
   return new Promise((resolve, reject) => {
-    asking.set({
+    /** Only this ask, while it's the one asking: another may have taken over. */
+    const stopAsking = () => {
+      if (get(asking) === ask) {
+        asking.set(null);
+      }
+    };
+
+    /** @type {SendPasswordAsk} */
+    const ask = {
       async answer(password) {
         await vault.check(password, wallet);
-        asking.set(null);
+
+        // Cancelled during the check, it has been rejected already.
+        stopAsking();
         resolve();
       },
       cancel(reason = new SendPasswordDeclinedError()) {
-        asking.set(null);
+        stopAsking();
         reject(reason);
       },
       limit,
-    });
+    };
+
+    asking.set(ask);
   });
 }

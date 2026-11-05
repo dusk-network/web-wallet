@@ -203,6 +203,13 @@
     left = true;
   });
 
+  /** For what acts after it waits, right before it asks the wallet. */
+  function stillHere() {
+    if (left) {
+      throw new Error("The screen was left.");
+    }
+  }
+
   /** Whether what failed can't have gone out, so it can be tried again. */
   let canGoBack = false;
 
@@ -320,16 +327,14 @@
     revoking = "signing";
 
     try {
-      // Used up or revoked elsewhere since it was read: nothing to sign.
-      if ((await approvedWei(route, owner).catch(() => 1n)) > 0n) {
-        await revokeApproval({
-          onInBlock: () => {
-            revoking = "in-block";
-          },
-          owner,
-          route,
-        });
-      }
+      await forThisWallet(revokeApproval)({
+        onInBlock: () => {
+          revoking = "in-block";
+        },
+        owner,
+        route,
+        stillHere,
+      });
 
       note = "The approval is revoked.";
     } catch (error) {
@@ -528,11 +533,7 @@
       owner,
       recipient,
       route,
-      stillHere() {
-        if (left) {
-          throw new Error("The screen was left.");
-        }
-      },
+      stillHere,
     }).catch(async (error) => {
       if (stoppedBy(error)) {
         return "";

@@ -306,6 +306,21 @@
    */
   const evmLux = (balance) => balance.value / EVM_TO_LUX_SCALE_FACTOR;
 
+  /**
+   * The most a withdrawal's fee is taken to be, in whole LUX, for what the
+   * password goes by: the EVM wallet sets what it pays, in DUSK. Twice the
+   * estimate, as Max leaves, or what Max leaves with none, if that's more.
+   */
+  function withdrawalFeeBound() {
+    const estimated = (withdrawalFeeWei ?? 0n) * 2n;
+    const wei =
+      estimated > WITHDRAWAL_FEE_RESERVE_WEI
+        ? estimated
+        : WITHDRAWAL_FEE_RESERVE_WEI;
+
+    return (wei + EVM_TO_LUX_SCALE_FACTOR - 1n) / EVM_TO_LUX_SCALE_FACTOR;
+  }
+
   // What this screen sends, it sends from the wallet it was drawn for, and
   // keeps for that wallet.
   const forThisWallet = walletStore.forThisWallet();
@@ -321,8 +336,12 @@
       throw new Error("DuskEVM account is not available.");
     }
 
-    // Above the amount chosen in Settings, the password comes first.
-    await sendPasswordFor(amountLux, $walletStore.walletKey);
+    // Above the amount chosen in Settings, with its fee, the password comes
+    // first.
+    await sendPasswordFor(
+      amountLux + withdrawalFeeBound(),
+      $walletStore.walletKey
+    );
     stillOpen();
 
     // It pays this wallet's public account.

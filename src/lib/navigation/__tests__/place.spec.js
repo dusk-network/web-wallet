@@ -81,6 +81,17 @@ async function lockAndUnlock() {
   await open();
 }
 
+/**
+ * The other profile from the top bar, with nothing typed since, then a lock or
+ * a reload, which comes back to that profile.
+ */
+async function switchProfileAndUnlock() {
+  await walletStore.setCurrentProfile(get(walletStore).profiles[1]);
+  walletStore.reset();
+  cleanup();
+  await walletStore.init(generator, undefined, { profile: 1 });
+}
+
 /** Leaving the page in the wallet: the wallet stays open. */
 const leave = cleanup;
 
@@ -435,6 +446,19 @@ describe("Keeping what's typed in a form that moves money", () => {
       unstakeFee: 50_000_000n,
     };
 
+    it("keeps what's typed through a switch of profile with the form still open, for the profile a lock comes back to", async () => {
+      const typed = render(NativeStake, stakeProps);
+
+      await fireEvent.input(typed.getByLabelText("Stake amount"), {
+        target: { value: "1200" },
+      });
+      await switchProfileAndUnlock();
+
+      expect(
+        render(NativeStake, stakeProps).getByLabelText("Stake amount")
+      ).toHaveValue("1200");
+    });
+
     it("brings the amount back after a lock or a failed stake, and lets it go as it's staked", async () => {
       const typed = render(NativeStake, stakeProps);
 
@@ -517,6 +541,19 @@ describe("Keeping what's typed in a form that moves money", () => {
     };
     /** @type {any} */
     const liquidView = LiquidStake;
+
+    it("keeps what's typed through a switch of profile with the form still open, for the profile a lock comes back to", async () => {
+      const typed = render(liquidView, liquidProps);
+
+      await fireEvent.input(typed.getByLabelText("Stake amount"), {
+        target: { value: "7" },
+      });
+      await switchProfileAndUnlock();
+
+      expect(
+        render(liquidView, liquidProps).getByLabelText("Stake amount")
+      ).toHaveValue("7");
+    });
 
     it("brings back each tab's amount and the tab it was on, and lets them go as one is sent", async () => {
       const typed = render(liquidView, liquidProps);

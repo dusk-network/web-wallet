@@ -1029,6 +1029,75 @@ describe("the Bridge card's routes to and from other chains", () => {
         expect(mocks.approve).not.toHaveBeenCalled();
       });
 
+      describe("while what's approved is read again", () => {
+        /** @type {PromiseWithResolvers<bigint>} */
+        let reading;
+
+        /** Revoke pressed, with the chain's answer still to come. */
+        async function pressedRevoke() {
+          mocks.allowance.mockResolvedValue(HALF);
+
+          const view = await toRevoke();
+
+          reading = Promise.withResolvers();
+          mocks.allowance.mockReturnValueOnce(reading.promise);
+          await fireEvent.click(view.getByRole("button", { name: "Revoke" }));
+
+          return view;
+        }
+
+        /** The chain answers, and whatever follows it has its turn. */
+        async function chainAnswers() {
+          reading.resolve(HALF);
+          await new Promise((resolve) => setTimeout(resolve));
+        }
+
+        it("asks the EVM wallet for nothing once the screen was left", async () => {
+          const view = await pressedRevoke();
+
+          view.unmount();
+          await chainAnswers();
+
+          expect(mocks.approve).not.toHaveBeenCalled();
+        });
+
+        it("asks the EVM wallet for nothing once the wallet locked", async () => {
+          const generator = new ProfileGenerator(async () =>
+            crypto.getRandomValues(new Uint8Array(64))
+          );
+
+          await walletStore.init(generator);
+
+          try {
+            await pressedRevoke();
+            walletStore.reset();
+            await chainAnswers();
+
+            expect(mocks.approve).not.toHaveBeenCalled();
+          } finally {
+            walletStore.reset();
+          }
+        });
+
+        it("asks the EVM wallet for nothing once another wallet opened", async () => {
+          const generator = new ProfileGenerator(async () =>
+            crypto.getRandomValues(new Uint8Array(64))
+          );
+
+          await walletStore.init(generator);
+
+          try {
+            await pressedRevoke();
+            await walletStore.init(generator, undefined, { key: "another" });
+            await chainAnswers();
+
+            expect(mocks.approve).not.toHaveBeenCalled();
+          } finally {
+            walletStore.reset();
+          }
+        });
+      });
+
       it("takes no click for half a second once it shows", async () => {
         mocks.allowance.mockResolvedValue(HALF);
 
