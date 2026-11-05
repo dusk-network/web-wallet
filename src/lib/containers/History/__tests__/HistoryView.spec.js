@@ -155,7 +155,7 @@ describe("HistoryView", () => {
     expect(first).toHaveFocus();
   });
 
-  it("should say when rows aren't looked up yet, and that an export marks them", () => {
+  it("should say when rows aren't looked up yet", () => {
     const { getByRole } = render(HistoryView, {
       locale: "en",
       state: {
@@ -166,11 +166,8 @@ describe("HistoryView", () => {
     });
 
     expect(getByRole("status")).toHaveTextContent(
-      "Couldn't reach the network's history. A row has no date or fee yet. An export marks it \"Not looked up yet\"."
+      "Couldn't reach the network's history. A row has no date or fee yet."
     );
-    expect(
-      getByRole("checkbox", { name: /Include my contact names/ })
-    ).not.toBeChecked();
   });
 
   it("should name each row's button with its amount and date", () => {

@@ -8,19 +8,18 @@
   import { sidePanel } from "$lib/dusk/motion";
   import { pageTitle } from "$lib/navigation";
   import {
-    csvFileName,
     describeRow,
     fullDateTime,
     groupByDay,
     matchesFilters,
     timeLabel,
-    toCsv,
   } from "$lib/activity/present";
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import walletAccountNames from "$lib/wallets/accountNames";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
+  import ExportPanel from "./ExportPanel.svelte";
   import TransactionDetail from "./TransactionDetail.svelte";
 
   /** @type {import("$lib/activity/activitySession").ActivityState} */
@@ -36,8 +35,8 @@
   /** @type {{ address: string, label: string } | null} */
   export let account = null;
 
-  /** The profile the history is of, from 0, for the export's file name. */
-  export let profileIndex = 0;
+  /** That profile's shielded address, for the export. */
+  export let shieldedAddress = "";
 
   /** @type {string | null} */
   export let selected = null;
@@ -78,8 +77,8 @@
   /** @type {Record<string, string>} */
   const STATUS_WORDS = { pending: "Pending", unknown: "Not confirmed" };
 
-  /** Whether an export holds the user's own contact names. */
-  let withContacts = false;
+  /** Whether Export's panel shows. */
+  let isExportOpen = false;
 
   /**
    * Whether the details show, until they're gone: the list keeps their
@@ -90,23 +89,6 @@
   /** @param {ActivityRow} row */
   function select(row) {
     dispatch("select", row.hash === selected ? null : row.hash);
-  }
-
-  function exportCsv() {
-    const csv = toCsv(
-      shown.map(({ row }) => row),
-      context,
-      { withContacts }
-    );
-    const url = URL.createObjectURL(
-      new Blob([csv], { type: "text/csv;charset=utf-8" })
-    );
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = csvFileName({ network, profileIndex });
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   // When the proved withdrawals can be claimed, as the chain says.
@@ -146,8 +128,8 @@
   $: incompleteText = [
     state.error ? "Couldn't reach the network's history." : "",
     incomplete === 1
-      ? 'A row has no date or fee yet. An export marks it "Not looked up yet".'
-      : `${incomplete} rows have no date or fee yet. An export marks them "Not looked up yet".`,
+      ? "A row has no date or fee yet."
+      : `${incomplete} rows have no date or fee yet.`,
   ]
     .filter(Boolean)
     .join(" ");
@@ -170,26 +152,28 @@
     <header class="history__header">
       <h1 class="history__title" id="history-title" use:pageTitle>History</h1>
       <Button
-        disabled={!shown.length}
+        aria-expanded={isExportOpen}
+        disabled={!state.rows.length}
         icon={{ path: mdiTrayArrowDown }}
-        on:click={exportCsv}
+        on:click={() => {
+          isExportOpen = !isExportOpen;
+        }}
         size="small"
-        text="Export CSV"
+        text="Export"
         variant="secondary"
       />
     </header>
-    <p class="history__note">
-      Shown in your local time. An export holds the rows listed, with memos and
-      .dusk names, and dates in UTC and local time.
-    </p>
-    <label class="history__option">
-      <input
-        bind:checked={withContacts}
-        type="checkbox"
-        class="dusk-checkbox"
+    {#if isExportOpen}
+      <ExportPanel
+        {account}
+        {network}
+        onSaved={() => {
+          isExportOpen = false;
+        }}
+        {shieldedAddress}
       />
-      Include my contact names in the export, in their own column
-    </label>
+    {/if}
+    <p class="history__note">Shown in your local time.</p>
     {#if incomplete}
       <p class="history__incomplete" role="status">
         {incompleteText}
@@ -410,16 +394,6 @@
     margin-top: 0.375rem;
     color: var(--calm-muted);
     font-size: 0.8125rem;
-  }
-
-  .history__option {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: 2.75rem;
-    color: var(--calm-muted);
-    font-size: 0.8125rem;
-    cursor: pointer;
   }
 
   .history__incomplete {

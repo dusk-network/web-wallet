@@ -128,9 +128,9 @@
     on:filter={(event) => filter(event.detail)}
     on:select={(event) => select(event.detail)}
     {privacy}
-    profileIndex={currentProfile ? profiles.indexOf(currentProfile) : 0}
     {range}
     selected={url.searchParams.get("tx")}
+    shieldedAddress={currentProfile ? String(currentProfile.address) : ""}
     state={$activityState}
   />
 {:else}

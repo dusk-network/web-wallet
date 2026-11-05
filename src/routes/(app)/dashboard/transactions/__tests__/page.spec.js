@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   goto: vi.fn(),
   loadDetail: vi.fn(() => Promise.resolve()),
   showMore: vi.fn(() => Promise.resolve()),
+  sozuFacts: vi.fn(() => Promise.resolve(new Map())),
+  whole: vi.fn(),
 }));
 
 const stores = vi.hoisted(() => ({
@@ -71,6 +73,8 @@ vi.mock("$lib/stores", async (importOriginal) => {
       startHistory: () => ({
         loadDetail: mocks.loadDetail,
         showMore: mocks.showMore,
+        sozuFacts: mocks.sozuFacts,
+        whole: mocks.whole,
       }),
     },
   };
@@ -397,45 +401,227 @@ describe("History", () => {
     expect(mocks.showMore).toHaveBeenCalledOnce();
   });
 
-  it("exports the rows shown as CSV, named as the extension names its own, by the day here", async () => {
+  describe("Export", () => {
     /** @type {Blob[]} */
-    const blobs = [];
+    let blobs;
+
     /** @type {string[]} */
-    const names = [];
+    let names;
 
-    vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
-      blobs.push(/** @type {Blob} */ (blob));
+    beforeEach(() => {
+      blobs = [];
+      names = [];
+      mocks.whole.mockResolvedValue({ rows, shieldedWaiting: false });
+      vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
+        blobs.push(/** @type {Blob} */ (blob));
 
-      return "blob:history";
+        return "blob:history";
+      });
+      vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+        /** @this {HTMLAnchorElement} */
+        function () {
+          names.push(this.download);
+        }
+      );
     });
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-      /** @this {HTMLAnchorElement} */
-      function () {
-        names.push(this.download);
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      mocks.whole.mockReset();
+    });
+
+    /** Opens Export, and gives the page's controls. */
+    async function openExport() {
+      const view = render(History);
+
+      await fireEvent.click(view.getByRole("button", { name: "Export" }));
+
+      return view;
+    }
+
+    /** The file saved last, by its columns. */
+    async function fileSaved() {
+      await vi.waitFor(() => expect(blobs).not.toHaveLength(0));
+
+      const [head, ...lines] = (await /** @type {Blob} */ (blobs.at(-1)).text())
+        .replace(/^\uFEFF/, "")
+        .trimEnd()
+        .split("\r\n");
+
+      return { head: head.split(","), lines };
+    }
+
+    it("saves the file a tax tool reads, of all the history read whole, in UTC, named after the profile, and closes", async () => {
+      const { getByRole, queryByRole } = await openExport();
+
+      expect(getByRole("button", { name: "Export" })).toHaveAttribute(
+        "aria-expanded",
+        "true"
+      );
+
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+
+      const { head, lines } = await fileSaved();
+
+      expect(head.slice(0, 3)).toStrictEqual([
+        "Date",
+        "Sent Amount",
+        "Sent Currency",
+      ]);
+      expect(head).toContain("Internal Transfer");
+      expect(lines.join("\n")).toContain("Order 1042");
+      expect(lines[0]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},/);
+      expect(names).toStrictEqual(["dusk-profile-testnet-all.csv"]);
+      expect(mocks.whole).toHaveBeenCalledOnce();
+
+      await vi.waitFor(() =>
+        expect(queryByRole("button", { name: "Save CSV" })).toBeNull()
+      );
+    });
+
+    it("starts with a BOM only for Excel, and adds contact names only as asked", async () => {
+      saveContact({ address: ALICE, name: "Alice Rent" });
+      mocks.whole.mockResolvedValue({
+        rows: rowsOf([
+          {
+            amount: "1000000000",
+            blockHeight: 4_687_700,
+            hash: "d4".repeat(32),
+            privacy: "public",
+            source: "both",
+            status: "executed",
+            timestamp: NOW - 1000,
+            to: ALICE,
+          },
+        ]),
+        shieldedWaiting: false,
+      });
+
+      const { getByRole } = await openExport();
+
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+
+      await vi.waitFor(() => expect(names).toHaveLength(1));
+
+      const first = new Uint8Array(await blobs[0].arrayBuffer());
+
+      expect(Array.from(first.slice(0, 3))).not.toStrictEqual([
+        0xef, 0xbb, 0xbf,
+      ]);
+      expect(await blobs[0].text()).not.toContain("Alice Rent");
+
+      await fireEvent.click(getByRole("button", { name: "Export" }));
+      await fireEvent.click(
+        getByRole("checkbox", { name: /Add my contact names/ })
+      );
+      await fireEvent.click(getByRole("checkbox", { name: /^For Excel/ }));
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+      await vi.waitFor(() => expect(names).toHaveLength(2));
+
+      const second = new Uint8Array(await blobs[1].arrayBuffer());
+
+      expect(Array.from(second.slice(0, 3))).toStrictEqual([0xef, 0xbb, 0xbf]);
+      expect(await blobs[1].text()).toContain("Alice Rent");
+    });
+
+    it("holds a quarter or the dates chosen, and says so, saving nothing, with nothing in them", async () => {
+      const { findByRole, getByLabelText, getByRole } = await openExport();
+
+      await fireEvent.change(getByRole("combobox", { name: "Period" }), {
+        target: { value: "dates" },
+      });
+
+      // Both days first.
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+
+      expect(await findByRole("alert")).toHaveTextContent("Choose both days.");
+      expect(mocks.whole).not.toHaveBeenCalled();
+
+      await fireEvent.input(getByLabelText("From"), {
+        target: { value: "2020-01-01" },
+      });
+      await fireEvent.input(getByLabelText("To"), {
+        target: { value: "2020-03-31" },
+      });
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+      await vi.waitFor(() =>
+        expect(getByRole("alert")).toHaveTextContent(
+          "There's nothing in that period, so nothing was saved."
+        )
+      );
+      expect(blobs).toHaveLength(0);
+
+      // This quarter holds what was sent a minute ago.
+      await fireEvent.change(getByRole("combobox", { name: "Period" }), {
+        target: {
+          value: `${new Date(NOW).getFullYear()}-${Math.floor(new Date(NOW).getMonth() / 3) + 1}`,
+        },
+      });
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+
+      const { lines } = await fileSaved();
+
+      expect(lines.join("\n")).toContain("Order 1042");
+      expect(names[0]).toMatch(/-\d{4}-q[1-4](-testnet)?\.csv$/);
+    });
+
+    it("says it can't read the whole history, and saves nothing half read", async () => {
+      mocks.whole.mockRejectedValueOnce(new Error("fetch failed"));
+
+      const { findByRole, getByRole } = await openExport();
+
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+
+      expect(await findByRole("alert")).toHaveTextContent(
+        "Couldn't read your whole history from this node, so nothing was saved. Try again."
+      );
+      expect(blobs).toHaveLength(0);
+    });
+
+    it("asks CoinGecko only when euros are asked for, for no more than times, and says what has no value", async () => {
+      const prices = vi.fn((/** @type {string} */ url) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              prices: String(url).includes("coingecko")
+                ? [[NOW - 60_000, 0.25]]
+                : [],
+            })
+          )
+        )
+      );
+
+      vi.stubGlobal("fetch", prices);
+
+      const { getByRole } = await openExport();
+
+      prices.mockClear();
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+      await vi.waitFor(() => expect(names).toHaveLength(1));
+
+      expect(prices).not.toHaveBeenCalled();
+
+      await fireEvent.click(getByRole("button", { name: "Export" }));
+      await fireEvent.click(getByRole("checkbox", { name: /in euros/ }));
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+      await vi.waitFor(() => expect(names).toHaveLength(2));
+
+      const asked = prices.mock.calls.map(([url]) => String(url));
+
+      expect(asked.length).toBeGreaterThan(0);
+
+      for (const url of asked) {
+        expect(url).toMatch(
+          /^https:\/\/api\.coingecko\.com\/api\/v3\/coins\/dusk-network\/market_chart\/range\?vs_currency=eur&from=\d+&to=\d+$/
+        );
       }
-    );
 
-    await visit("/dashboard/transactions?kind=staking");
+      const text = await blobs[1].text();
 
-    const { getByRole } = render(History);
-
-    await fireEvent.click(getByRole("button", { name: "Export CSV" }));
-
-    const lines = (await blobs[0].text()).split("\r\n");
-    const now = new Date();
-    const today = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
-      .map((part) => String(part).padStart(2, "0"))
-      .join("-");
-
-    expect(lines).toHaveLength(2);
-    expect(lines[0]).toMatch(/^Date \(UTC\),Date \(local\),Block,/);
-    expect(lines[1]).toContain(`,${STAKED},out,Public,Staked (Staking),`);
-    expect(names).toStrictEqual([
-      expect.stringMatching(
-        new RegExp(`^dusk-activity-[a-z0-9-]+-profile-1-${today}\\.csv$`)
-      ),
-    ]);
+      expect(text).toContain(",EUR,");
+      vi.unstubAllGlobals();
+    });
   });
 
   it("says when there is nothing yet, or the history couldn't be read", async () => {

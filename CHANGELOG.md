@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Make History's Export the universal CSV tax tools read, of a quarter or chosen dates, in UTC, named after the profile, with transfers between your profiles marked and stakes with Sozu as trades; euro values from CoinGecko for the past year and a BOM for Excel on request
 - Review a send or a stake before it goes, at every screen width: the first press no longer sends
 - Say on the review of a stake with Sozu that its deposit fee doesn't come back, and how much it is
 

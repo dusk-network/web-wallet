@@ -92,6 +92,60 @@ afterEach(() => {
 });
 
 describe("ActivitySession", () => {
+  it("reads the whole history for what can't be said from part of it, past the rows shown, with each one's time", async () => {
+    fakeArchive({ finalized: FINALIZED });
+
+    const shielded = vi.fn(async () => ({ entries: [shieldedEntry] }));
+    const session = sessionFor({ shielded });
+    const { rows, shieldedWaiting } = await session.whole();
+    const count = [...accounts[A].sender, ...accounts[A].receiver].length;
+
+    expect(rows.filter(({ source }) => source !== "shielded").length).toBe(
+      new Set(
+        [...accounts[A].sender, ...accounts[A].receiver].map(
+          (entry) => entry.origin
+        )
+      ).size
+    );
+    expect(count).toBeGreaterThan(0);
+    expect(rows.every(({ incomplete }) => !incomplete)).toBe(true);
+    expect(rows.map(({ hash }) => hash)).toContain(shieldedEntry.hash);
+    expect(shieldedWaiting).toBe(false);
+  });
+
+  it("says a shielded history that couldn't be read, or isn't whole, is still to come, and asks for none for the public side alone", async () => {
+    fakeArchive({ finalized: FINALIZED });
+
+    const shielded = vi.fn(async () => ({ entries: [], pending: true }));
+    const session = sessionFor({ shielded });
+
+    await expect(session.whole()).resolves.toMatchObject({
+      shieldedWaiting: true,
+    });
+
+    shielded.mockRejectedValueOnce(new Error("not synced"));
+
+    await expect(session.whole()).resolves.toMatchObject({
+      shieldedWaiting: true,
+    });
+
+    shielded.mockClear();
+    await session.whole({ publicOnly: true });
+
+    expect(shielded).not.toHaveBeenCalled();
+  });
+
+  it("gives nothing of the whole history once another profile took over", async () => {
+    fakeArchive({ finalized: FINALIZED });
+
+    const session = sessionFor();
+    const reading = session.whole();
+
+    session.stop();
+
+    await expect(reading).rejects.toThrow();
+  });
+
   it("paints the kept history at once, then syncs, names the counterparties and adds the shielded history", async () => {
     const node = fakeArchive({ finalized: 4_656_000 });
     const sender = entryOfA(4657992).events[0].data.sender;
