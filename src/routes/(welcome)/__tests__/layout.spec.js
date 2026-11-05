@@ -132,6 +132,27 @@ describe("The welcome screens' layout", () => {
     expect(getByText(SLOW_WORDS)).toBeInTheDocument();
   });
 
+  it("says a new try is slow when the one before ends after it starts, as Try again stops it", async () => {
+    const before = Promise.withResolvers();
+
+    connect.mockReturnValueOnce(/** @type {any} */ (before.promise));
+
+    const { getByRole, getByText, queryByText } = render(WelcomeLayout);
+
+    await act(() => vi.advanceTimersByTime(5000));
+    await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+    before.reject(new Error("Stopped to try again"));
+    await act(() => vi.advanceTimersByTime(4999));
+
+    expect(queryByText(SLOW_WORDS)).toBeNull();
+
+    await act(() => vi.advanceTimersByTime(1));
+
+    expect(getByText(SLOW_WORDS)).toBeInTheDocument();
+    expect(getByRole("button", { name: "Try again" })).toBeEnabled();
+  });
+
   it("goes on as soon as a new try gets through, whatever came of the one before", async () => {
     renderWithSimpleContent(WelcomeLayout, {});
 

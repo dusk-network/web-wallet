@@ -22,13 +22,16 @@
    * @param {() => Promise<unknown>} toConnect
    */
   function connectWith(toConnect) {
-    const noWordNeeded = () => clearTimeout(slowTimer);
-
-    noWordNeeded();
+    clearTimeout(slowTimer);
     isSlow = false;
-    slowTimer = setTimeout(() => {
+
+    // This try's own: one stopped for the next ends after that one starts.
+    const timer = setTimeout(() => {
       isSlow = true;
     }, QUIET_FOR);
+    const noWordNeeded = () => clearTimeout(timer);
+
+    slowTimer = timer;
 
     const connected = Promise.all([toConnect(), networkStore.init()]);
 
