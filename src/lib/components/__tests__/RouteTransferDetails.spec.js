@@ -214,6 +214,21 @@ describe("A transfer's amounts, as its details say them", () => {
     ).toStrictEqual(["Sent 4 BEP20 DUSK", "You receive 4 DUSK"]);
   });
 
+  it("says nothing arrives of a transfer the bridge won't pay out, though it went through on Dusk, keeping what was sent and the fee", () => {
+    const lines = linesOf(
+      transferOut({
+        failure: "The memo isn't an address: the bridge can't pay it out",
+        stage: "failed",
+      }),
+      { rows: history, steps: new Map() }
+    );
+
+    expect(lines).toContain("Sent 3.053082083 DUSK");
+    expect(lines.some((line) => line?.startsWith("Network fee"))).toBe(true);
+    expect(lines.some((line) => line?.startsWith("You receive"))).toBe(false);
+    expect(lines.at(-1)).toMatch(/^Received 0 /);
+  });
+
   it("gives a deposit, and a withdrawal with what its proof and claim paid on Dusk", () => {
     expect(
       linesOf({

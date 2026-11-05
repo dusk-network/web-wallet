@@ -436,6 +436,12 @@ export function ledgerOf({ item, kind }, { locale, rows, steps }) {
       });
     default:
       return transferLedger({
+        // What the bridge won't pay out pays nothing, whatever its transaction
+        // did on Dusk.
+        arrival:
+          item.stage === "failed"
+            ? /** @type {any} */ ({ reason: "no-payout", state: "unknown" })
+            : null,
         bridgeFee: item.feeLux,
         locale,
         received:
