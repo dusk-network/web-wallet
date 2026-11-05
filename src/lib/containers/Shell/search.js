@@ -12,7 +12,6 @@ import {
   parseDusk,
   unclearAmount,
 } from "@dusk-network/app-core/amounts";
-import { displayText } from "@dusk-network/app-core/text";
 import { labelFor, networks } from "@dusk-network/networks";
 import { asDuskName, isDuskName } from "@duskdomains/sdk/names";
 
