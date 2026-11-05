@@ -63,6 +63,10 @@
   /** @type {bigint} */
   export let unshieldedBalance;
 
+  // What's brought back as the form opens is read in it, before what follows
+  // it is.
+  let { language } = $settingsStore;
+
   /**
    * An amount as its field shows it: every decimal, with the language's
    * decimal separator and no grouping.

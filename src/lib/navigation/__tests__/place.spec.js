@@ -747,6 +747,42 @@ describe("Keeping what's typed in a form that moves money", () => {
       unshieldedBalance: 1_000n * DUSK,
     };
 
+    it("starts its fields, and reads what it brings back, in the language set, whatever the browser's", async () => {
+      settingsStore.update((store) => ({ ...store, language: "de-DE" }));
+
+      try {
+        const typed = render(Allocate, {
+          ...allocateProps,
+          shieldedBalance: {
+            spendable: 2_000_123_000_000n,
+            value: 2_000_123_000_000n,
+          },
+        });
+
+        expect(navigator.language).not.toMatch(/^de/);
+        expect(
+          typed.getByRole("textbox", { name: "Shielded amount" })
+        ).toHaveValue("2000,123");
+
+        await fireEvent.input(
+          typed.getByRole("textbox", { name: "Shielded amount" }),
+          { target: { value: "2500,5" } }
+        );
+        await lockAndUnlock();
+
+        const back = render(Allocate, allocateProps);
+
+        expect(
+          back.getByRole("textbox", { name: "Shielded amount" })
+        ).toHaveValue("2500,5");
+        expect(
+          back.getByRole("textbox", { name: "Public amount" })
+        ).toHaveValue("499,5");
+      } finally {
+        settingsStore.reset();
+      }
+    });
+
     it("brings the amount back in the field it was typed in, the other worked out again, and lets it go as it's sent", async () => {
       const typed = render(Allocate, allocateProps);
 

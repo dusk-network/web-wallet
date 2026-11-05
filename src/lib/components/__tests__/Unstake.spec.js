@@ -70,6 +70,24 @@ describe("Unstake", () => {
     settingsStore.reset();
   });
 
+  it("should start with all it can take in the language set, whatever the browser's, for Next to take it", async () => {
+    settingsStore.update((store) => ({ ...store, language: "de-DE" }));
+
+    const { getByRole } = render(Unstake, {
+      ...baseProps,
+      availableBalance: 10_000_000_000_000n,
+      maxWithdrawAmount: 1_123_000_000n,
+      minStakeRequirement: 1_000_000_000n,
+      operationCtaIconPath: mdiDatabaseArrowDownOutline,
+      operationCtaLabel: "Unstake",
+      operationOverviewLabel: "Amount to unstake",
+    });
+
+    expect(navigator.language).not.toMatch(/^de/);
+    expect(getByRole("textbox", { name: /Amount/ })).toHaveValue("1,123");
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
   describe("Unstake operation", () => {
     const expectedExplorerLink = `/explorer/transactions/transaction?id=${lastTxId}`;
 

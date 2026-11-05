@@ -79,6 +79,9 @@
 
   const id = randomUUID();
 
+  // What's worked out as the form opens needs it before what follows it does.
+  let { language } = $settingsStore;
+
   /**
    * An amount in DUSK as the field shows it, with the language's decimal
    * separator.
