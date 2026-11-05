@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Stop two tabs on the Bridge asking the EVM wallet to switch networks without end: it's asked as a route opens or a wallet connects, and the card offers to switch
+- Show the DuskEVM balance on a withdrawal whichever chain the EVM wallet is on
 - Count a withdrawal's fee in what the password on big sends goes by
 - Ask nothing of the EVM wallet for a Revoke once the wallet locked or switched, or the screen was left, while what's approved was read again
 - Keep what's typed in a form through a switch of profile, for the lock or reload after it

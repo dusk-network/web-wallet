@@ -3,8 +3,8 @@
 <script>
   import { onDestroy } from "svelte";
   import { getBalance, watchBlocks } from "@wagmi/core";
-  import { askToSwitch, forgetChainRefusal } from "$lib/bridge/chainSwitch";
-  import { account, wagmiConfig } from "$lib/web3/walletConnection";
+  import { askToSwitch } from "$lib/bridge/chainSwitch";
+  import { account, duskEvm, wagmiConfig } from "$lib/web3/walletConnection";
   import { Bridge } from "$lib/components";
   import {
     gasPriceStore,
@@ -28,28 +28,27 @@
   let unwatchBalance = () => {};
 
   /**
-   * Reads the connected EVM wallet's balance on each new block of its chain,
-   * only while one is connected: without one there is nothing to read, and
-   * no block to ask for.
+   * Reads the connected EVM wallet's balance on DuskEVM on each new block
+   * there, only while one is connected: without one there is nothing to read,
+   * and no block to ask for. It's DuskEVM's whichever chain the wallet is on,
+   * as it may stay on another.
    *
-   * The watch names its chain and starts over when the wallet's chain
-   * changes: without a chain, wagmi swaps in a new watch on a chain change
-   * that stopping the first one leaves running.
+   * The watch names its chain: without one, wagmi swaps in a new watch on a
+   * chain change that stopping the first one leaves running.
    *
-   * @param {number | undefined} chainId The connected wallet's chain, if
-   *   one the page knows.
+   * @param {boolean} isConnected
    */
-  function watchBalance(chainId) {
+  function watchBalance(isConnected) {
     unwatchBalance();
-    unwatchBalance = chainId
+    unwatchBalance = isConnected
       ? watchBlocks(wagmiConfig, {
-          chainId,
+          chainId: duskEvm.id,
           async onBlock() {
-            if ($account.isConnected && $account.chainId && $account.address) {
+            if ($account.isConnected && $account.address) {
               try {
                 evmDuskBalance = await getBalance(wagmiConfig, {
                   address: $account.address,
-                  chainId: $account.chainId,
+                  chainId: duskEvm.id,
                 });
               } catch (e) {
                 console.error("getBalance failed", e);
@@ -61,33 +60,36 @@
       : () => {};
   }
 
-  /** Where the wallet was last asked to move from, and to. */
-  let askedFor = "";
+  /**
+   * The chain the wallet was last asked to be on.
+   *
+   * @type {number | undefined}
+   */
+  let askedFor;
 
   /**
-   * Keeps the wallet on the chain the route picked uses (a withdrawal's or a
-   * migration's), asking once each time it's elsewhere, whether the page knows
-   * that chain or not: none to keep while none is connected or the route needs
-   * no chain.
+   * Asks the wallet to move to the chain the route picked uses (a withdrawal's
+   * or a migration's), once, as the route opens or a wallet connects to it:
+   * none while none is connected or the route needs no chain. It's not asked
+   * back if it moves later: another tab may have moved it, and asking back
+   * would have that tab ask too, without end. The card offers to switch, and a
+   * withdrawal asks as it's sent.
    *
    * @param {boolean} connected
    * @param {number | undefined} now
    * @param {number | undefined} target
    */
   function keepOnChain(connected, now, target) {
-    const elsewhere = connected && target !== undefined && now !== target;
-    const key = elsewhere ? `${now}:${target}` : "";
+    const wanted = connected ? target : undefined;
 
-    if (key === askedFor) {
+    if (wanted === askedFor) {
       return;
     }
 
-    askedFor = key;
+    askedFor = wanted;
 
-    if (elsewhere) {
-      askToSwitch(/** @type {number} */ (target));
-    } else {
-      forgetChainRefusal();
+    if (wanted !== undefined && now !== wanted) {
+      askToSwitch(wanted);
     }
   }
 
@@ -101,8 +103,8 @@
 
   $: keepOnChain($account.isConnected, $account.chainId, evmChainId);
 
-  $: balanceChainId = $account.isConnected ? $account.chain?.id : undefined;
-  $: watchBalance(balanceChainId);
+  $: isWalletConnected = $account.isConnected;
+  $: watchBalance(isWalletConnected);
   $: ({ balance, currentProfile } = $walletStore);
   $: ({ customGasLimit, customGasPrice } = $settingsStore);
   $: gasSettings = getGasSettings(

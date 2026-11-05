@@ -40,7 +40,7 @@
     revokeApproval,
     sendMigration,
   } from "$lib/bridge/routeFlows";
-  import { askToSwitch, chainSwitchRefused } from "$lib/bridge/chainSwitch";
+  import { askToSwitch, isAskingToSwitch } from "$lib/bridge/chainSwitch";
   import { getMigrationFee, getNativeBalance } from "$lib/web3/migration";
   import { describeFailure, isDeclinedInWallet } from "$lib/transactions";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
@@ -613,9 +613,9 @@
     : !isConnected
       ? { label: "Connect an EVM wallet", ready: true }
       : chainId !== route.chain.chainId
-        ? $chainSwitchRefused
-          ? { label: `Switch to ${chainName}`, ready: true }
-          : { label: `Switching to ${chainName}…`, ready: false }
+        ? $isAskingToSwitch
+          ? { label: `Switching to ${chainName}…`, ready: false }
+          : { label: `Switch to ${chainName}`, ready: true }
         : balanceLux === undefined
           ? { label: "Checking the balance…", ready: false }
           : balanceLux === 0n
@@ -724,7 +724,7 @@
           {#if !isConnected}
             connect a wallet to see it
           {:else if balanceLux === undefined}
-            {$chainSwitchRefused ? "switch network to see it" : "checking"}
+            {$isAskingToSwitch ? "checking" : "switch network to see it"}
           {:else}
             <BalanceValue
               exact={formatDuskExact(balanceLux, language)}

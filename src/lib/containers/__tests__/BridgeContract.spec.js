@@ -249,15 +249,10 @@ describe("BridgeContract", () => {
     }
   );
 
-  it("should ask the wallet back each time it moves off the route's chain, known to the page or not, and only then", async () => {
+  it("should ask the wallet once to move to the route's chain as it connects, known to the page or not", async () => {
     const { unmount } = render(BridgeContract);
 
     await tick();
-    setAccount(CONNECTED);
-    await tick();
-
-    expect(switchChain).not.toHaveBeenCalled();
-
     setAccount({ ...CONNECTED, chain: undefined, chainId: 137 });
     await vi.waitFor(() => expect(switchChain).toHaveBeenCalledOnce());
     expect(switchChain).toHaveBeenLastCalledWith(evm.config, {
@@ -275,32 +270,76 @@ describe("BridgeContract", () => {
 
     expect(switchChain).toHaveBeenCalledOnce();
 
-    setAccount({ ...CONNECTED, chain: undefined, chainId: 42_161 });
-    await vi.waitFor(() => expect(switchChain).toHaveBeenCalledTimes(2));
-
+    // Gone and back, it's asked again.
     setAccount(DISCONNECTED);
     await tick();
     setAccount({ ...DISCONNECTED, chainId: 137 });
     await tick();
 
-    expect(switchChain).toHaveBeenCalledTimes(2);
+    expect(switchChain).toHaveBeenCalledOnce();
+
+    setAccount({ ...CONNECTED, chain: undefined, chainId: 137 });
+    await vi.waitFor(() => expect(switchChain).toHaveBeenCalledTimes(2));
 
     unmount();
   });
 
-  it("should ask for no block while the wallet is on a chain the page doesn't know", async () => {
-    setAccount({ ...CONNECTED, chain: undefined, chainId: 42_161 });
+  it("should not ask the wallet back when it moves elsewhere, as another tab would then ask too, without end", async () => {
+    const { unmount } = render(BridgeContract);
 
-    render(BridgeContract);
+    await tick();
+    setAccount(CONNECTED);
     await tick();
 
-    expect(watchBlocks).not.toHaveBeenCalled();
+    expect(switchChain).not.toHaveBeenCalled();
 
-    setAccount(CONNECTED);
+    // Another tab on another route moves it, and it's on the chain here again,
+    // and moves off once more.
+    for (const chainId of [56, CONNECTED.chainId, 56, 137]) {
+      setAccount({ ...CONNECTED, chain: { id: chainId }, chainId });
+      await tick();
+    }
+
+    expect(switchChain).not.toHaveBeenCalled();
+
+    unmount();
+  });
+
+  it("should ask the wallet's chain's blocks for nothing: the balance is DuskEVM's wherever the wallet is", async () => {
+    setAccount({ ...CONNECTED, chain: { id: SEPOLIA }, chainId: SEPOLIA });
+    evm.setChain(SEPOLIA);
+
+    render(BridgeContract);
     await tick();
 
     expect(evm.asking()).toEqual([
       { chainId: CONNECTED.chainId, stopped: false },
     ]);
+
+    await vi
+      .mocked(watchBlocks)
+      .mock.calls[0][1].onBlock(/** @type {any} */ ({}), undefined);
+
+    expect(getBalance).toHaveBeenCalledWith(evm.config, {
+      address: CONNECTED.address,
+      chainId: CONNECTED.chainId,
+    });
+  });
+
+  it("should keep one watch of DuskEVM's blocks as the wallet moves, known to the page or not", async () => {
+    setAccount({ ...CONNECTED, chain: undefined, chainId: 42_161 });
+
+    render(BridgeContract);
+    await tick();
+
+    expect(evm.asking()).toEqual([
+      { chainId: CONNECTED.chainId, stopped: false },
+    ]);
+
+    setAccount(CONNECTED);
+    await tick();
+
+    expect(watchBlocks).toHaveBeenCalledOnce();
+    expect(evm.asking()).toHaveLength(1);
   });
 });

@@ -324,13 +324,13 @@ describe("the Bridge card's routes to and from other chains", () => {
 
     expect(direction(container)).toStrictEqual(["bsc", "duskDs"]);
 
-    // On another chain, the wallet is moved to BNB Smart Chain first.
+    // On another chain, the wallet has to move to BNB Smart Chain first.
     connect({ address: EVM, chainId: 1 });
     await tick();
 
     expect(
-      getByRole("button", { name: "Switching to BNB Smart Chain…" })
-    ).toBeDisabled();
+      getByRole("button", { name: "Switch to BNB Smart Chain" })
+    ).toBeEnabled();
 
     connect({ address: EVM, chainId: 56 });
 
@@ -2051,7 +2051,8 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       expect(again).toBeEnabled();
 
-      mocks.switchChain.mockResolvedValueOnce({ id: 56 });
+      // Waiting for the wallet to answer.
+      mocks.switchChain.mockReturnValueOnce(new Promise(() => {}));
       await fireEvent.click(again);
 
       expect(mocks.switchChain).toHaveBeenCalledTimes(2);
@@ -2060,6 +2061,13 @@ describe("the Bridge card's routes to and from other chains", () => {
           getByRole("button", { name: "Switching to BNB Smart Chain…" })
         ).toBeDisabled()
       );
+
+      // Asking again takes over from the ask left without an answer.
+      await askToSwitch(56);
+
+      expect(
+        await findByRole("button", { name: "Switch to BNB Smart Chain" })
+      ).toBeEnabled();
     });
 
     it("moves focus to the review, and says each step where a screen reader hears it", async () => {
