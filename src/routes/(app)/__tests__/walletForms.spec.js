@@ -8,6 +8,7 @@ import { addWallet, switchToWallet, unlockWallets } from "$lib/wallets";
 import { readDirectory } from "$lib/wallets/directory";
 
 import AddWalletInLayout from "./AddWalletInLayout.svelte";
+import SendInLayout from "./SendInLayout.svelte";
 
 // Each wallet's profiles their own accounts, as on the network.
 vi.mock("$lib/mocks/ProtocolDriver", async (importOriginal) => ({
@@ -90,5 +91,61 @@ describe("A wallet form in the app", () => {
 
     await vi.waitFor(() => expect(queryByLabelText("Word 1")).toBeNull());
     expect(getByRole("button", { name: /Import wallet/ })).toBeInTheDocument();
+  });
+
+  it("stages nothing typed for one wallet on another: Send starts empty, and stays so going back", async () => {
+    const RECIPIENT =
+      "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
+
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+
+    const [first] = vault.list() ?? [];
+    const second = await addWallet(B, PASSWORD);
+    const { getByRole } = render(SendInLayout, {
+      availableBalance: 1_000_000_000_000n,
+      execute: vi.fn(),
+      gasLimits: {
+        gasLimitLower: 10_000_000n,
+        gasLimitUpper: 2_900_000_000n,
+        gasPriceLower: 1n,
+      },
+      gasSettings: { gasLimit: 20_000_000n, gasPrice: 1n },
+      publicAddress: "own-public-account",
+      resolveName: vi.fn(),
+      shieldedAddress: "own-shielded-address",
+      shieldedBalance: 500_000_000_000n,
+    });
+    /** The form's fields, as they are now. */
+    const typed = () =>
+      ["To", "Amount", /^Memo/].map((name) =>
+        valueOf(getByRole("textbox", { name }))
+      );
+
+    await fireEvent.input(getByRole("textbox", { name: "To" }), {
+      target: { value: RECIPIENT },
+    });
+    await fireEvent.input(getByRole("textbox", { name: "Amount" }), {
+      target: { value: "2.5" },
+    });
+    await fireEvent.input(getByRole("textbox", { name: /^Memo/ }), {
+      target: { value: "Invoice 118" },
+    });
+
+    await vi.waitFor(() =>
+      expect(typed()).toStrictEqual([RECIPIENT, "2.5", "Invoice 118"])
+    );
+
+    const form = getByRole("textbox", { name: "To" });
+
+    await switchToWallet(first.id);
+
+    await vi.waitFor(() => expect(form).not.toBeInTheDocument());
+    expect(typed()).toStrictEqual(["", "", ""]);
+    expect(JSON.stringify({ ...sessionStorage })).not.toContain("Invoice 118");
+
+    await switchToWallet(second.id);
+
+    await vi.waitFor(() => expect(typed()).toStrictEqual(["", "", ""]));
   });
 });

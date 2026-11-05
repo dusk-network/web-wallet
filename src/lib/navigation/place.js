@@ -128,6 +128,19 @@ function draftOwner() {
 }
 
 /**
+ * Whether two owners are one wallet on one network, whichever its profile.
+ *
+ * @param {string} a
+ * @param {string} b
+ */
+function sameWallet(a, b) {
+  const [networkA, walletA] = JSON.parse(a);
+  const [networkB, walletB] = JSON.parse(b);
+
+  return networkA === networkB && walletA === walletB;
+}
+
+/**
  * Whether a draft's values hold nothing of what was typed.
  *
  * @param {Record<string, unknown>} values
@@ -198,12 +211,20 @@ export function formDraft(name) {
 
   // A form stays open through a switch of profile, with what's typed in it: a
   // lock or a reload comes back on that profile, so that's who it's kept for.
+  // Another wallet or network draws the page anew, and what was typed for this
+  // one goes: it's never staged on another.
   const stopFollowing = walletStore.subscribe(() => {
     const now = draftOwner();
 
-    if (held && now && now !== owner) {
+    if (!held || !now || now === owner) {
+      return;
+    }
+
+    if (owner && sameWallet(now, owner)) {
       owner = now;
       write(held);
+    } else {
+      clear();
     }
   });
 
@@ -255,14 +276,15 @@ export function formDraft(name) {
 
     /**
      * Keeps what's typed as it's typed. A wallet that locked keeps what it
-     * had: what a lock leaves showing isn't typed.
+     * had: what a lock leaves showing isn't typed. Nor is what a form drawn
+     * for another wallet still shows.
      *
      * @param {Record<string, unknown>} values
      */
     save(values) {
       const now = draftOwner();
 
-      if (now) {
+      if (now && (!owner || sameWallet(now, owner))) {
         owner = now;
         isKept = false;
         write(values);
