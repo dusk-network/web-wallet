@@ -114,6 +114,9 @@
    */
   let sent = null;
 
+  /** @type {WizardStep} */
+  let resultStep;
+
   const steps = [{ label: "Amount" }, { label: "Review" }, { label: "Done" }];
 
   const dispatch = createEventDispatcher();
@@ -161,6 +164,17 @@
     }
 
     activeStep++;
+  }
+
+  /**
+   * Back to the review of what failed with nothing sent.
+   *
+   * @param {MouseEvent} event
+   */
+  function tryAgain(event) {
+    sent = null;
+    activeStep--;
+    resultStep.back(event);
   }
 
   onMount(() => {
@@ -345,13 +359,14 @@
     </WizardStep>
 
     <!-- OPERATION RESULT STEP  -->
-    <WizardStep step={2} {key} showNavigation={false}>
+    <WizardStep bind:this={resultStep} step={2} {key} showNavigation={false}>
       {#if reviewed && sent}
         <TransactionResult
           leaveHref="/dashboard/stake"
           leaveText="Back to staking"
           maxFee={reviewed.gasLimit * reviewed.gasPrice}
           onBeforeLeave={resetOperation}
+          onRetry={tryAgain}
           operation={sent}
         />
       {/if}

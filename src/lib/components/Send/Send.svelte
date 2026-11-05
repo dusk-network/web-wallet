@@ -144,6 +144,9 @@
    */
   let sent = null;
 
+  /** Whether the transfer failed with nothing sent: it can be tried again. */
+  let canTryAgain = false;
+
   /**
    * Whether a recipient that isn't valid is pointed out: once it is pasted,
    * left or confirmed with Enter, not while it is being typed.
@@ -611,45 +614,41 @@
    */
   function send() {
     const toName = recipientName ? nameLookup?.name : undefined;
+    const operation = toName
+      ? execute(
+          recipientAddress,
+          sendAmountInLux,
+          transactionMemo,
+          gasPrice,
+          gasLimit,
+          toName
+        )
+      : execute(
+          recipientAddress,
+          sendAmountInLux,
+          transactionMemo,
+          gasPrice,
+          gasLimit
+        );
 
     sent = {
       maxFee: maxGasFee,
       memo: transactionMemo,
-      operation: toName
-        ? execute(
-            recipientAddress,
-            sendAmountInLux,
-            transactionMemo,
-            gasPrice,
-            gasLimit,
-            toName
-          )
-        : execute(
-            recipientAddress,
-            sendAmountInLux,
-            transactionMemo,
-            gasPrice,
-            gasLimit
-          ),
+      operation,
       what: `${hideBalances ? BALANCE_MASK : amountText} DUSK to ${recipientLabel}`,
     };
-    // The review's place in the history goes with it.
-    if (step === "review") {
-      history.back();
-    }
     step = "done";
+    reviewHistory.settle(operation, () => {
+      canTryAgain = true;
+    });
   }
 
   /**
-   * On to the review, where the summary takes the page and the focus: a step
-   * of its own in the history, so that Back returns to the form, with what's
-   * filled in.
+   * The review, where the summary takes the page and the focus: a step of its
+   * own in the history, so that Back returns to the form, with what's filled
+   * in.
    */
-  async function goToReview() {
-    if (!canSend) {
-      return;
-    }
-
+  async function showReview() {
     reviewHistory.enter();
     step = "review";
     window.scrollTo(0, 0);
@@ -657,15 +656,33 @@
     document.getElementById(`${id}-summary`)?.focus();
   }
 
+  function goToReview() {
+    if (canSend) {
+      showReview();
+    }
+  }
+
+  /** Back to the review of a transfer that failed with nothing sent. */
+  function tryAgain() {
+    sent = null;
+    canTryAgain = false;
+    showReview();
+  }
+
   /**
    * The step where the browser's Back or Forward takes the history: a review
-   * only of what can still be sent.
+   * only of what can still be sent, and from a transfer that failed with
+   * nothing sent, the form, with what's filled in.
    *
    * @param {boolean} isAtReview
    */
   function followHistory(isAtReview) {
     if (step !== "done") {
       step = isAtReview && canSend ? "review" : "form";
+    } else if (canTryAgain && !isAtReview) {
+      sent = null;
+      canTryAgain = false;
+      step = "form";
     }
   }
 
@@ -965,6 +982,7 @@
   <TransactionResult
     maxFee={sent.maxFee}
     memo={sent.memo}
+    onRetry={tryAgain}
     operation={sent.operation}
     what={sent.what}
   />

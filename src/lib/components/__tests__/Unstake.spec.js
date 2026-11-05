@@ -11,6 +11,7 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { settingsStore } from "$lib/stores";
+import { outcomeUnknown } from "$lib/transactions";
 
 import { Unstake } from "..";
 import { mdiDatabaseArrowDownOutline, mdiGiftOpenOutline } from "@mdi/js";
@@ -398,6 +399,60 @@ describe("Unstake", () => {
 
     afterAll(() => {
       vi.useRealTimers();
+    });
+
+    it("should go back to the review with Try again when nothing went out, and send what it shows", async () => {
+      const execute = vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+        .mockResolvedValue(lastTxId);
+      const { container, findByRole, getByRole } = render(Unstake, {
+        ...baseProps,
+        ...claimRewardsProps,
+        execute,
+      });
+
+      await vi.advanceTimersToNextTimerAsync();
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
+
+      await fireEvent.click(await findByRole("button", { name: "Try again" }));
+
+      expect(getReviewAmounts(container)[0][0]).toBe(
+        claimRewardsProps.operationOverviewLabel
+      );
+      expect(execute).toHaveBeenCalledOnce();
+
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
+
+      expect(execute).toHaveBeenCalledTimes(2);
+      expect(execute).toHaveBeenLastCalledWith(
+        claimRewardsProps.maxWithdrawAmount,
+        baseProps.gasSettings.gasPrice,
+        baseProps.gasSettings.gasLimit
+      );
+      expect(await findByRole("status")).toHaveTextContent(/^Sending… /);
+    });
+
+    it("should offer no Try again when it may have gone out", async () => {
+      const execute = vi
+        .fn()
+        .mockRejectedValue(outcomeUnknown(new TypeError("Failed to fetch")));
+      const { findByRole, getByRole, queryByRole } = render(Unstake, {
+        ...baseProps,
+        ...claimRewardsProps,
+        execute,
+      });
+
+      await vi.advanceTimersToNextTimerAsync();
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
+
+      expect(await findByRole("link", { name: "Open History" })).toBeVisible();
+      expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });
 
     it("should render the claim rewards view", () => {

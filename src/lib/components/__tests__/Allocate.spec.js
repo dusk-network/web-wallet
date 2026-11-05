@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { formatFee } from "$lib/dusk/currency";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { settingsStore, walletStore } from "$lib/stores";
+import { outcomeUnknown } from "$lib/transactions";
 
 import { Allocate } from "..";
 
@@ -83,6 +84,55 @@ describe("Allocate", () => {
     await fireEvent.click(getByRole("button", { name: "Send" }));
 
     expect(shield).toHaveBeenCalledOnce();
+  });
+
+  it("should go back to the review with Try again when nothing went out, the amounts kept", async () => {
+    vi.useFakeTimers({ toFake: ["performance"] });
+
+    const shield = vi
+      .spyOn(walletStore, "shield")
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockReturnValue(new Promise(() => {}));
+    const { container, findByRole, getByRole } = render(Allocate, baseProps);
+
+    await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
+      target: { value: "2500" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(await findByRole("button", { name: "Try again" }));
+
+    expect(getReviewAmounts(container)[0]).toStrictEqual([
+      "Amount",
+      "500 DUSK",
+    ]);
+    expect(shield).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+
+    expect(shield).toHaveBeenCalledTimes(2);
+    expect(shield.mock.calls[1][0]).toBe(500_000_000_000n);
+  });
+
+  it("should offer no Try again when it may have gone out", async () => {
+    vi.useFakeTimers({ toFake: ["performance"] });
+    vi.spyOn(walletStore, "shield").mockRejectedValueOnce(
+      outcomeUnknown(new TypeError("Failed to fetch"))
+    );
+
+    const { findByRole, getByRole, queryByRole } = render(Allocate, baseProps);
+
+    await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
+      target: { value: "2500" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+
+    expect(await findByRole("link", { name: "Open History" })).toBeVisible();
+    expect(queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
   it("should write the amounts with the language's decimal separator, and take a comma or a point", async () => {

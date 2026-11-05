@@ -10,6 +10,7 @@ import {
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { settingsStore } from "$lib/stores";
+import { outcomeUnknown } from "$lib/transactions";
 
 import { LiquidStake } from "..";
 
@@ -317,6 +318,63 @@ describe("LiquidStake", () => {
 
       expect(container.querySelector(".stake-flow__final")).toBeNull();
       expect(getByRole("button", { name: "Unstake 1 DUSK" })).toBeEnabled();
+    });
+  });
+
+  describe("once it failed", () => {
+    /** @param {Error} failure */
+    const staked = async (failure) => {
+      const execute = vi
+        .fn()
+        .mockRejectedValueOnce(failure)
+        .mockResolvedValue(HASH);
+      const view = render(LiquidStake, { ...baseProps, execute });
+
+      await fireEvent.input(view.getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+      await fireEvent.click(view.getByRole("button", { name: "Review" }));
+      await afterConfirmDelay();
+      await fireEvent.click(
+        view.getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+      );
+      await view.findByText(/^(Transaction failed|Not confirmed)$/);
+
+      return { ...view, execute };
+    };
+
+    it("goes back to the review with Try again, the amount kept, and reads Sozu's terms again before it goes", async () => {
+      const { container, execute, findByText, getByLabelText, getByRole } =
+        await staked(new TypeError("Failed to fetch"));
+
+      expect(baseProps.recheck).toHaveBeenCalledOnce();
+
+      await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+      expect(container.querySelector(".stake-flow")).toHaveClass(
+        "stake-flow--review"
+      );
+      expect(getByLabelText("Stake amount")).toHaveValue("100");
+      expect(execute).toHaveBeenCalledOnce();
+
+      await afterConfirmDelay();
+      await fireEvent.click(
+        getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+      );
+
+      await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(2));
+      expect(baseProps.recheck).toHaveBeenCalledTimes(2);
+      expect(await findByText("100 DUSK to Sozu")).toBeInTheDocument();
+    });
+
+    it("offers no Try again when it may have gone out", async () => {
+      const { execute, getByRole, queryByRole } = await staked(
+        outcomeUnknown(new TypeError("Failed to fetch"))
+      );
+
+      expect(queryByRole("button", { name: "Try again" })).toBeNull();
+      expect(getByRole("link", { name: "Open History" })).toBeInTheDocument();
+      expect(execute).toHaveBeenCalledOnce();
     });
   });
 

@@ -7,6 +7,7 @@ import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 
 import { settingsStore } from "$lib/stores";
+import { outcomeUnknown } from "$lib/transactions";
 
 import { NativeStake } from "..";
 import {
@@ -530,6 +531,87 @@ describe("NativeStake", () => {
       1n,
       50_000_000n
     );
+  });
+
+  describe("once it failed", () => {
+    /** @param {Error} failure */
+    const staked = async (failure) => {
+      const execute = vi
+        .fn()
+        .mockRejectedValueOnce(failure)
+        .mockResolvedValue(HASH);
+      const view = render(NativeStake, { ...baseProps, execute });
+
+      await fireEvent.input(view.getByLabelText("Stake amount"), {
+        target: { value: "1000" },
+      });
+      await fireEvent.click(view.getByRole("button", { name: "Review" }));
+      await afterConfirmDelay();
+      await fireEvent.click(
+        view.getByRole("button", { name: "Stake 1,000 DUSK" })
+      );
+      await view.findByText(/^(Transaction failed|Not confirmed)$/);
+
+      return { ...view, execute };
+    };
+
+    afterEach(() => {
+      historyAt({});
+    });
+
+    it("goes back to the review with Try again, the amount kept, when nothing went out", async () => {
+      const { container, execute, findByText, getByLabelText, getByRole } =
+        await staked(new TypeError("Failed to fetch"));
+
+      expect(
+        getByRole("link", { name: "Back to staking" })
+      ).toBeInTheDocument();
+
+      await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+      expect(container.querySelector(".stake-flow")).toHaveClass(
+        "stake-flow--review"
+      );
+      expect(getByLabelText("Stake amount")).toHaveValue("1000");
+      expect(execute).toHaveBeenCalledOnce();
+
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Stake 1,000 DUSK" }));
+
+      expect(execute).toHaveBeenCalledTimes(2);
+      expect(await findByText("1,000 DUSK to your stake")).toBeInTheDocument();
+    });
+
+    it("goes back to the form with Back in the browser, when nothing went out", async () => {
+      historyAt({ stakeReview: true });
+
+      const { container, getByLabelText } = await staked(
+        new TypeError("Failed to fetch")
+      );
+
+      historyAt({});
+      await tick();
+
+      expect(container.querySelector(".stake-flow")).not.toHaveClass(
+        "stake-flow--review"
+      );
+      expect(getByLabelText("Stake amount")).toHaveValue("1000");
+    });
+
+    it("offers no Try again when it may have gone out", async () => {
+      const { container, execute, getByRole, queryByRole } = await staked(
+        outcomeUnknown(new TypeError("Failed to fetch"))
+      );
+
+      expect(queryByRole("button", { name: "Try again" })).toBeNull();
+      expect(getByRole("link", { name: "Open History" })).toBeInTheDocument();
+
+      historyAt({});
+      await tick();
+
+      expect(container.querySelector(".stake-flow")).toBeNull();
+      expect(execute).toHaveBeenCalledOnce();
+    });
   });
 
   it("keeps the gas a review shows when the node's price changes, and takes it after", async () => {

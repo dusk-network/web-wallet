@@ -2,7 +2,7 @@
 
 <script>
   import { isHistoryEnabled } from "$lib/activity";
-  import { Suspense } from "$lib/dusk/components";
+  import { Button, Suspense } from "$lib/dusk/components";
   import { CHECK_BALANCE_FIRST, describeFailure } from "$lib/transactions";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
@@ -33,6 +33,14 @@
 
   /** Whether the history can show the transaction. */
   export let hasHistory = isHistoryEnabled();
+
+  /**
+   * Goes back to the review, for a send that failed with nothing sent: Try
+   * again shows only then, never where it may have gone out.
+   *
+   * @type {((event: MouseEvent) => void) | undefined}
+   */
+  export let onRetry = undefined;
 
   /**
    * Sends the transaction, resolving with its hash.
@@ -93,6 +101,14 @@
         variant="secondary"
       />
     {:else}
+      {#if onRetry && describe(error).canRetry}
+        <Button
+          className="transaction-result__button"
+          on:click={onRetry}
+          text="Try again"
+          variant="primary"
+        />
+      {/if}
       <AppAnchorButton
         className="transaction-result__button"
         href={leaveHref}

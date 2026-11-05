@@ -88,6 +88,9 @@
   /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
   let sent = null;
 
+  /** Whether the stake failed with nothing sent: it can be tried again. */
+  let canTryAgain = false;
+
   const reviewHistory = reviewStep("stakeReview");
 
   /**
@@ -110,25 +113,41 @@
 
   function stake() {
     if (amount !== null && check.ok && isGasValid) {
+      const operation = execute(amount, gasPrice, gasLimit);
+
       sent = {
         maxFee: maxGasFee,
-        operation: execute(amount, gasPrice, gasLimit),
+        operation,
         what: `${hideBalances ? BALANCE_MASK : formatDuskExact(amount, language)} DUSK to your stake`,
       };
-      // The review's place in the history goes with it.
-      reviewHistory.leave();
+      reviewHistory.settle(operation, () => {
+        canTryAgain = true;
+      });
     }
+  }
+
+  /** Back to the review of a stake that failed with nothing sent. */
+  function tryAgain() {
+    sent = null;
+    canTryAgain = false;
+    isReviewing = true;
+    reviewHistory.enter();
   }
 
   /**
    * The step where the browser's Back or Forward takes the history: a review
-   * only of what can still be staked.
+   * only of what can still be staked, and from a stake that failed with
+   * nothing sent, the form, with what's filled in.
    *
    * @param {boolean} isAtReview
    */
   function followHistory(isAtReview) {
     if (!sent) {
       isReviewing = isAtReview && canStake;
+    } else if (canTryAgain && !isAtReview) {
+      sent = null;
+      canTryAgain = false;
+      isReviewing = false;
     }
   }
 
@@ -195,6 +214,7 @@
       leaveHref="/dashboard/stake"
       leaveText="Back to staking"
       maxFee={sent.maxFee}
+      onRetry={tryAgain}
       operation={sent.operation}
       what={sent.what}
     />

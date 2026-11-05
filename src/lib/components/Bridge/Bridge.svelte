@@ -998,7 +998,7 @@
     </div>
   {:else if isDepositing}
     <div class="bridge-result">
-      <DepositResult {operation} />
+      <DepositResult onRetry={review} {operation} />
     </div>
   {:else}
     <div class="bridge-result">
@@ -1024,6 +1024,11 @@
               text="Track withdrawal"
               variant="tertiary"
             />
+          {/if}
+        </svelte:fragment>
+        <svelte:fragment slot="error-actions" let:error>
+          {#if describeFailure(error).canRetry}
+            <Button on:click={review} text="Try again" variant="primary" />
           {/if}
         </svelte:fragment>
       </OperationResult>

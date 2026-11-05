@@ -1,6 +1,6 @@
 <script>
   import { AppAnchorButton } from "$lib/components";
-  import { Suspense } from "$lib/dusk/components";
+  import { Button, Suspense } from "$lib/dusk/components";
   import { isHistoryEnabled } from "$lib/activity";
   import { CHECK_BALANCE_FIRST, describeFailure } from "$lib/transactions";
 
@@ -8,6 +8,14 @@
 
   /** @type {Promise<string>} */
   export let operation;
+
+  /**
+   * Goes back to the review, for a deposit that failed with nothing sent: Try
+   * again shows only then.
+   *
+   * @type {(() => void) | undefined}
+   */
+  export let onRetry = undefined;
 
   const hasHistory = isHistoryEnabled();
 
@@ -38,6 +46,14 @@
         variant="secondary"
       />
     {:else}
+      {#if onRetry && describe(error).canRetry}
+        <Button
+          className="deposit-result__button"
+          on:click={onRetry}
+          text="Try again"
+          variant="primary"
+        />
+      {/if}
       <AppAnchorButton href="/dashboard" text="Home" variant="tertiary" />
     {/if}
   </svelte:fragment>
@@ -48,6 +64,10 @@
     .deposit-result {
       padding: 1.5em 0;
       width: 100%;
+
+      .deposit-result__button {
+        width: 100%;
+      }
     }
   }
 </style>

@@ -72,6 +72,17 @@
   }
 
   /**
+   * Moves back as the Back button does, for what takes its place on the step.
+   *
+   * @param {Event} evt An event on an element of the step.
+   */
+  export function back(evt) {
+    if (step === currentStep) {
+      handleBack(evt);
+    }
+  }
+
+  /**
    * Returns the icon for the wizard button
    * It can be:
    * – The default icon for the

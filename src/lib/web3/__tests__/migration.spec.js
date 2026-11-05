@@ -56,6 +56,7 @@ describe("migrate", () => {
     );
 
     expect(await failureOf(send)).toStrictEqual({
+      canRetry: true,
       sentence: "It was declined in your EVM wallet, so nothing was sent.",
     });
 

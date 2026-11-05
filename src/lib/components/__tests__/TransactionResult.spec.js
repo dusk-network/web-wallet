@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 import { WalletChangedError } from "$lib/errors";
+import { outcomeUnknown } from "$lib/transactions";
 
 import { TransactionResult } from "..";
 
@@ -134,21 +135,6 @@ describe("TransactionResult", () => {
       "The network refused it: the gas limit is under its minimum. Raise it and try again.",
     ],
     [
-      "a refusal for a nonce used",
-      refusal("this transaction is invalid Nonce repeat: 26FCH7 12"),
-      "The network refused it: another transaction from this account came first. Wait a minute and try again.",
-    ],
-    [
-      "a refusal for a nonce pending",
-      refusal("this transaction's spendId exists in the mempool"),
-      "The network refused it: another transaction from this account came first. Wait a minute and try again.",
-    ],
-    [
-      "a refusal for notes spent",
-      refusal("this transaction is invalid Nullifiers already spent: [0x01]"),
-      "The network refused it: some of the shielded DUSK it spends is spent already. Wait for the wallet to sync and try again.",
-    ],
-    [
       "a refusal for another reason",
       refusal("Maximum count of transactions exceeded 10000"),
       "The network refused it. See Details for why.",
@@ -187,6 +173,157 @@ describe("TransactionResult", () => {
       expect(details).toHaveTextContent(error.message);
     }
   );
+
+  describe("Try again", () => {
+    const onRetry = vi.fn();
+
+    afterEach(() => {
+      onRetry.mockClear();
+    });
+
+    /** @param {Error} error */
+    const failed = async (error) => {
+      const view = render(TransactionResult, {
+        ...baseProps,
+        onRetry,
+        operation: Promise.reject(error),
+      });
+
+      await view.findByText(/^(Transaction failed|Not confirmed)$/);
+
+      return view;
+    };
+
+    it.each([
+      ["the node out of reach", new TypeError("Failed to fetch")],
+      ["any other failure before it went out", new Error("Something else")],
+      ["the wallet changing meanwhile", new WalletChangedError()],
+      ["an address it can't read", named("DriverDeserializeError", "Bad")],
+      [
+        "a refusal for the gas price",
+        refusal("gas price lower than minimum 1"),
+      ],
+      [
+        "a refusal as it was asked to broadcast it",
+        outcomeUnknown(
+          refusal(
+            "this transaction is invalid Value spent larger than account holds"
+          )
+        ),
+      ],
+      [
+        "a refusal for another reason as it was asked to broadcast it",
+        outcomeUnknown(refusal("Maximum count of transactions exceeded 10")),
+      ],
+    ])("should offer it once nothing went out: %s", async (_, error) => {
+      const { getByRole, queryByRole } = await failed(error);
+
+      await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+      expect(onRetry).toHaveBeenCalledOnce();
+      expect(queryByRole("link", { name: "Home" })).toBeInTheDocument();
+      expect(queryByRole("link", { name: "Open History" })).toBeNull();
+    });
+
+    it.each([
+      ["the answer lost", outcomeUnknown(new TypeError("Failed to fetch"))],
+      ["the node too slow", outcomeUnknown(new Error("Timed out"))],
+      ["any other failure", outcomeUnknown(new Error("Something else"))],
+      // Words that only come up as a transaction is made prove nothing here.
+      ["a wallet's words", outcomeUnknown(new Error("RuntimeError: oops"))],
+      ["a sync's words", outcomeUnknown(new Error("Synchronization aborted"))],
+    ])(
+      "should never offer it once it may have gone out: %s",
+      async (_, error) => {
+        const { container, getByRole, getByText, queryByRole } =
+          await failed(error);
+
+        expect(queryByRole("button", { name: "Try again" })).toBeNull();
+        expect(getByText("Not confirmed")).toBeInTheDocument();
+        expect(
+          getByText(
+            "It may have reached the network. Check History before you send it again."
+          )
+        ).toBeInTheDocument();
+        expect(container).not.toHaveTextContent(/try again/i);
+        expect(getByRole("link", { name: "Open History" })).toHaveAttribute(
+          "href",
+          "/some-base-path/dashboard/transactions"
+        );
+      }
+    );
+
+    it.each([
+      [
+        "a nonce used",
+        refusal("this transaction is invalid Nonce repeat: 26FCH7 12"),
+        "The network refused it: another transaction from this account came first.",
+      ],
+      [
+        "a nonce pending",
+        refusal("this transaction's spendId exists in the mempool"),
+        "The network refused it: another transaction from this account came first.",
+      ],
+      [
+        "this very transaction in the mempool",
+        refusal("this transaction exists in the mempool"),
+        "The network refused it: another transaction from this account came first.",
+      ],
+      [
+        "this very transaction in the ledger",
+        outcomeUnknown(refusal("this transaction exists in the ledger")),
+        "The network refused it: another transaction from this account came first.",
+      ],
+      [
+        "notes spent",
+        refusal("this transaction is invalid Nullifiers already spent: [0x01]"),
+        "The network refused it: some of the shielded DUSK it spends is spent already.",
+      ],
+    ])(
+      "should send to History, not offer it, for a refusal over what another transaction spent, maybe an earlier try of this one: %s",
+      async (_, error, said) => {
+        const { container, getByRole, getByText, queryByRole } =
+          await failed(error);
+
+        expect(queryByRole("button", { name: "Try again" })).toBeNull();
+        expect(getByText("Transaction failed")).toBeInTheDocument();
+        expect(
+          getByText(`${said} Check History before you send it again.`)
+        ).toBeInTheDocument();
+        expect(container).not.toHaveTextContent(/try again/i);
+        expect(getByRole("link", { name: "Open History" })).toBeInTheDocument();
+      }
+    );
+
+    it("should say what to check where there's no History, and not offer it", async () => {
+      const { getByText, queryByRole } = render(TransactionResult, {
+        ...baseProps,
+        hasHistory: false,
+        onRetry,
+        operation: Promise.reject(refusal("Nonce repeat")),
+      });
+
+      await vi.waitFor(() =>
+        expect(
+          getByText(
+            "The network refused it: another transaction from this account came first. Wait a few minutes and check your balance before you send it again."
+          )
+        ).toBeInTheDocument()
+      );
+      expect(queryByRole("button", { name: "Try again" })).toBeNull();
+    });
+
+    it("should offer it only where something can go back to the review", async () => {
+      const { findByText, queryByRole } = render(TransactionResult, {
+        ...baseProps,
+        operation: Promise.reject(new TypeError("Failed to fetch")),
+      });
+
+      await findByText("Transaction failed");
+
+      expect(queryByRole("button", { name: "Try again" })).toBeNull();
+    });
+  });
 
   it("should keep a sentence for any other failure, with its own message under Details", async () => {
     const { container, findByText } = render(TransactionResult, {

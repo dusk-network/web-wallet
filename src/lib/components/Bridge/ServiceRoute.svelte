@@ -535,6 +535,11 @@
           {time}
         />
       </svelte:fragment>
+      <svelte:fragment slot="error-actions" let:error>
+        {#if describeFailure(error).canRetry}
+          <Button on:click={openReview} text="Try again" variant="primary" />
+        {/if}
+      </svelte:fragment>
     </OperationResult>
   </div>
 {/if}

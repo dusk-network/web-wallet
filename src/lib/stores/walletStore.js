@@ -441,9 +441,15 @@ const sendAs = (profile, details, execute, { staking = false } = {}) => {
     })
     .then(networkStore.connect)
     .then((network) => execute(sending(stillOpen(network))))
-    .then(keepInCache)
-    .then(passThruWithEffects(followRemoval))
-    .then(passThruWithEffects(record));
+    .then((txInfo) =>
+      // It went out: what goes wrong from here doesn't say it didn't.
+      keepInCache(txInfo)
+        .then(passThruWithEffects(followRemoval))
+        .then(passThruWithEffects(record))
+        .catch((error) => {
+          throw outcomeUnknown(error);
+        })
+    );
 };
 
 /** @type {() => Promise<void>} */

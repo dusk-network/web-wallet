@@ -8,6 +8,7 @@ import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { settingsStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 
 import { Bridge } from "..";
 
@@ -1257,6 +1258,33 @@ describe("the Bridge card's routes to and from other chains", () => {
       /^Details$/
     );
     expect(container.querySelector("details")).toHaveTextContent(reason);
+
+    // Nothing went out: back to the review, with what's filled in.
+    await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+    expect(container.querySelector(".route-review__line")).toHaveTextContent(
+      "2 DUSK sent"
+    );
+    expect(mocks.executeSend).toHaveBeenCalledOnce();
+  });
+
+  it("offers no Try again on a transfer out when it may have gone out", async () => {
+    mocks.executeSend.mockRejectedValue(
+      outcomeUnknown(new TypeError("Failed to fetch"))
+    );
+    connect({ address: EVM, chainId: 1 });
+
+    const { findByText, getByRole, queryByRole } = render(Bridge, props);
+
+    await fireEvent.input(getByRole("textbox", { name: "Amount, in DUSK" }), {
+      target: { value: "2" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await afterConfirmDelay();
+    await fireEvent.click(getByRole("button", { name: "Send" }));
+
+    expect(await findByText("Not confirmed")).toBeInTheDocument();
+    expect(queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
   it("says testnet's Sepolia routes aren't running, as a link to one opens it", async () => {

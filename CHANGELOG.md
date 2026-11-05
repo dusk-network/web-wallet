@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Try again on a send, stake, shield or bridge transfer that failed with nothing sent, back to its review with all that was filled in, and Back from the failure back to the form
+
 ### Changed
 
 - Review a send or a stake before it goes, at every screen width: the first press no longer sends
@@ -23,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Write Send's amount example in the browser's language
 - Keep the fee to unstake later when Max fills in a stake, native or with Sozu, and refuse an amount that leaves too little for it
 - Say how much DUSK is missing when the public balance can't pay for an unstake or a claim
+- Say to check History, not to try again, when the node refuses a send because another transaction from the account came first
 
 ## [1.9.0] - 2026-11-05
 

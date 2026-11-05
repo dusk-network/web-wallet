@@ -244,11 +244,17 @@ describe("Bridge withdrawal", () => {
   it("says to try again when DuskEVM couldn't be reached before the EVM wallet was asked to send it, and after, that it may have gone out and to check the EVM wallet", async () => {
     mocks.switchChain.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
-    expect(await failureOf(await sendWithdrawal())).toStrictEqual([
+    const unreached = await sendWithdrawal();
+
+    expect(await failureOf(unreached)).toStrictEqual([
       "Bridging failed",
       "Couldn't reach the network. Check your connection and try again.",
     ]);
     expect(mocks.sendTransaction).not.toHaveBeenCalled();
+
+    await fireEvent.click(unreached.getByRole("button", { name: "Try again" }));
+
+    expect(unreached.getByRole("heading", { name: "Review" })).toBeVisible();
     cleanup();
 
     mocks.sendTransaction.mockRejectedValueOnce(
@@ -262,6 +268,7 @@ describe("Bridge withdrawal", () => {
       "It may have reached the network. Check your EVM wallet's activity before you send it again.",
     ]);
     expect(rendered.container).not.toHaveTextContent(/try again/i);
+    expect(rendered.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
   it("says the balance doesn't cover it, without naming the shielded one, when the EVM wallet's doesn't cover it and its gas", async () => {

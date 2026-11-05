@@ -60,14 +60,15 @@
       text="Home"
     />
   </svelte:fragment>
-  <AppAnchorButton
-    href="/dashboard"
-    on:click={handleGoHomeClick}
-    slot="error-extra-content"
-    text="Home"
-    variant="tertiary"
-  />
-  <slot name="error-actions" slot="error-actions" />
+  <svelte:fragment slot="error-extra-content" let:error>
+    <slot name="error-actions" {error} />
+    <AppAnchorButton
+      href="/dashboard"
+      on:click={handleGoHomeClick}
+      text="Home"
+      variant="tertiary"
+    />
+  </svelte:fragment>
 </Suspense>
 
 <style lang="postcss">
@@ -75,7 +76,8 @@
     .operation-result {
       padding: 1.5em 0;
 
-      .dusk-anchor-button {
+      .dusk-anchor-button,
+      .dusk-button {
         width: 100%;
       }
     }

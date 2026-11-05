@@ -23,6 +23,7 @@ import { shortenAddress } from "$lib/dusk/string";
 import { afterConfirmDelay, getAsHTMLElement } from "$lib/dusk/test-helpers";
 import { page } from "$app/stores";
 import { addBasePath } from "$lib/navigation";
+import { outcomeUnknown } from "$lib/transactions";
 import { networks } from "@dusk-network/networks";
 import {
   contactsWritten,
@@ -1143,6 +1144,131 @@ describe("Send", () => {
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
       expect(getByText("Transaction failed")).toBeInTheDocument();
       expect(getByText(errorMessage)).toBeInTheDocument();
+    });
+
+    describe("once it failed", () => {
+      const filled = { memo: "Invoice 118", to: otherAccount, value: 2 };
+
+      /** Back in the browser, from the screen the failure shows on. */
+      const pressBack = async () => {
+        historyAt({});
+        await tick();
+      };
+
+      /** @param {HTMLElement} container */
+      const expectReview = (container) => {
+        expect(container.querySelector(".send")).toHaveClass("send--review");
+        expect(container.querySelector(".send__summary")).toHaveTextContent(
+          otherAccount
+        );
+        expect(getSummary(container)).toContainEqual(["Amount", "2 DUSK"]);
+        expect(getSummary(container)).toContainEqual(["Memo", "Invoice 118"]);
+      };
+
+      afterEach(() => {
+        historyAt({});
+      });
+
+      it("should go back to the review with Try again, the address, the amount and the memo kept, when nothing went out", async () => {
+        baseProps.execute.mockRejectedValueOnce(
+          new TypeError("Failed to fetch")
+        );
+
+        const { container, getByRole, queryByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await sendWith(getByRole, filled);
+
+        expect(baseProps.execute).toHaveBeenCalledOnce();
+        expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
+
+        await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+        expect(queryByText("Transaction failed")).toBeNull();
+        expectReview(container);
+        expect(fields.to()).toHaveValue(otherAccount);
+        expect(fields.amount()).toHaveValue("2");
+        expect(fields.memo()).toHaveValue("Invoice 118");
+        expect(getByRole("heading", { name: /Review/ })).toHaveFocus();
+
+        // Nothing goes until it's pressed again.
+        expect(baseProps.execute).toHaveBeenCalledOnce();
+
+        await afterConfirmDelay();
+        await fireEvent.click(fields.send());
+        await vi.advanceTimersToNextTimerAsync();
+
+        expect(baseProps.execute).toHaveBeenCalledTimes(2);
+        expect(baseProps.execute).toHaveBeenLastCalledWith(
+          otherAccount,
+          duskToLux(2),
+          "Invoice 118",
+          gasPrice,
+          gasLimit
+        );
+        expect(getByRole("status")).toHaveTextContent(/^Sending… 2 DUSK/);
+      });
+
+      it("should go back to the form with Back in the browser, as typed, when nothing went out", async () => {
+        baseProps.execute.mockRejectedValueOnce(
+          new TypeError("Failed to fetch")
+        );
+        historyAt({ sendReview: true });
+
+        const { container, getByRole, getByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await sendWith(getByRole, filled);
+
+        expect(getByText("Transaction failed")).toBeInTheDocument();
+
+        await pressBack();
+
+        expect(container.querySelector(".send")).not.toHaveClass(
+          "send--review"
+        );
+        expect(fields.to()).toHaveValue(otherAccount);
+        expect(fields.amount()).toHaveValue("2");
+        expect(fields.memo()).toHaveValue("Invoice 118");
+        expect(baseProps.execute).toHaveBeenCalledOnce();
+      });
+
+      it("should offer no Try again, and no way back to the form, when it may have gone out", async () => {
+        baseProps.execute.mockRejectedValueOnce(
+          outcomeUnknown(new TypeError("Failed to fetch"))
+        );
+
+        const { container, getByRole, getByText, queryByRole } = render(
+          Send,
+          baseProps
+        );
+
+        await sendWith(getByRole, filled);
+
+        expect(getByText("Not confirmed")).toBeInTheDocument();
+        expect(
+          getByText(
+            "It may have reached the network. Check History before you send it again."
+          )
+        ).toBeInTheDocument();
+        expect(queryByRole("button", { name: "Try again" })).toBeNull();
+        expect(getByRole("link", { name: "Open History" })).toBeInTheDocument();
+
+        await pressBack();
+
+        expect(container.querySelector(".send")).toBeNull();
+        expect(baseProps.execute).toHaveBeenCalledOnce();
+      });
+
+      it("should stay on what it says once it was sent, whatever Back does", async () => {
+        const { container, getByRole } = render(Send, baseProps);
+
+        await sendWith(getByRole, filled);
+        await pressBack();
+
+        expect(container.querySelector(".send")).toBeNull();
+        expect(getByRole("status")).toHaveTextContent(/^Sending… 2 DUSK/);
+      });
     });
 
     it("should show the success message, but no explorer link, if the execution promise doesn't resolve with an hash", async () => {

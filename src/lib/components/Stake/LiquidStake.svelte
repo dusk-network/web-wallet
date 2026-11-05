@@ -100,6 +100,9 @@
   /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
   let sent = null;
 
+  /** Whether it failed with nothing sent: it can be tried again. */
+  let canTryAgain = false;
+
   /** A fee so high that no stake gets stDUSK: 100%, or so near it that the least is past any amount. */
   const NO_STAKE = "No stake gets stDUSK at Sozu's deposit fee now.";
 
@@ -121,7 +124,8 @@
 
   /**
    * The step where the browser's Back or Forward takes the history: a review
-   * only of what can still be sent.
+   * only of what can still be sent, and from what failed with nothing sent,
+   * the form, with what's filled in.
    *
    * @param {boolean} isAtReview
    */
@@ -132,7 +136,19 @@
       }
 
       isReviewing = isAtReview && canSend;
+    } else if (canTryAgain && !isAtReview) {
+      sent = null;
+      canTryAgain = false;
+      isReviewing = false;
     }
+  }
+
+  /** Back to the review of what failed with nothing sent. */
+  function tryAgain() {
+    sent = null;
+    canTryAgain = false;
+    isReviewing = true;
+    reviewHistory.enter();
   }
 
   /** @param {"stake" | "unstake"} next */
@@ -308,22 +324,25 @@
         : status.contracts.pool;
 
     if (pool) {
+      const operation = execute(
+        order.action,
+        pool,
+        order.lux,
+        order.gasPrice,
+        order.gasLimit
+      );
+
       sent = {
         maxFee: order.maxFee,
-        operation: execute(
-          order.action,
-          pool,
-          order.lux,
-          order.gasPrice,
-          order.gasLimit
-        ),
+        operation,
         what:
           order.action === "stake"
             ? `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK to Sozu`
             : `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK unstaked from Sozu`,
       };
-      // The review's place in the history goes with it.
-      reviewHistory.leave();
+      reviewHistory.settle(operation, () => {
+        canTryAgain = true;
+      });
     }
   }
 
@@ -456,6 +475,7 @@
       leaveHref="/dashboard/stake"
       leaveText="Back to staking"
       maxFee={sent.maxFee}
+      onRetry={tryAgain}
       operation={sent.operation}
       what={sent.what}
     />

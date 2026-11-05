@@ -124,6 +124,9 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
 
+  /** @type {WizardStep} */
+  let resultStep;
+
   /** @type {boolean} */
   let isNextButtonDisabled = false;
 
@@ -386,8 +389,12 @@
         />
       </div>
     </WizardStep>
-    <WizardStep step={2} {key} showNavigation={false}>
-      <TransactionResult maxFee={fee} operation={allocate()} />
+    <WizardStep bind:this={resultStep} step={2} {key} showNavigation={false}>
+      <TransactionResult
+        maxFee={fee}
+        onRetry={(event) => resultStep.back(event)}
+        operation={allocate()}
+      />
     </WizardStep>
   </Wizard>
 </div>
