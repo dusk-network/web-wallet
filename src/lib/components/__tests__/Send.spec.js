@@ -1344,8 +1344,8 @@ describe("Send", () => {
       expect(getByRole("status")).toHaveTextContent(
         `Sent at ${timeLabel(blockTime, "en")} 567 DUSK to ${shortenAddress(shieldedAddress)} In block 4,687,200.`
       );
-      // The fee charged, to the nearest of four decimals.
-      expect(getByText("0.0019 DUSK")).toBeInTheDocument();
+      // The fee charged, to the last digit.
+      expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
     });
 
     it("should perform the transfer with the gas limit the user sets", async () => {

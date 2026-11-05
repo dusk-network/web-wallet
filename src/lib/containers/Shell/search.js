@@ -12,6 +12,7 @@ import {
   parseDusk,
   unclearAmount,
 } from "@dusk-network/app-core/amounts";
+import { displayText } from "@dusk-network/app-core/text";
 import { labelFor, networks } from "@dusk-network/networks";
 import { asDuskName, isDuskName } from "@duskdomains/sdk/names";
 
@@ -302,7 +303,7 @@ export function searchLocally(
           id: `tx:${row.hash}`,
           label: title,
           labelIsCode: titleIsAddress,
-          sub: row.fnName || undefined,
+          sub: row.fnName ? displayText(row.fnName).text : undefined,
           value: row.hash,
         };
       })

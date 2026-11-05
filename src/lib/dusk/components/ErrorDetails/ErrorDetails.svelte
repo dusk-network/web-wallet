@@ -1,6 +1,8 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { displayText } from "@dusk-network/app-core/text";
+
   import { makeClassName } from "$lib/dusk/string";
 
   /** @type {String | Undefined} */
@@ -25,7 +27,7 @@
       {summary}
     </summary>
     <pre class="dusk-error-details__error">
-			{error.message}
+			{displayText(error.message, { lineBreaks: true }).text}
 		</pre>
   </details>
 {/if}

@@ -12,6 +12,7 @@ import {
   formatFee,
 } from "$lib/dusk/currency/formatDusk";
 
+import { displayText } from "@dusk-network/app-core/text";
 import { labelFor, routeForAccount } from "@dusk-network/networks";
 import { claimText } from "@dusk-network/networks/duskevm";
 import { formatTime } from "@dusk-network/networks/format";
@@ -220,11 +221,13 @@ function titleOf(row, icon, context) {
   const call = icon === "call" ? row.nameCall : null;
 
   if (call) {
+    // What a transaction carries is anyone's text: it can't reorder itself.
+    const name = call.name ? displayText(call.name).text : "";
     const label =
-      call.kind === "registration" && call.name
-        ? `Registered ${call.name}`
-        : call.kind === "reservation" && call.name
-          ? `Reserved ${call.name}`
+      call.kind === "registration" && name
+        ? `Registered ${name}`
+        : call.kind === "reservation" && name
+          ? `Reserved ${name}`
           : (NAME_CALLS[call.kind] ?? "Dusk Domains");
 
     return { title: label, titleIsAddress: false, verb: "Dusk Domains" };
@@ -279,7 +282,9 @@ function counterpartyTitle(row, icon, context) {
 
   if (icon === "call") {
     return {
-      title: row.fnName ? `Called ${row.fnName}` : "Contract call",
+      title: row.fnName
+        ? `Called ${displayText(row.fnName).text}`
+        : "Contract call",
       titleIsAddress: false,
       verb: "Contract",
     };

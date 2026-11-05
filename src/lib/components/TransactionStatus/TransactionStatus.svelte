@@ -10,7 +10,7 @@
 
   import { currentActivity } from "$lib/activity";
   import { timeLabel } from "$lib/activity/present";
-  import { formatFee } from "$lib/dusk/currency";
+  import { formatDuskExact, formatFee } from "$lib/dusk/currency";
   import {
     AnchorButton,
     Button,
@@ -151,7 +151,7 @@
       {#if outcome}
         <dt>Network fee</dt>
         <dd>
-          <BalanceValue value={formatFee(outcome.fee, language)} /> DUSK
+          <BalanceValue value={formatDuskExact(outcome.fee, language)} /> DUSK
         </dd>
       {:else}
         <dt>Network fee (at most)</dt>

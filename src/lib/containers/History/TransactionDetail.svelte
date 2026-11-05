@@ -524,7 +524,7 @@
         <dt>Network fee paid</dt>
         <dd>
           {#if row.fee !== null}
-            <BalanceValue value={formatFee(row.fee, locale)} /> DUSK
+            <BalanceValue value={formatDuskExact(row.fee, locale)} /> DUSK
           {:else if p.icon === "received" || (p.category === "bridge" && row.direction === "in")}
             Paid by the sender
           {:else}

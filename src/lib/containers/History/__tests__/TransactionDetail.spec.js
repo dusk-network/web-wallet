@@ -408,11 +408,10 @@ describe("TransactionDetail", () => {
     );
   });
 
-  it("should round the fee paid in its list, and give it exactly under Technical details", () => {
+  it("should give the fee paid to the last digit, in its list and under Technical details", () => {
     const { container } = show(row({ feePaid: "4419010" }));
 
-    expect(mainList(container)).toMatch(/Network fee paid\s*0\.0044 DUSK/);
-    expect(mainList(container)).not.toContain("0.00441901");
+    expect(mainList(container)).toMatch(/Network fee paid\s*0\.00441901 DUSK/);
     expect(techList(container)).toMatch(/^.*\bFee paid\s+0\.00441901 DUSK/);
     expect(techList(container)).not.toContain("exactly");
   });
@@ -502,7 +501,6 @@ describe("TransactionDetail", () => {
   it("should show the fee, and hide it with the balances, here and under Technical details", () => {
     const shown = show(row({ amount: "1000000000", feePaid: "1856398" }));
 
-    expect(shown.container.textContent).toContain("0.0019");
     expect(shown.container.textContent).toContain("0.001856398");
     cleanup();
 
@@ -514,7 +512,6 @@ describe("TransactionDetail", () => {
       );
 
       expect(container.textContent).toContain("Network fee paid");
-      expect(container.textContent).not.toContain("0.0019");
       expect(container.textContent).not.toContain("0.001856398");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));

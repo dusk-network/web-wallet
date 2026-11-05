@@ -86,7 +86,7 @@ describe("TransactionStatus", () => {
     );
 
     expect(getByText("Network fee")).toBeInTheDocument();
-    expect(getByText("0.0019 DUSK")).toBeInTheDocument();
+    expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
     expect(queryByText("Network fee (at most)")).not.toBeInTheDocument();
     expect(queryByText("Details")).not.toBeInTheDocument();
   });

@@ -38,7 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Make the recovery words larger, and leave the balance bar empty at 0
 - Say a name's limit once it's reached
 - Check a shielded address properly on Send: one that only has the right length is refused
-- Show a memo's hidden characters as codes, and say so, on Send's review, the Sent screen and in History, so that text can't read as something it isn't
+- Show a memo's hidden characters as codes, and say so, on Send's review, the Sent screen and in History, so that text can't read as something it isn't, and keep a call's name and an error's details from reordering what's read
+- Show a transaction's network fee to the last digit in its details and on its Sent screen
 - Keep Send inside a phone's screen with a long contact name, and Review in reach
 - Name an EVM address on Send, and say what's wrong with an address as soon as it's pasted: no red text without a reason
 - Offer contacts on Send one way at a time, and say how long a memo can be in characters

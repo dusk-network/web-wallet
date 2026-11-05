@@ -799,4 +799,17 @@ describe("toCsv", () => {
       true
     );
   });
+
+  it("keeps what a transaction carries from reordering what's read: its call's name and method", () => {
+    expect(
+      describeRow(
+        row({
+          fnName: "pay\u202E0001\u202C",
+          kind: "contract_call",
+          to: undefined,
+        }),
+        context
+      ).title
+    ).toBe("Called pay\\u202e0001\\u202c");
+  });
 });
