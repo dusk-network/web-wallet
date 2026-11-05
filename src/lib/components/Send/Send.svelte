@@ -205,6 +205,9 @@
   /** @type {import("qr-scanner").default} */
   let scanner;
 
+  /** Whether there's a camera to scan with: else a code is read from an image. */
+  let hasCamera = false;
+
   /** @type {import("..").ScanQR} */
   let scanQrComponent;
 
@@ -509,6 +512,22 @@
       isFromLink = false;
       typedLength = value.length;
     }
+  }
+
+  /**
+   * What's wrong with a code scanned, said where it's scanned: "" for a
+   * payment link, a Dusk address or a `.dusk` name, which goes in To.
+   *
+   * @param {string} text
+   */
+  function scannedProblem(text) {
+    const code = text.trim();
+
+    return readPaymentLink(code, $nodeNetwork, language) ||
+      isDuskName(code) ||
+      getAddressInfo(code, shieldedAddress, publicAddress).isValid
+      ? ""
+      : "That QR isn't a Dusk address or payment link.";
   }
 
   /** A link typed out reads as it's finished: not at each key on the way. */
@@ -1351,19 +1370,21 @@
               ><Icon path={mdiCheckCircleOutline} />Name found</span
             >
           {/if}
-          <!-- Only with a camera, which ScanQR looks for without asking
-            for permission. -->
-          {#if scanner}
-            <button
-              aria-label="Scan a QR code"
-              class="send__icon-button"
-              on:click={() => {
-                scanQrComponent.startScan();
-              }}
-              title="Scan a QR code"
-              type="button"><Icon path={mdiQrcodeScan} /></button
-            >
-          {/if}
+          <!-- With a camera, which ScanQR looks for without asking for
+            permission, or else from an image. -->
+          <button
+            aria-label={hasCamera
+              ? "Scan a QR code"
+              : "Scan a QR code from an image"}
+            class="send__icon-button"
+            on:click={() => {
+              scanQrComponent.startScan();
+            }}
+            title={hasCamera
+              ? "Scan a QR code"
+              : "Scan a QR code from an image"}
+            type="button"><Icon path={mdiQrcodeScan} /></button
+          >
         </div>
 
         <!-- While what's typed names contacts, they're offered as links. -->
@@ -1684,8 +1705,10 @@
         {/if}
 
         <ScanQR
+          bind:hasCamera
           bind:this={scanQrComponent}
           bind:scanner
+          check={scannedProblem}
           on:scan={(event) => takeRecipient(event.detail)}
         />
         {#if addressInfo.isSelfReferential}

@@ -452,11 +452,24 @@ describe("Send", () => {
       );
       expect(filled(fields)[0]).toBe("");
 
-      await fireEvent.click(scan);
-      scanned(invalidAddress);
-      await vi.waitFor(() =>
-        expect(getByText("Not a valid address.")).toBeInTheDocument()
-      );
+      // Anything else isn't put in To: the scanner says so, and reads on.
+      for (const code of [
+        "hello from the canteen menu",
+        invalidAddress,
+        "0x2222222222222222222222222222222222222222",
+      ]) {
+        await fireEvent.click(scan);
+        scanned(code);
+        await vi.waitFor(() =>
+          expect(
+            getByText("That QR isn't a Dusk address or payment link.")
+          ).toBeInTheDocument()
+        );
+        expect(filled(fields)[0]).toBe("");
+      }
+
+      scanned(otherAccount);
+      await vi.waitFor(() => expect(filled(fields)[0]).toBe(otherAccount));
     });
 
     it("should start with what a link opened the page with, or say why it fills in nothing, and say what's wrong with its recipient at once", () => {
@@ -611,8 +624,8 @@ describe("Send", () => {
       expect(queryByText("Not a valid address.")).toBeNull();
     });
 
-    it("should offer no QR scan without a camera", async () => {
-      const { queryByRole } = render(Send, baseProps);
+    it("should offer a QR scan from an image without a camera", async () => {
+      const { findByRole, queryByRole } = render(Send, baseProps);
 
       expect(hasCamera).toHaveBeenCalledOnce();
 
@@ -620,6 +633,9 @@ describe("Send", () => {
       await tick();
 
       expect(queryByRole("button", { name: "Scan a QR code" })).toBeNull();
+      expect(
+        await findByRole("button", { name: "Scan a QR code from an image" })
+      ).toBeEnabled();
     });
 
     it("should offer a QR scan with a camera", async () => {

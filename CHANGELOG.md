@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Scan a QR code from an image on Send, also where there's no camera
 - Warn on Send of a payment just like one made in the last ten minutes, or with the same memo before, also from another tab, without stopping it
 - Unlock with fingerprint or face, off by default, turned on in Settings with the password, on browsers and devices with a passkey's PRF: going straight to it as the wallet opens. The password keeps working, and big sends still ask for it
 - Show a stake with Sozu in figures on its form: put in, taken out, worth now, deposit fees and rewards so far, what an amount earns in a year, and a line of what the rate is made of
@@ -35,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Read a QR code that fills the camera's view on Send, also in browsers without a built-in QR reader, as on an iPhone
+- Say so when a QR code scanned isn't a Dusk address or payment link, and keep scanning
 - Say what a payment link asks, of whom and how much, before a wallet is open to pay it, and keep it through creating or restoring one, for Send to open filled in
 - Say a request paid twice, with when, and another payment that may be for it
 - Say on Send what's on its way from the profile, as after a reload while it went
