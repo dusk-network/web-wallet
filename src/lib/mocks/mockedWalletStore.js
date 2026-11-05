@@ -21,6 +21,7 @@ const unshielded = { nonce: 1234n, value: shielded.value / 2n };
 /** @type {WalletStoreContent & { currentProfile: NonNullable<WalletStoreContent["currentProfile"]> }} */
 const content = {
   balance: { shielded, unshielded },
+  balanceRead: true,
   currentProfile,
   initialized: true,
   minimumStake: 1_000_000_000_000n,

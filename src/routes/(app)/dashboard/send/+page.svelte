@@ -117,7 +117,7 @@
     $gasPriceStore
   );
   $: gasLimits = getGasLimits(transferOperation, $gasStore);
-  $: ({ balance, currentProfile } = $walletStore);
+  $: ({ balance, balanceRead, currentProfile } = $walletStore);
   $: spendable =
     spendableSource === "shielded"
       ? balance.shielded.spendable
@@ -143,6 +143,7 @@
 {#key askedKey}
   <Send
     availableBalance={spendable}
+    balanceKnown={balanceRead !== false}
     bep20BridgeAddress={BEP20_BRIDGE_ADDRESS}
     execute={send}
     {gasLimits}

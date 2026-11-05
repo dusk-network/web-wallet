@@ -179,6 +179,7 @@ describe("Wallet store", async () => {
         value: 0n,
       },
     },
+    balanceRead: false,
     currentProfile: null,
     initialized: false,
     minimumStake: 0n,
@@ -682,6 +683,54 @@ describe("Wallet store", async () => {
         treasuryUpdateSpy.mock.invocationCallOrder[0]
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledOnce();
+    });
+
+    it("should show the balances and the stake read together, never one read with the other from before", async () => {
+      const stakeRead = Promise.withResolvers();
+      const freshStake = { ...stakeInfo, reward: 1n };
+      const freshPublic = { ...unshielded, value: unshielded.value + 7n };
+
+      stakeInfoSpy.mockReturnValueOnce(stakeRead.promise);
+      balanceSpy
+        .mockResolvedValueOnce(shielded)
+        .mockResolvedValueOnce(freshPublic);
+
+      const refreshed = walletStore.refreshBalance();
+
+      await vi.waitUntil(() => balanceSpy.mock.calls.length === 2);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // The public balance read waits for the stake.
+      expect(get(walletStore).balance.unshielded).toStrictEqual(unshielded);
+
+      stakeRead.resolve(freshStake);
+      await refreshed;
+
+      expect(get(walletStore).balance.unshielded).toStrictEqual(freshPublic);
+      expect(get(walletStore).stakeInfo).toBe(freshStake);
+    });
+
+    it("should say the balances were read for the profile shown, and not while another's show", async () => {
+      expect(get(walletStore).balanceRead).toBe(true);
+
+      const balanceRead = Promise.withResolvers();
+
+      balanceSpy.mockReturnValueOnce(balanceRead.promise);
+
+      const switched = walletStore.setCurrentProfile(
+        get(walletStore).profiles[1]
+      );
+
+      expect(get(walletStore).balanceRead).toBe(false);
+
+      balanceRead.resolve(shielded);
+      await switched;
+
+      expect(get(walletStore).balanceRead).toBe(true);
+
+      walletStore.reset();
+
+      expect(get(walletStore).balanceRead).toBe(false);
     });
   });
 

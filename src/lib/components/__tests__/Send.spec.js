@@ -471,6 +471,7 @@ describe("Send", () => {
         "0.15",
         "Factura 33",
       ]);
+      expect(opened.getByText(/^Filled in from the link/)).toBeInTheDocument();
       opened.unmount();
 
       const refused = render(Send, {
@@ -812,6 +813,49 @@ describe("Send", () => {
       await rerender({ gasSettings: { gasLimit: 60_000_000n, gasPrice: 1n } });
 
       expect(maxFee()).toBe("0.04");
+    });
+
+    it("should say nothing false of an amount filled in as the page opens, as from a link or a draft", async () => {
+      const { getByRole, queryByRole } = render(Send, {
+        ...baseProps,
+        initialAmount: "0.03",
+        initialRecipient: otherAccount,
+      });
+
+      await tick();
+
+      expect(queryByRole("alert")).toBeNull();
+      expect(fieldsOf(getByRole).review()).toBeEnabled();
+    });
+
+    it("should check an amount against the balance once it's read, and say nothing against a balance not read yet", async () => {
+      const { getByRole, getByText, queryByRole, rerender } = render(Send, {
+        ...baseProps,
+        availableBalance: 0n,
+        balanceKnown: false,
+        initialAmount: "0.03",
+        initialRecipient: otherAccount,
+      });
+
+      await tick();
+
+      expect(queryByRole("alert")).toBeNull();
+
+      await rerender({ availableBalance: 1_000_000_000n, balanceKnown: true });
+
+      expect(queryByRole("alert")).toBeNull();
+      expect(fieldsOf(getByRole).review()).toBeEnabled();
+
+      await rerender({ availableBalance: 25_000_000n });
+
+      expect(getByText("More than your 0.025 DUSK.")).toBeInTheDocument();
+      expect(fieldsOf(getByRole).review()).toBeDisabled();
+
+      await rerender({ availableBalance: 40_000_000n });
+
+      expect(getByRole("alert")).toHaveTextContent(
+        "That leaves too little for the network fee: send up to 0.02 DUSK."
+      );
     });
 
     it("should keep Send disabled, and say why, while the balance can't pay the fee", async () => {

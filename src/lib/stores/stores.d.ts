@@ -91,6 +91,12 @@ type WalletStoreBalance = {
 
 type WalletStoreContent = {
   balance: WalletStoreBalance;
+  /**
+   * Whether `balance` was read from the network for the current profile since
+   * the wallet or the profile opened: until then it's the cached one, or the
+   * other profile's, and nothing is said against it.
+   */
+  balanceRead: boolean;
   currentProfile: Profile | null;
   initialized: boolean;
   minimumStake: bigint;

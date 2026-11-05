@@ -96,6 +96,12 @@
   export let availableBalance;
 
   /**
+   * Whether the balances were read from the network since the wallet or the
+   * profile opened: nothing is said against one that wasn't yet.
+   */
+  export let balanceKnown = true;
+
+  /**
    * The spendable shielded balance, which pays transfers to shielded addresses.
    *
    * @type {bigint}
@@ -334,38 +340,48 @@
 
   /**
    * What is wrong with the amount typed, in the words the page shows: ""
-   * for nothing typed yet, or an amount that can go.
+   * for nothing typed yet, or an amount that can go. Nothing is said against
+   * a balance not read yet.
    *
    * @param {string} text
    * @param {bigint | null} amount
+   * @param {{ available: bigint, hidden: boolean, known: boolean, locale: string, maxSpendable: bigint }} balance
    */
-  function amountErrorOf(text, amount) {
+  function amountErrorOf(
+    text,
+    amount,
+    { available, hidden, known, locale, maxSpendable }
+  ) {
     if (!text.trim()) {
       return "";
     }
 
     if (amount === null) {
-      return amountProblem(text, language);
+      return amountProblem(text, locale);
     }
 
     if (amount === 0n) {
       return "Enter an amount greater than 0.";
     }
 
-    // With balances hidden, these don't say what's held.
-    if (amount > availableBalance) {
-      return hideBalances
-        ? "More than you have."
-        : `More than your ${formatDuskExact(availableBalance, language)} DUSK.`;
-    }
-
-    if (amount <= maxSpendableAmount) {
+    if (!known) {
       return "";
     }
 
-    return hideBalances
+    // With balances hidden, these don't say what's held.
+    if (amount > available) {
+      return hidden
+        ? "More than you have."
+        : `More than your ${formatDuskExact(available, locale)} DUSK.`;
+    }
+
+    if (amount <= maxSpendable) {
+      return "";
+    }
+
+    return hidden
       ? "That leaves too little for the network fee."
-      : `That leaves too little for the network fee: send up to ${formatDuskExact(maxSpendableAmount, language)} DUSK.`;
+      : `That leaves too little for the network fee: send up to ${formatDuskExact(maxSpendable, locale)} DUSK.`;
   }
 
   /** Whether the recipient is being saved to the contacts, and as what. */
@@ -844,7 +860,6 @@
   // A comma keyboard's "1,5" and digit grouping read as the amount meant.
   $: parsedAmount = readDuskInput(sendAmount, language);
   $: sendAmountInLux = parsedAmount ?? 0n;
-  $: amountError = amountErrorOf(sendAmount, parsedAmount);
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
@@ -866,6 +881,16 @@
   $: maxSpendableAmount =
     availableBalance >= maxGasFee ? availableBalance - maxGasFee : 0n;
 
+  // Said again as the balance or the fee changes, as an amount filled in
+  // before the balance was read is checked against it once it is.
+  $: amountError = amountErrorOf(sendAmount, parsedAmount, {
+    available: availableBalance,
+    hidden: hideBalances,
+    known: balanceKnown,
+    locale: language,
+    maxSpendable: maxSpendableAmount,
+  });
+
   // A shielded send leaves the public balance as it is.
   $: toKeep = isShielded ? 0n : keepForLater.lux;
 
@@ -878,6 +903,7 @@
 
   // Too little left of the public balance for what the wallet holds elsewhere.
   $: leavesTooLittle =
+    balanceKnown &&
     toKeep > 0n &&
     sendAmountInLux > 0n &&
     sendAmountInLux <= maxSpendableAmount &&
@@ -1633,7 +1659,7 @@
           <p class="send__error" id="{id}-amount-error" role="alert">
             {amountError}
           </p>
-        {:else if !isBalanceSufficientForGas && availableBalance > 0n}
+        {:else if balanceKnown && !isBalanceSufficientForGas && availableBalance > 0n}
           <p class="send__error" role="alert">
             <strong>Not enough for the network fee.</strong> Add DUSK{canLowerFee
               ? ", or lower the fee under Edit"
