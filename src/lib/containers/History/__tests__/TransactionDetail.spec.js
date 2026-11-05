@@ -354,17 +354,18 @@ describe("TransactionDetail", () => {
     expect(container.textContent).toContain(store.slice(-6));
   });
 
-  it("should name a profile of another wallet here as the wallets do, in its headline and its To", () => {
+  it("should name a profile of another wallet here as the wallets do, in its headline and its To, and never offer to save it as a contact", () => {
     const sent = row({
       amount: "10000000",
       contractId: undefined,
       kind: "transfer",
       to: OWN,
     });
-    const { container, getByText } = show(sent, { walletNames });
+    const { container, getByText, queryByRole } = show(sent, { walletNames });
 
     expect(getByText("Sent to Wallet 2 · Profile 1")).toBeInTheDocument();
     expect(mainList(container)).toMatch(/To\s*Wallet 2 · Profile 1\s*qxwSid/);
+    expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
   });
 
   it("should name a migration's payout by its route, with the route's account by what the network's file calls it, on any network", () => {

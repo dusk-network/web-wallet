@@ -451,11 +451,18 @@ describe("ContactsView", () => {
           target: { value },
         });
 
-      await name("estudio marta ");
+      // Whatever its capitals and spaces.
+      for (const variant of [
+        "estudio marta ",
+        " estudio  marta",
+        "ESTUDIO\tMARTA",
+      ]) {
+        await name(variant);
 
-      expect(
-        getByText(/^You already have a contact called Estudio Marta\./)
-      ).toBeInTheDocument();
+        expect(
+          getByText(/^You already have a contact called Estudio Marta\./)
+        ).toBeInTheDocument();
+      }
 
       await name("Estudio Lena");
 
