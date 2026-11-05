@@ -5,6 +5,7 @@
  * phone's browser can't notify from a page: the title says it there.
  */
 
+import { base } from "$app/paths";
 import { derived, get, writable } from "svelte/store";
 
 const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-arrival-notice`;
@@ -129,7 +130,7 @@ export function transferEnded({ id, onOpen = () => {}, title: said }) {
 
   try {
     const notice = new /** @type {typeof Notification} */ (api())(said, {
-      icon: `${document.baseURI.replace(/\/+$/, "")}/favicon.png`,
+      icon: `${base}/favicon.png`,
       tag: id,
     });
 
