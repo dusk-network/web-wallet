@@ -408,6 +408,17 @@ describe("TransactionDetail", () => {
     );
   });
 
+  it("should keep a failed transaction's error from reordering what's read: its contract can write anything", () => {
+    const { container } = show({
+      ...row({}),
+      error: "refused \u202E0001\u202C",
+    });
+
+    expect(container.querySelector(".tx-detail__error")?.textContent).toContain(
+      "refused \\u202e0001\\u202c"
+    );
+  });
+
   it("should give the fee paid to the last digit, in its list and under Technical details", () => {
     const { container } = show(row({ feePaid: "4419010" }));
 

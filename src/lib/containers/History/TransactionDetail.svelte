@@ -1,4 +1,5 @@
 <script>
+  import { displayText } from "@dusk-network/app-core/text";
   import { createEventDispatcher, onMount } from "svelte";
   import {
     mdiAlertCircleOutline,
@@ -32,7 +33,7 @@
   import { contractLabel } from "$lib/activity/knownContracts";
   import { fullDateTime, routeLabel } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
-  import { formatDusk, formatDuskExact, formatFee } from "$lib/dusk/currency";
+  import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { addBasePath } from "$lib/navigation";
   import {
@@ -648,7 +649,9 @@
         {#if row.error}
           <div class="tx-detail__wide">
             <dt>Error</dt>
-            <dd class="tx-detail__error">{row.error}</dd>
+            <dd class="tx-detail__error">
+              {displayText(row.error, { lineBreaks: true }).text}
+            </dd>
           </div>
         {/if}
       </dl>

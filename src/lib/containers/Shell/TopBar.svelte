@@ -110,15 +110,13 @@
 
     <button
       aria-keyshortcuts="Control+K Meta+K /"
-      aria-label="Search names, addresses and transactions"
+      aria-label="Search names, addresses, amounts and transactions"
       class="top-bar__search"
       on:click={() => dispatch("search")}
       type="button"
     >
       <Icon path={mdiMagnify} />
-      <span class="top-bar__search-text"
-        >Search names, addresses, transactions</span
-      >
+      <span class="top-bar__search-text">Search names, addresses, amounts</span>
       <kbd class="top-bar__kbd">Ctrl K</kbd>
     </button>
 
