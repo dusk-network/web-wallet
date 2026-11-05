@@ -92,7 +92,11 @@
   };
 
   const dispatch = createEventDispatcher();
+  // Each scan's own number: a result for one closed or started over since is dropped.
+  let scanRun = 0;
+
   const stopScan = () => {
+    scanRun += 1;
     toggleScanner = false;
     qrScanned = false;
     error = false;
@@ -142,14 +146,20 @@
 
     problem = "";
 
+    const run = scanRun;
+
     try {
       const { data } = await QrScanner.scanImage(file, {
         returnDetailedScanResult: true,
       });
 
-      take(data);
+      if (run === scanRun) {
+        take(data);
+      }
     } catch {
-      problem = "No QR code found in that image.";
+      if (run === scanRun) {
+        problem = "No QR code found in that image.";
+      }
     }
   }
 

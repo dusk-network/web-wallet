@@ -216,4 +216,38 @@ describe("ScanQR", () => {
 
     click.mockRestore();
   });
+
+  it("drops what an image read gives once the scanner was closed meanwhile", async () => {
+    qr.camera = false;
+
+    const scan = vi.fn();
+    const click = vi
+      .spyOn(HTMLInputElement.prototype, "click")
+      .mockImplementation(() => {});
+    const view = await ready({ scan });
+
+    await view.component.startScan();
+
+    /** @type {(value: { data: string }) => void} */
+    let read = () => {};
+
+    qr.scanImage.mockReturnValueOnce(
+      new Promise((resolve) => {
+        read = resolve;
+      })
+    );
+    await fireEvent.change(view.getByLabelText("Image of a QR code"), {
+      target: {
+        files: [new File(["png"], "request.png", { type: "image/png" })],
+      },
+    });
+    await fireEvent.click(view.getByRole("button", { name: "Close" }));
+    read({ data: "dusk:public-abc" });
+    await tick();
+    await Promise.resolve();
+
+    expect(scan).not.toHaveBeenCalled();
+
+    click.mockRestore();
+  });
 });

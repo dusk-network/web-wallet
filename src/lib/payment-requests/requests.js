@@ -320,26 +320,41 @@ export function matchRequests(list, rows) {
   }
 
   // What else came in for a request answered: it paid twice, or may have.
+  // Payments with all of a request go to it first, before any request takes
+  // one with only part of it.
+  /** @type {Map<string, RequestPayment[]>} */
+  const extra = new Map();
+
+  for (const exact of [true, false]) {
+    for (const request of oldestFirst) {
+      const match = /** @type {RequestMatch} */ (matches.get(request.id));
+
+      for (const row of match.state === "waiting" ? [] : incoming) {
+        const matched = taken.has(row.hash) ? null : matchOf(request, row);
+
+        if (matched && (matched === "amount-memo") === exact) {
+          taken.add(row.hash);
+          extra.set(request.id, [
+            ...(extra.get(request.id) ?? []),
+            {
+              at: row.time ?? undefined,
+              hash: row.hash,
+              lux: row.value,
+              matched,
+              memo: memoOf(row.memo),
+            },
+          ]);
+        }
+      }
+    }
+  }
+
   for (const request of oldestFirst) {
     const match = /** @type {RequestMatch} */ (matches.get(request.id));
 
-    /** @type {RequestPayment[]} */
-    const more = [];
-
-    for (const row of match.state === "waiting" ? [] : incoming) {
-      const matched = taken.has(row.hash) ? null : matchOf(request, row);
-
-      if (matched) {
-        taken.add(row.hash);
-        more.push({
-          at: row.time ?? undefined,
-          hash: row.hash,
-          lux: row.value,
-          matched,
-          memo: memoOf(row.memo),
-        });
-      }
-    }
+    const more = (extra.get(request.id) ?? []).sort(
+      (x, y) => (x.at ?? 0) - (y.at ?? 0)
+    );
 
     if (more.length) {
       matches.set(request.id, { ...match, more });

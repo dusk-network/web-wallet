@@ -655,8 +655,9 @@ async function followTab(event) {
   } else if (event.type === "switch") {
     await follow(event.key, event.profile);
   } else if (event.type === "sent") {
-    // What another tab sent shows in this one's history too.
-    await currentActivity()?.refresh();
+    // What another tab sent shows in this one's history too. Not awaited: a
+    // lock or a new password heard meanwhile mustn't wait for a slow read.
+    Promise.resolve(currentActivity()?.refresh()).catch(() => {});
   } else {
     await followWallets();
   }

@@ -50,8 +50,12 @@
    */
   export let request = null;
 
-  /** Called as the request leaves the wallet, by Share or Download QR. */
-  /** @type {() => void} */
+  /**
+   * Called as the request leaves the wallet, by Share or Download QR, with
+   * the request that left and the address it pays.
+   *
+   * @type {(used: { address: string, request: typeof request }) => void}
+   */
   export let onUse = () => {};
 
   // Where a browser has a share sheet: most phones, some computers.
@@ -94,14 +98,14 @@
 
   /** The address, or what's asked, through the phone's share sheet. */
   async function share() {
-    const text = request?.link ?? address;
+    const used = { address, request };
 
     try {
       await navigator.share({
-        text,
-        title: request ? "Dusk payment request" : "My Dusk address",
+        text: used.request?.link ?? used.address,
+        title: used.request ? "Dusk payment request" : "My Dusk address",
       });
-      onUse();
+      onUse(used);
     } catch (error) {
       // Closing the sheet is an answer, not a failure.
       if (error instanceof Error && error.name !== "AbortError") {
@@ -162,21 +166,25 @@
   /**
    * What the QR holds, as a picture large enough to print: for a request,
    * with what it asks written under it, for whoever gets the picture alone.
+   *
+   * @param {typeof request} asked
+   * @param {string} value What the code holds
+   * @param {typeof name} named
    */
-  async function qrPicture() {
+  async function qrPicture(asked, value, named) {
     const qr = document.createElement("canvas");
 
-    await QRCode.toCanvas(qr, qrValue, {
+    await QRCode.toCanvas(qr, value, {
       color: { dark: "#101", light: "#fff" },
       width: PICTURE,
     });
 
-    if (!request) {
+    if (!asked) {
       return qr.toDataURL("image/png");
     }
 
-    const shownName = await Promise.resolve(name).catch(() => "");
-    const lines = wordsOf(request, shownName);
+    const shownName = await Promise.resolve(named).catch(() => "");
+    const lines = wordsOf(asked, shownName);
     const picture = document.createElement("canvas");
     const context = /** @type {CanvasRenderingContext2D} */ (
       picture.getContext("2d")
@@ -208,13 +216,22 @@
 
   /** The QR as a picture, downloaded. */
   async function downloadQr() {
+    // What the picture shows and pays, and what's kept, taken together before
+    // anything is awaited: an edit meanwhile changes none of them.
+    const used = { address, request };
+    const kind = addressType === "account" ? "public" : "shielded";
+
     try {
       const link = document.createElement("a");
 
-      link.href = await qrPicture();
-      link.download = `dusk-${addressType === "account" ? "public" : "shielded"}-${request ? "request" : "receive"}-qr.png`;
+      link.href = await qrPicture(
+        used.request,
+        used.request?.dusk ?? used.address,
+        name
+      );
+      link.download = `dusk-${kind}-${used.request ? "request" : "receive"}-qr.png`;
       link.click();
-      onUse();
+      onUse(used);
     } catch {
       toast("error", "Couldn't make the QR picture", mdiAlertOutline);
     }

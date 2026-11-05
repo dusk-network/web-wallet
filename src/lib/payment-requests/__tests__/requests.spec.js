@@ -174,6 +174,25 @@ describe("The requests a wallet made", () => {
       expect(matches.get("b")?.more).toBeUndefined();
     });
 
+    it("should give a payment again to the request it matches in full, not to an older one it matches by amount", () => {
+      const matches = matchRequests(
+        [asked(), asked({ at: NOW + 1, id: "b", memo: "Factura 34" })],
+        [
+          payment(),
+          payment({ hash: "h2", memo: "Factura 34", time: NOW + 2 * HOUR }),
+          payment({ hash: "h3", memo: "Factura 34", time: NOW + 3 * HOUR }),
+        ]
+      );
+
+      expect(matches.get("a")).toMatchObject({ hash: "h1", state: "paid" });
+      expect(matches.get("a")?.more).toBeUndefined();
+      expect(matches.get("b")).toMatchObject({
+        hash: "h2",
+        more: [{ hash: "h3", matched: "amount-memo" }],
+        state: "paid",
+      });
+    });
+
     it("should prefer a payment with all of it to an earlier one with part of it", () => {
       const matches = matchRequests(
         [asked()],

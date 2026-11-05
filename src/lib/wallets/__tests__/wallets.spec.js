@@ -674,6 +674,24 @@ describe("The wallets on this device", () => {
       expect(get(walletStore).initialized).toBe(true);
     });
 
+    it("locks this tab when another locks, while a read of the history another send asked for is still going", async () => {
+      await twoWallets();
+
+      const session = /** @type {import("$lib/activity").ActivitySession} */ (
+        walletStore.startHistory()
+      );
+
+      await session.start();
+      vi.spyOn(session, "refresh").mockReturnValue(new Promise(() => {}));
+
+      stopFollowing = followOtherTabs();
+      fromOtherTab({ type: "sent" });
+      fromOtherTab({ type: "lock" });
+
+      await vi.waitFor(() => expect(logoutSpy).toHaveBeenCalledOnce());
+      expect(get(walletStore).initialized).toBe(false);
+    });
+
     it("lets go of a wallet another tab removed, after opening the one that tab opened", async () => {
       const { first, second } = await twoWallets();
 
