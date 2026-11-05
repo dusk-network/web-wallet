@@ -18,7 +18,10 @@
   import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { goto } from "$lib/navigation";
   import { sozuStore } from "$lib/sozu";
-  import { readNativeRewardRate } from "$lib/staking/rewardRate";
+  import {
+    readNativeRewardRate,
+    readProvisioners,
+  } from "$lib/staking/rewardRate";
   import { nodeBaseUrl } from "$lib/url";
   import {
     gasPriceStore,
@@ -101,6 +104,61 @@
     });
   });
 
+  /** What the node says of what's staked: for the Sozu form's working. */
+  /** @type {any[] | null} */
+  let provisioners = null;
+
+  /**
+   * What the profile did with Sozu, as its form shows it.
+   *
+   * @type {{ facts?: Map<string, import("@dusk-network/app-core/sozu").SozuFact>, reading: boolean, rows: ActivityRow[], whole?: boolean }}
+   */
+  let sozuHistory = { reading: false, rows: [] };
+
+  /**
+   * Reads the profile's whole history for its position with Sozu, as its form
+   * opens: an answer for a profile before this one counts for nothing.
+   */
+  function readSozuHistory() {
+    if (!isHistoryEnabled()) {
+      return;
+    }
+
+    const asked = { reading: true, rows: [] };
+
+    sozuHistory = asked;
+    Promise.resolve()
+      .then(async () => {
+        const session = /** @type {import("$lib/activity").ActivitySession} */ (
+          walletStore.startHistory()
+        );
+        const { rows } = await session.whole({ publicOnly: true });
+        const facts = await session.sozuFacts(rows).catch(() => undefined);
+
+        return { facts, reading: false, rows, whole: true };
+      })
+      .catch(() => ({ reading: false, rows: [] }))
+      .then((read) => {
+        if (sozuHistory === asked) {
+          sozuHistory = read;
+        }
+      });
+  }
+
+  /**
+   * Reads what the Sozu form shows that's not Sozu's own, as it opens.
+   *
+   * @param {string} account The profile's it opens for: "" while it's closed
+   */
+  function readSozuFigures(account) {
+    if (account) {
+      readSozuHistory();
+      void readProvisioners({ nodeUrl: nodeBaseUrl() }).then((read) => {
+        provisioners = read;
+      });
+    }
+  }
+
   /**
    * What liquid staking opens on: a stake, or an unstake.
    *
@@ -151,6 +209,13 @@
     void sozuStore.load();
   }
 
+  // Each time its form opens, as after a stake, for each profile.
+  $: sozuFormFor =
+    flow === "liquid" && isSozuAvailable && currentProfile
+      ? String(currentProfile.account)
+      : "";
+  $: readSozuFigures(sozuFormFor);
+
   $: custom = { customGasLimit, customGasPrice };
   $: unstakeGas = gasFor(
     flow === "claim" ? "claim-rewards" : "unstake",
@@ -186,7 +251,13 @@
         availableBalance={publicBalance}
         execute={stakeLiquid}
         gas={liquidGas}
+        history={sozuHistory}
         onRetry={() => sozuStore.load({ force: true })}
+        rates={{
+          native: nativeRate,
+          provisioners,
+          tipHeight: blockHeight,
+        }}
         recheck={() => sozuStore.check()}
         sozu={$sozuStore}
       />

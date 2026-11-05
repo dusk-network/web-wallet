@@ -704,6 +704,48 @@ describe("Staking", () => {
     });
   });
 
+  it("shows what's held with Sozu on its form, from the whole history, asked for as it opens and for no other flow", async () => {
+    const whole = vi.fn(async () => ({
+      rows: [
+        {
+          hash: "a1",
+          sozu: "stake",
+          status: "executed",
+          success: true,
+          value: 90n * 1_000_000_000n,
+        },
+      ],
+      shieldedWaiting: true,
+    }));
+    const sozuFacts = vi.fn(async () => new Map());
+    const startHistory = vi
+      .spyOn(walletStore, "startHistory")
+      .mockReturnValue(/** @type {any} */ ({ sozuFacts, whole }));
+
+    open("?flow=native");
+
+    const flows = render(Staking);
+
+    await vi.waitFor(() =>
+      expect(flows.container.firstElementChild).toBeTruthy()
+    );
+
+    expect(whole).not.toHaveBeenCalled();
+
+    flows.unmount();
+    open("?flow=liquid");
+
+    const { container } = render(Staking);
+
+    await vi.waitFor(() =>
+      expect(
+        container.querySelector(".liquid-stake__position")
+      ).toHaveTextContent("Put in 90 DUSK")
+    );
+    expect(whole).toHaveBeenCalledExactlyOnceWith({ publicOnly: true });
+    startHistory.mockRestore();
+  });
+
   it("stakes with Sozu from liquid staking", async () => {
     open("?flow=liquid");
     await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));

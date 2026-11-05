@@ -819,6 +819,160 @@ describe("LiquidStake", () => {
     });
   });
 
+  describe("what's held with Sozu", () => {
+    const held = {
+      sozu: {
+        ...baseProps.sozu,
+        status: statusWith({ balance: 100n * DUSK, stDusk: 32n * DUSK }),
+      },
+    };
+    /** @param {Record<string, unknown>} [fields] */
+    const call = (fields) =>
+      /** @type {ActivityRow} */ ({
+        hash: "a1",
+        sozu: "stake",
+        status: "executed",
+        success: true,
+        value: 90n * DUSK,
+        ...fields,
+      });
+
+    it("adds up what was put in, taken out, what it's worth now, the deposit fees each stake paid and the rewards, to the lux", () => {
+      const { container } = render(LiquidStake, {
+        ...baseProps,
+        ...held,
+        history: {
+          facts: new Map([["a1", /** @type {any} */ ({ fee: DUSK / 4n })]]),
+          reading: false,
+          rows: [
+            call(),
+            call({
+              hash: "a2",
+              sozu: "unstake",
+              value: 5n * DUSK,
+            }),
+          ],
+          whole: true,
+        },
+      });
+
+      expect(
+        Array.from(
+          container.querySelectorAll(".liquid-stake__position > div"),
+          textOf
+        )
+      ).toStrictEqual([
+        "Put in 90 DUSK",
+        "Taken out 5 DUSK",
+        "Worth now 100 DUSK",
+        "Deposit fees 0.25 DUSK",
+        "Rewards so far 15.25 DUSK",
+        "stDUSK 32 stDUSK",
+      ]);
+    });
+
+    it("says deposit fees it could only work out are about that, and what's on its way isn't counted yet", () => {
+      const { container, getByText } = render(LiquidStake, {
+        ...baseProps,
+        ...held,
+        history: {
+          reading: false,
+          rows: [call(), call({ hash: "a3", status: "pending" })],
+          whole: true,
+        },
+      });
+
+      expect(
+        textOf(container.querySelector(".liquid-stake__position"))
+      ).toContain("Deposit fees, about 0.225 DUSK");
+      expect(
+        getByText("One more on its way isn't counted yet.")
+      ).toBeInTheDocument();
+    });
+
+    it("waits for the whole history for what it can't say from part of it, and shows what the status says all the same", () => {
+      const reading = render(LiquidStake, {
+        ...baseProps,
+        ...held,
+        history: { reading: true, rows: [] },
+      });
+
+      expect(
+        Array.from(
+          reading.container.querySelectorAll(".liquid-stake__position > div"),
+          textOf
+        )
+      ).toStrictEqual([
+        "Worth now 100 DUSK",
+        "Rewards so far Reading your history…",
+        "stDUSK 32 stDUSK",
+      ]);
+      reading.unmount();
+
+      const failed = render(LiquidStake, {
+        ...baseProps,
+        ...held,
+        history: { reading: false, rows: [] },
+      });
+
+      expect(
+        Array.from(
+          failed.container.querySelectorAll(".liquid-stake__position > div"),
+          textOf
+        )
+      ).toStrictEqual(["Worth now 100 DUSK", "stDUSK 32 stDUSK"]);
+    });
+
+    it("hides all of it with the balances", () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      const { container } = render(LiquidStake, {
+        ...baseProps,
+        ...held,
+        history: { reading: false, rows: [call()], whole: true },
+      });
+
+      expect(
+        textOf(container.querySelector(".liquid-stake__position"))
+      ).not.toMatch(/\d/);
+      settingsStore.reset();
+    });
+
+    it("says what the rate is made of, and what an amount earns in a year at it, once they're read", async () => {
+      const rates = {
+        native: 0.24,
+        provisioners: [{ amount: { value: 206_900_000n * DUSK } }],
+        tipHeight: 1_000_000n,
+      };
+      const { container, getByLabelText } = render(LiquidStake, {
+        ...baseProps,
+        rates,
+      });
+      const facts = textOf(container.querySelector(".liquid-stake__facts"));
+
+      expect(facts).toContain("About 20% a year. Not promised.");
+      expect(facts).toMatch(/DUSK a block to stakers.*Less Sozu's 15%/);
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+
+      expect(
+        textOf(container.querySelector(".liquid-stake__estimate"))
+      ).toMatch(
+        /At today's rate that's about 20\.\d+ DUSK in rewards a year, after Sozu's share and the deposit fee\.$/
+      );
+    });
+
+    it("says nothing of the rate before it's read", () => {
+      const { container } = render(LiquidStake, baseProps);
+
+      expect(
+        textOf(container.querySelector(".liquid-stake__facts"))
+      ).not.toContain("Not promised");
+    });
+  });
+
   it("unstakes up to what is staked with Sozu, back to the public balance", async () => {
     const { container, getByLabelText, getByRole } = render(LiquidStake, {
       ...baseProps,
@@ -833,7 +987,7 @@ describe("LiquidStake", () => {
     });
 
     expect(textOf(container.querySelector(".liquid-stake__position"))).toBe(
-      "Staked with Sozu 15 DUSK stDUSK 4.878 stDUSK"
+      "Worth now 15 DUSK stDUSK 4.878 stDUSK"
     );
     expect(getByRole("tab", { name: "Unstake" })).toHaveAttribute(
       "aria-selected",

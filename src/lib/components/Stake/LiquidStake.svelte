@@ -6,6 +6,13 @@
   import { page } from "$app/stores";
   import { mdiPercentOutline, mdiWaterOutline } from "@mdi/js";
 
+  import {
+    sozuPosition,
+    sozuRate,
+    sozuRateLine,
+    sozuYear,
+  } from "@dusk-network/app-core/sozu";
+
   import { contractLabel } from "$lib/activity/knownContracts";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
@@ -27,6 +34,7 @@
     sozuFee,
     sozuStake,
   } from "@dusk-network/networks/sozu";
+  import { ratePercent } from "$lib/staking/rewardRate";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
@@ -59,6 +67,23 @@
 
   /** @type {"stake" | "unstake"} */
   export let action = "stake";
+
+  /**
+   * What the profile did with Sozu, read whole for its position: `reading`
+   * until then, and without `whole` once it can't be read: what the status says
+   * shows all the same.
+   *
+   * @type {{ facts?: Map<string, import("@dusk-network/app-core/sozu").SozuFact>, reading: boolean, rows: ActivityRow[], whole?: boolean }}
+   */
+  export let history = { reading: false, rows: [] };
+
+  /**
+   * What the rate is made of: native staking's, about what it pays a year, and
+   * what the node says of what's staked.
+   *
+   * @type {{ native?: number | null, provisioners?: any[] | null, tipHeight?: bigint | null }}
+   */
+  export let rates = {};
 
   /**
    * The gas each action starts from, at the node's price, and its bounds: a
@@ -433,6 +458,23 @@
   // As low as the fee's Edit lets it go.
   $: leastFee = gasLimits.gasLimitLower * gasLimits.gasPriceLower;
   $: staked = status?.position.balance ?? 0n;
+  // The position, as the shared sums make it: what's put in and earned waits
+  // for the whole history, and the rewards for each stake's deposit fee.
+  $: held = sozuPosition({
+    complete: Boolean(history.whole),
+    facts: history.facts,
+    rows: history.rows,
+    status,
+  });
+  // What it pays a year, once that's read, and the line of what that's made of.
+  $: yearly = sozuRate(rates.native, status);
+  $: working = sozuRateLine({
+    locale: language,
+    nativeRate: rates.native,
+    provisioners: rates.provisioners,
+    status,
+    tipHeight: rates.tipHeight,
+  });
   // Sozu's deposit fee, as its substrate gives it, where it could be read.
   $: depositRate = status?.fees?.deposit ?? null;
   $: stDusk = status?.position.stDusk ?? 0n;
@@ -497,6 +539,11 @@
   // that's worth now.
   $: stake = sozuStake(shownAmount, status?.pool ?? null, depositRate);
   $: estimate = isStake && check.ok ? stake.stDusk : null;
+  // What this amount earns in a year at the rate now.
+  $: yearEarned =
+    estimate === null || amount === null
+      ? null
+      : sozuYear({ amount, nativeRate: rates.native, status }).earned;
   $: isTypedOff = Boolean(check.error);
   $: total = isStake ? typedAmount + maxGasFee : maxGasFee;
   // The pool's name, as the network's file gives it.
@@ -566,10 +613,32 @@
       </div>
     {/if}
 
-    {#if staked > 0n || stDusk > 0n}
+    {#if staked > 0n || stDusk > 0n || held.putIn > 0n}
       <dl class="liquid-stake__position">
+        {#if history.whole}
+          <div>
+            <dt>Put in</dt>
+            <dd>
+              <BalanceValue
+                exact={formatDuskExact(held.putIn, language)}
+                value={formatDusk(held.putIn, language)}
+              /> DUSK
+            </dd>
+          </div>
+          {#if held.takenOut > 0n}
+            <div>
+              <dt>Taken out</dt>
+              <dd>
+                <BalanceValue
+                  exact={formatDuskExact(held.takenOut, language)}
+                  value={formatDusk(held.takenOut, language)}
+                /> DUSK
+              </dd>
+            </div>
+          {/if}
+        {/if}
         <div>
-          <dt>Staked with Sozu</dt>
+          <dt>Worth now</dt>
           <dd>
             <BalanceValue
               exact={formatDuskExact(staked, language)}
@@ -577,6 +646,34 @@
             /> DUSK
           </dd>
         </div>
+        {#if history.whole && held.depositFees !== null && held.depositFees > 0n}
+          <div>
+            <dt>{held.feesExact ? "Deposit fees" : "Deposit fees, about"}</dt>
+            <dd>
+              <BalanceValue
+                exact={formatDuskExact(held.depositFees, language)}
+                value={formatDusk(held.depositFees, language)}
+              /> DUSK
+            </dd>
+          </div>
+        {/if}
+        {#if history.reading}
+          <div>
+            <dt>Rewards so far</dt>
+            <dd class="liquid-stake__reading">Reading your history…</dd>
+          </div>
+        {:else if history.whole && held.earned !== null}
+          {@const earned = held.earned < 0n ? -held.earned : held.earned}
+          <div>
+            <dt>Rewards so far</dt>
+            <dd>
+              {held.earned < 0n ? "−" : ""}<BalanceValue
+                exact={formatDuskExact(earned, language)}
+                value={formatDusk(earned, language)}
+              /> DUSK
+            </dd>
+          </div>
+        {/if}
         <div>
           <dt>stDUSK</dt>
           <dd>
@@ -587,6 +684,13 @@
           </dd>
         </div>
       </dl>
+      {#if held.waiting}
+        <p class="liquid-stake__hint">
+          {held.waiting === 1
+            ? "One more on its way isn't counted yet."
+            : `${held.waiting} more on their way aren't counted yet.`}
+        </p>
+      {/if}
     {/if}
 
     <div class="liquid-stake__field">
@@ -701,6 +805,14 @@
                 stDUSK is Sozu's token for your share. Its DUSK value follows
                 Sozu's pool, its rewards and its fees.
               </p>
+              {#if yearEarned !== null && yearEarned > 0n}
+                <p>
+                  At today's rate that's about <BalanceValue
+                    hidden={isAmountMasked}
+                    value={formatDusk(yearEarned, language)}
+                  /> DUSK in rewards a year, after Sozu's share and the deposit fee.
+                </p>
+              {/if}
             </div>
           {:else if !isStake}
             <div class="liquid-stake__estimate">
@@ -722,6 +834,17 @@
           <p>You get stDUSK, a token for your share of Sozu's pool.</p>
         </div>
       </li>
+      {#if yearly !== null && working}
+        <li>
+          <Icon path={mdiPercentOutline} />
+          <div>
+            <p class="liquid-stake__fact">
+              About {ratePercent(yearly, language)} a year. Not promised.
+            </p>
+            <p>{working}</p>
+          </div>
+        </li>
+      {/if}
       {#if fees}
         <li>
           <Icon path={mdiPercentOutline} />
@@ -932,10 +1055,16 @@
     text-underline-offset: 2px;
   }
 
+  .liquid-stake__reading {
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+    font-weight: 400;
+  }
+
   .liquid-stake__position {
     display: flex;
     flex-wrap: wrap;
-    gap: 2rem;
+    gap: 0.875rem 2rem;
     margin: 0;
     padding: 1rem 1.125rem;
     border-radius: 0.875rem;
