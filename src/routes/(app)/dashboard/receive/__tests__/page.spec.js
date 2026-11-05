@@ -12,7 +12,7 @@ import { get } from "svelte/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
-import { walletStore } from "$lib/stores";
+import { settingsStore, walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { hydrateRequests, requestsStore } from "$lib/payment-requests";
 import { parsePaymentLink } from "@dusk-network/app-core/payment-links";
@@ -456,6 +456,56 @@ describe("Receive", () => {
       expect(item).not.toHaveTextContent("Paid");
       expect(item).toHaveTextContent('with another memo: "Other"');
       expect(get(requestsStore)[0].paid).toBeUndefined();
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    it("should hide what came in and what was asked with the balances, as History does", async () => {
+      const at = Date.now() - 1000;
+
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "by-memo",
+            lux: "150000000",
+            memo: "Factura 33",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          {
+            category: "received",
+            hash: "ef".repeat(32),
+            memo: "Factura 33",
+            privacy: "public",
+            status: "executed",
+            time: at + 500,
+            value: 987_654_321n,
+          },
+        ],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const item = screen.getByRole("listitem");
+
+      expect(item).toHaveTextContent("Same memo");
+      expect(item).not.toHaveTextContent(/0[.,]98/);
+      expect(item).not.toHaveTextContent(/0[.,]15/);
+      expect(
+        screen
+          .getByRole("button", { name: /^Remove the request/ })
+          .getAttribute("aria-label")
+      ).not.toMatch(/0[.,]15/);
+
+      settingsStore.reset();
       history.state?.set({ hasMore: false, rows: [] });
     });
 

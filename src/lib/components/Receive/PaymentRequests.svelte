@@ -22,7 +22,7 @@
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
 
-  import { MemoText, SectionHead } from "..";
+  import { BalanceValue, MemoText, SectionHead } from "..";
 
   /** The profile's public account and its shielded address. */
   /** @type {string[]} */
@@ -80,19 +80,26 @@
           ? `Same amount on ${day}, with another memo: "${memo}". Check it's this one.`
           : `Same amount on ${day}, with no memo. Check it's this one.`;
       case "memo":
-        return `Same memo on ${day}, for ${formatDuskExact(lux ?? 0n, language)} DUSK. Check it's this one.`;
+        return hideBalances
+          ? `Same memo on ${day}. Check it's this one.`
+          : `Same memo on ${day}, for ${formatDuskExact(lux ?? 0n, language)} DUSK. Check it's this one.`;
       default:
         return "Nothing matching has come in.";
     }
   }
 
   /**
-   * What a request asked, in short.
+   * What a request asked, in words for a screen reader: nothing of it with the
+   * balances hidden.
    *
    * @param {import("$lib/payment-requests/requests").PaymentRequest} request
    */
   const amountOf = ({ lux }) =>
-    lux === null ? "Any amount" : `${formatDusk(BigInt(lux), language)} DUSK`;
+    lux === null
+      ? "any amount"
+      : hideBalances
+        ? "a hidden amount"
+        : `${formatDusk(BigInt(lux), language)} DUSK`;
 
   /**
    * A request's link, to copy again.
@@ -105,7 +112,7 @@
     return made.https ?? made.dusk;
   };
 
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
   $: network = $nodeNetwork?.name ?? "";
   $: shown = $requestsStore.filter(
     ({ network: asked, to }) => asked === network && addresses.includes(to)
@@ -133,7 +140,16 @@
         {@const match = matches.get(request.id) ?? { state: "waiting" }}
         <li class="requests__item">
           <p class="requests__head">
-            <strong>{amountOf(request)}</strong>
+            <strong>
+              {#if request.lux === null}
+                Any amount
+              {:else}
+                <BalanceValue
+                  exact={formatDuskExact(BigInt(request.lux), language)}
+                  value={formatDusk(BigInt(request.lux), language)}
+                /> DUSK
+              {/if}
+            </strong>
             <span class="requests__state requests__state--{match.state}"
               >{STATE_WORDS[match.state]}</span
             >
