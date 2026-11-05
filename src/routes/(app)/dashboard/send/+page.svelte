@@ -61,6 +61,16 @@
 
   const { networkName } = $networkStore;
 
+  /** What an address of this page has for it to be a request. */
+  const REQUEST_FIELDS = [
+    "amount",
+    "amountLux",
+    "label",
+    "memo",
+    "network",
+    "to",
+  ];
+
   /**
    * What the page's address asks of its form: a recipient, as from Send again
    * or a contact, or a link's amount and memo with it, or why a link fills in
@@ -71,7 +81,7 @@
    * @param {string} language
    */
   const askedBy = (at, net, language) =>
-    at.searchParams.get("to")
+    REQUEST_FIELDS.some((field) => at.searchParams.has(field))
       ? readPaymentLink(
           `${ownWalletUrl()}/dashboard/send${at.search}`,
           net,

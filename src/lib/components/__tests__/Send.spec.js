@@ -398,6 +398,33 @@ describe("Send", () => {
       expect(filled(fields)).toStrictEqual([otherAccount, "2", "rent"]);
     });
 
+    it("should let a contact picked after a refused link be sent to, and say no more of that link or of one that filled it in", async () => {
+      saveContact({ address: otherAccount, name: "Rent" });
+
+      const { getByRole, queryByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const contacts = getByRole("combobox", { name: "Send to a contact" });
+
+      await paste(fields, `dusk:public-${otherAccount}@dusk:1?amount=9`);
+      await fireEvent.change(contacts, {
+        target: { value: listContacts()[0].id },
+      });
+      await tick();
+
+      expect(queryByText(/^This request is for/)).toBeNull();
+      expect(filled(fields)[0]).toBe(otherAccount);
+
+      await paste(fields, duskLink);
+
+      expect(queryByText(/^Filled in from the link/)).toBeInTheDocument();
+
+      await fireEvent.input(fields.to(), { target: { value: publicAddress } });
+      await tick();
+      await tick();
+
+      expect(queryByText(/^Filled in from the link/)).toBeNull();
+    });
+
     it("should read a scanned code as it reads what's pasted: a link fills the form in, another network's says so", async () => {
       hasCamera.mockResolvedValueOnce(true);
 

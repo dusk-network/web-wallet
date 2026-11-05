@@ -290,6 +290,19 @@ describe("Keeping what's typed in a form that moves money", () => {
       ).toHaveValue("0.5");
     });
 
+    it("brings nothing back for a link it refuses, so that what wasn't asked for can't be sent, and keeps none of it", async () => {
+      await typedForm();
+      await lockAndUnlock();
+
+      const problem = "This request is for Mainnet. You are on Testnet.";
+      const refused = render(Send, { ...sendProps, initialProblem: problem });
+
+      expectBlank(refused);
+      expect(refused.getByText(problem)).toBeInTheDocument();
+      expect(refused.getByRole("button", { name: "Review" })).toBeDisabled();
+      expect(isKept(RECIPIENT)).toBe(false);
+    });
+
     it("lets it go once the form brought back is left", async () => {
       sendProps.execute.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 

@@ -145,18 +145,23 @@
   const draft = formDraft("send");
 
   /** What the page was opened for, to tell another link from this one. */
-  const openedFor = [initialRecipient, initialAmount, initialMemo].join("\n");
+  const openedFor = initialRecipient
+    ? [initialRecipient, initialAmount, initialMemo].join("\n")
+    : "";
 
   /**
    * What was typed before a lock, a reload or a failed send, unless a link to
-   * someone else, or for something else, opens the page now.
+   * someone else, or for something else, opens the page now. A link refused is
+   * one too: what it opens on is no transfer of anyone's asking.
    *
    * @type {any}
    */
   const typedBefore = ((before) =>
-    before && (!initialRecipient || before.link === openedFor) ? before : null)(
-    draft.read()
-  );
+    before &&
+    !initialProblem &&
+    (!initialRecipient || before.link === openedFor)
+      ? before
+      : null)(draft.read());
 
   /** The amount as typed, in DUSK: nothing until it is. */
   let sendAmount = typedBefore?.amount ?? initialAmount;
@@ -177,6 +182,9 @@
   let isFromLink = Boolean(
     !typedBefore && initialRecipient && (initialAmount || initialMemo)
   );
+
+  /** The recipient that link gave. */
+  let linkRecipient = initialRecipient;
 
   /** @type {import("qr-scanner").default} */
   let scanner;
@@ -446,6 +454,7 @@
 
     linkProblem = asked?.problem ?? "";
     sendToAddress = asked ? asked.to : text;
+    linkRecipient = sendToAddress;
     isFromLink = Boolean(asked?.amount || asked?.memo);
     isRecipientChecked = Boolean(sendToAddress);
     typedLength = sendToAddress.length;
@@ -948,6 +957,15 @@
 
   $: if (!sendToAddress) {
     isRecipientChecked = false;
+  }
+
+  // Another recipient, as a contact picked, is no more the link's doing.
+  $: if (sendToAddress) {
+    linkProblem = "";
+  }
+
+  $: if (sendToAddress !== linkRecipient) {
+    isFromLink = false;
   }
 
   $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";

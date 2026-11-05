@@ -128,6 +128,23 @@ describe("Send page", () => {
       expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
     });
 
+    it.each([
+      ["no recipient", "amount=0.15&memo=Factura+33"],
+      ["an empty recipient", "to=&amount=0.15"],
+      ["a network there's no file for", `to=${OTHER}&network=nowhere`],
+    ])(
+      "should say a link with %s can't be read, and fill in nothing",
+      (_, query) => {
+        setNodeNetwork(networks.testnet);
+        openLink(query);
+
+        const { getByRole, getByText } = render(SendPage);
+
+        expect(getByText(/^That link can't be read/)).toBeInTheDocument();
+        expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
+      }
+    );
+
     it("should start the form over for another link while it shows, and open as ever without one", async () => {
       setNodeNetwork(networks.testnet);
       openLink(`to=${OTHER}&amount=0.15`);
