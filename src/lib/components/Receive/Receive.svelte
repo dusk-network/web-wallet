@@ -5,6 +5,7 @@
     mdiAlertOutline,
     mdiArrowLeft,
     mdiInformationOutline,
+    mdiShareVariantOutline,
     mdiTrayArrowDown,
   } from "@mdi/js";
   import * as QRCode from "qrcode";
@@ -39,15 +40,18 @@
 
   /**
    * What's asked of whoever pays, in place of the address alone: what the QR
-   * holds.
+   * holds, and the link Share sends.
    *
    * @type {{ dusk: string, link: string } | null}
    */
   export let request = null;
 
-  /** Called as the request leaves the wallet, by Download QR. */
+  /** Called as the request leaves the wallet, by Share or Download QR. */
   /** @type {() => void} */
   export let onUse = () => {};
+
+  // Where a browser has a share sheet: most phones, some computers.
+  const canShare = typeof navigator.share === "function";
 
   /** @type {HTMLElement} */
   let figureElement;
@@ -83,6 +87,24 @@
     type === "account"
       ? `People who send to ${shownName} reach this public account.`
       : `People who pay ${shownName} choose public or shielded. Anyone can see this address belongs to ${shownName}.`;
+
+  /** The address, or what's asked, through the phone's share sheet. */
+  async function share() {
+    const text = request?.link ?? address;
+
+    try {
+      await navigator.share({
+        text,
+        title: request ? "Dusk payment request" : "My Dusk address",
+      });
+      onUse();
+    } catch (error) {
+      // Closing the sheet is an answer, not a failure.
+      if (error instanceof Error && error.name !== "AbortError") {
+        toast("error", "Couldn't share that", mdiAlertOutline);
+      }
+    }
+  }
 
   /** What the QR holds, as a picture large enough to print. */
   async function downloadQr() {
@@ -157,6 +179,14 @@
         variant="secondary"
       />
       <div class="receive__share">
+        {#if canShare}
+          <Button
+            icon={{ path: mdiShareVariantOutline }}
+            on:click={share}
+            text="Share"
+            variant="secondary"
+          />
+        {/if}
         <Button
           icon={{ path: mdiTrayArrowDown }}
           on:click={downloadQr}

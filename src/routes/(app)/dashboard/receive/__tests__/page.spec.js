@@ -158,6 +158,7 @@ describe("Receive", () => {
       mockedWalletStore.setMockedStoreValue(before);
       setNodeNetwork(null);
       localStorage.removeItem(REQUESTS);
+      Reflect.deleteProperty(navigator, "share");
     });
 
     /** @param {string} name */
@@ -258,6 +259,52 @@ describe("Receive", () => {
         .lastCall?.[0];
 
       expect(parsePaymentLink(copied)).toMatchObject({ to: expectedAddress });
+    });
+
+    it("should offer Share only where the browser has a share sheet, sending the address, or the request's link once there is one, and keep that request", async () => {
+      const first = render(Receive);
+
+      await vi.runAllTimersAsync();
+
+      expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
+      first.unmount();
+
+      const share = vi.fn().mockResolvedValue(undefined);
+
+      Object.assign(navigator, { share });
+      render(Receive);
+      await vi.runAllTimersAsync();
+      await fireEvent.click(screen.getByRole("button", { name: "Share" }));
+      await vi.runAllTimersAsync();
+
+      expect(share).toHaveBeenLastCalledWith({
+        text: ACCOUNT,
+        title: "My Dusk address",
+      });
+      expect(get(requestsStore)).toStrictEqual([]);
+
+      await openRequest();
+      await type("Amount (optional)", "2");
+      await vi.runAllTimersAsync();
+      await fireEvent.click(screen.getByRole("button", { name: "Share" }));
+      await vi.runAllTimersAsync();
+
+      expect(parsePaymentLink(share.mock.lastCall?.[0].text)).toMatchObject({
+        amountDusk: "2",
+        to: ACCOUNT,
+      });
+      expect(get(requestsStore)).toMatchObject([{ lux: "2000000000" }]);
+
+      // The sheet closed unused keeps nothing new.
+      share.mockRejectedValueOnce(
+        Object.assign(new Error("closed"), { name: "AbortError" })
+      );
+      await type("Amount (optional)", "3");
+      await vi.runAllTimersAsync();
+      await fireEvent.click(screen.getByRole("button", { name: "Share" }));
+      await vi.runAllTimersAsync();
+
+      expect(get(requestsStore)).toHaveLength(1);
     });
 
     it("should download the QR under a name that says what it holds, and keep a request with it", async () => {

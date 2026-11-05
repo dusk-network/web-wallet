@@ -25,12 +25,15 @@
   export let scanner;
 
   export const startScan = async () => {
+    error = false;
+    toggleScanner = true;
+    clearTimeout(timeoutId);
+
     try {
-      toggleScanner = true;
-      clearTimeout(timeoutId);
-      scanner?.start();
+      await scanner?.start();
     } catch {
-      error = !error;
+      // Refused, or taken by something else: nothing's going to scan.
+      error = true;
     }
   };
 
@@ -44,7 +47,7 @@
 
   /** @param {QrScanner.ScanResult} result */
   const onDecodedQr = (result) => {
-    if (result.data) {
+    if (result.data && !qrScanned) {
       qrScanned = true;
       dispatch("scan", result.data);
       timeoutId = window.setTimeout(stopScan, 200);
@@ -57,7 +60,7 @@
     if (hasCamera) {
       scanner = new QrScanner(video, onDecodedQr, {
         highlightScanRegion: true,
-        maxScansPerSecond: 1,
+        maxScansPerSecond: 5,
         overlay: overlay,
         returnDetailedScanResult: true,
       });
@@ -65,24 +68,33 @@
   });
 
   onDestroy(() => {
+    clearTimeout(timeoutId);
     scanner?.destroy();
   });
 </script>
 
-<div class="scan" class:scan--visible={toggleScanner}>
-  {#if !error}
-    <video bind:this={video}>
-      <track kind="captions" />
-    </video>
-    <div
-      bind:this={overlay}
-      class="scan__highlight"
-      class:scan__highlight--scanned={qrScanned}
-    ></div>
-  {:else}
-    <div class="scan__notice">
-      <span>Couldn't start the camera</span>
-    </div>
+<!-- The video stays through an error, for the scanner made with it to scan
+  again. -->
+<div
+  aria-label="Scan a QR code"
+  class="scan"
+  class:scan--error={error}
+  class:scan--visible={toggleScanner}
+  role="group"
+>
+  <video bind:this={video}>
+    <track kind="captions" />
+  </video>
+  <div
+    bind:this={overlay}
+    class="scan__highlight"
+    class:scan__highlight--scanned={qrScanned}
+  ></div>
+  {#if error}
+    <p class="scan__notice" role="alert">
+      Couldn't start the camera. Allow it for this site in your browser, or
+      paste the address instead.
+    </p>
   {/if}
 
   <Button size="small" on:click={() => stopScan()} text="Close" />
@@ -107,13 +119,24 @@
       padding: 1em;
       width: 100%;
       min-height: 100%;
-      z-index: 3;
+      /* Over the phone's sticky Review, under the top bar. */
+      z-index: 5;
       video {
         width: 100%;
         margin: auto 0;
         height: 100%;
         overflow: hidden;
       }
+    }
+
+    &--error video,
+    &--error &__highlight {
+      display: none;
+    }
+
+    &__notice {
+      margin: auto 0;
+      text-align: center;
     }
 
     &__highlight {

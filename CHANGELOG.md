@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Share on Receive, where the browser has a share sheet: the address, or the request's link
 - Request payment on Receive, with a QR to download and an https link that opens Send filled in, and a list of your requests saying what matched what came in
 - Read `dusk:` and https payment links pasted or scanned into Send's To, or opened directly and through an unlock, filling in the amount and memo; one for another network says so and fills in nothing
 - Keep the fee to unstake, or to prove and claim a withdrawal, on Send's and the Bridge's Max, say so, and warn of an amount that leaves too little for it
@@ -28,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say so when the camera won't start for a scan on Send, and read a scanned code as a pasted one
 - Write the gas paid short in a transfer's details under Bridge › Activity, with all its decimals on hover
 - Close a transaction, a contact or the search with phone Back, staying on the page, and leave the password screen out of Back once the wallet is open
 - Bring back what was typed in a form with the browser's Back after leaving it for another page
