@@ -244,8 +244,13 @@ export function formDraft(name) {
   };
 }
 
-/** Every form's draft goes, as with another wallet in place of this one. */
+/**
+ * Every form's draft goes, with the profile kept, as with another wallet in
+ * place of this one.
+ */
 export function forgetDrafts() {
+  kept.remove(PROFILE);
+
   try {
     for (const key of Object.keys(sessionStorage)) {
       if (key.startsWith(DRAFT)) {

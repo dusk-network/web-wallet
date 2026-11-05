@@ -462,6 +462,7 @@ describe("Settings", () => {
 
     it("should keep no place or anything typed for what comes after", async () => {
       navigation.keepPlace({ pathname: "/dashboard/send/", search: "" });
+      navigation.keepProfile("", 1);
       sessionStorage.setItem(
         `${CONFIG.LOCAL_STORAGE_APP_KEY}-draft-send`,
         JSON.stringify({ owner: "someone", values: { amount: "1" } })
