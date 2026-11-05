@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
 
 import {
@@ -159,6 +159,26 @@ describe("The requests a wallet made", () => {
       rememberRequest(ASKED);
 
       expect(get(requestsStore)).toHaveLength(2);
+    });
+
+    it("should write nothing for what it has kept already, or has nothing to keep", () => {
+      rememberRequest(ASKED);
+
+      const [{ at }] = get(requestsStore);
+      const row = payment({ time: at + HOUR });
+
+      keepRequestMatches(matchRequests(get(requestsStore), [row]));
+
+      const shown = get(requestsStore);
+      const told = vi.fn();
+      const stop = requestsStore.subscribe(told);
+
+      told.mockClear();
+      keepRequestMatches(matchRequests(shown, [row]));
+      keepRequestMatches(matchRequests(shown, []));
+      stop();
+
+      expect(told).not.toHaveBeenCalled();
     });
 
     it("should keep what only needs checking from being kept as paid", () => {

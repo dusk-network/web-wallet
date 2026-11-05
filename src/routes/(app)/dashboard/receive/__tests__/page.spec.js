@@ -24,6 +24,24 @@ vi.useFakeTimers();
 
 const { getPrimaryName } = vi.hoisted(() => ({ getPrimaryName: vi.fn() }));
 
+const history = vi.hoisted(() => ({
+  refresh: vi.fn(() => Promise.resolve()),
+  /** @type {import("svelte/store").Writable<any> | null} */
+  state: null,
+}));
+
+vi.mock("$lib/activity", async (importOriginal) => {
+  const { writable } = await import("svelte/store");
+
+  history.state = writable({ hasMore: false, rows: [] });
+
+  return {
+    .../** @type {object} */ (await importOriginal()),
+    activityState: history.state,
+    currentActivity: () => ({ refresh: history.refresh }),
+  };
+});
+
 vi.mock("$lib/dusk-domains", () => ({ getPrimaryName }));
 
 vi.mock("$lib/dusk/string", async (importOriginal) => {
@@ -202,7 +220,7 @@ describe("Receive", () => {
       await fireEvent.click(
         screen.getByRole("button", { name: "Copy request link" })
       );
-      await vi.runAllTimersAsync();
+      await vi.advanceTimersByTimeAsync(0);
 
       const [[copied]] = vi.mocked(navigator.clipboard.writeText).mock.calls;
 
@@ -253,7 +271,7 @@ describe("Receive", () => {
       await fireEvent.click(
         screen.getByRole("button", { name: "Copy request link" })
       );
-      await vi.runAllTimersAsync();
+      await vi.advanceTimersByTimeAsync(0);
 
       const copied = vi.mocked(navigator.clipboard.writeText).mock
         .lastCall?.[0];
@@ -285,9 +303,9 @@ describe("Receive", () => {
 
       await openRequest();
       await type("Amount (optional)", "2");
-      await vi.runAllTimersAsync();
+      await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(screen.getByRole("button", { name: "Share" }));
-      await vi.runAllTimersAsync();
+      await vi.advanceTimersByTimeAsync(0);
 
       expect(parsePaymentLink(share.mock.lastCall?.[0].text)).toMatchObject({
         amountDusk: "2",
@@ -300,9 +318,9 @@ describe("Receive", () => {
         Object.assign(new Error("closed"), { name: "AbortError" })
       );
       await type("Amount (optional)", "3");
-      await vi.runAllTimersAsync();
+      await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(screen.getByRole("button", { name: "Share" }));
-      await vi.runAllTimersAsync();
+      await vi.advanceTimersByTimeAsync(0);
 
       expect(get(requestsStore)).toHaveLength(1);
     });
@@ -328,7 +346,7 @@ describe("Receive", () => {
 
       await openRequest();
       await type("Memo (optional)", "Factura 33");
-      await vi.runAllTimersAsync();
+      await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
         screen.getByRole("button", { name: "Download QR" })
       );
@@ -338,6 +356,105 @@ describe("Receive", () => {
       expect(get(requestsStore)).toMatchObject([{ lux: null }]);
 
       click.mockRestore();
+    });
+
+    it("should look for what comes in while a request waits, say Paid once a payment has its amount and memo, and stop looking", async () => {
+      const at = Date.now() - 1000;
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "open",
+            lux: "150000000",
+            memo: "Factura 33",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.refresh.mockClear();
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(history.refresh).toHaveBeenCalledOnce();
+      expect(screen.getByRole("listitem")).toHaveTextContent("Waiting");
+
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(history.refresh).toHaveBeenCalledTimes(2);
+
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          {
+            category: "received",
+            hash: "ab".repeat(32),
+            memo: "Factura 33",
+            status: "executed",
+            time: at + 500,
+            value: 150_000_000n,
+          },
+        ],
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(screen.getByRole("listitem")).toHaveTextContent("Paid");
+      expect(screen.getByRole("listitem")).toHaveTextContent(
+        "Amount and memo match a payment on"
+      );
+      // It stays paid with its payment out of what's read.
+      expect(get(requestsStore)[0].paid?.hash).toBe("ab".repeat(32));
+
+      history.refresh.mockClear();
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(history.refresh).not.toHaveBeenCalled();
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    it("should say what's only a guess as one: the amount alone, with the memo that came, to check", async () => {
+      const at = Date.now() - 1000;
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "open",
+            lux: "150000000",
+            memo: "Factura 33",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          {
+            category: "received",
+            hash: "cd".repeat(32),
+            memo: "Other",
+            status: "executed",
+            time: at + 500,
+            value: 150_000_000n,
+          },
+        ],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const item = screen.getByRole("listitem");
+
+      expect(item).toHaveTextContent("Check");
+      expect(item).not.toHaveTextContent("Paid");
+      expect(item).toHaveTextContent('with another memo: "Other"');
+      expect(get(requestsStore)[0].paid).toBeUndefined();
+      history.state?.set({ hasMore: false, rows: [] });
     });
 
     it("should list the requests made, by this profile's addresses on this network, say what matched, and take one off", async () => {
@@ -366,7 +483,7 @@ describe("Receive", () => {
       );
       hydrateRequests();
       render(Receive);
-      await vi.runAllTimersAsync();
+      await vi.advanceTimersByTimeAsync(0);
 
       const items = screen.getAllByRole("listitem");
 

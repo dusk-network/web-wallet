@@ -5,7 +5,9 @@
    * The requests this profile made, kept on this device, each marked by what
    * came in after it, in words that say what matched.
    */
-  import { activityState } from "$lib/activity";
+  import { onDestroy } from "svelte";
+
+  import { activityState, currentActivity } from "$lib/activity";
   import { claimDay } from "$lib/bridge/claimDate";
   import { Button, CopyButton } from "$lib/dusk/components";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
@@ -28,6 +30,36 @@
 
   /** @type {Record<string, string>} */
   const STATE_WORDS = { check: "Check", paid: "Paid", waiting: "Waiting" };
+
+  /** How often the history is read again while this shows a request not paid. */
+  const LOOK_MS = 30_000;
+
+  /** @type {ReturnType<typeof setInterval> | undefined} */
+  let timer;
+
+  /**
+   * Reads the history for what's come in, while a request isn't paid: nothing
+   * else does but a change of the balance, which may have come before this shows.
+   *
+   * @param {boolean} isOpen
+   */
+  function lookWhile(isOpen) {
+    const look = () => {
+      if (document.visibilityState !== "hidden") {
+        void currentActivity()?.refresh();
+      }
+    };
+
+    clearInterval(timer);
+    timer = undefined;
+
+    if (isOpen) {
+      look();
+      timer = setInterval(look, LOOK_MS);
+    }
+  }
+
+  onDestroy(() => clearInterval(timer));
 
   /**
    * What matched of a payment, in words.
@@ -80,6 +112,8 @@
   );
   $: matches = matchRequests(shown, $activityState.rows);
   $: keepRequestMatches(matches);
+  $: hasOpen = shown.some(({ id }) => matches.get(id)?.state !== "paid");
+  $: lookWhile(hasOpen);
   // A payment may be further back than the history read so far.
   $: oldestRead = Math.min(
     ...$activityState.rows.map(({ time }) => time ?? Infinity)

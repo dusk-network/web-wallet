@@ -10,7 +10,7 @@
  * `${APP_KEY}-payment-requests`: [{ at, id, lux, memo, network, paid?, to }]
  */
 
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 import { walletDataScope } from "$lib/wallets/dataNames";
 import {
@@ -177,7 +177,8 @@ export function forgetRequest(id) {
  * @param {Map<string, RequestMatch>} matches
  */
 export function keepRequestMatches(matches) {
-  const paid = (/** @type {PaymentRequest} */ kept) => {
+  /** @param {PaymentRequest} kept */
+  const paid = (kept) => {
     const match = matches.get(kept.id);
 
     return match?.state === "paid" && !kept.paid && match.hash && match.at
@@ -185,15 +186,16 @@ export function keepRequestMatches(matches) {
       : null;
   };
 
-  changeRecords(records, walletDataScope(), (list) =>
-    list.some(paid)
-      ? list.map((kept) => {
-          const payment = paid(kept);
+  // Written only for something new: what shows it reads the list again.
+  if (get(requests).some(paid)) {
+    changeRecords(records, walletDataScope(), (list) =>
+      list.map((kept) => {
+        const payment = paid(kept);
 
-          return payment ? { ...kept, paid: payment } : kept;
-        })
-      : list
-  );
+        return payment ? { ...kept, paid: payment } : kept;
+      })
+    );
+  }
 }
 
 /** @param {string | null | undefined} memo */
