@@ -235,6 +235,32 @@ describe("ContactsView", () => {
     expect(names()).toEqual(["Savings"]);
   });
 
+  it("closes a contact with Escape, wherever the focus is in it, and gives the focus back to its row", async () => {
+    const select = vi.fn();
+    const { findByRole, getByRole } = render(ContactsView, {
+      events: { select },
+      props: {
+        contacts: get(contactsStore),
+        locale: "en",
+        resolveName,
+        rows,
+        selected: shop.id,
+      },
+    });
+    const close = await findByRole("button", { name: "Close the contact" });
+
+    expect(close).toHaveFocus();
+
+    await fireEvent.keyDown(close, { key: "Escape" });
+
+    expect(select).toHaveBeenCalledOnce();
+    expect(select.mock.lastCall?.[0].detail).toStrictEqual({
+      edit: false,
+      id: null,
+    });
+    expect(getByRole("button", { expanded: true })).toHaveFocus();
+  });
+
   it("shows a contact's full address and checks that its .dusk name still points there", async () => {
     const { container, findByText, getByRole } = show({ selected: shop.id });
 

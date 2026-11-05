@@ -64,6 +64,18 @@
    */
   const select = (id, edit = false) => dispatch("select", { edit, id });
 
+  /**
+   * Closes the contact shown, and gives the focus back to its row.
+   *
+   * @param {string} id
+   */
+  function closeDetail(id) {
+    select(null);
+    /** @type {HTMLElement | null} */ (
+      document.querySelector(`.contacts__open[data-contact="${id}"]`)
+    )?.focus();
+  }
+
   /** @param {Contact} contact */
   const sendHref = (contact) =>
     addBasePath(`/dashboard/send?to=${encodeURIComponent(contact.address)}`);
@@ -194,6 +206,7 @@
                 <button
                   aria-expanded={contact.id === selected}
                   class="contacts__open"
+                  data-contact={contact.id}
                   on:click={() =>
                     select(contact.id === selected ? null : contact.id)}
                   type="button"
@@ -318,7 +331,7 @@
         <ContactDetail
           contact={open}
           {locale}
-          on:close={() => select(null)}
+          on:close={() => closeDetail(open?.id ?? "")}
           on:edit={() => select(open?.id ?? null, true)}
           {resolveName}
           {rows}
