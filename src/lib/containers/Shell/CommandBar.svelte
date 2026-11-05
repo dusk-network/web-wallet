@@ -23,7 +23,12 @@
   import { duskExplorerBlock, duskExplorerTx, nodeBaseUrl } from "$lib/url";
 
   import { contactNamesOf, contactsStore } from "$lib/contacts";
-  import { lookupKind, lookupName, searchLocally } from "./search";
+  import {
+    isAmountQuery,
+    lookupKind,
+    lookupName,
+    searchLocally,
+  } from "./search";
 
   /** @type {{ href: string, keywords?: string, label: string }[]} */
   export let pages;
@@ -58,9 +63,10 @@
 
   $: ({ networkName } = $networkStore);
   $: ({ profiles } = $walletStore);
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
   $: index = {
     contacts: $contactsStore,
+    hideBalances,
     history: $activityState.rows,
     locale: language,
     network: networkName,
@@ -385,7 +391,7 @@
       aria-autocomplete="list"
       aria-controls="command-results"
       aria-expanded="true"
-      aria-label="Search names, addresses and transactions"
+      aria-label="Search names, addresses, amounts and transactions"
       autocomplete="off"
       bind:this={input}
       bind:value={query}
@@ -394,7 +400,7 @@
         active = 0;
       }}
       on:keydown={handleKeydown}
-      placeholder="Search names, addresses, transactions"
+      placeholder="Names, addresses, amounts"
       role="combobox"
       spellcheck="false"
       type="text"
@@ -463,9 +469,11 @@
     <p class="command-bar__message" role="status">{lookup.message}</p>
   {:else if query.trim() && !results.length}
     <p class="command-bar__message">
-      {lookupKind(query) === "name"
-        ? `Nothing on this device. Press Enter to look up ${lookupName(query)} on the network.`
-        : "Nothing on this device. Press Enter to look it up on the network."}
+      {isAmountQuery(query, language)
+        ? "No transaction of that amount on this device."
+        : lookupKind(query) === "name"
+          ? `Nothing on this device. Press Enter to look up ${lookupName(query)} on the network.`
+          : "Nothing on this device. Press Enter to look it up on the network."}
     </p>
   {/if}
 

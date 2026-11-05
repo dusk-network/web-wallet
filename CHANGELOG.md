@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Search finds a payment by its amount, and lists a contact's payments under the contact
 - Ask for the password again on any send above an amount chosen in Settings, off by default: sends, stakes, shielding, the bridge and contract calls, checked against the vault
 - Come back to the same page and profile after a lock or a reload, and through a link, with what was typed in a form that moves money, until it goes out
 - Show an approval not used up on the Bridge's migration form, read on the chain, with Finish and Revoke
