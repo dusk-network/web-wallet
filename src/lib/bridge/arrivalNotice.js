@@ -1,8 +1,9 @@
 /**
  * Says when a transfer ends to whoever isn't looking at the wallet: in the
  * tab's title always, and by a browser notification once they chose that. The
- * browser is asked only when they press for it, never as a page opens, and a
- * phone's browser can't notify from a page: the title says it there.
+ * browser is asked only when they press for it, never as a page opens. A
+ * phone's browser can't notify from a page, nor shows a tab's title: the
+ * screen that shows the transfer says it there.
  */
 
 import { base } from "$app/paths";
@@ -13,6 +14,7 @@ const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-arrival-notice`;
 /** What's said for each state but "offer", which offers it. */
 export const NOTICE_WORDS = Object.freeze({
   on: "You'll get a notification when it arrives.",
+  phone: "This screen says when it arrives.",
   refused:
     "Notifications aren't allowed for this site, so this tab's title will say when it arrives.",
   unavailable: "This tab's title will say when it arrives.",
@@ -48,12 +50,16 @@ const title = writable("");
 const chosen = writable(0);
 
 /**
- * "offer" until they chose, then "on" or "refused"; "unavailable" where a page
- * can't notify.
+ * "offer" until they chose, then "on" or "refused"; "phone" on a phone, and
+ * "unavailable" where a page can't notify.
  *
- * @type {import("svelte/store").Readable<"offer" | "on" | "refused" | "unavailable">}
+ * @type {import("svelte/store").Readable<"offer" | "on" | "phone" | "refused" | "unavailable">}
  */
 export const arrivalNoticeState = derived([refused, chosen], ([$refused]) => {
+  if (isPhone()) {
+    return "phone";
+  }
+
   const notifications = api();
 
   if (!notifications) {

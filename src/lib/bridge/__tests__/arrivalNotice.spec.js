@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
 
 import {
+  NOTICE_WORDS,
   arrivalNoticeState,
   arrivalSeen,
   arrivalTitle,
@@ -216,14 +217,17 @@ describe("Being told when a transfer arrives", () => {
     expect(followsWhileAway()).toBe(true);
   });
 
-  it("offers no notification on a phone, or where a browser has none: the title says it there", () => {
+  it("offers no notification on a phone, which shows no tab's title either: the screen says it there; where a browser has none, the title says it", () => {
     browser();
     vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
       "Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36"
     );
     stopArrivalNotice();
 
-    expect(get(arrivalNoticeState)).toBe("unavailable");
+    expect(get(arrivalNoticeState)).toBe("phone");
+    expect(NOTICE_WORDS[get(arrivalNoticeState)]).toBe(
+      "This screen says when it arrives."
+    );
     expect(followsWhileAway()).toBe(true);
 
     vi.restoreAllMocks();
