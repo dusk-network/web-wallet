@@ -871,6 +871,35 @@ describe("LiquidStake", () => {
       ]);
     });
 
+    it("says a deposit fee read from its stake to the lux, and the pool's rounding of a lux as no rewards, not fewer than none", () => {
+      const { container } = render(LiquidStake, {
+        ...baseProps,
+        sozu: {
+          ...baseProps.sozu,
+          status: statusWith({ balance: 498_749_999n, stDusk: 498_000_000n }),
+        },
+        history: {
+          facts: new Map([["a1", /** @type {any} */ ({ fee: 1_250_000n })]]),
+          reading: false,
+          rows: [call({ value: 500_000_000n })],
+          whole: true,
+        },
+      });
+
+      expect(
+        Array.from(
+          container.querySelectorAll(".liquid-stake__position > div"),
+          textOf
+        )
+      ).toStrictEqual([
+        "Put in 0.5 DUSK",
+        "Worth now 0.4987 DUSK",
+        "Deposit fees 0.00125 DUSK",
+        "Rewards so far 0 DUSK",
+        "stDUSK 0.498 stDUSK",
+      ]);
+    });
+
     it("says deposit fees it could only work out are about that, and what's on its way isn't counted yet", () => {
       const { container, getByText } = render(LiquidStake, {
         ...baseProps,
@@ -937,6 +966,36 @@ describe("LiquidStake", () => {
       ).not.toMatch(/\d/);
       settingsStore.reset();
     });
+
+    it.each([
+      ["hi-IN", "20.7Cr DUSK staked now"],
+      ["de-DE", "206,9M DUSK staked now"],
+      ["en-GB", "206.9M DUSK staked now"],
+    ])(
+      "writes what's staked in %s's digits among the line's English words",
+      (language, staked) => {
+        settingsStore.update((store) => ({ ...store, language }));
+
+        try {
+          const { container } = render(LiquidStake, {
+            ...baseProps,
+            rates: {
+              native: 0.24,
+              provisioners: [
+                { amount: 206_900_000n * DUSK, eligibility: 999_000n },
+              ],
+              tipHeight: 1_000_000n,
+            },
+          });
+          const facts = textOf(container.querySelector(".liquid-stake__facts"));
+
+          expect(facts).toContain(staked);
+          expect(facts).not.toMatch(/[\u0900-\u097f]|Mio\./);
+        } finally {
+          settingsStore.reset();
+        }
+      }
+    );
 
     it("says what the rate is made of, and what an amount earns in a year at it, once they're read", async () => {
       const rates = {

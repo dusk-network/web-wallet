@@ -23,7 +23,7 @@
     formatTotal,
   } from "$lib/dusk/currency";
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
-  import { getDecimalSeparator } from "$lib/dusk/number";
+  import { englishWords, getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
   import { formDraft, gasToKeep, keptGas, reviewStep } from "$lib/navigation";
@@ -466,10 +466,19 @@
     rows: history.rows,
     status,
   });
+  // The pool's sums round down, by under a lux for each stake and unstake: as
+  // little short of nothing as that is no rewards, not fewer than none.
+  $: earnedSoFar =
+    held.earned !== null &&
+    held.earned < 0n &&
+    -held.earned <= BigInt(history.rows.filter((row) => row.sozu).length + 1)
+      ? 0n
+      : held.earned;
   // What it pays a year, once that's read, and the line of what that's made of.
   $: yearly = sozuRate(rates.native, status);
+  // Its numbers in the language's digits, among the line's English words.
   $: working = sozuRateLine({
-    locale: language,
+    locale: englishWords(language),
     nativeRate: rates.native,
     provisioners: rates.provisioners,
     status,
@@ -647,12 +656,15 @@
           </dd>
         </div>
         {#if history.whole && held.depositFees !== null && held.depositFees > 0n}
+          <!-- Each read from its stake: to the lux. -->
           <div>
             <dt>{held.feesExact ? "Deposit fees" : "Deposit fees, about"}</dt>
             <dd>
               <BalanceValue
                 exact={formatDuskExact(held.depositFees, language)}
-                value={formatDusk(held.depositFees, language)}
+                value={held.feesExact
+                  ? formatDuskExact(held.depositFees, language)
+                  : formatDusk(held.depositFees, language)}
               /> DUSK
             </dd>
           </div>
@@ -662,12 +674,12 @@
             <dt>Rewards so far</dt>
             <dd class="liquid-stake__reading">Reading your history…</dd>
           </div>
-        {:else if history.whole && held.earned !== null}
-          {@const earned = held.earned < 0n ? -held.earned : held.earned}
+        {:else if history.whole && earnedSoFar !== null}
+          {@const earned = earnedSoFar < 0n ? -earnedSoFar : earnedSoFar}
           <div>
             <dt>Rewards so far</dt>
             <dd>
-              {held.earned < 0n ? "−" : ""}<BalanceValue
+              {earnedSoFar < 0n ? "−" : ""}<BalanceValue
                 exact={formatDuskExact(earned, language)}
                 value={formatDusk(earned, language)}
               /> DUSK

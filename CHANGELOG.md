@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Write how much is staked across the network in the language's digits among English words, as "5.7Cr" in Hindi, not in another script
+- Show a stake with Sozu's deposit fee to the lux, and a lux of the pool's rounding as no rewards, not fewer than none
 - Warn of a contact's name in use whatever its spaces, and offer no Save to contacts for a profile of the wallets here in a transaction's details
 - Show when a transaction was made under it in the search, in place of a call's code name
 - Refuse a payment link whose amount in lux isn't the one it says, rather than pay the lux
