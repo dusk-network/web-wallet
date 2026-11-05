@@ -172,6 +172,8 @@ describe("Unlock Wallet", async () => {
 
       expect(view.queryByRole("alert")).toBeNull();
       expect(openSpy).not.toHaveBeenCalled();
+      // Nothing brings a phone's keyboard up over the fingerprint.
+      expect(getTextInput(view.container)).not.toHaveFocus();
 
       // The tab coming back doesn't ask again for what they turned down.
       document.dispatchEvent(new Event("visibilitychange"));
@@ -185,6 +187,7 @@ describe("Unlock Wallet", async () => {
       expect(await view.findByRole("alert")).toHaveTextContent(
         "That didn't unlock the wallet. Try again, or use your password."
       );
+      expect(getTextInput(view.container)).not.toHaveFocus();
 
       await fireEvent.input(getTextInput(view.container), {
         target: { value: pwd },
