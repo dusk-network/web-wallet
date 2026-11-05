@@ -11,10 +11,10 @@
  * where that helps. Once the node was asked to broadcast it, or the EVM
  * wallet to send it (outcomeUnknown), it may have gone out: it says to
  * check History first, never to send it again, and only a refusal, which
- * holds once it was handed over too, says otherwise. A refusal for what
- * another transaction spent says the same: that one may be an earlier try of
- * this one, whose answer got lost. Its own message stays under Details either
- * way.
+ * holds once it was handed over too, says otherwise: the node's, or an EVM
+ * wallet's that proves it sent nothing. A refusal for what another transaction
+ * spent says the same: that one may be an earlier try of this one, whose
+ * answer got lost. Its own message stays under Details either way.
  */
 
 import { mdiTimerSand } from "@mdi/js";
@@ -113,6 +113,76 @@ const CAME_FIRST = [
   ],
 ];
 
+/** What stops a call before the EVM wallet is asked for it, by its name. */
+const NOT_ASKED =
+  /^(Connector(NotConnected|AccountNotFound|ChainMismatch|UnavailableReconnecting)|ChainMismatch|ChainNotFound|AccountNotFound)Error$/;
+
+/** An EVM wallet saying it won't: not authorized, or no such method. */
+const WONT_DO = /^(UnauthorizedProvider|UnsupportedProviderMethod)Error$/;
+
+/**
+ * An error, and the errors it came wrapped around.
+ *
+ * @param {any} error
+ * @returns {any[]}
+ */
+function causesOf(error) {
+  /** @type {any[]} */
+  const causes = [];
+
+  for (
+    let cause = error;
+    cause && typeof cause === "object" && !causes.includes(cause);
+    cause = cause.cause
+  ) {
+    causes.push(cause);
+  }
+
+  return causes;
+}
+
+/**
+ * Whether an EVM chain's own check of a call says it would revert, as a wallet
+ * finds in its gas estimate, before it sends it: what it says then is no
+ * answer to a send. viem words any internal error a wallet gives as a revert
+ * too, which proves nothing, so this goes by what came with it: the revert's
+ * code, its data, or the node's words.
+ *
+ * @param {any[]} causes
+ */
+const wouldRevert = (causes) =>
+  causes.some(
+    (cause) =>
+      cause.code === 3 ||
+      cause.data?.code === 3 ||
+      (typeof cause.raw === "string" && cause.raw !== "0x") ||
+      /execution reverted|gas required exceeds allowance/i.test(
+        `${cause.message} ${cause.data?.message ?? ""}`
+      )
+  );
+
+/**
+ * What an EVM wallet's error proves wasn't sent, as said on the screen: "" for
+ * anything that doesn't, as an error that says nothing of whether the wallet
+ * went on to send it.
+ *
+ * @param {any} error
+ */
+function evmRefusal(error) {
+  const causes = causesOf(error);
+
+  /** @param {RegExp} names */
+  const isOneOf = (names) => causes.some(({ name }) => names.test(name));
+
+  return isOneOf(NOT_ASKED)
+    ? "Your EVM wallet isn't on this account or network, so nothing was sent. Check it and try again."
+    : isOneOf(WONT_DO)
+      ? "Your EVM wallet refused it, so nothing was sent. See Details for why."
+      : wouldRevert(causes)
+        ? "The network would refuse it, so nothing was sent. See Details for why."
+        : "";
+}
+
 /** The node out of reach, or too slow to answer, before it was asked to broadcast it. */
 const UNREACHABLE =
   /TimeoutError|failed to fetch|fetch failed|networkerror|network error|load failed|timed out|time-?out|connection (refused|reset|closed)|unable to connect|websocket|"isTrusted"|bad gateway|service unavailable|unexpected \[5\d\d\]|status: 5\d\d|http request failed/i;
@@ -161,6 +231,12 @@ export default function describeFailure(
 
   if (nothingSent) {
     return { canRetry: true, sentence: nothingSent[1] };
+  }
+
+  const refused = evmRefusal(error);
+
+  if (refused) {
+    return { canRetry: true, sentence: refused };
   }
 
   if (handedOver) {

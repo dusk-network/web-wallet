@@ -1007,7 +1007,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(queryByRole("button", { name: "Migrate" })).toBeNull();
     });
 
-    it("offers to go back when it failed before it went out", async () => {
+    it("offers to try again when it failed before it went out", async () => {
       mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
       mocks.migrate.mockRejectedValueOnce(
         new Error("The contract would revert.")
@@ -1016,11 +1016,150 @@ describe("the Bridge card's routes to and from other chains", () => {
       const { findByRole, getByRole } = await toReview();
 
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
-      await fireEvent.click(await findByRole("button", { name: "Back" }));
+      await fireEvent.click(await findByRole("button", { name: "Try again" }));
 
       expect(
         await findByRole("button", { name: "Migrate" })
       ).toBeInTheDocument();
+    });
+
+    describe("what the wallet answers with an error and no hash", () => {
+      /** The wallet's refusal of a migrate its allowance no longer covers. */
+      const usedUp = () =>
+        outcomeUnknown(
+          new Error(
+            "execution reverted: BEP20: transfer amount exceeds allowance"
+          )
+        );
+
+      it("says nothing was sent and why, and offers to approve again once the allowance was used up elsewhere", async () => {
+        // Enough as it's reviewed and sent; used up by another tab as it's signed.
+        mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+        mocks.migrate.mockImplementation(async () => {
+          mocks.allowance.mockResolvedValue(0n);
+
+          throw usedUp();
+        });
+
+        const { container, findByRole, findByText, getByRole, queryByText } =
+          await toReview();
+
+        await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+        expect(
+          await findByText(
+            "Your approval no longer covers this amount, so nothing was sent. Approve again to migrate it."
+          )
+        ).toBeInTheDocument();
+        expect(container).toHaveTextContent("The migration didn't go through");
+        expect(queryByText("Not confirmed")).toBeNull();
+        expect(container).not.toHaveTextContent("may have reached");
+        expect(container.querySelector("details")).toHaveTextContent(
+          "BEP20: transfer amount exceeds allowance"
+        );
+
+        await fireEvent.click(getByRole("button", { name: "Approve again" }));
+
+        // The review again, which now has the approval as a step of its own.
+        expect(
+          await findByRole("button", { name: "Migrate" })
+        ).toBeInTheDocument();
+        await vi.waitFor(() =>
+          expect(container).toHaveTextContent(
+            "Approve the amount, then migrate, in your wallet"
+          )
+        );
+        expect(mocks.migrate).toHaveBeenCalledOnce();
+      });
+
+      it("says why where the allowance still covers it, and offers to try again, not to approve", async () => {
+        mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+        mocks.migrate.mockRejectedValueOnce(
+          outcomeUnknown(new Error("execution reverted: Paused"))
+        );
+
+        const { findByRole, findByText, getByRole, queryByRole } =
+          await toReview();
+
+        await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+        expect(
+          await findByText(
+            "The network would refuse it, so nothing was sent. See Details for why."
+          )
+        ).toBeInTheDocument();
+        expect(queryByRole("button", { name: "Approve again" })).toBeNull();
+
+        await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+        expect(
+          await findByRole("button", { name: "Migrate" })
+        ).toBeInTheDocument();
+      });
+
+      it("says the same of a check that fails before the wallet is asked", async () => {
+        mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+        mocks.migrate.mockImplementation(async () => {
+          mocks.allowance.mockResolvedValue(0n);
+
+          throw new Error(
+            'The contract function "migrate" reverted with the following reason:\nBEP20: transfer amount exceeds allowance'
+          );
+        });
+
+        const { findByRole, getByRole } = await toReview();
+
+        await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+        expect(
+          await findByRole("button", { name: "Approve again" })
+        ).toBeInTheDocument();
+      });
+
+      it("keeps to Not confirmed for what proves nothing, however the allowance reads", async () => {
+        mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+        mocks.migrate.mockImplementation(async () => {
+          mocks.allowance.mockResolvedValue(0n);
+
+          throw outcomeUnknown(new Error("Internal JSON-RPC error."));
+        });
+
+        const { container, findByText, getByRole, queryByRole } =
+          await toReview();
+
+        await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+        await findByText("Not confirmed");
+
+        expect(container).toHaveTextContent(
+          "It may have reached the network. Check your EVM wallet and Activity before you send it again."
+        );
+        expect(queryByRole("button", { name: "Approve again" })).toBeNull();
+        expect(queryByRole("button", { name: "Try again" })).toBeNull();
+        expect(container.querySelector(".route-result a")).toHaveTextContent(
+          "Home"
+        );
+      });
+
+      it("says it isn't known once the chain was asked about what was sent, whatever it says", async () => {
+        mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+        mocks.migrate.mockResolvedValue(`0x${"cc".repeat(32)}`);
+
+        const { container, findByText, getByRole, queryByRole } =
+          await toReview();
+
+        mocks.waitForTransactionReceipt.mockRejectedValue(
+          new Error("execution reverted")
+        );
+        await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+        await findByText("Not confirmed");
+
+        expect(container).toHaveTextContent(
+          "It was sent to Ethereum. Check Activity before you try again."
+        );
+        expect(queryByRole("button", { name: "Try again" })).toBeNull();
+      });
     });
 
     it("asks for no migration once the page was left while the approval was signed", async () => {

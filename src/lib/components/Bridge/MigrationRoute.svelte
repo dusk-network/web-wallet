@@ -171,6 +171,12 @@
   /** Whether what failed can't have gone out, so it can be tried again. */
   let canGoBack = false;
 
+  /**
+   * Whether the migration failed with nothing sent as the approval, read again
+   * then, no longer covers it, as once it was used elsewhere.
+   */
+  let isApprovalShort = false;
+
   /** What just stopped it, for the screen it went back to. */
   let note = "";
 
@@ -269,6 +275,7 @@
 
   function review() {
     note = "";
+    isApprovalShort = false;
     reviewedFor = address;
     step = "review";
     readApproval();
@@ -353,10 +360,15 @@
     if (sending !== "confirming") {
       return failedOnChain
         ? { sentence: `${chainName} refused the approval, so nothing moved.` }
-        : describeFailure(error, {
-            checkFirst:
-              "Check your EVM wallet and Activity before you send it again.",
-          });
+        : isApprovalShort
+          ? {
+              sentence:
+                "Your approval no longer covers this amount, so nothing was sent. Approve again to migrate it.",
+            }
+          : describeFailure(error, {
+              checkFirst:
+                "Check your EVM wallet and Activity before you send it again.",
+            });
     }
 
     return failedOnChain
@@ -368,6 +380,8 @@
   }
 
   function send() {
+    const owner = /** @type {`0x${string}`} */ (address);
+
     note = "";
     sending = "";
     operation = forThisWallet(sendMigration)({
@@ -375,7 +389,7 @@
       onStep: (now) => {
         sending = now;
       },
-      owner: /** @type {`0x${string}`} */ (address),
+      owner,
       recipient,
       route,
       stillHere() {
@@ -383,13 +397,19 @@
           throw new Error("The screen was left.");
         }
       },
-    }).catch((error) => {
+    }).catch(async (error) => {
       if (stoppedBy(error)) {
         return "";
       }
 
       canGoBack =
-        sending !== "confirming" && !describeFailure(error).outcomeUnknown;
+        sending !== "confirming" && Boolean(describeFailure(error).canRetry);
+
+      // Why, where the chain can say: an approval used up since it was read.
+      isApprovalShort =
+        canGoBack &&
+        sending === "migrating" &&
+        !(await isApproved(route, owner, amountLux).catch(() => true));
 
       throw error;
     });
@@ -769,7 +789,11 @@
       </svelte:fragment>
       <svelte:fragment slot="error-actions">
         {#if canGoBack}
-          <Button on:click={review} text="Back" variant="secondary" />
+          <Button
+            on:click={review}
+            text={isApprovalShort ? "Approve again" : "Try again"}
+            variant="primary"
+          />
         {/if}
       </svelte:fragment>
     </OperationResult>

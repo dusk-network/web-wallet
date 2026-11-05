@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep the fee to unstake later when Max fills in a stake, native or with Sozu, and refuse an amount that leaves too little for it
 - Say how much DUSK is missing when the public balance can't pay for an unstake or a claim
 - Say to check History, not to try again, when the node refuses a send because another transaction from the account came first
+- Say on a migration, when the EVM wallet's error proves nothing was sent, that it wasn't and why, and offer to approve again once the approval was used up, instead of saying it may have reached the network
 
 ## [1.9.0] - 2026-11-05
 
