@@ -331,6 +331,19 @@
     cursor: pointer;
   }
 
+  /* The route, and how it's doing under it. */
+  .swap-card :global(.swap-route__sum) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+    padding-block: 0.375rem;
+  }
+
+  .swap-card :global(.swap-route__status--warn) {
+    color: var(--calm-pending);
+  }
+
   .swap-card :global(.swap-route > summary::-webkit-details-marker) {
     display: none;
   }

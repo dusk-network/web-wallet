@@ -641,10 +641,26 @@ describe("Bridge", () => {
     ).toBeInTheDocument();
   });
 
+  it("should say how the route is doing under it, as not knowing when that can't be read, and offer the route all the same", async () => {
+    const { container, getByRole } = render(Bridge, baseProps);
+
+    await vi.waitFor(() =>
+      expect(container.querySelector(".swap-route__status")).toHaveTextContent(
+        "Last payout not known right now."
+      )
+    );
+    expect(
+      container.querySelector(".swap-route__status--warn")
+    ).not.toBeInTheDocument();
+    expect(getByRole("button", { name: /Connect|Review|Enter/ })).toBeVisible();
+  });
+
   it("should say each way's time on this network the same in the route row, the To list, the review and once sent", async () => {
     const { container, getByRole, getByText } = render(Bridge, baseProps);
     const summary = () =>
-      container.querySelector(".swap-route summary")?.textContent?.trim();
+      container
+        .querySelector(".swap-route__sum > span:first-child")
+        ?.textContent?.trim();
     const notes = async () => {
       await fireEvent.click(
         getByRole("button", { name: /^To: .*Choose the network/ })
@@ -699,7 +715,9 @@ describe("Bridge", () => {
 
     const { container, getByRole, getByText } = render(Bridge, baseProps);
     const summary = () =>
-      container.querySelector(".swap-route summary")?.textContent?.trim();
+      container
+        .querySelector(".swap-route__sum > span:first-child")
+        ?.textContent?.trim();
 
     // DuskEVM trailing Dusk by five minutes: the deposit says so.
     expect(summary()).toBe("~5 min · fee up to 0.02 DUSK");

@@ -51,6 +51,7 @@
   } from "$lib/bridge/cardRoutes";
 
   import MigrationRoute from "./MigrationRoute.svelte";
+  import RouteStatusLine from "./RouteStatusLine.svelte";
   import ServiceRoute from "./ServiceRoute.svelte";
   import {
     account,
@@ -951,7 +952,12 @@
 
     <details class="swap-route">
       <summary
-        ><Icon path={mdiClockOutline} /><span>{routeLine}</span><Icon
+        ><Icon path={mdiClockOutline} /><span class="swap-route__sum"
+          ><span>{routeLine}</span>{#if route}<RouteStatusLine
+              {amountLux}
+              {route}
+            />{/if}</span
+        ><Icon
           className="swap-route__chevron section-chevron"
           path={mdiChevronDown}
         /></summary

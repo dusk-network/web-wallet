@@ -50,6 +50,7 @@
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "../NetworkPicker/NetworkPicker.svelte";
   import OperationResult from "../OperationResult/OperationResult.svelte";
+  import RouteStatusLine from "./RouteStatusLine.svelte";
   import RouteTransferResult from "./RouteTransferResult.svelte";
   import FullAddress from "../FullAddress/FullAddress.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
@@ -813,8 +814,9 @@
 
   <details class="swap-route">
     <summary
-      ><Icon path={mdiClockOutline} /><span
-        >{route.running ? routeLine : notRunning(net)}</span
+      ><Icon path={mdiClockOutline} /><span class="swap-route__sum"
+        ><span>{route.running ? routeLine : notRunning(net)}</span
+        ><RouteStatusLine {amountLux} {route} /></span
       ><Icon
         className="swap-route__chevron section-chevron"
         path={mdiChevronDown}

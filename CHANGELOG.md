@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Say how a route is doing under it on the Bridge: whether it's paying out, its last payout, and what it can pay
 - Share on Receive, where the browser has a share sheet: the address, or the request's link
 - Request payment on Receive, with a QR to download and an https link that opens Send filled in, and a list of your requests saying what matched what came in
 - Read `dusk:` and https payment links pasted or scanned into Send's To, or opened directly and through an unlock, filling in the amount and memo; one for another network says so and fills in nothing
