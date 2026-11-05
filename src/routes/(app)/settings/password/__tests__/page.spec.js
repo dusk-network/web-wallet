@@ -55,6 +55,26 @@ describe("Change password", () => {
     vi.restoreAllMocks();
   });
 
+  it("refuses the password it has as the new one, and changes nothing", async () => {
+    const { getByLabelText, getByRole } = render(ChangePassword);
+
+    await fireEvent.input(getByLabelText("Current password"), {
+      target: { value: PASSWORD },
+    });
+    await fireEvent.input(getByLabelText("New password"), {
+      target: { value: PASSWORD },
+    });
+    await fireEvent.input(getByLabelText("Confirm password"), {
+      target: { value: PASSWORD },
+    });
+    await fireEvent.click(getByRole("button", { name: "Change password" }));
+
+    expect(getByRole("alert")).toHaveTextContent(
+      "That's the password you have. Choose a new one."
+    );
+    expect(gotoSpy).not.toHaveBeenCalled();
+  });
+
   it("seals every wallet again with the new password, once the fields are right and the current one is", async () => {
     const { getByLabelText, getByRole } = render(ChangePassword);
     const [current, next, again] = [

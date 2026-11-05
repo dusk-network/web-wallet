@@ -5,7 +5,7 @@
 
 .dusk-words {
   font-family: var(--mono-font-family);
-  font-size: 0.8125rem;
+  font-size: 1.125rem;
   padding: var(--words-container-padding);
   background-color: var(--surface-soft-color);
   border: 1px solid var(--surface-border-color);

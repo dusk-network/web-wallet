@@ -2,9 +2,10 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { mdiClose, mdiInformationOutline } from "@mdi/js";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
-  import { FullAddress, SectionHead } from "$lib/components";
+  import { FieldLimit, FullAddress, SectionHead } from "$lib/components";
   import {
     addressType,
+    contactCalled,
     findContact,
     passesForDuskName,
     saveContact,
@@ -24,6 +25,10 @@
 
   /** @type {(name: string) => Promise<DuskNameResolution>} */
   export let resolveName;
+
+  /** The wallet's own accounts and addresses: not much of a contact. */
+  /** @type {string[]} */
+  export let own = [];
 
   const dispatch = createEventDispatcher();
 
@@ -102,6 +107,10 @@
   $: other = address ? findContact(address) : null;
   $: isTaken = other !== null && other.id !== contact?.id;
 
+  // Only the address would tell them apart, in a payment that can't be undone.
+  $: nameTwin = contactCalled(name, contact?.id);
+  $: isOwn = Boolean(address) && own.includes(address);
+
   // Saving a contact again with its `.dusk` name takes the address the name
   // points to now: said, when it isn't the one saved.
   $: isReplacing = Boolean(
@@ -144,6 +153,14 @@
       Name
       <Textbox bind:value={name} maxlength={40} required type="text" />
     </label>
+    <FieldLimit limit={40} value={name} />
+
+    {#if nameTwin}
+      <p class="contact-form__warning" role="alert">
+        You already have a contact called {nameTwin.name}. Only the address will
+        tell them apart.
+      </p>
+    {/if}
 
     {#if isFalseName}
       <p class="contact-form__error" role="alert">
@@ -217,6 +234,12 @@
     {#if isTaken && other}
       <p class="contact-form__error" role="alert">
         This address is already saved as {other.name}.
+      </p>
+    {/if}
+
+    {#if isOwn}
+      <p class="contact-form__warning" role="alert">
+        This is your own address.
       </p>
     {/if}
 

@@ -10,6 +10,7 @@
   } from "@mdi/js";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
+    contactCalled,
     contactsStore,
     markContactNameChecked,
     markContactNameMoved,
@@ -58,6 +59,7 @@
     AppAnchor,
     BalanceValue,
     Banner,
+    FieldLimit,
     FullAddress,
     GasSettings,
     MemoText,
@@ -1415,9 +1417,16 @@
                     variant="primary"
                   />
                 </div>
+                <FieldLimit limit={40} value={contactName} />
                 {#if isFalseContactName}
                   <p class="send__hint" role="alert">
                     That looks like a .dusk name. Choose another name.
+                  </p>
+                {:else if contactCalled(contactName)}
+                  <p class="send__hint" role="alert">
+                    You already have a contact called {contactCalled(
+                      contactName
+                    )?.name}. Only the address will tell them apart.
                   </p>
                 {/if}
                 <p class="send__hint">

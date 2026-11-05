@@ -16,7 +16,12 @@
     Icon,
     Textbox,
   } from "$lib/dusk/components";
-  import { BalanceValue, MemoText, SectionHead } from "$lib/components";
+  import {
+    BalanceValue,
+    FieldLimit,
+    MemoText,
+    SectionHead,
+  } from "$lib/components";
   import { fetchTxNonce } from "@dusk-network/app-core/history";
   import { archiveAt } from "$lib/activity/activityHistory";
   import { claimText } from "@dusk-network/networks/duskevm";
@@ -416,6 +421,7 @@
                     variant="primary"
                   />
                 </div>
+                <FieldLimit limit={40} value={contactName} />
                 {#if isFalseContactName}
                   <p class="tx-detail__note" role="alert">
                     That looks like a .dusk name. Choose another name.

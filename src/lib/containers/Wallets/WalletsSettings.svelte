@@ -13,7 +13,7 @@
   import { Button, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { shortenAddress } from "$lib/dusk/string";
-  import { AppAnchorButton, SectionHead } from "$lib/components";
+  import { AppAnchorButton, FieldLimit, SectionHead } from "$lib/components";
   import { WalletChangedError } from "$lib/errors";
   import { walletStore } from "$lib/stores";
   import vault from "$lib/vault";
@@ -172,6 +172,7 @@
           <p class="wallets-settings__hint" id="wallet-name-hint-{row.key}">
             Only on this device.
           </p>
+          <FieldLimit limit={32} value={draft} />
         {:else}
           <div class="wallets-settings__head">
             <span class="wallets-settings__name">

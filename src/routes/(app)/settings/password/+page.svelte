@@ -46,7 +46,13 @@
   /** What's wrong with the fields, said under the one it's about: false for nothing. */
   function isWrong() {
     currentError = current ? "" : "Enter your password.";
-    nextError = current && next.length < 8 ? "Use at least 8 characters." : "";
+    nextError = !current
+      ? ""
+      : next.length < 8
+        ? "Use at least 8 characters."
+        : next === current
+          ? "That's the password you have. Choose a new one."
+          : "";
     againError =
       current && !nextError && next !== again
         ? "The passwords don't match."

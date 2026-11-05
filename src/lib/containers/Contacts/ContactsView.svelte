@@ -296,6 +296,7 @@
             prefill = null;
             select(event.detail.id);
           }}
+          {own}
           {prefill}
           {resolveName}
         />
@@ -309,6 +310,7 @@
               select(null);
             }}
             on:saved={(event) => select(event.detail.id)}
+            {own}
             {resolveName}
           />
         {/key}

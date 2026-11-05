@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Close a transaction, a contact or the search with phone Back, staying on the page, and leave the password screen out of Back once the wallet is open
 - Bring back what was typed in a form with the browser's Back after leaving it for another page
 - Close the profile menu on any navigation, and only close it on a tap outside
+- Warn on a contact's name in use, and on the wallet's own address
+- Refuse the password you have as the new one
+- Show the address in full on Receive, with a button that says Copy address, then Copied
+- Make the recovery words larger, and leave the balance bar empty at 0
+- Say a name's limit once it's reached
 - Check a shielded address properly on Send: one that only has the right length is refused
 - Show a memo's hidden characters as codes, and say so, on Send's review, the Sent screen and in History, so that text can't read as something it isn't
 - Keep Send inside a phone's screen with a long contact name, and Review in reach

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
-import { shortenAddress } from "$lib/dusk/string";
 import { getAsHTMLElement } from "$lib/dusk/test-helpers";
 
 import { Receive } from "..";
@@ -55,15 +54,13 @@ describe("Receive", () => {
     vi.mocked(toast).mockClear();
   });
 
-  it("should show the address shortened on one line, in full on hover and for screen readers, and copy it in full", async () => {
-    const { container, getByRole } = render(Receive, { address });
-    const shown = getAsHTMLElement(container, ".receive__address");
+  it("should show the address in full, to read, and a button that says what it copies and that it did", async () => {
+    const { container, getByRole, getByText } = render(Receive, { address });
 
-    expect(getAsHTMLElement(shown, "[aria-hidden='true']").textContent).toBe(
-      shortenAddress(address)
-    );
-    expect(getAsHTMLElement(shown, ".sr-only").textContent).toBe(address);
-    expect(shown).toHaveAttribute("title", address);
+    expect(
+      getAsHTMLElement(container, ".receive__full-address").textContent
+    ).toBe(address);
+    expect(getByText("Copy address")).toBeVisible();
 
     await fireEvent.click(getByRole("button", { name: "Copy address" }));
 

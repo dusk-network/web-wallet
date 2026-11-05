@@ -4,10 +4,10 @@
   import { mdiArrowLeft, mdiInformationOutline } from "@mdi/js";
   import { onMount } from "svelte";
 
-  import { AppAnchorButton } from "$lib/components";
+  import { AppAnchorButton, FullAddress } from "$lib/components";
   import { CopyButton, Icon, QrCode } from "$lib/dusk/components";
   import { section } from "$lib/dusk/motion";
-  import { randomUUID, shortenAddress } from "$lib/dusk/string";
+  import { randomUUID } from "$lib/dusk/string";
 
   /** @type {string} */
   export let address = "";
@@ -77,8 +77,8 @@
       width={Math.min(qrWidth, maxQrWidth)}
     />
 
-    <!-- The name, when there is one to show with the address, and the
-      address, shortened, each on one line with a button to copy it. -->
+    <!-- The name, when there is one to show with the address, on one line
+      with a button to copy it, and the address in full, to read and to copy. -->
     <figcaption class="receive__fields">
       {#await name then shownName}
         {#if shownName}
@@ -108,18 +108,14 @@
       {:catch}
         <!-- A failed lookup shows no name. -->
       {/await}
-      <div class="receive__field">
-        <samp class="receive__address" title={address}>
-          <span aria-hidden="true">{shortenAddress(address)}</span>
-          <span class="sr-only">{address}</span>
-        </samp>
-        <CopyButton
-          className="receive__icon-button receive__copy-button"
-          name="address"
-          title="Copy address"
-          value={address}
-        />
-      </div>
+      <p class="receive__full-address"><FullAddress {address} /></p>
+      <CopyButton
+        className="receive__copy-address"
+        name="address"
+        text="Copy address"
+        value={address}
+        variant="secondary"
+      />
       <p class="receive__reveal">
         {addressType === "account"
           ? "Anyone with this address, or a name that points to it, can see its balance and every public payment to and from it."
@@ -187,6 +183,14 @@
       width: 100%;
     }
 
+    &__full-address {
+      text-align: center;
+    }
+
+    :global(&__copy-address) {
+      width: 100%;
+    }
+
     &__field {
       display: flex;
       align-items: center;
@@ -199,8 +203,7 @@
     }
 
     /* Both stay on one line: a long name ends in an ellipsis. */
-    &__name,
-    &__address {
+    &__name {
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -212,11 +215,6 @@
       font-family: var(--main-font-family);
       font-size: 1rem;
       font-weight: 500;
-    }
-
-    &__address {
-      color: var(--muted-color);
-      font-size: 0.8125rem;
     }
 
     :global(&__icon-button) {

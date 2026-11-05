@@ -51,6 +51,10 @@ describe("Receive", () => {
   const expectedAddress = currentProfile.address.toString();
   const expectedAccount = currentProfile.account.toString();
 
+  /** The address the page shows, in full. */
+  const shownAddress = () =>
+    document.querySelector(".receive__full-address")?.textContent;
+
   // The QR code shows once its PNG is made, which Node deflates on its
   // threadpool: running the fake timers doesn't wait for that.
   const qrCodeDrawn = () =>
@@ -76,14 +80,13 @@ describe("Receive", () => {
   });
 
   it("should render the receive page with a choice to switch from public to shielded address", async () => {
-    const { getByRole, getByText } = render(Receive);
+    const { getByRole } = render(Receive);
 
     await vi.runAllTimersAsync();
     await qrCodeDrawn();
 
     expect(getByRole("radiogroup")).toBeInTheDocument();
-    expect(getByText(expectedAccount)).toBeInTheDocument();
-    expect(() => getByText(expectedAddress)).toThrow();
+    expect(shownAddress()).toBe(expectedAccount);
   });
 
   it("should copy the full address shown from its field, with no other copy button", async () => {
@@ -112,19 +115,17 @@ describe("Receive", () => {
   });
 
   it("should show the shielded address when the user makes such choice", async () => {
-    const { getByRole, getByText } = render(Receive);
+    const { getByRole } = render(Receive);
 
     await vi.runAllTimersAsync();
 
-    expect(getByText(expectedAccount)).toBeInTheDocument();
-    expect(() => getByText(expectedAddress)).toThrow();
+    expect(shownAddress()).toBe(expectedAccount);
 
     await fireEvent.click(getByRole("radio", { checked: false }));
     await vi.runAllTimersAsync();
     await qrCodeDrawn();
 
-    expect(() => getByText(expectedAccount)).toThrow();
-    expect(getByText(expectedAddress)).toBeInTheDocument();
+    expect(shownAddress()).toBe(expectedAddress);
   });
 
   describe("Dusk Domains names", () => {
@@ -140,18 +141,18 @@ describe("Receive", () => {
       let renderedAddress = null;
 
       getPrimaryName.mockImplementation(() => {
-        renderedAddress = document.querySelector(".receive__address");
+        renderedAddress = document.querySelector(".receive__full-address");
 
         return Promise.resolve("alice.dusk");
       });
 
-      const { container, getByRole, getByText } = render(Receive);
+      const { container, getByRole } = render(Receive);
 
       await vi.runAllTimersAsync();
 
       expect(renderedAddress).toBeInstanceOf(HTMLElement);
       expect(getShownName(container)).toBe("alice.dusk");
-      expect(getByText(expectedAccount)).toBeInTheDocument();
+      expect(shownAddress()).toBe(expectedAccount);
       expect(getNote(container)).toBeNull();
       expect(getPrimaryName).toHaveBeenCalledExactlyOnceWith(
         expectedAccount,
@@ -183,8 +184,7 @@ describe("Receive", () => {
             Promise.resolve(shieldedAddress ? shieldedName : "alice.dusk")
         );
 
-        const { container, getByRole, getByText, queryByRole } =
-          render(Receive);
+        const { container, getByRole, queryByRole } = render(Receive);
 
         await vi.runAllTimersAsync();
 
@@ -193,7 +193,7 @@ describe("Receive", () => {
         await fireEvent.click(getByRole("radio", { checked: false }));
         await vi.runAllTimersAsync();
 
-        expect(getByText(expectedAddress)).toBeInTheDocument();
+        expect(shownAddress()).toBe(expectedAddress);
         expect(getShownName(container)).toBe(shieldedName);
 
         // What the name reaches, behind its info button.
@@ -225,13 +225,13 @@ describe("Receive", () => {
     it("should show no name, and only the address to copy, when the lookup fails", async () => {
       getPrimaryName.mockRejectedValue(new Error("Lookup failed"));
 
-      const { container, getAllByRole, getByText } = render(Receive);
+      const { container, getAllByRole } = render(Receive);
 
       await vi.runAllTimersAsync();
 
       expect(container.querySelector(".receive__name")).toBeNull();
       expect(getNote(container)).toBeNull();
-      expect(getByText(expectedAccount)).toBeInTheDocument();
+      expect(shownAddress()).toBe(expectedAccount);
       expect(
         getAllByRole("button").map((button) =>
           button.getAttribute("aria-label")

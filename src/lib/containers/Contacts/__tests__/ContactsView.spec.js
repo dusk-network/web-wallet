@@ -390,6 +390,74 @@ describe("ContactsView", () => {
     expect(getContact(savings.id)).toBeNull();
   });
 
+  it("warns of a name in use and of the wallet's own address, and saves all the same", async () => {
+    const OWN =
+      "4ozNeBzeQq5XZGoMYTBKfSG9pmPBa4UWxbfHV3BSDtgeMMz2Xw8oZgVAhN16yC94CUQkg7iAe8fpQT4CsF41iKy6";
+    const twin = saveContact({ address: OTHER, name: "Estudio Marta" });
+
+    try {
+      const { getByRole, getByText, queryByText } = render(ContactForm, {
+        own: [OWN],
+        resolveName,
+      });
+      const save = () => getByRole("button", { name: "Save contact" });
+      /** @param {string} value */
+      const name = (value) =>
+        fireEvent.input(getByRole("textbox", { name: "Name" }), {
+          target: { value },
+        });
+
+      await name("estudio marta ");
+
+      expect(
+        getByText(/^You already have a contact called Estudio Marta\./)
+      ).toBeInTheDocument();
+
+      await name("Estudio Lena");
+
+      expect(queryByText(/^You already have a contact/)).toBeNull();
+
+      await fireEvent.input(
+        getByRole("textbox", { name: "Address or .dusk name" }),
+        { target: { value: OWN } }
+      );
+
+      expect(getByText("This is your own address.")).toBeInTheDocument();
+      expect(save()).toBeEnabled();
+    } finally {
+      removeContact(twin.id);
+    }
+  });
+
+  it("doesn't call a contact its own twin as it's edited", async () => {
+    const contact = saveContact({ address: OTHER, name: "Estudio Marta" });
+
+    try {
+      const { queryByText } = render(ContactForm, { contact, resolveName });
+
+      expect(queryByText(/^You already have a contact/)).toBeNull();
+    } finally {
+      removeContact(contact.id);
+    }
+  });
+
+  it("says a name is at the most it can be, once it is", async () => {
+    const { getByRole, getByText, queryByText } = render(ContactForm, {
+      resolveName,
+    });
+    const field = getByRole("textbox", { name: "Name" });
+
+    expect(field).toHaveAttribute("maxlength", "40");
+
+    await fireEvent.input(field, { target: { value: "x".repeat(39) } });
+
+    expect(queryByText("40 characters at most.")).toBeNull();
+
+    await fireEvent.input(field, { target: { value: "x".repeat(40) } });
+
+    expect(getByText("40 characters at most.")).toBeInTheDocument();
+  });
+
   it("won't save a contact named like a .dusk name it isn't saved from", async () => {
     const resolveName = vi.fn().mockResolvedValue({
       account: OTHER,

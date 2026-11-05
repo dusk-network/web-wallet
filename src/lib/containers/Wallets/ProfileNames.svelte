@@ -13,7 +13,7 @@
   import { Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { shortenAddress } from "$lib/dusk/string";
-  import { SectionHead } from "$lib/components";
+  import { FieldLimit, SectionHead } from "$lib/components";
   import { WalletChangedError } from "$lib/errors";
   import { networkStore, walletStore } from "$lib/stores";
   import profileLabel from "$lib/wallet/profileLabel";
@@ -148,6 +148,7 @@
           placeholder="Name, only on this device"
           type="text"
         />
+        <FieldLimit limit={32} value={drafts[i] ?? ""} />
       </li>
     {/each}
   </ul>
