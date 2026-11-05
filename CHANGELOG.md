@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Close a transaction, a contact or the search with phone Back, staying on the page, and leave the password screen out of Back once the wallet is open
 - Bring back what was typed in a form with the browser's Back after leaving it for another page
 - Close the profile menu on any navigation, and only close it on a tap outside
+- Read `1 000` as a thousand where the language writes it so, in every amount field, in the language the wallet writes amounts in
+- Say why an amount can't be read: which two amounts `1.000` could be, or that DUSK has 9 decimals
+- Say "More than your 0 DUSK" on Send with no coins, not to lower the gas limit
 - Keep Change clear of the Swap arrow on the Bridge's way back
 - Say the amount on the Sent screen of a migration
 - Stop two tabs on the Bridge asking the EVM wallet to switch networks without end: it's asked as a route opens or a wallet connects, and the card offers to switch

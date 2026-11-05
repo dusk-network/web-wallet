@@ -32,11 +32,7 @@
     TransactionResult,
   } from "$lib/components";
 
-  import {
-    checkAmount,
-    normalizeDuskInput,
-    parseDuskInput,
-  } from "./stakeAmount";
+  import { checkAmount, readDuskInput } from "./stakeAmount";
 
   /** @type {(...args: any[]) => Promise<string>} */
   export let execute;
@@ -90,7 +86,7 @@
    * @param {bigint} lux
    */
   const asTyped = (lux) =>
-    formatDuskPlain(lux).replace(".", getDecimalSeparator());
+    formatDuskPlain(lux).replace(".", getDecimalSeparator(language));
 
   // The amount as typed, as in the other amount fields: it starts at all
   // that can be withdrawn.
@@ -229,9 +225,7 @@
 
   // A decimal comma, as the language or a phone's keyboard gives it, reads
   // as the amount meant, as in the other amount fields.
-  $: amount = parseDuskInput(
-    normalizeDuskInput(amountText, getDecimalSeparator())
-  );
+  $: amount = readDuskInput(amountText, language);
 
   // At most all that can be withdrawn, with the fee paid from the public
   // balance, and said as the other amount fields say it.

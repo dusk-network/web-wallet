@@ -10,7 +10,7 @@
     mdiChevronDown,
     mdiClockOutline,
   } from "@mdi/js";
-  import { formatUnits, parseUnits } from "viem";
+  import { formatUnits } from "viem";
   import {
     estimateGas,
     getGasPrice,
@@ -30,6 +30,10 @@
     ReviewAmount,
     ReviewWallet,
   } from "$lib/components";
+  import {
+    amountProblem,
+    readDuskInput,
+  } from "$lib/components/Stake/stakeAmount";
   import NetworkMark from "$lib/components/NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "$lib/components/NetworkPicker/NetworkPicker.svelte";
   import SwapCard from "$lib/components/SwapCard/SwapCard.svelte";
@@ -82,8 +86,8 @@
     formatFee,
     formatTotal,
   } from "$lib/dusk/currency";
-  import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
-  import { cleanNumberString, shortenAddress } from "$lib/dusk/string";
+  import { getDecimalSeparator } from "$lib/dusk/number";
+  import { shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { addBasePath, formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { sendPasswordFor } from "$lib/security/sendPassword";
@@ -260,7 +264,10 @@
    * @param {bigint} lux
    */
   const toAmountText = (lux) =>
-    formatUnits(lux > 0n ? lux : 0n, 9).replace(".", getDecimalSeparator());
+    formatUnits(lux > 0n ? lux : 0n, 9).replace(
+      ".",
+      getDecimalSeparator(language)
+    );
 
   /**
    * Bridges all it can: on DuskDS what the public balance holds past the
@@ -598,7 +605,7 @@
       : route.kind === "service"
         ? undefined
         : duskEvm.id;
-  $: amount = slashDecimals(cleanNumberString(amount, getDecimalSeparator()));
+  $: problem = amountProblem(amount, language);
   $: fee = gasLimit * gasPrice;
 
   // The default gas can change while the form is open, as when the node's
@@ -627,24 +634,9 @@
     $account.address,
     $depositActivityStore
   );
-  $: {
-    // viem expects a dot as decimal separator.
-    // We also guard against incomplete inputs like "1." or ",5".
-    const normalized = amount.replace(",", ".");
-    const trimmed = normalized.endsWith(".")
-      ? normalized.slice(0, -1)
-      : normalized;
-    const safe = trimmed.startsWith(".") ? `0${trimmed}` : trimmed;
-
-    try {
-      amountLux = safe ? parseUnits(safe, 9) : 0n;
-    } catch {
-      amountLux = 0n;
-    }
-
-    // Convert Lux (1e9) to EVM base units (1e18)
-    amountWei = amountLux * EVM_TO_LUX_SCALE_FACTOR;
-  }
+  $: amountLux = readDuskInput(amount, language) ?? 0n;
+  // Lux (1e9) in EVM base units (1e18).
+  $: amountWei = amountLux * EVM_TO_LUX_SCALE_FACTOR;
   $: totalDepositLux = amountLux + fee;
   $: hasEnoughUnshielded =
     !isDepositing || unshieldedBalance >= totalDepositLux;
@@ -851,7 +843,9 @@
           >
         </p>
       {/if}
-      {#if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
+      {#if problem}
+        <p class="swap-error" role="alert">{problem}</p>
+      {:else if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
         <p class="swap-error" role="alert">
           {isDepositing
             ? "Your public balance must cover the amount and the fee."

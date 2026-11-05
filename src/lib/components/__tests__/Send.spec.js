@@ -462,7 +462,9 @@ describe("Send", () => {
       // A lone comma before three digits could mean 1 or 1000.
       await fireEvent.input(fields.amount(), { target: { value: "1,000" } });
 
-      expect(getByRole("alert")).toHaveTextContent("Enter an amount such as");
+      expect(getByRole("alert")).toHaveTextContent(
+        "Is that 1000 or 1.000? Write the one you mean."
+      );
       expect(fields.review()).toBeDisabled();
 
       await fireEvent.input(fields.amount(), {
@@ -514,9 +516,7 @@ describe("Send", () => {
     });
 
     it("should fill in Max as this language writes decimals, so it's never taken for a thousands group", async () => {
-      const language = vi
-        .spyOn(window.navigator, "language", "get")
-        .mockReturnValue("nl-NL");
+      settingsStore.update((store) => ({ ...store, language: "nl-NL" }));
 
       try {
         const { getByRole, getByText } = render(Send, baseProps);
@@ -527,14 +527,58 @@ describe("Send", () => {
           /** @type {HTMLInputElement} */ (fieldsOf(getByRole).amount()).value
         ).not.toContain(".");
 
-        // Nor does what it asks for instead write them another way.
+        // Nor does what it asks for instead write them another way, and it
+        // says why what can mean two amounts is refused.
         await fireEvent.input(fieldsOf(getByRole).amount(), {
           target: { value: "1.001" },
         });
 
+        expect(
+          getByText("Is that 1001 or 1,001? Write the one you mean.")
+        ).toBeTruthy();
+
+        await fireEvent.input(fieldsOf(getByRole).amount(), {
+          target: { value: "ten" },
+        });
+
         expect(getByText("Enter an amount such as 10 or 10,5.")).toBeTruthy();
       } finally {
-        language.mockRestore();
+        settingsStore.update((store) => ({ ...store, language: "en" }));
+      }
+    });
+
+    it("should read a language's own groups, as the page writes them, and say more than your balance rather than talk of gas", async () => {
+      settingsStore.update((store) => ({ ...store, language: "fr-FR" }));
+
+      try {
+        const { container, getByRole, getByText, queryByText, rerender } =
+          render(Send, {
+            ...baseProps,
+            availableBalance: 2_000_000_000_000n,
+            initialRecipient: shieldedAddress,
+          });
+        const fields = fieldsOf(getByRole);
+
+        for (const typed of ["1 000", "1\u00a0000", "1\u202f000"]) {
+          await fireEvent.input(fields.amount(), { target: { value: typed } });
+
+          expect(
+            getSummary(container).find(([label]) => label === "Amount")?.[1]
+          ).toMatch(/^1\s000 DUSK$/);
+          expect(fields.review()).toBeEnabled();
+        }
+
+        // With no coins, the amount is the trouble: no gas limit to lower.
+        await rerender({ availableBalance: 0n, shieldedBalance: 0n });
+
+        expect(queryByText(/network fee/)).toBeNull();
+
+        await fireEvent.input(fields.amount(), { target: { value: "0,5" } });
+
+        expect(getByText("More than your 0 DUSK.")).toBeTruthy();
+        expect(queryByText(/gas limit/)).toBeNull();
+      } finally {
+        settingsStore.update((store) => ({ ...store, language: "en" }));
       }
     });
 

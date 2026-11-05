@@ -38,7 +38,7 @@
   import { Gas } from "@dusk/w3sper";
   import { BALANCE_MASK } from "$lib/constants";
   import Banner from "../Banner/Banner.svelte";
-  import { normalizeDuskInput, parseDuskInput } from "../Stake/stakeAmount";
+  import { readDuskInput } from "../Stake/stakeAmount";
 
   /** @type {ContractGasSettings} */
   export let gasSettings;
@@ -70,7 +70,7 @@
    * @param {bigint} lux
    */
   const fieldText = (lux) =>
-    formatDuskPlain(lux).replace(".", getDecimalSeparator());
+    formatDuskPlain(lux).replace(".", getDecimalSeparator(language));
 
   /**
    * Takes the amount typed in one field, with a decimal point or comma, and
@@ -80,9 +80,7 @@
    */
   function handleBalanceChange(event) {
     const { name, value } = /** @type {HTMLInputElement} */ (event.target);
-    const lux = parseDuskInput(
-      normalizeDuskInput(value, getDecimalSeparator())
-    );
+    const lux = readDuskInput(value, language);
     const isShieldedAmount = name === "shielded-amount";
 
     typedAmount = name;

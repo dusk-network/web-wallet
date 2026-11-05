@@ -3,43 +3,47 @@
  * are typed, in the words the pages show.
  */
 
-import { normalizeAmount, parseDusk } from "@dusk-network/app-core/amounts";
+import {
+  decimalSeparator,
+  normalizeAmount,
+  parseDusk,
+  readAmount,
+} from "@dusk-network/app-core/amounts";
 import { leastSozuStake } from "@dusk-network/networks/sozu";
 
 import { BALANCE_MASK } from "$lib/constants/balanceMask";
 import { formatDusk, formatFee } from "$lib/dusk/currency/formatDusk";
 
-const LUX_DECIMALS = 9;
-
 /**
- * Whether a normalized amount is only wrong by having more decimals than a
- * Lux has.
+ * An amount typed in DUSK, in lux, read as the language writes amounts: "1 000"
+ * and "1 000,5" in French. Null for what isn't one, and for what could mean
+ * either of two amounts, as "1.000" in German.
  *
  * @param {string} text
- */
-export const hasTooManyDecimals = (text) =>
-  /^\d*\.\d+$/.test(text.trim()) &&
-  text.trim().split(".")[1].length > LUX_DECIMALS;
-
-/**
- * An amount typed in DUSK, in lux: digits, with up to nine decimals after a
- * point. Null when it isn't one.
- *
- * @param {string} text
+ * @param {string} [language] The browser's, unless given
  * @returns {bigint | null}
  */
-export const parseDuskInput = (text) => parseDusk(text);
+export const readDuskInput = (text, language) =>
+  parseDusk(normalizeAmount(text, decimalSeparator(language), language));
 
 /**
- * An amount as typed, in the form parseDuskInput reads. What could mean
- * either of two amounts stays as typed, for the parser to refuse.
+ * What's wrong with an amount as typed, in the words of every Dusk app: why
+ * "1.000" can't be read, that DUSK has nine decimals, or else an example that
+ * can go in this form, written as the language writes decimals. "" for nothing
+ * typed, or an amount.
  *
  * @param {string} text
- * @param {string} [decimalSeparator] The language's: "." or ","
+ * @param {string} [language] The browser's, unless given
+ * @param {string} [whole] The example's whole part
  * @returns {string}
  */
-export const normalizeDuskInput = (text, decimalSeparator = ".") =>
-  normalizeAmount(text, decimalSeparator);
+export function amountProblem(text, language, whole = "10") {
+  const { problem } = readAmount(text, language);
+
+  return problem === readAmount("?", language).problem
+    ? `Enter an amount such as ${whole} or ${whole}${decimalSeparator(language)}5.`
+    : (problem ?? "");
+}
 
 /**
  * The least an unstake from Sozu can be: what burns at least 1 lux of
@@ -54,30 +58,6 @@ export function leastSozuUnstake(pool, staked) {
   const least = leastSozuStake(pool) ?? 1n;
 
   return staked > 0n && staked < least ? staked : least;
-}
-
-/**
- * What to enter instead of what isn't an amount, written as the language
- * writes decimals: "Enter an amount such as 10 or 10,5."
- *
- * @param {bigint} minimum
- * @param {string} locale
- */
-function exampleError(minimum, locale) {
-  let point = ".";
-
-  try {
-    point =
-      new Intl.NumberFormat(locale || undefined)
-        .formatToParts(1.5)
-        .find((part) => part.type === "decimal")?.value ?? ".";
-  } catch {
-    // The point, then.
-  }
-
-  const whole = minimum >= 1_000_000_000n ? "1000" : "10";
-
-  return `Enter an amount such as ${whole} or ${whole}${point}5.`;
 }
 
 /**
@@ -125,7 +105,9 @@ export function checkAmount({
   }
 
   if (amount === null) {
-    return fail(exampleError(minimum, locale));
+    return fail(
+      amountProblem(text, locale, minimum >= 1_000_000_000n ? "1000" : "10")
+    );
   }
 
   if (amount <= 0n) {

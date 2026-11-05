@@ -226,7 +226,7 @@ describe("Unstake", () => {
 
       expect(await errorOf("ten")).toBe("Enter an amount such as 10 or 10.5.");
       expect(await errorOf("1.0000000001")).toBe(
-        "Enter an amount such as 10 or 10.5."
+        "DUSK has 9 decimals at most."
       );
       expect(await errorOf("0")).toBe("Enter an amount greater than 0.");
       expect(await errorOf("278,5")).toBe("That's more than you have staked.");

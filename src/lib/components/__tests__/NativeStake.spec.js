@@ -11,9 +11,9 @@ import { outcomeUnknown } from "$lib/transactions";
 
 import { NativeStake } from "..";
 import {
+  amountProblem,
   checkAmount,
-  normalizeDuskInput,
-  parseDuskInput,
+  readDuskInput,
 } from "../Stake/stakeAmount";
 
 // The transaction sent stays pending.
@@ -55,46 +55,72 @@ const baseProps = {
   unstakeFee: 50_000_000n,
 };
 
-describe("parseDuskInput", () => {
+describe("readDuskInput", () => {
   it("reads DUSK as lux, with up to nine decimals and nothing else", () => {
-    expect(parseDuskInput("1000")).toBe(1_000n * DUSK);
-    expect(parseDuskInput(" 1000.5 ")).toBe(1_000_500_000_000n);
-    expect(parseDuskInput(".000000001")).toBe(1n);
-    expect(parseDuskInput("12.")).toBe(12n * DUSK);
+    expect(readDuskInput("1000", "en")).toBe(1_000n * DUSK);
+    expect(readDuskInput(" 1000.5 ", "en")).toBe(1_000_500_000_000n);
+    expect(readDuskInput(".000000001", "en")).toBe(1n);
+    expect(readDuskInput("12.", "en")).toBe(12n * DUSK);
 
     for (const text of ["", "1,000", "1e3", "-1", "1.0000000001", "abc"]) {
-      expect(parseDuskInput(text)).toBeNull();
+      expect(readDuskInput(text, "en")).toBeNull();
     }
   });
-});
 
-describe("normalizeDuskInput", () => {
   it("reads a decimal comma as a point, and leaves digit grouping out where it can't be decimals", () => {
-    expect(normalizeDuskInput("1,5")).toBe("1.5");
-    expect(normalizeDuskInput(" 0,25 ")).toBe("0.25");
-    expect(normalizeDuskInput("0,123")).toBe("0.123");
-    expect(normalizeDuskInput("1.000,5")).toBe("1000.5");
-    expect(normalizeDuskInput("1,000.5")).toBe("1000.5");
-    expect(normalizeDuskInput("1,000,000")).toBe("1000000");
+    expect(readDuskInput("1,5", "en")).toBe(1_500_000_000n);
+    expect(readDuskInput(" 0,25 ", "en")).toBe(250_000_000n);
+    expect(readDuskInput("0,123", "en")).toBe(123_000_000n);
+    expect(readDuskInput("1.000,5", "en")).toBe(1_000_500_000_000n);
+    expect(readDuskInput("1,000.5", "en")).toBe(1_000_500_000_000n);
+    expect(readDuskInput("1,000,000", "en")).toBe(1_000_000n * DUSK);
 
     // A lone comma before three digits is a decimal comma where the language
     // writes decimals with one. Elsewhere it could mean either, so it's refused.
-    expect(normalizeDuskInput("1,000", ",")).toBe("1.000");
-    expect(parseDuskInput(normalizeDuskInput("1,000"))).toBeNull();
-    expect(normalizeDuskInput("0,100")).toBe("0.100");
+    expect(readDuskInput("1,000", "de")).toBe(DUSK);
+    expect(readDuskInput("0,100", "en")).toBe(100_000_000n);
 
     // A point before three digits, where the language groups with one, could
     // mean a thousand as well as one: refused too.
-    expect(parseDuskInput(normalizeDuskInput("1.000", ","))).toBeNull();
-    expect(parseDuskInput(normalizeDuskInput("12.500", ","))).toBeNull();
-    expect(normalizeDuskInput("1.5", ",")).toBe("1.5");
-    expect(normalizeDuskInput("0.100", ",")).toBe("0.100");
-    expect(normalizeDuskInput("1.000")).toBe("1.000");
+    expect(readDuskInput("1.000", "de")).toBeNull();
+    expect(readDuskInput("12.500", "de")).toBeNull();
+    expect(readDuskInput("1.5", "de")).toBe(1_500_000_000n);
+    expect(readDuskInput("0.100", "de")).toBe(100_000_000n);
+    expect(readDuskInput("1.000", "en")).toBe(DUSK);
 
-    // Anything else stays as typed, for the parser to refuse.
     for (const text of ["1,00,0", "1e3", "1.2.3", "abc", "1,5,"]) {
-      expect(normalizeDuskInput(text)).toBe(text);
+      expect(readDuskInput(text, "en")).toBeNull();
     }
+  });
+
+  it("reads the language's own groups, as it writes them", () => {
+    for (const space of [" ", "\u00a0", "\u202f"]) {
+      expect(readDuskInput(`1${space}000`, "fr-FR")).toBe(1_000n * DUSK);
+      expect(readDuskInput(`1${space}000,5`, "fr-FR")).toBe(1_000_500_000_000n);
+    }
+
+    expect(readDuskInput("1'000.5", "de-CH")).toBe(1_000_500_000_000n);
+    // Not English's.
+    expect(readDuskInput("1 000", "en")).toBeNull();
+  });
+});
+
+describe("amountProblem", () => {
+  it("says why an amount can't be read, in the language's own writing", () => {
+    expect(amountProblem("", "de")).toBe("");
+    expect(amountProblem("10,5", "de")).toBe("");
+    expect(amountProblem("1.000", "de")).toBe(
+      "Is that 1000 or 1,000? Write the one you mean."
+    );
+    expect(amountProblem("0,1234567891", "de")).toBe(
+      "DUSK has 9 decimals at most."
+    );
+    expect(amountProblem("ten", "de")).toBe(
+      "Enter an amount such as 10 or 10,5."
+    );
+    expect(amountProblem("ten", "en", "1000")).toBe(
+      "Enter an amount such as 1000 or 1000.5."
+    );
   });
 });
 
@@ -108,7 +134,12 @@ describe("checkAmount", () => {
 
   /** @param {string} text */
   const check = (text, extra = {}) =>
-    checkAmount({ ...base, amount: parseDuskInput(text), text, ...extra });
+    checkAmount({
+      ...base,
+      amount: readDuskInput(text, "en"),
+      text,
+      ...extra,
+    });
 
   it("says what is wrong with an amount, in the words the page shows", () => {
     expect(check("")).toStrictEqual({ error: "", isMinimum: false, ok: false });

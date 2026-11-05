@@ -46,11 +46,7 @@
   import RouteTransferResult from "./RouteTransferResult.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
-  import {
-    hasTooManyDecimals,
-    normalizeDuskInput,
-    parseDuskInput,
-  } from "../Stake/stakeAmount";
+  import { amountProblem, readDuskInput } from "../Stake/stakeAmount";
 
   /** @type {import("$lib/bridge/cardRoutes").CardRoute & { kind: "service" }} */
   export let route;
@@ -213,8 +209,8 @@
   $: followHistory(Boolean($page.state?.routeReview));
   $: ({ address, isConnected } = $account);
   $: chainName = route.chain.name;
-  $: amountLux =
-    parseDuskInput(normalizeDuskInput(amount, getDecimalSeparator())) ?? 0n;
+  $: amountLux = readDuskInput(amount, language) ?? 0n;
+  $: problem = amountProblem(amount, language);
   $: fee = gasLimit * gasPrice;
   $: total = amountLux + fee;
   $: arrivesLux = amountLux > route.feeLux ? amountLux - route.feeLux : 0n;
@@ -241,9 +237,7 @@
         ? {
             label: !amount
               ? "Enter an amount"
-              : hasTooManyDecimals(
-                    normalizeDuskInput(amount, getDecimalSeparator())
-                  )
+              : problem.includes("decimals")
                 ? "Use at most 9 decimals"
                 : "Check the amount",
             ready: false,
@@ -317,7 +311,7 @@
           on:click={() => {
             amount = formatDuskPlain(unshieldedBalance - fee).replace(
               ".",
-              getDecimalSeparator()
+              getDecimalSeparator(language)
             );
             isMaxAmount = true;
           }}
@@ -325,6 +319,9 @@
         >
       </span>
     </div>
+    {#if problem}
+      <p class="swap-error" role="alert">{problem}</p>
+    {/if}
   </div>
 
   <p class="route-amount-reason sr-only" role="status">

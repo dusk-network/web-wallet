@@ -53,11 +53,7 @@
   import RouteTransferResult from "./RouteTransferResult.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
-  import {
-    hasTooManyDecimals,
-    normalizeDuskInput,
-    parseDuskInput,
-  } from "../Stake/stakeAmount";
+  import { amountProblem, readDuskInput } from "../Stake/stakeAmount";
 
   /** @type {import("$lib/bridge/cardRoutes").CardRoute & { kind: "migration" }} */
   export let route;
@@ -309,7 +305,10 @@
 
   /** On to the review of the amount the approval open still lets go. */
   async function finish() {
-    amount = formatDuskPlain(finishLux).replace(".", getDecimalSeparator());
+    amount = formatDuskPlain(finishLux).replace(
+      ".",
+      getDecimalSeparator(language)
+    );
     isMaxAmount = true;
     note = "";
     await tick();
@@ -600,8 +599,8 @@
   $: chainName = route.chain.name;
   $: feeUnit = route.chain.currency.symbol;
   $: unit = route.chain.tokenLabel ?? "DUSK";
-  $: typed = normalizeDuskInput(amount, getDecimalSeparator());
-  $: amountLux = parseDuskInput(typed) ?? 0n;
+  $: amountLux = readDuskInput(amount, language) ?? 0n;
+  $: problem = amountProblem(amount, language);
   $: balanceLux = balance === undefined ? undefined : balance / WEI_PER_LUX;
   $: time = routeTime(route, { net });
   $: timeText = routeTimeText(time);
@@ -628,7 +627,7 @@
               ? { label: "Enter an amount", ready: false }
               : amountLux === 0n
                 ? {
-                    label: hasTooManyDecimals(typed)
+                    label: problem.includes("decimals")
                       ? "Use at most 9 decimals"
                       : "Check the amount",
                     ready: false,
@@ -743,7 +742,7 @@
           on:click={() => {
             amount = formatDuskPlain(balanceLux ?? 0n).replace(
               ".",
-              getDecimalSeparator()
+              getDecimalSeparator(language)
             );
             isMaxAmount = true;
           }}
@@ -751,6 +750,9 @@
         >
       </span>
     </div>
+    {#if problem}
+      <p class="swap-error" role="alert">{problem}</p>
+    {/if}
     {#if isConnected && address}
       <p class="swap-recipient">
         from <b title={address}>{shortenAddress(address)}</b> ·

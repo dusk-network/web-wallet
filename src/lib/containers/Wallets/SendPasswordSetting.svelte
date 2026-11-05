@@ -14,8 +14,8 @@
   import { randomUUID } from "$lib/dusk/string";
   import { UnlockPasswordField } from "$lib/components";
   import {
-    normalizeDuskInput,
-    parseDuskInput,
+    amountProblem,
+    readDuskInput,
   } from "$lib/components/Stake/stakeAmount";
   import { InvalidPasswordError } from "$lib/errors";
   import {
@@ -51,7 +51,7 @@
     amountText =
       limit === null
         ? ""
-        : formatDuskPlain(limit).replace(".", getDecimalSeparator());
+        : formatDuskPlain(limit).replace(".", getDecimalSeparator(language));
     amountError = "";
     password = "";
     passwordError = "";
@@ -65,15 +65,23 @@
     password = "";
   }
 
-  async function save() {
-    const lux = wantsOn
-      ? parseDuskInput(normalizeDuskInput(amountText, getDecimalSeparator()))
-      : null;
+  /**
+   * Why what's typed can't be the amount: an example says what 0 does too.
+   *
+   * @param {string} text
+   */
+  function amountReason(text) {
+    const problem = amountProblem(text, language, "100");
 
-    amountError =
-      wantsOn && lux === null
-        ? `Enter an amount such as 100 or 100${getDecimalSeparator()}5. 0 asks on every send.`
-        : "";
+    return !problem || problem.startsWith("Enter")
+      ? `Enter an amount such as 100 or 100${getDecimalSeparator(language)}5. 0 asks on every send.`
+      : problem;
+  }
+
+  async function save() {
+    const lux = wantsOn ? readDuskInput(amountText, language) : null;
+
+    amountError = wantsOn && lux === null ? amountReason(amountText) : "";
     passwordError = password ? "" : "Enter your password.";
     formError = "";
 

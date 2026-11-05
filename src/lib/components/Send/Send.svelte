@@ -42,8 +42,8 @@
     formatTotal,
   } from "$lib/dusk/currency";
   import {
-    normalizeDuskInput,
-    parseDuskInput,
+    amountProblem,
+    readDuskInput,
   } from "$lib/components/Stake/stakeAmount";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import {
@@ -298,16 +298,12 @@
    * @param {bigint | null} amount
    */
   function amountErrorOf(text, amount) {
-    const typed = text.trim();
-
-    if (!typed) {
+    if (!text.trim()) {
       return "";
     }
 
     if (amount === null) {
-      return /^\d*\.\d{10,}$/.test(typed)
-        ? "DUSK has 9 decimals at most."
-        : `Enter an amount such as 10 or 10${getDecimalSeparator()}5.`;
+      return amountProblem(text, language);
     }
 
     if (amount === 0n) {
@@ -380,7 +376,7 @@
 
     sendAmount = formatDuskPlain(maxSpendableAmount).replace(
       ".",
-      getDecimalSeparator()
+      getDecimalSeparator(language)
     );
     isMaxAmount = true;
   }
@@ -741,10 +737,9 @@
   }
 
   // A comma keyboard's "1,5" and digit grouping read as the amount meant.
-  $: typedAmount = normalizeDuskInput(sendAmount, getDecimalSeparator());
-  $: parsedAmount = parseDuskInput(typedAmount);
+  $: parsedAmount = readDuskInput(sendAmount, language);
   $: sendAmountInLux = parsedAmount ?? 0n;
-  $: amountError = amountErrorOf(typedAmount, parsedAmount);
+  $: amountError = amountErrorOf(sendAmount, parsedAmount);
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
@@ -1428,14 +1423,14 @@
             value={formatDusk(availableBalance, language)}
           /> DUSK from your {isShielded ? "shielded" : "public"} balance
         </p>
-        {#if !isBalanceSufficientForGas}
-          <p class="send__error" role="alert">
-            <strong>Not enough for the network fee.</strong> Add funds or lower the
-            gas limit.
-          </p>
-        {:else if amountError}
+        {#if amountError && (isBalanceSufficientForGas || sendAmountInLux > availableBalance || parsedAmount === null)}
           <p class="send__error" id="{id}-amount-error" role="alert">
             {amountError}
+          </p>
+        {:else if !isBalanceSufficientForGas && availableBalance > 0n}
+          <p class="send__error" role="alert">
+            <strong>Not enough for the network fee.</strong> Add DUSK, or lower the
+            fee under Edit.
           </p>
         {/if}
       </div>

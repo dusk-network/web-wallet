@@ -37,8 +37,7 @@
     checkAmount,
     feeError,
     leastSozuUnstake,
-    normalizeDuskInput,
-    parseDuskInput,
+    readDuskInput,
   } from "./stakeAmount";
 
   /**
@@ -195,7 +194,10 @@
   /** @param {bigint} lux */
   function fill(lux) {
     forgetTerms();
-    amountText = formatDuskPlain(lux).replace(".", getDecimalSeparator());
+    amountText = formatDuskPlain(lux).replace(
+      ".",
+      getDecimalSeparator(language)
+    );
     isMaxAmount = true;
     document.getElementById(`${id}-amount`)?.focus();
   }
@@ -442,9 +444,7 @@
     : staked;
   // A decimal comma, as the language or a phone's keyboard gives it, reads
   // as the amount meant.
-  $: amount = parseDuskInput(
-    normalizeDuskInput(amountText, getDecimalSeparator())
-  );
+  $: amount = readDuskInput(amountText, language);
   // Less than this gets no stDUSK at the rate now, after the fee; with none,
   // no stake does. Less than an unstake's least burns no stDUSK.
   $: least = isStake

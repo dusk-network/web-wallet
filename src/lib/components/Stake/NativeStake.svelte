@@ -40,11 +40,7 @@
   import GasSettings from "../GasSettings/GasSettings.svelte";
   import TransactionResult from "../TransactionResult/TransactionResult.svelte";
   import StakeFlow from "./StakeFlow.svelte";
-  import {
-    checkAmount,
-    normalizeDuskInput,
-    parseDuskInput,
-  } from "./stakeAmount";
+  import { checkAmount, readDuskInput } from "./stakeAmount";
 
   /**
    * Native staking: the amount, checked as it is typed against the minimum
@@ -109,7 +105,10 @@
    * @param {boolean} [isMax]
    */
   function fill(lux, isMax = false) {
-    amountText = formatDuskPlain(lux).replace(".", getDecimalSeparator());
+    amountText = formatDuskPlain(lux).replace(
+      ".",
+      getDecimalSeparator(language)
+    );
     isMaxAmount = isMax;
     document.getElementById(`${id}-amount`)?.focus();
   }
@@ -207,9 +206,7 @@
   $: minimum = hasStake ? 0n : minimumStake;
   // A decimal comma, as the language or a phone's keyboard gives it, reads
   // as the amount meant.
-  $: amount = parseDuskInput(
-    normalizeDuskInput(amountText, getDecimalSeparator())
-  );
+  $: amount = readDuskInput(amountText, language);
   $: check = checkAmount({
     amount,
     available: availableBalance,
