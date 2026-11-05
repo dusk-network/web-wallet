@@ -11,6 +11,10 @@ import {
   stopArrivalNotice,
   transferEnded,
 } from "../arrivalNotice";
+import { networks } from "@dusk-network/networks";
+
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+
 import { followArrivals } from "../arrivalFollowing";
 
 const stores = vi.hoisted(() => ({
@@ -25,6 +29,8 @@ const stores = vi.hoisted(() => ({
 const mocks = vi.hoisted(() => ({
   followRouteTransfers: vi.fn(() => () => {}),
   goto: vi.fn(),
+  resumeRecentDeposits: vi.fn(),
+  resumeUnsettledWithdrawals: vi.fn(),
 }));
 
 vi.mock("../routeHistory", async () => {
@@ -40,7 +46,10 @@ vi.mock("../depositActivity", async () => {
 
   stores.deposits = makeStore([]);
 
-  return { depositActivityStore: stores.deposits };
+  return {
+    depositActivityStore: stores.deposits,
+    resumeRecentDeposits: mocks.resumeRecentDeposits,
+  };
 });
 
 vi.mock("../withdrawalTracking", async () => {
@@ -48,7 +57,10 @@ vi.mock("../withdrawalTracking", async () => {
 
   stores.withdrawals = makeStore([]);
 
-  return { withdrawalActivityStore: stores.withdrawals };
+  return {
+    resumeUnsettledWithdrawals: mocks.resumeUnsettledWithdrawals,
+    withdrawalActivityStore: stores.withdrawals,
+  };
 });
 
 vi.mock("../routeFollowing", () => ({
@@ -337,6 +349,39 @@ describe("Being told when a transfer arrives", () => {
       expect(mocks.goto).toHaveBeenCalledWith(
         "/dashboard/bridge/transactions?tx=aa"
       );
+    });
+
+    it("takes up what's under way on DuskEVM again, from whichever page the wallet opens on, once they asked: no bridge screen needed", async () => {
+      const { Stand } = browser();
+
+      setNodeNetwork(networks.testnet);
+      stop();
+      mocks.resumeRecentDeposits.mockClear();
+      mocks.resumeUnsettledWithdrawals.mockClear();
+      stop = followArrivals();
+
+      expect(mocks.resumeRecentDeposits).not.toHaveBeenCalled();
+      expect(mocks.resumeUnsettledWithdrawals).not.toHaveBeenCalled();
+
+      await chooseArrivalNotice();
+
+      expect(mocks.resumeRecentDeposits).toHaveBeenCalledOnce();
+      expect(mocks.resumeUnsettledWithdrawals).toHaveBeenCalledOnce();
+
+      // Chosen before: as the wallet unlocks on another page, or reloads.
+      stop();
+      stop = followArrivals();
+
+      expect(mocks.resumeRecentDeposits).toHaveBeenCalledTimes(2);
+      expect(mocks.resumeUnsettledWithdrawals).toHaveBeenCalledTimes(2);
+
+      // And for a network without DuskEVM, nothing.
+      setNodeNetwork(null);
+      stop();
+      stop = followArrivals();
+
+      expect(mocks.resumeRecentDeposits).toHaveBeenCalledTimes(2);
+      expect(Stand.permission).toBe("granted");
     });
 
     it("follows what's under way from wherever the wallet is only once they asked, and says nothing of it once locked", async () => {

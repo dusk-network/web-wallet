@@ -3,14 +3,19 @@
  * long as the wallet is open, on whichever page, to say so to whoever isn't
  * looking. What a transfer was as it was first seen says nothing: only a change
  * does. With the notice chosen, or where the title is the one way to be told,
- * the transfers under way are read with the page hidden too.
+ * the transfers under way are read with the page hidden too, and those on
+ * DuskEVM taken up again as the wallet opens: only a bridge screen does otherwise.
  */
 
 import { get } from "svelte/store";
 
 import { goto } from "$lib/navigation";
-import { settingsStore } from "$lib/stores";
-import { depositActivityStore } from "$lib/bridge/depositActivity";
+import { settingsStore, walletStore } from "$lib/stores";
+import nodeNetwork from "$lib/stores/nodeNetwork";
+import {
+  depositActivityStore,
+  resumeRecentDeposits,
+} from "$lib/bridge/depositActivity";
 import { formatDuskExact } from "$lib/dusk/currency";
 
 import { transferOutcome } from "$lib/components/EvmTransactions/bridgeActivity";
@@ -23,7 +28,11 @@ import {
 } from "./arrivalNotice";
 import { followRouteTransfers } from "./routeFollowing";
 import { routeTransfers } from "./routeHistory";
-import { withdrawalActivityStore } from "./withdrawalTracking";
+import { getWithdrawalFinalizationConfig } from "./withdrawals";
+import {
+  resumeUnsettledWithdrawals,
+  withdrawalActivityStore,
+} from "./withdrawalTracking";
 
 const WEI_PER_LUX = 1_000_000_000n;
 
@@ -155,6 +164,16 @@ export function followArrivals() {
   /** @type {(() => void) | null} */
   let stopFollowing = null;
 
+  const takeUpDuskEvm = () => {
+    if (
+      get(nodeNetwork)?.routes.duskEvm.length ||
+      getWithdrawalFinalizationConfig().configured
+    ) {
+      resumeRecentDeposits();
+      resumeUnsettledWithdrawals();
+    }
+  };
+
   // Told, it's followed for a day from wherever the wallet is: a stuck
   // transfer costs no reads otherwise.
   const stopState = arrivalNoticeState.subscribe((state) => {
@@ -163,6 +182,19 @@ export function followArrivals() {
       stopFollowing = null;
     } else {
       stopFollowing ??= followRouteTransfers({ recentOnly: true });
+      takeUpDuskEvm();
+    }
+  });
+
+  // Another wallet here has its own.
+  let openKey = get(walletStore).walletKey;
+  const stopWallet = walletStore.subscribe(({ walletKey }) => {
+    if (walletKey !== openKey) {
+      openKey = walletKey;
+
+      if (stopFollowing) {
+        takeUpDuskEvm();
+      }
     }
   });
 
@@ -172,6 +204,7 @@ export function followArrivals() {
   return () => {
     stops.forEach((stop) => stop());
     stopState();
+    stopWallet();
     stopFollowing?.();
     window.removeEventListener("focus", arrivalSeen);
     document.removeEventListener("visibilitychange", arrivalSeen);

@@ -647,6 +647,19 @@ export function trackWithdrawalTransaction(
   return tracker.promise;
 }
 
+/**
+ * Takes up the withdrawals this wallet keeps that aren't settled, whichever EVM
+ * wallet sent them, none needing to be connected: for whoever asked to be told
+ * when one needs them, from whichever page the wallet opens on.
+ */
+export function resumeUnsettledWithdrawals() {
+  for (const withdrawal of rememberedWithdrawals()
+    .filter((item) => !isSettled(item))
+    .slice(0, MAX_ACTIVITY_ITEMS)) {
+    void trackWithdrawalTransaction(withdrawal.transactionHash);
+  }
+}
+
 /** @param {string | null | undefined} account */
 export function resumeWithdrawalTracking(account) {
   const normalizedAccount = account?.toLowerCase() ?? null;
