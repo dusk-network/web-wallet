@@ -11,7 +11,10 @@ import {
   requestsStore,
 } from "..";
 
-const TO = "some-account";
+const TO =
+  "25z9o6qCaVk1ReyHjmB4pyXcE3D1vRu4FVV1rR8ChYcosdTSktkANLDHq9GD6B4985Q1S2KrDZYBRrohWAjrNmACFUb3UMSRyYctJRzh3d28R1ZNC1ZyKm1HwXL4FF5Etftt";
+const SHIELDED =
+  "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnMM";
 const LUX = 150_000_000n;
 const NOW = Date.now();
 const HOUR = 3_600_000;
@@ -33,6 +36,7 @@ const payment = (fields) =>
     category: "received",
     hash: "h1",
     memo: "Factura 33",
+    privacy: "public",
     status: "executed",
     time: NOW + HOUR,
     value: LUX,
@@ -106,6 +110,29 @@ describe("The requests a wallet made", () => {
 
       expect(one.get("first")?.state).toBe("check");
       expect(one.get("second")?.state).toBe("waiting");
+    });
+
+    it("should answer a request only with a payment to the address it asked on: public to the account, shielded to the shielded address", () => {
+      const list = [
+        asked({ id: "shielded", to: SHIELDED }),
+        asked({ at: NOW + 1, id: "public" }),
+      ];
+      const fromPublic = matchRequests(list, [payment()]);
+
+      expect(fromPublic.get("public")?.state).toBe("paid");
+      expect(fromPublic.get("shielded")).toStrictEqual({ state: "waiting" });
+
+      // A shielded payment has no memo to read: the amount alone, to check.
+      const fromShielded = matchRequests(list, [
+        payment({ hash: "h2", memo: null, privacy: "shielded" }),
+      ]);
+
+      expect(fromShielded.get("shielded")).toMatchObject({
+        hash: "h2",
+        matched: "amount",
+        state: "check",
+      });
+      expect(fromShielded.get("public")).toStrictEqual({ state: "waiting" });
     });
 
     it("should prefer a payment with all of it to an earlier one with part of it", () => {

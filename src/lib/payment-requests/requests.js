@@ -10,6 +10,7 @@
  * `${APP_KEY}-payment-requests`: [{ at, id, lux, memo, network, paid?, to }]
  */
 
+import { recipientKind } from "@dusk-network/app-core/payment-links";
 import { get, writable } from "svelte/store";
 
 import { walletDataScope } from "$lib/wallets/dataNames";
@@ -202,15 +203,20 @@ export function keepRequestMatches(matches) {
 const memoOf = (memo) => (memo ?? "").trim();
 
 /**
- * What a payment has of what a request asked: null for nothing, or for a
- * payment that came before it.
+ * What a payment has of what a request asked: null for nothing, for a payment
+ * that came before it, or for one to the profile's other address: a request asks
+ * on its public account or on its shielded address, not on both.
  *
  * @param {PaymentRequest} request
  * @param {ActivityRow} row
  * @returns {"amount" | "amount-memo" | "memo" | null}
  */
 function matchOf(request, row) {
+  const askedOn =
+    recipientKind(request.to) === "shielded" ? "shielded" : "public";
+
   if (
+    row.privacy !== askedOn ||
     row.time === null ||
     row.time === undefined ||
     row.time < request.at - CLOCK_SKEW_MS
@@ -231,9 +237,9 @@ function matchOf(request, row) {
 }
 
 /**
- * What came in for each request, by its ID, from the rows read: a payment
- * answers one request, the oldest it matches best, and one that matches the
- * amount and the memo comes before one that matches less.
+ * What came in for each request, by its ID, from the rows read: a payment to the
+ * address asked on answers one request, the oldest it matches best, and one that
+ * matches the amount and the memo comes before one that matches less.
  *
  * @param {PaymentRequest[]} list
  * @param {ActivityRow[]} rows
