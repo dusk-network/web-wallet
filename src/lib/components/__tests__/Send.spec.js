@@ -403,9 +403,9 @@ describe("Send", () => {
 
       const { findByRole, getByRole, getByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
+      const scan = await findByRole("button", { name: "Scan a QR code" });
 
-      await findByRole("button", { name: "Scan a QR code" });
-
+      await fireEvent.click(scan);
       scanned(duskLink);
       await vi.waitFor(() =>
         expect(filled(fields)).toStrictEqual([
@@ -415,6 +415,7 @@ describe("Send", () => {
         ])
       );
 
+      await fireEvent.click(scan);
       scanned(`dusk:public-${otherAccount}@dusk:1?amount=9`);
       await vi.waitFor(() =>
         expect(
@@ -423,6 +424,7 @@ describe("Send", () => {
       );
       expect(filled(fields)[0]).toBe("");
 
+      await fireEvent.click(scan);
       scanned(invalidAddress);
       await vi.waitFor(() =>
         expect(getByText("Not a valid address.")).toBeInTheDocument()

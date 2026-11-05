@@ -26,6 +26,7 @@
 
   export const startScan = async () => {
     error = false;
+    qrScanned = false;
     toggleScanner = true;
     clearTimeout(timeoutId);
 
