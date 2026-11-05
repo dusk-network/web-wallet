@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { ProfileGenerator } from "@dusk/w3sper";
 import { networks } from "@dusk-network/networks";
 import { tick } from "svelte";
 
 import { cardRoutes } from "$lib/bridge/cardRoutes";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
-import { settingsStore } from "$lib/stores";
+import { settingsStore, walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { stubWalletNetwork } from "$lib/test-helpers";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 
 import { Bridge } from "..";
@@ -399,6 +401,165 @@ describe("the Bridge card's routes to and from other chains", () => {
     await vi.waitFor(() => expect(mocks.migrate).toHaveBeenCalled());
 
     expect(mocks.approve).not.toHaveBeenCalled();
+  });
+
+  describe("keeping what's typed", () => {
+    const seed = new Uint8Array(64).fill(3);
+    const generator = new ProfileGenerator(async () => seed);
+
+    /** A lock or a reload: the wallet goes before what shows it. */
+    async function lockAndUnlock() {
+      walletStore.reset();
+      cleanup();
+      await walletStore.init(generator);
+    }
+
+    beforeEach(async () => {
+      stubWalletNetwork();
+      await walletStore.init(generator);
+    });
+
+    afterEach(() => {
+      cleanup();
+      walletStore.reset();
+    });
+
+    it("brings back a transfer out's amount after a lock, and lets it go as it's sent", async () => {
+      connect({ address: EVM, chainId: 1 });
+
+      const typed = render(Bridge, props);
+
+      await fireEvent.input(
+        typed.getByRole("textbox", { name: "Amount, in DUSK" }),
+        { target: { value: "2" } }
+      );
+      await lockAndUnlock();
+
+      const back = render(Bridge, props);
+
+      expect(
+        back.getByRole("textbox", { name: "Amount, in DUSK" })
+      ).toHaveValue("2");
+
+      mocks.executeSend.mockReturnValue(new Promise(() => {}));
+      await fireEvent.click(
+        back.getByRole("button", { name: "Review bridge" })
+      );
+      await afterConfirmDelay();
+      await fireEvent.click(back.getByRole("button", { name: "Send" }));
+      await lockAndUnlock();
+
+      expect(
+        render(Bridge, props).getByRole("textbox", { name: "Amount, in DUSK" })
+      ).toHaveValue("");
+    });
+
+    it("brings it back after a transfer out that failed with nothing sent, not after one that may have gone out", async () => {
+      connect({ address: EVM, chainId: 1 });
+
+      /** @param {Error} failure */
+      async function failWith(failure) {
+        mocks.executeSend.mockRejectedValueOnce(failure);
+
+        const view = render(Bridge, props);
+
+        await fireEvent.input(
+          view.getByRole("textbox", { name: "Amount, in DUSK" }),
+          { target: { value: "2" } }
+        );
+        await fireEvent.click(
+          view.getByRole("button", { name: "Review bridge" })
+        );
+        await afterConfirmDelay();
+        await fireEvent.click(view.getByRole("button", { name: "Send" }));
+
+        return view;
+      }
+
+      const failed = await failWith(new TypeError("Failed to fetch"));
+
+      await failed.findByRole("button", { name: "Try again" });
+      cleanup();
+
+      expect(
+        render(Bridge, props).getByRole("textbox", { name: "Amount, in DUSK" })
+      ).toHaveValue("2");
+      cleanup();
+
+      const unknown = await failWith(
+        outcomeUnknown(new TypeError("Failed to fetch"))
+      );
+
+      await unknown.findByText("Not confirmed");
+      cleanup();
+
+      expect(
+        render(Bridge, props).getByRole("textbox", { name: "Amount, in DUSK" })
+      ).toHaveValue("");
+    });
+
+    it("brings back a migration's route and amount after a lock, and lets it go as it's sent", async () => {
+      mocks.getBalanceOfCoin.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.migrate.mockReturnValue(new Promise(() => {}));
+      connect({ address: EVM, chainId: 56 });
+
+      const opened = { ...props, linkedRoute: "bsc-to-dusk" };
+      const typed = render(Bridge, opened);
+
+      await fireEvent.input(
+        await typed.findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
+        { target: { value: "1,5" } }
+      );
+      await lockAndUnlock();
+
+      const back = render(Bridge, opened);
+      const amount = await back.findByRole("textbox", {
+        name: "Amount, in BEP20 DUSK",
+      });
+
+      expect(amount).toHaveValue("1,5");
+
+      await vi.waitFor(() => expect(amount).toBeEnabled());
+      await fireEvent.click(
+        back.getByRole("button", { name: "Review migration" })
+      );
+      await back.findByRole("button", { name: "Migrate" });
+      await afterConfirmDelay();
+      await fireEvent.click(back.getByRole("button", { name: "Migrate" }));
+      await lockAndUnlock();
+
+      expect(
+        await render(Bridge, opened).findByRole("textbox", {
+          name: "Amount, in BEP20 DUSK",
+        })
+      ).toHaveValue("");
+    });
+
+    it("keeps the route picked, and leaves it for a link to another", async () => {
+      connect({ address: EVM, chainId: 1 });
+
+      const typed = render(Bridge, props);
+
+      await fireEvent.click(
+        typed.getByRole("button", { name: "Swap From and To" })
+      );
+
+      const picked = direction(typed.container);
+
+      await lockAndUnlock();
+
+      expect(direction(render(Bridge, props).container)).toStrictEqual(picked);
+
+      await lockAndUnlock();
+
+      expect(
+        direction(
+          render(Bridge, { ...props, linkedRoute: "ethereum-to-dusk" })
+            .container
+        )
+      ).toStrictEqual(["ethereum", "duskDs"]);
+    });
   });
 
   describe("an approval not used up", () => {

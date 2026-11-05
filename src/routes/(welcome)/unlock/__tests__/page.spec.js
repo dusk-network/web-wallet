@@ -2,6 +2,7 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -26,6 +27,7 @@ import {
 } from "$lib/wallet";
 import vault from "$lib/vault";
 import fixtures from "$lib/vault/__tests__/fixtures/login-v1.json";
+import { noteActiveWallet } from "$lib/wallets/directory";
 import { useWalletData } from "$lib/wallets/walletData";
 
 import UnlockWallet from "../+page.svelte";
@@ -515,6 +517,127 @@ describe("Unlock Wallet", async () => {
       expect(getErrorElement()).toHaveAttribute("role", "alert");
       expect(openSpy).not.toHaveBeenCalled();
       expect(gotoSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Keeping one's place", () => {
+    beforeEach(async () => {
+      await vault.setUp(mnemonic, pwd);
+      settingsStore.update(setUserId(userId));
+    });
+
+    afterEach(async () => {
+      await vault.clear();
+    });
+
+    /** Unlocks with the password. */
+    const unlock = async () => {
+      const { container } = render(UnlockWallet);
+
+      await fireEvent.input(getTextInput(container), {
+        target: { value: pwd },
+      });
+      await fireEvent.submit(getAsHTMLElement(container, "form"));
+      await waitForGoto();
+    };
+
+    it("should return to the page a lock, a reload or a link left off at, with its target", async () => {
+      navigation.keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: "?to=alice.dusk",
+      });
+
+      await unlock();
+
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
+        "/dashboard/send/?to=alice.dusk"
+      );
+    });
+
+    it("should open at Home once that page was returned to", async () => {
+      navigation.keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: "",
+      });
+
+      await unlock();
+      gotoSpy.mockClear();
+      cleanup();
+      await unlock();
+
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith("/dashboard");
+    });
+
+    it("should open at Home for anything kept that isn't a page of the wallet", async () => {
+      sessionStorage.setItem(
+        `${CONFIG.LOCAL_STORAGE_APP_KEY}-place`,
+        "//elsewhere.test/dashboard"
+      );
+
+      await unlock();
+
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith("/dashboard");
+    });
+
+    it("should keep the place through a wrong password", async () => {
+      navigation.keepPlace({
+        pathname: "/some-base-path/dashboard/stake/",
+        search: "?flow=native",
+      });
+
+      const { container } = render(UnlockWallet);
+      const input = getTextInput(container);
+
+      await fireEvent.input(input, { target: { value: "wrong" } });
+      await fireEvent.submit(getAsHTMLElement(container, "form"));
+      await vi.waitUntil(() => getErrorElement(), { timeout: 5_000 });
+
+      expect(gotoSpy).not.toHaveBeenCalled();
+
+      await fireEvent.input(input, { target: { value: pwd } });
+      await fireEvent.submit(getAsHTMLElement(container, "form"));
+      await waitForGoto();
+
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
+        "/dashboard/stake/?flow=native"
+      );
+    });
+
+    it("should open the wallet on the profile it was on, and only that wallet", async () => {
+      const [{ id }] = /** @type {Array<{ id: string }>} */ (vault.list());
+
+      await noteActiveWallet(id, { accounts: [], addresses: [] });
+      navigation.keepProfile(id, 1);
+
+      await unlock();
+
+      expect(openSpy.mock.calls[0][1]).toMatchObject({
+        active: id,
+        profile: 1,
+      });
+
+      cleanup();
+      gotoSpy.mockClear();
+      openSpy.mockClear();
+      navigation.keepProfile("another wallet", 1);
+
+      await unlock();
+
+      expect(openSpy.mock.calls[0][1]).not.toHaveProperty("profile");
+    });
+
+    it("should keep no password or recovery phrase in this tab", async () => {
+      navigation.keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: "",
+      });
+
+      await unlock();
+
+      const tab = JSON.stringify({ ...sessionStorage });
+
+      expect(tab).not.toContain(pwd);
+      expect(tab).not.toContain(mnemonic.split(" ")[0]);
     });
   });
 

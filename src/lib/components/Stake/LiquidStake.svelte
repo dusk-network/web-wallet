@@ -19,7 +19,7 @@
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
-  import { reviewStep } from "$lib/navigation";
+  import { formDraft, gasToKeep, keptGas, reviewStep } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
   import {
     feePercent,
@@ -85,15 +85,31 @@
   /** @type {("stake" | "unstake")[]} */
   const TABS = ["stake", "unstake"];
 
+  /** The action the page was opened on, as a link can name it. */
+  const openedOn = action;
+  const draft = formDraft("stake-liquid");
+
+  /**
+   * What was typed before a lock, a reload or a failed stake, unless a link to
+   * the other action opens the page now.
+   *
+   * @type {any}
+   */
+  const typedBefore = ((before) =>
+    before?.openedOn === openedOn ? before : null)(draft.read());
+
+  // The tab it was on goes with it.
+  action = typedBefore?.action ?? action;
+
   /** The amount typed, and the one typed for the other action. */
-  let amountText = "";
+  let amountText = typedBefore?.amount ?? "";
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = false;
-  let isOtherMax = false;
-  let otherText = "";
+  let isMaxAmount = typedBefore?.isMax ?? false;
+  let isOtherMax = typedBefore?.isOtherMax ?? false;
+  let otherText = typedBefore?.other ?? "";
   let isReviewing = false;
-  let { gasLimit, gasPrice } = gas[action].settings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gas[action].settings);
   let defaultGas = gas[action].settings;
   let isGasValid = false;
 
@@ -324,6 +340,9 @@
         : status.contracts.pool;
 
     if (pool) {
+      // It goes out now, as far as a reload can tell: nothing brings it back.
+      draft.clear();
+
       const operation = execute(
         order.action,
         pool,
@@ -342,6 +361,7 @@
       };
       reviewHistory.settle(operation, () => {
         canTryAgain = true;
+        draft.keep(typed);
       });
     }
   }
@@ -365,6 +385,20 @@
   });
 
   $: followHistory(Boolean($page.state?.stakeReview));
+
+  // What's typed, kept as it's typed, for as long as it hasn't gone out.
+  $: typed = {
+    action: amountText || otherText ? action : "",
+    amount: amountText,
+    gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+    isMax: isMaxAmount,
+    isOtherMax,
+    openedOn: amountText || otherText ? openedOn : "",
+    other: otherText,
+  };
+  $: if (!sent) {
+    draft.save(typed);
+  }
 
   // Each action's own gas: a tab's, or the node's price once it's read,
   // unless the gas was edited.

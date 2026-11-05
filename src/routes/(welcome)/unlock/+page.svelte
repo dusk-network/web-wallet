@@ -20,7 +20,7 @@
     MnemonicInput,
   } from "$lib/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
-  import { goto } from "$lib/navigation";
+  import { goto, takePlace } from "$lib/navigation";
   import {
     mnemonicPhraseResetStore,
     settingsStore,
@@ -127,7 +127,8 @@
       .then(() => {
         controller.signal.throwIfAborted();
         pending = false;
-        return goto("/dashboard");
+        // Where a lock, a reload or a link left off.
+        return goto(takePlace() ?? "/dashboard");
       })
       .catch((err) => {
         if (controller.signal.aborted) {

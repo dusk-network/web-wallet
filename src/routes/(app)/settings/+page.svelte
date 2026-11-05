@@ -44,7 +44,12 @@
   import { ProfileNames, WalletsSettings } from "$lib/containers/Wallets";
   import { WalletChangedError } from "$lib/errors";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
-  import { logout, pageTitle } from "$lib/navigation";
+  import {
+    forgetDrafts,
+    forgetPlace,
+    logout,
+    pageTitle,
+  } from "$lib/navigation";
   import vault from "$lib/vault";
   import { lockWallets, openWalletName, walletDirectory } from "$lib/wallets";
   import { clearDirectory } from "$lib/wallets/directory";
@@ -81,6 +86,8 @@
         clearDirectory();
         settingsStore.reset();
         await logout(false);
+        forgetPlace();
+        forgetDrafts();
       })
       .catch((err) => {
         resetError = err;

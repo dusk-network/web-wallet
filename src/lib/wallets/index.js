@@ -9,7 +9,7 @@ import { derived, get } from "svelte/store";
 
 import { forgetWalletBridgeRecords } from "$lib/bridge/bridgeRecordKeys";
 import { forgetWalletRouteTransfers } from "$lib/bridge/migrationActivity";
-import { logout } from "$lib/navigation";
+import { forgetPlace, keptProfile, logout } from "$lib/navigation";
 import { settingsStore, walletStore } from "$lib/stores";
 import vault, {
   NOT_HERE,
@@ -227,8 +227,13 @@ export async function unlockWallets(password, { signal } = {}) {
   await Promise.all(opened.map(({ key }) => keepIncarnation(key)));
 
   signal?.throwIfAborted();
+
+  const active = readDirectory().active || fromV1 || undefined;
+  const profile = active === undefined ? undefined : keptProfile(active);
+
   await walletStore.open(opened, {
-    active: readDirectory().active || fromV1 || undefined,
+    active,
+    ...(profile === undefined ? {} : { profile }),
   });
   await noteOpenWallet();
 }
@@ -244,7 +249,12 @@ export async function unlockWallets(password, { signal } = {}) {
 export async function unlockWithoutPassword(profileGenerator, { signal } = {}) {
   await keepIncarnation("");
   signal?.throwIfAborted();
-  await walletStore.init(profileGenerator);
+
+  const profile = keptProfile("");
+
+  await (profile === undefined
+    ? walletStore.init(profileGenerator)
+    : walletStore.init(profileGenerator, undefined, { profile }));
 }
 
 /**
@@ -483,11 +493,15 @@ export async function changeWalletPassword(password, newPassword) {
   tellOtherTabs({ type: "password" });
 }
 
-/** Locks every wallet, here and in the other tabs. */
-export function lockWallets() {
+/**
+ * Locks every wallet, here and in the other tabs, on purpose: this tab's next
+ * unlock starts over at Home, and the others', where they were.
+ */
+export async function lockWallets() {
   tellOtherTabs({ type: "lock" });
 
-  return logout(false);
+  await logout(false);
+  forgetPlace();
 }
 
 /**

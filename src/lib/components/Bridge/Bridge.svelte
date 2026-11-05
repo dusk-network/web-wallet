@@ -85,11 +85,12 @@
   import { getDecimalSeparator, slashDecimals } from "$lib/dusk/number";
   import { cleanNumberString, shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { addBasePath } from "$lib/navigation";
+  import { addBasePath, formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
   import {
     CHECK_EVM_WALLET_FIRST,
     describeFailure,
+    nothingWentOut,
     outcomeUnknown,
   } from "$lib/transactions";
   import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
@@ -147,8 +148,21 @@
    */
   export let evmChainId = undefined;
 
+  const draft = formDraft("bridge");
+
+  /**
+   * The route and what was typed before a lock, a reload or a failed transfer,
+   * unless a link to another route opens the page now.
+   *
+   * @type {any}
+   */
+  const typedBefore = ((before) =>
+    before && (!linkedRoute || before.link === linkedRoute) ? before : null)(
+    draft.read()
+  );
+
   /** @type {string} */
-  let amount = "";
+  let amount = typedBefore?.amount ?? "";
 
   /** @type {string} */
   let lastWithdrawalTxHash = "";
@@ -166,7 +180,7 @@
   let isGasValid = true;
 
   /** @type {ContractGasSettings} */
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
 
   /** Whether the first step, where the gas can be edited, shows. */
   let isEditing = true;
@@ -421,7 +435,7 @@
 
   /** The route picked, by its ID; until one is, the one the card opens on. */
   /** @type {string | null} */
-  let routeId = null;
+  let routeId = typedBefore?.routeId ?? null;
 
   /**
    * Picks the route a From or a To choice makes, and starts its form over.
@@ -482,6 +496,9 @@
   /** @type {"form" | "result" | "review"} */
   let step = "form";
 
+  /** Whether this card's own transfer was asked for, and hasn't failed since. */
+  let isSent = false;
+
   /** What Send started: shown once the card moves on to it. */
   /** @type {Promise<string>} */
   let operation = Promise.resolve("");
@@ -502,8 +519,22 @@
   }
 
   function send() {
+    // It goes out now, as far as a reload can tell: nothing brings it back.
+    isSent = true;
+    draft.clear();
     operation = bridge();
+    operation.catch((error) => {
+      if (nothingWentOut(error)) {
+        draft.keep(typed);
+      }
+    });
     step = "result";
+  }
+
+  /** Back to the review of a transfer that failed with nothing sent. */
+  function tryAgain() {
+    isSent = false;
+    review();
   }
 
   function primaryAction() {
@@ -512,6 +543,23 @@
     } else if (primary.ready) {
       review();
     }
+  }
+
+  // The route picked, and what's typed on the card's own routes, kept as it's
+  // typed, for as long as it hasn't gone out: another route keeps its own.
+  $: typedHere =
+    route?.kind === "migration" || route?.kind === "service" ? "" : amount;
+  $: typed =
+    routeId || typedHere
+      ? {
+          amount: typedHere,
+          gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+          link: linkedRoute,
+          routeId,
+        }
+      : {};
+  $: if (!isSent) {
+    draft.save(typed);
   }
 
   $: list = cardRoutes($nodeNetwork);
@@ -998,7 +1046,7 @@
     </div>
   {:else if isDepositing}
     <div class="bridge-result">
-      <DepositResult onRetry={review} {operation} />
+      <DepositResult onRetry={tryAgain} {operation} />
     </div>
   {:else}
     <div class="bridge-result">
@@ -1028,7 +1076,7 @@
         </svelte:fragment>
         <svelte:fragment slot="error-actions" let:error>
           {#if describeFailure(error).canRetry}
-            <Button on:click={review} text="Try again" variant="primary" />
+            <Button on:click={tryAgain} text="Try again" variant="primary" />
           {/if}
         </svelte:fragment>
       </OperationResult>

@@ -6,5 +6,16 @@ export {
 export { default as addBasePath } from "./addBasePath";
 export { default as goto } from "./goto";
 export { default as pageTitle, pageHasTitle } from "./pageTitle";
+export {
+  forgetDrafts,
+  forgetPlace,
+  formDraft,
+  gasToKeep,
+  keepPlace,
+  keepProfile,
+  keptGas,
+  keptProfile,
+  takePlace,
+} from "./place";
 export { default as redirect } from "./redirect";
 export { default as reviewStep } from "./reviewStep";

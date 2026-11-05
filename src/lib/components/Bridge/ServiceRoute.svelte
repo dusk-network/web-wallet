@@ -29,8 +29,9 @@
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
+  import { formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
-  import { describeFailure } from "$lib/transactions";
+  import { describeFailure, nothingWentOut } from "$lib/transactions";
   import { account, modal } from "$lib/web3/walletConnection";
   import { notRunning } from "$lib/bridge/cardRoutes";
   import { sendServiceTransfer, serviceLine } from "$lib/bridge/routeFlows";
@@ -97,11 +98,16 @@
   /** A step's heading takes focus as it shows, so a screen reader goes there. */
   const takeFocus = (/** @type {HTMLElement} */ node) => node.focus();
 
+  const draft = formDraft(`bridge-${route.id}`);
+
+  /** What was typed before a lock, a reload or a failed transfer. */
+  const typedBefore = draft.read();
+
   /** @type {string} */
-  let amount = "";
+  let amount = typedBefore?.amount ?? "";
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = false;
+  let isMaxAmount = typedBefore?.isMax ?? false;
 
   /** @param {Event} event */
   function typeAmount(event) {
@@ -112,7 +118,7 @@
     isMaxAmount = false;
   }
 
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
   let defaultGas = gasSettings;
 
   /** @type {"form" | "result" | "review"} */
@@ -135,12 +141,19 @@
   const forThisWallet = walletStore.forThisWallet();
 
   function send() {
+    // It goes out now, as far as a reload can tell: nothing brings it back.
+    draft.clear();
     operation = forThisWallet(sendServiceTransfer)({
       amountLux,
       gasLimit,
       gasPrice,
       recipient: /** @type {`0x${string}`} */ (address),
       route,
+    });
+    operation.catch((error) => {
+      if (nothingWentOut(error)) {
+        draft.keep(typed);
+      }
     });
     step = "result";
   }
@@ -183,6 +196,16 @@
 
       openReview();
     }
+  }
+
+  // What's typed, kept as it's typed, for as long as it hasn't gone out.
+  $: typed = {
+    amount,
+    gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+    isMax: isMaxAmount,
+  };
+  $: if (step !== "result") {
+    draft.save(typed);
   }
 
   $: ({ hideBalances, language } = $settingsStore);

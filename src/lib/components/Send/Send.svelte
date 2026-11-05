@@ -23,7 +23,14 @@
   } from "@duskdomains/sdk/names";
   import { page } from "$app/stores";
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
-  import { addBasePath, pageTitle, reviewStep } from "$lib/navigation";
+  import {
+    addBasePath,
+    formDraft,
+    gasToKeep,
+    keptGas,
+    pageTitle,
+    reviewStep,
+  } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
@@ -112,17 +119,30 @@
    */
   export let knownNames = [];
 
+  const draft = formDraft("send");
+
+  /**
+   * What was typed before a lock, a reload or a failed send, unless a link to
+   * someone else opens the page now.
+   *
+   * @type {any}
+   */
+  const typedBefore = ((before) =>
+    before && (!initialRecipient || before.link === initialRecipient)
+      ? before
+      : null)(draft.read());
+
   /** The amount as typed, in DUSK: nothing until it is. */
-  let sendAmount = "";
+  let sendAmount = typedBefore?.amount ?? "";
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = false;
+  let isMaxAmount = typedBefore?.isMax ?? false;
 
   /** @type {string} */
-  let sendToAddress = initialRecipient;
+  let sendToAddress = typedBefore?.to ?? initialRecipient;
 
   /** @type {string} */
-  let memo = "";
+  let memo = typedBefore?.memo ?? "";
 
   /** @type {import("qr-scanner").default} */
   let scanner;
@@ -153,7 +173,7 @@
    *
    * @type {boolean}
    */
-  let isRecipientChecked = false;
+  let isRecipientChecked = Boolean(typedBefore?.to);
 
   /** @type {boolean} */
   let isGasValid = false;
@@ -188,7 +208,7 @@
    *
    * @type {Record<string, "account" | "address">}
    */
-  let namePicks = {};
+  let namePicks = typedBefore?.picks ?? {};
 
   /**
    * Names the user chose to send to although a contact keeps another
@@ -330,7 +350,7 @@
   // Without the allocation page there is nowhere to link to for shielding.
   const canShield = import.meta.env.VITE_FEATURE_ALLOCATE === "true";
 
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
   let defaultGas = gasSettings;
 
   /** The least a transfer sends: one LUX. */
@@ -614,6 +634,10 @@
    */
   function send() {
     const toName = recipientName ? nameLookup?.name : undefined;
+
+    // It goes out now, as far as a reload can tell: nothing brings it back.
+    draft.clear();
+
     const operation = toName
       ? execute(
           recipientAddress,
@@ -640,6 +664,7 @@
     step = "done";
     reviewHistory.settle(operation, () => {
       canTryAgain = true;
+      draft.keep(typed);
     });
   }
 
@@ -687,6 +712,20 @@
   }
 
   $: followHistory(Boolean($page.state?.sendReview));
+
+  // What's typed, kept as it's typed, for as long as it hasn't gone out.
+  $: typed = {
+    amount: sendAmount,
+    gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+    isMax: isMaxAmount,
+    link: initialRecipient,
+    memo,
+    picks: namePicks,
+    to: sendToAddress,
+  };
+  $: if (step !== "done" && publicAddress !== undefined) {
+    draft.save(typed);
+  }
 
   // The gas settings depend on the recipient (public or shielded): the
   // form takes new ones while it shows, unless the gas was edited here, and

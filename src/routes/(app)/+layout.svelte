@@ -3,6 +3,7 @@
 
   import {
     INACTIVITY_TIMEOUT,
+    keepProfile,
     logout,
     startInactivityTimer,
   } from "$lib/navigation";
@@ -45,7 +46,12 @@
   // Only a new time restarts the timer.
   $: restartInactivityTimer(autoLockTimeout);
 
-  $: ({ initialized, walletKey } = $walletStore);
+  $: ({ currentProfile, initialized, profiles, walletKey } = $walletStore);
+
+  // The profile a reload or a lock comes back to.
+  $: if (initialized && currentProfile) {
+    keepProfile(walletKey, profiles.indexOf(currentProfile));
+  }
 
   // The wallet open, the one the next unlock opens.
   $: openWallet = initialized ? walletKey : "";

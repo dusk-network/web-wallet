@@ -3,8 +3,7 @@ import { page } from "$app/stores";
 import { onDestroy } from "svelte";
 import { get } from "svelte/store";
 
-import { getErrorFrom } from "$lib/dusk/error";
-import describeFailure from "$lib/transactions/describeFailure";
+import { nothingWentOut } from "$lib/transactions/describeFailure";
 
 /**
  * A form's review as a step of its own in the browser's history: Back returns
@@ -49,7 +48,7 @@ export default function reviewStep(name) {
      */
     settle(operation, onNothingSent = () => {}) {
       Promise.resolve(operation).then(leave, (error) => {
-        if (describeFailure(getErrorFrom(error)).canRetry) {
+        if (nothingWentOut(error)) {
           onNothingSent();
         } else {
           leave();

@@ -13,7 +13,9 @@
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID } from "$lib/dusk/string";
+  import { formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { settingsStore } from "$lib/stores";
+  import { nothingWentOut } from "$lib/transactions";
 
   import {
     Button,
@@ -67,8 +69,15 @@
    */
   export let minStakeRequirement;
 
+  const draft = formDraft(
+    minStakeRequirement === undefined ? "stake-claim" : "stake-unstake"
+  );
+
+  /** What was typed before a lock, a reload or a failed send. */
+  const typedBefore = draft.read();
+
   let activeStep = 0;
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
   let defaultGas = gasSettings;
   let isGasValid = false;
 
@@ -85,14 +94,14 @@
 
   // The amount as typed, as in the other amount fields: it starts at all
   // that can be withdrawn.
-  let amountText = asTyped(maxWithdrawAmount);
+  let amountText = typedBefore?.amount || asTyped(maxWithdrawAmount);
 
   /**
    * Whether the user typed an amount or used the maximum. The amount
    * starts at all they can withdraw, so while balances are hidden, it
    * stays hidden until they do.
    */
-  let isAmountChosen = false;
+  let isAmountChosen = Boolean(typedBefore?.amount);
 
   // What screen readers read with the amount while it's hidden.
   const hiddenNoteId = `${id}-hidden-note`;
@@ -160,7 +169,14 @@
 
   function send() {
     if (reviewed && !sent) {
+      // It goes out now, as far as a reload can tell: nothing brings it back.
+      draft.clear();
       sent = execute(reviewed.amount, reviewed.gasPrice, reviewed.gasLimit);
+      sent.catch((error) => {
+        if (nothingWentOut(error)) {
+          draft.keep(typed);
+        }
+      });
     }
 
     activeStep++;
@@ -180,6 +196,16 @@
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
+
+  // What's typed, kept as it's typed, for as long as it hasn't gone out: the
+  // amount it starts with isn't.
+  $: typed = {
+    amount: isAmountChosen ? amountText : "",
+    gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+  };
+  $: if (!sent) {
+    draft.save(typed);
+  }
 
   $: ({ hideBalances, language } = $settingsStore);
   $: isAmountHidden = hideBalances && !isAmountChosen;

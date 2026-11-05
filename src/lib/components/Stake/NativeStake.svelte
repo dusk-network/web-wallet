@@ -28,7 +28,13 @@
   import { randomUUID } from "$lib/dusk/string";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { settingsStore } from "$lib/stores";
-  import { addBasePath, reviewStep } from "$lib/navigation";
+  import {
+    addBasePath,
+    formDraft,
+    gasToKeep,
+    keptGas,
+    reviewStep,
+  } from "$lib/navigation";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
@@ -76,12 +82,17 @@
 
   const id = randomUUID();
 
-  let amountText = "";
+  const draft = formDraft("stake-native");
+
+  /** What was typed before a lock, a reload or a failed stake. */
+  const typedBefore = draft.read();
+
+  let amountText = typedBefore?.amount ?? "";
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = false;
+  let isMaxAmount = typedBefore?.isMax ?? false;
   let isReviewing = false;
-  let { gasLimit, gasPrice } = gasSettings;
+  let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
   let defaultGas = gasSettings;
   let isGasValid = false;
 
@@ -113,6 +124,9 @@
 
   function stake() {
     if (amount !== null && check.ok && isGasValid) {
+      // It goes out now, as far as a reload can tell: nothing brings it back.
+      draft.clear();
+
       const operation = execute(amount, gasPrice, gasLimit);
 
       sent = {
@@ -122,6 +136,7 @@
       };
       reviewHistory.settle(operation, () => {
         canTryAgain = true;
+        draft.keep(typed);
       });
     }
   }
@@ -156,6 +171,16 @@
   });
 
   $: followHistory(Boolean($page.state?.stakeReview));
+
+  // What's typed, kept as it's typed, for as long as it hasn't gone out.
+  $: typed = {
+    amount: amountText,
+    gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+    isMax: isMaxAmount,
+  };
+  $: if (!sent) {
+    draft.save(typed);
+  }
 
   // The default gas can change while the page shows, as when the node's
   // price arrives: the page takes it unless its gas was edited here, and

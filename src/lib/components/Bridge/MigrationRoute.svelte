@@ -27,6 +27,7 @@
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { shortenAddress } from "$lib/dusk/string";
+  import { formDraft } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
   import { account, modal } from "$lib/web3/walletConnection";
   import { getBalanceOfCoin } from "$lib/web3/migration";
@@ -100,11 +101,16 @@
   /** A step's heading takes focus as it shows, so a screen reader goes there. */
   const takeFocus = (/** @type {HTMLElement} */ node) => node.focus();
 
+  const draft = formDraft(`bridge-${route.id}`);
+
+  /** What was typed before a lock, a reload or a failed migration. */
+  const typedBefore = draft.read();
+
   /** @type {string} */
-  let amount = "";
+  let amount = typedBefore?.amount ?? "";
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = false;
+  let isMaxAmount = typedBefore?.isMax ?? false;
 
   /**
    * An amount of the chain's own currency, rounded as a wallet shows it.
@@ -501,6 +507,8 @@
   function send() {
     const owner = /** @type {`0x${string}`} */ (address);
 
+    // It goes out now, as far as a reload can tell: nothing brings it back.
+    draft.clear();
     note = "";
     sending = "";
     operation = forThisWallet(sendMigration)({
@@ -524,6 +532,10 @@
       canGoBack =
         sending !== "confirming" && Boolean(describeFailure(error).canRetry);
 
+      if (canGoBack) {
+        draft.keep(toKeep);
+      }
+
       // Why, where the chain can say: an approval used up since it was read.
       isApprovalShort =
         canGoBack &&
@@ -543,6 +555,12 @@
     } else if (primary.ready) {
       goToReview();
     }
+  }
+
+  // What's typed, kept as it's typed, for as long as it hasn't gone out.
+  $: toKeep = { amount, isMax: isMaxAmount };
+  $: if (step !== "result") {
+    draft.save(toKeep);
   }
 
   $: ({ hideBalances, language } = $settingsStore);

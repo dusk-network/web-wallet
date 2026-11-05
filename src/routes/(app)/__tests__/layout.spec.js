@@ -8,6 +8,7 @@ import {
   vi,
 } from "vitest";
 import { act, cleanup, render } from "@testing-library/svelte";
+import { get } from "svelte/store";
 import { ProfileGenerator } from "@dusk/w3sper";
 
 import * as navigation from "$lib/navigation";
@@ -21,6 +22,17 @@ import Layout from "../+layout.svelte";
 describe("App layout.js", () => {
   const redirectSpy = vi.spyOn(navigation, "redirect");
 
+  /**
+   * What a page's load is given, as the address bar asks for it.
+   *
+   * @param {string} [path]
+   */
+  const asked = (path = "/some-base-path/dashboard/") =>
+    /** @type {any} */ ({
+      untrack: (/** @type {() => unknown} */ read) => read(),
+      url: new URL(path, "https://wallet.test"),
+    });
+
   afterEach(() => {
     redirectSpy.mockClear();
   });
@@ -30,20 +42,52 @@ describe("App layout.js", () => {
   });
 
   it("should check if a wallet is missing in the `walletStore` and redirect the user to the login page", async () => {
-    // @ts-ignore
-    await expect(load()).rejects.toThrow();
+    await expect(load(asked())).rejects.toThrow();
 
     expect(redirectSpy).toHaveBeenCalledTimes(1);
     expect(redirectSpy).toHaveBeenCalledWith(307, "/");
   });
 
+  it("should keep the page asked for, with its target, for the unlock to return to", async () => {
+    await expect(
+      load(asked("/some-base-path/dashboard/send/?to=alice.dusk"))
+    ).rejects.toThrow();
+
+    expect(navigation.takePlace()).toBe("/dashboard/send/?to=alice.dusk");
+    // Once.
+    expect(navigation.takePlace()).toBeNull();
+  });
+
   it("should do nothing otherwise", async () => {
     await walletStore.init(new ProfileGenerator(async () => new Uint8Array()));
 
-    // @ts-ignore
-    await expect(load()).resolves.toBe(void 0);
+    await expect(load(asked())).resolves.toBe(void 0);
 
     expect(redirectSpy).not.toHaveBeenCalled();
+    expect(navigation.takePlace()).toBeNull();
+  });
+});
+
+describe("App layout.svelte, on a wallet open", () => {
+  afterEach(() => {
+    cleanup();
+    walletStore.reset();
+  });
+
+  it("should keep the profile the wallet is on, for an unlock to come back to", async () => {
+    await walletStore.init(new ProfileGenerator(async () => new Uint8Array()));
+
+    render(Layout);
+
+    expect(navigation.keptProfile("")).toBe(0);
+
+    const { profiles } = get(walletStore);
+
+    await act(() => walletStore.setCurrentProfile(profiles[1]));
+
+    expect(navigation.keptProfile("")).toBe(1);
+    // Another wallet's isn't this one's.
+    expect(navigation.keptProfile("another")).toBeUndefined();
   });
 });
 

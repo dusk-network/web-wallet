@@ -19,6 +19,8 @@
 
 import { mdiTimerSand } from "@mdi/js";
 
+import { getErrorFrom } from "$lib/dusk/error";
+
 import { isOutcomeUnknown } from "./outcomeUnknown";
 
 /** How an EVM wallet says it was turned down. */
@@ -255,3 +257,12 @@ export default function describeFailure(
       : "Something went wrong before it was sent. Try again.",
   };
 }
+
+/**
+ * Whether what a send rejected with proves nothing went out: then, and only
+ * then, can it be offered again.
+ *
+ * @param {unknown} error
+ */
+export const nothingWentOut = (error) =>
+  Boolean(describeFailure(getErrorFrom(error)).canRetry);
