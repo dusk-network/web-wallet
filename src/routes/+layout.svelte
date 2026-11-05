@@ -14,13 +14,8 @@
 
   let invalidating = false;
 
-  // Each page's own name, for its title and the screen reader's
-  // announcement of it.
+  // Each page's own name, for its title.
   $: name = pageName($page.url.pathname);
-
-  // The wallet's pages have their top bar and navigation around their main
-  // content (Shell); the others are one main content, with its heading.
-  $: inShell = $page.route.id?.startsWith("/(app)") ?? false;
 
   /** @param {StorageEvent} event */
   function handleStorageChange({ key, oldValue, newValue, storageArea }) {
@@ -60,12 +55,12 @@
   >
 </svelte:head>
 
-<svelte:element this={inShell ? "div" : "main"} class="app">
-  {#if !inShell}
-    <h1 class="sr-only">{name || "Dusk Wallet"}</h1>
-  {/if}
+<!-- The same element around every page: one that changed with the route would
+  draw the page it brings again, from the unlock into the wallet. Each shell
+  gives its page its main content, with its heading. -->
+<div class="app">
   <slot />
-</svelte:element>
+</div>
 
 <Tooltip id="main-tooltip" />
 <Toast />

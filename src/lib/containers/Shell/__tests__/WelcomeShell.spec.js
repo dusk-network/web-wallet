@@ -19,8 +19,26 @@ vi.mock("$lib/stores", async (importOriginal) => {
   };
 });
 
+vi.mock("$app/stores", async () => {
+  const { readable } = await import("svelte/store");
+
+  return {
+    page: readable({
+      route: { id: "/(welcome)/unlock" },
+      url: new URL("http://localhost/unlock"),
+    }),
+  };
+});
+
 describe("WelcomeShell", () => {
   afterEach(cleanup);
+
+  it("should give a page outside the wallet its main content, with its heading", () => {
+    const { getByRole } = renderWithSimpleContent(WelcomeShell, {});
+
+    expect(getByRole("main")).toHaveTextContent("some text");
+    expect(getByRole("heading", { level: 1 })).toHaveTextContent("Dusk Wallet");
+  });
 
   it("puts the screens before a wallet opens under the wallet's own top bar, with the brand alone, and the test network's strip", () => {
     const { container, getByRole } = renderWithSimpleContent(WelcomeShell, {});
