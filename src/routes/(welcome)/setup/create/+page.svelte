@@ -4,7 +4,7 @@
   import { ErrorAlert, Wizard, WizardStep } from "$lib/dusk/components";
 
   import { ExistingWalletNotice } from "$lib/components";
-  import { goto } from "$lib/navigation";
+  import { goto, takePlace } from "$lib/navigation";
   import { settingsStore } from "$lib/stores";
   import vault from "$lib/vault";
   import {
@@ -174,7 +174,8 @@
       hideBackButton={true}
       nextButton={{
         action: async () => {
-          await goto("/dashboard", { replaceState: true });
+          // Where a link left off, as a payment it asks for.
+          await goto(takePlace() ?? "/dashboard", { replaceState: true });
         },
         disabled: !isWalletOpen,
       }}

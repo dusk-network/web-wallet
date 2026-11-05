@@ -84,6 +84,18 @@ export function takePlace() {
   return href && APP_PAGE.test(href) ? href : null;
 }
 
+/**
+ * The page kept, left for the unlock or the setup that takes it: what a link
+ * asked for, to show before a wallet opens.
+ *
+ * @returns {string | null}
+ */
+export function peekPlace() {
+  const href = kept.read(PLACE);
+
+  return href && APP_PAGE.test(href) ? href : null;
+}
+
 /** No page to return to, as after a lock on purpose. */
 export const forgetPlace = () => kept.remove(PLACE);
 

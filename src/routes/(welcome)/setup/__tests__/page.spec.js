@@ -1,7 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 
+import { shortenAddress } from "$lib/dusk/string";
+import { forgetPlace, keepPlace } from "$lib/navigation";
 import { settingsStore } from "$lib/stores";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { networks } from "@dusk-network/networks";
 
 import { isRedirect } from "@sveltejs/kit";
 
@@ -10,7 +14,61 @@ import vault from "$lib/vault";
 import Setup from "../+page.svelte";
 import { load } from "../+page.js";
 
+// The name the account a request pays goes by, as the chain says.
+vi.mock("$lib/dusk-domains", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  getPrimaryName: vi.fn(async () => "sofia.dusk"),
+}));
+
 describe("Setup", () => {
+  describe("opened by a link asking for a payment", () => {
+    const TO =
+      "25z9o6qCaVk1ReyHjmB4pyXcE3D1vRu4FVV1rR8ChYcosdTSktkANLDHq9GD6B4985Q1S2KrDZYBRrohWAjrNmACFUb3UMSRyYctJRzh3d28R1ZNC1ZyKm1HwXL4FF5Etftt";
+
+    afterEach(() => {
+      forgetPlace();
+      setNodeNetwork(null);
+    });
+
+    it("should say what it asks, of whom and how much, before there's a wallet to pay it with", async () => {
+      setNodeNetwork(networks.testnet);
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: `?to=${TO}&amount=0.011&memo=Factura+044&network=testnet`,
+      });
+
+      const { findByText, getByRole } = render(Setup, {});
+      const asked = getByRole("region", { name: "Payment request" });
+
+      expect(asked).toHaveTextContent("Amount 0.011 DUSK");
+      expect(asked).toHaveTextContent("Memo Factura 044");
+      expect(asked).toHaveTextContent("Create or restore a wallet to pay it.");
+      expect(await findByText("sofia.dusk")).toBeInTheDocument();
+      expect(asked).toHaveTextContent(shortenAddress(TO));
+    });
+
+    it("should say when it's for another network, and nothing for a page that asks for nothing", () => {
+      setNodeNetwork(networks.testnet);
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: `?to=${TO}&amount=0.011&network=mainnet`,
+      });
+
+      const other = render(Setup, {});
+
+      expect(
+        other.getByRole("region", { name: "Payment request" })
+      ).toHaveTextContent("This request is for Mainnet. You are on Testnet.");
+      cleanup();
+
+      keepPlace({ pathname: "/some-base-path/dashboard/stake/", search: "" });
+
+      const plain = render(Setup, {});
+
+      expect(plain.queryByRole("region")).toBeNull();
+    });
+  });
+
   describe("with fingerprint or face unlock on", () => {
     const passkey = {
       credentialId: "a-credential",

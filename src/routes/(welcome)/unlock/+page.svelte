@@ -21,6 +21,8 @@
     MnemonicInput,
   } from "$lib/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
+
+  import PaymentAsked from "../PaymentAsked.svelte";
   import { goto, lockedHere, takePlace } from "$lib/navigation";
   import {
     mnemonicPhraseResetStore,
@@ -240,6 +242,7 @@
 
 <section class="login">
   <h2 class="h1">Unlock your wallet</h2>
+  <PaymentAsked next="Unlock to pay it." />
   <div class="login">
     {#if hasPasskey}
       <Button

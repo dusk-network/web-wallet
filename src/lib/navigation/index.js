@@ -15,6 +15,7 @@ export {
   keepProfile,
   keptGas,
   keptProfile,
+  peekPlace,
   takePlace,
 } from "./place";
 export { default as redirect } from "./redirect";

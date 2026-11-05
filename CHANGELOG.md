@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say what a payment link asks, of whom and how much, before a wallet is open to pay it, and keep it through creating or restoring one, for Send to open filled in
 - Say a request paid twice, with when, and another payment that may be for it
 - Say on Send what's on its way from the profile, as after a reload while it went
 - Follow a send whose answer got lost on its Not confirmed screen, which turns into Sent once the chain has it, and show it Pending in History at once: sends, stakes, Sozu, shielding and the bridge

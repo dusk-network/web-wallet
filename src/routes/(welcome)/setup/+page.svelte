@@ -5,6 +5,8 @@
   import { settingsStore } from "$lib/stores";
   import { mdiKeyOutline, mdiRestore, mdiWalletOutline } from "@mdi/js";
 
+  import PaymentAsked from "../PaymentAsked.svelte";
+
   // There is a wallet to unlock once one was created or restored here.
   const { userId } = $settingsStore;
 </script>
@@ -12,6 +14,13 @@
 <section class="setup-content">
   <div class="setup-content__wrapper">
     <h2 class="h1 setup-heading">Dusk Web Wallet</h2>
+
+    <!-- A link asking for a payment: what it asks, kept through the setup. -->
+    <PaymentAsked
+      next={userId
+        ? "Unlock to pay it."
+        : "Create or restore a wallet to pay it."}
+    />
 
     <div class="setup-content__options">
       <!-- Coming back, unlocking comes first; a new wallet comes second. -->
