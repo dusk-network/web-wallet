@@ -200,7 +200,9 @@ describe("Unlock Wallet", async () => {
       await waitForGoto();
 
       expect(initSpy).toHaveBeenCalledTimes(1);
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+        replaceState: true,
+      });
     });
 
     it("should say when the words aren't a valid recovery phrase, and not unlock", async () => {
@@ -272,7 +274,9 @@ describe("Unlock Wallet", async () => {
       expect(initSpy).toHaveBeenCalledTimes(1);
       expect(initSpy).toHaveBeenCalledWith(expect.any(ProfileGenerator));
       expect(gotoSpy).toHaveBeenCalledTimes(1);
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+        replaceState: true,
+      });
     });
 
     it("should keep what the wallet records, though kept from before wallets had incarnations, once its phrase unlocks it", async () => {
@@ -364,7 +368,9 @@ describe("Unlock Wallet", async () => {
       expect(initSpy).toHaveBeenCalledTimes(1);
       expect(initSpy).toHaveBeenCalledWith(expect.any(ProfileGenerator));
       expect(gotoSpy).toHaveBeenCalledTimes(1);
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+        replaceState: true,
+      });
     });
   });
 
@@ -438,7 +444,9 @@ describe("Unlock Wallet", async () => {
         expect(getErrorElement()).toBeNull();
         expect(openSpy).toHaveBeenCalledTimes(1);
         expectOpened();
-        expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+        expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+          replaceState: true,
+        });
       }
     );
 
@@ -457,7 +465,9 @@ describe("Unlock Wallet", async () => {
       expect(openSpy).toHaveBeenCalledTimes(1);
       expectOpened();
       expect(gotoSpy).toHaveBeenCalledTimes(1);
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+        replaceState: true,
+      });
     });
 
     it.each([` ${pwd}`, `${pwd} `, `\t${pwd}\t`])(
@@ -473,7 +483,9 @@ describe("Unlock Wallet", async () => {
           await fireEvent.submit(getAsHTMLElement(container, "form"));
           await waitForGoto();
           expect(openSpy).toHaveBeenCalledTimes(1);
-          expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+          expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+            replaceState: true,
+          });
         } finally {
           await vault.setUp(mnemonic, pwd);
         }
@@ -550,7 +562,8 @@ describe("Unlock Wallet", async () => {
       await unlock();
 
       expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
-        "/dashboard/send/?to=alice.dusk"
+        "/dashboard/send/?to=alice.dusk",
+        { replaceState: true }
       );
     });
 
@@ -565,7 +578,9 @@ describe("Unlock Wallet", async () => {
       cleanup();
       await unlock();
 
-      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith("/dashboard", {
+        replaceState: true,
+      });
     });
 
     it("should open at Home for anything kept that isn't a page of the wallet", async () => {
@@ -576,7 +591,9 @@ describe("Unlock Wallet", async () => {
 
       await unlock();
 
-      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith("/dashboard", {
+        replaceState: true,
+      });
     });
 
     it("should keep the place through a wrong password", async () => {
@@ -599,7 +616,8 @@ describe("Unlock Wallet", async () => {
       await waitForGoto();
 
       expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
-        "/dashboard/stake/?flow=native"
+        "/dashboard/stake/?flow=native",
+        { replaceState: true }
       );
     });
 
@@ -681,7 +699,9 @@ describe("Unlock Wallet", async () => {
         );
         expect(openSpy).toHaveBeenCalledTimes(1);
         expectOpened();
-        expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+        expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+          replaceState: true,
+        });
       }
     );
 
@@ -714,7 +734,9 @@ describe("Unlock Wallet", async () => {
 
       expect(moved.id).toMatch(/^v1-/);
       expectOpened();
-      expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+      expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
+        replaceState: true,
+      });
 
       // The names of before are its own now, emptied of the other wallet's.
       expect(

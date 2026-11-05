@@ -83,7 +83,9 @@ describe("CommandBar", () => {
 
     await fireEvent.keyDown(input, { key: "Enter" });
 
-    expect(mocks.goto).toHaveBeenCalledWith("/dashboard/send");
+    expect(mocks.goto).toHaveBeenCalledWith("/dashboard/send", {
+      replaceState: true,
+    });
   });
 
   it("looks a .dusk name up on the network only on Enter, once", async () => {
@@ -120,7 +122,9 @@ describe("CommandBar", () => {
 
     expect(result).toBeInTheDocument();
     expect(mocks.resolveDuskName).toHaveBeenCalledOnce();
-    expect(mocks.goto).toHaveBeenCalledWith("/dashboard/send?to=alice.dusk");
+    expect(mocks.goto).toHaveBeenCalledWith("/dashboard/send?to=alice.dusk", {
+      replaceState: true,
+    });
   });
 
   it("offers to look a name typed without .dusk up as its .dusk name, on Enter", async () => {

@@ -287,7 +287,7 @@ describe("Restore", async () => {
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
     expect(gotoSpy).toHaveBeenCalledTimes(1);
-    expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+    expect(gotoSpy).toHaveBeenCalledWith("/dashboard", { replaceState: true });
   });
 
   it("should ask whether to use a password with a switch that says so: on with the password's fields, off without", async () => {
@@ -433,7 +433,7 @@ describe("Restore", async () => {
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
     expect(gotoSpy).toHaveBeenCalledTimes(1);
-    expect(gotoSpy).toHaveBeenCalledWith("/dashboard");
+    expect(gotoSpy).toHaveBeenCalledWith("/dashboard", { replaceState: true });
   });
 
   it("should reset the Restore Mnemonic store on unmount", () => {

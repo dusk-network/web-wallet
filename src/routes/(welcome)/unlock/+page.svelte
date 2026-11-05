@@ -128,7 +128,8 @@
         controller.signal.throwIfAborted();
         pending = false;
         // Where a lock, a reload or a link left off.
-        return goto(takePlace() ?? "/dashboard");
+        // In this page's place: Back from there isn't a password to give.
+        return goto(takePlace() ?? "/dashboard", { replaceState: true });
       })
       .catch((err) => {
         if (controller.signal.aborted) {

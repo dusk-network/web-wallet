@@ -174,7 +174,7 @@
       hideBackButton={true}
       nextButton={{
         action: async () => {
-          await goto("/dashboard");
+          await goto("/dashboard", { replaceState: true });
         },
         disabled: !isWalletOpen,
       }}

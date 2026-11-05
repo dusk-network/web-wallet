@@ -8,6 +8,7 @@
  */
 
 import { base } from "$app/paths";
+import { navigating } from "$app/stores";
 import { onDestroy } from "svelte";
 import { get } from "svelte/store";
 
@@ -156,9 +157,10 @@ const withoutPhrases = (values) =>
  * reload or a send that failed with nothing sent to bring back, for the same
  * wallet, profile and network. For a component to take as it's made: leaving
  * the form in the wallet lets it go, as anything else it does, unless it was
- * kept for a failure (`keep`). It goes (`clear`) once the transaction goes out,
- * so that nothing a reload brings back was sent already: the form shows it to
- * be reviewed, never sent, in any case.
+ * kept for a failure (`keep`), or the browser's Back or Forward returns to it.
+ * It goes (`clear`) once the transaction goes out, so that nothing a reload
+ * brings back was sent already: the form shows it to be reviewed, never sent,
+ * in any case.
  *
  * @param {string} name
  */
@@ -209,7 +211,14 @@ export function formDraft(name) {
     stopFollowing();
 
     if (!isKept && get(walletStore).initialized) {
-      clear();
+      if (held) {
+        kept.write(
+          key,
+          JSON.stringify({ left: true, owner, values: withoutPhrases(held) })
+        );
+      } else {
+        clear();
+      }
     }
   });
 
@@ -227,7 +236,12 @@ export function formDraft(name) {
       try {
         const draft = JSON.parse(kept.read(key) ?? "null");
 
-        if (draft && draft.owner === owner && owner) {
+        if (
+          draft &&
+          draft.owner === owner &&
+          owner &&
+          (!draft.left || get(navigating)?.type === "popstate")
+        ) {
           return draft.values;
         }
       } catch {

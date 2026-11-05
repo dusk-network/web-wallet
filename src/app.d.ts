@@ -23,6 +23,10 @@ type StakeInfo = import("@dusk/w3sper").StakeInfo;
 
 declare namespace App {
   interface PageState {
+    /** With the search open, a step of its own in the history. */
+    search?: boolean;
+    /** How many sheets over a list this tab stepped to (sheetStep). */
+    sheets?: number;
     /** At the review of a send, a step of its own in the history. */
     sendReview?: boolean;
     routeReview?: boolean;

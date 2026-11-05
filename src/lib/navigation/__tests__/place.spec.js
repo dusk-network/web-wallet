@@ -47,6 +47,23 @@ vi.mock("$lib/transactions", async (importOriginal) => ({
   followTransaction,
 }));
 
+// How the page came to be: Back or Forward, or a link.
+const nav = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any> | null} */
+  navigating: null,
+}));
+
+vi.mock("$app/stores", async (importOriginal) => {
+  const { writable } = await import("svelte/store");
+
+  nav.navigating = writable(null);
+
+  return {
+    .../** @type {object} */ (await importOriginal()),
+    navigating: nav.navigating,
+  };
+});
+
 const DUSK = 1_000_000_000n;
 const HASH = "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
 const POOL = "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
@@ -292,6 +309,52 @@ describe("Keeping what's typed in a form that moves money", () => {
       await fireEvent.click(failed.getByRole("button", { name: /^Send/ }));
 
       expect(isKept(RECIPIENT)).toBe(false);
+    });
+
+    it("brings it back with the browser's Back after leaving the page in the wallet, but not with a link there", async () => {
+      await typedForm();
+      leave();
+
+      nav.navigating?.set({ type: "popstate" });
+
+      const back = render(Send, sendProps);
+
+      nav.navigating?.set(null);
+      expectTyped(back);
+
+      // Left again, and back by a link: a new form.
+      leave();
+      nav.navigating?.set({ type: "link" });
+
+      const fresh = render(Send, sendProps);
+
+      nav.navigating?.set(null);
+      expectBlank(fresh);
+
+      // And Back can't find it after that.
+      leave();
+      nav.navigating?.set({ type: "popstate" });
+
+      const after = render(Send, sendProps);
+
+      nav.navigating?.set(null);
+      expectBlank(after);
+    });
+
+    it("brings nothing back with Back once it went out", async () => {
+      const typed = await typedForm();
+
+      await press(typed);
+
+      expect(isKept(RECIPIENT)).toBe(false);
+
+      leave();
+      nav.navigating?.set({ type: "popstate" });
+
+      const back = render(Send, sendProps);
+
+      nav.navigating?.set(null);
+      expectBlank(back);
     });
 
     it("lets it go as the page is left in the wallet, as it was", async () => {

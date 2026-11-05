@@ -8,12 +8,16 @@ import {
   vi,
 } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import { get } from "svelte/store";
 
 import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
 import { openTestContacts } from "$lib/test-helpers";
 
 import History from "../+page.svelte";
+
+/** Where Back goes: the addresses a step of its own left behind. */
+const visited = vi.hoisted(() => /** @type {any[]} */ ([]));
 
 const mocks = vi.hoisted(() => ({
   goto: vi.fn(),
@@ -39,13 +43,16 @@ vi.mock("$app/stores", async () => {
   return { page: stores.page };
 });
 
-vi.mock("$lib/navigation", async (importOriginal) => ({
-  .../** @type {typeof import("$lib/navigation")} */ (await importOriginal()),
-  goto: mocks.goto.mockImplementation((/** @type {string} */ path) => {
-    stores.page?.set({
-      url: new URL(`http://localhost/some-base-path${path}`),
-    });
-  }),
+vi.mock("$lib/navigation/goto", () => ({
+  default: mocks.goto.mockImplementation(
+    (/** @type {string} */ path, /** @type {any} */ { state } = {}) => {
+      visited.push(get(/** @type {any} */ (stores.page)));
+      stores.page?.set({
+        state,
+        url: new URL(`http://localhost/some-base-path${path}`),
+      });
+    }
+  ),
 }));
 
 vi.mock("$lib/stores", async (importOriginal) => {
@@ -271,9 +278,10 @@ describe("History", () => {
 
     await fireEvent.click(getByRole("button", { name: /alice-shop\.dusk/ }));
 
+    // A step of its own in the browser's history, for Back to close.
     expect(mocks.goto).toHaveBeenCalledWith(
       `/dashboard/transactions?tx=${SENT}`,
-      expect.objectContaining({ replaceState: true })
+      expect.not.objectContaining({ replaceState: true })
     );
     expect(mocks.loadDetail).toHaveBeenCalledWith(SENT);
 
@@ -301,9 +309,37 @@ describe("History", () => {
       `/some-base-path/dashboard/send?to=${ALICE}`
     );
 
+    // Its close takes that step back, as Back does.
+    const back = vi
+      .spyOn(history, "go")
+      .mockImplementation((/** @type {any} */ steps) => {
+        expect(steps).toBe(-1);
+        stores.page?.set(visited.pop());
+      });
+
     await fireEvent.click(getByRole("button", { name: "Close the details" }));
 
+    expect(back).toHaveBeenCalledOnce();
     expect(queryByRole("button", { name: "Close the details" })).toBeNull();
+
+    back.mockRestore();
+  });
+
+  it("closes details it didn't open itself in place, as from a link: there's no list behind them", async () => {
+    await visit(`/dashboard/transactions?tx=${SENT}`);
+
+    const { getByRole } = render(History);
+    const back = vi.spyOn(history, "go");
+
+    await fireEvent.click(getByRole("button", { name: "Close the details" }));
+
+    expect(back).not.toHaveBeenCalled();
+    expect(mocks.goto).toHaveBeenLastCalledWith(
+      "/dashboard/transactions",
+      expect.objectContaining({ replaceState: true })
+    );
+
+    back.mockRestore();
   });
 
   it("names a saved contact by its name, with its .dusk name second, and saves a counterparty as a contact", async () => {

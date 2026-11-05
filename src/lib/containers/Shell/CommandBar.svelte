@@ -175,8 +175,10 @@
     } else if (result.external && result.href) {
       window.open(result.href, "_blank", "noopener,noreferrer");
     } else if (result.href) {
-      close();
-      goto(result.href);
+      // In the search's step in the browser's history: Back from there returns
+      // to the page it opened on.
+      dispatch("leave");
+      goto(result.href, { replaceState: true });
     } else if (result.value) {
       copy(result);
     }

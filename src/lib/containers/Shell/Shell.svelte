@@ -1,4 +1,5 @@
 <script>
+  import { pushState } from "$app/navigation";
   import { page } from "$app/stores";
   import { isHistoryEnabled } from "$lib/activity";
   import { contractDescriptors } from "$lib/contracts";
@@ -59,6 +60,39 @@
   let searchOpen = false;
   let typing = false;
 
+  /** Opens the search, as a step of its own in the browser's history. */
+  function openSearch() {
+    if (!searchOpen) {
+      searchOpen = true;
+      pushState("", { ...$page.state, search: true });
+    }
+  }
+
+  /** Closes the search, and its step in the history goes. */
+  function closeSearch() {
+    searchOpen = false;
+
+    if ($page.state?.search) {
+      history.back();
+    }
+  }
+
+  /** Whether the history was at the search's step. */
+  let wasAtSearch = false;
+
+  /**
+   * Back closes the search, and nothing else.
+   *
+   * @param {boolean} isAtSearch
+   */
+  function followSearch(isAtSearch) {
+    if (wasAtSearch && !isAtSearch) {
+      searchOpen = false;
+    }
+
+    wasAtSearch = isAtSearch;
+  }
+
   /**
    * Whether an event's target is a field one types in, also inside another
    * component's shadow root, as the EVM wallets' dialog.
@@ -90,7 +124,7 @@
       ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k")
     ) {
       event.preventDefault();
-      searchOpen = true;
+      openSearch();
     }
   }
 
@@ -100,6 +134,7 @@
   }
 
   $: ({ url } = $page);
+  $: followSearch(Boolean($page.state?.search));
   $: activeTab = tabOf(tabs, url.pathname);
 
   // A flow on a tab's page, as staking's, keeps the tab marked but has the
@@ -132,14 +167,7 @@
   <a class="shell__skip" href="#shell-main">Skip to content</a>
   <div class="shell__header">
     <TestnetStrip />
-    <TopBar
-      {activeTab}
-      on:search={() => {
-        searchOpen = true;
-      }}
-      {settingsOpen}
-      {tabs}
-    />
+    <TopBar {activeTab} on:search={openSearch} {settingsOpen} {tabs} />
   </div>
   <!-- The page's name is its one heading: its own title where it shows
     one, or else this one, for screen readers. -->
@@ -152,7 +180,8 @@
   <TabBar {activeTab} {tabs} />
   {#if searchOpen}
     <CommandBar
-      on:close={() => {
+      on:close={closeSearch}
+      on:leave={() => {
         searchOpen = false;
       }}
       {pages}

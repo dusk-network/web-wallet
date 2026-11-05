@@ -18,7 +18,10 @@ import {
 import { renderWithSimpleContent } from "$lib/dusk/test-helpers";
 import { networkStore } from "$lib/stores";
 
+import { load } from "../+layout";
 import WelcomeLayout from "../+layout.svelte";
+
+const wallet = vi.hoisted(() => ({ isOpen: false }));
 
 const SLOW_WORDS = "The network is taking longer than usual to answer.";
 
@@ -37,6 +40,13 @@ vi.mock("$lib/stores", async (importOriginal) => {
       connect: vi.fn(() => new Promise(() => {})),
       init: vi.fn(() => new Promise(() => {})),
       reconnect: vi.fn(() => new Promise(() => {})),
+    },
+    walletStore: {
+      ...original.walletStore,
+      subscribe: (/** @type {(value: any) => void} */ run) =>
+        original.walletStore.subscribe((store) =>
+          run({ ...store, initialized: wallet.isOpen })
+        ),
     },
   };
 });
@@ -58,6 +68,23 @@ describe("The welcome screens' layout", () => {
 
   afterAll(() => {
     vi.doUnmock("$lib/stores");
+  });
+
+  it("takes Back from an open wallet to the wallet, not to what came before it", async () => {
+    wallet.isOpen = true;
+
+    await expect(
+      load(/** @type {any} */ ({ url: new URL("http://localhost/setup") }))
+    ).rejects.toMatchObject({
+      location: "/some-base-path/dashboard",
+      status: 307,
+    });
+
+    wallet.isOpen = false;
+
+    await expect(
+      load(/** @type {any} */ ({ url: new URL("http://localhost/setup") }))
+    ).resolves.toBeUndefined();
   });
 
   it("is the wallet's frame: its top bar and the test network's strip over a column, not a card with a logo", () => {
