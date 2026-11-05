@@ -225,9 +225,7 @@ describe("Being told when a transfer arrives", () => {
     stopArrivalNotice();
 
     expect(get(arrivalNoticeState)).toBe("phone");
-    expect(NOTICE_WORDS[get(arrivalNoticeState)]).toBe(
-      "This screen says when it arrives."
-    );
+    expect(NOTICE_WORDS.phone).toBe("This screen says when it arrives.");
     expect(followsWhileAway()).toBe(true);
 
     vi.restoreAllMocks();
