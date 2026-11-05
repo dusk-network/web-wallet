@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { feeToKeep } from "$lib/wallet-reserve";
   import { page } from "$app/stores";
   import { activityState } from "$lib/activity";
   import { Send } from "$lib/components";
@@ -116,6 +117,7 @@
     {gasLimits}
     {gasSettings}
     {initialRecipient}
+    keepForLater={$feeToKeep}
     {knownNames}
     on:keyChange={keyChangeHandler}
     {ownAccounts}

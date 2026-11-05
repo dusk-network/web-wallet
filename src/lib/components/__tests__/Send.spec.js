@@ -803,6 +803,108 @@ describe("Send", () => {
       ).toBeInTheDocument();
     });
 
+    describe("with something elsewhere only the public balance can pay to get at", () => {
+      const keepForLater = { lux: 50_000_000n, why: "to unstake later" };
+      /** The most this form's fee can be. */
+      const fee =
+        baseProps.gasSettings.gasLimit * baseProps.gasSettings.gasPrice;
+      const allOfIt = baseProps.availableBalance - fee;
+
+      /** @param {string} value */
+      const decimal = (value) => value.replace(",", ".");
+
+      it("keeps the fee for it on Max, and says so", async () => {
+        const { getByRole, getByText } = render(Send, {
+          ...baseProps,
+          keepForLater,
+        });
+        const fields = fieldsOf(getByRole);
+
+        await fireEvent.click(getByRole("button", { name: "Max" }));
+
+        expect(
+          decimal(/** @type {HTMLInputElement} */ (fields.amount()).value)
+        ).toBe(formatDuskPlain(allOfIt - keepForLater.lux));
+        expect(
+          getByText("Max keeps 0.05 DUSK to unstake later.")
+        ).toBeInTheDocument();
+      });
+
+      it("lets an amount over that go, and says what it leaves too little for", async () => {
+        const { getByRole, getByText, queryByText } = render(Send, {
+          ...baseProps,
+          initialRecipient: otherAccount,
+          keepForLater,
+        });
+        const fields = fieldsOf(getByRole);
+
+        await fireEvent.input(fields.amount(), {
+          target: { value: formatDuskPlain(allOfIt - keepForLater.lux) },
+        });
+
+        expect(queryByText(/leaves too little to unstake/)).toBeNull();
+
+        await fireEvent.input(fields.amount(), {
+          target: { value: formatDuskPlain(allOfIt) },
+        });
+
+        expect(
+          getByText("That leaves too little to unstake later.")
+        ).toBeInTheDocument();
+        expect(fields.review()).toBeEnabled();
+      });
+
+      it("empties it on Max where there's nothing for it to keep otherwise, and warns", async () => {
+        const { getByRole, getByText } = render(Send, {
+          ...baseProps,
+          keepForLater: { ...keepForLater, lux: allOfIt },
+        });
+
+        await fireEvent.click(getByRole("button", { name: "Max" }));
+
+        expect(
+          decimal(
+            /** @type {HTMLInputElement} */ (fieldsOf(getByRole).amount()).value
+          )
+        ).toBe(formatDuskPlain(allOfIt));
+        expect(
+          getByText("That leaves too little to unstake later.")
+        ).toBeInTheDocument();
+      });
+
+      it("keeps nothing of a shielded send: the public balance isn't touched", async () => {
+        const { getByRole, queryByText } = render(Send, {
+          ...baseProps,
+          initialRecipient: otherShielded,
+          keepForLater,
+        });
+
+        await fireEvent.click(getByRole("button", { name: "Max" }));
+
+        expect(queryByText(/Max keeps/)).toBeNull();
+        expect(queryByText(/too little to unstake/)).toBeNull();
+      });
+
+      it("hides the figure with the balances", async () => {
+        settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+        try {
+          const { getByRole, getByText } = render(Send, {
+            ...baseProps,
+            keepForLater,
+          });
+
+          await fireEvent.click(getByRole("button", { name: "Max" }));
+
+          expect(
+            getByText("Max keeps the fee to unstake later.")
+          ).toBeInTheDocument();
+        } finally {
+          settingsStore.update((store) => ({ ...store, hideBalances: false }));
+        }
+      });
+    });
+
     it("should say in characters how much of a memo has to go, and how much room is left near the limit", async () => {
       const { findByText, getByRole, queryByText } = render(Send, {
         ...baseProps,

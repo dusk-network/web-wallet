@@ -11,7 +11,8 @@ const PHONES = "(max-width: 47.99rem)";
  */
 const onPhones = (file, selector) =>
   styleRules(file, import.meta.url).find(
-    (rule) => rule.media === PHONES && rule.selector === selector
+    (rule) =>
+      rule.media === PHONES && rule.selector.replace(/\s+/g, " ") === selector
   )?.declarations;
 
 describe("tap areas on phones", () => {
@@ -41,4 +42,20 @@ describe("tap areas on phones", () => {
       "z-index": "1",
     });
   });
+
+  it.each([
+    [
+      "../Send/Send.svelte",
+      ".send--fee-short:not(.send--review) .send__summary > :global(.gas-settings)",
+    ],
+    [
+      "../Stake/StakeFlow.svelte",
+      ".stake-flow--fee-short:not(.stake-flow--review) .stake-flow__summary > :global(.gas-settings)",
+    ],
+  ])(
+    "shows the fee's Edit with the form where the fee is what's short, in %s, as its summary waits for the review",
+    (file, selector) => {
+      expect(onPhones(file, selector)).toStrictEqual({ display: "block" });
+    }
+  );
 });

@@ -13,6 +13,7 @@
     walletStore,
   } from "$lib/stores";
   import { getGasLimits, getGasSettings } from "$lib/contracts";
+  import { feeToKeep } from "$lib/wallet-reserve";
 
   /** The route a link names (`?route=bsc-to-dusk`), or none. */
   /** @type {string | null} */
@@ -130,6 +131,7 @@
   {unshieldedAddress}
   {unshieldedAccount}
   {evmDuskBalance}
+  keepForLater={$feeToKeep}
   unshieldedBalance={balance.unshielded.value}
   {gasLimits}
   {gasSettings}

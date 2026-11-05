@@ -139,7 +139,7 @@ export function checkAmount({
   if (needed > available) {
     return fail(
       most
-        ? feeError({ available, fee, hidden, locale })
+        ? feeError({ available, canLower: true, fee, hidden, locale })
         : `That's ${formatFee(needed - available, locale, { max: true })} DUSK more than the public balance, with ${keep ? "this fee and the fee to unstake later" : "the network fee"}.`
     );
   }
@@ -152,10 +152,17 @@ export function checkAmount({
  * it never reads less than is missing. With balances hidden, the figure,
  * which gives the balance away, is hidden too.
  *
- * @param {{ available: bigint, fee: bigint, hidden?: boolean, locale: string }} shortfall
- *   `available` is the public balance, and `fee` the most it can cost
+ * @param {{ available: bigint, canLower?: boolean, fee: bigint, hidden?: boolean, locale: string }} shortfall
+ *   `available` is the public balance, `fee` the most it can cost, and
+ *   `canLower` whether the page has the fee's Edit, to lower it with
  */
-export function feeError({ available, fee, hidden = false, locale }) {
+export function feeError({
+  available,
+  canLower = false,
+  fee,
+  hidden = false,
+  locale,
+}) {
   const short = hidden
     ? BALANCE_MASK
     : formatFee(fee - available, locale, { max: true });
@@ -164,5 +171,7 @@ export function feeError({ available, fee, hidden = false, locale }) {
       ? `The public balance doesn't cover the network fee: ${short} DUSK short.`
       : `The network fee is paid from the public balance, and it's empty: ${short} DUSK short.`;
 
-  return hidden ? why : `${why} Add that much to it first.`;
+  return hidden
+    ? why
+    : `${why} Add that much to it first${canLower && available > 0n ? ", or lower the fee" : ""}.`;
 }

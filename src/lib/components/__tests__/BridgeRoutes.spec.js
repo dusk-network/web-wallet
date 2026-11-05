@@ -6,6 +6,7 @@ import { tick } from "svelte";
 import { get } from "svelte/store";
 
 import { cardRoutes } from "$lib/bridge/cardRoutes";
+import { formatDuskPlain } from "$lib/dusk/currency";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { InvalidPasswordError } from "$lib/errors";
@@ -1108,6 +1109,39 @@ describe("the Bridge card's routes to and from other chains", () => {
         expect(queryByText("Revoke in your wallet")).toBeNull();
         expect(mocks.approve).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("with something elsewhere only the public balance can pay to get at", () => {
+    const keepForLater = { lux: 50_000_000n, why: "to unstake later" };
+
+    it("keeps the fee for it on a transfer out's Max, and warns of an amount over that", async () => {
+      connect({ address: EVM, chainId: 1 });
+
+      const { findByRole, getByRole, getByText, queryByText } = render(Bridge, {
+        ...props,
+        keepForLater,
+        linkedRoute: "dusk-to-bsc",
+      });
+      const amount = await findByRole("textbox", { name: "Amount, in DUSK" });
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      const fee =
+        props.transferGasSettings.gasLimit * props.transferGasSettings.gasPrice;
+
+      expect(/** @type {HTMLInputElement} */ (amount).value).toBe(
+        formatDuskPlain(props.unshieldedBalance - fee - keepForLater.lux)
+      );
+      expect(queryByText(/too little to unstake/)).toBeNull();
+
+      await fireEvent.input(amount, {
+        target: { value: formatDuskPlain(props.unshieldedBalance - fee) },
+      });
+
+      expect(
+        getByText("That leaves too little to unstake later.")
+      ).toBeInTheDocument();
     });
   });
 

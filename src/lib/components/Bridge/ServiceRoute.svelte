@@ -70,6 +70,14 @@
   /** @type {bigint} */
   export let unshieldedBalance;
 
+  /**
+   * What the public balance has to keep for what the wallet holds elsewhere,
+   * which Max leaves in it (`$lib/wallet-reserve`).
+   *
+   * @type {import("$lib/wallet-reserve").FeeToKeep}
+   */
+  export let keepForLater = { lux: 0n, why: "" };
+
   /** A public transfer's gas, as the wallet starts it. */
   /** @type {ContractGasSettings} */
   export let gasSettings;
@@ -213,6 +221,12 @@
   $: problem = amountProblem(amount, language);
   $: fee = gasLimit * gasPrice;
   $: total = amountLux + fee;
+  // Too little left of the public balance for what the wallet holds elsewhere.
+  $: leavesTooLittle =
+    keepForLater.lux > 0n &&
+    amountLux > 0n &&
+    total <= unshieldedBalance &&
+    unshieldedBalance - total < keepForLater.lux;
   $: arrivesLux = amountLux > route.feeLux ? amountLux - route.feeLux : 0n;
   $: isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   $: time = routeTime(route, { net });
@@ -309,10 +323,11 @@
           class="swap-mini"
           disabled={!route.running || unshieldedBalance <= fee}
           on:click={() => {
-            amount = formatDuskPlain(unshieldedBalance - fee).replace(
-              ".",
-              getDecimalSeparator(language)
-            );
+            const all = unshieldedBalance - fee;
+
+            amount = formatDuskPlain(
+              all > keepForLater.lux ? all - keepForLater.lux : all
+            ).replace(".", getDecimalSeparator(language));
             isMaxAmount = true;
           }}
           type="button">Max</button
@@ -321,6 +336,10 @@
     </div>
     {#if problem}
       <p class="swap-error" role="alert">{problem}</p>
+    {:else if leavesTooLittle}
+      <p class="swap-error" role="status">
+        That leaves too little {keepForLater.why}.
+      </p>
     {/if}
   </div>
 

@@ -709,13 +709,39 @@ describe("LiquidStake", () => {
       },
     };
 
+    it("has the fee's Edit with the form on a phone when the balance is short of the fee, and only then", async () => {
+      const shortOf = (/** @type {bigint} */ availableBalance) => {
+        const { container } = render(LiquidStake, {
+          ...baseProps,
+          action: "unstake",
+          availableBalance,
+          sozu: {
+            ...baseProps.sozu,
+            status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
+          },
+        });
+        const isShort = Boolean(
+          container.querySelector(".stake-flow--fee-short")
+        );
+
+        cleanup();
+
+        return isShort;
+      };
+
+      // Nothing to pay with: no fee low enough to get by on.
+      expect(shortOf(0n)).toBe(false);
+      expect(shortOf(10_000_000n - 1n)).toBe(true);
+      expect(shortOf(10_000_000n)).toBe(false);
+    });
+
     it("says how much is missing to unstake as the tab opens, before anything is typed", async () => {
       const { container, getByLabelText, getByRole } = render(
         LiquidStake,
         stranded
       );
       const said =
-        "The public balance doesn't cover the network fee: 0.0072 DUSK short. Add that much to it first.";
+        "The public balance doesn't cover the network fee: 0.0072 DUSK short. Add that much to it first, or lower the fee.";
 
       expect(getByLabelText("Unstake amount")).toHaveValue("");
       expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
@@ -743,7 +769,7 @@ describe("LiquidStake", () => {
       });
 
       expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-        "The public balance doesn't cover the network fee: 0.0012 DUSK short. Add that much to it first."
+        "The public balance doesn't cover the network fee: 0.0012 DUSK short. Add that much to it first, or lower the fee."
       );
     });
 

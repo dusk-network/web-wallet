@@ -244,6 +244,7 @@
 {:else}
   <StakeFlow
     canReview={canStake}
+    isFeeShort={availableBalance > 0n && availableBalance < maxGasFee}
     {isReviewing}
     on:back={() => {
       reviewHistory.leave();
@@ -270,6 +271,7 @@
           id="{id}-amount"
           inputmode="decimal"
           on:input={typeAmount}
+          placeholder="0"
           type="text"
           value={isAmountMasked ? BALANCE_MASK : amountText}
         />
@@ -277,16 +279,6 @@
           <span hidden id="{id}-amount-hidden">hidden</span>
         {/if}
         <span aria-hidden="true" class="native-stake__unit">DUSK</span>
-      </div>
-      <div class="native-stake__fills">
-        {#if !hasStake && maxStake >= minimumStake}
-          <Button
-            on:click={() => fill(minimumStake)}
-            size="small"
-            text="Use {minimumText}"
-            variant="secondary"
-          />
-        {/if}
         <Button
           disabled={maxStake <= 0n}
           on:click={() => fill(maxStake, true)}
@@ -296,6 +288,16 @@
           variant="secondary"
         />
       </div>
+      {#if !hasStake && maxStake >= minimumStake}
+        <div class="native-stake__fills">
+          <Button
+            on:click={() => fill(minimumStake)}
+            size="small"
+            text="Use {minimumText}"
+            variant="secondary"
+          />
+        </div>
+      {/if}
       <p class="native-stake__hint" id="{id}-available">
         {hasStake ? "" : `Minimum ${minimumText} DUSK · `}Available <BalanceValue
           exact={formatDuskExact(availableBalance, language)}

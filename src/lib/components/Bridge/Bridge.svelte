@@ -131,6 +131,14 @@
   /** @type {bigint} */
   export let unshieldedBalance;
 
+  /**
+   * What the public balance has to keep for what the wallet holds elsewhere,
+   * which Max leaves in it (`$lib/wallet-reserve`).
+   *
+   * @type {import("$lib/wallet-reserve").FeeToKeep}
+   */
+  export let keepForLater = { lux: 0n, why: "" };
+
   /** @type {import('@wagmi/core').GetBalanceReturnType | undefined} */
   export let evmDuskBalance;
 
@@ -276,7 +284,11 @@
    */
   async function setMaxAmount() {
     if (isDepositing) {
-      amount = toAmountText(unshieldedBalance - fee);
+      const all = unshieldedBalance - fee;
+
+      amount = toAmountText(
+        all > keepForLater.lux ? all - keepForLater.lux : all
+      );
       return;
     }
 
@@ -638,6 +650,13 @@
   // Lux (1e9) in EVM base units (1e18).
   $: amountWei = amountLux * EVM_TO_LUX_SCALE_FACTOR;
   $: totalDepositLux = amountLux + fee;
+  // Too little left of the public balance for what the wallet holds elsewhere.
+  $: leavesTooLittle =
+    isDepositing &&
+    keepForLater.lux > 0n &&
+    amountLux > 0n &&
+    totalDepositLux <= unshieldedBalance &&
+    unshieldedBalance - totalDepositLux < keepForLater.lux;
   $: hasEnoughUnshielded =
     !isDepositing || unshieldedBalance >= totalDepositLux;
   $: hasEnoughEvm =
@@ -762,6 +781,7 @@
         {canFlip}
         focusSwap={Boolean(flipped)}
         {fromChoices}
+        {keepForLater}
         gasLimits={transferGasLimits}
         gasSettings={transferGasSettings}
         net={$nodeNetwork}
@@ -845,6 +865,10 @@
       {/if}
       {#if problem}
         <p class="swap-error" role="alert">{problem}</p>
+      {:else if leavesTooLittle}
+        <p class="swap-error" role="status">
+          That leaves too little {keepForLater.why}.
+        </p>
       {:else if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
         <p class="swap-error" role="alert">
           {isDepositing

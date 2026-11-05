@@ -476,6 +476,7 @@
   $: stranded =
     !isStake && staked > 0n && availableBalance < maxGasFee
       ? feeError({
+          canLower: true,
           available: availableBalance,
           fee: maxGasFee,
           hidden: hideBalances,
@@ -517,6 +518,7 @@
 {:else}
   <StakeFlow
     canReview={canSend}
+    isFeeShort={availableBalance > 0n && availableBalance < maxGasFee}
     {isReviewing}
     on:back={() => {
       reviewHistory.leave();

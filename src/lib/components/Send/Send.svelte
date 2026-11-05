@@ -40,6 +40,7 @@
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
+    formatFee,
     formatTotal,
   } from "$lib/dusk/currency";
   import {
@@ -101,6 +102,14 @@
 
   /** @type {GasStoreContent} */
   export let gasLimits;
+
+  /**
+   * What the public balance has to keep for what the wallet holds elsewhere,
+   * which Max leaves in it (`$lib/wallet-reserve`).
+   *
+   * @type {import("$lib/wallet-reserve").FeeToKeep}
+   */
+  export let keepForLater = { lux: 0n, why: "" };
 
   /** @type {string} */
   export let shieldedAddress;
@@ -377,7 +386,7 @@
       return;
     }
 
-    sendAmount = formatDuskPlain(maxSpendableAmount).replace(
+    sendAmount = formatDuskPlain(maxKeeping).replace(
       ".",
       getDecimalSeparator(language)
     );
@@ -779,6 +788,23 @@
   $: maxSpendableAmount =
     availableBalance >= maxGasFee ? availableBalance - maxGasFee : 0n;
 
+  // A shielded send leaves the public balance as it is.
+  $: toKeep = isShielded ? 0n : keepForLater.lux;
+
+  // What Max fills in: all of it, less what's kept for later if there's more
+  // than that.
+  $: maxKeeping =
+    maxSpendableAmount > toKeep
+      ? maxSpendableAmount - toKeep
+      : maxSpendableAmount;
+
+  // Too little left of the public balance for what the wallet holds elsewhere.
+  $: leavesTooLittle =
+    toKeep > 0n &&
+    sendAmountInLux > 0n &&
+    sendAmountInLux <= maxSpendableAmount &&
+    sendAmountInLux > maxSpendableAmount - toKeep;
+
   // Validate that the send amount is within allowable limits:
   // - At least the minimum send requirement.
   // - At most the maximum spendable amount (after accounting for maximum gas fees).
@@ -1079,7 +1105,11 @@
     what={sent.what}
   />
 {:else}
-  <div class="send" class:send--review={step === "review"}>
+  <div
+    class="send"
+    class:send--fee-short={availableBalance > 0n && !isBalanceSufficientForGas}
+    class:send--review={step === "review"}
+  >
     <section aria-labelledby="{id}-title" class="send__form">
       <a class="send__back" href={addBasePath("/dashboard")}
         ><Icon path={mdiArrowLeft} />Home</a
@@ -1495,6 +1525,18 @@
             value={formatDusk(availableBalance, language)}
           /> DUSK from your {isShielded ? "shielded" : "public"} balance
         </p>
+        {#if leavesTooLittle}
+          <p class="send__hint send__keep" role="status">
+            That leaves too little {keepForLater.why}.
+          </p>
+        {:else if isMaxAmount && toKeep > 0n && sendAmountInLux === maxKeeping}
+          <p class="send__hint">
+            Max keeps {hideBalances
+              ? "the fee"
+              : `${formatFee(toKeep, language, { max: true })} DUSK`}
+            {keepForLater.why}.
+          </p>
+        {/if}
         {#if amountError && (isBalanceSufficientForGas || sendAmountInLux > availableBalance || parsedAmount === null)}
           <p class="send__error" id="{id}-amount-error" role="alert">
             {amountError}
@@ -1608,6 +1650,11 @@
           </div>
         {/if}
       </dl>
+      {#if step === "review" && leavesTooLittle}
+        <p class="send__keep" role="status">
+          That leaves too little {keepForLater.why}.
+        </p>
+      {/if}
       {#if addressInfo.isValid && !isShielded}
         <p class="send__visible">
           {transactionMemo
@@ -2072,6 +2119,11 @@
     scroll-margin-block-end: 6rem;
   }
 
+  .send__keep {
+    color: var(--calm-danger);
+    font-size: 0.84375rem;
+  }
+
   .send__muted {
     color: var(--calm-muted);
   }
@@ -2138,6 +2190,13 @@
 
     .send:not(.send--review) .send__summary > :global(:not(.send__review-bar)) {
       display: none;
+    }
+
+    /* What's short is the fee: its Edit is the way on, with the form. */
+    .send--fee-short:not(.send--review)
+      .send__summary
+      > :global(.gas-settings) {
+      display: block;
     }
 
     .send__review-bar {

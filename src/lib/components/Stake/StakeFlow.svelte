@@ -23,6 +23,12 @@
   /** Whether the form can be reviewed. */
   export let canReview = false;
 
+  /**
+   * Whether the public balance is short of the network fee: on a phone, where
+   * the summary waits for the review, its Edit is the way on, with the form.
+   */
+  export let isFeeShort = false;
+
   const id = randomUUID();
   const dispatch = createEventDispatcher();
 
@@ -38,7 +44,11 @@
   }
 </script>
 
-<div class="stake-flow" class:stake-flow--review={isReviewing}>
+<div
+  class="stake-flow"
+  class:stake-flow--fee-short={isFeeShort}
+  class:stake-flow--review={isReviewing}
+>
   <section aria-labelledby="{id}-title" class="stake-flow__form">
     <a class="stake-flow__back" href={addBasePath("/dashboard/stake")}
       ><Icon path={mdiArrowLeft} />Staking</a
@@ -223,6 +233,12 @@
       .stake-flow__summary
       > :global(:not(.stake-flow__review-bar)) {
       display: none;
+    }
+
+    .stake-flow--fee-short:not(.stake-flow--review)
+      .stake-flow__summary
+      > :global(.gas-settings) {
+      display: block;
     }
 
     .stake-flow__review-bar {

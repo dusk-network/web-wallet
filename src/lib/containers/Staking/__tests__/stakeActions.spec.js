@@ -63,6 +63,22 @@ describe("stakeActions", () => {
     ).toStrictEqual({ canClaim: false, canUnstake: false, reasons: [] });
   });
 
+  it("lets one go on to the form while the balance can pay the least its fee can be lowered to", () => {
+    const short = {
+      ...base,
+      leastFee: 35_000_000n,
+      reward: DUSK,
+      staked: 1_000n * DUSK,
+    };
+
+    expect(
+      stakeActions({ ...short, publicBalance: 40_000_000n })
+    ).toStrictEqual({ canClaim: true, canUnstake: true, reasons: [] });
+    expect(
+      stakeActions({ ...short, publicBalance: 30_000_000n })
+    ).toMatchObject({ canClaim: false, canUnstake: false });
+  });
+
   it("says when the public balance can't pay the fee, and how much is missing, but for what would give it away", () => {
     expect(
       stakeActions({
