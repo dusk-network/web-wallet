@@ -8,6 +8,7 @@ Web Wallet website.
   - [TOC](#toc)
   - [Build system and dev environment](#build-system-and-dev-environment)
   - [Browser support](#browser-support)
+  - [Fingerprint or face unlock](#fingerprint-or-face-unlock)
   - [Environment variables](#environment-variables)
     - [NPM scripts](#npm-scripts)
   - [Running a local Rusk node](#running-a-local-rusk-node)
@@ -29,6 +30,34 @@ versions must be reviewed with each major Web Wallet release.
 
 The Vite build target enforces the corresponding JavaScript and CSS syntax
 level. It does not polyfill browser APIs or built-in methods.
+
+## Fingerprint or face unlock
+
+Settings can turn on an unlock by passkey: WebAuthn on this origin, with its PRF
+extension, on browsers and platform authenticators that have it, and off by
+default. It takes the password to turn on. The password stays the root: it opens
+the vault as ever, and losing the passkey loses nothing.
+
+What's stored, in `localStorage` under `<app>-login-passkey`: the credential's
+ID, its transports, a random PRF salt, and for each key of the vault its PBKDF2
+salt and iterations, an IV, and the key itself as AES-256-GCM keeps it under a key
+derived (HKDF-SHA-256) from the passkey's PRF output, bound to the credential and
+the salt. The password is stored nowhere, in any form, and neither is any phrase
+but in the vault.
+
+Someone with the browser's storage, without the passkey, has what they'd have
+without this: the vault, to guess the password of. What wraps the keys comes only
+from the authenticator, for this origin, once it has verified the person, and
+nothing a person knows goes into it. Anything that runs on this origin while the
+person is there can ask for the same prompt, as it can read a password typed; and
+platforms take their screen lock for verifying the person, so whoever knows a
+phone's PIN passes, as they would to anything else on it.
+
+A new password, removing a wallet, Reset and a new setup drop the record, and the
+browser is told the passkey opens nothing where it listens
+(`signalUnknownCredential`); left in a password manager, it opens nothing. Asking
+for the password on big sends, and every change of the vault, still take the
+password.
 
 ## Environment variables
 

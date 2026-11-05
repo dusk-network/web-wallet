@@ -3,9 +3,59 @@ import { cleanup, render } from "@testing-library/svelte";
 
 import { settingsStore } from "$lib/stores";
 
+import { isRedirect } from "@sveltejs/kit";
+
+import vault from "$lib/vault";
+
 import Setup from "../+page.svelte";
+import { load } from "../+page.js";
 
 describe("Setup", () => {
+  describe("with fingerprint or face unlock on", () => {
+    const passkey = {
+      credentialId: "a-credential",
+      prf: new Uint8Array(32).fill(7),
+      prfSalt: btoa("s".repeat(32)),
+      transports: ["internal"],
+    };
+    const phrase =
+      "scheme spot photo card baby mountain device kick cradle pact join borrow";
+    /** @param {string} query */
+    const loadAt = (query) =>
+      load(
+        /** @type {any} */ ({ url: new URL(`http://localhost/setup${query}`) })
+      );
+
+    afterEach(() => localStorage.clear());
+
+    it("should go straight to the unlock, past the chooser, which the unlock's Back leads to", async () => {
+      await vault.setUp(phrase, "the password");
+      await vault.addPasskey(passkey, "the password");
+
+      let redirected;
+
+      try {
+        loadAt("");
+      } catch (error) {
+        redirected = error;
+      }
+
+      expect(isRedirect(redirected)).toBe(true);
+      expect(redirected).toMatchObject({
+        location: expect.stringMatching(/\/unlock$/),
+      });
+      expect(() => loadAt("?choose")).not.toThrow();
+    });
+
+    it("should stay on the chooser without it", async () => {
+      expect(() => loadAt("")).not.toThrow();
+
+      await vault.setUp(phrase, "the password");
+
+      expect(() => loadAt("")).not.toThrow();
+    });
+  });
+
   afterEach(() => {
     cleanup();
     settingsStore.reset();

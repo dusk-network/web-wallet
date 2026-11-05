@@ -9,7 +9,13 @@ import { derived, get } from "svelte/store";
 
 import { forgetWalletBridgeRecords } from "$lib/bridge/bridgeRecordKeys";
 import { forgetWalletRouteTransfers } from "$lib/bridge/migrationActivity";
+import PasskeyGoneError from "$lib/errors/passkey-gone-error";
 import { forgetPlace, keptProfile, logout } from "$lib/navigation";
+import {
+  askPasskey,
+  createPasskey,
+  signalPasskeyGone,
+} from "$lib/security/passkey";
 import { settingsStore, walletStore } from "$lib/stores";
 import vault, {
   NOT_HERE,
@@ -204,15 +210,12 @@ async function placeWallets(opened, fromV1) {
 }
 
 /**
- * Unlocks every wallet the password opens, the phrase of earlier versions
- * moved in first, and opens the one open last. A wrong password throws
- * InvalidPasswordError.
+ * Opens what the vault opened, the one open last.
  *
- * @param {string} password
+ * @param {{ fromV1: string | null, wallets: import("$lib/vault").OpenedWallet[] }} unlocked
  * @param {{ signal?: AbortSignal }} [options]
  */
-export async function unlockWallets(password, { signal } = {}) {
-  const { fromV1, wallets } = await vault.unlock(password, { signal });
+async function openUnlocked({ fromV1, wallets }, { signal } = {}) {
   const opened = [];
 
   for (const { id, mnemonic, n } of wallets) {
@@ -236,6 +239,86 @@ export async function unlockWallets(password, { signal } = {}) {
     ...(profile === undefined ? {} : { profile }),
   });
   await noteOpenWallet();
+}
+
+/**
+ * Unlocks every wallet the password opens, the phrase of earlier versions
+ * moved in first, and opens the one open last. A wrong password throws
+ * InvalidPasswordError.
+ *
+ * @param {string} password
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export async function unlockWallets(password, { signal } = {}) {
+  await openUnlocked(await vault.unlock(password, { signal }), { signal });
+}
+
+/**
+ * Unlocks what fingerprint or face unlock opens, as the password would, once
+ * the person is verified: PasskeyGoneError where it isn't on any more, and
+ * what the browser throws where it wasn't used.
+ *
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export async function unlockWithPasskey({ signal } = {}) {
+  const passkey = vault.passkey();
+
+  if (!passkey) {
+    throw new PasskeyGoneError();
+  }
+
+  const prf = await askPasskey(passkey, { signal });
+
+  try {
+    await openUnlocked(
+      await vault.unlockWithPasskey(prf, passkey.credentialId, { signal }),
+      { signal }
+    );
+  } finally {
+    prf.fill(0);
+  }
+}
+
+/**
+ * Turns on fingerprint or face unlock for the wallets here, with the password
+ * that opens them: a wrong one asks nothing of the device. Nothing stays on
+ * unless it all went through: PasskeyNoPrfError where the device can't, and what
+ * the browser throws where it was refused or cancelled.
+ *
+ * @param {string} password
+ */
+export async function enablePasskey(password) {
+  const stillOpen = walletStore.whileOpen();
+  const { walletKey, wallets } = get(walletStore);
+
+  await vault.check(password, walletKey);
+
+  const passkey = await createPasskey();
+
+  try {
+    const prf = await askPasskey(passkey);
+
+    try {
+      await vault.addPasskey({ ...passkey, prf }, password, {
+        beforeWrite: stillOpen,
+        held: wallets.map(({ key }) => key),
+      });
+    } finally {
+      prf.fill(0);
+    }
+  } catch (error) {
+    signalPasskeyGone(passkey);
+
+    throw error;
+  }
+}
+
+/** Turns fingerprint or face unlock off. */
+export async function disablePasskey() {
+  const passkey = vault.passkey();
+
+  await vault.removePasskey();
+  signalPasskeyGone(passkey);
 }
 
 /**
@@ -420,9 +503,11 @@ export async function removeWallet(key, password) {
   }
 
   const data = await keptBy(key, held.profileGenerator);
+  const passkey = vault.passkey();
 
   // The vault first: a wrong password changes nothing.
   await vault.remove(key, password, { beforeWrite: stillOpen });
+  signalPasskeyGone(passkey);
   await letGo(
     key,
     data,
@@ -485,11 +570,13 @@ export async function renameProfile(key, index, name) {
 export async function changeWalletPassword(password, newPassword) {
   const stillOpen = walletStore.whileOpen();
   const held = get(walletStore).wallets.map(({ key }) => key);
+  const passkey = vault.passkey();
 
   await vault.changePassword(password, newPassword, {
     beforeWrite: stillOpen,
     held,
   });
+  signalPasskeyGone(passkey);
   tellOtherTabs({ type: "password" });
 }
 

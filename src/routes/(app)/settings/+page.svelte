@@ -42,6 +42,7 @@
   import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
   import { deleteContacts } from "$lib/contacts";
   import {
+    PasskeySetting,
     ProfileNames,
     SendPasswordSetting,
     WalletsSettings,
@@ -54,6 +55,7 @@
     logout,
     pageTitle,
   } from "$lib/navigation";
+  import { signalPasskeyGone } from "$lib/security/passkey";
   import { setSendPasswordLimit } from "$lib/security/sendPassword";
   import vault from "$lib/vault";
   import { lockWallets, openWalletName, walletDirectory } from "$lib/wallets";
@@ -87,7 +89,11 @@
         await deleteContacts();
         forgetBridgeRecords({ times: true });
         await forgetEvmWallets();
+
+        const passkey = vault.passkey();
+
         await vault.clear();
+        signalPasskeyGone(passkey);
         clearDirectory();
         settingsStore.reset();
         setSendPasswordLimit(null);
@@ -420,6 +426,7 @@
             </p>
           {/if}
         {/if}
+        <PasskeySetting />
         <SendPasswordSetting />
       </div>
     </article>

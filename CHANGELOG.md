@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Unlock with fingerprint or face, off by default, turned on in Settings with the password, on browsers and devices with a passkey's PRF: going straight to it as the wallet opens. The password keeps working, and big sends still ask for it
 - Show a stake with Sozu in figures on its form: put in, taken out, worth now, deposit fees and rewards so far, what an amount earns in a year, and a line of what the rate is made of
 - Tell me when it arrives, on a transfer's Sent screen and in Bridge › Activity, by a browser notification where one can be had, asked for only when pressed, and in the tab's title whoever's away
 - Say how a route is doing under it on the Bridge: whether it's paying out, its last payout, and what it can pay

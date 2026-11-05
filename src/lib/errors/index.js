@@ -1,5 +1,7 @@
 export { default as InvalidMnemonicError } from "./invalid-mnemonic-error";
 export { default as InvalidPasswordError } from "./invalid-password-error";
 export { default as MismatchedWalletError } from "./mismatched-wallet-error";
+export { default as PasskeyGoneError } from "./passkey-gone-error";
+export { default as PasskeyNoPrfError } from "./passkey-no-prf-error";
 export { default as SendPasswordDeclinedError } from "./send-password-declined-error";
 export { default as WalletChangedError } from "./wallet-changed-error";

@@ -25,6 +25,10 @@ import {
   getSeedFromMnemonic,
   profileGeneratorFrom,
 } from "$lib/wallet";
+import {
+  fakeAuthenticator,
+  removeFakeAuthenticator,
+} from "$lib/test-helpers/fakeAuthenticator";
 import vault from "$lib/vault";
 import fixtures from "$lib/vault/__tests__/fixtures/login-v1.json";
 import { noteActiveWallet } from "$lib/wallets/directory";
@@ -40,6 +44,7 @@ vi.mock("$lib/dusk/string", async (importOriginal) => ({
 
 const V1 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`;
 const V2 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-v2`;
+const PASSKEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-passkey`;
 
 /** @param {string} key */
 const stored = (key) => JSON.parse(localStorage.getItem(key) ?? "null");
@@ -109,6 +114,196 @@ describe("Unlock Wallet", async () => {
     gotoSpy.mockRestore();
     initSpy.mockRestore();
     openSpy.mockRestore();
+  });
+
+  describe("with fingerprint or face unlock on", () => {
+    /** @type {ReturnType<typeof fakeAuthenticator>} */
+    let device;
+
+    /** @type {import("vitest").MockInstance} */
+    let focus;
+
+    beforeEach(async () => {
+      localStorage.clear();
+      sessionStorage.clear();
+      device = fakeAuthenticator();
+      focus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+      await vault.setUp(mnemonic, pwd);
+      await vault.addPasskey(device.passkey(), pwd);
+      settingsStore.update(setUserId(userId));
+    });
+
+    afterEach(() => {
+      cleanup();
+      focus.mockRestore();
+      removeFakeAuthenticator();
+      localStorage.clear();
+    });
+
+    /** @param {import("@testing-library/svelte").RenderResult<any>} view */
+    const fingerprint = (view) =>
+      view.getByRole("button", { name: "Use fingerprint or face" });
+
+    it("should go straight to it as the wallet opens, unlock what the password unlocks, and go where it left off", async () => {
+      const place = vi
+        .spyOn(navigation, "takePlace")
+        .mockReturnValueOnce("/dashboard/send?to=abc");
+
+      render(UnlockWallet);
+
+      await waitForGoto();
+
+      expect(device.get).toHaveBeenCalledOnce();
+      expectOpened();
+      expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
+        "/dashboard/send?to=abc",
+        { replaceState: true }
+      );
+      place.mockRestore();
+    });
+
+    it("should say nothing of one turned down as it opens, leave the password to work, and ask again only as it's pressed", async () => {
+      device.personAnswers("NotAllowedError");
+
+      const view = render(UnlockWallet);
+
+      await vi.waitFor(() => expect(device.get).toHaveBeenCalledOnce());
+      await vi.waitFor(() => expect(fingerprint(view)).toBeEnabled());
+
+      expect(view.queryByRole("alert")).toBeNull();
+      expect(openSpy).not.toHaveBeenCalled();
+
+      // The tab coming back doesn't ask again for what they turned down.
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      expect(device.get).toHaveBeenCalledOnce();
+
+      await fireEvent.click(fingerprint(view));
+      await vi.waitFor(() => expect(device.get).toHaveBeenCalledTimes(2));
+
+      // Asked for, and turned down: it says so, and the password's there.
+      expect(await view.findByRole("alert")).toHaveTextContent(
+        "That didn't unlock the wallet. Try again, or use your password."
+      );
+
+      await fireEvent.input(getTextInput(view.container), {
+        target: { value: pwd },
+      });
+      await fireEvent.submit(getAsHTMLElement(view.container, "form"));
+      await waitForGoto();
+
+      expectOpened();
+    });
+
+    it("should work as ever by the password once the passkey is gone from the device, and lose nothing", async () => {
+      device.forget();
+
+      const view = render(UnlockWallet);
+
+      await vi.waitFor(() => expect(fingerprint(view)).toBeEnabled());
+
+      expect(vault.passkey()).not.toBeNull();
+
+      await fireEvent.input(getTextInput(view.container), {
+        target: { value: pwd },
+      });
+      await fireEvent.submit(getAsHTMLElement(view.container, "form"));
+      await waitForGoto();
+
+      expectOpened();
+    });
+
+    it("should leave it to be asked for right after a lock, and ask as the tab comes back", async () => {
+      const locked = vi.spyOn(navigation, "lockedHere").mockReturnValue(true);
+      const view = render(UnlockWallet);
+
+      await vi.waitFor(() => expect(fingerprint(view)).toBeEnabled());
+
+      expect(device.get).not.toHaveBeenCalled();
+
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      await waitForGoto();
+
+      expect(device.get).toHaveBeenCalledOnce();
+      locked.mockRestore();
+    });
+
+    it("should never ask for a tab no one's looking at, and ask as they come to it", async () => {
+      const visibility = vi
+        .spyOn(document, "visibilityState", "get")
+        .mockReturnValue("hidden");
+      const view = render(UnlockWallet);
+
+      await vi.waitFor(() => expect(fingerprint(view)).toBeEnabled());
+
+      expect(device.get).not.toHaveBeenCalled();
+
+      visibility.mockReturnValue("visible");
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      await waitForGoto();
+      visibility.mockRestore();
+    });
+
+    it("should say it's off when it opens nothing any more, and offer it no more", async () => {
+      const stored = JSON.parse(
+        /** @type {string} */ (localStorage.getItem(PASSKEY))
+      );
+      const other = device.passkey();
+
+      // A record whose keys another passkey's PRF wrapped.
+      localStorage.setItem(
+        PASSKEY,
+        JSON.stringify({
+          ...stored,
+          credentialId: other.credentialId,
+          prfSalt: other.prfSalt,
+        })
+      );
+
+      const view = render(UnlockWallet);
+
+      expect(await view.findByRole("alert")).toHaveTextContent(
+        "Fingerprint or face unlock is off now."
+      );
+      expect(
+        view.queryByRole("button", { name: "Use fingerprint or face" })
+      ).toBeNull();
+      expect(vault.passkey()).toBeNull();
+      expect(openSpy).not.toHaveBeenCalled();
+    });
+
+    it("should lead Back to the chooser, past going straight to it", async () => {
+      device.personAnswers("NotAllowedError");
+
+      const view = render(UnlockWallet);
+
+      await vi.waitFor(() => expect(fingerprint(view)).toBeEnabled());
+
+      expect(view.getByRole("link", { name: "Back" })).toHaveAttribute(
+        "href",
+        expect.stringMatching(/\/setup\?choose$/)
+      );
+    });
+  });
+
+  it("should offer no fingerprint without it turned on, and ask the device nothing", async () => {
+    const device = fakeAuthenticator();
+
+    localStorage.clear();
+    await vault.setUp(mnemonic, pwd);
+
+    const view = render(UnlockWallet);
+
+    expect(
+      view.queryByRole("button", { name: "Use fingerprint or face" })
+    ).toBeNull();
+    expect(device.get).not.toHaveBeenCalled();
+
+    cleanup();
+    removeFakeAuthenticator();
+    localStorage.clear();
   });
 
   it("should discard an unlock whose profile derivation finishes after leaving", async () => {

@@ -3,6 +3,14 @@ import { walletStore } from "$lib/stores";
 
 import { forgetDrafts, forgetPlace, keepPlace } from "./place";
 
+let isLockedHere = false;
+
+/**
+ * Whether this page locked since it loaded: the unlock that follows leaves the
+ * fingerprint to be asked for, as opposed to a tab opened or reloaded.
+ */
+export const lockedHere = () => isLockedHere;
+
 /**
  * Logs out the user.
  * If `isForced` is set to `true`, a querystring
@@ -15,6 +23,8 @@ import { forgetDrafts, forgetPlace, keepPlace } from "./place";
  * @returns {ReturnType<goto>}
  */
 const logout = async (isForced) => {
+  isLockedHere = true;
+
   if (isForced) {
     forgetPlace();
     forgetDrafts();

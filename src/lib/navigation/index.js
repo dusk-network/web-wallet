@@ -1,4 +1,4 @@
-export { default as logout } from "./logout";
+export { default as logout, lockedHere } from "./logout";
 export {
   INACTIVITY_TIMEOUT,
   default as startInactivityTimer,
