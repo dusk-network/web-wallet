@@ -401,6 +401,397 @@ describe("the Bridge card's routes to and from other chains", () => {
     expect(mocks.approve).not.toHaveBeenCalled();
   });
 
+  describe("an approval not used up", () => {
+    const BSC = networks.mainnet.routes.chains.bsc;
+    const BSC_CONTRACT = /** @type {any} */ (
+      networks.mainnet.routes.migrations.find((m) => m.chain === "bsc")
+    ).contract;
+
+    /** Half a DUSK in wei, as an approval of 1 leaves it once 0.5 went. */
+    const HALF = 500_000_000n * DUSK;
+
+    /** The way back, connected on its chain, its allowance read on the chain. */
+    function openRoute() {
+      mocks.getBalanceOfCoin.mockResolvedValue(5n * DUSK * DUSK);
+      mocks.waitForTransactionReceipt.mockResolvedValue({ status: "success" });
+      connect({ address: EVM, chainId: 56 });
+
+      return render(Bridge, { ...props, linkedRoute: "bsc-to-dusk" });
+    }
+
+    /** @param {Element} container */
+    const panel = (container) => container.querySelector(".route-approval");
+
+    it("shows on the form what the contract may still take, as the chain says, with Finish and Revoke", async () => {
+      mocks.allowance.mockResolvedValue(HALF);
+
+      const { container, findByRole, getByRole } = openRoute();
+
+      expect(await findByRole("button", { name: "Revoke" })).toBeEnabled();
+      expect(getByRole("button", { name: "Finish" })).toBeEnabled();
+      expect(panel(container)).toHaveTextContent(
+        "Open approval The migration contract may still take 0.5 BEP20 DUSK from this wallet."
+      );
+      expect(mocks.allowance).toHaveBeenCalledWith(
+        EVM,
+        BSC.token,
+        BSC_CONTRACT,
+        56
+      );
+      // Nothing of it is kept here.
+      expect(
+        Object.keys(localStorage).filter((key) => /approv/i.test(key))
+      ).toStrictEqual([]);
+    });
+
+    it("shows nothing with nothing approved, or none that could be read, or on another chain", async () => {
+      mocks.allowance.mockResolvedValue(0n);
+
+      const none = openRoute();
+
+      await none.findByRole("textbox", { name: "Amount, in BEP20 DUSK" });
+      await vi.waitFor(() => expect(mocks.allowance).toHaveBeenCalled());
+      await tick();
+
+      expect(panel(none.container)).toBeNull();
+      cleanup();
+
+      mocks.allowance.mockRejectedValue(new Error("No answer."));
+
+      const unread = openRoute();
+
+      await unread.findByRole("textbox", { name: "Amount, in BEP20 DUSK" });
+      await tick();
+
+      expect(panel(unread.container)).toBeNull();
+      cleanup();
+
+      mocks.allowance.mockClear();
+      mocks.allowance.mockResolvedValue(HALF);
+      connect({ address: EVM, chainId: 1 });
+
+      const elsewhere = render(Bridge, {
+        ...props,
+        linkedRoute: "bsc-to-dusk",
+      });
+
+      await tick();
+
+      expect(mocks.allowance).not.toHaveBeenCalled();
+      expect(panel(elsewhere.container)).toBeNull();
+    });
+
+    it("hides the amount with the balances, and says one with no limit as that, there and on a review", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+      mocks.allowance.mockResolvedValue(HALF);
+
+      const hidden = openRoute();
+
+      await hidden.findByRole("button", { name: "Revoke" });
+
+      expect(panel(hidden.container)).toHaveTextContent(
+        "may still take •••• hidden BEP20 DUSK"
+      );
+      cleanup();
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+
+      mocks.allowance.mockResolvedValue(2n ** 256n - 1n);
+
+      const unlimited = openRoute();
+
+      await unlimited.findByRole("button", { name: "Revoke" });
+
+      expect(panel(unlimited.container)).toHaveTextContent(
+        "may still take any amount of BEP20 DUSK from this wallet"
+      );
+
+      await fireEvent.input(
+        unlimited.getByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
+        { target: { value: "1" } }
+      );
+      await fireEvent.click(
+        unlimited.getByRole("button", { name: "Review migration" })
+      );
+
+      await vi.waitFor(() =>
+        expect(unlimited.container).toHaveTextContent(
+          "An earlier approval with no limit covers this, so you aren't asked to approve. It stays approved after it."
+        )
+      );
+    });
+
+    it("finishes on the review with what the approval still lets go, which says it's approved already", async () => {
+      mocks.allowance.mockResolvedValue(HALF);
+      mocks.migrate.mockResolvedValue(`0x${"cc".repeat(32)}`);
+
+      const { container, findByRole, getByRole } = openRoute();
+
+      await fireEvent.click(await findByRole("button", { name: "Finish" }));
+
+      await findByRole("heading", { name: "Review" });
+      await vi.waitFor(() =>
+        expect(container).toHaveTextContent("Migrate, in your wallet")
+      );
+      expect(container.querySelector(".review-amount")).toHaveTextContent(
+        "0.5 DUSK"
+      );
+      expect(container).toHaveTextContent(
+        "Approval An earlier approval of 0.5 BEP20 DUSK covers this, so you aren't asked to approve. None of it stays approved after it."
+      );
+
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+      await vi.waitFor(() => expect(mocks.migrate).toHaveBeenCalled());
+
+      expect(mocks.approve).not.toHaveBeenCalled();
+      expect(mocks.migrate.mock.calls[0][0]).toBe(HALF);
+    });
+
+    it("finishes with no more than the wallet holds, and doesn't offer it with nothing to finish it with", async () => {
+      mocks.allowance.mockResolvedValue(10n * DUSK * DUSK);
+
+      const more = openRoute();
+
+      await fireEvent.click(
+        await more.findByRole("button", { name: "Finish" })
+      );
+      await more.findByRole("heading", { name: "Review" });
+
+      expect(more.container.querySelector(".review-amount")).toHaveTextContent(
+        "5 DUSK"
+      );
+      cleanup();
+
+      mocks.getBalanceOfCoin.mockResolvedValue(0n);
+      connect({ address: EVM, chainId: 56 });
+
+      const empty = render(Bridge, { ...props, linkedRoute: "bsc-to-dusk" });
+
+      await empty.findByRole("button", { name: "Revoke" });
+
+      expect(empty.queryByRole("button", { name: "Finish" })).toBeNull();
+    });
+
+    it("says on a review that skips the approval what covers it and what stays approved", async () => {
+      mocks.allowance.mockResolvedValue(HALF);
+
+      const { container, findByRole, getByRole, queryByText } = openRoute();
+
+      await fireEvent.input(
+        await findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
+        { target: { value: "0.2" } }
+      );
+      await fireEvent.click(getByRole("button", { name: "Review migration" }));
+      await vi.waitFor(() =>
+        expect(container).toHaveTextContent("Migrate, in your wallet")
+      );
+
+      expect(container).toHaveTextContent(
+        "Approval An earlier approval of 0.5 BEP20 DUSK covers this, so you aren't asked to approve. 0.3 BEP20 DUSK stays approved after it."
+      );
+      expect(queryByText(/exactly this amount/)).toBeNull();
+    });
+
+    it("keeps to \"exactly this amount\" where it's true: an approval that doesn't cover it is replaced", async () => {
+      mocks.allowance.mockResolvedValue(HALF);
+
+      const { container, findByRole, getByRole } = openRoute();
+
+      await fireEvent.input(
+        await findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
+        { target: { value: "1" } }
+      );
+      await fireEvent.click(getByRole("button", { name: "Review migration" }));
+      await vi.waitFor(() =>
+        expect(container).toHaveTextContent(
+          "Approve the amount, then migrate, in your wallet"
+        )
+      );
+
+      expect(container).toHaveTextContent(
+        "You allow the migration contract to take exactly this amount."
+      );
+      expect(container).not.toHaveTextContent("An earlier approval");
+    });
+
+    it("hides what an approval leaves on the review with the balances", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+      mocks.allowance.mockResolvedValue(HALF);
+
+      const { container, findByRole, getByRole } = openRoute();
+
+      await fireEvent.input(
+        await findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
+        { target: { value: "0.2" } }
+      );
+      await fireEvent.click(getByRole("button", { name: "Review migration" }));
+      await vi.waitFor(() =>
+        expect(container).toHaveTextContent("An earlier approval")
+      );
+
+      expect(container).not.toHaveTextContent("0.3 BEP20");
+      expect(container).not.toHaveTextContent("0.5 BEP20");
+    });
+
+    describe("Revoke", () => {
+      /** The form, its Revoke able to take a click. */
+      async function toRevoke() {
+        const view = openRoute();
+
+        await view.findByRole("button", { name: "Revoke" });
+        await afterConfirmDelay();
+
+        return view;
+      }
+
+      it("is a transaction the EVM wallet signs, approving nothing, and the form then reads the chain again", async () => {
+        mocks.allowance.mockResolvedValue(HALF);
+        mocks.approve.mockImplementation(async () => {
+          mocks.allowance.mockResolvedValue(0n);
+
+          return `0x${"dd".repeat(32)}`;
+        });
+
+        const { container, findByRole, getByRole, queryByRole } =
+          await toRevoke();
+
+        await fireEvent.click(getByRole("button", { name: "Revoke" }));
+
+        expect(await findByRole("alert")).toHaveTextContent(
+          "The approval is revoked."
+        );
+        expect(mocks.approve).toHaveBeenCalledExactlyOnceWith(
+          BSC_CONTRACT,
+          BSC.token,
+          0n,
+          56,
+          EVM
+        );
+        expect(mocks.waitForTransactionReceipt).toHaveBeenCalledWith(
+          {},
+          { chainId: 56, hash: `0x${"dd".repeat(32)}` }
+        );
+        await vi.waitFor(() => expect(panel(container)).toBeNull());
+        expect(queryByRole("button", { name: "Revoke" })).toBeNull();
+      });
+
+      it("says where it is while it waits, and takes no second press", async () => {
+        /** @type {(hash: string) => void} */
+        let signed = () => {};
+
+        mocks.allowance.mockResolvedValue(HALF);
+        mocks.approve.mockReturnValue(
+          new Promise((resolve) => {
+            signed = resolve;
+          })
+        );
+        mocks.waitForTransactionReceipt.mockReturnValue(new Promise(() => {}));
+
+        const { findByText, getByRole, queryByRole } = await toRevoke();
+
+        mocks.waitForTransactionReceipt.mockReturnValue(new Promise(() => {}));
+        await fireEvent.click(getByRole("button", { name: "Revoke" }));
+
+        expect(await findByText("Revoke in your wallet")).toBeInTheDocument();
+        expect(queryByRole("button", { name: "Revoke" })).toBeNull();
+        expect(queryByRole("button", { name: "Finish" })).toBeNull();
+
+        signed(`0x${"dd".repeat(32)}`);
+
+        expect(
+          await findByText("Waiting for BNB Smart Chain…")
+        ).toBeInTheDocument();
+      });
+
+      it("says the approval stands when it's declined in the wallet", async () => {
+        mocks.allowance.mockResolvedValue(HALF);
+        mocks.approve.mockRejectedValue(
+          new Error("User rejected the request.")
+        );
+
+        const { container, findByRole, getByRole } = await toRevoke();
+
+        await fireEvent.click(getByRole("button", { name: "Revoke" }));
+
+        expect(await findByRole("alert")).toHaveTextContent(
+          "You cancelled the revoke in your wallet. The approval stands."
+        );
+        expect(panel(container)).not.toBeNull();
+        expect(mocks.waitForTransactionReceipt).not.toHaveBeenCalled();
+      });
+
+      it("says to check the wallet when it fails, and goes by what the chain says after", async () => {
+        mocks.allowance.mockResolvedValue(HALF);
+        mocks.waitForTransactionReceipt.mockReset();
+        mocks.approve.mockResolvedValue(`0x${"dd".repeat(32)}`);
+
+        const { container, findByRole, getByRole } = await toRevoke();
+
+        mocks.waitForTransactionReceipt.mockResolvedValue({
+          status: "reverted",
+        });
+        await fireEvent.click(getByRole("button", { name: "Revoke" }));
+
+        expect(await findByRole("alert")).toHaveTextContent(
+          "The approval wasn't revoked. Check your EVM wallet's activity before you try again."
+        );
+        expect(panel(container)).toHaveTextContent("0.5 BEP20 DUSK");
+      });
+
+      it("asks nothing of the wallet when the chain says it's gone already", async () => {
+        mocks.allowance.mockResolvedValue(HALF);
+
+        const { container, findByRole, getByRole } = await toRevoke();
+
+        mocks.allowance.mockResolvedValue(0n);
+        await fireEvent.click(getByRole("button", { name: "Revoke" }));
+
+        expect(await findByRole("alert")).toHaveTextContent(
+          "The approval is revoked."
+        );
+        expect(mocks.approve).not.toHaveBeenCalled();
+        await vi.waitFor(() => expect(panel(container)).toBeNull());
+      });
+
+      it("signs from no account but the one shown: another one as it's read stops it", async () => {
+        /** @type {(wei: bigint) => void} */
+        let answer = () => {};
+
+        mocks.allowance.mockResolvedValue(HALF);
+
+        const { findByRole, getByRole } = await toRevoke();
+
+        mocks.allowance.mockReturnValueOnce(
+          new Promise((resolve) => {
+            answer = resolve;
+          })
+        );
+        await fireEvent.click(getByRole("button", { name: "Revoke" }));
+        mocks.account?.update((now) => ({
+          ...now,
+          address: "0x3333333333333333333333333333333333333333",
+        }));
+        answer(HALF);
+
+        expect(await findByRole("alert")).toHaveTextContent(
+          "Your EVM wallet switched to another account, so nothing moved."
+        );
+        expect(mocks.approve).not.toHaveBeenCalled();
+      });
+
+      it("takes no click for half a second once it shows", async () => {
+        mocks.allowance.mockResolvedValue(HALF);
+
+        const { findByRole, queryByText } = openRoute();
+
+        await fireEvent.click(await findByRole("button", { name: "Revoke" }));
+
+        expect(queryByText("Revoke in your wallet")).toBeNull();
+        expect(mocks.approve).not.toHaveBeenCalled();
+      });
+    });
+  });
+
   describe("once it's sent, for as long as the screen is open", () => {
     it("gives the transaction, with a way to its explorer", async () => {
       connect({ address: EVM, chainId: 56 });

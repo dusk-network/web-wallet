@@ -3,7 +3,7 @@
  * - a migration into Dusk, from the connected EVM wallet on its chain: an
  *   approval of the exact amount when the migration contract may take less,
  *   then `migrate(amount, account)`, with this profile's public account as
- *   the recipient;
+ *   the recipient; an approval not used up can be revoked;
  * - a transfer out, from this profile's public account: a public transfer to
  *   the route's account, with the connected EVM wallet's address as the
  *   memo, where the route pays it out.
@@ -67,6 +67,22 @@ export function serviceLine({ chain, feeLux, sentLux }, locale) {
 }
 
 /**
+ * What the migration contract may take from `owner` as the chain says now, in
+ * wei: an approval not used up. Nothing here keeps a record of it.
+ *
+ * @param {import("./cardRoutes").CardRoute & { kind: "migration" }} route
+ * @param {`0x${string}`} owner
+ * @returns {Promise<bigint>}
+ */
+export const approvedWei = async (route, owner) =>
+  allowance(
+    owner,
+    /** @type {`0x${string}`} */ (route.chain.token),
+    route.contract,
+    route.chain.chainId
+  );
+
+/**
  * Whether the migration contract may take the amount from `owner` already,
  * with no approval first.
  *
@@ -75,13 +91,43 @@ export function serviceLine({ chain, feeLux, sentLux }, locale) {
  * @param {bigint} amountLux
  */
 export const isApproved = async (route, owner, amountLux) =>
-  (await allowance(
-    owner,
-    /** @type {`0x${string}`} */ (route.chain.token),
+  (await approvedWei(route, owner)) >= amountLux * WEI_PER_LUX;
+
+/**
+ * Revokes what the migration contract may take from `owner`: a transaction the
+ * EVM wallet signs, approving nothing, once it's in a block.
+ *
+ * @param {{
+ *   onInBlock?: () => void,
+ *   owner: `0x${string}`,
+ *   route: import("./cardRoutes").CardRoute & { kind: "migration" },
+ * }} revoke
+ * @returns {Promise<void>}
+ */
+export async function revokeApproval({ onInBlock = () => {}, owner, route }) {
+  const { chainId, name, token } = route.chain;
+
+  stillOnAccount(owner);
+
+  const hash = await approve(
     route.contract,
-    route.chain.chainId
-  )) >=
-  amountLux * WEI_PER_LUX;
+    /** @type {`0x${string}`} */ (token),
+    0n,
+    chainId,
+    owner
+  );
+
+  onInBlock();
+
+  const revoked = await waitForTransactionReceipt(wagmiConfig, {
+    chainId,
+    hash,
+  });
+
+  if (revoked.status !== "success") {
+    throw new Error(`The revoke didn't go through on ${name}.`);
+  }
+}
 
 /**
  * Approves the exact amount for the migration contract, when it may take

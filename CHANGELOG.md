@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Show an approval not used up on the Bridge's migration form, read on the chain, with Finish and Revoke
 - Try again on a send, stake, shield or bridge transfer that failed with nothing sent, back to its review with all that was filled in, and Back from the failure back to the form
 
 ### Changed
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep the fee to unstake later when Max fills in a stake, native or with Sozu, and refuse an amount that leaves too little for it
 - Say how much DUSK is missing when the public balance can't pay for an unstake or a claim
 - Say to check History, not to try again, when the node refuses a send because another transaction from the account came first
+- Say on a migration's review when an earlier approval covers the amount, so Approve is skipped, and how much of it stays approved
 - Say on a migration, when the EVM wallet's error proves nothing was sent, that it wasn't and why, and offer to approve again once the approval was used up, instead of saying it may have reached the network
 
 ## [1.9.0] - 2026-11-05
