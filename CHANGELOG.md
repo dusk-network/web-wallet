@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say Ready to sync on a restore, as on a new wallet, with the block it starts at under Advanced
 - Leave a phone's keyboard down on the unlock after a fingerprint or face try, with the fingerprint still there to try again
 - Keep offering fingerprint or face unlock after a finger it didn't know, and offer it again after a reset
 - Close the profile menu with phone Back, staying on the page

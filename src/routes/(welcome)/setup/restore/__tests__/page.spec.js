@@ -290,6 +290,32 @@ describe("Restore", async () => {
     expect(gotoSpy).toHaveBeenCalledWith("/dashboard", { replaceState: true });
   });
 
+  it("should say it's ready to sync, as a new wallet does, with the block it starts at under Advanced", async () => {
+    await vault.setUp(mnemonic, pwd);
+
+    const { container, getByLabelText, getByRole } = render(Restore);
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await pasteInto(getByLabelText("Word 1"), mnemonic);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("switch"));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await vi.waitFor(() => expect(vault.exists()).toBe(false));
+
+    expect(getByRole("heading", { name: "Ready to sync" })).toBeInTheDocument();
+
+    const advanced = /** @type {HTMLDetailsElement} */ (
+      container.querySelector("details")
+    );
+
+    expect(advanced.open).toBe(false);
+    expect(advanced.querySelector("summary")).toHaveTextContent("Advanced");
+    expect(
+      advanced.contains(getByRole("switch", { name: "Block height" }))
+    ).toBe(true);
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
   it("should open the page a link asked for once it's restored, as Send filled in by a payment request", async () => {
     const asked = "/dashboard/send/?to=someone&amount=0.011&network=testnet";
 
