@@ -13,6 +13,10 @@ import { get } from "svelte/store";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
 import { walletStore } from "$lib/stores";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { hydrateRequests, requestsStore } from "$lib/payment-requests";
+import { parsePaymentLink } from "@dusk-network/app-core/payment-links";
+import { networks } from "@dusk-network/networks";
 
 import Receive from "../+page.svelte";
 
@@ -96,7 +100,8 @@ describe("Receive", () => {
 
     expect(
       getAllByRole("button").map((button) => button.getAttribute("aria-label"))
-    ).toStrictEqual(["Copy address"]);
+    ).toStrictEqual(["Copy address", null]);
+    expect(getByRole("button", { name: "Download QR" })).toBeInTheDocument();
     expect(getByRole("link", { name: "Back" })).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Copy address" }));
@@ -126,6 +131,215 @@ describe("Receive", () => {
     await qrCodeDrawn();
 
     expect(shownAddress()).toBe(expectedAddress);
+  });
+
+  describe("Request payment", () => {
+    const REQUESTS = `${CONFIG.LOCAL_STORAGE_APP_KEY}-payment-requests`;
+
+    // A link is only made for a key: the bridge's on testnet stands in.
+    const ACCOUNT =
+      "25z9o6qCaVk1ReyHjmB4pyXcE3D1vRu4FVV1rR8ChYcosdTSktkANLDHq9GD6B4985Q1S2KrDZYBRrohWAjrNmACFUb3UMSRyYctJRzh3d28R1ZNC1ZyKm1HwXL4FF5Etftt";
+    const before = mockedWalletStore.getMockedStoreValue();
+
+    beforeEach(() => {
+      localStorage.removeItem(REQUESTS);
+      hydrateRequests();
+      setNodeNetwork(networks.testnet);
+      mockedWalletStore.setMockedStoreValue({
+        ...before,
+        currentProfile: { account: ACCOUNT, address: expectedAddress },
+      });
+    });
+
+    afterEach(() => {
+      mockedWalletStore.setMockedStoreValue(before);
+      setNodeNetwork(null);
+      localStorage.removeItem(REQUESTS);
+    });
+
+    /** @param {string} name */
+    const openRequest = async (name = "Request payment") => {
+      const summary = screen.getByText(name);
+
+      await fireEvent.click(summary);
+      /** @type {HTMLDetailsElement} */ (summary.closest("details")).open =
+        true;
+      await fireEvent(
+        /** @type {HTMLElement} */ (summary.closest("details")),
+        new Event("toggle")
+      );
+    };
+
+    /**
+     * @param {string} name
+     * @param {string} value
+     */
+    const type = (name, value) =>
+      fireEvent.input(screen.getByRole("textbox", { name }), {
+        target: { value },
+      });
+
+    /** What the QR code on screen holds, as the library was asked to draw it. */
+    const qrAlt = () => screen.getByRole("img", { name: /^QR code for your/ });
+
+    it("should make a link the Send of any wallet reads, with the amount and memo asked, and keep it on the list as it's copied", async () => {
+      render(Receive);
+      await vi.runAllTimersAsync();
+      await openRequest();
+      await type("Amount (optional)", "0.15");
+      await type("Memo (optional)", " Factura 33 ");
+      await vi.runAllTimersAsync();
+
+      expect(get(requestsStore)).toStrictEqual([]);
+      await vi.waitFor(() =>
+        expect(qrAlt()).toHaveAccessibleName("QR code for your payment request")
+      );
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy request link" })
+      );
+      await vi.runAllTimersAsync();
+
+      const [[copied]] = vi.mocked(navigator.clipboard.writeText).mock.calls;
+
+      expect(copied).toMatch(
+        /^https:\/\/apps\.testnet\.dusk\.network\/wallet\/dashboard\/send\?/
+      );
+      expect(parsePaymentLink(copied)).toMatchObject({
+        amountDusk: "0.15",
+        chainId: "dusk:2",
+        memo: "Factura 33",
+        to: ACCOUNT,
+      });
+      expect(get(requestsStore)).toMatchObject([
+        {
+          lux: "150000000",
+          memo: "Factura 33",
+          network: "testnet",
+          to: ACCOUNT,
+        },
+      ]);
+    });
+
+    it("should say what's wrong with an amount, offer no link for it, and offer none with nothing asked", async () => {
+      render(Receive);
+      await vi.runAllTimersAsync();
+      await openRequest();
+
+      expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
+        null
+      );
+
+      await type("Amount (optional)", "1.2345678901");
+      await vi.runAllTimersAsync();
+
+      expect(screen.getByRole("alert")).toHaveTextContent(/9 decimals/);
+      expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
+        null
+      );
+    });
+
+    it("should ask for the shielded address on its tab", async () => {
+      render(Receive);
+      await vi.runAllTimersAsync();
+      await openRequest();
+      await type("Amount (optional)", "1");
+      await fireEvent.click(screen.getByRole("radio", { checked: false }));
+      await vi.runAllTimersAsync();
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy request link" })
+      );
+      await vi.runAllTimersAsync();
+
+      const copied = vi.mocked(navigator.clipboard.writeText).mock
+        .lastCall?.[0];
+
+      expect(parsePaymentLink(copied)).toMatchObject({ to: expectedAddress });
+    });
+
+    it("should download the QR under a name that says what it holds, and keep a request with it", async () => {
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+
+      render(Receive);
+      await vi.runAllTimersAsync();
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+      const anchorOf = (/** @type {number} */ call) =>
+        /** @type {HTMLAnchorElement} */ (click.mock.contexts[call]);
+
+      expect(anchorOf(0).download).toBe("dusk-public-receive-qr.png");
+      expect(anchorOf(0).href).toMatch(/^data:image\/png/);
+      expect(get(requestsStore)).toStrictEqual([]);
+
+      await openRequest();
+      await type("Memo (optional)", "Factura 33");
+      await vi.runAllTimersAsync();
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(2));
+
+      expect(anchorOf(1).download).toBe("dusk-public-request-qr.png");
+      expect(get(requestsStore)).toMatchObject([{ lux: null }]);
+
+      click.mockRestore();
+    });
+
+    it("should list the requests made, by this profile's addresses on this network, say what matched, and take one off", async () => {
+      const at = Date.now() - 1000;
+      /** @param {Record<string, unknown>} fields */
+      const kept = (fields) => ({
+        at,
+        lux: "150000000",
+        memo: "Factura 33",
+        network: "testnet",
+        to: ACCOUNT,
+        ...fields,
+      });
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          kept({
+            id: "paid",
+            paid: { at: at + 500, hash: "ab".repeat(32) },
+          }),
+          kept({ id: "open", memo: "Factura 34" }),
+          kept({ id: "elsewhere", network: "mainnet" }),
+          kept({ id: "other", to: "someone-else" }),
+        ])
+      );
+      hydrateRequests();
+      render(Receive);
+      await vi.runAllTimersAsync();
+
+      const items = screen.getAllByRole("listitem");
+
+      expect(items).toHaveLength(2);
+      expect(items[0]).toHaveTextContent("Paid");
+      expect(items[0]).toHaveTextContent("Amount and memo match a payment on");
+      expect(items[1]).toHaveTextContent("Waiting");
+      expect(items[1]).toHaveTextContent("Nothing matching has come in.");
+      expect(
+        screen.getByRole("link", { name: "See in History" })
+      ).toHaveAttribute(
+        "href",
+        expect.stringContaining(`/dashboard/transactions?tx=${"ab".repeat(32)}`)
+      );
+
+      await fireEvent.click(
+        screen.getByRole("button", {
+          name: /^Remove the request for .*, Factura 34$/,
+        })
+      );
+
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    });
   });
 
   describe("Dusk Domains names", () => {
@@ -236,7 +450,7 @@ describe("Receive", () => {
         getAllByRole("button").map((button) =>
           button.getAttribute("aria-label")
         )
-      ).toStrictEqual(["Copy address"]);
+      ).toStrictEqual(["Copy address", null]);
     });
 
     it("should copy the name from its field, and the full address from its own", async () => {

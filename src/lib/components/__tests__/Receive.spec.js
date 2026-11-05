@@ -31,7 +31,10 @@ describe("Receive", () => {
    * @param {() => HTMLElement[]} getAllButtons
    */
   const getButtonNames = (getAllButtons) =>
-    getAllButtons().map((button) => button.getAttribute("aria-label"));
+    getAllButtons().map(
+      (button) =>
+        button.getAttribute("aria-label") ?? button.textContent?.trim()
+    );
 
   /** Lets a name lookup settle. */
   const settle = () => new Promise((resolve) => setTimeout(resolve));
@@ -94,6 +97,7 @@ describe("Receive", () => {
       expect(queryByRole("button", { name: "About this name" })).toBeNull();
       expect(getButtonNames(() => getAllByRole("button"))).toStrictEqual([
         "Copy address",
+        "Download QR",
       ]);
     }
   );
@@ -119,6 +123,7 @@ describe("Receive", () => {
         "About this name",
         "Copy name",
         "Copy address",
+        "Download QR",
       ]);
 
       await fireEvent.click(getByRole("button", { name: "Copy name" }));

@@ -33,6 +33,7 @@ import {
   saveContact,
 } from "$lib/contacts";
 import { walletStore } from "$lib/stores";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { openTestContacts, stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import { addWallet, unlockWallets } from "$lib/wallets";
@@ -76,9 +77,23 @@ const { hasCamera } = vi.hoisted(() => ({
   hasCamera: vi.fn(() => Promise.resolve(false)),
 }));
 
+/** What the scanner made last calls with a code it reads. */
+const qr = vi.hoisted(() => ({
+  /** @type {(result: { data: string }) => void} */
+  read: () => {},
+}));
+
 vi.mock("qr-scanner", () => ({
   default: class {
     static hasCamera = hasCamera;
+
+    /**
+     * @param {HTMLVideoElement} _video
+     * @param {(result: { data: string }) => void} onDecode
+     */
+    constructor(_video, onDecode) {
+      qr.read = onDecode;
+    }
 
     destroy() {}
 
@@ -87,6 +102,9 @@ vi.mock("qr-scanner", () => ({
     stop() {}
   },
 }));
+
+/** @param {string} data */
+const scanned = (data) => qr.read({ data });
 
 /**
  * The summary's rows, as their labels and values.
@@ -194,6 +212,255 @@ describe("Send", () => {
     for (const contact of listContacts()) {
       removeContact(contact.id);
     }
+  });
+
+  describe("A link asking for a payment", () => {
+    const duskLink = `dusk:public-${otherAccount}@dusk:2?amount=0.15&memo=Factura+33`;
+    const httpsLink = `https://apps.testnet.dusk.network/wallet/dashboard/send?to=${otherAccount}&amount=0.15&memo=Factura+33&network=testnet`;
+
+    // Send takes a click half a second after it shows: on this clock.
+    beforeEach(() => {
+      setNodeNetwork(networks.testnet);
+      vi.useFakeTimers({ toFake: ["performance"] });
+    });
+
+    afterEach(() => {
+      setNodeNetwork(null);
+      settingsStore.reset();
+    });
+
+    /**
+     * What's in Send's three fields.
+     *
+     * @param {ReturnType<typeof fieldsOf>} fields
+     */
+    const filled = ({ amount, memo, to }) =>
+      [to(), amount(), memo()].map(
+        (field) => /** @type {HTMLInputElement} */ (field).value
+      );
+
+    /**
+     * What's put in To at once, as a paste, and read.
+     *
+     * @param {ReturnType<typeof fieldsOf>} fields
+     * @param {string} value
+     */
+    const paste = async ({ to }, value) => {
+      await fireEvent.input(to(), { target: { value } });
+      await tick();
+      await tick();
+    };
+
+    /** @param {ReturnType<typeof fieldsOf>} fields */
+    const sendIt = async ({ review, send }) => {
+      await fireEvent.click(review());
+      await afterConfirmDelay();
+      await fireEvent.click(send());
+    };
+
+    it.each([
+      ["a dusk: link", duskLink],
+      ["an https link to the web wallet's Send", httpsLink],
+    ])(
+      "should fill in the recipient, the amount and the memo from %s pasted into To, for the review as if typed",
+      async (_, link) => {
+        const { getByRole, getByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await paste(fields, link);
+
+        expect(filled(fields)).toStrictEqual([
+          otherAccount,
+          "0.15",
+          "Factura 33",
+        ]);
+        expect(getByText(/^Filled in from the link/)).toBeInTheDocument();
+
+        await sendIt(fields);
+
+        expect(baseProps.execute).toHaveBeenCalledWith(
+          otherAccount,
+          150_000_000n,
+          "Factura 33",
+          gasPrice,
+          gasLimit
+        );
+      }
+    );
+
+    it("should read the amount in the language of the amount field", async () => {
+      settingsStore.update((store) => ({ ...store, language: "es-ES" }));
+
+      const { getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(fields, duskLink);
+
+      expect(filled(fields)[1]).toBe("0,15");
+
+      await sendIt(fields);
+
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        otherAccount,
+        150_000_000n,
+        "Factura 33",
+        gasPrice,
+        gasLimit
+      );
+    });
+
+    it("should say so plainly and fill in nothing for a link for another network, keeping what's typed", async () => {
+      const { getByRole, getByText, queryByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.amount(), { target: { value: "2" } });
+      await paste(
+        fields,
+        `dusk:public-${otherAccount}@dusk:1?amount=0.15&memo=Factura+33`
+      );
+
+      expect(
+        getByText("This request is for Mainnet. You are on Testnet.")
+      ).toBeInTheDocument();
+      expect(filled(fields)).toStrictEqual(["", "2", ""]);
+      expect(queryByText("Not a valid address.")).toBeNull();
+      expect(fields.review()).toBeDisabled();
+
+      // What's given next is on its own.
+      await paste(fields, otherAccount);
+
+      expect(
+        queryByText("This request is for Mainnet. You are on Testnet.")
+      ).toBeNull();
+    });
+
+    it.each([
+      ["a dusk: link of no known form", "dusk:nothing-at-all"],
+      [
+        "a link to the web wallet's Send without a recipient",
+        `https://apps.testnet.dusk.network/wallet/dashboard/send?amount=1`,
+      ],
+    ])("should say %s can't be read", async (_, value) => {
+      const { getByRole, getByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(fields, value);
+
+      expect(getByText(/^That link can't be read/)).toBeInTheDocument();
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+    });
+
+    it("should refuse a link's recipient as it refuses one typed", async () => {
+      const { getByRole, getByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(fields, `dusk:public-${invalidAddress}?amount=1`);
+
+      expect(getByText("Not a valid address.")).toBeInTheDocument();
+      expect(fields.review()).toBeDisabled();
+    });
+
+    it("should read a link typed out as it's finished, not at each key on the way", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const to = /** @type {HTMLInputElement} */ (fields.to());
+
+      for (const value of ["d", "du", "dus", "dusk", "dusk:", "dusk:p"]) {
+        await fireEvent.input(to, { target: { value } });
+      }
+
+      expect(to.value).toBe("dusk:p");
+      expect(filled(fields).slice(1)).toStrictEqual(["", ""]);
+
+      // The rest as keys, and leaving the field.
+      to.value = duskLink;
+      await fireEvent.input(to, { target: { value: duskLink.slice(0, 7) } });
+      await fireEvent.input(to, { target: { value: duskLink.slice(0, 8) } });
+      await fireEvent.input(to, { target: { value: duskLink } });
+      await tick();
+      await tick();
+
+      expect(filled(fields)).toStrictEqual([
+        otherAccount,
+        "0.15",
+        "Factura 33",
+      ]);
+    });
+
+    it("should leave the amount and memo typed when a plain recipient is pasted", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.input(fields.amount(), { target: { value: "2" } });
+      await fireEvent.input(fields.memo(), { target: { value: "rent" } });
+      await paste(fields, otherAccount);
+
+      expect(filled(fields)).toStrictEqual([otherAccount, "2", "rent"]);
+    });
+
+    it("should read a scanned code as it reads what's pasted: a link fills the form in, another network's says so", async () => {
+      hasCamera.mockResolvedValueOnce(true);
+
+      const { findByRole, getByRole, getByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await findByRole("button", { name: "Scan a QR code" });
+
+      scanned(duskLink);
+      await vi.waitFor(() =>
+        expect(filled(fields)).toStrictEqual([
+          otherAccount,
+          "0.15",
+          "Factura 33",
+        ])
+      );
+
+      scanned(`dusk:public-${otherAccount}@dusk:1?amount=9`);
+      await vi.waitFor(() =>
+        expect(
+          getByText("This request is for Mainnet. You are on Testnet.")
+        ).toBeInTheDocument()
+      );
+      expect(filled(fields)[0]).toBe("");
+
+      scanned(invalidAddress);
+      await vi.waitFor(() =>
+        expect(getByText("Not a valid address.")).toBeInTheDocument()
+      );
+    });
+
+    it("should start with what a link opened the page with, or say why it fills in nothing, and say what's wrong with its recipient at once", () => {
+      const opened = render(Send, {
+        ...baseProps,
+        initialAmount: "0.15",
+        initialMemo: "Factura 33",
+        initialRecipient: otherAccount,
+      });
+
+      expect(filled(fieldsOf(opened.getByRole))).toStrictEqual([
+        otherAccount,
+        "0.15",
+        "Factura 33",
+      ]);
+      opened.unmount();
+
+      const refused = render(Send, {
+        ...baseProps,
+        initialProblem: "This request is for Mainnet. You are on Testnet.",
+      });
+
+      expect(
+        refused.getByText("This request is for Mainnet. You are on Testnet.")
+      ).toBeInTheDocument();
+      refused.unmount();
+
+      const wrong = render(Send, {
+        ...baseProps,
+        initialRecipient: invalidAddress,
+      });
+
+      expect(wrong.getByText("Not a valid address.")).toBeInTheDocument();
+    });
   });
 
   describe("Recipient", () => {

@@ -1,11 +1,18 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { mdiArrowLeft, mdiInformationOutline } from "@mdi/js";
+  import {
+    mdiAlertOutline,
+    mdiArrowLeft,
+    mdiInformationOutline,
+    mdiTrayArrowDown,
+  } from "@mdi/js";
+  import * as QRCode from "qrcode";
   import { onMount } from "svelte";
 
   import { AppAnchorButton, FullAddress } from "$lib/components";
-  import { CopyButton, Icon, QrCode } from "$lib/dusk/components";
+  import { Button, CopyButton, Icon, QrCode } from "$lib/dusk/components";
+  import { toast } from "$lib/dusk/components/Toast/store";
   import { section } from "$lib/dusk/motion";
   import { randomUUID } from "$lib/dusk/string";
 
@@ -29,6 +36,18 @@
    * @type {"account" | "address"}
    */
   export let addressType = "account";
+
+  /**
+   * What's asked of whoever pays, in place of the address alone: what the QR
+   * holds.
+   *
+   * @type {{ dusk: string, link: string } | null}
+   */
+  export let request = null;
+
+  /** Called as the request leaves the wallet, by Download QR. */
+  /** @type {() => void} */
+  export let onUse = () => {};
 
   /** @type {HTMLElement} */
   let figureElement;
@@ -64,15 +83,36 @@
     type === "account"
       ? `People who send to ${shownName} reach this public account.`
       : `People who pay ${shownName} choose public or shielded. Anyone can see this address belongs to ${shownName}.`;
+
+  /** What the QR holds, as a picture large enough to print. */
+  async function downloadQr() {
+    try {
+      const link = document.createElement("a");
+
+      link.href = await QRCode.toDataURL(qrValue, {
+        color: { dark: "#101", light: "#fff" },
+        width: 1024,
+      });
+      link.download = `dusk-${addressType === "account" ? "public" : "shielded"}-${request ? "request" : "receive"}-qr.png`;
+      link.click();
+      onUse();
+    } catch {
+      toast("error", "Couldn't make the QR picture", mdiAlertOutline);
+    }
+  }
+
+  $: qrValue = request?.dusk ?? address;
 </script>
 
 <div class="receive">
   <figure class="receive__address-qr-figure" bind:this={figureElement}>
     <QrCode
-      alt={addressType === "account"
-        ? "QR code for your public account"
-        : "QR code for your shielded address"}
-      value={address}
+      alt={request
+        ? "QR code for your payment request"
+        : addressType === "account"
+          ? "QR code for your public account"
+          : "QR code for your shielded address"}
+      value={qrValue}
       className="receive__qr"
       width={Math.min(qrWidth, maxQrWidth)}
     />
@@ -116,6 +156,14 @@
         value={address}
         variant="secondary"
       />
+      <div class="receive__share">
+        <Button
+          icon={{ path: mdiTrayArrowDown }}
+          on:click={downloadQr}
+          text="Download QR"
+          variant="secondary"
+        />
+      </div>
       <p class="receive__reveal">
         {addressType === "account"
           ? "Anyone with this address, or a name that points to it, can see its balance and every public payment to and from it."
@@ -136,6 +184,8 @@
       {/await}
     </figcaption>
   </figure>
+
+  <slot />
 
   {#if !hideBackButton}
     <div class="receive__buttons">
@@ -189,6 +239,16 @@
 
     :global(&__copy-address) {
       width: 100%;
+    }
+
+    &__share {
+      display: flex;
+      gap: var(--small-gap);
+      width: 100%;
+
+      & :global(.dusk-button) {
+        flex: 1;
+      }
     }
 
     &__field {

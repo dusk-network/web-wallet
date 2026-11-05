@@ -33,8 +33,10 @@
     reviewStep,
   } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
+  import { readPaymentLink } from "$lib/payment-requests";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
   import { openWalletName, walletAccountNames } from "$lib/wallets";
   import {
     formatDusk,
@@ -120,8 +122,17 @@
   /** @type {undefined | string} */
   export let bep20BridgeAddress = undefined;
 
-  /** The recipient the page starts with, as from Send again. */
+  /** The recipient the page starts with, as from Send again or a link. */
   export let initialRecipient = "";
+
+  /** The amount a link opened the page with, as the amount field reads it. */
+  export let initialAmount = "";
+
+  /** The memo a link opened the page with. */
+  export let initialMemo = "";
+
+  /** Why the link the page was opened with fills in nothing. */
+  export let initialProblem = "";
 
   /**
    * `.dusk` names of past counterparties, for "Did you mean …?" along with
@@ -133,19 +144,22 @@
 
   const draft = formDraft("send");
 
+  /** What the page was opened for, to tell another link from this one. */
+  const openedFor = [initialRecipient, initialAmount, initialMemo].join("\n");
+
   /**
    * What was typed before a lock, a reload or a failed send, unless a link to
-   * someone else opens the page now.
+   * someone else, or for something else, opens the page now.
    *
    * @type {any}
    */
   const typedBefore = ((before) =>
-    before && (!initialRecipient || before.link === initialRecipient)
-      ? before
-      : null)(draft.read());
+    before && (!initialRecipient || before.link === openedFor) ? before : null)(
+    draft.read()
+  );
 
   /** The amount as typed, in DUSK: nothing until it is. */
-  let sendAmount = typedBefore?.amount ?? "";
+  let sendAmount = typedBefore?.amount ?? initialAmount;
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
   let isMaxAmount = typedBefore?.isMax ?? false;
@@ -154,7 +168,15 @@
   let sendToAddress = typedBefore?.to ?? initialRecipient;
 
   /** @type {string} */
-  let memo = typedBefore?.memo ?? "";
+  let memo = typedBefore?.memo ?? initialMemo;
+
+  /** Why the last link given fills in nothing: another network's, or unreadable. */
+  let linkProblem = initialProblem;
+
+  /** Whether a link filled the form in, until what's in To changes. */
+  let isFromLink = Boolean(
+    !typedBefore && initialRecipient && (initialAmount || initialMemo)
+  );
 
   /** @type {import("qr-scanner").default} */
   let scanner;
@@ -185,7 +207,7 @@
    *
    * @type {boolean}
    */
-  let isRecipientChecked = Boolean(typedBefore?.to);
+  let isRecipientChecked = Boolean(typedBefore?.to || initialRecipient);
 
   /** @type {boolean} */
   let isGasValid = false;
@@ -404,20 +426,63 @@
   /** How long the recipient typed was, to tell a paste from a key. */
   let typedLength = 0;
 
+  /** Whether the browser said a paste is coming, over a longer recipient too. */
+  let isPasting = false;
+
+  /**
+   * What's put in To whole, as pasted, scanned or finished: a link asking for
+   * a payment fills in what it asks, and one for another network says so and
+   * fills in nothing. Anything else is a recipient as it is, leaving what's
+   * typed in the other fields. What's filled in is checked as if it were typed.
+   *
+   * @param {string} text
+   */
+  async function takeRecipient(text) {
+    const asked = readPaymentLink(text, $nodeNetwork, language);
+
+    // The field holds what was given until now: what takes its place, or
+    // nothing, then shows, whatever it held before.
+    await tick();
+
+    linkProblem = asked?.problem ?? "";
+    sendToAddress = asked ? asked.to : text;
+    isFromLink = Boolean(asked?.amount || asked?.memo);
+    isRecipientChecked = Boolean(sendToAddress);
+    typedLength = sendToAddress.length;
+
+    if (asked?.to) {
+      isMaxAmount = false;
+      sendAmount = asked.amount;
+      memo = asked.memo;
+    }
+  }
+
   /**
    * Much more at once than a key gives is a paste, however a phone's keyboard
-   * does it: what's wrong with it is said at once.
+   * does it: what's wrong with it is said at once, and a link is read.
    *
    * @param {Event} event
    */
   function handleRecipientInput({ target }) {
-    const { length } = /** @type {HTMLInputElement} */ (target).value;
+    const { value } = /** @type {HTMLInputElement} */ (target);
 
-    if (length - typedLength > 1) {
-      isRecipientChecked = true;
+    if (isPasting || value.length - typedLength > 1) {
+      isPasting = false;
+      takeRecipient(value);
+    } else {
+      linkProblem = "";
+      isFromLink = false;
+      typedLength = value.length;
+    }
+  }
+
+  /** A link typed out reads as it's finished: not at each key on the way. */
+  function finishRecipient() {
+    if (/^(dusk:|https?:\/\/)/i.test(sendToAddress.trim())) {
+      takeRecipient(sendToAddress);
     }
 
-    typedLength = length;
+    isRecipientChecked = true;
   }
 
   /**
@@ -429,7 +494,7 @@
   function handleRecipientKeyDown(event) {
     if (event.key === "Enter" && !event.isComposing) {
       event.preventDefault();
-      isRecipientChecked = true;
+      finishRecipient();
 
       if (addressInfo.isValid) {
         document.getElementById(`${id}-amount`)?.focus();
@@ -745,7 +810,7 @@
     amount: sendAmount,
     gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
     isMax: isMaxAmount,
-    link: initialRecipient,
+    link: openedFor,
     memo,
     picks: namePicks,
     to: sendToAddress,
@@ -1136,15 +1201,14 @@
             bind:value={sendToAddress}
             className={sendToAddressTextboxClasses}
             id="{id}-to"
-            on:blur={() => {
-              isRecipientChecked = true;
-            }}
+            on:blur={finishRecipient}
             on:input={handleRecipientInput}
             on:keydown={handleRecipientKeyDown}
             on:paste={() => {
+              isPasting = true;
               isRecipientChecked = true;
             }}
-            placeholder="Address or .dusk name"
+            placeholder="Address, .dusk name or payment link"
             spellcheck="false"
             type="text"
           />
@@ -1198,7 +1262,9 @@
           </select>
         {/if}
 
-        {#if isRecipientInvalid}
+        {#if linkProblem}
+          <p class="send__error" role="alert"><strong>{linkProblem}</strong></p>
+        {:else if isRecipientInvalid}
           <p class="send__error" id={invalidRecipientId} role="alert">
             {#if isValidEvmAddress(sendToAddress)}
               <strong>That's an EVM address.</strong> To send to an EVM wallet, use
@@ -1229,6 +1295,12 @@
             }}
             type="button">Did you mean {bareName}?</button
           >
+        {/if}
+
+        {#if isFromLink}
+          <p class="send__hint" role="status">
+            Filled in from the link. Check it before you send.
+          </p>
         {/if}
 
         {#if nameLookup?.error}
@@ -1480,9 +1552,7 @@
         <ScanQR
           bind:this={scanQrComponent}
           bind:scanner
-          on:scan={(event) => {
-            sendToAddress = event.detail;
-          }}
+          on:scan={(event) => takeRecipient(event.detail)}
         />
         {#if addressInfo.isSelfReferential}
           <Banner variant="warning" title="This is your own address." />

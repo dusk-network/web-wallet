@@ -50,6 +50,10 @@
   /** @type {string | undefined} */
   export let className = undefined;
 
+  /** Called once it's copied. */
+  /** @type {() => void} */
+  export let onCopied = () => {};
+
   /**
    * What it just copied: it says Copied for a moment, while that's still
    * the value it shows.
@@ -78,6 +82,7 @@
     }
 
     justCopied = copying;
+    onCopied();
     announce("Copied", COPIED_FOR);
     clearTimeout(timer);
     timer = window.setTimeout(() => {

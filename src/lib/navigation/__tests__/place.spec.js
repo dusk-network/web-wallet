@@ -262,6 +262,34 @@ describe("Keeping what's typed in a form that moves money", () => {
       expectTyped(render(Send, sendProps));
     });
 
+    it("brings back what was typed over what a link asks, for that link, and not for another", async () => {
+      const link = {
+        initialAmount: "0.15",
+        initialMemo: "Factura 33",
+        initialRecipient: RECIPIENT,
+      };
+      const opened = render(Send, { ...sendProps, ...link });
+      const [, amount] = fields(opened);
+
+      expect(amount).toHaveValue("0.15");
+
+      await fireEvent.input(amount, { target: { value: "0.2" } });
+      await lockAndUnlock();
+      cleanup();
+
+      const back = render(Send, { ...sendProps, ...link });
+
+      expect(fields(back)[1]).toHaveValue("0.2");
+      expect(fields(back)[2]).toHaveValue("Factura 33");
+
+      await lockAndUnlock();
+      cleanup();
+
+      expect(
+        fields(render(Send, { ...sendProps, ...link, initialAmount: "0.5" }))[1]
+      ).toHaveValue("0.5");
+    });
+
     it("lets it go once the form brought back is left", async () => {
       sendProps.execute.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 

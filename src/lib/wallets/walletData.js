@@ -1,7 +1,7 @@
 /**
  * What this device keeps of each wallet besides its phrase: its cache of
  * notes and balances, its bridge transfers and migrations, its contacts,
- * its history and its names. Each wallet's is its own, by the ending of
+ * its history, its names and the payments it asked for. Each wallet's is its own, by the ending of
  * its names ($lib/wallets/dataNames) or by its accounts, so that one
  * wallet's never shows in another, and a wallet removed takes its own
  * alone.
@@ -17,6 +17,10 @@ import {
 import { hydrateWithdrawalActivity } from "$lib/bridge/withdrawalActivityStorage";
 import { forgetContactsOf } from "$lib/contacts";
 import { forgetVerifiedNamesOf } from "$lib/dusk-domains/verifiedNames";
+import {
+  forgetWalletRequests,
+  hydrateRequests,
+} from "$lib/payment-requests/requests";
 import {
   forgetOtherWalletCaches,
   forgetWalletCache,
@@ -50,6 +54,7 @@ export function useWalletData(key) {
   hydrateMigrations();
   hydrateDepositActivity();
   hydrateWithdrawalActivity();
+  hydrateRequests();
 }
 
 /**
@@ -74,6 +79,7 @@ export async function forgetWalletData(key, { accounts, addresses }) {
     Promise.resolve().then(() => {
       forgetWalletBridgeRecords(suffix);
       forgetWalletRouteTransfers(suffix);
+      forgetWalletRequests(suffix);
       forgetVerifiedNamesOf(accounts);
     }),
     accounts[0] ? forgetContactsOf(accounts[0]) : Promise.resolve(),
@@ -104,6 +110,7 @@ export async function forgetOtherWalletsData() {
   for (const suffix of suffixes) {
     forgetWalletBridgeRecords(suffix);
     forgetWalletRouteTransfers(suffix);
+    forgetWalletRequests(suffix);
   }
 
   await forgetOtherWalletCaches(suffixes);
@@ -120,4 +127,5 @@ export async function forgetEveryWalletData() {
   await walletCacheFor("").clear();
   forgetWalletBridgeRecords("");
   forgetWalletRouteTransfers("");
+  forgetWalletRequests("");
 }

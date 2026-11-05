@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Request payment on Receive, with a QR to download and an https link that opens Send filled in, and a list of your requests saying what matched what came in
+- Read `dusk:` and https payment links pasted or scanned into Send's To, or opened directly and through an unlock, filling in the amount and memo; one for another network says so and fills in nothing
 - Keep the fee to unstake, or to prove and claim a withdrawal, on Send's and the Bridge's Max, say so, and warn of an amount that leaves too little for it
 - List a transfer's exact amounts in its details under Bridge › Activity: sent, bridge fee, network fee, received and gas
 - Search finds a payment by its amount, and lists a contact's payments under the contact
