@@ -180,6 +180,46 @@ describe("The welcome screens' layout", () => {
     expect(screen.queryByText(SLOW_WORDS)).toBeNull();
   });
 
+  it("tries again by itself now and then once connecting failed, saying so until a try gets through, and at once as the browser is online again", async () => {
+    connect.mockRejectedValueOnce(new Error("Failed to fetch"));
+    reconnect.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+    renderWithSimpleContent(WelcomeLayout, {});
+
+    await act(() => vi.advanceTimersByTime(0));
+
+    expect(screen.getByText("Network connection issue")).toBeInTheDocument();
+
+    await act(() => vi.advanceTimersByTime(9999));
+
+    expect(reconnect).not.toHaveBeenCalled();
+
+    // A try that fails changes nothing on the screen.
+    await act(() => vi.advanceTimersByTime(1));
+
+    expect(reconnect).toHaveBeenCalledOnce();
+    expect(screen.getByText("Network connection issue")).toBeInTheDocument();
+
+    reconnect.mockResolvedValueOnce(/** @type {any} */ ({}));
+    init.mockResolvedValueOnce();
+    await act(() => vi.advanceTimersByTime(10_000));
+
+    expect(reconnect).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText("Network connection issue")).toBeNull();
+    expect(screen.getByText("some text")).toBeInTheDocument();
+
+    cleanup();
+    connect.mockRejectedValueOnce(new Error("Failed to fetch"));
+    render(WelcomeLayout);
+    await act(() => vi.advanceTimersByTime(0));
+    reconnect.mockClear();
+
+    await act(() => window.dispatchEvent(new Event("online")));
+
+    expect(reconnect).toHaveBeenCalledOnce();
+    expect(screen.getByText("Connecting to the network…")).toBeInTheDocument();
+  });
+
   it("says when connecting failed, and tries again from there", async () => {
     connect.mockRejectedValueOnce(new Error("Failed to fetch"));
 
