@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Close the profile menu with phone Back, staying on the page
 - Say on a phone that the screen says when a transfer arrives, not the tab's title, which phones don't show
 - Write how much is staked across the network in the language's digits among English words, as "5.7Cr" in Hindi, not in another script
 - Show a stake with Sozu's deposit fee to the lux, and a lux of the pool's rounding as no rewards, not fewer than none

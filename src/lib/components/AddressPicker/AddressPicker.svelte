@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { pushState } from "$app/navigation";
   import { page } from "$app/stores";
   import { createEventDispatcher, onMount } from "svelte";
   import { makeClassName, randomUUID, shortenAddress } from "$lib/dusk/string";
@@ -72,12 +73,55 @@
   /** @type {HTMLMenuElement} */
   let addressOptionsMenu;
 
-  function closeDropDown() {
+  /**
+   * Opens the list, as a step of its own in the browser's history: Back
+   * closes it, and leaves the page as it was.
+   */
+  function openDropDown() {
+    if (!expanded) {
+      expanded = true;
+      pushState("", { ...$page?.state, profileMenu: true });
+    }
+  }
+
+  /**
+   * Closes the list, and its step in the history goes: unless a page takes
+   * its place (`leaving`).
+   *
+   * @param {{ leaving?: boolean }} [options]
+   */
+  function closeDropDown({ leaving = false } = {}) {
+    const wasOpen = expanded;
+
     expanded = false;
+
+    if (wasOpen && !leaving && $page?.state?.profileMenu) {
+      history.back();
+    }
   }
 
   function toggleDropDown() {
-    expanded = !expanded;
+    if (expanded) {
+      closeDropDown();
+    } else {
+      openDropDown();
+    }
+  }
+
+  /** Whether the history was at the list's step. */
+  let wasAtList = false;
+
+  /**
+   * Back closes the list, and nothing else.
+   *
+   * @param {boolean} isAtList
+   */
+  function followHistory(isAtList) {
+    if (wasAtList && !isAtList) {
+      expanded = false;
+    }
+
+    wasAtList = isAtList;
   }
 
   /** The page the list opened on. */
@@ -91,11 +135,12 @@
   function followPage(href) {
     if (href !== shownHref) {
       shownHref = href;
-      closeDropDown();
+      expanded = false;
     }
   }
 
   $: followPage(String($page?.url ?? ""));
+  $: followHistory(Boolean($page?.state?.profileMenu));
 
   /** @type {import("svelte/elements").MouseEventHandler<HTMLDivElement>} */
   function handleTriggerClick() {
@@ -136,9 +181,10 @@
     closeDropDown();
   }
 
+  // Add wallet's page takes the list's step in the history.
   function handleAddWallet() {
-    dispatch("addWallet");
-    closeDropDown();
+    dispatch("addWallet", { replace: Boolean($page?.state?.profileMenu) });
+    closeDropDown({ leaving: true });
   }
 
   /**
