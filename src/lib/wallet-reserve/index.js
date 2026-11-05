@@ -6,11 +6,12 @@
  * None without anything elsewhere: Max is then all of it.
  */
 
-import { derived } from "svelte/store";
+import { derived, readable } from "svelte/store";
 
+import { activityState } from "$lib/activity";
 import { withdrawalActivityStore } from "$lib/bridge/withdrawalActivityStorage";
 import { getGasSettings } from "$lib/contracts";
-import { sozuStore } from "$lib/sozu";
+import { isSozuFunction, sozuStore } from "$lib/sozu";
 import { gasPriceStore, settingsStore, walletStore } from "$lib/stores";
 
 /**
@@ -37,6 +38,18 @@ const TO_CLAIM = new Set([
  */
 
 /**
+ * What's with Sozu is read for an account that called a pool of its, as on
+ * Home, here for whoever comes straight to a page with a Max.
+ */
+const sozuIsRead = readable(null, () =>
+  activityState.subscribe(({ rows }) => {
+    if (rows.some(isSozuFunction)) {
+      void sozuStore.load();
+    }
+  })
+);
+
+/**
  * What the public balance must keep: the largest fee of what's elsewhere.
  *
  * @type {import("svelte/store").Readable<FeeToKeep>}
@@ -48,6 +61,7 @@ export const feeToKeep = derived(
     gasPriceStore,
     sozuStore,
     withdrawalActivityStore,
+    sozuIsRead,
   ],
   ([$wallet, $settings, $price, $sozu, $withdrawals]) => {
     const account = String($wallet.currentProfile?.account ?? "");

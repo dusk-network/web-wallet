@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
 
+import { SOZU_FN } from "$lib/sozu/config";
+
 import { feeToKeep } from "..";
 
 const ACCOUNT = "my-account";
@@ -8,6 +10,7 @@ const ACCOUNT = "my-account";
 const stores = vi.hoisted(() => {
   /** @type {any} */
   const state = {
+    activity: null,
     gasPrice: null,
     settings: null,
     sozu: null,
@@ -35,10 +38,21 @@ vi.mock("$lib/stores", async (importOriginal) => {
 
 vi.mock("$lib/sozu", async () => {
   const { writable } = await import("svelte/store");
+  const { isSozuFunction } = await import("$lib/sozu/config");
 
-  stores.sozu = writable({ account: "", status: null });
+  stores.sozu = Object.assign(writable({ account: "", status: null }), {
+    load: vi.fn(),
+  });
 
-  return { sozuStore: stores.sozu };
+  return { isSozuFunction, sozuStore: stores.sozu };
+});
+
+vi.mock("$lib/activity", async () => {
+  const { writable } = await import("svelte/store");
+
+  stores.activity = writable({ rows: [] });
+
+  return { activityState: stores.activity };
 });
 
 vi.mock("$lib/bridge/withdrawalActivityStorage", async () => {
@@ -69,6 +83,16 @@ function keptFor({ amount = null, reward = 0n, stDusk = 0n, stages = [] }) {
 }
 
 describe("feeToKeep", () => {
+  it("reads Sozu for an account that called a pool of its, on whichever page comes first, and not for others", () => {
+    stores.activity.set({ rows: [{ fnName: "transfer" }] });
+    get(feeToKeep);
+    expect(stores.sozu.load).not.toHaveBeenCalled();
+
+    stores.activity.set({ rows: [{ fnName: SOZU_FN.STAKE }] });
+    get(feeToKeep);
+    expect(stores.sozu.load).toHaveBeenCalledOnce();
+  });
+
   it("keeps nothing for a wallet with nothing elsewhere: Max is all of it", () => {
     expect(keptFor({})).toStrictEqual({ lux: 0n, why: "" });
   });
