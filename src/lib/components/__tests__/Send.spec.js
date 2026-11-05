@@ -117,6 +117,21 @@ const historyAt = (/** @type {{ sendReview?: boolean }} */ state) =>
     /** @type {unknown} */ (page)
   ).set({ state });
 
+// Another wallet's addresses here are made up: none of them is two keys.
+const madeUpAddresses = vi.hoisted(() => new Set());
+
+vi.mock("$lib/wallet/isShieldedAddress", async (importOriginal) => {
+  const { default: isShieldedAddress } =
+    /** @type {typeof import("$lib/wallet/isShieldedAddress")} */ (
+      await importOriginal()
+    );
+
+  return {
+    default: (/** @type {unknown} */ address) =>
+      madeUpAddresses.has(address) || isShieldedAddress(address),
+  };
+});
+
 describe("Send", () => {
   const lastTxId =
     "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
@@ -127,7 +142,7 @@ describe("Send", () => {
   const otherAccount =
     "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
   const otherShielded =
-    "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnM";
+    "4ozNeBzeQq5XZGoMYTBKfSG9pmPBa4UWxbfHV3BSDtgeMMz2Xw8oZgVAhN16yC94CUQkg7iAe8fpQT4CsF41iKy6";
 
   // The BEP20 bridge's account on Dusk.
   const bep20BridgeAddress =
@@ -1463,7 +1478,7 @@ describe("Send", () => {
     const nameAccount =
       "qaJoSNfnh7kLyMPvFkWUPhzcAo2aDexVuGGjRZvghm31NPk7i8N57EFgKoYNBAicCfZVFm9icdcQYEoedS9jN5RZhYeuoSWbmomXdm7A1yUfPSUovheWccGYUvVkKCUnt7V";
     const nameAddress =
-      "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnM";
+      "4ozNeBzeQq5XZGoMYTBKfSG9pmPBa4UWxbfHV3BSDtgeMMz2Xw8oZgVAhN16yC94CUQkg7iAe8fpQT4CsF41iKy6";
 
     // The least a balance must hold to pay for a transfer is one Lux more.
     const maxGasFee = fee;
@@ -2859,6 +2874,7 @@ describe("Send", () => {
     it("should name a profile of the other wallet on the address card, after a .dusk name", async () => {
       const { account, address } = await holdOtherWallet();
 
+      madeUpAddresses.add(address);
       baseProps.resolveName.mockResolvedValue({ account, name: "alice.dusk" });
 
       const { container, getByRole } = render(Send, baseProps);

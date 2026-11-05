@@ -1,7 +1,69 @@
-import { getAddressInfo } from "..";
+import { decodeBase58, encodeBase58 } from "@dusk-network/networks/account";
 import { describe, expect, it } from "vitest";
 
+import { getAddressInfo } from "..";
+
 describe("getAddressInfo", () => {
+  describe("a shielded address", () => {
+    // As the wallet core made it, from a seed.
+    const address =
+      "2opnVd3huLf8EKpG7R993ss1zWXrLeArGLupA3wrXG99Y1EU8aCcYjUD5utnz8eYn8Jg8Fa8oVNqq52XNrc3i8Nd";
+
+    /** @param {number[]} bytes */
+    const encoded = (bytes) => encodeBase58(Uint8Array.from(bytes));
+
+    it("should take one that's two keys, and say whose it is", () => {
+      expect(getAddressInfo(address, "", "")).toMatchObject({
+        isSelfReferential: false,
+        isValid: true,
+        type: "address",
+      });
+      expect(getAddressInfo(address, address, "")).toMatchObject({
+        isSelfReferential: true,
+        isValid: true,
+      });
+    });
+
+    it("should refuse what only has an address's length", () => {
+      for (const fill of [0x07, 0x63, 0xff, 0x00]) {
+        expect(
+          getAddressInfo(encoded(new Array(64).fill(fill)), "", "").isValid
+        ).toBe(false);
+      }
+    });
+
+    it("should refuse one with a character changed", () => {
+      for (const at of [0, 20, 44, 70, address.length - 1]) {
+        const other = address[at] === "2" ? "3" : "2";
+
+        expect(
+          getAddressInfo(
+            address.slice(0, at) + other + address.slice(at + 1),
+            "",
+            ""
+          ).isValid
+        ).toBe(false);
+      }
+    });
+
+    it("should refuse a key that's the curve's neutral point, which nobody could spend from", () => {
+      const neutral = [1, ...new Array(31).fill(0)];
+
+      expect(
+        getAddressInfo(encoded([...neutral, ...neutral]), "", "").isValid
+      ).toBe(false);
+
+      const [, ...second] = Array.from(
+        /** @type {Uint8Array} */ (decodeBase58(address))
+      );
+
+      expect(
+        getAddressInfo(encoded([...neutral, ...second.slice(31)]), "", "")
+          .isValid
+      ).toBe(false);
+    });
+  });
+
   it("should refuse a public account with one character changed, or its last dropped", () => {
     const account =
       "21SvzTdXggQkZpnkwvWi8CC3Mn5FsSRenW5NfkL2wmjLMwEmY4K27Vs2DUaEzWQ3aRLZE3U1dgX5UY2zsWG4HTHaRyA7tKUe6ubrqYZBxFuWB4FzvgP4tEL1cH5wFRKVGARR";
@@ -30,7 +92,7 @@ describe("getAddressInfo", () => {
 
   const validShieldedAddresses = [
     "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnMM",
-    "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnM",
+    "4ozNeBzeQq5XZGoMYTBKfSG9pmPBa4UWxbfHV3BSDtgeMMz2Xw8oZgVAhN16yC94CUQkg7iAe8fpQT4CsF41iKy6",
   ];
 
   // Provisioners' accounts, from the network.
@@ -53,7 +115,7 @@ describe("getAddressInfo", () => {
     "",
 
     // Contains an invalid character (!)
-    "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnM!",
+    "4ozNeBzeQq5XZGoMYTBKfSG9pmPBa4UWxbfHV3BSDtgeMMz2Xw8oZgVAhN16yC94CUQkg7iAe8fpQT4CsF41iKy6!",
 
     // Contains an invalid character (_)
     "47jNTgAhzn9_CKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnM",

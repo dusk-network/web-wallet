@@ -1,6 +1,8 @@
 import { isAccount } from "@dusk-network/networks/account";
 import { ProfileGenerator } from "@dusk/w3sper";
 
+import isShieldedAddress from "./isShieldedAddress";
+
 /**
  * Validates if an input is a shielded or an public address, with feedback on failure or success.
  * Additionally, checks for self-referential input.
@@ -16,7 +18,10 @@ import { ProfileGenerator } from "@dusk/w3sper";
 export default function getAddressInfo(input, shieldedAddress, publicAddress) {
   const type = ProfileGenerator.typeOf(input);
 
-  if (type === "account" && !isAccount(input)) {
+  if (
+    (type === "account" && !isAccount(input)) ||
+    (type === "address" && !isShieldedAddress(input))
+  ) {
     return { isValid: false };
   }
 

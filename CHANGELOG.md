@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Close a transaction, a contact or the search with phone Back, staying on the page, and leave the password screen out of Back once the wallet is open
 - Bring back what was typed in a form with the browser's Back after leaving it for another page
 - Close the profile menu on any navigation, and only close it on a tap outside
+- Check a shielded address properly on Send: one that only has the right length is refused
 - Show a memo's hidden characters as codes, and say so, on Send's review, the Sent screen and in History, so that text can't read as something it isn't
 - Keep Send inside a phone's screen with a long contact name, and Review in reach
 - Name an EVM address on Send, and say what's wrong with an address as soon as it's pasted: no red text without a reason

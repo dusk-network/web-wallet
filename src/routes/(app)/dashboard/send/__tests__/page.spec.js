@@ -71,6 +71,9 @@ const OTHER =
 const available = (container) =>
   container.querySelector(".send__amount + .send__hint");
 
+// The profiles' addresses here are made up, so none is two keys.
+vi.mock("$lib/wallet/isShieldedAddress", () => ({ default: () => true }));
+
 describe("Send page", () => {
   afterEach(() => {
     cleanup();

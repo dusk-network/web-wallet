@@ -309,7 +309,8 @@ describe("Wallet store", async () => {
         stakeInfoSpy.mock.invocationCallOrder[0]
       );
 
-      expect(clearTimeoutSpy).toHaveBeenCalledTimes(2);
+      // Connecting's own timeout, as it connected, and the wallet store's two.
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(3);
 
       /**
        * The first call is caused by the timeout in the network
