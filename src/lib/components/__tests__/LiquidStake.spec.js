@@ -709,6 +709,22 @@ describe("LiquidStake", () => {
       expect(getByRole("button", { name: "Review" })).toBeDisabled();
     });
 
+    it("says what's missing of the fee as it's edited, down to its minimum", async () => {
+      const { container, getByLabelText, getByRole } = render(
+        LiquidStake,
+        stranded
+      );
+
+      await fireEvent.click(getByRole("button", { name: "Edit" }));
+      await fireEvent.input(getByLabelText(/gas limit/i), {
+        target: { value: "4000000" },
+      });
+
+      expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
+        "The public balance doesn't cover the network fee: 0.0012 DUSK short. Add that much to it first."
+      );
+    });
+
     it("says what's missing of an empty balance too, and hides the figure, which gives a balance away, with the balances", () => {
       const empty = render(LiquidStake, { ...stranded, availableBalance: 0n });
 
