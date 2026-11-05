@@ -11,6 +11,7 @@
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
+    formatFee,
     formatTotal,
   } from "$lib/dusk/currency";
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
@@ -32,6 +33,7 @@
   import StakeFlow from "./StakeFlow.svelte";
   import {
     checkAmount,
+    feeError,
     leastSozuUnstake,
     normalizeDuskInput,
     parseDuskInput,
@@ -353,9 +355,12 @@
   // Sozu's deposit fee, as its substrate gives it, where it could be read.
   $: depositRate = status?.fees?.deposit ?? null;
   $: stDusk = status?.position.stDusk ?? 0n;
+  // What it costs to unstake later, which a stake leaves in the public balance:
+  // all of it staked, there would be no way to pay for getting it back.
+  $: unstakeFee = gas.unstake.settings.gasLimit * gas.unstake.settings.gasPrice;
   $: most = isStake
-    ? availableBalance > maxGasFee
-      ? availableBalance - maxGasFee
+    ? availableBalance > maxGasFee + unstakeFee
+      ? availableBalance - maxGasFee - unstakeFee
       : 0n
     : staked;
   // A decimal comma, as the language or a phone's keyboard gives it, reads
@@ -374,6 +379,7 @@
     available: availableBalance,
     fee: maxGasFee,
     hidden: hideBalances,
+    keep: isStake ? unstakeFee : 0n,
     locale: language,
     minimum: least ?? 0n,
     most: isStake
@@ -389,6 +395,16 @@
       ? { error: NO_STAKE, isMinimum: true, ok: false }
       : checked;
   $: canSend = Boolean(status) && check.ok && isGasValid && !isStakeOff;
+  // An unstake the public balance can't pay for, said before anything is typed.
+  $: stranded =
+    !isStake && staked > 0n && availableBalance < maxGasFee
+      ? feeError({
+          available: availableBalance,
+          fee: maxGasFee,
+          hidden: hideBalances,
+          locale: language,
+        })
+      : "";
   $: shownAmount = amount !== null && check.ok ? amount : 0n;
   $: shownText = isAmountMasked
     ? BALANCE_MASK
@@ -544,7 +560,7 @@
             size="small"
             text="Max"
             title={isStake
-              ? "All of it, less the network fee"
+              ? "All of it, less the network fee and the fee to unstake later"
               : "All you have staked with Sozu"}
             variant="secondary"
           />
@@ -562,6 +578,14 @@
             /> DUSK
           {/if}
         </p>
+        {#if isStake && isMaxAmount && !check.error}
+          <p class="liquid-stake__hint">
+            Max keeps {formatFee(maxGasFee + unstakeFee, language, {
+              max: true,
+            })} DUSK: up to {formatFee(maxGasFee, language, { max: true })} for this
+            fee and {formatFee(unstakeFee, language, { max: true })} to unstake later.
+          </p>
+        {/if}
         <div id="{id}-check">
           {#if isPaused}
             <p class="liquid-stake__error" role="alert">
@@ -572,9 +596,9 @@
               <strong>Sozu's deposits couldn't be checked.</strong> Staking stays
               off until they can be. Unstaking still works.
             </p>
-          {:else if check.error}
+          {:else if check.error || stranded}
             <p class="liquid-stake__error" role="alert">
-              <strong>{check.error}</strong>
+              <strong>{check.error || stranded}</strong>
             </p>
           {:else if estimate !== null}
             <div class="liquid-stake__estimate">

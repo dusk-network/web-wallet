@@ -177,6 +177,7 @@
       {hasStake}
       liquidHref={isSozuAvailable ? "/dashboard/stake?flow=liquid" : undefined}
       {minimumStake}
+      unstakeFee={unstakeGas.settings.gasLimit * unstakeGas.settings.gasPrice}
     />
   {:else if flow === "liquid" && isSozuAvailable}
     {#key liquidAction}

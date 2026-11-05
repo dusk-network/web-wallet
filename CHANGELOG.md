@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Read `1.000.000` as a million on browsers that write decimals with a comma
 - Fix Max on browsers whose language writes its own digits
 - Write Send's amount example in the browser's language
+- Keep the fee to unstake later when Max fills in a stake, native or with Sozu, and refuse an amount that leaves too little for it
+- Say how much DUSK is missing when the public balance can't pay for an unstake or a claim
 
 ## [1.9.0] - 2026-11-05
 

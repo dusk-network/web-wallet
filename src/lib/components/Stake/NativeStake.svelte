@@ -20,6 +20,7 @@
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
+    formatFee,
     formatTotal,
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
@@ -62,6 +63,10 @@
 
   /** @type {ContractGasSettings} */
   export let gasSettings;
+
+  /** The most it costs to unstake later, which the public balance keeps. */
+  /** @type {bigint} */
+  export let unstakeFee;
 
   /** Where liquid staking is, when this network has it. */
   /** @type {string | undefined} */
@@ -129,8 +134,12 @@
   $: ({ hideBalances, language } = $settingsStore);
   $: isAmountMasked = hideBalances && isMaxAmount;
   $: maxGasFee = gasLimit * gasPrice;
+  // Max keeps this fee, and the one to unstake later: all of it staked, there
+  // would be no way to pay for getting it back.
   $: maxStake =
-    availableBalance > maxGasFee ? availableBalance - maxGasFee : 0n;
+    availableBalance > maxGasFee + unstakeFee
+      ? availableBalance - maxGasFee - unstakeFee
+      : 0n;
   $: minimum = hasStake ? 0n : minimumStake;
   // A decimal comma, as the language or a phone's keyboard gives it, reads
   // as the amount meant.
@@ -142,6 +151,7 @@
     available: availableBalance,
     fee: maxGasFee,
     hidden: hideBalances,
+    keep: unstakeFee,
     locale: language,
     minimum,
     text: amountText,
@@ -218,7 +228,7 @@
           on:click={() => fill(maxStake, true)}
           size="small"
           text="Max"
-          title="All of it, less the network fee"
+          title="All of it, less the network fee and the fee to unstake later"
           variant="secondary"
         />
       </div>
@@ -228,6 +238,16 @@
           value={formatDusk(availableBalance, language)}
         /> DUSK from your public balance
       </p>
+      {#if isMaxAmount && !check.error}
+        <p class="native-stake__hint">
+          Max keeps {formatFee(maxGasFee + unstakeFee, language, { max: true })} DUSK:
+          up to {formatFee(maxGasFee, language, { max: true })} for this fee and {formatFee(
+            unstakeFee,
+            language,
+            { max: true }
+          )} to unstake later.
+        </p>
+      {/if}
       <div id="{id}-error">
         {#if check.error}
           <div class="native-stake__error" role="alert">
@@ -245,8 +265,8 @@
         {:else if isBelowMinimum && !amountText}
           <div class="native-stake__note">
             <p>
-              Your public balance doesn't cover the {minimumText} DUSK minimum and
-              the network fee.
+              Your public balance doesn't cover the {minimumText} DUSK minimum, this
+              fee and the fee to unstake later.
             </p>
             {#if liquidHref}
               <a

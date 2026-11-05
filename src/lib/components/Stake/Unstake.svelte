@@ -200,6 +200,7 @@
     amount,
     available: availableBalance,
     fee: maxGasFee,
+    hidden: hideBalances,
     locale: language,
     most: {
       amount: maxWithdrawAmount,

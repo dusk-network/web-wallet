@@ -10,18 +10,23 @@ import { feeError } from "$lib/components/Stake/stakeAmount";
  * @param {{
  *   hasLiquid?: boolean,
  *   hasPastStaking: boolean,
+ *   hidden?: boolean,
+ *   locale?: string,
  *   maxFee: bigint,
  *   pending?: boolean,
  *   publicBalance: bigint,
  *   reward: bigint,
  *   staked: bigint,
  * }} state `maxFee` is the most an unstake or a claim costs; `hasLiquid`
- *   says whether something is staked with Sozu, which these don't touch.
+ *   says whether something is staked with Sozu, which these don't touch;
+ *   `hidden`, whether balances are, which what's missing would give away.
  * @returns {{ canClaim: boolean, canUnstake: boolean, reasons: string[] }}
  */
 export function stakeActions({
   hasLiquid = false,
   hasPastStaking,
+  hidden = false,
+  locale = "en",
   maxFee,
   pending = false,
   publicBalance,
@@ -47,7 +52,9 @@ export function stakeActions({
   }
 
   if ((hasStake || hasReward) && !canPay) {
-    reasons.push(feeError(publicBalance));
+    reasons.push(
+      feeError({ available: publicBalance, fee: maxFee, hidden, locale })
+    );
   }
 
   return {

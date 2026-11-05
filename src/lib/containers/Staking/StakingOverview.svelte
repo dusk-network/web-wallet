@@ -10,6 +10,7 @@
   import { duskPerStDusk, feePercent } from "@dusk-network/networks/sozu";
   import { sozuRateEstimate } from "@dusk-network/networks/rates";
   import { ratePercent } from "$lib/staking/rewardRate";
+  import { settingsStore } from "$lib/stores";
 
   import ActivityPanel from "../Home/ActivityPanel.svelte";
   import { stakeActions } from "./stakeActions";
@@ -84,6 +85,8 @@
   $: actions = stakeActions({
     hasLiquid,
     hasPastStaking,
+    hidden: $settingsStore.hideBalances,
+    locale,
     maxFee,
     pending,
     publicBalance,

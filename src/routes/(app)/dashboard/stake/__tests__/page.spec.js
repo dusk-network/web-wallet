@@ -670,11 +670,11 @@ describe("Staking", () => {
       expect(getByLabelText("Stake amount")).toHaveValue("");
       expect(queryByRole("button", { name: "Use 1,000" })).toBeNull();
       expect(textOf(container.querySelector(".native-stake__note"))).toBe(
-        "Your public balance doesn't cover the 1,000 DUSK minimum and the network fee. Less than 1,000 DUSK? Use liquid staking (Sozu, third party)"
+        "Your public balance doesn't cover the 1,000 DUSK minimum, this fee and the fee to unstake later. Less than 1,000 DUSK? Use liquid staking (Sozu, third party)"
       );
     });
 
-    it("says how much more an amount needs, with the network fee", async () => {
+    it("says how much more an amount needs, with this fee and the fee to unstake later", async () => {
       open("?flow=native");
       withoutStake(1_483n);
 
@@ -685,8 +685,19 @@ describe("Staking", () => {
       });
 
       expect(textOf(container.querySelector(".native-stake__error"))).toBe(
-        "That's 0.05 DUSK more than the public balance, with the network fee."
+        "That's 0.1 DUSK more than the public balance, with this fee and the fee to unstake later."
       );
+    });
+
+    it("keeps the fee to unstake, at this network's gas, with Max", async () => {
+      open("?flow=native");
+      withoutStake(1_483n);
+
+      const { getByLabelText, getByRole } = render(Staking);
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(getByLabelText("Stake amount")).toHaveValue("1482.9");
     });
   });
 

@@ -37,6 +37,7 @@ const baseProps = {
   gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n },
   liquidHref: "/dashboard/stake?flow=liquid",
   minimumStake: 1_000n * DUSK,
+  unstakeFee: 50_000_000n,
 };
 
 describe("parseDuskInput", () => {
@@ -113,6 +114,18 @@ describe("checkAmount", () => {
     });
   });
 
+  it("keeps what a stake must leave for its way out, and says so", () => {
+    const keep = 50_000_000n;
+
+    expect(check("1482.95", { keep }).error).toBe(
+      "That's 0.05 DUSK more than the public balance, with this fee and the fee to unstake later."
+    );
+    expect(check("1482.95", { hidden: true, keep }).error).toBe(
+      "That leaves too little for this fee and the fee to unstake later."
+    );
+    expect(check("1482.9", { keep }).ok).toBe(true);
+  });
+
   it("doesn't let an amount give away the balance while balances are hidden", () => {
     expect(check("1483", { hidden: true }).error).toBe(
       "That leaves too little for the network fee."
@@ -130,10 +143,18 @@ describe("checkAmount", () => {
       "Enter an amount such as 10 or 10.5."
     );
     expect(check("5", { available: 0n, minimum: 0n, most }).error).toBe(
-      "The network fee is paid from the public balance, and it's empty."
+      "The network fee is paid from the public balance, and it's empty: 0.05 DUSK short. Add that much to it first."
     );
-    expect(check("5", { available: 1n, minimum: 0n, most }).error).toBe(
-      "The public balance doesn't cover the network fee."
+    expect(
+      check("5", { available: 49_000_000n, minimum: 0n, most }).error
+    ).toBe(
+      "The public balance doesn't cover the network fee: 0.001 DUSK short. Add that much to it first."
+    );
+    expect(
+      check("5", { available: 49_000_000n, hidden: true, minimum: 0n, most })
+        .error
+    ).toBe(
+      "The public balance doesn't cover the network fee: •••• DUSK short."
     );
     expect(check("5", { minimum: 0n, most }).ok).toBe(true);
   });
@@ -191,7 +212,7 @@ describe("NativeStake", () => {
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       expect(getByLabelText("Stake amount")).toHaveValue("••••");
-      expect(container.textContent).not.toContain("1,482.95");
+      expect(container.textContent).not.toContain("1,482.9");
       expect(getByRole("button", { name: "Stake •••• DUSK" })).toBeEnabled();
 
       await fireEvent.click(getByRole("button", { name: "Use 1,000" }));
@@ -324,13 +345,54 @@ describe("NativeStake", () => {
     expect(baseProps.execute).toHaveBeenCalledWith(10n * DUSK, 1n, 50_000_000n);
   });
 
-  it("fills in all of the public balance but the fee with Max", async () => {
-    const { getByLabelText, getByRole } = render(NativeStake, baseProps);
+  it("fills in all of the public balance but this fee and the fee to unstake later with Max", async () => {
+    const { container, getByLabelText, getByRole } = render(
+      NativeStake,
+      baseProps
+    );
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    expect(getByLabelText("Stake amount")).toHaveValue("1482.95");
-    expect(getByRole("button", { name: "Stake 1,482.95 DUSK" })).toBeEnabled();
+    expect(getByLabelText("Stake amount")).toHaveValue("1482.9");
+    expect(container).toHaveTextContent(
+      "Max keeps 0.1 DUSK: up to 0.05 for this fee and 0.05 to unstake later."
+    );
+    expect(getByRole("button", { name: "Max" })).toHaveAttribute(
+      "title",
+      "All of it, less the network fee and the fee to unstake later"
+    );
+    expect(getByRole("button", { name: "Stake 1,482.9 DUSK" })).toBeEnabled();
+  });
+
+  it("refuses an amount typed that leaves too little to unstake, as Max would", async () => {
+    const { container, getByLabelText, getByRole } = render(
+      NativeStake,
+      baseProps
+    );
+
+    // All but this stake's own fee: the most it took before.
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1482.95" },
+    });
+
+    expect(container.querySelector(".native-stake__error")).toHaveTextContent(
+      "That's 0.05 DUSK more than the public balance, with this fee and the fee to unstake later."
+    );
+    expect(getByRole("button", { name: "Stake" })).toBeDisabled();
+  });
+
+  it("offers the minimum only with enough left to unstake it, and says why not", () => {
+    const { container, getByRole, queryByRole } = render(NativeStake, {
+      ...baseProps,
+      availableBalance: 1_000n * DUSK + 50_000_000n,
+    });
+
+    // It would cover the minimum and this stake's fee, with nothing left.
+    expect(queryByRole("button", { name: "Use 1,000" })).toBeNull();
+    expect(getByRole("button", { name: "Max" })).toBeEnabled();
+    expect(container.querySelector(".native-stake__note")).toHaveTextContent(
+      "Your public balance doesn't cover the 1,000 DUSK minimum, this fee and the fee to unstake later."
+    );
   });
 
   it("reviews the summary on its own page on phones, and goes back", async () => {

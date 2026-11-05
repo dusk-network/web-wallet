@@ -347,7 +347,7 @@ describe("LiquidStake", () => {
       };
 
       expect(await error("172")).toBe(
-        "That leaves too little for the network fee."
+        "That leaves too little for this fee and the fee to unstake later."
       );
       expect(await error("999")).toBe("More than you have.");
       expect(textOf(container)).not.toMatch(/\d DUSK more/);
@@ -384,7 +384,7 @@ describe("LiquidStake", () => {
     }
   });
 
-  it("says when a stake is more than the public balance, with the fee", async () => {
+  it("says when a stake is more than the public balance, with this fee and the fee to unstake later", async () => {
     const { container, getByLabelText, getByRole } = render(
       LiquidStake,
       baseProps
@@ -395,7 +395,7 @@ describe("LiquidStake", () => {
     });
 
     expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-      "That's 0.005 DUSK more than the public balance, with the network fee."
+      "That's 0.015 DUSK more than the public balance, with this fee and the fee to unstake later."
     );
     expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
 
@@ -404,6 +404,137 @@ describe("LiquidStake", () => {
 
     expect(stake).toHaveTextContent("172 DUSK");
     expect(stake).toHaveClass("stake-flow__muted");
+  });
+
+  describe("what a stake leaves to get back out with", () => {
+    const shown = { ...baseProps, availableBalance: DUSK };
+
+    it("keeps this fee and the fee to unstake with Max, which then pays for that unstake", async () => {
+      const { container, getByLabelText, getByRole } = render(
+        LiquidStake,
+        shown
+      );
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      // 1 DUSK, less 0.005 for this stake and 0.01 for the unstake.
+      expect(getByLabelText("Stake amount")).toHaveValue("0.985");
+      expect(container).toHaveTextContent(
+        "Max keeps 0.015 DUSK: up to 0.005 for this fee and 0.01 to unstake later."
+      );
+      expect(getByRole("button", { name: "Max" })).toHaveAttribute(
+        "title",
+        "All of it, less the network fee and the fee to unstake later"
+      );
+      expect(
+        getByRole("button", { name: "Stake 0.985 DUSK with Sozu" })
+      ).toBeEnabled();
+
+      cleanup();
+
+      // The stake's block leaves what was kept: the way out is open.
+      const after = render(LiquidStake, {
+        ...baseProps,
+        action: "unstake",
+        availableBalance: DUSK - 985_000_000n - 5_000_000n,
+        sozu: {
+          error: null,
+          loading: false,
+          status: statusWith({ balance: 970_000_000n, stDusk: 1n }),
+        },
+      });
+
+      await fireEvent.click(after.getByRole("button", { name: "Max" }));
+
+      expect(
+        after.getByRole("button", { name: "Unstake 0.97 DUSK" })
+      ).toBeEnabled();
+    });
+
+    it("refuses an amount typed that leaves too little to unstake, as Max would", async () => {
+      const { container, getByLabelText, getByRole } = render(
+        LiquidStake,
+        shown
+      );
+
+      // All but this stake's own fee: the most it took before.
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "0.995" },
+      });
+
+      expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
+        "That's 0.01 DUSK more than the public balance, with this fee and the fee to unstake later."
+      );
+      expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
+    });
+
+    it("keeps Max off with too little for both fees", () => {
+      const { getByRole } = render(LiquidStake, {
+        ...baseProps,
+        availableBalance: 15_000_000n,
+      });
+
+      expect(getByRole("button", { name: "Max" })).toBeDisabled();
+    });
+
+    /** What the wallet left Lena with, her 0.97 DUSK staked with Sozu. */
+    const stranded = {
+      ...baseProps,
+      action: /** @type {const} */ ("unstake"),
+      availableBalance: 2_863_982n,
+      sozu: {
+        error: null,
+        loading: false,
+        status: statusWith({ balance: 970_900_000n, stDusk: 1n }),
+      },
+    };
+
+    it("says how much is missing to unstake as the tab opens, before anything is typed", async () => {
+      const { container, getByLabelText, getByRole } = render(
+        LiquidStake,
+        stranded
+      );
+      const said =
+        "The public balance doesn't cover the network fee: 0.0072 DUSK short. Add that much to it first.";
+
+      expect(getByLabelText("Unstake amount")).toHaveValue("");
+      expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
+        said
+      );
+      expect(container.querySelector("[role='alert']")).toHaveTextContent(said);
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
+        said
+      );
+      expect(getByRole("button", { name: "Unstake" })).toBeDisabled();
+    });
+
+    it("says what's missing of an empty balance too, and hides the figure, which gives a balance away, with the balances", () => {
+      const empty = render(LiquidStake, { ...stranded, availableBalance: 0n });
+
+      expect(
+        textOf(empty.container.querySelector(".liquid-stake__error"))
+      ).toBe(
+        "The network fee is paid from the public balance, and it's empty: 0.01 DUSK short. Add that much to it first."
+      );
+
+      cleanup();
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      try {
+        const hidden = render(LiquidStake, stranded);
+
+        expect(
+          textOf(hidden.container.querySelector(".liquid-stake__error"))
+        ).toBe(
+          "The public balance doesn't cover the network fee: •••• DUSK short."
+        );
+      } finally {
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+      }
+    });
   });
 
   it("unstakes up to what is staked with Sozu, back to the public balance", async () => {

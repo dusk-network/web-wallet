@@ -237,7 +237,7 @@ describe("Unstake", () => {
       await rerender({ availableBalance: 0n });
 
       expect(await errorOf("278")).toBe(
-        "The network fee is paid from the public balance, and it's empty."
+        "The network fee is paid from the public balance, and it's empty: 0.02 DUSK short. Add that much to it first."
       );
     });
 

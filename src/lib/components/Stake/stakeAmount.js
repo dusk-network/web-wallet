@@ -6,6 +6,7 @@
 import { normalizeAmount, parseDusk } from "@dusk-network/app-core/amounts";
 import { leastSozuStake } from "@dusk-network/networks/sozu";
 
+import { BALANCE_MASK } from "$lib/constants/balanceMask";
 import { formatDusk, formatFee } from "$lib/dusk/currency/formatDusk";
 
 const LUX_DECIMALS = 9;
@@ -86,6 +87,7 @@ function exampleError(minimum, locale) {
  *   available: bigint,
  *   fee: bigint,
  *   hidden?: boolean,
+ *   keep?: bigint,
  *   locale: string,
  *   minimum?: bigint,
  *   most?: { amount: bigint, error: string },
@@ -96,8 +98,9 @@ function exampleError(minimum, locale) {
 /**
  * What stops an amount, as the page says it, or "" when it can go ahead.
  * The amount is paid from `available` with the fee, unless `most` caps it
- * on its own, as what can be unstaked; `minimum` is the least it can be,
- * for a stake or, as `action` says, an unstake.
+ * on its own, as what can be unstaked; `keep` stays in `available` after
+ * it, as the fee to unstake a stake later; `minimum` is the least it can
+ * be, for a stake or, as `action` says, an unstake.
  *
  * @param {AmountCheck} check
  * @returns {{ error: string, isMinimum: boolean, ok: boolean }}
@@ -108,6 +111,7 @@ export function checkAmount({
   available,
   fee,
   hidden = false,
+  keep = 0n,
   locale,
   minimum = 0n,
   most,
@@ -139,22 +143,22 @@ export function checkAmount({
     return fail(most.error);
   }
 
-  const needed = (most ? 0n : amount) + fee;
+  const needed = (most ? 0n : amount) + fee + keep;
 
   // With balances hidden, these don't say what's held.
   if (needed > available && hidden && !most) {
     return fail(
       amount > available
         ? "More than you have."
-        : "That leaves too little for the network fee."
+        : `That leaves too little for ${keep ? "this fee and the fee to unstake later" : "the network fee"}.`
     );
   }
 
   if (needed > available) {
     return fail(
       most
-        ? feeError(available)
-        : `That's ${formatFee(needed - available, locale, { max: true })} DUSK more than the public balance, with the network fee.`
+        ? feeError({ available, fee, hidden, locale })
+        : `That's ${formatFee(needed - available, locale, { max: true })} DUSK more than the public balance, with ${keep ? "this fee and the fee to unstake later" : "the network fee"}.`
     );
   }
 
@@ -162,11 +166,21 @@ export function checkAmount({
 }
 
 /**
- * Why the network fee can't be paid.
+ * Why the network fee can't be paid, and how much is missing: rounded up, so
+ * it never reads less than is missing. With balances hidden, the figure,
+ * which gives the balance away, is hidden too.
  *
- * @param {bigint} available The public balance
+ * @param {{ available: bigint, fee: bigint, hidden?: boolean, locale: string }} shortfall
+ *   `available` is the public balance, and `fee` the most it can cost
  */
-export const feeError = (available) =>
-  available > 0n
-    ? "The public balance doesn't cover the network fee."
-    : "The network fee is paid from the public balance, and it's empty.";
+export function feeError({ available, fee, hidden = false, locale }) {
+  const short = hidden
+    ? BALANCE_MASK
+    : formatFee(fee - available, locale, { max: true });
+  const why =
+    available > 0n
+      ? `The public balance doesn't cover the network fee: ${short} DUSK short.`
+      : `The network fee is paid from the public balance, and it's empty: ${short} DUSK short.`;
+
+  return hidden ? why : `${why} Add that much to it first.`;
+}
