@@ -59,6 +59,17 @@ const show = (props = {}) =>
     ...props,
   });
 
+/** What runs as a navigation ends. */
+const navigation = vi.hoisted(() => ({
+  /** @type {Array<() => void>} */
+  after: [],
+}));
+
+vi.mock("$app/navigation", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  afterNavigate: (/** @type {() => void} */ run) => navigation.after.push(run),
+}));
+
 // The contacts open with a wallet, as when it unlocks.
 beforeAll(() => openTestContacts());
 
@@ -258,6 +269,13 @@ describe("ContactsView", () => {
       edit: false,
       id: null,
     });
+    expect(getByRole("button", { expanded: true })).toHaveFocus();
+
+    // Going back through the browser's history takes the focus away, as the
+    // sheet's step goes: it comes back as that ends.
+    getByRole("button", { expanded: true }).blur();
+    navigation.after.forEach((run) => run());
+
     expect(getByRole("button", { expanded: true })).toHaveFocus();
   });
 

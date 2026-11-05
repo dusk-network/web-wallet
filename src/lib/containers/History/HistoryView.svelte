@@ -1,4 +1,5 @@
 <script>
+  import { afterNavigate } from "$app/navigation";
   import { contactNamesOf, contactsStore } from "$lib/contacts";
   import withdrawalClaims from "$lib/bridge/withdrawalClaims";
   import { createEventDispatcher } from "svelte";
@@ -81,6 +82,19 @@
   let isExportOpen = false;
 
   /**
+   * The row to give the focus back to as the step closing its details ends:
+   * going back through the browser's history takes it away.
+   *
+   * @type {HTMLElement | null}
+   */
+  let focusBack = null;
+
+  afterNavigate(() => {
+    focusBack?.focus();
+    focusBack = null;
+  });
+
+  /**
    * Whether the details show, until they're gone: the list keeps their
    * room while they fade out.
    */
@@ -141,9 +155,8 @@
    */
   function closeDetail(hash) {
     dispatch("select", null);
-    /** @type {HTMLElement | null} */ (
-      document.querySelector(`.history__open[data-hash="${hash}"]`)
-    )?.focus();
+    focusBack = document.querySelector(`.history__open[data-hash="${hash}"]`);
+    focusBack?.focus();
   }
 </script>
 

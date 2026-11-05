@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Close a contact with Escape, and give the focus back to a contact's or a transaction's row once it's closed
 - Say so when the camera won't start for a scan on Send, and read a scanned code as a pasted one
 - Write the gas paid short in a transfer's details under Bridge › Activity, with all its decimals on hover
 - Close a transaction, a contact or the search with phone Back, staying on the page, and leave the password screen out of Back once the wallet is open

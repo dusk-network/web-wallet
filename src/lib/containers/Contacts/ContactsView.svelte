@@ -1,4 +1,5 @@
 <script>
+  import { afterNavigate } from "$app/navigation";
   import { createEventDispatcher } from "svelte";
   import {
     mdiAccountPlusOutline,
@@ -65,15 +66,27 @@
   const select = (id, edit = false) => dispatch("select", { edit, id });
 
   /**
+   * The row to give the focus back to as the step closing a contact ends:
+   * going back through the browser's history takes it away.
+   *
+   * @type {HTMLElement | null}
+   */
+  let focusBack = null;
+
+  afterNavigate(() => {
+    focusBack?.focus();
+    focusBack = null;
+  });
+
+  /**
    * Closes the contact shown, and gives the focus back to its row.
    *
    * @param {string} id
    */
   function closeDetail(id) {
     select(null);
-    /** @type {HTMLElement | null} */ (
-      document.querySelector(`.contacts__open[data-contact="${id}"]`)
-    )?.focus();
+    focusBack = document.querySelector(`.contacts__open[data-contact="${id}"]`);
+    focusBack?.focus();
   }
 
   /** @param {Contact} contact */

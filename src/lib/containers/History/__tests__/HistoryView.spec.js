@@ -70,6 +70,17 @@ const state = {
   syncing: false,
 };
 
+/** What runs as a navigation ends. */
+const navigation = vi.hoisted(() => ({
+  /** @type {Array<() => void>} */
+  after: [],
+}));
+
+vi.mock("$app/navigation", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  afterNavigate: (/** @type {() => void} */ run) => navigation.after.push(run),
+}));
+
 describe("HistoryView", () => {
   afterEach(() => {
     cleanup();
@@ -151,6 +162,13 @@ describe("HistoryView", () => {
 
     container.addEventListener("select", select);
     await fireEvent.keyDown(close, { key: "Escape" });
+
+    expect(first).toHaveFocus();
+
+    // Going back through the browser's history takes the focus away, as the
+    // sheet's step goes: it comes back as that ends.
+    first.blur();
+    navigation.after.forEach((run) => run());
 
     expect(first).toHaveFocus();
   });
