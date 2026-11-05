@@ -21,7 +21,7 @@ import { mdiTimerSand } from "@mdi/js";
 
 import { getErrorFrom } from "$lib/dusk/error";
 
-import { isOutcomeUnknown } from "./outcomeUnknown";
+import { isOutcomeUnknown, mayHaveSent } from "./outcomeUnknown";
 
 /** How an EVM wallet says it was turned down. */
 const DECLINED = /UserRejectedRequestError|user rejected|user denied/i;
@@ -211,9 +211,10 @@ export const isDeclinedInWallet = (error) =>
  * @param {Error} error What the send rejected with
  * @param {{ checkFirst?: string }} [options] What to check before sending
  *   it again, once it may have gone out: History, unless said otherwise
- * @returns {{ canRetry?: boolean, heading?: string, icon?: string, outcomeUnknown?: boolean, sentence: string }}
+ * @returns {{ canRetry?: boolean, heading?: string, icon?: string, mayHaveGoneOut?: boolean, outcomeUnknown?: boolean, sentence: string }}
  *   `canRetry` holds only where nothing went out: never invite a send again
- *   without it
+ *   without it; `mayHaveGoneOut` where it was handed over and no answer
+ *   says what became of it
  */
 export default function describeFailure(
   error,
@@ -254,6 +255,7 @@ export default function describeFailure(
     return {
       heading: "Not confirmed",
       icon: mdiTimerSand,
+      mayHaveGoneOut: true,
       outcomeUnknown: true,
       sentence: `It may have reached the network. ${checkFirst}`,
     };
@@ -275,3 +277,18 @@ export default function describeFailure(
  */
 export const nothingWentOut = (error) =>
   Boolean(describeFailure(getErrorFrom(error)).canRetry);
+
+/**
+ * The hash of the transaction a send may have sent all the same, as it ran
+ * into `error`: the one handed over whose answer got lost, to follow until
+ * the chain says. "" where nothing went out, as for a refusal, or where the
+ * wallet doesn't know the transaction.
+ *
+ * @param {unknown} error
+ * @returns {string}
+ */
+export function unconfirmedHash(error) {
+  const failure = getErrorFrom(error);
+
+  return describeFailure(failure).mayHaveGoneOut ? mayHaveSent(failure) : "";
+}

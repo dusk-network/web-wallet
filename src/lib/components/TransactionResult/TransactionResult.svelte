@@ -3,7 +3,11 @@
 <script>
   import { isHistoryEnabled } from "$lib/activity";
   import { Button, Suspense } from "$lib/dusk/components";
-  import { CHECK_BALANCE_FIRST, describeFailure } from "$lib/transactions";
+  import {
+    CHECK_BALANCE_FIRST,
+    describeFailure,
+    unconfirmedHash,
+  } from "$lib/transactions";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import TransactionStatus from "../TransactionStatus/TransactionStatus.svelte";
@@ -59,6 +63,30 @@
       error,
       hasHistory ? {} : { checkFirst: CHECK_BALANCE_FIRST }
     );
+
+  /**
+   * What the send came to: its hash, or for one handed over whose answer got
+   * lost, the hash it may have gone out with, which the screen follows until
+   * the chain says. Anything else it ran into is said as a failure.
+   *
+   * @param {Promise<string | void>} sent
+   * @returns {Promise<{ hash: string | void, unconfirmed: boolean }>}
+   */
+  const outcomeOf = (sent) =>
+    sent.then(
+      (hash) => ({ hash, unconfirmed: false }),
+      (error) => {
+        const hash = unconfirmedHash(error);
+
+        if (!hash) {
+          throw error;
+        }
+
+        return { hash, unconfirmed: true };
+      }
+    );
+
+  $: shown = outcomeOf(operation);
 </script>
 
 <!-- A send that failed before it went out says why in plain words, with
@@ -69,10 +97,10 @@
   {errorMessage}
   gap="large"
   pendingMessage="Processing transaction"
-  waitFor={operation}
+  waitFor={shown}
 >
-  <svelte:fragment slot="success-content" let:result={hash}>
-    <TransactionStatus {hash} {maxFee} {memo} {what} />
+  <svelte:fragment slot="success-content" let:result={{ hash, unconfirmed }}>
+    <TransactionStatus {hash} {maxFee} {memo} {unconfirmed} {what} />
     {#if hash && hasHistory}
       <AppAnchorButton
         className="transaction-result__button"

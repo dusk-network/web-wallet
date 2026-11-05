@@ -50,8 +50,11 @@
   waitFor={operation}
 >
   <svelte:fragment slot="success-content" let:result>
-    <Icon path={mdiCheckDecagramOutline} size="large" />
-    <b>{successMessage}</b>
+    <!-- Without a message, what's shown says it all. -->
+    {#if successMessage}
+      <Icon path={mdiCheckDecagramOutline} size="large" />
+      <b>{successMessage}</b>
+    {/if}
     <slot name="success-content" {result} />
     <AppAnchorButton
       href="/dashboard"

@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Follow a send whose answer got lost on its Not confirmed screen, which turns into Sent once the chain has it, and show it Pending in History at once: sends, stakes, Sozu, shielding and the bridge
+- Say the amount that arrives on the Sent screen of a transfer to another chain
 - Say "Filled in from the link" on Send opened by a payment link through the unlock, and draw a page the unlock opens once
 - Check an amount Send fills in from a link or a draft against the balance once it's read: no false "send up to 0 DUSK", and nothing said against a balance not read yet
 - Show the public balance and the stake changed together after an unstake, never counting it in both

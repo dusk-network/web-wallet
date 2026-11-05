@@ -31,7 +31,11 @@
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import { formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
-  import { describeFailure, nothingWentOut } from "$lib/transactions";
+  import {
+    describeFailure,
+    nothingWentOut,
+    unconfirmedHash,
+  } from "$lib/transactions";
   import { account, modal } from "$lib/web3/walletConnection";
   import { notRunning } from "$lib/bridge/cardRoutes";
   import { sendServiceTransfer, serviceLine } from "$lib/bridge/routeFlows";
@@ -45,6 +49,7 @@
   import OperationResult from "../OperationResult/OperationResult.svelte";
   import RouteStatusLine from "./RouteStatusLine.svelte";
   import RouteTransferResult from "./RouteTransferResult.svelte";
+  import TransactionStatus from "../TransactionStatus/TransactionStatus.svelte";
   import FullAddress from "../FullAddress/FullAddress.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
@@ -146,6 +151,35 @@
   // What this screen sends, it sends from the wallet it was drawn for.
   const forThisWallet = walletStore.forThisWallet();
 
+  /**
+   * The transfer whose answer got lost, followed until the chain has it: ""
+   * for none.
+   */
+  let lostHash = "";
+
+  /**
+   * What the transfer came to: its hash, also for one handed over whose
+   * answer got lost, which the screen follows until the chain says.
+   *
+   * @param {Promise<string>} sent
+   * @returns {Promise<string>}
+   */
+  function outcomeOf(sent) {
+    lostHash = "";
+
+    return sent.catch((error) => {
+      const hash = unconfirmedHash(error);
+
+      if (!hash) {
+        throw error;
+      }
+
+      lostHash = hash;
+
+      return hash;
+    });
+  }
+
   function send() {
     // It goes out now, as far as a reload can tell: nothing brings it back.
     draft.clear();
@@ -233,6 +267,14 @@
   $: isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   $: time = routeTime(route, { net });
   $: timeText = routeTimeText(time);
+  $: shown = outcomeOf(operation);
+  // What the Sent screen says went, and what arrives of it.
+  $: sentWhat = hideBalances
+    ? `${BALANCE_MASK} DUSK`
+    : `${formatDuskExact(amountLux, language)} DUSK`;
+  $: arrivesWhat = hideBalances
+    ? "It"
+    : `${formatDuskExact(arrivesLux, language)} DUSK`;
 
   // The node's price can arrive while the form is open: the form takes it,
   // unless the gas was edited here, and keeps the gas a review shows.
@@ -569,21 +611,34 @@
     <OperationResult
       describeError={describeFailure}
       errorMessage="The transfer didn't go through"
-      {operation}
+      operation={shown}
       pendingMessage="Sending…"
-      successMessage={sentHeading}
+      successMessage={lostHash ? "" : sentHeading}
     >
       <svelte:fragment slot="success-content" let:result={hash}>
-        <RouteTransferResult
-          bind:heading={sentHeading}
-          {hash}
-          masked={hideBalances}
-          {route}
-          sentText={timeText
-            ? `It usually arrives on ${chainName} in ${timeText.replace(/^~/, "about ")}.`
-            : `It arrives on ${chainName} once the bridge pays it out.`}
-          {time}
-        />
+        {#if hash === lostHash}
+          <TransactionStatus
+            {hash}
+            onFinal={(outcome) => {
+              if (!outcome.error) {
+                lostHash = "";
+              }
+            }}
+            unconfirmed
+            what={`${sentWhat} to ${chainName}`}
+          />
+        {:else}
+          <RouteTransferResult
+            bind:heading={sentHeading}
+            {hash}
+            masked={hideBalances}
+            {route}
+            sentText={timeText
+              ? `${arrivesWhat} arrives on ${chainName} in ${timeText.replace(/^~/, "about ")}.`
+              : `${arrivesWhat} arrives on ${chainName} once the bridge pays it out.`}
+            {time}
+          />
+        {/if}
       </svelte:fragment>
       <svelte:fragment slot="error-actions" let:error>
         {#if describeFailure(error).canRetry}

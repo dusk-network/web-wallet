@@ -27,6 +27,7 @@ import {
   cancelSendPassword,
   sendPasswordFor,
 } from "$lib/security/sendPassword";
+import { unconfirmedHash } from "$lib/transactions/describeFailure";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
@@ -411,7 +412,9 @@ const builtWhileOpen = (builder, stillOpen) =>
  * buttons until it settles. Every transaction of the wallet's comes this way:
  * what it moves out (`moves`, none for what comes back to the public balance)
  * and the most its gas costs ask for the password first, above the amount
- * chosen in Settings.
+ * chosen in Settings. One handed over whose answer got lost may have gone
+ * out: History shows it on its way at once, and it's followed as one that
+ * went out, as the chain will say.
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
@@ -458,14 +461,25 @@ const sendAs = (
       throw stillOpen(error);
     })
     .then(networkStore.connect)
-    .then((network) => execute(sending(stillOpen(network))))
+    .then((network) =>
+      execute(sending(stillOpen(network))).catch((error) => {
+        const hash = unconfirmedHash(error);
+
+        if (hash) {
+          followRemoval(/** @type {TransactionInfo} */ ({ hash }));
+          record(/** @type {TransactionInfo} */ ({ hash }));
+        }
+
+        throw error;
+      })
+    )
     .then((txInfo) =>
       // It went out: what goes wrong from here doesn't say it didn't.
       keepInCache(txInfo)
         .then(passThruWithEffects(followRemoval))
         .then(passThruWithEffects(record))
         .catch((error) => {
-          throw outcomeUnknown(error);
+          throw outcomeUnknown(error, txInfo.hash);
         })
     );
 };

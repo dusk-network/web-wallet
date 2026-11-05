@@ -2,9 +2,14 @@
   import { AppAnchorButton } from "$lib/components";
   import { Button, Suspense } from "$lib/dusk/components";
   import { isHistoryEnabled } from "$lib/activity";
-  import { CHECK_BALANCE_FIRST, describeFailure } from "$lib/transactions";
+  import {
+    CHECK_BALANCE_FIRST,
+    describeFailure,
+    unconfirmedHash,
+  } from "$lib/transactions";
 
   import DepositProgress from "../EvmTransactions/DepositProgress.svelte";
+  import TransactionStatus from "../TransactionStatus/TransactionStatus.svelte";
 
   /** @type {Promise<string>} */
   export let operation;
@@ -17,7 +22,24 @@
    */
   export let onRetry = undefined;
 
+  /**
+   * Keeps a deposit whose answer got lost, once the chain has it, as one sent:
+   * its progress shows then.
+   *
+   * @type {(hash: string) => void}
+   */
+  export let onSeen = () => {};
+
+  /** What was sent, as "0.5 DUSK to DuskEVM". */
+  export let what = "";
+
   const hasHistory = isHistoryEnabled();
+
+  /** Whether the chain has the deposit whose answer got lost. */
+  let isSeen = false;
+
+  /** @type {Promise<{ hash: string, unconfirmed: boolean }>} */
+  let shown;
 
   /** @param {Error} error */
   const describe = (error) =>
@@ -25,6 +47,34 @@
       error,
       hasHistory ? {} : { checkFirst: CHECK_BALANCE_FIRST }
     );
+
+  /**
+   * What the deposit came to: its hash, or for one handed over whose answer
+   * got lost, the hash it may have gone out with, followed until the chain
+   * says.
+   *
+   * @param {Promise<string>} sent
+   * @returns {Promise<{ hash: string, unconfirmed: boolean }>}
+   */
+  const outcomeOf = (sent) =>
+    sent.then(
+      (hash) => ({ hash, unconfirmed: false }),
+      (error) => {
+        const hash = unconfirmedHash(error);
+
+        if (!hash) {
+          throw error;
+        }
+
+        return { hash, unconfirmed: true };
+      }
+    );
+
+  // Each deposit sent is followed on its own.
+  $: {
+    isSeen = false;
+    shown = outcomeOf(operation);
+  }
 </script>
 
 <Suspense
@@ -33,10 +83,36 @@
   errorMessage="Deposit submission failed"
   gap="large"
   pendingMessage="Submitting on DuskDS"
-  waitFor={operation}
+  waitFor={shown}
 >
-  <svelte:fragment slot="success-content" let:result={transactionHash}>
-    <DepositProgress {transactionHash} />
+  <svelte:fragment
+    slot="success-content"
+    let:result={{ hash: transactionHash, unconfirmed }}
+  >
+    {#if unconfirmed && !isSeen}
+      <TransactionStatus
+        hash={transactionHash}
+        onFinal={(outcome) => {
+          if (!outcome.error) {
+            onSeen(transactionHash);
+            isSeen = true;
+          }
+        }}
+        unconfirmed
+        {what}
+      />
+      {#if hasHistory}
+        <AppAnchorButton
+          className="deposit-result__button"
+          href={`/dashboard/transactions?tx=${transactionHash}`}
+          text="See in History"
+          variant="secondary"
+        />
+      {/if}
+      <AppAnchorButton href="/dashboard" text="Home" variant="tertiary" />
+    {:else}
+      <DepositProgress {transactionHash} />
+    {/if}
   </svelte:fragment>
   <svelte:fragment slot="error-extra-content" let:error>
     {#if hasHistory && describe(error).outcomeUnknown}

@@ -4,6 +4,7 @@ export {
   default as describeFailure,
   isDeclinedInWallet,
   nothingWentOut,
+  unconfirmedHash,
 } from "./describeFailure";
 export { outcomeUnknown } from "./outcomeUnknown";
 export {

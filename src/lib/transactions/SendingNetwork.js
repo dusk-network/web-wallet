@@ -115,10 +115,12 @@ export default class SendingNetwork extends Network {
       },
     });
 
+    // Once the node was asked to broadcast it, it may have gone out, with the
+    // hash it was built with, which follows it.
     return /** @type {ReturnType<T["build"]>} */ (
       super.execute(watched).catch((/** @type {unknown} */ error) => {
         throw this.#broadcasts.has(built?.buffer)
-          ? outcomeUnknown(error)
+          ? outcomeUnknown(error, String(built.hash ?? ""))
           : error;
       })
     );

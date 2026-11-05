@@ -1163,6 +1163,69 @@ describe("Wallet store", async () => {
       expect(get(walletStore).syncStatus.error).toBeNull();
     });
 
+    it("should show a send whose answer got lost in the history at once, as it may have gone out, but never one the node refused", async () => {
+      vi.useRealTimers();
+
+      const built = {
+        buffer: new Uint8Array([7]),
+        hash: "cd".repeat(32),
+        nonce: 2n,
+      };
+
+      /**
+       * The node takes the transaction to broadcast, then the answer is
+       * `failure`.
+       *
+       * @param {Error} failure
+       */
+      const handedOver = (failure) =>
+        executeSpy.mockImplementationOnce(
+          /** @this {any} */
+          async function (/** @type {any} */ tx) {
+            const build = vi
+              .spyOn(Object.getPrototypeOf(tx), "build")
+              .mockResolvedValueOnce(built);
+
+            try {
+              const transaction = await tx.build(this);
+
+              await this.transactions.propagate(transaction.buffer);
+            } finally {
+              build.mockRestore();
+            }
+
+            throw failure;
+          }
+        );
+
+      history.session.recordSent.mockClear();
+      handedOver(new TypeError("Failed to fetch"));
+
+      await expect(
+        walletStore.transfer(toMoonlight, amount, memo, gas)
+      ).rejects.toThrow("Failed to fetch");
+      expect(history.session.recordSent).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          amount: String(amount),
+          direction: "out",
+          hash: built.hash,
+          to: toMoonlight,
+        })
+      );
+
+      history.session.recordSent.mockClear();
+      handedOver(
+        new Error("Tx cdcd not accepted: this transaction is invalid")
+      );
+
+      await expect(
+        walletStore.transfer(toMoonlight, amount, memo, gas)
+      ).rejects.toThrow("not accepted");
+      expect(history.session.recordSent).not.toHaveBeenCalled();
+
+      vi.useFakeTimers();
+    });
+
     it("should neither start nor record a history while it is turned off", async () => {
       vi.useRealTimers();
       vi.stubEnv("VITE_FEATURE_TRANSACTION_HISTORY", "false");

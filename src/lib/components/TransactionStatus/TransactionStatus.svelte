@@ -32,17 +32,30 @@
   export let hash;
 
   /**
-   * The most the transaction can cost, in Lux.
+   * The most the transaction can cost, in Lux, where it's known.
    *
-   * @type {bigint}
+   * @type {bigint | undefined}
    */
-  export let maxFee;
+  export let maxFee = undefined;
 
   /** What was sent and to whom, as "0.5 DUSK to Alice (alice.dusk)". */
   export let what = "";
 
   /** The memo it was sent with. */
   export let memo = "";
+
+  /**
+   * Whether it was handed over without an answer: it may have gone out, and
+   * it says so until the chain has it.
+   */
+  export let unconfirmed = false;
+
+  /**
+   * Told what the chain says once the block with it is final.
+   *
+   * @type {(outcome: import("$lib/transactions/followTransaction").FinalTransaction) => void}
+   */
+  export let onFinal = () => {};
 
   /**
    * Pending until the block with the transaction is final, or late
@@ -95,6 +108,7 @@
           if (result) {
             void currentActivity()?.refresh();
             void walletStore.refreshBalance();
+            onFinal(result);
           }
         }
       });
@@ -110,13 +124,17 @@
     return () => controller?.abort();
   });
 
+  // Without an answer, it may not have gone out: until the chain has it.
+  $: isUnconfirmed = unconfirmed && (status === "pending" || status === "late");
   $: ({ icon } = headings[status]);
   // Without a hash there's nothing to follow: it was sent.
   $: title = !hash
     ? "Sent"
     : status === "completed" && outcome
       ? `Sent at ${timeLabel(outcome.timestamp ?? outcomeAt, language)}`
-      : headings[status].title;
+      : isUnconfirmed
+        ? "Not confirmed"
+        : headings[status].title;
 </script>
 
 <div class="transaction-status transaction-status--{status}">
@@ -128,6 +146,16 @@
     {/if}
     {#if !hash}
       <p>The wallet updates automatically.</p>
+    {:else if isUnconfirmed && status === "pending"}
+      <p>
+        It may have reached the network. Wait for it here before you send it
+        again.
+      </p>
+    {:else if isUnconfirmed}
+      <p>
+        It isn't in a block yet. See its status in the explorer before you send
+        it again.
+      </p>
     {:else if status === "pending"}
       <p>This usually takes under a minute.</p>
     {:else if status === "late"}
@@ -153,7 +181,7 @@
         <dd>
           <BalanceValue value={formatDuskExact(outcome.fee, language)} /> DUSK
         </dd>
-      {:else}
+      {:else if maxFee !== undefined}
         <dt>Network fee (at most)</dt>
         <dd>
           <BalanceValue value={formatFee(maxFee, language, { max: true })} /> DUSK
