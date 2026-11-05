@@ -142,6 +142,9 @@ describe("Fields", () => {
       // Each word of a recovery phrase in a field of its own.
       "lib/components/MnemonicInput/MnemonicInput.svelte": ["input[text]"],
 
+      // The scanner's image of a code, chosen in the browser's own picker.
+      "lib/components/ScanQR/ScanQR.svelte": ["input[file]"],
+
       // Send's contact picker, compact.
       "lib/components/Send/Send.svelte": ["select"],
 
