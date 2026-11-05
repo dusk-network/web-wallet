@@ -49,6 +49,59 @@ describe("What a DUSK was worth in euros", () => {
     expect(asked).toHaveBeenCalledOnce();
   });
 
+  it("gets a price for every payment of the past year, asking only for what the public API takes: it refuses a range that starts earlier", async () => {
+    const YEAR = 365 * DAY;
+    /** @type {number[]} */
+    const froms = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (/** @type {string} */ url) => {
+        const asked = new URL(url);
+        const from = Number(asked.searchParams.get("from")) * 1000;
+        const to = Number(asked.searchParams.get("to")) * 1000;
+
+        froms.push(from);
+
+        if (from < NOW - YEAR) {
+          return new Response("", { status: 401 });
+        }
+
+        // Hourly, as it gives them, over what's asked.
+        const prices = [];
+
+        for (let at = from; at <= to; at += HOUR) {
+          prices.push([at, 0.25]);
+        }
+
+        return new Response(JSON.stringify({ prices }));
+      })
+    );
+
+    const price = duskEuroPrices({ now: NOW });
+
+    for (let age = 1; age <= 364; age += 7) {
+      await expect(price({ at: NOW - age * DAY })).resolves.toBe(0.25);
+    }
+
+    await expect(price({ at: NOW - 364 * DAY })).resolves.toBe(0.25);
+    await expect(price({ at: NOW - YEAR + 1000 })).resolves.toBe(0.25);
+    expect(Math.min(...froms)).toBeGreaterThanOrEqual(NOW - YEAR);
+  });
+
+  it("stays within the hourly window of the public API for a clamped range too", async () => {
+    const asked = pricesAre([]);
+
+    await duskEuroPrices({ now: NOW })({ at: NOW - 364 * DAY });
+
+    const url = new URL(String(asked.mock.lastCall?.[0]));
+    const from = Number(url.searchParams.get("from"));
+    const to = Number(url.searchParams.get("to"));
+
+    expect(to).toBeGreaterThan(from);
+    expect(to - from).toBeLessThanOrEqual(90 * 86_400);
+  });
+
   it("knows none when the request fails, or is refused", async () => {
     vi.stubGlobal(
       "fetch",

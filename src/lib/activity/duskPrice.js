@@ -16,8 +16,11 @@ const WINDOW_MS = 88 * 24 * HOUR_MS;
 /** A price further from the payment than this is no price of it. */
 const NEAREST_MS = 3 * HOUR_MS;
 
-/** How far back the public API goes. */
+/** How far back the public API goes: a range that starts earlier, it refuses. */
 const PAST_YEAR_MS = 365 * 24 * HOUR_MS;
+
+/** Kept clear of that end: this device's clock isn't the API's. */
+const CLOCK_MARGIN_MS = HOUR_MS;
 
 const TIMEOUT_MS = 15_000;
 
@@ -31,13 +34,14 @@ const TIMEOUT_MS = 15_000;
 export function duskEuroPrices({ now = Date.now() } = {}) {
   /** @type {Map<number, Promise<[number, number][]>>} */
   const windows = new Map();
+  const earliest = now - PAST_YEAR_MS + CLOCK_MARGIN_MS;
 
   /** @param {number} start */
   const windowFrom = (start) => {
     let prices = windows.get(start);
 
     if (!prices) {
-      const from = Math.floor((start - NEAREST_MS) / 1000);
+      const from = Math.floor(Math.max(start - NEAREST_MS, earliest) / 1000);
       const to = Math.ceil((start + WINDOW_MS + NEAREST_MS) / 1000);
 
       prices = fetch(`${API}?vs_currency=eur&from=${from}&to=${to}`, {
