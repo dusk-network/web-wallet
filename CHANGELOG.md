@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Show when a transaction was made under it in the search, in place of a call's code name
 - Refuse a payment link whose amount in lux isn't the one it says, rather than pay the lux
 - Read a QR code that fills the camera's view on Send, also in browsers without a built-in QR reader, as on an iPhone
 - Say so when a QR code scanned isn't a Dusk address or payment link, and keep scanning

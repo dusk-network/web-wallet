@@ -19,7 +19,12 @@ import { asDuskName, isDuskName } from "@duskdomains/sdk/names";
 import { BALANCE_MASK } from "$lib/constants/balanceMask";
 
 import { contractLabel } from "$lib/activity/knownContracts";
-import { describeRow, shortAddress } from "$lib/activity/present";
+import {
+  dayLabel,
+  describeRow,
+  shortAddress,
+  timeLabel,
+} from "$lib/activity/present";
 
 /**
  * @typedef {{
@@ -37,7 +42,7 @@ import { describeRow, shortAddress } from "$lib/activity/present";
  *   value?: string,
  * }} SearchResult
  *   `block` a block's height, which the explorer is opened at; `sub` a
- *   second line, as a call's method.
+ *   second line, as when a transaction was made.
  *
  * @typedef {{
  *   contacts?: Contact[],
@@ -289,7 +294,7 @@ export function searchLocally(
           Number(amounts.some(({ from }) => luxOf(a.row) === from))
       )
       .map(({ row, shown }) => {
-        // Named as History names it, with a call's method under it, and
+        // Named as History names it, with when it was made under it, and
         // what it moved unless it's found by its hash.
         const { amount, title, titleIsAddress } = shown;
 
@@ -303,7 +308,10 @@ export function searchLocally(
           id: `tx:${row.hash}`,
           label: title,
           labelIsCode: titleIsAddress,
-          sub: row.fnName ? displayText(row.fnName).text : undefined,
+          sub:
+            row.time === null
+              ? undefined
+              : `${dayLabel(row.time, { locale })}, ${timeLabel(row.time, locale)}`,
           value: row.hash,
         };
       })
