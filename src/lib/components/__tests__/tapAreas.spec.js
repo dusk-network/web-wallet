@@ -58,4 +58,20 @@ describe("tap areas on phones", () => {
       expect(onPhones(file, selector)).toStrictEqual({ display: "block" });
     }
   );
+
+  it("keeps them for a phone held sideways, which has a desktop's width", () => {
+    const touch = styleRules(
+      "../../../style/app-components/tap-targets.css",
+      import.meta.url
+    ).filter((rule) => rule.media.includes("(pointer: coarse)"));
+
+    expect(touch.map(({ selector }) => selector)).toContain(
+      ".dusk-icon-button::before,\n  .dusk-button--size--small::before,\n  .dusk-anchor-button--size--small::before,\n  .dusk-switch::before,\n  .swap-mini::before"
+    );
+    expect(
+      styleRules("../../containers/Shell/TopBar.svelte", import.meta.url).find(
+        ({ media }) => media === "(pointer: coarse)"
+      )?.declarations
+    ).toStrictEqual({ "min-height": "44px", "min-width": "44px" });
+  });
 });

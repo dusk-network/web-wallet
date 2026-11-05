@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Keep the fee to unstake, or to prove and claim a withdrawal, on Send's and the Bridge's Max, and warn of an amount that leaves too little for it
 - List a transfer's exact amounts in its details under Bridge › Activity: sent, bridge fee, network fee, received and gas
 - Search finds a payment by its amount, and lists a contact's payments under the contact
 - Ask for the password again on any send above an amount chosen in Settings, off by default: sends, stakes, shielding, the bridge and contract calls, checked against the vault
@@ -29,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bring back what was typed in a form with the browser's Back after leaving it for another page
 - Close the profile menu on any navigation, and only close it on a tap outside
 - Say "Sending…" and what's sent in one tense on an unstake from Sozu, and clear Pending and refresh the balances as a transaction is final
+- Keep thumb-sized targets and a shorter header on a phone held sideways, and tidy what's left of the phone: Bridge reviews write addresses as Send does, and Copy and Save to contacts are one size
+- Show the fee's Edit with the form on a phone when the fee is what's short, and let Staking through to it
 - Warn on a contact's name in use, and on the wallet's own address
 - Refuse the password you have as the new one
 - Show the address in full on Receive, with a button that says Copy address, then Copied

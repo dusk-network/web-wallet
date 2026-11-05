@@ -372,6 +372,15 @@
     }
   }
 
+  /* A phone held sideways has desktop's width, and still a thumb. */
+  @media (pointer: coarse) {
+    .top-bar__search,
+    .top-bar__settings {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+
   @media (max-width: 24.99rem) {
     a.top-bar__brand :global(.dusk-glyph) {
       display: block;

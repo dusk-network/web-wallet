@@ -210,6 +210,17 @@
     --strip-height: 2.1875rem;
   }
 
+  /* A phone held sideways has little height to give the top of the page. */
+  @media (max-height: 30rem) and (orientation: landscape) {
+    .shell {
+      --top-bar-height: 3rem;
+    }
+
+    .shell--test {
+      --strip-height: 1.5rem;
+    }
+  }
+
   .shell__header {
     position: sticky;
     top: 0;

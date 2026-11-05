@@ -25,6 +25,7 @@
     BalanceValue,
     Banner,
     DepositResult,
+    FullAddress,
     GasSettings,
     OperationResult,
     ReviewAmount,
@@ -1017,18 +1018,18 @@
           <dt>From</dt>
           <dd>
             <span>{isDepositing ? "Your public account" : "DuskEVM"}</span>
-            <span class="bridge-review__address"
-              >{isDepositing ? unshieldedAddress : address}</span
-            >
+            <FullAddress
+              address={(isDepositing ? unshieldedAddress : address) ?? ""}
+            />
           </dd>
         </div>
         <div>
           <dt>To</dt>
           <dd>
             <span>{isDepositing ? "DuskEVM" : "Your public account"}</span>
-            <span class="bridge-review__address"
-              >{isDepositing ? address : unshieldedAddress}</span
-            >
+            <FullAddress
+              address={(isDepositing ? address : unshieldedAddress) ?? ""}
+            />
           </dd>
         </div>
         {#if isDepositing && depositContract}

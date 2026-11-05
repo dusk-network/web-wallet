@@ -914,6 +914,14 @@
     }
   }
 
+  /* Beside each other, they're one size, and a thumb's on a phone. */
+  @media (max-width: 30rem), (pointer: coarse) {
+    .tx-detail :global(.tx-detail__copy),
+    .tx-detail__list :global(.tx-detail__save) {
+      min-height: 44px;
+    }
+  }
+
   .tx-detail__memo {
     overflow-wrap: anywhere;
   }

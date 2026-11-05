@@ -44,6 +44,7 @@
   import NetworkPicker from "../NetworkPicker/NetworkPicker.svelte";
   import OperationResult from "../OperationResult/OperationResult.svelte";
   import RouteTransferResult from "./RouteTransferResult.svelte";
+  import FullAddress from "../FullAddress/FullAddress.svelte";
   import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
   import { amountProblem, readDuskInput } from "../Stake/stakeAmount";
@@ -494,14 +495,14 @@
         <dt>From</dt>
         <dd>
           <span>Your public account on Dusk</span>
-          <span class="route-review__address">{unshieldedAddress}</span>
+          <FullAddress address={unshieldedAddress} />
         </dd>
       </div>
       <div>
         <dt>To</dt>
         <dd>
           <span>Your {chainName} address</span>
-          <span class="route-review__address">{address}</span>
+          <FullAddress address={address ?? ""} />
         </dd>
       </div>
       <div>
@@ -524,11 +525,11 @@
       <dl class="route-review__ends">
         <div>
           <dt>Bridge account</dt>
-          <dd><span class="route-review__address">{route.account}</span></dd>
+          <dd><FullAddress address={route.account} /></dd>
         </div>
         <div>
           <dt>Memo</dt>
-          <dd><span class="route-review__address">{address}</span></dd>
+          <dd><FullAddress address={address ?? ""} /></dd>
         </div>
       </dl>
       <p class="route-review__public">
@@ -661,13 +662,6 @@
       gap: 0.125rem;
       margin: 0;
     }
-  }
-
-  .route-review__address {
-    color: var(--calm-muted);
-    font-family: var(--mono-font-family, monospace);
-    font-size: 0.8125rem;
-    overflow-wrap: anywhere;
   }
 
   .route-review__actions {

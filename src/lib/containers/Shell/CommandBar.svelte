@@ -621,7 +621,7 @@
   }
 
   /* A touch keyboard has neither. */
-  @media (hover: none) {
+  @media (hover: none), (max-width: 47.99rem) {
     .command-bar__note {
       display: none;
     }
