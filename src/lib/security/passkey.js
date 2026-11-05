@@ -65,6 +65,15 @@ function noteNoPrf() {
   }
 }
 
+/** It's offered again, as after a reset, whatever the device showed before. */
+export function forgetNoPrf() {
+  try {
+    localStorage.removeItem(NO_PRF);
+  } catch {
+    // Nothing is kept where storage can't be read.
+  }
+}
+
 /**
  * Whether to offer it: a secure page on a domain, a platform authenticator that
  * verifies the person, and nothing that says it has no PRF. A browser that can't
@@ -162,9 +171,10 @@ export async function createPasskey() {
 /**
  * The PRF output of a passkey: its authenticator asks the person to verify
  * themselves, and it comes only then. Throws PasskeyNoPrfError for an
- * authenticator that doesn't give it, or says it didn't verify them, and what
- * the browser throws for one refused, cancelled or not found, which it doesn't
- * tell apart.
+ * authenticator that doesn't give it, NotAllowedError for one that says it
+ * didn't verify them, as for a finger it didn't know, which can be tried
+ * again, and what the browser throws for one refused, cancelled or not found,
+ * which it doesn't tell apart.
  *
  * @param {import("$lib/vault").Passkey} passkey
  * @param {{ signal?: AbortSignal }} [options]
@@ -213,10 +223,14 @@ export async function askPasskey(
       .authenticatorData
   );
 
-  if (!first || !(data[FLAGS_AT] & USER_VERIFIED)) {
+  if (!first) {
     noteNoPrf();
 
     throw new PasskeyNoPrfError();
+  }
+
+  if (!(data[FLAGS_AT] & USER_VERIFIED)) {
+    throw new DOMException("The person wasn't verified", "NotAllowedError");
   }
 
   return new Uint8Array(first);

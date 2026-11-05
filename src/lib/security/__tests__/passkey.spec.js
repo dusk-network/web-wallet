@@ -10,6 +10,7 @@ import {
   askPasskey,
   canOfferPasskey,
   createPasskey,
+  forgetNoPrf,
   signalPasskeyGone,
 } from "../passkey";
 
@@ -52,12 +53,16 @@ describe("A passkey, as far as the browser goes", () => {
       await expect(canOfferPasskey()).resolves.toBe(false);
     });
 
-    it("isn't, for a while, where the device just turned out to have no PRF", async () => {
+    it("isn't, for a while, where the device just turned out to have no PRF, until a reset", async () => {
       fakeAuthenticator({ hasPrf: false });
 
       await expect(canOfferPasskey()).resolves.toBe(true);
       await expect(createPasskey()).rejects.toBeInstanceOf(PasskeyNoPrfError);
       await expect(canOfferPasskey()).resolves.toBe(false);
+
+      forgetNoPrf();
+
+      await expect(canOfferPasskey()).resolves.toBe(true);
     });
   });
 
@@ -117,14 +122,16 @@ describe("A passkey, as far as the browser goes", () => {
       expect(publicKey.allowCredentials).toHaveLength(1);
     });
 
-    it("refuses an answer that says it didn't verify the person, or gives no PRF", async () => {
+    it("refuses an answer that says it didn't verify the person, to try again, or gives no PRF, which isn't offered again for a while", async () => {
       fakeAuthenticator({ verifies: false });
 
       const unverified = await createPasskey();
 
-      await expect(askPasskey(unverified)).rejects.toBeInstanceOf(
-        PasskeyNoPrfError
-      );
+      await expect(askPasskey(unverified)).rejects.toMatchObject({
+        name: "NotAllowedError",
+      });
+      // A finger it didn't know says nothing of the device.
+      await expect(canOfferPasskey()).resolves.toBe(true);
 
       localStorage.clear();
 
@@ -144,6 +151,7 @@ describe("A passkey, as far as the browser goes", () => {
       });
 
       await expect(askPasskey(made)).rejects.toBeInstanceOf(PasskeyNoPrfError);
+      await expect(canOfferPasskey()).resolves.toBe(false);
     });
 
     it("leaves a passkey gone from the device, or a person who cancels, to its caller, and stops when it's told to", async () => {
