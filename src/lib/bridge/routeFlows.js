@@ -265,7 +265,13 @@ export async function sendMigration({
     throw new Error(`The migration didn't go through on ${name}.`);
   }
 
-  markMigrationConfirmed(hash, scope);
+  markMigrationConfirmed(
+    hash,
+    scope,
+    migrated.gasUsed && migrated.effectiveGasPrice
+      ? migrated.gasUsed * migrated.effectiveGasPrice
+      : undefined
+  );
 
   return hash;
 }

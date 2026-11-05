@@ -7,6 +7,7 @@
  * didn't go through.
  */
 
+import { transferLedger } from "@dusk-network/app-core/bridge";
 import { claimText } from "@dusk-network/networks/duskevm";
 
 import { claimDay } from "$lib/bridge/claimDate";
@@ -77,12 +78,8 @@ const WEI_PER_LUX = 1_000_000_000n;
  * @param {{ amountLux?: string | null, amountWei?: string | null }} item
  * @param {string} locale
  */
-function amountOf({ amountLux, amountWei }, locale) {
-  const lux = /^\d+$/.test(amountLux ?? "")
-    ? BigInt(/** @type {string} */ (amountLux))
-    : /^\d+$/.test(amountWei ?? "")
-      ? BigInt(/** @type {string} */ (amountWei)) / WEI_PER_LUX
-      : null;
+function amountOf(item, locale) {
+  const lux = luxOfItem(item);
 
   return lux === null ? "" : `${formatDusk(lux, locale)} DUSK`;
 }
@@ -374,6 +371,84 @@ const shownLux = ({ amountLux, feeLux, stage }) =>
   stage === "arrived" && feeLux && amountLux > feeLux
     ? amountLux - feeLux
     : amountLux;
+
+/**
+ * An amount as a deposit or a withdrawal keeps it, in lux: null if it hasn't.
+ *
+ * @param {{ amountLux?: string | null, amountWei?: string | null }} item
+ * @returns {bigint | null}
+ */
+const luxOfItem = ({ amountLux, amountWei }) =>
+  /^\d+$/.test(amountLux ?? "")
+    ? BigInt(/** @type {string} */ (amountLux))
+    : /^\d+$/.test(amountWei ?? "")
+      ? BigInt(/** @type {string} */ (amountWei)) / WEI_PER_LUX
+      : null;
+
+/**
+ * A row's transfer in amounts, the same in all the Dusk apps, for its details:
+ * what was sent, the bridge's fee, the network's, what arrived and the gas paid
+ * on the other chain, as far as each is known.
+ *
+ * @param {BridgeActivityRow} activity
+ * @param {{ locale: string, rows: ActivityRow[], steps: Map<string, { claim?: string, prove?: string }> }} context
+ *   `rows` the history; `steps` a withdrawal's proof and claim on Dusk
+ * @returns {import("@dusk-network/app-core/bridge").TransferLedger | null}
+ */
+export function ledgerOf({ item, kind }, { locale, rows, steps }) {
+  /** @param {string | null | undefined} hash */
+  const inHistory = (hash) =>
+    (hash && rows.find((row) => row.hash === hash)) || null;
+
+  switch (kind) {
+    case "deposit":
+      return transferLedger({
+        failed: item.stage === "failed",
+        locale,
+        received: item.stage === "completed" ? luxOfItem(item) : null,
+        route: /** @type {any} */ ({ kind: "duskevm-deposit" }),
+        row: inHistory(item.transactionHash),
+        sent: luxOfItem(item),
+      });
+    case "withdrawal": {
+      const { claim, prove } = steps.get(item.withdrawalHash ?? "") ?? {};
+
+      return transferLedger({
+        failed: item.stage === "failed",
+        locale,
+        networkFee: [inHistory(prove)?.fee, inHistory(claim)?.fee],
+        received: item.stage === "finalized" ? luxOfItem(item) : null,
+        route: /** @type {any} */ ({ kind: "duskevm-withdrawal" }),
+        sent: luxOfItem(item),
+      });
+    }
+    case "migration":
+      return transferLedger({
+        failed: item.stage === "failed",
+        gasWei: item.gasWei,
+        locale,
+        // The bridge paid for the payout.
+        networkFee: null,
+        received: item.stage === "paid" ? item.amountLux : null,
+        route: item.route,
+        row: inHistory(item.payout),
+        sent: item.amountLux,
+      });
+    default:
+      return transferLedger({
+        bridgeFee: item.feeLux,
+        locale,
+        received:
+          item.arrivedLux ??
+          (item.stage === "arrived" && item.amountLux > (item.feeLux ?? 0n)
+            ? item.amountLux - (item.feeLux ?? 0n)
+            : null),
+        route: item.route,
+        row: inHistory(item.hash),
+        sent: item.amountLux,
+      });
+  }
+}
 
 /**
  * How a transfer just sent is getting on, in words, where there's more to say

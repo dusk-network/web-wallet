@@ -58,10 +58,12 @@
   import SwapCard from "../SwapCard/SwapCard.svelte";
   import DepositLifecycle from "./DepositLifecycle.svelte";
   import RouteTransferDetails from "./RouteTransferDetails.svelte";
+  import TransferLedger from "./TransferLedger.svelte";
   import WithdrawalLifecycle from "./WithdrawalLifecycle.svelte";
   import {
     depositRow,
     groupBridgeActivity,
+    ledgerOf,
     routeTransferRow,
     withdrawalDuskTransactions,
     withdrawalRow,
@@ -924,11 +926,19 @@
                 {/if}
               </div>
               {#if row.id === openId}
+                {@const ledger = ledgerOf(row, {
+                  locale: $settingsStore.language,
+                  rows: $activityState.rows,
+                  steps: withdrawalSteps,
+                })}
                 <div
                   class="bridge-row__details"
                   id="bridge-details-{row.hash}"
                   transition:section={{ open: row.id === openId }}
                 >
+                  {#if ledger}
+                    <TransferLedger {ledger} />
+                  {/if}
                   {#if row.kind === "withdrawal"}
                     <WithdrawalLifecycle
                       {isChecking}

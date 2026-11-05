@@ -70,7 +70,13 @@ export async function checkMigration(transfer, rpc, scope = walletDataScope()) {
     return false;
   }
 
-  markMigrationConfirmed(transfer.hash, scope);
+  markMigrationConfirmed(
+    transfer.hash,
+    scope,
+    receipt.gasUsed && receipt.effectiveGasPrice
+      ? BigInt(receipt.gasUsed) * BigInt(receipt.effectiveGasPrice)
+      : undefined
+  );
 
   return true;
 }
@@ -142,7 +148,15 @@ export async function followTransfers(transfers, arrivals, rpcFor = chainRpc) {
 
   for (const [hash, arrival] of found?.arrivals ?? []) {
     if (arrival.state === "arrived") {
-      keepArrival(hash, { arrivedAt: arrival.at, payout: arrival.hash }, scope);
+      keepArrival(
+        hash,
+        {
+          amount: String(arrival.amount),
+          arrivedAt: arrival.at,
+          payout: arrival.hash,
+        },
+        scope
+      );
     } else if (arrival.scan) {
       keepArrival(hash, { scan: arrival.scan }, scope);
     }
