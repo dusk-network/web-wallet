@@ -13,12 +13,13 @@ export const toastList = writable([]);
 export const toastTimer = writable(0);
 
 /**
+ * @param {TooltipType} type
  * @param {string} message
  * @param {string} icon
- * @param {TooltipType} type
+ * @param {number} [ms] How long it shows, if not as long as the others
  */
 
-function addToast(type, message, icon) {
+function addToast(type, message, icon, ms = get(toastTimer)) {
   const id = `dusk-toast-${Math.random().toString(36)}`;
 
   toastList.update((store) => {
@@ -35,7 +36,7 @@ function addToast(type, message, icon) {
 
   const timeoutID = window.setTimeout(() => {
     deleteToast(id, timeoutID);
-  }, get(toastTimer));
+  }, ms);
 }
 
 /**

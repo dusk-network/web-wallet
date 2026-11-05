@@ -14,6 +14,7 @@ import { get } from "svelte/store";
 import { mdiAlertOutline, mdiCheck } from "@mdi/js";
 
 import { recordAnimations } from "$lib/dusk/test-helpers";
+import styleRules from "$lib/dusk/test-helpers/styleRules";
 
 import { Toast } from "..";
 import { toast, toastList } from "../Toast/store";
@@ -90,6 +91,26 @@ describe("Toast", () => {
     // Svelte's quartOut: most of the way there by half its time.
     expect(middle.opacity).toBeCloseTo(0.9375, 2);
     expect(middle.below).toBeCloseTo(0.25, 2);
+  });
+
+  it("should keep a message for as long as it's asked to, in place of the others' time", async () => {
+    render(Toast, baseProps);
+
+    toast("success", "Password changed.", mdiCheck, 5000);
+    await vi.advanceTimersByTimeAsync(baseProps.timer);
+    expect(get(toastList)).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(get(toastList)).toStrictEqual([]);
+  });
+
+  it("should show on the screen wherever the page is, without taking a tap from what's under it", () => {
+    expect(
+      styleRules(
+        "../../../../style/dusk-components/toast.css",
+        import.meta.url
+      ).find(({ selector }) => selector === ".dusk-toast")?.declarations
+    ).toMatchObject({ "pointer-events": "none", position: "fixed" });
   });
 
   it("should fade a message out in place over 120 ms, and only then take it away", async () => {

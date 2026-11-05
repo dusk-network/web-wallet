@@ -89,7 +89,8 @@
       current = "";
       next = "";
       again = "";
-      toast("success", "Password changed.", mdiCheck);
+      // Longer than most: it comes after the page has moved on.
+      toast("success", "Password changed.", mdiCheck, 5000);
       await goto("/settings");
     } catch (error) {
       refused(error);
