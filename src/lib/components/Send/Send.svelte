@@ -32,6 +32,8 @@
     pageTitle,
     reviewStep,
   } from "$lib/navigation";
+  import { onTheirWay, sentAlready } from "$lib/activity/sends";
+  import { dayLabel, timeLabel } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
   import { readPaymentLink } from "$lib/payment-requests";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
@@ -147,6 +149,14 @@
    * @type {string[]}
    */
   export let knownNames = [];
+
+  /**
+   * The profile's history, newest first: what it sent that's on its way, and
+   * a payment the one typed would make again.
+   *
+   * @type {ActivityRow[]}
+   */
+  export let historyRows = [];
 
   const draft = formDraft("send");
 
@@ -1203,7 +1213,72 @@
   // A name as the lookup gives it, once it has: in its canonical form.
   $: shownName = nameLookup?.name ?? recipientName;
 
+  /**
+   * Who an account is to this wallet: a contact, one of its profiles or of
+   * another wallet's here, the name it was sent to, or its short address.
+   *
+   * @param {string} address
+   * @param {string | null} toName
+   * @param {{ contacts: Contact[], ownAccounts: { address: string, label: string }[], walletNames: Map<string, string> }} known
+   */
+  const nameOf = (address, toName, known) =>
+    known.contacts.find((saved) => saved.address === address)?.name ??
+    known.ownAccounts.find((account) => account.address === address)?.label ??
+    known.walletNames.get(address) ??
+    toName ??
+    shortenAddress(address);
+
+  /**
+   * When something went, from now: "at 21:16", "yesterday at 21:16" or "on
+   * Thu 5 Nov at 21:16".
+   *
+   * @param {number} time
+   * @param {string} locale
+   */
+  function whenSent(time, locale) {
+    const day = dayLabel(time, { locale });
+    const at = `at ${timeLabel(time, locale)}`;
+
+    return day === "Today"
+      ? at
+      : day === "Yesterday"
+        ? `yesterday ${at}`
+        : `on ${day} ${at}`;
+  }
+
+  /**
+   * A payment sent, in a line: "0.01 DUSK to Profile 2", nothing of the
+   * amount with the balances hidden.
+   *
+   * @param {ActivityRow} row
+   * @param {{ contacts: Contact[], hidden: boolean, locale: string, ownAccounts: { address: string, label: string }[], walletNames: Map<string, string> }} known
+   */
+  const paymentOf = (row, known) =>
+    `${known.hidden ? BALANCE_MASK : formatDuskExact(row.value, known.locale)} DUSK to ${nameOf(
+      row.counterparty ?? "",
+      row.toName,
+      known
+    )}`;
+
   $: ({ hideBalances, language } = $settingsStore);
+  $: known = {
+    contacts,
+    hidden: hideBalances,
+    locale: language,
+    ownAccounts,
+    walletNames: $walletAccountNames,
+  };
+  // What this profile sent that's on its way: a reload or another tab's
+  // send doesn't hide it.
+  $: underWay = onTheirWay(historyRows);
+  // The same payment, made already: moments ago, or with the same memo.
+  $: madeAgain = addressInfo.isValid
+    ? sentAlready(historyRows, {
+        lux: sendAmountInLux,
+        memo: transactionMemo,
+        to: recipientAddress,
+      })
+    : null;
   $: isAmountMasked = hideBalances && isMaxAmount;
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
@@ -1230,6 +1305,21 @@
       <h1 class="send__title" id="{id}-title" use:pageTitle={step !== "review"}>
         Send
       </h1>
+
+      {#each underWay as row (row.hash)}
+        <Banner
+          className="send__under-way"
+          role="status"
+          title={`Your ${paymentOf(row, known)} is on its way.`}
+          variant="info"
+        >
+          <AppAnchor
+            className="text-link"
+            href={`/dashboard/transactions?tx=${row.hash}`}
+            >See in History</AppAnchor
+          >
+        </Banner>
+      {/each}
 
       <div class="send__field">
         <label class="send__label" for="{id}-to">To</label>
@@ -1812,6 +1902,15 @@
           </dd>
         </div>
       </dl>
+      {#if madeAgain && madeAgain.time !== null}
+        <!-- Said, not stopped: the same payment twice can be meant. -->
+        <Banner
+          className="send__again"
+          role="alert"
+          title={`You sent ${paymentOf(madeAgain, known)}${madeAgain.memo?.trim() ? " with this memo" : ""} ${whenSent(madeAgain.time, language)}.`}
+          variant="warning"
+        />
+      {/if}
       {#if step === "review"}
         <!-- A step of its own: nothing goes before it, and Send, new with it,
           takes no click meant for Review. -->

@@ -32,6 +32,7 @@ import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
 import { useWalletDataSuffix } from "$lib/wallets/dataNames";
+import { tellOtherTabs } from "$lib/wallets/tabs";
 import { profilesOf } from "$lib/wallets/profiles";
 import { useWalletData } from "$lib/wallets/walletData";
 
@@ -183,7 +184,11 @@ const recordInHistory = (profile, details) => {
   const history = historyOf(profile);
 
   return (txInfo) => {
-    history?.recordSent({ ...details, hash: txInfo.hash }).catch(() => {});
+    history
+      ?.recordSent({ ...details, hash: txInfo.hash })
+      // The other tabs' history shows it too.
+      .then(() => tellOtherTabs({ type: "sent" }))
+      .catch(() => {});
   };
 };
 

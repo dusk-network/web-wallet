@@ -655,6 +655,25 @@ describe("The wallets on this device", () => {
       expect(get(walletStore).initialized).toBe(false);
     });
 
+    it("reads its history again as another tab sends, for what that tab sent to show here", async () => {
+      await twoWallets();
+
+      const session = /** @type {import("$lib/activity").ActivitySession} */ (
+        walletStore.startHistory()
+      );
+
+      await session.start();
+
+      const refresh = vi.spyOn(session, "refresh");
+
+      stopFollowing = followOtherTabs();
+      fromOtherTab({ type: "sent" });
+
+      await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
+      expect(logoutSpy).not.toHaveBeenCalled();
+      expect(get(walletStore).initialized).toBe(true);
+    });
+
     it("lets go of a wallet another tab removed, after opening the one that tab opened", async () => {
       const { first, second } = await twoWallets();
 

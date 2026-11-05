@@ -1030,6 +1030,17 @@ describe("Wallet store", async () => {
       // The nonce it used is the paying profile's too.
       expect(updateNonceSpy).toHaveBeenCalledExactlyOnceWith(payer, 1n);
 
+      // The other tabs hear of it, for their history to show it.
+      await vi.waitFor(() =>
+        expect(
+          JSON.parse(
+            localStorage.getItem(
+              `${CONFIG.LOCAL_STORAGE_APP_KEY}-wallet-event`
+            ) ?? "null"
+          )
+        ).toMatchObject({ type: "sent" })
+      );
+
       vi.useFakeTimers();
     });
 

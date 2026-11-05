@@ -148,6 +148,7 @@
     execute={send}
     {gasLimits}
     {gasSettings}
+    historyRows={$activityState.rows}
     initialAmount={asked?.amount ?? ""}
     initialMemo={asked?.memo ?? ""}
     initialProblem={asked?.problem ?? ""}

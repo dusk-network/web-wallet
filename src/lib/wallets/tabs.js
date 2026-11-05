@@ -1,16 +1,16 @@
 /**
  * What one tab tells the others of the wallets: another opened ("switch"),
  * one added, removed or renamed ("wallets"), a new password ("password"),
- * or all of them locked ("lock"). It goes through this browser's storage,
- * whose change every other tab of the wallet hears, and the tab that tells
- * it doesn't.
+ * all of them locked ("lock"), or a transaction sent ("sent"). It goes
+ * through this browser's storage, whose change every other tab of the wallet
+ * hears, and the tab that tells it doesn't.
  */
 
 const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-wallet-event`;
 
 /**
  * @typedef {{ key: string, profile: number, type: "switch" }
- *   | { type: "lock" | "password" | "wallets" }} TabEvent
+ *   | { type: "lock" | "password" | "sent" | "wallets" }} TabEvent
  */
 
 /**
@@ -49,7 +49,9 @@ export function onOtherTabs(handler) {
     try {
       const event = JSON.parse(newValue);
 
-      if (["lock", "password", "switch", "wallets"].includes(event?.type)) {
+      if (
+        ["lock", "password", "sent", "switch", "wallets"].includes(event?.type)
+      ) {
         handler(event);
       }
     } catch {

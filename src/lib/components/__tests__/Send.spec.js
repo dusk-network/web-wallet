@@ -18,6 +18,7 @@ import {
   formatDuskPlain,
 } from "$lib/dusk/currency";
 import { timeLabel } from "$lib/activity/present";
+import { BALANCE_MASK } from "$lib/constants";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { shortenAddress } from "$lib/dusk/string";
 import { afterConfirmDelay, getAsHTMLElement } from "$lib/dusk/test-helpers";
@@ -1425,6 +1426,121 @@ describe("Send", () => {
         target: { value: "1" },
       });
       expect(fields.review()).toBeEnabled();
+    });
+  });
+
+  describe("What the profile sent", () => {
+    /**
+     * A transfer in the profile's history, as the history gives it.
+     *
+     * @param {Partial<ActivityRow>} fields
+     * @returns {ActivityRow}
+     */
+    const sentRow = (fields) =>
+      /** @type {ActivityRow} */ (
+        /** @type {unknown} */ ({
+          counterparty: otherAccount,
+          direction: "out",
+          hash: lastTxId,
+          kind: "transfer",
+          memo: null,
+          source: "sent",
+          status: "pending",
+          time: Date.now() - 20_000,
+          toName: null,
+          value: 1_900_000n,
+          ...fields,
+        })
+      );
+
+    it("should say what's on its way from this profile, as after a reload while it went", () => {
+      const { getByRole } = render(Send, {
+        ...baseProps,
+        historyRows: [sentRow({})],
+      });
+
+      expect(getByRole("status")).toHaveTextContent(
+        `Your 0.0019 DUSK to ${shortenAddress(otherAccount)} is on its way.`
+      );
+      expect(getByRole("link", { name: "See in History" })).toHaveAttribute(
+        "href",
+        `/some-base-path/dashboard/transactions?tx=${lastTxId}`
+      );
+    });
+
+    it("should say what's on its way, with no amount while the balances are hidden", () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      try {
+        const { getByRole } = render(Send, {
+          ...baseProps,
+          historyRows: [sentRow({})],
+        });
+
+        expect(getByRole("status")).toHaveTextContent(
+          `Your ${BALANCE_MASK} DUSK to ${shortenAddress(otherAccount)} is on its way.`
+        );
+      } finally {
+        settingsStore.reset();
+      }
+    });
+
+    it("should warn of the same payment made moments ago, or with the same memo before, and let it go all the same", async () => {
+      const sent = Date.now() - 20_000;
+      const { getByRole } = render(Send, {
+        ...baseProps,
+        historyRows: [sentRow({ status: "executed", time: sent })],
+        initialAmount: "0.0019",
+        initialRecipient: otherAccount,
+      });
+
+      expect(getByRole("alert")).toHaveTextContent(
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} at ${timeLabel(sent, "en")}.`
+      );
+
+      // It can be meant: it goes.
+      await fireEvent.click(fieldsOf(getByRole).review());
+      await afterConfirmDelay();
+      await fireEvent.click(fieldsOf(getByRole).send());
+
+      expect(baseProps.execute).toHaveBeenCalledOnce();
+      cleanup();
+
+      // Another amount, or the same long ago without a memo, is no repeat.
+      const other = render(Send, {
+        ...baseProps,
+        historyRows: [
+          sentRow({ status: "executed", time: Date.now() - 11 * 60_000 }),
+          sentRow({ status: "failed", value: 3_000_000n }),
+        ],
+        initialAmount: "0.0019",
+        initialRecipient: otherAccount,
+      });
+
+      expect(other.queryByRole("alert")).toBeNull();
+
+      await fireEvent.input(fieldsOf(other.getByRole).amount(), {
+        target: { value: "0.003" },
+      });
+
+      expect(other.queryByRole("alert")).toBeNull();
+      cleanup();
+
+      // The same memo, as a request paid once already, is one whenever.
+      const paid = Date.UTC(2026, 9, 29, 9, 30);
+      const request = render(Send, {
+        ...baseProps,
+        historyRows: [
+          sentRow({ memo: "Factura 044", status: "executed", time: paid }),
+        ],
+        initialAmount: "0.0019",
+        initialMemo: "Factura 044",
+        initialRecipient: otherAccount,
+      });
+
+      expect(request.getByRole("alert")).toHaveTextContent(
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo on Thu 29 Oct at ${timeLabel(paid, "en")}.`
+      );
     });
   });
 

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Warn on Send of a payment just like one made in the last ten minutes, or with the same memo before, also from another tab, without stopping it
 - Unlock with fingerprint or face, off by default, turned on in Settings with the password, on browsers and devices with a passkey's PRF: going straight to it as the wallet opens. The password keeps working, and big sends still ask for it
 - Show a stake with Sozu in figures on its form: put in, taken out, worth now, deposit fees and rewards so far, what an amount earns in a year, and a line of what the rate is made of
 - Tell me when it arrives, on a transfer's Sent screen and in Bridge › Activity, by a browser notification where one can be had, asked for only when pressed, and in the tab's title whoever's away
@@ -34,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say on Send what's on its way from the profile, as after a reload while it went
 - Follow a send whose answer got lost on its Not confirmed screen, which turns into Sent once the chain has it, and show it Pending in History at once: sends, stakes, Sozu, shielding and the bridge
 - Say the amount that arrives on the Sent screen of a transfer to another chain
 - Say "Filled in from the link" on Send opened by a payment link through the unlock, and draw a page the unlock opens once
