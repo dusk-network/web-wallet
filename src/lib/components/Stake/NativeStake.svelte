@@ -2,6 +2,7 @@
 
 <script>
   import { onMount } from "svelte";
+  import { page } from "$app/stores";
   import {
     mdiAlertCircleOutline,
     mdiClockOutline,
@@ -27,7 +28,7 @@
   import { randomUUID } from "$lib/dusk/string";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { settingsStore } from "$lib/stores";
-  import { addBasePath } from "$lib/navigation";
+  import { addBasePath, reviewStep } from "$lib/navigation";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
@@ -41,8 +42,9 @@
 
   /**
    * Native staking: the amount, checked as it is typed against the minimum
-   * and the public balance, what staking natively takes, and a summary
-   * with the button that stakes. With a stake already, it adds to it.
+   * and the public balance, what staking natively takes, and a summary with
+   * Review; then the review, with the button that stakes. With a stake
+   * already, it adds to it.
    */
 
   /** @type {(amount: bigint, gasPrice: bigint, gasLimit: bigint) => Promise<string>} */
@@ -86,6 +88,8 @@
   /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
   let sent = null;
 
+  const reviewHistory = reviewStep("stakeReview");
+
   /**
    * @param {bigint} lux
    * @param {boolean} [isMax]
@@ -111,12 +115,28 @@
         operation: execute(amount, gasPrice, gasLimit),
         what: `${hideBalances ? BALANCE_MASK : formatDuskExact(amount, language)} DUSK to your stake`,
       };
+      // The review's place in the history goes with it.
+      reviewHistory.leave();
+    }
+  }
+
+  /**
+   * The step where the browser's Back or Forward takes the history: a review
+   * only of what can still be staked.
+   *
+   * @param {boolean} isAtReview
+   */
+  function followHistory(isAtReview) {
+    if (!sent) {
+      isReviewing = isAtReview && canStake;
     }
   }
 
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
+
+  $: followHistory(Boolean($page.state?.stakeReview));
 
   // The default gas can change while the page shows, as when the node's
   // price arrives: the page takes it unless its gas was edited here, and
@@ -184,9 +204,11 @@
     canReview={canStake}
     {isReviewing}
     on:back={() => {
+      reviewHistory.leave();
       isReviewing = false;
     }}
     on:review={() => {
+      reviewHistory.enter();
       isReviewing = true;
     }}
     title={hasStake ? "Stake more" : "Native staking"}
@@ -383,8 +405,9 @@
           </dd>
         </div>
       </dl>
-      <!-- A phone's review is a step of its own: Stake shows anew with it. -->
-      {#key isReviewing}
+      <!-- A step of its own: nothing goes before it, and Stake, new with it,
+        takes no click meant for Review. -->
+      {#if isReviewing}
         <Button
           className="stake-flow__send"
           confirm
@@ -395,7 +418,7 @@
             : "Stake"}
           variant="primary"
         />
-      {/key}
+      {/if}
     </svelte:fragment>
   </StakeFlow>
 {/if}

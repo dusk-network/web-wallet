@@ -3,6 +3,7 @@
 <script>
   import { onDestroy, onMount, tick } from "svelte";
   import { get } from "svelte/store";
+  import { page } from "$app/stores";
   import { mdiPercentOutline, mdiWaterOutline } from "@mdi/js";
 
   import { contractLabel } from "$lib/activity/knownContracts";
@@ -18,6 +19,7 @@
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
+  import { reviewStep } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
   import {
     feePercent,
@@ -42,7 +44,7 @@
   /**
    * Liquid staking through Sozu, a third party: what the account has with
    * Sozu, the amount to stake or unstake, checked as it is typed, and a
-   * summary with the button that sends it.
+   * summary with Review; then the review, with the button that sends it.
    */
 
   /** @type {(action: "stake" | "unstake", poolId: string, amount: bigint, gasPrice: bigint, gasLimit: bigint) => Promise<string>} */
@@ -114,6 +116,24 @@
    */
   let draftEpoch = 0;
   let isGone = false;
+
+  const reviewHistory = reviewStep("stakeReview");
+
+  /**
+   * The step where the browser's Back or Forward takes the history: a review
+   * only of what can still be sent.
+   *
+   * @param {boolean} isAtReview
+   */
+  function followHistory(isAtReview) {
+    if (!sent) {
+      if (isReviewing && !isAtReview) {
+        forgetTerms();
+      }
+
+      isReviewing = isAtReview && canSend;
+    }
+  }
 
   /** @param {"stake" | "unstake"} next */
   async function pick(next) {
@@ -302,6 +322,8 @@
             ? `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK to Sozu`
             : `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK unstaked from Sozu`,
       };
+      // The review's place in the history goes with it.
+      reviewHistory.leave();
     }
   }
 
@@ -322,6 +344,8 @@
   onDestroy(() => {
     isGone = true;
   });
+
+  $: followHistory(Boolean($page.state?.stakeReview));
 
   // Each action's own gas: a tab's, or the node's price once it's read,
   // unless the gas was edited.
@@ -441,10 +465,12 @@
     canReview={canSend}
     {isReviewing}
     on:back={() => {
+      reviewHistory.leave();
       isReviewing = false;
       forgetTerms();
     }}
     on:review={() => {
+      reviewHistory.enter();
       isReviewing = true;
     }}
     title="Liquid staking"
@@ -778,23 +804,37 @@
           <strong>{termsError}, so nothing was sent.</strong> Try again.
         </p>
       {/if}
-      <!-- It shows anew with a phone's review, and with terms that changed. -->
-      {#key `${isReviewing} ${termsChanged}`}
-        <Button
-          className="stake-flow__send"
-          confirm
-          disabled={!canSend || isChecking}
-          on:click={send}
-          text={canSend
-            ? isStake
-              ? `Stake ${shownText} DUSK with Sozu`
-              : `Unstake ${shownText} DUSK`
-            : isStake
-              ? "Stake with Sozu"
-              : "Unstake"}
-          variant="primary"
-        />
-      {/key}
+      {#if isReviewing}
+        {#if isStake && depositFee !== 0n}
+          <p class="stake-flow__final">
+            {#if depositRate && depositFee !== null}
+              The deposit fee of <BalanceValue
+                value={formatDuskExact(depositFee, language)}
+              /> DUSK doesn't come back.
+            {:else}
+              Sozu's deposit fee doesn't come back.
+            {/if}
+          </p>
+        {/if}
+        <!-- A step of its own: nothing goes before it, and the button, new with
+          it and with terms that changed, takes no click meant for another. -->
+        {#key termsChanged}
+          <Button
+            className="stake-flow__send"
+            confirm
+            disabled={!canSend || isChecking}
+            on:click={send}
+            text={canSend
+              ? isStake
+                ? `Stake ${shownText} DUSK with Sozu`
+                : `Unstake ${shownText} DUSK`
+              : isStake
+                ? "Stake with Sozu"
+                : "Unstake"}
+            variant="primary"
+          />
+        {/key}
+      {/if}
     </svelte:fragment>
   </StakeFlow>
 {/if}

@@ -650,12 +650,15 @@ describe("Staking", () => {
           name: "Less than 1,000 DUSK? Use liquid staking (Sozu, third party)",
         })
       ).toHaveAttribute("href", "/some-base-path/dashboard/stake?flow=liquid");
-      expect(getByRole("button", { name: "Stake" })).toBeDisabled();
+      expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
       await fireEvent.click(getByRole("button", { name: "Use 1,000" }));
 
       expect(amount).toHaveValue("1000");
       expect(container.querySelector(".native-stake__error")).toBeNull();
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
       expect(
         getByRole("button", { name: "Stake 1,000 DUSK" })
       ).toBeInTheDocument();
@@ -717,9 +720,7 @@ describe("Staking", () => {
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
       "You get about 32.4378 stDUSK, worth about 99.75 DUSK now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees."
     );
-    expect(
-      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
-    ).toBeEnabled();
+    expect(getByRole("button", { name: "Review" })).toBeEnabled();
     // A stake's own gas: up to 5,000,000 at the node's price.
     expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
       "Total Up to 100.005 DUSK"
@@ -762,6 +763,7 @@ describe("Staking", () => {
       await fireEvent.input(getByLabelText(label), {
         target: { value: "100" },
       });
+      await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name }));
 
@@ -786,6 +788,7 @@ describe("Staking", () => {
     await fireEvent.input(getByLabelText("Stake amount"), {
       target: { value: "100" },
     });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
     await fireEvent.click(
       getByRole("button", { name: "Stake 100 DUSK with Sozu" })

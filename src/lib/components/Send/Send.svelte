@@ -21,10 +21,9 @@
     closeDuskName,
     isDuskName,
   } from "@duskdomains/sdk/names";
-  import { pushState } from "$app/navigation";
   import { page } from "$app/stores";
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
-  import { addBasePath, pageTitle } from "$lib/navigation";
+  import { addBasePath, pageTitle, reviewStep } from "$lib/navigation";
   import { getAddressInfo } from "$lib/wallet";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
@@ -132,7 +131,7 @@
   let scanQrComponent;
 
   /**
-   * Where the transfer is: the form, its review (phones only), or sent.
+   * Where the transfer is: the form, its review, or sent.
    *
    * @type {"done" | "form" | "review"}
    */
@@ -335,6 +334,7 @@
   const minAmount = 1n;
 
   const dispatch = createEventDispatcher();
+  const reviewHistory = reviewStep("sendReview");
 
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
@@ -641,7 +641,24 @@
   }
 
   /**
-   * The step where a phone's Back or Forward takes the history: a review
+   * On to the review, where the summary takes the page and the focus: a step
+   * of its own in the history, so that Back returns to the form, with what's
+   * filled in.
+   */
+  async function goToReview() {
+    if (!canSend) {
+      return;
+    }
+
+    reviewHistory.enter();
+    step = "review";
+    window.scrollTo(0, 0);
+    await tick();
+    document.getElementById(`${id}-summary`)?.focus();
+  }
+
+  /**
+   * The step where the browser's Back or Forward takes the history: a review
    * only of what can still be sent.
    *
    * @param {boolean} isAtReview
@@ -1402,7 +1419,9 @@
     </section>
 
     <aside aria-labelledby="{id}-summary" class="send__summary">
-      <SectionHead id="{id}-summary">Summary</SectionHead>
+      <SectionHead id="{id}-summary" tabindex="-1"
+        >{step === "review" ? "Review" : "Summary"}</SectionHead
+      >
       <dl class="send__rows">
         <div>
           <dt>From</dt>
@@ -1432,7 +1451,7 @@
                       (recipientName ? shownName : walletAccount))}</span
                 >
               {/if}
-              <!-- A phone's review is the last it sees of it before it goes. -->
+              <!-- The review is the last it shows of it before it goes. -->
               {#if step === "review"}
                 <FullAddress address={recipientAddress} />
               {:else}
@@ -1494,8 +1513,9 @@
           </dd>
         </div>
       </dl>
-      <!-- A phone's review is a step of its own: Send shows anew with it. -->
-      {#key step}
+      {#if step === "review"}
+        <!-- A step of its own: nothing goes before it, and Send, new with it,
+          takes no click meant for Review. -->
         <Button
           className="send__send"
           confirm
@@ -1506,9 +1526,7 @@
             : "Send"}
           variant="primary"
         />
-      {/key}
-      <p class="send__final">Sends can't be undone.</p>
-      {#if step === "review"}
+        <p class="send__final">Sends can't be undone.</p>
         <Button
           className="send__back"
           icon={{ path: mdiArrowLeft }}
@@ -1519,27 +1537,19 @@
           text="Back"
           variant="secondary"
         />
+      {:else}
+        <!-- On a phone, the one thing of the summary that shows with the form. -->
+        <div class="send__review-bar">
+          <Button
+            className="send__review"
+            disabled={!canSend}
+            on:click={goToReview}
+            text="Review"
+            variant="primary"
+          />
+        </div>
       {/if}
     </aside>
-
-    <!-- Phones review before they send: the summary takes the page. -->
-    {#if step === "form"}
-      <div class="send__phone-bar">
-        <Button
-          className="send__review"
-          disabled={!canSend}
-          on:click={() => {
-            // A step of its own in the history: a phone's Back returns to
-            // the form, with what's filled in.
-            pushState("", { sendReview: true });
-            step = "review";
-            window.scrollTo(0, 0);
-          }}
-          text="Review"
-          variant="primary"
-        />
-      </div>
-    {/if}
   </div>
 {/if}
 
@@ -1936,16 +1946,30 @@
     font-size: 0.8125rem;
   }
 
+  .send__summary :global(.section-head:focus) {
+    outline: none;
+  }
+
   .send__summary :global(.send__send),
+  .send__summary :global(.send__review),
   .send__summary :global(.send__back) {
     width: 100%;
   }
 
-  .send__phone-bar {
+  /* The review: the summary takes the page, in a column of its own. */
+  .send--review {
+    grid-template-columns: minmax(0, 30rem);
+    justify-content: center;
+  }
+
+  .send--review .send__form {
     display: none;
   }
 
-  /* Phones: the form, then a review of it before it is sent. */
+  .send--review .send__summary {
+    position: static;
+  }
+
   @media (max-width: 63.99rem) {
     .send {
       padding: 1.75rem 1.5rem 2rem;
@@ -1959,31 +1983,26 @@
       padding: 1rem 1rem 0;
     }
 
-    .send__summary {
-      position: static;
+    .send--review {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* The form first: of the summary, only Review, kept above the keyboard. */
+    .send:not(.send--review) .send__summary {
+      display: contents;
+    }
+
+    .send:not(.send--review) .send__summary > :global(:not(.send__review-bar)) {
       display: none;
     }
 
-    .send--review .send__form {
-      display: none;
-    }
-
-    .send--review .send__summary {
-      display: flex;
-    }
-
-    .send__phone-bar {
+    .send__review-bar {
       position: sticky;
       bottom: var(--keyboard-inset, 0px);
       z-index: 3;
-      display: block;
       padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
       background: var(--calm-s0);
       box-shadow: 0 -1px 0 var(--calm-line);
-
-      & :global(.send__review) {
-        width: 100%;
-      }
     }
   }
 </style>

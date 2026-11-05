@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { tick } from "svelte";
 
+import { page } from "$app/stores";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 
@@ -22,6 +24,18 @@ vi.mock("$lib/transactions", async (importOriginal) => ({
   ...(await importOriginal()),
   followTransaction,
 }));
+
+// The page's history state, as the tests move it.
+vi.mock("$app/stores", async () => {
+  const { writable } = await import("svelte/store");
+
+  return { page: writable({ state: {} }) };
+});
+
+const historyAt = (/** @type {{ stakeReview?: boolean }} */ state) =>
+  /** @type {import("svelte/store").Writable<any>} */ (
+    /** @type {unknown} */ (page)
+  ).set({ state });
 
 const HASH = "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
 const DUSK = 1_000_000_000n;
@@ -213,11 +227,18 @@ describe("NativeStake", () => {
 
       expect(getByLabelText("Stake amount")).toHaveValue("••••");
       expect(container.textContent).not.toContain("1,482.9");
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
       expect(getByRole("button", { name: "Stake •••• DUSK" })).toBeEnabled();
 
+      await fireEvent.click(getByRole("button", { name: "Back" }));
       await fireEvent.click(getByRole("button", { name: "Use 1,000" }));
 
       expect(getByLabelText("Stake amount")).toHaveValue("1000");
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
       expect(getByRole("button", { name: "Stake 1,000 DUSK" })).toBeEnabled();
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -265,6 +286,7 @@ describe("NativeStake", () => {
       "Total Up to 1,200.55 DUSK",
     ]);
 
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Stake 1,200.5 DUSK" }));
 
@@ -297,7 +319,7 @@ describe("NativeStake", () => {
     expect(stake).toHaveClass("stake-flow__muted");
     expect(total).toHaveTextContent("Up to 100.05 DUSK");
     expect(total).toHaveClass("stake-flow__muted");
-    expect(getByRole("button", { name: "Stake" })).toBeDisabled();
+    expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
     await fireEvent.input(getByLabelText("Stake amount"), {
       target: { value: "1000" },
@@ -321,6 +343,9 @@ describe("NativeStake", () => {
     expect(container.querySelector(".stake-flow__rows dd")).toHaveTextContent(
       "1,000.5 DUSK"
     );
+
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
     expect(getByRole("button", { name: "Stake 1,000.5 DUSK" })).toBeEnabled();
   });
 
@@ -339,6 +364,7 @@ describe("NativeStake", () => {
     await fireEvent.input(getByLabelText("Amount to add"), {
       target: { value: "10" },
     });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Stake 10 DUSK" }));
 
@@ -361,6 +387,9 @@ describe("NativeStake", () => {
       "title",
       "All of it, less the network fee and the fee to unstake later"
     );
+
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
     expect(getByRole("button", { name: "Stake 1,482.9 DUSK" })).toBeEnabled();
   });
 
@@ -378,7 +407,7 @@ describe("NativeStake", () => {
     expect(container.querySelector(".native-stake__error")).toHaveTextContent(
       "That's 0.05 DUSK more than the public balance, with this fee and the fee to unstake later."
     );
-    expect(getByRole("button", { name: "Stake" })).toBeDisabled();
+    expect(getByRole("button", { name: "Review" })).toBeDisabled();
   });
 
   it("offers the minimum only with enough left to unstake it, and says why not", () => {
@@ -395,8 +424,8 @@ describe("NativeStake", () => {
     );
   });
 
-  it("reviews the summary on its own page on phones, and goes back", async () => {
-    const { container, getByLabelText, getByRole } = render(
+  it("reviews the summary on its own before anything goes, and goes back", async () => {
+    const { container, getByLabelText, getByRole, queryByRole } = render(
       NativeStake,
       baseProps
     );
@@ -407,20 +436,74 @@ describe("NativeStake", () => {
     await fireEvent.input(getByLabelText("Stake amount"), {
       target: { value: "1000" },
     });
+    await afterConfirmDelay();
+
+    // One button beside the form, and it doesn't stake.
+    expect(queryByRole("button", { name: /^Stake/ })).toBeNull();
+
     await fireEvent.click(review);
 
+    expect(baseProps.execute).not.toHaveBeenCalled();
     expect(container.querySelector(".stake-flow")).toHaveClass(
       "stake-flow--review"
     );
+    expect(queryByRole("button", { name: "Review" })).toBeNull();
+    expect(getByRole("heading", { name: /Review/ })).toHaveFocus();
 
     await fireEvent.click(getByRole("button", { name: "Back" }));
 
     expect(container.querySelector(".stake-flow")).not.toHaveClass(
       "stake-flow--review"
     );
+    expect(getByLabelText("Stake amount")).toHaveValue("1000");
   });
 
-  it("takes no click on Stake for half a second once a phone's review shows, so a double tap on Review can't stake", async () => {
+  it("follows the browser's Back and Forward between the filled form and its review", async () => {
+    const { container, getByLabelText, getByRole } = render(
+      NativeStake,
+      baseProps
+    );
+    const isReview = () =>
+      container
+        .querySelector(".stake-flow")
+        ?.classList.contains("stake-flow--review");
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1000" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(isReview()).toBe(true);
+
+    // The history at the form again, as Back leaves it.
+    historyAt({});
+    await tick();
+
+    expect(isReview()).toBe(false);
+    expect(getByLabelText("Stake amount")).toHaveValue("1000");
+
+    // And at the review, as Forward does.
+    historyAt({ stakeReview: true });
+    await tick();
+
+    expect(isReview()).toBe(true);
+
+    historyAt({});
+  });
+
+  it("stays on the form when the history is at a review of a form it no longer has", async () => {
+    historyAt({ stakeReview: true });
+
+    const { container } = render(NativeStake, baseProps);
+
+    expect(container.querySelector(".stake-flow")).not.toHaveClass(
+      "stake-flow--review"
+    );
+
+    historyAt({});
+  });
+
+  it("takes no click on Stake for half a second once the review shows, so a double click on Review can't stake", async () => {
     const { getByLabelText, getByRole } = render(NativeStake, baseProps);
     const stake = () => getByRole("button", { name: "Stake 1,000 DUSK" });
 

@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Review a send or a stake before it goes, at every screen width: the first press no longer sends
+- Say on the review of a stake with Sozu that its deposit fee doesn't come back, and how much it is
+
 ### Removed
 
 ### Fixed

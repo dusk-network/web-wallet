@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, tick } from "svelte";
   import { mdiArrowLeft } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
@@ -8,15 +8,16 @@
   import { randomUUID } from "$lib/dusk/string";
 
   /**
-   * A staking flow as a page: the form, and beside it a summary with the
-   * button that sends. On phones the summary is a review of its own, with
-   * a Review button kept above the keyboard.
+   * A staking flow as a page: the form, and beside it a summary with Review
+   * (on phones, only the button shows, kept above the keyboard). The review
+   * is a step of its own, where the summary takes the page, with the button
+   * that sends.
    */
 
   /** @type {string} */
   export let title;
 
-  /** Whether the summary shows as the review, on phones. */
+  /** Whether the summary shows as the review. */
   export let isReviewing = false;
 
   /** Whether the form can be reviewed. */
@@ -24,6 +25,17 @@
 
   const id = randomUUID();
   const dispatch = createEventDispatcher();
+
+  async function review() {
+    if (!canReview) {
+      return;
+    }
+
+    dispatch("review");
+    window.scrollTo(0, 0);
+    await tick();
+    document.getElementById(`${id}-summary`)?.focus();
+  }
 </script>
 
 <div class="stake-flow" class:stake-flow--review={isReviewing}>
@@ -36,7 +48,9 @@
   </section>
 
   <aside aria-labelledby="{id}-summary" class="stake-flow__summary">
-    <SectionHead id="{id}-summary">Summary</SectionHead>
+    <SectionHead id="{id}-summary" tabindex="-1"
+      >{isReviewing ? "Review" : "Summary"}</SectionHead
+    >
     <ReviewWallet />
     <slot name="summary" />
     {#if isReviewing}
@@ -47,23 +61,19 @@
         text="Back"
         variant="secondary"
       />
+    {:else}
+      <!-- On a phone, the one thing of the summary that shows with the form. -->
+      <div class="stake-flow__review-bar">
+        <Button
+          className="stake-flow__review"
+          disabled={!canReview}
+          on:click={review}
+          text="Review"
+          variant="primary"
+        />
+      </div>
     {/if}
   </aside>
-
-  {#if !isReviewing}
-    <div class="stake-flow__phone-bar">
-      <Button
-        className="stake-flow__review"
-        disabled={!canReview}
-        on:click={() => {
-          dispatch("review");
-          window.scrollTo(0, 0);
-        }}
-        text="Review"
-        variant="primary"
-      />
-    </div>
-  {/if}
 </div>
 
 <style lang="postcss">
@@ -161,7 +171,12 @@
     color: var(--calm-muted);
   }
 
+  .stake-flow__summary :global(.section-head:focus) {
+    outline: none;
+  }
+
   .stake-flow__summary :global(.stake-flow__send),
+  .stake-flow__summary :global(.stake-flow__review),
   .stake-flow__summary :global(.stake-flow__back-button) {
     width: 100%;
   }
@@ -172,8 +187,18 @@
     text-align: center;
   }
 
-  .stake-flow__phone-bar {
+  /* The review: the summary takes the page, in a column of its own. */
+  .stake-flow--review {
+    grid-template-columns: minmax(0, 30rem);
+    justify-content: center;
+  }
+
+  .stake-flow--review .stake-flow__form {
     display: none;
+  }
+
+  .stake-flow--review .stake-flow__summary {
+    position: static;
   }
 
   @media (max-width: 63.99rem) {
@@ -182,7 +207,6 @@
     }
   }
 
-  /* Phones: the form, then a review of it before it is sent. */
   @media (max-width: 47.99rem) {
     .stake-flow {
       grid-template-columns: minmax(0, 1fr);
@@ -190,31 +214,24 @@
       padding: 0.75rem 1rem 0;
     }
 
-    .stake-flow__summary {
-      position: static;
+    /* The form first: of the summary, only Review, kept above the keyboard. */
+    .stake-flow:not(.stake-flow--review) .stake-flow__summary {
+      display: contents;
+    }
+
+    .stake-flow:not(.stake-flow--review)
+      .stake-flow__summary
+      > :global(:not(.stake-flow__review-bar)) {
       display: none;
     }
 
-    .stake-flow--review .stake-flow__form {
-      display: none;
-    }
-
-    .stake-flow--review .stake-flow__summary {
-      display: flex;
-    }
-
-    .stake-flow__phone-bar {
+    .stake-flow__review-bar {
       position: sticky;
       bottom: var(--keyboard-inset, 0px);
       z-index: 3;
-      display: block;
       padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
       background: var(--calm-s0);
       box-shadow: 0 -1px 0 var(--calm-line);
-
-      & :global(.stake-flow__review) {
-        width: 100%;
-      }
     }
   }
 </style>
