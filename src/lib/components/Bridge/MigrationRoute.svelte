@@ -575,6 +575,10 @@
 
   $: ({ hideBalances, language } = $settingsStore);
   $: isAmountMasked = hideBalances && isMaxAmount;
+  // What the Sent screen says is on its way.
+  $: sentWhat = hideBalances
+    ? "It"
+    : `${formatDuskExact(amountLux, language)} DUSK`;
   $: ({ address, chainId, isConnected } = $account);
   $: follow(isConnected ? address : undefined, chainId);
   $: followHistory(Boolean($page.state?.routeReview));
@@ -1007,8 +1011,8 @@
           masked={hideBalances}
           {route}
           sentText={timeText
-            ? `It arrives on Dusk in ${timeText}.`
-            : "It arrives on Dusk once the bridge pays it out."}
+            ? `${sentWhat} arrives on Dusk in ${timeText}.`
+            : `${sentWhat} arrives on Dusk once the bridge pays it out.`}
           {time}
         />
       </svelte:fragment>

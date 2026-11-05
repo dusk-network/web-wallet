@@ -1225,6 +1225,11 @@ describe("the Bridge card's routes to and from other chains", () => {
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
       await findByText("Migration sent");
 
+      // Until it's paid, it says what's on its way.
+      expect(document.querySelector(".route-result")).toHaveTextContent(
+        "2.5 DUSK arrives on Dusk"
+      );
+
       mocks.transfers?.set([
         {
           amountLux: 2_500_000_000n,

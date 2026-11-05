@@ -270,10 +270,12 @@
     font-weight: 600;
   }
 
-  /* The From panel's account line, last, clears the flip button below it. */
-  .swap-card
-    :global(.swap-panel:has(+ .swap-flip) > .swap-recipient:last-child) {
-    margin-bottom: 0.75rem;
+  /*
+   * The From panel's account line clears the flip button below it, and so
+   * does the finger-sized target of its Change.
+   */
+  .swap-card :global(.swap-panel:has(~ .swap-flip):has(> .swap-recipient)) {
+    padding-bottom: 2rem;
   }
 
   .swap-card :global(.swap-flip) {

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- List a transfer's exact amounts in its details under Bridge › Activity: sent, bridge fee, network fee, received and gas
 - Search finds a payment by its amount, and lists a contact's payments under the contact
 - Ask for the password again on any send above an amount chosen in Settings, off by default: sends, stakes, shielding, the bridge and contract calls, checked against the vault
 - Come back to the same page and profile after a lock or a reload, and through a link, with what was typed in a form that moves money, until it goes out
@@ -24,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep Change clear of the Swap arrow on the Bridge's way back
+- Say the amount on the Sent screen of a migration
 - Stop two tabs on the Bridge asking the EVM wallet to switch networks without end: it's asked as a route opens or a wallet connects, and the card offers to switch
 - Show the DuskEVM balance on a withdrawal whichever chain the EVM wallet is on
 - Count a withdrawal's fee in what the password on big sends goes by
