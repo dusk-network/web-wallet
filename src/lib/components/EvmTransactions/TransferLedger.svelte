@@ -2,9 +2,10 @@
 
 <script>
   /**
-   * One transfer in amounts, to the last digit, the same in all the Dusk apps:
-   * what was sent, the fees, what arrived and the gas paid on the other chain,
-   * as far as each is known.
+   * One transfer in amounts, the same in all the Dusk apps: what was sent, the
+   * fees and what arrived, to the last digit, and the gas paid on the other
+   * chain, short as other wallets write it, in full on hover, as far as each is
+   * known.
    */
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
 
@@ -23,10 +24,17 @@
 
 {#if ledger.lines.length}
   <dl class="transfer-ledger">
-    {#each ledger.lines as { coin, exact, expected, key } (key)}
+    {#each ledger.lines as { coin, exact, expected, key, text } (key)}
       <div>
         <dt>{expected ? "You receive" : NAMES[key]}</dt>
-        <dd><BalanceValue value={exact} /> {coin}</dd>
+        <dd>
+          {#if key === "gas"}
+            <BalanceValue {exact} value={text} />
+          {:else}
+            <BalanceValue value={exact} />
+          {/if}
+          {coin}
+        </dd>
       </div>
     {/each}
   </dl>

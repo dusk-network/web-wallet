@@ -164,6 +164,32 @@ describe("A transfer's amounts, as its details say them", () => {
     ]);
   });
 
+  it("writes the gas paid short, as other wallets do, with all its decimals on hover", () => {
+    const ledger = ledgerOf(
+      {
+        item: { ...migration(PAID_AT), gasWei: "42205000675280" },
+        kind: "migration",
+      },
+      { locale: "en", rows: [], steps: new Map() }
+    );
+    const { container } = render(TransferLedger, {
+      ledger: /** @type {any} */ (ledger),
+    });
+    const gas = /** @type {Element} */ (
+      Array.from(container.querySelectorAll("dl > div")).find((line) =>
+        line.textContent?.includes("Gas")
+      )
+    );
+
+    expect(gas.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Gas 0.000042 BNB"
+    );
+    expect(gas.querySelector("[title]")).toHaveAttribute(
+      "title",
+      "0.00004220500067528"
+    );
+  });
+
   it("gives a migration in its token, what was paid out, and the gas paid on its chain", () => {
     const paid = {
       item: migration(PAID_AT),
