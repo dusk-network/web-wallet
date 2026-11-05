@@ -146,6 +146,9 @@
 
     problem = "";
 
+    // A newer image replaces this one's read too.
+    scanRun += 1;
+
     const run = scanRun;
 
     try {

@@ -141,9 +141,10 @@
    *
    * @param {NonNullable<typeof request>} asked
    * @param {string} shownName
+   * @param {string} to The address it pays
    * @returns {Array<{ size: number, text: string, weight: number }>}
    */
-  const wordsOf = (asked, shownName) => [
+  const wordsOf = (asked, shownName, to) => [
     { size: 44, text: "Dusk payment request", weight: 600 },
     {
       size: 64,
@@ -158,7 +159,7 @@
       : []),
     {
       size: 36,
-      text: `To ${shownName ? `${shownName} · ` : ""}${shortenAddress(address)}`,
+      text: `To ${shownName ? `${shownName} · ` : ""}${shortenAddress(to)}`,
       weight: 400,
     },
   ];
@@ -170,8 +171,9 @@
    * @param {typeof request} asked
    * @param {string} value What the code holds
    * @param {typeof name} named
+   * @param {string} to The address it pays
    */
-  async function qrPicture(asked, value, named) {
+  async function qrPicture(asked, value, named, to) {
     const qr = document.createElement("canvas");
 
     await QRCode.toCanvas(qr, value, {
@@ -184,7 +186,7 @@
     }
 
     const shownName = await Promise.resolve(named).catch(() => "");
-    const lines = wordsOf(asked, shownName);
+    const lines = wordsOf(asked, shownName, to);
     const picture = document.createElement("canvas");
     const context = /** @type {CanvasRenderingContext2D} */ (
       picture.getContext("2d")
@@ -227,7 +229,8 @@
       link.href = await qrPicture(
         used.request,
         used.request?.dusk ?? used.address,
-        name
+        name,
+        used.address
       );
       link.download = `dusk-${kind}-${used.request ? "request" : "receive"}-qr.png`;
       link.click();

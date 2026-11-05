@@ -395,6 +395,43 @@ describe("Receive", () => {
       written.mockRestore();
     });
 
+    it("should name in the picture the address its code pays, though the shielded one is chosen before it's made", async () => {
+      /** @type {(name: string) => void} */
+      let named = () => {};
+
+      getPrimaryName.mockReturnValue(
+        new Promise((resolve) => {
+          named = resolve;
+        })
+      );
+
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+      const written = vi.spyOn(CanvasRenderingContext2D.prototype, "fillText");
+
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+      await openRequest();
+      await type("Amount (optional)", "0.05");
+      await vi.advanceTimersByTimeAsync(0);
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await fireEvent.click(screen.getByRole("radio", { checked: false }));
+      await vi.advanceTimersByTimeAsync(0);
+      named("");
+      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+      expect(written.mock.calls.map(([text]) => text)).toContain(
+        `To ${shortenAddress(ACCOUNT)}`
+      );
+      expect(get(requestsStore)).toMatchObject([{ to: ACCOUNT }]);
+
+      click.mockRestore();
+      written.mockRestore();
+    });
+
     it("should download the QR under a name that says what it holds, and keep a request with it", async () => {
       const click = vi
         .spyOn(HTMLAnchorElement.prototype, "click")

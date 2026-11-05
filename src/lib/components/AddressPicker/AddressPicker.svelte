@@ -80,7 +80,11 @@
   function openDropDown() {
     if (!expanded) {
       expanded = true;
-      pushState("", { ...$page?.state, profileMenu: true });
+
+      // After Forward the history is at the list's step already.
+      if (!$page?.state?.profileMenu) {
+        pushState("", { ...$page?.state, profileMenu: true });
+      }
     }
   }
 

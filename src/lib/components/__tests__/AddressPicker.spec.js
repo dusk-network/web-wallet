@@ -143,6 +143,31 @@ describe("AddressPicker", () => {
       back.mockRestore();
     });
 
+    it("opens on the list's own step after Back and Forward, so the next Back closes it", async () => {
+      const { pushState } = await import("$app/navigation");
+      const { container } = render(AddressPicker, {
+        compact: true,
+        currentProfile,
+        profiles,
+      });
+      const goTo = (/** @type {object} */ state) =>
+        act(() => pageStore.page?.update((page) => ({ ...page, state })));
+
+      await fireEvent.click(trigger(container));
+      await goTo({});
+      await goTo({ profileMenu: true });
+
+      vi.mocked(pushState).mockClear();
+      await fireEvent.click(trigger(container));
+
+      expect(trigger(container)).toHaveAttribute("aria-expanded", "true");
+      expect(pushState).not.toHaveBeenCalled();
+
+      await goTo({});
+
+      expect(trigger(container)).toHaveAttribute("aria-expanded", "false");
+    });
+
     it("closes as the page changes", async () => {
       const { container } = render(AddressPicker, {
         compact: true,

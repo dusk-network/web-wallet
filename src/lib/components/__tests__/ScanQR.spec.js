@@ -250,4 +250,47 @@ describe("ScanQR", () => {
 
     click.mockRestore();
   });
+
+  it("reads only the newest image chosen, though an earlier one's read ends first", async () => {
+    qr.camera = false;
+
+    const scan = vi.fn();
+    const click = vi
+      .spyOn(HTMLInputElement.prototype, "click")
+      .mockImplementation(() => {});
+    const view = await ready({ scan });
+    const input = view.getByLabelText("Image of a QR code");
+    const choose = (/** @type {string} */ name) =>
+      fireEvent.change(input, {
+        target: { files: [new File(["png"], name, { type: "image/png" })] },
+      });
+
+    await view.component.startScan();
+
+    /** @type {Array<(value: { data: string }) => void>} */
+    const reads = [];
+    const pending = () =>
+      new Promise((resolve) => {
+        reads.push(resolve);
+      });
+
+    qr.scanImage.mockReturnValueOnce(pending()).mockReturnValueOnce(pending());
+    await choose("old.png");
+    await choose("new.png");
+    reads[0]({ data: "dusk:public-old" });
+    await tick();
+    await Promise.resolve();
+
+    expect(scan).not.toHaveBeenCalled();
+
+    reads[1]({ data: "dusk:public-new" });
+    await tick();
+    await Promise.resolve();
+
+    expect(scan).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ detail: "dusk:public-new" })
+    );
+
+    click.mockRestore();
+  });
 });
