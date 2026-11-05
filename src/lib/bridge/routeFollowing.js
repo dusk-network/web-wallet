@@ -6,15 +6,20 @@
 
 import { get } from "svelte/store";
 
+import { followsWhileAway } from "./arrivalNotice";
 import { transferArrivals } from "./migrationActivity";
-import { routeTransfers } from "./routeHistory";
+import { FOLLOW_FOR_MS, routeTransfers } from "./routeHistory";
 import { followTransfers, toFollow } from "./routeTracking";
 
 /** How often it looks while a transfer is under way. */
 const FOLLOW_MS = 15_000;
 
-/** @returns {() => void} Stops */
-export function followRouteTransfers() {
+/**
+ * @param {{ recentOnly?: boolean }} [options] `recentOnly`: only while one sent
+ *   in the last day is under way
+ * @returns {() => void} Stops
+ */
+export function followRouteTransfers({ recentOnly = false } = {}) {
   let following = false;
   let underWay = "";
 
@@ -23,10 +28,21 @@ export function followRouteTransfers() {
       return;
     }
 
+    const transfers = get(routeTransfers);
+
+    if (
+      recentOnly &&
+      !toFollow(transfers).some(
+        ({ at }) => Date.now() - (at ?? 0) < FOLLOW_FOR_MS
+      )
+    ) {
+      return;
+    }
+
     following = true;
 
     try {
-      await followTransfers(get(routeTransfers), get(transferArrivals));
+      await followTransfers(transfers, get(transferArrivals));
     } finally {
       following = false;
     }
@@ -44,7 +60,7 @@ export function followRouteTransfers() {
     underWay = now;
   });
   const timer = setInterval(() => {
-    if (document.visibilityState !== "hidden") {
+    if (document.visibilityState !== "hidden" || followsWhileAway()) {
       void follow();
     }
   }, FOLLOW_MS);

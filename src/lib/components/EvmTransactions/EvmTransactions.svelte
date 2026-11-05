@@ -53,6 +53,7 @@
   import { routeTransfers } from "$lib/bridge/routeHistory";
   import { followRouteTransfers } from "$lib/bridge/routeFollowing";
 
+  import ArrivalNotice from "../Bridge/ArrivalNotice.svelte";
   import Banner from "../Banner/Banner.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
   import SwapCard from "../SwapCard/SwapCard.svelte";
@@ -877,6 +878,9 @@
       <p class="bridge-activity__note">No transfers yet.</p>
     {/if}
 
+    {#if groups.some(({ group }) => group === "progress")}
+      <ArrivalNotice />
+    {/if}
     {#each groups as { group, head, rows } (group)}
       <section aria-labelledby="bridge-group-{group}">
         <h2 class="bridge-activity__head" id="bridge-group-{group}">{head}</h2>

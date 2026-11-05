@@ -7,6 +7,7 @@
     logout,
     startInactivityTimer,
   } from "$lib/navigation";
+  import { followArrivals } from "$lib/bridge/arrivalFollowing";
   import { followRouteHistory } from "$lib/bridge/routeHistory";
   import { Shell } from "$lib/containers/Shell";
   import { SendPasswordDialog } from "$lib/containers/Wallets";
@@ -38,6 +39,9 @@
 
   // A migration's payout reaches the history while the wallet is open.
   onMount(() => followRouteHistory());
+
+  // What ends is said to whoever isn't looking.
+  onMount(() => followArrivals());
 
   // Another tab's switch, removal, new password or lock reaches this one.
   onMount(() => followOtherTabs());

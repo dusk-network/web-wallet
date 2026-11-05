@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Tell me when it arrives, on a transfer's Sent screen and in Bridge › Activity, by a browser notification where one can be had, asked for only when pressed, and in the tab's title whoever's away
 - Say how a route is doing under it on the Bridge: whether it's paying out, its last payout, and what it can pay
 - Share on Receive, where the browser has a share sheet: the address, or the request's link
 - Request payment on Receive, with a QR to download and an https link that opens Send filled in, and a list of your requests saying what matched what came in

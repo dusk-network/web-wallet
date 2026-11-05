@@ -50,6 +50,7 @@
     toChoices as toChoicesOf,
   } from "$lib/bridge/cardRoutes";
 
+  import ArrivalNotice from "./ArrivalNotice.svelte";
   import MigrationRoute from "./MigrationRoute.svelte";
   import RouteStatusLine from "./RouteStatusLine.svelte";
   import ServiceRoute from "./ServiceRoute.svelte";
@@ -1116,6 +1117,7 @@
       >
         <svelte:fragment slot="success-content" let:result={hash}>
           <p>{withdrawalNext}</p>
+          <ArrivalNotice />
           {#if hash}
             <AnchorButton
               href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}

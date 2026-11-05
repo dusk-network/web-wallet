@@ -5,6 +5,7 @@ import { networks } from "@dusk-network/networks";
 import { tick } from "svelte";
 import { get } from "svelte/store";
 
+import { stopArrivalNotice } from "$lib/bridge/arrivalNotice";
 import { cardRoutes } from "$lib/bridge/cardRoutes";
 import { formatDuskPlain } from "$lib/dusk/currency";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
@@ -1201,6 +1202,30 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       return view;
     }
+
+    it("offers to tell when it arrives while it's on its way, asking the browser only as that's pressed", async () => {
+      const requestPermission = vi.fn(async () => "granted");
+
+      vi.stubGlobal(
+        "Notification",
+        Object.assign(function () {}, {
+          permission: "default",
+          requestPermission,
+        })
+      );
+
+      const view = await sendOut();
+
+      expect(requestPermission).not.toHaveBeenCalled();
+
+      await fireEvent.click(
+        view.getByRole("button", { name: "Tell me when it arrives" })
+      );
+
+      expect(requestPermission).toHaveBeenCalledOnce();
+      vi.unstubAllGlobals();
+      stopArrivalNotice();
+    });
 
     /** @param {Record<string, unknown>} fields */
     const out = (fields) => ({

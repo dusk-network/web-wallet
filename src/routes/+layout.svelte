@@ -1,5 +1,6 @@
 <script>
   import { page } from "$app/stores";
+  import { arrivalTitle } from "$lib/bridge/arrivalNotice";
   import { pageName } from "$lib/containers/Shell/navigation";
   import { settingsStore } from "$lib/stores";
   import { logout } from "$lib/navigation";
@@ -52,7 +53,11 @@
 <svelte:window on:storage={handleStorageChange} />
 
 <svelte:head>
-  <title>{name ? `${name} · Dusk Wallet` : "Dusk Wallet"}</title>
+  <title
+    >{$arrivalTitle ? `${$arrivalTitle} · ` : ""}{name
+      ? `${name} · Dusk Wallet`
+      : "Dusk Wallet"}</title
+  >
 </svelte:head>
 
 <svelte:element this={inShell ? "div" : "main"} class="app">
