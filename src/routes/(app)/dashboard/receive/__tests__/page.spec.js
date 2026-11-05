@@ -11,6 +11,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { claimDay } from "$lib/bridge/claimDate";
+import { shortenAddress } from "$lib/dusk/string";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
@@ -325,6 +326,34 @@ describe("Receive", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(get(requestsStore)).toHaveLength(1);
+    });
+
+    it("should write what a request asks under its QR in the picture: what it is, the amount, the memo and whom it pays", async () => {
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+      const written = vi.spyOn(CanvasRenderingContext2D.prototype, "fillText");
+
+      render(Receive);
+      await vi.runAllTimersAsync();
+      await openRequest();
+      await type("Amount (optional)", "0.05");
+      await type("Memo (optional)", "Factura 33");
+      await vi.advanceTimersByTimeAsync(0);
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+      expect(written.mock.calls.map(([text]) => text)).toStrictEqual([
+        "Dusk payment request",
+        "0.05 DUSK",
+        "Factura 33",
+        `To ${shortenAddress(ACCOUNT)}`,
+      ]);
+
+      click.mockRestore();
+      written.mockRestore();
     });
 
     it("should download the QR under a name that says what it holds, and keep a request with it", async () => {
