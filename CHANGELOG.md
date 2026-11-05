@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse a payment link whose amount in lux isn't the one it says, rather than pay the lux
 - Read a QR code that fills the camera's view on Send, also in browsers without a built-in QR reader, as on an iPhone
 - Say so when a QR code scanned isn't a Dusk address or payment link, and keep scanning
 - Say what a payment link asks, of whom and how much, before a wallet is open to pay it, and keep it through creating or restoring one, for Send to open filled in

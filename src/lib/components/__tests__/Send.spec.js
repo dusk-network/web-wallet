@@ -289,6 +289,47 @@ describe("Send", () => {
       }
     );
 
+    it("should refuse a link whose amount in lux isn't the one it says, filling in nothing", async () => {
+      const { getByRole, getByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(
+        fields,
+        `${httpsLink.replace("amount=0.15", "amount=0.01")}&amountLux=150000000`
+      );
+
+      expect(
+        getByText(
+          "This link asks for two different amounts. Ask for a new one."
+        )
+      ).toBeInTheDocument();
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+
+      // The same amount both ways is the one asked.
+      await paste(fields, `${httpsLink}&amountLux=150000000`);
+
+      expect(filled(fields)).toStrictEqual([
+        otherAccount,
+        "0.15",
+        "Factura 33",
+      ]);
+    });
+
+    it("should say a mainnet wallet's link is for Mainnet, on testnet", async () => {
+      const { getByRole, getByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(
+        fields,
+        `${networks.mainnet.apps.wallet}/dashboard/send?to=${otherAccount}&amount=0.15&network=mainnet`
+      );
+
+      expect(
+        getByText("This request is for Mainnet. You are on Testnet.")
+      ).toBeInTheDocument();
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+    });
+
     it("should read the amount in the language of the amount field", async () => {
       settingsStore.update((store) => ({ ...store, language: "es-ES" }));
 
