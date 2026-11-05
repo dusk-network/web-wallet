@@ -68,6 +68,7 @@ export function leastSozuUnstake(pool, staked) {
  *   fee: bigint,
  *   hidden?: boolean,
  *   keep?: bigint,
+ *   leastFee?: bigint,
  *   locale: string,
  *   minimum?: bigint,
  *   most?: { amount: bigint, error: string },
@@ -92,6 +93,7 @@ export function checkAmount({
   fee,
   hidden = false,
   keep = 0n,
+  leastFee,
   locale,
   minimum = 0n,
   most,
@@ -139,7 +141,7 @@ export function checkAmount({
   if (needed > available) {
     return fail(
       most
-        ? feeError({ available, canLower: true, fee, hidden, locale })
+        ? feeError({ available, fee, hidden, leastFee, locale })
         : `That's ${formatFee(needed - available, locale, { max: true })} DUSK more than the public balance, with ${keep ? "this fee and the fee to unstake later" : "the network fee"}.`
     );
   }
@@ -152,17 +154,11 @@ export function checkAmount({
  * it never reads less than is missing. With balances hidden, the figure,
  * which gives the balance away, is hidden too.
  *
- * @param {{ available: bigint, canLower?: boolean, fee: bigint, hidden?: boolean, locale: string }} shortfall
+ * @param {{ available: bigint, fee: bigint, hidden?: boolean, leastFee?: bigint, locale: string }} state
  *   `available` is the public balance, `fee` the most it can cost, and
- *   `canLower` whether the page has the fee's Edit, to lower it with
+ *   `leastFee` as low as the page's Edit lets it go, for where that's enough
  */
-export function feeError({
-  available,
-  canLower = false,
-  fee,
-  hidden = false,
-  locale,
-}) {
+export function feeError({ available, fee, hidden = false, leastFee, locale }) {
   const short = hidden
     ? BALANCE_MASK
     : formatFee(fee - available, locale, { max: true });
@@ -173,5 +169,5 @@ export function feeError({
 
   return hidden
     ? why
-    : `${why} Add that much to it first${canLower && available > 0n ? ", or lower the fee" : ""}.`;
+    : `${why} Add that much to it first${leastFee && available >= leastFee ? ", or lower the fee" : ""}.`;
 }

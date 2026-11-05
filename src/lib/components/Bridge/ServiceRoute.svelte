@@ -341,6 +341,13 @@
       <p class="swap-error" role="status">
         That leaves too little {keepForLater.why}.
       </p>
+    {:else if keepForLater.lux > 0n && amountLux > 0n && unshieldedBalance - total === keepForLater.lux}
+      <p class="swap-note">
+        Max keeps {hideBalances
+          ? "the fee"
+          : `${formatFee(keepForLater.lux, language, { max: true })} DUSK`}
+        {keepForLater.why}.
+      </p>
     {/if}
   </div>
 

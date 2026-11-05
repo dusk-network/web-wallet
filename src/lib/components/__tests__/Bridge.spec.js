@@ -289,6 +289,37 @@ describe("Bridge", () => {
     expect(amount).toHaveValue("999.98");
   });
 
+  it("should keep what's needed to get at what's elsewhere on a deposit's Max, say so, and warn of an amount over that", async () => {
+    const { getByLabelText, getByRole, getByText, queryByText } = render(
+      Bridge,
+      {
+        ...baseProps,
+        keepForLater: { lux: 60_000_000n, why: "to claim your withdrawal" },
+      }
+    );
+    const amount = getByLabelText("Amount");
+
+    await fireEvent.click(getByRole("button", { name: "Max" }));
+
+    // The public balance, past the deposit's fee and what's kept.
+    expect(amount).toHaveValue("999.92");
+    expect(
+      getByText("Max keeps 0.06 DUSK to claim your withdrawal.")
+    ).toBeInTheDocument();
+    expect(queryByText(/too little/)).toBeNull();
+
+    await fireEvent.input(amount, { target: { value: "999.95" } });
+
+    expect(
+      getByText("That leaves too little to claim your withdrawal.")
+    ).toBeInTheDocument();
+    expect(queryByText(/^Max keeps/)).toBeNull();
+
+    await fireEvent.input(amount, { target: { value: "999.9" } });
+
+    expect(queryByText(/too little|^Max keeps/)).toBeNull();
+  });
+
   it("should leave room for a withdrawal's fee when using it all", async () => {
     const { container, getByLabelText, getByRole } = render(Bridge, baseProps);
 

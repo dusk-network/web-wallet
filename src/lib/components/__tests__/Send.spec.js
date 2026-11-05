@@ -531,6 +531,32 @@ describe("Send", () => {
       expect(getByText("Not enough for the network fee.")).toBeInTheDocument();
     });
 
+    it("should offer to lower the fee only where it can get low enough, then with its Edit in the form on a phone", async () => {
+      const { container, getByRole, rerender } = render(Send, {
+        ...baseProps,
+        availableBalance: 10_000_000n - 1n,
+      });
+      const short = () => container.querySelector(".send--fee-short");
+
+      await tick();
+
+      expect(getByRole("alert")).toHaveTextContent(
+        "Not enough for the network fee. Add DUSK."
+      );
+      expect(short()).toBeNull();
+
+      await rerender({ availableBalance: 10_000_000n });
+
+      expect(getByRole("alert")).toHaveTextContent(
+        "Not enough for the network fee. Add DUSK, or lower the fee under Edit."
+      );
+      expect(short()).toBeInTheDocument();
+
+      await rerender({ availableBalance: fee });
+
+      expect(short()).toBeNull();
+    });
+
     it("should take an amount typed with a decimal comma, or with its thousands grouped", async () => {
       const { container, getByRole, queryByRole } = render(Send, {
         ...baseProps,

@@ -194,6 +194,27 @@ describe("checkAmount", () => {
     expect(
       check("5", { available: 49_000_000n, minimum: 0n, most }).error
     ).toBe(
+      "The public balance doesn't cover the network fee: 0.001 DUSK short. Add that much to it first."
+    );
+    // Lowering it is offered only where it can get that low.
+    expect(
+      check("5", {
+        available: 49_000_000n,
+        leastFee: 49_000_001n,
+        minimum: 0n,
+        most,
+      }).error
+    ).toBe(
+      "The public balance doesn't cover the network fee: 0.001 DUSK short. Add that much to it first."
+    );
+    expect(
+      check("5", {
+        available: 49_000_000n,
+        leastFee: 49_000_000n,
+        minimum: 0n,
+        most,
+      }).error
+    ).toBe(
       "The public balance doesn't cover the network fee: 0.001 DUSK short. Add that much to it first, or lower the fee."
     );
     expect(

@@ -257,6 +257,12 @@
     font-size: 0.8125rem;
   }
 
+  .swap-card :global(.swap-note) {
+    margin: 0.375rem 0 0;
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
+  }
+
   .swap-card :global(.swap-recipient) {
     margin: 0.25rem 0 0;
     color: var(--calm-muted);

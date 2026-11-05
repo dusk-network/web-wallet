@@ -1134,10 +1134,15 @@ describe("the Bridge card's routes to and from other chains", () => {
         formatDuskPlain(props.unshieldedBalance - fee - keepForLater.lux)
       );
       expect(queryByText(/too little to unstake/)).toBeNull();
+      expect(
+        getByText("Max keeps 0.05 DUSK to unstake later.")
+      ).toBeInTheDocument();
 
       await fireEvent.input(amount, {
         target: { value: formatDuskPlain(props.unshieldedBalance - fee) },
       });
+
+      expect(queryByText(/^Max keeps/)).toBeNull();
 
       expect(
         getByText("That leaves too little to unstake later.")

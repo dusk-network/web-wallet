@@ -729,8 +729,10 @@ describe("LiquidStake", () => {
         return isShort;
       };
 
-      // Nothing to pay with: no fee low enough to get by on.
+      // Below the least the fee can go to: lowering it won't do.
       expect(shortOf(0n)).toBe(false);
+      expect(shortOf(4_000_000n - 1n)).toBe(false);
+      expect(shortOf(4_000_000n)).toBe(true);
       expect(shortOf(10_000_000n - 1n)).toBe(true);
       expect(shortOf(10_000_000n)).toBe(false);
     });
@@ -741,7 +743,7 @@ describe("LiquidStake", () => {
         stranded
       );
       const said =
-        "The public balance doesn't cover the network fee: 0.0072 DUSK short. Add that much to it first, or lower the fee.";
+        "The public balance doesn't cover the network fee: 0.0072 DUSK short. Add that much to it first.";
 
       expect(getByLabelText("Unstake amount")).toHaveValue("");
       expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
@@ -757,6 +759,24 @@ describe("LiquidStake", () => {
       expect(getByRole("button", { name: "Review" })).toBeDisabled();
     });
 
+    it("offers to lower the fee only where it can get low enough, and does", async () => {
+      const { container, getByLabelText, getByRole } = render(LiquidStake, {
+        ...stranded,
+        availableBalance: 5_000_000n,
+      });
+
+      expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
+        "The public balance doesn't cover the network fee: 0.005 DUSK short. Add that much to it first, or lower the fee."
+      );
+
+      await fireEvent.click(getByRole("button", { name: "Edit" }));
+      await fireEvent.input(getByLabelText(/gas limit/i), {
+        target: { value: "5000000" },
+      });
+
+      expect(container.querySelector(".liquid-stake__error")).toBeNull();
+    });
+
     it("says what's missing of the fee as it's edited, down to its minimum", async () => {
       const { container, getByLabelText, getByRole } = render(
         LiquidStake,
@@ -769,7 +789,7 @@ describe("LiquidStake", () => {
       });
 
       expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-        "The public balance doesn't cover the network fee: 0.0012 DUSK short. Add that much to it first, or lower the fee."
+        "The public balance doesn't cover the network fee: 0.0012 DUSK short. Add that much to it first."
       );
     });
 

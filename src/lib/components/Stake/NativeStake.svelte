@@ -244,7 +244,9 @@
 {:else}
   <StakeFlow
     canReview={canStake}
-    isFeeShort={availableBalance > 0n && availableBalance < maxGasFee}
+    isFeeShort={availableBalance >=
+      gasLimits.gasLimitLower * gasLimits.gasPriceLower &&
+      availableBalance < maxGasFee}
     {isReviewing}
     on:back={() => {
       reviewHistory.leave();

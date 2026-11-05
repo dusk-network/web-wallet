@@ -430,6 +430,8 @@
   $: fees = status?.fees ?? null;
   $: isStake = action === "stake";
   $: maxGasFee = gasLimit * gasPrice;
+  // As low as the fee's Edit lets it go.
+  $: leastFee = gasLimits.gasLimitLower * gasLimits.gasPriceLower;
   $: staked = status?.position.balance ?? 0n;
   // Sozu's deposit fee, as its substrate gives it, where it could be read.
   $: depositRate = status?.fees?.deposit ?? null;
@@ -457,6 +459,7 @@
     fee: maxGasFee,
     hidden: hideBalances,
     keep: isStake ? unstakeFee : 0n,
+    leastFee,
     locale: language,
     minimum: least ?? 0n,
     most: isStake
@@ -476,10 +479,10 @@
   $: stranded =
     !isStake && staked > 0n && availableBalance < maxGasFee
       ? feeError({
-          canLower: true,
           available: availableBalance,
           fee: maxGasFee,
           hidden: hideBalances,
+          leastFee,
           locale: language,
         })
       : "";
@@ -518,7 +521,7 @@
 {:else}
   <StakeFlow
     canReview={canSend}
-    isFeeShort={availableBalance > 0n && availableBalance < maxGasFee}
+    isFeeShort={availableBalance >= leastFee && availableBalance < maxGasFee}
     {isReviewing}
     on:back={() => {
       reviewHistory.leave();

@@ -227,7 +227,8 @@
       {hasPastStaking}
       {nativeRate}
       locale={language}
-      leastFee={unstakeGas.limits.gasLimitLower * unstakeGas.settings.gasPrice}
+      leastFee={unstakeGas.limits.gasLimitLower *
+        unstakeGas.limits.gasPriceLower}
       maxFee={unstakeGas.settings.gasLimit * unstakeGas.settings.gasPrice}
       {minimumStake}
       pending={isStakePending}

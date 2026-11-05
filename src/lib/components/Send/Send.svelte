@@ -782,6 +782,10 @@
   // Check if the available balance is sufficient to cover the max gas fee.
   // This is a prerequisite for any transaction.
   $: isBalanceSufficientForGas = availableBalance >= maxGasFee;
+  // Whether the fee's Edit can bring it down to what's there.
+  $: canLowerFee =
+    !isBalanceSufficientForGas &&
+    availableBalance >= gasLimits.gasLimitLower * gasLimits.gasPriceLower;
 
   // Determine the maximum amount spendable for the transfer.
   // If the available balance is less than the max gas fee, set it to 0n to avoid negative values.
@@ -1107,7 +1111,7 @@
 {:else}
   <div
     class="send"
-    class:send--fee-short={availableBalance > 0n && !isBalanceSufficientForGas}
+    class:send--fee-short={canLowerFee}
     class:send--review={step === "review"}
   >
     <section aria-labelledby="{id}-title" class="send__form">
@@ -1543,8 +1547,9 @@
           </p>
         {:else if !isBalanceSufficientForGas && availableBalance > 0n}
           <p class="send__error" role="alert">
-            <strong>Not enough for the network fee.</strong> Add DUSK, or lower the
-            fee under Edit.
+            <strong>Not enough for the network fee.</strong> Add DUSK{canLowerFee
+              ? ", or lower the fee under Edit"
+              : ""}.
           </p>
         {/if}
       </div>

@@ -737,7 +737,7 @@
     return unsubscribeAccount;
   });
 
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
   // The contract a deposit calls on Dusk, as the network's file names it.
   $: ({ name: networkName } = $nodeNetwork ?? { name: "" });
   $: depositContract = networkName ? configuredBridge().bridge : "";
@@ -869,6 +869,13 @@
       {:else if leavesTooLittle}
         <p class="swap-error" role="status">
           That leaves too little {keepForLater.why}.
+        </p>
+      {:else if isDepositing && keepForLater.lux > 0n && amountLux > 0n && unshieldedBalance - totalDepositLux === keepForLater.lux}
+        <p class="swap-note">
+          Max keeps {hideBalances
+            ? "the fee"
+            : `${formatFee(keepForLater.lux, language, { max: true })} DUSK`}
+          {keepForLater.why}.
         </p>
       {:else if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
         <p class="swap-error" role="alert">
