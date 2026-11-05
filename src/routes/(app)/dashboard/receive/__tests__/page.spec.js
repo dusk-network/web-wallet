@@ -10,6 +10,8 @@ import {
 import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
+import { claimDay } from "$lib/bridge/claimDate";
+
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
 import { settingsStore, walletStore } from "$lib/stores";
@@ -413,6 +415,55 @@ describe("Receive", () => {
       await vi.advanceTimersByTimeAsync(60_000);
 
       expect(history.refresh).not.toHaveBeenCalled();
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    it("should say a request paid twice, with when, and another payment that may be for it", async () => {
+      const at = Date.now() - 10_000;
+      const row = (/** @type {Record<string, unknown>} */ fields) => ({
+        category: "received",
+        hash: "ab".repeat(32),
+        memo: "Factura 43",
+        privacy: "public",
+        status: "executed",
+        time: at + 500,
+        value: 10_000_000n,
+        ...fields,
+      });
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "twice",
+            lux: "10000000",
+            memo: "Factura 43",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          row({}),
+          row({ hash: "cd".repeat(32), time: at + 2500 }),
+          row({ hash: "ef".repeat(32), memo: "Fra 43", time: at + 3500 }),
+        ],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const item = screen.getByRole("listitem");
+
+      expect(item).toHaveTextContent(
+        `Paid twice: ${claimDay(at + 500, "en")} and ${claimDay(at + 2500, "en")}.`
+      );
+      expect(item).toHaveTextContent(
+        `Also the same amount on ${claimDay(at + 3500, "en")}, with another memo: "Fra 43".`
+      );
       history.state?.set({ hasMore: false, rows: [] });
     });
 

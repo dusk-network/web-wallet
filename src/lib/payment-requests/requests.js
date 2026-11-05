@@ -44,11 +44,25 @@ const CLOCK_SKEW_MS = 5 * 60_000;
  */
 
 /**
+ * A payment that came in for a request, with what of it matched.
+ *
+ * @typedef {{
+ *   at?: number,
+ *   hash: string,
+ *   lux: bigint,
+ *   matched: "amount" | "amount-memo" | "memo",
+ *   memo: string,
+ * }} RequestPayment
+ */
+
+/**
  * What came in for a request:
  * - "paid": a payment with the amount and the memo asked;
  * - "check": a payment with what `matched` says: not the whole of it, or a
  *   request asking too little to tell;
  * - "waiting": none yet.
+ * `more` holds the other payments that match it, oldest first, which no
+ * other request took: one with all of it again is the request paid twice.
  *
  * @typedef {{
  *   at?: number,
@@ -56,6 +70,7 @@ const CLOCK_SKEW_MS = 5 * 60_000;
  *   lux?: bigint,
  *   matched?: "amount" | "amount-memo" | "memo",
  *   memo?: string,
+ *   more?: RequestPayment[],
  *   state: "check" | "paid" | "waiting",
  * }} RequestMatch
  */
@@ -301,6 +316,33 @@ export function matchRequests(list, rows) {
 
     if (!matches.has(request.id)) {
       matches.set(request.id, { state: "waiting" });
+    }
+  }
+
+  // What else came in for a request answered: it paid twice, or may have.
+  for (const request of oldestFirst) {
+    const match = /** @type {RequestMatch} */ (matches.get(request.id));
+
+    /** @type {RequestPayment[]} */
+    const more = [];
+
+    for (const row of match.state === "waiting" ? [] : incoming) {
+      const matched = taken.has(row.hash) ? null : matchOf(request, row);
+
+      if (matched) {
+        taken.add(row.hash);
+        more.push({
+          at: row.time ?? undefined,
+          hash: row.hash,
+          lux: row.value,
+          matched,
+          memo: memoOf(row.memo),
+        });
+      }
+    }
+
+    if (more.length) {
+      matches.set(request.id, { ...match, more });
     }
   }
 
