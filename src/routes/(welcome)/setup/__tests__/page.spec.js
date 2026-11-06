@@ -306,6 +306,19 @@ describe("Setup", () => {
     expect(container.querySelector("css-doodle, img, canvas")).toBeNull();
   });
 
+  it("should link the version and the commit built to the build's manifest of every file, in a new tab", () => {
+    const { getByRole } = render(Setup, {});
+
+    // The commit is the version SvelteKit has: the test's is "any".
+    const version = getByRole("link", { name: "Web Wallet v0.1.5 (any)" });
+
+    expect(version).toHaveAttribute(
+      "href",
+      "/some-base-path/build-manifest.json"
+    );
+    expect(version).toHaveAttribute("target", "_blank");
+  });
+
   it("should offer a first-time visitor to create or restore a wallet, and nothing to unlock", () => {
     const { getByRole, queryByRole } = render(Setup, {});
 
