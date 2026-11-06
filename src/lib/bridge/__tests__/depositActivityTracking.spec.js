@@ -584,6 +584,32 @@ describe("DuskEVM deposit tracking", () => {
     }
   });
 
+  it("says a deposit just sent can't be read while Dusk's node can't, though DuskEVM waits on its block's time", async () => {
+    const hash = "97".repeat(32);
+    const fetch = vi.spyOn(globalThis, "fetch");
+
+    // Sent from here a moment ago: no history of it yet, nor its block's time.
+    rememberDepositTransaction(hash, {
+      account: "0xb0e834d62ca3f5cf0f82619c8515c673818f8c6b",
+      amountLux: "100000000",
+      createdAt: Date.now(),
+    });
+    mocks.query.mockRejectedValue(new Error("The node can't be reached."));
+
+    try {
+      expect(await refreshDepositTransaction(hash)).toStrictEqual(
+        expect.objectContaining({
+          stage: "l1_pending",
+          trackingError: "The node can't be reached.",
+        })
+      );
+      // DuskEVM wasn't asked: it waits on the time Dusk's node gives.
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
   it("finds a deposit sent more than a week ago arrived on DuskEVM, in a browser that sees it only now", async () => {
     const hash = "91".repeat(32);
     // A DuskEVM block every 100 seconds: one look reaches back that far.

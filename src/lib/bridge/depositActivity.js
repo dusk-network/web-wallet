@@ -54,6 +54,9 @@ let l2Client;
 
 class DuskDepositExecutionError extends Error {}
 
+/** Dusk's node couldn't be read for a deposit: whether its block is final isn't known. */
+class DuskNodeError extends Error {}
+
 export {
   depositActivityStore,
   getRememberedDepositActivity,
@@ -124,7 +127,16 @@ async function finalizedDuskTransaction(transactionHash) {
 async function resolveL1TransactionHash(remembered, scope) {
   if (remembered.l1TransactionHash) return remembered.l1TransactionHash;
 
-  const finalized = await finalizedDuskTransaction(remembered.transactionHash);
+  /** @type {Awaited<ReturnType<typeof finalizedDuskTransaction>>} */
+  let finalized;
+
+  try {
+    finalized = await finalizedDuskTransaction(remembered.transactionHash);
+  } catch (error) {
+    throw error instanceof DuskDepositExecutionError
+      ? error
+      : new DuskNodeError(errorMessage(error));
+  }
 
   if (!finalized) return null;
 
@@ -563,13 +575,16 @@ export async function refreshDepositTransaction(
     }
 
     // The adapter can't say, as when it doesn't have the method, as on
-    // public testnet: DuskEVM itself can. While it can, the deposit is on
-    // its way, with nothing wrong; it's unavailable only where neither can.
+    // public testnet: DuskEVM itself can. Where only the adapter failed and
+    // DuskEVM could be read for it, the deposit is on its way, with nothing
+    // wrong. Where Dusk's node couldn't be read, it's unavailable until
+    // DuskEVM finds it arrived: DuskEVM may only be waiting on what Dusk's
+    // node gives, as its block's time.
     const { arrived, said } = await readOnDuskEvm(remembered, scope);
 
     return (
       arrived ??
-      (said
+      (said && !(error instanceof DuskNodeError)
         ? pendingObservationPatch(remembered, scope)
         : failedObservationPatch(remembered, error, scope))
     );
