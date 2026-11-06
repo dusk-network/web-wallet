@@ -11,6 +11,9 @@ import {
   quarterPeriod,
 } from "@dusk-network/app-core/export";
 
+import { get } from "svelte/store";
+
+import { keptMigrations } from "$lib/bridge/migrationActivity";
 import { readMigrationsEvm } from "$lib/bridge/migrationEvm";
 
 import { duskEuroPrices } from "./duskPrice";
@@ -117,8 +120,18 @@ export async function makeExport({
   });
   // A stake whose stDUSK can't be read yet says so in its line.
   const facts = await session.sozuFacts(whole.rows).catch(() => undefined);
-  // What each migration paid on its own chain, its approval with it.
-  const migrations = migrationsOf(whole.rows);
+  // What each migration paid on its own chain, its approval with it: by the
+  // approval this browser sent for it where it kept one, whose receipt is
+  // read at any age, where the chain's logs no longer say.
+  const approvals = new Map(
+    get(keptMigrations).flatMap(({ approval, hash }) =>
+      approval ? [[hash.toLowerCase(), approval]] : []
+    )
+  );
+  const migrations = migrationsOf(whole.rows).map((migration) => ({
+    ...migration,
+    approval: approvals.get(migration.hash) ?? null,
+  }));
   const evm =
     net && migrations.length
       ? await readMigrationsEvm(net, migrations)

@@ -12,6 +12,25 @@ const chain = vi.hoisted(() => ({
 
 vi.mock("$lib/bridge/migrationEvm", () => ({ readMigrationsEvm: chain.read }));
 
+// The migrations this browser sent: the approval each sent is kept with it.
+vi.mock("$lib/bridge/migrationActivity", async () => {
+  const { readable } = await import("svelte/store");
+
+  return {
+    keptMigrations: readable([
+      {
+        amountLux: "5000000000",
+        approval: `0x${"ab".repeat(32)}`,
+        createdAt: Date.UTC(2026, 9, 27, 6, 17),
+        hash: `0x${"a6".repeat(32)}`,
+        recipient: "",
+        routeId: "bsc-to-dusk",
+        sender: "0x1111111111111111111111111111111111111111",
+      },
+    ]),
+  };
+});
+
 const BSC = /** @type {any} */ (
   networks.mainnet.routes.migrations.find(({ id }) => id === "bsc-to-dusk")
 );
@@ -86,8 +105,15 @@ describe("History's Export", () => {
       },
     });
 
+    // With the approval this browser kept, which the chain's logs may no
+    // longer say.
     expect(chain.read).toHaveBeenCalledWith(networks.mainnet, [
-      { hash: MIGRATION, payout: payout.hash, route: "bsc-to-dusk" },
+      {
+        approval: APPROVAL,
+        hash: MIGRATION,
+        payout: payout.hash,
+        route: "bsc-to-dusk",
+      },
     ]);
     // Each a cost of its own in BNB, at its own time, before the payout.
     expect(csv.split("\r\n").slice(1, 3)).toStrictEqual([
