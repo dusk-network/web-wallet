@@ -13,6 +13,7 @@
   import { duskExplorerTx } from "$lib/url";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
+  import AddDusk from "./AddDusk.svelte";
   import ArrivalNotice from "./ArrivalNotice.svelte";
   import { transferOutcome } from "../EvmTransactions/bridgeActivity";
   import WithdrawalHash from "../EvmTransactions/WithdrawalHash.svelte";
@@ -79,6 +80,9 @@
 <p>{outcome?.sentence ?? sentText}</p>
 {#if !outcome?.heading}
   <ArrivalNotice />
+{:else if route.kind === "service" && transfer?.stage === "arrived"}
+  <!-- Arrived on the other chain: its wallet can show it. -->
+  <AddDusk address={transfer.recipient} chain={route.chain} />
 {/if}
 <WithdrawalHash
   explorerName={isMigration ? `${route.chain.name} explorer` : "Dusk explorer"}

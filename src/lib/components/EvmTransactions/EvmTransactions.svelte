@@ -54,6 +54,7 @@
   import { routeTransfers } from "$lib/bridge/routeHistory";
   import { followRouteTransfers } from "$lib/bridge/routeFollowing";
 
+  import AddDusk from "../Bridge/AddDusk.svelte";
   import ArrivalNotice from "../Bridge/ArrivalNotice.svelte";
   import Banner from "../Banner/Banner.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
@@ -1005,6 +1006,12 @@
                     <DepositLifecycle deposit={row.item} titled={false} />
                   {:else}
                     <RouteTransferDetails transfer={row.item} />
+                    {#if row.kind === "service" && row.item.stage === "arrived"}
+                      <AddDusk
+                        address={row.item.recipient}
+                        chain={row.item.route.chain}
+                      />
+                    {/if}
                   {/if}
                 </div>
               {/if}
@@ -1233,6 +1240,11 @@
 
     & > :global(.deposit-status) {
       padding: 1rem 1.25rem;
+    }
+
+    /* Under the details, as far in as they are. */
+    & > :global(.add-dusk) {
+      margin: -0.25rem 1.25rem 1rem;
     }
   }
 
