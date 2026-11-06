@@ -14,6 +14,7 @@ import { settingsStore, walletStore } from "$lib/stores";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 
 import Staking from "../+page.svelte";
+import { networks } from "@dusk-network/networks";
 
 const page = vi.hoisted(() => ({
   url: new URL("http://localhost/some-base-path/dashboard/stake"),
@@ -54,8 +55,19 @@ vi.mock("$lib/stores", async (importOriginal) => {
 });
 
 const history = vi.hoisted(() => ({
+  refresh: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
   state: null,
+}));
+
+// A transaction's block never final, unless a test says otherwise.
+const { followTransaction } = vi.hoisted(() => ({
+  followTransaction: vi.fn(() => new Promise(() => {})),
+}));
+
+vi.mock("$lib/transactions", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  followTransaction,
 }));
 
 vi.mock("$lib/activity", async (importOriginal) => {
@@ -72,7 +84,11 @@ vi.mock("$lib/activity", async (importOriginal) => {
     syncing: false,
   });
 
-  return { ...original, activityState: history.state };
+  return {
+    ...original,
+    activityState: history.state,
+    currentActivity: () => ({ refresh: history.refresh }),
+  };
 });
 
 /** About what native staking pays a year, as the node's provisioners say. */
@@ -744,6 +760,65 @@ describe("Staking", () => {
     );
     expect(whole).toHaveBeenCalledExactlyOnceWith({ publicOnly: true });
     startHistory.mockRestore();
+  });
+
+  it("says what's on its way to Sozu after a reload, and once its block is final, reads the history, the balances and Sozu again", async () => {
+    /** @type {(final: unknown) => void} */
+    let final = () => {};
+
+    followTransaction.mockReturnValueOnce(
+      new Promise((resolve) => {
+        final = resolve;
+      })
+    );
+
+    const refresh = vi
+      .spyOn(walletStore, "refreshBalance")
+      .mockResolvedValue(undefined);
+
+    open("?flow=liquid");
+    withoutStake();
+    await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
+    await act(() =>
+      history.state?.update((state) => ({
+        ...state,
+        rows: [
+          rowOf(
+            {
+              amount: "100000000",
+              contractId: POOL,
+              fnName: "sozu_stake",
+              hash: "f1".repeat(32),
+              kind: "contract_call",
+              privacy: "public",
+              source: "local",
+              status: "submitted",
+              submittedAt: Date.now(),
+              to: POOL,
+            },
+            // Testnet's pool.
+            { network: networks.testnet }
+          ),
+        ],
+      }))
+    );
+
+    const { container, getByText } = render(Staking);
+
+    expect(textOf(container.querySelector(".liquid-stake__under-way"))).toMatch(
+      /^Your 0\.1 DUSK stake is on its way\./
+    );
+    expect(
+      getByText(/^Available/, { selector: ".liquid-stake__hint" })
+    ).toHaveTextContent("Available 171.9 DUSK from your public balance");
+    expect(followTransaction).toHaveBeenCalledExactlyOnceWith("f1".repeat(32));
+
+    sozu.load.mockClear();
+    final({ blockHeight: 1n, error: null, fee: 1n, timestamp: null });
+
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
+    expect(history.refresh).toHaveBeenCalled();
+    expect(sozu.load).toHaveBeenCalledWith({ force: true });
   });
 
   it("stakes with Sozu from liquid staking", async () => {

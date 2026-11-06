@@ -11,13 +11,18 @@
     mdiGiftOpenOutline,
   } from "@mdi/js";
 
-  import { activityState, isHistoryEnabled } from "$lib/activity";
+  import {
+    activityState,
+    currentActivity,
+    isHistoryEnabled,
+  } from "$lib/activity";
   import { LiquidStake, NativeStake, Unstake } from "$lib/components";
   import { StakingOverview } from "$lib/containers";
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { goto } from "$lib/navigation";
   import { sozuStore } from "$lib/sozu";
+  import { followTransaction } from "$lib/transactions";
   import {
     readNativeRewardRate,
     readProvisioners,
@@ -61,6 +66,9 @@
       ).then(({ hash }) => hash)
   );
 
+  /** The stakes and unstakes with Sozu on their way that this page follows. */
+  const followed = new Set();
+
   const stakeLiquid = forThisWallet(
     /**
      * @param {"stake" | "unstake"} action
@@ -75,11 +83,38 @@
         amount,
         new Gas({ limit: gasLimit, price: gasPrice })
       ).then(({ hash }) => {
+        // Its Sent screen follows it from here.
+        followed.add(hash);
         void sozuStore.readAfter(hash);
 
         return hash;
       })
   );
+
+  /**
+   * Follows what this profile sent to Sozu that's on its way, as after a
+   * reload while it went, as its Sent screen would have: once it's final, the
+   * history, the balances and Sozu are read again, for what the form leaves
+   * out to come back in.
+   *
+   * @param {ActivityRow[]} rows
+   */
+  function followUnderWay(rows) {
+    for (const { hash } of rows) {
+      if (!followed.has(hash)) {
+        followed.add(hash);
+        void followTransaction(hash)
+          .catch(() => null)
+          .then((final) => {
+            if (final) {
+              void currentActivity()?.refresh();
+              void walletStore.refreshBalance();
+              void sozuStore.load({ force: true });
+            }
+          });
+      }
+    }
+  }
 
   /** @type {bigint | undefined} */
   let blockHeight;
@@ -201,6 +236,11 @@
   $: hasPastStaking = $activityState.rows.some(
     (row) => row.category === "staking"
   );
+  // What the profile sent to Sozu that isn't in a block yet.
+  $: sozuUnderWay = $activityState.rows.filter(
+    (row) => row.sozu && row.source === "sent" && row.status === "pending"
+  );
+  $: followUnderWay(sozuUnderWay);
 
   // Sozu, read again for the overview each time it shows, as after a stake.
   $: if (flow === null && networkName && currentProfile) {
@@ -260,6 +300,7 @@
         }}
         recheck={() => sozuStore.check()}
         sozu={$sozuStore}
+        underWay={sozuUnderWay}
       />
     {/key}
   {:else if flow === "unstake" || flow === "claim"}

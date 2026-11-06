@@ -919,6 +919,62 @@ describe("LiquidStake", () => {
       ).toBeInTheDocument();
     });
 
+    it("says what's on its way, as after a reload while it went, and leaves it out of what can be staked or unstaked", async () => {
+      const going = [
+        call({
+          hash: "a4",
+          source: "sent",
+          status: "pending",
+          value: DUSK / 10n,
+        }),
+        call({
+          hash: "a5",
+          source: "sent",
+          sozu: "unstake",
+          status: "pending",
+          value: 2n * DUSK,
+        }),
+      ];
+      const { container, getByRole, getByText, queryByText } = render(
+        LiquidStake,
+        {
+          ...baseProps,
+          ...held,
+          history: { reading: false, rows: going, whole: true },
+          underWay: going,
+        }
+      );
+
+      expect(
+        Array.from(
+          container.querySelectorAll(".liquid-stake__under-way"),
+          (banner) => textOf(banner)
+        )
+      ).toStrictEqual([
+        "Your 0.1 DUSK stake is on its way. See in History",
+        "Your 2 DUSK unstake is on its way. See in History",
+      ]);
+      expect(queryByText(/more on its way/)).toBeNull();
+
+      // 172 DUSK less the 0.1 on its way.
+      expect(
+        getByText(/^Available/, { selector: ".liquid-stake__hint" })
+      ).toHaveTextContent("Available 171.9 DUSK from your public balance");
+
+      // 100 DUSK less the 2 on their way back.
+      await fireEvent.click(getByRole("tab", { name: "Unstake" }));
+
+      expect(
+        getByText(/^Staked with Sozu/, { selector: ".liquid-stake__hint" })
+      ).toHaveTextContent("Staked with Sozu 98 DUSK");
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(getByRole("textbox", { name: "Unstake amount" })).toHaveValue(
+        "98"
+      );
+    });
+
     it("waits for the whole history for what it can't say from part of it, and shows what the status says all the same", () => {
       const reading = render(LiquidStake, {
         ...baseProps,

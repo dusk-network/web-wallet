@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say on Sozu's form what's on its way after a reload, as Send does, and leave it out of Available and Max
 - Say nothing of an empty To on Send as it's left, as for the amount or the scanner
 - Take profile and wallet names of 40 characters, as contacts, say so once a name is that long, and never save one cut short
 - Close the network's panel with phone Back, staying on the page with what's typed, and only close it on a tap outside

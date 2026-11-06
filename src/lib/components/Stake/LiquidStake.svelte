@@ -37,7 +37,9 @@
   import { ratePercent } from "$lib/staking/rewardRate";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
+  import AppAnchor from "../AppAnchor/AppAnchor.svelte";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
+  import Banner from "../Banner/Banner.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
   import TransactionResult from "../TransactionResult/TransactionResult.svelte";
   import StakeFlow from "./StakeFlow.svelte";
@@ -64,6 +66,15 @@
   /** What was read from Sozu. */
   /** @type {{ error: Error | null, loading: boolean, status: SozuStatus | null }} */
   export let sozu;
+
+  /**
+   * The stakes and unstakes with Sozu this profile sent that aren't in a
+   * block yet, as after a reload while one went: the balances read don't
+   * count them yet.
+   *
+   * @type {ActivityRow[]}
+   */
+  export let underWay = [];
 
   /** @type {"stake" | "unstake"} */
   export let action = "stake";
@@ -182,6 +193,15 @@
       isReviewing = false;
     }
   }
+
+  /**
+   * What the rows of one kind move, together.
+   *
+   * @param {ActivityRow[]} rows
+   * @param {"stake" | "unstake"} kind
+   */
+  const sumOf = (rows, kind) =>
+    rows.reduce((sum, row) => (row.sozu === kind ? sum + row.value : sum), 0n);
 
   /** Back to the review of what failed with nothing sent. */
   function tryAgain() {
@@ -458,6 +478,12 @@
   // As low as the fee's Edit lets it go.
   $: leastFee = gasLimits.gasLimitLower * gasLimits.gasPriceLower;
   $: staked = status?.position.balance ?? 0n;
+  // What can go now: the public balance less the stakes on their way, and
+  // what's staked less the unstakes on their way.
+  $: leaving = sumOf(underWay, "stake");
+  $: free = availableBalance > leaving ? availableBalance - leaving : 0n;
+  $: coming = sumOf(underWay, "unstake");
+  $: unstakeable = staked > coming ? staked - coming : 0n;
   // The position, as the shared sums make it: what's put in and earned waits
   // for the whole history, and the rewards for each stake's deposit fee.
   $: held = sozuPosition({
@@ -491,10 +517,10 @@
   // all of it staked, there would be no way to pay for getting it back.
   $: unstakeFee = gas.unstake.settings.gasLimit * gas.unstake.settings.gasPrice;
   $: most = isStake
-    ? availableBalance > maxGasFee + unstakeFee
-      ? availableBalance - maxGasFee - unstakeFee
+    ? free > maxGasFee + unstakeFee
+      ? free - maxGasFee - unstakeFee
       : 0n
-    : staked;
+    : unstakeable;
   // A decimal comma, as the language or a phone's keyboard gives it, reads
   // as the amount meant.
   $: amount = readDuskInput(amountText, language);
@@ -502,11 +528,11 @@
   // no stake does. Less than an unstake's least burns no stDUSK.
   $: least = isStake
     ? leastSozuStake(status?.pool ?? null, depositRate)
-    : leastSozuUnstake(status?.pool ?? null, staked);
+    : leastSozuUnstake(status?.pool ?? null, unstakeable);
   $: checked = checkAmount({
     action,
     amount,
-    available: availableBalance,
+    available: free,
     fee: maxGasFee,
     hidden: hideBalances,
     keep: isStake ? unstakeFee : 0n,
@@ -516,7 +542,7 @@
     most: isStake
       ? undefined
       : {
-          amount: staked,
+          amount: unstakeable,
           error: "That's more than you have staked with Sozu.",
         },
     text: amountText,
@@ -528,9 +554,9 @@
   $: canSend = Boolean(status) && check.ok && isGasValid && !isStakeOff;
   // An unstake the public balance can't pay for, said before anything is typed.
   $: stranded =
-    !isStake && staked > 0n && availableBalance < maxGasFee
+    !isStake && unstakeable > 0n && free < maxGasFee
       ? feeError({
-          available: availableBalance,
+          available: free,
           fee: maxGasFee,
           hidden: hideBalances,
           leastFee,
@@ -577,7 +603,7 @@
 {:else}
   <StakeFlow
     canReview={canSend}
-    isFeeShort={availableBalance >= leastFee && availableBalance < maxGasFee}
+    isFeeShort={free >= leastFee && free < maxGasFee}
     {isReviewing}
     on:back={() => {
       reviewHistory.leave();
@@ -601,6 +627,21 @@
         >
       </p>
     </div>
+
+    {#each underWay as row (row.hash)}
+      <Banner
+        className="liquid-stake__under-way"
+        role="status"
+        title={`Your ${hideBalances ? BALANCE_MASK : formatDuskExact(row.value, language)} DUSK ${row.sozu === "stake" ? "stake" : "unstake"} is on its way.`}
+        variant="info"
+      >
+        <AppAnchor
+          className="text-link"
+          href={`/dashboard/transactions?tx=${row.hash}`}
+          >See in History</AppAnchor
+        >
+      </Banner>
+    {/each}
 
     {#if isSyncing}
       <p class="liquid-stake__notice" role="status">
@@ -696,7 +737,7 @@
           </dd>
         </div>
       </dl>
-      {#if held.waiting}
+      {#if held.waiting && !underWay.length}
         <p class="liquid-stake__hint">
           {held.waiting === 1
             ? "One more on its way isn't counted yet."
@@ -769,13 +810,13 @@
         <p class="liquid-stake__hint" id="{id}-available">
           {#if isStake}
             Available <BalanceValue
-              exact={formatDuskExact(availableBalance, language)}
-              value={formatDusk(availableBalance, language)}
+              exact={formatDuskExact(free, language)}
+              value={formatDusk(free, language)}
             /> DUSK from your public balance
           {:else}
             Staked with Sozu <BalanceValue
-              exact={formatDuskExact(staked, language)}
-              value={formatDusk(staked, language)}
+              exact={formatDuskExact(unstakeable, language)}
+              value={formatDusk(unstakeable, language)}
             /> DUSK
           {/if}
         </p>
@@ -988,7 +1029,7 @@
           <dd class:stake-flow__muted={isTypedOff}>
             Up to <BalanceValue
               hidden={isAmountMasked}
-              value={formatTotal(total, availableBalance, language)}
+              value={formatTotal(total, free, language)}
             /> DUSK
           </dd>
         </div>
