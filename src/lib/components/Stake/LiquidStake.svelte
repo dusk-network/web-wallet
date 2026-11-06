@@ -13,6 +13,7 @@
     sozuYear,
   } from "@dusk-network/app-core/sozu";
 
+  import { currentActivity } from "$lib/activity";
   import { contractLabel } from "$lib/activity/knownContracts";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
@@ -28,6 +29,7 @@
   import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
   import { formDraft, gasToKeep, keptGas, reviewStep } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
+  import { stDuskLines } from "$lib/sozu/facts";
   import {
     feePercent,
     leastSozuStake,
@@ -148,8 +150,67 @@
   let defaultGas = gas[action].settings;
   let isGasValid = false;
 
-  /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
+  /**
+   * What was sent: the most it costs, its hash to come, what it is, and what
+   * the chain says it did in stDUSK once its block is final.
+   *
+   * @type {{ action: "stake" | "unstake", lux: bigint, maxFee: bigint, operation: Promise<string>, pool: string, what: string } | null}
+   */
   let sent = null;
+
+  /** What what was sent did in stDUSK, as its Sent screen says it. */
+  /** @type {ReturnType<typeof stDuskLines>} */
+  let sentStDusk = [];
+
+  /** How long after the block is final it's looked for in the history again. */
+  const FACT_RETRIES_MS = [0, 5_000, 15_000];
+
+  /**
+   * Reads what was sent did in stDUSK, from the facts the export reads, once
+   * its block is final: the archive can take a moment more to list it.
+   *
+   * @param {import("$lib/transactions/followTransaction").FinalTransaction} outcome
+   */
+  async function readSentStDusk(outcome) {
+    const shown = sent;
+
+    if (!shown || outcome.error) {
+      return;
+    }
+
+    const hash = await shown.operation;
+    const call = /** @type {ActivityRow} */ (
+      /** @type {unknown} */ ({
+        blockHeight: Number(outcome.blockHeight),
+        contractId: shown.pool,
+        hash,
+        source: "public",
+        sozu: shown.action,
+        status: "executed",
+        value: shown.lux,
+      })
+    );
+
+    for (const wait of FACT_RETRIES_MS) {
+      await new Promise((resolve) => setTimeout(resolve, wait));
+
+      if (isGone || sent !== shown) {
+        return;
+      }
+
+      const fact = (
+        await currentActivity()
+          ?.sozuFacts([call])
+          .catch(() => null)
+      )?.get(hash);
+
+      if (fact) {
+        sentStDusk = stDuskLines(fact, language);
+
+        return;
+      }
+    }
+  }
 
   /** Whether it failed with nothing sent: it can be tried again. */
   let canTryAgain = false;
@@ -398,9 +459,13 @@
         order.gasLimit
       );
 
+      sentStDusk = [];
       sent = {
+        action: order.action,
+        lux: order.lux,
         maxFee: order.maxFee,
         operation,
+        pool,
         what:
           order.action === "stake"
             ? `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK to Sozu`
@@ -592,9 +657,11 @@
 {#if sent}
   <div class="liquid-stake__done">
     <TransactionResult
+      extra={sentStDusk}
       leaveHref="/dashboard/stake"
       leaveText="Back to staking"
       maxFee={sent.maxFee}
+      onFinal={readSentStDusk}
       onRetry={tryAgain}
       operation={sent.operation}
       what={sent.what}

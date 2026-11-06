@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say to the lux the stDUSK a stake with Sozu got, or an unstake gave back, and the rate, in its details and on its Sent screen
 - Write how much is staked across the network in the language's own short words where they're in Latin letters, as "57,2 Mio." in German
 - Count what's staked, natively and with Sozu, in Home's total balance, listed beside Public and Shielded
 - Show what's staked with Sozu changed together with the public balance after a stake or an unstake, never counted twice or not at all

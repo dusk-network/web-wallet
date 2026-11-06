@@ -6,6 +6,6 @@ export {
   sozuContractsFor,
   sozuPools,
 } from "./config";
-export { stDuskReceived } from "./received";
+export { stDuskLines } from "./facts";
 export { loadSozuDriver, readSozuStatus } from "./status";
 export { default as sozuStore } from "./sozuStore";

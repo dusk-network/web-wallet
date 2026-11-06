@@ -58,6 +58,14 @@
   export let onFinal = () => {};
 
   /**
+   * More of what it did, said with its fee once it's known, as the stDUSK a
+   * stake with Sozu got: each hidden with the balances, or not.
+   *
+   * @type {{ hidden: boolean, term: string, unit: string, value: string }[]}
+   */
+  export let extra = [];
+
+  /**
    * Pending until the block with the transaction is final, or late
    * once the wallet stops following it.
    *
@@ -187,6 +195,16 @@
           <BalanceValue value={formatFee(maxFee, language, { max: true })} /> DUSK
         </dd>
       {/if}
+      {#each extra as line (line.term)}
+        <dt>{line.term}</dt>
+        <dd>
+          <BalanceValue
+            hidden={line.hidden ? undefined : false}
+            value={line.value}
+          />
+          {line.unit}
+        </dd>
+      {/each}
     </dl>
     {#if outcome?.error}
       <ErrorDetails

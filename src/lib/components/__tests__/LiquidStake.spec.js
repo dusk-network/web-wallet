@@ -23,6 +23,17 @@ vi.mock("$lib/transactions", async (importOriginal) => ({
   followTransaction,
 }));
 
+// The history of the profile, as the facts the export reads come from it.
+const activity = vi.hoisted(() => ({
+  refresh: vi.fn(async () => {}),
+  sozuFacts: vi.fn(async () => new Map()),
+}));
+
+vi.mock("$lib/activity", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  currentActivity: () => activity,
+}));
+
 const HASH = "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
 const POOL = "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
 const DUSK = 1_000_000_000n;
@@ -440,6 +451,73 @@ describe("LiquidStake", () => {
     await fireEvent.click(getByRole("button", { name: "Unstake 1 DUSK" }));
 
     expect(await findByText("1 DUSK from Sozu")).toBeInTheDocument();
+  });
+
+  it("says on the Sent screen the stDUSK a stake got, and the rate, once its block is final, from the facts the export reads", async () => {
+    // Its block is final at once.
+    followTransaction.mockResolvedValueOnce(
+      /** @type {any} */ ({
+        blockHeight: 4_700_123n,
+        error: null,
+        fee: 4_419_010n,
+        timestamp: null,
+      })
+    );
+    activity.sozuFacts
+      // The archive doesn't list it yet, then does.
+      .mockResolvedValueOnce(new Map())
+      .mockImplementationOnce(async (/** @type {any[]} */ [call]) => {
+        expect(call).toMatchObject({
+          blockHeight: 4_700_123,
+          contractId: POOL,
+          hash: HASH,
+          sozu: "stake",
+          value: 100n * DUSK,
+        });
+
+        return new Map([
+          [
+            HASH,
+            {
+              amount: 100n * DUSK,
+              fee: DUSK / 4n,
+              kind: "stake",
+              pool: { stake: 3n * DUSK, supply: DUSK },
+              stDusk: 33_250_000_000n,
+            },
+          ],
+        ]);
+      });
+    // The button takes a click half a second after it shows, and the archive
+    // is asked again a moment later: on this clock.
+    vi.useFakeTimers({ toFake: ["performance", "setTimeout"] });
+
+    const { findByText, getByLabelText, getByRole } = render(
+      LiquidStake,
+      baseProps
+    );
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await afterConfirmDelay();
+    await fireEvent.click(
+      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+    );
+
+    expect(await findByText(/^Sent at/)).toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    const details = /** @type {HTMLElement} */ (
+      document.querySelector(".transaction-status__details")
+    );
+
+    expect(textOf(details)).toContain("You got 33.25 stDUSK");
+    expect(textOf(details)).toContain("Rate 1 stDUSK = 3 DUSK");
+    activity.sozuFacts.mockReset();
+    activity.sozuFacts.mockResolvedValue(new Map());
   });
 
   it("refuses an unstake too small to burn any stDUSK, saying the least, unless it's all there is", async () => {
