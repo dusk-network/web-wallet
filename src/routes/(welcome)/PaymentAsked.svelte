@@ -7,8 +7,8 @@
    * memo, as the link says them. Nothing for a page that isn't a request.
    */
   import {
-    networkMismatch,
     parsePaymentLink,
+    readPaymentLink,
     recipientKind,
   } from "@dusk-network/app-core/payment-links";
 
@@ -27,12 +27,13 @@
   export let next;
 
   const place = peekPlace();
-  const link =
+  const opened =
     place && /^\/dashboard\/send\/?\?/.test(place)
-      ? parsePaymentLink(`${ownWalletUrl()}${place}`, {
-          walletUrl: ownWalletUrl(),
-        })
-      : null;
+      ? `${ownWalletUrl()}${place}`
+      : "";
+  const link = opened
+    ? parsePaymentLink(opened, { walletUrl: ownWalletUrl() })
+    : null;
   const asked = link?.form === "https" && link.to ? link : null;
 
   // The name the account it pays goes by, as the chain says: none for a
@@ -47,21 +48,31 @@
       : Promise.resolve("");
 
   $: ({ language } = $settingsStore);
-  $: problem = asked ? networkMismatch(asked.chainId, $nodeNetwork) : "";
+  // Why it can't be paid as it is, as Send says once it opens: two amounts,
+  // or another network.
+  $: read = asked
+    ? readPaymentLink(opened, {
+        network: $nodeNetwork ?? undefined,
+        walletUrl: ownWalletUrl(),
+      })
+    : null;
+  $: problem = read?.problem ?? "";
 </script>
 
 {#if asked}
   <section aria-labelledby="payment-asked" class="payment-asked">
     <h2 class="payment-asked__title" id="payment-asked">Payment request</h2>
     <dl class="payment-asked__facts">
-      <div>
-        <dt>Amount</dt>
-        <dd>
-          {asked.lux === null
-            ? "Any amount"
-            : `${formatDuskExact(asked.lux, language)} DUSK`}
-        </dd>
-      </div>
+      {#if read?.reason !== "two-amounts"}
+        <div>
+          <dt>Amount</dt>
+          <dd>
+            {asked.lux === null
+              ? "Any amount"
+              : `${formatDuskExact(asked.lux, language)} DUSK`}
+          </dd>
+        </div>
+      {/if}
       <div>
         <dt>To</dt>
         <dd>

@@ -315,6 +315,43 @@ describe("Send", () => {
       ]);
     });
 
+    it.each([
+      [
+        "its memo said twice",
+        `${httpsLink}&memo=Factura+34`,
+        "That link can't be read. Ask for a new one.",
+      ],
+      [
+        "its amount said twice, another",
+        `${httpsLink}&amount=150`,
+        "This link asks for two different amounts. Ask for a new one.",
+      ],
+      [
+        "a user part before the host",
+        httpsLink.replace(
+          "https://apps.testnet.dusk.network",
+          "https://apps.testnet.dusk.network@apps.dusk.network"
+        ),
+        "That link can't be read. Ask for a new one.",
+      ],
+      [
+        "the test wallet's address saying Mainnet",
+        httpsLink.replace("network=testnet", "network=mainnet"),
+        "That link can't be read. Ask for a new one.",
+      ],
+    ])(
+      "should refuse a link with %s, saying why and filling in nothing",
+      async (_, link, words) => {
+        const { getByRole, getByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await paste(fields, link);
+
+        expect(getByText(words)).toBeInTheDocument();
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+      }
+    );
+
     it("should say a mainnet wallet's link is for Mainnet, on testnet", async () => {
       const { getByRole, getByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);

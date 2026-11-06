@@ -47,7 +47,7 @@ describe("Setup", () => {
       expect(asked).toHaveTextContent(shortenAddress(TO));
     });
 
-    it("should say when it's for another network, and nothing for a page that asks for nothing", () => {
+    it("should say when it's for another network or says two amounts, and nothing for a page that asks for nothing", () => {
       setNodeNetwork(networks.testnet);
       keepPlace({
         pathname: "/some-base-path/dashboard/send/",
@@ -59,6 +59,22 @@ describe("Setup", () => {
       expect(
         other.getByRole("region", { name: "Payment request" })
       ).toHaveTextContent("This request is for Mainnet. You are on Testnet.");
+      cleanup();
+
+      // Nor an amount for one saying two, in DUSK and in lux.
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: `?to=${TO}&amount=0.011&amountLux=150000000&network=testnet`,
+      });
+
+      const twice = render(Setup, {}).getByRole("region", {
+        name: "Payment request",
+      });
+
+      expect(twice).toHaveTextContent(
+        "This link asks for two different amounts. Ask for a new one."
+      );
+      expect(twice).not.toHaveTextContent("Amount");
       cleanup();
 
       keepPlace({ pathname: "/some-base-path/dashboard/stake/", search: "" });

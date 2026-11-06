@@ -9,12 +9,10 @@ import { base } from "$app/paths";
 import {
   amountForField,
   decimalSeparator,
-  parseDusk,
 } from "@dusk-network/app-core/amounts";
 import {
   makePaymentLink,
-  networkMismatch,
-  parsePaymentLink,
+  readPaymentLink as readLink,
 } from "@dusk-network/app-core/payment-links";
 
 export { matchRequests } from "@dusk-network/app-core/requests";
@@ -38,37 +36,15 @@ export const ownWalletUrl = () => `${location.origin}${base}`;
  *
  * @typedef {{ amount: string, memo: string, problem: "", to: string }
  *   | { amount: "", memo: "", problem: string, to: "" }} LinkAsked
- *   `problem` says why it fills in nothing: it's for another network, or it
- *   can't be read
+ *   `problem` says why it fills in nothing: it can't be read, it says two
+ *   amounts, or it's for another network
  */
 
 /**
- * Whether a link that gives its amount in lux too says another in DUSK: the
- * one in lux would be paid, unlike what's read.
- *
- * @param {string} raw
- * @param {import("@dusk-network/app-core/payment-links").PaymentLink} link
- */
-function amountsDisagree(raw, link) {
-  const query = raw.indexOf("?");
-  const said = new URLSearchParams(
-    query < 0 ? "" : raw.slice(query + 1).split("#")[0]
-  )
-    .get("amount")
-    ?.trim();
-
-  return Boolean(
-    said &&
-    /^\d+$/.test(link.amountLux) &&
-    parseDusk(said) !== BigInt(link.amountLux)
-  );
-}
-
-/**
- * What a link asks of Send, for the wallet's network: null for what isn't a
- * link, as an address or a name. Nothing is checked here but the link's form,
- * its network and its amount, said once: Send checks what it fills in, as it
- * checks what's typed.
+ * What a link asks of Send, for the wallet's network, as app-core reads it,
+ * the same whether it's pasted, scanned or opened: null for what isn't a
+ * link, as an address or a name. Send checks what it fills in, as it checks
+ * what's typed.
  *
  * @param {string} text
  * @param {import("@dusk-network/networks").Network | null} net The wallet's network
@@ -76,39 +52,26 @@ function amountsDisagree(raw, link) {
  * @returns {LinkAsked | null}
  */
 export function readPaymentLink(text, net, language) {
-  const raw = text.trim();
+  const read = readLink(text.trim(), {
+    network: net ?? undefined,
+    walletUrl: ownWalletUrl(),
+  });
 
-  if (!raw) {
+  if (!read) {
     return null;
   }
 
-  const link = parsePaymentLink(raw, { walletUrl: ownWalletUrl() });
-
-  if (!link) {
-    return {
-      amount: "",
-      memo: "",
-      problem: "That link can't be read. Ask for a new one.",
-      to: "",
-    };
-  }
-
-  if (link.form === "raw") {
-    return null;
-  }
-
-  const problem = amountsDisagree(raw, link)
-    ? "This link asks for two different amounts. Ask for a new one."
-    : networkMismatch(link.chainId, net);
-
-  return problem
-    ? { amount: "", memo: "", problem, to: "" }
-    : {
-        amount: amountForField(link.amountDusk, decimalSeparator(language)),
-        memo: link.memo,
+  return read.link && !read.problem
+    ? {
+        amount: amountForField(
+          read.link.amountDusk,
+          decimalSeparator(language)
+        ),
+        memo: read.link.memo,
         problem: "",
-        to: link.to,
-      };
+        to: read.link.to,
+      }
+    : { amount: "", memo: "", problem: read.problem, to: "" };
 }
 
 /**

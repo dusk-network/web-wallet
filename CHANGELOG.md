@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse a payment link that says a field twice or two amounts, or has a name before its host, and say so before an unlock too
 - Say Paid for a request of any amount paid with its memo, and Paid twice for its memo again
 - Show a profile's and a wallet's name whole in the profile menu, a tap from the pill that shortens it
 - Say on a restore that syncing finds the balance and past payments, and which blocks the sync bar goes through
