@@ -1131,7 +1131,8 @@ describe("LiquidStake", () => {
       "Back to Your public balance, in the same transaction",
       "Sozu's fee No unstake fee",
       "Fee paid from Public balance",
-      "Total Up to 0.01 DUSK",
+      // What comes back once the fee's paid, at the most it costs.
+      "Back after the fee At least 14.99 DUSK",
     ]);
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1209,14 +1210,15 @@ describe("LiquidStake", () => {
     );
   });
 
-  it("takes each action's own gas: a tab's default follows the tab", async () => {
-    const { container, getByLabelText, getByRole } = render(LiquidStake, {
-      ...baseProps,
-      sozu: {
-        ...baseProps.sozu,
-        status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
-      },
-    });
+  it("takes each action's own gas: a tab's default follows the tab, and says what an unstake brings back after its fee", async () => {
+    const { container, getByLabelText, getByRole, getByText, queryByText } =
+      render(LiquidStake, {
+        ...baseProps,
+        sozu: {
+          ...baseProps.sozu,
+          status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
+        },
+      });
     const total = () =>
       textOf(container.querySelector(".stake-flow__rows--total"));
 
@@ -1231,9 +1233,31 @@ describe("LiquidStake", () => {
       target: { value: "1" },
     });
 
-    expect(total()).toBe("Total Up to 0.01 DUSK");
+    expect(total()).toBe("Back after the fee At least 0.99 DUSK");
+
+    // So small the fee can take more than comes back: said on the review.
+    await fireEvent.input(getByLabelText("Unstake amount"), {
+      target: { value: "0.005" },
+    });
+
+    expect(total()).toBe("Back after the fee Up to 0.005 DUSK");
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(
+      getByText(
+        "The network fee, up to 0.01 DUSK, can be more than what comes back."
+      )
+    ).toBeInTheDocument();
+
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+    await fireEvent.input(getByLabelText("Unstake amount"), {
+      target: { value: "1" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(queryByText(/can be more than what comes back/)).toBeNull();
+
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Unstake 1 DUSK" }));
 

@@ -1024,15 +1024,37 @@
         {/if}
       </GasSettings>
       <dl class="stake-flow__rows stake-flow__rows--total">
-        <div>
-          <dt>Total</dt>
-          <dd class:stake-flow__muted={isTypedOff}>
-            Up to <BalanceValue
-              hidden={isAmountMasked}
-              value={formatTotal(total, free, language)}
-            /> DUSK
-          </dd>
-        </div>
+        {#if isStake}
+          <div>
+            <dt>Total</dt>
+            <dd class:stake-flow__muted={isTypedOff}>
+              Up to <BalanceValue
+                hidden={isAmountMasked}
+                value={formatTotal(total, free, language)}
+              /> DUSK
+            </dd>
+          </div>
+        {:else}
+          <!-- What an unstake brings back once the fee's paid, at the most it costs. -->
+          <div>
+            <dt>Back after the fee</dt>
+            <dd class:stake-flow__muted={isTypedOff}>
+              {#if typedAmount === 0n}
+                —
+              {:else if typedAmount > maxGasFee}
+                At least <BalanceValue
+                  hidden={isAmountMasked}
+                  value={formatDuskExact(typedAmount - maxGasFee, language)}
+                /> DUSK
+              {:else}
+                Up to <BalanceValue
+                  hidden={isAmountMasked}
+                  value={formatDuskExact(typedAmount, language)}
+                /> DUSK
+              {/if}
+            </dd>
+          </div>
+        {/if}
       </dl>
       {#if termsError}
         <p class="liquid-stake__error" role="alert">
@@ -1040,6 +1062,13 @@
         </p>
       {/if}
       {#if isReviewing}
+        {#if !isStake && typedAmount > 0n && typedAmount <= maxGasFee}
+          <p class="stake-flow__final">
+            The network fee, up to <BalanceValue
+              value={formatFee(maxGasFee, language, { max: true })}
+            /> DUSK, can be more than what comes back.
+          </p>
+        {/if}
         {#if isStake && depositFee !== 0n}
           <p class="stake-flow__final">
             {#if depositRate && depositFee !== null}

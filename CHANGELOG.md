@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say what an unstake from Sozu brings back after its fee, and on its review when the fee can be more
 - Say on Sozu's form what's on its way after a reload, as Send does, and leave it out of Available and Max
 - Say nothing of an empty To on Send as it's left, as for the amount or the scanner
 - Take profile and wallet names of 40 characters, as contacts, say so once a name is that long, and never save one cut short

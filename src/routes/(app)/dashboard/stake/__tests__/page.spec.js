@@ -845,9 +845,13 @@ describe("Staking", () => {
 
     await fireEvent.click(getByRole("tab", { name: "Unstake" }));
 
-    // An unstake's: up to 10,000,000, as it can touch more provisioners.
+    // An unstake's: up to 10,000,000, as it can touch more provisioners,
+    // paid from what comes back.
     expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
-      "Total Up to 0.01 DUSK"
+      "Back after the fee —"
+    );
+    expect(textOf(container.querySelector(".gas-settings"))).toContain(
+      "0.01 DUSK"
     );
   });
 
