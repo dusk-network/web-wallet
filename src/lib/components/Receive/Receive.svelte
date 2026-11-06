@@ -16,10 +16,11 @@
   import { AppAnchorButton, FullAddress } from "$lib/components";
   import { Button, CopyButton, Icon, QrCode } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
-  import { formatDuskExact } from "$lib/dusk/currency";
+  import { formatDuskExact, formatDuskPlain } from "$lib/dusk/currency";
   import { section } from "$lib/dusk/motion";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { settingsStore } from "$lib/stores";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
 
   /** @type {string} */
   export let address = "";
@@ -136,16 +137,29 @@
   }
 
   /**
-   * What a request asks, in words under its QR: what it is, the amount, the
-   * memo, and the account it pays, by its name where it has one.
+   * The network a request is for, where it's one to tell from Mainnet's:
+   * "Testnet"; "" on Mainnet.
+   */
+  const testNetwork = () =>
+    $nodeNetwork && $nodeNetwork.name !== "mainnet" ? $nodeNetwork.label : "";
+
+  /**
+   * What a request asks, in words under its QR: what it is, and on which
+   * network where it isn't Mainnet, the amount, the memo, and the account it
+   * pays, by its name where it has one.
    *
    * @param {NonNullable<typeof request>} asked
    * @param {string} shownName
    * @param {string} to The address it pays
+   * @param {string} network The test network it's for, or ""
    * @returns {Array<{ size: number, text: string, weight: number }>}
    */
-  const wordsOf = (asked, shownName, to) => [
-    { size: 44, text: "Dusk payment request", weight: 600 },
+  const wordsOf = (asked, shownName, to, network) => [
+    {
+      size: 44,
+      text: `Dusk payment request${network ? ` · ${network}` : ""}`,
+      weight: 600,
+    },
     {
       size: 64,
       text:
@@ -165,6 +179,38 @@
   ];
 
   /**
+   * A request picture's file name, from what it asks, as
+   * "dusk-testnet-request-0.05-DUSK-Factura-33.png": the memo's letters and
+   * digits, the rest between them a hyphen, 40 characters at most.
+   *
+   * @param {NonNullable<typeof request>} asked
+   * @param {string} network The test network it's for, or ""
+   */
+  function fileNameOf(asked, network) {
+    const memo = Array.from(
+      (asked.memo ?? "")
+        .replace(/[^\p{L}\p{N}]+/gu, "-")
+        .replace(/^-+|-+$/g, "")
+    )
+      .slice(0, 40)
+      .join("")
+      .replace(/-+$/, "");
+
+    return [
+      "dusk",
+      network.toLowerCase(),
+      "request",
+      asked.lux === null || asked.lux === undefined
+        ? ""
+        : `${formatDuskPlain(asked.lux)}-DUSK`,
+      memo,
+    ]
+      .filter(Boolean)
+      .join("-")
+      .concat(".png");
+  }
+
+  /**
    * What the QR holds, as a picture large enough to print: for a request,
    * with what it asks written under it, for whoever gets the picture alone.
    *
@@ -172,8 +218,9 @@
    * @param {string} value What the code holds
    * @param {typeof name} named
    * @param {string} to The address it pays
+   * @param {string} network The test network it's for, or ""
    */
-  async function qrPicture(asked, value, named, to) {
+  async function qrPicture(asked, value, named, to, network) {
     const qr = document.createElement("canvas");
 
     await QRCode.toCanvas(qr, value, {
@@ -186,7 +233,7 @@
     }
 
     const shownName = await Promise.resolve(named).catch(() => "");
-    const lines = wordsOf(asked, shownName, to);
+    const lines = wordsOf(asked, shownName, to, network);
     const picture = document.createElement("canvas");
     const context = /** @type {CanvasRenderingContext2D} */ (
       picture.getContext("2d")
@@ -222,6 +269,7 @@
     // anything is awaited: an edit meanwhile changes none of them.
     const used = { address, request };
     const kind = addressType === "account" ? "public" : "shielded";
+    const network = testNetwork();
 
     try {
       const link = document.createElement("a");
@@ -230,9 +278,12 @@
         used.request,
         used.request?.dusk ?? used.address,
         name,
-        used.address
+        used.address,
+        network
       );
-      link.download = `dusk-${kind}-${used.request ? "request" : "receive"}-qr.png`;
+      link.download = used.request
+        ? fileNameOf(used.request, network)
+        : `dusk-${kind}-receive-qr.png`;
       link.click();
       onUse(used);
     } catch {

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Send back a payment that paid a request again, filled in on Send, from the request
 - Scan a QR code from an image on Send, also where there's no camera
 - Warn on Send of a payment just like one made in the last ten minutes, or with the same memo before, also from another tab, without stopping it
 - Unlock with fingerprint or face, off by default, turned on in Settings with the password, on browsers and devices with a passkey's PRF: going straight to it as the wallet opens. The password keeps working, and big sends still ask for it
@@ -36,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say Paid twice on a request, with a link to each payment
+- Name the test network and what a request asks in its QR picture and its file name
+- Show a payer's memo on Your requests with its hidden characters as codes, as everywhere else
 - Keep what Max keeps, and other lines under the Bridge's From amount, clear of the Swap arrow
 - Write what a request asks under its QR in the picture downloaded: the amount, the memo and whom it pays
 - Try again by itself every ten seconds, and as the browser is back online, while the wallet can't reach the network

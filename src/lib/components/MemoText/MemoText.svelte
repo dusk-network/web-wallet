@@ -11,20 +11,29 @@
   /** @type {string} */
   export let text;
 
-  $: shown = displayText(text, { lineBreaks: true });
+  /**
+   * Quoted among other words: its line breaks show as codes too, and what
+   * quotes it says once that it has hidden characters.
+   */
+  export let inline = false;
+
+  $: shown = displayText(text, { lineBreaks: !inline });
 </script>
 
-<span class="memo-text">{shown.text}</span>
-{#if shown.neutralized}
-  <span class="memo-text__note"
+<!-- Nothing between the two: quoted, nothing comes after the text. -->
+<span class="memo-text" class:memo-text--inline={inline}>{shown.text}</span
+>{#if shown.neutralized && !inline}<span class="memo-text__note"
     >It has hidden characters, shown here as codes.</span
-  >
-{/if}
+  >{/if}
 
 <style lang="postcss">
   .memo-text {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+
+  .memo-text--inline {
+    white-space: normal;
   }
 
   .memo-text__note {
