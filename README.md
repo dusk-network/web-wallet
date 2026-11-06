@@ -11,6 +11,7 @@ Web Wallet website.
   - [Fingerprint or face unlock](#fingerprint-or-face-unlock)
   - [Environment variables](#environment-variables)
     - [NPM scripts](#npm-scripts)
+  - [Verify a deployment](#verify-a-deployment)
   - [Running a local Rusk node](#running-a-local-rusk-node)
 
 ## Build system and dev environment
@@ -191,6 +192,28 @@ To run a local node different steps are needed, so please read the [related sect
 - `npm run test:watch` runs the test suite in watch mode
 - `npm run typecheck` runs the type checker
 - `npm run typecheck:watch` runs the type checker in watch mode
+
+## Verify a deployment
+
+The same commit, built with the same settings, makes the same files. Each build
+writes `build/build-manifest.json`, served beside the app: the version, the
+commit built, the `VITE_` settings it was built with, Node's and npm's
+versions, and every file's SHA-256. The footer's version on the setup page
+links to it. Vite builds every `VITE_` setting into the code, so none of them
+is a secret.
+
+To rebuild what a site serves and compare, from a clone of this repository:
+
+```bash
+node scripts/verify-build.js https://apps.dusk.network/wallet/
+```
+
+The script builds the manifest's commit in a new worktree, with `npm ci`,
+`npm run build` and the manifest's settings alone, and checks every file three
+ways: the rebuild, the manifest, and the file the site serves. It warns when
+your Node or npm isn't the manifest's. For a site built before it had a
+manifest, give `--commit` and `--settings`, a JSON file of its `VITE_`
+settings.
 
 ## Running a local Rusk node
 
