@@ -182,16 +182,17 @@ function load({ force = false } = {}) {
 
 /**
  * Reads again once a stake's or an unstake's block is final, wherever the
- * user has gone by then, so that Home and Unstake show what it changed.
+ * user has gone by then, so that Home and Unstake show what it changed: with
+ * the balances (`readAlong`), shown together, as what it moved between them
+ * would otherwise count twice, or not at all.
  *
  * @param {string} hash
  * @returns {Promise<void>}
  */
 function readAfter(hash) {
-  return followTransaction(hash).then(
-    () => load({ force: true }),
-    () => load({ force: true })
-  );
+  const refresh = () => walletStore.refreshBalance();
+
+  return followTransaction(hash).then(refresh, refresh);
 }
 
 /**

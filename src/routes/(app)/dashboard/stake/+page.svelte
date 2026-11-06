@@ -99,8 +99,9 @@
   /**
    * Follows what this profile sent to Sozu that's on its way, as after a
    * reload while it went, as its Sent screen would have: once it's final, the
-   * history, the balances and Sozu are read again, for what the form leaves
-   * out to come back in, and the form's position from the history read then.
+   * history and the balances with Sozu (`readWithBalances`), shown together,
+   * are read again, for what the form leaves out to come back in, and the
+   * form's position from the history read then.
    *
    * @param {ActivityRow[]} rows
    */
@@ -113,7 +114,6 @@
           .then(async (final) => {
             if (final) {
               void walletStore.refreshBalance();
-              void sozuStore.load({ force: true });
               await Promise.resolve(currentActivity()?.refresh()).catch(
                 () => {}
               );

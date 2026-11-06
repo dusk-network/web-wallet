@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { followTransaction, readSozuStatus } = vi.hoisted(() => ({
-  followTransaction: vi.fn(),
-  readSozuStatus: vi.fn(async () => /** @type {SozuStatus | null} */ (null)),
-}));
+const { followTransaction, readSozuStatus, refreshBalance } = vi.hoisted(
+  () => ({
+    followTransaction: vi.fn(),
+    readSozuStatus: vi.fn(async () => /** @type {SozuStatus | null} */ (null)),
+    // The balances read again, with what's read along.
+    refreshBalance: vi.fn(async () => {}),
+  })
+);
 
 /** What the store reads along with the balances, as the wallet store calls it. */
 const along = vi.hoisted(() => ({
@@ -29,6 +33,7 @@ vi.mock("$lib/stores", async () => {
 
         return () => {};
       },
+      refreshBalance,
     },
   };
 });
@@ -37,9 +42,10 @@ describe("sozuStore", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     readSozuStatus.mockClear();
+    refreshBalance.mockClear();
   });
 
-  it("should read again once a transaction's block is final, and not before", async () => {
+  it("should read again with the balances once a transaction's block is final, and not before", async () => {
     const { default: sozuStore } = await import("../sozuStore");
 
     await sozuStore.load({ force: true });
@@ -59,12 +65,15 @@ describe("sozuStore", () => {
     await Promise.resolve();
 
     expect(followTransaction).toHaveBeenCalledWith("a-hash");
-    expect(readSozuStatus).not.toHaveBeenCalled();
+    expect(refreshBalance).not.toHaveBeenCalled();
 
     final(null);
     await after;
 
-    expect(readSozuStatus).toHaveBeenCalledOnce();
+    // Read along with the balances, shown with them: never alone, which
+    // would count what moved between them twice, or not at all.
+    expect(refreshBalance).toHaveBeenCalledOnce();
+    expect(readSozuStatus).not.toHaveBeenCalled();
   });
 
   it("should read again even if following the transaction failed", async () => {
@@ -76,7 +85,7 @@ describe("sozuStore", () => {
 
     await sozuStore.readAfter("a-hash");
 
-    expect(readSozuStatus).toHaveBeenCalledOnce();
+    expect(refreshBalance).toHaveBeenCalledOnce();
   });
 
   it("should read Sozu through the node's base path", async () => {

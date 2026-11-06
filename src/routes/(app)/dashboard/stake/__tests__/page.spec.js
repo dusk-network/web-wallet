@@ -810,7 +810,7 @@ describe("Staking", () => {
     startHistory.mockRestore();
   });
 
-  it("says what's on its way to Sozu after a reload, and once its block is final, reads the history, the balances, Sozu and the form's position again", async () => {
+  it("says what's on its way to Sozu after a reload, and once its block is final, reads the history, the balances with Sozu and the form's position again", async () => {
     /** @type {(final: unknown) => void} */
     let final = () => {};
 
@@ -874,7 +874,9 @@ describe("Staking", () => {
 
     await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
     expect(history.refresh).toHaveBeenCalled();
-    expect(sozu.load).toHaveBeenCalledWith({ force: true });
+    // Sozu comes with the balances, shown together: never read alone, for
+    // Home to count a stake once, with the public balance it left.
+    expect(sozu.load).not.toHaveBeenCalled();
     // And again, from the history once it's read again.
     await vi.waitFor(() => expect(whole).toHaveBeenCalledOnce());
   });
