@@ -128,7 +128,14 @@ export async function makeExport({
       approval ? [[hash.toLowerCase(), approval]] : []
     )
   );
-  const migrations = migrationsOf(whole.rows).map((migration) => ({
+  // Each payout from the period's start on, after its end too: a fee is
+  // written in the period of its own time, never later than its payout, and
+  // an approval can come long before its migration.
+  const migrations = migrationsOf(
+    period
+      ? whole.rows.filter(({ time }) => time !== null && time >= period.from)
+      : whole.rows
+  ).map((migration) => ({
     ...migration,
     approval: approvals.get(migration.hash) ?? null,
   }));

@@ -121,4 +121,88 @@ describe("History's Export", () => {
       `2026-10-27 06:20:00,0.00004700500075208,BNB,,,,,,,cost,Network fee on BNB Smart Chain: migration of 5 BEP20 DUSK to Dusk,${MIGRATION},BNB Smart Chain,${EVM},,${BSC.contract.toLowerCase()},,`,
     ]);
   });
+
+  it("writes a migration's fees in the period of their own day, though its payout comes the day after, outside it", async () => {
+    // Approved and migrated on the 27th, at midday; paid out on Dusk on the 28th.
+    const payout = rowOf(
+      {
+        amount: "5000000000",
+        blockHeight: 4_710_000,
+        counterparty: BSC.payoutAccount,
+        direction: "in",
+        hash: "bc".repeat(32),
+        memo: MIGRATION,
+        status: "executed",
+        timestamp: Date.UTC(2026, 9, 28, 12),
+      },
+      { network: networks.mainnet }
+    );
+
+    chain.read.mockResolvedValueOnce(
+      new Map([
+        [
+          MIGRATION,
+          {
+            approval: {
+              at: Date.UTC(2026, 9, 27, 11),
+              block: 9,
+              gasWei: 46_194_000_739_104n,
+              hash: APPROVAL,
+            },
+            approvalState: "found",
+            at: Date.UTC(2026, 9, 27, 11, 5),
+            block: 10,
+            coin: "BNB",
+            from: EVM,
+            gasWei: 47_005_000_752_080n,
+            hash: MIGRATION,
+            lux: 5_000_000_000n,
+            route: "bsc-to-dusk",
+            state: "mined",
+            totalWei: 93_199_001_491_184n,
+          },
+        ],
+      ])
+    );
+
+    const { csv } = await makeExport({
+      choices: {
+        euro: false,
+        excel: false,
+        from: "2026-10-27",
+        period: "dates",
+        to: "2026-10-27",
+        withContacts: false,
+      },
+      contactName: () => null,
+      net: networks.mainnet,
+      network: "mainnet",
+      profile: { account: ACCOUNT, name: "Profile 1" },
+      profiles: [],
+      session: {
+        sozuFacts: async () => new Map(),
+        whole: async () => ({ rows: [payout], shieldedWaiting: false }),
+      },
+    });
+    const lines = csv.split("\r\n").filter(Boolean);
+
+    // Its payout, after the period, is read for its fees in it.
+    expect(chain.read).toHaveBeenLastCalledWith(networks.mainnet, [
+      expect.objectContaining({ hash: MIGRATION, payout: payout.hash }),
+    ]);
+    expect(
+      lines.slice(1).map((line) => line.split(",").slice(9, 12))
+    ).toStrictEqual([
+      [
+        "cost",
+        "Network fee on BNB Smart Chain: approval for a migration to Dusk",
+        APPROVAL,
+      ],
+      [
+        "cost",
+        "Network fee on BNB Smart Chain: migration of 5 BEP20 DUSK to Dusk",
+        MIGRATION,
+      ],
+    ]);
+  });
 });
