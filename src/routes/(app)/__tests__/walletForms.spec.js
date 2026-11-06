@@ -1,6 +1,8 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { get } from "svelte/store";
 
+import { logout } from "$lib/navigation";
 import { walletStore } from "$lib/stores";
 import { stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
@@ -93,16 +95,12 @@ describe("A wallet form in the app", () => {
     expect(getByRole("button", { name: /Import wallet/ })).toBeInTheDocument();
   });
 
-  it("stages nothing typed for one wallet on another: Send starts empty, and stays so going back", async () => {
-    const RECIPIENT =
-      "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
+  const RECIPIENT =
+    "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
 
-    await vault.setUp(A, PASSWORD);
-    await unlockWallets(PASSWORD);
-
-    const [first] = vault.list() ?? [];
-    const second = await addWallet(B, PASSWORD);
-    const { getByRole } = render(SendInLayout, {
+  /** Send in the app's layout, with something typed in each of its fields. */
+  async function typedSend() {
+    const view = render(SendInLayout, {
       send: {
         availableBalance: 1_000_000_000_000n,
         execute: vi.fn(),
@@ -118,6 +116,7 @@ describe("A wallet form in the app", () => {
         shieldedBalance: 500_000_000_000n,
       },
     });
+    const { getByRole } = view;
     /** The form's fields, as they are now. */
     const typed = () =>
       ["To", "Amount", /^Memo/].map((name) =>
@@ -137,6 +136,37 @@ describe("A wallet form in the app", () => {
     await vi.waitFor(() =>
       expect(typed()).toStrictEqual([RECIPIENT, "2.5", "Invoice 118"])
     );
+
+    return { ...view, typed };
+  }
+
+  it("keeps what's typed on Send through the automatic lock, as a reload does, for the unlock to bring back", async () => {
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+
+    const { typed } = await typedSend();
+
+    // The lock after the minutes set in Settings: the layout draws the page
+    // once more on its way to the unlock.
+    await logout(false);
+
+    expect(get(walletStore).initialized).toBe(false);
+    expect(JSON.stringify({ ...sessionStorage })).toContain("Invoice 118");
+
+    await unlockWallets(PASSWORD);
+
+    await vi.waitFor(() =>
+      expect(typed()).toStrictEqual([RECIPIENT, "2.5", "Invoice 118"])
+    );
+  });
+
+  it("stages nothing typed for one wallet on another: Send starts empty, and stays so going back", async () => {
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+
+    const [first] = vault.list() ?? [];
+    const second = await addWallet(B, PASSWORD);
+    const { getByRole, typed } = await typedSend();
 
     const form = getByRole("textbox", { name: "To" });
 

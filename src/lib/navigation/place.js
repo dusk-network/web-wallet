@@ -260,11 +260,17 @@ export function formDraft(name) {
 
     /**
      * What was typed, for the wallet open now: null for none. Another's goes.
+     * With no wallet open, as a lock draws the page once more on its way to
+     * the unlock, it's left for the unlock to bring back.
      *
      * @returns {any}
      */
     read() {
       owner = draftOwner();
+
+      if (!owner) {
+        return null;
+      }
 
       try {
         const draft = JSON.parse(kept.read(key) ?? "null");
@@ -272,7 +278,6 @@ export function formDraft(name) {
         if (
           draft &&
           draft.owner === owner &&
-          owner &&
           (!draft.left || get(navigating)?.type === "popstate")
         ) {
           return draft.values;
