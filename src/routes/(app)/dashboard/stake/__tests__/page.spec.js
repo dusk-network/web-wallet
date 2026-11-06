@@ -119,6 +119,8 @@ const SOZU_STATUS = {
 const sozu = vi.hoisted(() => ({
   /** @type {import("vitest").Mock<() => Promise<any>>} */
   check: vi.fn(async () => null),
+  /** How Sozu's stDUSK grew lately, as read; null for not read. */
+  growth: /** @type {any} */ (null),
   load: vi.fn(() => Promise.resolve()),
   readAfter: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
@@ -140,6 +142,7 @@ vi.mock("$lib/sozu", async (importOriginal) => {
 
   return {
     ...original,
+    readSozuGrowth: vi.fn(async () => sozu.growth),
     sozuStore: {
       check: sozu.check,
       load: sozu.load,
@@ -389,6 +392,51 @@ describe("Staking", () => {
         rates.native = null;
         cleanup();
       }
+    }
+  });
+
+  it("gives Sozu's rate from how its stDUSK grew lately once that's read, the same on the overview and on its form", async () => {
+    rates.native = 0.235;
+    // 3 DUSK a stDUSK to 3.1 in 30 days: about 40% a year.
+    sozu.growth = {
+      days: 30,
+      from: { at: 0, height: 1_000, stake: 3_000_000n, supply: 1_000_000n },
+      rate: 0.4,
+      to: { at: 0, height: 2_000, stake: 3_100_000n, supply: 1_000_000n },
+    };
+
+    try {
+      const overview = render(Staking);
+
+      await act(() =>
+        sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS }))
+      );
+      await vi.waitFor(() =>
+        expect(
+          textOf(
+            overview.container
+              .querySelector("table.compare")
+              ?.querySelector("tbody tr:nth-child(3) td:nth-child(3)") ?? null
+          )
+        ).toMatch(/^About 40% a year after Sozu's 10%\./)
+      );
+      overview.unmount();
+
+      open("?flow=liquid");
+
+      const { container } = render(Staking);
+
+      await vi.waitFor(() =>
+        expect(
+          textOf(container.querySelector(".liquid-stake__facts"))
+        ).toContain(
+          "About 40% a year. Not promised. stDUSK went from 3.0000 to 3.1000 DUSK over the last 30 days, after Sozu's share."
+        )
+      );
+    } finally {
+      rates.native = null;
+      sozu.growth = null;
+      open("");
     }
   });
 

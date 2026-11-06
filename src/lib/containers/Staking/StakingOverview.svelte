@@ -7,8 +7,8 @@
   import { AppAnchorButton, BalanceValue, SectionHead } from "$lib/components";
   import { goto, pageTitle } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
+  import { sozuRate as sozuRateOf } from "@dusk-network/app-core/sozu";
   import { duskPerStDusk, feePercent } from "@dusk-network/networks/sozu";
-  import { sozuRateEstimate } from "@dusk-network/networks/rates";
   import { ratePercent } from "$lib/staking/rewardRate";
   import { settingsStore } from "$lib/stores";
 
@@ -80,6 +80,14 @@
    */
   export let nativeRate = undefined;
 
+  /**
+   * How Sozu's stDUSK grew lately, as its form has it; null while it isn't
+   * read.
+   *
+   * @type {import("@dusk-network/app-core/sozu").SozuGrowth | null}
+   */
+  export let sozuGrowth = null;
+
   /** @param {bigint} lux */
   const amountOf = (lux) => ({
     exact: formatDuskExact(lux, locale),
@@ -107,12 +115,9 @@
   $: rate = duskPerStDusk(sozu.status?.pool ?? null);
   // Sozu's fees, as its substrate gives them, where they could be read.
   $: fees = sozu.status?.fees ?? null;
-  // What Sozu pays a year, once its fee on rewards is off: from the native
-  // figure as it's shown, so that it reads the same wherever that does.
-  $: sozuRate = sozuRateEstimate(
-    typeof nativeRate === "number" ? Math.round(nativeRate * 100) / 100 : null,
-    fees?.reward ?? null
-  );
+  // What Sozu pays a year, after its share: how stDUSK grew lately, else from
+  // the native figure as it's shown, as its form says it.
+  $: sozuRate = sozuRateOf(nativeRate, sozu.status, sozuGrowth);
   // No deposits while Sozu is under maintenance, or while that can't be
   // checked.
   $: sozuMaintenance = sozu.status?.flags?.maintenance;

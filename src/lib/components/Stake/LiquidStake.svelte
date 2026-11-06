@@ -94,7 +94,7 @@
    * What the rate is made of: native staking's, about what it pays a year, and
    * what the node says of what's staked.
    *
-   * @type {{ native?: number | null, provisioners?: any[] | null, tipHeight?: bigint | null }}
+   * @type {{ growth?: import("@dusk-network/app-core/sozu").SozuGrowth | null, native?: number | null, provisioners?: any[] | null, tipHeight?: bigint | null }}
    */
   export let rates = {};
 
@@ -566,9 +566,11 @@
       ? 0n
       : held.earned;
   // What it pays a year, once that's read, and the line of what that's made of.
-  $: yearly = sozuRate(rates.native, status);
+  // Measured: how stDUSK grew lately, where that's read.
+  $: yearly = sozuRate(rates.native, status, rates.growth);
   // Its numbers in the language's digits, among the line's English words.
   $: working = sozuRateLine({
+    growth: rates.growth,
     locale: englishWords(language),
     nativeRate: rates.native,
     provisioners: rates.provisioners,
@@ -643,7 +645,12 @@
   $: yearEarned =
     estimate === null || amount === null
       ? null
-      : sozuYear({ amount, nativeRate: rates.native, status }).earned;
+      : sozuYear({
+          amount,
+          growth: rates.growth,
+          nativeRate: rates.native,
+          status,
+        }).earned;
   $: isTypedOff = Boolean(check.error);
   $: total = isStake ? typedAmount + maxGasFee : maxGasFee;
   // The pool's name, as the network's file gives it.

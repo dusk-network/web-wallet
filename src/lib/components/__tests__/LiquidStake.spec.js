@@ -1161,6 +1161,42 @@ describe("LiquidStake", () => {
       );
     });
 
+    it("gives the rate, its line and a year's rewards from how stDUSK grew lately, once that's read", async () => {
+      const { container, getByLabelText } = render(LiquidStake, {
+        ...baseProps,
+        rates: {
+          // 3 DUSK a stDUSK to 3.1 in 30 days: about 40% a year, not the
+          // native rate's.
+          growth: {
+            days: 30,
+            from: {
+              at: 0,
+              height: 1_000,
+              stake: 3_000_000n,
+              supply: 1_000_000n,
+            },
+            rate: 0.4,
+            to: { at: 0, height: 2_000, stake: 3_100_000n, supply: 1_000_000n },
+          },
+          native: 0.9,
+          provisioners: [{ amount: { value: 206_900_000n * DUSK } }],
+          tipHeight: 1_000_000n,
+        },
+      });
+
+      expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
+        "About 40% a year. Not promised. stDUSK went from 3.0000 to 3.1000 DUSK over the last 30 days, after Sozu's share."
+      );
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+
+      expect(
+        textOf(container.querySelector(".liquid-stake__estimate"))
+      ).toMatch(/about 39\.\d+ DUSK in rewards a year/);
+    });
+
     it("says nothing of the rate before it's read", () => {
       const { container } = render(LiquidStake, baseProps);
 

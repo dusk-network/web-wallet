@@ -21,7 +21,7 @@
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { goto } from "$lib/navigation";
-  import { sozuStore } from "$lib/sozu";
+  import { readSozuGrowth, sozuStore } from "$lib/sozu";
   import { followTransaction } from "$lib/transactions";
   import {
     readNativeRewardRate,
@@ -149,6 +149,41 @@
       nativeRate = rate;
     });
   });
+
+  /**
+   * How Sozu's stDUSK grew lately, for its status read: one figure for the
+   * form and the overview alike, null where it can't be read.
+   *
+   * @type {import("@dusk-network/app-core/sozu").SozuGrowth | null}
+   */
+  let sozuGrowth = null;
+
+  /** @type {SozuStatus | null} */
+  let growthFor = null;
+
+  /**
+   * Reads Sozu's growth for a status, keeping only the answer for the last.
+   *
+   * @param {SozuStatus | null} status
+   */
+  function readGrowthFor(status) {
+    if (!status || status === growthFor) {
+      return;
+    }
+
+    growthFor = status;
+    void readSozuGrowth({
+      nodeUrl: nodeBaseUrl(),
+      status,
+      tipHeight: blockHeight,
+    }).then((growth) => {
+      if (growthFor === status) {
+        sozuGrowth = growth;
+      }
+    });
+  }
+
+  $: readGrowthFor($sozuStore.status);
 
   /** What the node says of what's staked: for the Sozu form's working. */
   /** @type {any[] | null} */
@@ -305,6 +340,7 @@
         history={sozuHistory}
         onRetry={() => sozuStore.load({ force: true })}
         rates={{
+          growth: sozuGrowth,
           native: nativeRate,
           provisioners,
           tipHeight: blockHeight,
@@ -349,6 +385,7 @@
       {blockHeight}
       {hasPastStaking}
       {nativeRate}
+      {sozuGrowth}
       locale={language}
       leastFee={unstakeGas.limits.gasLimitLower *
         unstakeGas.limits.gasPriceLower}
