@@ -167,18 +167,20 @@
 
   /**
    * Reads what was sent did in stDUSK, from the facts the export reads, once
-   * its block is final: the archive can take a moment more to list it.
+   * its block is final: the archive can take a moment more to list it. By
+   * the hash its screen followed, which a send whose answer got lost went
+   * out with too.
    *
    * @param {import("$lib/transactions/followTransaction").FinalTransaction} outcome
+   * @param {string} hash
    */
-  async function readSentStDusk(outcome) {
+  async function readSentStDusk(outcome, hash) {
     const shown = sent;
 
-    if (!shown || outcome.error) {
+    if (!shown || outcome.error || !hash) {
       return;
     }
 
-    const hash = await shown.operation;
     const call = /** @type {ActivityRow} */ (
       /** @type {unknown} */ ({
         blockHeight: Number(outcome.blockHeight),

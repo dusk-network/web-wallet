@@ -51,9 +51,11 @@
   export let unconfirmed = false;
 
   /**
-   * Told what the chain says once the block with it is final.
+   * Told what the chain says once the block with it is final, and the hash
+   * it followed: the one it went out with, also where the send's answer got
+   * lost.
    *
-   * @type {(outcome: import("$lib/transactions/followTransaction").FinalTransaction) => void}
+   * @type {(outcome: import("$lib/transactions/followTransaction").FinalTransaction, hash: string) => void}
    */
   export let onFinal = () => {};
 
@@ -116,7 +118,7 @@
           if (result) {
             void currentActivity()?.refresh();
             void walletStore.refreshBalance();
-            onFinal(result);
+            onFinal(result, /** @type {string} */ (hash));
           }
         }
       });

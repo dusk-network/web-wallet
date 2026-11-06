@@ -523,6 +523,63 @@ describe("LiquidStake", () => {
     activity.sozuFacts.mockResolvedValue(new Map());
   });
 
+  it("says the stDUSK a stake got on its Sent screen also when the send's answer got lost, by the hash it went out with", async () => {
+    // Handed over, with no answer: the hash it may have gone out with.
+    baseProps.execute.mockRejectedValueOnce(
+      outcomeUnknown(new TypeError("Failed to fetch"), HASH)
+    );
+    followTransaction.mockResolvedValueOnce(
+      /** @type {any} */ ({
+        blockHeight: 4_700_123n,
+        error: null,
+        fee: 4_419_010n,
+        timestamp: null,
+      })
+    );
+    activity.sozuFacts.mockImplementationOnce(
+      async (/** @type {any[]} */ [call]) =>
+        new Map([
+          [
+            call.hash,
+            {
+              amount: 100n * DUSK,
+              fee: DUSK / 4n,
+              kind: "stake",
+              pool: { stake: 3n * DUSK, supply: DUSK },
+              stDusk: 33_250_000_000n,
+            },
+          ],
+        ])
+    );
+    vi.useFakeTimers({ toFake: ["performance", "setTimeout"] });
+
+    const { findByText, getByLabelText, getByRole } = render(
+      LiquidStake,
+      baseProps
+    );
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await afterConfirmDelay();
+    await fireEvent.click(
+      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+    );
+
+    expect(await findByText(/^Sent at/)).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(activity.sozuFacts).toHaveBeenCalledWith([
+      expect.objectContaining({ hash: HASH }),
+    ]);
+    expect(
+      textOf(document.querySelector(".transaction-status__details"))
+    ).toContain("You got 33.25 stDUSK");
+    activity.sozuFacts.mockReset();
+    activity.sozuFacts.mockResolvedValue(new Map());
+  });
+
   it("refuses an unstake too small to burn any stDUSK, saying the least, unless it's all there is", async () => {
     const unstakeOf = (/** @type {bigint} */ balance) =>
       render(LiquidStake, {
