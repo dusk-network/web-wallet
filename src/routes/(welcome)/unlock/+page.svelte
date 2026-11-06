@@ -21,6 +21,8 @@
     MnemonicInput,
   } from "$lib/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
+
+  import PaymentAsked from "../PaymentAsked.svelte";
   import { goto, lockedHere, takePlace } from "$lib/navigation";
   import {
     mnemonicPhraseResetStore,
@@ -147,16 +149,17 @@
         pending = false;
         isDeclined = true;
 
+        // The password takes the focus, and a phone's keyboard comes up, only
+        // once it's the one way in: the fingerprint is still there to try.
         if (err instanceof PasskeyGoneError) {
           hasPasskey = false;
           passkeyProblem =
             "Fingerprint or face unlock is off now. Use your password, and turn it on again in Settings.";
+          fldSecret?.focus();
         } else if (asked) {
           passkeyProblem =
             "That didn't unlock the wallet. Try again, or use your password.";
         }
-
-        fldSecret?.focus();
       });
   }
 
@@ -240,6 +243,7 @@
 
 <section class="login">
   <h2 class="h1">Unlock your wallet</h2>
+  <PaymentAsked next="Unlock to pay it." />
   <div class="login">
     {#if hasPasskey}
       <Button

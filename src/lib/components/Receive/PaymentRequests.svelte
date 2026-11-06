@@ -62,27 +62,66 @@
   onDestroy(() => clearInterval(timer));
 
   /**
-   * What matched of a payment, in words.
+   * What matched of a payment that matched only part of a request, in words:
+   * "same amount on 5 Nov, 21:16, with no memo".
+   *
+   * @param {{ at?: number, lux?: bigint, matched?: string, memo?: string }} payment
+   * @param {string} language
+   */
+  function partOf({ at, lux, matched, memo }, language) {
+    const day = at ? claimDay(at, language) : "";
+
+    return matched === "amount"
+      ? memo
+        ? `same amount on ${day}, with another memo: "${memo}"`
+        : `same amount on ${day}, with no memo`
+      : hideBalances
+        ? `same memo on ${day}`
+        : `same memo on ${day}, for ${formatDuskExact(lux ?? 0n, language)} DUSK`;
+  }
+
+  /**
+   * Days in a list: "a", "a and b", "a, b and c".
+   *
+   * @param {string[]} days
+   */
+  const listed = (days) =>
+    days.length > 1
+      ? `${days.slice(0, -1).join(", ")} and ${days.at(-1)}`
+      : (days[0] ?? "");
+
+  /**
+   * What matched of a payment, in words, and of the others that match the
+   * request too: paid twice, or another payment to check.
    *
    * @param {import("$lib/payment-requests/requests").RequestMatch} match
    * @param {string} language
    */
-  function matchedText({ at, lux, matched, memo }, language) {
+  function matchedText({ at, lux, matched, memo, more = [] }, language) {
     const day = at ? claimDay(at, language) : "";
+    const again = more.filter((payment) => payment.matched === "amount-memo");
+    const also = more
+      .filter((payment) => payment.matched !== "amount-memo")
+      .map((payment) => ` Also the ${partOf(payment, language)}.`)
+      .join("");
 
     switch (matched) {
       case "amount-memo":
-        return day
-          ? `Amount and memo match a payment on ${day}.`
-          : "Amount and memo match a payment.";
+        return again.length
+          ? `Paid ${again.length === 1 ? "twice" : `${again.length + 1} times`}: ${listed(
+              [at, ...again.map((payment) => payment.at)].map((time) =>
+                time ? claimDay(time, language) : "time not known"
+              )
+            )}.${also}`
+          : day
+            ? `Amount and memo match a payment on ${day}.${also}`
+            : `Amount and memo match a payment.${also}`;
       case "amount":
-        return memo
-          ? `Same amount on ${day}, with another memo: "${memo}". Check it's this one.`
-          : `Same amount on ${day}, with no memo. Check it's this one.`;
-      case "memo":
-        return hideBalances
-          ? `Same memo on ${day}. Check it's this one.`
-          : `Same memo on ${day}, for ${formatDuskExact(lux ?? 0n, language)} DUSK. Check it's this one.`;
+      case "memo": {
+        const part = partOf({ at, lux, matched, memo }, language);
+
+        return `${part.charAt(0).toUpperCase()}${part.slice(1)}. Check it's this one.${also}`;
+      }
       default:
         return "Nothing matching has come in.";
     }

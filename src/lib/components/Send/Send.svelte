@@ -32,6 +32,8 @@
     pageTitle,
     reviewStep,
   } from "$lib/navigation";
+  import { onTheirWay, sentAlready } from "$lib/activity/sends";
+  import { dayLabel, timeLabel } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
   import { readPaymentLink } from "$lib/payment-requests";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
@@ -96,6 +98,12 @@
   export let availableBalance;
 
   /**
+   * Whether the balances were read from the network since the wallet or the
+   * profile opened: nothing is said against one that wasn't yet.
+   */
+  export let balanceKnown = true;
+
+  /**
    * The spendable shielded balance, which pays transfers to shielded addresses.
    *
    * @type {bigint}
@@ -141,6 +149,14 @@
    * @type {string[]}
    */
   export let knownNames = [];
+
+  /**
+   * The profile's history, newest first: what it sent that's on its way, and
+   * a payment the one typed would make again.
+   *
+   * @type {ActivityRow[]}
+   */
+  export let historyRows = [];
 
   const draft = formDraft("send");
 
@@ -188,6 +204,9 @@
 
   /** @type {import("qr-scanner").default} */
   let scanner;
+
+  /** Whether there's a camera to scan with: else a code is read from an image. */
+  let hasCamera = false;
 
   /** @type {import("..").ScanQR} */
   let scanQrComponent;
@@ -334,38 +353,48 @@
 
   /**
    * What is wrong with the amount typed, in the words the page shows: ""
-   * for nothing typed yet, or an amount that can go.
+   * for nothing typed yet, or an amount that can go. Nothing is said against
+   * a balance not read yet.
    *
    * @param {string} text
    * @param {bigint | null} amount
+   * @param {{ available: bigint, hidden: boolean, known: boolean, locale: string, maxSpendable: bigint }} balance
    */
-  function amountErrorOf(text, amount) {
+  function amountErrorOf(
+    text,
+    amount,
+    { available, hidden, known, locale, maxSpendable }
+  ) {
     if (!text.trim()) {
       return "";
     }
 
     if (amount === null) {
-      return amountProblem(text, language);
+      return amountProblem(text, locale);
     }
 
     if (amount === 0n) {
       return "Enter an amount greater than 0.";
     }
 
-    // With balances hidden, these don't say what's held.
-    if (amount > availableBalance) {
-      return hideBalances
-        ? "More than you have."
-        : `More than your ${formatDuskExact(availableBalance, language)} DUSK.`;
-    }
-
-    if (amount <= maxSpendableAmount) {
+    if (!known) {
       return "";
     }
 
-    return hideBalances
+    // With balances hidden, these don't say what's held.
+    if (amount > available) {
+      return hidden
+        ? "More than you have."
+        : `More than your ${formatDuskExact(available, locale)} DUSK.`;
+    }
+
+    if (amount <= maxSpendable) {
+      return "";
+    }
+
+    return hidden
       ? "That leaves too little for the network fee."
-      : `That leaves too little for the network fee: send up to ${formatDuskExact(maxSpendableAmount, language)} DUSK.`;
+      : `That leaves too little for the network fee: send up to ${formatDuskExact(maxSpendable, locale)} DUSK.`;
   }
 
   /** Whether the recipient is being saved to the contacts, and as what. */
@@ -483,6 +512,22 @@
       isFromLink = false;
       typedLength = value.length;
     }
+  }
+
+  /**
+   * What's wrong with a code scanned, said where it's scanned: "" for a
+   * payment link, a Dusk address or a `.dusk` name, which goes in To.
+   *
+   * @param {string} text
+   */
+  function scannedProblem(text) {
+    const code = text.trim();
+
+    return readPaymentLink(code, $nodeNetwork, language) ||
+      isDuskName(code) ||
+      getAddressInfo(code, shieldedAddress, publicAddress).isValid
+      ? ""
+      : "That QR isn't a Dusk address or payment link.";
   }
 
   /** A link typed out reads as it's finished: not at each key on the way. */
@@ -844,7 +889,6 @@
   // A comma keyboard's "1,5" and digit grouping read as the amount meant.
   $: parsedAmount = readDuskInput(sendAmount, language);
   $: sendAmountInLux = parsedAmount ?? 0n;
-  $: amountError = amountErrorOf(sendAmount, parsedAmount);
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
   $: maxGasFee = gasLimit * gasPrice;
@@ -866,6 +910,16 @@
   $: maxSpendableAmount =
     availableBalance >= maxGasFee ? availableBalance - maxGasFee : 0n;
 
+  // Said again as the balance or the fee changes, as an amount filled in
+  // before the balance was read is checked against it once it is.
+  $: amountError = amountErrorOf(sendAmount, parsedAmount, {
+    available: availableBalance,
+    hidden: hideBalances,
+    known: balanceKnown,
+    locale: language,
+    maxSpendable: maxSpendableAmount,
+  });
+
   // A shielded send leaves the public balance as it is.
   $: toKeep = isShielded ? 0n : keepForLater.lux;
 
@@ -878,6 +932,7 @@
 
   // Too little left of the public balance for what the wallet holds elsewhere.
   $: leavesTooLittle =
+    balanceKnown &&
     toKeep > 0n &&
     sendAmountInLux > 0n &&
     sendAmountInLux <= maxSpendableAmount &&
@@ -1177,7 +1232,72 @@
   // A name as the lookup gives it, once it has: in its canonical form.
   $: shownName = nameLookup?.name ?? recipientName;
 
+  /**
+   * Who an account is to this wallet: a contact, one of its profiles or of
+   * another wallet's here, the name it was sent to, or its short address.
+   *
+   * @param {string} address
+   * @param {string | null} toName
+   * @param {{ contacts: Contact[], ownAccounts: { address: string, label: string }[], walletNames: Map<string, string> }} known
+   */
+  const nameOf = (address, toName, known) =>
+    known.contacts.find((saved) => saved.address === address)?.name ??
+    known.ownAccounts.find((account) => account.address === address)?.label ??
+    known.walletNames.get(address) ??
+    toName ??
+    shortenAddress(address);
+
+  /**
+   * When something went, from now: "at 21:16", "yesterday at 21:16" or "on
+   * Thu 5 Nov at 21:16".
+   *
+   * @param {number} time
+   * @param {string} locale
+   */
+  function whenSent(time, locale) {
+    const day = dayLabel(time, { locale });
+    const at = `at ${timeLabel(time, locale)}`;
+
+    return day === "Today"
+      ? at
+      : day === "Yesterday"
+        ? `yesterday ${at}`
+        : `on ${day} ${at}`;
+  }
+
+  /**
+   * A payment sent, in a line: "0.01 DUSK to Profile 2", nothing of the
+   * amount with the balances hidden.
+   *
+   * @param {ActivityRow} row
+   * @param {{ contacts: Contact[], hidden: boolean, locale: string, ownAccounts: { address: string, label: string }[], walletNames: Map<string, string> }} known
+   */
+  const paymentOf = (row, known) =>
+    `${known.hidden ? BALANCE_MASK : formatDuskExact(row.value, known.locale)} DUSK to ${nameOf(
+      row.counterparty ?? "",
+      row.toName,
+      known
+    )}`;
+
   $: ({ hideBalances, language } = $settingsStore);
+  $: known = {
+    contacts,
+    hidden: hideBalances,
+    locale: language,
+    ownAccounts,
+    walletNames: $walletAccountNames,
+  };
+  // What this profile sent that's on its way: a reload or another tab's
+  // send doesn't hide it.
+  $: underWay = onTheirWay(historyRows);
+  // The same payment, made already: moments ago, or with the same memo.
+  $: madeAgain = addressInfo.isValid
+    ? sentAlready(historyRows, {
+        lux: sendAmountInLux,
+        memo: transactionMemo,
+        to: recipientAddress,
+      })
+    : null;
   $: isAmountMasked = hideBalances && isMaxAmount;
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
@@ -1204,6 +1324,21 @@
       <h1 class="send__title" id="{id}-title" use:pageTitle={step !== "review"}>
         Send
       </h1>
+
+      {#each underWay as row (row.hash)}
+        <Banner
+          className="send__under-way"
+          role="status"
+          title={`Your ${paymentOf(row, known)} is on its way.`}
+          variant="info"
+        >
+          <AppAnchor
+            className="text-link"
+            href={`/dashboard/transactions?tx=${row.hash}`}
+            >See in History</AppAnchor
+          >
+        </Banner>
+      {/each}
 
       <div class="send__field">
         <label class="send__label" for="{id}-to">To</label>
@@ -1235,19 +1370,21 @@
               ><Icon path={mdiCheckCircleOutline} />Name found</span
             >
           {/if}
-          <!-- Only with a camera, which ScanQR looks for without asking
-            for permission. -->
-          {#if scanner}
-            <button
-              aria-label="Scan a QR code"
-              class="send__icon-button"
-              on:click={() => {
-                scanQrComponent.startScan();
-              }}
-              title="Scan a QR code"
-              type="button"><Icon path={mdiQrcodeScan} /></button
-            >
-          {/if}
+          <!-- With a camera, which ScanQR looks for without asking for
+            permission, or else from an image. -->
+          <button
+            aria-label={hasCamera
+              ? "Scan a QR code"
+              : "Scan a QR code from an image"}
+            class="send__icon-button"
+            on:click={() => {
+              scanQrComponent.startScan();
+            }}
+            title={hasCamera
+              ? "Scan a QR code"
+              : "Scan a QR code from an image"}
+            type="button"><Icon path={mdiQrcodeScan} /></button
+          >
         </div>
 
         <!-- While what's typed names contacts, they're offered as links. -->
@@ -1568,8 +1705,10 @@
         {/if}
 
         <ScanQR
+          bind:hasCamera
           bind:this={scanQrComponent}
           bind:scanner
+          check={scannedProblem}
           on:scan={(event) => takeRecipient(event.detail)}
         />
         {#if addressInfo.isSelfReferential}
@@ -1633,7 +1772,7 @@
           <p class="send__error" id="{id}-amount-error" role="alert">
             {amountError}
           </p>
-        {:else if !isBalanceSufficientForGas && availableBalance > 0n}
+        {:else if balanceKnown && !isBalanceSufficientForGas && availableBalance > 0n}
           <p class="send__error" role="alert">
             <strong>Not enough for the network fee.</strong> Add DUSK{canLowerFee
               ? ", or lower the fee under Edit"
@@ -1786,6 +1925,15 @@
           </dd>
         </div>
       </dl>
+      {#if madeAgain && madeAgain.time !== null}
+        <!-- Said, not stopped: the same payment twice can be meant. -->
+        <Banner
+          className="send__again"
+          role="alert"
+          title={`You sent ${paymentOf(madeAgain, known)}${madeAgain.memo?.trim() ? " with this memo" : ""} ${whenSent(madeAgain.time, language)}.`}
+          variant="warning"
+        />
+      {/if}
       {#if step === "review"}
         <!-- A step of its own: nothing goes before it, and Send, new with it,
           takes no click meant for Review. -->

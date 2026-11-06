@@ -10,6 +10,7 @@ import { cardRoutes } from "$lib/bridge/cardRoutes";
 import { formatDuskPlain } from "$lib/dusk/currency";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
+import styleRules from "$lib/dusk/test-helpers/styleRules";
 import { InvalidPasswordError } from "$lib/errors";
 import {
   cancelSendPassword,
@@ -38,6 +39,7 @@ const mocks = vi.hoisted(() => ({
     null
   ),
   executeSend: vi.fn(),
+  followTransaction: vi.fn(() => new Promise(() => {})),
   getBalanceOfCoin: vi.fn(),
   getMigrationFee: vi.fn(async () => 120_000_000_000_000n),
   getNativeBalance: vi.fn(async () => DUSK * DUSK),
@@ -119,6 +121,13 @@ vi.mock("$lib/web3/migration", () => ({
 vi.mock("$lib/contracts", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
   executeSend: mocks.executeSend,
+}));
+
+// What the chain says of a transaction followed: nothing yet, unless a test
+// says.
+vi.mock("$lib/transactions", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  followTransaction: mocks.followTransaction,
 }));
 
 /** @param {Record<string, unknown>} value */
@@ -1149,6 +1158,26 @@ describe("the Bridge card's routes to and from other chains", () => {
         getByText("That leaves too little to unstake later.")
       ).toBeInTheDocument();
     });
+
+    it("keeps what's said under the From panel's amount clear of the flip button over its edge", () => {
+      const clears = styleRules(
+        "../SwapCard/SwapCard.svelte",
+        import.meta.url
+      ).find(
+        (rule) =>
+          /\.swap-panel:has\(~ \.swap-flip\)/.test(rule.selector) &&
+          rule.media === ""
+      );
+      // The flip button reaches 1.375rem into the panel above it.
+      const reach = 1.375;
+
+      for (const line of [".swap-note", ".swap-error", ".swap-recipient"]) {
+        expect(clears?.selector).toContain(`> ${line}`);
+      }
+      expect(
+        parseFloat(clears?.declarations["padding-bottom"] ?? "0")
+      ).toBeGreaterThan(reach);
+    });
   });
 
   describe("once it's sent, for as long as the screen is open", () => {
@@ -1252,7 +1281,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       expect(document.querySelector(".route-result")).toHaveTextContent("Sent");
       expect(document.querySelector(".route-result")).toHaveTextContent(
-        "It usually arrives"
+        "1 DUSK arrives on BNB Smart Chain in about 10 hours."
       );
 
       mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
@@ -1264,6 +1293,51 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(getByRole("link", { name: "View in activity" })).toHaveAttribute(
         "href",
         expect.stringContaining(HASH)
+      );
+    });
+
+    it("follows a transfer out whose answer got lost, never saying it was sent before the chain has it", async () => {
+      const found = Promise.withResolvers();
+
+      connect({ address: EVM, chainId: 56 });
+      mocks.executeSend.mockRejectedValueOnce(
+        outcomeUnknown(new TypeError("Failed to fetch"), HASH)
+      );
+      mocks.followTransaction.mockReturnValueOnce(found.promise);
+
+      const view = render(Bridge, { ...props, linkedRoute: "dusk-to-bsc" });
+
+      await fireEvent.input(
+        await view.findByRole("textbox", { name: "Amount, in DUSK" }),
+        { target: { value: "2" } }
+      );
+      await fireEvent.click(
+        view.getByRole("button", { name: "Review bridge" })
+      );
+      await afterConfirmDelay();
+      await fireEvent.click(view.getByRole("button", { name: "Send" }));
+
+      await view.findByText("Not confirmed");
+
+      const result = /** @type {HTMLElement} */ (
+        document.querySelector(".route-result")
+      );
+
+      expect(result).toHaveTextContent(
+        "2 DUSK to BNB Smart Chain It may have reached the network. Wait for it here before you send it again."
+      );
+      expect(result).not.toHaveTextContent("Sent");
+      expect(view.queryByRole("button", { name: "Try again" })).toBeNull();
+      expect(mocks.followTransaction).toHaveBeenCalledWith(
+        HASH,
+        expect.anything()
+      );
+
+      found.resolve({ blockHeight: 9n, error: null, fee: 1n, timestamp: 1 });
+
+      await view.findByText("Sent");
+      expect(result).toHaveTextContent(
+        "1 DUSK arrives on BNB Smart Chain in about 10 hours."
       );
     });
 

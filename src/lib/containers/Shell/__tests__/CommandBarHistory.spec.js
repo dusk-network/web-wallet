@@ -2,12 +2,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { networks } from "@dusk-network/networks";
 
+import { dayLabel, timeLabel } from "$lib/activity/present";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import CommandBar from "../CommandBar.svelte";
 
 const ids = vi.hoisted(() => ({
+  // When the deposit was made.
+  at: Date.UTC(2026, 10, 3, 21, 16),
   // Testnet's DuskEVM bridge on Dusk.
   bridge: "2257e5f8ff49cf7c9704a14ca35acbf48eb7ade11a079d98d5cd5655eea1b31d",
   deposit: "40c50a".padEnd(64, "1"),
@@ -49,6 +52,7 @@ vi.mock("$lib/activity", async (importOriginal) => {
           hash: ids.deposit,
           kind: "contract_call",
           status: "executed",
+          timestamp: ids.at,
         }),
       ],
     }),
@@ -61,7 +65,7 @@ describe("CommandBar, with a history", () => {
     setNodeNetwork(null);
   });
 
-  it("names a bridge transaction as History does, with its method under it and its hash at the end", async () => {
+  it("names a bridge transaction as History does, with when it was made under it and its hash at the end", async () => {
     setNodeNetwork(networks.testnet);
 
     const { getByRole } = render(CommandBar, { pages: [] });
@@ -72,13 +76,12 @@ describe("CommandBar, with a history", () => {
 
     const option = getByRole("option", { name: /^To DuskEVM/ });
 
-    expect(option).toHaveTextContent(
-      "To DuskEVM depositETHToWithValue 40c50a…111111"
-    );
+    const when = `${dayLabel(ids.at, { locale: "en" })}, ${timeLabel(ids.at, "en")}`;
+
+    expect(option).toHaveTextContent(`To DuskEVM ${when} 40c50a…111111`);
     expect(option).not.toHaveTextContent("Called");
-    expect(option.querySelector(".command-bar__sub")).toHaveTextContent(
-      "depositETHToWithValue"
-    );
+    expect(option).not.toHaveTextContent("depositETHToWithValue");
+    expect(option.querySelector(".command-bar__sub")).toHaveTextContent(when);
     expect(option.querySelector(".command-bar__detail--end")).toHaveTextContent(
       "40c50a…111111"
     );

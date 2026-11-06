@@ -1,10 +1,11 @@
 <script>
+  import { page } from "$app/stores";
   import { networkStore } from "$lib/stores";
 
   import TestnetStrip from "./TestnetStrip.svelte";
   import TopBar from "./TopBar.svelte";
   import keyboardInset from "./keyboardInset";
-  import { isTestNetwork, shownNetwork } from "./navigation";
+  import { isTestNetwork, pageName, shownNetwork } from "./navigation";
 
   /**
    * The screens before a wallet opens, as the wallet itself: its top bar
@@ -12,10 +13,12 @@
    * as wide as Settings', on the wallet's page. A flow's buttons stay in
    * view as the wallet's do, above a phone's keyboard. The error pages,
    * which can't reach the node, keep the strip of the network it named
-   * last.
+   * last. The column is the page's main content, with its name for a
+   * heading, as the wallet's pages have theirs.
    */
 
   $: networkName = shownNetwork($networkStore);
+  $: name = pageName($page.url.pathname);
 </script>
 
 <div
@@ -27,9 +30,10 @@
     <TestnetStrip />
     <TopBar activeTab={null} bare tabs={[]} />
   </div>
-  <div class="welcome-shell__content">
+  <main class="welcome-shell__content">
+    <h1 class="sr-only">{name || "Dusk Wallet"}</h1>
     <slot />
-  </div>
+  </main>
 </div>
 
 <style lang="postcss">

@@ -19,6 +19,7 @@
   } from "@wagmi/core";
   import { Gas } from "@dusk/w3sper";
 
+  import { BALANCE_MASK } from "$lib/constants";
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import {
     AppAnchorButton,
@@ -100,6 +101,7 @@
     describeFailure,
     nothingWentOut,
     outcomeUnknown,
+    unconfirmedHash,
   } from "$lib/transactions";
   import { walletDataName, walletDataScope } from "$lib/wallets/dataNames";
   import { LAST_WITHDRAWAL_KEY as LAST_WITHDRAWAL_TX_HASH_KEY } from "$lib/bridge/bridgeRecordKeys";
@@ -391,16 +393,31 @@
     return hash;
   }
 
+  /**
+   * A deposit whose answer got lost, as it was sent: kept for this wallet
+   * once the chain has it.
+   *
+   * @type {{ account: `0x${string}`, amountLux: bigint, amountWei: bigint, hash: string } | null}
+   */
+  let lostDeposit = null;
+
   async function submitNativeDeposit() {
     if (!$account.address) {
       throw new Error("Account address is not available.");
     }
 
+    const sent = { account: $account.address, amountLux, amountWei };
     const response = await forThisWallet(walletStore.depositEvmFunctionCall)(
       $account.address,
       amountLux,
       new Gas({ limit: gasLimit, price: gasPrice })
-    );
+    ).catch((error) => {
+      const lost = unconfirmedHash(error);
+
+      lostDeposit = lost ? { ...sent, hash: lost } : null;
+
+      throw error;
+    });
     const { hash } = response;
 
     // Sent: what's wrong with it from here doesn't say it wasn't.
@@ -425,6 +442,31 @@
 
     void trackDepositTransaction(remembered.transactionHash, records);
     return remembered.transactionHash;
+  }
+
+  /**
+   * The deposit whose answer got lost, now the chain has it: kept and
+   * followed as one sent.
+   *
+   * @param {string} hash
+   */
+  function keepSeenDeposit(hash) {
+    if (lostDeposit?.hash !== hash) {
+      return;
+    }
+
+    const { account: from, amountLux: lux, amountWei: wei } = lostDeposit;
+    const remembered = rememberDepositTransaction(
+      hash,
+      { account: from, amountLux: lux, amountWei: wei },
+      records
+    );
+
+    lostDeposit = null;
+
+    if (remembered) {
+      void trackDepositTransaction(remembered.transactionHash, records);
+    }
   }
 
   /**
@@ -1103,7 +1145,12 @@
     </div>
   {:else if isDepositing}
     <div class="bridge-result">
-      <DepositResult onRetry={tryAgain} {operation} />
+      <DepositResult
+        onRetry={tryAgain}
+        onSeen={keepSeenDeposit}
+        {operation}
+        what={`${hideBalances ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK to DuskEVM`}
+      />
     </div>
   {:else}
     <div class="bridge-result">

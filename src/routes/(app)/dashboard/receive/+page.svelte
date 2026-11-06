@@ -28,14 +28,19 @@
     isMounted = true;
   });
 
-  /** Keeps what's asked in the list as it leaves the wallet. */
-  function keepRequest() {
-    if (request) {
+  /**
+   * Keeps what's asked in the list as it leaves the wallet: what left, or
+   * what's on screen.
+   *
+   * @param {{ address: string, request: { lux?: bigint | null, memo?: string } | null }} [used]
+   */
+  function keepRequest(used = { address: currentAddress, request }) {
+    if (used.request) {
       rememberRequest({
-        lux: request.lux,
-        memo: request.memo,
+        lux: used.request.lux ?? null,
+        memo: used.request.memo ?? "",
         network: $nodeNetwork?.name ?? "",
-        to: currentAddress,
+        to: used.address,
       });
     }
   }

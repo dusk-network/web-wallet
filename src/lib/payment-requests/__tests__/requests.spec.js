@@ -135,6 +135,78 @@ describe("The requests a wallet made", () => {
       expect(fromShielded.get("public")).toStrictEqual({ state: "waiting" });
     });
 
+    it("should say what else came in for a request answered: the same payment again, or one to check, but not one another request took", () => {
+      const matches = matchRequests(
+        [asked(), asked({ at: NOW + 1, id: "b", lux: "1", memo: "" })],
+        [
+          payment(),
+          payment({ hash: "h2", time: NOW + 2 * HOUR }),
+          payment({ hash: "h3", memo: "Fra 33", time: NOW + 3 * HOUR }),
+          payment({ hash: "h4", memo: "", time: NOW + 4 * HOUR, value: 1n }),
+        ]
+      );
+
+      expect(matches.get("a")).toStrictEqual({
+        at: NOW + HOUR,
+        hash: "h1",
+        lux: LUX,
+        matched: "amount-memo",
+        memo: "Factura 33",
+        more: [
+          {
+            at: NOW + 2 * HOUR,
+            hash: "h2",
+            lux: LUX,
+            matched: "amount-memo",
+            memo: "Factura 33",
+          },
+          {
+            at: NOW + 3 * HOUR,
+            hash: "h3",
+            lux: LUX,
+            matched: "amount",
+            memo: "Fra 33",
+          },
+        ],
+        state: "paid",
+      });
+      expect(matches.get("b")).toMatchObject({ hash: "h4", state: "check" });
+      expect(matches.get("b")?.more).toBeUndefined();
+    });
+
+    it("should count a payment again with all of a request as its repeat, not as a guess at another request for the amount", () => {
+      const matches = matchRequests(
+        [asked(), asked({ at: NOW + 1, id: "b", memo: "Factura 34" })],
+        [payment(), payment({ hash: "h2", time: NOW + 2 * HOUR })]
+      );
+
+      expect(matches.get("a")).toMatchObject({
+        hash: "h1",
+        more: [{ hash: "h2", matched: "amount-memo" }],
+        state: "paid",
+      });
+      expect(matches.get("b")).toStrictEqual({ state: "waiting" });
+    });
+
+    it("should give a payment again to the request it matches in full, not to an older one it matches by amount", () => {
+      const matches = matchRequests(
+        [asked(), asked({ at: NOW + 1, id: "b", memo: "Factura 34" })],
+        [
+          payment(),
+          payment({ hash: "h2", memo: "Factura 34", time: NOW + 2 * HOUR }),
+          payment({ hash: "h3", memo: "Factura 34", time: NOW + 3 * HOUR }),
+        ]
+      );
+
+      expect(matches.get("a")).toMatchObject({ hash: "h1", state: "paid" });
+      expect(matches.get("a")?.more).toBeUndefined();
+      expect(matches.get("b")).toMatchObject({
+        hash: "h2",
+        more: [{ hash: "h3", matched: "amount-memo" }],
+        state: "paid",
+      });
+    });
+
     it("should prefer a payment with all of it to an earlier one with part of it", () => {
       const matches = matchRequests(
         [asked()],

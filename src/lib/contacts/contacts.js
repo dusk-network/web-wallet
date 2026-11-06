@@ -578,21 +578,29 @@ export function listContacts(query = "") {
 export const getContact = (id) => book[id] ?? null;
 
 /**
- * The contact with a name, whatever its capitals, but for the one being edited,
- * or null.
+ * A name as it's compared: whatever its capitals and its spaces.
+ *
+ * @param {string} name
+ */
+const asCompared = (name) =>
+  name.normalize("NFC").trim().replace(/\s+/g, " ").toLowerCase();
+
+/**
+ * The contact with a name, whatever its capitals and spaces, but for the one
+ * being edited, or null.
  *
  * @param {string} name
  * @param {string} [exceptId]
  * @returns {Contact | null}
  */
 export function contactCalled(name, exceptId) {
-  const sought = name.trim().toLowerCase();
+  const sought = asCompared(name);
 
   return (
     (sought &&
       listContacts().find(
         (contact) =>
-          contact.id !== exceptId && contact.name.toLowerCase() === sought
+          contact.id !== exceptId && asCompared(contact.name) === sought
       )) ||
     null
   );

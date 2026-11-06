@@ -240,9 +240,11 @@
   $: isFalseContactName = passesForDuskName(contactName, savedFromName);
   $: contact =
     $contactsStore.find((saved) => saved.address === p.counterparty) ?? null;
+  // Never one of the profiles of the wallets here.
   $: canSave =
     !contact &&
     Boolean(p.counterparty) &&
+    !$walletAccountNames.has(String(p.counterparty)) &&
     addressType(String(p.counterparty)) !== "unknown";
   $: canSendAgain =
     p.icon === "sent" && !!p.counterparty && row.kind === "transfer";

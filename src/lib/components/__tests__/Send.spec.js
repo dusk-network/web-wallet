@@ -18,6 +18,7 @@ import {
   formatDuskPlain,
 } from "$lib/dusk/currency";
 import { timeLabel } from "$lib/activity/present";
+import { BALANCE_MASK } from "$lib/constants";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { shortenAddress } from "$lib/dusk/string";
 import { afterConfirmDelay, getAsHTMLElement } from "$lib/dusk/test-helpers";
@@ -288,6 +289,47 @@ describe("Send", () => {
       }
     );
 
+    it("should refuse a link whose amount in lux isn't the one it says, filling in nothing", async () => {
+      const { getByRole, getByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(
+        fields,
+        `${httpsLink.replace("amount=0.15", "amount=0.01")}&amountLux=150000000`
+      );
+
+      expect(
+        getByText(
+          "This link asks for two different amounts. Ask for a new one."
+        )
+      ).toBeInTheDocument();
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+
+      // The same amount both ways is the one asked.
+      await paste(fields, `${httpsLink}&amountLux=150000000`);
+
+      expect(filled(fields)).toStrictEqual([
+        otherAccount,
+        "0.15",
+        "Factura 33",
+      ]);
+    });
+
+    it("should say a mainnet wallet's link is for Mainnet, on testnet", async () => {
+      const { getByRole, getByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(
+        fields,
+        `${networks.mainnet.apps.wallet}/dashboard/send?to=${otherAccount}&amount=0.15&network=mainnet`
+      );
+
+      expect(
+        getByText("This request is for Mainnet. You are on Testnet.")
+      ).toBeInTheDocument();
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+    });
+
     it("should read the amount in the language of the amount field", async () => {
       settingsStore.update((store) => ({ ...store, language: "es-ES" }));
 
@@ -451,11 +493,24 @@ describe("Send", () => {
       );
       expect(filled(fields)[0]).toBe("");
 
-      await fireEvent.click(scan);
-      scanned(invalidAddress);
-      await vi.waitFor(() =>
-        expect(getByText("Not a valid address.")).toBeInTheDocument()
-      );
+      // Anything else isn't put in To: the scanner says so, and reads on.
+      for (const code of [
+        "hello from the canteen menu",
+        invalidAddress,
+        "0x2222222222222222222222222222222222222222",
+      ]) {
+        await fireEvent.click(scan);
+        scanned(code);
+        await vi.waitFor(() =>
+          expect(
+            getByText("That QR isn't a Dusk address or payment link.")
+          ).toBeInTheDocument()
+        );
+        expect(filled(fields)[0]).toBe("");
+      }
+
+      scanned(otherAccount);
+      await vi.waitFor(() => expect(filled(fields)[0]).toBe(otherAccount));
     });
 
     it("should start with what a link opened the page with, or say why it fills in nothing, and say what's wrong with its recipient at once", () => {
@@ -471,6 +526,7 @@ describe("Send", () => {
         "0.15",
         "Factura 33",
       ]);
+      expect(opened.getByText(/^Filled in from the link/)).toBeInTheDocument();
       opened.unmount();
 
       const refused = render(Send, {
@@ -609,8 +665,8 @@ describe("Send", () => {
       expect(queryByText("Not a valid address.")).toBeNull();
     });
 
-    it("should offer no QR scan without a camera", async () => {
-      const { queryByRole } = render(Send, baseProps);
+    it("should offer a QR scan from an image without a camera", async () => {
+      const { findByRole, queryByRole } = render(Send, baseProps);
 
       expect(hasCamera).toHaveBeenCalledOnce();
 
@@ -618,6 +674,9 @@ describe("Send", () => {
       await tick();
 
       expect(queryByRole("button", { name: "Scan a QR code" })).toBeNull();
+      expect(
+        await findByRole("button", { name: "Scan a QR code from an image" })
+      ).toBeEnabled();
     });
 
     it("should offer a QR scan with a camera", async () => {
@@ -812,6 +871,49 @@ describe("Send", () => {
       await rerender({ gasSettings: { gasLimit: 60_000_000n, gasPrice: 1n } });
 
       expect(maxFee()).toBe("0.04");
+    });
+
+    it("should say nothing false of an amount filled in as the page opens, as from a link or a draft", async () => {
+      const { getByRole, queryByRole } = render(Send, {
+        ...baseProps,
+        initialAmount: "0.03",
+        initialRecipient: otherAccount,
+      });
+
+      await tick();
+
+      expect(queryByRole("alert")).toBeNull();
+      expect(fieldsOf(getByRole).review()).toBeEnabled();
+    });
+
+    it("should check an amount against the balance once it's read, and say nothing against a balance not read yet", async () => {
+      const { getByRole, getByText, queryByRole, rerender } = render(Send, {
+        ...baseProps,
+        availableBalance: 0n,
+        balanceKnown: false,
+        initialAmount: "0.03",
+        initialRecipient: otherAccount,
+      });
+
+      await tick();
+
+      expect(queryByRole("alert")).toBeNull();
+
+      await rerender({ availableBalance: 1_000_000_000n, balanceKnown: true });
+
+      expect(queryByRole("alert")).toBeNull();
+      expect(fieldsOf(getByRole).review()).toBeEnabled();
+
+      await rerender({ availableBalance: 25_000_000n });
+
+      expect(getByText("More than your 0.025 DUSK.")).toBeInTheDocument();
+      expect(fieldsOf(getByRole).review()).toBeDisabled();
+
+      await rerender({ availableBalance: 40_000_000n });
+
+      expect(getByRole("alert")).toHaveTextContent(
+        "That leaves too little for the network fee: send up to 0.02 DUSK."
+      );
     });
 
     it("should keep Send disabled, and say why, while the balance can't pay the fee", async () => {
@@ -1381,6 +1483,121 @@ describe("Send", () => {
         target: { value: "1" },
       });
       expect(fields.review()).toBeEnabled();
+    });
+  });
+
+  describe("What the profile sent", () => {
+    /**
+     * A transfer in the profile's history, as the history gives it.
+     *
+     * @param {Partial<ActivityRow>} fields
+     * @returns {ActivityRow}
+     */
+    const sentRow = (fields) =>
+      /** @type {ActivityRow} */ (
+        /** @type {unknown} */ ({
+          counterparty: otherAccount,
+          direction: "out",
+          hash: lastTxId,
+          kind: "transfer",
+          memo: null,
+          source: "sent",
+          status: "pending",
+          time: Date.now() - 20_000,
+          toName: null,
+          value: 1_900_000n,
+          ...fields,
+        })
+      );
+
+    it("should say what's on its way from this profile, as after a reload while it went", () => {
+      const { getByRole } = render(Send, {
+        ...baseProps,
+        historyRows: [sentRow({})],
+      });
+
+      expect(getByRole("status")).toHaveTextContent(
+        `Your 0.0019 DUSK to ${shortenAddress(otherAccount)} is on its way.`
+      );
+      expect(getByRole("link", { name: "See in History" })).toHaveAttribute(
+        "href",
+        `/some-base-path/dashboard/transactions?tx=${lastTxId}`
+      );
+    });
+
+    it("should say what's on its way, with no amount while the balances are hidden", () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      try {
+        const { getByRole } = render(Send, {
+          ...baseProps,
+          historyRows: [sentRow({})],
+        });
+
+        expect(getByRole("status")).toHaveTextContent(
+          `Your ${BALANCE_MASK} DUSK to ${shortenAddress(otherAccount)} is on its way.`
+        );
+      } finally {
+        settingsStore.reset();
+      }
+    });
+
+    it("should warn of the same payment made moments ago, or with the same memo before, and let it go all the same", async () => {
+      const sent = Date.now() - 20_000;
+      const { getByRole } = render(Send, {
+        ...baseProps,
+        historyRows: [sentRow({ status: "executed", time: sent })],
+        initialAmount: "0.0019",
+        initialRecipient: otherAccount,
+      });
+
+      expect(getByRole("alert")).toHaveTextContent(
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} at ${timeLabel(sent, "en")}.`
+      );
+
+      // It can be meant: it goes.
+      await fireEvent.click(fieldsOf(getByRole).review());
+      await afterConfirmDelay();
+      await fireEvent.click(fieldsOf(getByRole).send());
+
+      expect(baseProps.execute).toHaveBeenCalledOnce();
+      cleanup();
+
+      // Another amount, or the same long ago without a memo, is no repeat.
+      const other = render(Send, {
+        ...baseProps,
+        historyRows: [
+          sentRow({ status: "executed", time: Date.now() - 11 * 60_000 }),
+          sentRow({ status: "failed", value: 3_000_000n }),
+        ],
+        initialAmount: "0.0019",
+        initialRecipient: otherAccount,
+      });
+
+      expect(other.queryByRole("alert")).toBeNull();
+
+      await fireEvent.input(fieldsOf(other.getByRole).amount(), {
+        target: { value: "0.003" },
+      });
+
+      expect(other.queryByRole("alert")).toBeNull();
+      cleanup();
+
+      // The same memo, as a request paid once already, is one whenever.
+      const paid = Date.UTC(2026, 9, 29, 9, 30);
+      const request = render(Send, {
+        ...baseProps,
+        historyRows: [
+          sentRow({ memo: "Factura 044", status: "executed", time: paid }),
+        ],
+        initialAmount: "0.0019",
+        initialMemo: "Factura 044",
+        initialRecipient: otherAccount,
+      });
+
+      expect(request.getByRole("alert")).toHaveTextContent(
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo on Thu 29 Oct at ${timeLabel(paid, "en")}.`
+      );
     });
   });
 

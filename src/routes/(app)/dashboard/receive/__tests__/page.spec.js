@@ -10,6 +10,9 @@ import {
 import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
+import { claimDay } from "$lib/bridge/claimDate";
+import { shortenAddress } from "$lib/dusk/string";
+
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
 import { settingsStore, walletStore } from "$lib/stores";
@@ -325,6 +328,110 @@ describe("Receive", () => {
       expect(get(requestsStore)).toHaveLength(1);
     });
 
+    it("should write what a request asks under its QR in the picture: what it is, the amount, the memo and whom it pays", async () => {
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+      const written = vi.spyOn(CanvasRenderingContext2D.prototype, "fillText");
+
+      render(Receive);
+      await vi.runAllTimersAsync();
+      await openRequest();
+      await type("Amount (optional)", "0.05");
+      await type("Memo (optional)", "Factura 33");
+      await vi.advanceTimersByTimeAsync(0);
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+      expect(written.mock.calls.map(([text]) => text)).toStrictEqual([
+        "Dusk payment request",
+        "0.05 DUSK",
+        "Factura 33",
+        `To ${shortenAddress(ACCOUNT)}`,
+      ]);
+
+      click.mockRestore();
+      written.mockRestore();
+    });
+
+    it("should write and keep what was asked when Download QR was pressed, though it's changed before the picture is made", async () => {
+      /** @type {(name: string) => void} */
+      let named = () => {};
+
+      getPrimaryName.mockReturnValue(
+        new Promise((resolve) => {
+          named = resolve;
+        })
+      );
+
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+      const written = vi.spyOn(CanvasRenderingContext2D.prototype, "fillText");
+
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+      await openRequest();
+      await type("Amount (optional)", "0.05");
+      await type("Memo (optional)", "Factura 33");
+      await vi.advanceTimersByTimeAsync(0);
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await type("Memo (optional)", "Factura 34");
+      await vi.advanceTimersByTimeAsync(0);
+      named("");
+      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+      expect(written.mock.calls.map(([text]) => text)).toContain("Factura 33");
+      expect(written.mock.calls.map(([text]) => text)).not.toContain(
+        "Factura 34"
+      );
+      expect(get(requestsStore)).toMatchObject([{ memo: "Factura 33" }]);
+
+      click.mockRestore();
+      written.mockRestore();
+    });
+
+    it("should name in the picture the address its code pays, though the shielded one is chosen before it's made", async () => {
+      /** @type {(name: string) => void} */
+      let named = () => {};
+
+      getPrimaryName.mockReturnValue(
+        new Promise((resolve) => {
+          named = resolve;
+        })
+      );
+
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+      const written = vi.spyOn(CanvasRenderingContext2D.prototype, "fillText");
+
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+      await openRequest();
+      await type("Amount (optional)", "0.05");
+      await vi.advanceTimersByTimeAsync(0);
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await fireEvent.click(screen.getByRole("radio", { checked: false }));
+      await vi.advanceTimersByTimeAsync(0);
+      named("");
+      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+      expect(written.mock.calls.map(([text]) => text)).toContain(
+        `To ${shortenAddress(ACCOUNT)}`
+      );
+      expect(get(requestsStore)).toMatchObject([{ to: ACCOUNT }]);
+
+      click.mockRestore();
+      written.mockRestore();
+    });
+
     it("should download the QR under a name that says what it holds, and keep a request with it", async () => {
       const click = vi
         .spyOn(HTMLAnchorElement.prototype, "click")
@@ -413,6 +520,55 @@ describe("Receive", () => {
       await vi.advanceTimersByTimeAsync(60_000);
 
       expect(history.refresh).not.toHaveBeenCalled();
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    it("should say a request paid twice, with when, and another payment that may be for it", async () => {
+      const at = Date.now() - 10_000;
+      const row = (/** @type {Record<string, unknown>} */ fields) => ({
+        category: "received",
+        hash: "ab".repeat(32),
+        memo: "Factura 43",
+        privacy: "public",
+        status: "executed",
+        time: at + 500,
+        value: 10_000_000n,
+        ...fields,
+      });
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "twice",
+            lux: "10000000",
+            memo: "Factura 43",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          row({}),
+          row({ hash: "cd".repeat(32), time: at + 2500 }),
+          row({ hash: "ef".repeat(32), memo: "Fra 43", time: at + 3500 }),
+        ],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const item = screen.getByRole("listitem");
+
+      expect(item).toHaveTextContent(
+        `Paid twice: ${claimDay(at + 500, "en")} and ${claimDay(at + 2500, "en")}.`
+      );
+      expect(item).toHaveTextContent(
+        `Also the same amount on ${claimDay(at + 3500, "en")}, with another memo: "Fra 43".`
+      );
       history.state?.set({ hasMore: false, rows: [] });
     });
 

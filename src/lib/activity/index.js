@@ -7,6 +7,7 @@ import { ACTIVITY_PAGE, ActivitySession } from "./activitySession";
 
 export { clearActivityStore, forgetWalletActivity } from "./activityStore";
 export { getShieldedHistory } from "./shieldedHistory";
+export { onTheirWay, sentAlready } from "./sends";
 export { TX_KIND } from "./constants";
 
 export { ACTIVITY_PAGE, ActivitySession };

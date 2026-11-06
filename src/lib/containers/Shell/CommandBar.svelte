@@ -447,7 +447,7 @@
             class:command-bar__code={result.labelIsCode}>{result.label}</span
           >
           {#if result.sub}
-            <span class="command-bar__sub command-bar__code">{result.sub}</span>
+            <span class="command-bar__sub">{result.sub}</span>
           {/if}
         </span>
         {#if result.detail}
@@ -591,7 +591,7 @@
     white-space: nowrap;
   }
 
-  /* A call's method, under the transaction it names. */
+  /* When a transaction was made, under it. */
   .command-bar__sub {
     color: var(--calm-muted);
   }

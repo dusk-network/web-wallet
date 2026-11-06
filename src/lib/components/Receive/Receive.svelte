@@ -11,11 +11,15 @@
   import * as QRCode from "qrcode";
   import { onMount } from "svelte";
 
+  import { displayText } from "@dusk-network/app-core/text";
+
   import { AppAnchorButton, FullAddress } from "$lib/components";
   import { Button, CopyButton, Icon, QrCode } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
+  import { formatDuskExact } from "$lib/dusk/currency";
   import { section } from "$lib/dusk/motion";
-  import { randomUUID } from "$lib/dusk/string";
+  import { randomUUID, shortenAddress } from "$lib/dusk/string";
+  import { settingsStore } from "$lib/stores";
 
   /** @type {string} */
   export let address = "";
@@ -40,14 +44,18 @@
 
   /**
    * What's asked of whoever pays, in place of the address alone: what the QR
-   * holds, and the link Share sends.
+   * holds, the link Share sends, and what's in them, for the picture's words.
    *
-   * @type {{ dusk: string, link: string } | null}
+   * @type {{ dusk: string, link: string, lux?: bigint | null, memo?: string } | null}
    */
   export let request = null;
 
-  /** Called as the request leaves the wallet, by Share or Download QR. */
-  /** @type {() => void} */
+  /**
+   * Called as the request leaves the wallet, by Share or Download QR, with
+   * the request that left and the address it pays.
+   *
+   * @type {(used: { address: string, request: typeof request }) => void}
+   */
   export let onUse = () => {};
 
   // Where a browser has a share sheet: most phones, some computers.
@@ -90,14 +98,14 @@
 
   /** The address, or what's asked, through the phone's share sheet. */
   async function share() {
-    const text = request?.link ?? address;
+    const used = { address, request };
 
     try {
       await navigator.share({
-        text,
-        title: request ? "Dusk payment request" : "My Dusk address",
+        text: used.request?.link ?? used.address,
+        title: used.request ? "Dusk payment request" : "My Dusk address",
       });
-      onUse();
+      onUse(used);
     } catch (error) {
       // Closing the sheet is an answer, not a failure.
       if (error instanceof Error && error.name !== "AbortError") {
@@ -106,18 +114,127 @@
     }
   }
 
-  /** What the QR holds, as a picture large enough to print. */
+  /** The picture's width, and its margin, in pixels. */
+  const PICTURE = 1024;
+  const MARGIN = 64;
+
+  /**
+   * A line as wide as the picture takes, cut short with an ellipsis.
+   *
+   * @param {CanvasRenderingContext2D} context
+   * @param {string} text
+   */
+  function fitted(context, text) {
+    const room = PICTURE - 2 * MARGIN;
+    let line = text;
+
+    while (line.length > 1 && context.measureText(line).width > room) {
+      line = line.slice(0, -2);
+    }
+
+    return line === text ? line : `${line.trimEnd()}…`;
+  }
+
+  /**
+   * What a request asks, in words under its QR: what it is, the amount, the
+   * memo, and the account it pays, by its name where it has one.
+   *
+   * @param {NonNullable<typeof request>} asked
+   * @param {string} shownName
+   * @param {string} to The address it pays
+   * @returns {Array<{ size: number, text: string, weight: number }>}
+   */
+  const wordsOf = (asked, shownName, to) => [
+    { size: 44, text: "Dusk payment request", weight: 600 },
+    {
+      size: 64,
+      text:
+        asked.lux === null || asked.lux === undefined
+          ? "Any amount"
+          : `${formatDuskExact(asked.lux, $settingsStore.language)} DUSK`,
+      weight: 600,
+    },
+    ...(asked.memo
+      ? [{ size: 40, text: displayText(asked.memo).text, weight: 400 }]
+      : []),
+    {
+      size: 36,
+      text: `To ${shownName ? `${shownName} · ` : ""}${shortenAddress(to)}`,
+      weight: 400,
+    },
+  ];
+
+  /**
+   * What the QR holds, as a picture large enough to print: for a request,
+   * with what it asks written under it, for whoever gets the picture alone.
+   *
+   * @param {typeof request} asked
+   * @param {string} value What the code holds
+   * @param {typeof name} named
+   * @param {string} to The address it pays
+   */
+  async function qrPicture(asked, value, named, to) {
+    const qr = document.createElement("canvas");
+
+    await QRCode.toCanvas(qr, value, {
+      color: { dark: "#101", light: "#fff" },
+      width: PICTURE,
+    });
+
+    if (!asked) {
+      return qr.toDataURL("image/png");
+    }
+
+    const shownName = await Promise.resolve(named).catch(() => "");
+    const lines = wordsOf(asked, shownName, to);
+    const picture = document.createElement("canvas");
+    const context = /** @type {CanvasRenderingContext2D} */ (
+      picture.getContext("2d")
+    );
+    const font = getComputedStyle(document.body).fontFamily || "sans-serif";
+
+    picture.width = PICTURE;
+    picture.height =
+      PICTURE +
+      lines.reduce((height, { size }) => height + size * 1.5, 0) +
+      MARGIN;
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, picture.width, picture.height);
+    context.drawImage(qr, 0, 0, PICTURE, PICTURE);
+    context.fillStyle = "#101";
+    context.textAlign = "center";
+    context.textBaseline = "top";
+
+    let top = PICTURE;
+
+    for (const { size, text, weight } of lines) {
+      context.font = `${weight} ${size}px ${font}`;
+      context.fillText(fitted(context, text), PICTURE / 2, top);
+      top += size * 1.5;
+    }
+
+    return picture.toDataURL("image/png");
+  }
+
+  /** The QR as a picture, downloaded. */
   async function downloadQr() {
+    // What the picture shows and pays, and what's kept, taken together before
+    // anything is awaited: an edit meanwhile changes none of them.
+    const used = { address, request };
+    const kind = addressType === "account" ? "public" : "shielded";
+
     try {
       const link = document.createElement("a");
 
-      link.href = await QRCode.toDataURL(qrValue, {
-        color: { dark: "#101", light: "#fff" },
-        width: 1024,
-      });
-      link.download = `dusk-${addressType === "account" ? "public" : "shielded"}-${request ? "request" : "receive"}-qr.png`;
+      link.href = await qrPicture(
+        used.request,
+        used.request?.dusk ?? used.address,
+        name,
+        used.address
+      );
+      link.download = `dusk-${kind}-${used.request ? "request" : "receive"}-qr.png`;
       link.click();
-      onUse();
+      onUse(used);
     } catch {
       toast("error", "Couldn't make the QR picture", mdiAlertOutline);
     }

@@ -449,6 +449,19 @@ describe("Settings", () => {
       expect(logoutSpy).toHaveBeenCalledWith(false);
     });
 
+    it("should offer fingerprint or face unlock again afterwards, whatever the device showed before", async () => {
+      const NO_PRF = `${CONFIG.LOCAL_STORAGE_APP_KEY}-passkey-no-prf`;
+
+      localStorage.setItem(NO_PRF, String(Date.now()));
+
+      const { getByRole } = render(Settings);
+
+      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
+      await resetDone();
+
+      expect(localStorage.getItem(NO_PRF)).toBeNull();
+    });
+
     it("should turn off the password on big sends, as the settings go", async () => {
       setSendPasswordLimit(1n);
 

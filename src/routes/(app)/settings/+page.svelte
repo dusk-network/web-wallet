@@ -55,7 +55,7 @@
     logout,
     pageTitle,
   } from "$lib/navigation";
-  import { signalPasskeyGone } from "$lib/security/passkey";
+  import { forgetNoPrf, signalPasskeyGone } from "$lib/security/passkey";
   import { setSendPasswordLimit } from "$lib/security/sendPassword";
   import vault from "$lib/vault";
   import { lockWallets, openWalletName, walletDirectory } from "$lib/wallets";
@@ -94,6 +94,7 @@
 
         await vault.clear();
         signalPasskeyGone(passkey);
+        forgetNoPrf();
         clearDirectory();
         settingsStore.reset();
         setSendPasswordLimit(null);

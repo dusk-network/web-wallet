@@ -27,10 +27,12 @@ import {
   cancelSendPassword,
   sendPasswordFor,
 } from "$lib/security/sendPassword";
+import { unconfirmedHash } from "$lib/transactions/describeFailure";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
 import { useWalletDataSuffix } from "$lib/wallets/dataNames";
+import { tellOtherTabs } from "$lib/wallets/tabs";
 import { profilesOf } from "$lib/wallets/profiles";
 import { useWalletData } from "$lib/wallets/walletData";
 
@@ -67,6 +69,7 @@ const initialState = {
       value: 0n,
     },
   },
+  balanceRead: false,
   currentProfile: null,
   initialized: false,
   minimumStake: 0n,
@@ -181,7 +184,11 @@ const recordInHistory = (profile, details) => {
   const history = historyOf(profile);
 
   return (txInfo) => {
-    history?.recordSent({ ...details, hash: txInfo.hash }).catch(() => {});
+    history
+      ?.recordSent({ ...details, hash: txInfo.hash })
+      // The other tabs' history shows it too.
+      .then(() => tellOtherTabs({ type: "sent" }))
+      .catch(() => {});
   };
 };
 
@@ -410,7 +417,9 @@ const builtWhileOpen = (builder, stillOpen) =>
  * buttons until it settles. Every transaction of the wallet's comes this way:
  * what it moves out (`moves`, none for what comes back to the public balance)
  * and the most its gas costs ask for the password first, above the amount
- * chosen in Settings.
+ * chosen in Settings. One handed over whose answer got lost may have gone
+ * out: History shows it on its way at once, and it's followed as one that
+ * went out, as the chain will say.
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
@@ -457,85 +466,86 @@ const sendAs = (
       throw stillOpen(error);
     })
     .then(networkStore.connect)
-    .then((network) => execute(sending(stillOpen(network))))
+    .then((network) =>
+      execute(sending(stillOpen(network))).catch((error) => {
+        const hash = unconfirmedHash(error);
+
+        if (hash) {
+          followRemoval(/** @type {TransactionInfo} */ ({ hash }));
+          record(/** @type {TransactionInfo} */ ({ hash }));
+        }
+
+        throw error;
+      })
+    )
     .then((txInfo) =>
       // It went out: what goes wrong from here doesn't say it didn't.
       keepInCache(txInfo)
         .then(passThruWithEffects(followRemoval))
         .then(passThruWithEffects(record))
         .catch((error) => {
-          throw outcomeUnknown(error);
+          throw outcomeUnknown(error, txInfo.hash);
         })
     );
 };
 
-/** @type {() => Promise<void>} */
-const updateBalance = async () => {
+/**
+ * The current profile's balances and stake, read from the network together,
+ * and shown together: what a transaction moved between them is never counted
+ * in both, or in neither. What can't be read stays as it was; the balances
+ * read say so (`balanceRead`). Each is kept in the cache, which is only a nice
+ * to have, so a failure to keep it is ignored.
+ *
+ * @returns {Promise<[PromiseSettledResult<unknown>, PromiseSettledResult<unknown>]>}
+ */
+async function updateStaticInfo() {
   const session = walletSession;
   const profile = getCurrentProfile();
 
   if (!profile) {
-    return;
+    return [
+      { status: "fulfilled", value: undefined },
+      { status: "fulfilled", value: undefined },
+    ];
   }
 
-  const shielded = /** @type {AddressBalance} */ (
-    await bookkeeper.balance(profile.address)
-  );
-  const unshielded = /** @type {AccountBalance} */ (
-    await bookkeeper.balance(profile.account)
-  );
-  const balance = { shielded, unshielded };
+  const isCurrent = () =>
+    session === walletSession && profile === getCurrentProfile();
+  const [balance, stake] = await Promise.allSettled([
+    (async () => ({
+      shielded: /** @type {AddressBalance} */ (
+        await bookkeeper.balance(profile.address)
+      ),
+      unshielded: /** @type {AccountBalance} */ (
+        await bookkeeper.balance(profile.account)
+      ),
+    }))(),
+    /** @type {Promise<StakeInfo>} */ (bookkeeper.stakeInfo(profile.account)),
+  ]);
 
-  /**
-   * We ignore the error as the cached balance is only
-   * a nice to have for the user.
-   */
-  if (session !== walletSession || profile !== getCurrentProfile()) {
-    return;
-  }
-  await treasury.setCachedBalance(profile, balance).catch(() => {});
-
-  if (session !== walletSession || profile !== getCurrentProfile()) {
-    return;
-  }
-  update((currentStore) => ({
-    ...currentStore,
-    balance,
-  }));
-};
-
-/** @type {() => Promise<void>} */
-const updateStakeInfo = async () => {
-  const session = walletSession;
-  const profile = getCurrentProfile();
-
-  if (!profile) {
-    return;
+  if (!isCurrent()) {
+    return [balance, stake];
   }
 
-  /** @type {StakeInfo} */
-  const stakeInfo = await bookkeeper.stakeInfo(profile.account);
+  await Promise.all([
+    balance.status === "fulfilled" &&
+      treasury.setCachedBalance(profile, balance.value).catch(() => {}),
+    stake.status === "fulfilled" &&
+      treasury.setCachedStakeInfo(profile, stake.value).catch(() => {}),
+  ]);
 
-  /**
-   * We ignore the error as the cached stake info is only
-   * a nice to have for the user.
-   */
-  if (session !== walletSession || profile !== getCurrentProfile()) {
-    return;
+  if (isCurrent()) {
+    update((currentStore) => ({
+      ...currentStore,
+      ...(balance.status === "fulfilled"
+        ? { balance: balance.value, balanceRead: true }
+        : {}),
+      ...(stake.status === "fulfilled" ? { stakeInfo: stake.value } : {}),
+    }));
   }
-  await treasury.setCachedStakeInfo(profile, stakeInfo).catch(() => {});
 
-  if (session !== walletSession || profile !== getCurrentProfile()) {
-    return;
-  }
-  update((currentStore) => ({
-    ...currentStore,
-    stakeInfo,
-  }));
-};
-
-const updateStaticInfo = () =>
-  Promise.allSettled([updateBalance(), updateStakeInfo()]);
+  return [balance, stake];
+}
 
 /**
  * The automatic sync that came due while the page was hidden: it waits for
@@ -889,12 +899,13 @@ function reset() {
 async function setCurrentProfile(profile) {
   const store = get(walletStore);
 
+  // What shows is the other profile's until this one's are read.
   return store.profiles.includes(profile)
-    ? Promise.resolve(set({ ...store, currentProfile: profile })).then(
-        async () => {
-          await updateStaticInfo();
-        }
-      )
+    ? Promise.resolve(
+        set({ ...store, balanceRead: false, currentProfile: profile })
+      ).then(async () => {
+        await updateStaticInfo();
+      })
     : Promise.reject(
         new Error("The received profile is not in the known list")
       );

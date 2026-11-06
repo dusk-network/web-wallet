@@ -632,7 +632,13 @@ describe("Create", async () => {
     expect(gotoSpy).not.toHaveBeenCalled();
   });
 
-  it("should initialize the wallet encrypted mnemonic saved in localStorage", async () => {
+  it("should initialize the wallet encrypted mnemonic saved in localStorage, and open the page a link asked for, as Send filled in by a request", async () => {
+    // A payment link opened before there was a wallet.
+    navigation.keepPlace({
+      pathname: "/some-base-path/dashboard/send/",
+      search: "?to=someone&amount=0.011&network=testnet",
+    });
+
     const { getByPlaceholderText, getByRole, getAllByRole } = render(
       Create,
       baseOptions
@@ -703,6 +709,9 @@ describe("Create", async () => {
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
     expect(gotoSpy).toHaveBeenCalledTimes(1);
-    expect(gotoSpy).toHaveBeenCalledWith("/dashboard", { replaceState: true });
+    expect(gotoSpy).toHaveBeenCalledWith(
+      "/dashboard/send/?to=someone&amount=0.011&network=testnet",
+      { replaceState: true }
+    );
   });
 });

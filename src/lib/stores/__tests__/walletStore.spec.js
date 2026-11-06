@@ -179,6 +179,7 @@ describe("Wallet store", async () => {
         value: 0n,
       },
     },
+    balanceRead: false,
     currentProfile: null,
     initialized: false,
     minimumStake: 0n,
@@ -683,6 +684,54 @@ describe("Wallet store", async () => {
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledOnce();
     });
+
+    it("should show the balances and the stake read together, never one read with the other from before", async () => {
+      const stakeRead = Promise.withResolvers();
+      const freshStake = { ...stakeInfo, reward: 1n };
+      const freshPublic = { ...unshielded, value: unshielded.value + 7n };
+
+      stakeInfoSpy.mockReturnValueOnce(stakeRead.promise);
+      balanceSpy
+        .mockResolvedValueOnce(shielded)
+        .mockResolvedValueOnce(freshPublic);
+
+      const refreshed = walletStore.refreshBalance();
+
+      await vi.waitUntil(() => balanceSpy.mock.calls.length === 2);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // The public balance read waits for the stake.
+      expect(get(walletStore).balance.unshielded).toStrictEqual(unshielded);
+
+      stakeRead.resolve(freshStake);
+      await refreshed;
+
+      expect(get(walletStore).balance.unshielded).toStrictEqual(freshPublic);
+      expect(get(walletStore).stakeInfo).toBe(freshStake);
+    });
+
+    it("should say the balances were read for the profile shown, and not while another's show", async () => {
+      expect(get(walletStore).balanceRead).toBe(true);
+
+      const balanceRead = Promise.withResolvers();
+
+      balanceSpy.mockReturnValueOnce(balanceRead.promise);
+
+      const switched = walletStore.setCurrentProfile(
+        get(walletStore).profiles[1]
+      );
+
+      expect(get(walletStore).balanceRead).toBe(false);
+
+      balanceRead.resolve(shielded);
+      await switched;
+
+      expect(get(walletStore).balanceRead).toBe(true);
+
+      walletStore.reset();
+
+      expect(get(walletStore).balanceRead).toBe(false);
+    });
   });
 
   describe("Wallet store transfers", () => {
@@ -981,6 +1030,17 @@ describe("Wallet store", async () => {
       // The nonce it used is the paying profile's too.
       expect(updateNonceSpy).toHaveBeenCalledExactlyOnceWith(payer, 1n);
 
+      // The other tabs hear of it, for their history to show it.
+      await vi.waitFor(() =>
+        expect(
+          JSON.parse(
+            localStorage.getItem(
+              `${CONFIG.LOCAL_STORAGE_APP_KEY}-wallet-event`
+            ) ?? "null"
+          )
+        ).toMatchObject({ type: "sent" })
+      );
+
       vi.useFakeTimers();
     });
 
@@ -1112,6 +1172,69 @@ describe("Wallet store", async () => {
       expect(executeSpy).not.toHaveBeenCalled();
       expect(get(walletStore).initialized).toBe(true);
       expect(get(walletStore).syncStatus.error).toBeNull();
+    });
+
+    it("should show a send whose answer got lost in the history at once, as it may have gone out, but never one the node refused", async () => {
+      vi.useRealTimers();
+
+      const built = {
+        buffer: new Uint8Array([7]),
+        hash: "cd".repeat(32),
+        nonce: 2n,
+      };
+
+      /**
+       * The node takes the transaction to broadcast, then the answer is
+       * `failure`.
+       *
+       * @param {Error} failure
+       */
+      const handedOver = (failure) =>
+        executeSpy.mockImplementationOnce(
+          /** @this {any} */
+          async function (/** @type {any} */ tx) {
+            const build = vi
+              .spyOn(Object.getPrototypeOf(tx), "build")
+              .mockResolvedValueOnce(built);
+
+            try {
+              const transaction = await tx.build(this);
+
+              await this.transactions.propagate(transaction.buffer);
+            } finally {
+              build.mockRestore();
+            }
+
+            throw failure;
+          }
+        );
+
+      history.session.recordSent.mockClear();
+      handedOver(new TypeError("Failed to fetch"));
+
+      await expect(
+        walletStore.transfer(toMoonlight, amount, memo, gas)
+      ).rejects.toThrow("Failed to fetch");
+      expect(history.session.recordSent).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          amount: String(amount),
+          direction: "out",
+          hash: built.hash,
+          to: toMoonlight,
+        })
+      );
+
+      history.session.recordSent.mockClear();
+      handedOver(
+        new Error("Tx cdcd not accepted: this transaction is invalid")
+      );
+
+      await expect(
+        walletStore.transfer(toMoonlight, amount, memo, gas)
+      ).rejects.toThrow("not accepted");
+      expect(history.session.recordSent).not.toHaveBeenCalled();
+
+      vi.useFakeTimers();
     });
 
     it("should neither start nor record a history while it is turned off", async () => {

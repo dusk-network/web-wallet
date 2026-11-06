@@ -9,10 +9,16 @@
   /** How long connecting goes on without a word, in milliseconds. */
   const QUIET_FOR = 5000;
 
+  /** How often it tries again by itself once connecting failed, in milliseconds. */
+  const RETRY_EVERY = 10_000;
+
   let isSlow = false;
 
   /** @type {ReturnType<typeof setTimeout>} */
   let slowTimer;
+
+  /** @type {ReturnType<typeof setTimeout>} */
+  let retryTimer;
 
   /**
    * The socket and what the node says it is: neither needs the other, and
@@ -35,19 +41,82 @@
 
     const connected = Promise.all([toConnect(), networkStore.init()]);
 
+    hasFailed = false;
     connected.then(noWordNeeded, noWordNeeded);
+    connected.catch(() => {
+      if (connecting === connected) {
+        hasFailed = true;
+        retryLater();
+      }
+    });
 
     return connected;
   }
 
+  /** Whether the last try failed, which it says. */
+  let hasFailed = false;
+
+  /** @type {Promise<unknown>} */
   let connecting = connectWith(networkStore.connect);
 
   function tryAgain() {
+    clearTimeout(retryTimer);
     connecting = connectWith(networkStore.reconnect);
   }
 
-  onDestroy(() => clearTimeout(slowTimer));
+  /**
+   * Tries again by itself, now and then, while it says it can't reach the
+   * network: what it says stays until a try gets through.
+   */
+  function retryLater() {
+    clearTimeout(retryTimer);
+
+    // Gone from the page, it stops trying.
+    if (destroyed) {
+      return;
+    }
+
+    retryTimer = setTimeout(() => {
+      const failed = connecting;
+      const attempt = Promise.all([
+        networkStore.reconnect(),
+        networkStore.init(),
+      ]);
+
+      attempt.then(
+        () => {
+          if (connecting === failed) {
+            hasFailed = false;
+            connecting = attempt;
+          }
+        },
+        () => {
+          if (connecting === failed) {
+            retryLater();
+          }
+        }
+      );
+    }, RETRY_EVERY);
+  }
+
+  /** The browser says it's online again: a try now, where the last failed. */
+  function handleOnline() {
+    if (hasFailed) {
+      tryAgain();
+    }
+  }
+
+  /** Whether the page has left: no more tries are made. */
+  let destroyed = false;
+
+  onDestroy(() => {
+    destroyed = true;
+    clearTimeout(slowTimer);
+    clearTimeout(retryTimer);
+  });
 </script>
+
+<svelte:window on:online={handleOnline} />
 
 <WelcomeShell>
   {#await connecting}

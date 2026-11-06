@@ -13,7 +13,7 @@
     initializeWallet,
     refreshLocalStoragePasswordInfo,
   } from "$lib/wallet";
-  import { goto } from "$lib/navigation";
+  import { goto, takePlace } from "$lib/navigation";
   import { onDestroy } from "svelte";
   import NetworkSyncProgress from "./NetworkSyncProgress.svelte";
 
@@ -140,7 +140,8 @@
       hideBackButton={true}
       nextButton={{
         action: async () => {
-          await goto("/dashboard", { replaceState: true });
+          // Where a link left off, as a payment it asks for.
+          await goto(takePlace() ?? "/dashboard", { replaceState: true });
         },
         disabled: false,
       }}

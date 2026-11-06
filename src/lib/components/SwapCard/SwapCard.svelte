@@ -277,10 +277,18 @@
   }
 
   /*
-   * The From panel's account line clears the flip button below it, and so
-   * does the finger-sized target of its Change.
+   * The From panel's last line clears the flip button below it: its account,
+   * with the finger-sized target of its Change, and what's said under its
+   * amount, as what Max keeps.
    */
-  .swap-card :global(.swap-panel:has(~ .swap-flip):has(> .swap-recipient)) {
+  .swap-card
+    :global(
+      .swap-panel:has(~ .swap-flip):has(
+          > .swap-recipient,
+          > .swap-note,
+          > .swap-error
+        )
+    ) {
     padding-bottom: 2rem;
   }
 

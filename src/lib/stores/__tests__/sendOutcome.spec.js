@@ -13,11 +13,27 @@ import { Gas, Network, ProfileGenerator, ShieldTransfer } from "@dusk/w3sper";
 import { mdiCloseThick, mdiTimerSand } from "@mdi/js";
 
 import { TransactionResult } from "$lib/components";
+import { timeLabel } from "$lib/activity/present";
 import { stubWalletNetwork } from "$lib/test-helpers";
 import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 import WalletTreasury from "$lib/wallet-treasury";
 
 import { networkStore, walletStore } from "..";
+
+// Following what went out asks the node, unless a test says what it finds.
+const follow = vi.hoisted(() => ({
+  /** @type {import("vitest").Mock<(hash: string) => Promise<any>> | null} */
+  spy: null,
+}));
+
+vi.mock("$lib/transactions/followTransaction", async (importOriginal) => {
+  /** @type {typeof import("$lib/transactions/followTransaction")} */
+  const original = await importOriginal();
+
+  follow.spy = vi.fn(original.default);
+
+  return { ...original, default: follow.spy };
+});
 
 /**
  * Sends that fail on the way to the node: before it was asked to broadcast
@@ -51,6 +67,7 @@ describe("A send that fails", () => {
   afterEach(() => {
     cleanup();
     executeSpy.mockReset();
+    follow.spy?.mockClear();
   });
 
   afterAll(() => {
@@ -98,32 +115,45 @@ describe("A send that fails", () => {
     });
 
     await vi.waitFor(() =>
-      expect(rendered.container.querySelector(".dusk-error-alert")).toBeTruthy()
+      expect(
+        rendered.container.querySelector(
+          ".dusk-error-alert, .transaction-status"
+        )
+      ).toBeTruthy()
     );
 
-    const alert = /** @type {HTMLElement} */ (
-      rendered.container.querySelector(".dusk-error-alert")
-    );
+    return { rendered, ...shown(rendered.container) };
+  }
+
+  /**
+   * What the result screen says: a failure, or how the transaction that may
+   * have gone out is getting on.
+   *
+   * @param {HTMLElement} container
+   */
+  function shown(container) {
+    const alert = container.querySelector(".dusk-error-alert");
+    const status = container.querySelector(".transaction-status__summary");
 
     return {
-      heading: alert.querySelector(".dusk-error-alert__summary")?.textContent,
-      sentence: alert.querySelector(".dusk-error-alert__description")
-        ?.textContent,
-      icon: alert
-        .querySelector(".dusk-error-alert__icon path")
-        ?.getAttribute("d"),
-      links: [...rendered.container.querySelectorAll("a")].map((a) => [
-        a.textContent?.trim(),
-        a.getAttribute("href"),
-      ]),
-      offersRetry: Boolean(
-        rendered.queryByRole("button", { name: "Try again" })
+      heading: alert
+        ? alert.querySelector(".dusk-error-alert__summary")?.textContent
+        : status?.querySelector(".transaction-status__title")?.textContent,
+      sentence: alert
+        ? alert.querySelector(".dusk-error-alert__description")?.textContent
+        : status?.querySelector("p")?.textContent?.replace(/\s+/g, " ").trim(),
+      icon: (alert ?? status)?.querySelector("svg path")?.getAttribute("d"),
+      links: [...container.querySelectorAll("a")]
+        .filter((a) => !a.closest(".transaction-status"))
+        .map((a) => [a.textContent?.trim(), a.getAttribute("href")]),
+      offersRetry: [...container.querySelectorAll("button")].some(
+        (button) => button.textContent?.trim() === "Try again"
       ),
-      text: rendered.container.textContent ?? "",
+      text: container.textContent ?? "",
     };
   }
 
-  it("says to try again before the node was asked to broadcast it, and after, that it may have gone out and to check History, never to send it again", async () => {
+  it("says to try again before the node was asked to broadcast it, and after, that it may have gone out and to wait for it, never to send it again", async () => {
     executeUntil("preverify", new TypeError("Failed to fetch"));
 
     expect(await shieldResult()).toMatchObject({
@@ -144,17 +174,61 @@ describe("A send that fails", () => {
       heading: "Not confirmed",
       offersRetry: false,
       sentence:
-        "It may have reached the network. Check History before you send it again.",
+        "It may have reached the network. Wait for it here before you send it again.",
     });
     // Nothing on the screen says it failed, or to try again.
     expect(result.text).not.toMatch(/try again|transaction failed/i);
-    // What it ran into, under Details.
-    expect(result.text).toContain("Failed to fetch");
-    // Not a cross, and the way on is to History.
+    // Not a cross: it's the transaction built, followed, and in History.
     expect(result.icon).toBe(mdiTimerSand);
+    expect(follow.spy).toHaveBeenCalledWith(built.hash, expect.anything());
     expect(result.links).toStrictEqual([
-      ["Open History", "/some-base-path/dashboard/transactions"],
+      [
+        "See in History",
+        `/some-base-path/dashboard/transactions?tx=${built.hash}`,
+      ],
+      ["Home", "/some-base-path/dashboard"],
     ]);
+  });
+
+  it("turns into Sent once the chain has the transaction whose answer got lost, or Failed", async () => {
+    const found = Promise.withResolvers();
+
+    executeUntil("propagate", new TypeError("Failed to fetch"));
+    follow.spy?.mockReturnValueOnce(found.promise);
+
+    const { rendered } = await shieldResult();
+    const at = Date.UTC(2026, 10, 5, 21, 16);
+
+    found.resolve({ blockHeight: 4321n, error: null, fee: 2n, timestamp: at });
+
+    await vi.waitFor(() =>
+      expect(shown(rendered.container)).toMatchObject({
+        heading: `Sent at ${timeLabel(at, "en")}`,
+        sentence: "In block 4,321.",
+      })
+    );
+    cleanup();
+
+    const failed = Promise.withResolvers();
+
+    executeUntil("propagate", new TypeError("Failed to fetch"));
+    follow.spy?.mockReturnValueOnce(failed.promise);
+
+    const second = await shieldResult();
+
+    failed.resolve({
+      blockHeight: 4322n,
+      error: "Panic: out of gas",
+      fee: 2n,
+      timestamp: at,
+    });
+
+    await vi.waitFor(() =>
+      expect(shown(second.rendered.container)).toMatchObject({
+        heading: "Failed",
+        sentence: "It didn't go through. The network fee was charged.",
+      })
+    );
   });
 
   it("says a refusal the node gave as it was asked to broadcast it is one, with the way home", async () => {
@@ -173,7 +247,7 @@ describe("A send that fails", () => {
     });
   });
 
-  it("says to check the balance first where there's no History", async () => {
+  it("follows it where there's no History too, and leads Home", async () => {
     executeUntil("propagate", new TypeError("Failed to fetch"));
 
     expect(await shieldResult(false)).toMatchObject({
@@ -181,7 +255,7 @@ describe("A send that fails", () => {
       links: [["Home", "/some-base-path/dashboard"]],
       offersRetry: false,
       sentence:
-        "It may have reached the network. Wait a few minutes and check your balance before you send it again.",
+        "It may have reached the network. Wait for it here before you send it again.",
     });
   });
 
@@ -196,7 +270,7 @@ describe("A send that fails", () => {
       heading: "Not confirmed",
       offersRetry: false,
       sentence:
-        "It may have reached the network. Check History before you send it again.",
+        "It may have reached the network. Wait for it here before you send it again.",
     });
   });
 
@@ -219,12 +293,17 @@ describe("A send that fails", () => {
         return connect();
       });
 
-    expect(await shieldResult()).toMatchObject({
-      heading: "Not confirmed",
-      offersRetry: false,
-      sentence:
-        "It may have reached the network. Check History before you send it again.",
-    });
+    // Not followed, as the node can't be asked: it says so.
+    const { rendered } = await shieldResult();
+
+    await vi.waitFor(() =>
+      expect(shown(rendered.container)).toMatchObject({
+        heading: "Not confirmed",
+        offersRetry: false,
+        sentence:
+          "It isn't in a block yet. See its status in the explorer before you send it again.",
+      })
+    );
 
     connecting.mockRestore();
   });

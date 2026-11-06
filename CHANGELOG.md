@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Scan a QR code from an image on Send, also where there's no camera
+- Warn on Send of a payment just like one made in the last ten minutes, or with the same memo before, also from another tab, without stopping it
 - Unlock with fingerprint or face, off by default, turned on in Settings with the password, on browsers and devices with a passkey's PRF: going straight to it as the wallet opens. The password keeps working, and big sends still ask for it
 - Show a stake with Sozu in figures on its form: put in, taken out, worth now, deposit fees and rewards so far, what an amount earns in a year, and a line of what the rate is made of
 - Tell me when it arrives, on a transfer's Sent screen and in Bridge › Activity, by a browser notification where one can be had, asked for only when pressed, and in the tab's title whoever's away
@@ -34,6 +36,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep what Max keeps, and other lines under the Bridge's From amount, clear of the Swap arrow
+- Write what a request asks under its QR in the picture downloaded: the amount, the memo and whom it pays
+- Try again by itself every ten seconds, and as the browser is back online, while the wallet can't reach the network
+- Say Ready to sync on a restore, as on a new wallet, with the block it starts at under Advanced
+- Leave a phone's keyboard down on the unlock after a fingerprint or face try, with the fingerprint still there to try again
+- Keep offering fingerprint or face unlock after a finger it didn't know, and offer it again after a reset
+- Close the profile menu with phone Back, staying on the page
+- Say on a phone that the screen says when a transfer arrives, not the tab's title, which phones don't show
+- Write how much is staked across the network in the language's digits among English words, as "5.7Cr" in Hindi, not in another script
+- Show a stake with Sozu's deposit fee to the lux, and a lux of the pool's rounding as no rewards, not fewer than none
+- Warn of a contact's name in use whatever its spaces, and offer no Save to contacts for a profile of the wallets here in a transaction's details
+- Show when a transaction was made under it in the search, in place of a call's code name
+- Refuse a payment link whose amount in lux isn't the one it says, rather than pay the lux
+- Read a QR code that fills the camera's view on Send, also in browsers without a built-in QR reader, as on an iPhone
+- Say so when a QR code scanned isn't a Dusk address or payment link, and keep scanning
+- Say what a payment link asks, of whom and how much, before a wallet is open to pay it, and keep it through creating or restoring one, for Send to open filled in
+- Say a request paid twice, with when, and another payment that may be for it
+- Say on Send what's on its way from the profile, as after a reload while it went
+- Follow a send whose answer got lost on its Not confirmed screen, which turns into Sent once the chain has it, and show it Pending in History at once: sends, stakes, Sozu, shielding and the bridge
+- Say the amount that arrives on the Sent screen of a transfer to another chain
+- Say "Filled in from the link" on Send opened by a payment link through the unlock, and draw a page the unlock opens once
+- Check an amount Send fills in from a link or a draft against the balance once it's read: no false "send up to 0 DUSK", and nothing said against a balance not read yet
+- Show the public balance and the stake changed together after an unstake, never counting it in both
+- Write the stDUSK a Sozu unstake burned in the accounting export, as the trade back
 - Close a contact with Escape, and give the focus back to a contact's or a transaction's row once it's closed
 - Say so when the camera won't start for a scan on Send, and read a scanned code as a pasted one
 - Write the gas paid short in a transfer's details under Bridge › Activity, with all its decimals on hover

@@ -9,6 +9,7 @@ import { base } from "$app/paths";
 import {
   amountForField,
   decimalSeparator,
+  parseDusk,
 } from "@dusk-network/app-core/amounts";
 import {
   makePaymentLink,
@@ -42,9 +43,32 @@ export const ownWalletUrl = () => `${location.origin}${base}`;
  */
 
 /**
+ * Whether a link that gives its amount in lux too says another in DUSK: the
+ * one in lux would be paid, unlike what's read.
+ *
+ * @param {string} raw
+ * @param {import("@dusk-network/app-core/payment-links").PaymentLink} link
+ */
+function amountsDisagree(raw, link) {
+  const query = raw.indexOf("?");
+  const said = new URLSearchParams(
+    query < 0 ? "" : raw.slice(query + 1).split("#")[0]
+  )
+    .get("amount")
+    ?.trim();
+
+  return Boolean(
+    said &&
+    /^\d+$/.test(link.amountLux) &&
+    parseDusk(said) !== BigInt(link.amountLux)
+  );
+}
+
+/**
  * What a link asks of Send, for the wallet's network: null for what isn't a
- * link, as an address or a name. Nothing is checked here but the link's form
- * and its network: Send checks what it fills in, as it checks what's typed.
+ * link, as an address or a name. Nothing is checked here but the link's form,
+ * its network and its amount, said once: Send checks what it fills in, as it
+ * checks what's typed.
  *
  * @param {string} text
  * @param {import("@dusk-network/networks").Network | null} net The wallet's network
@@ -73,7 +97,9 @@ export function readPaymentLink(text, net, language) {
     return null;
   }
 
-  const problem = networkMismatch(link.chainId, net);
+  const problem = amountsDisagree(raw, link)
+    ? "This link asks for two different amounts. Ask for a new one."
+    : networkMismatch(link.chainId, net);
 
   return problem
     ? { amount: "", memo: "", problem, to: "" }

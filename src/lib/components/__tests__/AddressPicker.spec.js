@@ -29,6 +29,13 @@ vi.mock("$app/stores", async () => {
   return { page: pageStore.page };
 });
 
+// A step of the history, as SvelteKit's shallow routing makes one.
+vi.mock("$app/navigation", () => ({
+  pushState: vi.fn((/** @type {string} */ _url, /** @type {any} */ state) =>
+    pageStore.page?.update((page) => ({ ...page, state }))
+  ),
+}));
+
 // Mock the toast module
 vi.mock("$lib/dusk/components/Toast/store", () => ({
   toast: vi.fn(),
@@ -97,6 +104,68 @@ describe("AddressPicker", () => {
       expect(opened).toHaveBeenCalledOnce();
 
       row.remove();
+    });
+
+    it("opens as a step of its own in the browser's history: Back closes it alone, and its own close takes that step back", async () => {
+      const back = vi
+        .spyOn(history, "back")
+        .mockImplementation(() =>
+          pageStore.page?.update((page) => ({ ...page, state: {} }))
+        );
+      const { container } = render(AddressPicker, {
+        compact: true,
+        currentProfile,
+        profiles,
+      });
+
+      await fireEvent.click(trigger(container));
+
+      expect(get(/** @type {any} */ (pageStore.page)).state).toStrictEqual({
+        profileMenu: true,
+      });
+
+      // Back: the list closes, and the page stays where it was.
+      await act(() =>
+        pageStore.page?.update((page) => ({ ...page, state: {} }))
+      );
+
+      expect(trigger(container)).toHaveAttribute("aria-expanded", "false");
+      expect(get(/** @type {any} */ (pageStore.page)).url.pathname).toBe("/");
+      expect(back).not.toHaveBeenCalled();
+
+      // Its own close takes its step back.
+      await fireEvent.click(trigger(container));
+      await fireEvent.keyDown(trigger(container), { key: "Escape" });
+
+      expect(trigger(container)).toHaveAttribute("aria-expanded", "false");
+      expect(back).toHaveBeenCalledOnce();
+
+      back.mockRestore();
+    });
+
+    it("opens on the list's own step after Back and Forward, so the next Back closes it", async () => {
+      const { pushState } = await import("$app/navigation");
+      const { container } = render(AddressPicker, {
+        compact: true,
+        currentProfile,
+        profiles,
+      });
+      const goTo = (/** @type {object} */ state) =>
+        act(() => pageStore.page?.update((page) => ({ ...page, state })));
+
+      await fireEvent.click(trigger(container));
+      await goTo({});
+      await goTo({ profileMenu: true });
+
+      vi.mocked(pushState).mockClear();
+      await fireEvent.click(trigger(container));
+
+      expect(trigger(container)).toHaveAttribute("aria-expanded", "true");
+      expect(pushState).not.toHaveBeenCalled();
+
+      await goTo({});
+
+      expect(trigger(container)).toHaveAttribute("aria-expanded", "false");
     });
 
     it("closes as the page changes", async () => {

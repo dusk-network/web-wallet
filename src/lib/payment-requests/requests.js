@@ -44,11 +44,25 @@ const CLOCK_SKEW_MS = 5 * 60_000;
  */
 
 /**
+ * A payment that came in for a request, with what of it matched.
+ *
+ * @typedef {{
+ *   at?: number,
+ *   hash: string,
+ *   lux: bigint,
+ *   matched: "amount" | "amount-memo" | "memo",
+ *   memo: string,
+ * }} RequestPayment
+ */
+
+/**
  * What came in for a request:
  * - "paid": a payment with the amount and the memo asked;
  * - "check": a payment with what `matched` says: not the whole of it, or a
  *   request asking too little to tell;
  * - "waiting": none yet.
+ * `more` holds the other payments that match it, oldest first, which no
+ * other request took: one with all of it again is the request paid twice.
  *
  * @typedef {{
  *   at?: number,
@@ -56,6 +70,7 @@ const CLOCK_SKEW_MS = 5 * 60_000;
  *   lux?: bigint,
  *   matched?: "amount" | "amount-memo" | "memo",
  *   memo?: string,
+ *   more?: RequestPayment[],
  *   state: "check" | "paid" | "waiting",
  * }} RequestMatch
  */
@@ -294,6 +309,44 @@ export function matchRequests(list, rows) {
     }
   }
 
+  // What else came in for a request answered: it paid twice, or may have.
+  /** @type {Map<string, RequestPayment[]>} */
+  const extra = new Map();
+
+  /**
+   * Gives each request answered what else matches it: in full, or (`exact`
+   * false) in part.
+   *
+   * @param {boolean} exact
+   */
+  const addMore = (exact) => {
+    for (const request of oldestFirst) {
+      const match = matches.get(request.id);
+
+      for (const row of !match || match.state === "waiting" ? [] : incoming) {
+        const matched = taken.has(row.hash) ? null : matchOf(request, row);
+
+        if (matched && (matched === "amount-memo") === exact) {
+          taken.add(row.hash);
+          extra.set(request.id, [
+            ...(extra.get(request.id) ?? []),
+            {
+              at: row.time ?? undefined,
+              hash: row.hash,
+              lux: row.value,
+              matched,
+              memo: memoOf(row.memo),
+            },
+          ]);
+        }
+      }
+    }
+  };
+
+  // A payment with all of a request paid it again: no other request takes it
+  // as a guess.
+  addMore(true);
+
   for (const request of oldestFirst) {
     if (!matches.has(request.id)) {
       answer(request, "guess");
@@ -301,6 +354,20 @@ export function matchRequests(list, rows) {
 
     if (!matches.has(request.id)) {
       matches.set(request.id, { state: "waiting" });
+    }
+  }
+
+  addMore(false);
+
+  for (const request of oldestFirst) {
+    const match = /** @type {RequestMatch} */ (matches.get(request.id));
+
+    const more = (extra.get(request.id) ?? []).sort(
+      (x, y) => (x.at ?? 0) - (y.at ?? 0)
+    );
+
+    if (more.length) {
+      matches.set(request.id, { ...match, more });
     }
   }
 

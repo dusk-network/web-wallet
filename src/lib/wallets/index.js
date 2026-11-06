@@ -7,6 +7,7 @@
 
 import { derived, get } from "svelte/store";
 
+import { currentActivity } from "$lib/activity";
 import { forgetWalletBridgeRecords } from "$lib/bridge/bridgeRecordKeys";
 import { forgetWalletRouteTransfers } from "$lib/bridge/migrationActivity";
 import PasskeyGoneError from "$lib/errors/passkey-gone-error";
@@ -653,6 +654,10 @@ async function followTab(event) {
     await logout(false);
   } else if (event.type === "switch") {
     await follow(event.key, event.profile);
+  } else if (event.type === "sent") {
+    // What another tab sent shows in this one's history too. Not awaited: a
+    // lock or a new password heard meanwhile mustn't wait for a slow read.
+    Promise.resolve(currentActivity()?.refresh()).catch(() => {});
   } else {
     await followWallets();
   }

@@ -6,6 +6,7 @@ import {
   rowsOf,
   withBridge,
 } from "$lib/activity/__tests__/fixtures/rows";
+import { dayLabel, timeLabel } from "$lib/activity/present";
 
 import {
   isAmountQuery,
@@ -93,7 +94,7 @@ describe("searchLocally", () => {
     ]);
   });
 
-  it("names the history's transactions as History does, with a call's method under it", () => {
+  it("names the history's transactions as History does, with when it was made under it, not a call's method", () => {
     const BRIDGE = "22".repeat(32);
     const deposit = {
       amount: "100000000",
@@ -107,6 +108,7 @@ describe("searchLocally", () => {
       hash: "40c50a".padEnd(64, "1"),
       kind: "contract_call",
       status: "executed",
+      timestamp: Date.UTC(2026, 10, 3, 21, 16),
     };
     const proof = {
       ...deposit,
@@ -128,11 +130,17 @@ describe("searchLocally", () => {
         sub,
         detail,
       ])
-    ).toEqual([["To DuskEVM", "depositETHToWithValue", "40c50a…111111"]]);
+    ).toEqual([
+      [
+        "To DuskEVM",
+        `${dayLabel(deposit.timestamp, { locale: "en" })}, ${timeLabel(deposit.timestamp, "en")}`,
+        "40c50a…111111",
+      ],
+    ]);
     expect(searchLocally("fdc37b", bridged)).toEqual([
       expect.objectContaining({
         label: "Withdrawal proved",
-        sub: "proveWithdrawalTransaction",
+        sub: `${dayLabel(proof.timestamp, { locale: "en" })}, ${timeLabel(proof.timestamp, "en")}`,
       }),
     ]);
   });

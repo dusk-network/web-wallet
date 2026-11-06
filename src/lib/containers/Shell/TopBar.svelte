@@ -130,7 +130,8 @@
       getName={lookUpNamesOn(networkName)}
       {profiles}
       wallets={walletGroups}
-      on:addWallet={() => goto("/wallets/add")}
+      on:addWallet={(event) =>
+        goto("/wallets/add", { replaceState: event.detail?.replace })}
       on:setCurrentProfile={(event) =>
         walletStore.setCurrentProfile(event.detail.profile)}
       on:switchWallet={handleSwitchWallet}
