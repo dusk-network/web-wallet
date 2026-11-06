@@ -30,16 +30,28 @@ const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`;
 const isObject = (value) =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
+/** The most characters a wallet's or a profile's name has: a contact's too. */
+export const NAME_LIMIT = 40;
+
 /**
- * A wallet's name as given: one line, at most 32 characters; "" for none.
+ * A name as it's typed for a wallet or a profile, on one line: "" for none.
+ * One longer than NAME_LIMIT isn't saved: it's never cut short silently.
+ *
+ * @param {unknown} name
+ */
+export const typedWalletName = (name) =>
+  String(name ?? "")
+    .trim()
+    .replace(/\s+/g, " ");
+
+/**
+ * A wallet's name as kept: one line, at most NAME_LIMIT characters; "" for
+ * none.
  *
  * @param {unknown} name
  */
 export const normalizeWalletName = (name) =>
-  String(name ?? "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .slice(0, 32);
+  typedWalletName(name).slice(0, NAME_LIMIT);
 
 /**
  * What a wallet is called: its name, or "Wallet 2" by its number.

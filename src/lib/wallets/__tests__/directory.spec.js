@@ -25,7 +25,7 @@ describe("The wallets' directory", () => {
   it("names a wallet by its number until it's given a name, and numbers the next one past the highest", () => {
     expect(walletLabel({ n: 2 })).toBe("Wallet 2");
     expect(walletLabel({ n: 2, name: "  Savings   jar " })).toBe("Savings jar");
-    expect(normalizeWalletName("x".repeat(40))).toHaveLength(32);
+    expect(normalizeWalletName("x".repeat(41))).toHaveLength(40);
 
     // A gap a removed wallet left stays unused.
     expect(nextWalletNumber([{ n: 1 }, { n: 3 }])).toBe(4);

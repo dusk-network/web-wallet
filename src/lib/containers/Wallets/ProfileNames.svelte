@@ -4,9 +4,9 @@
    * kept for that wallet in this browser only, as the extension's Names on
    * this device. It's what the wallet calls the profile in place of
    * "Profile 1", though the top bar's pill shows a verified `.dusk` name
-   * first. A name is saved as its field is left, or with Enter: at most 32
-   * characters, on one line, and empty, the profile goes by its number
-   * again.
+   * first. A name is saved as its field is left, or with Enter: at most 40
+   * characters, on one line, said once the field holds that many, and never
+   * cut short; empty, the profile goes by its number again.
    */
   import { mdiAlertOutline, mdiCheck } from "@mdi/js";
 
@@ -18,10 +18,12 @@
   import { networkStore, walletStore } from "$lib/stores";
   import profileLabel from "$lib/wallet/profileLabel";
   import {
+    NAME_LIMIT,
     normalizeWalletName,
     openProfileNames,
     openWalletName,
     renameProfile,
+    typedWalletName,
   } from "$lib/wallets";
 
   /**
@@ -65,7 +67,12 @@
   /** @param {number} index */
   async function save(index) {
     const key = walletKey;
-    const name = normalizeWalletName(drafts[index]);
+    const name = typedWalletName(drafts[index]);
+
+    // Too long, it stays as typed, with the limit said under it.
+    if (name.length > NAME_LIMIT) {
+      return;
+    }
 
     // The field shows the name as it's kept.
     drafts[index] = name;
@@ -142,13 +149,13 @@
           autocomplete="off"
           bind:value={drafts[i]}
           className="profile-names__field"
-          maxlength={32}
+          maxlength={NAME_LIMIT}
           on:blur={() => save(i)}
           on:keydown={(event) => handleKeyDown(event, i)}
           placeholder="Name, only on this device"
           type="text"
         />
-        <FieldLimit limit={32} value={drafts[i] ?? ""} />
+        <FieldLimit limit={NAME_LIMIT} value={drafts[i] ?? ""} />
       </li>
     {/each}
   </ul>

@@ -30,6 +30,7 @@ import { walletCacheFor } from "$lib/wallet-cache";
 
 import { keepIncarnation, startIncarnation } from "./dataNames";
 import {
+  NAME_LIMIT,
   forgetDirectoryWallet,
   normalizeWalletName,
   noteActiveWallet,
@@ -39,6 +40,7 @@ import {
   setProfileName,
   setWalletHeight,
   setWalletName,
+  typedWalletName,
   walletDirectory,
   walletLabel,
 } from "./directory";
@@ -46,7 +48,14 @@ import { profilesOf } from "./profiles";
 import { onOtherTabs, tellOtherTabs } from "./tabs";
 import { forgetWalletData } from "./walletData";
 
-export { normalizeWalletName, profileNameAt, walletDirectory, walletLabel };
+export {
+  NAME_LIMIT,
+  normalizeWalletName,
+  profileNameAt,
+  typedWalletName,
+  walletDirectory,
+  walletLabel,
+};
 export { default as walletAccountNames } from "./accountNames";
 
 /**
