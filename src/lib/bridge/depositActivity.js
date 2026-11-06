@@ -251,9 +251,10 @@ const duskEvmBlockTimes = new Map();
 const duskEvmScans = new Map();
 
 /**
- * The read of DuskEVM under way, for every deposit on its way, by wallet.
+ * The read of DuskEVM under way, for every deposit on its way, by wallet: the
+ * deposits it could say of, arrived or not yet.
  *
- * @type {Map<number, Promise<void>>}
+ * @type {Map<number, Promise<Set<string>>>}
  */
 const duskEvmReads = new Map();
 
@@ -351,8 +352,10 @@ async function readDuskEvm(scope) {
   const net = followedNetwork();
   const kept = rememberedDeposits(scope);
   const waiting = kept.filter(isOnItsWay);
+  /** @type {Set<string>} */
+  const said = new Set();
 
-  if (!net || !waiting.length) return;
+  if (!net || !waiting.length) return said;
 
   const bridge = await import("@dusk-network/app-core/bridge");
   const { arrivals } = await bridge.depositArrivals({
@@ -372,6 +375,14 @@ async function readDuskEvm(scope) {
 
   for (const item of waiting) {
     const arrival = arrivals.get(item.transactionHash);
+
+    // Arrived, or not yet: anything but a read that failed.
+    if (
+      arrival &&
+      !(arrival.state === "unknown" && arrival.reason === "error")
+    ) {
+      said.add(item.transactionHash);
+    }
 
     if (arrival?.state === "arrived") {
       updateDepositTransaction(
@@ -394,18 +405,20 @@ async function readDuskEvm(scope) {
       duskEvmScans.set(item.transactionHash, arrival.scan);
     }
   }
+
+  return said;
 }
 
 /**
- * A deposit that DuskEVM's adapter can't follow, found arrived on DuskEVM:
- * completed, with the DuskEVM transaction that paid it. Null while it isn't
- * there, or DuskEVM can't be read. One read looks for every deposit on its
- * way that its wallet keeps.
+ * What DuskEVM itself says of a deposit its adapter can't follow: `arrived`,
+ * the deposit completed, with the DuskEVM transaction that paid it, once
+ * it's there; `said`, whether DuskEVM could be read for it, arrived or not
+ * yet. One read looks for every deposit on its way that its wallet keeps.
  *
  * @param {any} remembered
  * @param {WalletDataScope} scope
  */
-async function arrivedOnDuskEvm(remembered, scope) {
+async function readOnDuskEvm(remembered, scope) {
   let read = duskEvmReads.get(scope.id);
 
   if (!read) {
@@ -413,14 +426,16 @@ async function arrivedOnDuskEvm(remembered, scope) {
     duskEvmReads.set(scope.id, read);
   }
 
-  await read.catch(() => {});
-
+  const said = await read.catch(() => new Set());
   const item = getRememberedDepositTransaction(
     remembered.transactionHash,
     scope
   );
 
-  return item?.stage === "completed" ? item : null;
+  return {
+    arrived: item?.stage === "completed" ? item : null,
+    said: said.has(remembered.transactionHash),
+  };
 }
 
 /**
@@ -514,7 +529,7 @@ export async function refreshDepositTransaction(
     // The adapter doesn't know it (yet): DuskEVM itself may.
     if (!l1TransactionHash) {
       return (
-        (await arrivedOnDuskEvm(remembered, scope)) ??
+        (await readOnDuskEvm(remembered, scope)).arrived ??
         pendingObservationPatch(remembered, scope)
       );
     }
@@ -542,14 +557,22 @@ export async function refreshDepositTransaction(
       scope
     );
   } catch (error) {
-    // The adapter can't say, as when it doesn't have the method: DuskEVM
-    // itself can. A deposit that failed on Dusk didn't arrive.
-    const arrived =
-      error instanceof DuskDepositExecutionError
-        ? null
-        : await arrivedOnDuskEvm(remembered, scope);
+    // A deposit that failed on Dusk didn't arrive.
+    if (error instanceof DuskDepositExecutionError) {
+      return failedObservationPatch(remembered, error, scope);
+    }
 
-    return arrived ?? failedObservationPatch(remembered, error, scope);
+    // The adapter can't say, as when it doesn't have the method, as on
+    // public testnet: DuskEVM itself can. While it can, the deposit is on
+    // its way, with nothing wrong; it's unavailable only where neither can.
+    const { arrived, said } = await readOnDuskEvm(remembered, scope);
+
+    return (
+      arrived ??
+      (said
+        ? pendingObservationPatch(remembered, scope)
+        : failedObservationPatch(remembered, error, scope))
+    );
   }
 }
 

@@ -463,6 +463,9 @@ describe("DuskEVM deposit tracking", () => {
           // Timed by its Dusk block, as the node gave it.
           l1BlockTimestamp: at,
           stage: "l1_pending",
+          // On its way, with nothing wrong: what the adapter can't say,
+          // DuskEVM can.
+          trackingError: null,
         })
       );
       expect(chain.methods()).toStrictEqual([]);
@@ -558,6 +561,28 @@ describe("DuskEVM deposit tracking", () => {
       url: "https://l2.example.test",
     });
   }
+
+  it("says a deposit's status can't be read while neither the adapter nor DuskEVM can say", async () => {
+    const hash = "96".repeat(32);
+
+    paidDeposit(hash, { at: Date.now() - 60_000, bridge: mocks.l2Bridge });
+
+    // DuskEVM's RPC can't be reached either.
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new TypeError("Failed to fetch"));
+
+    try {
+      expect(await refreshDepositTransaction(hash)).toStrictEqual(
+        expect.objectContaining({
+          stage: "l1_pending",
+          trackingError: expect.stringMatching(/./),
+        })
+      );
+    } finally {
+      fetch.mockRestore();
+    }
+  });
 
   it("finds a deposit sent more than a week ago arrived on DuskEVM, in a browser that sees it only now", async () => {
     const hash = "91".repeat(32);
