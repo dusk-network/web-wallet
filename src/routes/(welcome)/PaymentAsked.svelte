@@ -12,12 +12,19 @@
     recipientKind,
   } from "@dusk-network/app-core/payment-links";
 
+  import { onMount } from "svelte";
+
   import { MemoText } from "$lib/components";
+  import { Button } from "$lib/dusk/components";
   import { getPrimaryName } from "$lib/dusk-domains";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { peekPlace } from "$lib/navigation";
   import { ownWalletUrl } from "$lib/payment-requests";
+  import {
+    findLinkTaker,
+    openInExtension,
+  } from "$lib/payment-requests/extension";
   import { networkStore, settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { nodeBaseUrl } from "$lib/url";
@@ -46,6 +53,39 @@
           nodeBaseUrl()
         ).catch(() => "")
       : Promise.resolve("");
+
+  /**
+   * The Dusk Wallet extension, where one takes the request: it pays it from
+   * its own Send, on its own network.
+   *
+   * @type {import("$lib/payment-requests/extension").DuskProvider | null}
+   */
+  let extension = null;
+
+  /** What handing it to the extension did. */
+  let handed = "";
+
+  onMount(() => {
+    let isHere = true;
+
+    if (asked) {
+      findLinkTaker().then((found) => {
+        if (isHere) {
+          extension = found;
+        }
+      });
+    }
+
+    return () => {
+      isHere = false;
+    };
+  });
+
+  async function hand() {
+    if (extension) {
+      handed = await openInExtension(extension, opened);
+    }
+  }
 
   $: ({ language } = $settingsStore);
   // Why it can't be paid as it is, as Send says once it opens: two amounts,
@@ -94,6 +134,25 @@
       {/if}
     </dl>
     <p class="payment-asked__next">{problem || next}</p>
+    <!-- Not for a link no Send takes; another network's is the extension's to say. -->
+    {#if extension && handed !== "refused" && read?.reason !== "unreadable" && read?.reason !== "two-amounts"}
+      {#if handed === "opened"}
+        <p class="payment-asked__next" role="status">
+          Opened in the Dusk extension.
+        </p>
+      {:else if handed === "no-wallet"}
+        <p class="payment-asked__next" role="status">
+          The Dusk extension has no wallet to pay with.
+        </p>
+      {:else}
+        <Button
+          className="payment-asked__extension"
+          on:click={hand}
+          text="Open in the Dusk extension"
+          variant="secondary"
+        />
+      {/if}
+    {/if}
   </section>
 {/if}
 
@@ -153,5 +212,10 @@
 
   .payment-asked__next {
     margin: 0;
+  }
+
+  /* A button on the card, which is its own colour. */
+  .payment-asked :global(.payment-asked__extension) {
+    background-color: var(--calm-field);
   }
 </style>

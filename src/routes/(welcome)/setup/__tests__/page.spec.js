@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { shortenAddress } from "$lib/dusk/string";
 import { forgetPlace, keepPlace } from "$lib/navigation";
@@ -82,6 +82,146 @@ describe("Setup", () => {
       const plain = render(Setup, {});
 
       expect(plain.queryByRole("region")).toBeNull();
+    });
+  });
+
+  describe("opened by a request link, with the Dusk Wallet extension", () => {
+    const TO =
+      "25z9o6qCaVk1ReyHjmB4pyXcE3D1vRu4FVV1rR8ChYcosdTSktkANLDHq9GD6B4985Q1S2KrDZYBRrohWAjrNmACFUb3UMSRyYctJRzh3d28R1ZNC1ZyKm1HwXL4FF5Etftt";
+    const SEARCH = `?to=${TO}&amount=0.011&memo=Factura+044&network=testnet`;
+
+    /**
+     * An extension that answers Dusk Connect's discovery: with its methods,
+     * and what it says to a payment link.
+     *
+     * @param {string[]} methods
+     * @param {unknown} answer
+     */
+    const extension = (methods, answer = true) => {
+      const provider = {
+        request: vi.fn(async ({ method }) => {
+          if (method === "dusk_getCapabilities") {
+            return { methods };
+          }
+
+          if (answer instanceof Error) {
+            throw answer;
+          }
+
+          return answer;
+        }),
+      };
+      const announce = () =>
+        window.dispatchEvent(
+          new CustomEvent("dusk:announceProvider", { detail: { provider } })
+        );
+
+      window.addEventListener("dusk:requestProvider", announce);
+      cleanups.push(() =>
+        window.removeEventListener("dusk:requestProvider", announce)
+      );
+
+      return provider;
+    };
+
+    /** @type {Array<() => void>} */
+    const cleanups = [];
+
+    afterEach(() => {
+      cleanups.splice(0).forEach((stop) => stop());
+      forgetPlace();
+      setNodeNetwork(null);
+    });
+
+    it("offers to open it in the extension that takes it, handing over the link it was opened with", async () => {
+      setNodeNetwork(networks.testnet);
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: SEARCH,
+      });
+
+      const provider = extension([
+        "dusk_getCapabilities",
+        "dusk_openPaymentLink",
+      ]);
+      const { findByRole, findByText } = render(Setup, {});
+
+      await fireEvent.click(
+        await findByRole("button", { name: "Open in the Dusk extension" })
+      );
+
+      expect(provider.request).toHaveBeenLastCalledWith({
+        method: "dusk_openPaymentLink",
+        params: {
+          link: expect.stringMatching(
+            new RegExp(`/dashboard/send/?\\?to=${TO}&amount=0\\.011&`)
+          ),
+        },
+      });
+      expect(
+        await findByText("Opened in the Dusk extension.")
+      ).toBeInTheDocument();
+    });
+
+    it("says so where the extension has no wallet to pay with, and offers nothing where it won't take the link", async () => {
+      setNodeNetwork(networks.testnet);
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: SEARCH,
+      });
+      extension(["dusk_openPaymentLink"], false);
+
+      const empty = render(Setup, {});
+
+      await fireEvent.click(
+        await empty.findByRole("button", { name: "Open in the Dusk extension" })
+      );
+
+      expect(
+        await empty.findByText("The Dusk extension has no wallet to pay with.")
+      ).toBeInTheDocument();
+      cleanup();
+      cleanups.splice(0).forEach((stop) => stop());
+
+      extension(
+        ["dusk_openPaymentLink"],
+        Object.assign(new Error("Not a request link"), { code: -32602 })
+      );
+
+      const refused = render(Setup, {});
+
+      await fireEvent.click(
+        await refused.findByRole("button", {
+          name: "Open in the Dusk extension",
+        })
+      );
+      await vi.waitFor(() =>
+        expect(
+          refused.queryByRole("button", { name: "Open in the Dusk extension" })
+        ).toBeNull()
+      );
+    });
+
+    it("offers nothing with an extension too old to take it", async () => {
+      setNodeNetwork(networks.testnet);
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: SEARCH,
+      });
+
+      const provider = extension(["dusk_getCapabilities"]);
+      const { queryByRole } = render(Setup, {});
+
+      await vi.waitFor(() =>
+        expect(provider.request).toHaveBeenCalledWith({
+          method: "dusk_getCapabilities",
+        })
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(
+        queryByRole("button", { name: "Open in the Dusk extension" })
+      ).toBeNull();
     });
   });
 
