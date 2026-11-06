@@ -20,7 +20,7 @@
   import { formatDuskExact } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { peekPlace } from "$lib/navigation";
-  import { ownWalletUrl } from "$lib/payment-requests";
+  import { REQUEST_FIELDS, ownWalletUrl } from "$lib/payment-requests";
   import {
     findLinkTaker,
     openInExtension,
@@ -42,6 +42,10 @@
     ? parsePaymentLink(opened, { walletUrl: ownWalletUrl() })
     : null;
   const asked = link?.form === "https" && link.to ? link : null;
+  // A request, by its fields, whether or not it can be read.
+  const isRequest =
+    Boolean(opened) &&
+    REQUEST_FIELDS.some((field) => new URL(opened).searchParams.has(field));
 
   // The name the account it pays goes by, as the chain says: none for a
   // shielded address, or where the lookup fails.
@@ -90,7 +94,7 @@
   $: ({ language } = $settingsStore);
   // Why it can't be paid as it is, as Send says once it opens: two amounts,
   // or another network.
-  $: read = asked
+  $: read = isRequest
     ? readPaymentLink(opened, {
         network: $nodeNetwork ?? undefined,
         walletUrl: ownWalletUrl(),
@@ -99,40 +103,43 @@
   $: problem = read?.problem ?? "";
 </script>
 
-{#if asked}
+<!-- One that can't be read, as one saying a field twice, says only why. -->
+{#if asked || problem}
   <section aria-labelledby="payment-asked" class="payment-asked">
     <h2 class="payment-asked__title" id="payment-asked">Payment request</h2>
-    <dl class="payment-asked__facts">
-      {#if read?.reason !== "two-amounts"}
+    {#if asked}
+      <dl class="payment-asked__facts">
+        {#if read?.reason !== "two-amounts"}
+          <div>
+            <dt>Amount</dt>
+            <dd>
+              {asked.lux === null
+                ? "Any amount"
+                : `${formatDuskExact(asked.lux, language)} DUSK`}
+            </dd>
+          </div>
+        {/if}
         <div>
-          <dt>Amount</dt>
+          <dt>To</dt>
           <dd>
-            {asked.lux === null
-              ? "Any amount"
-              : `${formatDuskExact(asked.lux, language)} DUSK`}
+            {#await name then found}
+              {#if found}
+                <span class="payment-asked__name">{found}</span>
+              {/if}
+            {/await}
+            <span class="payment-asked__code" title={asked.to}
+              >{shortenAddress(asked.to)}</span
+            >
           </dd>
         </div>
-      {/if}
-      <div>
-        <dt>To</dt>
-        <dd>
-          {#await name then found}
-            {#if found}
-              <span class="payment-asked__name">{found}</span>
-            {/if}
-          {/await}
-          <span class="payment-asked__code" title={asked.to}
-            >{shortenAddress(asked.to)}</span
-          >
-        </dd>
-      </div>
-      {#if asked.memo}
-        <div>
-          <dt>Memo</dt>
-          <dd><MemoText text={asked.memo} /></dd>
-        </div>
-      {/if}
-    </dl>
+        {#if asked.memo}
+          <div>
+            <dt>Memo</dt>
+            <dd><MemoText text={asked.memo} /></dd>
+          </div>
+        {/if}
+      </dl>
+    {/if}
     <p class="payment-asked__next">{problem || next}</p>
     <!-- Not for a link no Send takes; another network's is the extension's to say. -->
     {#if extension && handed !== "refused" && read?.reason !== "unreadable" && read?.reason !== "two-amounts"}

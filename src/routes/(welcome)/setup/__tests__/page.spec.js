@@ -77,6 +77,25 @@ describe("Setup", () => {
       expect(twice).not.toHaveTextContent("Amount");
       cleanup();
 
+      // Nor one that says a field twice, which can't be read at all.
+      for (const [search, words] of [
+        [
+          `?to=${TO}&amount=1&amount=2&network=testnet`,
+          "This link asks for two different amounts. Ask for a new one.",
+        ],
+        [
+          `?to=${TO}&memo=a&memo=b&network=testnet`,
+          "That link can't be read. Ask for a new one.",
+        ],
+      ]) {
+        keepPlace({ pathname: "/some-base-path/dashboard/send/", search });
+
+        expect(
+          render(Setup, {}).getByRole("region", { name: "Payment request" })
+        ).toHaveTextContent(words);
+        cleanup();
+      }
+
       keepPlace({ pathname: "/some-base-path/dashboard/stake/", search: "" });
 
       const plain = render(Setup, {});

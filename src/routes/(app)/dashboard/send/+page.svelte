@@ -7,7 +7,11 @@
   import { Send } from "$lib/components";
   import { executeSend, getGasLimits, getGasSettings } from "$lib/contracts";
   import { resolveDuskName } from "$lib/dusk-domains";
-  import { ownWalletUrl, readPaymentLink } from "$lib/payment-requests";
+  import {
+    REQUEST_FIELDS,
+    ownWalletUrl,
+    readPaymentLink,
+  } from "$lib/payment-requests";
   import {
     gasPriceStore,
     gasStore,
@@ -60,16 +64,6 @@
   const send = walletStore.forThisWallet()(executeSend);
 
   const { networkName } = $networkStore;
-
-  /** What an address of this page has for it to be a request. */
-  const REQUEST_FIELDS = [
-    "amount",
-    "amountLux",
-    "label",
-    "memo",
-    "network",
-    "to",
-  ];
 
   /**
    * What the page's address asks of its form: a recipient, as from Send again
