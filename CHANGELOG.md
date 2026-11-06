@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Write how much is staked across the network in the language's own short words where they're in Latin letters, as "57,2 Mio." in German
 - Count what's staked, natively and with Sozu, in Home's total balance, listed beside Public and Shielded
 - Show what's staked with Sozu changed together with the public balance after a stake or an unstake, never counted twice or not at all
 - Say what an unstake from Sozu brings back after its fee, and on its review when the fee can be more

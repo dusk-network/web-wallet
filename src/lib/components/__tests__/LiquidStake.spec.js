@@ -1025,10 +1025,11 @@ describe("LiquidStake", () => {
 
     it.each([
       ["hi-IN", "20.7Cr DUSK staked now"],
-      ["de-DE", "206,9M DUSK staked now"],
+      ["de-DE", "206,9 Mio. DUSK staked now"],
+      ["fr-FR", "206,9 M DUSK staked now"],
       ["en-GB", "206.9M DUSK staked now"],
     ])(
-      "writes what's staked in %s's digits among the line's English words",
+      "writes what's staked in %s's digits among the line's English words, in its own short words where they're in Latin letters",
       (language, staked) => {
         settingsStore.update((store) => ({ ...store, language }));
 
@@ -1045,8 +1046,8 @@ describe("LiquidStake", () => {
           });
           const facts = textOf(container.querySelector(".liquid-stake__facts"));
 
-          expect(facts).toContain(staked);
-          expect(facts).not.toMatch(/[\u0900-\u097f]|Mio\./);
+          expect(facts?.replace(/\s/g, " ")).toContain(staked);
+          expect(facts).not.toMatch(/[\u0900-\u097f]/);
         } finally {
           settingsStore.reset();
         }
