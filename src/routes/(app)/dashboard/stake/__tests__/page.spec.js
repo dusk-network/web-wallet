@@ -762,7 +762,7 @@ describe("Staking", () => {
     startHistory.mockRestore();
   });
 
-  it("says what's on its way to Sozu after a reload, and once its block is final, reads the history, the balances and Sozu again", async () => {
+  it("says what's on its way to Sozu after a reload, and once its block is final, reads the history, the balances, Sozu and the form's position again", async () => {
     /** @type {(final: unknown) => void} */
     let final = () => {};
 
@@ -775,6 +775,11 @@ describe("Staking", () => {
     const refresh = vi
       .spyOn(walletStore, "refreshBalance")
       .mockResolvedValue(undefined);
+    const whole = vi.fn(async () => ({ rows: [], shieldedWaiting: false }));
+
+    vi.spyOn(walletStore, "startHistory").mockReturnValue(
+      /** @type {any} */ ({ sozuFacts: async () => new Map(), whole })
+    );
 
     open("?flow=liquid");
     withoutStake();
@@ -813,12 +818,17 @@ describe("Staking", () => {
     ).toHaveTextContent("Available 171.9 DUSK from your public balance");
     expect(followTransaction).toHaveBeenCalledExactlyOnceWith("f1".repeat(32));
 
+    // The form read its position as it opened.
+    await vi.waitFor(() => expect(whole).toHaveBeenCalledOnce());
     sozu.load.mockClear();
+    whole.mockClear();
     final({ blockHeight: 1n, error: null, fee: 1n, timestamp: null });
 
     await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
     expect(history.refresh).toHaveBeenCalled();
     expect(sozu.load).toHaveBeenCalledWith({ force: true });
+    // And again, from the history once it's read again.
+    await vi.waitFor(() => expect(whole).toHaveBeenCalledOnce());
   });
 
   it("stakes with Sozu from liquid staking", async () => {
