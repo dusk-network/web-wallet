@@ -26,7 +26,10 @@ vi.mock("$lib/transactions", async (importOriginal) => ({
 // The history of the profile, as the facts the export reads come from it.
 const activity = vi.hoisted(() => ({
   refresh: vi.fn(async () => {}),
-  sozuFacts: vi.fn(async () => new Map()),
+  sozuFacts:
+    /** @type {import("vitest").Mock<(rows: any[]) => Promise<Map<string, any>>>} */ (
+      vi.fn(async () => new Map())
+    ),
 }));
 
 vi.mock("$lib/activity", async (importOriginal) => ({
