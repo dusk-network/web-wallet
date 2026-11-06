@@ -57,6 +57,30 @@ class DuskDepositExecutionError extends Error {}
 /** Dusk's node couldn't be read for a deposit: whether its block is final isn't known. */
 class DuskNodeError extends Error {}
 
+/**
+ * The adapter has no method to follow a deposit by, as on public testnet: not
+ * a failure, as DuskEVM itself follows it.
+ */
+class AdapterMethodMissingError extends Error {}
+
+/**
+ * Whether an RPC answered that it has no such method.
+ *
+ * @param {unknown} error
+ */
+function isMethodMissing(error) {
+  for (let cause = /** @type {any} */ (error); cause; cause = cause.cause) {
+    if (
+      cause.code === -32601 ||
+      /method not found/i.test(String(cause.message ?? ""))
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export {
   depositActivityStore,
   getRememberedDepositActivity,
@@ -150,10 +174,19 @@ async function resolveL1TransactionHash(remembered, scope) {
   }
 
   const { l1Client: client } = trackingClients();
-  const resolved = await client.request({
-    method: "duskevm_getTransactionHashByDuskHash",
-    params: [remembered.transactionHash],
-  });
+  /** @type {unknown} */
+  let resolved;
+
+  try {
+    resolved = await client.request({
+      method: "duskevm_getTransactionHashByDuskHash",
+      params: [remembered.transactionHash],
+    });
+  } catch (error) {
+    throw isMethodMissing(error)
+      ? new AdapterMethodMissingError(errorMessage(error))
+      : error;
+  }
 
   if (resolved === null) return null;
 
@@ -388,10 +421,13 @@ async function readDuskEvm(scope) {
   for (const item of waiting) {
     const arrival = arrivals.get(item.transactionHash);
 
-    // Arrived, or not yet: anything but a read that failed.
+    // What DuskEVM could say of it: arrived, not yet, still searching or
+    // late. Not a read that failed, nor one it couldn't make.
     if (
-      arrival &&
-      !(arrival.state === "unknown" && arrival.reason === "error")
+      arrival?.state === "arrived" ||
+      arrival?.state === "waiting" ||
+      (arrival?.state === "unknown" &&
+        (arrival.reason === "searching" || arrival.reason === "late"))
     ) {
       said.add(item.transactionHash);
     }
@@ -574,20 +610,16 @@ export async function refreshDepositTransaction(
       return failedObservationPatch(remembered, error, scope);
     }
 
-    // The adapter can't say, as when it doesn't have the method, as on
-    // public testnet: DuskEVM itself can. Where only the adapter failed and
-    // DuskEVM could be read for it, the deposit is on its way, with nothing
-    // wrong. Where Dusk's node couldn't be read, it's unavailable until
-    // DuskEVM finds it arrived: DuskEVM may only be waiting on what Dusk's
-    // node gives, as its block's time.
     const { arrived, said } = await readOnDuskEvm(remembered, scope);
 
-    return (
-      arrived ??
-      (said && !(error instanceof DuskNodeError)
-        ? pendingObservationPatch(remembered, scope)
-        : failedObservationPatch(remembered, error, scope))
-    );
+    if (arrived) return arrived;
+
+    // The adapter has no method to follow it by, as on public testnet: DuskEVM
+    // itself follows it, and nothing is wrong while DuskEVM can say of it.
+    // Anything else that failed, the node, the adapter or DuskEVM, is said.
+    return error instanceof AdapterMethodMissingError && said
+      ? pendingObservationPatch(remembered, scope)
+      : failedObservationPatch(remembered, error, scope);
   }
 }
 

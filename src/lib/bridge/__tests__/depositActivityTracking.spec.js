@@ -610,6 +610,30 @@ describe("DuskEVM deposit tracking", () => {
     }
   });
 
+  it("says a deposit's status can't be read while the adapter can't, though DuskEVM only waits on its block's time", async () => {
+    const hash = "98".repeat(32);
+
+    // The adapter gave its own hash before, and has stopped answering since.
+    rememberDepositTransaction(hash, {
+      account: "0xb0e834d62ca3f5cf0f82619c8515c673818f8c6b",
+      amountLux: "100000000",
+      createdAt: Date.now(),
+    });
+    updateDepositTransaction(hash, {
+      l1TransactionHash: `0x${"aa".repeat(32)}`,
+    });
+    mocks.observeDepositStatus.mockRejectedValue(
+      new TypeError("Failed to fetch")
+    );
+
+    expect(await refreshDepositTransaction(hash)).toStrictEqual(
+      expect.objectContaining({
+        stage: "l1_pending",
+        trackingError: expect.stringMatching(/Failed to fetch/),
+      })
+    );
+  });
+
   it("finds a deposit sent more than a week ago arrived on DuskEVM, in a browser that sees it only now", async () => {
     const hash = "91".repeat(32);
     // A DuskEVM block every 100 seconds: one look reaches back that far.
