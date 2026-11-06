@@ -496,11 +496,35 @@ const sendAs = (
 };
 
 /**
+ * What else is read with the balances and the stake, to show with them, as
+ * Sozu's position, which Home counts with them: each reads for the profile,
+ * and gives what shows what it read, or null for nothing to read.
+ *
+ * @type {Set<(profile: Profile) => Promise<(() => void) | null>>}
+ */
+const readAlong = new Set();
+
+/**
+ * Has `read` read with the balances and the stake each time they are, and
+ * what it read shown with them.
+ *
+ * @type {WalletStoreServices["readWithBalances"]}
+ */
+function readWithBalances(read) {
+  readAlong.add(read);
+
+  return () => {
+    readAlong.delete(read);
+  };
+}
+
+/**
  * The current profile's balances and stake, read from the network together,
- * and shown together: what a transaction moved between them is never counted
- * in both, or in neither. What can't be read stays as it was; the balances
- * read say so (`balanceRead`). Each is kept in the cache, which is only a nice
- * to have, so a failure to keep it is ignored.
+ * and shown together, with what's read along (`readWithBalances`): what a
+ * transaction moved between them is never counted in both, or in neither.
+ * What can't be read stays as it was; the balances read say so
+ * (`balanceRead`). Each is kept in the cache, which is only a nice to have,
+ * so a failure to keep it is ignored.
  *
  * @returns {Promise<[PromiseSettledResult<unknown>, PromiseSettledResult<unknown>]>}
  */
@@ -517,16 +541,19 @@ async function updateStaticInfo() {
 
   const isCurrent = () =>
     session === walletSession && profile === getCurrentProfile();
-  const [balance, stake] = await Promise.allSettled([
-    (async () => ({
-      shielded: /** @type {AddressBalance} */ (
-        await bookkeeper.balance(profile.address)
-      ),
-      unshielded: /** @type {AccountBalance} */ (
-        await bookkeeper.balance(profile.account)
-      ),
-    }))(),
-    /** @type {Promise<StakeInfo>} */ (bookkeeper.stakeInfo(profile.account)),
+  const [[balance, stake], along] = await Promise.all([
+    Promise.allSettled([
+      (async () => ({
+        shielded: /** @type {AddressBalance} */ (
+          await bookkeeper.balance(profile.address)
+        ),
+        unshielded: /** @type {AccountBalance} */ (
+          await bookkeeper.balance(profile.account)
+        ),
+      }))(),
+      /** @type {Promise<StakeInfo>} */ (bookkeeper.stakeInfo(profile.account)),
+    ]),
+    Promise.allSettled([...readAlong].map((read) => read(profile))),
   ]);
 
   if (!isCurrent()) {
@@ -541,6 +568,14 @@ async function updateStaticInfo() {
   ]);
 
   if (isCurrent()) {
+    // In the same moment, what's read along first: no screen draws the
+    // balances without it.
+    for (const read of along) {
+      if (read.status === "fulfilled") {
+        read.value?.();
+      }
+    }
+
     update((currentStore) => ({
       ...currentStore,
       ...(balance.status === "fulfilled"
@@ -1445,6 +1480,7 @@ export default {
   holdWallet,
   init,
   open,
+  readWithBalances,
   refreshBalance,
   releaseWallet,
   reset,

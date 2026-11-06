@@ -19,6 +19,12 @@ import { readSozuStatus } from "./status";
 /** How long a read may take before it counts as failed. */
 const READ_TIMEOUT_MS = 15_000;
 
+/**
+ * How long a read along with the balances may hold them up: past it, they
+ * show without it.
+ */
+const ALONG_TIMEOUT_MS = 5_000;
+
 /** @type {SozuState} */
 const initialState = {
   account: "",
@@ -34,6 +40,27 @@ const store = writable(initialState);
 let current = null;
 
 /**
+ * What `account` has with Sozu, read within `timeout` milliseconds.
+ *
+ * @param {string} account
+ * @param {SozuContracts} contracts
+ * @param {string} nodeUrl
+ * @param {number} timeout
+ * @returns {Promise<SozuStatus>}
+ */
+function statusOf(account, contracts, nodeUrl, timeout) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  return readSozuStatus({
+    account,
+    contracts,
+    nodeUrl,
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer));
+}
+
+/**
  * Reads what `account` has with Sozu into the store, unless a newer read
  * took its place, within READ_TIMEOUT_MS.
  *
@@ -43,18 +70,62 @@ let current = null;
  * @returns {Promise<void>}
  */
 function read(account, contracts, nodeUrl) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), READ_TIMEOUT_MS);
   const isCurrent = () => current?.promise === promise;
-  const promise = readSozuStatus({
+  const promise = statusOf(account, contracts, nodeUrl, READ_TIMEOUT_MS).then(
+    (status) => {
+      if (isCurrent()) {
+        store.set({
+          account,
+          available: true,
+          error: null,
+          loading: false,
+          status,
+        });
+      }
+    },
+    (error) => {
+      if (isCurrent()) {
+        store.update((state) => ({
+          ...state,
+          error: error instanceof Error ? error : new Error(String(error)),
+          loading: false,
+        }));
+      }
+    }
+  );
+
+  return promise;
+}
+
+/**
+ * What's held with Sozu, read again each time the balances are, for an
+ * account whose position shows, and shown with them: Home counts the two
+ * together, so what a stake or an unstake moved between them is never
+ * counted twice, or not at all. A read that fails, or takes too long, leaves
+ * what showed.
+ *
+ * @param {Profile} profile
+ * @returns {Promise<(() => void) | null>}
+ */
+async function readAlong(profile) {
+  const account = String(profile.account);
+  const contracts = sozuContractsFor(get(networkStore).net);
+  const shown = get(store);
+
+  if (!contracts || shown.account !== account || !shown.status) {
+    return null;
+  }
+
+  const status = await statusOf(
     account,
     contracts,
-    nodeUrl,
-    signal: controller.signal,
-  })
-    .then(
-      (status) => {
-        if (isCurrent()) {
+    nodeBaseUrl(),
+    ALONG_TIMEOUT_MS
+  ).catch(() => null);
+
+  return status
+    ? () => {
+        if (get(store).account === account) {
           store.set({
             account,
             available: true,
@@ -63,21 +134,11 @@ function read(account, contracts, nodeUrl) {
             status,
           });
         }
-      },
-      (error) => {
-        if (isCurrent()) {
-          store.update((state) => ({
-            ...state,
-            error: error instanceof Error ? error : new Error(String(error)),
-            loading: false,
-          }));
-        }
       }
-    )
-    .finally(() => clearTimeout(timer));
-
-  return promise;
+    : null;
 }
+
+walletStore.readWithBalances?.(readAlong);
 
 /**
  * Reads what the current profile's account has with Sozu, unless a read for

@@ -756,6 +756,51 @@ describe("Wallet store", async () => {
       expect(get(walletStore).stakeInfo).toBe(freshStake);
     });
 
+    it("should show what's read along with the balances in the same moment, as Sozu's position, holding them for it", async () => {
+      const freshPublic = { ...unshielded, value: unshielded.value + 7n };
+      const positionRead = Promise.withResolvers();
+      /** @type {string[]} */
+      const position = ["before"];
+      /** @type {Array<[bigint, string]>} */
+      const seen = [];
+      const stopReading = walletStore.readWithBalances(async (profile) => {
+        expect(profile).toBe(get(walletStore).currentProfile);
+        await positionRead.promise;
+
+        return () => {
+          position[0] = "after";
+        };
+      });
+      const stopSeeing = walletStore.subscribe(({ balance }) => {
+        seen.push([balance.unshielded.value, position[0]]);
+      });
+
+      balanceSpy
+        .mockResolvedValueOnce(shielded)
+        .mockResolvedValueOnce(freshPublic);
+
+      try {
+        const refreshed = walletStore.refreshBalance();
+
+        await vi.waitUntil(() => balanceSpy.mock.calls.length === 2);
+        await vi.advanceTimersByTimeAsync(0);
+
+        // The balances read wait for the position.
+        expect(get(walletStore).balance.unshielded).toStrictEqual(unshielded);
+
+        positionRead.resolve(undefined);
+        await refreshed;
+
+        expect(position[0]).toBe("after");
+        expect(get(walletStore).balance.unshielded).toStrictEqual(freshPublic);
+        // Never the new balance with the position from before.
+        expect(seen).not.toContainEqual([freshPublic.value, "before"]);
+      } finally {
+        stopSeeing();
+        stopReading();
+      }
+    });
+
     it("should say the balances were read for the profile shown, and not while another's show", async () => {
       expect(get(walletStore).balanceRead).toBe(true);
 

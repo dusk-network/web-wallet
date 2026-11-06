@@ -42,6 +42,9 @@ const content = {
 const mockedWalletStore = {
   ...mockReadableStore(content),
 
+  /** Nothing is read with the balances here. */
+  readWithBalances: () => () => {},
+
   /** The block a resync syncs from, while it runs: null for none. */
   resyncing: writable(/** @type {bigint | null} */ (null)),
 };

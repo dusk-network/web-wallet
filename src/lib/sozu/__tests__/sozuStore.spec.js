@@ -5,6 +5,12 @@ const { followTransaction, readSozuStatus } = vi.hoisted(() => ({
   readSozuStatus: vi.fn(async () => /** @type {SozuStatus | null} */ (null)),
 }));
 
+/** What the store reads along with the balances, as the wallet store calls it. */
+const along = vi.hoisted(() => ({
+  /** @type {((profile: any) => Promise<(() => void) | null>) | null} */
+  read: null,
+}));
+
 vi.mock("../status", () => ({ readSozuStatus }));
 vi.mock("$lib/transactions", () => ({ followTransaction }));
 
@@ -14,7 +20,16 @@ vi.mock("$lib/stores", async () => {
 
   return {
     networkStore: readable({ net: networks.testnet, networkName: "testnet" }),
-    walletStore: readable({ currentProfile: { account: "account-1" } }),
+    walletStore: {
+      ...readable({ currentProfile: { account: "account-1" } }),
+      readWithBalances: (
+        /** @type {(profile: any) => Promise<(() => void) | null>} */ read
+      ) => {
+        along.read = read;
+
+        return () => {};
+      },
+    },
   };
 });
 
@@ -82,6 +97,47 @@ describe("sozuStore", () => {
         nodeUrl: "https://node.example/rusk",
       })
     );
+  });
+
+  it("should read what's held again with the balances, for the account whose position shows, and show it with them", async () => {
+    const { default: sozuStore } = await import("../sozuStore");
+    const { get } = await import("svelte/store");
+    /** @param {bigint} balance */
+    const held = (balance) =>
+      /** @type {SozuStatus} */ (
+        /** @type {unknown} */ ({
+          contracts: { pool: "a" },
+          position: { balance, stDusk: 1n },
+        })
+      );
+    const read = /** @type {NonNullable<typeof along.read>} */ (along.read);
+
+    readSozuStatus.mockResolvedValueOnce(held(5n));
+    await sozuStore.load({ force: true });
+    readSozuStatus.mockClear();
+
+    // Another profile's balances: nothing of this one's is read.
+    expect(await read({ account: "account-2" })).toBeNull();
+    expect(readSozuStatus).not.toHaveBeenCalled();
+
+    // This one's: read now, shown only once the balances show.
+    readSozuStatus.mockResolvedValueOnce(held(7n));
+
+    const show = await read({ account: "account-1" });
+
+    expect(readSozuStatus).toHaveBeenCalledOnce();
+    expect(get(sozuStore).status?.position.balance).toBe(5n);
+
+    show?.();
+
+    expect(get(sozuStore).status?.position.balance).toBe(7n);
+
+    // One that fails leaves what showed, and holds the balances no longer.
+    readSozuStatus.mockRejectedValueOnce(new Error("offline"));
+
+    expect(await read({ account: "account-1" })).toBeNull();
+    expect(get(sozuStore).status?.position.balance).toBe(7n);
+    sozuStore.reset();
   });
 
   it("should read Sozu again for a check, and give nothing when it couldn't, though the last status stays shown", async () => {

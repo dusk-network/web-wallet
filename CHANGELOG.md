@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Show what's staked with Sozu changed together with the public balance after a stake or an unstake, never counted twice or not at all
 - Say what an unstake from Sozu brings back after its fee, and on its review when the fee can be more
 - Say on Sozu's form what's on its way after a reload, as Send does, and leave it out of Available and Max
 - Say nothing of an empty To on Send as it's left, as for the amount or the scanner
