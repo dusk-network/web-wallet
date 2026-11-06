@@ -243,6 +243,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say nothing is wrong with a DuskEVM deposit on its way where DuskEVM itself follows it, as on testnet, and "Status unavailable" only where it can't be read
 - Keep what Max keeps, and other lines under the Bridge's From amount, clear of the Swap arrow
 - Write what a request asks under its QR in the picture downloaded: the amount, the memo and whom it pays
 - Try again by itself every ten seconds, and as the browser is back online, while the wallet can't reach the network
