@@ -39,7 +39,7 @@
     "typecheck:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch --fail-on-warnings"
   },
   "type": "module",
-  "version": "1.9.0",
+  "version": "2.0.0",
   "overrides": {
     "axios": "1.20.0",
     "cookie": "0.7.2",
