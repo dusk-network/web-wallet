@@ -17,12 +17,12 @@ import {
   parsePaymentLink,
 } from "@dusk-network/app-core/payment-links";
 
+export { matchRequests } from "@dusk-network/app-core/requests";
 export {
   forgetRequest,
   forgetWalletRequests,
   hydrateRequests,
   keepRequestMatches,
-  matchRequests,
   rememberRequest,
   requestsStore,
 } from "./requests";

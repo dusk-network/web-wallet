@@ -32,7 +32,8 @@
     pageTitle,
     reviewStep,
   } from "$lib/navigation";
-  import { onTheirWay, sentAlready } from "$lib/activity/sends";
+  import { sentAlready } from "@dusk-network/app-core/requests";
+  import { onTheirWay } from "$lib/activity/sends";
   import { dayLabel, timeLabel } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
   import { readPaymentLink } from "$lib/payment-requests";

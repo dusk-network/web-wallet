@@ -1,8 +1,7 @@
 /**
- * The requests a wallet made, kept on this device, each marked by what came in
- * after it. What came in only ever says what matched: "paid" takes the amount
- * and the memo asked, both, in one payment; anything less is a payment to
- * check, never a request paid.
+ * The requests a wallet made, kept on this device, with the payment that paid
+ * each once one did. What came in for them is `@dusk-network/app-core/requests`'
+ * to say (`matchRequests`), for both wallets.
  *
  * Each wallet's are kept under its own name ($lib/wallets/dataNames): at most
  * MAX_REQUESTS, the oldest settled going first, then the oldest.
@@ -10,7 +9,6 @@
  * `${APP_KEY}-payment-requests`: [{ at, id, lux, memo, network, paid?, to }]
  */
 
-import { recipientKind } from "@dusk-network/app-core/payment-links";
 import { get, writable } from "svelte/store";
 
 import { walletDataScope } from "$lib/wallets/dataNames";
@@ -25,55 +23,15 @@ const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-payment-requests`;
 /** A small list. */
 const MAX_REQUESTS = 50;
 
-/** How far a device's clock can be out from a block's: a payment this long before a request can be for it. */
-const CLOCK_SKEW_MS = 5 * 60_000;
-
 /**
  * A request as it's kept: `lux` as a decimal string, null for any amount, and
- * `paid` the payment that matched its amount and memo.
+ * `paid` the payment that paid it.
  *
- * @typedef {{
- *   at: number,
- *   id: string,
- *   lux: string | null,
- *   memo: string,
- *   network: string,
- *   paid?: { at: number, hash: string },
- *   to: string,
- * }} PaymentRequest
+ * @typedef {import("@dusk-network/app-core/requests").KeptRequest & { network: string }} PaymentRequest
  */
 
-/**
- * A payment that came in for a request, with what of it matched.
- *
- * @typedef {{
- *   at?: number,
- *   hash: string,
- *   lux: bigint,
- *   matched: "amount" | "amount-memo" | "memo",
- *   memo: string,
- * }} RequestPayment
- */
-
-/**
- * What came in for a request:
- * - "paid": a payment with the amount and the memo asked;
- * - "check": a payment with what `matched` says: not the whole of it, or a
- *   request asking too little to tell;
- * - "waiting": none yet.
- * `more` holds the other payments that match it, oldest first, which no
- * other request took: one with all of it again is the request paid twice.
- *
- * @typedef {{
- *   at?: number,
- *   hash?: string,
- *   lux?: bigint,
- *   matched?: "amount" | "amount-memo" | "memo",
- *   memo?: string,
- *   more?: RequestPayment[],
- *   state: "check" | "paid" | "waiting",
- * }} RequestMatch
- */
+/** @typedef {import("@dusk-network/app-core/requests").RequestMatch} RequestMatch */
+/** @typedef {import("@dusk-network/app-core/requests").RequestPayment} RequestPayment */
 
 /** @type {import("svelte/store").Writable<PaymentRequest[]>} */
 const requests = writable([]);
@@ -212,164 +170,4 @@ export function keepRequestMatches(matches) {
       })
     );
   }
-}
-
-/** @param {string | null | undefined} memo */
-const memoOf = (memo) => (memo ?? "").trim();
-
-/**
- * What a payment has of what a request asked: null for nothing, for a payment
- * that came before it, or for one to the profile's other address: a request asks
- * on its public account or on its shielded address, not on both.
- *
- * @param {PaymentRequest} request
- * @param {ActivityRow} row
- * @returns {"amount" | "amount-memo" | "memo" | null}
- */
-function matchOf(request, row) {
-  const askedOn =
-    recipientKind(request.to) === "shielded" ? "shielded" : "public";
-
-  if (
-    row.privacy !== askedOn ||
-    row.time === null ||
-    row.time === undefined ||
-    row.time < request.at - CLOCK_SKEW_MS
-  ) {
-    return null;
-  }
-
-  const sameAmount = request.lux !== null && row.value === BigInt(request.lux);
-  const sameMemo = request.memo !== "" && memoOf(row.memo) === request.memo;
-
-  return sameAmount && sameMemo
-    ? "amount-memo"
-    : sameAmount
-      ? "amount"
-      : sameMemo
-        ? "memo"
-        : null;
-}
-
-/**
- * What came in for each request, by its ID, from the rows read: a payment to the
- * address asked on answers one request, the oldest it matches best, and one that
- * matches the amount and the memo comes before one that matches less.
- *
- * @param {PaymentRequest[]} list
- * @param {ActivityRow[]} rows
- * @returns {Map<string, RequestMatch>}
- */
-export function matchRequests(list, rows) {
-  /** @type {Map<string, RequestMatch>} */
-  const matches = new Map();
-  const taken = new Set(list.flatMap(({ paid }) => (paid ? [paid.hash] : [])));
-  const incoming = rows
-    .filter(
-      ({ category, status }) =>
-        category === "received" && status !== "failed" && status !== "pending"
-    )
-    .toSorted((a, b) => (a.time ?? 0) - (b.time ?? 0));
-  const oldestFirst = list.toSorted((a, b) => a.at - b.at);
-
-  /**
-   * @param {PaymentRequest} request
-   * @param {"amount-memo" | "guess"} wanted
-   */
-  const answer = (request, wanted) => {
-    for (const row of incoming) {
-      const matched = taken.has(row.hash) ? null : matchOf(request, row);
-
-      if (matched && (wanted === "guess") === (matched !== "amount-memo")) {
-        taken.add(row.hash);
-        matches.set(request.id, {
-          at: row.time ?? undefined,
-          hash: row.hash,
-          lux: row.value,
-          matched,
-          memo: memoOf(row.memo),
-          state: matched === "amount-memo" ? "paid" : "check",
-        });
-
-        return;
-      }
-    }
-  };
-
-  for (const request of oldestFirst) {
-    if (request.paid) {
-      matches.set(request.id, {
-        at: request.paid.at,
-        hash: request.paid.hash,
-        matched: "amount-memo",
-        state: "paid",
-      });
-    } else {
-      answer(request, "amount-memo");
-    }
-  }
-
-  // What else came in for a request answered: it paid twice, or may have.
-  /** @type {Map<string, RequestPayment[]>} */
-  const extra = new Map();
-
-  /**
-   * Gives each request answered what else matches it: in full, or (`exact`
-   * false) in part.
-   *
-   * @param {boolean} exact
-   */
-  const addMore = (exact) => {
-    for (const request of oldestFirst) {
-      const match = matches.get(request.id);
-
-      for (const row of !match || match.state === "waiting" ? [] : incoming) {
-        const matched = taken.has(row.hash) ? null : matchOf(request, row);
-
-        if (matched && (matched === "amount-memo") === exact) {
-          taken.add(row.hash);
-          extra.set(request.id, [
-            ...(extra.get(request.id) ?? []),
-            {
-              at: row.time ?? undefined,
-              hash: row.hash,
-              lux: row.value,
-              matched,
-              memo: memoOf(row.memo),
-            },
-          ]);
-        }
-      }
-    }
-  };
-
-  // A payment with all of a request paid it again: no other request takes it
-  // as a guess.
-  addMore(true);
-
-  for (const request of oldestFirst) {
-    if (!matches.has(request.id)) {
-      answer(request, "guess");
-    }
-
-    if (!matches.has(request.id)) {
-      matches.set(request.id, { state: "waiting" });
-    }
-  }
-
-  addMore(false);
-
-  for (const request of oldestFirst) {
-    const match = /** @type {RequestMatch} */ (matches.get(request.id));
-
-    const more = (extra.get(request.id) ?? []).sort(
-      (x, y) => (x.at ?? 0) - (y.at ?? 0)
-    );
-
-    if (more.length) {
-      matches.set(request.id, { ...match, more });
-    }
-  }
-
-  return matches;
 }

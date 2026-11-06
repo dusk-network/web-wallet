@@ -652,6 +652,53 @@ describe("Receive", () => {
       history.state?.set({ hasMore: false, rows: [] });
     });
 
+    it("should say Paid for a request of any amount paid with its memo, of whatever amount, and Paid twice for its memo again", async () => {
+      const at = Date.now() - 1000;
+      const row = (/** @type {Record<string, unknown>} */ fields) => ({
+        category: "received",
+        hash: "ab".repeat(32),
+        memo: "Anticipo Proyecto Luna",
+        privacy: "public",
+        status: "executed",
+        time: at + 500,
+        value: 20_000_000n,
+        ...fields,
+      });
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "deposit",
+            lux: null,
+            memo: "Anticipo Proyecto Luna",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({ hasMore: false, rows: [row({})] });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(
+        screen.getByRole("listitem").querySelector(".requests__state")
+      ).toHaveTextContent(/^Paid$/);
+
+      history.state?.set({
+        hasMore: false,
+        rows: [row({}), row({ hash: "cd".repeat(32), time: at + 900 })],
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(
+        screen.getAllByRole("listitem")[0].querySelector(".requests__state")
+      ).toHaveTextContent(/^Paid twice$/);
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
     it("should say what's only a guess as one: the amount alone, with the memo that came, to check", async () => {
       const at = Date.now() - 1000;
 
