@@ -56,7 +56,7 @@ export {
   walletDirectory,
   walletLabel,
 };
-export { default as walletAccountNames } from "./accountNames";
+export { default as walletAccountNames, profilesHere } from "./accountNames";
 
 /**
  * The names the open wallet's profiles were given here, by profile: "" for

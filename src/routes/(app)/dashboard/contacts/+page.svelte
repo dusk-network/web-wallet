@@ -7,6 +7,7 @@
   import { resolveDuskName } from "$lib/dusk-domains";
   import { sheetStep } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
+  import { profilesHere } from "$lib/wallets";
   import { nodeBaseUrl } from "$lib/url";
 
   const { networkName } = $networkStore;
@@ -70,6 +71,7 @@
   locale={language}
   on:select={select}
   {own}
+  profiles={$profilesHere}
   {resolveName}
   {rows}
   selected={url.searchParams.get("contact")}

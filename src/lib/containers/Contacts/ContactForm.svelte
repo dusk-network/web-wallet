@@ -5,7 +5,7 @@
   import { FieldLimit, FullAddress, SectionHead } from "$lib/components";
   import {
     addressType,
-    contactCalled,
+    contactNameProblem,
     findContact,
     passesForDuskName,
     saveContact,
@@ -29,6 +29,10 @@
   /** The wallet's own accounts and addresses: not much of a contact. */
   /** @type {string[]} */
   export let own = [];
+
+  /** The profiles here, of every wallet, by name: no contact takes one's. */
+  /** @type {{ address: string, name: string }[]} */
+  export let profiles = [];
 
   const dispatch = createEventDispatcher();
 
@@ -103,12 +107,15 @@
   $: address = duskName ? (resolution?.[kind] ?? "") : entered;
   $: isFalseName = passesForDuskName(name, duskName);
   $: isValid =
-    name.trim() !== "" && !isFalseName && addressType(address) !== "unknown";
+    name.trim() !== "" &&
+    !isFalseName &&
+    !nameProblem?.refused &&
+    addressType(address) !== "unknown";
   $: other = address ? findContact(address) : null;
   $: isTaken = other !== null && other.id !== contact?.id;
 
   // Only the address would tell them apart, in a payment that can't be undone.
-  $: nameTwin = contactCalled(name, contact?.id);
+  $: nameProblem = contactNameProblem(name, profiles, contact?.id);
   $: isOwn = Boolean(address) && own.includes(address);
 
   // Saving a contact again with its `.dusk` name takes the address the name
@@ -155,10 +162,14 @@
     </label>
     <FieldLimit limit={40} value={name} />
 
-    {#if nameTwin}
-      <p class="contact-form__warning" role="alert">
-        You already have a contact called {nameTwin.name}. Only the address will
-        tell them apart.
+    {#if nameProblem}
+      <p
+        class={nameProblem.refused
+          ? "contact-form__error"
+          : "contact-form__warning"}
+        role="alert"
+      >
+        {nameProblem.words}
       </p>
     {/if}
 

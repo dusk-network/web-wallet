@@ -3232,6 +3232,47 @@ describe("Send", () => {
       expect(fields.to()).toHaveValue(otherAccount);
     });
 
+    it("should mark a contact whose name looks like another's, with its address, where it's offered and in the list", async () => {
+      saveContact({ address: otherAccount, name: "Estudio Marta" });
+      // A Cyrillic а, saved by its .dusk name.
+      saveContact({
+        address: nameAccount,
+        duskName: "marta.dusk",
+        name: "Estudio M\u0430rta",
+      });
+      saveContact({ address: otherAccount, name: "Jan (flour)" });
+
+      const { getByRole } = render(Send, baseProps);
+      const alike = [
+        `Estudio Marta · ${shortenAddress(otherAccount)} · name looks like another`,
+        `Estudio M\u0430rta · ${shortenAddress(nameAccount)} · name looks like another`,
+      ];
+      const listed = () =>
+        Array.from(
+          getByRole("combobox", { name: "Send to a contact" }).querySelectorAll(
+            "option"
+          ),
+          (option) => option.textContent
+        );
+
+      expect(listed()).toEqual(
+        expect.arrayContaining([
+          ...alike,
+          `Jan (flour) · ${shortenAddress(otherAccount)}`,
+        ])
+      );
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: "Estudio" },
+      });
+
+      for (const offered of alike) {
+        expect(
+          getByRole("button", { name: `Your contact ${offered}` })
+        ).toBeInTheDocument();
+      }
+    });
+
     it("should send to a contact picked from the list", async () => {
       saveContact({ address: otherAccount, name: "Cold storage" });
 
@@ -3550,6 +3591,27 @@ describe("Send", () => {
     /** @param {HTMLElement} container */
     const cardTitle = (container) =>
       container.querySelector(".send__card-title")?.textContent?.trim();
+
+    it("should refuse to save a contact by the name of a profile here", async () => {
+      await holdOtherWallet();
+
+      const { getByRole, getByText } = render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: otherAccount },
+      });
+      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "profile 1" },
+      });
+
+      expect(
+        getByText(
+          "One of your profiles is called Profile 1. Choose another name."
+        )
+      ).toBeInTheDocument();
+      expect(getByRole("button", { name: "Save" })).toBeDisabled();
+    });
 
     /**
      * Reviews 1 DUSK to the address entered, and sends it.

@@ -18,9 +18,12 @@
  * brings back what Reset deleted.
  */
 
+import { nameClash } from "@dusk-network/app-core/names";
 import { isAccount } from "@dusk-network/networks/account";
 import { ProfileGenerator } from "@dusk/w3sper";
 import { writable } from "svelte/store";
+
+import { shortenAddress } from "$lib/dusk/string";
 
 import {
   contactsNamespace,
@@ -578,32 +581,45 @@ export function listContacts(query = "") {
 export const getContact = (id) => book[id] ?? null;
 
 /**
- * A name as it's compared: whatever its capitals and its spaces.
+ * What's wrong with a name for a contact, by app-core's look-alikes: one that
+ * is, or looks like, a profile's here is refused, as a review would read the
+ * contact as that profile; one of another contact's, whatever its capitals,
+ * spaces and punctuation, or in other letters, is said with that contact's
+ * address, and can be saved. Null for neither.
  *
  * @param {string} name
+ * @param {{ address: string, name: string }[]} profiles The profiles here
+ * @param {string} [exceptId] The contact changed
+ * @returns {{ refused: boolean, words: string } | null}
  */
-const asCompared = (name) =>
-  name.normalize("NFC").trim().replace(/\s+/g, " ").toLowerCase();
+export function contactNameProblem(name, profiles, exceptId) {
+  const clash = nameClash(name, {
+    contacts: listContacts(),
+    except: exceptId,
+    profiles,
+  });
 
-/**
- * The contact with a name, whatever its capitals and spaces, but for the one
- * being edited, or null.
- *
- * @param {string} name
- * @param {string} [exceptId]
- * @returns {Contact | null}
- */
-export function contactCalled(name, exceptId) {
-  const sought = asCompared(name);
+  if (clash?.kind === "profile") {
+    return {
+      refused: true,
+      words: `${
+        clash.same
+          ? `One of your profiles is called ${clash.entry.name}`
+          : `That looks like ${clash.entry.name}, one of your profiles`
+      }. Choose another name.`,
+    };
+  }
 
-  return (
-    (sought &&
-      listContacts().find(
-        (contact) =>
-          contact.id !== exceptId && asCompared(contact.name) === sought
-      )) ||
-    null
-  );
+  return clash
+    ? {
+        refused: false,
+        words: `${
+          clash.same
+            ? `You already have a contact called ${clash.entry.name}`
+            : `That looks like your contact ${clash.entry.name}`
+        }, at ${shortenAddress(clash.entry.address)}. Only the address will tell them apart.`,
+      }
+    : null;
 }
 
 /**
