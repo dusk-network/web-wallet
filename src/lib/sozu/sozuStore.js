@@ -40,6 +40,31 @@ const store = writable(initialState);
 let current = null;
 
 /**
+ * The reads of what's held, of its own or along the balances, in the order
+ * they began, and the last of them that showed: one shows only where none
+ * begun after it did, so an older answer never takes a newer one's place,
+ * whichever comes back last.
+ */
+let begun = 0;
+let shown = 0;
+
+/**
+ * Whether a read's answer can show, by when it began; once it does, none
+ * begun before it can.
+ *
+ * @param {number} order
+ */
+function mayShow(order) {
+  if (order <= shown) {
+    return false;
+  }
+
+  shown = order;
+
+  return true;
+}
+
+/**
  * What `account` has with Sozu, read within `timeout` milliseconds.
  *
  * @param {string} account
@@ -70,24 +95,31 @@ function statusOf(account, contracts, nodeUrl, timeout) {
  * @returns {Promise<void>}
  */
 function read(account, contracts, nodeUrl) {
+  const order = (begun += 1);
   const isCurrent = () => current?.promise === promise;
   const promise = statusOf(account, contracts, nodeUrl, READ_TIMEOUT_MS).then(
     (status) => {
-      if (isCurrent()) {
-        store.set({
-          account,
-          available: true,
-          error: null,
-          loading: false,
-          status,
-        });
+      if (!isCurrent()) {
+        return;
       }
+
+      // One begun after it showed already: it's done, with nothing to show.
+      store.update((state) =>
+        mayShow(order)
+          ? { account, available: true, error: null, loading: false, status }
+          : { ...state, loading: false }
+      );
     },
     (error) => {
       if (isCurrent()) {
         store.update((state) => ({
           ...state,
-          error: error instanceof Error ? error : new Error(String(error)),
+          ...(order > shown
+            ? {
+                error:
+                  error instanceof Error ? error : new Error(String(error)),
+              }
+            : {}),
           loading: false,
         }));
       }
@@ -110,12 +142,13 @@ function read(account, contracts, nodeUrl) {
 async function readAlong(profile) {
   const account = String(profile.account);
   const contracts = sozuContractsFor(get(networkStore).net);
-  const shown = get(store);
+  const showing = get(store);
 
-  if (!contracts || shown.account !== account || !shown.status) {
+  if (!contracts || showing.account !== account || !showing.status) {
     return null;
   }
 
+  const order = (begun += 1);
   const status = await statusOf(
     account,
     contracts,
@@ -123,16 +156,18 @@ async function readAlong(profile) {
     ALONG_TIMEOUT_MS
   ).catch(() => null);
 
+  // Shown with the balances, unless one begun after it showed already: a
+  // read of its own under way still says it's loading.
   return status
     ? () => {
-        if (get(store).account === account) {
-          store.set({
+        if (get(store).account === account && mayShow(order)) {
+          store.update((state) => ({
+            ...state,
             account,
             available: true,
             error: null,
-            loading: false,
             status,
-          });
+          }));
         }
       }
     : null;
@@ -225,9 +260,10 @@ async function lastRead() {
   }
 }
 
-/** Forgets what was read, as on a lock or a reset. */
+/** Forgets what was read, as on a lock or a reset: no read under way shows. */
 function reset() {
   current = null;
+  shown = begun;
   store.set(initialState);
 }
 
