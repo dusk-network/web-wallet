@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say on a restore that syncing finds the balance and past payments, and which blocks the sync bar goes through
+- Give the fee in DUSK first under Edit, with what "at most" means and the gas written in groups
 - Say to the lux the stDUSK a stake with Sozu got, or an unstake gave back, and the rate, in its details and on its Sent screen
 - Write how much is staked across the network in the language's own short words where they're in Latin letters, as "57,2 Mio." in German
 - Count what's staked, natively and with Sozu, in Home's total balance, listed beside Public and Shielded

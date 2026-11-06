@@ -4,6 +4,7 @@
   import { areValidGasSettings } from "$lib/contracts";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { section } from "$lib/dusk/motion";
+  import { createNumberFormatter } from "$lib/dusk/number";
   import { settingsStore } from "$lib/stores";
   import { onMount } from "svelte";
 
@@ -29,6 +30,7 @@
   let isExpanded = false;
 
   $: ({ language } = $settingsStore);
+  $: formatGas = createNumberFormatter(language);
 
   onMount(() => {
     const bounds = {
@@ -60,6 +62,15 @@
   <!-- It opens and closes the same way. -->
   {#if isExpanded}
     <div class="gas-settings" transition:section={{ open: isExpanded }}>
+      <!-- What the fee is, in DUSK, before the gas that makes it. -->
+      <p class="gas-settings__exact">
+        <span class="gas-settings__most"
+          >{formatDuskExact(fee, language)} DUSK at most</span
+        >: it pays only for the gas used, up to {formatGas(limit)} gas at {formatGas(
+          price
+        )}
+        LUX each.
+      </p>
       <GasControls
         on:gasSettings
         {limit}
@@ -68,10 +79,6 @@
         {price}
         {priceLower}
       />
-      <dl class="gas-settings__exact">
-        <dt>The most it can cost, exactly</dt>
-        <dd>{formatDuskExact(fee, language)} DUSK</dd>
-      </dl>
       <!-- What else a review keeps folded away with the gas. -->
       <slot />
     </div>
@@ -91,23 +98,17 @@
     justify-content: space-between;
   }
 
-  /* The gas limit times its price, to copy. */
+  /* The gas limit times its price, to copy, and what it is. */
   .gas-settings__exact {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 0.25em 1em;
     margin: 0;
+    color: var(--muted-color);
     font-size: 0.875rem;
+    line-height: 1.45;
+  }
 
-    & dt {
-      color: var(--muted-color);
-    }
-
-    & dd {
-      margin: 0;
-      font-variant-numeric: tabular-nums;
-      user-select: text;
-    }
+  .gas-settings__most {
+    color: var(--calm-text);
+    font-variant-numeric: tabular-nums;
+    user-select: text;
   }
 </style>

@@ -46,21 +46,32 @@ describe("GasSettings", () => {
     await fireEvent.click(next);
   });
 
-  it("gives the most it can cost exactly, as text to copy, once its limit and price show", async () => {
-    const { getByRole, getByText, queryByText } = render(GasSettings, {
-      ...baseOptions,
-      props: { ...baseProps, fee: 2_151_569n },
-    });
+  it("gives the most it can cost first, exactly and in DUSK, with what at most means, before the gas that makes it", async () => {
+    const { container, getByRole, getByText, queryByText } = render(
+      GasSettings,
+      {
+        ...baseOptions,
+        props: { ...baseProps, fee: 2_151_569n },
+      }
+    );
 
     // Rounded up beside Edit, as everywhere.
     expect(getByText("0.0022")).toBeInTheDocument();
-    expect(queryByText("The most it can cost, exactly")).toBeNull();
+    expect(queryByText(/at most:/)).toBeNull();
 
     await fireEvent.click(getByRole("button", { name: "Edit" }));
 
+    const line = /** @type {HTMLElement} */ (
+      container.querySelector(".gas-settings__exact")
+    );
+
+    expect(line.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "0.002151569 DUSK at most: it pays only for the gas used, up to 20,000,000 gas at 1 LUX each."
+    );
+    // Before the gas fields.
     expect(
-      getByText("The most it can cost, exactly").nextElementSibling
-    ).toHaveTextContent("0.002151569 DUSK");
+      line.compareDocumentPosition(getByRole("textbox", { name: "Gas limit" }))
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("opens when the limit is below its lower bound", () => {

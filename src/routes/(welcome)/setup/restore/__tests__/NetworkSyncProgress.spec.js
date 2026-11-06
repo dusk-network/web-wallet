@@ -48,6 +48,31 @@ describe("Restore sync recovery", () => {
     expect(getByText("Sync completed!")).toBeInTheDocument();
   });
 
+  it("should say which blocks it syncs under its bar, not bare numbers", async () => {
+    vi.spyOn(walletStore, "subscribe").mockImplementation(
+      mockedWalletStore.subscribe
+    );
+    mockedWalletStore.setMockedStoreValue({
+      ...initial,
+      syncStatus: {
+        ...initial.syncStatus,
+        from: 0n,
+        isInProgress: true,
+        last: 4_783_684n,
+        progress: 0.99,
+      },
+    });
+
+    const { container, getByText } = render(NetworkSyncProgress);
+
+    expect(getByText("99%")).toBeInTheDocument();
+    expect(
+      container
+        .querySelector(".sync-bar__blocks")
+        ?.textContent?.replace(/\s+/g, " ")
+    ).toBe("From block 0 to 4,783,684");
+  });
+
   it("should offer the existing logout path after failure, even when mounted after sync ended", async () => {
     showFailure();
     const logout = vi.spyOn(navigation, "logout").mockResolvedValue();

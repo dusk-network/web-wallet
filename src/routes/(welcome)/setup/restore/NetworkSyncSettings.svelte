@@ -72,7 +72,10 @@
 <!-- As on a new wallet: the block it starts at is for experts, under
   Advanced, open while one is chosen. -->
 <IconHeadingCard icons={[mdiCubeOutline]} heading="Ready to sync">
-  <p>Next, the wallet syncs with the network.</p>
+  <p>
+    Next, the wallet syncs with the network to find your balance and past
+    payments.
+  </p>
 
   <details class="network-sync__advanced" open={isToggled}>
     <summary>Advanced</summary>
