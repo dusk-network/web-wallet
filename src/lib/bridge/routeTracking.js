@@ -70,13 +70,7 @@ export async function checkMigration(transfer, rpc, scope = walletDataScope()) {
     return false;
   }
 
-  markMigrationConfirmed(
-    transfer.hash,
-    scope,
-    receipt.gasUsed && receipt.effectiveGasPrice
-      ? BigInt(receipt.gasUsed) * BigInt(receipt.effectiveGasPrice)
-      : undefined
-  );
+  markMigrationConfirmed(transfer.hash, scope);
 
   return true;
 }

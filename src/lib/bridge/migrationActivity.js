@@ -43,18 +43,18 @@ const FAILURES = {
  *
  * @typedef {{
  *   amountLux: string,
+ *   approval?: string,
  *   confirmed?: boolean,
  *   createdAt: number,
  *   failed?: boolean,
- *   gasWei?: string,
  *   hash: string,
  *   recipient: string,
  *   routeId: string,
  *   sender: string,
  * }} KeptMigration
- *   `hash` the migration's transaction on its chain; `confirmed` once its
- *   receipt says it went through, `failed` once it says it reverted;
- *   `gasWei` what it paid for its gas there, as the receipt says.
+ *   `hash` the migration's transaction on its chain, `approval` the approval
+ *   sent for it there; `confirmed` once its receipt says it went through,
+ *   `failed` once it says it reverted.
  */
 
 /**
@@ -67,7 +67,7 @@ const FAILURES = {
  *   at: number | null,
  *   failure?: string,
  *   feeLux?: bigint,
- *   gasWei?: string,
+ *   approval?: string,
  *   hash: string,
  *   kind: "migration" | "service",
  *   paidAt?: number | null,
@@ -158,7 +158,7 @@ export function rememberMigration(migration, scope = walletDataScope()) {
  * Marks what a migration's receipt on its chain said.
  *
  * @param {string} hash
- * @param {{ confirmed: true, gasWei?: string } | { failed: true }} receipt
+ * @param {{ confirmed: true } | { failed: true }} receipt
  * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
  */
 const markMigration = (hash, receipt, scope) =>
@@ -176,21 +176,9 @@ const markMigration = (hash, receipt, scope) =>
  *
  * @param {string} hash
  * @param {import("$lib/wallets/dataNames").WalletDataScope} [scope]
- * @param {bigint} [gasWei] What it paid for its gas there, where it's known
  */
-export const markMigrationConfirmed = (
-  hash,
-  scope = walletDataScope(),
-  gasWei = undefined
-) =>
-  markMigration(
-    hash,
-    {
-      confirmed: true,
-      ...(gasWei === undefined ? {} : { gasWei: String(gasWei) }),
-    },
-    scope
-  );
+export const markMigrationConfirmed = (hash, scope = walletDataScope()) =>
+  markMigration(hash, { confirmed: true }, scope);
 
 /**
  * Marks a migration whose transaction reverted on its chain.
@@ -253,8 +241,8 @@ export async function migrationTransfers(rows, sent, net, account) {
 
       return /** @type {RouteTransfer} */ ({
         amountLux: BigInt(item.amountLux),
+        approval: item.approval,
         at: item.createdAt,
-        gasWei: item.gasWei,
         hash: item.hash,
         kind: "migration",
         paidAt: payout ? (times.get(payout.hash) ?? payout.at) : null,

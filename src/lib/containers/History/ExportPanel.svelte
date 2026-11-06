@@ -20,6 +20,7 @@
   import { randomUUID } from "$lib/dusk/string";
   import { WalletChangedError } from "$lib/errors";
   import { walletStore } from "$lib/stores";
+  import nodeNetwork from "$lib/stores/nodeNetwork";
   import walletAccountNames from "$lib/wallets/accountNames";
 
   /** The account the file is of, and how the wallet names it. */
@@ -93,6 +94,7 @@
       const made = await makeExport({
         choices: { euro, excel, from, period, to, withContacts },
         contactName: (address) => contacts.get(address),
+        net: $nodeNetwork,
         network,
         profile: {
           account: account?.address,

@@ -262,6 +262,15 @@ const tracking = vi.hoisted(() => ({
   followTransfers: vi.fn(async () => {}),
 }));
 
+// What a migration did on its own chain, as the chain says it: nothing read
+// unless a test says.
+const evmReads = vi.hoisted(() => ({
+  /** @type {import("vitest").Mock<(...args: any[]) => Promise<Map<string, any>>>} */
+  readMigrationsEvm: vi.fn(async () => new Map()),
+}));
+
+vi.mock("$lib/bridge/migrationEvm", () => evmReads);
+
 vi.mock("$lib/bridge/routeTracking", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
   followTransfers: tracking.followTransfers,
@@ -593,16 +602,47 @@ describe("EvmTransactions", () => {
     );
   });
 
-  it("opens the migration its link names, one this browser sent to the profile shown", async () => {
+  it("opens the migration its link names, one this browser sent to the profile shown, with the gas it and its approval paid on their chain", async () => {
     const { currentProfile } = get(walletStore);
+    const APPROVAL = `0x${"ab".repeat(32)}`;
     /** @param {string} hash @param {string} recipient */
     const sent = (hash, recipient) => ({
       amountLux: "2500000000",
+      approval: APPROVAL,
       createdAt: Date.now(),
       hash,
       recipient,
       routeId: "bsc-to-dusk",
       sender: accountAddress,
+    });
+
+    evmReads.readMigrationsEvm.mockImplementation(async () => {
+      const hash = `0x${"bb".repeat(32)}`;
+
+      return new Map([
+        [
+          hash,
+          {
+            approval: {
+              at: 1,
+              block: 9,
+              gasWei: 46_194_000_739_104n,
+              hash: APPROVAL,
+            },
+            approvalState: "found",
+            at: 2,
+            block: 10,
+            coin: "BNB",
+            from: accountAddress.toLowerCase(),
+            gasWei: 47_005_000_752_080n,
+            hash,
+            lux: 2_500_000_000n,
+            route: "bsc-to-dusk",
+            state: "mined",
+            totalWei: 93_199_001_491_184n,
+          },
+        ],
+      ]);
     });
 
     setNodeNetwork(networks.mainnet);
@@ -618,7 +658,7 @@ describe("EvmTransactions", () => {
     (await import("$lib/bridge/migrationActivity")).hydrateMigrations();
     mocks.setPageSearch(`?tx=0x${"bb".repeat(32)}`);
 
-    const { findByRole, getAllByRole } = render(EvmTransactions, {
+    const { findByRole, findByText, getAllByRole } = render(EvmTransactions, {
       target: document.body,
     });
 
@@ -630,6 +670,20 @@ describe("EvmTransactions", () => {
     ).toHaveLength(1);
     // Not looked up as a withdrawal.
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
+
+    // Its gas, with the approval sent for it, as its chain says.
+    expect(
+      (await findByText("Gas, approval and migration")).parentElement
+    ).toHaveTextContent("Gas, approval and migration 0.000093 BNB");
+    expect(evmReads.readMigrationsEvm).toHaveBeenCalledWith(networks.mainnet, [
+      {
+        approval: APPROVAL,
+        hash: `0x${"bb".repeat(32)}`,
+        route: "bsc-to-dusk",
+      },
+    ]);
+    evmReads.readMigrationsEvm.mockReset();
+    evmReads.readMigrationsEvm.mockResolvedValue(new Map());
     localStorage.clear();
     (await import("$lib/bridge/migrationActivity")).hydrateMigrations();
   });

@@ -4,11 +4,14 @@
  * whole first: Koinly's universal CSV, the format others follow.
  */
 
+import { migrationsOf } from "@dusk-network/app-core/bridge";
 import {
   accountingCsv,
   datesPeriod,
   quarterPeriod,
 } from "@dusk-network/app-core/export";
+
+import { readMigrationsEvm } from "$lib/bridge/migrationEvm";
 
 import { duskEuroPrices } from "./duskPrice";
 
@@ -89,6 +92,7 @@ export function periodChoices(now = new Date()) {
  * @param {{
  *   choices: ExportChoices,
  *   contactName: (address: string) => string | null | undefined,
+ *   net?: import("@dusk-network/networks").Network | null,
  *   network: string,
  *   profile: import("@dusk-network/app-core/export").ExportProfile,
  *   profiles: import("@dusk-network/app-core/export").ExportProfile[],
@@ -99,6 +103,7 @@ export function periodChoices(now = new Date()) {
 export async function makeExport({
   choices,
   contactName,
+  net = null,
   network,
   profile,
   profiles,
@@ -112,10 +117,17 @@ export async function makeExport({
   });
   // A stake whose stDUSK can't be read yet says so in its line.
   const facts = await session.sozuFacts(whole.rows).catch(() => undefined);
+  // What each migration paid on its own chain, its approval with it.
+  const migrations = migrationsOf(whole.rows);
+  const evm =
+    net && migrations.length
+      ? await readMigrationsEvm(net, migrations)
+      : undefined;
   const made = await accountingCsv({
     bom: choices.excel,
     contactName: choices.withContacts ? contactName : undefined,
     currency: "EUR",
+    evm,
     facts,
     network,
     period,

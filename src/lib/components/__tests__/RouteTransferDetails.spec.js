@@ -94,10 +94,11 @@ describe("A transfer's amounts, as its details say them", () => {
    * What the details say, line by line.
    *
    * @param {any} activity
-   * @param {{ locale?: string, rows?: ActivityRow[], steps?: Map<string, any> }} [context]
+   * @param {{ evm?: Record<string, any>, locale?: string, rows?: ActivityRow[], steps?: Map<string, any> }} [context]
    */
-  function linesOf(activity, { locale = "en", rows = [], steps } = {}) {
+  function linesOf(activity, { evm, locale = "en", rows = [], steps } = {}) {
     const ledger = ledgerOf(activity, {
+      evm,
       locale,
       rows,
       steps: steps ?? new Map(),
@@ -164,13 +165,35 @@ describe("A transfer's amounts, as its details say them", () => {
     ]);
   });
 
+  /**
+   * What a migration did on BNB Smart Chain, as its chain says: the approval it
+   * spent found there, or not.
+   *
+   * @param {Partial<import("@dusk-network/app-core/bridge").MigrationEvm>} [fields]
+   * @returns {Record<string, import("@dusk-network/app-core/bridge").MigrationEvm>}
+   */
+  const onItsChain = (fields) => ({
+    [`0x${"bf".repeat(32)}`]: {
+      approval: null,
+      approvalState: "unread",
+      at: PAID_AT - 60_000,
+      block: 70_000_000,
+      coin: "BNB",
+      from: `0x${"12".repeat(20)}`,
+      gasWei: 42_205_000_675_280n,
+      hash: `0x${"bf".repeat(32)}`,
+      lux: 4_000_000_000n,
+      route: "bsc-to-dusk",
+      state: "mined",
+      totalWei: 42_205_000_675_280n,
+      ...fields,
+    },
+  });
+
   it("writes the gas paid short, as other wallets do, with all its decimals on hover", () => {
     const ledger = ledgerOf(
-      /** @type {any} */ ({
-        item: { ...migration(PAID_AT), gasWei: "42205000675280" },
-        kind: "migration",
-      }),
-      { locale: "en", rows: [], steps: new Map() }
+      /** @type {any} */ ({ item: migration(PAID_AT), kind: "migration" }),
+      { evm: onItsChain(), locale: "en", rows: [], steps: new Map() }
     );
     const { container } = render(TransferLedger, {
       ledger: /** @type {any} */ (ledger),
@@ -182,7 +205,7 @@ describe("A transfer's amounts, as its details say them", () => {
     );
 
     expect(gas.textContent?.replace(/\s+/g, " ").trim()).toBe(
-      "Gas 0.000042 BNB"
+      "Gas, migration 0.000042 BNB"
     );
     expect(gas.querySelector("[title]")).toHaveAttribute(
       "title",
@@ -190,21 +213,40 @@ describe("A transfer's amounts, as its details say them", () => {
     );
   });
 
-  it("gives a migration in its token, what was paid out, and the gas paid on its chain", () => {
+  it("gives a migration in its token, what was paid out, and the gas paid on its chain with the approval it spent", () => {
     const paid = {
       item: migration(PAID_AT),
       kind: "migration",
     };
 
+    // What this browser kept of it once is the migration's gas alone: what
+    // its chain says goes, the approval with it.
     expect(
-      linesOf({
-        ...paid,
-        item: { ...paid.item, gasWei: "120000000000000" },
-      })
+      linesOf(
+        { ...paid, item: { ...paid.item, gasWei: "47005000752080" } },
+        {
+          evm: onItsChain({
+            approval: {
+              at: PAID_AT - 120_000,
+              block: 69_999_990,
+              gasWei: 46_194_000_739_104n,
+              hash: `0x${"ab".repeat(32)}`,
+            },
+            approvalState: "found",
+            gasWei: 47_005_000_752_080n,
+            totalWei: 93_199_001_491_184n,
+          }),
+        }
+      )
     ).toStrictEqual([
       "Sent 4 BEP20 DUSK",
       "Received 4 DUSK",
-      "Gas 0.00012 BNB",
+      "Gas, approval and migration 0.000093 BNB",
+    ]);
+    // Not read on its chain yet: no gas said.
+    expect(linesOf(paid)).toStrictEqual([
+      "Sent 4 BEP20 DUSK",
+      "Received 4 DUSK",
     ]);
     expect(
       linesOf({

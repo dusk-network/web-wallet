@@ -50,6 +50,7 @@
 
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { keptMigrations } from "$lib/bridge/migrationActivity";
+  import { readMigrationsEvm } from "$lib/bridge/migrationEvm";
   import { routeTransfers } from "$lib/bridge/routeHistory";
   import { followRouteTransfers } from "$lib/bridge/routeFollowing";
 
@@ -236,6 +237,38 @@
   $: if (selectedTransactionHash) {
     openDeposit = null;
     openTransfer = null;
+  }
+
+  /**
+   * What each migration opened did on its own chain, by its hash in lower
+   * case: its gas, with the approval it spent.
+   *
+   * @type {Record<string, import("@dusk-network/app-core/bridge").MigrationEvm>}
+   */
+  let migrationsEvm = {};
+
+  /**
+   * Reads what the migration open did on its own chain: as it opens, and
+   * again as it moves on. What's final is read once.
+   */
+  function readOpenMigration() {
+    const net = $nodeNetwork;
+
+    if (openMigration?.kind !== "migration" || !net) {
+      return;
+    }
+
+    const { approval, hash, route } = openMigration.item;
+
+    void readMigrationsEvm(net, [{ approval, hash, route: route.id }]).then(
+      (read) => {
+        const fact = read.get(hash.toLowerCase());
+
+        if (fact) {
+          migrationsEvm = { ...migrationsEvm, [fact.hash]: fact };
+        }
+      }
+    );
   }
 
   // The row shown open, for the list to follow.
@@ -808,6 +841,15 @@
     ),
   ]);
 
+  // The migration open, and how far it got.
+  $: openMigration = groups
+    .flatMap(({ rows }) => rows)
+    .find((row) => row.id === openId && row.kind === "migration");
+  $: migrationAsked = openMigration
+    ? `${openMigration.item.hash}:${openMigration.item.stage}`
+    : "";
+  $: (migrationAsked, readOpenMigration());
+
   function validateHashInput() {
     hashError =
       txHash.length > 0 && !isWithdrawalTxHash(txHash.trim())
@@ -931,6 +973,7 @@
               </div>
               {#if row.id === openId}
                 {@const ledger = ledgerOf(row, {
+                  evm: migrationsEvm,
                   locale: $settingsStore.language,
                   rows: $activityState.rows,
                   steps: withdrawalSteps,
