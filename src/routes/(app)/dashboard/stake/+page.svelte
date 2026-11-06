@@ -66,8 +66,13 @@
       ).then(({ hash }) => hash)
   );
 
-  /** The stakes and unstakes with Sozu on their way that this page follows. */
-  const followed = new Set();
+  /**
+   * The stakes and unstakes with Sozu on their way that this page follows,
+   * by hash.
+   *
+   * @type {Record<string, true>}
+   */
+  const followed = {};
 
   const stakeLiquid = forThisWallet(
     /**
@@ -84,7 +89,7 @@
         new Gas({ limit: gasLimit, price: gasPrice })
       ).then(({ hash }) => {
         // Its Sent screen follows it from here.
-        followed.add(hash);
+        followed[hash] = true;
         void sozuStore.readAfter(hash);
 
         return hash;
@@ -101,8 +106,8 @@
    */
   function followUnderWay(rows) {
     for (const { hash } of rows) {
-      if (!followed.has(hash)) {
-        followed.add(hash);
+      if (!followed[hash]) {
+        followed[hash] = true;
         void followTransaction(hash)
           .catch(() => null)
           .then((final) => {
