@@ -20,13 +20,27 @@
     received: "Received",
     sent: "Sent",
   };
+
+  /**
+   * What a line is called: a migration's gas says what it paid for, the
+   * approval it spent and the migration, or the migration alone.
+   *
+   * @param {import("@dusk-network/app-core/bridge").LedgerLine} line
+   */
+  const nameOf = ({ expected, key, parts }) =>
+    expected
+      ? "You receive"
+      : parts
+        ? `Gas, ${parts.includes("approval") ? "approval and migration" : "migration"}`
+        : NAMES[key];
 </script>
 
 {#if ledger.lines.length}
   <dl class="transfer-ledger">
-    {#each ledger.lines as { coin, exact, expected, key, text } (key)}
+    {#each ledger.lines as line (line.key)}
+      {@const { coin, exact, key, text } = line}
       <div>
-        <dt>{expected ? "You receive" : NAMES[key]}</dt>
+        <dt>{nameOf(line)}</dt>
         <dd>
           {#if key === "gas"}
             <BalanceValue {exact} value={text} />

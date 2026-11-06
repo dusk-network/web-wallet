@@ -93,6 +93,27 @@ describe("Settings store", () => {
       expect(settingsStoreContent.darkMode).toBe(true);
     });
 
+    it("should start in euros where the browser's region uses the euro, and keep a currency chosen", async () => {
+      expect(settingsStoreContent.currency).toBe("EUR");
+
+      settingsStore.update((store) => ({ ...store, currency: "USD" }));
+      vi.resetModules();
+
+      expect(get((await import("../settingsStore")).default).currency).toBe(
+        "USD"
+      );
+
+      // Singapore's English, of another region, starts in dollars.
+      localStorage.clear();
+      languageSpy.mockReturnValue("en-SG");
+      vi.resetModules();
+
+      expect(get((await import("../settingsStore")).default).currency).toBe(
+        "USD"
+      );
+      languageSpy.mockReturnValue("it-IT");
+    });
+
     it("should persist its values in local storage", async () => {
       settingsStore.update((store) => ({
         ...store,

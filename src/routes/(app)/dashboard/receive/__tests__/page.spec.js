@@ -346,11 +346,21 @@ describe("Receive", () => {
       await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
 
       expect(written.mock.calls.map(([text]) => text)).toStrictEqual([
-        "Dusk payment request",
+        "Dusk payment request · Testnet",
         "0.05 DUSK",
         "Factura 33",
         `To ${shortenAddress(ACCOUNT)}`,
       ]);
+
+      // Mainnet's is the one that names no network.
+      setNodeNetwork(networks.mainnet);
+      written.mockClear();
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(2));
+
+      expect(written.mock.calls[0][0]).toBe("Dusk payment request");
 
       click.mockRestore();
       written.mockRestore();
@@ -459,8 +469,21 @@ describe("Receive", () => {
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(2));
 
-      expect(anchorOf(1).download).toBe("dusk-public-request-qr.png");
+      expect(anchorOf(1).download).toBe("dusk-testnet-request-Factura-33.png");
       expect(get(requestsStore)).toMatchObject([{ lux: null }]);
+
+      // Each its own: the amount too, and the memo's letters and digits.
+      await type("Amount (optional)", "0,05");
+      await type("Memo (optional)", " Factura 2026/052: \u202Eabril ");
+      await vi.advanceTimersByTimeAsync(0);
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(3));
+
+      expect(anchorOf(2).download).toBe(
+        "dusk-testnet-request-0.05-DUSK-Factura-2026-052-abril.png"
+      );
 
       click.mockRestore();
     });
@@ -523,10 +546,13 @@ describe("Receive", () => {
       history.state?.set({ hasMore: false, rows: [] });
     });
 
-    it("should say a request paid twice, with when, and another payment that may be for it", async () => {
+    it("should say a request paid twice in its badge, list each payment with a way to send the second back, and quote another payment's memo safely", async () => {
+      const PAYER =
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
       const at = Date.now() - 10_000;
       const row = (/** @type {Record<string, unknown>} */ fields) => ({
         category: "received",
+        counterparty: PAYER,
         hash: "ab".repeat(32),
         memo: "Factura 43",
         privacy: "public",
@@ -555,20 +581,174 @@ describe("Receive", () => {
         rows: [
           row({}),
           row({ hash: "cd".repeat(32), time: at + 2500 }),
-          row({ hash: "ef".repeat(32), memo: "Fra 43", time: at + 3500 }),
+          // A right-to-left override would turn the line around.
+          row({
+            hash: "ef".repeat(32),
+            memo: "Fra \u202E34 aruc",
+            time: at + 3500,
+          }),
         ],
       });
       render(Receive);
       await vi.advanceTimersByTimeAsync(0);
 
-      const item = screen.getByRole("listitem");
+      const [item] = screen.getAllByRole("listitem");
 
-      expect(item).toHaveTextContent(
-        `Paid twice: ${claimDay(at + 500, "en")} and ${claimDay(at + 2500, "en")}.`
+      expect(item.querySelector(".requests__state")).toHaveTextContent(
+        /^Paid twice$/
       );
       expect(item).toHaveTextContent(
-        `Also the same amount on ${claimDay(at + 3500, "en")}, with another memo: "Fra 43".`
+        `Amount and memo match 2 payments. Also the same amount on ${claimDay(at + 3500, "en")}, with another memo: "Fra \\u202e34 aruc".`
       );
+      expect(item).not.toHaveTextContent("\u202E");
+      expect(item).toHaveTextContent(
+        "A memo here has hidden characters, shown as codes."
+      );
+
+      // Each payment to see; the second, to send back to whoever paid it.
+      const payments = screen.getByRole("list", {
+        name: "Payments for this request",
+      });
+
+      expect(
+        Array.from(payments.querySelectorAll("a"), (link) => [
+          link.textContent,
+          link.getAttribute("href"),
+        ])
+      ).toStrictEqual([
+        [
+          "See in History",
+          `/some-base-path/dashboard/transactions?tx=${"ab".repeat(32)}`,
+        ],
+        [
+          "See in History",
+          `/some-base-path/dashboard/transactions?tx=${"cd".repeat(32)}`,
+        ],
+        [
+          "Send back",
+          expect.stringMatching(/^\/some-base-path\/dashboard\/send\?/),
+        ],
+      ]);
+      expect(payments).toHaveTextContent(claimDay(at + 2500, "en"));
+
+      const back = new URL(
+        String(
+          screen
+            .getByRole("link", { name: /^Send back the payment of/ })
+            .getAttribute("href")
+        ),
+        "https://wallet.test"
+      );
+      const asked = parsePaymentLink(
+        `https://wallet.test/some-base-path${back.pathname.replace(/^\/some-base-path/, "")}${back.search}`,
+        { walletUrl: "https://wallet.test/some-base-path" }
+      );
+
+      expect(asked).toMatchObject({
+        amountDusk: "0.01",
+        memo: "Refund: Factura 43",
+        to: PAYER,
+      });
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    it("should still offer to send a payment back for a request whose memo leaves no room to say so, as a refund alone", async () => {
+      const PAYER =
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+      // 508 bytes: within a memo's 512, but not with "Refund: " before it.
+      const memo = "x".repeat(508);
+      const at = Date.now() - 10_000;
+      const row = (/** @type {Record<string, unknown>} */ fields) => ({
+        category: "received",
+        counterparty: PAYER,
+        hash: "ab".repeat(32),
+        memo,
+        privacy: "public",
+        status: "executed",
+        time: at + 500,
+        value: 10_000_000n,
+        ...fields,
+      });
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "long",
+            lux: "10000000",
+            memo,
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [row({}), row({ hash: "cd".repeat(32), time: at + 2500 })],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const back = new URL(
+        String(
+          screen
+            .getByRole("link", { name: /^Send back the payment of/ })
+            .getAttribute("href")
+        ),
+        "https://wallet.test"
+      );
+
+      expect(back.searchParams.get("memo")).toBe("Refund");
+      expect(back.searchParams.get("to")).toBe(PAYER);
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    it("should say Paid for a request of any amount paid with its memo, of whatever amount, and Paid twice for its memo again", async () => {
+      const at = Date.now() - 1000;
+      const row = (/** @type {Record<string, unknown>} */ fields) => ({
+        category: "received",
+        hash: "ab".repeat(32),
+        memo: "Anticipo Proyecto Luna",
+        privacy: "public",
+        status: "executed",
+        time: at + 500,
+        value: 20_000_000n,
+        ...fields,
+      });
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "deposit",
+            lux: null,
+            memo: "Anticipo Proyecto Luna",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({ hasMore: false, rows: [row({})] });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(
+        screen.getByRole("listitem").querySelector(".requests__state")
+      ).toHaveTextContent(/^Paid$/);
+
+      history.state?.set({
+        hasMore: false,
+        rows: [row({}), row({ hash: "cd".repeat(32), time: at + 900 })],
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(
+        screen.getAllByRole("listitem")[0].querySelector(".requests__state")
+      ).toHaveTextContent(/^Paid twice$/);
       history.state?.set({ hasMore: false, rows: [] });
     });
 
@@ -582,7 +762,7 @@ describe("Receive", () => {
             at,
             id: "open",
             lux: "150000000",
-            memo: "Factura 33",
+            memo: "Factura 105",
             network: "testnet",
             to: ACCOUNT,
           },
@@ -595,7 +775,8 @@ describe("Receive", () => {
           {
             category: "received",
             hash: "cd".repeat(32),
-            memo: "Other",
+            // An Arabic-Indic zero: it reads as 1.5.
+            memo: "Factura 1\u06605",
             privacy: "public",
             status: "executed",
             time: at + 500,
@@ -610,7 +791,10 @@ describe("Receive", () => {
 
       expect(item).toHaveTextContent("Check");
       expect(item).not.toHaveTextContent("Paid");
-      expect(item).toHaveTextContent('with another memo: "Other"');
+      expect(item).toHaveTextContent('with another memo: "Factura 1\u06605"');
+      expect(item).toHaveTextContent(
+        "A number in a memo here may not be what it looks like."
+      );
       expect(get(requestsStore)[0].paid).toBeUndefined();
       history.state?.set({ hasMore: false, rows: [] });
     });

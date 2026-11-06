@@ -22,6 +22,7 @@ import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
+import { forgetDuskAdded } from "$lib/web3/addDusk";
 
 import { Bridge } from "..";
 
@@ -47,6 +48,8 @@ const mocks = vi.hoisted(() => ({
   migrate: vi.fn(),
   switchChain: vi.fn(),
   waitForTransactionReceipt: vi.fn(),
+  /** @type {import("vitest").Mock<(...args: any[]) => Promise<boolean>>} */
+  watchAsset: vi.fn(async () => true),
 }));
 
 vi.mock("$lib/bridge/bridgeTimes", async () => {
@@ -103,11 +106,18 @@ vi.mock("$lib/web3/walletConnection", async () => {
   };
 });
 
-vi.mock("@wagmi/core", async (importOriginal) => ({
-  .../** @type {object} */ (await importOriginal()),
-  switchChain: mocks.switchChain,
-  waitForTransactionReceipt: mocks.waitForTransactionReceipt,
-}));
+vi.mock("@wagmi/core", async (importOriginal) => {
+  const { get } = await import("svelte/store");
+
+  return {
+    .../** @type {object} */ (await importOriginal()),
+    // The account as the page has it.
+    getAccount: () => get(/** @type {any} */ (mocks.account)),
+    switchChain: mocks.switchChain,
+    waitForTransactionReceipt: mocks.waitForTransactionReceipt,
+    watchAsset: mocks.watchAsset,
+  };
+});
 
 vi.mock("$lib/web3/migration", () => ({
   allowance: mocks.allowance,
@@ -177,6 +187,7 @@ describe("the Bridge card's routes to and from other chains", () => {
     cleanup();
     vi.clearAllMocks();
     vi.useRealTimers();
+    forgetDuskAdded();
     localStorage.clear();
     settingsStore.update((store) => ({ ...store, hideBalances: false }));
   });
@@ -703,6 +714,40 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(
         Object.keys(localStorage).filter((key) => /approv/i.test(key))
       ).toStrictEqual([]);
+    });
+
+    it("offers to add DUSK to a wallet that holds none of it yet, on the way back's form", async () => {
+      const wallet = { name: "Test MetaMask", type: "injected", uid: "w3" };
+
+      mocks.allowance.mockResolvedValue(0n);
+      mocks.getBalanceOfCoin.mockResolvedValue(0n);
+      connect({ address: EVM, chainId: 56, connector: wallet });
+
+      const none = render(Bridge, { ...props, linkedRoute: "bsc-to-dusk" });
+
+      await fireEvent.click(
+        await none.findByRole("button", { name: "Add DUSK to Test MetaMask" })
+      );
+      expect(mocks.switchChain).not.toHaveBeenCalled();
+      expect(mocks.watchAsset).toHaveBeenCalledOnce();
+      cleanup();
+      forgetDuskAdded();
+
+      // Some of it there: nothing to offer.
+      mocks.getBalanceOfCoin.mockResolvedValue(DUSK * DUSK);
+
+      const some = render(Bridge, { ...props, linkedRoute: "bsc-to-dusk" });
+
+      await vi.waitFor(() =>
+        expect(
+          some.container.querySelector("#migration-balance")
+        ).toHaveTextContent("1 BEP20 DUSK")
+      );
+      await tick();
+
+      expect(
+        some.queryByRole("button", { name: "Add DUSK to Test MetaMask" })
+      ).toBeNull();
     });
 
     it("shows nothing with nothing approved, or none that could be read, or on another chain", async () => {
@@ -1294,6 +1339,84 @@ describe("the Bridge card's routes to and from other chains", () => {
         "href",
         expect.stringContaining(HASH)
       );
+    });
+
+    it("offers to add DUSK to the wallet it arrived in, on its chain, and not again once it has; a refusal says nothing", async () => {
+      const wallet = { name: "Test MetaMask", type: "injected", uid: "w1" };
+      const { findByRole, queryByRole } = await sendOut();
+      const offer = { name: "Add DUSK to Test MetaMask" };
+
+      // Not before it arrives, nor to another account than it went to.
+      connect({ address: EVM, chainId: 1, connector: wallet });
+      mocks.transfers?.set([out({ stage: "sent" })]);
+      await tick();
+      expect(queryByRole("button", offer)).toBeNull();
+
+      mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
+      connect({
+        address: `0x${"33".repeat(20)}`,
+        chainId: 1,
+        connector: wallet,
+      });
+      await tick();
+      expect(queryByRole("button", offer)).toBeNull();
+
+      connect({ address: EVM, chainId: 1, connector: wallet });
+      mocks.watchAsset.mockRejectedValueOnce(
+        Object.assign(new Error("User rejected the request."), { code: 4001 })
+      );
+      await fireEvent.click(await findByRole("button", offer));
+
+      await vi.waitFor(async () =>
+        expect(await findByRole("button", offer)).toBeEnabled()
+      );
+      expect(document.querySelector(".route-result [role=alert]")).toBeNull();
+
+      await fireEvent.click(await findByRole("button", offer));
+
+      // On BNB Smart Chain, as its token there.
+      expect(mocks.switchChain).toHaveBeenCalledWith({}, { chainId: 56 });
+      expect(mocks.watchAsset).toHaveBeenLastCalledWith(
+        {},
+        {
+          options: {
+            address: routeOf("dusk-to-bsc")?.chain.token,
+            decimals: 18,
+            symbol: "DUSK",
+          },
+          type: "ERC20",
+        }
+      );
+      await vi.waitFor(() => expect(queryByRole("button", offer)).toBeNull());
+      expect(
+        JSON.parse(localStorage.getItem("web-wallet-evm-dusk-added") ?? "")
+      ).toStrictEqual([`56:${EVM.toLowerCase()}`]);
+    });
+
+    it("offers nothing to a wallet over WalletConnect whose session doesn't take the request", async () => {
+      const { queryByRole } = await sendOut();
+
+      connect({
+        address: EVM,
+        chainId: 56,
+        connector: {
+          getProvider: async () => ({
+            session: {
+              namespaces: { eip155: { methods: ["eth_sendTransaction"] } },
+            },
+          }),
+          name: "Phone wallet",
+          type: "walletConnect",
+          uid: "w2",
+        },
+      });
+      mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
+      await tick();
+      await tick();
+
+      expect(
+        queryByRole("button", { name: "Add DUSK to Phone wallet" })
+      ).toBeNull();
     });
 
     it("follows a transfer out whose answer got lost, never saying it was sent before the chain has it", async () => {

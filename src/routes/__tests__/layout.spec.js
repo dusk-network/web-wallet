@@ -144,4 +144,45 @@ describe("Main layout", async () => {
     expect(isDarkMode()).toBe(false);
     expect(hasDarkClass()).toBe(false);
   });
+
+  it("opens what a notification pressed says arrived on any page, as one locked since, where the unlock goes on to it", async () => {
+    const events = new EventTarget();
+    const goto = vi.spyOn(navigation, "goto").mockResolvedValue();
+
+    // A browser with the wallet's service worker, which tells the page.
+    vi.stubGlobal(
+      "ServiceWorkerRegistration",
+      class {
+        async showNotification() {}
+      }
+    );
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        addEventListener: events.addEventListener.bind(events),
+        removeEventListener: events.removeEventListener.bind(events),
+      },
+    });
+
+    try {
+      render(MainLayout);
+      events.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            type: "arrival-open",
+            url: `${location.origin}/some-base-path/dashboard/bridge/transactions?tx=ab`,
+          },
+        })
+      );
+
+      expect(goto).toHaveBeenCalledExactlyOnceWith(
+        "/dashboard/bridge/transactions?tx=ab"
+      );
+    } finally {
+      cleanup();
+      goto.mockRestore();
+      vi.unstubAllGlobals();
+      Reflect.deleteProperty(navigator, "serviceWorker");
+    }
+  });
 });

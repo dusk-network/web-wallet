@@ -33,7 +33,7 @@
   import { contractLabel } from "$lib/activity/knownContracts";
   import { fullDateTime, routeLabel } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
-  import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
+  import { formatDuskExact } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { addBasePath } from "$lib/navigation";
   import {
@@ -42,7 +42,8 @@
     passesForDuskName,
     saveContact,
   } from "$lib/contacts";
-  import { stDuskReceived } from "$lib/sozu";
+  import { currentActivity } from "$lib/activity";
+  import { stDuskLines } from "$lib/sozu";
   import { nodeBaseUrl } from "$lib/url";
   import { duskEvmExplorerTx } from "$lib/web3/duskEvm";
   import walletAccountNames from "$lib/wallets/accountNames";
@@ -69,9 +70,14 @@
   /** @type {(hash: string) => Promise<string | null>} */
   export let loadNonce = (hash) => fetchTxNonce(archiveAt(nodeBaseUrl()), hash);
 
-  /** Looks up the stDUSK a stake with Sozu got. */
-  /** @type {(stake: ActivityRow) => Promise<bigint | null>} */
-  export let loadStDusk = (stake) => stDuskReceived(nodeBaseUrl(), stake);
+  /**
+   * Reads what a stake or an unstake with Sozu did, from the facts the export
+   * reads: null where it can't be read.
+   *
+   * @type {(call: ActivityRow) => Promise<import("@dusk-network/app-core/sozu").SozuFact | null>}
+   */
+  export let loadSozuFact = async (call) =>
+    (await currentActivity()?.sozuFacts([call]))?.get(call.hash) ?? null;
 
   /** Follows a deposit to DuskEVM, to say when it arrived there. */
   /** @type {(deposit: ActivityRow) => void} */
@@ -145,35 +151,37 @@
   }
 
   /**
-   * The stake the stDUSK shown is for, with whether it got any: as for the
-   * nonce, a new row starts over, and an answer for another is dropped.
+   * The stake or unstake what's shown of its stDUSK is for, with whether it
+   * went through: as for the nonce, a new row starts over, and an answer for
+   * another is dropped.
    */
   let stDuskOf = "";
 
-  /** @type {bigint | null} */
-  let stDusk = null;
+  /** @type {import("@dusk-network/app-core/sozu").SozuFact | null} */
+  let sozuFact = null;
 
   /** The deposit followed to DuskEVM last, with its row's source. */
   let followedDeposit = "";
 
   /**
-   * @param {ActivityRow} stake
-   * @param {boolean} gotSome Whether it's a stake with Sozu that went through
+   * @param {ActivityRow} call
+   * @param {boolean} wentThrough Whether it's a stake or an unstake with Sozu
+   *   that went through, on the chain's public history
    */
-  async function showStDusk(stake, gotSome) {
-    const key = `${stake.hash} ${gotSome}`;
+  async function showStDusk(call, wentThrough) {
+    const key = `${call.hash} ${wentThrough}`;
 
     stDuskOf = key;
-    stDusk = null;
+    sozuFact = null;
 
-    if (!gotSome) {
+    if (!wentThrough) {
       return;
     }
 
-    const found = await loadStDusk(stake).catch(() => null);
+    const found = await loadSozuFact(call).catch(() => null);
 
     if (stDuskOf === key) {
-      stDusk = found;
+      sozuFact = found;
     }
   }
 
@@ -267,10 +275,12 @@
     : "";
   // A profile of a wallet here, as the wallets call it.
   $: walletName = target ? ($walletAccountNames.get(target) ?? "") : "";
-  $: gotStDusk = row.sozu === "stake" && row.status === "executed";
-  $: if (`${row.hash} ${gotStDusk}` !== stDuskOf) {
-    showStDusk(row, gotStDusk);
+  $: movedStDusk =
+    Boolean(row.sozu) && row.status === "executed" && row.source === "public";
+  $: if (`${row.hash} ${movedStDusk}` !== stDuskOf) {
+    showStDusk(row, movedStDusk);
   }
+  $: stDuskShown = sozuFact ? stDuskLines(sozuFact, locale) : [];
   $: isSent = row.direction !== "in" && p.icon !== "received";
   // A deposit to DuskEVM, as followed there: when it arrived, and the
   // DuskEVM transaction that paid it.
@@ -347,14 +357,18 @@
         <dt>Date</dt>
         <dd>{time === null ? "Not known yet" : fullDateTime(time, locale)}</dd>
       </div>
-      {#if stDusk !== null}
+      {#each stDuskShown as line (line.term)}
         <div>
-          <dt>You got about</dt>
+          <dt>{line.term}</dt>
           <dd>
-            <BalanceValue value={formatDusk(stDusk, locale)} /> stDUSK
+            <BalanceValue
+              hidden={line.hidden ? undefined : false}
+              value={line.value}
+            />
+            {line.unit}
           </dd>
         </div>
-      {/if}
+      {/each}
       {#if target && p.icon !== "shield"}
         <div class="tx-detail__wide">
           <dt>{counterpartyLabel}</dt>
@@ -625,14 +639,6 @@
             <dt>Fee paid</dt>
             <dd>
               <BalanceValue value={formatDuskExact(row.fee, locale)} /> DUSK
-            </dd>
-          </div>
-        {/if}
-        {#if stDusk !== null}
-          <div>
-            <dt>You got</dt>
-            <dd>
-              <BalanceValue value={formatDuskExact(stDusk, locale)} /> stDUSK
             </dd>
           </div>
         {/if}

@@ -7,17 +7,24 @@
    * memo, as the link says them. Nothing for a page that isn't a request.
    */
   import {
-    networkMismatch,
     parsePaymentLink,
+    readPaymentLink,
     recipientKind,
   } from "@dusk-network/app-core/payment-links";
 
+  import { onMount } from "svelte";
+
   import { MemoText } from "$lib/components";
+  import { Button } from "$lib/dusk/components";
   import { getPrimaryName } from "$lib/dusk-domains";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { peekPlace } from "$lib/navigation";
-  import { ownWalletUrl } from "$lib/payment-requests";
+  import { REQUEST_FIELDS, ownWalletUrl } from "$lib/payment-requests";
+  import {
+    findLinkTaker,
+    openInExtension,
+  } from "$lib/payment-requests/extension";
   import { networkStore, settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { nodeBaseUrl } from "$lib/url";
@@ -27,13 +34,18 @@
   export let next;
 
   const place = peekPlace();
-  const link =
+  const opened =
     place && /^\/dashboard\/send\/?\?/.test(place)
-      ? parsePaymentLink(`${ownWalletUrl()}${place}`, {
-          walletUrl: ownWalletUrl(),
-        })
-      : null;
+      ? `${ownWalletUrl()}${place}`
+      : "";
+  const link = opened
+    ? parsePaymentLink(opened, { walletUrl: ownWalletUrl() })
+    : null;
   const asked = link?.form === "https" && link.to ? link : null;
+  // A request, by its fields, whether or not it can be read.
+  const isRequest =
+    Boolean(opened) &&
+    REQUEST_FIELDS.some((field) => new URL(opened).searchParams.has(field));
 
   // The name the account it pays goes by, as the chain says: none for a
   // shielded address, or where the lookup fails.
@@ -46,43 +58,108 @@
         ).catch(() => "")
       : Promise.resolve("");
 
+  /**
+   * The Dusk Wallet extension, where one takes the request: it pays it from
+   * its own Send, on its own network.
+   *
+   * @type {import("$lib/payment-requests/extension").DuskProvider | null}
+   */
+  let extension = null;
+
+  /** What handing it to the extension did. */
+  let handed = "";
+
+  onMount(() => {
+    let isHere = true;
+
+    if (asked) {
+      findLinkTaker().then((found) => {
+        if (isHere) {
+          extension = found;
+        }
+      });
+    }
+
+    return () => {
+      isHere = false;
+    };
+  });
+
+  async function hand() {
+    if (extension) {
+      handed = await openInExtension(extension, opened);
+    }
+  }
+
   $: ({ language } = $settingsStore);
-  $: problem = asked ? networkMismatch(asked.chainId, $nodeNetwork) : "";
+  // Why it can't be paid as it is, as Send says once it opens: two amounts,
+  // or another network.
+  $: read = isRequest
+    ? readPaymentLink(opened, {
+        network: $nodeNetwork ?? undefined,
+        walletUrl: ownWalletUrl(),
+      })
+    : null;
+  $: problem = read?.problem ?? "";
 </script>
 
-{#if asked}
+<!-- One that can't be read, as one saying a field twice, says only why. -->
+{#if asked || problem}
   <section aria-labelledby="payment-asked" class="payment-asked">
     <h2 class="payment-asked__title" id="payment-asked">Payment request</h2>
-    <dl class="payment-asked__facts">
-      <div>
-        <dt>Amount</dt>
-        <dd>
-          {asked.lux === null
-            ? "Any amount"
-            : `${formatDuskExact(asked.lux, language)} DUSK`}
-        </dd>
-      </div>
-      <div>
-        <dt>To</dt>
-        <dd>
-          {#await name then found}
-            {#if found}
-              <span class="payment-asked__name">{found}</span>
-            {/if}
-          {/await}
-          <span class="payment-asked__code" title={asked.to}
-            >{shortenAddress(asked.to)}</span
-          >
-        </dd>
-      </div>
-      {#if asked.memo}
+    {#if asked}
+      <dl class="payment-asked__facts">
+        {#if read?.reason !== "two-amounts"}
+          <div>
+            <dt>Amount</dt>
+            <dd>
+              {asked.lux === null
+                ? "Any amount"
+                : `${formatDuskExact(asked.lux, language)} DUSK`}
+            </dd>
+          </div>
+        {/if}
         <div>
-          <dt>Memo</dt>
-          <dd><MemoText text={asked.memo} /></dd>
+          <dt>To</dt>
+          <dd>
+            {#await name then found}
+              {#if found}
+                <span class="payment-asked__name">{found}</span>
+              {/if}
+            {/await}
+            <span class="payment-asked__code" title={asked.to}
+              >{shortenAddress(asked.to)}</span
+            >
+          </dd>
         </div>
-      {/if}
-    </dl>
+        {#if asked.memo}
+          <div>
+            <dt>Memo</dt>
+            <dd><MemoText text={asked.memo} /></dd>
+          </div>
+        {/if}
+      </dl>
+    {/if}
     <p class="payment-asked__next">{problem || next}</p>
+    <!-- Not for a link no Send takes; another network's is the extension's to say. -->
+    {#if extension && handed !== "refused" && read?.reason !== "unreadable" && read?.reason !== "two-amounts"}
+      {#if handed === "opened"}
+        <p class="payment-asked__next" role="status">
+          Opened in the Dusk extension.
+        </p>
+      {:else if handed === "no-wallet"}
+        <p class="payment-asked__next" role="status">
+          The Dusk extension has no wallet to pay with.
+        </p>
+      {:else}
+        <Button
+          className="payment-asked__extension"
+          on:click={hand}
+          text="Open in the Dusk extension"
+          variant="secondary"
+        />
+      {/if}
+    {/if}
   </section>
 {/if}
 
@@ -142,5 +219,10 @@
 
   .payment-asked__next {
     margin: 0;
+  }
+
+  /* A button on the card, which is its own colour. */
+  .payment-asked :global(.payment-asked__extension) {
+    background-color: var(--calm-field);
   }
 </style>

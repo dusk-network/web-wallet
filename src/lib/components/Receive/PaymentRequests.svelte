@@ -6,6 +6,8 @@
    * came in after it, in words that say what matched.
    */
   import { onDestroy } from "svelte";
+  import { MAX_MEMO_BYTES } from "@dusk-network/app-core/payment-links";
+  import { displayText } from "@dusk-network/app-core/text";
 
   import { activityState, currentActivity } from "$lib/activity";
   import { claimDay } from "$lib/bridge/claimDate";
@@ -30,6 +32,13 @@
 
   /** @type {Record<string, string>} */
   const STATE_WORDS = { check: "Check", paid: "Paid", waiting: "Waiting" };
+
+  /**
+   * A line in parts: words, and a memo someone else wrote, quoted as a memo
+   * shows, nothing in it reordering or hiding the rest.
+   *
+   * @typedef {{ text: string } | { memo: string }} Part
+   */
 
   /** How often the history is read again while this shows a request not paid. */
   const LOOK_MS = 30_000;
@@ -67,64 +76,144 @@
    *
    * @param {{ at?: number, lux?: bigint, matched?: string, memo?: string }} payment
    * @param {string} language
+   * @returns {Part[]}
    */
   function partOf({ at, lux, matched, memo }, language) {
     const day = at ? claimDay(at, language) : "";
 
     return matched === "amount"
       ? memo
-        ? `same amount on ${day}, with another memo: "${memo}"`
-        : `same amount on ${day}, with no memo`
-      : hideBalances
-        ? `same memo on ${day}`
-        : `same memo on ${day}, for ${formatDuskExact(lux ?? 0n, language)} DUSK`;
+        ? [
+            { text: `same amount on ${day}, with another memo: "` },
+            { memo },
+            { text: '"' },
+          ]
+        : [{ text: `same amount on ${day}, with no memo` }]
+      : [
+          {
+            text: hideBalances
+              ? `same memo on ${day}`
+              : `same memo on ${day}, for ${formatDuskExact(lux ?? 0n, language)} DUSK`,
+          },
+        ];
   }
 
   /**
-   * Days in a list: "a", "a and b", "a, b and c".
+   * The payments that had all a request asks again, after the one that
+   * paid it: it was paid twice, or more.
    *
-   * @param {string[]} days
+   * @param {import("$lib/payment-requests/requests").RequestMatch} match
    */
-  const listed = (days) =>
-    days.length > 1
-      ? `${days.slice(0, -1).join(", ")} and ${days.at(-1)}`
-      : (days[0] ?? "");
+  const paidAgain = ({ more = [], state }) =>
+    state === "paid"
+      ? more.filter((payment) => payment.matched === "amount-memo")
+      : [];
 
   /**
    * What matched of a payment, in words, and of the others that match the
-   * request too: paid twice, or another payment to check.
+   * request in part: another payment to check. A request paid more than once
+   * lists its payments under this.
    *
    * @param {import("$lib/payment-requests/requests").RequestMatch} match
    * @param {string} language
+   * @returns {Part[]}
    */
-  function matchedText({ at, lux, matched, memo, more = [] }, language) {
+  function matchedParts(match, language) {
+    const { at, lux, matched, memo, more = [] } = match;
     const day = at ? claimDay(at, language) : "";
-    const again = more.filter((payment) => payment.matched === "amount-memo");
+    const again = paidAgain(match);
     const also = more
       .filter((payment) => payment.matched !== "amount-memo")
-      .map((payment) => ` Also the ${partOf(payment, language)}.`)
-      .join("");
+      .flatMap((payment) => [
+        { text: " Also the " },
+        ...partOf(payment, language),
+        { text: "." },
+      ]);
 
     switch (matched) {
       case "amount-memo":
-        return again.length
-          ? `Paid ${again.length === 1 ? "twice" : `${again.length + 1} times`}: ${listed(
-              [at, ...again.map((payment) => payment.at)].map((time) =>
-                time ? claimDay(time, language) : "time not known"
-              )
-            )}.${also}`
-          : day
-            ? `Amount and memo match a payment on ${day}.${also}`
-            : `Amount and memo match a payment.${also}`;
+        return [
+          {
+            text: again.length
+              ? `Amount and memo match ${again.length + 1} payments.`
+              : day
+                ? `Amount and memo match a payment on ${day}.`
+                : "Amount and memo match a payment.",
+          },
+          ...also,
+        ];
       case "amount":
       case "memo": {
-        const part = partOf({ at, lux, matched, memo }, language);
+        const [first, ...rest] = partOf({ at, lux, matched, memo }, language);
+        const opening = "text" in first ? first.text : "";
 
-        return `${part.charAt(0).toUpperCase()}${part.slice(1)}. Check it's this one.${also}`;
+        return [
+          {
+            text: `${opening.charAt(0).toUpperCase()}${opening.slice(1)}`,
+          },
+          ...rest,
+          { text: ". Check it's this one." },
+          ...also,
+        ];
       }
       default:
-        return "Nothing matching has come in.";
+        return [{ text: "Nothing matching has come in." }];
     }
+  }
+
+  /**
+   * Whether a part quotes a memo with something hidden in it.
+   *
+   * @param {Part} part
+   */
+  const hidesSomething = (part) =>
+    "memo" in part && displayText(part.memo).neutralized;
+
+  /**
+   * Whether a part quotes a memo with a number that can read as another: of
+   * digits that read right to left, or of more than one kind.
+   *
+   * @param {Part} part
+   */
+  const misreads = (part) =>
+    "memo" in part &&
+    displayText(part.memo).flags.some(
+      (flag) => flag === "mixed_digits" || flag === "rtl_digits"
+    );
+
+  /**
+   * Send, filled in to pay back a payment that paid a request again: to whoever
+   * sent it, the amount it brought, and the request's memo. Null where whoever
+   * sent it isn't known, as for a shielded payment.
+   *
+   * @param {import("$lib/payment-requests/requests").RequestPayment} payment
+   * @param {import("$lib/payment-requests/requests").PaymentRequest} request
+   */
+  function sendBackHref(payment, request) {
+    const from = senders.get(payment.hash);
+
+    if (!from) {
+      return null;
+    }
+
+    const said = request.memo ? `Refund: ${request.memo}` : "Refund";
+    const made = makeRequestLink(
+      {
+        amountLux: payment.lux,
+        // Within a memo's bytes: a refund alone where the request's memo
+        // leaves no room to say which.
+        memo:
+          new TextEncoder().encode(said).length <= MAX_MEMO_BYTES
+            ? said
+            : "Refund",
+        to: from,
+      },
+      $nodeNetwork
+    );
+
+    return made.https
+      ? addBasePath(`/dashboard/send${new URL(made.https).search}`)
+      : null;
   }
 
   /**
@@ -152,6 +241,12 @@
   };
 
   $: ({ hideBalances, language } = $settingsStore);
+  // Who sent each payment that came in, where the chain says.
+  $: senders = new Map(
+    $activityState.rows.flatMap(({ category, counterparty, hash }) =>
+      category === "received" && counterparty ? [[hash, counterparty]] : []
+    )
+  );
   $: network = $nodeNetwork?.name ?? "";
   $: shown = $requestsStore.filter(
     ({ network: asked, to }) => asked === network && addresses.includes(to)
@@ -177,6 +272,8 @@
     <ul class="requests__list">
       {#each shown as request (request.id)}
         {@const match = matches.get(request.id) ?? { state: "waiting" }}
+        {@const again = paidAgain(match)}
+        {@const parts = matchedParts(match, language)}
         <li class="requests__item">
           <p class="requests__head">
             <strong>
@@ -189,21 +286,70 @@
                 /> DUSK
               {/if}
             </strong>
-            <span class="requests__state requests__state--{match.state}"
-              >{STATE_WORDS[match.state]}</span
-            >
+            {#if again.length}
+              <span class="requests__state requests__state--again"
+                >{again.length === 1
+                  ? "Paid twice"
+                  : `Paid ${again.length + 1} times`}</span
+              >
+            {:else}
+              <span class="requests__state requests__state--{match.state}"
+                >{STATE_WORDS[match.state]}</span
+              >
+            {/if}
           </p>
           {#if request.memo}
             <p class="requests__memo"><MemoText text={request.memo} /></p>
           {/if}
           <p class="requests__line">
-            Asked {claimDay(request.at, language)}. {matchedText(
-              match,
-              language
-            )}
+            Asked {claimDay(request.at, language)}. {#each parts as part, i (i)}{#if "memo" in part}<MemoText
+                  inline
+                  text={part.memo}
+                />{:else}{part.text}{/if}{/each}
           </p>
+          {#if parts.some(hidesSomething)}
+            <p class="requests__hidden">
+              A memo here has hidden characters, shown as codes.
+            </p>
+          {/if}
+          {#if parts.some(misreads)}
+            <p class="requests__hidden">
+              A number in a memo here may not be what it looks like.
+            </p>
+          {/if}
+          {#if again.length}
+            <!-- Each payment, to see, and the ones after the first to pay back. -->
+            <ul
+              aria-label="Payments for this request"
+              class="requests__payments"
+            >
+              {#each [match, ...again] as payment, i (payment.hash)}
+                {@const day = payment.at
+                  ? claimDay(payment.at, language)
+                  : "time not known"}
+                {@const back = i ? sendBackHref(again[i - 1], request) : null}
+                <li class="requests__payment">
+                  <span>{day.charAt(0).toUpperCase()}{day.slice(1)}</span>
+                  <a
+                    aria-label={`See in History: the payment of ${day}`}
+                    class="text-link"
+                    href={addBasePath(
+                      `/dashboard/transactions?tx=${payment.hash}`
+                    )}>See in History</a
+                  >
+                  {#if back}
+                    <a
+                      aria-label={`Send back the payment of ${day}`}
+                      class="text-link"
+                      href={back}>Send back</a
+                    >
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+          {/if}
           <div class="requests__actions">
-            {#if match.hash}
+            {#if match.hash && !again.length}
               <a
                 class="text-link"
                 href={addBasePath(`/dashboard/transactions?tx=${match.hash}`)}
@@ -279,7 +425,8 @@
       color: var(--calm-online);
     }
 
-    &--check {
+    &--check,
+    &--again {
       color: var(--calm-pending);
     }
   }
@@ -294,6 +441,33 @@
     font-size: 0.8125rem;
     line-height: 1.45;
     overflow-wrap: anywhere;
+  }
+
+  .requests__hidden {
+    color: var(--calm-danger);
+    font-size: 0.8125rem;
+  }
+
+  .requests__payments {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.875rem;
+  }
+
+  .requests__payment {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+
+    & span {
+      color: var(--calm-muted);
+      font-variant-numeric: tabular-nums;
+    }
   }
 
   .requests__actions {

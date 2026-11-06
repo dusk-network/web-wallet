@@ -20,6 +20,7 @@ import {
   saveContact,
 } from "$lib/contacts";
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
+import { shortenAddress } from "$lib/dusk/string";
 import { openTestContacts } from "$lib/test-helpers";
 
 import { ContactsView } from "..";
@@ -451,18 +452,30 @@ describe("ContactsView", () => {
           target: { value },
         });
 
-      // Whatever its capitals and spaces.
+      // Whatever its capitals, spaces and punctuation.
       for (const variant of [
         "estudio marta ",
         " estudio  marta",
         "ESTUDIO\tMARTA",
+        "estudio marta.",
       ]) {
         await name(variant);
 
         expect(
-          getByText(/^You already have a contact called Estudio Marta\./)
+          getByText(
+            `You already have a contact called Estudio Marta, at ${shortenAddress(OTHER)}. Only the address will tell them apart.`
+          )
         ).toBeInTheDocument();
       }
+
+      // And in other letters: a Cyrillic а.
+      await name("Estudio M\u0430rta");
+
+      expect(
+        getByText(
+          `That looks like your contact Estudio Marta, at ${shortenAddress(OTHER)}. Only the address will tell them apart.`
+        )
+      ).toBeInTheDocument();
 
       await name("Estudio Lena");
 
@@ -478,6 +491,46 @@ describe("ContactsView", () => {
     } finally {
       removeContact(twin.id);
     }
+  });
+
+  it("refuses a profile's name here, as written or in other letters", async () => {
+    const { getByRole, getByText, queryByRole } = render(ContactForm, {
+      profiles: [{ address: SHIELDED, name: "Profile 2" }],
+      resolveName,
+    });
+    /** @param {string} value */
+    const name = (value) =>
+      fireEvent.input(getByRole("textbox", { name: "Name" }), {
+        target: { value },
+      });
+
+    await fireEvent.input(
+      getByRole("textbox", { name: "Address or .dusk name" }),
+      { target: { value: OTHER } }
+    );
+    await name("profile 2");
+
+    expect(
+      getByText(
+        "One of your profiles is called Profile 2. Choose another name."
+      )
+    ).toBeInTheDocument();
+    expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+
+    // A Cyrillic о.
+    await name("Pr\u043efile 2");
+
+    expect(
+      getByText(
+        "That looks like Profile 2, one of your profiles. Choose another name."
+      )
+    ).toBeInTheDocument();
+    expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+
+    await name("Profile 3");
+
+    expect(queryByRole("alert")).toBeNull();
+    expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
   });
 
   it("doesn't call a contact its own twin as it's edited", async () => {

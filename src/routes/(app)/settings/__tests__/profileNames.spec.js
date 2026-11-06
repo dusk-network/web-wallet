@@ -235,19 +235,33 @@ describe("Settings › Profiles", () => {
     expect(pillName).toHaveTextContent("Savings");
   });
 
-  it("keeps a name to 32 characters", async () => {
+  it("takes a name of 40 characters, says so once the field holds that many, and never saves one cut short", async () => {
     await vault.setUp(A, PASSWORD);
     await unlockWallets(PASSWORD);
 
+    const NAME = "Savings for Mum in Ipoh, do not touch pl";
     const settings = render(Settings);
 
-    await nameProfile(settings, 1, "x".repeat(33));
+    expect(NAME).toHaveLength(40);
 
-    expect(fieldsOf(settings)).toEqual(["x".repeat(32), ""]);
+    await nameProfile(settings, 1, NAME);
+
+    expect(fieldsOf(settings)).toEqual([NAME, ""]);
+    expect(settings.getByText("40 characters at most.")).toBeInTheDocument();
+    expect(toasts.at(-1)).toBe("Name saved.");
+
+    // One more, as a script could put there past the field's limit: it
+    // stays as typed, unsaved, the limit said.
+    toasts.length = 0;
+    await nameProfile(settings, 1, `${NAME}s`);
+
+    expect(fieldsOf(settings)).toEqual([`${NAME}s`, ""]);
+    expect(settings.getByText("40 characters at most.")).toBeInTheDocument();
+    expect(toasts).toEqual([]);
 
     const { pillName } = await openSwitcher();
 
-    expect(pillName).toHaveTextContent(new RegExp(`^${"x".repeat(32)}$`));
+    expect(pillName).toHaveTextContent(new RegExp(`^${NAME}$`));
   });
 
   it("keeps each wallet's names its own, and forgets a removed wallet's", async () => {

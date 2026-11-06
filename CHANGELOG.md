@@ -9,11 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Open a payment request in the Dusk Wallet extension from the page its link opens, where the extension takes it
+- Add DUSK to the connected EVM wallet, where it takes the request: once a transfer to its chain arrived, and on the way back's form while it holds none
+- Notify on a phone too when a transfer arrives, through the wallet's service worker, while its tab stays open, as its Sent screen says
+- Send back a payment that paid a request again, filled in on Send, from the request
+
 ### Changed
+
+- Show amounts in euros to start with where the browser's region uses the euro, else in dollars
 
 ### Removed
 
 ### Fixed
+
+- Count the approval a migration spent in its gas under Bridge › Activity, as its chain says, and write both in the accounting export
+- Give Sozu's yearly rate from how its stDUSK grew over the last 30 days, read on the chain, the same on its form and on Stake
+- Refuse a contact named as one of your profiles, or like one in other letters, and say which contact a name looks like, with its address
+- Mark contacts whose names look alike on Send, with their addresses
+- Say where a memo's number may not be what it looks like: digits that read right to left, or of more than one kind
+- Refuse a payment link that says a field twice or two amounts, or has a name before its host, and say so before an unlock too
+- Say Paid for a request of any amount paid with its memo, and Paid twice for its memo again
+- Show a profile's and a wallet's name whole in the profile menu, a tap from the pill that shortens it
+- Say on a restore that syncing finds the balance and past payments, and which blocks the sync bar goes through
+- Give the fee in DUSK first under Edit, with what "at most" means and the gas written in groups
+- Say to the lux the stDUSK a stake with Sozu got, or an unstake gave back, and the rate, in its details and on its Sent screen
+- Write how much is staked across the network in the language's own short words where they're in Latin letters, as "57,2 Mio." in German
+- Count what's staked, natively and with Sozu, in Home's total balance, listed beside Public and Shielded
+- Show what's staked with Sozu changed together with the public balance after a stake or an unstake, never counted twice or not at all
+- Say what an unstake from Sozu brings back after its fee, and on its review when the fee can be more
+- Say on Sozu's form what's on its way after a reload, as Send does, and leave it out of Available and Max
+- Say nothing of an empty To on Send as it's left, as for the amount or the scanner
+- Take profile and wallet names of 40 characters, as contacts, say so once a name is that long, and never save one cut short
+- Close the network's panel with phone Back, staying on the page with what's typed, and only close it on a tap outside
+- See every transaction a search found in History, past the five it lists, with each row's memo
+- Say Offline on the network's dot as the browser goes offline, sync as it's back, and try a failed sync again every ten seconds
+- Keep what was typed in a form through the automatic lock, as through a reload
+- Say Send again on Send's button for a payment just like one made already, and take no press meant for Send once it does
+- Say Paid twice on a request, with a link to each payment
+- Name the test network and what a request asks in its QR picture and its file name
+- Show a payer's memo on Your requests with its hidden characters as codes, as everywhere else
 
 ## [2.0.0] - 2026-11-06
 

@@ -6,20 +6,22 @@
    * this browser can.
    */
   import {
-    NOTICE_WORDS,
     arrivalNoticeState,
     chooseArrivalNotice,
+    noticeWords,
     stopArrivalNotice,
   } from "$lib/bridge/arrivalNotice";
 </script>
 
+<!-- What it can do here, said with the offer: it's the open page that tells. -->
 <p class="arrival-notice">
   {#if $arrivalNoticeState === "offer"}
     <button on:click={chooseArrivalNotice} type="button"
       >Tell me when it arrives</button
     >
+    {noticeWords("offer")}
   {:else}
-    {NOTICE_WORDS[$arrivalNoticeState]}
+    {noticeWords($arrivalNoticeState)}
     {#if $arrivalNoticeState === "on"}
       <button on:click={stopArrivalNotice} type="button">Turn off</button>
     {/if}

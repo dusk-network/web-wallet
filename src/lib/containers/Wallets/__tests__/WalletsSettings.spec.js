@@ -75,7 +75,7 @@ describe("Settings › Wallets", () => {
     );
   });
 
-  it("renames a wallet in its own field, its name in it, only on this device: Enter saves, Escape leaves it as it was", async () => {
+  it("renames a wallet in its own field, its name in it, only on this device: Enter saves, Escape leaves it as it was, and 40 characters at most", async () => {
     const { first } = await twoWallets();
     const { getByLabelText, getByRole, getByText, queryByLabelText } =
       render(WalletsSettings);
@@ -121,6 +121,16 @@ describe("Settings › Wallets", () => {
     await fireEvent.click(getByRole("button", { name: "Rename Savings jar" }));
 
     expect(getByLabelText("Name")).toHaveValue("Savings jar");
+
+    // 40 characters at most, said, and one longer never saved cut short.
+    await fireEvent.input(getByLabelText("Name"), {
+      target: { value: "x".repeat(41) },
+    });
+    await fireEvent.keyDown(getByLabelText("Name"), { key: "Enter" });
+
+    expect(getByLabelText("Name")).toHaveValue("x".repeat(41));
+    expect(getByText("40 characters at most.")).toBeInTheDocument();
+    expect(get(walletDirectory).wallets[first.id].name).toBe("Savings jar");
   });
 
   it("offers no removal of the only wallet, and says a wallet without a password can't have another", async () => {

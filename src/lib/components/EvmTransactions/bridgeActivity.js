@@ -391,11 +391,12 @@ const luxOfItem = ({ amountLux, amountWei }) =>
  * on the other chain, as far as each is known.
  *
  * @param {BridgeActivityRow} activity
- * @param {{ locale: string, rows: ActivityRow[], steps: Map<string, { claim?: string, prove?: string }> }} context
- *   `rows` the history; `steps` a withdrawal's proof and claim on Dusk
+ * @param {{ evm?: Record<string, import("@dusk-network/app-core/bridge").MigrationEvm>, locale: string, rows: ActivityRow[], steps: Map<string, { claim?: string, prove?: string }> }} context
+ *   `rows` the history; `steps` a withdrawal's proof and claim on Dusk; `evm`
+ *   what migrations did on their own chain, by their hash in lower case
  * @returns {import("@dusk-network/app-core/bridge").TransferLedger | null}
  */
-export function ledgerOf({ item, kind }, { locale, rows, steps }) {
+export function ledgerOf({ item, kind }, { evm = {}, locale, rows, steps }) {
   /** @param {string | null | undefined} hash */
   const inHistory = (hash) =>
     (hash && rows.find((row) => row.hash === hash)) || null;
@@ -424,8 +425,9 @@ export function ledgerOf({ item, kind }, { locale, rows, steps }) {
     }
     case "migration":
       return transferLedger({
+        // Its gas, with the approval it spent, as its chain says.
+        evm: evm[item.hash.toLowerCase()] ?? null,
         failed: item.stage === "failed",
-        gasWei: item.gasWei,
         locale,
         // The bridge paid for the payout.
         networkFee: null,

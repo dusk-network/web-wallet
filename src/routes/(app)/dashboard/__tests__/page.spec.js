@@ -157,14 +157,15 @@ describe("Dashboard", () => {
     vi.doUnmock("$lib/sozu");
   });
 
-  it("shows the total balance, its public and shielded parts, and every action", async () => {
+  it("shows the total balance, everything held, its parts, and every action", async () => {
     const { container, getByRole } = render(Dashboard, props);
 
+    // 1,172.5 public, 2,345 shielded and 1,000 staked.
     expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
-      "3,517.5"
+      "4,517.5"
     );
     expect(container.querySelector(".home-balance__legend")).toHaveTextContent(
-      "Public 1,172.5 Shielded 2,345"
+      "Public 1,172.5 Shielded 2,345 Staked 1,000"
     );
 
     for (const [name, href] of [
@@ -182,7 +183,7 @@ describe("Dashboard", () => {
 
     await vi.waitFor(() =>
       expect(container.querySelector(".home-balance__fiat")).toHaveTextContent(
-        "≈ $1,758.75"
+        "≈ $2,258.75"
       )
     );
   });
@@ -363,10 +364,15 @@ describe("Dashboard", () => {
     expect(sozu.load).toHaveBeenCalled();
   });
 
-  it("says under the total what is staked, natively and with Sozu, and nothing while none is", async () => {
+  it("counts what is staked in the total, natively and with Sozu, and says how much beside the rest, nothing while none is", async () => {
     const { currentProfile } = initialStore;
-    const staked = () =>
-      document.querySelector(".home-balance__staked")?.textContent?.trim();
+    const total = () =>
+      document.querySelector(".home-balance__amount")?.textContent?.trim();
+    const parts = () =>
+      document
+        .querySelector(".home-balance__legend")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
     /** @param {bigint} balance */
     const withSozu = (balance) =>
       act(() =>
@@ -386,36 +392,40 @@ describe("Dashboard", () => {
     // Natively: 1,000 DUSK.
     render(Dashboard, props);
 
-    expect(staked()).toMatch(/^Staked\s+1,000\s+DUSK$/);
+    expect(total()).toBe("4,517.5");
+    expect(parts()).toBe("Public 1,172.5 Shielded 2,345 Staked 1,000");
 
     // And 0.5002 DUSK with Sozu: both counted.
     await withSozu(500_200_000n);
 
-    expect(staked()).toMatch(/^Staked\s+1,000.5002\s+DUSK$/);
+    expect(total()).toBe("4,518.0002");
+    expect(parts()).toBe("Public 1,172.5 Shielded 2,345 Staked 1,000.5002");
 
     // Hidden with the other balances.
     await act(() =>
       settingsStore.update((settings) => ({ ...settings, hideBalances: true }))
     );
 
-    expect(staked()).toMatch(/^Staked\s+••••\s+hidden\s+DUSK$/);
+    expect(parts()).not.toMatch(/\d/);
 
     cleanup();
     settingsStore.reset();
     await withSozu(0n);
 
-    // With Sozu alone, then nothing staked at all: no line.
+    // With Sozu alone, then nothing staked at all: nothing said of it.
     mockedWalletStore.setMockedStoreValue({
       ...initialStore,
       stakeInfo: { ...initialStore.stakeInfo, amount: null },
     });
     render(Dashboard, props);
 
-    expect(staked()).toBeUndefined();
+    expect(total()).toBe("3,517.5");
+    expect(parts()).toBe("Public 1,172.5 Shielded 2,345");
 
     await withSozu(500_200_000n);
 
-    expect(staked()).toMatch(/^Staked\s+0.5002\s+DUSK$/);
+    expect(total()).toBe("3,518.0002");
+    expect(parts()).toBe("Public 1,172.5 Shielded 2,345 Staked 0.5002");
 
     await act(() =>
       sozu.store?.update((state) => ({ ...state, status: null }))

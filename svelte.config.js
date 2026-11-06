@@ -14,6 +14,9 @@ const config = {
       base: /** @type {"" | `/${string}` | undefined} */ (env.VITE_BASE_PATH),
       relative: false,
     },
+
+    // Registered only by whoever asks to be told when a transfer arrives.
+    serviceWorker: { register: false },
   },
   preprocess: vitePreprocess(),
 };

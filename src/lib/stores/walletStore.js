@@ -44,6 +44,12 @@ const AUTO_SYNC_INTERVAL = !isNaN(Number(VITE_SYNC_INTERVAL))
   ? Number(VITE_SYNC_INTERVAL)
   : 5 * 60 * 1000;
 
+/**
+ * How soon a sync that failed is tried again, in milliseconds, while the page
+ * shows: as the welcome screen tries to connect again.
+ */
+const RETRY_AFTER_FAILURE = 10_000;
+
 let autoSyncId = 0;
 
 /** @type {AbortController | null} */
@@ -490,11 +496,43 @@ const sendAs = (
 };
 
 /**
+ * What else is read with the balances and the stake, to show with them, as
+ * Sozu's position, which Home counts with them: each reads for the profile,
+ * and gives what shows what it read, or null for nothing to read.
+ *
+ * @type {Set<(profile: Profile) => Promise<(() => void) | null>>}
+ */
+const readAlong = new Set();
+
+/**
+ * The reads of the balances, in the order they began, and the last of them
+ * that showed: an older read that comes back last shows nothing, so the
+ * balances and what's read along them always come from the same one.
+ */
+let balanceReadsBegun = 0;
+let balanceReadShown = 0;
+
+/**
+ * Has `read` read with the balances and the stake each time they are, and
+ * what it read shown with them.
+ *
+ * @type {WalletStoreServices["readWithBalances"]}
+ */
+function readWithBalances(read) {
+  readAlong.add(read);
+
+  return () => {
+    readAlong.delete(read);
+  };
+}
+
+/**
  * The current profile's balances and stake, read from the network together,
- * and shown together: what a transaction moved between them is never counted
- * in both, or in neither. What can't be read stays as it was; the balances
- * read say so (`balanceRead`). Each is kept in the cache, which is only a nice
- * to have, so a failure to keep it is ignored.
+ * and shown together, with what's read along (`readWithBalances`): what a
+ * transaction moved between them is never counted in both, or in neither.
+ * What can't be read stays as it was; the balances read say so
+ * (`balanceRead`). Each is kept in the cache, which is only a nice to have,
+ * so a failure to keep it is ignored.
  *
  * @returns {Promise<[PromiseSettledResult<unknown>, PromiseSettledResult<unknown>]>}
  */
@@ -509,18 +547,26 @@ async function updateStaticInfo() {
     ];
   }
 
+  const order = (balanceReadsBegun += 1);
+  // Shown only where no read of them begun after it showed already: its
+  // balances and what's read along them together, or neither.
   const isCurrent = () =>
-    session === walletSession && profile === getCurrentProfile();
-  const [balance, stake] = await Promise.allSettled([
-    (async () => ({
-      shielded: /** @type {AddressBalance} */ (
-        await bookkeeper.balance(profile.address)
-      ),
-      unshielded: /** @type {AccountBalance} */ (
-        await bookkeeper.balance(profile.account)
-      ),
-    }))(),
-    /** @type {Promise<StakeInfo>} */ (bookkeeper.stakeInfo(profile.account)),
+    session === walletSession &&
+    profile === getCurrentProfile() &&
+    order > balanceReadShown;
+  const [[balance, stake], along] = await Promise.all([
+    Promise.allSettled([
+      (async () => ({
+        shielded: /** @type {AddressBalance} */ (
+          await bookkeeper.balance(profile.address)
+        ),
+        unshielded: /** @type {AccountBalance} */ (
+          await bookkeeper.balance(profile.account)
+        ),
+      }))(),
+      /** @type {Promise<StakeInfo>} */ (bookkeeper.stakeInfo(profile.account)),
+    ]),
+    Promise.allSettled([...readAlong].map((read) => read(profile))),
   ]);
 
   if (!isCurrent()) {
@@ -535,6 +581,16 @@ async function updateStaticInfo() {
   ]);
 
   if (isCurrent()) {
+    balanceReadShown = order;
+
+    // In the same moment, what's read along first: no screen draws the
+    // balances without it.
+    for (const read of along) {
+      if (read.status === "fulfilled") {
+        read.value?.();
+      }
+    }
+
     update((currentStore) => ({
       ...currentStore,
       ...(balance.status === "fulfilled"
@@ -1134,6 +1190,9 @@ async function sync(fromBlock, { clear = false } = {}) {
         autoSyncId = window.setTimeout(autoSync, AUTO_SYNC_INTERVAL);
       })
       .catch((error) => {
+        // Stopped on purpose, it isn't tried again.
+        const wasStopped = controller.signal.aborted;
+
         controller.abort();
 
         if (session === walletSession && syncController === controller) {
@@ -1147,6 +1206,13 @@ async function sync(fromBlock, { clear = false } = {}) {
               progress: 0,
             },
           }));
+
+          // It tries again by itself, as the network may be back by then.
+          if (!wasStopped) {
+            window.clearTimeout(autoSyncId);
+            cancelSyncWhenShown();
+            autoSyncId = window.setTimeout(autoSync, RETRY_AFTER_FAILURE);
+          }
         }
 
         // Transaction callers must not proceed after a failed or stale sync.
@@ -1429,6 +1495,7 @@ export default {
   holdWallet,
   init,
   open,
+  readWithBalances,
   refreshBalance,
   releaseWallet,
   reset,

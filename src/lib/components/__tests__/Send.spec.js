@@ -315,6 +315,43 @@ describe("Send", () => {
       ]);
     });
 
+    it.each([
+      [
+        "its memo said twice",
+        `${httpsLink}&memo=Factura+34`,
+        "That link can't be read. Ask for a new one.",
+      ],
+      [
+        "its amount said twice, another",
+        `${httpsLink}&amount=150`,
+        "This link asks for two different amounts. Ask for a new one.",
+      ],
+      [
+        "a user part before the host",
+        httpsLink.replace(
+          "https://apps.testnet.dusk.network",
+          "https://apps.testnet.dusk.network@apps.dusk.network"
+        ),
+        "That link can't be read. Ask for a new one.",
+      ],
+      [
+        "the test wallet's address saying Mainnet",
+        httpsLink.replace("network=testnet", "network=mainnet"),
+        "That link can't be read. Ask for a new one.",
+      ],
+    ])(
+      "should refuse a link with %s, saying why and filling in nothing",
+      async (_, link, words) => {
+        const { getByRole, getByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await paste(fields, link);
+
+        expect(getByText(words)).toBeInTheDocument();
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+      }
+    );
+
     it("should say a mainnet wallet's link is for Mainnet, on testnet", async () => {
       const { getByRole, getByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
@@ -629,7 +666,7 @@ describe("Send", () => {
       expect(fields.review()).toBeEnabled();
     });
 
-    it("should point out an invalid address once it is pasted or left, not while it is typed", async () => {
+    it("should point out an invalid address once it is pasted or left, not while it is typed, nor an empty one", async () => {
       const { getByRole, queryByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
 
@@ -650,6 +687,12 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: "" } });
 
       expect(queryByText("Not a valid address.")).toBeNull();
+
+      // Left empty, as for the amount or the scanner, it says nothing either.
+      await fireEvent.blur(fields.to());
+
+      expect(queryByText("Not a valid address.")).toBeNull();
+      expect(fields.to()).toHaveAttribute("aria-invalid", "false");
 
       await fireEvent.paste(fields.to());
       await fireEvent.input(fields.to(), {
@@ -1380,6 +1423,17 @@ describe("Send", () => {
       expect(
         getByText("It has hidden characters, shown here as codes.")
       ).toBeTruthy();
+
+      // Nor can a number's digits read as another number unsaid.
+      await fireEvent.input(fields.memo(), {
+        target: { value: "pay 1\u06605" },
+      });
+
+      expect(
+        getByText(
+          "It mixes kinds of digits, so a number may not be what it looks like."
+        )
+      ).toBeTruthy();
     });
 
     it("should say when a memo is over the network's limit, counting bytes, and keep Send off", async () => {
@@ -1542,7 +1596,7 @@ describe("Send", () => {
       }
     });
 
-    it("should warn of the same payment made moments ago, or with the same memo before, and let it go all the same", async () => {
+    it("should warn of the same payment made moments ago, or with the same memo before, and let it go all the same, the button saying Send again", async () => {
       const sent = Date.now() - 20_000;
       const { getByRole } = render(Send, {
         ...baseProps,
@@ -1555,10 +1609,49 @@ describe("Send", () => {
         `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} at ${timeLabel(sent, "en")}.`
       );
 
-      // It can be meant: it goes.
+      // It can be meant: it goes, as the button says.
       await fireEvent.click(fieldsOf(getByRole).review());
+
+      expect(fieldsOf(getByRole).send()).toHaveTextContent(
+        /^Send 0\.0019 DUSK again$/
+      );
+
       await afterConfirmDelay();
       await fireEvent.click(fieldsOf(getByRole).send());
+
+      expect(baseProps.execute).toHaveBeenCalledOnce();
+      cleanup();
+      baseProps.execute.mockClear();
+
+      // Found while the review shows, as from another tab: the button says so
+      // and takes no press meant for Send.
+      const review = render(Send, {
+        ...baseProps,
+        initialAmount: "0.0019",
+        initialRecipient: otherAccount,
+      });
+
+      await fireEvent.click(fieldsOf(review.getByRole).review());
+      await afterConfirmDelay();
+
+      expect(fieldsOf(review.getByRole).send()).toHaveTextContent(
+        /^Send 0\.0019 DUSK$/
+      );
+
+      await review.rerender({
+        historyRows: [sentRow({ status: "executed", time: sent })],
+      });
+
+      expect(fieldsOf(review.getByRole).send()).toHaveTextContent(
+        /^Send 0\.0019 DUSK again$/
+      );
+
+      await fireEvent.click(fieldsOf(review.getByRole).send());
+
+      expect(baseProps.execute).not.toHaveBeenCalled();
+
+      await afterConfirmDelay();
+      await fireEvent.click(fieldsOf(review.getByRole).send());
 
       expect(baseProps.execute).toHaveBeenCalledOnce();
       cleanup();
@@ -3139,6 +3232,47 @@ describe("Send", () => {
       expect(fields.to()).toHaveValue(otherAccount);
     });
 
+    it("should mark a contact whose name looks like another's, with its address, where it's offered and in the list", async () => {
+      saveContact({ address: otherAccount, name: "Estudio Marta" });
+      // A Cyrillic а, saved by its .dusk name.
+      saveContact({
+        address: nameAccount,
+        duskName: "marta.dusk",
+        name: "Estudio M\u0430rta",
+      });
+      saveContact({ address: otherAccount, name: "Jan (flour)" });
+
+      const { getByRole } = render(Send, baseProps);
+      const alike = [
+        `Estudio Marta · ${shortenAddress(otherAccount)} · name looks like another`,
+        `Estudio M\u0430rta · ${shortenAddress(nameAccount)} · name looks like another`,
+      ];
+      const listed = () =>
+        Array.from(
+          getByRole("combobox", { name: "Send to a contact" }).querySelectorAll(
+            "option"
+          ),
+          (option) => option.textContent
+        );
+
+      expect(listed()).toEqual(
+        expect.arrayContaining([
+          ...alike,
+          `Jan (flour) · ${shortenAddress(otherAccount)}`,
+        ])
+      );
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: "Estudio" },
+      });
+
+      for (const offered of alike) {
+        expect(
+          getByRole("button", { name: `Your contact ${offered}` })
+        ).toBeInTheDocument();
+      }
+    });
+
     it("should send to a contact picked from the list", async () => {
       saveContact({ address: otherAccount, name: "Cold storage" });
 
@@ -3457,6 +3591,27 @@ describe("Send", () => {
     /** @param {HTMLElement} container */
     const cardTitle = (container) =>
       container.querySelector(".send__card-title")?.textContent?.trim();
+
+    it("should refuse to save a contact by the name of a profile here", async () => {
+      await holdOtherWallet();
+
+      const { getByRole, getByText } = render(Send, baseProps);
+
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: otherAccount },
+      });
+      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "profile 1" },
+      });
+
+      expect(
+        getByText(
+          "One of your profiles is called Profile 1. Choose another name."
+        )
+      ).toBeInTheDocument();
+      expect(getByRole("button", { name: "Save" })).toBeDisabled();
+    });
 
     /**
      * Reviews 1 DUSK to the address entered, and sends it.

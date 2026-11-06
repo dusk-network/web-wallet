@@ -45,6 +45,10 @@
   /** @type {string[]} */
   export let own = [];
 
+  /** The profiles here, of every wallet, by name: no contact takes one's. */
+  /** @type {{ address: string, name: string }[]} */
+  export let profiles = [];
+
   const dispatch = createEventDispatcher();
 
   let query = "";
@@ -323,6 +327,7 @@
             select(event.detail.id);
           }}
           {own}
+          {profiles}
           {prefill}
           {resolveName}
         />
@@ -337,6 +342,7 @@
             }}
             on:saved={(event) => select(event.detail.id)}
             {own}
+            {profiles}
             {resolveName}
           />
         {/key}

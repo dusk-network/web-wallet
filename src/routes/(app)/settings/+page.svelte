@@ -48,6 +48,7 @@
     WalletsSettings,
   } from "$lib/containers/Wallets";
   import { WalletChangedError } from "$lib/errors";
+  import { forgetDuskAdded } from "$lib/web3/addDusk";
   import { forgetEvmWallets } from "$lib/web3/walletConnection";
   import {
     forgetDrafts,
@@ -89,6 +90,7 @@
         await deleteContacts();
         forgetBridgeRecords({ times: true });
         await forgetEvmWallets();
+        forgetDuskAdded();
 
         const passkey = vault.passkey();
 

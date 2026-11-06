@@ -7,8 +7,10 @@ import {
   arrivalSeen,
   arrivalTitle,
   chooseArrivalNotice,
+  followNotificationClicks,
   followsWhileAway,
   forgetArrivalTitle,
+  noticeWords,
   stopArrivalNotice,
   transferEnded,
 } from "../arrivalNotice";
@@ -106,6 +108,61 @@ function browser({ answer = "granted", permission = "default" } = {}) {
 }
 
 /**
+ * A browser that notifies through a service worker, as a phone's does: what
+ * the worker showed, what it was registered with, and its message to the
+ * page as a notification is pressed.
+ */
+function withWorker() {
+  /** @type {any[]} */
+  const shown = [];
+  const registered = vi.fn();
+  const events = new EventTarget();
+
+  class Registration {
+    /**
+     * @param {string} title
+     * @param {any} options
+     */
+    async showNotification(title, options) {
+      shown.push({ options, title });
+    }
+  }
+
+  const registration = new Registration();
+
+  vi.stubGlobal("ServiceWorkerRegistration", Registration);
+  Object.defineProperty(navigator, "serviceWorker", {
+    configurable: true,
+    value: {
+      addEventListener: events.addEventListener.bind(events),
+      ready: Promise.resolve(registration),
+      async register(/** @type {any[]} */ ...args) {
+        registered(...args);
+
+        return registration;
+      },
+      removeEventListener: events.removeEventListener.bind(events),
+    },
+  });
+
+  return {
+    /** @param {string} url */
+    press: (url) =>
+      events.dispatchEvent(
+        new MessageEvent("message", { data: { type: "arrival-open", url } })
+      ),
+    registered,
+    shown,
+  };
+}
+
+/** A phone's browser, by what it says it is. */
+const onPhone = () =>
+  vi
+    .spyOn(navigator, "userAgent", "get")
+    .mockReturnValue("Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36");
+
+/**
  * Whether they're looking at the page.
  *
  * @param {boolean} looking
@@ -128,6 +185,7 @@ describe("Being told when a transfer arrives", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    Reflect.deleteProperty(navigator, "serviceWorker");
     localStorage.clear();
   });
 
@@ -157,9 +215,11 @@ describe("Being told when a transfer arrives", () => {
 
     transferEnded({ id: "a", onOpen, title: "1 DUSK arrived on Dusk" });
 
-    expect(shown).toMatchObject([
-      { options: { tag: "a" }, title: "1 DUSK arrived on Dusk" },
-    ]);
+    await vi.waitFor(() =>
+      expect(shown).toMatchObject([
+        { options: { tag: "a" }, title: "1 DUSK arrived on Dusk" },
+      ])
+    );
 
     Stand.last.onclick();
 
@@ -217,16 +277,85 @@ describe("Being told when a transfer arrives", () => {
     expect(followsWhileAway()).toBe(true);
   });
 
-  it("offers no notification on a phone, which shows no tab's title either: the screen says it there; where a browser has none, the title says it", () => {
+  it("offers a notification on a phone through the wallet's service worker, saying it comes while the tab stays open, and opens what arrived as it's pressed", async () => {
     browser();
-    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
-      "Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36"
+    onPhone();
+
+    const worker = withWorker();
+
+    stopArrivalNotice();
+
+    // Offered, with what it can't do: it's the open page that tells.
+    expect(get(arrivalNoticeState)).toBe("offer");
+    expect(noticeWords("offer")).toBe("while this tab stays open");
+    expect(worker.registered).not.toHaveBeenCalled();
+
+    await chooseArrivalNotice();
+
+    expect(get(arrivalNoticeState)).toBe("on");
+    expect(noticeWords("on")).toBe(
+      "You'll get a notification when it arrives, while this tab stays open."
     );
+    expect(worker.registered).toHaveBeenCalledExactlyOnceWith(
+      "/some-base-path/service-worker.js",
+      expect.objectContaining({ scope: "/some-base-path/" })
+    );
+
+    const stop = followArrivals();
+    // As every page follows a notification pressed (the root layout).
+    const stopClicks = followNotificationClicks((href) => mocks.goto(href));
+
+    transferEnded({
+      href: "/dashboard/bridge/transactions?tx=ff",
+      id: "a",
+      title: "1 DUSK arrived on Dusk",
+    });
+
+    await vi.waitFor(() =>
+      expect(worker.shown).toMatchObject([
+        {
+          options: {
+            data: {
+              url: `${location.origin}/some-base-path/dashboard/bridge/transactions?tx=ff`,
+            },
+            tag: "a",
+          },
+          title: "1 DUSK arrived on Dusk",
+        },
+      ])
+    );
+
+    // Pressed: the wallet goes to what arrived, and only to its own pages.
+    worker.press(
+      `${location.origin}/some-base-path/dashboard/bridge/transactions?tx=ff`
+    );
+    worker.press("https://elsewhere.example/some-base-path/dashboard");
+
+    expect(mocks.goto).toHaveBeenCalledExactlyOnceWith(
+      "/dashboard/bridge/transactions?tx=ff"
+    );
+    stop();
+    stopClicks();
+    mocks.goto.mockClear();
+  });
+
+  it("offers no notification on a phone that can't give one, which shows no tab's title either: the screen says it there; where a browser has none, the title says it", async () => {
+    browser({ answer: "denied" });
+    onPhone();
     stopArrivalNotice();
 
     expect(get(arrivalNoticeState)).toBe("phone");
     expect(NOTICE_WORDS.phone).toBe("This screen says when it arrives.");
     expect(followsWhileAway()).toBe(true);
+
+    // Refused on a phone that could, it says where it's said instead.
+    withWorker();
+    await chooseArrivalNotice();
+
+    expect(get(arrivalNoticeState)).toBe("refused");
+    expect(noticeWords("refused")).toBe(
+      "Notifications aren't allowed for this site, so this screen says when it arrives."
+    );
 
     vi.restoreAllMocks();
     lookingAtPage(false);
@@ -346,6 +475,7 @@ describe("Being told when a transfer arrives", () => {
       await chooseArrivalNotice();
       stores.transfers.set([service("sent")]);
       stores.transfers.set([service("arrived")]);
+      await vi.waitFor(() => expect(Stand.last).not.toBeNull());
       Stand.last.onclick();
 
       expect(mocks.goto).toHaveBeenCalledWith(

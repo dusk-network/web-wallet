@@ -157,8 +157,14 @@ describe("TransactionDetail", () => {
     expect(techList(container)).toContain(STORE);
   });
 
-  it("should say about what stDUSK a stake with Sozu got, read once, exactly under Technical details with Sozu's contract", async () => {
-    const loadStDusk = vi.fn(async () => 162_189_471n);
+  it("should say to the lux the stDUSK a stake with Sozu got, and the rate, from the facts the export reads, with Sozu's contract under Technical details", async () => {
+    const loadSozuFact = vi.fn(async () => ({
+      amount: 500_000_000n,
+      fee: 1_250_000n,
+      kind: /** @type {const} */ ("stake"),
+      pool: { stake: 8_142_876_697_294_578n, supply: 2_647_997_731_233_173n },
+      stDusk: 162_189_471n,
+    }));
     const stake = row({
       amount: "500000000",
       blockHeight: 4_692_418,
@@ -170,22 +176,28 @@ describe("TransactionDetail", () => {
     const { container, findByText, getByText } = show(
       stake,
       {},
-      { loadStDusk, network: "testnet" }
+      { loadSozuFact, network: "testnet" }
     );
 
     expect(getByText("Staked with Sozu")).toBeInTheDocument();
-    expect(await findByText("You got about")).toBeInTheDocument();
-    expect(mainList(container)).toContain("You got about 0.1621 stDUSK");
-    expect(mainList(container)).not.toContain("0.162189471");
-    expect(techList(container)).toContain("You got 0.162189471 stDUSK");
-    expect(loadStDusk).toHaveBeenCalledExactlyOnceWith(stake);
+    expect(await findByText("You got")).toBeInTheDocument();
+    expect(mainList(container)).toContain("You got 0.162189471 stDUSK");
+    // As the export says it: what one stDUSK was worth, to the lux.
+    expect(mainList(container)).toContain("Rate 1 stDUSK = 3.075107127 DUSK");
+    expect(loadSozuFact).toHaveBeenCalledExactlyOnceWith(stake);
     expect(mainList(container)).not.toContain(SOZU_POOL);
     expect(techList(container)).toContain("Sozu");
     expect(techList(container)).toContain(SOZU_POOL);
   });
 
-  it("should not look up stDUSK for a stake with Sozu that failed, nor for an unstake", async () => {
-    const loadStDusk = vi.fn(async () => 1n);
+  it("should say the stDUSK an unstake from Sozu gave back, and nothing of one that failed", async () => {
+    const loadSozuFact = vi.fn(async () => ({
+      amount: 200_000_000n,
+      fee: 0n,
+      kind: /** @type {const} */ ("unstake"),
+      pool: { stake: 3_000_000_000n, supply: 1_000_000_000n },
+      stDusk: 66_666_667n,
+    }));
     const call = {
       blockHeight: 4_692_418,
       contractId: SOZU_POOL,
@@ -195,15 +207,22 @@ describe("TransactionDetail", () => {
     show(
       row({ ...call, fnName: "sozu_stake", status: "failed" }),
       {},
-      {
-        loadStDusk,
-      }
+      { loadSozuFact }
     );
-    cleanup();
-    show(row({ ...call, fnName: "sozu_unstake" }), {}, { loadStDusk });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(loadStDusk).not.toHaveBeenCalled();
+    expect(loadSozuFact).not.toHaveBeenCalled();
+    cleanup();
+
+    const { container, findByText } = show(
+      row({ ...call, amount: "200000000", fnName: "sozu_unstake" }),
+      {},
+      { loadSozuFact }
+    );
+
+    expect(await findByText("You gave back")).toBeInTheDocument();
+    expect(mainList(container)).toContain("You gave back 0.066666667 stDUSK");
+    expect(mainList(container)).toContain("Rate 1 stDUSK = 3 DUSK");
   });
 
   it("should name the DuskEVM address a deposit went to", () => {
@@ -565,7 +584,7 @@ describe("TransactionDetail", () => {
     ).toBeNull();
   });
 
-  it("should hide the stDUSK a stake got with the balances, here and under Technical details", async () => {
+  it("should hide the stDUSK a stake got with the balances, not the rate, which says nothing of what's held", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
@@ -577,12 +596,21 @@ describe("TransactionDetail", () => {
           fnName: "sozu_stake",
         }),
         {},
-        { loadStDusk: async () => 162_189_471n, network: "testnet" }
+        {
+          loadSozuFact: async () => ({
+            amount: 500_000_000n,
+            fee: 1_250_000n,
+            kind: /** @type {const} */ ("stake"),
+            pool: { stake: 3_000_000_000n, supply: 1_000_000_000n },
+            stDusk: 162_189_471n,
+          }),
+          network: "testnet",
+        }
       );
 
-      expect(await findByText("You got about")).toBeInTheDocument();
+      expect(await findByText("You got")).toBeInTheDocument();
       expect(container.textContent).not.toContain("0.1621");
-      expect(container.textContent).not.toContain("0.162189471");
+      expect(container.textContent).toContain("1 stDUSK = 3 DUSK");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }

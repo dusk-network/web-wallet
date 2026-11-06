@@ -186,6 +186,15 @@ type WalletStoreServices = {
     options?: { active?: string; profile?: number }
   ) => Promise<void>;
 
+  /**
+   * Has something read with the balances and the stake each time they are,
+   * as Sozu's position: `read` gives what shows what it read, called as the
+   * balances show, or null for nothing to read. Gives what stops it.
+   */
+  readWithBalances: (
+    read: (profile: Profile) => Promise<(() => void) | null>
+  ) => () => void;
+
   /** The balances and the stake read again, as after a send. */
   refreshBalance: () => Promise<void>;
 

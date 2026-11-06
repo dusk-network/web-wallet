@@ -13,6 +13,7 @@
     sozuYear,
   } from "@dusk-network/app-core/sozu";
 
+  import { currentActivity } from "$lib/activity";
   import { contractLabel } from "$lib/activity/knownContracts";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
@@ -28,6 +29,7 @@
   import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
   import { formDraft, gasToKeep, keptGas, reviewStep } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
+  import { stDuskLines } from "$lib/sozu/facts";
   import {
     feePercent,
     leastSozuStake,
@@ -37,7 +39,9 @@
   import { ratePercent } from "$lib/staking/rewardRate";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
+  import AppAnchor from "../AppAnchor/AppAnchor.svelte";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
+  import Banner from "../Banner/Banner.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
   import TransactionResult from "../TransactionResult/TransactionResult.svelte";
   import StakeFlow from "./StakeFlow.svelte";
@@ -65,6 +69,15 @@
   /** @type {{ error: Error | null, loading: boolean, status: SozuStatus | null }} */
   export let sozu;
 
+  /**
+   * The stakes and unstakes with Sozu this profile sent that aren't in a
+   * block yet, as after a reload while one went: the balances read don't
+   * count them yet.
+   *
+   * @type {ActivityRow[]}
+   */
+  export let underWay = [];
+
   /** @type {"stake" | "unstake"} */
   export let action = "stake";
 
@@ -81,7 +94,7 @@
    * What the rate is made of: native staking's, about what it pays a year, and
    * what the node says of what's staked.
    *
-   * @type {{ native?: number | null, provisioners?: any[] | null, tipHeight?: bigint | null }}
+   * @type {{ growth?: import("@dusk-network/app-core/sozu").SozuGrowth | null, native?: number | null, provisioners?: any[] | null, tipHeight?: bigint | null }}
    */
   export let rates = {};
 
@@ -137,8 +150,69 @@
   let defaultGas = gas[action].settings;
   let isGasValid = false;
 
-  /** @type {{ maxFee: bigint, operation: Promise<string>, what: string } | null} */
+  /**
+   * What was sent: the most it costs, its hash to come, what it is, and what
+   * the chain says it did in stDUSK once its block is final.
+   *
+   * @type {{ action: "stake" | "unstake", lux: bigint, maxFee: bigint, operation: Promise<string>, pool: string, what: string } | null}
+   */
   let sent = null;
+
+  /** What what was sent did in stDUSK, as its Sent screen says it. */
+  /** @type {ReturnType<typeof stDuskLines>} */
+  let sentStDusk = [];
+
+  /** How long after the block is final it's looked for in the history again. */
+  const FACT_RETRIES_MS = [0, 5_000, 15_000];
+
+  /**
+   * Reads what was sent did in stDUSK, from the facts the export reads, once
+   * its block is final: the archive can take a moment more to list it. By
+   * the hash its screen followed, which a send whose answer got lost went
+   * out with too.
+   *
+   * @param {import("$lib/transactions/followTransaction").FinalTransaction} outcome
+   * @param {string} hash
+   */
+  async function readSentStDusk(outcome, hash) {
+    const shown = sent;
+
+    if (!shown || outcome.error || !hash) {
+      return;
+    }
+
+    const call = /** @type {ActivityRow} */ (
+      /** @type {unknown} */ ({
+        blockHeight: Number(outcome.blockHeight),
+        contractId: shown.pool,
+        hash,
+        source: "public",
+        sozu: shown.action,
+        status: "executed",
+        value: shown.lux,
+      })
+    );
+
+    for (const wait of FACT_RETRIES_MS) {
+      await new Promise((resolve) => setTimeout(resolve, wait));
+
+      if (isGone || sent !== shown) {
+        return;
+      }
+
+      const fact = (
+        await currentActivity()
+          ?.sozuFacts([call])
+          .catch(() => null)
+      )?.get(hash);
+
+      if (fact) {
+        sentStDusk = stDuskLines(fact, language);
+
+        return;
+      }
+    }
+  }
 
   /** Whether it failed with nothing sent: it can be tried again. */
   let canTryAgain = false;
@@ -182,6 +256,15 @@
       isReviewing = false;
     }
   }
+
+  /**
+   * What the rows of one kind move, together.
+   *
+   * @param {ActivityRow[]} rows
+   * @param {"stake" | "unstake"} kind
+   */
+  const sumOf = (rows, kind) =>
+    rows.reduce((sum, row) => (row.sozu === kind ? sum + row.value : sum), 0n);
 
   /** Back to the review of what failed with nothing sent. */
   function tryAgain() {
@@ -378,9 +461,13 @@
         order.gasLimit
       );
 
+      sentStDusk = [];
       sent = {
+        action: order.action,
+        lux: order.lux,
         maxFee: order.maxFee,
         operation,
+        pool,
         what:
           order.action === "stake"
             ? `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK to Sozu`
@@ -458,6 +545,12 @@
   // As low as the fee's Edit lets it go.
   $: leastFee = gasLimits.gasLimitLower * gasLimits.gasPriceLower;
   $: staked = status?.position.balance ?? 0n;
+  // What can go now: the public balance less the stakes on their way, and
+  // what's staked less the unstakes on their way.
+  $: leaving = sumOf(underWay, "stake");
+  $: free = availableBalance > leaving ? availableBalance - leaving : 0n;
+  $: coming = sumOf(underWay, "unstake");
+  $: unstakeable = staked > coming ? staked - coming : 0n;
   // The position, as the shared sums make it: what's put in and earned waits
   // for the whole history, and the rewards for each stake's deposit fee.
   $: held = sozuPosition({
@@ -475,9 +568,11 @@
       ? 0n
       : held.earned;
   // What it pays a year, once that's read, and the line of what that's made of.
-  $: yearly = sozuRate(rates.native, status);
+  // Measured: how stDUSK grew lately, where that's read.
+  $: yearly = sozuRate(rates.native, status, rates.growth);
   // Its numbers in the language's digits, among the line's English words.
   $: working = sozuRateLine({
+    growth: rates.growth,
     locale: englishWords(language),
     nativeRate: rates.native,
     provisioners: rates.provisioners,
@@ -491,10 +586,10 @@
   // all of it staked, there would be no way to pay for getting it back.
   $: unstakeFee = gas.unstake.settings.gasLimit * gas.unstake.settings.gasPrice;
   $: most = isStake
-    ? availableBalance > maxGasFee + unstakeFee
-      ? availableBalance - maxGasFee - unstakeFee
+    ? free > maxGasFee + unstakeFee
+      ? free - maxGasFee - unstakeFee
       : 0n
-    : staked;
+    : unstakeable;
   // A decimal comma, as the language or a phone's keyboard gives it, reads
   // as the amount meant.
   $: amount = readDuskInput(amountText, language);
@@ -502,11 +597,11 @@
   // no stake does. Less than an unstake's least burns no stDUSK.
   $: least = isStake
     ? leastSozuStake(status?.pool ?? null, depositRate)
-    : leastSozuUnstake(status?.pool ?? null, staked);
+    : leastSozuUnstake(status?.pool ?? null, unstakeable);
   $: checked = checkAmount({
     action,
     amount,
-    available: availableBalance,
+    available: free,
     fee: maxGasFee,
     hidden: hideBalances,
     keep: isStake ? unstakeFee : 0n,
@@ -516,7 +611,7 @@
     most: isStake
       ? undefined
       : {
-          amount: staked,
+          amount: unstakeable,
           error: "That's more than you have staked with Sozu.",
         },
     text: amountText,
@@ -528,9 +623,9 @@
   $: canSend = Boolean(status) && check.ok && isGasValid && !isStakeOff;
   // An unstake the public balance can't pay for, said before anything is typed.
   $: stranded =
-    !isStake && staked > 0n && availableBalance < maxGasFee
+    !isStake && unstakeable > 0n && free < maxGasFee
       ? feeError({
-          available: availableBalance,
+          available: free,
           fee: maxGasFee,
           hidden: hideBalances,
           leastFee,
@@ -552,7 +647,12 @@
   $: yearEarned =
     estimate === null || amount === null
       ? null
-      : sozuYear({ amount, nativeRate: rates.native, status }).earned;
+      : sozuYear({
+          amount,
+          growth: rates.growth,
+          nativeRate: rates.native,
+          status,
+        }).earned;
   $: isTypedOff = Boolean(check.error);
   $: total = isStake ? typedAmount + maxGasFee : maxGasFee;
   // The pool's name, as the network's file gives it.
@@ -566,9 +666,11 @@
 {#if sent}
   <div class="liquid-stake__done">
     <TransactionResult
+      extra={sentStDusk}
       leaveHref="/dashboard/stake"
       leaveText="Back to staking"
       maxFee={sent.maxFee}
+      onFinal={readSentStDusk}
       onRetry={tryAgain}
       operation={sent.operation}
       what={sent.what}
@@ -577,7 +679,7 @@
 {:else}
   <StakeFlow
     canReview={canSend}
-    isFeeShort={availableBalance >= leastFee && availableBalance < maxGasFee}
+    isFeeShort={free >= leastFee && free < maxGasFee}
     {isReviewing}
     on:back={() => {
       reviewHistory.leave();
@@ -601,6 +703,21 @@
         >
       </p>
     </div>
+
+    {#each underWay as row (row.hash)}
+      <Banner
+        className="liquid-stake__under-way"
+        role="status"
+        title={`Your ${hideBalances ? BALANCE_MASK : formatDuskExact(row.value, language)} DUSK ${row.sozu === "stake" ? "stake" : "unstake"} is on its way.`}
+        variant="info"
+      >
+        <AppAnchor
+          className="text-link"
+          href={`/dashboard/transactions?tx=${row.hash}`}
+          >See in History</AppAnchor
+        >
+      </Banner>
+    {/each}
 
     {#if isSyncing}
       <p class="liquid-stake__notice" role="status">
@@ -696,7 +813,7 @@
           </dd>
         </div>
       </dl>
-      {#if held.waiting}
+      {#if held.waiting && !underWay.length}
         <p class="liquid-stake__hint">
           {held.waiting === 1
             ? "One more on its way isn't counted yet."
@@ -769,13 +886,13 @@
         <p class="liquid-stake__hint" id="{id}-available">
           {#if isStake}
             Available <BalanceValue
-              exact={formatDuskExact(availableBalance, language)}
-              value={formatDusk(availableBalance, language)}
+              exact={formatDuskExact(free, language)}
+              value={formatDusk(free, language)}
             /> DUSK from your public balance
           {:else}
             Staked with Sozu <BalanceValue
-              exact={formatDuskExact(staked, language)}
-              value={formatDusk(staked, language)}
+              exact={formatDuskExact(unstakeable, language)}
+              value={formatDusk(unstakeable, language)}
             /> DUSK
           {/if}
         </p>
@@ -983,15 +1100,37 @@
         {/if}
       </GasSettings>
       <dl class="stake-flow__rows stake-flow__rows--total">
-        <div>
-          <dt>Total</dt>
-          <dd class:stake-flow__muted={isTypedOff}>
-            Up to <BalanceValue
-              hidden={isAmountMasked}
-              value={formatTotal(total, availableBalance, language)}
-            /> DUSK
-          </dd>
-        </div>
+        {#if isStake}
+          <div>
+            <dt>Total</dt>
+            <dd class:stake-flow__muted={isTypedOff}>
+              Up to <BalanceValue
+                hidden={isAmountMasked}
+                value={formatTotal(total, free, language)}
+              /> DUSK
+            </dd>
+          </div>
+        {:else}
+          <!-- What an unstake brings back once the fee's paid, at the most it costs. -->
+          <div>
+            <dt>Back after the fee</dt>
+            <dd class:stake-flow__muted={isTypedOff}>
+              {#if typedAmount === 0n}
+                —
+              {:else if typedAmount > maxGasFee}
+                At least <BalanceValue
+                  hidden={isAmountMasked}
+                  value={formatDuskExact(typedAmount - maxGasFee, language)}
+                /> DUSK
+              {:else}
+                Up to <BalanceValue
+                  hidden={isAmountMasked}
+                  value={formatDuskExact(typedAmount, language)}
+                /> DUSK
+              {/if}
+            </dd>
+          </div>
+        {/if}
       </dl>
       {#if termsError}
         <p class="liquid-stake__error" role="alert">
@@ -999,6 +1138,13 @@
         </p>
       {/if}
       {#if isReviewing}
+        {#if !isStake && typedAmount > 0n && typedAmount <= maxGasFee}
+          <p class="stake-flow__final">
+            The network fee, up to <BalanceValue
+              value={formatFee(maxGasFee, language, { max: true })}
+            /> DUSK, can be more than what comes back.
+          </p>
+        {/if}
         {#if isStake && depositFee !== 0n}
           <p class="stake-flow__final">
             {#if depositRate && depositFee !== null}

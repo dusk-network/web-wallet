@@ -9,8 +9,9 @@
     mdiQrcodeScan,
   } from "@mdi/js";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
+  import { lookAlikes } from "@dusk-network/app-core/names";
   import {
-    contactCalled,
+    contactNameProblem,
     contactsStore,
     markContactNameChecked,
     markContactNameMoved,
@@ -32,14 +33,19 @@
     pageTitle,
     reviewStep,
   } from "$lib/navigation";
-  import { onTheirWay, sentAlready } from "$lib/activity/sends";
+  import { sentAlready } from "@dusk-network/app-core/requests";
+  import { onTheirWay } from "$lib/activity/sends";
   import { dayLabel, timeLabel } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
   import { readPaymentLink } from "$lib/payment-requests";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
-  import { openWalletName, walletAccountNames } from "$lib/wallets";
+  import {
+    openWalletName,
+    profilesHere,
+    walletAccountNames,
+  } from "$lib/wallets";
   import {
     formatDusk,
     formatDuskExact,
@@ -761,8 +767,8 @@
   function saveRecipient() {
     const name = contactName.trim();
 
-    // Never one of the wallet's own accounts.
-    if (name && !own && !isFalseContactName) {
+    // Never one of the wallet's own accounts, nor a profile's name.
+    if (name && !own && !isFalseContactName && !contactNameIssue?.refused) {
       saveContact({
         address: recipientAddress,
         checkedAt: recipientName ? Date.now() : null,
@@ -1089,8 +1095,10 @@
       ? asDuskName(sendToAddress)
       : null;
 
+  // Nothing is said of an empty field: Review stays off until there's one.
   $: isRecipientInvalid =
     isRecipientChecked &&
+    sendToAddress !== "" &&
     !recipientName &&
     !addressInfo.isValid &&
     !bareName &&
@@ -1145,6 +1153,10 @@
   // entered.
   $: walletAccount = $walletAccountNames.get(recipientAddress) ?? "";
   $: contacts = $contactsStore;
+
+  // Contacts whose names look like another's, a profile's or a contact's of
+  // another address: each shows its address, and says so.
+  $: alike = lookAlikes([...$profilesHere, ...contacts]);
 
   // The contact the `.dusk` name entered is saved for: the name is checked
   // against its address.
@@ -1204,6 +1216,7 @@
   }
 
   $: isFalseContactName = passesForDuskName(contactName, recipientName);
+  $: contactNameIssue = contactNameProblem(contactName, $profilesHere);
 
   $: suggestion =
     nameLookup?.error === "not-registered"
@@ -1298,6 +1311,8 @@
         to: recipientAddress,
       })
     : null;
+  // Said on the button too, which then sends it again.
+  $: isRepeat = Boolean(madeAgain && madeAgain.time !== null);
   $: isAmountMasked = hideBalances && isMaxAmount;
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
@@ -1409,9 +1424,12 @@
             <option value="">Choose a contact…</option>
             {#each contacts as option (option.id)}
               <option value={option.id}
-                >{option.name} · {option.movedTo === undefined
+                >{option.name} · {option.movedTo === undefined &&
+                !alike.has(option)
                   ? (option.duskName ?? shortenAddress(option.address))
-                  : shortenAddress(option.address)}</option
+                  : shortenAddress(option.address)}{alike.has(option)
+                  ? " · name looks like another"
+                  : ""}</option
               >
             {/each}
           </select>
@@ -1439,7 +1457,7 @@
               type="button"
               >Your contact {named.name} · {shortenAddress(
                 named.address
-              )}</button
+              )}{alike.has(named) ? " · name looks like another" : ""}</button
             >
           {/each}
         {:else if bareName}
@@ -1672,7 +1690,9 @@
                     variant="secondary"
                   />
                   <Button
-                    disabled={!contactName.trim() || isFalseContactName}
+                    disabled={!contactName.trim() ||
+                      isFalseContactName ||
+                      contactNameIssue?.refused}
                     text="Save"
                     type="submit"
                     variant="primary"
@@ -1683,11 +1703,9 @@
                   <p class="send__hint" role="alert">
                     That looks like a .dusk name. Choose another name.
                   </p>
-                {:else if contactCalled(contactName)}
+                {:else if contactNameIssue}
                   <p class="send__hint" role="alert">
-                    You already have a contact called {contactCalled(
-                      contactName
-                    )?.name}. Only the address will tell them apart.
+                    {contactNameIssue.words}
                   </p>
                 {/if}
                 <p class="send__hint">
@@ -1936,17 +1954,18 @@
       {/if}
       {#if step === "review"}
         <!-- A step of its own: nothing goes before it, and Send, new with it,
-          takes no click meant for Review. -->
-        <Button
-          className="send__send"
-          confirm
-          disabled={!canSend}
-          on:click={send}
-          text={sendAmountInLux > 0n
-            ? `Send ${isAmountMasked ? BALANCE_MASK : amountText} DUSK`
-            : "Send"}
-          variant="primary"
-        />
+          takes no click meant for Review. A payment made already, found while
+          it shows, makes it anew: Send again takes no click meant for Send. -->
+        {#key isRepeat}
+          <Button
+            className="send__send"
+            confirm
+            disabled={!canSend}
+            on:click={send}
+            text={`Send${sendAmountInLux > 0n ? ` ${isAmountMasked ? BALANCE_MASK : amountText} DUSK` : ""}${isRepeat ? " again" : ""}`}
+            variant="primary"
+          />
+        {/key}
         <p class="send__final">Sends can't be undone.</p>
         <Button
           className="send__back"

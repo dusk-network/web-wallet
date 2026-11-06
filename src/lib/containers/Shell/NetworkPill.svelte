@@ -1,4 +1,6 @@
 <script>
+  import { pushState } from "$app/navigation";
+  import { page } from "$app/stores";
   import { mdiChevronDown } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import { SyncBar } from "$lib/components";
@@ -9,33 +11,107 @@
 
   let open = false;
 
+  /** Whether the browser says it's offline: said at once, before a sync fails. */
+  let isOffline =
+    typeof navigator !== "undefined" && navigator.onLine === false;
+
   $: ({ networkName } = $networkStore);
   $: ({ syncStatus } = $walletStore);
   $: label = networkLabel(networkName);
-  $: state = syncStatus.error
-    ? "error"
-    : syncStatus.isInProgress
-      ? "syncing"
-      : "synced";
+  $: state = isOffline
+    ? "offline"
+    : syncStatus.error
+      ? "error"
+      : syncStatus.isInProgress
+        ? "syncing"
+        : "synced";
   $: stateText =
-    state === "error"
-      ? "Sync failed"
-      : state === "syncing"
-        ? `Syncing${syncStatus.progress ? ` ${Math.round(syncStatus.progress * 100)}%` : ""}`
-        : "In sync";
+    state === "offline"
+      ? "Offline"
+      : state === "error"
+        ? "Sync failed"
+        : state === "syncing"
+          ? `Syncing${syncStatus.progress ? ` ${Math.round(syncStatus.progress * 100)}%` : ""}`
+          : "In sync";
 
   function retry() {
     walletStore.sync().catch(() => {});
   }
+
+  /**
+   * Opens the panel, as a step of its own in the browser's history, as the
+   * profile menu does: phone Back closes it, and leaves the page as it was.
+   */
+  function openPanel() {
+    open = true;
+
+    // After Forward the history is at the panel's step already.
+    if (!$page?.state?.networkPanel) {
+      pushState("", { ...$page?.state, networkPanel: true });
+    }
+  }
+
+  /** Closes the panel, and its step in the history goes. */
+  function closePanel() {
+    const wasOpen = open;
+
+    open = false;
+
+    if (wasOpen && $page?.state?.networkPanel) {
+      history.back();
+    }
+  }
+
+  /** Whether the history was at the panel's step. */
+  let wasAtPanel = false;
+
+  /**
+   * Back closes the panel, and nothing else.
+   *
+   * @param {boolean} isAtPanel
+   */
+  function followHistory(isAtPanel) {
+    if (wasAtPanel && !isAtPanel) {
+      open = false;
+    }
+
+    wasAtPanel = isAtPanel;
+  }
+
+  /** The page the panel opened on. */
+  let shownHref = "";
+
+  /**
+   * Any navigation closes the panel: it would stay over the next page.
+   *
+   * @param {string} href
+   */
+  function followPage(href) {
+    if (href !== shownHref) {
+      shownHref = href;
+      open = false;
+    }
+  }
+
+  $: followPage(String($page?.url ?? ""));
+  $: followHistory(Boolean($page?.state?.networkPanel));
 </script>
+
+<svelte:window
+  on:offline={() => {
+    isOffline = true;
+  }}
+  on:online={() => {
+    isOffline = false;
+  }}
+/>
 
 <div
   class="network-pill"
   use:handlePageClick={{
-    callback: () => {
-      open = false;
-    },
+    callback: closePanel,
     enabled: open,
+    swallow: true,
   }}
 >
   <button
@@ -44,11 +120,15 @@
     aria-label={`Network: ${label}, ${stateText.toLowerCase()}`}
     class="network-pill__button"
     on:click={() => {
-      open = !open;
+      if (open) {
+        closePanel();
+      } else {
+        openPanel();
+      }
     }}
     on:keydown={(event) => {
       if (event.key === "Escape") {
-        open = false;
+        closePanel();
       }
     }}
     type="button"
@@ -73,8 +153,13 @@
           progress={syncStatus.progress}
         />
       {/if}
-      {#if state === "error"}
+      {#if state === "offline"}
+        <p class="network-pill__error">
+          Your balance may be out of date until you're back online.
+        </p>
+      {:else if state === "error"}
         <p class="network-pill__error">{syncStatus.error?.message}</p>
+        <p class="network-pill__error">Your balance may be out of date.</p>
         <Button on:click={retry} size="small" text="Try again" />
       {/if}
     </div>
@@ -126,7 +211,8 @@
       animation: network-pill-pulse 1.6s ease-in-out infinite;
     }
 
-    &--error {
+    &--error,
+    &--offline {
       background: var(--calm-danger);
     }
   }
@@ -220,7 +306,8 @@
   .network-pill__state {
     color: var(--calm-muted);
 
-    &--error {
+    &--error,
+    &--offline {
       color: var(--calm-danger);
     }
   }

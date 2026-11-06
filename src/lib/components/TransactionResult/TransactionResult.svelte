@@ -53,6 +53,21 @@
    */
   export let operation;
 
+  /**
+   * Told what the chain says once the block with it is final, and its hash:
+   * the one it went out with, also where the send's answer got lost.
+   *
+   * @type {(outcome: import("$lib/transactions/followTransaction").FinalTransaction, hash: string) => void}
+   */
+  export let onFinal = () => {};
+
+  /**
+   * More of what it did, said with its fee once it's known.
+   *
+   * @type {{ hidden: boolean, term: string, unit: string, value: string }[]}
+   */
+  export let extra = [];
+
   function handleGoHomeClick() {
     onBeforeLeave?.();
   }
@@ -100,7 +115,15 @@
   waitFor={shown}
 >
   <svelte:fragment slot="success-content" let:result={{ hash, unconfirmed }}>
-    <TransactionStatus {hash} {maxFee} {memo} {unconfirmed} {what} />
+    <TransactionStatus
+      {extra}
+      {hash}
+      {maxFee}
+      {memo}
+      {onFinal}
+      {unconfirmed}
+      {what}
+    />
     {#if hash && hasHistory}
       <AppAnchorButton
         className="transaction-result__button"

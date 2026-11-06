@@ -26,13 +26,18 @@
 .address-picker__title,
 .address-picker__name,
 .address-picker__account,
-.address-picker__profile-header,
-.address-picker__address-name,
 .address-picker__address-value {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* In the menu, a tap from the pill, a name shows whole: on a second line too. */
+.address-picker__profile-header,
+.address-picker__address-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .address-picker__name {
@@ -330,14 +335,12 @@
 
 .address-picker__wallet-title {
   display: block;
-  overflow: hidden;
   padding: 0.25em 0.75em 0;
   color: var(--calm-muted);
   font-size: 0.75em;
   font-weight: 500;
   letter-spacing: 0.02em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .address-picker__wallet-profiles {

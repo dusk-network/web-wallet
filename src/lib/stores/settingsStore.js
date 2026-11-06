@@ -1,3 +1,4 @@
+import { defaultCurrency } from "@dusk-network/app-core/amounts";
 import { writable } from "svelte/store";
 import { browser } from "$app/environment";
 
@@ -17,12 +18,16 @@ export const deserializeProperty = (/** @type {string} */ value) =>
 // --- End of Utilities ---
 // =========================
 
+// Euros where the browser's region uses the euro, else dollars: only to
+// start with, as a currency chosen stays.
 const browserDefaults = browser
   ? {
+      currency: defaultCurrency(navigator.language),
       darkMode: window.matchMedia("(prefers-color-scheme: dark)").matches,
       language: navigator.language,
     }
   : {
+      currency: "USD",
       darkMode: false,
       language: "en",
     };
@@ -42,7 +47,6 @@ const initialState = {
   // Minutes without activity before a wallet with a password locks, or 0
   // to never lock it.
   autoLockMinutes: 15,
-  currency: "USD",
 
   // A gas limit and a gas price the user set for every operation, or `null`
   // for each operation's own default limit and the node's price: see

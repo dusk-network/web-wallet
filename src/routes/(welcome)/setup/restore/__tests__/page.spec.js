@@ -293,7 +293,7 @@ describe("Restore", async () => {
   it("should say it's ready to sync, as a new wallet does, with the block it starts at under Advanced", async () => {
     await vault.setUp(mnemonic, pwd);
 
-    const { container, getByLabelText, getByRole } = render(Restore);
+    const { container, getByLabelText, getByRole, getByText } = render(Restore);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await pasteInto(getByLabelText("Word 1"), mnemonic);
@@ -303,6 +303,12 @@ describe("Restore", async () => {
     await vi.waitFor(() => expect(vault.exists()).toBe(false));
 
     expect(getByRole("heading", { name: "Ready to sync" })).toBeInTheDocument();
+    // What syncing does, in a line.
+    expect(
+      getByText(
+        "Next, the wallet syncs with the network to find your balance and past payments."
+      )
+    ).toBeInTheDocument();
 
     const advanced = /** @type {HTMLDetailsElement} */ (
       container.querySelector("details")

@@ -14,6 +14,7 @@ import { settingsStore, walletStore } from "$lib/stores";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 
 import Staking from "../+page.svelte";
+import { networks } from "@dusk-network/networks";
 
 const page = vi.hoisted(() => ({
   url: new URL("http://localhost/some-base-path/dashboard/stake"),
@@ -54,8 +55,19 @@ vi.mock("$lib/stores", async (importOriginal) => {
 });
 
 const history = vi.hoisted(() => ({
+  refresh: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
   state: null,
+}));
+
+// A transaction's block never final, unless a test says otherwise.
+const { followTransaction } = vi.hoisted(() => ({
+  followTransaction: vi.fn(() => new Promise(() => {})),
+}));
+
+vi.mock("$lib/transactions", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  followTransaction,
 }));
 
 vi.mock("$lib/activity", async (importOriginal) => {
@@ -72,7 +84,11 @@ vi.mock("$lib/activity", async (importOriginal) => {
     syncing: false,
   });
 
-  return { ...original, activityState: history.state };
+  return {
+    ...original,
+    activityState: history.state,
+    currentActivity: () => ({ refresh: history.refresh }),
+  };
 });
 
 /** About what native staking pays a year, as the node's provisioners say. */
@@ -103,6 +119,8 @@ const SOZU_STATUS = {
 const sozu = vi.hoisted(() => ({
   /** @type {import("vitest").Mock<() => Promise<any>>} */
   check: vi.fn(async () => null),
+  /** How Sozu's stDUSK grew lately, as read; null for not read. */
+  growth: /** @type {any} */ (null),
   load: vi.fn(() => Promise.resolve()),
   readAfter: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
@@ -124,6 +142,7 @@ vi.mock("$lib/sozu", async (importOriginal) => {
 
   return {
     ...original,
+    readSozuGrowth: vi.fn(async () => sozu.growth),
     sozuStore: {
       check: sozu.check,
       load: sozu.load,
@@ -373,6 +392,51 @@ describe("Staking", () => {
         rates.native = null;
         cleanup();
       }
+    }
+  });
+
+  it("gives Sozu's rate from how its stDUSK grew lately once that's read, the same on the overview and on its form", async () => {
+    rates.native = 0.235;
+    // 3 DUSK a stDUSK to 3.1 in 30 days: about 40% a year.
+    sozu.growth = {
+      days: 30,
+      from: { at: 0, height: 1_000, stake: 3_000_000n, supply: 1_000_000n },
+      rate: 0.4,
+      to: { at: 0, height: 2_000, stake: 3_100_000n, supply: 1_000_000n },
+    };
+
+    try {
+      const overview = render(Staking);
+
+      await act(() =>
+        sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS }))
+      );
+      await vi.waitFor(() =>
+        expect(
+          textOf(
+            overview.container
+              .querySelector("table.compare")
+              ?.querySelector("tbody tr:nth-child(3) td:nth-child(3)") ?? null
+          )
+        ).toMatch(/^About 40% a year after Sozu's 10%\./)
+      );
+      overview.unmount();
+
+      open("?flow=liquid");
+
+      const { container } = render(Staking);
+
+      await vi.waitFor(() =>
+        expect(
+          textOf(container.querySelector(".liquid-stake__facts"))
+        ).toContain(
+          "About 40% a year. Not promised. stDUSK went from 3.0000 to 3.1000 DUSK over the last 30 days, after Sozu's share."
+        )
+      );
+    } finally {
+      rates.native = null;
+      sozu.growth = null;
+      open("");
     }
   });
 
@@ -746,6 +810,77 @@ describe("Staking", () => {
     startHistory.mockRestore();
   });
 
+  it("says what's on its way to Sozu after a reload, and once its block is final, reads the history, the balances with Sozu and the form's position again", async () => {
+    /** @type {(final: unknown) => void} */
+    let final = () => {};
+
+    followTransaction.mockReturnValueOnce(
+      new Promise((resolve) => {
+        final = resolve;
+      })
+    );
+
+    const refresh = vi
+      .spyOn(walletStore, "refreshBalance")
+      .mockResolvedValue(undefined);
+    const whole = vi.fn(async () => ({ rows: [], shieldedWaiting: false }));
+
+    vi.spyOn(walletStore, "startHistory").mockReturnValue(
+      /** @type {any} */ ({ sozuFacts: async () => new Map(), whole })
+    );
+
+    open("?flow=liquid");
+    withoutStake();
+    await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
+    await act(() =>
+      history.state?.update((state) => ({
+        ...state,
+        rows: [
+          rowOf(
+            {
+              amount: "100000000",
+              contractId: POOL,
+              fnName: "sozu_stake",
+              hash: "f1".repeat(32),
+              kind: "contract_call",
+              privacy: "public",
+              source: "local",
+              status: "submitted",
+              submittedAt: Date.now(),
+              to: POOL,
+            },
+            // Testnet's pool.
+            { network: networks.testnet }
+          ),
+        ],
+      }))
+    );
+
+    const { container, getByText } = render(Staking);
+
+    expect(textOf(container.querySelector(".liquid-stake__under-way"))).toMatch(
+      /^Your 0\.1 DUSK stake is on its way\./
+    );
+    expect(
+      getByText(/^Available/, { selector: ".liquid-stake__hint" })
+    ).toHaveTextContent("Available 171.9 DUSK from your public balance");
+    expect(followTransaction).toHaveBeenCalledExactlyOnceWith("f1".repeat(32));
+
+    // The form read its position as it opened.
+    await vi.waitFor(() => expect(whole).toHaveBeenCalledOnce());
+    sozu.load.mockClear();
+    whole.mockClear();
+    final({ blockHeight: 1n, error: null, fee: 1n, timestamp: null });
+
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
+    expect(history.refresh).toHaveBeenCalled();
+    // Sozu comes with the balances, shown together: never read alone, for
+    // Home to count a stake once, with the public balance it left.
+    expect(sozu.load).not.toHaveBeenCalled();
+    // And again, from the history once it's read again.
+    await vi.waitFor(() => expect(whole).toHaveBeenCalledOnce());
+  });
+
   it("stakes with Sozu from liquid staking", async () => {
     open("?flow=liquid");
     await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
@@ -770,9 +905,13 @@ describe("Staking", () => {
 
     await fireEvent.click(getByRole("tab", { name: "Unstake" }));
 
-    // An unstake's: up to 10,000,000, as it can touch more provisioners.
+    // An unstake's: up to 10,000,000, as it can touch more provisioners,
+    // paid from what comes back.
     expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
-      "Total Up to 0.01 DUSK"
+      "Back after the fee —"
+    );
+    expect(textOf(container.querySelector(".gas-settings"))).toContain(
+      "0.01 DUSK"
     );
   });
 

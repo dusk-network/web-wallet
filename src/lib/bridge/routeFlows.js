@@ -148,19 +148,21 @@ export async function revokeApproval({
 
 /**
  * Approves the exact amount for the migration contract, when it may take
- * less, and waits for the approval to go through.
+ * less, and waits for the approval to go through: its hash, or undefined for
+ * an approval there already.
  *
  * @param {import("./cardRoutes").CardRoute & { kind: "migration" }} route
  * @param {`0x${string}`} owner
  * @param {bigint} amountLux
  * @param {() => void} onApproving
  * @param {() => void} stillOpen Throws once the wallet it's for isn't open
+ * @returns {Promise<`0x${string}` | undefined>}
  */
 async function approveIfShort(route, owner, amountLux, onApproving, stillOpen) {
   const { chainId, name, token } = route.chain;
 
   if (await isApproved(route, owner, amountLux)) {
-    return;
+    return undefined;
   }
 
   stillOpen();
@@ -182,6 +184,8 @@ async function approveIfShort(route, owner, amountLux, onApproving, stillOpen) {
   if (approved.status !== "success") {
     throw new Error(`The approval didn't go through on ${name}.`);
   }
+
+  return hash;
 }
 
 /**
@@ -221,7 +225,8 @@ export async function sendMigration({
   await sendPasswordFor(amountLux, get(walletStore).walletKey);
   stillOpen();
 
-  await approveIfShort(
+  // Kept with it: its gas is read with the migration's, at any age.
+  const approval = await approveIfShort(
     route,
     owner,
     amountLux,
@@ -244,6 +249,7 @@ export async function sendMigration({
   rememberMigration(
     {
       amountLux: String(amountLux),
+      ...(approval ? { approval } : {}),
       createdAt: Date.now(),
       hash,
       recipient,
@@ -265,13 +271,7 @@ export async function sendMigration({
     throw new Error(`The migration didn't go through on ${name}.`);
   }
 
-  markMigrationConfirmed(
-    hash,
-    scope,
-    migrated.gasUsed && migrated.effectiveGasPrice
-      ? migrated.gasUsed * migrated.effectiveGasPrice
-      : undefined
-  );
+  markMigrationConfirmed(hash, scope);
 
   return hash;
 }

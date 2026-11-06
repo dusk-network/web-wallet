@@ -23,6 +23,20 @@ vi.mock("$lib/transactions", async (importOriginal) => ({
   followTransaction,
 }));
 
+// The history of the profile, as the facts the export reads come from it.
+const activity = vi.hoisted(() => ({
+  refresh: vi.fn(async () => {}),
+  sozuFacts:
+    /** @type {import("vitest").Mock<(rows: any[]) => Promise<Map<string, any>>>} */ (
+      vi.fn(async () => new Map())
+    ),
+}));
+
+vi.mock("$lib/activity", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  currentActivity: () => activity,
+}));
+
 const HASH = "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
 const POOL = "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
 const DUSK = 1_000_000_000n;
@@ -440,6 +454,130 @@ describe("LiquidStake", () => {
     await fireEvent.click(getByRole("button", { name: "Unstake 1 DUSK" }));
 
     expect(await findByText("1 DUSK from Sozu")).toBeInTheDocument();
+  });
+
+  it("says on the Sent screen the stDUSK a stake got, and the rate, once its block is final, from the facts the export reads", async () => {
+    // Its block is final at once.
+    followTransaction.mockResolvedValueOnce(
+      /** @type {any} */ ({
+        blockHeight: 4_700_123n,
+        error: null,
+        fee: 4_419_010n,
+        timestamp: null,
+      })
+    );
+    activity.sozuFacts
+      // The archive doesn't list it yet, then does.
+      .mockResolvedValueOnce(new Map())
+      .mockImplementationOnce(async (/** @type {any[]} */ [call]) => {
+        expect(call).toMatchObject({
+          blockHeight: 4_700_123,
+          contractId: POOL,
+          hash: HASH,
+          sozu: "stake",
+          value: 100n * DUSK,
+        });
+
+        return new Map([
+          [
+            HASH,
+            {
+              amount: 100n * DUSK,
+              fee: DUSK / 4n,
+              kind: "stake",
+              pool: { stake: 3n * DUSK, supply: DUSK },
+              stDusk: 33_250_000_000n,
+            },
+          ],
+        ]);
+      });
+    // The button takes a click half a second after it shows, and the archive
+    // is asked again a moment later: on this clock.
+    vi.useFakeTimers({ toFake: ["performance", "setTimeout"] });
+
+    const { findByText, getByLabelText, getByRole } = render(
+      LiquidStake,
+      baseProps
+    );
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await afterConfirmDelay();
+    await fireEvent.click(
+      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+    );
+
+    expect(await findByText(/^Sent at/)).toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    const details = /** @type {HTMLElement} */ (
+      document.querySelector(".transaction-status__details")
+    );
+
+    expect(textOf(details)).toContain("You got 33.25 stDUSK");
+    expect(textOf(details)).toContain("Rate 1 stDUSK = 3 DUSK");
+    activity.sozuFacts.mockReset();
+    activity.sozuFacts.mockResolvedValue(new Map());
+  });
+
+  it("says the stDUSK a stake got on its Sent screen also when the send's answer got lost, by the hash it went out with", async () => {
+    // Handed over, with no answer: the hash it may have gone out with.
+    baseProps.execute.mockRejectedValueOnce(
+      outcomeUnknown(new TypeError("Failed to fetch"), HASH)
+    );
+    followTransaction.mockResolvedValueOnce(
+      /** @type {any} */ ({
+        blockHeight: 4_700_123n,
+        error: null,
+        fee: 4_419_010n,
+        timestamp: null,
+      })
+    );
+    activity.sozuFacts.mockImplementationOnce(
+      async (/** @type {any[]} */ [call]) =>
+        new Map([
+          [
+            call.hash,
+            {
+              amount: 100n * DUSK,
+              fee: DUSK / 4n,
+              kind: "stake",
+              pool: { stake: 3n * DUSK, supply: DUSK },
+              stDusk: 33_250_000_000n,
+            },
+          ],
+        ])
+    );
+    vi.useFakeTimers({ toFake: ["performance", "setTimeout"] });
+
+    const { findByText, getByLabelText, getByRole } = render(
+      LiquidStake,
+      baseProps
+    );
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await afterConfirmDelay();
+    await fireEvent.click(
+      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+    );
+
+    expect(await findByText(/^Sent at/)).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(activity.sozuFacts).toHaveBeenCalledWith([
+      expect.objectContaining({ hash: HASH }),
+    ]);
+    expect(
+      textOf(document.querySelector(".transaction-status__details"))
+    ).toContain("You got 33.25 stDUSK");
+    activity.sozuFacts.mockReset();
+    activity.sozuFacts.mockResolvedValue(new Map());
   });
 
   it("refuses an unstake too small to burn any stDUSK, saying the least, unless it's all there is", async () => {
@@ -919,6 +1057,62 @@ describe("LiquidStake", () => {
       ).toBeInTheDocument();
     });
 
+    it("says what's on its way, as after a reload while it went, and leaves it out of what can be staked or unstaked", async () => {
+      const going = [
+        call({
+          hash: "a4",
+          source: "sent",
+          status: "pending",
+          value: DUSK / 10n,
+        }),
+        call({
+          hash: "a5",
+          source: "sent",
+          sozu: "unstake",
+          status: "pending",
+          value: 2n * DUSK,
+        }),
+      ];
+      const { container, getByRole, getByText, queryByText } = render(
+        LiquidStake,
+        {
+          ...baseProps,
+          ...held,
+          history: { reading: false, rows: going, whole: true },
+          underWay: going,
+        }
+      );
+
+      expect(
+        Array.from(
+          container.querySelectorAll(".liquid-stake__under-way"),
+          (banner) => textOf(banner)
+        )
+      ).toStrictEqual([
+        "Your 0.1 DUSK stake is on its way. See in History",
+        "Your 2 DUSK unstake is on its way. See in History",
+      ]);
+      expect(queryByText(/more on its way/)).toBeNull();
+
+      // 172 DUSK less the 0.1 on its way.
+      expect(
+        getByText(/^Available/, { selector: ".liquid-stake__hint" })
+      ).toHaveTextContent("Available 171.9 DUSK from your public balance");
+
+      // 100 DUSK less the 2 on their way back.
+      await fireEvent.click(getByRole("tab", { name: "Unstake" }));
+
+      expect(
+        getByText(/^Staked with Sozu/, { selector: ".liquid-stake__hint" })
+      ).toHaveTextContent("Staked with Sozu 98 DUSK");
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(getByRole("textbox", { name: "Unstake amount" })).toHaveValue(
+        "98"
+      );
+    });
+
     it("waits for the whole history for what it can't say from part of it, and shows what the status says all the same", () => {
       const reading = render(LiquidStake, {
         ...baseProps,
@@ -969,10 +1163,11 @@ describe("LiquidStake", () => {
 
     it.each([
       ["hi-IN", "20.7Cr DUSK staked now"],
-      ["de-DE", "206,9M DUSK staked now"],
+      ["de-DE", "206,9 Mio. DUSK staked now"],
+      ["fr-FR", "206,9 M DUSK staked now"],
       ["en-GB", "206.9M DUSK staked now"],
     ])(
-      "writes what's staked in %s's digits among the line's English words",
+      "writes what's staked in %s's digits among the line's English words, in its own short words where they're in Latin letters",
       (language, staked) => {
         settingsStore.update((store) => ({ ...store, language }));
 
@@ -989,8 +1184,8 @@ describe("LiquidStake", () => {
           });
           const facts = textOf(container.querySelector(".liquid-stake__facts"));
 
-          expect(facts).toContain(staked);
-          expect(facts).not.toMatch(/[\u0900-\u097f]|Mio\./);
+          expect(facts?.replace(/\s/g, " ")).toContain(staked);
+          expect(facts).not.toMatch(/[\u0900-\u097f]/);
         } finally {
           settingsStore.reset();
         }
@@ -1021,6 +1216,42 @@ describe("LiquidStake", () => {
       ).toMatch(
         /At today's rate that's about 20\.\d+ DUSK in rewards a year, after Sozu's share and the deposit fee\.$/
       );
+    });
+
+    it("gives the rate, its line and a year's rewards from how stDUSK grew lately, once that's read", async () => {
+      const { container, getByLabelText } = render(LiquidStake, {
+        ...baseProps,
+        rates: {
+          // 3 DUSK a stDUSK to 3.1 in 30 days: about 40% a year, not the
+          // native rate's.
+          growth: {
+            days: 30,
+            from: {
+              at: 0,
+              height: 1_000,
+              stake: 3_000_000n,
+              supply: 1_000_000n,
+            },
+            rate: 0.4,
+            to: { at: 0, height: 2_000, stake: 3_100_000n, supply: 1_000_000n },
+          },
+          native: 0.9,
+          provisioners: [{ amount: { value: 206_900_000n * DUSK } }],
+          tipHeight: 1_000_000n,
+        },
+      });
+
+      expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
+        "About 40% a year. Not promised. stDUSK went from 3.0000 to 3.1000 DUSK over the last 30 days, after Sozu's share."
+      );
+
+      await fireEvent.input(getByLabelText("Stake amount"), {
+        target: { value: "100" },
+      });
+
+      expect(
+        textOf(container.querySelector(".liquid-stake__estimate"))
+      ).toMatch(/about 39\.\d+ DUSK in rewards a year/);
     });
 
     it("says nothing of the rate before it's read", () => {
@@ -1075,7 +1306,8 @@ describe("LiquidStake", () => {
       "Back to Your public balance, in the same transaction",
       "Sozu's fee No unstake fee",
       "Fee paid from Public balance",
-      "Total Up to 0.01 DUSK",
+      // What comes back once the fee's paid, at the most it costs.
+      "Back after the fee At least 14.99 DUSK",
     ]);
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1153,14 +1385,15 @@ describe("LiquidStake", () => {
     );
   });
 
-  it("takes each action's own gas: a tab's default follows the tab", async () => {
-    const { container, getByLabelText, getByRole } = render(LiquidStake, {
-      ...baseProps,
-      sozu: {
-        ...baseProps.sozu,
-        status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
-      },
-    });
+  it("takes each action's own gas: a tab's default follows the tab, and says what an unstake brings back after its fee", async () => {
+    const { container, getByLabelText, getByRole, getByText, queryByText } =
+      render(LiquidStake, {
+        ...baseProps,
+        sozu: {
+          ...baseProps.sozu,
+          status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
+        },
+      });
     const total = () =>
       textOf(container.querySelector(".stake-flow__rows--total"));
 
@@ -1175,9 +1408,31 @@ describe("LiquidStake", () => {
       target: { value: "1" },
     });
 
-    expect(total()).toBe("Total Up to 0.01 DUSK");
+    expect(total()).toBe("Back after the fee At least 0.99 DUSK");
+
+    // So small the fee can take more than comes back: said on the review.
+    await fireEvent.input(getByLabelText("Unstake amount"), {
+      target: { value: "0.005" },
+    });
+
+    expect(total()).toBe("Back after the fee Up to 0.005 DUSK");
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(
+      getByText(
+        "The network fee, up to 0.01 DUSK, can be more than what comes back."
+      )
+    ).toBeInTheDocument();
+
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+    await fireEvent.input(getByLabelText("Unstake amount"), {
+      target: { value: "1" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(queryByText(/can be more than what comes back/)).toBeNull();
+
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Unstake 1 DUSK" }));
 

@@ -4,11 +4,17 @@
  * whole first: Koinly's universal CSV, the format others follow.
  */
 
+import { migrationsOf } from "@dusk-network/app-core/bridge";
 import {
   accountingCsv,
   datesPeriod,
   quarterPeriod,
 } from "@dusk-network/app-core/export";
+
+import { get } from "svelte/store";
+
+import { keptMigrations } from "$lib/bridge/migrationActivity";
+import { readMigrationsEvm } from "$lib/bridge/migrationEvm";
 
 import { duskEuroPrices } from "./duskPrice";
 
@@ -89,6 +95,7 @@ export function periodChoices(now = new Date()) {
  * @param {{
  *   choices: ExportChoices,
  *   contactName: (address: string) => string | null | undefined,
+ *   net?: import("@dusk-network/networks").Network | null,
  *   network: string,
  *   profile: import("@dusk-network/app-core/export").ExportProfile,
  *   profiles: import("@dusk-network/app-core/export").ExportProfile[],
@@ -99,6 +106,7 @@ export function periodChoices(now = new Date()) {
 export async function makeExport({
   choices,
   contactName,
+  net = null,
   network,
   profile,
   profiles,
@@ -112,10 +120,34 @@ export async function makeExport({
   });
   // A stake whose stDUSK can't be read yet says so in its line.
   const facts = await session.sozuFacts(whole.rows).catch(() => undefined);
+  // What each migration paid on its own chain, its approval with it: by the
+  // approval this browser sent for it where it kept one, whose receipt is
+  // read at any age, where the chain's logs no longer say.
+  const approvals = new Map(
+    get(keptMigrations).flatMap(({ approval, hash }) =>
+      approval ? [[hash.toLowerCase(), approval]] : []
+    )
+  );
+  // Each payout from the period's start on, after its end too: a fee is
+  // written in the period of its own time, never later than its payout, and
+  // an approval can come long before its migration.
+  const migrations = migrationsOf(
+    period
+      ? whole.rows.filter(({ time }) => time !== null && time >= period.from)
+      : whole.rows
+  ).map((migration) => ({
+    ...migration,
+    approval: approvals.get(migration.hash) ?? null,
+  }));
+  const evm =
+    net && migrations.length
+      ? await readMigrationsEvm(net, migrations)
+      : undefined;
   const made = await accountingCsv({
     bom: choices.excel,
     contactName: choices.withContacts ? contactName : undefined,
     currency: "EUR",
+    evm,
     facts,
     network,
     period,

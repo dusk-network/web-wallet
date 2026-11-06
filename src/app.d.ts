@@ -23,6 +23,8 @@ type StakeInfo = import("@dusk/w3sper").StakeInfo;
 
 declare namespace App {
   interface PageState {
+    /** With the network's panel open, a step of its own in the history. */
+    networkPanel?: boolean;
     /** With the profile menu open, a step of its own in the history. */
     profileMenu?: boolean;
     /** With the search open, a step of its own in the history. */

@@ -122,10 +122,12 @@ function watcher(idOf, hashOf, endOf) {
       seen.set(id, end);
 
       if (before !== undefined && end && end !== before) {
+        const href = `/dashboard/bridge/transactions?tx=${hashOf(item)}`;
+
         transferEnded({
+          href,
           id,
-          onOpen: () =>
-            goto(`/dashboard/bridge/transactions?tx=${hashOf(item)}`),
+          onOpen: () => goto(href),
           title: end,
         });
       }

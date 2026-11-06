@@ -47,6 +47,7 @@
 
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
+  import AddDusk from "./AddDusk.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
   import NetworkPicker from "../NetworkPicker/NetworkPicker.svelte";
   import OperationResult from "../OperationResult/OperationResult.svelte";
@@ -754,6 +755,10 @@
     </div>
     {#if problem}
       <p class="swap-error" role="alert">{problem}</p>
+    {/if}
+    {#if isConnected && chainId === route.chain.chainId && balanceLux === 0n}
+      <!-- None of it here yet: the wallet can show it once there's some. -->
+      <AddDusk chain={route.chain} />
     {/if}
     {#if isConnected && address}
       <p class="swap-recipient">

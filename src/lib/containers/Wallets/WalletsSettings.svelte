@@ -18,8 +18,10 @@
   import { walletStore } from "$lib/stores";
   import vault from "$lib/vault";
   import {
+    NAME_LIMIT,
     normalizeWalletName,
     renameWallet,
+    typedWalletName,
     walletDirectory,
     walletLabel,
   } from "$lib/wallets";
@@ -53,7 +55,7 @@
    * @param {string} key
    */
   function nameTyped(key) {
-    const name = normalizeWalletName(draft);
+    const name = typedWalletName(draft);
     const n = rows.find((row) => row.key === key)?.n;
 
     return name === walletLabel({ n }) ? "" : name;
@@ -76,6 +78,11 @@
 
     const key = renaming;
     const name = nameTyped(key);
+
+    // Too long, it stays as typed, with the limit said under it.
+    if (name.length > NAME_LIMIT) {
+      return;
+    }
 
     saving = true;
 
@@ -150,7 +157,7 @@
               bind:value={draft}
               className="wallets-settings__field"
               id="wallet-name-{row.key}"
-              maxlength={32}
+              maxlength={NAME_LIMIT}
               on:keydown={handleKeyDown}
               placeholder={`Wallet ${row.n}`}
               type="text"
@@ -172,7 +179,7 @@
           <p class="wallets-settings__hint" id="wallet-name-hint-{row.key}">
             Only on this device.
           </p>
-          <FieldLimit limit={32} value={draft} />
+          <FieldLimit limit={NAME_LIMIT} value={draft} />
         {:else}
           <div class="wallets-settings__head">
             <span class="wallets-settings__name">

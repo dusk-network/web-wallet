@@ -11,13 +11,18 @@
     mdiGiftOpenOutline,
   } from "@mdi/js";
 
-  import { activityState, isHistoryEnabled } from "$lib/activity";
+  import {
+    activityState,
+    currentActivity,
+    isHistoryEnabled,
+  } from "$lib/activity";
   import { LiquidStake, NativeStake, Unstake } from "$lib/components";
   import { StakingOverview } from "$lib/containers";
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { goto } from "$lib/navigation";
-  import { sozuStore } from "$lib/sozu";
+  import { readSozuGrowth, sozuStore } from "$lib/sozu";
+  import { followTransaction } from "$lib/transactions";
   import {
     readNativeRewardRate,
     readProvisioners,
@@ -61,6 +66,14 @@
       ).then(({ hash }) => hash)
   );
 
+  /**
+   * The stakes and unstakes with Sozu on their way that this page follows,
+   * by hash.
+   *
+   * @type {Record<string, true>}
+   */
+  const followed = {};
+
   const stakeLiquid = forThisWallet(
     /**
      * @param {"stake" | "unstake"} action
@@ -75,11 +88,44 @@
         amount,
         new Gas({ limit: gasLimit, price: gasPrice })
       ).then(({ hash }) => {
+        // Its Sent screen follows it from here.
+        followed[hash] = true;
         void sozuStore.readAfter(hash);
 
         return hash;
       })
   );
+
+  /**
+   * Follows what this profile sent to Sozu that's on its way, as after a
+   * reload while it went, as its Sent screen would have: once it's final, the
+   * history and the balances with Sozu (`readWithBalances`), shown together,
+   * are read again, for what the form leaves out to come back in, and the
+   * form's position from the history read then.
+   *
+   * @param {ActivityRow[]} rows
+   */
+  function followUnderWay(rows) {
+    for (const { hash } of rows) {
+      if (!followed[hash]) {
+        followed[hash] = true;
+        void followTransaction(hash)
+          .catch(() => null)
+          .then(async (final) => {
+            if (final) {
+              void walletStore.refreshBalance();
+              await Promise.resolve(currentActivity()?.refresh()).catch(
+                () => {}
+              );
+
+              if (sozuFormFor) {
+                readSozuHistory();
+              }
+            }
+          });
+      }
+    }
+  }
 
   /** @type {bigint | undefined} */
   let blockHeight;
@@ -103,6 +149,41 @@
       nativeRate = rate;
     });
   });
+
+  /**
+   * How Sozu's stDUSK grew lately, for its status read: one figure for the
+   * form and the overview alike, null where it can't be read.
+   *
+   * @type {import("@dusk-network/app-core/sozu").SozuGrowth | null}
+   */
+  let sozuGrowth = null;
+
+  /** @type {SozuStatus | null} */
+  let growthFor = null;
+
+  /**
+   * Reads Sozu's growth for a status, keeping only the answer for the last.
+   *
+   * @param {SozuStatus | null} status
+   */
+  function readGrowthFor(status) {
+    if (!status || status === growthFor) {
+      return;
+    }
+
+    growthFor = status;
+    void readSozuGrowth({
+      nodeUrl: nodeBaseUrl(),
+      status,
+      tipHeight: blockHeight,
+    }).then((growth) => {
+      if (growthFor === status) {
+        sozuGrowth = growth;
+      }
+    });
+  }
+
+  $: readGrowthFor($sozuStore.status);
 
   /** What the node says of what's staked: for the Sozu form's working. */
   /** @type {any[] | null} */
@@ -201,6 +282,11 @@
   $: hasPastStaking = $activityState.rows.some(
     (row) => row.category === "staking"
   );
+  // What the profile sent to Sozu that isn't in a block yet.
+  $: sozuUnderWay = $activityState.rows.filter(
+    (row) => row.sozu && row.source === "sent" && row.status === "pending"
+  );
+  $: followUnderWay(sozuUnderWay);
 
   // Sozu, read again for the overview each time it shows, as after a stake.
   $: if (flow === null && networkName && currentProfile) {
@@ -254,12 +340,14 @@
         history={sozuHistory}
         onRetry={() => sozuStore.load({ force: true })}
         rates={{
+          growth: sozuGrowth,
           native: nativeRate,
           provisioners,
           tipHeight: blockHeight,
         }}
         recheck={() => sozuStore.check()}
         sozu={$sozuStore}
+        underWay={sozuUnderWay}
       />
     {/key}
   {:else if flow === "unstake" || flow === "claim"}
@@ -297,6 +385,7 @@
       {blockHeight}
       {hasPastStaking}
       {nativeRate}
+      {sozuGrowth}
       locale={language}
       leastFee={unstakeGas.limits.gasLimitLower *
         unstakeGas.limits.gasPriceLower}
