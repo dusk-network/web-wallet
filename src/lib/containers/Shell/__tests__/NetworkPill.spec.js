@@ -1,11 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import { get } from "svelte/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
 import NetworkPill from "../NetworkPill.svelte";
 
 const sync = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+
+const pageStore = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any> | null} */
+  page: null,
+}));
+
+vi.mock("$app/stores", async () => {
+  const { writable } = await import("svelte/store");
+
+  pageStore.page = writable({ state: {}, url: new URL("http://localhost/") });
+
+  return { page: pageStore.page };
+});
+
+// A step of the history, as SvelteKit's shallow routing makes one.
+vi.mock("$app/navigation", () => ({
+  pushState: vi.fn((/** @type {string} */ _url, /** @type {any} */ state) =>
+    pageStore.page?.update((page) => ({ ...page, state }))
+  ),
+}));
 
 vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {typeof import("$lib/stores")} */
@@ -90,6 +111,40 @@ describe("NetworkPill", () => {
     expect(
       getByRole("button", { name: "Network: Testnet, in sync" })
     ).toBeInTheDocument();
+  });
+
+  it("opens its panel as a step of its own in the browser's history: phone Back closes it alone, and its own close takes that step back", async () => {
+    const back = vi
+      .spyOn(history, "back")
+      .mockImplementation(() =>
+        pageStore.page?.update((page) => ({ ...page, state: {} }))
+      );
+    const { getByRole, queryByRole } = render(NetworkPill);
+    const pill = getByRole("button", { name: /testnet/i });
+
+    await fireEvent.click(pill);
+
+    expect(getByRole("dialog", { name: "Network" })).toBeInTheDocument();
+    expect(get(/** @type {any} */ (pageStore.page)).state).toStrictEqual({
+      networkPanel: true,
+    });
+
+    // Back: the panel closes, and the page stays where it was.
+    await act(() => pageStore.page?.update((page) => ({ ...page, state: {} })));
+
+    expect(queryByRole("dialog")).toBeNull();
+    expect(pill).toHaveAttribute("aria-expanded", "false");
+    expect(get(/** @type {any} */ (pageStore.page)).url.pathname).toBe("/");
+    expect(back).not.toHaveBeenCalled();
+
+    // Its own close takes its step back.
+    await fireEvent.click(pill);
+    await fireEvent.keyDown(pill, { key: "Escape" });
+
+    expect(queryByRole("dialog")).toBeNull();
+    expect(back).toHaveBeenCalledOnce();
+
+    back.mockRestore();
   });
 
   it("shows the sync's progress while it runs", async () => {

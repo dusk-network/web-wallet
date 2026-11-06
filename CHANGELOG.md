@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Close the network's panel with phone Back, staying on the page with what's typed, and only close it on a tap outside
 - See every transaction a search found in History, past the five it lists, with each row's memo
 - Say Offline on the network's dot as the browser goes offline, sync as it's back, and try a failed sync again every ten seconds
 - Keep what was typed in a form through the automatic lock, as through a reload

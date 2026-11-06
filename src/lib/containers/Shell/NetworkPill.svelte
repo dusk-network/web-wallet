@@ -1,4 +1,6 @@
 <script>
+  import { pushState } from "$app/navigation";
+  import { page } from "$app/stores";
   import { mdiChevronDown } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import { SyncBar } from "$lib/components";
@@ -35,6 +37,64 @@
   function retry() {
     walletStore.sync().catch(() => {});
   }
+
+  /**
+   * Opens the panel, as a step of its own in the browser's history, as the
+   * profile menu does: phone Back closes it, and leaves the page as it was.
+   */
+  function openPanel() {
+    open = true;
+
+    // After Forward the history is at the panel's step already.
+    if (!$page?.state?.networkPanel) {
+      pushState("", { ...$page?.state, networkPanel: true });
+    }
+  }
+
+  /** Closes the panel, and its step in the history goes. */
+  function closePanel() {
+    const wasOpen = open;
+
+    open = false;
+
+    if (wasOpen && $page?.state?.networkPanel) {
+      history.back();
+    }
+  }
+
+  /** Whether the history was at the panel's step. */
+  let wasAtPanel = false;
+
+  /**
+   * Back closes the panel, and nothing else.
+   *
+   * @param {boolean} isAtPanel
+   */
+  function followHistory(isAtPanel) {
+    if (wasAtPanel && !isAtPanel) {
+      open = false;
+    }
+
+    wasAtPanel = isAtPanel;
+  }
+
+  /** The page the panel opened on. */
+  let shownHref = "";
+
+  /**
+   * Any navigation closes the panel: it would stay over the next page.
+   *
+   * @param {string} href
+   */
+  function followPage(href) {
+    if (href !== shownHref) {
+      shownHref = href;
+      open = false;
+    }
+  }
+
+  $: followPage(String($page?.url ?? ""));
+  $: followHistory(Boolean($page?.state?.networkPanel));
 </script>
 
 <svelte:window
@@ -49,10 +109,9 @@
 <div
   class="network-pill"
   use:handlePageClick={{
-    callback: () => {
-      open = false;
-    },
+    callback: closePanel,
     enabled: open,
+    swallow: true,
   }}
 >
   <button
@@ -61,11 +120,15 @@
     aria-label={`Network: ${label}, ${stateText.toLowerCase()}`}
     class="network-pill__button"
     on:click={() => {
-      open = !open;
+      if (open) {
+        closePanel();
+      } else {
+        openPanel();
+      }
     }}
     on:keydown={(event) => {
       if (event.key === "Escape") {
-        open = false;
+        closePanel();
       }
     }}
     type="button"
