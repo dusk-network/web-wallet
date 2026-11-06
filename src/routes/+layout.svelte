@@ -1,9 +1,13 @@
 <script>
+  import { onMount } from "svelte";
   import { page } from "$app/stores";
-  import { arrivalTitle } from "$lib/bridge/arrivalNotice";
+  import {
+    arrivalTitle,
+    followNotificationClicks,
+  } from "$lib/bridge/arrivalNotice";
   import { pageName } from "$lib/containers/Shell/navigation";
   import { settingsStore } from "$lib/stores";
-  import { logout } from "$lib/navigation";
+  import { goto, logout } from "$lib/navigation";
   import { Toast, Tooltip } from "$lib/dusk/components";
 
   import "../style/main.css";
@@ -13,6 +17,10 @@
   });
 
   let invalidating = false;
+
+  // A notification pressed opens what it says arrived, from any page: where
+  // the wallet locked since, the unlock goes on to it.
+  onMount(() => followNotificationClicks((href) => goto(href)));
 
   // Each page's own name, for its title.
   $: name = pageName($page.url.pathname);

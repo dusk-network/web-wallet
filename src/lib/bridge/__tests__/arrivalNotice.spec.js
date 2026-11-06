@@ -7,6 +7,7 @@ import {
   arrivalSeen,
   arrivalTitle,
   chooseArrivalNotice,
+  followNotificationClicks,
   followsWhileAway,
   forgetArrivalTitle,
   noticeWords,
@@ -301,6 +302,8 @@ describe("Being told when a transfer arrives", () => {
     );
 
     const stop = followArrivals();
+    // As every page follows a notification pressed (the root layout).
+    const stopClicks = followNotificationClicks((href) => mocks.goto(href));
 
     transferEnded({
       href: "/dashboard/bridge/transactions?tx=ff",
@@ -332,6 +335,7 @@ describe("Being told when a transfer arrives", () => {
       "/dashboard/bridge/transactions?tx=ff"
     );
     stop();
+    stopClicks();
     mocks.goto.mockClear();
   });
 

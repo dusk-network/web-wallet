@@ -23,7 +23,6 @@ import { transferOutcome } from "$lib/components/EvmTransactions/bridgeActivity"
 import {
   arrivalNoticeState,
   arrivalSeen,
-  followNotificationClicks,
   forgetArrivalTitle,
   transferEnded,
 } from "./arrivalNotice";
@@ -204,14 +203,10 @@ export function followArrivals() {
   window.addEventListener("focus", arrivalSeen);
   document.addEventListener("visibilitychange", arrivalSeen);
 
-  // A notification pressed opens what it says arrived.
-  const stopClicks = followNotificationClicks((href) => goto(href));
-
   return () => {
     stops.forEach((stop) => stop());
     stopState();
     stopWallet();
-    stopClicks();
     stopFollowing?.();
     window.removeEventListener("focus", arrivalSeen);
     document.removeEventListener("visibilitychange", arrivalSeen);
