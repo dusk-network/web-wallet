@@ -801,6 +801,66 @@ describe("Wallet store", async () => {
       }
     });
 
+    it("should show the newest read of the balances with what's read along it, never an older one's that comes back last, either half", async () => {
+      const olderPublic = Promise.withResolvers();
+      const olderPosition = Promise.withResolvers();
+      const newerPublic = { ...unshielded, value: unshielded.value - 20n };
+      /** @type {string[]} */
+      const position = ["before"];
+      // Each read's public balance and position, the older's answered last.
+      const publicReads = [
+        () => olderPublic.promise,
+        async () => /** @type {any} */ (newerPublic),
+      ];
+      const alongReads = [
+        () =>
+          olderPosition.promise.then(() => () => {
+            position[0] = "older";
+          }),
+        async () => () => {
+          position[0] = "newer";
+        },
+      ];
+      const balanceOf = balanceSpy.getMockImplementation();
+      const stopReading = walletStore.readWithBalances(() =>
+        /** @type {() => Promise<any>} */ (alongReads.shift())()
+      );
+
+      balanceSpy.mockImplementation(async (identifier) =>
+        ProfileGenerator.typeOf(identifier.toString()) === "address"
+          ? shielded
+          : /** @type {() => Promise<any>} */ (publicReads.shift())()
+      );
+
+      try {
+        /** Which of the two reads are done. */
+        const done = { newer: false, older: false };
+
+        walletStore.refreshBalance().then(() => {
+          done.older = true;
+        });
+        await vi.waitUntil(() => publicReads.length === 1);
+        walletStore.refreshBalance().then(() => {
+          done.newer = true;
+        });
+        await vi.waitUntil(() => done.newer);
+
+        expect(get(walletStore).balance.unshielded).toStrictEqual(newerPublic);
+        expect(position[0]).toBe("newer");
+
+        // The older read comes back now: neither half of it shows.
+        olderPublic.resolve({ ...unshielded, value: unshielded.value + 100n });
+        olderPosition.resolve(undefined);
+        await vi.waitUntil(() => done.older);
+
+        expect(get(walletStore).balance.unshielded).toStrictEqual(newerPublic);
+        expect(position[0]).toBe("newer");
+      } finally {
+        stopReading();
+        balanceSpy.mockImplementation(/** @type {any} */ (balanceOf));
+      }
+    });
+
     it("should say the balances were read for the profile shown, and not while another's show", async () => {
       expect(get(walletStore).balanceRead).toBe(true);
 

@@ -505,6 +505,14 @@ const sendAs = (
 const readAlong = new Set();
 
 /**
+ * The reads of the balances, in the order they began, and the last of them
+ * that showed: an older read that comes back last shows nothing, so the
+ * balances and what's read along them always come from the same one.
+ */
+let balanceReadsBegun = 0;
+let balanceReadShown = 0;
+
+/**
  * Has `read` read with the balances and the stake each time they are, and
  * what it read shown with them.
  *
@@ -539,8 +547,13 @@ async function updateStaticInfo() {
     ];
   }
 
+  const order = (balanceReadsBegun += 1);
+  // Shown only where no read of them begun after it showed already: its
+  // balances and what's read along them together, or neither.
   const isCurrent = () =>
-    session === walletSession && profile === getCurrentProfile();
+    session === walletSession &&
+    profile === getCurrentProfile() &&
+    order > balanceReadShown;
   const [[balance, stake], along] = await Promise.all([
     Promise.allSettled([
       (async () => ({
@@ -568,6 +581,8 @@ async function updateStaticInfo() {
   ]);
 
   if (isCurrent()) {
+    balanceReadShown = order;
+
     // In the same moment, what's read along first: no screen draws the
     // balances without it.
     for (const read of along) {
