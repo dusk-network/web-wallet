@@ -6,6 +6,7 @@
    * came in after it, in words that say what matched.
    */
   import { onDestroy } from "svelte";
+  import { MAX_MEMO_BYTES } from "@dusk-network/app-core/payment-links";
   import { displayText } from "@dusk-network/app-core/text";
 
   import { activityState, currentActivity } from "$lib/activity";
@@ -195,10 +196,16 @@
       return null;
     }
 
+    const said = request.memo ? `Refund: ${request.memo}` : "Refund";
     const made = makeRequestLink(
       {
         amountLux: payment.lux,
-        memo: request.memo ? `Refund: ${request.memo}` : "Refund",
+        // Within a memo's bytes: a refund alone where the request's memo
+        // leaves no room to say which.
+        memo:
+          new TextEncoder().encode(said).length <= MAX_MEMO_BYTES
+            ? said
+            : "Refund",
         to: from,
       },
       $nodeNetwork

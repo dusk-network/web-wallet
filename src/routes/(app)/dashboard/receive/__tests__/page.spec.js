@@ -652,6 +652,59 @@ describe("Receive", () => {
       history.state?.set({ hasMore: false, rows: [] });
     });
 
+    it("should still offer to send a payment back for a request whose memo leaves no room to say so, as a refund alone", async () => {
+      const PAYER =
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+      // 508 bytes: within a memo's 512, but not with "Refund: " before it.
+      const memo = "x".repeat(508);
+      const at = Date.now() - 10_000;
+      const row = (/** @type {Record<string, unknown>} */ fields) => ({
+        category: "received",
+        counterparty: PAYER,
+        hash: "ab".repeat(32),
+        memo,
+        privacy: "public",
+        status: "executed",
+        time: at + 500,
+        value: 10_000_000n,
+        ...fields,
+      });
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "long",
+            lux: "10000000",
+            memo,
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [row({}), row({ hash: "cd".repeat(32), time: at + 2500 })],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const back = new URL(
+        String(
+          screen
+            .getByRole("link", { name: /^Send back the payment of/ })
+            .getAttribute("href")
+        ),
+        "https://wallet.test"
+      );
+
+      expect(back.searchParams.get("memo")).toBe("Refund");
+      expect(back.searchParams.get("to")).toBe(PAYER);
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
     it("should say Paid for a request of any amount paid with its memo, of whatever amount, and Paid twice for its memo again", async () => {
       const at = Date.now() - 1000;
       const row = (/** @type {Record<string, unknown>} */ fields) => ({
