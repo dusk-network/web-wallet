@@ -9,25 +9,42 @@
 
   let open = false;
 
+  /** Whether the browser says it's offline: said at once, before a sync fails. */
+  let isOffline =
+    typeof navigator !== "undefined" && navigator.onLine === false;
+
   $: ({ networkName } = $networkStore);
   $: ({ syncStatus } = $walletStore);
   $: label = networkLabel(networkName);
-  $: state = syncStatus.error
-    ? "error"
-    : syncStatus.isInProgress
-      ? "syncing"
-      : "synced";
+  $: state = isOffline
+    ? "offline"
+    : syncStatus.error
+      ? "error"
+      : syncStatus.isInProgress
+        ? "syncing"
+        : "synced";
   $: stateText =
-    state === "error"
-      ? "Sync failed"
-      : state === "syncing"
-        ? `Syncing${syncStatus.progress ? ` ${Math.round(syncStatus.progress * 100)}%` : ""}`
-        : "In sync";
+    state === "offline"
+      ? "Offline"
+      : state === "error"
+        ? "Sync failed"
+        : state === "syncing"
+          ? `Syncing${syncStatus.progress ? ` ${Math.round(syncStatus.progress * 100)}%` : ""}`
+          : "In sync";
 
   function retry() {
     walletStore.sync().catch(() => {});
   }
 </script>
+
+<svelte:window
+  on:offline={() => {
+    isOffline = true;
+  }}
+  on:online={() => {
+    isOffline = false;
+  }}
+/>
 
 <div
   class="network-pill"
@@ -73,8 +90,13 @@
           progress={syncStatus.progress}
         />
       {/if}
-      {#if state === "error"}
+      {#if state === "offline"}
+        <p class="network-pill__error">
+          Your balance may be out of date until you're back online.
+        </p>
+      {:else if state === "error"}
         <p class="network-pill__error">{syncStatus.error?.message}</p>
+        <p class="network-pill__error">Your balance may be out of date.</p>
         <Button on:click={retry} size="small" text="Try again" />
       {/if}
     </div>
@@ -126,7 +148,8 @@
       animation: network-pill-pulse 1.6s ease-in-out infinite;
     }
 
-    &--error {
+    &--error,
+    &--offline {
       background: var(--calm-danger);
     }
   }
@@ -220,7 +243,8 @@
   .network-pill__state {
     color: var(--calm-muted);
 
-    &--error {
+    &--error,
+    &--offline {
       color: var(--calm-danger);
     }
   }

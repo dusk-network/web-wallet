@@ -65,6 +65,33 @@ describe("NetworkPill", () => {
     ).toBeInTheDocument();
   });
 
+  it("says it's offline as soon as the browser is, what that means, and what the sync says once it's online again", async () => {
+    const { container, getByRole, getByText, queryByRole } =
+      render(NetworkPill);
+
+    await act(() => window.dispatchEvent(new Event("offline")));
+
+    expect(
+      getByRole("button", { name: "Network: Testnet, offline" })
+    ).toBeInTheDocument();
+    expect(container.querySelector(".network-pill__dot--offline")).toBeTruthy();
+
+    await fireEvent.click(getByRole("button", { name: /testnet/i }));
+
+    expect(getByText("Offline")).toBeInTheDocument();
+    expect(
+      getByText("Your balance may be out of date until you're back online.")
+    ).toBeInTheDocument();
+    // Nothing to try while offline: the sync starts once it's back.
+    expect(queryByRole("button", { name: "Try again" })).toBeNull();
+
+    await act(() => window.dispatchEvent(new Event("online")));
+
+    expect(
+      getByRole("button", { name: "Network: Testnet, in sync" })
+    ).toBeInTheDocument();
+  });
+
   it("shows the sync's progress while it runs", async () => {
     const { container, getByRole, getByText } = render(NetworkPill);
 
@@ -89,6 +116,7 @@ describe("NetworkPill", () => {
 
     expect(getByText("Sync failed")).toBeInTheDocument();
     expect(getByText("The node is out of reach")).toBeInTheDocument();
+    expect(getByText("Your balance may be out of date.")).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Try again" }));
 

@@ -44,6 +44,12 @@ const AUTO_SYNC_INTERVAL = !isNaN(Number(VITE_SYNC_INTERVAL))
   ? Number(VITE_SYNC_INTERVAL)
   : 5 * 60 * 1000;
 
+/**
+ * How soon a sync that failed is tried again, in milliseconds, while the page
+ * shows: as the welcome screen tries to connect again.
+ */
+const RETRY_AFTER_FAILURE = 10_000;
+
 let autoSyncId = 0;
 
 /** @type {AbortController | null} */
@@ -1134,6 +1140,9 @@ async function sync(fromBlock, { clear = false } = {}) {
         autoSyncId = window.setTimeout(autoSync, AUTO_SYNC_INTERVAL);
       })
       .catch((error) => {
+        // Stopped on purpose, it isn't tried again.
+        const wasStopped = controller.signal.aborted;
+
         controller.abort();
 
         if (session === walletSession && syncController === controller) {
@@ -1147,6 +1156,13 @@ async function sync(fromBlock, { clear = false } = {}) {
               progress: 0,
             },
           }));
+
+          // It tries again by itself, as the network may be back by then.
+          if (!wasStopped) {
+            window.clearTimeout(autoSyncId);
+            cancelSyncWhenShown();
+            autoSyncId = window.setTimeout(autoSync, RETRY_AFTER_FAILURE);
+          }
         }
 
         // Transaction callers must not proceed after a failed or stale sync.

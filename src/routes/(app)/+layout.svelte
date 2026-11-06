@@ -46,6 +46,11 @@
   // Another tab's switch, removal, new password or lock reaches this one.
   onMount(() => followOtherTabs());
 
+  /** The browser is online again: the wallet syncs at once, not at its next turn. */
+  function handleOnline() {
+    void walletStore.refreshBalance();
+  }
+
   onDestroy(() => stopInactivityTimer());
 
   // Nothing goes on asking for the password once the wallet's pages are gone.
@@ -71,6 +76,8 @@
     noteOpenWallet().catch(() => {});
   }
 </script>
+
+<svelte:window on:online={handleOnline} />
 
 <Shell>
   <!-- Each page is drawn for the wallet open: another wallet draws it

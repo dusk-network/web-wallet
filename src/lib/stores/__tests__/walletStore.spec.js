@@ -496,6 +496,52 @@ describe("Wallet store", async () => {
       expect(treasuryUpdateSpy).toHaveBeenCalledTimes(2);
     });
 
+    it("should try again by itself ten seconds after a sync failed, while the page shows, until one gets through", async () => {
+      const offline = new TypeError("Failed to fetch");
+
+      treasuryUpdateSpy
+        .mockRejectedValueOnce(offline)
+        .mockRejectedValueOnce(offline)
+        .mockResolvedValueOnce(undefined);
+
+      await walletStore.init(profileGenerator);
+      await vi.waitFor(() =>
+        expect(get(walletStore).syncStatus.error).toBe(offline)
+      );
+
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
+
+      // The second try, ten seconds on, fails too: it says so still.
+      await vi.advanceTimersByTimeAsync(9_000);
+
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(1_000);
+
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(2);
+      expect(get(walletStore).syncStatus.error).toBe(offline);
+
+      // Hidden, it waits for the page to show.
+      setHidden(true);
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(2);
+
+      balanceSpy.mockClear();
+      setHidden(false);
+
+      // The third, as it shows, gets through: no error, the balances read
+      // again, and the automatic sync's interval from then on.
+      await vi.waitFor(() => expect(balanceSpy).toHaveBeenCalled());
+
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(3);
+      expect(get(walletStore).syncStatus.error).toBeNull();
+
+      await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL / 2);
+
+      expect(treasuryUpdateSpy).toHaveBeenCalledTimes(3);
+    });
+
     it("should not sync once shown after the wallet was locked while hidden", async () => {
       await walletStore.init(profileGenerator);
       await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
