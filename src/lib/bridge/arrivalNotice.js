@@ -265,9 +265,12 @@ export function followNotificationClicks(open) {
     }
   };
 
-  navigator.serviceWorker.addEventListener("message", handle);
+  // What it was added to is what it's taken off.
+  const worker = navigator.serviceWorker;
 
-  return () => navigator.serviceWorker.removeEventListener("message", handle);
+  worker.addEventListener("message", handle);
+
+  return () => worker.removeEventListener("message", handle);
 }
 
 /** They're back: the title is the tab's own again. */

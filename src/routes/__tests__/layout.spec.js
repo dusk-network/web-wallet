@@ -179,6 +179,7 @@ describe("Main layout", async () => {
         "/dashboard/bridge/transactions?tx=ab"
       );
     } finally {
+      cleanup();
       goto.mockRestore();
       vi.unstubAllGlobals();
       Reflect.deleteProperty(navigator, "serviceWorker");
