@@ -18,12 +18,22 @@
   export let inline = false;
 
   $: shown = displayText(text, { lineBreaks: !inline });
+
+  // Digits shown as they are, which can read as another number: N'Ko's 0001
+  // as 1000, or 1٠5, whose Arabic-Indic zero looks like a point, as 1.5.
+  $: rtl = shown.flags.includes("rtl_digits");
+  $: digits = shown.flags.includes("mixed_digits")
+    ? `It mixes kinds of digits${rtl ? ", some reading right to left" : ""}, so a number may not be what it looks like.`
+    : rtl
+      ? "Its digits read right to left, so a number may not be what it looks like."
+      : "";
 </script>
 
 <!-- Nothing between the two: quoted, nothing comes after the text. -->
 <span class="memo-text" class:memo-text--inline={inline}>{shown.text}</span
 >{#if shown.neutralized && !inline}<span class="memo-text__note"
     >It has hidden characters, shown here as codes.</span
+  >{/if}{#if digits && !inline}<span class="memo-text__note">{digits}</span
   >{/if}
 
 <style lang="postcss">

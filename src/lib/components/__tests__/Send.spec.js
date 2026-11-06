@@ -1423,6 +1423,17 @@ describe("Send", () => {
       expect(
         getByText("It has hidden characters, shown here as codes.")
       ).toBeTruthy();
+
+      // Nor can a number's digits read as another number unsaid.
+      await fireEvent.input(fields.memo(), {
+        target: { value: "pay 1\u06605" },
+      });
+
+      expect(
+        getByText(
+          "It mixes kinds of digits, so a number may not be what it looks like."
+        )
+      ).toBeTruthy();
     });
 
     it("should say when a memo is over the network's limit, counting bytes, and keep Send off", async () => {

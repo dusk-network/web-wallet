@@ -169,6 +169,18 @@
     "memo" in part && displayText(part.memo).neutralized;
 
   /**
+   * Whether a part quotes a memo with a number that can read as another: of
+   * digits that read right to left, or of more than one kind.
+   *
+   * @param {Part} part
+   */
+  const misreads = (part) =>
+    "memo" in part &&
+    displayText(part.memo).flags.some(
+      (flag) => flag === "mixed_digits" || flag === "rtl_digits"
+    );
+
+  /**
    * Send, filled in to pay back a payment that paid a request again: to whoever
    * sent it, the amount it brought, and the request's memo. Null where whoever
    * sent it isn't known, as for a shielded payment.
@@ -291,6 +303,11 @@
           {#if parts.some(hidesSomething)}
             <p class="requests__hidden">
               A memo here has hidden characters, shown as codes.
+            </p>
+          {/if}
+          {#if parts.some(misreads)}
+            <p class="requests__hidden">
+              A number in a memo here may not be what it looks like.
             </p>
           {/if}
           {#if again.length}

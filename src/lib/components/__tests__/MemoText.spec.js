@@ -32,4 +32,37 @@ describe("MemoText", () => {
     expect(shown).not.toMatch(/[\u202A-\u202E\u2066-\u2069\u200B]/);
     expect(getByText(NOTE)).toBeInTheDocument();
   });
+
+  it.each([
+    [
+      "N'Ko's digits, which read right to left",
+      "Invoice \u07C0\u07C0\u07C0\u07C1",
+      "Its digits read right to left, so a number may not be what it looks like.",
+    ],
+    [
+      "an Arabic-Indic zero in 105, which looks like a point",
+      "Pay 1\u06605 DUSK",
+      "It mixes kinds of digits, so a number may not be what it looks like.",
+    ],
+    [
+      "both",
+      "Invoice \u07C0\u07C0\u07C0\u07C1 paid 1\u06605",
+      "It mixes kinds of digits, some reading right to left, so a number may not be what it looks like.",
+    ],
+  ])(
+    "says a number may not be what it looks like for %s, with the text as it is",
+    (_, text, note) => {
+      const { container, getByText, queryByText } = render(MemoText, { text });
+
+      expect(container.querySelector(".memo-text")?.textContent).toBe(text);
+      expect(getByText(note)).toBeInTheDocument();
+      expect(queryByText(NOTE)).toBeNull();
+    }
+  );
+
+  it("says nothing of Arabic-Indic digits alone, which read as they look", () => {
+    const { queryByText } = render(MemoText, { text: "Factura \u0661\u0660" });
+
+    expect(queryByText(/may not be what it looks like/)).toBeNull();
+  });
 });

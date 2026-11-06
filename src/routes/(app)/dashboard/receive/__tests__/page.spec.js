@@ -709,7 +709,7 @@ describe("Receive", () => {
             at,
             id: "open",
             lux: "150000000",
-            memo: "Factura 33",
+            memo: "Factura 105",
             network: "testnet",
             to: ACCOUNT,
           },
@@ -722,7 +722,8 @@ describe("Receive", () => {
           {
             category: "received",
             hash: "cd".repeat(32),
-            memo: "Other",
+            // An Arabic-Indic zero: it reads as 1.5.
+            memo: "Factura 1\u06605",
             privacy: "public",
             status: "executed",
             time: at + 500,
@@ -737,7 +738,10 @@ describe("Receive", () => {
 
       expect(item).toHaveTextContent("Check");
       expect(item).not.toHaveTextContent("Paid");
-      expect(item).toHaveTextContent('with another memo: "Other"');
+      expect(item).toHaveTextContent('with another memo: "Factura 1\u06605"');
+      expect(item).toHaveTextContent(
+        "A number in a memo here may not be what it looks like."
+      );
       expect(get(requestsStore)[0].paid).toBeUndefined();
       history.state?.set({ hasMore: false, rows: [] });
     });
