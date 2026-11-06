@@ -174,6 +174,20 @@ describe("The requests a wallet made", () => {
       expect(matches.get("b")?.more).toBeUndefined();
     });
 
+    it("should count a payment again with all of a request as its repeat, not as a guess at another request for the amount", () => {
+      const matches = matchRequests(
+        [asked(), asked({ at: NOW + 1, id: "b", memo: "Factura 34" })],
+        [payment(), payment({ hash: "h2", time: NOW + 2 * HOUR })]
+      );
+
+      expect(matches.get("a")).toMatchObject({
+        hash: "h1",
+        more: [{ hash: "h2", matched: "amount-memo" }],
+        state: "paid",
+      });
+      expect(matches.get("b")).toStrictEqual({ state: "waiting" });
+    });
+
     it("should give a payment again to the request it matches in full, not to an older one it matches by amount", () => {
       const matches = matchRequests(
         [asked(), asked({ at: NOW + 1, id: "b", memo: "Factura 34" })],

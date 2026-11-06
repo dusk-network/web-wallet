@@ -309,27 +309,21 @@ export function matchRequests(list, rows) {
     }
   }
 
-  for (const request of oldestFirst) {
-    if (!matches.has(request.id)) {
-      answer(request, "guess");
-    }
-
-    if (!matches.has(request.id)) {
-      matches.set(request.id, { state: "waiting" });
-    }
-  }
-
   // What else came in for a request answered: it paid twice, or may have.
-  // Payments with all of a request go to it first, before any request takes
-  // one with only part of it.
   /** @type {Map<string, RequestPayment[]>} */
   const extra = new Map();
 
-  for (const exact of [true, false]) {
+  /**
+   * Gives each request answered what else matches it: in full, or (`exact`
+   * false) in part.
+   *
+   * @param {boolean} exact
+   */
+  const addMore = (exact) => {
     for (const request of oldestFirst) {
-      const match = /** @type {RequestMatch} */ (matches.get(request.id));
+      const match = matches.get(request.id);
 
-      for (const row of match.state === "waiting" ? [] : incoming) {
+      for (const row of !match || match.state === "waiting" ? [] : incoming) {
         const matched = taken.has(row.hash) ? null : matchOf(request, row);
 
         if (matched && (matched === "amount-memo") === exact) {
@@ -347,7 +341,23 @@ export function matchRequests(list, rows) {
         }
       }
     }
+  };
+
+  // A payment with all of a request paid it again: no other request takes it
+  // as a guess.
+  addMore(true);
+
+  for (const request of oldestFirst) {
+    if (!matches.has(request.id)) {
+      answer(request, "guess");
+    }
+
+    if (!matches.has(request.id)) {
+      matches.set(request.id, { state: "waiting" });
+    }
   }
+
+  addMore(false);
 
   for (const request of oldestFirst) {
     const match = /** @type {RequestMatch} */ (matches.get(request.id));
