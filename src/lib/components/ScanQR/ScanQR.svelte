@@ -204,13 +204,14 @@
     class="scan__highlight"
     class:scan__highlight--scanned={qrScanned}
   ></div>
-  {#if error}
+  <!-- What an image read says comes first: it's the newer answer. -->
+  {#if problem}
+    <p class="scan__notice" role="alert">{problem}</p>
+  {:else if error}
     <p class="scan__notice" role="alert">
       Couldn't start the camera. Allow it for this site in your browser, or
       paste the address instead.
     </p>
-  {:else if problem}
-    <p class="scan__notice" role="alert">{problem}</p>
   {:else}
     <p class="scan__notice">
       {hasCamera

@@ -220,6 +220,30 @@ describe("The welcome screens' layout", () => {
     expect(screen.getByText("Connecting to the network…")).toBeInTheDocument();
   });
 
+  it("stops trying by itself once the page has gone, though a try was under way", async () => {
+    connect.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+    /** @type {(error: Error) => void} */
+    let fail = () => {};
+
+    reconnect.mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      })
+    );
+    renderWithSimpleContent(WelcomeLayout, {});
+    await act(() => vi.advanceTimersByTime(0));
+    await act(() => vi.advanceTimersByTime(10_000));
+
+    expect(reconnect).toHaveBeenCalledOnce();
+
+    cleanup();
+    await act(() => fail(new Error("Failed to fetch")));
+    await act(() => vi.advanceTimersByTime(60_000));
+
+    expect(reconnect).toHaveBeenCalledOnce();
+  });
+
   it("says when connecting failed, and tries again from there", async () => {
     connect.mockRejectedValueOnce(new Error("Failed to fetch"));
 

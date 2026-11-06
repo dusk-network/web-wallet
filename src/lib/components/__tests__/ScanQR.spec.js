@@ -126,6 +126,34 @@ describe("ScanQR", () => {
     expect(getByRole("group", { name: "Scan a QR code" })).toBeInTheDocument();
   });
 
+  it("says what an image chosen holds, once the camera couldn't start", async () => {
+    const click = vi
+      .spyOn(HTMLInputElement.prototype, "click")
+      .mockImplementation(() => {});
+    const view = await ready();
+
+    qr.start.mockRejectedValueOnce(new Error("Camera not found."));
+    await view.component.startScan();
+    expect(await view.findByRole("alert")).toHaveTextContent(
+      "Couldn't start the camera."
+    );
+
+    qr.scanImage.mockRejectedValueOnce("No QR code found");
+    await fireEvent.change(view.getByLabelText("Image of a QR code"), {
+      target: {
+        files: [new File(["png"], "photo.png", { type: "image/png" })],
+      },
+    });
+
+    await vi.waitFor(() =>
+      expect(view.getByRole("alert")).toHaveTextContent(
+        "No QR code found in that image."
+      )
+    );
+
+    click.mockRestore();
+  });
+
   it("gives what it reads once, whatever else the camera reads as it closes", async () => {
     const scan = vi.fn();
     const { component } = render(ScanQR, {

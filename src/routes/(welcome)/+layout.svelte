@@ -70,6 +70,12 @@
    */
   function retryLater() {
     clearTimeout(retryTimer);
+
+    // Gone from the page, it stops trying.
+    if (destroyed) {
+      return;
+    }
+
     retryTimer = setTimeout(() => {
       const failed = connecting;
       const attempt = Promise.all([
@@ -100,7 +106,11 @@
     }
   }
 
+  /** Whether the page has left: no more tries are made. */
+  let destroyed = false;
+
   onDestroy(() => {
+    destroyed = true;
     clearTimeout(slowTimer);
     clearTimeout(retryTimer);
   });
