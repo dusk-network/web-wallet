@@ -629,7 +629,7 @@ describe("Send", () => {
       expect(fields.review()).toBeEnabled();
     });
 
-    it("should point out an invalid address once it is pasted or left, not while it is typed", async () => {
+    it("should point out an invalid address once it is pasted or left, not while it is typed, nor an empty one", async () => {
       const { getByRole, queryByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
 
@@ -650,6 +650,12 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: "" } });
 
       expect(queryByText("Not a valid address.")).toBeNull();
+
+      // Left empty, as for the amount or the scanner, it says nothing either.
+      await fireEvent.blur(fields.to());
+
+      expect(queryByText("Not a valid address.")).toBeNull();
+      expect(fields.to()).toHaveAttribute("aria-invalid", "false");
 
       await fireEvent.paste(fields.to());
       await fireEvent.input(fields.to(), {

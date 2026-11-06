@@ -1089,8 +1089,10 @@
       ? asDuskName(sendToAddress)
       : null;
 
+  // Nothing is said of an empty field: Review stays off until there's one.
   $: isRecipientInvalid =
     isRecipientChecked &&
+    sendToAddress !== "" &&
     !recipientName &&
     !addressInfo.isValid &&
     !bareName &&
