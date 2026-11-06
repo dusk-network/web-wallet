@@ -1298,6 +1298,8 @@
         to: recipientAddress,
       })
     : null;
+  // Said on the button too, which then sends it again.
+  $: isRepeat = Boolean(madeAgain && madeAgain.time !== null);
   $: isAmountMasked = hideBalances && isMaxAmount;
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
@@ -1936,17 +1938,18 @@
       {/if}
       {#if step === "review"}
         <!-- A step of its own: nothing goes before it, and Send, new with it,
-          takes no click meant for Review. -->
-        <Button
-          className="send__send"
-          confirm
-          disabled={!canSend}
-          on:click={send}
-          text={sendAmountInLux > 0n
-            ? `Send ${isAmountMasked ? BALANCE_MASK : amountText} DUSK`
-            : "Send"}
-          variant="primary"
-        />
+          takes no click meant for Review. A payment made already, found while
+          it shows, makes it anew: Send again takes no click meant for Send. -->
+        {#key isRepeat}
+          <Button
+            className="send__send"
+            confirm
+            disabled={!canSend}
+            on:click={send}
+            text={`Send${sendAmountInLux > 0n ? ` ${isAmountMasked ? BALANCE_MASK : amountText} DUSK` : ""}${isRepeat ? " again" : ""}`}
+            variant="primary"
+          />
+        {/key}
         <p class="send__final">Sends can't be undone.</p>
         <Button
           className="send__back"

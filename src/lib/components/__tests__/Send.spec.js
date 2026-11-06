@@ -1542,7 +1542,7 @@ describe("Send", () => {
       }
     });
 
-    it("should warn of the same payment made moments ago, or with the same memo before, and let it go all the same", async () => {
+    it("should warn of the same payment made moments ago, or with the same memo before, and let it go all the same, the button saying Send again", async () => {
       const sent = Date.now() - 20_000;
       const { getByRole } = render(Send, {
         ...baseProps,
@@ -1555,10 +1555,49 @@ describe("Send", () => {
         `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} at ${timeLabel(sent, "en")}.`
       );
 
-      // It can be meant: it goes.
+      // It can be meant: it goes, as the button says.
       await fireEvent.click(fieldsOf(getByRole).review());
+
+      expect(fieldsOf(getByRole).send()).toHaveTextContent(
+        /^Send 0\.0019 DUSK again$/
+      );
+
       await afterConfirmDelay();
       await fireEvent.click(fieldsOf(getByRole).send());
+
+      expect(baseProps.execute).toHaveBeenCalledOnce();
+      cleanup();
+      baseProps.execute.mockClear();
+
+      // Found while the review shows, as from another tab: the button says so
+      // and takes no press meant for Send.
+      const review = render(Send, {
+        ...baseProps,
+        initialAmount: "0.0019",
+        initialRecipient: otherAccount,
+      });
+
+      await fireEvent.click(fieldsOf(review.getByRole).review());
+      await afterConfirmDelay();
+
+      expect(fieldsOf(review.getByRole).send()).toHaveTextContent(
+        /^Send 0\.0019 DUSK$/
+      );
+
+      await review.rerender({
+        historyRows: [sentRow({ status: "executed", time: sent })],
+      });
+
+      expect(fieldsOf(review.getByRole).send()).toHaveTextContent(
+        /^Send 0\.0019 DUSK again$/
+      );
+
+      await fireEvent.click(fieldsOf(review.getByRole).send());
+
+      expect(baseProps.execute).not.toHaveBeenCalled();
+
+      await afterConfirmDelay();
+      await fireEvent.click(fieldsOf(review.getByRole).send());
 
       expect(baseProps.execute).toHaveBeenCalledOnce();
       cleanup();
