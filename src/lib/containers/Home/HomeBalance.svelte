@@ -17,7 +17,7 @@
   export let unshielded;
 
   /**
-   * What is staked, natively and with Sozu, which the total leaves out.
+   * What is staked, natively and with Sozu, which the total counts.
    *
    * @type {bigint}
    */
@@ -32,8 +32,21 @@
   /** @type {number | undefined} */
   export let fiatPrice = undefined;
 
-  $: total = shielded + unshielded;
-  $: publicShare = total ? Number((unshielded * 1000n) / total) / 10 : 0;
+  // Everything held: what's staked too.
+  $: total = shielded + unshielded + staked;
+
+  /**
+   * A part's share of the total, in percent to a tenth.
+   *
+   * @param {bigint} part
+   * @param {bigint} whole
+   */
+  const shareOf = (part, whole) =>
+    whole ? Number((part * 1000n) / whole) / 10 : 0;
+
+  $: publicShare = shareOf(unshielded, total);
+  $: shieldedShare = shareOf(shielded, total);
+  $: stakedShare = shareOf(staked, total);
   $: hideBalances = $settingsStore.hideBalances === true;
   $: toggleLabel = hideBalances ? "Show balances" : "Hide balances";
   $: fiat =
@@ -80,24 +93,16 @@
   {#if fiat}
     <p class="home-balance__fiat">≈ <BalanceValue value={fiat} /></p>
   {/if}
-  {#if staked > 0n}
-    <p class="home-balance__staked">
-      Staked <BalanceValue
-        exact={formatDuskExact(staked, locale)}
-        value={formatDusk(staked, locale)}
-      /> DUSK
-    </p>
-  {/if}
   <div
     aria-hidden="true"
     class="home-balance__bar"
     class:home-balance__bar--empty={!total}
   >
     <i class="home-balance__bar-public" style:flex-grow={publicShare}></i>
-    <i
-      class="home-balance__bar-shielded"
-      style:flex-grow={total ? 100 - publicShare : 0}
-    ></i>
+    <i class="home-balance__bar-shielded" style:flex-grow={shieldedShare}></i>
+    {#if staked > 0n}
+      <i class="home-balance__bar-staked" style:flex-grow={stakedShare}></i>
+    {/if}
   </div>
   <p class="home-balance__legend">
     <span
@@ -122,6 +127,19 @@
         /></b
       ></span
     >
+    {#if staked > 0n}
+      <span
+        ><i class="home-balance__key home-balance__key--staked"></i><span
+          class="ledger-label">Staked</span
+        >
+        <b
+          ><BalanceValue
+            exact={formatDuskExact(staked, locale)}
+            value={formatDusk(staked, locale)}
+          /></b
+        ></span
+      >
+    {/if}
   </p>
 </section>
 
@@ -189,8 +207,7 @@
     font-size: clamp(1.125rem, 2vw, 1.5rem);
   }
 
-  .home-balance__fiat,
-  .home-balance__staked {
+  .home-balance__fiat {
     margin-top: 0.25rem;
     color: var(--calm-muted);
     font-size: 0.875rem;
@@ -232,6 +249,12 @@
   .home-balance__key--shielded {
     background: var(--calm-subtle);
     opacity: 0.6;
+  }
+
+  .home-balance__bar-staked,
+  .home-balance__key--staked {
+    background: var(--calm-subtle);
+    opacity: 0.3;
   }
 
   .home-balance__legend {
