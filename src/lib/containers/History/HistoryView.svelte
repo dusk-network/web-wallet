@@ -5,7 +5,9 @@
   import { createEventDispatcher } from "svelte";
   import { mdiTrayArrowDown } from "@mdi/js";
   import { Button, Icon, Select } from "$lib/dusk/components";
-  import { BalanceValue } from "$lib/components";
+  import { BalanceValue, MemoText } from "$lib/components";
+  import { displayText } from "@dusk-network/app-core/text";
+  import { transactionsFound } from "$lib/containers/Shell/search";
   import { sidePanel } from "$lib/dusk/motion";
   import { pageTitle } from "$lib/navigation";
   import {
@@ -50,6 +52,9 @@
 
   /** The last days shown ("7", "30", "90"), or all of them. */
   export let range = "all";
+
+  /** What the search was asked, for its See all: only what it finds shows. */
+  export let query = "";
 
   const dispatch = createEventDispatcher();
 
@@ -120,15 +125,29 @@
     presentation: describeRow(row, context),
     row,
   }));
-  $: shown = described.filter(({ presentation, row }) =>
-    matchesFilters(presentation, row, {
-      kind,
-      privacy:
-        /** @type {import("$lib/activity/present").ActivityPrivacyFilter} */ (
-          privacy
-        ),
-      since,
-    })
+  // What the search finds, by the search's own rules.
+  $: found = query.trim()
+    ? new Set(
+        transactionsFound(query, {
+          contacts: $contactsStore,
+          history: state.rows,
+          locale,
+          network,
+          present: context,
+        }).map(({ row }) => row.hash)
+      )
+    : null;
+  $: shown = described.filter(
+    ({ presentation, row }) =>
+      (!found || found.has(row.hash)) &&
+      matchesFilters(presentation, row, {
+        kind,
+        privacy:
+          /** @type {import("$lib/activity/present").ActivityPrivacyFilter} */ (
+            privacy
+          ),
+        since,
+      })
   );
   $: groups = groupByDay(shown, ({ row }) => row.time, {
     full: true,
@@ -224,6 +243,24 @@
       />
     </div>
 
+    {#if found}
+      <p class="history__search" role="status">
+        <span
+          >{shown.length === 1
+            ? "1 transaction"
+            : `${shown.length} transactions`} found for “{displayText(
+            query.trim()
+          ).text}”</span
+        >
+        <Button
+          on:click={() => dispatch("filter", { q: "" })}
+          size="small"
+          text="Clear search"
+          variant="tertiary"
+        />
+      </p>
+    {/if}
+
     {#if !state.loaded}
       <p class="history__empty">Loading your history…</p>
     {:else if !state.rows.length}
@@ -235,7 +272,9 @@
             : "No transactions yet."}
       </p>
     {:else if !shown.length}
-      <p class="history__empty">Nothing for these filters.</p>
+      <p class="history__empty">
+        {found ? "Nothing found." : "Nothing for these filters."}
+      </p>
     {:else}
       <table class="history__table">
         <thead>
@@ -269,6 +308,7 @@
                         : `${p.amount.sign}${p.amount.text} DUSK`,
                       time === null ? "" : fullDateTime(time, locale),
                       p.privacy,
+                      row.memo ? `memo ${displayText(row.memo).text}` : "",
                     ]
                       .filter(Boolean)
                       .join(", ")}
@@ -300,6 +340,11 @@
                       >
                       {#if p.note}
                         <span class="history__claim">{p.note}</span>
+                      {/if}
+                      {#if row.memo}
+                        <span class="history__memo"
+                          ><MemoText inline text={row.memo} /></span
+                        >
                       {/if}
                       {#if isDeposit}
                         <span class="history__when"
@@ -577,6 +622,28 @@
     &--failed {
       color: var(--calm-danger);
     }
+  }
+
+  /* A memo of two lines at most: its details have all of it. */
+  .history__memo {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--calm-text);
+    font-size: 0.78125rem;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .history__search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    margin: -0.25rem 0 0.75rem;
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
   }
 
   .history__col-type,

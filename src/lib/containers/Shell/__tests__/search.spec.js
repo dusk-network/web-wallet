@@ -13,6 +13,7 @@ import {
   lookupKind,
   lookupName,
   searchLocally,
+  transactionsFound,
 } from "../search";
 
 const ALICE =
@@ -318,6 +319,41 @@ describe("searchLocally for a block, a memo or a label", () => {
         ({ group }) => group === "Blocks"
       )
     ).toEqual([]);
+  });
+
+  it("lists five transactions at most, and the rest in History, where the same are found", () => {
+    const invoices = {
+      ...index,
+      history: [1, 2, 3, 4, 5, 6, 7].map((n) =>
+        rowOf({
+          amount: "10000000",
+          direction: "in",
+          from: ALICE,
+          hash: `b${n}`.repeat(32),
+          memo: `Factura 2026-05${n}`,
+          status: "executed",
+        })
+      ),
+    };
+    const found = searchLocally("Factura 2026-05", invoices).filter(
+      ({ group }) => group === "Transactions"
+    );
+
+    expect(found).toHaveLength(6);
+    expect(found.at(-1)).toStrictEqual({
+      group: "Transactions",
+      href: "/dashboard/transactions?q=Factura%202026-05",
+      id: "tx:all",
+      label: "See all 7 in History",
+    });
+    expect(
+      transactionsFound("Factura 2026-05", invoices).map(({ row }) => row.hash)
+    ).toStrictEqual(invoices.history.map(({ hash }) => hash));
+
+    // Five or fewer: nothing more to see.
+    expect(
+      searchLocally("Factura 2026-051", invoices).map(({ id }) => id)
+    ).toStrictEqual([`tx:${"b1".repeat(32)}`]);
   });
 
   it("finds the history's transactions by memo, and by the label of their contract or account", () => {

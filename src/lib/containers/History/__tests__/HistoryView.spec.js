@@ -197,6 +197,62 @@ describe("HistoryView", () => {
     );
   });
 
+  it("should show what a search's See all found, each row's memo, and all of it again from Clear search", async () => {
+    const filter = vi.fn();
+    const invoices = [1, 2, 3, 4, 5, 6, 7].map((n) =>
+      row(`b${n}`.repeat(32), WINTER - n * 60_000, {
+        memo: `Factura 2026-05${n}`,
+      })
+    );
+    const { container, getByRole, getByText, queryByText } = render(
+      HistoryView,
+      {
+        events: { filter },
+        props: {
+          locale: "en",
+          query: "Factura 2026-05",
+          state: {
+            ...state,
+            rows: [
+              ...state.rows,
+              ...invoices,
+              row("c1".repeat(32), WINTER, { memo: "Rent \u202Eyluj" }),
+            ],
+          },
+        },
+      }
+    );
+
+    // Every one found, not five, each with its memo.
+    expect(getByRole("status")).toHaveTextContent(
+      "7 transactions found for “Factura 2026-05”"
+    );
+    expect(
+      Array.from(container.querySelectorAll(".history__memo"), (memo) =>
+        memo.textContent?.trim()
+      )
+    ).toStrictEqual(invoices.map((_, i) => `Factura 2026-05${i + 1}`));
+    expect(queryByText(/Rent/)).toBeNull();
+
+    await fireEvent.click(getByRole("button", { name: "Clear search" }));
+
+    expect(filter).toHaveBeenCalledWith(
+      expect.objectContaining({ detail: { q: "" } })
+    );
+    cleanup();
+
+    // Unfiltered, a memo's hidden characters show as codes.
+    render(HistoryView, {
+      locale: "en",
+      state: {
+        ...state,
+        rows: [row("c1".repeat(32), WINTER, { memo: "Rent \u202Eyluj" })],
+      },
+    });
+
+    expect(getByText("Rent \\u202eyluj")).toBeInTheDocument();
+  });
+
   it("should grey a withdrawal's amount until it arrives, as a failed one's", () => {
     const proved = row("b1".repeat(32), WINTER, {
       amount: "0",

@@ -160,6 +160,73 @@ const luxOf = ({ bridge, value }) =>
   value === 0n ? (bridge?.amount ?? 0n) : value;
 
 /**
+ * Whether a query is a row's hash, or the start of it.
+ *
+ * @param {ActivityRow} row
+ * @param {string} q Lower case
+ */
+const isHash = (row, q) => q.length >= 4 && row.hash.includes(q);
+
+/**
+ * The transactions a query finds, as the search finds them, every one: by
+ * hash, by what they're known by, by amount and by who they're with, those of
+ * the contacts the query names and whoever History names so. The amount
+ * typed, to the lux, comes first; the rest in the history's order. History
+ * shows the same, for a search's See all.
+ *
+ * @param {string} query
+ * @param {Pick<SearchIndex, "contacts" | "history" | "locale" | "network" | "present">} index
+ * @returns {{ row: ActivityRow, shown: import("$lib/activity/present").ActivityPresentation }[]}
+ */
+export function transactionsFound(
+  query,
+  { contacts = [], history, locale, network = "", present = {} }
+) {
+  const q = query.trim().toLowerCase();
+
+  if (!q) {
+    return [];
+  }
+
+  const amounts = amountsMeant(query, locale);
+  const foundPeople = new Set(
+    contacts
+      .filter((c) => has(`${c.name} ${c.duskName ?? ""} ${c.address}`, q))
+      .map(({ address }) => address)
+  );
+
+  /** @param {ActivityRow} row */
+  const hasAmountMeant = (row) => {
+    const lux = luxOf(row);
+
+    return amounts.some(({ from, to }) => lux >= from && lux < to);
+  };
+
+  return (
+    history
+      .map((row) => ({
+        row,
+        shown: describeRow(row, { ...present, locale }),
+      }))
+      .filter(
+        ({ row, shown }) =>
+          isHash(row, q) ||
+          (q.length >= 3 &&
+            has(`${knownBy(row, network)} ${shown.title}`, q)) ||
+          (q.length >= 4 && has(shown.counterparty ?? "", q)) ||
+          foundPeople.has(shown.counterparty ?? "") ||
+          hasAmountMeant(row)
+      )
+      // The amount typed, to the lux, before those that only start with it.
+      .sort(
+        (a, b) =>
+          Number(amounts.some(({ from }) => luxOf(b.row) === from)) -
+          Number(amounts.some(({ from }) => luxOf(a.row) === from))
+      )
+  );
+}
+
+/**
  * The results for a query, by group, at most GROUP_LIMIT each.
  *
  * @param {string} query
@@ -258,63 +325,49 @@ export function searchLocally(
 
   // The transactions by what they're known by, by amount and by who they're
   // with: those of the contacts found, and whoever History names so.
-  const amounts = amountsMeant(query, locale);
-  const foundPeople = new Set(foundContacts.map(({ address }) => address));
-
-  /** @param {ActivityRow} row */
-  const hasAmountMeant = (row) => {
-    const lux = luxOf(row);
-
-    return amounts.some(({ from, to }) => lux >= from && lux < to);
-  };
-
-  /** @param {ActivityRow} row */
-  const isHash = (row) => q.length >= 4 && row.hash.includes(q);
+  const transactions = transactionsFound(query, {
+    contacts,
+    history,
+    locale,
+    network,
+    present,
+  });
 
   add(
-    history
-      .map((row) => ({
-        row,
-        shown: describeRow(row, { ...present, locale }),
-      }))
-      .filter(
-        ({ row, shown }) =>
-          isHash(row) ||
-          (q.length >= 3 &&
-            has(`${knownBy(row, network)} ${shown.title}`, q)) ||
-          (q.length >= 4 && has(shown.counterparty ?? "", q)) ||
-          foundPeople.has(shown.counterparty ?? "") ||
-          hasAmountMeant(row)
-      )
-      // The amount typed, to the lux, before those that only start with it.
-      .sort(
-        (a, b) =>
-          Number(amounts.some(({ from }) => luxOf(b.row) === from)) -
-          Number(amounts.some(({ from }) => luxOf(a.row) === from))
-      )
-      .map(({ row, shown }) => {
-        // Named as History names it, with when it was made under it, and
-        // what it moved unless it's found by its hash.
-        const { amount, title, titleIsAddress } = shown;
+    transactions.map(({ row, shown }) => {
+      // Named as History names it, with when it was made under it, and
+      // what it moved unless it's found by its hash.
+      const { amount, title, titleIsAddress } = shown;
+      const byHash = isHash(row, q);
 
-        return {
-          detail: isHash(row)
-            ? shortAddress(row.hash)
-            : `${amount.sign}${hideBalances ? BALANCE_MASK : amount.text} DUSK`,
-          detailIsCode: isHash(row),
-          group: /** @type {const} */ ("Transactions"),
-          href: `/dashboard/transactions?tx=${row.hash}`,
-          id: `tx:${row.hash}`,
-          label: title,
-          labelIsCode: titleIsAddress,
-          sub:
-            row.time === null
-              ? undefined
-              : `${dayLabel(row.time, { locale })}, ${timeLabel(row.time, locale)}`,
-          value: row.hash,
-        };
-      })
+      return {
+        detail: byHash
+          ? shortAddress(row.hash)
+          : `${amount.sign}${hideBalances ? BALANCE_MASK : amount.text} DUSK`,
+        detailIsCode: byHash,
+        group: /** @type {const} */ ("Transactions"),
+        href: `/dashboard/transactions?tx=${row.hash}`,
+        id: `tx:${row.hash}`,
+        label: title,
+        labelIsCode: titleIsAddress,
+        sub:
+          row.time === null
+            ? undefined
+            : `${dayLabel(row.time, { locale })}, ${timeLabel(row.time, locale)}`,
+        value: row.hash,
+      };
+    })
   );
+
+  // The rest, in History, where the group can't show them all.
+  if (transactions.length > GROUP_LIMIT) {
+    results.push({
+      group: "Transactions",
+      href: `/dashboard/transactions?q=${encodeURIComponent(query.trim())}`,
+      id: "tx:all",
+      label: `See all ${transactions.length} in History`,
+    });
+  }
 
   // A block, by its height.
   if (/^\d{1,15}$/.test(q)) {

@@ -83,7 +83,7 @@
     const next = new URL(url);
 
     for (const [name, value] of Object.entries(picked)) {
-      if (value === "all") {
+      if (value === "all" || value === "") {
         next.searchParams.delete(name);
       } else {
         next.searchParams.set(name, value);
@@ -111,6 +111,8 @@
   $: kind = kindOf(url);
   $: privacy = filterOf(url, "privacy");
   $: range = filterOf(url, "range");
+  // A search's See all: what it finds.
+  $: query = url.searchParams.get("q") ?? "";
 </script>
 
 {#if isHistoryEnabled()}
@@ -128,6 +130,7 @@
     on:filter={(event) => filter(event.detail)}
     on:select={(event) => select(event.detail)}
     {privacy}
+    {query}
     {range}
     selected={url.searchParams.get("tx")}
     shieldedAddress={currentProfile ? String(currentProfile.address) : ""}
