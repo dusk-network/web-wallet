@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Show a profile's and a wallet's name whole in the profile menu, a tap from the pill that shortens it
 - Say on a restore that syncing finds the balance and past payments, and which blocks the sync bar goes through
 - Give the fee in DUSK first under Edit, with what "at most" means and the gas written in groups
 - Say to the lux the stDUSK a stake with Sozu got, or an unstake gave back, and the rate, in its details and on its Sent screen

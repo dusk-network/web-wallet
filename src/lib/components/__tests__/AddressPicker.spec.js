@@ -1206,6 +1206,34 @@ describe("AddressPicker", () => {
       expect(ruleOf(".address-picker__pill-profile")?.flex).toBe("none");
     });
 
+    it("shows a profile's and a wallet's names whole in the menu, a tap from the pill that cuts them", () => {
+      const rules = readStyleRules(
+        "../AddressPicker/AddressPicker.css",
+        import.meta.url
+      ).filter((rule) => !rule.media);
+
+      for (const part of [
+        ".address-picker__profile-header",
+        ".address-picker__address-name",
+        ".address-picker__wallet-title",
+      ]) {
+        const declared = rules
+          .filter((rule) =>
+            rule.selector.split(",").some((one) => one.trim() === part)
+          )
+          .map((rule) => rule.declarations);
+
+        expect(declared).toContainEqual(
+          expect.objectContaining({ "overflow-wrap": "anywhere" })
+        );
+
+        for (const declarations of declared) {
+          expect(declarations["white-space"]).not.toBe("nowrap");
+          expect(declarations["text-overflow"]).not.toBe("ellipsis");
+        }
+      }
+    });
+
     it("shows the open wallet's name under the profile's in the top bar's pill with more than one wallet, and says it", async () => {
       const { container, rerender } = render(AddressPicker, {
         ...props,
