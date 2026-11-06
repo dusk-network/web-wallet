@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Notify on a phone too when a transfer arrives, through the wallet's service worker, while its tab stays open, as its Sent screen says
 - Send back a payment that paid a request again, filled in on Send, from the request
 - Scan a QR code from an image on Send, also where there's no camera
 - Warn on Send of a payment just like one made in the last ten minutes, or with the same memo before, also from another tab, without stopping it

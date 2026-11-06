@@ -23,6 +23,7 @@ import { transferOutcome } from "$lib/components/EvmTransactions/bridgeActivity"
 import {
   arrivalNoticeState,
   arrivalSeen,
+  followNotificationClicks,
   forgetArrivalTitle,
   transferEnded,
 } from "./arrivalNotice";
@@ -122,10 +123,12 @@ function watcher(idOf, hashOf, endOf) {
       seen.set(id, end);
 
       if (before !== undefined && end && end !== before) {
+        const href = `/dashboard/bridge/transactions?tx=${hashOf(item)}`;
+
         transferEnded({
+          href,
           id,
-          onOpen: () =>
-            goto(`/dashboard/bridge/transactions?tx=${hashOf(item)}`),
+          onOpen: () => goto(href),
           title: end,
         });
       }
@@ -201,10 +204,14 @@ export function followArrivals() {
   window.addEventListener("focus", arrivalSeen);
   document.addEventListener("visibilitychange", arrivalSeen);
 
+  // A notification pressed opens what it says arrived.
+  const stopClicks = followNotificationClicks((href) => goto(href));
+
   return () => {
     stops.forEach((stop) => stop());
     stopState();
     stopWallet();
+    stopClicks();
     stopFollowing?.();
     window.removeEventListener("focus", arrivalSeen);
     document.removeEventListener("visibilitychange", arrivalSeen);
