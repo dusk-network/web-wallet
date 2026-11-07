@@ -150,6 +150,7 @@ If errors occur during deployment:
 
 - Confirm the application works correctly across all production environments
 - Verify the product version displayed in the UI matches the released version
+- Run `node scripts/verify-build.js <site>` for each environment: every file it serves should be what its commit builds
 - Test all key user flows and features on different devices and browsers
 - Monitor error logs and performance metrics
 

@@ -1,7 +1,8 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { AppAnchorButton } from "$lib/components";
+  import { version } from "$app/environment";
+  import { AppAnchor, AppAnchorButton } from "$lib/components";
   import { settingsStore } from "$lib/stores";
   import { mdiKeyOutline, mdiRestore, mdiWalletOutline } from "@mdi/js";
 
@@ -9,6 +10,9 @@
 
   // There is a wallet to unlock once one was created or restored here.
   const { userId } = $settingsStore;
+
+  // SvelteKit's version is the commit built (svelte.config.js).
+  const commit = version.slice(0, 8);
 </script>
 
 <section class="setup-content">
@@ -49,10 +53,13 @@
   </div>
 </section>
 
+<!-- To the build's manifest: every file's SHA-256, to check against the source. -->
 <footer class="setup-footer">
-  <span
-    >Web Wallet v{import.meta.env.APP_VERSION} ({import.meta.env
-      .APP_BUILD_INFO})</span
+  <AppAnchor
+    href="/build-manifest.json"
+    rel="noopener noreferrer"
+    target="_blank"
+    >Web Wallet v{import.meta.env.APP_VERSION} ({commit})</AppAnchor
   >
 </footer>
 
@@ -93,5 +100,9 @@
     font-variant-numeric: tabular-nums;
     font-size: 0.75em;
     letter-spacing: 0.08em;
+
+    & :global(.dusk-anchor) {
+      color: inherit;
+    }
   }
 </style>

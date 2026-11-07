@@ -11,6 +11,7 @@ Web Wallet website.
   - [Fingerprint or face unlock](#fingerprint-or-face-unlock)
   - [Environment variables](#environment-variables)
     - [NPM scripts](#npm-scripts)
+  - [Verify a deployment](#verify-a-deployment)
   - [Running a local Rusk node](#running-a-local-rusk-node)
 
 ## Build system and dev environment
@@ -191,6 +192,30 @@ To run a local node different steps are needed, so please read the [related sect
 - `npm run test:watch` runs the test suite in watch mode
 - `npm run typecheck` runs the type checker
 - `npm run typecheck:watch` runs the type checker in watch mode
+
+## Verify a deployment
+
+The same commit, built with the same settings, makes the same files. Each build
+writes `build/build-manifest.json`, served beside the app: the version, the
+commit built, the mode and the `VITE_` settings it was built with, Node's and
+npm's versions, and every file's SHA-256. The footer's version on the setup
+page links to it. Vite builds every `VITE_` setting into the code, so none of
+them is a secret. `deployments.json` lists each deployment's settings: change
+them there with its DigitalOcean spec.
+
+To rebuild what a site serves and compare, from a clone of this repository:
+
+```bash
+node scripts/verify-build.js https://apps.dusk.network/wallet/
+```
+
+The script builds the manifest's commit in a new worktree, with `npm ci` and
+`npm run build`, and checks every file, and every page at the addresses
+browsers open it by, against the rebuild and the manifest. It trusts nothing
+the site says: it builds only a commit on a branch or tag of your clone, with
+the settings `deployments.json` lists for the site, and refuses a manifest a
+build wouldn't write. A site built before builds were reproducible has no
+manifest, and can't be checked.
 
 ## Running a local Rusk node
 

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add DUSK to the connected EVM wallet, where it takes the request: once a transfer to its chain arrived, and on the way back's form while it holds none
 - Notify on a phone too when a transfer arrives, through the wallet's service worker, while its tab stays open, as its Sent screen says
 - Send back a payment that paid a request again, filled in on Send, from the request
+- Link the footer's version, now with the commit built and no date, to the build's manifest of every file's SHA-256
 
 ### Changed
 

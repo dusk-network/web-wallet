@@ -2,7 +2,6 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import { coverageConfigDefaults } from "vitest/config";
 import { default as basicSsl } from "@vitejs/plugin-basic-ssl";
 import { defineConfig, loadEnv } from "vite";
-import { execSync } from "child_process";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
@@ -10,17 +9,12 @@ const supportedBrowsers = ["chrome129", "edge129", "firefox130", "safari18"];
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
-  const buildDate = new Date().toISOString().substring(0, 10);
-  const buildHash = execSync(
-    "git log -1 --grep='web-wallet:' --format=format:'%h'"
-  );
-  const APP_VERSION = process.env.npm_package_version ?? "unknown";
-  // What the wallet keeps in the browser is keyed by the package's name, from
-  // package.json: npm only gives it to Vite when npm runs it.
-  const { name: APP_NAME } = JSON.parse(
+  // What the wallet keeps in the browser is keyed by the package's name, and
+  // its version shows in the footer, both from package.json: npm only gives
+  // them to Vite when npm runs it.
+  const { name: APP_NAME, version: APP_VERSION } = JSON.parse(
     readFileSync(resolve("package.json"), "utf8")
   );
-  const APP_BUILD_INFO = `${buildHash.toString() || "unknown"} ${buildDate}`;
   const commonPlugins = [sveltekit()];
 
   // needed to use %sveltekit.env.PUBLIC_APP_VERSION% in app.html
@@ -32,7 +26,6 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       CONFIG: { LOCAL_STORAGE_APP_KEY: APP_NAME },
-      "import.meta.env.APP_BUILD_INFO": JSON.stringify(APP_BUILD_INFO),
       "import.meta.env.APP_VERSION": JSON.stringify(APP_VERSION),
       "process.env": {
         MODE_MAINTENANCE: env.VITE_MODE_MAINTENANCE,
@@ -91,7 +84,6 @@ export default defineConfig(({ mode }) => {
         provider: "v8",
       },
       env: {
-        APP_BUILD_INFO: "hash1234 2024-01-12",
         APP_VERSION: "0.1.5",
         VITE_FEATURE_ALLOCATE: "true",
         VITE_FEATURE_BRIDGE: "true",
@@ -106,7 +98,8 @@ export default defineConfig(({ mode }) => {
         VITE_SYNC_INTERVAL: "300000",
       },
       environment: "jsdom",
-      include: ["src/**/*.{test,spec}.{js,ts}"],
+      // The scripts' own, not those in their folders, which aren't run in CI.
+      include: ["src/**/*.{test,spec}.{js,ts}", "scripts/*.spec.js"],
       server: {
         deps: {
           // we inline w3sper and duskit to be able to use aliases
