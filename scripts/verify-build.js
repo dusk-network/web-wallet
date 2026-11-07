@@ -138,7 +138,9 @@ export const settingsDiffer = (listed, named) =>
 /**
  * Where the rebuild, the site's manifest and the site differ: at each file's
  * address, and each page's with and without its last slash, as browsers open
- * it. `get` gives the SHA-256 of what the site serves at an address, or null.
+ * it. `get` gives the SHA-256 of what the site serves at an address, or null;
+ * told when the address is a page's without its slash, which alone may
+ * redirect, to the page's address with it.
  */
 export const compareSite = async (site, rebuilt, listed, get) => {
   const addresses = [];
@@ -149,12 +151,12 @@ export const compareSite = async (site, rebuilt, listed, get) => {
       site
     ).href;
 
-    addresses.push([file, path]);
+    addresses.push([file, path, false]);
 
     if (/(^|\/)index\.html$/.test(path)) {
       const page = file.slice(0, -"index.html".length);
 
-      addresses.push([page, path], [page.slice(0, -1), path]);
+      addresses.push([page, path, false], [page.slice(0, -1), path, true]);
     }
   }
 
@@ -162,8 +164,8 @@ export const compareSite = async (site, rebuilt, listed, get) => {
 
   for (let next = 0; next < addresses.length; next += 8) {
     await Promise.all(
-      addresses.slice(next, next + 8).map(async ([address, path]) => {
-        const served = await get(address);
+      addresses.slice(next, next + 8).map(async ([address, path, slash]) => {
+        const served = await get(address, slash);
         const rebuild = rebuilt.get(path);
 
         if (!rebuild || served !== rebuild || listed.get(path) !== rebuild) {
@@ -183,75 +185,71 @@ export const compareSite = async (site, rebuilt, listed, get) => {
   return { checked: addresses.length, differences };
 };
 
+const REDIRECTS = [301, 302, 303, 307, 308];
+
 /**
- * What a site serves at an address, following up to five redirects on its
- * own origin, as static hosts make from a page's address without its last
- * slash, and none off it: the SHA-256 of it, or with `limit`, up to a byte
- * over that of it. Null where it serves nothing.
+ * What a site serves at an address: the SHA-256 of it, or with `limit`, up to
+ * a byte over that of it. Null where it serves nothing. Nothing may redirect
+ * but, with `slash`, a page's address without its last slash, to the same
+ * with it, as static hosts do: what a browser fetched from anywhere else, the
+ * addresses it reads from there would be checked nowhere.
  */
-export const fetchFrom = async (address, limit, get = fetch) => {
-  const { origin } = new URL(address);
-  const refused = (why) => {
-    if (limit) throw new Error(why);
-    return why;
-  };
-  let at = address;
+export const fetchFrom = async (
+  address,
+  { limit, slash, get = fetch } = {}
+) => {
+  const fetchAt = (at) =>
+    get(at, { redirect: "manual", signal: AbortSignal.timeout(60_000) });
+  let response = await fetchAt(address);
 
-  for (let redirects = 0; redirects <= 5; redirects += 1) {
-    const response = await get(at, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(60_000),
-    });
-    const location =
-      response.status >= 300 &&
-      response.status < 400 &&
-      response.headers.get("location");
-
-    if (location) {
-      await response.body?.cancel();
-      at = new URL(location, at).href;
-      if (new URL(at).origin !== origin)
-        return refused("redirects off the site");
-      continue;
-    }
-
-    if (response.status !== 200 || !response.body) {
-      await response.body?.cancel();
-      return null;
-    }
-
-    const hash = createHash("sha256");
-    const chunks = [];
-    let size = 0;
-
-    for await (const chunk of response.body) {
-      size += chunk.length;
-      if (limit) chunks.push(chunk);
-      else hash.update(chunk);
-      if (size > (limit ?? MAX_FILE)) break;
-    }
-
-    if (limit) return Buffer.concat(chunks);
-
-    return size > MAX_FILE ? "over 64 MiB" : hash.digest("hex");
+  if (
+    slash &&
+    REDIRECTS.includes(response.status) &&
+    new URL(response.headers.get("location") ?? "", address).href ===
+      `${address}/`
+  ) {
+    await response.body?.cancel();
+    response = await fetchAt(`${address}/`);
   }
 
-  return refused("redirects again and again");
+  if (response.status !== 200 || !response.body) {
+    await response.body?.cancel();
+
+    if (!REDIRECTS.includes(response.status)) return null;
+    if (limit) throw new Error(`redirects ${new URL(address).pathname}`);
+
+    return "a redirect";
+  }
+
+  const hash = createHash("sha256");
+  const chunks = [];
+  let size = 0;
+
+  for await (const chunk of response.body) {
+    size += chunk.length;
+    if (limit) chunks.push(chunk);
+    else hash.update(chunk);
+    if (size > (limit ?? MAX_FILE)) break;
+  }
+
+  if (limit) return Buffer.concat(chunks);
+
+  return size > MAX_FILE ? "over 64 MiB" : hash.digest("hex");
 };
 
-/**
- * How to run npm, with the arguments given, from npm's own script beside this
- * Node, as Node: on Windows npm and npx are .cmd files, which only a shell
- * runs. With a version, that npm, as npx gets it.
- */
-export const npmCommand = (version, args) => {
-  const home = dirname(process.execPath);
-  const cli = [
-    "node_modules/npm/bin/npm-cli.js",
-    "../lib/node_modules/npm/bin/npm-cli.js",
-  ]
-    .map((path) => join(home, path))
+/** npm's own script beside this Node, where it's there. */
+const npmBeside = () =>
+  ["node_modules/npm/bin/npm-cli.js", "../lib/node_modules/npm/bin/npm-cli.js"]
+    .map((path) => join(dirname(process.execPath), path))
     .find((path) => existsSync(path));
+
+/**
+ * How to run npm with the arguments given: from npm's own script, as this
+ * Node, where it's beside it, since on Windows npm and npx are .cmd files,
+ * which only a shell runs; npm on the PATH otherwise. With a version, that
+ * npm, as npx gets it.
+ */
+export const npmCommand = (version, args, cli = npmBeside()) => {
   const own = version
     ? ["exec", "--yes", `--package=npm@${version}`, "--", "npm", ...args]
     : args;
@@ -275,7 +273,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   try {
     manifest = readManifest(
-      await fetchFrom(new URL(MANIFEST, site).href, MAX_MANIFEST)
+      await fetchFrom(new URL(MANIFEST, site).href, { limit: MAX_MANIFEST })
     );
   } catch (error) {
     console.error(`${site.href} ${error.message}.`);
@@ -388,7 +386,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       site,
       hashFiles(join(dir, "build")),
       manifest.files,
-      (at) => fetchFrom(at).catch(() => null)
+      (at, slash) => fetchFrom(at, { slash }).catch(() => null)
     );
 
     const short = (hash) =>

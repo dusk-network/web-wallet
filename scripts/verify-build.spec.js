@@ -145,52 +145,104 @@ describe("Verifying a deployment", () => {
     expect(() => modeOf(["--mode"])).toThrow("a mode is");
   });
 
-  it("should follow a redirect on the site, as static hosts make from a page's address without its slash, and none off it", async () => {
+  it("should take one redirect alone, from a page's address without its last slash to the same with it", async () => {
     const page = "<!doctype html>";
-    const redirect = (/** @type {string} */ location) =>
-      new Response(null, { headers: { location }, status: 301 });
+    const redirect = (/** @type {string} */ location, status = 301) =>
+      new Response(null, { headers: { location }, status });
     /** @type {Record<string, () => Response>} */
     const served = {
+      "https://wallet.example/wallet/_app/x.js": () =>
+        redirect("/elsewhere/x.js"),
       "https://wallet.example/wallet/away": () =>
-        redirect("https://elsewhere.example/wallet/setup/"),
-      "https://wallet.example/wallet/loop": () => redirect("/wallet/loop"),
+        redirect("https://elsewhere.example/wallet/away/"),
+      "https://wallet.example/wallet/build-manifest.json": () =>
+        redirect("/wallet/elsewhere.json"),
+      "https://wallet.example/wallet/cached": () =>
+        redirect("/wallet/cached/", 304),
+      "https://wallet.example/wallet/cached/": () => new Response(page),
+      "https://wallet.example/wallet/elsewhere/x.js": () => new Response("x"),
+      "https://wallet.example/wallet/other": () => redirect("/wallet/setup/"),
       "https://wallet.example/wallet/setup": () => redirect("/wallet/setup/"),
       "https://wallet.example/wallet/setup/": () => new Response(page),
+      "https://wallet.example/wallet/twice": () => redirect("twice/", 308),
+      "https://wallet.example/wallet/twice/": () => redirect("/wallet/setup/"),
     };
     const get = async (/** @type {string} */ address) =>
       served[address]?.() ?? new Response(null, { status: 404 });
+    const at = (/** @type {string} */ path, slash = false) =>
+      fetchFrom(`https://wallet.example/wallet/${path}`, { get, slash });
 
-    expect(
-      await fetchFrom("https://wallet.example/wallet/setup", undefined, get)
-    ).toBe(createHash("sha256").update(page).digest("hex"));
-    expect(
-      await fetchFrom("https://wallet.example/wallet/away", undefined, get)
-    ).toBe("redirects off the site");
-    expect(
-      await fetchFrom("https://wallet.example/wallet/loop", undefined, get)
-    ).toBe("redirects again and again");
+    expect(await at("setup", true)).toBe(
+      createHash("sha256").update(page).digest("hex")
+    );
+    expect(await at("setup")).toBe("a redirect");
+    expect(await at("_app/x.js")).toBe("a redirect");
+    expect(await at("other", true)).toBe("a redirect");
+    expect(await at("away", true)).toBe("a redirect");
+    expect(await at("twice", true)).toBe("a redirect");
+    expect(await at("cached", true)).toBeNull();
+    expect(await at("gone", true)).toBeNull();
     await expect(
-      fetchFrom("https://wallet.example/wallet/away", 2 ** 21, get)
-    ).rejects.toThrow("redirects off the site");
-    expect(
-      await fetchFrom("https://wallet.example/wallet/gone", undefined, get)
-    ).toBeNull();
+      fetchFrom("https://wallet.example/wallet/build-manifest.json", {
+        get,
+        limit: 2 ** 21,
+      })
+    ).rejects.toThrow("redirects /wallet/build-manifest.json");
   });
 
-  it("should run npm as a script of this Node's, which on Windows a .cmd launcher can't be run without a shell", () => {
-    const [command, args] = npmCommand(undefined, ["--version"]);
-
-    expect(command).toBe(process.execPath);
-    expect(execFileSync(command, args, { encoding: "utf8" })).toMatch(
-      /^\d+\.\d+\.\d+\n$/
+  it("should catch a script that redirects, whose own imports a browser would fetch from where it lands", async () => {
+    const digest = (/** @type {string} */ text) =>
+      createHash("sha256").update(text).digest("hex");
+    const bodies = {
+      "_app/immutable/chunks/-dNcaVtT.js": 'import"./B6-Q-Emf.js";',
+      "index.html": "<!doctype html>",
+    };
+    const files = new Map(
+      Object.entries(bodies).map(([path, body]) => [path, digest(body)])
     );
-    expect(npmCommand("11.18.0", ["ci"])[1].slice(1)).toEqual([
-      "exec",
-      "--yes",
-      "--package=npm@11.18.0",
-      "--",
+    /** @type {Record<string, () => Response>} */
+    const served = {
+      "https://wallet.example/elsewhere/-dNcaVtT.js": () =>
+        new Response(bodies["_app/immutable/chunks/-dNcaVtT.js"]),
+      "https://wallet.example/wallet": () =>
+        new Response(null, { headers: { location: "/wallet/" }, status: 301 }),
+      "https://wallet.example/wallet/": () =>
+        new Response(bodies["index.html"]),
+      "https://wallet.example/wallet/_app/immutable/chunks/-dNcaVtT.js": () =>
+        new Response(null, {
+          headers: { location: "/elsewhere/-dNcaVtT.js" },
+          status: 302,
+        }),
+      "https://wallet.example/wallet/index.html": () =>
+        new Response(bodies["index.html"]),
+    };
+    const get = async (/** @type {string} */ address) =>
+      served[address]?.() ?? new Response(null, { status: 404 });
+    const { differences } = await compareSite(SITE, files, files, (at, slash) =>
+      fetchFrom(at, { get, slash })
+    );
+
+    expect(differences).toMatchObject([
+      {
+        address:
+          "https://wallet.example/wallet/_app/immutable/chunks/-dNcaVtT.js",
+        served: "a redirect",
+      },
+    ]);
+  });
+
+  it("should run npm from its own script, as this Node, where it's beside it, and from the PATH otherwise", () => {
+    const ci = ["exec", "--yes", "--package=npm@11.18.0", "--", "npm", "ci"];
+    const beside = "/node/lib/node_modules/npm/bin/npm-cli.js";
+
+    expect(npmCommand("11.18.0", ["ci"], beside)).toEqual([
+      process.execPath,
+      [beside, ...ci],
+    ]);
+    expect(npmCommand("11.18.0", ["ci"], null)).toEqual(["npm", ci]);
+    expect(npmCommand(undefined, ["run", "build"], null)).toEqual([
       "npm",
-      "ci",
+      ["run", "build"],
     ]);
   });
 
