@@ -98,7 +98,8 @@ export default defineConfig(({ mode }) => {
         VITE_SYNC_INTERVAL: "300000",
       },
       environment: "jsdom",
-      include: ["src/**/*.{test,spec}.{js,ts}"],
+      // The scripts' own, not those in their folders, which aren't run in CI.
+      include: ["src/**/*.{test,spec}.{js,ts}", "scripts/*.spec.js"],
       server: {
         deps: {
           // we inline w3sper and duskit to be able to use aliases
