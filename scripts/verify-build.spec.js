@@ -1,10 +1,13 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { modeOf } from "./build.js";
 import {
   compareSite,
+  fetchFrom,
+  npmCommand,
   readManifest,
   settingProblem,
   settingsDiffer,
@@ -129,12 +132,66 @@ describe("Verifying a deployment", () => {
     ).toEqual(["VITE_B", "VITE_C"]);
   });
 
-  it("should build in the mode Vite is given, and say so", () => {
+  it("should build in the mode Vite is given, and refuse options a manifest can't say", () => {
     expect(modeOf([])).toBe("production");
     expect(modeOf(["--mode", "staging"])).toBe("staging");
     expect(modeOf(["--mode=staging"])).toBe("staging");
-    expect(modeOf(["-m", "staging", "--minify", "false"])).toBe("staging");
-    expect(modeOf(["--minify", "false"])).toBe("production");
+    expect(modeOf(["-m", "staging"])).toBe("staging");
+    expect(() => modeOf(["--minify", "false"])).toThrow("only --mode");
+    expect(() => modeOf(["-m", "staging", "--sourcemap"])).toThrow(
+      "only --mode"
+    );
+    expect(() => modeOf(["--mode", "../staging"])).toThrow("a mode is");
+    expect(() => modeOf(["--mode"])).toThrow("a mode is");
+  });
+
+  it("should follow a redirect on the site, as static hosts make from a page's address without its slash, and none off it", async () => {
+    const page = "<!doctype html>";
+    const redirect = (/** @type {string} */ location) =>
+      new Response(null, { headers: { location }, status: 301 });
+    /** @type {Record<string, () => Response>} */
+    const served = {
+      "https://wallet.example/wallet/away": () =>
+        redirect("https://elsewhere.example/wallet/setup/"),
+      "https://wallet.example/wallet/loop": () => redirect("/wallet/loop"),
+      "https://wallet.example/wallet/setup": () => redirect("/wallet/setup/"),
+      "https://wallet.example/wallet/setup/": () => new Response(page),
+    };
+    const get = async (/** @type {string} */ address) =>
+      served[address]?.() ?? new Response(null, { status: 404 });
+
+    expect(
+      await fetchFrom("https://wallet.example/wallet/setup", undefined, get)
+    ).toBe(createHash("sha256").update(page).digest("hex"));
+    expect(
+      await fetchFrom("https://wallet.example/wallet/away", undefined, get)
+    ).toBe("redirects off the site");
+    expect(
+      await fetchFrom("https://wallet.example/wallet/loop", undefined, get)
+    ).toBe("redirects again and again");
+    await expect(
+      fetchFrom("https://wallet.example/wallet/away", 2 ** 21, get)
+    ).rejects.toThrow("redirects off the site");
+    expect(
+      await fetchFrom("https://wallet.example/wallet/gone", undefined, get)
+    ).toBeNull();
+  });
+
+  it("should run npm as a script of this Node's, which on Windows a .cmd launcher can't be run without a shell", () => {
+    const [command, args] = npmCommand(undefined, ["--version"]);
+
+    expect(command).toBe(process.execPath);
+    expect(execFileSync(command, args, { encoding: "utf8" })).toMatch(
+      /^\d+\.\d+\.\d+\n$/
+    );
+    expect(npmCommand("11.18.0", ["ci"])[1].slice(1)).toEqual([
+      "exec",
+      "--yes",
+      "--package=npm@11.18.0",
+      "--",
+      "npm",
+      "ci",
+    ]);
   });
 
   it("should check out every file as it was committed, whatever the machine's line endings", () => {

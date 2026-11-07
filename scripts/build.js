@@ -18,17 +18,31 @@ import { fileURLToPath } from "node:url";
 export const MANIFEST = "build-manifest.json";
 
 /**
- * The mode `vite build` builds in, given its arguments.
+ * The mode `vite build` builds in, given its options: --mode alone, since the
+ * others change the files in ways the manifest couldn't say.
  *
  * @param {string[]} args
  */
 export const modeOf = (args) => {
-  const at = args.findIndex((arg) => arg === "--mode" || arg === "-m");
-  const joined = args.find((arg) => /^(--mode|-m)=/.test(arg));
+  let mode = "production";
 
-  return (
-    (at === -1 ? joined?.replace(/^[^=]*=/, "") : args[at + 1]) ?? "production"
-  );
+  for (let at = 0; at < args.length; at += 1) {
+    const [option, joined] = args[at].split(/=(.*)/s);
+
+    if (option !== "--mode" && option !== "-m") {
+      throw new Error(
+        `${args[at]}: only --mode can be given, since other options change the build in ways its manifest can't say`
+      );
+    }
+
+    mode = joined ?? args[(at += 1)];
+  }
+
+  if (!/^[\w-]{1,32}$/.test(mode ?? "")) {
+    throw new Error(`--mode ${mode ?? ""}: a mode is letters, digits, - and _`);
+  }
+
+  return mode;
 };
 
 /**
@@ -58,6 +72,15 @@ export const hashFiles = (root) =>
 // Run, not imported by scripts/verify-build.js.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  let mode;
+
+  try {
+    mode = modeOf(args);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(2);
+  }
+
   const vite = join(
     dirname(createRequire(import.meta.url).resolve("vite/package.json")),
     "bin/vite.js"
@@ -70,7 +93,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(status ?? 1);
   }
 
-  const mode = modeOf(args);
   const { loadEnv } = await import("vite");
   const { homepage, version } = JSON.parse(
     readFileSync("package.json", "utf8")

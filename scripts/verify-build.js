@@ -15,9 +15,9 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { hashFiles, MANIFEST } from "./build.js";
@@ -184,35 +184,79 @@ export const compareSite = async (site, rebuilt, listed, get) => {
 };
 
 /**
- * What a site serves at an address, without following it elsewhere: the
- * SHA-256 of it, or with `limit`, up to a byte over that of it. Null where it
- * serves nothing there.
+ * What a site serves at an address, following up to five redirects on its
+ * own origin, as static hosts make from a page's address without its last
+ * slash, and none off it: the SHA-256 of it, or with `limit`, up to a byte
+ * over that of it. Null where it serves nothing.
  */
-const fetchFrom = async (address, limit) => {
-  const response = await fetch(address, {
-    redirect: "manual",
-    signal: AbortSignal.timeout(60_000),
-  });
+export const fetchFrom = async (address, limit, get = fetch) => {
+  const { origin } = new URL(address);
+  const refused = (why) => {
+    if (limit) throw new Error(why);
+    return why;
+  };
+  let at = address;
 
-  if (response.status !== 200 || !response.body) {
-    await response.body?.cancel();
-    return null;
+  for (let redirects = 0; redirects <= 5; redirects += 1) {
+    const response = await get(at, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(60_000),
+    });
+    const location =
+      response.status >= 300 &&
+      response.status < 400 &&
+      response.headers.get("location");
+
+    if (location) {
+      await response.body?.cancel();
+      at = new URL(location, at).href;
+      if (new URL(at).origin !== origin)
+        return refused("redirects off the site");
+      continue;
+    }
+
+    if (response.status !== 200 || !response.body) {
+      await response.body?.cancel();
+      return null;
+    }
+
+    const hash = createHash("sha256");
+    const chunks = [];
+    let size = 0;
+
+    for await (const chunk of response.body) {
+      size += chunk.length;
+      if (limit) chunks.push(chunk);
+      else hash.update(chunk);
+      if (size > (limit ?? MAX_FILE)) break;
+    }
+
+    if (limit) return Buffer.concat(chunks);
+
+    return size > MAX_FILE ? "over 64 MiB" : hash.digest("hex");
   }
 
-  const hash = createHash("sha256");
-  const chunks = [];
-  let size = 0;
+  return refused("redirects again and again");
+};
 
-  for await (const chunk of response.body) {
-    size += chunk.length;
-    if (limit) chunks.push(chunk);
-    else hash.update(chunk);
-    if (size > (limit ?? MAX_FILE)) break;
-  }
+/**
+ * How to run npm, with the arguments given, from npm's own script beside this
+ * Node, as Node: on Windows npm and npx are .cmd files, which only a shell
+ * runs. With a version, that npm, as npx gets it.
+ */
+export const npmCommand = (version, args) => {
+  const home = dirname(process.execPath);
+  const cli = [
+    "node_modules/npm/bin/npm-cli.js",
+    "../lib/node_modules/npm/bin/npm-cli.js",
+  ]
+    .map((path) => join(home, path))
+    .find((path) => existsSync(path));
+  const own = version
+    ? ["exec", "--yes", `--package=npm@${version}`, "--", "npm", ...args]
+    : args;
 
-  if (limit) return Buffer.concat(chunks);
-
-  return size > MAX_FILE ? "over 64 MiB" : hash.digest("hex");
+  return cli ? [process.execPath, [cli, ...own]] : ["npm", own];
 };
 
 // Run, not imported by the tests.
@@ -316,9 +360,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       readFileSync(join(dir, "package.json"), "utf8")
     );
     const floor = engines?.npm?.match(/^>=\s*(\d+\.\d+\.\d+)$/)?.[1];
-    const [command, ...first] = floor
-      ? ["npx", "--yes", `npm@${floor}`]
-      : ["npm"];
     // The site's settings, and none of this shell's own.
     const env = Object.fromEntries(
       Object.entries(process.env).filter(
@@ -327,7 +368,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     );
     const npm = (...npmArgs) => {
       try {
-        execFileSync(command, [...first, ...npmArgs], {
+        execFileSync(...npmCommand(floor, npmArgs), {
           cwd: dir,
           env: { ...env, ...(listed ?? Object.fromEntries(manifest.settings)) },
           stdio: ["ignore", "ignore", "pipe"],
@@ -350,7 +391,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       (at) => fetchFrom(at).catch(() => null)
     );
 
-    const short = (hash) => (hash ? hash.slice(0, 12) : "none");
+    const short = (hash) =>
+      /^[0-9a-f]{64}$/.test(hash ?? "") ? hash.slice(0, 12) : (hash ?? "none");
 
     for (const { address, inManifest, rebuild, served } of result.differences) {
       console.log(
