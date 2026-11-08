@@ -7,6 +7,7 @@ import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import NetworkPill from "../NetworkPill.svelte";
 
 const sync = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const abortSync = vi.hoisted(() => vi.fn());
 
 const pageStore = vi.hoisted(() => ({
   /** @type {import("svelte/store").Writable<any> | null} */
@@ -39,7 +40,12 @@ vi.mock("$lib/stores", async (importOriginal) => {
       ...original.networkStore,
       ...readable({ connected: true, networkName: "testnet" }),
     },
-    walletStore: { ...original.walletStore, ...mockedWalletStore, sync },
+    walletStore: {
+      ...original.walletStore,
+      ...mockedWalletStore,
+      abortSync,
+      sync,
+    },
   };
 });
 
@@ -61,6 +67,7 @@ describe("NetworkPill", () => {
 
   afterEach(() => {
     cleanup();
+    abortSync.mockClear();
     sync.mockClear();
   });
 
@@ -163,6 +170,51 @@ describe("NetworkPill", () => {
         getByRole("button", { name: "Network: Testnet, in sync" })
       ).toBeInTheDocument();
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("starts the sync again on Try again once it got nothing back for 30 seconds, in place of the one that did", async () => {
+    vi.useFakeTimers();
+
+    // As the wallet's: a sync asked for while one runs joins that one,
+    // until it's stopped.
+    const syncs = { running: 0, started: 0 };
+
+    /** @type {Promise<void> | null} */
+    let current = null;
+
+    sync.mockImplementation(() => {
+      if (!current) {
+        syncs.started += 1;
+        syncs.running += 1;
+        current = new Promise(() => {});
+      }
+
+      return current;
+    });
+    abortSync.mockImplementation(() => {
+      if (current) {
+        syncs.running -= 1;
+        current = null;
+      }
+    });
+
+    try {
+      const { getByRole } = render(NetworkPill);
+
+      // The wallet's sync, which gets nothing back.
+      void sync();
+      await setSync({ isInProgress: true, progress: 0 });
+      await act(() => vi.advanceTimersByTimeAsync(30_000));
+      await fireEvent.click(getByRole("button", { name: /testnet/i }));
+      await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+      // Another runs, alone.
+      expect(syncs).toStrictEqual({ running: 1, started: 2 });
+    } finally {
+      sync.mockImplementation(() => Promise.resolve());
+      abortSync.mockReset();
       vi.useRealTimers();
     }
   });

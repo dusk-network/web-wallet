@@ -96,6 +96,12 @@
         : "";
 
   function retry() {
+    // A sync that stalled still runs, and another asked for would join it:
+    // it stops, and a new one takes its place.
+    if (isStalled) {
+      walletStore.abortSync();
+    }
+
     walletStore.sync().catch(() => {});
   }
 
