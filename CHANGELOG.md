@@ -61,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hide the amount Send back fills in while balances are hidden
 - Keep a request asked again after it's paid as the one there was, not a new Waiting one
 - Give the export's values in the wallet's currency where it's euros or US dollars, else in the browser's region's, as the extension does, not always in euros
+- Keep the EVM wallet connected when Stay is chosen as the browser asks whether to leave
 
 ## [2.0.0] - 2026-11-06
 

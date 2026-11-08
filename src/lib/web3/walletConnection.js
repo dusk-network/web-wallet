@@ -354,7 +354,8 @@ async function start(reset) {
       accountStore.set(next);
     },
   });
-  window.addEventListener("beforeunload", walletDisconnect);
+  // As the page goes, not as it asks whether to: Stay keeps the wallet.
+  window.addEventListener("pagehide", () => void walletDisconnect());
 
   // A wallet connected before comes back before the pages use it.
   await Promise.race([
