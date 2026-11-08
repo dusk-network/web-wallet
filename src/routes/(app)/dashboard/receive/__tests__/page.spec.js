@@ -492,6 +492,18 @@ describe("Receive", () => {
         "dusk-testnet-request-0.05-DUSK-Factura-2026-052-abril.png"
       );
 
+      // In letters any browser keeps in a file's name: no accents.
+      await type("Memo (optional)", "Factura 2026-071 Diseño web ß");
+      await vi.advanceTimersByTimeAsync(0);
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(4));
+
+      expect(anchorOf(3).download).toBe(
+        "dusk-testnet-request-0.05-DUSK-Factura-2026-071-Diseno-web.png"
+      );
+
       click.mockRestore();
     });
 

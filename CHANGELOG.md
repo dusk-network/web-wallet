@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Write a migration's EVM gas in the export only where it was sent from an EVM address connected here, or one this browser migrated from
 - Say one wallet step, migrate, on the Bridge's form where an open approval covers the amount
 - Say "DUSK added to <wallet>." where Add DUSK was, once the wallet added it
+- Name a request's QR picture without accents, as "Diseno", so a browser keeps its name
 
 ## [2.0.0] - 2026-11-06
 
