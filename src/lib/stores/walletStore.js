@@ -445,6 +445,7 @@ const sendAs = (
   execute,
   { gas, moves = 0n, staking = false }
 ) => {
+  const session = walletSession;
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
   const record = recordInHistory(profile, details);
@@ -458,9 +459,11 @@ const sendAs = (
   /** @param {TransactionInfo} txInfo */
   const followRemoval = (txInfo) => {
     const after = syncNumber;
-    // Its nonce, kept for the next to take the one after, goes with it.
+    // Its nonce, kept for the next to take the one after, goes with it: not
+    // once another wallet opened, or after a lock, as the nonce kept then is
+    // another send's.
     const refreshed = refreshOnRemoval(txInfo, after, () => {
-      if ("nonce" in txInfo) {
+      if ("nonce" in txInfo && session === walletSession) {
         treasury.forgetSentNonce(profile, txInfo.nonce);
       }
     });

@@ -1271,6 +1271,69 @@ describe("Wallet store", async () => {
       vi.useFakeTimers();
     });
 
+    it("should keep the nonce a send from the wallet open took, when one from the wallet open before with the same nonce leaves the node's queue", async () => {
+      vi.useRealTimers();
+
+      const network = await networkStore.connect();
+      const scope = Object.getPrototypeOf(network.transactions.withId(""));
+      const leftBefore = Promise.withResolvers();
+      const removed = vi
+        .spyOn(scope, "removed")
+        .mockReturnValueOnce(leftBefore.promise)
+        .mockReturnValueOnce(new Promise(() => {}));
+      const other = new ProfileGenerator(async () =>
+        getSeedFromMnemonic(generateMnemonic())
+      );
+
+      try {
+        // Both send from their first profile with the one after the
+        // node's balance has.
+        const nonce = 9877n;
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "sent-before",
+          nonce,
+        });
+        await walletStore.transfer(toMoonlight, amount, memo, gas);
+        await vi.waitUntil(() => removed.mock.calls.length === 1);
+
+        await walletStore.init(other, undefined, { key: "other" });
+        await vi.waitUntil(() => !get(walletStore).syncStatus.isInProgress);
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "sent-now",
+          nonce,
+        });
+        await walletStore.transfer(toMoonlight, amount, memo, gas);
+        await vi.waitUntil(() => removed.mock.calls.length === 2);
+
+        const profile = /** @type {Profile} */ (
+          get(walletStore).currentProfile
+        );
+        const treasury = /** @type {WalletTreasury} */ (
+          updateNonceSpy.mock.contexts.at(-1)
+        );
+        const nextTakes = async () =>
+          (await treasury.account(profile.account)).nonce;
+
+        expect(await nextTakes()).toBe(nonce);
+
+        // The one sent before leaves the queue: the one sent now is in it.
+        const syncsBefore = treasuryUpdateSpy.mock.calls.length;
+
+        leftBefore.resolve(undefined);
+        await vi.waitUntil(
+          () => treasuryUpdateSpy.mock.calls.length > syncsBefore
+        );
+
+        expect(await nextTakes()).toBe(nonce);
+      } finally {
+        removed.mockRestore();
+        vi.useFakeTimers();
+      }
+    });
+
     it.each(
       /** @type {const} */ (["getCachedSyncInfo", "clearCache", "update"])
     )(
