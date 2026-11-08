@@ -169,7 +169,13 @@
       weight: 600,
     },
     ...(asked.memo
-      ? [{ size: 40, text: displayText(asked.memo).text, weight: 400 }]
+      ? [
+          {
+            size: 40,
+            text: displayText(asked.memo, { isolate: true }).text,
+            weight: 400,
+          },
+        ]
       : []),
     {
       size: 36,

@@ -5,6 +5,10 @@ import { MemoText } from "..";
 
 const NOTE = "It has hidden characters, shown here as codes.";
 
+/** What's shown, without the isolates that set right-to-left runs apart. */
+const withoutIsolates = (/** @type {string | null | undefined} */ text) =>
+  text?.replace(/[\u2066-\u2069]/g, "");
+
 describe("MemoText", () => {
   afterEach(cleanup);
 
@@ -18,6 +22,28 @@ describe("MemoText", () => {
     );
     expect(queryByText(NOTE)).toBeNull();
   });
+
+  it.each([
+    ["Hebrew letters", "Pay \u05D0 10 \u05D0 1000", "\u05D0"],
+    ["Arabic letters run in", "Ref \u062810\u06281000 ok", "\u0628"],
+  ])(
+    "keeps the numbers beside %s in the order they're written",
+    (_, text, letter) => {
+      const { container, queryByText } = render(MemoText, { text });
+      const memo = /** @type {HTMLElement} */ (
+        container.querySelector(".memo-text")
+      );
+      const shown = /** @type {string} */ (memo.textContent);
+
+      // Each right-to-left letter is set apart, so no number beside it
+      // takes its direction, in a line that reads left to right.
+      expect(shown.split(`\u2068${letter}\u2069`)).toHaveLength(3);
+      expect(shown.startsWith("\u2066")).toBe(true);
+      expect(memo.dir).toBe("ltr");
+      expect(withoutIsolates(shown)).toBe(text);
+      expect(queryByText(NOTE)).toBeNull();
+    }
+  );
 
   it.each([
     ["a sign request's reversed digits", "pay \u202E0001\u202C DUSK"],
@@ -54,7 +80,9 @@ describe("MemoText", () => {
     (_, text, note) => {
       const { container, getByText, queryByText } = render(MemoText, { text });
 
-      expect(container.querySelector(".memo-text")?.textContent).toBe(text);
+      expect(
+        withoutIsolates(container.querySelector(".memo-text")?.textContent)
+      ).toBe(text);
       expect(getByText(note)).toBeInTheDocument();
       expect(queryByText(NOTE)).toBeNull();
     }
