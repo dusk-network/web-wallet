@@ -791,7 +791,10 @@ describe("Receive", () => {
 
       expect(item).toHaveTextContent("Check");
       expect(item).not.toHaveTextContent("Paid");
-      expect(item).toHaveTextContent('with another memo: "Factura 1\u06605"');
+      // As it's written, its Arabic-Indic zero set apart from what's around it.
+      expect(item.textContent?.replace(/[\u2066-\u2069]/g, "")).toContain(
+        'with another memo: "Factura 1\u06605"'
+      );
       expect(item).toHaveTextContent(
         "A number in a memo here may not be what it looks like."
       );
