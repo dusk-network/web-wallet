@@ -64,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep the EVM wallet connected when Stay is chosen as the browser asks whether to leave
 - Write a migration's EVM gas in the export only where it was sent from an EVM address connected here, or one this browser migrated from
 - Say one wallet step, migrate, on the Bridge's form where an open approval covers the amount
+- Say "DUSK added to <wallet>." where Add DUSK was, once the wallet added it
 
 ## [2.0.0] - 2026-11-06
 

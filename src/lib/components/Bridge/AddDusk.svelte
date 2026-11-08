@@ -1,8 +1,9 @@
 <script>
   /**
    * "Add DUSK to <wallet>": for the connected EVM wallet that takes the
-   * request, DUSK of a route's chain for it to show. Gone once the wallet
-   * added it for that address and chain; a refusal says nothing.
+   * request, DUSK of a route's chain for it to show. Once the wallet added it
+   * for that address and chain, it says so in its place; a refusal says
+   * nothing.
    */
   import { Button } from "$lib/dusk/components";
   import {
@@ -33,6 +34,10 @@
 
   let isAsking = false;
 
+  /** The wallet it was just added to, by name, for as long as it's connected. */
+  /** @type {{ key: string, name: string } | null} */
+  let done = null;
+
   /** @param {import("@wagmi/core").Connector | undefined} connector */
   async function check(connector) {
     takes = false;
@@ -45,9 +50,14 @@
   }
 
   async function add() {
+    const name = connector?.name || "your wallet";
+    const key = addedKey(chain.chainId, String(connected));
+
     isAsking = true;
 
-    if (!(await addDusk(chain))) {
+    if (await addDusk(chain)) {
+      done = { key, name };
+    } else {
       // Still offered after a refusal, but not to a wallet that can't.
       await check(connector);
     }
@@ -64,6 +74,8 @@
     takes &&
     (!address || address.toLowerCase() === connected?.toLowerCase()) &&
     !$duskAdded.includes(addedKey(chain.chainId, String(connected)));
+  $: isDone =
+    isConnected && done?.key === addedKey(chain.chainId, String(connected));
 </script>
 
 {#if isShown}
@@ -75,4 +87,14 @@
     text={`Add DUSK to ${connector?.name || "your wallet"}`}
     variant="tertiary"
   />
+{:else if isDone}
+  <p class="add-dusk add-dusk--done" role="status">
+    DUSK added to {done?.name}.
+  </p>
 {/if}
+
+<style lang="postcss">
+  .add-dusk--done {
+    font-size: 0.875rem;
+  }
+</style>

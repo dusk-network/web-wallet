@@ -1368,9 +1368,9 @@ describe("the Bridge card's routes to and from other chains", () => {
       );
     });
 
-    it("offers to add DUSK to the wallet it arrived in, on its chain, and not again once it has; a refusal says nothing", async () => {
+    it("offers to add DUSK to the wallet it arrived in, on its chain, and says it was added in its place; a refusal says nothing", async () => {
       const wallet = { name: "Test MetaMask", type: "injected", uid: "w1" };
-      const { findByRole, queryByRole } = await sendOut();
+      const { findByRole, getByText, queryByRole } = await sendOut();
       const offer = { name: "Add DUSK to Test MetaMask" };
 
       // Not before it arrives, nor to another account than it went to.
@@ -1415,6 +1415,10 @@ describe("the Bridge card's routes to and from other chains", () => {
         }
       );
       await vi.waitFor(() => expect(queryByRole("button", offer)).toBeNull());
+      expect(getByText("DUSK added to Test MetaMask.")).toHaveAttribute(
+        "role",
+        "status"
+      );
       expect(
         JSON.parse(localStorage.getItem("web-wallet-evm-dusk-added") ?? "")
       ).toStrictEqual([`56:${EVM.toLowerCase()}`]);
