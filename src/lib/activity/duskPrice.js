@@ -1,6 +1,6 @@
 /**
- * What a DUSK was worth in euros at the time of a payment, for an export that
- * asks for it: CoinGecko's hourly prices, a window of them at a time, read once.
+ * What a DUSK was worth in euros or US dollars at the time of a payment, for
+ * an export that asks for it: CoinGecko's hourly prices, a window of them at a time, read once.
  * Only the times go out, as a range, never an account. Its public API has the
  * past year; older is asked for nothing, and that or a request that fails is no
  * price, which the export says.
@@ -25,13 +25,14 @@ const CLOCK_MARGIN_MS = HOUR_MS;
 const TIMEOUT_MS = 15_000;
 
 /**
- * A lookup of what one DUSK was worth at a time, in euros: null where it isn't
- * known, its windows read once for this lookup.
+ * A lookup of what one DUSK was worth at a time, in `currency`: null where it
+ * isn't known, its windows read once for this lookup.
  *
- * @param {{ now?: number }} [options]
+ * @param {{ currency?: "EUR" | "USD", now?: number }} [options]
  * @returns {(asked: { at: number }) => Promise<number | null>}
  */
-export function duskEuroPrices({ now = Date.now() } = {}) {
+export function duskPrices({ currency = "EUR", now = Date.now() } = {}) {
+  const vs = currency === "USD" ? "usd" : "eur";
   /** @type {Map<number, Promise<[number, number][]>>} */
   const windows = new Map();
   const earliest = now - PAST_YEAR_MS + CLOCK_MARGIN_MS;
@@ -44,7 +45,7 @@ export function duskEuroPrices({ now = Date.now() } = {}) {
       const from = Math.floor(Math.max(start - NEAREST_MS, earliest) / 1000);
       const to = Math.ceil((start + WINDOW_MS + NEAREST_MS) / 1000);
 
-      prices = fetch(`${API}?vs_currency=eur&from=${from}&to=${to}`, {
+      prices = fetch(`${API}?vs_currency=${vs}&from=${from}&to=${to}`, {
         signal: AbortSignal.timeout(TIMEOUT_MS),
       })
         .then((res) => (res.ok ? res.json() : null))

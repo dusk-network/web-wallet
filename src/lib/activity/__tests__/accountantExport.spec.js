@@ -87,7 +87,7 @@ describe("History's Export", () => {
 
     const { csv } = await makeExport({
       choices: {
-        euro: false,
+        fiat: false,
         excel: false,
         from: "",
         period: "all",
@@ -167,7 +167,7 @@ describe("History's Export", () => {
 
     const { csv } = await makeExport({
       choices: {
-        euro: false,
+        fiat: false,
         excel: false,
         from: "2026-10-27",
         period: "dates",

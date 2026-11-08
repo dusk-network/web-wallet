@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { duskEuroPrices } from "../duskPrice";
+import { duskPrices } from "../duskPrice";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -27,7 +27,7 @@ describe("What a DUSK was worth in euros", () => {
       [at - 2 * HOUR, 0.1],
       [at + HOUR, 0.2],
     ]);
-    const price = duskEuroPrices({ now: NOW });
+    const price = duskPrices({ now: NOW });
 
     await expect(price({ at })).resolves.toBe(0.2);
     await expect(price({ at: at + 1000 })).resolves.toBe(0.2);
@@ -40,7 +40,7 @@ describe("What a DUSK was worth in euros", () => {
 
   it("knows none too far from the payment, none past the year the public API has, asking nothing for those", async () => {
     const asked = pricesAre([[NOW - 30 * DAY, 0.1]]);
-    const price = duskEuroPrices({ now: NOW });
+    const price = duskPrices({ now: NOW });
 
     await expect(price({ at: NOW - 30 * DAY + 4 * HOUR })).resolves.toBeNull();
     expect(asked).toHaveBeenCalledOnce();
@@ -78,7 +78,7 @@ describe("What a DUSK was worth in euros", () => {
       })
     );
 
-    const price = duskEuroPrices({ now: NOW });
+    const price = duskPrices({ now: NOW });
 
     for (let age = 1; age <= 364; age += 7) {
       await expect(price({ at: NOW - age * DAY })).resolves.toBe(0.25);
@@ -92,7 +92,7 @@ describe("What a DUSK was worth in euros", () => {
   it("stays within the hourly window of the public API for a clamped range too", async () => {
     const asked = pricesAre([]);
 
-    await duskEuroPrices({ now: NOW })({ at: NOW - 364 * DAY });
+    await duskPrices({ now: NOW })({ at: NOW - 364 * DAY });
 
     const url = new URL(String(asked.mock.lastCall?.[0]));
     const from = Number(url.searchParams.get("from"));
@@ -109,7 +109,7 @@ describe("What a DUSK was worth in euros", () => {
     );
 
     await expect(
-      duskEuroPrices({ now: NOW })({ at: NOW - DAY })
+      duskPrices({ now: NOW })({ at: NOW - DAY })
     ).resolves.toBeNull();
 
     vi.stubGlobal(
@@ -118,7 +118,7 @@ describe("What a DUSK was worth in euros", () => {
     );
 
     await expect(
-      duskEuroPrices({ now: NOW })({ at: NOW - DAY })
+      duskPrices({ now: NOW })({ at: NOW - DAY })
     ).resolves.toBeNull();
   });
 });

@@ -12,6 +12,7 @@ import { get } from "svelte/store";
 
 import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
+import { settingsStore } from "$lib/stores";
 import { openTestContacts } from "$lib/test-helpers";
 
 import History from "../+page.svelte";
@@ -579,7 +580,7 @@ describe("History", () => {
       expect(blobs).toHaveLength(0);
     });
 
-    it("asks CoinGecko only when euros are asked for, for no more than times, and says what has no value", async () => {
+    it("asks CoinGecko only when euros are asked for, in euros as the wallet's amounts are, for no more than times", async () => {
       const prices = vi.fn((/** @type {string} */ url) =>
         Promise.resolve(
           new Response(
@@ -593,6 +594,7 @@ describe("History", () => {
       );
 
       vi.stubGlobal("fetch", prices);
+      settingsStore.update((store) => ({ ...store, currency: "EUR" }));
 
       const { getByRole } = await openExport();
 
@@ -620,6 +622,47 @@ describe("History", () => {
       const text = await blobs[1].text();
 
       expect(text).toContain(",EUR,");
+      settingsStore.reset();
+      vi.unstubAllGlobals();
+    });
+
+    it.each([
+      ["US dollars as the wallet's amounts", "USD", "de-DE", "US dollars"],
+      [
+        "the browser's region's, India's US dollars",
+        "INR",
+        "en-IN",
+        "US dollars",
+      ],
+      ["the browser's region's, Germany's euros", "INR", "de-DE", "euros"],
+    ])("gives the values in %s", async (_, currency, language, words) => {
+      const code = words === "euros" ? "EUR" : "USD";
+      const prices = vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ prices: [[NOW - 60_000, 0.25]] }))
+        )
+      );
+
+      vi.stubGlobal("fetch", prices);
+      vi.spyOn(navigator, "language", "get").mockReturnValue(language);
+      settingsStore.update((store) => ({ ...store, currency }));
+
+      const { getByRole } = await openExport();
+
+      await fireEvent.click(
+        getByRole("checkbox", {
+          name: `Add each payment's value in ${words}, from CoinGecko's prices (the past year)`,
+        })
+      );
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+      await vi.waitFor(() => expect(names).toHaveLength(1));
+
+      for (const [url] of prices.mock.calls) {
+        expect(String(url)).toContain(`vs_currency=${code.toLowerCase()}&`);
+      }
+
+      expect(await blobs[0].text()).toContain(`,${code},`);
+      settingsStore.reset();
       vi.unstubAllGlobals();
     });
   });

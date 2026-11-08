@@ -4,6 +4,7 @@
  * whole first: Koinly's universal CSV, the format others follow.
  */
 
+import { defaultCurrency } from "@dusk-network/app-core/amounts";
 import { migrationsOf } from "@dusk-network/app-core/bridge";
 import {
   accountingCsv,
@@ -16,14 +17,36 @@ import { get } from "svelte/store";
 import { keptMigrations } from "$lib/bridge/migrationActivity";
 import { readMigrationsEvm } from "$lib/bridge/migrationEvm";
 
-import { duskEuroPrices } from "./duskPrice";
+import { duskPrices } from "./duskPrice";
+
+/**
+ * The currency an export's values are in, euros or US dollars as the
+ * extension's: the one chosen for the wallet's amounts where it's either,
+ * else the one the browser's region starts on (app-core's `defaultCurrency`).
+ *
+ * @param {string} [chosen] Settings' currency
+ * @param {string} [language] The browser's
+ * @returns {"EUR" | "USD"}
+ */
+export const exportCurrency = (chosen, language) =>
+  chosen === "EUR" || chosen === "USD" ? chosen : defaultCurrency(language);
+
+/**
+ * What a currency's values are called in the export's words.
+ *
+ * @param {"EUR" | "USD"} currency
+ */
+export const currencyWords = (currency) =>
+  currency === "USD"
+    ? { many: "US dollars", one: "dollar" }
+    : { many: "euros", one: "euro" };
 
 /**
  * What's asked of a file.
  *
  * @typedef {{
- *   euro: boolean,
  *   excel: boolean,
+ *   fiat: boolean,
  *   from: string,
  *   period: string,
  *   to: string,
@@ -95,17 +118,19 @@ export function periodChoices(now = new Date()) {
  * @param {{
  *   choices: ExportChoices,
  *   contactName: (address: string) => string | null | undefined,
+ *   currency?: "EUR" | "USD",
  *   net?: import("@dusk-network/networks").Network | null,
  *   network: string,
  *   profile: import("@dusk-network/app-core/export").ExportProfile,
  *   profiles: import("@dusk-network/app-core/export").ExportProfile[],
  *   session: Pick<import("./activitySession").ActivitySession, "sozuFacts" | "whole">,
  * }} asked
- * @returns {Promise<import("@dusk-network/app-core/export").ExportResult & { shieldedWaiting: boolean }>}
+ * @returns {Promise<import("@dusk-network/app-core/export").ExportResult & { currency: "EUR" | "USD", shieldedWaiting: boolean }>}
  */
 export async function makeExport({
   choices,
   contactName,
+  currency = "EUR",
   net = null,
   network,
   profile,
@@ -146,18 +171,18 @@ export async function makeExport({
   const made = await accountingCsv({
     bom: choices.excel,
     contactName: choices.withContacts ? contactName : undefined,
-    currency: "EUR",
+    currency,
     evm,
     facts,
     network,
     period,
-    price: choices.euro ? duskEuroPrices() : undefined,
+    price: choices.fiat ? duskPrices({ currency }) : undefined,
     profile,
     profiles,
     rows: whole.rows,
   });
 
-  return { ...made, shieldedWaiting: whole.shieldedWaiting };
+  return { ...made, currency, shieldedWaiting: whole.shieldedWaiting };
 }
 
 /**
@@ -165,7 +190,13 @@ export async function makeExport({
  *
  * @param {Awaited<ReturnType<typeof makeExport>>} made
  */
-export function savedWords({ count, left, shieldedWaiting, unpriced }) {
+export function savedWords({
+  count,
+  currency,
+  left,
+  shieldedWaiting,
+  unpriced,
+}) {
   const out = [
     left.pending ? `${left.pending} on its way` : "",
     left.notRead ? `${left.notRead} not read yet` : "",
@@ -175,7 +206,7 @@ export function savedWords({ count, left, shieldedWaiting, unpriced }) {
     `CSV saved: ${count === 1 ? "1 line" : `${count} lines`}.`,
     out.length ? `Left out: ${out.join(", ")}.` : "",
     unpriced
-      ? `${unpriced === 1 ? "1 line has" : `${unpriced} lines have`} no euro value.`
+      ? `${unpriced === 1 ? "1 line has" : `${unpriced} lines have`} no ${currencyWords(currency).one} value.`
       : "",
     shieldedWaiting
       ? "Your shielded activity is still syncing: export again once it's done."
