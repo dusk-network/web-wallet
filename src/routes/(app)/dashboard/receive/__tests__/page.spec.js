@@ -921,6 +921,15 @@ describe("Receive", () => {
             source: "public",
             time: at - 60_000,
           }),
+          // Sent from here a day ago, and never in a block.
+          sentBack({
+            blockHeight: null,
+            hash: "f2".repeat(32),
+            memo: "Refund: Factura 43",
+            source: "sent",
+            status: "unknown",
+            time: at - 24 * 60 * 60 * 1000,
+          }),
         ],
       });
       render(Receive);

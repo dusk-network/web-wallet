@@ -192,17 +192,20 @@
   /**
    * Whether a refund was sent after the payment it would pay back came in:
    * by their blocks, as the chain has both, else by their blocks' times. One
-   * in no block yet, sent from here, was: its time is this device's clock,
-   * which can be behind the chain's, so it isn't set against the payment's.
+   * in no block, sent from here, was while it's on its way, or went through
+   * as the wallet saw: its time is this device's clock, which can be behind
+   * the chain's, so it isn't set against the payment's. Not one whose
+   * outcome isn't known: it may never have gone out.
    *
    * @param {ActivityRow} refund
    * @param {ActivityRow | undefined} payment
    */
   const isSentAfter = (refund, payment) =>
-    typeof refund.blockHeight !== "number" ||
-    (typeof payment?.blockHeight === "number"
-      ? refund.blockHeight > payment.blockHeight
-      : (refund.time ?? 0) > (payment?.time ?? 0));
+    typeof refund.blockHeight !== "number"
+      ? refund.status === "pending" || refund.status === "executed"
+      : typeof payment?.blockHeight === "number"
+        ? refund.blockHeight > payment.blockHeight
+        : (refund.time ?? 0) > (payment?.time ?? 0);
 
   /**
    * The payments that paid a request again, of all the requests shown, by
