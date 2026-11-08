@@ -824,19 +824,22 @@ describe("Receive", () => {
         { state: { amountHidden: true } }
       );
 
-      // Sent back, on its way.
+      // Sent back, on its way: at a time this device's clock says, behind
+      // the chain's, before the block the payment came in.
       history.state?.set({
         hasMore: false,
         rows: [
           {
+            blockHeight: null,
             category: "sent",
             counterparty: PAYER,
             direction: "out",
             hash: "f0".repeat(32),
             memo: "Refund: Factura 43",
             privacy: "public",
+            source: "sent",
             status: "pending",
-            time: at + 5000,
+            time: at + 2000,
             value: 12_000_000n,
           },
           ...paidTwice,
@@ -845,7 +848,7 @@ describe("Receive", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(payments()).toHaveTextContent(
-        `Sent back on ${claimDay(at + 5000, "en")}`
+        `Sent back on ${claimDay(at + 2000, "en")}`
       );
       expect(
         screen.queryByRole("link", { name: /^Send back the payment of/ })
@@ -899,21 +902,57 @@ describe("Receive", () => {
       history.state?.set({
         hasMore: false,
         rows: [
-          paid({ hash: "cd".repeat(32), memo: "Factura 43", time: at + 2500 }),
-          paid({ hash: "ab".repeat(32), memo: "Factura 43", time: at + 500 }),
+          paid({
+            blockHeight: 120,
+            hash: "cd".repeat(32),
+            memo: "Factura 43",
+            time: at + 2500,
+          }),
+          paid({
+            blockHeight: 100,
+            hash: "ab".repeat(32),
+            memo: "Factura 43",
+            time: at + 500,
+          }),
           // Sent back for a request asked before this one.
-          sentBack({ memo: "Refund: Factura 43", time: at - 60_000 }),
+          sentBack({
+            blockHeight: 50,
+            memo: "Refund: Factura 43",
+            source: "public",
+            time: at - 60_000,
+          }),
         ],
       });
       render(Receive);
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(
-        screen.getByRole("list", { name: "Payments for this request" })
-      ).not.toHaveTextContent("Sent back");
+      const payments = () =>
+        screen.getByRole("list", { name: "Payments for this request" });
+
+      expect(payments()).not.toHaveTextContent("Sent back");
       expect(
         screen.getByRole("link", { name: /^Send back the payment of/ })
       ).toBeInTheDocument();
+
+      // One in a block after the payment's is its own.
+      history.state?.update(({ rows }) => ({
+        hasMore: false,
+        rows: [
+          sentBack({
+            blockHeight: 130,
+            hash: "f1".repeat(32),
+            memo: "Refund: Factura 43",
+            source: "public",
+            time: at + 4000,
+          }),
+          ...rows,
+        ],
+      }));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(payments()).toHaveTextContent(
+        `Sent back on ${claimDay(at + 4000, "en")}`
+      );
       history.state?.set({ hasMore: false, rows: [] });
     });
 

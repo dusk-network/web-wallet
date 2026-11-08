@@ -190,6 +190,21 @@
     );
 
   /**
+   * Whether a refund was sent after the payment it would pay back came in:
+   * by their blocks, as the chain has both, else by their blocks' times. One
+   * in no block yet, sent from here, was: its time is this device's clock,
+   * which can be behind the chain's, so it isn't set against the payment's.
+   *
+   * @param {ActivityRow} refund
+   * @param {ActivityRow | undefined} payment
+   */
+  const isSentAfter = (refund, payment) =>
+    typeof refund.blockHeight !== "number" ||
+    (typeof payment?.blockHeight === "number"
+      ? refund.blockHeight > payment.blockHeight
+      : (refund.time ?? 0) > (payment?.time ?? 0));
+
+  /**
    * The payments that paid a request again, of all the requests shown, by
    * their hash: each with Send filled in to pay it back, as app-core's
    * `refundOf` says, and the refund sent already, as Send would say it's
@@ -218,11 +233,11 @@
     return new Map(
       owed.map(({ payment, request }) => {
         const refund = refundOf(request, payment, rows);
+        const paidIn = rows.find(({ hash }) => hash === payment.hash);
         const sent = refund
           ? sentAlready(
               rows.filter(
-                ({ hash, time }) =>
-                  !taken.includes(hash) && (time ?? 0) > (payment.at ?? 0)
+                (row) => !taken.includes(row.hash) && isSentAfter(row, paidIn)
               ),
               refund
             )
