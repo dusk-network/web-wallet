@@ -38,6 +38,7 @@
   import { addBasePath } from "$lib/navigation";
   import {
     addressType,
+    contactNameText,
     contactsStore,
     passesForDuskName,
     saveContact,
@@ -380,8 +381,10 @@
             {:else if contact || duskName}
               <span class="tx-detail__name"
                 >{contact && duskName
-                  ? `${contact.name} · ${duskName}`
-                  : (contact?.name ?? duskName)}</span
+                  ? `${contactNameText(contact.name)} · ${duskName}`
+                  : contact
+                    ? contactNameText(contact.name)
+                    : duskName}</span
               >
             {:else if walletName}
               <span class="tx-detail__name">{walletName}</span>

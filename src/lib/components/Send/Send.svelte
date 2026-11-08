@@ -9,9 +9,10 @@
     mdiQrcodeScan,
   } from "@mdi/js";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { lookAlikes } from "@dusk-network/app-core/names";
+  import { lookAlikes, sameName } from "@dusk-network/app-core/names";
   import {
     contactNameProblem,
+    contactNameText,
     contactsStore,
     markContactNameChecked,
     markContactNameMoved,
@@ -149,6 +150,12 @@
   export let initialProblem = "";
 
   /**
+   * Whether the amount the page was opened with is the wallet's own, as a
+   * payment that came in sent back: it's hidden with the balances, as Max's.
+   */
+  export let initialAmountHidden = false;
+
+  /**
    * `.dusk` names of past counterparties, for "Did you mean …?" along with
    * the contacts' names.
    *
@@ -190,6 +197,9 @@
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
   let isMaxAmount = typedBefore?.isMax ?? false;
+
+  /** Whether the amount is the wallet's own otherwise: hidden as Max's is. */
+  let isOwnAmount = typedBefore?.isOwn ?? initialAmountHidden;
 
   /** @type {string} */
   let sendToAddress = typedBefore?.to ?? initialRecipient;
@@ -464,6 +474,7 @@
       /** @type {HTMLInputElement} */ (event.currentTarget).value
     );
     isMaxAmount = false;
+    isOwnAmount = false;
   }
 
   /** How long the recipient typed was, to tell a paste from a key. */
@@ -474,9 +485,10 @@
 
   /**
    * What's put in To whole, as pasted, scanned or finished: a link asking for
-   * a payment fills in what it asks, and one for another network says so and
-   * fills in nothing. Anything else is a recipient as it is, leaving what's
-   * typed in the other fields. What's filled in is checked as if it were typed.
+   * a payment fills in what it asks, and one refused, as for another network,
+   * says why and empties the form, so nothing in it reads as the refused
+   * link's. Anything else is a recipient as it is, leaving what's typed in
+   * the other fields. What's filled in is checked as if it were typed.
    *
    * @param {string} text
    */
@@ -494,8 +506,9 @@
     isRecipientChecked = Boolean(sendToAddress);
     typedLength = sendToAddress.length;
 
-    if (asked?.to) {
+    if (asked) {
       isMaxAmount = false;
+      isOwnAmount = false;
       sendAmount = asked.amount;
       memo = asked.memo;
     }
@@ -870,6 +883,7 @@
     amount: sendAmount,
     gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
     isMax: isMaxAmount,
+    isOwn: isOwnAmount,
     link: openedFor,
     memo,
     picks: namePicks,
@@ -1067,33 +1081,71 @@
     publicAddress
   );
 
-  // The contacts a typed name can mean, by the start of their name or of a
-  // word in it. The field takes out spaces, so they aren't compared.
-  $: namedContacts =
-    sendToAddress && !recipientName && !addressInfo.isValid
-      ? contacts
-          .filter((contact) => {
-            const q = sendToAddress.toLowerCase();
-            const name = contact.name.toLowerCase();
+  /**
+   * Whether what's typed can mean a name: by its start, or the start of a
+   * word in it. The field takes out spaces, so they aren't compared.
+   *
+   * @param {string} name
+   * @param {string} typed
+   */
+  function canMean(name, typed) {
+    const q = typed.toLowerCase();
+    const named = name.toLowerCase();
 
-            return (
-              name.replace(/\s/g, "").startsWith(q) ||
-              name.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(q))
-            );
-          })
-          .slice(0, 3)
-      : [];
+    return (
+      named.replace(/\s/g, "").startsWith(q) ||
+      named.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(q))
+    );
+  }
+
+  /**
+   * A profile of this person's, as Send offers it, by what the wallets here
+   * call it: "Your Profile 2" where it goes by its number, "Your profile
+   * Savings" by a name.
+   *
+   * @param {string} name
+   */
+  const yourProfile = (name) =>
+    /^Profile \d/.test(name) ? `Your ${name}` : `Your profile ${name}`;
+
+  $: isNameTyped = sendToAddress && !recipientName && !addressInfo.isValid;
+
+  // The profiles here a typed name can mean, but the one it goes from, and
+  // the contacts: offered first, as a .dusk name of the same would be
+  // somebody else's.
+  $: namedProfiles = isNameTyped
+    ? $profilesHere
+        .filter(
+          ({ address, name }) =>
+            address !== publicAddress && canMean(name, sendToAddress)
+        )
+        .slice(0, 3)
+    : [];
+  $: namedContacts = isNameTyped
+    ? contacts
+        .filter((contact) => canMean(contact.name, sendToAddress))
+        .slice(0, 3)
+    : [];
 
   // A name typed without .dusk, as "alice": Send offers alice.dusk as it's
-  // typed, and looks it up once taken. It isn't a wrong address. A contact's
-  // name comes first: the guess would be somebody else's.
+  // typed, and looks it up once taken. It isn't a wrong address. A profile's
+  // or a contact's name comes first: the guess would be somebody else's.
   $: bareName =
-    sendToAddress &&
-    !recipientName &&
-    !addressInfo.isValid &&
-    !namedContacts.length
+    isNameTyped && !namedProfiles.length && !namedContacts.length
       ? asDuskName(sendToAddress)
       : null;
+
+  // A .dusk name entered that's a profile's name here, once it's found to
+  // go to none of the public accounts and shielded addresses of the wallets
+  // here, which they all name.
+  $: profileNamed =
+    recipientName &&
+    recipientAddress &&
+    !$walletAccountNames.has(recipientAddress)
+      ? $profilesHere.find(({ name }) =>
+          sameName(name, recipientName.replace(/\.dusk$/i, ""))
+        )
+      : undefined;
 
   // Nothing is said of an empty field: Review stays off until there's one.
   $: isRecipientInvalid =
@@ -1102,6 +1154,7 @@
     !recipientName &&
     !addressInfo.isValid &&
     !bareName &&
+    !namedProfiles.length &&
     !namedContacts.length;
 
   $: blocklistedRecipient = getBlocklistedRecipient(recipientAddress);
@@ -1134,8 +1187,8 @@
   // Who the transfer goes to, as the Done screen says it.
   $: recipientLabel = contact
     ? recipientName
-      ? `${contact.name} (${shownName})`
-      : contact.name
+      ? `${contactNameText(contact.name)} (${shownName})`
+      : contactNameText(contact.name)
     : own && !recipientName
       ? ownLabel.replace(/^Your/, "your")
       : recipientName
@@ -1253,12 +1306,17 @@
    * @param {string | null} toName
    * @param {{ contacts: Contact[], ownAccounts: { address: string, label: string }[], walletNames: Map<string, string> }} known
    */
-  const nameOf = (address, toName, known) =>
-    known.contacts.find((saved) => saved.address === address)?.name ??
-    known.ownAccounts.find((account) => account.address === address)?.label ??
-    known.walletNames.get(address) ??
-    toName ??
-    shortenAddress(address);
+  function nameOf(address, toName, known) {
+    const saved = known.contacts.find((c) => c.address === address);
+
+    return saved
+      ? contactNameText(saved.name)
+      : (known.ownAccounts.find((account) => account.address === address)
+          ?.label ??
+          known.walletNames.get(address) ??
+          toName ??
+          shortenAddress(address));
+  }
 
   /**
    * When something went, from now: "at 21:16", "yesterday at 21:16" or "on
@@ -1313,7 +1371,7 @@
     : null;
   // Said on the button too, which then sends it again.
   $: isRepeat = Boolean(madeAgain && madeAgain.time !== null);
-  $: isAmountMasked = hideBalances && isMaxAmount;
+  $: isAmountMasked = hideBalances && (isMaxAmount || isOwnAmount);
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
 </script>
@@ -1424,8 +1482,8 @@
             <option value="">Choose a contact…</option>
             {#each contacts as option (option.id)}
               <option value={option.id}
-                >{option.name} · {option.movedTo === undefined &&
-                !alike.has(option)
+                >{contactNameText(option.name)} · {option.movedTo ===
+                  undefined && !alike.has(option)
                   ? (option.duskName ?? shortenAddress(option.address))
                   : shortenAddress(option.address)}{alike.has(option)
                   ? " · name looks like another"
@@ -1446,7 +1504,20 @@
               <strong>Not a valid address.</strong> Check it, or paste it again.
             {/if}
           </p>
-        {:else if namedContacts.length}
+        {:else if namedProfiles.length || namedContacts.length}
+          {#each namedProfiles as named (named.address)}
+            <button
+              class="send__link"
+              on:click={() => {
+                sendToAddress = named.address;
+                isRecipientChecked = true;
+              }}
+              type="button"
+              >{yourProfile(
+                $walletAccountNames.get(named.address) ?? named.name
+              )} · {shortenAddress(named.address)}</button
+            >
+          {/each}
           {#each namedContacts as named (named.id)}
             <button
               class="send__link"
@@ -1455,7 +1526,7 @@
                 isRecipientChecked = true;
               }}
               type="button"
-              >Your contact {named.name} · {shortenAddress(
+              >Your contact {contactNameText(named.name)} · {shortenAddress(
                 named.address
               )}{alike.has(named) ? " · name looks like another" : ""}</button
             >
@@ -1473,6 +1544,12 @@
         {#if isFromLink}
           <p class="send__hint" role="status">
             Filled in from the link. Check it before you send.
+          </p>
+        {/if}
+
+        {#if profileNamed}
+          <p class="send__hint" role="status">
+            {recipientName} is someone else's name, not your profile {profileNamed.name}.
           </p>
         {/if}
 
@@ -1508,13 +1585,13 @@
               {#if namePointsTo}
                 <strong
                   >{shownName} now points to a different address from the one saved
-                  for {nameContact.name}.</strong
+                  for {contactNameText(nameContact.name)}.</strong
                 >
                 Which do you want to send to?
               {:else}
                 <strong
                   >{shownName} no longer points to the kind of address saved for
-                  {nameContact.name}.</strong
+                  {contactNameText(nameContact.name)}.</strong
                 >
               {/if}
             </p>
@@ -1545,7 +1622,7 @@
         {#if contact?.duskName && !recipientName && contact.movedTo !== undefined}
           <p class="send__hint" role="status">
             {contact.duskName} now points to a different address. You're sending to
-            the address saved for {contact.name}.
+            the address saved for {contactNameText(contact.name)}.
           </p>
         {/if}
 
@@ -1554,7 +1631,9 @@
           <div class="send__card">
             <p class="send__card-title" id="{id}-points">
               {#if contact}
-                {contact.name}{recipientName ? ` · ${shownName}` : ""}
+                {contactNameText(contact.name)}{recipientName
+                  ? ` · ${shownName}`
+                  : ""}
               {:else if own && !recipientName}
                 {ownLabel}
               {:else if recipientName}
@@ -1869,9 +1948,12 @@
               {#if contact || recipientName || walletAccount}
                 <span class="send__summary-name"
                   >{contact && recipientName
-                    ? `${contact.name} · ${shownName}`
-                    : (contact?.name ??
-                      (recipientName ? shownName : walletAccount))}</span
+                    ? `${contactNameText(contact.name)} · ${shownName}`
+                    : contact
+                      ? contactNameText(contact.name)
+                      : recipientName
+                        ? shownName
+                        : walletAccount}</span
                 >
               {/if}
               <!-- The review is the last it shows of it before it goes. -->

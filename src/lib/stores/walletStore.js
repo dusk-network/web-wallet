@@ -226,20 +226,26 @@ async function syncAfter(after) {
 }
 
 /**
- * Once the node takes a transaction out of its queue: a sync that started
- * after it was sent, and the balances and the stake read again. It rejects
- * when the queue can't be followed, or that sync fails: the balances and
- * the stake are read all the same, as they were.
+ * Once the node takes a transaction out of its queue: what's to forget of it
+ * then, a sync that started after it was sent, and the balances and the
+ * stake read again. It rejects when the queue can't be followed, or that
+ * sync fails: the balances and the stake are read all the same, as they
+ * were.
  *
  * @param {TransactionInfo} txInfo
  * @param {number} after The number of the last sync started as it was sent
+ * @param {() => void} [onRemoved]
  * @returns {Promise<void>}
  */
-const refreshOnRemoval = (txInfo, after) =>
+const refreshOnRemoval = (txInfo, after, onRemoved) =>
   networkStore
     .connect()
     .then((network) => network.transactions.withId(txInfo.hash).once.removed())
-    .then(() => syncAfter(after))
+    .then(() => {
+      onRemoved?.();
+
+      return syncAfter(after);
+    })
     .finally(updateStaticInfo);
 
 /**
@@ -439,6 +445,7 @@ const sendAs = (
   execute,
   { gas, moves = 0n, staking = false }
 ) => {
+  const session = walletSession;
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
   const record = recordInHistory(profile, details);
@@ -452,7 +459,14 @@ const sendAs = (
   /** @param {TransactionInfo} txInfo */
   const followRemoval = (txInfo) => {
     const after = syncNumber;
-    const refreshed = refreshOnRemoval(txInfo, after);
+    // Its nonce, kept for the next to take the one after, goes with it: not
+    // once another wallet opened, or after a lock, as the nonce kept then is
+    // another send's.
+    const refreshed = refreshOnRemoval(txInfo, after, () => {
+      if ("nonce" in txInfo && session === walletSession) {
+        treasury.forgetSentNonce(profile, txInfo.nonce);
+      }
+    });
 
     // Background sync errors are reported in syncStatus.
     refreshed.catch(() => {});

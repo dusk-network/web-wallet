@@ -8,6 +8,8 @@
   import { mdiCheck } from "@mdi/js";
 
   import {
+    currencyWords,
+    exportCurrency,
     makeExport,
     otherProfiles,
     periodChoices,
@@ -19,9 +21,10 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { randomUUID } from "$lib/dusk/string";
   import { WalletChangedError } from "$lib/errors";
-  import { walletStore } from "$lib/stores";
+  import { settingsStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import walletAccountNames from "$lib/wallets/accountNames";
+  import { account as evmAccount } from "$lib/web3/walletConnection";
 
   /** The account the file is of, and how the wallet names it. */
   /** @type {{ address: string, label: string } | null} */
@@ -44,7 +47,7 @@
   let from = "";
   let to = "";
   let withContacts = false;
-  let euro = false;
+  let fiat = false;
   let excel = false;
   let isBusy = false;
   let problem = "";
@@ -92,8 +95,10 @@
 
     try {
       const made = await makeExport({
-        choices: { euro, excel, from, period, to, withContacts },
+        choices: { excel, fiat, from, period, to, withContacts },
         contactName: (address) => contacts.get(address),
+        currency,
+        evmConnected: $evmAccount.addresses ?? [],
         net: $nodeNetwork,
         network,
         profile: {
@@ -126,6 +131,10 @@
       isBusy = false;
     }
   }
+
+  // Euros or US dollars, as the wallet's amounts, else as the browser's
+  // region starts on.
+  $: currency = exportCurrency($settingsStore.currency, navigator.language);
 </script>
 
 <section aria-label="Export CSV" class="export-panel" id="{id}-panel">
@@ -155,8 +164,9 @@
     Add my contact names
   </label>
   <label class="export-panel__option">
-    <input bind:checked={euro} class="dusk-checkbox" type="checkbox" />
-    Add each payment's value in euros, from CoinGecko's prices (the past year)
+    <input bind:checked={fiat} class="dusk-checkbox" type="checkbox" />
+    Add each payment's value in {currencyWords(currency).many}, from CoinGecko's
+    prices (the past year)
   </label>
   <label class="export-panel__option">
     <input bind:checked={excel} class="dusk-checkbox" type="checkbox" />

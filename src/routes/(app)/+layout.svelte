@@ -31,7 +31,7 @@
   function restartInactivityTimer(timeout) {
     stopInactivityTimer();
     stopInactivityTimer = timeout
-      ? startInactivityTimer(() => logout(false), timeout)
+      ? startInactivityTimer(() => logout(false, timeout), timeout)
       : () => {};
   }
 

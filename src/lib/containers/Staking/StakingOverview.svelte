@@ -73,8 +73,9 @@
   export let blockHeight = undefined;
 
   /**
-   * About what native staking pays a year across the network lately, as a
-   * fraction; null or undefined while it isn't known.
+   * About what native staking pays a year across the network, as a fraction,
+   * estimated from what a block mints and what's staked now, not measured:
+   * null or undefined while it isn't known.
    *
    * @type {number | null | undefined}
    */
@@ -333,8 +334,8 @@
           <td data-way="Native staking">
             {#if nativeRate}
               <span class="compare__rate"
-                >About {ratePercent(nativeRate, locale)} a year lately, across the
-                network. Not promised.</span
+                >About {ratePercent(nativeRate, locale)} a year, estimated across
+                the network. Not promised.</span
               >
             {/if}
             Start in about 6 to 12 hours

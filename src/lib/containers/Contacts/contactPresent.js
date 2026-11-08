@@ -3,6 +3,8 @@
  * from the history, and when their `.dusk` name was last checked.
  */
 
+import { nameHides } from "@dusk-network/app-core/names";
+
 import { dayLabel, describeRow } from "$lib/activity/present";
 
 /**
@@ -14,12 +16,15 @@ import { dayLabel, describeRow } from "$lib/activity/present";
  */
 
 /**
- * The letter a contact's avatar shows.
+ * The letter a contact's avatar shows: none of a name with what can't be
+ * seen in it, whose first may be one.
  *
  * @param {string} name
  */
 export const initialOf = (name) =>
-  (Array.from(name.trim())[0] ?? "?").toLocaleUpperCase();
+  nameHides(name)
+    ? "?"
+    : (Array.from(name.trim())[0] ?? "?").toLocaleUpperCase();
 
 /**
  * The history's rows with an address as their counterparty, newest first,

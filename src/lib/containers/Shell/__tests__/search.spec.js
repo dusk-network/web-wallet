@@ -6,7 +6,7 @@ import {
   rowsOf,
   withBridge,
 } from "$lib/activity/__tests__/fixtures/rows";
-import { dayLabel, timeLabel } from "$lib/activity/present";
+import { dayLabel, shortAddress, timeLabel } from "$lib/activity/present";
 
 import {
   isAmountQuery,
@@ -239,6 +239,17 @@ describe("searchLocally for what was paid", () => {
     ).toEqual(["a4"]);
   });
 
+  it("reads an amount with either decimal mark, and one typed on its way from 0", () => {
+    const de = { ...paid, locale: "de-DE" };
+
+    expect(paymentsFor("0.0123", de)).toEqual(paymentsFor("0,0123", de));
+    expect(paymentsFor("0.0123", de).map(([hash]) => hash)).toEqual(["a3"]);
+
+    // On the way to 0.0123, "0.0" is from 0 up to 0.1.
+    expect(paymentsFor("0.0").map(([hash]) => hash)).toEqual(["a3"]);
+    expect(paymentsFor("0,01").map(([hash]) => hash)).toEqual(["a3"]);
+  });
+
   it("finds nothing for an amount no payment has, and doesn't take it for a name", () => {
     expect(paymentsFor("7,5")).toEqual([]);
     expect(lookupKind("7,5")).toBeNull();
@@ -266,6 +277,24 @@ describe("searchLocally for what was paid", () => {
       "a4",
       "a5",
     ]);
+  });
+
+  it("marks a payment of a contact whose name looks like another's with its address, under it", () => {
+    const found = searchLocally("Estudio", {
+      ...paid,
+      alike: new Set([MARTA]),
+    }).filter(({ group }) => group === "Transactions");
+
+    // As it's found, of no time read yet.
+    expect(found.map(({ sub }) => sub)).toEqual([
+      `${shortAddress(MARTA)} · name looks like another`,
+      `${shortAddress(MARTA)} · name looks like another`,
+    ]);
+    expect(
+      searchLocally("Estudio", paid).some(({ sub }) =>
+        sub?.includes("looks like")
+      )
+    ).toBe(false);
   });
 
   it("hides what they moved while balances are hidden", () => {
@@ -299,6 +328,13 @@ describe("searchLocally for a block, a memo or a label", () => {
           counterparty: ALICE,
           hash: "e1".repeat(32),
           memo: "Rent for October",
+          status: "executed",
+        },
+        {
+          amount: "3000000000",
+          counterparty: ALICE,
+          hash: "e2".repeat(32),
+          memo: "Factura 2026-071 Ilustración",
           status: "executed",
         },
       ]),
@@ -368,6 +404,16 @@ describe("searchLocally for a block, a memo or a label", () => {
       ["Transactions", `/dashboard/transactions?tx=${"e1".repeat(32)}`],
     ]);
   });
+
+  it("finds a memo whatever its accents and case", () => {
+    for (const query of ["ilustracion", "ILUSTRACIÓN", "Ilustración"]) {
+      expect(
+        searchLocally(query, withMore).map(({ group, href }) => [group, href])
+      ).toEqual([
+        ["Transactions", `/dashboard/transactions?tx=${"e2".repeat(32)}`],
+      ]);
+    }
+  });
 });
 
 describe("searchLocally with contacts", () => {
@@ -395,6 +441,17 @@ describe("searchLocally with contacts", () => {
     ]);
     expect(searchLocally(ALICE.slice(4, 14), withContacts)).toEqual([
       expect.objectContaining({ group: "Contacts", label: "Alice" }),
+      expect.objectContaining({ group: "Transactions" }),
+    ]);
+
+    // A name with an accent, typed without.
+    const accented = {
+      ...index,
+      contacts: [{ ...contact, duskName: undefined, name: "Estudio Diseño" }],
+    };
+
+    expect(searchLocally("diseno", accented)).toEqual([
+      expect.objectContaining({ group: "Contacts", label: "Estudio Diseño" }),
       expect.objectContaining({ group: "Transactions" }),
     ]);
   });

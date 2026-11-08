@@ -291,6 +291,37 @@ describe("Unlock Wallet", async () => {
     });
   });
 
+  it("should say the wallet locked itself after the minutes it was left alone, as that brought it here", async () => {
+    const { page } = await import("$app/stores");
+    const { readable } = await import("svelte/store");
+    const arrived = vi.spyOn(page, "subscribe").mockImplementation(
+      readable(
+        /** @type {any} */ ({
+          state: { lockedAfter: 5 },
+          url: new URL("http://localhost/unlock"),
+        })
+      ).subscribe
+    );
+
+    try {
+      await vault.setUp(mnemonic, pwd);
+      settingsStore.update(setUserId(userId));
+
+      const { container, getByRole } = render(UnlockWallet);
+
+      expect(getByRole("status")).toHaveTextContent(
+        "Locked after 5 minutes away."
+      );
+      // The password asked for at once: no Create or Restore in the way.
+      expect(container.querySelector("input[type=password]")).toBeTruthy();
+      expect(container).not.toHaveTextContent("Create new wallet");
+    } finally {
+      arrived.mockRestore();
+      await vault.clear();
+      localStorage.clear();
+    }
+  });
+
   it("should offer no fingerprint without it turned on, and ask the device nothing", async () => {
     const device = fakeAuthenticator();
 

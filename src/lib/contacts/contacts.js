@@ -18,7 +18,13 @@
  * brings back what Reset deleted.
  */
 
-import { nameClash } from "@dusk-network/app-core/names";
+import {
+  NAME_HIDES,
+  lookAlikes,
+  nameClash,
+  nameHides,
+} from "@dusk-network/app-core/names";
+import { displayText, searchKey } from "@dusk-network/app-core/text";
 import { isAccount } from "@dusk-network/networks/account";
 import { ProfileGenerator } from "@dusk/w3sper";
 import { writable } from "svelte/store";
@@ -556,19 +562,19 @@ export function addressType(address) {
 
 /**
  * The contacts, sorted, or those whose name, `.dusk` name or address has
- * the query.
+ * the query, whatever its accents and case.
  *
  * @param {string} [query]
  * @returns {Contact[]}
  */
 export function listContacts(query = "") {
-  const q = query.trim().toLowerCase();
+  const q = searchKey(query);
   const all = sorted(book);
 
   return q
     ? all.filter((contact) =>
         [contact.name, contact.duskName ?? "", contact.address].some((value) =>
-          value.toLowerCase().includes(q)
+          searchKey(value).includes(q)
         )
       )
     : all;
@@ -581,11 +587,23 @@ export function listContacts(query = "") {
 export const getContact = (id) => book[id] ?? null;
 
 /**
- * What's wrong with a name for a contact, by app-core's look-alikes: one that
- * is, or looks like, a profile's here is refused, as a review would read the
- * contact as that profile; one of another contact's, whatever its capitals,
- * spaces and punctuation, or in other letters, is said with that contact's
- * address, and can be saved. Null for neither.
+ * A contact's name as it's shown: one saved before names with what can't be
+ * seen in them were refused shows those as their codes, as a memo does, so
+ * "\u202eecilA" can't read as "Alice".
+ *
+ * @param {string} name
+ */
+export const contactNameText = (name) =>
+  nameHides(name) ? displayText(name).text : name;
+
+/**
+ * What's wrong with a name for a contact: one with what can't be seen in it
+ * (app-core's `nameHides`) is refused, as it can read as another name. By
+ * app-core's look-alikes, one that is, or looks like, a profile's here is
+ * refused, as a review would read the contact as that profile; one of
+ * another contact's, whatever its capitals, spaces and punctuation, or in
+ * other letters, is said with that contact's address, and can be saved.
+ * Null for neither.
  *
  * @param {string} name
  * @param {{ address: string, name: string }[]} profiles The profiles here
@@ -593,6 +611,10 @@ export const getContact = (id) => book[id] ?? null;
  * @returns {{ refused: boolean, words: string } | null}
  */
 export function contactNameProblem(name, profiles, exceptId) {
+  if (nameHides(name)) {
+    return { refused: true, words: NAME_HIDES };
+  }
+
   const clash = nameClash(name, {
     contacts: listContacts(),
     except: exceptId,
@@ -604,8 +626,8 @@ export function contactNameProblem(name, profiles, exceptId) {
       refused: true,
       words: `${
         clash.same
-          ? `One of your profiles is called ${clash.entry.name}`
-          : `That looks like ${clash.entry.name}, one of your profiles`
+          ? `One of your profiles is called ${contactNameText(clash.entry.name)}`
+          : `That looks like ${contactNameText(clash.entry.name)}, one of your profiles`
       }. Choose another name.`,
     };
   }
@@ -615,8 +637,8 @@ export function contactNameProblem(name, profiles, exceptId) {
         refused: false,
         words: `${
           clash.same
-            ? `You already have a contact called ${clash.entry.name}`
-            : `That looks like your contact ${clash.entry.name}`
+            ? `You already have a contact called ${contactNameText(clash.entry.name)}`
+            : `That looks like your contact ${contactNameText(clash.entry.name)}`
         }, at ${shortenAddress(clash.entry.address)}. Only the address will tell them apart.`,
       }
     : null;
@@ -765,10 +787,29 @@ export function removeContact(id) {
 }
 
 /**
- * The contacts' names by address, for the history to show.
+ * The addresses of the contacts whose names look like another's, a profile's
+ * here or a contact's of another address (app-core's `lookAlikes`): where
+ * they're named, their address shows, as Send shows it.
+ *
+ * @param {Contact[]} contacts
+ * @param {{ address: string, name: string }[]} profiles The profiles here
+ * @returns {Set<string>}
+ */
+export function alikeContacts(contacts, profiles) {
+  const alike = lookAlikes([...profiles, ...contacts]);
+
+  return new Set(
+    contacts.flatMap((contact) => (alike.has(contact) ? [contact.address] : []))
+  );
+}
+
+/**
+ * The contacts' names by address, as they're shown, for the history.
  *
  * @param {Contact[]} contacts
  * @returns {Map<string, string>}
  */
 export const contactNamesOf = (contacts) =>
-  new Map(contacts.map((contact) => [contact.address, contact.name]));
+  new Map(
+    contacts.map((contact) => [contact.address, contactNameText(contact.name)])
+  );

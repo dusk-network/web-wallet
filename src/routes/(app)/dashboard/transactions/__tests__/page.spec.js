@@ -11,7 +11,9 @@ import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
+import { shortAddress } from "$lib/activity/present";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
+import { settingsStore } from "$lib/stores";
 import { openTestContacts } from "$lib/test-helpers";
 
 import History from "../+page.svelte";
@@ -380,6 +382,36 @@ describe("History", () => {
     expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
   });
 
+  it("marks a contact whose name looks like another's with its address, as Send does, and shows one's hidden characters as codes", async () => {
+    saveContact({ address: ALICE, name: "Estudio Marta" });
+    // A Cyrillic а, saved after the warning, for another address.
+    saveContact({ address: "x".repeat(40), name: "Estudio M\u0430rta" });
+
+    const { container, getByRole, rerender } = render(History);
+    const mark = `${shortAddress(ALICE)} · name looks like another`;
+
+    expect(container.querySelector(".history__row")).toHaveTextContent(
+      `Estudio Marta · alice-shop.dusk ${mark}`
+    );
+    expect(
+      getByRole("button", {
+        name: new RegExp(`^Estudio Marta · alice-shop\\.dusk, ${mark}`),
+      })
+    ).toBeInTheDocument();
+
+    for (const contact of listContacts()) {
+      await act(() => removeContact(contact.id));
+    }
+
+    // Saved before such names were refused: it reads as "Alice".
+    await act(() => saveContact({ address: ALICE, name: "\u202EecilA" }));
+    await rerender({});
+
+    expect(shownRows(container)[0]).toMatch(
+      /^\\u202eecilA · alice-shop\.dusk Sent/
+    );
+  });
+
   it("says who paid the fee of what was received", async () => {
     await visit(`/dashboard/transactions?tx=${RECEIVED}`);
 
@@ -579,7 +611,7 @@ describe("History", () => {
       expect(blobs).toHaveLength(0);
     });
 
-    it("asks CoinGecko only when euros are asked for, for no more than times, and says what has no value", async () => {
+    it("asks CoinGecko only when euros are asked for, in euros as the wallet's amounts are, for no more than times", async () => {
       const prices = vi.fn((/** @type {string} */ url) =>
         Promise.resolve(
           new Response(
@@ -593,6 +625,7 @@ describe("History", () => {
       );
 
       vi.stubGlobal("fetch", prices);
+      settingsStore.update((store) => ({ ...store, currency: "EUR" }));
 
       const { getByRole } = await openExport();
 
@@ -620,6 +653,53 @@ describe("History", () => {
       const text = await blobs[1].text();
 
       expect(text).toContain(",EUR,");
+      settingsStore.reset();
+      vi.unstubAllGlobals();
+    });
+
+    it.each([
+      ["US dollars as the wallet's amounts", "USD", "de-DE", "US dollars"],
+      [
+        "the browser's region's, India's US dollars",
+        "INR",
+        "en-IN",
+        "US dollars",
+      ],
+      ["the browser's region's, Germany's euros", "INR", "de-DE", "euros"],
+    ])("gives the values in %s", async (_, currency, language, words) => {
+      const code = words === "euros" ? "EUR" : "USD";
+      const prices = vi.fn((/** @type {string} */ url) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              prices: String(url).includes("coingecko")
+                ? [[NOW - 60_000, 0.25]]
+                : [],
+            })
+          )
+        )
+      );
+
+      vi.stubGlobal("fetch", prices);
+      vi.spyOn(navigator, "language", "get").mockReturnValue(language);
+      settingsStore.update((store) => ({ ...store, currency }));
+
+      const { getByRole } = await openExport();
+
+      await fireEvent.click(
+        getByRole("checkbox", {
+          name: `Add each payment's value in ${words}, from CoinGecko's prices (the past year)`,
+        })
+      );
+      await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+      await vi.waitFor(() => expect(names).toHaveLength(1));
+
+      for (const [url] of prices.mock.calls) {
+        expect(String(url)).toContain(`vs_currency=${code.toLowerCase()}&`);
+      }
+
+      expect(await blobs[0].text()).toContain(`,${code},`);
+      settingsStore.reset();
       vi.unstubAllGlobals();
     });
   });

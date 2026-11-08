@@ -129,18 +129,30 @@ describe("Send page", () => {
     });
 
     it.each([
-      ["no recipient", "amount=0.15&memo=Factura+33"],
-      ["an empty recipient", "to=&amount=0.15"],
-      ["a network there's no file for", `to=${OTHER}&network=nowhere`],
+      [
+        "no recipient",
+        "amount=0.15&memo=Factura+33",
+        "This link doesn't say who to pay. Ask for a new one.",
+      ],
+      [
+        "an empty recipient",
+        "to=&amount=0.15",
+        "This link doesn't say who to pay. Ask for a new one.",
+      ],
+      [
+        "a network there's no file for",
+        `to=${OTHER}&network=nowhere`,
+        "This link's network can't be read. Ask for a new one.",
+      ],
     ])(
-      "should say a link with %s can't be read, and fill in nothing",
-      (_, query) => {
+      "should say why a link with %s can't be read, and fill in nothing",
+      (_, query, words) => {
         setNodeNetwork(networks.testnet);
         openLink(query);
 
         const { getByRole, getByText } = render(SendPage);
 
-        expect(getByText(/^That link can't be read/)).toBeInTheDocument();
+        expect(getByText(words)).toBeInTheDocument();
         expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
       }
     );

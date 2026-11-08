@@ -319,7 +319,7 @@ describe("Send", () => {
       [
         "its memo said twice",
         `${httpsLink}&memo=Factura+34`,
-        "That link can't be read. Ask for a new one.",
+        "This link says the memo twice. Ask for a new one.",
       ],
       [
         "its amount said twice, another",
@@ -332,12 +332,12 @@ describe("Send", () => {
           "https://apps.testnet.dusk.network",
           "https://apps.testnet.dusk.network@apps.dusk.network"
         ),
-        "That link can't be read. Ask for a new one.",
+        "This link has something before the site's address. Ask for a new one.",
       ],
       [
         "the test wallet's address saying Mainnet",
         httpsLink.replace("network=testnet", "network=mainnet"),
-        "That link can't be read. Ask for a new one.",
+        "This link names two networks, Testnet and Mainnet. Ask for a new one.",
       ],
     ])(
       "should refuse a link with %s, saying why and filling in nothing",
@@ -388,11 +388,33 @@ describe("Send", () => {
       );
     });
 
-    it("should say so plainly and fill in nothing for a link for another network, keeping what's typed", async () => {
+    it.each([
+      ["its chain ID", "@dusk:1?amount=0.15&memo=Factura+33"],
+      ["network=", "?amount=0.15&memo=Factura+33&network=mainnet"],
+    ])(
+      "should say so plainly for a dusk: link for another network by %s, emptying what an earlier link filled in",
+      async (_, rest) => {
+        const { getByRole, getByText, queryByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await paste(fields, httpsLink.replace("Factura+33", "Chicken+rice"));
+        await paste(fields, `dusk:public-${otherAccount}${rest}`);
+
+        expect(
+          getByText("This request is for Mainnet. You are on Testnet.")
+        ).toBeInTheDocument();
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(queryByText("Not a valid address.")).toBeNull();
+        expect(fields.review()).toBeDisabled();
+      }
+    );
+
+    it("should empty what's typed for a link refused, and take what's given next on its own", async () => {
       const { getByRole, getByText, queryByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
 
       await fireEvent.input(fields.amount(), { target: { value: "2" } });
+      await fireEvent.input(fields.memo(), { target: { value: "Lunch" } });
       await paste(
         fields,
         `dusk:public-${otherAccount}@dusk:1?amount=0.15&memo=Factura+33`
@@ -401,9 +423,7 @@ describe("Send", () => {
       expect(
         getByText("This request is for Mainnet. You are on Testnet.")
       ).toBeInTheDocument();
-      expect(filled(fields)).toStrictEqual(["", "2", ""]);
-      expect(queryByText("Not a valid address.")).toBeNull();
-      expect(fields.review()).toBeDisabled();
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
 
       // What's given next is on its own.
       await paste(fields, otherAccount);
@@ -414,18 +434,23 @@ describe("Send", () => {
     });
 
     it.each([
-      ["a dusk: link of no known form", "dusk:nothing-at-all"],
+      [
+        "a dusk: link of no known form",
+        "dusk:nothing-at-all",
+        "That link can't be read. Ask for a new one.",
+      ],
       [
         "a link to the web wallet's Send without a recipient",
         `https://apps.testnet.dusk.network/wallet/dashboard/send?amount=1`,
+        "This link doesn't say who to pay. Ask for a new one.",
       ],
-    ])("should say %s can't be read", async (_, value) => {
+    ])("should say why %s can't be read", async (_, value, words) => {
       const { getByRole, getByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
 
       await paste(fields, value);
 
-      expect(getByText(/^That link can't be read/)).toBeInTheDocument();
+      expect(getByText(words)).toBeInTheDocument();
       expect(filled(fields)).toStrictEqual(["", "", ""]);
     });
 
@@ -1065,6 +1090,42 @@ describe("Send", () => {
           shieldedAddress,
           max,
           expect.anything(),
+          expect.anything(),
+          expect.anything()
+        );
+      } finally {
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+      }
+    });
+
+    it("should hide an amount sent back while balances are hidden, as Max's, and send it all the same", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      try {
+        const { container, getByRole } = render(Send, {
+          ...baseProps,
+          initialAmount: "0.012",
+          initialAmountHidden: true,
+          initialMemo: "Refund: Factura 43",
+          initialRecipient: otherAccount,
+        });
+        const fields = fieldsOf(getByRole);
+
+        expect(fields.amount()).toHaveValue("••••");
+        expect(container.textContent).not.toContain("0.012");
+
+        await fireEvent.click(fields.review());
+
+        expect(fields.send()).toHaveAccessibleName("Send •••• DUSK");
+        expect(container.textContent).not.toContain("0.012");
+
+        await afterConfirmDelay();
+        await fireEvent.click(fields.send());
+
+        expect(baseProps.execute).toHaveBeenCalledWith(
+          otherAccount,
+          12_000_000n,
+          "Refund: Factura 43",
           expect.anything(),
           expect.anything()
         );
@@ -3273,6 +3334,43 @@ describe("Send", () => {
       }
     });
 
+    it("should show a contact's name saved with what can't be seen in it by its codes, and refuse one now", async () => {
+      // Saved before such names were refused: it reads as "Profile 2".
+      saveContact({ address: otherAccount, name: "\u202E2 eliforP" });
+
+      const { container, getByRole, getByText } = render(Send, baseProps);
+      const shown = "\\u202e2 eliforP";
+
+      await fireEvent.change(
+        getByRole("combobox", { name: "Send to a contact" }),
+        { target: { value: listContacts()[0].id } }
+      );
+
+      expect(
+        getAsHTMLElement(container, ".send__card-title")
+      ).toHaveTextContent(shown);
+      expect(getSummary(container)[1]).toStrictEqual([
+        "To",
+        `${shown} ${shortenAddress(otherAccount)}`,
+      ]);
+
+      // A new one isn't saved.
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: nameAccount },
+      });
+      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "\u202EecilA" },
+      });
+
+      expect(
+        getByText(
+          "This name has hidden characters. Type it again without them."
+        )
+      ).toBeInTheDocument();
+      expect(getByRole("button", { name: "Save" })).toBeDisabled();
+    });
+
     it("should send to a contact picked from the list", async () => {
       saveContact({ address: otherAccount, name: "Cold storage" });
 
@@ -3665,6 +3763,84 @@ describe("Send", () => {
       await fireEvent.input(to, { target: { value: account } });
 
       expect(toLine()).toStrictEqual(["To", `Rent ${shortenAddress(account)}`]);
+    });
+
+    it("should offer a profile here by its name before a .dusk name of it, which is somebody else's, and say so of that one", async () => {
+      const { account } = await holdOtherWallet();
+      const { getByRole, getByText, queryByRole } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
+
+      // The field takes the space out.
+      await fireEvent.input(to, { target: { value: "profile1" } });
+      await fireEvent.blur(to);
+
+      await fireEvent.click(
+        getByRole("button", {
+          name: `Your profile Wallet 1 · Profile 1 · ${shortenAddress(account)}`,
+        })
+      );
+
+      expect(to).toHaveValue(account);
+      expect(
+        queryByRole("button", { name: /^Did you mean profile1\.dusk/ })
+      ).toBeNull();
+
+      // Its .dusk name, typed out, is someone else's.
+      baseProps.resolveName.mockResolvedValue({
+        account: otherAccount,
+        name: "profile1.dusk",
+      });
+      await fireEvent.input(to, { target: { value: "profile1.dusk" } });
+
+      await waitFor(() =>
+        expect(
+          getByText(
+            "profile1.dusk is someone else's name, not your profile Profile 1."
+          )
+        ).toBeInTheDocument()
+      );
+    });
+
+    it("should say a .dusk name of a profile's is someone else's only once it's found, going to none of the profiles here, public or shielded", async () => {
+      // Both wallets have a Profile 1.
+      const { account, address } = await holdOtherWallet();
+      const found = Promise.withResolvers();
+
+      madeUpAddresses.add(address);
+      baseProps.resolveName.mockReturnValueOnce(found.promise);
+
+      const { container, getByRole, queryByText } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
+      const someoneElses = /is someone else's name/;
+
+      await fireEvent.input(to, { target: { value: "profile1.dusk" } });
+
+      expect(queryByText(someoneElses)).toBeNull();
+
+      // Wallet 1's Profile 1.
+      found.resolve({ account, name: "profile1.dusk" });
+
+      await waitFor(() =>
+        expect(cardTitle(container)).toBe(
+          "profile1.dusk points to a public account"
+        )
+      );
+      expect(queryByText(someoneElses)).toBeNull();
+
+      // Its shielded address.
+      baseProps.resolveName.mockResolvedValue({
+        address,
+        name: "profile1.dusk",
+      });
+      await fireEvent.input(to, { target: { value: "" } });
+      await fireEvent.input(to, { target: { value: "profile1.dusk" } });
+
+      await waitFor(() =>
+        expect(cardTitle(container)).toBe(
+          "profile1.dusk points to a shielded address"
+        )
+      );
+      expect(queryByText(someoneElses)).toBeNull();
     });
 
     it("should name a profile of the other wallet on the address card, after a .dusk name", async () => {

@@ -117,7 +117,7 @@
       <p class="home__note">
         Have DUSK on Ethereum or BNB Smart Chain?
         <a
-          class="text-link"
+          class="text-link tap-link"
           href={addBasePath(`/dashboard/bridge?route=${migration.id}`)}
           >Migrate it to Dusk</a
         >

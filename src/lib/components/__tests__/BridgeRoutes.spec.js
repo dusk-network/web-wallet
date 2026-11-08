@@ -716,6 +716,33 @@ describe("the Bridge card's routes to and from other chains", () => {
       ).toStrictEqual([]);
     });
 
+    it("says one wallet step on the form for an amount the approval covers, and both for more", async () => {
+      mocks.allowance.mockResolvedValue(HALF);
+
+      const { container, findByRole, getByRole } = openRoute();
+      const steps = () =>
+        /** @type {HTMLElement} */ (container.querySelector(".swap-route"))
+          .textContent;
+
+      await findByRole("button", { name: "Revoke" });
+      await fireEvent.input(
+        getByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
+        { target: { value: "0.5" } }
+      );
+
+      expect(steps()).toContain("migrate, in your BNB Smart Chain wallet");
+      expect(steps()).not.toMatch(/approve/i);
+
+      await fireEvent.input(
+        getByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
+        { target: { value: "0.6" } }
+      );
+
+      expect(steps()).toContain(
+        "approve, then migrate, in your BNB Smart Chain wallet"
+      );
+    });
+
     it("offers to add DUSK to a wallet that holds none of it yet, on the way back's form", async () => {
       const wallet = { name: "Test MetaMask", type: "injected", uid: "w3" };
 
@@ -1341,9 +1368,9 @@ describe("the Bridge card's routes to and from other chains", () => {
       );
     });
 
-    it("offers to add DUSK to the wallet it arrived in, on its chain, and not again once it has; a refusal says nothing", async () => {
+    it("offers to add DUSK to the wallet it arrived in, on its chain, and says it was added in its place; a refusal says nothing", async () => {
       const wallet = { name: "Test MetaMask", type: "injected", uid: "w1" };
-      const { findByRole, queryByRole } = await sendOut();
+      const { findByRole, getByText, queryByRole } = await sendOut();
       const offer = { name: "Add DUSK to Test MetaMask" };
 
       // Not before it arrives, nor to another account than it went to.
@@ -1388,6 +1415,10 @@ describe("the Bridge card's routes to and from other chains", () => {
         }
       );
       await vi.waitFor(() => expect(queryByRole("button", offer)).toBeNull());
+      expect(getByText("DUSK added to Test MetaMask.")).toHaveAttribute(
+        "role",
+        "status"
+      );
       expect(
         JSON.parse(localStorage.getItem("web-wallet-evm-dusk-added") ?? "")
       ).toStrictEqual([`56:${EVM.toLowerCase()}`]);

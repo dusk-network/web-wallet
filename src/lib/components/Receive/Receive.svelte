@@ -169,7 +169,13 @@
       weight: 600,
     },
     ...(asked.memo
-      ? [{ size: 40, text: displayText(asked.memo).text, weight: 400 }]
+      ? [
+          {
+            size: 40,
+            text: displayText(asked.memo, { isolate: true }).text,
+            weight: 400,
+          },
+        ]
       : []),
     {
       size: 36,
@@ -180,8 +186,10 @@
 
   /**
    * A request picture's file name, from what it asks, as
-   * "dusk-testnet-request-0.05-DUSK-Factura-33.png": the memo's letters and
-   * digits, the rest between them a hyphen, 40 characters at most.
+   * "dusk-testnet-request-0.05-DUSK-Factura-33.png": the memo's Latin letters
+   * and digits, without their accents, as "Diseño" as "Diseno", the rest
+   * between them a hyphen, 40 characters at most. A browser saves a picture
+   * whose name has more as "download".
    *
    * @param {NonNullable<typeof request>} asked
    * @param {string} network The test network it's for, or ""
@@ -189,7 +197,9 @@
   function fileNameOf(asked, network) {
     const memo = Array.from(
       (asked.memo ?? "")
-        .replace(/[^\p{L}\p{N}]+/gu, "-")
+        .normalize("NFKD")
+        .replace(/\p{M}+/gu, "")
+        .replace(/[^A-Za-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "")
     )
       .slice(0, 40)

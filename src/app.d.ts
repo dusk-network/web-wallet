@@ -23,6 +23,10 @@ type StakeInfo = import("@dusk/w3sper").StakeInfo;
 
 declare namespace App {
   interface PageState {
+    /** Send opened with the wallet's own amount, as one sent back: hidden with the balances. */
+    amountHidden?: boolean;
+    /** The unlock after the wallet locked itself: the minutes it was left alone. */
+    lockedAfter?: number;
     /** With the network's panel open, a step of its own in the history. */
     networkPanel?: boolean;
     /** With the profile menu open, a step of its own in the history. */

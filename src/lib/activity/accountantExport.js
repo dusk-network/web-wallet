@@ -4,6 +4,7 @@
  * whole first: Koinly's universal CSV, the format others follow.
  */
 
+import { defaultCurrency } from "@dusk-network/app-core/amounts";
 import { migrationsOf } from "@dusk-network/app-core/bridge";
 import {
   accountingCsv,
@@ -16,14 +17,36 @@ import { get } from "svelte/store";
 import { keptMigrations } from "$lib/bridge/migrationActivity";
 import { readMigrationsEvm } from "$lib/bridge/migrationEvm";
 
-import { duskEuroPrices } from "./duskPrice";
+import { duskPrices } from "./duskPrice";
+
+/**
+ * The currency an export's values are in, euros or US dollars as the
+ * extension's: the one chosen for the wallet's amounts where it's either,
+ * else the one the browser's region starts on (app-core's `defaultCurrency`).
+ *
+ * @param {string} [chosen] Settings' currency
+ * @param {string} [language] The browser's
+ * @returns {"EUR" | "USD"}
+ */
+export const exportCurrency = (chosen, language) =>
+  chosen === "EUR" || chosen === "USD" ? chosen : defaultCurrency(language);
+
+/**
+ * What a currency's values are called in the export's words.
+ *
+ * @param {"EUR" | "USD"} currency
+ */
+export const currencyWords = (currency) =>
+  currency === "USD"
+    ? { many: "US dollars", one: "dollar" }
+    : { many: "euros", one: "euro" };
 
 /**
  * What's asked of a file.
  *
  * @typedef {{
- *   euro: boolean,
  *   excel: boolean,
+ *   fiat: boolean,
  *   from: string,
  *   period: string,
  *   to: string,
@@ -90,22 +113,30 @@ export function periodChoices(now = new Date()) {
 
 /**
  * The file asked for, from the account's whole history. Throws what to say when
- * it can't be read: nothing half read goes out as if it were all of it.
+ * it can't be read: nothing half read goes out as if it were all of it. A
+ * migration's gas on its own chain is the person's cost only where it was
+ * sent from an EVM address of theirs: one connected now (`evmConnected`), or
+ * one this browser sent a migration from. Anyone can migrate to an account,
+ * as a customer to a shop's.
  *
  * @param {{
  *   choices: ExportChoices,
  *   contactName: (address: string) => string | null | undefined,
+ *   currency?: "EUR" | "USD",
+ *   evmConnected?: Iterable<string>,
  *   net?: import("@dusk-network/networks").Network | null,
  *   network: string,
  *   profile: import("@dusk-network/app-core/export").ExportProfile,
  *   profiles: import("@dusk-network/app-core/export").ExportProfile[],
  *   session: Pick<import("./activitySession").ActivitySession, "sozuFacts" | "whole">,
  * }} asked
- * @returns {Promise<import("@dusk-network/app-core/export").ExportResult & { shieldedWaiting: boolean }>}
+ * @returns {Promise<import("@dusk-network/app-core/export").ExportResult & { currency: "EUR" | "USD", shieldedWaiting: boolean }>}
  */
 export async function makeExport({
   choices,
   contactName,
+  currency = "EUR",
+  evmConnected = [],
   net = null,
   network,
   profile,
@@ -123,8 +154,9 @@ export async function makeExport({
   // What each migration paid on its own chain, its approval with it: by the
   // approval this browser sent for it where it kept one, whose receipt is
   // read at any age, where the chain's logs no longer say.
+  const kept = get(keptMigrations);
   const approvals = new Map(
-    get(keptMigrations).flatMap(({ approval, hash }) =>
+    kept.flatMap(({ approval, hash }) =>
       approval ? [[hash.toLowerCase(), approval]] : []
     )
   );
@@ -146,18 +178,19 @@ export async function makeExport({
   const made = await accountingCsv({
     bom: choices.excel,
     contactName: choices.withContacts ? contactName : undefined,
-    currency: "EUR",
+    currency,
     evm,
+    evmAddresses: [...evmConnected, ...kept.map(({ sender }) => sender)],
     facts,
     network,
     period,
-    price: choices.euro ? duskEuroPrices() : undefined,
+    price: choices.fiat ? duskPrices({ currency }) : undefined,
     profile,
     profiles,
     rows: whole.rows,
   });
 
-  return { ...made, shieldedWaiting: whole.shieldedWaiting };
+  return { ...made, currency, shieldedWaiting: whole.shieldedWaiting };
 }
 
 /**
@@ -165,7 +198,13 @@ export async function makeExport({
  *
  * @param {Awaited<ReturnType<typeof makeExport>>} made
  */
-export function savedWords({ count, left, shieldedWaiting, unpriced }) {
+export function savedWords({
+  count,
+  currency,
+  left,
+  shieldedWaiting,
+  unpriced,
+}) {
   const out = [
     left.pending ? `${left.pending} on its way` : "",
     left.notRead ? `${left.notRead} not read yet` : "",
@@ -175,7 +214,7 @@ export function savedWords({ count, left, shieldedWaiting, unpriced }) {
     `CSV saved: ${count === 1 ? "1 line" : `${count} lines`}.`,
     out.length ? `Left out: ${out.join(", ")}.` : "",
     unpriced
-      ? `${unpriced === 1 ? "1 line has" : `${unpriced} lines have`} no euro value.`
+      ? `${unpriced === 1 ? "1 line has" : `${unpriced} lines have`} no ${currencyWords(currency).one} value.`
       : "",
     shieldedWaiting
       ? "Your shielded activity is still syncing: export again once it's done."

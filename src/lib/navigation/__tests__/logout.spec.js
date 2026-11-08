@@ -27,6 +27,15 @@ describe("logout", () => {
     expect(gotoSpy).toHaveBeenCalledWith("/");
   });
 
+  it("should go straight to the unlock after the wallet locked itself, with how long it was left alone", async () => {
+    await navigation.logout(false, 5 * 60_000);
+
+    expect(walletStore.reset).toHaveBeenCalledTimes(1);
+    expect(gotoSpy).toHaveBeenCalledExactlyOnceWith("/unlock", {
+      state: { lockedAfter: 5 },
+    });
+  });
+
   it("should redirect to `/forced-logout` if the logout is forced", async () => {
     await navigation.logout(true);
 

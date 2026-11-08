@@ -17,12 +17,14 @@ export const lockedHere = () => isLockedHere;
  * parameter is added to instruct the home page
  * to add an explanation about the forced logout.
  * The next unlock returns to the page it left, but after a forced one: another
- * tab set up another wallet in place of this one.
+ * tab set up another wallet in place of this one. A lock after time away
+ * (`lockedAfterMs`) goes straight to the unlock, which says why.
  *
  * @param {boolean} isForced
+ * @param {number} [lockedAfterMs] How long it was left alone, for a lock of its own
  * @returns {ReturnType<goto>}
  */
-const logout = async (isForced) => {
+const logout = async (isForced, lockedAfterMs) => {
   isLockedHere = true;
 
   if (isForced) {
@@ -33,7 +35,14 @@ const logout = async (isForced) => {
   }
 
   walletStore.reset();
-  return goto(`/${isForced ? "forced-logout" : ""}`);
+
+  return isForced
+    ? goto("/forced-logout")
+    : lockedAfterMs
+      ? goto("/unlock", {
+          state: { lockedAfter: Math.round(lockedAfterMs / 60_000) },
+        })
+      : goto("/");
 };
 
 export default logout;

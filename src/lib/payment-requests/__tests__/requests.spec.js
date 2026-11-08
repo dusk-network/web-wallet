@@ -66,7 +66,7 @@ describe("The requests a wallet made", () => {
       expect(hydrateRequests()).toHaveLength(2);
     });
 
-    it("should keep a payment that matched all of it, for the request to stay paid once it's too far back to read, and ask again as a new request", () => {
+    it("should keep a payment that matched all of it, with what it paid, for the request to stay paid once it's too far back to read, and keep it as the one asked again", () => {
       rememberRequest(ASKED);
 
       const [{ at, id }] = get(requestsStore);
@@ -76,12 +76,38 @@ describe("The requests a wallet made", () => {
 
       expect(matchRequests(get(requestsStore), []).get(id)).toMatchObject({
         hash: "h1",
+        lux: LUX,
         state: "paid",
       });
 
+      // Its link and its QR are the same: no request of its own.
       rememberRequest(ASKED);
 
-      expect(get(requestsStore)).toHaveLength(2);
+      expect(get(requestsStore).map((kept) => kept.id)).toStrictEqual([id]);
+    });
+
+    it("should keep what a payment paid for a request kept paid before that was", () => {
+      rememberRequest(ASKED);
+
+      const [{ at, id }] = get(requestsStore);
+      const row = payment({ time: at + HOUR });
+
+      keepRequestMatches(
+        new Map([[id, { at: row.time ?? 0, hash: "h1", state: "paid" }]])
+      );
+
+      expect(get(requestsStore)[0].paid).toStrictEqual({
+        at: row.time,
+        hash: "h1",
+      });
+
+      keepRequestMatches(matchRequests(get(requestsStore), [row]));
+
+      expect(get(requestsStore)[0].paid).toStrictEqual({
+        at: row.time,
+        hash: "h1",
+        lux: String(LUX),
+      });
     });
 
     it("should write nothing for what it has kept already, or has nothing to keep", () => {

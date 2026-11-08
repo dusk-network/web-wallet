@@ -19,10 +19,10 @@
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { openProfileNames, profileNameAt } from "$lib/wallets";
-  import walletAccountNames from "$lib/wallets/accountNames";
+  import walletAccountNames, { profilesHere } from "$lib/wallets/accountNames";
   import { duskExplorerBlock, duskExplorerTx, nodeBaseUrl } from "$lib/url";
 
-  import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import { alikeContacts, contactNamesOf, contactsStore } from "$lib/contacts";
   import {
     isAmountQuery,
     lookupKind,
@@ -65,6 +65,7 @@
   $: ({ profiles } = $walletStore);
   $: ({ hideBalances, language } = $settingsStore);
   $: index = {
+    alike: alikeContacts($contactsStore, $profilesHere),
     contacts: $contactsStore,
     hideBalances,
     history: $activityState.rows,

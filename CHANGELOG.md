@@ -49,6 +49,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say Paid twice on a request, with a link to each payment
 - Name the test network and what a request asks in its QR picture and its file name
 - Show a payer's memo on Your requests with its hidden characters as codes, as everywhere else
+- Empty To, the amount and the memo on Send when a link is refused, not To alone
+- Refuse a dusk: link whose network= is another network, as an https link
+- Say why a link can't be read: a field said twice, something before the site's address, no one to pay or a network that can't be read
+- Search and Contacts find what's typed without its accents, as "ilustracion" for "Ilustración"
+- Find an amount typed on its way from 0, as "0.0" for 0.05 DUSK
+- Keep a memo's numbers in the order they're written beside right-to-left letters, as "Pay א 10 א 1000"
+- Refuse a contact's or a profile's name with hidden characters, and show one saved before by their codes, with a note in Contacts
+- Say what came in on every Paid request, as "Its memo matches a payment of 0.02 DUSK", and on each payment of one paid twice
+- Say Sent back on a request's payment once it's sent back, with no Send back for it
+- Hide the amount Send back fills in while balances are hidden
+- Keep a request asked again after it's paid as the one there was, not a new Waiting one
+- Give the export's values in the wallet's currency where it's euros or US dollars, else in the browser's region's, as the extension does, not always in euros
+- Keep the EVM wallet connected when Stay is chosen as the browser asks whether to leave
+- Write a migration's EVM gas in the export only where it was sent from an EVM address connected here, or one this browser migrated from
+- Say one wallet step, migrate, on the Bridge's form where an open approval covers the amount
+- Say "DUSK added to <wallet>." where Add DUSK was, once the wallet added it
+- Name a request's QR picture without accents, as "Diseno", so a browser keeps its name
+- Mark a contact whose name looks like another's with its address in History and the search, as on Send
+- Offer a profile here on Send by its name before a .dusk name of it, and say when a .dusk name entered is a profile's name but someone else's
+- Send again from a profile while its last send waits for a block, with the next nonce, not the same one
+- Say native staking's yearly rate is estimated, not what it paid lately
+- Say "Can't reach the network" once a sync gets nothing back for 30 seconds, and for the browser's "Failed to fetch", not Syncing forever
+- Say Offline, or Sync failed, in a word beside the network's dot, on a phone too
+- Keep "Sync completed!" on a restore until Next, through the syncs after it
+- Go straight to the unlock after the automatic lock, saying it locked after so many minutes away
+- Make See in History and Send back on a request, and Migrate it to Dusk on Home, 44 px tall on a phone
 
 ## [2.0.0] - 2026-11-06
 

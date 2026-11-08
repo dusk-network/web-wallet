@@ -6,18 +6,15 @@
  */
 
 import { ProfileGenerator } from "@dusk/w3sper";
-import {
-  decimalSeparator,
-  normalizeAmount,
-  parseDusk,
-  unclearAmount,
-} from "@dusk-network/app-core/amounts";
+import { amountsMeant } from "@dusk-network/app-core/amounts";
+import { searchKey } from "@dusk-network/app-core/text";
 import { labelFor, networks } from "@dusk-network/networks";
 import { asDuskName, isDuskName } from "@duskdomains/sdk/names";
 
 import { BALANCE_MASK } from "$lib/constants/balanceMask";
 
 import { contractLabel } from "$lib/activity/knownContracts";
+import { contactNameText } from "$lib/contacts";
 import {
   dayLabel,
   describeRow,
@@ -44,6 +41,7 @@ import {
  *   second line, as when a transaction was made.
  *
  * @typedef {{
+ *   alike?: Set<string>,
  *   contacts?: Contact[],
  *   hideBalances?: boolean,
  *   history: ActivityRow[],
@@ -53,17 +51,21 @@ import {
  *   present?: Omit<import("$lib/activity/present").PresentContext, "locale">,
  *   profiles: { account: string, address: string, label: string, name: string }[],
  * }} SearchIndex
- *   `present` what the history's rows are told by, as History tells them.
+ *   `present` what the history's rows are told by, as History tells them;
+ *   `alike` the addresses of contacts whose names look like another's, said
+ *   with their address.
  */
 
 /** The most results a group shows. */
 export const GROUP_LIMIT = 5;
 
 /**
+ * Whether a field holds what's typed, whatever its accents and case.
+ *
  * @param {string} haystack
- * @param {string} needle Lower case
+ * @param {string} needle As `searchKey` makes it
  */
-const has = (haystack, needle) => haystack.toLowerCase().includes(needle);
+const has = (haystack, needle) => searchKey(haystack).includes(needle);
 
 /**
  * What a row is known by besides its hash: its memo, and the labels of its
@@ -116,33 +118,8 @@ function peopleOf(history, locale) {
 }
 
 /**
- * The amounts of DUSK a query can mean, as what a row shows starts with what's
- * typed: "120" is from 120 up to 121, as "0,0123" is from 0.0123 up to 0.0124,
- * in lux. Empty for what isn't an amount. In a language that writes decimals
- * with a comma, "1.000" can be either of two: both are looked for.
- *
- * @param {string} query
- * @param {string} locale
- * @returns {{ from: bigint, to: bigint }[]}
- */
-function amountsMeant(query, locale) {
-  const decimal = decimalSeparator(locale);
-  const typed = query.trim();
-  const either = unclearAmount(typed, decimal);
-
-  return (either ? [either.grouped, either.decimal] : [typed]).flatMap(
-    (text) => {
-      const plain = normalizeAmount(text, decimal, locale);
-      const lux = parseDusk(plain);
-      const decimals = plain.split(".")[1]?.length ?? 0;
-
-      return lux ? [{ from: lux, to: lux + 10n ** BigInt(9 - decimals) }] : [];
-    }
-  );
-}
-
-/**
- * Whether a query reads as an amount of DUSK.
+ * Whether a query reads as an amount of DUSK, as app-core's `amountsMeant`
+ * reads one: "0.2" and "0,2" alike.
  *
  * @param {string} query
  * @param {string} locale
@@ -163,7 +140,7 @@ const luxOf = ({ bridge, value }) =>
  * Whether a query is a row's hash, or the start of it.
  *
  * @param {ActivityRow} row
- * @param {string} q Lower case
+ * @param {string} q As `searchKey` makes it
  */
 const isHash = (row, q) => q.length >= 4 && row.hash.includes(q);
 
@@ -182,7 +159,7 @@ export function transactionsFound(
   query,
   { contacts = [], history, locale, network = "", present = {} }
 ) {
-  const q = query.trim().toLowerCase();
+  const q = searchKey(query);
 
   if (!q) {
     return [];
@@ -236,6 +213,7 @@ export function transactionsFound(
 export function searchLocally(
   query,
   {
+    alike = new Set(),
     contacts = [],
     hideBalances = false,
     history,
@@ -246,7 +224,7 @@ export function searchLocally(
     profiles,
   }
 ) {
-  const q = query.trim().toLowerCase();
+  const q = searchKey(query);
 
   /** @type {SearchResult[]} */
   const results = [];
@@ -299,7 +277,7 @@ export function searchLocally(
       group: "Contacts",
       href: `/dashboard/contacts?contact=${encodeURIComponent(contact.id)}`,
       id: `contact:${contact.id}`,
-      label: contact.name,
+      label: contactNameText(contact.name),
     }))
   );
 
@@ -337,8 +315,12 @@ export function searchLocally(
     transactions.map(({ row, shown }) => {
       // Named as History names it, with when it was made under it, and
       // what it moved unless it's found by its hash.
-      const { amount, title, titleIsAddress } = shown;
+      const { amount, counterparty, title, titleIsAddress } = shown;
       const byHash = isHash(row, q);
+      const when =
+        row.time === null
+          ? ""
+          : `${dayLabel(row.time, { locale })}, ${timeLabel(row.time, locale)}`;
 
       return {
         detail: byHash
@@ -351,9 +333,14 @@ export function searchLocally(
         label: title,
         labelIsCode: titleIsAddress,
         sub:
-          row.time === null
-            ? undefined
-            : `${dayLabel(row.time, { locale })}, ${timeLabel(row.time, locale)}`,
+          [
+            when,
+            counterparty && alike.has(counterparty)
+              ? `${shortAddress(counterparty)} · name looks like another`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined,
         value: row.hash,
       };
     })

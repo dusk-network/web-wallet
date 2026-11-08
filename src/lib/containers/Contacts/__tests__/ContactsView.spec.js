@@ -245,6 +245,13 @@ describe("ContactsView", () => {
     });
 
     expect(names()).toEqual(["Savings"]);
+
+    // Whatever its accents and case.
+    await fireEvent.input(getByRole("searchbox", { name: "Search contacts" }), {
+      target: { value: "ALICE'S SHÖP" },
+    });
+
+    expect(names()).toEqual(["Alice's shop"]);
   });
 
   it("closes a contact with Escape, wherever the focus is in it, and gives the focus back to its row", async () => {
@@ -456,7 +463,7 @@ describe("ContactsView", () => {
       for (const variant of [
         "estudio marta ",
         " estudio  marta",
-        "ESTUDIO\tMARTA",
+        "ESTUDIO MARTA",
         "estudio marta.",
       ]) {
         await name(variant);
@@ -531,6 +538,88 @@ describe("ContactsView", () => {
 
     expect(queryByRole("alert")).toBeNull();
     expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
+  });
+
+  it("refuses a name with what can't be seen in it, which reads as a profile's or a contact's", async () => {
+    const alice = saveContact({ address: SHIELDED, name: "Alice" });
+
+    try {
+      const { getByRole, getByText, queryByRole } = render(ContactForm, {
+        profiles: [{ address: ACCOUNT, name: "Profile 2" }],
+        resolveName,
+      });
+
+      await fireEvent.input(
+        getByRole("textbox", { name: "Address or .dusk name" }),
+        { target: { value: OTHER } }
+      );
+
+      // A right-to-left override reads "2 eliforP" as "Profile 2", and
+      // "ecilA" as "Alice"; a zero-width space or a tab shows as nothing.
+      for (const hiding of [
+        "\u202E2 eliforP",
+        "\u202EecilA",
+        "Ali\u200Bce",
+        "Bob\tSmith",
+      ]) {
+        await fireEvent.input(getByRole("textbox", { name: "Name" }), {
+          target: { value: hiding },
+        });
+
+        expect(
+          getByText(
+            "This name has hidden characters. Type it again without them."
+          )
+        ).toBeInTheDocument();
+        expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+      }
+
+      await fireEvent.input(getByRole("textbox", { name: "Name" }), {
+        target: { value: "Bob Smith" },
+      });
+
+      expect(queryByRole("alert")).toBeNull();
+      expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
+    } finally {
+      removeContact(alice.id);
+    }
+  });
+
+  it("shows a name saved before with what can't be seen in it by its codes, says so, and deletes it", async () => {
+    const hiding = saveContact({ address: OTHER, name: "\u202EecilA" });
+    const { container, getByRole, getByText } = show({
+      contacts: get(contactsStore),
+      selected: hiding.id,
+    });
+    const row = /** @type {HTMLElement} */ (
+      container.querySelector(`[data-contact="${hiding.id}"]`)
+    );
+
+    expect(row).toHaveTextContent("\\u202eecilA");
+    expect(row).toHaveTextContent("Its name has hidden characters");
+    expect(row.textContent).not.toContain("\u202E");
+    expect(
+      getByRole("heading", { name: "\\u202eecilA", level: 2 })
+    ).toBeInTheDocument();
+    expect(
+      getByText(/^This name has hidden characters, shown here as codes\./)
+    ).toBeInTheDocument();
+
+    cleanup();
+
+    // It can be deleted.
+    const form = show({
+      contacts: get(contactsStore),
+      editing: true,
+      selected: hiding.id,
+    });
+
+    await fireEvent.click(form.getByRole("button", { name: "Delete contact" }));
+    await fireEvent.click(
+      form.getByRole("button", { name: "Delete \\u202eecilA" })
+    );
+
+    expect(getContact(hiding.id)).toBeNull();
   });
 
   it("doesn't call a contact its own twin as it's edited", async () => {

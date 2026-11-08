@@ -7,6 +7,8 @@ import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import NetworkPill from "../NetworkPill.svelte";
 
 const sync = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const abortSync = vi.hoisted(() => vi.fn());
+const refreshBalance = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 const pageStore = vi.hoisted(() => ({
   /** @type {import("svelte/store").Writable<any> | null} */
@@ -39,7 +41,13 @@ vi.mock("$lib/stores", async (importOriginal) => {
       ...original.networkStore,
       ...readable({ connected: true, networkName: "testnet" }),
     },
-    walletStore: { ...original.walletStore, ...mockedWalletStore, sync },
+    walletStore: {
+      ...original.walletStore,
+      ...mockedWalletStore,
+      abortSync,
+      refreshBalance,
+      sync,
+    },
   };
 });
 
@@ -61,6 +69,8 @@ describe("NetworkPill", () => {
 
   afterEach(() => {
     cleanup();
+    abortSync.mockClear();
+    refreshBalance.mockClear();
     sync.mockClear();
   });
 
@@ -96,10 +106,16 @@ describe("NetworkPill", () => {
       getByRole("button", { name: "Network: Testnet, offline" })
     ).toBeInTheDocument();
     expect(container.querySelector(".network-pill__dot--offline")).toBeTruthy();
+    // In a word on the pill, not by its dot alone.
+    expect(container.querySelector(".network-pill__button")).toHaveTextContent(
+      "Testnet Offline"
+    );
 
     await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
-    expect(getByText("Offline")).toBeInTheDocument();
+    expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
+      "Offline"
+    );
     expect(
       getByText("Your balance may be out of date until you're back online.")
     ).toBeInTheDocument();
@@ -111,6 +127,136 @@ describe("NetworkPill", () => {
     expect(
       getByRole("button", { name: "Network: Testnet, in sync" })
     ).toBeInTheDocument();
+  });
+
+  it("says it can't reach the network once a sync got nothing back for 30 seconds, and in sync once it answers", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const { container, getByRole } = render(NetworkPill);
+
+      await setSync({ isInProgress: true, progress: 0 });
+      await act(() => vi.advanceTimersByTimeAsync(29_000));
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, syncing" })
+      ).toBeInTheDocument();
+
+      await act(() => vi.advanceTimersByTimeAsync(1_000));
+
+      expect(
+        getByRole("button", {
+          name: "Network: Testnet, can't reach the network",
+        })
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector(".network-pill__button")
+      ).toHaveTextContent("Testnet Offline");
+
+      await fireEvent.click(getByRole("button", { name: /testnet/i }));
+
+      expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
+        "Can't reach the network Your balance may be out of date. Try again"
+      );
+
+      // Something back, and it waits again.
+      await setSync({ isInProgress: true, progress: 0.5 });
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, syncing 50%" })
+      ).toBeInTheDocument();
+
+      await setSync({ isInProgress: false, progress: 1 });
+      await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, in sync" })
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("starts the sync again on Try again once it got nothing back for 30 seconds, in place of the one that did, and shows the balances read after it", async () => {
+    vi.useFakeTimers();
+
+    // As the wallet's: a sync asked for while one runs joins that one,
+    // until it's stopped, and the balances shown are read again after one
+    // only where they're asked for with it.
+    const wallet = { balancesRead: 0, running: 0, started: 0 };
+
+    /** @type {PromiseWithResolvers<void> | null} */
+    let current = null;
+
+    const stop = () => {
+      if (current) {
+        wallet.running -= 1;
+        current = null;
+      }
+    };
+
+    sync.mockImplementation(() => {
+      if (!current) {
+        wallet.started += 1;
+        wallet.running += 1;
+        current = Promise.withResolvers();
+      }
+
+      return current.promise;
+    });
+    abortSync.mockImplementation(stop);
+    refreshBalance.mockImplementation(() =>
+      sync()
+        .catch(() => {})
+        .finally(() => {
+          wallet.balancesRead += 1;
+        })
+    );
+
+    try {
+      const { getByRole } = render(NetworkPill);
+
+      // The wallet's sync, which gets nothing back.
+      void sync();
+      await setSync({ isInProgress: true, progress: 0 });
+      await act(() => vi.advanceTimersByTimeAsync(30_000));
+      await fireEvent.click(getByRole("button", { name: /testnet/i }));
+      await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+      // Another runs, alone.
+      expect(wallet).toStrictEqual({ balancesRead: 0, running: 1, started: 2 });
+
+      // Once it's done, the balances shown are the ones it read.
+      const replacement = /** @type {PromiseWithResolvers<void> | null} */ (
+        current
+      );
+
+      stop();
+      replacement?.resolve();
+
+      await vi.waitFor(() => expect(wallet.balancesRead).toBe(1));
+    } finally {
+      sync.mockImplementation(() => Promise.resolve());
+      refreshBalance.mockImplementation(() => Promise.resolve());
+      abortSync.mockReset();
+      vi.useRealTimers();
+    }
+  });
+
+  it("says a sync that couldn't reach the network did so in plain words, not the browser's", async () => {
+    const { getByRole, queryByText } = render(NetworkPill);
+
+    await setSync({ error: new TypeError("Failed to fetch") });
+    await fireEvent.click(getByRole("button", { name: /testnet/i }));
+
+    expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
+      "Can't reach the network Your balance may be out of date. Try again"
+    );
+    expect(queryByText(/Failed to fetch/)).toBeNull();
+
+    await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+    expect(refreshBalance).toHaveBeenCalledOnce();
   });
 
   it("opens its panel as a step of its own in the browser's history: phone Back closes it alone, and its own close takes that step back", async () => {
@@ -169,12 +315,14 @@ describe("NetworkPill", () => {
     await setSync({ error: new Error("The node is out of reach") });
     await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
-    expect(getByText("Sync failed")).toBeInTheDocument();
+    expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
+      /^Dusk Testnet Sync failed/
+    );
     expect(getByText("The node is out of reach")).toBeInTheDocument();
     expect(getByText("Your balance may be out of date.")).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Try again" }));
 
-    expect(sync).toHaveBeenCalledOnce();
+    expect(refreshBalance).toHaveBeenCalledOnce();
   });
 });
