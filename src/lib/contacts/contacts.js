@@ -18,7 +18,12 @@
  * brings back what Reset deleted.
  */
 
-import { NAME_HIDES, nameClash, nameHides } from "@dusk-network/app-core/names";
+import {
+  NAME_HIDES,
+  lookAlikes,
+  nameClash,
+  nameHides,
+} from "@dusk-network/app-core/names";
 import { displayText, searchKey } from "@dusk-network/app-core/text";
 import { isAccount } from "@dusk-network/networks/account";
 import { ProfileGenerator } from "@dusk/w3sper";
@@ -779,6 +784,23 @@ export function removeContact(id) {
 
     return { all: rest, value: undefined };
   });
+}
+
+/**
+ * The addresses of the contacts whose names look like another's, a profile's
+ * here or a contact's of another address (app-core's `lookAlikes`): where
+ * they're named, their address shows, as Send shows it.
+ *
+ * @param {Contact[]} contacts
+ * @param {{ address: string, name: string }[]} profiles The profiles here
+ * @returns {Set<string>}
+ */
+export function alikeContacts(contacts, profiles) {
+  const alike = lookAlikes([...profiles, ...contacts]);
+
+  return new Set(
+    contacts.flatMap((contact) => (alike.has(contact) ? [contact.address] : []))
+  );
 }
 
 /**

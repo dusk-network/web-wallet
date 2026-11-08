@@ -11,6 +11,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
+import { shortAddress } from "$lib/activity/present";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
 import { settingsStore } from "$lib/stores";
 import { openTestContacts } from "$lib/test-helpers";
@@ -379,6 +380,36 @@ describe("History", () => {
       }),
     ]);
     expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
+  });
+
+  it("marks a contact whose name looks like another's with its address, as Send does, and shows one's hidden characters as codes", async () => {
+    saveContact({ address: ALICE, name: "Estudio Marta" });
+    // A Cyrillic а, saved after the warning, for another address.
+    saveContact({ address: "x".repeat(40), name: "Estudio M\u0430rta" });
+
+    const { container, getByRole, rerender } = render(History);
+    const mark = `${shortAddress(ALICE)} · name looks like another`;
+
+    expect(container.querySelector(".history__row")).toHaveTextContent(
+      `Estudio Marta · alice-shop.dusk ${mark}`
+    );
+    expect(
+      getByRole("button", {
+        name: new RegExp(`^Estudio Marta · alice-shop\\.dusk, ${mark}`),
+      })
+    ).toBeInTheDocument();
+
+    for (const contact of listContacts()) {
+      await act(() => removeContact(contact.id));
+    }
+
+    // Saved before such names were refused: it reads as "Alice".
+    await act(() => saveContact({ address: ALICE, name: "\u202EecilA" }));
+    await rerender({});
+
+    expect(shownRows(container)[0]).toMatch(
+      /^\\u202eecilA · alice-shop\.dusk Sent/
+    );
   });
 
   it("says who paid the fee of what was received", async () => {

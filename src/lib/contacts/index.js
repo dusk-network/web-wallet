@@ -1,5 +1,6 @@
 export {
   addressType,
+  alikeContacts,
   closeContacts,
   contactNameProblem,
   contactNameText,

@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say one wallet step, migrate, on the Bridge's form where an open approval covers the amount
 - Say "DUSK added to <wallet>." where Add DUSK was, once the wallet added it
 - Name a request's QR picture without accents, as "Diseno", so a browser keeps its name
+- Mark a contact whose name looks like another's with its address in History and the search, as on Send
 
 ## [2.0.0] - 2026-11-06
 

@@ -1,6 +1,6 @@
 <script>
   import { afterNavigate } from "$app/navigation";
-  import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import { alikeContacts, contactNamesOf, contactsStore } from "$lib/contacts";
   import withdrawalClaims from "$lib/bridge/withdrawalClaims";
   import { createEventDispatcher } from "svelte";
   import { mdiTrayArrowDown } from "@mdi/js";
@@ -15,11 +15,12 @@
     fullDateTime,
     groupByDay,
     matchesFilters,
+    shortAddress,
     timeLabel,
   } from "$lib/activity/present";
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
-  import walletAccountNames from "$lib/wallets/accountNames";
+  import walletAccountNames, { profilesHere } from "$lib/wallets/accountNames";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
   import ExportPanel from "./ExportPanel.svelte";
@@ -120,6 +121,8 @@
     net: $nodeNetwork,
     walletNames: $walletAccountNames,
   };
+  // Contacts whose names look like another's show their address, as on Send.
+  $: alike = alikeContacts($contactsStore, $profilesHere);
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;
   $: described = state.rows.map((row) => ({
     presentation: describeRow(row, context),
@@ -293,6 +296,10 @@
             {#each group.items as { presentation: p, row } (row.hash)}
               {@const time = row.time}
               {@const isDeposit = Boolean(row.bridge?.to)}
+              {@const alikeAt =
+                p.counterparty && alike.has(p.counterparty)
+                  ? `${shortAddress(p.counterparty)} · name looks like another`
+                  : ""}
               <tr
                 class="history__row"
                 class:history__row--selected={row.hash === selected}
@@ -302,6 +309,7 @@
                     aria-expanded={row.hash === selected}
                     aria-label={[
                       p.title,
+                      alikeAt,
                       p.line,
                       $settingsStore.hideBalances
                         ? "amount hidden"
@@ -325,6 +333,9 @@
                         class="history__name"
                         class:history__code={p.titleIsAddress}>{p.title}</span
                       >
+                      {#if alikeAt}
+                        <span class="history__alike">{alikeAt}</span>
+                      {/if}
                       <span
                         class="history__line"
                         class:history__line--failed={p.status === "failed"}
@@ -602,6 +613,14 @@
   .history__name {
     overflow: hidden;
     font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .history__alike {
+    overflow: hidden;
+    color: var(--calm-pending);
+    font-size: 0.78125rem;
     text-overflow: ellipsis;
     white-space: nowrap;
   }

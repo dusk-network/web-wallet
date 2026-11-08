@@ -41,6 +41,7 @@ import {
  *   second line, as when a transaction was made.
  *
  * @typedef {{
+ *   alike?: Set<string>,
  *   contacts?: Contact[],
  *   hideBalances?: boolean,
  *   history: ActivityRow[],
@@ -50,7 +51,9 @@ import {
  *   present?: Omit<import("$lib/activity/present").PresentContext, "locale">,
  *   profiles: { account: string, address: string, label: string, name: string }[],
  * }} SearchIndex
- *   `present` what the history's rows are told by, as History tells them.
+ *   `present` what the history's rows are told by, as History tells them;
+ *   `alike` the addresses of contacts whose names look like another's, said
+ *   with their address.
  */
 
 /** The most results a group shows. */
@@ -210,6 +213,7 @@ export function transactionsFound(
 export function searchLocally(
   query,
   {
+    alike = new Set(),
     contacts = [],
     hideBalances = false,
     history,
@@ -311,8 +315,12 @@ export function searchLocally(
     transactions.map(({ row, shown }) => {
       // Named as History names it, with when it was made under it, and
       // what it moved unless it's found by its hash.
-      const { amount, title, titleIsAddress } = shown;
+      const { amount, counterparty, title, titleIsAddress } = shown;
       const byHash = isHash(row, q);
+      const when =
+        row.time === null
+          ? ""
+          : `${dayLabel(row.time, { locale })}, ${timeLabel(row.time, locale)}`;
 
       return {
         detail: byHash
@@ -325,9 +333,14 @@ export function searchLocally(
         label: title,
         labelIsCode: titleIsAddress,
         sub:
-          row.time === null
-            ? undefined
-            : `${dayLabel(row.time, { locale })}, ${timeLabel(row.time, locale)}`,
+          [
+            when,
+            counterparty && alike.has(counterparty)
+              ? `${shortAddress(counterparty)} · name looks like another`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined,
         value: row.hash,
       };
     })

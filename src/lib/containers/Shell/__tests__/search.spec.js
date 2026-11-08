@@ -6,7 +6,7 @@ import {
   rowsOf,
   withBridge,
 } from "$lib/activity/__tests__/fixtures/rows";
-import { dayLabel, timeLabel } from "$lib/activity/present";
+import { dayLabel, shortAddress, timeLabel } from "$lib/activity/present";
 
 import {
   isAmountQuery,
@@ -277,6 +277,24 @@ describe("searchLocally for what was paid", () => {
       "a4",
       "a5",
     ]);
+  });
+
+  it("marks a payment of a contact whose name looks like another's with its address, under it", () => {
+    const found = searchLocally("Estudio", {
+      ...paid,
+      alike: new Set([MARTA]),
+    }).filter(({ group }) => group === "Transactions");
+
+    // As it's found, of no time read yet.
+    expect(found.map(({ sub }) => sub)).toEqual([
+      `${shortAddress(MARTA)} · name looks like another`,
+      `${shortAddress(MARTA)} · name looks like another`,
+    ]);
+    expect(
+      searchLocally("Estudio", paid).some(({ sub }) =>
+        sub?.includes("looks like")
+      )
+    ).toBe(false);
   });
 
   it("hides what they moved while balances are hidden", () => {
