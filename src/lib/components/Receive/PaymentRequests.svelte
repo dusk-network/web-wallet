@@ -190,24 +190,33 @@
     );
 
   /**
-   * The payments that paid a request again, each with Send filled in to pay
-   * it back, as app-core's `refundOf` says, and the refund sent already, as
-   * Send would say it's sent again, sent after the payment came in: one
-   * each, the newest payment first, as one sent between two payments can
-   * only be the older one's. Send back is null where whoever sent it isn't
-   * known, as for a shielded payment.
+   * The payments that paid a request again, of all the requests shown, by
+   * their hash: each with Send filled in to pay it back, as app-core's
+   * `refundOf` says, and the refund sent already, as Send would say it's
+   * sent again, sent after the payment came in. A refund is one payment's
+   * only: one sent after two payments it could be for is the newer one's,
+   * as one sent between them can only be the older one's. Send back is null
+   * where whoever sent it isn't known, as for a shielded payment.
    *
-   * @param {import("$lib/payment-requests/requests").PaymentRequest} request
-   * @param {import("$lib/payment-requests/requests").RequestPayment[]} again
+   * @param {import("$lib/payment-requests/requests").PaymentRequest[]} requests
+   * @param {Map<string, import("$lib/payment-requests/requests").RequestMatch>} matched
    * @param {ActivityRow[]} rows
+   * @param {Parameters<typeof makeRequestLink>[1]} net
    * @returns {Map<string, { back: string | null, sent: ActivityRow | null }>}
    */
-  function refundsOf(request, again, rows) {
+  function refundsOf(requests, matched, rows, net) {
     /** @type {string[]} */
     const taken = [];
+    const owed = requests
+      .flatMap((request) =>
+        paidAgain(matched.get(request.id) ?? { state: "waiting" }).map(
+          (payment) => ({ payment, request })
+        )
+      )
+      .sort((x, y) => (y.payment.at ?? 0) - (x.payment.at ?? 0));
 
     return new Map(
-      [...again].reverse().map((payment) => {
+      owed.map(({ payment, request }) => {
         const refund = refundOf(request, payment, rows);
         const sent = refund
           ? sentAlready(
@@ -221,7 +230,7 @@
         const made = refund
           ? makeRequestLink(
               { amountLux: refund.lux, memo: refund.memo, to: refund.to },
-              $nodeNetwork
+              net
             )
           : null;
 
@@ -293,6 +302,7 @@
     ({ network: asked, to }) => asked === network && addresses.includes(to)
   );
   $: matches = matchRequests(shown, $activityState.rows);
+  $: refunds = refundsOf(shown, matches, $activityState.rows, $nodeNetwork);
   $: keepRequestMatches(matches);
   $: hasOpen = shown.some(({ id }) => matches.get(id)?.state !== "paid");
   $: lookWhile(hasOpen);
@@ -315,7 +325,6 @@
         {@const match = matches.get(request.id) ?? { state: "waiting" }}
         {@const again = paidAgain(match)}
         {@const parts = matchedParts(request, match, language)}
-        {@const refunds = refundsOf(request, again, $activityState.rows)}
         <li class="requests__item">
           <p class="requests__head">
             <strong>

@@ -917,6 +917,50 @@ describe("Receive", () => {
       history.state?.set({ hasMore: false, rows: [] });
     });
 
+    it("should say a refund was sent back for one payment only, though another request's would be sent back alike", async () => {
+      const at = Date.now() - 10_000;
+      // No room in either for "Refund: " before it: both go back as a
+      // refund alone.
+      const [first, second] = ["x".repeat(508), "y".repeat(508)];
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify(
+          [
+            { at, id: "first", memo: first },
+            { at: at + 100, id: "second", memo: second },
+          ].map((asked) => ({
+            ...asked,
+            lux: "12000000",
+            network: "testnet",
+            to: ACCOUNT,
+          }))
+        )
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          sentBack({ memo: "Refund", time: at + 5000 }),
+          paid({ hash: "b2".repeat(32), memo: second, time: at + 2500 }),
+          paid({ hash: "a2".repeat(32), memo: first, time: at + 1500 }),
+          paid({ hash: "b1".repeat(32), memo: second, time: at + 1000 }),
+          paid({ hash: "a1".repeat(32), memo: first, time: at + 500 }),
+        ],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(
+        screen.getAllByRole("list", { name: "Payments for this request" })
+      ).toHaveLength(2);
+      expect(screen.getAllByText(/^Sent back/)).toHaveLength(1);
+      expect(
+        screen.getAllByRole("link", { name: /^Send back the payment of/ })
+      ).toHaveLength(1);
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
     it("should say Paid for a request of any amount paid with its memo, of whatever amount, and Paid twice for its memo again", async () => {
       const at = Date.now() - 1000;
       const row = (/** @type {Record<string, unknown>} */ fields) => ({
