@@ -853,6 +853,70 @@ describe("Receive", () => {
       history.state?.set({ hasMore: false, rows: [] });
     });
 
+    /**
+     * A payment from PAYER of 0.012 DUSK, or what `fields` says, and a
+     * refund like it sent back to PAYER.
+     */
+    const PAYER =
+      "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+    const paid = (/** @type {Record<string, unknown>} */ fields) => ({
+      category: "received",
+      counterparty: PAYER,
+      direction: "in",
+      privacy: "public",
+      status: "executed",
+      value: 12_000_000n,
+      ...fields,
+    });
+    const sentBack = (/** @type {Record<string, unknown>} */ fields) => ({
+      category: "sent",
+      counterparty: PAYER,
+      direction: "out",
+      hash: "f0".repeat(32),
+      privacy: "public",
+      status: "executed",
+      value: 12_000_000n,
+      ...fields,
+    });
+
+    it("should still offer to send a payment back after a refund like it that was sent before it came in, for another", async () => {
+      const at = Date.now() - 10_000;
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "twice",
+            lux: "12000000",
+            memo: "Factura 43",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          paid({ hash: "cd".repeat(32), memo: "Factura 43", time: at + 2500 }),
+          paid({ hash: "ab".repeat(32), memo: "Factura 43", time: at + 500 }),
+          // Sent back for a request asked before this one.
+          sentBack({ memo: "Refund: Factura 43", time: at - 60_000 }),
+        ],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(
+        screen.getByRole("list", { name: "Payments for this request" })
+      ).not.toHaveTextContent("Sent back");
+      expect(
+        screen.getByRole("link", { name: /^Send back the payment of/ })
+      ).toBeInTheDocument();
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
     it("should say Paid for a request of any amount paid with its memo, of whatever amount, and Paid twice for its memo again", async () => {
       const at = Date.now() - 1000;
       const row = (/** @type {Record<string, unknown>} */ fields) => ({

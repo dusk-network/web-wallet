@@ -192,8 +192,10 @@
   /**
    * The payments that paid a request again, each with Send filled in to pay
    * it back, as app-core's `refundOf` says, and the refund sent already, as
-   * Send would say it's sent again: one each, oldest first. Send back is
-   * null where whoever sent it isn't known, as for a shielded payment.
+   * Send would say it's sent again, sent after the payment came in: one
+   * each, the newest payment first, as one sent between two payments can
+   * only be the older one's. Send back is null where whoever sent it isn't
+   * known, as for a shielded payment.
    *
    * @param {import("$lib/payment-requests/requests").PaymentRequest} request
    * @param {import("$lib/payment-requests/requests").RequestPayment[]} again
@@ -205,11 +207,14 @@
     const taken = [];
 
     return new Map(
-      again.map((payment) => {
+      [...again].reverse().map((payment) => {
         const refund = refundOf(request, payment, rows);
         const sent = refund
           ? sentAlready(
-              rows.filter(({ hash }) => !taken.includes(hash)),
+              rows.filter(
+                ({ hash, time }) =>
+                  !taken.includes(hash) && (time ?? 0) > (payment.at ?? 0)
+              ),
               refund
             )
           : null;
