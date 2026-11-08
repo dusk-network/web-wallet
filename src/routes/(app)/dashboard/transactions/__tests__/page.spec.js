@@ -668,9 +668,15 @@ describe("History", () => {
       ["the browser's region's, Germany's euros", "INR", "de-DE", "euros"],
     ])("gives the values in %s", async (_, currency, language, words) => {
       const code = words === "euros" ? "EUR" : "USD";
-      const prices = vi.fn(() =>
+      const prices = vi.fn((/** @type {string} */ url) =>
         Promise.resolve(
-          new Response(JSON.stringify({ prices: [[NOW - 60_000, 0.25]] }))
+          new Response(
+            JSON.stringify({
+              prices: String(url).includes("coingecko")
+                ? [[NOW - 60_000, 0.25]]
+                : [],
+            })
+          )
         )
       );
 
