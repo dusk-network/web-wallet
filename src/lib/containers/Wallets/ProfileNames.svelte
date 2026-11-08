@@ -6,9 +6,11 @@
    * "Profile 1", though the top bar's pill shows a verified `.dusk` name
    * first. A name is saved as its field is left, or with Enter: at most 40
    * characters, on one line, said once the field holds that many, and never
-   * cut short; empty, the profile goes by its number again.
+   * cut short; empty, the profile goes by its number again. One with what
+   * can't be seen in it, which can read as another name, is refused.
    */
   import { mdiAlertOutline, mdiCheck } from "@mdi/js";
+  import { NAME_HIDES, nameHides } from "@dusk-network/app-core/names";
 
   import { Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
@@ -32,6 +34,13 @@
    * @type {string[]}
    */
   let drafts = [];
+
+  /**
+   * Why a field's name wasn't saved, by profile.
+   *
+   * @type {string[]}
+   */
+  let refused = [];
 
   /**
    * The names the fields last started from, and the wallet they're of: a
@@ -71,6 +80,11 @@
 
     // Too long, it stays as typed, with the limit said under it.
     if (name.length > NAME_LIMIT) {
+      return;
+    }
+
+    if (nameHides(name)) {
+      refused[index] = NAME_HIDES;
       return;
     }
 
@@ -145,16 +159,30 @@
           >
         </span>
         <Textbox
+          aria-describedby={refused[i] ? `profile-name-error-${i}` : undefined}
+          aria-invalid={refused[i] ? "true" : undefined}
           aria-label={`Profile ${i + 1} name`}
           autocomplete="off"
           bind:value={drafts[i]}
           className="profile-names__field"
           maxlength={NAME_LIMIT}
           on:blur={() => save(i)}
+          on:input={() => {
+            refused[i] = "";
+          }}
           on:keydown={(event) => handleKeyDown(event, i)}
           placeholder="Name, only on this device"
           type="text"
         />
+        {#if refused[i]}
+          <p
+            class="profile-names__error"
+            id={`profile-name-error-${i}`}
+            role="alert"
+          >
+            {refused[i]}
+          </p>
+        {/if}
         <FieldLimit limit={NAME_LIMIT} value={drafts[i] ?? ""} />
       </li>
     {/each}
@@ -202,6 +230,12 @@
 
   .profile-names__title {
     font-weight: 500;
+  }
+
+  .profile-names__error {
+    color: var(--calm-danger);
+    font-size: 0.875rem;
+    line-height: 1.4;
   }
 
   .profile-names__account {

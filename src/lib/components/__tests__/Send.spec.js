@@ -3298,6 +3298,43 @@ describe("Send", () => {
       }
     });
 
+    it("should show a contact's name saved with what can't be seen in it by its codes, and refuse one now", async () => {
+      // Saved before such names were refused: it reads as "Profile 2".
+      saveContact({ address: otherAccount, name: "\u202E2 eliforP" });
+
+      const { container, getByRole, getByText } = render(Send, baseProps);
+      const shown = "\\u202e2 eliforP";
+
+      await fireEvent.change(
+        getByRole("combobox", { name: "Send to a contact" }),
+        { target: { value: listContacts()[0].id } }
+      );
+
+      expect(
+        getAsHTMLElement(container, ".send__card-title")
+      ).toHaveTextContent(shown);
+      expect(getSummary(container)[1]).toStrictEqual([
+        "To",
+        `${shown} ${shortenAddress(otherAccount)}`,
+      ]);
+
+      // A new one isn't saved.
+      await fireEvent.input(fieldsOf(getByRole).to(), {
+        target: { value: nameAccount },
+      });
+      await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+        target: { value: "\u202EecilA" },
+      });
+
+      expect(
+        getByText(
+          "This name has hidden characters. Type it again without them."
+        )
+      ).toBeInTheDocument();
+      expect(getByRole("button", { name: "Save" })).toBeDisabled();
+    });
+
     it("should send to a contact picked from the list", async () => {
       saveContact({ address: otherAccount, name: "Cold storage" });
 

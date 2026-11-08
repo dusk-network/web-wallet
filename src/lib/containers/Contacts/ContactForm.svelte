@@ -6,6 +6,7 @@
   import {
     addressType,
     contactNameProblem,
+    contactNameText,
     findContact,
     passesForDuskName,
     saveContact,
@@ -218,8 +219,9 @@
         </div>
         {#if isReplacing}
           <p class="contact-form__warning" role="alert">
-            This isn't the address saved for {contact?.name}. Saving replaces
-            it.
+            This isn't the address saved for {contactNameText(
+              contact?.name ?? ""
+            )}. Saving replaces it.
           </p>
         {/if}
         <p class="contact-form__info">
@@ -244,7 +246,7 @@
 
     {#if isTaken && other}
       <p class="contact-form__error" role="alert">
-        This address is already saved as {other.name}.
+        This address is already saved as {contactNameText(other.name)}.
       </p>
     {/if}
 
@@ -259,7 +261,7 @@
         {#if isDeleting}
           <Button
             on:click={() => dispatch("delete", contact)}
-            text="Delete {contact.name}"
+            text="Delete {contactNameText(contact.name)}"
             variant="secondary"
           />
         {:else}

@@ -264,6 +264,35 @@ describe("Settings › Profiles", () => {
     expect(pillName).toHaveTextContent(new RegExp(`^${NAME}$`));
   });
 
+  it("refuses a name with what can't be seen in it, saying so under its field, until it's typed again", async () => {
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+
+    const settings = render(Settings);
+
+    await nameProfile(settings, 1, "Savings");
+    toasts.length = 0;
+
+    // A right-to-left override makes "ecilA" read as "Alice".
+    await nameProfile(settings, 1, "\u202EecilA", "enter");
+
+    const field = settings.getByRole("textbox", { name: "Profile 1 name" });
+
+    expect(toasts).toEqual([]);
+    expect(field).toHaveAccessibleDescription(
+      "This name has hidden characters. Type it again without them."
+    );
+
+    const { pillName } = await openSwitcher();
+
+    expect(pillName).toHaveTextContent("Savings");
+
+    await nameProfile(settings, 1, "Alice");
+
+    expect(toasts).toEqual(["Name saved."]);
+    expect(field).not.toHaveAccessibleDescription();
+  });
+
   it("keeps each wallet's names its own, and forgets a removed wallet's", async () => {
     await vault.setUp(A, PASSWORD);
     await unlockWallets(PASSWORD);

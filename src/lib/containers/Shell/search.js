@@ -14,6 +14,7 @@ import { asDuskName, isDuskName } from "@duskdomains/sdk/names";
 import { BALANCE_MASK } from "$lib/constants/balanceMask";
 
 import { contractLabel } from "$lib/activity/knownContracts";
+import { contactNameText } from "$lib/contacts";
 import {
   dayLabel,
   describeRow,
@@ -272,7 +273,7 @@ export function searchLocally(
       group: "Contacts",
       href: `/dashboard/contacts?contact=${encodeURIComponent(contact.id)}`,
       id: `contact:${contact.id}`,
-      label: contact.name,
+      label: contactNameText(contact.name),
     }))
   );
 

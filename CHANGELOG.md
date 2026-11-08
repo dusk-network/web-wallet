@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Search and Contacts find what's typed without its accents, as "ilustracion" for "Ilustración"
 - Find an amount typed on its way from 0, as "0.0" for 0.05 DUSK
 - Keep a memo's numbers in the order they're written beside right-to-left letters, as "Pay א 10 א 1000"
+- Refuse a contact's or a profile's name with hidden characters, and show one saved before by their codes, with a note in Contacts
 
 ## [2.0.0] - 2026-11-06
 

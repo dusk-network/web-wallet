@@ -12,6 +12,7 @@
   import { lookAlikes } from "@dusk-network/app-core/names";
   import {
     contactNameProblem,
+    contactNameText,
     contactsStore,
     markContactNameChecked,
     markContactNameMoved,
@@ -1135,8 +1136,8 @@
   // Who the transfer goes to, as the Done screen says it.
   $: recipientLabel = contact
     ? recipientName
-      ? `${contact.name} (${shownName})`
-      : contact.name
+      ? `${contactNameText(contact.name)} (${shownName})`
+      : contactNameText(contact.name)
     : own && !recipientName
       ? ownLabel.replace(/^Your/, "your")
       : recipientName
@@ -1254,12 +1255,17 @@
    * @param {string | null} toName
    * @param {{ contacts: Contact[], ownAccounts: { address: string, label: string }[], walletNames: Map<string, string> }} known
    */
-  const nameOf = (address, toName, known) =>
-    known.contacts.find((saved) => saved.address === address)?.name ??
-    known.ownAccounts.find((account) => account.address === address)?.label ??
-    known.walletNames.get(address) ??
-    toName ??
-    shortenAddress(address);
+  function nameOf(address, toName, known) {
+    const saved = known.contacts.find((c) => c.address === address);
+
+    return saved
+      ? contactNameText(saved.name)
+      : (known.ownAccounts.find((account) => account.address === address)
+          ?.label ??
+          known.walletNames.get(address) ??
+          toName ??
+          shortenAddress(address));
+  }
 
   /**
    * When something went, from now: "at 21:16", "yesterday at 21:16" or "on
@@ -1425,8 +1431,8 @@
             <option value="">Choose a contact…</option>
             {#each contacts as option (option.id)}
               <option value={option.id}
-                >{option.name} · {option.movedTo === undefined &&
-                !alike.has(option)
+                >{contactNameText(option.name)} · {option.movedTo ===
+                  undefined && !alike.has(option)
                   ? (option.duskName ?? shortenAddress(option.address))
                   : shortenAddress(option.address)}{alike.has(option)
                   ? " · name looks like another"
@@ -1456,7 +1462,7 @@
                 isRecipientChecked = true;
               }}
               type="button"
-              >Your contact {named.name} · {shortenAddress(
+              >Your contact {contactNameText(named.name)} · {shortenAddress(
                 named.address
               )}{alike.has(named) ? " · name looks like another" : ""}</button
             >
@@ -1509,13 +1515,13 @@
               {#if namePointsTo}
                 <strong
                   >{shownName} now points to a different address from the one saved
-                  for {nameContact.name}.</strong
+                  for {contactNameText(nameContact.name)}.</strong
                 >
                 Which do you want to send to?
               {:else}
                 <strong
                   >{shownName} no longer points to the kind of address saved for
-                  {nameContact.name}.</strong
+                  {contactNameText(nameContact.name)}.</strong
                 >
               {/if}
             </p>
@@ -1546,7 +1552,7 @@
         {#if contact?.duskName && !recipientName && contact.movedTo !== undefined}
           <p class="send__hint" role="status">
             {contact.duskName} now points to a different address. You're sending to
-            the address saved for {contact.name}.
+            the address saved for {contactNameText(contact.name)}.
           </p>
         {/if}
 
@@ -1555,7 +1561,9 @@
           <div class="send__card">
             <p class="send__card-title" id="{id}-points">
               {#if contact}
-                {contact.name}{recipientName ? ` · ${shownName}` : ""}
+                {contactNameText(contact.name)}{recipientName
+                  ? ` · ${shownName}`
+                  : ""}
               {:else if own && !recipientName}
                 {ownLabel}
               {:else if recipientName}
@@ -1870,9 +1878,12 @@
               {#if contact || recipientName || walletAccount}
                 <span class="send__summary-name"
                   >{contact && recipientName
-                    ? `${contact.name} · ${shownName}`
-                    : (contact?.name ??
-                      (recipientName ? shownName : walletAccount))}</span
+                    ? `${contactNameText(contact.name)} · ${shownName}`
+                    : contact
+                      ? contactNameText(contact.name)
+                      : recipientName
+                        ? shownName
+                        : walletAccount}</span
                 >
               {/if}
               <!-- The review is the last it shows of it before it goes. -->

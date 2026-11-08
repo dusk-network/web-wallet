@@ -1,5 +1,6 @@
 <script>
   import { afterNavigate } from "$app/navigation";
+  import { nameHides } from "@dusk-network/app-core/names";
   import { searchKey } from "@dusk-network/app-core/text";
   import { createEventDispatcher } from "svelte";
   import {
@@ -12,7 +13,7 @@
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import { BalanceValue, SectionHead } from "$lib/components";
   import { sidePanel } from "$lib/dusk/motion";
-  import { removeContact } from "$lib/contacts";
+  import { contactNameText, removeContact } from "$lib/contacts";
   import { shortAddress } from "$lib/activity/present";
   import { addBasePath, pageTitle } from "$lib/navigation";
 
@@ -234,7 +235,14 @@
                     >{initialOf(contact.name)}</span
                   >
                   <span class="contacts__who">
-                    <span class="contacts__name">{contact.name}</span>
+                    <span class="contacts__name"
+                      >{contactNameText(contact.name)}</span
+                    >
+                    {#if nameHides(contact.name)}
+                      <span class="contacts__hidden"
+                        >Its name has hidden characters</span
+                      >
+                    {/if}
                     <span class="contacts__sub">
                       {#if last}
                         {last.verb}
@@ -294,7 +302,7 @@
               </td>
               <td class="contacts__col-send">
                 <AnchorButton
-                  aria-label="Send to {contact.name}"
+                  aria-label="Send to {contactNameText(contact.name)}"
                   href={sendHref(contact)}
                   icon={{ path: mdiSendOutline }}
                   size="small"
@@ -498,6 +506,11 @@
   .contacts__name {
     font-weight: 500;
     overflow-wrap: anywhere;
+  }
+
+  .contacts__hidden {
+    color: var(--calm-danger);
+    font-size: 0.8125rem;
   }
 
   .contacts__sub {

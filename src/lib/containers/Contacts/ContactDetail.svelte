@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
+  import { nameHides } from "@dusk-network/app-core/names";
   import {
     mdiCheckCircleOutline,
     mdiChevronRight,
@@ -11,6 +12,7 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { FullAddress, SectionHead } from "$lib/components";
   import {
+    contactNameText,
     contactNamesOf,
     contactsStore,
     findContact,
@@ -23,7 +25,12 @@
   import ActivityRowItem from "../Home/ActivityRowItem.svelte";
   import { groupByDay } from "$lib/activity/present";
 
-  import { activityWith, checkedLabel, pointedAddress } from "./contactPresent";
+  import {
+    activityWith,
+    checkedLabel,
+    initialOf,
+    pointedAddress,
+  } from "./contactPresent";
 
   /** @type {Contact} */
   export let contact;
@@ -127,7 +134,7 @@
     const other = findContact(address);
 
     if (other && other.id !== contact.id) {
-      takenBy = other.name;
+      takenBy = contactNameText(other.name);
 
       return;
     }
@@ -135,7 +142,7 @@
     saveContact({ ...contact, address, checkedAt: Date.now() });
     toast(
       "success",
-      `${contact.name} now has the new address`,
+      `${contactNameText(contact.name)} now has the new address`,
       mdiCheckCircleOutline
     );
   }
@@ -173,10 +180,10 @@
 >
   <header class="contact-detail__header">
     <span aria-hidden="true" class="contact-detail__avatar"
-      >{Array.from(contact.name.trim())[0]?.toLocaleUpperCase() ?? "?"}</span
+      >{initialOf(contact.name)}</span
     >
     <div class="contact-detail__who">
-      <h2 id="contact-detail-title">{contact.name}</h2>
+      <h2 id="contact-detail-title">{contactNameText(contact.name)}</h2>
       <p class="contact-detail__sub">
         {#if contact.duskName}<span>{contact.duskName}</span>{/if}
         <span class="contact-detail__badge">{kind}</span>
@@ -192,6 +199,13 @@
       <Icon path={mdiClose} />
     </button>
   </header>
+
+  {#if nameHides(contact.name)}
+    <p class="contact-detail__hidden" role="note">
+      This name has hidden characters, shown here as codes. Edit the contact to
+      type it again, or delete it.
+    </p>
+  {/if}
 
   <div class="contact-detail__actions">
     <Button
@@ -322,7 +336,7 @@
       {/each}
     {:else}
       <p class="contact-detail__note">
-        No payments with {contact.name} in your history yet.
+        No payments with {contactNameText(contact.name)} in your history yet.
       </p>
     {/if}
   </section>
@@ -440,6 +454,11 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.625rem;
+  }
+
+  .contact-detail__hidden {
+    color: var(--calm-danger);
+    font-size: 0.875rem;
   }
 
   .contact-detail__note {

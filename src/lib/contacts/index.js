@@ -2,6 +2,7 @@ export {
   addressType,
   closeContacts,
   contactNameProblem,
+  contactNameText,
   contactNamesOf,
   contactsStore,
   contactsWritten,

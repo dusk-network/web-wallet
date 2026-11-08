@@ -18,8 +18,8 @@
  * brings back what Reset deleted.
  */
 
-import { nameClash } from "@dusk-network/app-core/names";
-import { searchKey } from "@dusk-network/app-core/text";
+import { NAME_HIDES, nameClash, nameHides } from "@dusk-network/app-core/names";
+import { displayText, searchKey } from "@dusk-network/app-core/text";
 import { isAccount } from "@dusk-network/networks/account";
 import { ProfileGenerator } from "@dusk/w3sper";
 import { writable } from "svelte/store";
@@ -582,11 +582,23 @@ export function listContacts(query = "") {
 export const getContact = (id) => book[id] ?? null;
 
 /**
- * What's wrong with a name for a contact, by app-core's look-alikes: one that
- * is, or looks like, a profile's here is refused, as a review would read the
- * contact as that profile; one of another contact's, whatever its capitals,
- * spaces and punctuation, or in other letters, is said with that contact's
- * address, and can be saved. Null for neither.
+ * A contact's name as it's shown: one saved before names with what can't be
+ * seen in them were refused shows those as their codes, as a memo does, so
+ * "\u202eecilA" can't read as "Alice".
+ *
+ * @param {string} name
+ */
+export const contactNameText = (name) =>
+  nameHides(name) ? displayText(name).text : name;
+
+/**
+ * What's wrong with a name for a contact: one with what can't be seen in it
+ * (app-core's `nameHides`) is refused, as it can read as another name. By
+ * app-core's look-alikes, one that is, or looks like, a profile's here is
+ * refused, as a review would read the contact as that profile; one of
+ * another contact's, whatever its capitals, spaces and punctuation, or in
+ * other letters, is said with that contact's address, and can be saved.
+ * Null for neither.
  *
  * @param {string} name
  * @param {{ address: string, name: string }[]} profiles The profiles here
@@ -594,6 +606,10 @@ export const getContact = (id) => book[id] ?? null;
  * @returns {{ refused: boolean, words: string } | null}
  */
 export function contactNameProblem(name, profiles, exceptId) {
+  if (nameHides(name)) {
+    return { refused: true, words: NAME_HIDES };
+  }
+
   const clash = nameClash(name, {
     contacts: listContacts(),
     except: exceptId,
@@ -605,8 +621,8 @@ export function contactNameProblem(name, profiles, exceptId) {
       refused: true,
       words: `${
         clash.same
-          ? `One of your profiles is called ${clash.entry.name}`
-          : `That looks like ${clash.entry.name}, one of your profiles`
+          ? `One of your profiles is called ${contactNameText(clash.entry.name)}`
+          : `That looks like ${contactNameText(clash.entry.name)}, one of your profiles`
       }. Choose another name.`,
     };
   }
@@ -616,8 +632,8 @@ export function contactNameProblem(name, profiles, exceptId) {
         refused: false,
         words: `${
           clash.same
-            ? `You already have a contact called ${clash.entry.name}`
-            : `That looks like your contact ${clash.entry.name}`
+            ? `You already have a contact called ${contactNameText(clash.entry.name)}`
+            : `That looks like your contact ${contactNameText(clash.entry.name)}`
         }, at ${shortenAddress(clash.entry.address)}. Only the address will tell them apart.`,
       }
     : null;
@@ -766,10 +782,12 @@ export function removeContact(id) {
 }
 
 /**
- * The contacts' names by address, for the history to show.
+ * The contacts' names by address, as they're shown, for the history.
  *
  * @param {Contact[]} contacts
  * @returns {Map<string, string>}
  */
 export const contactNamesOf = (contacts) =>
-  new Map(contacts.map((contact) => [contact.address, contact.name]));
+  new Map(
+    contacts.map((contact) => [contact.address, contactNameText(contact.name)])
+  );
