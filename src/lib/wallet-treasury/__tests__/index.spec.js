@@ -8,7 +8,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { AccountSyncer, AddressSyncer } from "@dusk/w3sper";
+import { AccountSyncer, AddressSyncer, Bookkeeper } from "@dusk/w3sper";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
@@ -523,6 +523,45 @@ describe("WalletTreasury", () => {
       expect(setPendingNotesSpy).toHaveBeenCalledWith(nullifiers, txHash);
 
       setPendingNotesSpy.mockRestore();
+    });
+
+    it("should give a send the nonce after one sent before the node's balance has that one, until it's out of the node's queue", async () => {
+      const { signal } = new AbortController();
+      const nonceOf = async () =>
+        (
+          await new Bookkeeper(walletTreasury)
+            .as(profiles[0])
+            .info.balance("account")
+        ).nonce;
+
+      await walletTreasury.update(0n, () => {}, signal);
+
+      const before = await nonceOf();
+
+      // The first send took the one after; the node has it in its queue
+      // only, and a sync reads its balance from before all the same.
+      await walletTreasury.updateCachedNonce(profiles[0], before + 1n);
+      await walletTreasury.update(0n, () => {}, signal);
+
+      expect(await nonceOf()).toBe(before + 1n);
+      // Not another profile's.
+      await expect(
+        walletTreasury.account(profiles[1].account)
+      ).resolves.toMatchObject({ nonce: before });
+
+      // Dropped from the queue, the next takes it again.
+      walletTreasury.forgetSentNonce(profiles[0], before + 1n);
+
+      expect(await nonceOf()).toBe(before);
+
+      // In a block, the node's balance has it, and more sent from elsewhere.
+      await walletTreasury.updateCachedNonce(profiles[0], before + 1n);
+      vi.spyOn(AccountSyncer.prototype, "balances").mockResolvedValueOnce(
+        profiles.map(() => ({ nonce: before + 5n, value: 1n }))
+      );
+      await walletTreasury.update(0n, () => {}, signal);
+
+      expect(await nonceOf()).toBe(before + 5n);
     });
 
     it("should expose a method to update the unshielded nonce", async () => {

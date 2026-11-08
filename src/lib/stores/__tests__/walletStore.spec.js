@@ -914,6 +914,11 @@ describe("Wallet store", async () => {
       "updateCachedPendingNotes"
     );
 
+    const forgetSentNonceSpy = vi.spyOn(
+      WalletTreasury.prototype,
+      "forgetSentNonce"
+    );
+
     /**
      * @typedef { "claimRewards" | "shield" | "stake" | "topUpStake" | "transfer" | "unshield" | "unstake" } TransferMethod
      */
@@ -1061,6 +1066,18 @@ describe("Wallet store", async () => {
 
       // check that a sync starts after the transaction is removed from the mempool
       await vi.waitUntil(() => treasuryUpdateSpy.mock.calls.length === 2);
+
+      // A send after it takes the nonce the node's balance has again.
+      if (isPhoenixTransfer) {
+        expect(forgetSentNonceSpy).not.toHaveBeenCalled();
+      } else {
+        expect(forgetSentNonceSpy).toHaveBeenCalledExactlyOnceWith(
+          defaultProfile,
+          newNonce
+        );
+      }
+
+      forgetSentNonceSpy.mockClear();
 
       // wait for the post-removal sync to finish updating the derived state
       await vi.waitUntil(() => balanceSpy.mock.calls.length === 2);

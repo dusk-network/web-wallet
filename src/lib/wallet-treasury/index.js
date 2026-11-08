@@ -17,6 +17,15 @@ class WalletTreasury {
   #accountStakeInfo = [];
 
   /**
+   * The nonce the last transaction each account sent from here took, by the
+   * account's index, until the node's balance has it: a transaction sent
+   * before the last is in a block takes the one after it, not the same.
+   *
+   * @type {Map<number, bigint>}
+   */
+  #sentNonces = new Map();
+
+  /**
    * @param {bigint} lastBlockHeight
    * @param {ReturnType<typeof currentWalletCache>} walletCache
    * @returns {Promise<WalletCacheSyncInfo>}
@@ -49,14 +58,39 @@ class WalletTreasury {
    * @returns {Promise<AccountBalance>}
    */
   async account(identifier) {
-    const balance = this.#accountBalances.at(+identifier);
+    const index = +identifier;
+    const balance = this.#accountBalances.at(index);
+    const sent = this.#sentNonces.get(index);
 
-    return (
-      balance ??
-      Promise.reject(
-        new Error("No balance found for the account with the given identifier")
-      )
-    );
+    if (!balance) {
+      throw new Error(
+        "No balance found for the account with the given identifier"
+      );
+    }
+
+    if (sent === undefined || balance.nonce >= sent) {
+      this.#sentNonces.delete(index);
+
+      return balance;
+    }
+
+    return { ...balance, nonce: sent };
+  }
+
+  /**
+   * Forgets the nonce a transaction took, once the node took it out of its
+   * queue: in a block, the node's balance has it; dropped, the next
+   * transaction takes it again. Not when one sent after it took a later one.
+   *
+   * @param {Profile} profile
+   * @param {bigint} nonce
+   */
+  forgetSentNonce(profile, nonce) {
+    const index = +profile.account;
+
+    if (this.#sentNonces.get(index) === nonce) {
+      this.#sentNonces.delete(index);
+    }
   }
 
   /**
@@ -117,6 +151,7 @@ class WalletTreasury {
   reset() {
     this.#accountBalances = [];
     this.#accountStakeInfo = [];
+    this.#sentNonces.clear();
     this.#profiles = [];
     this.#generation++;
   }
@@ -149,6 +184,7 @@ class WalletTreasury {
   setProfiles(profiles) {
     this.#accountBalances = [];
     this.#accountStakeInfo = [];
+    this.#sentNonces.clear();
     this.#profiles = profiles;
     this.#generation++;
   }
@@ -336,6 +372,13 @@ class WalletTreasury {
    * @returns {Promise<void>}
    */
   async updateCachedNonce(profile, nonce) {
+    const index = +profile.account;
+    const sent = this.#sentNonces.get(index);
+
+    if (sent === undefined || nonce > sent) {
+      this.#sentNonces.set(index, nonce);
+    }
+
     const address = profile.address.toString();
     const walletCache = currentWalletCache();
     const currentBalance = await walletCache.getBalanceInfo(address);

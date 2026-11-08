@@ -68,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Name a request's QR picture without accents, as "Diseno", so a browser keeps its name
 - Mark a contact whose name looks like another's with its address in History and the search, as on Send
 - Offer a profile here on Send by its name before a .dusk name of it, and say when a .dusk name entered is a profile's name but someone else's
+- Send again from a profile while its last send waits for a block, with the next nonce, not the same one
 
 ## [2.0.0] - 2026-11-06
 
