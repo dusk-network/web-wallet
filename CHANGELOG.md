@@ -74,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say Offline, or Sync failed, in a word beside the network's dot, on a phone too
 - Keep "Sync completed!" on a restore until Next, through the syncs after it
 - Go straight to the unlock after the automatic lock, saying it locked after so many minutes away
+- Make See in History and Send back on a request, and Migrate it to Dusk on Home, 44 px tall on a phone
 
 ## [2.0.0] - 2026-11-06
 

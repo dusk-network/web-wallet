@@ -377,7 +377,7 @@
                   >
                   <a
                     aria-label={`See in History: the payment of ${day}`}
-                    class="text-link"
+                    class="text-link tap-link"
                     href={addBasePath(
                       `/dashboard/transactions?tx=${payment.hash}`
                     )}>See in History</a
@@ -392,7 +392,7 @@
                     {@const back = refund.back}
                     <a
                       aria-label={`Send back the payment of ${day}`}
-                      class="text-link"
+                      class="text-link tap-link"
                       href={addBasePath(back)}
                       on:click={(event) => sendBack(event, back)}>Send back</a
                     >
@@ -404,7 +404,7 @@
           <div class="requests__actions">
             {#if match.hash && !again.length}
               <a
-                class="text-link"
+                class="text-link tap-link"
                 href={addBasePath(`/dashboard/transactions?tx=${match.hash}`)}
                 >See in History</a
               >

@@ -39,6 +39,13 @@
     transform: translate(-50%, -50%);
   }
 
+  /* A text link that stands as an action of its own, out of a sentence. */
+  .tap-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
   /* The whole row of an agreement ticks its box. */
   .dusk-agreement {
     position: relative;
