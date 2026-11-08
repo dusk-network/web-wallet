@@ -1,4 +1,5 @@
 <script>
+  import { onDestroy } from "svelte";
   import { pushState } from "$app/navigation";
   import { page } from "$app/stores";
   import { mdiChevronDown } from "@mdi/js";
@@ -15,24 +16,84 @@
   let isOffline =
     typeof navigator !== "undefined" && navigator.onLine === false;
 
+  /**
+   * How long a sync waits with nothing back from the network before it's
+   * said not to be reached: a node can stop answering without an error.
+   */
+  const STALL_MS = 30_000;
+
+  /** Whether the sync under way got nothing back for that long. */
+  let isStalled = false;
+
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let stallTimer;
+
+  /**
+   * Starts the wait again whenever the sync moves, and ends it with the sync.
+   *
+   * @param {boolean} isInProgress
+   * @param {...unknown} moved What changes as it gets something back
+   */
+  function watchStall(isInProgress, ...moved) {
+    void moved;
+    clearTimeout(stallTimer);
+    isStalled = false;
+
+    if (isInProgress) {
+      stallTimer = setTimeout(() => {
+        isStalled = true;
+      }, STALL_MS);
+    }
+  }
+
+  onDestroy(() => clearTimeout(stallTimer));
+
+  /**
+   * Whether a sync failed as the network couldn't be reached, as the browser
+   * says it: "Failed to fetch", "Load failed" or a NetworkError.
+   *
+   * @param {Error | null} error
+   */
+  const isUnreachable = (error) =>
+    /failed to fetch|fetch failed|load failed|networkerror/i.test(
+      error?.message ?? ""
+    );
+
   $: ({ networkName } = $networkStore);
   $: ({ syncStatus } = $walletStore);
+  $: watchStall(
+    syncStatus.isInProgress,
+    syncStatus.progress,
+    syncStatus.from,
+    syncStatus.last
+  );
   $: label = networkLabel(networkName);
   $: state = isOffline
     ? "offline"
-    : syncStatus.error
-      ? "error"
-      : syncStatus.isInProgress
-        ? "syncing"
-        : "synced";
+    : isStalled || isUnreachable(syncStatus.error)
+      ? "unreachable"
+      : syncStatus.error
+        ? "error"
+        : syncStatus.isInProgress
+          ? "syncing"
+          : "synced";
   $: stateText =
     state === "offline"
       ? "Offline"
+      : state === "unreachable"
+        ? "Can't reach the network"
+        : state === "error"
+          ? "Sync failed"
+          : state === "syncing"
+            ? `Syncing${syncStatus.progress ? ` ${Math.round(syncStatus.progress * 100)}%` : ""}`
+            : "In sync";
+  // Said on the pill too, not by its dot alone.
+  $: problem =
+    state === "offline" || state === "unreachable"
+      ? "Offline"
       : state === "error"
         ? "Sync failed"
-        : state === "syncing"
-          ? `Syncing${syncStatus.progress ? ` ${Math.round(syncStatus.progress * 100)}%` : ""}`
-          : "In sync";
+        : "";
 
   function retry() {
     walletStore.sync().catch(() => {});
@@ -119,6 +180,7 @@
     aria-haspopup="dialog"
     aria-label={`Network: ${label}, ${stateText.toLowerCase()}`}
     class="network-pill__button"
+    class:network-pill__button--problem={problem}
     on:click={() => {
       if (open) {
         closePanel();
@@ -138,6 +200,9 @@
       class="network-pill__dot network-pill__dot--{state}"
     ></span>
     <span class="network-pill__name">{label}</span>
+    {#if problem}
+      <span aria-hidden="true" class="network-pill__problem">{problem}</span>
+    {/if}
     <Icon className="network-pill__chevron" path={mdiChevronDown} />
   </button>
   {#if open}
@@ -157,6 +222,9 @@
         <p class="network-pill__error">
           Your balance may be out of date until you're back online.
         </p>
+      {:else if state === "unreachable"}
+        <p class="network-pill__error">Your balance may be out of date.</p>
+        <Button on:click={retry} size="small" text="Try again" />
       {:else if state === "error"}
         <p class="network-pill__error">{syncStatus.error?.message}</p>
         <p class="network-pill__error">Your balance may be out of date.</p>
@@ -212,9 +280,14 @@
     }
 
     &--error,
-    &--offline {
+    &--offline,
+    &--unreachable {
       background: var(--calm-danger);
     }
+  }
+
+  .network-pill__problem {
+    color: var(--calm-danger);
   }
 
   /*
@@ -245,6 +318,12 @@
       justify-content: center;
       width: 44px;
       padding: 0;
+    }
+
+    /* A problem is said in a word, beside the dot. */
+    .network-pill__button--problem {
+      width: auto;
+      padding: 0 0.625rem;
     }
 
     .network-pill__name {
@@ -307,7 +386,8 @@
     color: var(--calm-muted);
 
     &--error,
-    &--offline {
+    &--offline,
+    &--unreachable {
       color: var(--calm-danger);
     }
   }

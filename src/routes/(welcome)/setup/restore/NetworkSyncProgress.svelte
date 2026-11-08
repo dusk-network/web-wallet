@@ -24,11 +24,22 @@
     syncStarted = true;
   }
 
-  $: isValid = syncStarted && !syncStatus.isInProgress && !syncStatus.error;
+  /**
+   * Whether the sync completed: it stays so until Next, through the syncs
+   * the wallet starts on its own after it.
+   */
+  let isDone = false;
+  $: if (syncStarted && !syncStatus.isInProgress && !syncStatus.error) {
+    isDone = true;
+  }
+
+  $: isValid = isDone;
 </script>
 
 <IconHeadingCard icons={[mdiCubeOutline]} heading="Network sync">
-  {#if syncStatus.error && !syncStatus.isInProgress}
+  {#if isDone}
+    <span>Sync completed!</span>
+  {:else if syncStatus.error && !syncStatus.isInProgress}
     <ErrorAlert error={syncStatus.error} summary="Sync failed" />
     <Button
       text="Retry synchronization"
@@ -48,7 +59,5 @@
       last={syncStatus.last}
       progress={syncStatus.progress}
     />
-  {:else}
-    <span>Sync completed!</span>
   {/if}
 </IconHeadingCard>

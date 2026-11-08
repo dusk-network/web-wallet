@@ -70,6 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offer a profile here on Send by its name before a .dusk name of it, and say when a .dusk name entered is a profile's name but someone else's
 - Send again from a profile while its last send waits for a block, with the next nonce, not the same one
 - Say native staking's yearly rate is estimated, not what it paid lately
+- Say "Can't reach the network" once a sync gets nothing back for 30 seconds, and for the browser's "Failed to fetch", not Syncing forever
+- Say Offline, or Sync failed, in a word beside the network's dot, on a phone too
+- Keep "Sync completed!" on a restore until Next, through the syncs after it
 
 ## [2.0.0] - 2026-11-06
 

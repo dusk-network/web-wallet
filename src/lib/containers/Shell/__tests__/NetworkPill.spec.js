@@ -96,10 +96,16 @@ describe("NetworkPill", () => {
       getByRole("button", { name: "Network: Testnet, offline" })
     ).toBeInTheDocument();
     expect(container.querySelector(".network-pill__dot--offline")).toBeTruthy();
+    // In a word on the pill, not by its dot alone.
+    expect(container.querySelector(".network-pill__button")).toHaveTextContent(
+      "Testnet Offline"
+    );
 
     await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
-    expect(getByText("Offline")).toBeInTheDocument();
+    expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
+      "Offline"
+    );
     expect(
       getByText("Your balance may be out of date until you're back online.")
     ).toBeInTheDocument();
@@ -111,6 +117,70 @@ describe("NetworkPill", () => {
     expect(
       getByRole("button", { name: "Network: Testnet, in sync" })
     ).toBeInTheDocument();
+  });
+
+  it("says it can't reach the network once a sync got nothing back for 30 seconds, and in sync once it answers", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const { container, getByRole } = render(NetworkPill);
+
+      await setSync({ isInProgress: true, progress: 0 });
+      await act(() => vi.advanceTimersByTimeAsync(29_000));
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, syncing" })
+      ).toBeInTheDocument();
+
+      await act(() => vi.advanceTimersByTimeAsync(1_000));
+
+      expect(
+        getByRole("button", {
+          name: "Network: Testnet, can't reach the network",
+        })
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector(".network-pill__button")
+      ).toHaveTextContent("Testnet Offline");
+
+      await fireEvent.click(getByRole("button", { name: /testnet/i }));
+
+      expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
+        "Can't reach the network Your balance may be out of date. Try again"
+      );
+
+      // Something back, and it waits again.
+      await setSync({ isInProgress: true, progress: 0.5 });
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, syncing 50%" })
+      ).toBeInTheDocument();
+
+      await setSync({ isInProgress: false, progress: 1 });
+      await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, in sync" })
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says a sync that couldn't reach the network did so in plain words, not the browser's", async () => {
+    const { getByRole, queryByText } = render(NetworkPill);
+
+    await setSync({ error: new TypeError("Failed to fetch") });
+    await fireEvent.click(getByRole("button", { name: /testnet/i }));
+
+    expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
+      "Can't reach the network Your balance may be out of date. Try again"
+    );
+    expect(queryByText(/Failed to fetch/)).toBeNull();
+
+    await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+    expect(sync).toHaveBeenCalledOnce();
   });
 
   it("opens its panel as a step of its own in the browser's history: phone Back closes it alone, and its own close takes that step back", async () => {
@@ -169,7 +239,9 @@ describe("NetworkPill", () => {
     await setSync({ error: new Error("The node is out of reach") });
     await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
-    expect(getByText("Sync failed")).toBeInTheDocument();
+    expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
+      /^Dusk Testnet Sync failed/
+    );
     expect(getByText("The node is out of reach")).toBeInTheDocument();
     expect(getByText("Your balance may be out of date.")).toBeInTheDocument();
 

@@ -46,6 +46,14 @@ describe("Restore sync recovery", () => {
     mockedWalletStore.setMockedStoreValue(initial);
     await tick();
     expect(getByText("Sync completed!")).toBeInTheDocument();
+
+    // The wallet's own sync a minute on doesn't take it back.
+    mockedWalletStore.setMockedStoreValue({
+      ...initial,
+      syncStatus: { ...initial.syncStatus, isInProgress: true },
+    });
+    await tick();
+    expect(getByText("Sync completed!")).toBeInTheDocument();
   });
 
   it("should say which blocks it syncs under its bar, not bare numbers", async () => {
