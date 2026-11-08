@@ -63,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Give the export's values in the wallet's currency where it's euros or US dollars, else in the browser's region's, as the extension does, not always in euros
 - Keep the EVM wallet connected when Stay is chosen as the browser asks whether to leave
 - Write a migration's EVM gas in the export only where it was sent from an EVM address connected here, or one this browser migrated from
+- Say one wallet step, migrate, on the Bridge's form where an open approval covers the amount
 
 ## [2.0.0] - 2026-11-06
 

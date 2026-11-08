@@ -607,9 +607,16 @@
   $: balanceLux = balance === undefined ? undefined : balance / WEI_PER_LUX;
   $: time = routeTime(route, { net });
   $: timeText = routeTimeText(time);
+  // An open approval that covers the amount leaves one step, as Review says.
+  $: isCovered =
+    hasOpenApproval &&
+    amountLux > 0n &&
+    /** @type {bigint} */ (openApproval) >= amountLux * WEI_PER_LUX;
   $: routeLine = [
     timeText,
-    `approve, then migrate, in your ${chainName} wallet`,
+    isCovered
+      ? `migrate, in your ${chainName} wallet`
+      : `approve, then migrate, in your ${chainName} wallet`,
   ]
     .filter(Boolean)
     .join(" · ")
@@ -830,7 +837,11 @@
     <dl>
       <div>
         <dt>Steps</dt>
-        <dd>Approve, if needed, then migrate, in your {chainName} wallet</dd>
+        <dd>
+          {isCovered
+            ? `Migrate, in your ${chainName} wallet: your open approval covers it`
+            : `Approve, if needed, then migrate, in your ${chainName} wallet`}
+        </dd>
       </div>
       <div>
         <dt>Network fees</dt>
