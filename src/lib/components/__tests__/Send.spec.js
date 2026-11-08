@@ -319,7 +319,7 @@ describe("Send", () => {
       [
         "its memo said twice",
         `${httpsLink}&memo=Factura+34`,
-        "That link can't be read. Ask for a new one.",
+        "This link says the memo twice. Ask for a new one.",
       ],
       [
         "its amount said twice, another",
@@ -332,12 +332,12 @@ describe("Send", () => {
           "https://apps.testnet.dusk.network",
           "https://apps.testnet.dusk.network@apps.dusk.network"
         ),
-        "That link can't be read. Ask for a new one.",
+        "This link has something before the site's address. Ask for a new one.",
       ],
       [
         "the test wallet's address saying Mainnet",
         httpsLink.replace("network=testnet", "network=mainnet"),
-        "That link can't be read. Ask for a new one.",
+        "This link names two networks, Testnet and Mainnet. Ask for a new one.",
       ],
     ])(
       "should refuse a link with %s, saying why and filling in nothing",
@@ -414,18 +414,23 @@ describe("Send", () => {
     });
 
     it.each([
-      ["a dusk: link of no known form", "dusk:nothing-at-all"],
+      [
+        "a dusk: link of no known form",
+        "dusk:nothing-at-all",
+        "That link can't be read. Ask for a new one.",
+      ],
       [
         "a link to the web wallet's Send without a recipient",
         `https://apps.testnet.dusk.network/wallet/dashboard/send?amount=1`,
+        "This link doesn't say who to pay. Ask for a new one.",
       ],
-    ])("should say %s can't be read", async (_, value) => {
+    ])("should say why %s can't be read", async (_, value, words) => {
       const { getByRole, getByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
 
       await paste(fields, value);
 
-      expect(getByText(/^That link can't be read/)).toBeInTheDocument();
+      expect(getByText(words)).toBeInTheDocument();
       expect(filled(fields)).toStrictEqual(["", "", ""]);
     });
 

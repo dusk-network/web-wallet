@@ -85,7 +85,7 @@ describe("Setup", () => {
         ],
         [
           `?to=${TO}&memo=a&memo=b&network=testnet`,
-          "That link can't be read. Ask for a new one.",
+          "This link says the memo twice. Ask for a new one.",
         ],
       ]) {
         keepPlace({ pathname: "/some-base-path/dashboard/send/", search });
