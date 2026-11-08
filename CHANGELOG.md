@@ -73,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say "Can't reach the network" once a sync gets nothing back for 30 seconds, and for the browser's "Failed to fetch", not Syncing forever
 - Say Offline, or Sync failed, in a word beside the network's dot, on a phone too
 - Keep "Sync completed!" on a restore until Next, through the syncs after it
+- Go straight to the unlock after the automatic lock, saying it locked after so many minutes away
 
 ## [2.0.0] - 2026-11-06
 

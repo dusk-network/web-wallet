@@ -3,6 +3,7 @@
 <script>
   import { mdiArrowLeft, mdiFingerprint, mdiKeyOutline } from "@mdi/js";
   import { beforeNavigate } from "$app/navigation";
+  import { page } from "$app/stores";
   import { onDestroy, onMount } from "svelte";
 
   import { getErrorFrom } from "$lib/dusk/error";
@@ -243,6 +244,13 @@
 
 <section class="login">
   <h2 class="h1">Unlock your wallet</h2>
+  <!-- The wallet locked itself: why the page is here. -->
+  {#if $page.state?.lockedAfter}
+    <p class="login__locked" role="status">
+      Locked after {$page.state.lockedAfter}
+      {$page.state.lockedAfter === 1 ? "minute" : "minutes"} away.
+    </p>
+  {/if}
   <PaymentAsked next="Unlock to pay it." />
   <div class="login">
     {#if hasPasskey}
@@ -354,6 +362,10 @@
 
   .login-footer {
     gap: var(--default-gap);
+  }
+
+  .login__locked {
+    color: var(--calm-muted);
   }
 
   :global(.alt-login) {

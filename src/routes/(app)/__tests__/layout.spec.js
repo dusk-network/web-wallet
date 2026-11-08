@@ -188,7 +188,11 @@ describe("App layout.svelte", () => {
     await vi.advanceTimersByTimeAsync(navigation.INACTIVITY_TIMEOUT);
 
     expect(logoutSpy).toHaveBeenCalledTimes(1);
-    expect(logoutSpy).toHaveBeenCalledWith(false);
+    // A lock of its own, after that long.
+    expect(logoutSpy).toHaveBeenCalledWith(
+      false,
+      navigation.INACTIVITY_TIMEOUT
+    );
   });
 
   it("should lock a wallet without a password after fifteen minutes, whatever the setting", async () => {
@@ -199,7 +203,7 @@ describe("App layout.svelte", () => {
     expect(logoutSpy).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(1);
-    expect(logoutSpy).toHaveBeenCalledExactlyOnceWith(false);
+    expect(logoutSpy).toHaveBeenCalledExactlyOnceWith(false, 15 * minute);
   });
 
   it("should lock a wallet with a password after the minutes set", async () => {
@@ -211,7 +215,7 @@ describe("App layout.svelte", () => {
     expect(logoutSpy).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(1);
-    expect(logoutSpy).toHaveBeenCalledExactlyOnceWith(false);
+    expect(logoutSpy).toHaveBeenCalledExactlyOnceWith(false, 5 * minute);
   });
 
   it("should never lock a wallet with a password when auto-lock is off", async () => {
