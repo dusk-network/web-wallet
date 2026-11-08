@@ -1,7 +1,8 @@
 /**
- * About what native staking pays a year across the network lately, as
- * `@dusk-network/networks/rates` estimates it from the node's provisioners:
- * read at most once a day per network, and kept in this browser.
+ * About what native staking pays a year across the network, as
+ * `@dusk-network/networks/rates` estimates it from the node's provisioners
+ * and what a block mints, not measured: read at most once a day per network,
+ * and kept in this browser.
  */
 
 import { nativeRateEstimate } from "@dusk-network/networks/rates";

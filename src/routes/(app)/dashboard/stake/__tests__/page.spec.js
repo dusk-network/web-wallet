@@ -353,7 +353,7 @@ describe("Staking", () => {
       );
       await vi.waitFor(() =>
         expect(rewards()[1]).toBe(
-          "About 24% a year lately, across the network. Not promised. Start in about 6 to 12 hours"
+          "About 24% a year, estimated across the network. Not promised. Start in about 6 to 12 hours"
         )
       );
       // Testnet's Sozu keeps 10% of rewards: the native figure as shown,
@@ -385,7 +385,9 @@ describe("Staking", () => {
           sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS }))
         );
         await vi.waitFor(() =>
-          expect(rewards()[1]).toMatch(/^About 86% a year lately/)
+          expect(rewards()[1]).toMatch(
+            /^About 86% a year, estimated across the network/
+          )
         );
         expect(rewards()[2]).toMatch(/^About 77% a year after Sozu's 10%\./);
       } finally {
