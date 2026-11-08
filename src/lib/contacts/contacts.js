@@ -19,6 +19,7 @@
  */
 
 import { nameClash } from "@dusk-network/app-core/names";
+import { searchKey } from "@dusk-network/app-core/text";
 import { isAccount } from "@dusk-network/networks/account";
 import { ProfileGenerator } from "@dusk/w3sper";
 import { writable } from "svelte/store";
@@ -556,19 +557,19 @@ export function addressType(address) {
 
 /**
  * The contacts, sorted, or those whose name, `.dusk` name or address has
- * the query.
+ * the query, whatever its accents and case.
  *
  * @param {string} [query]
  * @returns {Contact[]}
  */
 export function listContacts(query = "") {
-  const q = query.trim().toLowerCase();
+  const q = searchKey(query);
   const all = sorted(book);
 
   return q
     ? all.filter((contact) =>
         [contact.name, contact.duskName ?? "", contact.address].some((value) =>
-          value.toLowerCase().includes(q)
+          searchKey(value).includes(q)
         )
       )
     : all;

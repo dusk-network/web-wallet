@@ -245,6 +245,13 @@ describe("ContactsView", () => {
     });
 
     expect(names()).toEqual(["Savings"]);
+
+    // Whatever its accents and case.
+    await fireEvent.input(getByRole("searchbox", { name: "Search contacts" }), {
+      target: { value: "ALICE'S SHÖP" },
+    });
+
+    expect(names()).toEqual(["Alice's shop"]);
   });
 
   it("closes a contact with Escape, wherever the focus is in it, and gives the focus back to its row", async () => {

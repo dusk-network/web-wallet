@@ -1,5 +1,6 @@
 <script>
   import { afterNavigate } from "$app/navigation";
+  import { searchKey } from "@dusk-network/app-core/text";
   import { createEventDispatcher } from "svelte";
   import {
     mdiAccountPlusOutline,
@@ -97,11 +98,12 @@
   const sendHref = (contact) =>
     addBasePath(`/dashboard/send?to=${encodeURIComponent(contact.address)}`);
 
-  $: q = query.trim().toLowerCase();
+  // Whatever their accents and case, as the search finds them.
+  $: q = searchKey(query);
   $: shown = q
     ? contacts.filter((contact) =>
         [contact.name, contact.duskName ?? "", contact.address].some((value) =>
-          value.toLowerCase().includes(q)
+          searchKey(value).includes(q)
         )
       )
     : contacts;

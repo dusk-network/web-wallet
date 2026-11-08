@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Empty To, the amount and the memo on Send when a link is refused, not To alone
 - Refuse a dusk: link whose network= is another network, as an https link
 - Say why a link can't be read: a field said twice, something before the site's address, no one to pay or a network that can't be read
+- Search and Contacts find what's typed without its accents, as "ilustracion" for "Ilustración"
+- Find an amount typed on its way from 0, as "0.0" for 0.05 DUSK
 
 ## [2.0.0] - 2026-11-06
 
