@@ -62,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep a request asked again after it's paid as the one there was, not a new Waiting one
 - Give the export's values in the wallet's currency where it's euros or US dollars, else in the browser's region's, as the extension does, not always in euros
 - Keep the EVM wallet connected when Stay is chosen as the browser asks whether to leave
+- Write a migration's EVM gas in the export only where it was sent from an EVM address connected here, or one this browser migrated from
 
 ## [2.0.0] - 2026-11-06
 

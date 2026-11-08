@@ -24,6 +24,7 @@
   import { settingsStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import walletAccountNames from "$lib/wallets/accountNames";
+  import { account as evmAccount } from "$lib/web3/walletConnection";
 
   /** The account the file is of, and how the wallet names it. */
   /** @type {{ address: string, label: string } | null} */
@@ -97,6 +98,7 @@
         choices: { excel, fiat, from, period, to, withContacts },
         contactName: (address) => contacts.get(address),
         currency,
+        evmConnected: $evmAccount.addresses ?? [],
         net: $nodeNetwork,
         network,
         profile: {

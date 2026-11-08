@@ -205,4 +205,75 @@ describe("History's Export", () => {
       ],
     ]);
   });
+
+  it("writes no gas of a migration from an EVM address not known as the person's, as a customer's to a shop, and writes it once that one's connected", async () => {
+    const CUSTOMER = "0x2222222222222222222222222222222222222222";
+    const THEIRS = `0x${"c7".repeat(32)}`;
+    const payout = rowOf(
+      {
+        amount: "5000000000",
+        blockHeight: 4_700_000,
+        counterparty: BSC.payoutAccount,
+        direction: "in",
+        hash: "bd".repeat(32),
+        memo: THEIRS,
+        status: "executed",
+        timestamp: Date.UTC(2026, 9, 27, 7, 26),
+      },
+      { network: networks.mainnet }
+    );
+    const evm = new Map([
+      [
+        THEIRS,
+        {
+          approval: null,
+          approvalState: "none",
+          at: Date.UTC(2026, 9, 27, 6, 20),
+          block: 10,
+          coin: "BNB",
+          from: CUSTOMER,
+          gasWei: 47_005_000_752_080n,
+          hash: THEIRS,
+          lux: 5_000_000_000n,
+          route: "bsc-to-dusk",
+          state: "mined",
+          totalWei: 47_005_000_752_080n,
+        },
+      ],
+    ]);
+    /** @param {string[]} [evmConnected] */
+    const costs = async (evmConnected) => {
+      chain.read.mockResolvedValueOnce(evm);
+
+      const { csv } = await makeExport({
+        choices: {
+          excel: false,
+          fiat: false,
+          from: "",
+          period: "all",
+          to: "",
+          withContacts: false,
+        },
+        contactName: () => null,
+        evmConnected,
+        net: networks.mainnet,
+        network: "mainnet",
+        profile: { account: ACCOUNT, name: "Profile 1" },
+        profiles: [],
+        session: {
+          sozuFacts: async () => new Map(),
+          whole: async () => ({ rows: [payout], shieldedWaiting: false }),
+        },
+      });
+
+      return csv.split("\r\n").filter((line) => line.includes(",cost,"));
+    };
+
+    expect(await costs()).toStrictEqual([]);
+    expect(await costs([CUSTOMER.toUpperCase().replace("0X", "0x")])).toEqual([
+      expect.stringContaining(
+        `,cost,Network fee on BNB Smart Chain: migration of 5 BEP20 DUSK to Dusk,${THEIRS},`
+      ),
+    ]);
+  });
 });

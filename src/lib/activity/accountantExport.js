@@ -113,12 +113,17 @@ export function periodChoices(now = new Date()) {
 
 /**
  * The file asked for, from the account's whole history. Throws what to say when
- * it can't be read: nothing half read goes out as if it were all of it.
+ * it can't be read: nothing half read goes out as if it were all of it. A
+ * migration's gas on its own chain is the person's cost only where it was
+ * sent from an EVM address of theirs: one connected now (`evmConnected`), or
+ * one this browser sent a migration from. Anyone can migrate to an account,
+ * as a customer to a shop's.
  *
  * @param {{
  *   choices: ExportChoices,
  *   contactName: (address: string) => string | null | undefined,
  *   currency?: "EUR" | "USD",
+ *   evmConnected?: Iterable<string>,
  *   net?: import("@dusk-network/networks").Network | null,
  *   network: string,
  *   profile: import("@dusk-network/app-core/export").ExportProfile,
@@ -131,6 +136,7 @@ export async function makeExport({
   choices,
   contactName,
   currency = "EUR",
+  evmConnected = [],
   net = null,
   network,
   profile,
@@ -148,8 +154,9 @@ export async function makeExport({
   // What each migration paid on its own chain, its approval with it: by the
   // approval this browser sent for it where it kept one, whose receipt is
   // read at any age, where the chain's logs no longer say.
+  const kept = get(keptMigrations);
   const approvals = new Map(
-    get(keptMigrations).flatMap(({ approval, hash }) =>
+    kept.flatMap(({ approval, hash }) =>
       approval ? [[hash.toLowerCase(), approval]] : []
     )
   );
@@ -173,6 +180,7 @@ export async function makeExport({
     contactName: choices.withContacts ? contactName : undefined,
     currency,
     evm,
+    evmAddresses: [...evmConnected, ...kept.map(({ sender }) => sender)],
     facts,
     network,
     period,
