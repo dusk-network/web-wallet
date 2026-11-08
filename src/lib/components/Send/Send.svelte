@@ -1135,14 +1135,17 @@
       ? asDuskName(sendToAddress)
       : null;
 
-  // A .dusk name entered that's a profile's name here, not its own.
-  $: profileNamed = recipientName
-    ? $profilesHere.find(
-        ({ address, name }) =>
-          address !== recipientAddress &&
+  // A .dusk name entered that's a profile's name here, once it's found to
+  // go to none of the public accounts and shielded addresses of the wallets
+  // here, which they all name.
+  $: profileNamed =
+    recipientName &&
+    recipientAddress &&
+    !$walletAccountNames.has(recipientAddress)
+      ? $profilesHere.find(({ name }) =>
           sameName(name, recipientName.replace(/\.dusk$/i, ""))
-      )
-    : undefined;
+        )
+      : undefined;
 
   // Nothing is said of an empty field: Review stays off until there's one.
   $: isRecipientInvalid =

@@ -3801,6 +3801,48 @@ describe("Send", () => {
       );
     });
 
+    it("should say a .dusk name of a profile's is someone else's only once it's found, going to none of the profiles here, public or shielded", async () => {
+      // Both wallets have a Profile 1.
+      const { account, address } = await holdOtherWallet();
+      const found = Promise.withResolvers();
+
+      madeUpAddresses.add(address);
+      baseProps.resolveName.mockReturnValueOnce(found.promise);
+
+      const { container, getByRole, queryByText } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
+      const someoneElses = /is someone else's name/;
+
+      await fireEvent.input(to, { target: { value: "profile1.dusk" } });
+
+      expect(queryByText(someoneElses)).toBeNull();
+
+      // Wallet 1's Profile 1.
+      found.resolve({ account, name: "profile1.dusk" });
+
+      await waitFor(() =>
+        expect(cardTitle(container)).toBe(
+          "profile1.dusk points to a public account"
+        )
+      );
+      expect(queryByText(someoneElses)).toBeNull();
+
+      // Its shielded address.
+      baseProps.resolveName.mockResolvedValue({
+        address,
+        name: "profile1.dusk",
+      });
+      await fireEvent.input(to, { target: { value: "" } });
+      await fireEvent.input(to, { target: { value: "profile1.dusk" } });
+
+      await waitFor(() =>
+        expect(cardTitle(container)).toBe(
+          "profile1.dusk points to a shielded address"
+        )
+      );
+      expect(queryByText(someoneElses)).toBeNull();
+    });
+
     it("should name a profile of the other wallet on the address card, after a .dusk name", async () => {
       const { account, address } = await holdOtherWallet();
 
