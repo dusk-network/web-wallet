@@ -9,7 +9,7 @@
     mdiQrcodeScan,
   } from "@mdi/js";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { lookAlikes } from "@dusk-network/app-core/names";
+  import { lookAlikes, sameName } from "@dusk-network/app-core/names";
   import {
     contactNameProblem,
     contactNameText,
@@ -1081,33 +1081,68 @@
     publicAddress
   );
 
-  // The contacts a typed name can mean, by the start of their name or of a
-  // word in it. The field takes out spaces, so they aren't compared.
-  $: namedContacts =
-    sendToAddress && !recipientName && !addressInfo.isValid
-      ? contacts
-          .filter((contact) => {
-            const q = sendToAddress.toLowerCase();
-            const name = contact.name.toLowerCase();
+  /**
+   * Whether what's typed can mean a name: by its start, or the start of a
+   * word in it. The field takes out spaces, so they aren't compared.
+   *
+   * @param {string} name
+   * @param {string} typed
+   */
+  function canMean(name, typed) {
+    const q = typed.toLowerCase();
+    const named = name.toLowerCase();
 
-            return (
-              name.replace(/\s/g, "").startsWith(q) ||
-              name.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(q))
-            );
-          })
-          .slice(0, 3)
-      : [];
+    return (
+      named.replace(/\s/g, "").startsWith(q) ||
+      named.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(q))
+    );
+  }
+
+  /**
+   * A profile of this person's, as Send offers it, by what the wallets here
+   * call it: "Your Profile 2" where it goes by its number, "Your profile
+   * Savings" by a name.
+   *
+   * @param {string} name
+   */
+  const yourProfile = (name) =>
+    /^Profile \d/.test(name) ? `Your ${name}` : `Your profile ${name}`;
+
+  $: isNameTyped = sendToAddress && !recipientName && !addressInfo.isValid;
+
+  // The profiles here a typed name can mean, but the one it goes from, and
+  // the contacts: offered first, as a .dusk name of the same would be
+  // somebody else's.
+  $: namedProfiles = isNameTyped
+    ? $profilesHere
+        .filter(
+          ({ address, name }) =>
+            address !== publicAddress && canMean(name, sendToAddress)
+        )
+        .slice(0, 3)
+    : [];
+  $: namedContacts = isNameTyped
+    ? contacts
+        .filter((contact) => canMean(contact.name, sendToAddress))
+        .slice(0, 3)
+    : [];
 
   // A name typed without .dusk, as "alice": Send offers alice.dusk as it's
-  // typed, and looks it up once taken. It isn't a wrong address. A contact's
-  // name comes first: the guess would be somebody else's.
+  // typed, and looks it up once taken. It isn't a wrong address. A profile's
+  // or a contact's name comes first: the guess would be somebody else's.
   $: bareName =
-    sendToAddress &&
-    !recipientName &&
-    !addressInfo.isValid &&
-    !namedContacts.length
+    isNameTyped && !namedProfiles.length && !namedContacts.length
       ? asDuskName(sendToAddress)
       : null;
+
+  // A .dusk name entered that's a profile's name here, not its own.
+  $: profileNamed = recipientName
+    ? $profilesHere.find(
+        ({ address, name }) =>
+          address !== recipientAddress &&
+          sameName(name, recipientName.replace(/\.dusk$/i, ""))
+      )
+    : undefined;
 
   // Nothing is said of an empty field: Review stays off until there's one.
   $: isRecipientInvalid =
@@ -1116,6 +1151,7 @@
     !recipientName &&
     !addressInfo.isValid &&
     !bareName &&
+    !namedProfiles.length &&
     !namedContacts.length;
 
   $: blocklistedRecipient = getBlocklistedRecipient(recipientAddress);
@@ -1465,7 +1501,20 @@
               <strong>Not a valid address.</strong> Check it, or paste it again.
             {/if}
           </p>
-        {:else if namedContacts.length}
+        {:else if namedProfiles.length || namedContacts.length}
+          {#each namedProfiles as named (named.address)}
+            <button
+              class="send__link"
+              on:click={() => {
+                sendToAddress = named.address;
+                isRecipientChecked = true;
+              }}
+              type="button"
+              >{yourProfile(
+                $walletAccountNames.get(named.address) ?? named.name
+              )} · {shortenAddress(named.address)}</button
+            >
+          {/each}
           {#each namedContacts as named (named.id)}
             <button
               class="send__link"
@@ -1492,6 +1541,12 @@
         {#if isFromLink}
           <p class="send__hint" role="status">
             Filled in from the link. Check it before you send.
+          </p>
+        {/if}
+
+        {#if profileNamed}
+          <p class="send__hint" role="status">
+            {recipientName} is someone else's name, not your profile {profileNamed.name}.
           </p>
         {/if}
 

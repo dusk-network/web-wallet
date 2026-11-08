@@ -3765,6 +3765,42 @@ describe("Send", () => {
       expect(toLine()).toStrictEqual(["To", `Rent ${shortenAddress(account)}`]);
     });
 
+    it("should offer a profile here by its name before a .dusk name of it, which is somebody else's, and say so of that one", async () => {
+      const { account } = await holdOtherWallet();
+      const { getByRole, getByText, queryByRole } = render(Send, baseProps);
+      const to = fieldsOf(getByRole).to();
+
+      // The field takes the space out.
+      await fireEvent.input(to, { target: { value: "profile1" } });
+      await fireEvent.blur(to);
+
+      await fireEvent.click(
+        getByRole("button", {
+          name: `Your profile Wallet 1 · Profile 1 · ${shortenAddress(account)}`,
+        })
+      );
+
+      expect(to).toHaveValue(account);
+      expect(
+        queryByRole("button", { name: /^Did you mean profile1\.dusk/ })
+      ).toBeNull();
+
+      // Its .dusk name, typed out, is someone else's.
+      baseProps.resolveName.mockResolvedValue({
+        account: otherAccount,
+        name: "profile1.dusk",
+      });
+      await fireEvent.input(to, { target: { value: "profile1.dusk" } });
+
+      await waitFor(() =>
+        expect(
+          getByText(
+            "profile1.dusk is someone else's name, not your profile Profile 1."
+          )
+        ).toBeInTheDocument()
+      );
+    });
+
     it("should name a profile of the other wallet on the address card, after a .dusk name", async () => {
       const { account, address } = await holdOtherWallet();
 
