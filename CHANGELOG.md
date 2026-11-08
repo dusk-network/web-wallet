@@ -56,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Find an amount typed on its way from 0, as "0.0" for 0.05 DUSK
 - Keep a memo's numbers in the order they're written beside right-to-left letters, as "Pay א 10 א 1000"
 - Refuse a contact's or a profile's name with hidden characters, and show one saved before by their codes, with a note in Contacts
+- Say what came in on every Paid request, as "Its memo matches a payment of 0.02 DUSK", and on each payment of one paid twice
+- Say Sent back on a request's payment once it's sent back, with no Send back for it
+- Hide the amount Send back fills in while balances are hidden
+- Keep a request asked again after it's paid as the one there was, not a new Waiting one
 
 ## [2.0.0] - 2026-11-06
 

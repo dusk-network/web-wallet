@@ -6,7 +6,8 @@
  * Each wallet's are kept under its own name ($lib/wallets/dataNames): at most
  * MAX_REQUESTS, the oldest settled going first, then the oldest.
  *
- * `${APP_KEY}-payment-requests`: [{ at, id, lux, memo, network, paid?, to }]
+ * `${APP_KEY}-payment-requests`: [{ at, id, lux, memo, network, paid?, to }],
+ * `paid` as { at, hash, lux? }
  */
 
 import { get, writable } from "svelte/store";
@@ -101,8 +102,9 @@ function trimmed(list) {
 }
 
 /**
- * Keeps a request as it leaves the wallet: the same one still open stays as it
- * is, with the time it was first asked.
+ * Keeps a request as it leaves the wallet: the same one asked before stays as
+ * it is, with the time it was first asked, paid or not, as its link and QR are
+ * the same.
  *
  * @param {{ lux: bigint | null, memo: string, network: string, to: string }} asked
  */
@@ -112,7 +114,6 @@ export function rememberRequest({ lux, memo, network, to }) {
   changeRecords(records, walletDataScope(), (list) =>
     list.some(
       (kept) =>
-        !kept.paid &&
         kept.to === to &&
         kept.lux === text &&
         kept.memo === memo &&
@@ -145,8 +146,9 @@ export function forgetRequest(id) {
 }
 
 /**
- * Keeps what paid each request, for it to stay paid once its payment is too
- * far back to be read again.
+ * Keeps what paid each request, with what it paid, for it to stay paid, and
+ * that to be said, once its payment is too far back to be read again: also
+ * for one kept paid before what it paid was kept with it.
  *
  * @param {Map<string, RequestMatch>} matches
  */
@@ -155,8 +157,18 @@ export function keepRequestMatches(matches) {
   const paid = (kept) => {
     const match = matches.get(kept.id);
 
-    return match?.state === "paid" && !kept.paid && match.hash && match.at
-      ? { at: match.at, hash: match.hash }
+    if (match?.state !== "paid" || !match.hash || !match.at) {
+      return null;
+    }
+
+    const lux = match.lux === undefined ? {} : { lux: String(match.lux) };
+
+    if (!kept.paid) {
+      return { at: match.at, hash: match.hash, ...lux };
+    }
+
+    return !kept.paid.lux && lux.lux && kept.paid.hash === match.hash
+      ? { ...kept.paid, ...lux }
       : null;
   };
 

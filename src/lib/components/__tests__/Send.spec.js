@@ -1098,6 +1098,42 @@ describe("Send", () => {
       }
     });
 
+    it("should hide an amount sent back while balances are hidden, as Max's, and send it all the same", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      try {
+        const { container, getByRole } = render(Send, {
+          ...baseProps,
+          initialAmount: "0.012",
+          initialAmountHidden: true,
+          initialMemo: "Refund: Factura 43",
+          initialRecipient: otherAccount,
+        });
+        const fields = fieldsOf(getByRole);
+
+        expect(fields.amount()).toHaveValue("••••");
+        expect(container.textContent).not.toContain("0.012");
+
+        await fireEvent.click(fields.review());
+
+        expect(fields.send()).toHaveAccessibleName("Send •••• DUSK");
+        expect(container.textContent).not.toContain("0.012");
+
+        await afterConfirmDelay();
+        await fireEvent.click(fields.send());
+
+        expect(baseProps.execute).toHaveBeenCalledWith(
+          otherAccount,
+          12_000_000n,
+          "Refund: Factura 43",
+          expect.anything(),
+          expect.anything()
+        );
+      } finally {
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+      }
+    });
+
     it("should fill in Max as this language writes decimals, so it's never taken for a thousands group", async () => {
       settingsStore.update((store) => ({ ...store, language: "nl-NL" }));
 

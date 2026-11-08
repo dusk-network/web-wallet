@@ -150,6 +150,12 @@
   export let initialProblem = "";
 
   /**
+   * Whether the amount the page was opened with is the wallet's own, as a
+   * payment that came in sent back: it's hidden with the balances, as Max's.
+   */
+  export let initialAmountHidden = false;
+
+  /**
    * `.dusk` names of past counterparties, for "Did you mean …?" along with
    * the contacts' names.
    *
@@ -191,6 +197,9 @@
 
   /** Whether Max filled the amount in: it's hidden with the balances. */
   let isMaxAmount = typedBefore?.isMax ?? false;
+
+  /** Whether the amount is the wallet's own otherwise: hidden as Max's is. */
+  let isOwnAmount = typedBefore?.isOwn ?? initialAmountHidden;
 
   /** @type {string} */
   let sendToAddress = typedBefore?.to ?? initialRecipient;
@@ -465,6 +474,7 @@
       /** @type {HTMLInputElement} */ (event.currentTarget).value
     );
     isMaxAmount = false;
+    isOwnAmount = false;
   }
 
   /** How long the recipient typed was, to tell a paste from a key. */
@@ -498,6 +508,7 @@
 
     if (asked) {
       isMaxAmount = false;
+      isOwnAmount = false;
       sendAmount = asked.amount;
       memo = asked.memo;
     }
@@ -872,6 +883,7 @@
     amount: sendAmount,
     gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
     isMax: isMaxAmount,
+    isOwn: isOwnAmount,
     link: openedFor,
     memo,
     picks: namePicks,
@@ -1320,7 +1332,7 @@
     : null;
   // Said on the button too, which then sends it again.
   $: isRepeat = Boolean(madeAgain && madeAgain.time !== null);
-  $: isAmountMasked = hideBalances && isMaxAmount;
+  $: isAmountMasked = hideBalances && (isMaxAmount || isOwnAmount);
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
 </script>

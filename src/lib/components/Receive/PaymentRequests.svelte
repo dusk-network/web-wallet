@@ -3,17 +3,18 @@
 <script>
   /**
    * The requests this profile made, kept on this device, each marked by what
-   * came in after it, in words that say what matched.
+   * came in after it, in words that say what matched, and what a payment
+   * that paid it brought.
    */
   import { onDestroy } from "svelte";
-  import { MAX_MEMO_BYTES } from "@dusk-network/app-core/payment-links";
+  import { refundOf, sentAlready } from "@dusk-network/app-core/requests";
   import { displayText } from "@dusk-network/app-core/text";
 
   import { activityState, currentActivity } from "$lib/activity";
   import { claimDay } from "$lib/bridge/claimDate";
   import { Button, CopyButton } from "$lib/dusk/components";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
-  import { addBasePath } from "$lib/navigation";
+  import { addBasePath, goto } from "$lib/navigation";
   import {
     forgetRequest,
     keepRequestMatches,
@@ -34,10 +35,11 @@
   const STATE_WORDS = { check: "Check", paid: "Paid", waiting: "Waiting" };
 
   /**
-   * A line in parts: words, and a memo someone else wrote, quoted as a memo
-   * shows, nothing in it reordering or hiding the rest.
+   * A line in parts: words, a memo someone else wrote, quoted as a memo
+   * shows, nothing in it reordering or hiding the rest, and an amount that
+   * came in, hidden with the balances.
    *
-   * @typedef {{ text: string } | { memo: string }} Part
+   * @typedef {{ text: string } | { memo: string } | { lux: bigint }} Part
    */
 
   /** How often the history is read again while this shows a request not paid. */
@@ -110,16 +112,20 @@
       : [];
 
   /**
-   * What matched of a payment, in words, and of the others that match the
-   * request in part: another payment to check. A request paid more than once
-   * lists its payments under this.
+   * What matched of a payment, in words, with what it brought where it paid
+   * the request, and of the others that match the request in part: another
+   * payment to check. A request paid more than once lists its payments, and
+   * what each brought, under this.
    *
+   * @param {import("$lib/payment-requests/requests").PaymentRequest} request
    * @param {import("$lib/payment-requests/requests").RequestMatch} match
    * @param {string} language
    * @returns {Part[]}
    */
-  function matchedParts(match, language) {
+  function matchedParts(request, match, language) {
     const { at, lux, matched, memo, more = [] } = match;
+    const what =
+      request.lux === null ? "Its memo matches" : "Amount and memo match";
     const day = at ? claimDay(at, language) : "";
     const again = paidAgain(match);
     const also = more
@@ -133,13 +139,15 @@
     switch (matched) {
       case "amount-memo":
         return [
-          {
-            text: again.length
-              ? `Amount and memo match ${again.length + 1} payments.`
-              : day
-                ? `Amount and memo match a payment on ${day}.`
-                : "Amount and memo match a payment.",
-          },
+          ...(again.length
+            ? [{ text: `${what} ${again.length + 1} payments.` }]
+            : lux === undefined
+              ? [{ text: `${what} a payment${day ? ` on ${day}` : ""}.` }]
+              : [
+                  { text: `${what} a payment of ` },
+                  { lux },
+                  { text: ` DUSK${day ? ` on ${day}` : ""}.` },
+                ]),
           ...also,
         ];
       case "amount":
@@ -182,38 +190,72 @@
     );
 
   /**
-   * Send, filled in to pay back a payment that paid a request again: to whoever
-   * sent it, the amount it brought, and the request's memo. Null where whoever
-   * sent it isn't known, as for a shielded payment.
+   * The payments that paid a request again, each with Send filled in to pay
+   * it back, as app-core's `refundOf` says, and the refund sent already, as
+   * Send would say it's sent again: one each, oldest first. Send back is
+   * null where whoever sent it isn't known, as for a shielded payment.
    *
-   * @param {import("$lib/payment-requests/requests").RequestPayment} payment
    * @param {import("$lib/payment-requests/requests").PaymentRequest} request
+   * @param {import("$lib/payment-requests/requests").RequestPayment[]} again
+   * @param {ActivityRow[]} rows
+   * @returns {Map<string, { back: string | null, sent: ActivityRow | null }>}
    */
-  function sendBackHref(payment, request) {
-    const from = senders.get(payment.hash);
+  function refundsOf(request, again, rows) {
+    /** @type {string[]} */
+    const taken = [];
 
-    if (!from) {
-      return null;
-    }
+    return new Map(
+      again.map((payment) => {
+        const refund = refundOf(request, payment, rows);
+        const sent = refund
+          ? sentAlready(
+              rows.filter(({ hash }) => !taken.includes(hash)),
+              refund
+            )
+          : null;
+        const made = refund
+          ? makeRequestLink(
+              { amountLux: refund.lux, memo: refund.memo, to: refund.to },
+              $nodeNetwork
+            )
+          : null;
 
-    const said = request.memo ? `Refund: ${request.memo}` : "Refund";
-    const made = makeRequestLink(
-      {
-        amountLux: payment.lux,
-        // Within a memo's bytes: a refund alone where the request's memo
-        // leaves no room to say which.
-        memo:
-          new TextEncoder().encode(said).length <= MAX_MEMO_BYTES
-            ? said
-            : "Refund",
-        to: from,
-      },
-      $nodeNetwork
+        if (sent) {
+          taken.push(sent.hash);
+        }
+
+        return [
+          payment.hash,
+          {
+            back: made?.https
+              ? `/dashboard/send${new URL(made.https).search}`
+              : null,
+            sent,
+          },
+        ];
+      })
     );
+  }
 
-    return made.https
-      ? addBasePath(`/dashboard/send${new URL(made.https).search}`)
-      : null;
+  /**
+   * Opens Send filled in to pay a payment back, its amount hidden with the
+   * balances, as what came in is: a link of its own, opened elsewhere, shows
+   * what it asks.
+   *
+   * @param {MouseEvent} event
+   * @param {string} path Send's, with what it's filled in with
+   */
+  function sendBack(event, path) {
+    if (
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+      goto(path, { state: { amountHidden: true } });
+    }
   }
 
   /**
@@ -241,12 +283,6 @@
   };
 
   $: ({ hideBalances, language } = $settingsStore);
-  // Who sent each payment that came in, where the chain says.
-  $: senders = new Map(
-    $activityState.rows.flatMap(({ category, counterparty, hash }) =>
-      category === "received" && counterparty ? [[hash, counterparty]] : []
-    )
-  );
   $: network = $nodeNetwork?.name ?? "";
   $: shown = $requestsStore.filter(
     ({ network: asked, to }) => asked === network && addresses.includes(to)
@@ -273,7 +309,8 @@
       {#each shown as request (request.id)}
         {@const match = matches.get(request.id) ?? { state: "waiting" }}
         {@const again = paidAgain(match)}
-        {@const parts = matchedParts(match, language)}
+        {@const parts = matchedParts(request, match, language)}
+        {@const refunds = refundsOf(request, again, $activityState.rows)}
         <li class="requests__item">
           <p class="requests__head">
             <strong>
@@ -305,6 +342,8 @@
             Asked {claimDay(request.at, language)}. {#each parts as part, i (i)}{#if "memo" in part}<MemoText
                   inline
                   text={part.memo}
+                />{:else if "lux" in part}<BalanceValue
+                  value={formatDuskExact(part.lux, language)}
                 />{:else}{part.text}{/if}{/each}
           </p>
           {#if parts.some(hidesSomething)}
@@ -327,9 +366,15 @@
                 {@const day = payment.at
                   ? claimDay(payment.at, language)
                   : "time not known"}
-                {@const back = i ? sendBackHref(again[i - 1], request) : null}
+                {@const refund = i ? refunds.get(String(payment.hash)) : null}
                 <li class="requests__payment">
-                  <span>{day.charAt(0).toUpperCase()}{day.slice(1)}</span>
+                  <span
+                    >{day.charAt(0).toUpperCase()}{day.slice(
+                      1
+                    )}{#if payment.lux !== undefined}, <BalanceValue
+                        value={formatDuskExact(payment.lux, language)}
+                      /> DUSK{/if}</span
+                  >
                   <a
                     aria-label={`See in History: the payment of ${day}`}
                     class="text-link"
@@ -337,11 +382,19 @@
                       `/dashboard/transactions?tx=${payment.hash}`
                     )}>See in History</a
                   >
-                  {#if back}
+                  {#if refund?.sent}
+                    <span
+                      >Sent back{refund.sent.time
+                        ? ` on ${claimDay(refund.sent.time, language)}`
+                        : ""}</span
+                    >
+                  {:else if refund?.back}
+                    {@const back = refund.back}
                     <a
                       aria-label={`Send back the payment of ${day}`}
                       class="text-link"
-                      href={back}>Send back</a
+                      href={addBasePath(back)}
+                      on:click={(event) => sendBack(event, back)}>Send back</a
                     >
                   {/if}
                 </li>

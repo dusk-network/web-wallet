@@ -144,6 +144,7 @@
     {gasSettings}
     historyRows={$activityState.rows}
     initialAmount={asked?.amount ?? ""}
+    initialAmountHidden={Boolean($page.state?.amountHidden)}
     initialMemo={asked?.memo ?? ""}
     initialProblem={asked?.problem ?? ""}
     initialRecipient={asked?.to ?? ""}
