@@ -474,9 +474,10 @@
 
   /**
    * What's put in To whole, as pasted, scanned or finished: a link asking for
-   * a payment fills in what it asks, and one for another network says so and
-   * fills in nothing. Anything else is a recipient as it is, leaving what's
-   * typed in the other fields. What's filled in is checked as if it were typed.
+   * a payment fills in what it asks, and one refused, as for another network,
+   * says why and empties the form, so nothing in it reads as the refused
+   * link's. Anything else is a recipient as it is, leaving what's typed in
+   * the other fields. What's filled in is checked as if it were typed.
    *
    * @param {string} text
    */
@@ -494,7 +495,7 @@
     isRecipientChecked = Boolean(sendToAddress);
     typedLength = sendToAddress.length;
 
-    if (asked?.to) {
+    if (asked) {
       isMaxAmount = false;
       sendAmount = asked.amount;
       memo = asked.memo;

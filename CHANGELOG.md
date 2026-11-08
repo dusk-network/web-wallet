@@ -49,6 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say Paid twice on a request, with a link to each payment
 - Name the test network and what a request asks in its QR picture and its file name
 - Show a payer's memo on Your requests with its hidden characters as codes, as everywhere else
+- Empty To, the amount and the memo on Send when a link is refused, not To alone
+- Refuse a dusk: link whose network= is another network, as an https link
+- Say why a link can't be read: a field said twice, something before the site's address, no one to pay or a network that can't be read
 
 ## [2.0.0] - 2026-11-06
 

@@ -388,11 +388,33 @@ describe("Send", () => {
       );
     });
 
-    it("should say so plainly and fill in nothing for a link for another network, keeping what's typed", async () => {
+    it.each([
+      ["its chain ID", "@dusk:1?amount=0.15&memo=Factura+33"],
+      ["network=", "?amount=0.15&memo=Factura+33&network=mainnet"],
+    ])(
+      "should say so plainly for a dusk: link for another network by %s, emptying what an earlier link filled in",
+      async (_, rest) => {
+        const { getByRole, getByText, queryByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await paste(fields, httpsLink.replace("Factura+33", "Chicken+rice"));
+        await paste(fields, `dusk:public-${otherAccount}${rest}`);
+
+        expect(
+          getByText("This request is for Mainnet. You are on Testnet.")
+        ).toBeInTheDocument();
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(queryByText("Not a valid address.")).toBeNull();
+        expect(fields.review()).toBeDisabled();
+      }
+    );
+
+    it("should empty what's typed for a link refused, and take what's given next on its own", async () => {
       const { getByRole, getByText, queryByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
 
       await fireEvent.input(fields.amount(), { target: { value: "2" } });
+      await fireEvent.input(fields.memo(), { target: { value: "Lunch" } });
       await paste(
         fields,
         `dusk:public-${otherAccount}@dusk:1?amount=0.15&memo=Factura+33`
@@ -401,9 +423,7 @@ describe("Send", () => {
       expect(
         getByText("This request is for Mainnet. You are on Testnet.")
       ).toBeInTheDocument();
-      expect(filled(fields)).toStrictEqual(["", "2", ""]);
-      expect(queryByText("Not a valid address.")).toBeNull();
-      expect(fields.review()).toBeDisabled();
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
 
       // What's given next is on its own.
       await paste(fields, otherAccount);
