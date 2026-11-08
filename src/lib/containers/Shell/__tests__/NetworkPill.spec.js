@@ -8,6 +8,7 @@ import NetworkPill from "../NetworkPill.svelte";
 
 const sync = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const abortSync = vi.hoisted(() => vi.fn());
+const refreshBalance = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 const pageStore = vi.hoisted(() => ({
   /** @type {import("svelte/store").Writable<any> | null} */
@@ -44,6 +45,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
       ...original.walletStore,
       ...mockedWalletStore,
       abortSync,
+      refreshBalance,
       sync,
     },
   };
@@ -68,6 +70,7 @@ describe("NetworkPill", () => {
   afterEach(() => {
     cleanup();
     abortSync.mockClear();
+    refreshBalance.mockClear();
     sync.mockClear();
   });
 
@@ -174,31 +177,41 @@ describe("NetworkPill", () => {
     }
   });
 
-  it("starts the sync again on Try again once it got nothing back for 30 seconds, in place of the one that did", async () => {
+  it("starts the sync again on Try again once it got nothing back for 30 seconds, in place of the one that did, and shows the balances read after it", async () => {
     vi.useFakeTimers();
 
     // As the wallet's: a sync asked for while one runs joins that one,
-    // until it's stopped.
-    const syncs = { running: 0, started: 0 };
+    // until it's stopped, and the balances shown are read again after one
+    // only where they're asked for with it.
+    const wallet = { balancesRead: 0, running: 0, started: 0 };
 
-    /** @type {Promise<void> | null} */
+    /** @type {PromiseWithResolvers<void> | null} */
     let current = null;
+
+    const stop = () => {
+      if (current) {
+        wallet.running -= 1;
+        current = null;
+      }
+    };
 
     sync.mockImplementation(() => {
       if (!current) {
-        syncs.started += 1;
-        syncs.running += 1;
-        current = new Promise(() => {});
+        wallet.started += 1;
+        wallet.running += 1;
+        current = Promise.withResolvers();
       }
 
-      return current;
+      return current.promise;
     });
-    abortSync.mockImplementation(() => {
-      if (current) {
-        syncs.running -= 1;
-        current = null;
-      }
-    });
+    abortSync.mockImplementation(stop);
+    refreshBalance.mockImplementation(() =>
+      sync()
+        .catch(() => {})
+        .finally(() => {
+          wallet.balancesRead += 1;
+        })
+    );
 
     try {
       const { getByRole } = render(NetworkPill);
@@ -211,9 +224,20 @@ describe("NetworkPill", () => {
       await fireEvent.click(getByRole("button", { name: "Try again" }));
 
       // Another runs, alone.
-      expect(syncs).toStrictEqual({ running: 1, started: 2 });
+      expect(wallet).toStrictEqual({ balancesRead: 0, running: 1, started: 2 });
+
+      // Once it's done, the balances shown are the ones it read.
+      const replacement = /** @type {PromiseWithResolvers<void> | null} */ (
+        current
+      );
+
+      stop();
+      replacement?.resolve();
+
+      await vi.waitFor(() => expect(wallet.balancesRead).toBe(1));
     } finally {
       sync.mockImplementation(() => Promise.resolve());
+      refreshBalance.mockImplementation(() => Promise.resolve());
       abortSync.mockReset();
       vi.useRealTimers();
     }
@@ -232,7 +256,7 @@ describe("NetworkPill", () => {
 
     await fireEvent.click(getByRole("button", { name: "Try again" }));
 
-    expect(sync).toHaveBeenCalledOnce();
+    expect(refreshBalance).toHaveBeenCalledOnce();
   });
 
   it("opens its panel as a step of its own in the browser's history: phone Back closes it alone, and its own close takes that step back", async () => {
@@ -299,6 +323,6 @@ describe("NetworkPill", () => {
 
     await fireEvent.click(getByRole("button", { name: "Try again" }));
 
-    expect(sync).toHaveBeenCalledOnce();
+    expect(refreshBalance).toHaveBeenCalledOnce();
   });
 });

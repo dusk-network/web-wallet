@@ -102,7 +102,8 @@
       walletStore.abortSync();
     }
 
-    walletStore.sync().catch(() => {});
+    // The balances and the stake shown are read again once it's done.
+    void walletStore.refreshBalance();
   }
 
   /**
