@@ -376,9 +376,22 @@
     color: var(--calm-danger);
   }
 
-  /* Why, where there's room for it; a phone has the word, and its panel why. */
+  /*
+   * Why, from 1024 px, where the bar has room for it beside the profile's
+   * pill; below, the word, and the panel says why.
+   */
   .network-pill__word {
     display: none;
+  }
+
+  @media (max-width: 63.99rem) {
+    .network-pill__word {
+      display: inline;
+    }
+
+    .network-pill__reason {
+      display: none;
+    }
   }
 
   /*
@@ -393,14 +406,6 @@
     }
 
     .network-pill__button :global(.network-pill__chevron) {
-      display: none;
-    }
-
-    .network-pill__word {
-      display: inline;
-    }
-
-    .network-pill__reason {
       display: none;
     }
   }
