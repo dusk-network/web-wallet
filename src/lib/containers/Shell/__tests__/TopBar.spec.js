@@ -16,6 +16,8 @@ vi.mock("$lib/stores", async (importOriginal) => {
     networkStore: {
       ...original.networkStore,
       ...readable({ connected: true, networkName: "devnet" }),
+      // What the network's pill asks the node: it answers.
+      getCurrentBlockHeight: () => Promise.resolve(1n),
     },
     walletStore: { ...original.walletStore, ...mockedWalletStore },
   };

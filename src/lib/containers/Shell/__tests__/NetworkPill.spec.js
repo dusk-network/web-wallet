@@ -10,6 +10,15 @@ const sync = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const abortSync = vi.hoisted(() => vi.fn());
 const refreshBalance = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
+// The node, asked how far its chain got: it answers.
+const askNode = vi.hoisted(() =>
+  vi.fn(
+    /** @type {(signal?: AbortSignal) => Promise<bigint>} */ (
+      () => Promise.resolve(1n)
+    )
+  )
+);
+
 const pageStore = vi.hoisted(() => ({
   /** @type {import("svelte/store").Writable<any> | null} */
   page: null,
@@ -40,6 +49,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
     networkStore: {
       ...original.networkStore,
       ...readable({ connected: true, networkName: "testnet" }),
+      getCurrentBlockHeight: askNode,
     },
     walletStore: {
       ...original.walletStore,
@@ -177,71 +187,191 @@ describe("NetworkPill", () => {
     }
   });
 
-  it("starts the sync again on Try again once it got nothing back for 30 seconds, in place of the one that did, and shows the balances read after it", async () => {
+  it("says it can't reach the network once the node answered nothing for 30 seconds, between syncs too, and why on the pill, without a tap", async () => {
     vi.useFakeTimers();
 
-    // As the wallet's: a sync asked for while one runs joins that one,
-    // until it's stopped, and the balances shown are read again after one
-    // only where they're asked for with it.
-    const wallet = { balancesRead: 0, running: 0, started: 0 };
-
-    /** @type {PromiseWithResolvers<void> | null} */
-    let current = null;
-
-    const stop = () => {
-      if (current) {
-        wallet.running -= 1;
-        current = null;
-      }
-    };
-
-    sync.mockImplementation(() => {
-      if (!current) {
-        wallet.started += 1;
-        wallet.running += 1;
-        current = Promise.withResolvers();
-      }
-
-      return current.promise;
-    });
-    abortSync.mockImplementation(stop);
-    refreshBalance.mockImplementation(() =>
-      sync()
-        .catch(() => {})
-        .finally(() => {
-          wallet.balancesRead += 1;
-        })
-    );
-
     try {
-      const { getByRole } = render(NetworkPill);
+      const { container, getByRole } = render(NetworkPill);
+      const pill = () => container.querySelector(".network-pill__button");
 
-      // The wallet's sync, which gets nothing back.
-      void sync();
+      // In sync, the node answering.
+      await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, in sync" })
+      ).toBeInTheDocument();
+
+      // From here it answers nothing, and the wallet's next sync, 20 seconds
+      // on, gets nothing back either.
+      askNode.mockImplementation(() => new Promise(() => {}));
+      await act(() => vi.advanceTimersByTimeAsync(20_000));
       await setSync({ isInProgress: true, progress: 0 });
-      await act(() => vi.advanceTimersByTimeAsync(30_000));
-      await fireEvent.click(getByRole("button", { name: /testnet/i }));
-      await fireEvent.click(getByRole("button", { name: "Try again" }));
+      await act(() => vi.advanceTimersByTimeAsync(9_000));
 
-      // Another runs, alone.
-      expect(wallet).toStrictEqual({ balancesRead: 0, running: 1, started: 2 });
+      expect(
+        getByRole("button", { name: "Network: Testnet, syncing" })
+      ).toBeInTheDocument();
 
-      // Once it's done, the balances shown are the ones it read.
-      const replacement = /** @type {PromiseWithResolvers<void> | null} */ (
-        current
+      await act(() => vi.advanceTimersByTimeAsync(1_000));
+
+      expect(
+        getByRole("button", {
+          name: "Network: Testnet, can't reach the network",
+        })
+      ).toBeInTheDocument();
+      // Offline in a word on a phone; why where there's room.
+      expect(pill()).toHaveTextContent(
+        "Testnet Offline Can't reach the network"
       );
 
-      stop();
-      replacement?.resolve();
+      // It answers again, and the sync gets through: in sync by its next ask.
+      askNode.mockImplementation(() => Promise.resolve(1n));
+      await setSync({ isInProgress: false, progress: 1 });
+      await act(() => vi.advanceTimersByTimeAsync(15_000));
 
-      await vi.waitFor(() => expect(wallet.balancesRead).toBe(1));
+      expect(
+        getByRole("button", { name: "Network: Testnet, in sync" })
+      ).toBeInTheDocument();
+      expect(pill()).toHaveTextContent(/^Testnet$/);
     } finally {
-      sync.mockImplementation(() => Promise.resolve());
-      refreshBalance.mockImplementation(() => Promise.resolve());
-      abortSync.mockReset();
+      askNode.mockImplementation(() => Promise.resolve(1n));
       vi.useRealTimers();
     }
   });
+
+  it("asks the node one thing at a time, for 10 seconds at most, and nothing once the page hides", async () => {
+    vi.useFakeTimers();
+
+    // A node that holds every request open, without an answer.
+    const node = { asked: 0, mostOpen: 0, open: 0 };
+
+    askNode.mockImplementation(
+      (/** @type {AbortSignal | undefined} */ signal) => {
+        node.asked += 1;
+        node.open += 1;
+        node.mostOpen = Math.max(node.mostOpen, node.open);
+
+        return new Promise((_, reject) =>
+          signal?.addEventListener("abort", () => {
+            node.open -= 1;
+            reject(signal.reason);
+          })
+        );
+      }
+    );
+
+    try {
+      render(NetworkPill);
+      await act(() => vi.advanceTimersByTimeAsync(55_000));
+
+      // Asked again every 15 seconds, each ask stopped after 10.
+      expect(node).toStrictEqual({ asked: 4, mostOpen: 1, open: 0 });
+
+      await act(() => vi.advanceTimersByTimeAsync(5_000));
+
+      expect(node.open).toBe(1);
+
+      // Hidden, what's under way stops, and nothing more is asked.
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "hidden",
+      });
+      await act(() => document.dispatchEvent(new Event("visibilitychange")));
+      await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+      expect(node).toStrictEqual({ asked: 5, mostOpen: 1, open: 0 });
+    } finally {
+      // @ts-ignore The document's own, from its prototype again.
+      delete document.visibilityState;
+      askNode.mockImplementation(() => Promise.resolve(1n));
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ["the sync got nothing back for 30 seconds", 0],
+    [
+      "the node answered nothing for 30 seconds, before the sync's own 30",
+      20_000,
+    ],
+  ])(
+    "starts the sync again on Try again once %s, in place of the one under way, and shows the balances read after it",
+    async (_, syncAfter) => {
+      vi.useFakeTimers();
+
+      // As the wallet's: a sync asked for while one runs joins that one,
+      // until it's stopped, and the balances shown are read again after one
+      // only where they're asked for with it.
+      const wallet = { balancesRead: 0, running: 0, started: 0 };
+
+      /** @type {PromiseWithResolvers<void> | null} */
+      let current = null;
+
+      const stop = () => {
+        if (current) {
+          wallet.running -= 1;
+          current = null;
+        }
+      };
+
+      sync.mockImplementation(() => {
+        if (!current) {
+          wallet.started += 1;
+          wallet.running += 1;
+          current = Promise.withResolvers();
+        }
+
+        return current.promise;
+      });
+      abortSync.mockImplementation(stop);
+      refreshBalance.mockImplementation(() =>
+        sync()
+          .catch(() => {})
+          .finally(() => {
+            wallet.balancesRead += 1;
+          })
+      );
+
+      if (syncAfter) {
+        askNode.mockImplementation(() => new Promise(() => {}));
+      }
+
+      try {
+        const { getByRole } = render(NetworkPill);
+
+        // The wallet's sync, which gets nothing back.
+        await act(() => vi.advanceTimersByTimeAsync(syncAfter));
+        void sync();
+        await setSync({ isInProgress: true, progress: 0 });
+        await act(() => vi.advanceTimersByTimeAsync(30_000 - syncAfter));
+        await fireEvent.click(getByRole("button", { name: /testnet/i }));
+        await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+        // Another runs, alone.
+        expect(wallet).toStrictEqual({
+          balancesRead: 0,
+          running: 1,
+          started: 2,
+        });
+
+        // Once it's done, the balances shown are the ones it read.
+        const replacement = /** @type {PromiseWithResolvers<void> | null} */ (
+          current
+        );
+
+        stop();
+        replacement?.resolve();
+
+        await vi.waitFor(() => expect(wallet.balancesRead).toBe(1));
+      } finally {
+        askNode.mockImplementation(() => Promise.resolve(1n));
+        sync.mockImplementation(() => Promise.resolve());
+        refreshBalance.mockImplementation(() => Promise.resolve());
+        abortSync.mockReset();
+        vi.useRealTimers();
+      }
+    }
+  );
 
   it("says a sync that couldn't reach the network did so in plain words, not the browser's", async () => {
     const { getByRole, queryByText } = render(NetworkPill);

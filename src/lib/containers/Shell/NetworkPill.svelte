@@ -46,7 +46,102 @@
     }
   }
 
-  onDestroy(() => clearTimeout(stallTimer));
+  /**
+   * How often the node is asked how far its chain got, while the page shows
+   * and the browser is online: between syncs, which can be minutes apart,
+   * nothing else would find it silent.
+   */
+  const ASK_EVERY = 15_000;
+
+  /** Whether the node answered nothing for STALL_MS, sync or not. */
+  let isSilent = false;
+
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let silenceTimer;
+
+  /** @type {ReturnType<typeof setInterval> | undefined} */
+  let askTimer;
+
+  /** How long an ask gets before it's stopped: less than ASK_EVERY. */
+  const ANSWER_WITHIN = 10_000;
+
+  /**
+   * The ask under way: one at a time, as a node that holds them open would
+   * otherwise use up the browser's connections to it.
+   *
+   * @type {AbortController | null}
+   */
+  let asking = null;
+
+  /** The node answered: the wait starts again. */
+  function heard() {
+    clearTimeout(silenceTimer);
+    isSilent = false;
+    silenceTimer = setTimeout(() => {
+      isSilent = true;
+    }, STALL_MS);
+  }
+
+  function ask() {
+    if (asking) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    // Over, answered or not: what it asked stops, and the next can start.
+    const end = () => {
+      clearTimeout(deadline);
+      controller.abort();
+
+      if (asking === controller) {
+        asking = null;
+      }
+    };
+    const deadline = setTimeout(end, ANSWER_WITHIN);
+
+    asking = controller;
+    networkStore
+      .getCurrentBlockHeight(controller.signal)
+      .then(
+        () => {
+          // An answer that comes once it stopped asking starts nothing.
+          if (!controller.signal.aborted) {
+            heard();
+          }
+        },
+        () => {}
+      )
+      .finally(end);
+  }
+
+  /**
+   * Asks the node every ASK_EVERY, and starts waiting from now, or stops.
+   *
+   * @param {boolean} isAsking
+   */
+  function watchNode(isAsking) {
+    clearInterval(askTimer);
+    clearTimeout(silenceTimer);
+    asking?.abort();
+    asking = null;
+    isSilent = false;
+
+    if (isAsking) {
+      askTimer = setInterval(ask, ASK_EVERY);
+      heard();
+      ask();
+    }
+  }
+
+  /** Whether the page shows. */
+  let isShown =
+    typeof document !== "undefined" && document.visibilityState !== "hidden";
+
+  onDestroy(() => {
+    clearTimeout(stallTimer);
+    watchNode(false);
+  });
 
   /**
    * Whether a sync failed as the network couldn't be reached, as the browser
@@ -67,10 +162,11 @@
     syncStatus.from,
     syncStatus.last
   );
+  $: watchNode(isShown && !isOffline);
   $: label = networkLabel(networkName);
   $: state = isOffline
     ? "offline"
-    : isStalled || isUnreachable(syncStatus.error)
+    : isStalled || isSilent || isUnreachable(syncStatus.error)
       ? "unreachable"
       : syncStatus.error
         ? "error"
@@ -96,14 +192,17 @@
         : "";
 
   function retry() {
-    // A sync that stalled still runs, and another asked for would join it:
-    // it stops, and a new one takes its place.
-    if (isStalled) {
+    // A sync that stalled, or runs while the node is silent, would be joined
+    // by another asked for: it stops, and a new one takes its place.
+    if (isStalled || (isSilent && syncStatus.isInProgress)) {
       walletStore.abortSync();
     }
 
     // The balances and the stake shown are read again once it's done.
     void walletStore.refreshBalance();
+
+    // A node that answers again is said to at once.
+    ask();
   }
 
   /**
@@ -174,6 +273,12 @@
   }}
 />
 
+<svelte:document
+  on:visibilitychange={() => {
+    isShown = document.visibilityState !== "hidden";
+  }}
+/>
+
 <div
   class="network-pill"
   use:handlePageClick={{
@@ -208,7 +313,14 @@
     ></span>
     <span class="network-pill__name">{label}</span>
     {#if problem}
-      <span aria-hidden="true" class="network-pill__problem">{problem}</span>
+      <span aria-hidden="true" class="network-pill__problem">
+        {#if problem === stateText}
+          {problem}
+        {:else}
+          <span class="network-pill__word">{problem}</span>
+          <span class="network-pill__reason">{stateText}</span>
+        {/if}
+      </span>
     {/if}
     <Icon className="network-pill__chevron" path={mdiChevronDown} />
   </button>
@@ -295,6 +407,24 @@
 
   .network-pill__problem {
     color: var(--calm-danger);
+  }
+
+  /*
+   * Why, from 1024 px, where the bar has room for it beside the profile's
+   * pill; below, the word, and the panel says why.
+   */
+  .network-pill__word {
+    display: none;
+  }
+
+  @media (max-width: 63.99rem) {
+    .network-pill__word {
+      display: inline;
+    }
+
+    .network-pill__reason {
+      display: none;
+    }
   }
 
   /*
