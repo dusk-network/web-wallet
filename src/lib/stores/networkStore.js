@@ -175,8 +175,17 @@ const getBlockHashByHeight = (height) =>
     .then(() => network.query(`block(height: ${height}) { header { hash } }`))
     .then((data) => data?.block?.header?.hash ?? "");
 
-/** @type {NetworkStoreServices["getCurrentBlockHeight"]} */
-const getCurrentBlockHeight = () => network.blockHeight;
+/**
+ * The latest block's height; aborting the signal given stops the request.
+ *
+ * @type {NetworkStoreServices["getCurrentBlockHeight"]}
+ */
+const getCurrentBlockHeight = (signal) =>
+  signal
+    ? network
+        .query("block(height: -1) { header { height } }", { signal })
+        .then((body) => BigInt(body?.block?.header?.height ?? 0))
+    : network.blockHeight;
 
 /**
  * The latest block's height and time: what contract times are counted from.
