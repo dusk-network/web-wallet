@@ -72,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say native staking's yearly rate is estimated, not what it paid lately
 - Say "Can't reach the network" once a sync gets nothing back for 30 seconds, and for the browser's "Failed to fetch", not Syncing forever
 - Say Offline, or Sync failed, in a word beside the network's dot, on a phone too
+- Say "Can't reach the network" within 30 seconds of the node going silent, between syncs too, on the network's pill where there's room
 - Keep "Sync completed!" on a restore until Next, through the syncs after it
 - Go straight to the unlock after the automatic lock, saying it locked after so many minutes away
 - Make See in History and Send back on a request, and Migrate it to Dusk on Home, 44 px tall on a phone

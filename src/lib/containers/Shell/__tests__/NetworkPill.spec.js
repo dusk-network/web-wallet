@@ -10,6 +10,9 @@ const sync = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const abortSync = vi.hoisted(() => vi.fn());
 const refreshBalance = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
+// The node, asked how far its chain got: it answers.
+const askNode = vi.hoisted(() => vi.fn(() => Promise.resolve(1n)));
+
 const pageStore = vi.hoisted(() => ({
   /** @type {import("svelte/store").Writable<any> | null} */
   page: null,
@@ -40,6 +43,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
     networkStore: {
       ...original.networkStore,
       ...readable({ connected: true, networkName: "testnet" }),
+      getCurrentBlockHeight: askNode,
     },
     walletStore: {
       ...original.walletStore,
@@ -173,6 +177,58 @@ describe("NetworkPill", () => {
         getByRole("button", { name: "Network: Testnet, in sync" })
       ).toBeInTheDocument();
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says it can't reach the network once the node answered nothing for 30 seconds, between syncs too, and why on the pill, without a tap", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const { container, getByRole } = render(NetworkPill);
+      const pill = () => container.querySelector(".network-pill__button");
+
+      // In sync, the node answering.
+      await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, in sync" })
+      ).toBeInTheDocument();
+
+      // From here it answers nothing, and the wallet's next sync, 20 seconds
+      // on, gets nothing back either.
+      askNode.mockImplementation(() => new Promise(() => {}));
+      await act(() => vi.advanceTimersByTimeAsync(20_000));
+      await setSync({ isInProgress: true, progress: 0 });
+      await act(() => vi.advanceTimersByTimeAsync(9_000));
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, syncing" })
+      ).toBeInTheDocument();
+
+      await act(() => vi.advanceTimersByTimeAsync(1_000));
+
+      expect(
+        getByRole("button", {
+          name: "Network: Testnet, can't reach the network",
+        })
+      ).toBeInTheDocument();
+      // Offline in a word on a phone; why where there's room.
+      expect(pill()).toHaveTextContent(
+        "Testnet Offline Can't reach the network"
+      );
+
+      // It answers again, and the sync gets through: in sync by its next ask.
+      askNode.mockImplementation(() => Promise.resolve(1n));
+      await setSync({ isInProgress: false, progress: 1 });
+      await act(() => vi.advanceTimersByTimeAsync(15_000));
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, in sync" })
+      ).toBeInTheDocument();
+      expect(pill()).toHaveTextContent(/^Testnet$/);
+    } finally {
+      askNode.mockImplementation(() => Promise.resolve(1n));
       vi.useRealTimers();
     }
   });

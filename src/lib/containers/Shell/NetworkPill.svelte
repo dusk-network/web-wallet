@@ -46,7 +46,69 @@
     }
   }
 
-  onDestroy(() => clearTimeout(stallTimer));
+  /**
+   * How often the node is asked how far its chain got, while the page shows
+   * and the browser is online: between syncs, which can be minutes apart,
+   * nothing else would find it silent.
+   */
+  const ASK_EVERY = 15_000;
+
+  /** Whether the node answered nothing for STALL_MS, sync or not. */
+  let isSilent = false;
+
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let silenceTimer;
+
+  /** @type {ReturnType<typeof setInterval> | undefined} */
+  let askTimer;
+
+  /** The node answered: the wait starts again. */
+  function heard() {
+    clearTimeout(silenceTimer);
+    isSilent = false;
+    silenceTimer = setTimeout(() => {
+      isSilent = true;
+    }, STALL_MS);
+  }
+
+  function ask() {
+    networkStore.getCurrentBlockHeight().then(
+      () => {
+        // An answer that comes once it stopped asking starts nothing.
+        if (askTimer !== undefined) {
+          heard();
+        }
+      },
+      () => {}
+    );
+  }
+
+  /**
+   * Asks the node every ASK_EVERY, and starts waiting from now, or stops.
+   *
+   * @param {boolean} isAsking
+   */
+  function watchNode(isAsking) {
+    clearInterval(askTimer);
+    clearTimeout(silenceTimer);
+    askTimer = undefined;
+    isSilent = false;
+
+    if (isAsking) {
+      askTimer = setInterval(ask, ASK_EVERY);
+      heard();
+      ask();
+    }
+  }
+
+  /** Whether the page shows. */
+  let isShown =
+    typeof document !== "undefined" && document.visibilityState !== "hidden";
+
+  onDestroy(() => {
+    clearTimeout(stallTimer);
+    watchNode(false);
+  });
 
   /**
    * Whether a sync failed as the network couldn't be reached, as the browser
@@ -67,10 +129,11 @@
     syncStatus.from,
     syncStatus.last
   );
+  $: watchNode(isShown && !isOffline);
   $: label = networkLabel(networkName);
   $: state = isOffline
     ? "offline"
-    : isStalled || isUnreachable(syncStatus.error)
+    : isStalled || isSilent || isUnreachable(syncStatus.error)
       ? "unreachable"
       : syncStatus.error
         ? "error"
@@ -104,6 +167,9 @@
 
     // The balances and the stake shown are read again once it's done.
     void walletStore.refreshBalance();
+
+    // A node that answers again is said to at once.
+    ask();
   }
 
   /**
@@ -174,6 +240,12 @@
   }}
 />
 
+<svelte:document
+  on:visibilitychange={() => {
+    isShown = document.visibilityState !== "hidden";
+  }}
+/>
+
 <div
   class="network-pill"
   use:handlePageClick={{
@@ -208,7 +280,14 @@
     ></span>
     <span class="network-pill__name">{label}</span>
     {#if problem}
-      <span aria-hidden="true" class="network-pill__problem">{problem}</span>
+      <span aria-hidden="true" class="network-pill__problem">
+        {#if problem === stateText}
+          {problem}
+        {:else}
+          <span class="network-pill__word">{problem}</span>
+          <span class="network-pill__reason">{stateText}</span>
+        {/if}
+      </span>
     {/if}
     <Icon className="network-pill__chevron" path={mdiChevronDown} />
   </button>
@@ -297,6 +376,11 @@
     color: var(--calm-danger);
   }
 
+  /* Why, where there's room for it; a phone has the word, and its panel why. */
+  .network-pill__word {
+    display: none;
+  }
+
   /*
    * Phones: no chevron, as the profile's pill; below 420 px the dot alone,
    * where the profile's pill needs the room, with the network's name still
@@ -309,6 +393,14 @@
     }
 
     .network-pill__button :global(.network-pill__chevron) {
+      display: none;
+    }
+
+    .network-pill__word {
+      display: inline;
+    }
+
+    .network-pill__reason {
       display: none;
     }
   }
