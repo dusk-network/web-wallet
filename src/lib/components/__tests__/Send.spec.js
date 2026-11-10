@@ -1954,6 +1954,11 @@ describe("Send", () => {
       expect(getByRole("heading", { name: /Review/ })).toHaveFocus();
 
       await afterConfirmDelay();
+
+      const scrolled = vi
+        .spyOn(window, "scrollTo")
+        .mockImplementation(() => {});
+
       await fireEvent.click(fields.send());
       await vi.advanceTimersToNextTimerAsync();
 
@@ -1964,6 +1969,10 @@ describe("Send", () => {
         gasPrice,
         gasLimit
       );
+      // The result from its top, where its state and the offer to be told
+      // when it arrives are, wherever the review was scrolled to.
+      expect(scrolled).toHaveBeenLastCalledWith(0, 0);
+      scrolled.mockRestore();
 
       const explorerLink = getByRole("link", { name: /explorer/i });
 

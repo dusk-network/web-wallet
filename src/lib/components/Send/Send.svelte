@@ -842,6 +842,8 @@
       what: `${hideBalances ? BALANCE_MASK : amountText} DUSK to ${recipientLabel}`,
     };
     step = "done";
+    // From its top, as the review shows: a phone on its side shows little.
+    window.scrollTo(0, 0);
     reviewHistory.settle(operation, () => {
       canTryAgain = true;
       draft.keep(typed);
