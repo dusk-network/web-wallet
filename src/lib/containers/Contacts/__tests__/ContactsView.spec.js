@@ -23,6 +23,7 @@ import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { shortenAddress } from "$lib/dusk/string";
 import { openTestContacts } from "$lib/test-helpers";
 
+import { shortAddress } from "$lib/activity/present";
 import { ContactsView } from "..";
 import ContactForm from "../ContactForm.svelte";
 
@@ -252,6 +253,36 @@ describe("ContactsView", () => {
     });
 
     expect(names()).toEqual(["Alice's shop"]);
+  });
+
+  it("marks a contact whose name looks like another's with its address, and finds both by the name", async () => {
+    // A Cyrillic а, at another address.
+    saveContact({ address: OTHER, name: "Alice's sh\u043Ep" });
+
+    const { container, getByRole } = show({ contacts: get(contactsStore) });
+    const marks = () =>
+      Array.from(
+        container.querySelectorAll(".contacts__alike"),
+        (mark) => mark.textContent
+      );
+
+    expect(marks()).toEqual(
+      expect.arrayContaining([
+        `${shortAddress(ACCOUNT)} · name looks like another`,
+        `${shortAddress(OTHER)} · name looks like another`,
+      ])
+    );
+
+    await fireEvent.input(getByRole("searchbox", { name: "Search contacts" }), {
+      target: { value: "shop" },
+    });
+
+    expect(
+      Array.from(
+        container.querySelectorAll(".contacts__name"),
+        (name) => name.textContent
+      )
+    ).toEqual(["Alice's shop", "Alice's sh\u043Ep"]);
   });
 
   it("closes a contact with Escape, wherever the focus is in it, and gives the focus back to its row", async () => {

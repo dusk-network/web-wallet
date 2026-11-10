@@ -7,6 +7,7 @@
 
 import { ProfileGenerator } from "@dusk/w3sper";
 import { amountsMeant } from "@dusk-network/app-core/amounts";
+import { nameSkeleton } from "@dusk-network/app-core/names";
 import { searchKey } from "@dusk-network/app-core/text";
 import { labelFor, networks } from "@dusk-network/networks";
 import { asDuskName, isDuskName } from "@duskdomains/sdk/names";
@@ -68,6 +69,37 @@ export const GROUP_LIMIT = 5;
  * @param {string} needle As `searchKey` makes it
  */
 const has = (haystack, needle) => searchKey(haystack).includes(needle);
+
+/**
+ * A text by what it looks like, as app-core's `nameSkeleton` has it, for a
+ * search: whatever its case and accents.
+ *
+ * @param {string} text
+ */
+const lookKey = (text) => searchKey(nameSkeleton(text.toLowerCase()));
+
+/**
+ * Whether a name holds what's typed, or looks as if it did, in letters of
+ * another script, as "Estudio Mаrta" with a Cyrillic а for "marta": a name
+ * marked as looking like another is found with it.
+ *
+ * @param {string} name
+ * @param {string} query As it's typed
+ */
+export const nameHas = (name, query) =>
+  has(name, searchKey(query)) ||
+  (searchKey(query).length >= 3 && lookKey(name).includes(lookKey(query)));
+
+/**
+ * Whether a contact is what's typed: by its name, as it looks too, its
+ * `.dusk` name or its address.
+ *
+ * @param {Contact} contact
+ * @param {string} query As it's typed
+ */
+export const contactHas = (contact, query) =>
+  nameHas(contact.name, query) ||
+  has(`${contact.duskName ?? ""} ${contact.address}`, searchKey(query));
 
 /**
  * What a row is known by besides its hash: its memo, and the labels of its
@@ -169,9 +201,7 @@ export function transactionsFound(
 
   const amounts = amountsMeant(query, locale);
   const foundPeople = new Set(
-    contacts
-      .filter((c) => has(`${c.name} ${c.duskName ?? ""} ${c.address}`, q))
-      .map(({ address }) => address)
+    contacts.filter((c) => contactHas(c, query)).map(({ address }) => address)
   );
 
   /** @param {ActivityRow} row */
@@ -268,9 +298,7 @@ export function searchLocally(
       }))
   );
 
-  const foundContacts = contacts.filter((c) =>
-    has(`${c.name} ${c.duskName ?? ""} ${c.address}`, q)
-  );
+  const foundContacts = contacts.filter((c) => contactHas(c, query));
 
   add(
     foundContacts.map((contact) => ({
@@ -280,6 +308,10 @@ export function searchLocally(
       href: `/dashboard/contacts?contact=${encodeURIComponent(contact.id)}`,
       id: `contact:${contact.id}`,
       label: contactNameText(contact.name),
+      // Told apart from the one it looks like, by its address.
+      sub: alike.has(contact.address)
+        ? `${shortAddress(contact.address)} · name looks like another`
+        : undefined,
     }))
   );
 

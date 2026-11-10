@@ -3408,6 +3408,50 @@ describe("Send", () => {
       }
     });
 
+    it("should mark a contact whose name looks like another's where it's named once picked, to the review and the Sent screen", async () => {
+      saveContact({ address: otherAccount, name: "Alice" });
+
+      // A Cyrillic А.
+      const lookAlike = saveContact({
+        address: nameAccount,
+        name: "\u0410lice",
+      });
+      const { container, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.change(
+        getByRole("combobox", { name: "Send to a contact" }),
+        { target: { value: lookAlike.id } }
+      );
+
+      expect(
+        getAsHTMLElement(container, ".send__card-title")
+      ).toHaveTextContent("\u0410lice · name looks like another");
+      expect(getSummary(container)[1]).toStrictEqual([
+        "To",
+        `\u0410lice Name looks like another ${shortenAddress(nameAccount)}`,
+      ]);
+
+      await fireEvent.input(fields.amount(), { target: { value: "0.001" } });
+      await fireEvent.click(fields.review());
+
+      expect(
+        getAsHTMLElement(container, ".send__summary-alike")
+      ).toHaveTextContent("Name looks like another");
+
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: /^Send/ }));
+
+      // What went to whom: by its address too.
+      await vi.waitFor(() =>
+        expect(
+          container.querySelector(".transaction-status__what")
+        ).toHaveTextContent(
+          `0.001 DUSK to \u0410lice (${shortenAddress(nameAccount)})`
+        )
+      );
+    });
+
     it("should show a contact's name saved with what can't be seen in it by its codes, and refuse one now", async () => {
       // Saved before such names were refused: it reads as "Profile 2".
       saveContact({ address: otherAccount, name: "\u202E2 eliforP" });

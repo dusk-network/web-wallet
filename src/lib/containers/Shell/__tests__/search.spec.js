@@ -471,6 +471,58 @@ describe("searchLocally with contacts", () => {
   });
 });
 
+describe("searchLocally with contacts whose names look alike", () => {
+  it("finds a contact named in letters of another script with the one it looks like, each marked with its address, and the payments of both", () => {
+    /** @type {Contact} */
+    const marta = {
+      address: ALICE,
+      createdAt: 1,
+      id: "marta",
+      name: "Estudio Marta",
+      type: "account",
+      updatedAt: 1,
+    };
+    // A Cyrillic а, at the other address.
+    const twin = {
+      ...marta,
+      address: OWN,
+      id: "twin",
+      name: "Estudio M\u0430rta",
+    };
+    const found = searchLocally("Marta", {
+      ...index,
+      alike: new Set([ALICE, OWN]),
+      contacts: [marta, twin],
+      history: [
+        ...index.history,
+        rowOf({
+          amount: "12000000000",
+          direction: "in",
+          from: OWN,
+          hash: "f7".repeat(32),
+          status: "executed",
+        }),
+      ],
+    });
+
+    expect(found.filter(({ group }) => group === "Contacts")).toEqual([
+      expect.objectContaining({
+        label: "Estudio Marta",
+        sub: `${shortAddress(ALICE)} · name looks like another`,
+      }),
+      expect.objectContaining({
+        label: "Estudio M\u0430rta",
+        sub: `${shortAddress(OWN)} · name looks like another`,
+      }),
+    ]);
+    expect(
+      found
+        .filter(({ group }) => group === "Transactions")
+        .map(({ detail }) => detail)
+    ).toEqual(expect.arrayContaining(["+0.5 DUSK", "+12 DUSK"]));
+  });
+});
+
 describe("lookupKind", () => {
   it("tells what a query can be looked up as on the network", () => {
     expect(lookupKind("alise.dusk")).toBe("name");

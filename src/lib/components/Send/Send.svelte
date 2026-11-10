@@ -1224,11 +1224,14 @@
   $: fromLabel =
     ownAccounts.find((account) => account.address === from)?.label ??
     (isShielded ? "Your shielded balance" : "Your public account");
-  // Who the transfer goes to, as the Done screen says it.
+  // Who the transfer goes to, as the Done screen says it: a contact whose
+  // name looks like another's with its address.
   $: recipientLabel = contact
     ? recipientName
       ? `${contactNameText(contact.name)} (${shownName})`
-      : contactNameText(contact.name)
+      : isAlike
+        ? `${contactNameText(contact.name)} (${shortenAddress(recipientAddress)})`
+        : contactNameText(contact.name)
     : own && !recipientName
       ? ownLabel.replace(/^Your/, "your")
       : recipientName
@@ -1266,6 +1269,10 @@
     contacts.find(
       (saved) => recipientAddress && saved.address === recipientAddress
     ) ?? nameContact;
+
+  // Whether its name looks like another's: said wherever it's named, to the
+  // review, as where it's picked.
+  $: isAlike = Boolean(contact && alike.has(contact));
 
   // The address the contact's name points to now, of the kind the contact
   // keeps: null until the lookup has said.
@@ -1685,7 +1692,7 @@
               {#if contact}
                 {contactNameText(contact.name)}{recipientName
                   ? ` · ${shownName}`
-                  : ""}
+                  : ""}{isAlike ? " · name looks like another" : ""}
               {:else if own && !recipientName}
                 {ownLabel}
               {:else if recipientName}
@@ -2007,6 +2014,11 @@
                         ? shownName
                         : walletAccount}</span
                 >
+                {#if isAlike}
+                  <span class="send__summary-alike"
+                    >Name looks like another</span
+                  >
+                {/if}
               {/if}
               <!-- The review is the last it shows of it before it goes. -->
               {#if step === "review"}
@@ -2505,6 +2517,12 @@
 
   .send__summary-name {
     overflow-wrap: anywhere;
+  }
+
+  /* As the picker and History mark it. */
+  .send__summary-alike {
+    color: var(--calm-pending);
+    font-size: 0.8125rem;
   }
 
   .send__summary-code {
