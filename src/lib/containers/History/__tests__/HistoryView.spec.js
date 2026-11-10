@@ -70,6 +70,25 @@ const state = {
   syncing: false,
 };
 
+/** The profile's whole history, as Export reads it. */
+const history = vi.hoisted(() => ({ whole: vi.fn() }));
+
+vi.mock("$lib/stores", async (importOriginal) => {
+  /** @type {typeof import("$lib/stores")} */
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    walletStore: {
+      ...original.walletStore,
+      startHistory: () => ({
+        sozuFacts: async () => new Map(),
+        whole: history.whole,
+      }),
+    },
+  };
+});
+
 /** What runs as a navigation ends. */
 const navigation = vi.hoisted(() => ({
   /** @type {Array<() => void>} */
@@ -141,6 +160,57 @@ describe("HistoryView", () => {
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
+  });
+
+  it("should show staking rewards by year for the profile shown only: none of the one before once another is, nor any read for it that comes after", async () => {
+    const other = { address: "other-account", label: "Profile 2" };
+    const own = { address: ACCOUNT, label: "Profile 1" };
+    const whole = {
+      rows: [
+        row("c1".repeat(32), WINTER, {
+          amount: "2000000000",
+          direction: "in",
+          kind: "withdraw_reward",
+        }),
+      ],
+      shieldedWaiting: false,
+    };
+    const { container, getByRole, rerender } = render(HistoryView, {
+      account: own,
+      locale: "en",
+      state,
+    });
+    const years = () => container.querySelector(".export-panel__years");
+
+    history.whole.mockResolvedValue(whole);
+    await fireEvent.click(getByRole("button", { name: "Export" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show staking rewards by year" })
+    );
+    await vi.waitFor(() => expect(years()).toHaveTextContent("2 DUSK"));
+
+    await rerender({ account: other });
+
+    expect(years()).toBeNull();
+
+    // Asked for Profile 2, then Profile 1 is shown before it's read.
+    /** @type {PromiseWithResolvers<typeof whole>} */
+    const late = Promise.withResolvers();
+
+    history.whole.mockReturnValueOnce(late.promise);
+    await fireEvent.click(
+      getByRole("button", { name: "Show staking rewards by year" })
+    );
+    await rerender({ account: own });
+    late.resolve(whole);
+    await vi.waitFor(() =>
+      expect(
+        getByRole("button", { name: "Show staking rewards by year" })
+      ).toBeEnabled()
+    );
+
+    expect(years()).toBeNull();
+    history.whole.mockReset();
   });
 
   it("should close the details on Escape, and give the focus back to their row", async () => {

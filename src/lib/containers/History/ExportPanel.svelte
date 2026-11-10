@@ -20,9 +20,10 @@
     readRewardsByYear,
     savedWords,
   } from "$lib/activity/accountantExport";
+  import { BalanceValue } from "$lib/components";
   import { contactNamesOf, contactsStore } from "$lib/contacts";
   import { Button, Select, Textbox } from "$lib/dusk/components";
-  import { createCurrencyFormatter, formatDuskExact } from "$lib/dusk/currency";
+  import { formatDuskExact } from "$lib/dusk/currency";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     isValidEvmAddress,
@@ -64,8 +65,12 @@
   /** @type {"" | "file" | "rewards"} */
   let busyWith = "";
 
-  /** Staking rewards by calendar year, once asked for. */
-  /** @type {Awaited<ReturnType<typeof readRewardsByYear>> | null} */
+  /**
+   * Staking rewards by calendar year, once asked for, and the account they're
+   * of.
+   *
+   * @type {(Awaited<ReturnType<typeof readRewardsByYear>> & { of: string }) | null}
+   */
   let rewards = null;
 
   /** EVM addresses of the person's, added for this file. */
@@ -180,7 +185,10 @@
     problem = "";
     busyWith = "rewards";
 
+    const of = account?.address ?? "";
     const stillOpen = walletStore.whileOpen();
+    // Another profile shown since: what's read isn't its.
+    const isShown = () => of === (account?.address ?? "");
 
     try {
       const read = await readRewardsByYear({
@@ -193,49 +201,66 @@
       });
 
       stillOpen();
-      rewards = read;
+
+      if (isShown()) {
+        rewards = { ...read, of };
+      }
     } catch (error) {
-      problem =
-        error instanceof WalletChangedError
-          ? "The wallet changed while this was read. Try again."
-          : /** @type {Error} */ (error).message;
+      if (isShown()) {
+        problem =
+          error instanceof WalletChangedError
+            ? "The wallet changed while this was read. Try again."
+            : /** @type {Error} */ (error).message;
+      }
     } finally {
       busyWith = "";
     }
   }
 
   /**
-   * A year's rewards, in DUSK and what they were worth, where asked.
+   * A year's rewards in DUSK, what they were worth where that's asked, and
+   * how many of them have no value.
    *
    * @param {import("@dusk-network/app-core/export").RewardsSum} sum
    * @param {string | null} valued The currency they're valued in
+   * @returns {{ dusk: string, note: string, value: string | null }}
    */
-  function rewardText({ lux, unpriced, worth }, valued) {
-    const dusk = `${formatDuskExact(lux, $settingsStore.language)} DUSK`;
+  function rewardParts({ lux, unpriced, worth }, valued) {
+    const dusk = formatDuskExact(lux, $settingsStore.language);
 
     if (!valued || worth === null) {
-      return dusk;
-    }
-
-    const money = createCurrencyFormatter($settingsStore.language, valued, 2);
-    // What a cent can't show, as under one.
-    const value =
-      Number(worth) > 0 && Number(worth) < 0.01
-        ? `under ${money(0.01)}`
-        : money(Number(worth));
-
-    if (!unpriced) {
-      return `${dusk} · ${value}`;
+      return { dusk, note: "", value: null };
     }
 
     const { one } = currencyWords(valued);
 
-    return Number(worth)
-      ? `${dusk} · ${value}, ${unpriced} with no ${one} value`
-      : `${dusk} · no ${one} value`;
+    if (unpriced && !Number(worth)) {
+      return { dusk, note: ` · no ${one} value`, value: null };
+    }
+
+    const money = new Intl.NumberFormat($settingsStore.language || undefined, {
+      currency: valued,
+      style: "currency",
+    });
+    // The least it shows, a cent or a yen: less than that, as under it.
+    const least = 10 ** -(money.resolvedOptions().maximumFractionDigits ?? 2);
+    const amount = Number(worth);
+
+    return {
+      dusk,
+      note: unpriced ? `, ${unpriced} with no ${one} value` : "",
+      value:
+        amount > 0 && amount < least
+          ? `under ${money.format(least)}`
+          : money.format(amount),
+    };
   }
 
   $: isBusy = busyWith !== "";
+  // Another profile shown: none of the one before's.
+  $: if (rewards && rewards.of !== (account?.address ?? "")) {
+    rewards = null;
+  }
   // As the wallet's amounts are, in Settings' currency.
   $: currency = exportCurrency($settingsStore.currency, navigator.language);
   // Where DUSK could come over from another chain, the gas it took there
@@ -370,14 +395,28 @@
           </thead>
           <tbody>
             {#each rewards.years as { claimed, sozu, year } (year)}
+              {@const native = rewardParts(claimed, rewards.currency)}
+              {@const fromSozu = sozu && rewardParts(sozu, rewards.currency)}
               <tr>
                 <th scope="row">{year}</th>
-                <td>{rewardText(claimed, rewards.currency)}</td>
-                <td
-                  >{sozu
-                    ? rewardText(sozu, rewards.currency)
-                    : "Couldn't be read"}</td
-                >
+                <td>
+                  <BalanceValue value={native.dusk} /> DUSK{native.value
+                    ? " · "
+                    : ""}{#if native.value}<BalanceValue
+                      value={native.value}
+                    />{/if}{native.note}
+                </td>
+                <td>
+                  {#if fromSozu}
+                    <BalanceValue value={fromSozu.dusk} /> DUSK{fromSozu.value
+                      ? " · "
+                      : ""}{#if fromSozu.value}<BalanceValue
+                        value={fromSozu.value}
+                      />{/if}{fromSozu.note}
+                  {:else}
+                    Couldn't be read
+                  {/if}
+                </td>
               </tr>
             {/each}
           </tbody>

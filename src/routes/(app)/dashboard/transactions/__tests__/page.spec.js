@@ -895,6 +895,40 @@ describe("History", () => {
         // The panel stays, with no file.
         expect(names).toStrictEqual([]);
         expect(getByRole("button", { name: "Save CSV" })).toBeEnabled();
+
+        // Hidden with the balances, in DUSK and in euros alike.
+        settingsStore.update((store) => ({ ...store, hideBalances: true }));
+        await vi.waitFor(() =>
+          expect(years()).toStrictEqual([
+            [
+              `${year - 1}`,
+              "•••• hidden DUSK · no euro value",
+              "•••• hidden DUSK · •••• hidden",
+            ],
+            [
+              `${year}`,
+              "•••• hidden DUSK · •••• hidden",
+              "•••• hidden DUSK · •••• hidden",
+            ],
+          ])
+        );
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+
+        // In a currency without cents, what's worth less than its least
+        // shows as under that.
+        settingsStore.update((store) => ({ ...store, currency: "JPY" }));
+        await vi.waitFor(() =>
+          getByRole("checkbox", { name: /in Japanese yen/ })
+        );
+        await fireEvent.click(
+          getByRole("button", { name: "Show staking rewards by year" })
+        );
+        await vi.waitFor(() =>
+          expect(years()).toStrictEqual([
+            [`${year - 1}`, "1 DUSK · no Japanese yen value", "0 DUSK · ¥0"],
+            [`${year}`, "2 DUSK · ¥1", "0.525 DUSK · under ¥1"],
+          ])
+        );
       } finally {
         mocks.sozuFacts.mockImplementation(() => Promise.resolve(new Map()));
         settingsStore.reset();
