@@ -10,6 +10,7 @@
 
   import { currentActivity } from "$lib/activity";
   import { timeLabel } from "$lib/activity/present";
+  import { transferEnded } from "$lib/bridge/arrivalNotice";
   import { formatDuskExact, formatFee } from "$lib/dusk/currency";
   import {
     AnchorButton,
@@ -17,10 +18,12 @@
     ErrorDetails,
     Icon,
   } from "$lib/dusk/components";
+  import { goto } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
   import { followTransaction } from "$lib/transactions";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
+  import ArrivalNotice from "../Bridge/ArrivalNotice.svelte";
   import WithdrawalHash from "../EvmTransactions/WithdrawalHash.svelte";
   import MemoText from "../MemoText/MemoText.svelte";
 
@@ -68,6 +71,12 @@
   export let extra = [];
 
   /**
+   * Whether it offers to say when it arrives, as a transfer to someone:
+   * once a block takes it, whoever isn't looking is told.
+   */
+  export let tellArrival = false;
+
+  /**
    * Pending until the block with the transaction is final, or late
    * once the wallet stops following it.
    *
@@ -99,6 +108,26 @@
     pending: { icon: mdiTimerSand, title: "Sending…" },
   };
 
+  /**
+   * Says it arrived, or didn't, to whoever isn't looking, as a transfer on
+   * the Bridge does.
+   *
+   * @param {"completed" | "failed"} ended
+   */
+  function tellEnd(ended) {
+    if (tellArrival) {
+      const href = `/dashboard/transactions?tx=${hash}`;
+
+      transferEnded({
+        href,
+        id: `send:${hash}`,
+        onOpen: () => goto(href),
+        title:
+          ended === "completed" ? `Arrived: ${what}` : "It didn't go through",
+      });
+    }
+  }
+
   function follow() {
     controller?.abort();
     controller = new AbortController();
@@ -114,6 +143,7 @@
           outcome = inBlock;
           outcomeAt = Date.now();
           status = inBlock.error ? "failed" : "completed";
+          tellEnd(status);
         }
       },
       signal,
@@ -126,6 +156,10 @@
 
         // It's final, so History and the balances can say so as this does.
         if (result) {
+          if (status === "pending") {
+            tellEnd(result.error ? "failed" : "completed");
+          }
+
           outcome = result;
           outcomeAt = Date.now();
           status = result.error ? "failed" : "completed";
@@ -190,6 +224,9 @@
       <p>It didn't go through. The network fee was charged.</p>
     {/if}
   </div>
+  {#if tellArrival && hash && status === "pending"}
+    <ArrivalNotice />
+  {/if}
   {#if hash}
     <dl class="transaction-status__details">
       {#if memo}

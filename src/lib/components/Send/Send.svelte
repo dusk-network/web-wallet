@@ -1422,6 +1422,7 @@
     memo={sent.memo}
     onRetry={tryAgain}
     operation={sent.operation}
+    tellArrival
     what={sent.what}
   />
 {:else}

@@ -42,6 +42,9 @@
   /** Whether the history can show the transaction. */
   export let hasHistory = isHistoryEnabled();
 
+  /** Whether it offers to say when it arrives, as a transfer to someone. */
+  export let tellArrival = false;
+
   /**
    * Goes back to the review, for a send that failed with nothing sent: Try
    * again shows only then, never where it may have gone out.
@@ -143,6 +146,7 @@
       {maxFee}
       {memo}
       {onFinal}
+      {tellArrival}
       {unconfirmed}
       {what}
     />

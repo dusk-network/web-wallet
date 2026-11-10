@@ -1982,6 +1982,8 @@ describe("Send", () => {
       );
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
+      // And to be told when it arrives, as a transfer on the Bridge offers.
+      expect(getByText(/when it arrives/)).toBeInTheDocument();
     });
 
     it("should review a transfer before it sends it, and go back to the form", async () => {

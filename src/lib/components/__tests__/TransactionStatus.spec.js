@@ -147,6 +147,49 @@ describe("TransactionStatus", () => {
     expect(getByRole("status")).not.toHaveTextContent("Still pending");
   });
 
+  it("should offer to say when a transfer arrives while it's being sent, and tell whoever isn't looking once a block takes it", async () => {
+    const { arrivalTitle, forgetArrivalTitle } =
+      await import("$lib/bridge/arrivalNotice");
+    const { get } = await import("svelte/store");
+
+    followNext();
+
+    const { container } = render(TransactionStatus, {
+      ...baseProps,
+      tellArrival: true,
+      what: "0.02 DUSK to Lucas",
+    });
+
+    expect(container.querySelector(".arrival-notice")).toHaveTextContent(
+      "when it arrives"
+    );
+
+    // Away from the page as a block takes it: its title says so.
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+
+    followTransaction.mock.lastCall?.[1].onBlock({
+      blockHeight: 4_820_416n,
+      error: null,
+      fee: 1_854_795n,
+      timestamp: 1,
+    });
+
+    await vi.waitFor(() =>
+      expect(get(arrivalTitle)).toBe("Arrived: 0.02 DUSK to Lucas")
+    );
+    expect(container.querySelector(".arrival-notice")).toBeNull();
+    hasFocus.mockRestore();
+    forgetArrivalTitle();
+    cleanup();
+
+    // Not offered where it's no transfer to someone, as a stake.
+    followNext();
+
+    const stake = render(TransactionStatus, baseProps);
+
+    expect(stake.container.querySelector(".arrival-notice")).toBeNull();
+  });
+
   it("should hide the fee with the balances, before the block and after", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
