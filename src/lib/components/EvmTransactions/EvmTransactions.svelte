@@ -298,11 +298,18 @@
       ({ address }) => address
     );
 
-    if (!net || !owners.length || approvalsRead.of === of) {
+    if (approvalsRead.of === of) {
       return;
     }
 
+    // Others' now, or no one's: what was read, or is still being read, for
+    // the ones before goes.
     approvalsRead = { approvals: [], of };
+
+    if (!net || !owners.length) {
+      return;
+    }
+
     void readMigrationApprovals(net, owners).then((approvals) => {
       if (approvalsRead.of === of) {
         approvalsRead = { approvals, of };

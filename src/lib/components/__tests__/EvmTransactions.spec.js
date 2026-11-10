@@ -730,6 +730,62 @@ describe("EvmTransactions", () => {
     (await import("$lib/bridge/migrationActivity")).hydrateMigrations();
   });
 
+  it("drops the approvals of an EVM wallet that disconnects, those read and those still being read, where it was the one known", async () => {
+    const owner = `0x${"44".repeat(20)}`;
+    const unused = {
+      allowance: 2_500_000_000n,
+      at: Date.UTC(2026, 9, 1, 12),
+      block: 8,
+      chain: "BNB Smart Chain",
+      coin: "BNB",
+      contract: `0x${"cc".repeat(20)}`,
+      decimals: 18,
+      gasWei: 46_194_000_739_104n,
+      hash: `0x${"a3".repeat(32)}`,
+      owner,
+      route: "bsc-to-dusk",
+      state: "unused",
+    };
+    const rows = () =>
+      Array.from(document.querySelectorAll(".bridge-row__title"), (title) =>
+        title.textContent?.trim()
+      ).filter((title) => title?.startsWith("Approval"));
+
+    setNodeNetwork(networks.mainnet);
+    evmReads.readMigrationApprovals.mockResolvedValueOnce([unused]);
+    mocks.setAccount({ address: owner, addresses: [owner], isConnected: true });
+
+    render(EvmTransactions, { target: document.body });
+
+    await vi.waitFor(() =>
+      expect(rows()).toStrictEqual(["Approval, never used"])
+    );
+
+    mocks.setAccount({ address: undefined, isConnected: false });
+
+    await vi.waitFor(() => expect(rows()).toStrictEqual([]));
+
+    // Disconnected while they're read: what comes back is no one's here.
+    /** @type {PromiseWithResolvers<any[]>} */
+    const late = Promise.withResolvers();
+
+    evmReads.readMigrationApprovals.mockReturnValueOnce(late.promise);
+    mocks.setAccount({ address: owner, addresses: [owner], isConnected: true });
+    await vi.waitFor(() =>
+      expect(evmReads.readMigrationApprovals).toHaveBeenCalledTimes(2)
+    );
+    mocks.setAccount({ address: undefined, isConnected: false });
+    late.resolve([unused]);
+    await late.promise;
+    await tick();
+
+    expect(rows()).toStrictEqual([]);
+    evmReads.readMigrationApprovals.mockReset();
+    evmReads.readMigrationApprovals.mockResolvedValue([]);
+    mocks.setAccount({ address: undefined, isConnected: false });
+    setNodeNetwork(null);
+  });
+
   it("reads nothing of DuskEVM, nor says it can't, on a network without it as an EVM wallet connects", async () => {
     setNodeNetwork(networks.mainnet);
     mocks.finalizationConfig = {
