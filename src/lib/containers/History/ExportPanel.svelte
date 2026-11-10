@@ -217,11 +217,12 @@
       return dusk;
     }
 
-    const value = createCurrencyFormatter(
-      $settingsStore.language,
-      valued,
-      2
-    )(Number(worth));
+    const money = createCurrencyFormatter($settingsStore.language, valued, 2);
+    // What a cent can't show, as under one.
+    const value =
+      Number(worth) > 0 && Number(worth) < 0.01
+        ? `under ${money(0.01)}`
+        : money(Number(worth));
 
     if (!unpriced) {
       return `${dusk} · ${value}`;
@@ -346,49 +347,52 @@
     text={busyWith === "file" ? "Reading your history…" : "Save CSV"}
     variant="primary"
   />
-  {#if rewards}
-    {#if rewards.years.length}
-      <table class="export-panel__years">
-        <caption>Staking rewards by year</caption>
-        <thead>
-          <tr>
-            <th scope="col">Year</th>
-            <th scope="col">Native staking, claimed</th>
-            <th scope="col">Sozu, taken out</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each rewards.years as { claimed, sozu, year } (year)}
+  <div class="export-panel__rewards">
+    <Button
+      disabled={isBusy}
+      on:click={showRewards}
+      size="small"
+      text={busyWith === "rewards"
+        ? "Reading your history…"
+        : "Show staking rewards by year"}
+      variant="secondary"
+    />
+    {#if rewards}
+      {#if rewards.years.length}
+        <table class="export-panel__years">
+          <caption>Staking rewards by year</caption>
+          <thead>
             <tr>
-              <th scope="row">{year}</th>
-              <td>{rewardText(claimed, rewards.currency)}</td>
-              <td
-                >{sozu
-                  ? rewardText(sozu, rewards.currency)
-                  : "Couldn't be read"}</td
-              >
+              <th scope="col">Year</th>
+              <th scope="col">Native staking, claimed</th>
+              <th scope="col">Sozu, taken out</th>
             </tr>
-          {/each}
-        </tbody>
-      </table>
-    {:else}
-      <p class="export-panel__note">No staking rewards yet.</p>
+          </thead>
+          <tbody>
+            {#each rewards.years as { claimed, sozu, year } (year)}
+              <tr>
+                <th scope="row">{year}</th>
+                <td>{rewardText(claimed, rewards.currency)}</td>
+                <td
+                  >{sozu
+                    ? rewardText(sozu, rewards.currency)
+                    : "Couldn't be read"}</td
+                >
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {:else}
+        <p class="export-panel__note">No staking rewards yet.</p>
+      {/if}
+      {#if rewards.shieldedWaiting}
+        <p class="export-panel__note">
+          Your shielded activity is still syncing: show them again once it's
+          done.
+        </p>
+      {/if}
     {/if}
-    {#if rewards.shieldedWaiting}
-      <p class="export-panel__note">
-        Your shielded activity is still syncing: show them again once it's done.
-      </p>
-    {/if}
-  {/if}
-  <Button
-    disabled={isBusy}
-    on:click={showRewards}
-    size="small"
-    text={busyWith === "rewards"
-      ? "Reading your history…"
-      : "Show staking rewards by year"}
-    variant="secondary"
-  />
+  </div>
 </section>
 
 <style lang="postcss">
@@ -452,7 +456,15 @@
     font-size: 0.875rem;
   }
 
+  .export-panel__rewards {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
   .export-panel__years {
+    align-self: stretch;
     border-collapse: collapse;
     font-size: 0.875rem;
     line-height: 1.4;
