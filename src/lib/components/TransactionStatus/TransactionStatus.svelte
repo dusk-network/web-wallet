@@ -106,20 +106,34 @@
     const { signal } = controller;
 
     status = "pending";
-    followTransaction(/** @type {string} */ (hash), { signal })
+    followTransaction(/** @type {string} */ (hash), {
+      // Sent, or failed, as soon as a block took it: its block is final a
+      // block or so later.
+      onBlock: (inBlock) => {
+        if (!signal.aborted && status === "pending") {
+          outcome = inBlock;
+          outcomeAt = Date.now();
+          status = inBlock.error ? "failed" : "completed";
+        }
+      },
+      signal,
+    })
       .catch(() => null)
       .then((result) => {
-        if (!signal.aborted) {
+        if (signal.aborted) {
+          return;
+        }
+
+        // It's final, so History and the balances can say so as this does.
+        if (result) {
           outcome = result;
           outcomeAt = Date.now();
-          status = result ? (result.error ? "failed" : "completed") : "late";
-
-          // It's final, so History and the balances can say so as this does.
-          if (result) {
-            void currentActivity()?.refresh();
-            void walletStore.refreshBalance();
-            onFinal(result, /** @type {string} */ (hash));
-          }
+          status = result.error ? "failed" : "completed";
+          void currentActivity()?.refresh();
+          void walletStore.refreshBalance();
+          onFinal(result, /** @type {string} */ (hash));
+        } else if (status === "pending") {
+          status = "late";
         }
       });
   }
