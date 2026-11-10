@@ -16,7 +16,10 @@ import {
 import { get } from "svelte/store";
 
 import { keptMigrations } from "$lib/bridge/migrationActivity";
-import { readMigrationsEvm } from "$lib/bridge/migrationEvm";
+import {
+  readMigrationApprovals,
+  readMigrationsEvm,
+} from "$lib/bridge/migrationEvm";
 import { currencies } from "$lib/dusk/currency";
 
 import { duskPrices } from "./duskPrice";
@@ -173,7 +176,8 @@ export function periodChoices(now = new Date()) {
  * migration's gas on its own chain is the person's cost only where it was
  * sent from an EVM address of theirs: one connected now (`evmConnected`), or
  * one this browser sent a migration from. Anyone can migrate to an account,
- * as a customer to a shop's.
+ * as a customer to a shop's. So are those addresses' approvals and revokes
+ * there that no migration spent.
  *
  * @param {{
  *   choices: ExportChoices,
@@ -231,12 +235,20 @@ export async function makeExport({
     net && migrations.length
       ? await readMigrationsEvm(net, migrations)
       : undefined;
+  const evmAddresses = [...evmConnected, ...kept.map(({ sender }) => sender)];
+  // And what the person's approvals and revokes there paid, that no
+  // migration's lines have.
+  const sentThere =
+    net && evmAddresses.length
+      ? await readMigrationApprovals(net, evmAddresses)
+      : undefined;
   const made = await accountingCsv({
+    approvals: sentThere,
     bom: choices.excel,
     contactName: choices.withContacts ? contactName : undefined,
     currency,
     evm,
-    evmAddresses: [...evmConnected, ...kept.map(({ sender }) => sender)],
+    evmAddresses,
     facts,
     network,
     period,

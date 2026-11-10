@@ -50,13 +50,17 @@ vi.mock("$app/stores", async () => {
   return { page: stores.page };
 });
 
-// What each migration did on its own chain, as its chain says it.
+// What each migration did on its own chain, and the approvals sent there,
+// as its chain says them.
 const migrationEvm = vi.hoisted(() => ({
+  /** @type {import("vitest").Mock<(...args: any[]) => Promise<any[]>>} */
+  approvals: vi.fn(async () => []),
   /** @type {import("vitest").Mock<(...args: any[]) => Promise<Map<string, any>>>} */
   read: vi.fn(async () => new Map()),
 }));
 
 vi.mock("$lib/bridge/migrationEvm", () => ({
+  readMigrationApprovals: migrationEvm.approvals,
   readMigrationsEvm: migrationEvm.read,
 }));
 
@@ -570,7 +574,7 @@ describe("History", () => {
       expect(await blobs[1].text()).toContain("Alice Rent");
     });
 
-    it("says which EVM addresses it has migrations' network fees from, and takes one added for the file", async () => {
+    it("says which EVM addresses it has migrations' network fees from, and takes one added for the file, with its approvals no migration spent", async () => {
       const ADDED = "0x90fe2f14bbdd4bbb68ad0ce1a7b6c1b4d6bf4b39";
       const MIGRATION = `0x${"a7".repeat(32)}`;
       const BSC = /** @type {any} */ (
@@ -620,6 +624,22 @@ describe("History", () => {
             ],
           ])
       );
+      migrationEvm.approvals.mockImplementation(async () => [
+        {
+          allowance: 9_000_000_000n,
+          at: NOW - 3_600_000,
+          block: 9,
+          chain: "BNB Smart Chain",
+          coin: "BNB",
+          contract: BSC.contract ?? `0x${"cc".repeat(20)}`,
+          decimals: 18,
+          gasWei: 46_194_000_739_104n,
+          hash: `0x${"a8".repeat(32)}`,
+          owner: ADDED,
+          route: "bsc-to-dusk",
+          state: "unused",
+        },
+      ]);
 
       try {
         const { getByRole, getByText } = await openExport();
@@ -635,6 +655,7 @@ describe("History", () => {
         await fireEvent.click(getByRole("button", { name: "Save CSV" }));
 
         expect(await fees()).toStrictEqual([]);
+        expect(migrationEvm.approvals).not.toHaveBeenCalled();
 
         // Added for the file: what it isn't is said, what it is is listed.
         await fireEvent.click(getByRole("button", { name: "Export" }));
@@ -667,11 +688,19 @@ describe("History", () => {
 
         expect(await fees()).toEqual([
           expect.stringContaining(
+            "Network fee on BNB Smart Chain: approval for a migration to Dusk, never used"
+          ),
+          expect.stringContaining(
             "Network fee on BNB Smart Chain: migration of 5 BEP20 DUSK to Dusk"
           ),
         ]);
+        expect(migrationEvm.approvals).toHaveBeenCalledWith(networks.mainnet, [
+          ADDED,
+        ]);
       } finally {
         setNodeNetwork(null);
+        migrationEvm.approvals.mockReset();
+        migrationEvm.approvals.mockResolvedValue([]);
         migrationEvm.read.mockReset();
       }
     });

@@ -33,7 +33,7 @@ import { claimDateOf } from "./withdrawalPresentation";
  *   hash: string,
  *   id: string,
  *   item: any,
- *   kind: "deposit" | "migration" | "service" | "withdrawal",
+ *   kind: "approval" | "deposit" | "migration" | "service" | "withdrawal",
  *   line: string,
  *   state: "" | "Failed" | "Pending",
  *   title: string,
@@ -402,6 +402,8 @@ export function ledgerOf({ item, kind }, { evm = {}, locale, rows, steps }) {
     (hash && rows.find((row) => row.hash === hash)) || null;
 
   switch (kind) {
+    case "approval":
+      return item.ledger;
     case "deposit":
       return transferLedger({
         failed: item.stage === "failed",
@@ -537,6 +539,59 @@ export function routeTransferRow(transfer, options) {
     title: `${name(route.origin)} to ${name(route.destination)}`,
     to: route.destination,
     when: transfer.at ?? transfer.paidAt ?? 0,
+  };
+}
+
+/** What an approval no migration spent did, as its row says it. */
+const APPROVAL_TITLES = Object.freeze({
+  open: "Approval, not used yet",
+  revoke: "Approval revoked",
+  uncertain: "Approval for a migration",
+  unused: "Approval, never used",
+});
+
+/**
+ * An approval or a revoke of a migration's contract on its own chain, as a
+ * row of its own, with the gas it paid there: none for one a migration spent,
+ * whose row has its gas.
+ *
+ * @param {import("@dusk-network/app-core/bridge").MigrationApproval} approval
+ * @param {{ locale: string, route: import("$lib/bridge/cardRoutes").CardRoute }} options
+ * @returns {BridgeActivityRow | null}
+ */
+export function approvalRow(approval, { locale, route }) {
+  if (approval.state === "spent") {
+    return null;
+  }
+
+  const ledger = transferLedger({ gasWei: approval.gasWei, locale, route });
+  const on = `gas on ${route.chain.name}`;
+
+  return {
+    action: null,
+    amount: ledger?.gas ? `${ledger.gas.text} ${ledger.gas.coin}` : "",
+    forOther: false,
+    from: route.origin,
+    group: "done",
+    hash: approval.hash,
+    id: `approval:${approval.hash}`,
+    // Its details as a migration's on its chain: when it was sent, and its
+    // transaction there.
+    item: {
+      at: approval.at,
+      hash: approval.hash,
+      kind: "migration",
+      ledger,
+      payout: null,
+      recipient: "",
+      route,
+    },
+    kind: "approval",
+    line: approval.at ? `Sent ${claimDay(approval.at, locale)} · ${on}` : on,
+    state: "",
+    title: APPROVAL_TITLES[approval.state],
+    to: route.destination,
+    when: approval.at ?? 0,
   };
 }
 

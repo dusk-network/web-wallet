@@ -262,9 +262,11 @@ const tracking = vi.hoisted(() => ({
   followTransfers: vi.fn(async () => {}),
 }));
 
-// What a migration did on its own chain, as the chain says it: nothing read
-// unless a test says.
+// What a migration did on its own chain, and the approvals sent there, as
+// the chain says them: nothing read unless a test says.
 const evmReads = vi.hoisted(() => ({
+  /** @type {import("vitest").Mock<(...args: any[]) => Promise<any[]>>} */
+  readMigrationApprovals: vi.fn(async () => []),
   /** @type {import("vitest").Mock<(...args: any[]) => Promise<Map<string, any>>>} */
   readMigrationsEvm: vi.fn(async () => new Map()),
 }));
@@ -602,7 +604,7 @@ describe("EvmTransactions", () => {
     );
   });
 
-  it("opens the migration its link names, one this browser sent to the profile shown, with the gas it and its approval paid on their chain", async () => {
+  it("opens the migration its link names, one this browser sent to the profile shown, with the gas it and its approval paid on their chain, and lists its sender's approvals no migration spent", async () => {
     const { currentProfile } = get(walletStore);
     const APPROVAL = `0x${"ab".repeat(32)}`;
     /** @param {string} hash @param {string} recipient */
@@ -644,6 +646,29 @@ describe("EvmTransactions", () => {
         ],
       ]);
     });
+    /** @param {string} hash @param {string} state @param {number} at */
+    const approval = (hash, state, at) => ({
+      allowance: state === "revoke" ? 0n : 2_500_000_000n,
+      at,
+      block: 8,
+      chain: "BNB Smart Chain",
+      coin: "BNB",
+      contract: `0x${"cc".repeat(20)}`,
+      decimals: 18,
+      gasWei: 46_194_000_739_104n,
+      hash,
+      owner: accountAddress.toLowerCase(),
+      route: "bsc-to-dusk",
+      state,
+    });
+    const day = Date.UTC(2026, 9, 1, 12);
+
+    evmReads.readMigrationApprovals.mockResolvedValue([
+      approval(`0x${"a1".repeat(32)}`, "unused", day),
+      approval(`0x${"a2".repeat(32)}`, "revoke", day + 1000),
+      // The migration's own, whose gas its row has.
+      approval(APPROVAL, "spent", day + 2000),
+    ]);
 
     setNodeNetwork(networks.mainnet);
     localStorage.setItem(
@@ -682,6 +707,23 @@ describe("EvmTransactions", () => {
         route: "bsc-to-dusk",
       },
     ]);
+
+    // The approvals its sender sent there that no migration spent: each a
+    // row of its own, with its gas.
+    for (const title of ["Approval, never used", "Approval revoked"]) {
+      expect(
+        await findByRole("button", {
+          name: `${title} Sent ${claimDay(day, "en")} · gas on BNB Smart Chain 0.000046 BNB`,
+        })
+      ).toBeInTheDocument();
+    }
+    expect(getAllByRole("button", { name: /^Approval/ })).toHaveLength(2);
+    expect(evmReads.readMigrationApprovals).toHaveBeenCalledWith(
+      networks.mainnet,
+      [accountAddress]
+    );
+    evmReads.readMigrationApprovals.mockReset();
+    evmReads.readMigrationApprovals.mockResolvedValue([]);
     evmReads.readMigrationsEvm.mockReset();
     evmReads.readMigrationsEvm.mockResolvedValue(new Map());
     localStorage.clear();

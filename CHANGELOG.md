@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Count the approval a migration spent in its gas under Bridge › Activity, as its chain says, and write both in the accounting export
+- List approvals and revokes no migration spent under Bridge › Activity, with their gas, and write it in the accounting export
 - Give Sozu's yearly rate from how its stDUSK grew over the last 30 days, read on the chain, the same on its form and on Stake
 - Refuse a contact named as one of your profiles, or like one in other letters, and say which contact a name looks like, with its address
 - Refuse a profile name that is, or looks like, another profile's or a contact's, saying whose
