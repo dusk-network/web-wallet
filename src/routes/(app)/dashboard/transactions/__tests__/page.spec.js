@@ -776,6 +776,103 @@ describe("History", () => {
       vi.unstubAllGlobals();
     });
 
+    it("shows staking rewards by year beside the file, in DUSK, and in the wallet's currency where asked, saving nothing", async () => {
+      // Mid-year, whatever the device's time zone: one a year and a half
+      // ago, past CoinGecko's year, and the rest this year.
+      const year = new Date(NOW).getUTCFullYear();
+      const old = Date.UTC(year - 1, 5, 15);
+      const june = Date.UTC(year, 5, 15);
+      const read = rowsOf(
+        [
+          [old, "1000000000", "e1"],
+          [june, "2000000000", "e2"],
+          [june - 90 * 86_400_000, "10000000000", "e3"],
+          [june + 3_600_000, "10500000000", "e4"],
+        ].map(([timestamp, amount, hash], i) => ({
+          amount,
+          blockHeight: 4_000_000 + i,
+          direction: i === 2 ? "out" : "in",
+          hash: String(hash).repeat(32),
+          kind: i < 2 ? "withdraw_reward" : "transfer",
+          status: "executed",
+          timestamp,
+        }))
+      );
+      /** @param {string} hash */
+      const rowOf = (hash) =>
+        /** @type {(typeof read)[number]} */ (
+          read.find((row) => row.hash === hash.repeat(32))
+        );
+      const [stake, unstake] = [rowOf("e3"), rowOf("e4")];
+      const prices = vi.fn(() =>
+        Promise.resolve(new Response(JSON.stringify({ prices: [[june, 0.5]] })))
+      );
+
+      // 10 DUSK into Sozu, 0.025 of it its fee, for 5 stDUSK, all of which
+      // gave back 10.5 DUSK: 0.525 DUSK earned, taken out.
+      mocks.whole.mockResolvedValue({
+        rows: [
+          rowOf("e1"),
+          rowOf("e2"),
+          { ...stake, sozu: "stake" },
+          { ...unstake, sozu: "unstake" },
+        ],
+        shieldedWaiting: false,
+      });
+      mocks.sozuFacts.mockImplementation(() =>
+        Promise.resolve(
+          new Map([
+            [stake.hash, { fee: 25_000_000n, stDusk: 5_000_000_000n }],
+            [unstake.hash, { stDusk: 5_000_000_000n }],
+          ])
+        )
+      );
+      vi.stubGlobal("fetch", prices);
+      settingsStore.update((store) => ({ ...store, currency: "EUR" }));
+
+      try {
+        const { container, getByRole } = await openExport();
+        const years = () =>
+          Array.from(
+            container.querySelectorAll(".export-panel__years tbody tr"),
+            (row) =>
+              Array.from(
+                /** @type {HTMLTableRowElement} */ (row).cells,
+                (cell) => cell.textContent?.trim()
+              )
+          );
+
+        await fireEvent.click(
+          getByRole("button", { name: "Show staking rewards by year" })
+        );
+        await vi.waitFor(() =>
+          expect(years()).toStrictEqual([
+            [`${year - 1}`, "1 DUSK", "0 DUSK"],
+            [`${year}`, "2 DUSK", "0.525 DUSK"],
+          ])
+        );
+        expect(prices).not.toHaveBeenCalled();
+
+        await fireEvent.click(getByRole("checkbox", { name: /in euros/ }));
+        await fireEvent.click(
+          getByRole("button", { name: "Show staking rewards by year" })
+        );
+        await vi.waitFor(() =>
+          expect(years()).toStrictEqual([
+            [`${year - 1}`, "1 DUSK · no euro value", "0 DUSK · €0.00"],
+            [`${year}`, "2 DUSK · €1.00", "0.525 DUSK · €0.26"],
+          ])
+        );
+        // The panel stays, with no file.
+        expect(names).toStrictEqual([]);
+        expect(getByRole("button", { name: "Save CSV" })).toBeEnabled();
+      } finally {
+        mocks.sozuFacts.mockImplementation(() => Promise.resolve(new Map()));
+        settingsStore.reset();
+        vi.unstubAllGlobals();
+      }
+    });
+
     it.each([
       ["US dollars as the wallet's amounts", "USD", "de-DE", "US dollars"],
       [

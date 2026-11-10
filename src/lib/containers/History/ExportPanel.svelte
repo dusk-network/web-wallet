@@ -17,10 +17,12 @@
     otherProfiles,
     periodChoices,
     periodOf,
+    readRewardsByYear,
     savedWords,
   } from "$lib/activity/accountantExport";
   import { contactNamesOf, contactsStore } from "$lib/contacts";
   import { Button, Select, Textbox } from "$lib/dusk/components";
+  import { createCurrencyFormatter, formatDuskExact } from "$lib/dusk/currency";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     isValidEvmAddress,
@@ -56,8 +58,15 @@
   let withContacts = false;
   let fiat = false;
   let excel = false;
-  let isBusy = false;
   let problem = "";
+
+  /** What's being read: the file, or the rewards by year. */
+  /** @type {"" | "file" | "rewards"} */
+  let busyWith = "";
+
+  /** Staking rewards by calendar year, once asked for. */
+  /** @type {Awaited<ReturnType<typeof readRewardsByYear>> | null} */
+  let rewards = null;
 
   /** EVM addresses of the person's, added for this file. */
   /** @type {string[]} */
@@ -116,7 +125,7 @@
       return;
     }
 
-    isBusy = true;
+    busyWith = "file";
 
     // The file is of what's open as it begins: with anything else open once
     // it's read, there's none.
@@ -159,10 +168,73 @@
           ? "The wallet changed while this was read, so nothing was saved. Export again."
           : /** @type {Error} */ (error).message;
     } finally {
-      isBusy = false;
+      busyWith = "";
     }
   }
 
+  async function showRewards() {
+    if (isBusy) {
+      return;
+    }
+
+    problem = "";
+    busyWith = "rewards";
+
+    const stillOpen = walletStore.whileOpen();
+
+    try {
+      const read = await readRewardsByYear({
+        currency,
+        fiat,
+        session:
+          /** @type {NonNullable<ReturnType<typeof walletStore.startHistory>>} */ (
+            walletStore.startHistory()
+          ),
+      });
+
+      stillOpen();
+      rewards = read;
+    } catch (error) {
+      problem =
+        error instanceof WalletChangedError
+          ? "The wallet changed while this was read. Try again."
+          : /** @type {Error} */ (error).message;
+    } finally {
+      busyWith = "";
+    }
+  }
+
+  /**
+   * A year's rewards, in DUSK and what they were worth, where asked.
+   *
+   * @param {import("@dusk-network/app-core/export").RewardsSum} sum
+   * @param {string | null} valued The currency they're valued in
+   */
+  function rewardText({ lux, unpriced, worth }, valued) {
+    const dusk = `${formatDuskExact(lux, $settingsStore.language)} DUSK`;
+
+    if (!valued || worth === null) {
+      return dusk;
+    }
+
+    const value = createCurrencyFormatter(
+      $settingsStore.language,
+      valued,
+      2
+    )(Number(worth));
+
+    if (!unpriced) {
+      return `${dusk} · ${value}`;
+    }
+
+    const { one } = currencyWords(valued);
+
+    return Number(worth)
+      ? `${dusk} · ${value}, ${unpriced} with no ${one} value`
+      : `${dusk} · no ${one} value`;
+  }
+
+  $: isBusy = busyWith !== "";
   // As the wallet's amounts are, in Settings' currency.
   $: currency = exportCurrency($settingsStore.currency, navigator.language);
   // Where DUSK could come over from another chain, the gas it took there
@@ -271,8 +343,51 @@
   <Button
     disabled={isBusy}
     on:click={save}
-    text={isBusy ? "Reading your history…" : "Save CSV"}
+    text={busyWith === "file" ? "Reading your history…" : "Save CSV"}
     variant="primary"
+  />
+  {#if rewards}
+    {#if rewards.years.length}
+      <table class="export-panel__years">
+        <caption>Staking rewards by year</caption>
+        <thead>
+          <tr>
+            <th scope="col">Year</th>
+            <th scope="col">Native staking, claimed</th>
+            <th scope="col">Sozu, taken out</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each rewards.years as { claimed, sozu, year } (year)}
+            <tr>
+              <th scope="row">{year}</th>
+              <td>{rewardText(claimed, rewards.currency)}</td>
+              <td
+                >{sozu
+                  ? rewardText(sozu, rewards.currency)
+                  : "Couldn't be read"}</td
+              >
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {:else}
+      <p class="export-panel__note">No staking rewards yet.</p>
+    {/if}
+    {#if rewards.shieldedWaiting}
+      <p class="export-panel__note">
+        Your shielded activity is still syncing: show them again once it's done.
+      </p>
+    {/if}
+  {/if}
+  <Button
+    disabled={isBusy}
+    on:click={showRewards}
+    size="small"
+    text={busyWith === "rewards"
+      ? "Reading your history…"
+      : "Show staking rewards by year"}
+    variant="secondary"
   />
 </section>
 
@@ -335,5 +450,30 @@
   .export-panel__error {
     color: var(--calm-danger);
     font-size: 0.875rem;
+  }
+
+  .export-panel__years {
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    text-align: left;
+
+    & caption {
+      margin-bottom: 0.375rem;
+      font-weight: 500;
+      text-align: left;
+    }
+
+    & th,
+    & td {
+      padding: 0.375rem 0.75rem 0.375rem 0;
+      border-top: 1px solid var(--calm-line);
+      vertical-align: top;
+    }
+
+    & thead th {
+      color: var(--calm-muted);
+      font-weight: 400;
+    }
   }
 </style>

@@ -10,6 +10,7 @@ import {
   accountingCsv,
   datesPeriod,
   quarterPeriod,
+  rewardsByYear,
 } from "@dusk-network/app-core/export";
 
 import { get } from "svelte/store";
@@ -246,6 +247,38 @@ export async function makeExport({
   });
 
   return { ...made, currency, shieldedWaiting: whole.shieldedWaiting };
+}
+
+/**
+ * Staking rewards by calendar year, from the account's whole history, as the
+ * file has them: native staking's claimed, and what Sozu's unstakes took out
+ * beyond what their stDUSK cost, in DUSK, and in `currency` where `fiat` asks,
+ * from CoinGecko's prices. Throws what to say when it can't be read.
+ *
+ * @param {{
+ *   currency: string,
+ *   fiat: boolean,
+ *   session: Pick<import("./activitySession").ActivitySession, "sozuFacts" | "whole">,
+ * }} asked
+ */
+export async function readRewardsByYear({ currency, fiat, session }) {
+  const whole = await session.whole().catch(() => {
+    throw new Error(
+      "Couldn't read your whole history from this node. Try again."
+    );
+  });
+  const facts = await session.sozuFacts(whole.rows).catch(() => undefined);
+  const years = await rewardsByYear({
+    facts,
+    price: fiat ? duskPrices({ currency }) : undefined,
+    rows: whole.rows,
+  });
+
+  return {
+    currency: fiat ? currency : null,
+    shieldedWaiting: whole.shieldedWaiting,
+    years,
+  };
 }
 
 /**

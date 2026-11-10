@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offer to tell when a send arrives on its Sent screen, as the Bridge's do
 - Offer a request for another network on that network's wallet, before an unlock and on Send
 - Say which EVM addresses the export has the network fees of migrations from, and add one for the file
+- Show staking rewards by calendar year beside History's export, native and Sozu's, in DUSK and in the wallet's currency where asked
 
 ### Changed
 
