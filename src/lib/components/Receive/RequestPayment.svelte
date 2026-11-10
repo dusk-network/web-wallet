@@ -8,6 +8,7 @@
    * which opens the web wallet's Send, filled in.
    */
   import { mdiChevronDown } from "@mdi/js";
+  import { displayText } from "@dusk-network/app-core/text";
 
   import { CopyButton, Icon, Textbox } from "$lib/dusk/components";
   import { formatDusk } from "$lib/dusk/currency";
@@ -16,6 +17,8 @@
   import { makeRequestLink } from "$lib/payment-requests";
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
+
+  import MemoText from "../MemoText/MemoText.svelte";
 
   /** The account or shielded address that's paid. */
   /** @type {string} */
@@ -60,6 +63,15 @@
         }
       : null;
   $: draft.save({ amount, memo });
+  // What the field may not show as it is, as a payer's wallet shows it: a
+  // hidden character, as one that turns the text around, or a number that
+  // can read as another.
+  $: memoShown = displayText(memo);
+  $: isMemoFlagged =
+    memoShown.neutralized ||
+    memoShown.flags.some(
+      (flag) => flag === "mixed_digits" || flag === "rtl_digits"
+    );
 </script>
 
 <details bind:open={isOpen} class="request">
@@ -111,6 +123,10 @@
       {#if made.problems.memo}
         <p class="request__error" id="{id}-memo-error" role="alert">
           {made.problems.memo}
+        </p>
+      {:else if isMemoFlagged}
+        <p class="request__flag" role="status">
+          <MemoText text={memo} />
         </p>
       {/if}
     </div>
@@ -183,6 +199,11 @@
     :global(.request__copy) {
       width: 100%;
     }
+  }
+
+  .request__flag {
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
   }
 
   .request__field {

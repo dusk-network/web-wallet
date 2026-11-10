@@ -290,6 +290,28 @@ describe("Receive", () => {
       );
     });
 
+    it("should show a memo with a hidden character as a payer's wallet will, with its codes, before its link is copied", async () => {
+      render(Receive);
+      await vi.runAllTimersAsync();
+      await openRequest();
+      await type("Memo (optional)", "r20 \u202Eqer");
+      await vi.runAllTimersAsync();
+
+      // The field draws it turned around: under it, it's said as it is.
+      const flag = /** @type {HTMLElement} */ (
+        screen.getByText("r20 \\u202eqer").closest(".request__flag")
+      );
+
+      expect(flag).toHaveTextContent(
+        "It has hidden characters, shown here as codes."
+      );
+
+      await type("Memo (optional)", "Factura 33");
+      await vi.runAllTimersAsync();
+
+      expect(document.querySelector(".request__flag")).toBeNull();
+    });
+
     it("should ask for the shielded address on its tab", async () => {
       render(Receive);
       await vi.runAllTimersAsync();
