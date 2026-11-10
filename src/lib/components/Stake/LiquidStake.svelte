@@ -94,7 +94,9 @@
    * What the rate is made of: native staking's, about what it pays a year, and
    * what the node says of what's staked.
    *
-   * @type {{ growth?: import("@dusk-network/app-core/sozu").SozuGrowth | null, native?: number | null, provisioners?: any[] | null, tipHeight?: bigint | null }}
+   * @type {{ growth?: import("@dusk-network/app-core/sozu").SozuGrowth | null, native?: number | null, nativeRewards?: import("@dusk-network/app-core/sozu").NativeRewards | null, provisioners?: any[] | null, tipHeight?: bigint | null }}
+   *   `nativeRewards` what native staking paid over its last days, as
+   *   measured: `native` its rate
    */
   export let rates = {};
 
@@ -574,6 +576,7 @@
   $: working = sozuRateLine({
     growth: rates.growth,
     locale: englishWords(language),
+    native: rates.nativeRewards,
     nativeRate: rates.native,
     provisioners: rates.provisioners,
     status,

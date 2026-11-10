@@ -80,13 +80,21 @@
   export let blockHeight = undefined;
 
   /**
-   * About what native staking pays a year across the network, as a fraction,
-   * estimated from what a block mints and what's staked now, not measured:
-   * null or undefined while it isn't known.
+   * About what native staking pays a year across the network, as a fraction:
+   * measured over `nativeDays`, or else estimated from what a block mints and
+   * what's staked now; null or undefined while it isn't known.
    *
    * @type {number | null | undefined}
    */
   export let nativeRate = undefined;
+
+  /**
+   * Over how many days back native staking's rate was measured: null for one
+   * estimated.
+   *
+   * @type {number | null}
+   */
+  export let nativeDays = null;
 
   /**
    * How Sozu's stDUSK grew lately, as its form has it; null while it isn't
@@ -129,6 +137,9 @@
   // What Sozu pays a year, after its share: how stDUSK grew lately, else from
   // the native figure as it's shown, as its form says it.
   $: sozuRate = sozuRateOf(nativeRate, sozu.status, sozuGrowth);
+  // Over what each was measured: Sozu's by how its stDUSK grew, else as the
+  // native rate it's worked out from.
+  $: sozuDays = sozuGrowth?.days ?? nativeDays;
   // No deposits while Sozu is under maintenance, or while that can't be
   // checked.
   $: sozuMaintenance = sozu.status?.flags?.maintenance;
@@ -360,8 +371,9 @@
           <td data-way="Native staking">
             {#if nativeRate}
               <span class="compare__rate"
-                >About {ratePercent(nativeRate, locale)} a year, estimated across
-                the network. Not promised.</span
+                >About {ratePercent(nativeRate, locale)} a year{nativeDays
+                  ? ` over the last ${nativeDays} days`
+                  : ", estimated across the network"}. Not promised.</span
               >
             {/if}
             Start in about 6 to 12 hours
@@ -370,10 +382,10 @@
             <td data-way="Liquid staking (Sozu, third party)">
               {#if sozuRate && fees}
                 <span class="compare__rate"
-                  >About {ratePercent(sozuRate, locale)} a year after Sozu's {feePercent(
-                    fees.reward,
-                    locale
-                  )}. Not promised.</span
+                  >About {ratePercent(sozuRate, locale)} a year{sozuDays
+                    ? ` over the last ${sozuDays} days,`
+                    : ""} after Sozu's {feePercent(fees.reward, locale)}. Not
+                  promised.</span
                 >
               {/if}
               {#if rate}
