@@ -912,6 +912,39 @@ describe("Send", () => {
       }
     });
 
+    it("keeps the spaces of a name as it's typed, and offers whom it means", async () => {
+      const contact = saveContact({
+        address: otherAccount,
+        name: "Estudio Marta",
+      });
+
+      try {
+        const { getByRole } = render(Send, baseProps);
+        const to = fieldsOf(getByRole).to();
+
+        for (const typed of ["Estudio", "Estudio ", "Estudio M"]) {
+          await fireEvent.input(to, { target: { value: typed } });
+
+          expect(to).toHaveValue(typed);
+          expect(
+            getByRole("button", { name: /^Your contact Estudio Marta/ })
+          ).toBeInTheDocument();
+        }
+
+        // An address pasted with a space in it is still one.
+        await fireEvent.paste(to);
+        await fireEvent.input(to, {
+          target: {
+            value: `${otherAccount.slice(0, 60)} ${otherAccount.slice(60)}`,
+          },
+        });
+
+        expect(to).toHaveValue(otherAccount);
+      } finally {
+        removeContact(contact.id);
+      }
+    });
+
     it("calls a profile with a name by its name, and one without 'your' profile", async () => {
       const ownAccount = otherAccount;
       /** @param {string} label */
@@ -3296,7 +3329,7 @@ describe("Send", () => {
       ).not.toBeInTheDocument();
       expect(queryByText("Not a valid address.")).not.toBeInTheDocument();
 
-      // The field takes out spaces, and a word further in counts too.
+      // A name keeps its spaces, and a word further in counts too.
       await fireEvent.input(fields.to(), { target: { value: "Jan (flour)" } });
       expect(
         getByRole("button", { name: offer("Jan (flour)") })

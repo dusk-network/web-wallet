@@ -88,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say Sent as soon as a block takes a transaction, not a block later once that block is final
 - Show each transaction's memo in the search's results
 - Look further back on Show more in History's search until it finds more, and say when nothing more is found
+- Keep the spaces of a name typed in To, as "Estudio M", taking them out only of an address, a .dusk name or a link
 
 ## [2.0.0] - 2026-11-06
 

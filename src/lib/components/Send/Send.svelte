@@ -1036,10 +1036,29 @@
     isMemoValidForBridge &&
     !isMemoTooLong;
 
+  /**
+   * What's in To, as it's meant without its spaces and line breaks: an
+   * address, a `.dusk` name or a link, which have none. A name typed, as a
+   * contact's or a profile's, keeps them.
+   *
+   * @param {string} text
+   */
+  function withoutSpaces(text) {
+    const joined = text.replace(/\s+/g, "");
+
+    return /[\n\r\t]/.test(text) ||
+      /^(dusk:|https?:\/\/)/i.test(joined) ||
+      isDuskName(joined) ||
+      isValidEvmAddress(joined) ||
+      getAddressInfo(joined, shieldedAddress, publicAddress).isValid
+      ? joined
+      : text;
+  }
+
   // A pasted recipient often brings spaces or line breaks, which no address
   // or name has.
   $: if (/\s/.test(sendToAddress)) {
-    sendToAddress = sendToAddress.replace(/\s+/g, "");
+    sendToAddress = withoutSpaces(sendToAddress);
   }
 
   $: if (!sendToAddress) {
@@ -1098,19 +1117,21 @@
   );
 
   /**
-   * Whether what's typed can mean a name: by its start, or the start of a
-   * word in it. The field takes out spaces, so they aren't compared.
+   * Whether what's typed can mean a name: by its start, with its spaces or
+   * without them, or the start of a word in it.
    *
    * @param {string} name
    * @param {string} typed
    */
   function canMean(name, typed) {
-    const q = typed.toLowerCase();
+    const q = typed.toLowerCase().trim();
     const named = name.toLowerCase();
 
     return (
-      named.replace(/\s/g, "").startsWith(q) ||
-      named.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(q))
+      Boolean(q) &&
+      (named.startsWith(q) ||
+        named.replace(/\s/g, "").startsWith(q.replace(/\s/g, "")) ||
+        named.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(q)))
     );
   }
 
