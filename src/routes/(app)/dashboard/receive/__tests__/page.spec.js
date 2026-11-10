@@ -1073,7 +1073,7 @@ describe("Receive", () => {
       history.state?.set({ hasMore: false, rows: [] });
     });
 
-    it("should say Paid for a request of any amount paid with its memo, of whatever amount, and Paid twice for its memo again", async () => {
+    it("should say what came in, in no colour, for a request of any amount paid with its memo, of whatever amount, and Paid twice for its memo again", async () => {
       const at = Date.now() - 1000;
       const row = (/** @type {Record<string, unknown>} */ fields) => ({
         category: "received",
@@ -1105,9 +1105,14 @@ describe("Receive", () => {
       render(Receive);
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(
-        screen.getByRole("listitem").querySelector(".requests__state")
-      ).toHaveTextContent(/^Paid$/);
+      // Not a plain Paid: how little came in, in the badge, in no colour.
+      const badge = () =>
+        /** @type {HTMLElement} */ (
+          screen.getByRole("listitem").querySelector(".requests__state")
+        );
+
+      expect(badge()).toHaveTextContent(/^0\.000000001 DUSK$/);
+      expect(badge()).not.toHaveClass("requests__state--paid");
       expect(screen.getByRole("listitem")).toHaveTextContent(
         `Its memo matches a payment of 0.000000001 DUSK on ${claimDay(at + 500, "en")}.`
       );
@@ -1131,6 +1136,8 @@ describe("Receive", () => {
       expect(screen.getByRole("listitem")).toHaveTextContent(
         `Its memo matches a payment of ${BALANCE_MASK}`
       );
+      expect(badge()).toHaveTextContent(BALANCE_MASK);
+      expect(badge()).not.toHaveTextContent("0.000000001");
       expect(screen.getByRole("listitem")).not.toHaveTextContent("0.000000001");
       settingsStore.reset();
 

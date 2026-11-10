@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Find a contact whose name looks like what's typed, in letters of another script, in the search and in Contacts
 - Say where a memo's number may not be what it looks like: digits that read right to left, or of more than one kind
 - Refuse a payment link that says a field twice or two amounts, or has a name before its host, and say so before an unlock too
-- Say Paid for a request of any amount paid with its memo, and Paid twice for its memo again
+- Say what came in, in no colour, on a request of any amount paid with its memo, not a plain Paid, and Paid twice for its memo again
 - Show a profile's and a wallet's name whole in the profile menu, a tap from the pill that shortens it
 - Say on a restore that syncing finds the balance and past payments, and which blocks the sync bar goes through
 - Give the fee in DUSK first under Edit, with what "at most" means and the gas written in groups

@@ -378,6 +378,14 @@
                   ? "Paid twice"
                   : `Paid ${again.length + 1} times`}</span
               >
+            {:else if match.state === "paid" && match.anyAmount}
+              <!-- Asked no amount: what came in, however little, not a
+                plain Paid. -->
+              <span class="requests__state"
+                >{#if match.lux === undefined}Paid{:else}<BalanceValue
+                    value={formatDuskExact(match.lux, language)}
+                  /> DUSK{/if}</span
+              >
             {:else}
               <span class="requests__state requests__state--{match.state}"
                 >{STATE_WORDS[match.state]}</span
