@@ -339,6 +339,11 @@ describe("Send", () => {
         httpsLink.replace("network=testnet", "network=mainnet"),
         "This link names two networks, Testnet and Mainnet. Ask for a new one.",
       ],
+      [
+        "its network written dusk:02",
+        httpsLink.replace("network=testnet", "network=dusk:02"),
+        "This link's network can't be read. Ask for a new one.",
+      ],
     ])(
       "should refuse a link with %s, saying why and filling in nothing",
       async (_, link, words) => {

@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Show amounts in euros to start with where the browser's region uses the euro, else in dollars
+- Show amounts to start with in the currency of the browser's region, as Singapore dollars in Singapore, where DUSK has a price in it, else in US dollars
 
 ### Removed
 
@@ -97,6 +97,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say Send back fills in the payment to send back, not that a link did
 - Start a section's head at the content's edge on a phone, as what's under it does
 - Draw an X between two digits in an address as an X, not as the font's ×
+- Write every value in the export to the same 8 decimals
+- Put a contact's own name before its .dusk name in the export
+- Say a link's network can't be read where it's written as dusk:02, not that it names two networks
+- Refuse a dusk: link that says the recipient twice, and read one with a plain address
+- Show a variation selector on no emoji, in a memo or a name, as its code
 - Keep what was typed in a form that moves money through Back, as through the automatic lock, for the next time it opens
 - Show a request's memo with hidden characters, or digits that can misread, under its field as a payer's wallet will
 - Show the offer to be told when a transfer arrives without a scroll on a phone on its side
