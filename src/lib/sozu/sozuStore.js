@@ -2,6 +2,7 @@ import { get, writable } from "svelte/store";
 import { networkStore, walletStore } from "$lib/stores";
 import { followTransaction } from "$lib/transactions";
 import { nodeBaseUrl } from "$lib/url";
+import { currentWalletCache } from "$lib/wallet-cache";
 
 import { sozuContractsFor } from "./config";
 import { readSozuStatus } from "./status";
@@ -11,9 +12,12 @@ import { readSozuStatus } from "./status";
  *   account: string,
  *   available: boolean,
  *   error: Error | null,
+ *   kept: WalletCacheSozuPosition | null,
  *   loading: boolean,
  *   status: SozuStatus | null,
  * }} SozuState
+ *   `kept`: what the account held as read last on this device, before this
+ *   unlock, for what shows while no status is read: unknown isn't nothing.
  */
 
 /** How long a read may take before it counts as failed. */
@@ -30,6 +34,7 @@ const initialState = {
   account: "",
   available: false,
   error: null,
+  kept: null,
   loading: false,
   status: null,
 };
@@ -62,6 +67,48 @@ function mayShow(order) {
   shown = order;
 
   return true;
+}
+
+/**
+ * Keeps what `account` holds, as just read, for the next unlock to show
+ * until it's read again. Only a nice to have: a failure is ignored.
+ *
+ * @param {string} account
+ * @param {SozuStatus} status
+ */
+function keep(account, status) {
+  const position = status?.position;
+
+  if (position) {
+    currentWalletCache()
+      .setSozuPosition(account, {
+        at: Date.now(),
+        balance: position.balance,
+        stDusk: position.stDusk,
+      })
+      .catch(() => {});
+  }
+}
+
+/**
+ * Takes what `account` held as read last here, for it to show until a read
+ * says what it holds now.
+ *
+ * @param {string} account
+ */
+function takeKept(account) {
+  currentWalletCache()
+    .getSozuPosition(account)
+    .then(
+      (kept) => {
+        store.update((state) =>
+          kept && state.account === account && !state.status
+            ? { ...state, kept }
+            : state
+        );
+      },
+      () => {}
+    );
 }
 
 /**
@@ -104,11 +151,19 @@ function read(account, contracts, nodeUrl) {
       }
 
       // One begun after it showed already: it's done, with nothing to show.
-      store.update((state) =>
-        mayShow(order)
-          ? { account, available: true, error: null, loading: false, status }
-          : { ...state, loading: false }
-      );
+      if (mayShow(order)) {
+        store.update((state) => ({
+          account,
+          available: true,
+          error: null,
+          kept: state.kept,
+          loading: false,
+          status,
+        }));
+        keep(account, status);
+      } else {
+        store.update((state) => ({ ...state, loading: false }));
+      }
     },
     (error) => {
       if (isCurrent()) {
@@ -131,10 +186,10 @@ function read(account, contracts, nodeUrl) {
 
 /**
  * What's held with Sozu, read again each time the balances are, for an
- * account whose position shows, and shown with them: Home counts the two
- * together, so what a stake or an unstake moved between them is never
- * counted twice, or not at all. A read that fails, or takes too long, leaves
- * what showed.
+ * account whose position shows, or couldn't be read, and shown with them:
+ * Home counts the two together, so what a stake or an unstake moved between
+ * them is never counted twice, or not at all. A read that fails, or takes too
+ * long, leaves what showed. So a sync tried again reads it again.
  *
  * @param {Profile} profile
  * @returns {Promise<(() => void) | null>}
@@ -144,7 +199,11 @@ async function readAlong(profile) {
   const contracts = sozuContractsFor(get(networkStore).net);
   const showing = get(store);
 
-  if (!contracts || showing.account !== account || !showing.status) {
+  if (
+    !contracts ||
+    showing.account !== account ||
+    (!showing.status && !showing.error)
+  ) {
     return null;
   }
 
@@ -168,6 +227,7 @@ async function readAlong(profile) {
             error: null,
             status,
           }));
+          keep(account, status);
         }
       }
     : null;
@@ -200,13 +260,22 @@ function load({ force = false } = {}) {
     return current.promise;
   }
 
+  const isNew = get(store).account !== account;
+
   store.update((state) => ({
     account,
     available: true,
     error: null,
+    kept: isNew ? null : state.kept,
     loading: true,
-    status: state.account === account ? state.status : null,
+    status: isNew ? null : state.status,
   }));
+
+  // What it held as read last, for what shows until this read answers, or
+  // in its place where it can't be made.
+  if (isNew) {
+    takeKept(account);
+  }
 
   const entry = { key, promise: read(account, contracts, nodeUrl) };
 

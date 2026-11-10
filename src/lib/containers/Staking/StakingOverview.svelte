@@ -68,6 +68,13 @@
   /** @type {() => void} */
   export let onRetryHistory = () => {};
 
+  /** Reads Sozu again, after it couldn't be read. */
+  /** @type {() => void} */
+  export let onRetrySozu = () => {};
+
+  /** Whether the stake couldn't be read: what shows is what was read before. */
+  export let stakeReadFailed = false;
+
   /** The chain's height, once known. */
   /** @type {bigint | undefined} */
   export let blockHeight = undefined;
@@ -110,7 +117,10 @@
     reward: stakeInfo.reward,
     staked,
   });
-  $: position = sozu.status?.position ?? null;
+  // As read now, or else as read last here: what couldn't be read isn't
+  // nothing.
+  $: position = sozu.status?.position ?? sozu.kept ?? null;
+  $: isSozuUnread = sozu.error !== null && !sozu.loading;
   $: hasLiquid =
     position !== null && (position.balance > 0n || position.stDusk > 0n);
   $: rate = duskPerStDusk(sozu.status?.pool ?? null);
@@ -227,10 +237,26 @@
 
       {#if pending}
         <p class="staking__note">A staking transaction is pending.</p>
-      {:else if stale}
+      {:else if stale || stakeReadFailed}
         <p class="staking__note">
           Your stake couldn't be read again. These amounts may be out of date.
         </p>
+      {/if}
+
+      {#if isSozuUnread}
+        <div class="staking__note staking__note--retry">
+          <p>
+            {hasLiquid
+              ? "Your stake with Sozu couldn't be read just now. It may be out of date."
+              : "Your stake with Sozu couldn't be read."}
+          </p>
+          <Button
+            on:click={onRetrySozu}
+            size="small"
+            text="Try again"
+            variant="secondary"
+          />
+        </div>
       {/if}
 
       {#if isMaturing}
@@ -536,6 +562,13 @@
 
   .staking__note {
     font-size: 0.875rem;
+
+    &--retry {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
   }
 
   .staking__main :global(.staking__choose) {

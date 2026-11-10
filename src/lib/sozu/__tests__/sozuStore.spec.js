@@ -149,6 +149,60 @@ describe("sozuStore", () => {
     sozuStore.reset();
   });
 
+  it("should show what was held as read last here while it can't be read, and read it again with the balances", async () => {
+    const { default: sozuStore } = await import("../sozuStore");
+    const { currentWalletCache } = await import("$lib/wallet-cache");
+    const { get } = await import("svelte/store");
+    const read = /** @type {NonNullable<typeof along.read>} */ (along.read);
+
+    sozuStore.reset();
+    await currentWalletCache().setSozuPosition("account-1", {
+      at: 1_762_000_000_000,
+      balance: 2_747_100_000n,
+      stDusk: 864_521_348n,
+    });
+
+    // Unlocked as the node stalls: the read fails, what was read last shows.
+    readSozuStatus.mockRejectedValueOnce(new Error("timed out"));
+    await sozuStore.load();
+
+    await vi.waitFor(() =>
+      expect(get(sozuStore)).toMatchObject({
+        error: expect.any(Error),
+        kept: { balance: 2_747_100_000n, stDusk: 864_521_348n },
+        status: null,
+      })
+    );
+
+    // A sync tried again reads it with the balances, as it reads a position
+    // that shows.
+    readSozuStatus.mockResolvedValueOnce(
+      /** @type {SozuStatus} */ (
+        /** @type {unknown} */ ({
+          contracts: { pool: "a" },
+          position: { balance: 2_747_200_000n, stDusk: 864_521_348n },
+        })
+      )
+    );
+
+    const show = await read({ account: "account-1" });
+
+    show?.();
+
+    expect(get(sozuStore)).toMatchObject({
+      error: null,
+      status: { position: { balance: 2_747_200_000n } },
+    });
+
+    // And it's what the next unlock shows until it's read.
+    await vi.waitFor(() =>
+      expect(
+        currentWalletCache().getSozuPosition("account-1")
+      ).resolves.toMatchObject({ balance: 2_747_200_000n })
+    );
+    sozuStore.reset();
+  });
+
   describe("with a read along the balances and one of its own at once", () => {
     /** @param {bigint} balance */
     const held = (balance) =>

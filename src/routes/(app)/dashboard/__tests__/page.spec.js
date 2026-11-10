@@ -11,6 +11,7 @@ import { networks } from "@dusk-network/networks";
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(() => Promise.resolve()),
+  refreshBalance: vi.fn(() => Promise.resolve()),
 }));
 
 const network = vi.hoisted(() => ({
@@ -38,6 +39,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
     },
     walletStore: {
       ...mockedWalletStore,
+      refreshBalance: mocks.refreshBalance,
       startHistory: () => ({ refresh: mocks.refresh }),
     },
   };
@@ -339,6 +341,101 @@ describe("Dashboard", () => {
 
     expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
       "Nothing staked right now"
+    );
+  });
+
+  it("never says nothing is staked where the stake couldn't be read: what was read last, or that it couldn't be, and Try again reads it again", async () => {
+    const { currentProfile } = initialStore;
+    const card = () =>
+      container
+        .querySelectorAll(".explainer-card")[2]
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+    const total = () =>
+      container.querySelector(".home-balance__amount")?.textContent?.trim();
+    const sozuSays = (/** @type {Record<string, unknown>} */ state) =>
+      act(() =>
+        sozu.store?.set({
+          account: String(currentProfile.account),
+          available: true,
+          error: null,
+          kept: null,
+          loading: false,
+          status: null,
+          ...state,
+        })
+      );
+
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      stakeInfo: { ...initialStore.stakeInfo, amount: null },
+    });
+
+    const { container, getByRole } = render(Dashboard, props);
+
+    // Unlocked as the node stalls: Sozu's read fails, what it held as read
+    // last here shows, counted in the total, and said not to be read now.
+    await sozuSays({
+      error: new Error("timed out"),
+      kept: { at: 1, balance: 2_747_100_000n, stDusk: 864_521_348n },
+    });
+
+    expect(card()).toBe(
+      "Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Your stake couldn't be read just now. This may be out of date. Try again Open staking"
+    );
+    expect(total()).toBe("3,520.2471");
+
+    // Read here never: it couldn't be read, which isn't nothing.
+    await sozuSays({ error: new Error("timed out") });
+
+    expect(card()).toBe(
+      "Staking Your stake couldn't be read Try again Open staking"
+    );
+
+    // Try again reads it again, Sozu's and the native stake both, and says
+    // it's at it until it's done.
+    const done = Promise.withResolvers();
+
+    sozu.load.mockClear();
+    mocks.refreshBalance.mockClear();
+    mocks.refreshBalance.mockReturnValueOnce(done.promise);
+    await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+    expect(sozu.load).toHaveBeenCalledWith({ force: true });
+    expect(mocks.refreshBalance).toHaveBeenCalledOnce();
+    expect(getByRole("button", { name: "Trying again…" })).toBeDisabled();
+
+    await act(() => done.resolve(undefined));
+
+    // Read at last: never anything but what it read.
+    await sozuSays({
+      status: {
+        contracts: {},
+        pool: { stake: 3n, supply: 1n },
+        position: { balance: 2_747_200_000n, stDusk: 864_521_348n },
+      },
+    });
+
+    expect(card()).toBe(
+      "Staking 2.7472 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking"
+    );
+
+    // Being read for the first time, with nothing read before.
+    await sozuSays({ loading: true });
+
+    expect(card()).toBe("Staking Reading your stake… Open staking");
+
+    // The native stake that couldn't be read: the same.
+    await sozuSays({ account: "" });
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      stakeInfo: { ...initialStore.stakeInfo, amount: null },
+      stakeReadFailed: true,
+    });
+    await act(() => {});
+
+    expect(card()).toBe(
+      "Staking Your stake couldn't be read Try again Open staking"
     );
   });
 

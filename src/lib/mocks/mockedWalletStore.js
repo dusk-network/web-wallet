@@ -28,6 +28,7 @@ const content = {
   pendingStakes: [],
   profiles,
   stakeInfo,
+  stakeReadFailed: false,
   syncStatus: {
     error: null,
     from: 0n,

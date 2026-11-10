@@ -529,6 +529,48 @@ describe("Staking", () => {
     );
   });
 
+  it("shows what was held with Sozu as read last where it couldn't be read now, says so, and reads it again on Try again", async () => {
+    withoutStake();
+    await act(() =>
+      sozu.store?.update((s) => ({
+        ...s,
+        error: new Error("timed out"),
+        kept: { at: 1, balance: 2_747_100_000n, stDusk: 864_521_348n },
+      }))
+    );
+
+    const { container, getByRole } = render(Staking);
+    const summary = () => textOf(container.querySelector(".staking__summary"));
+
+    expect(
+      textOf(container.querySelectorAll(".staking__figures > div")[1])
+    ).toBe("With Sozu 2.7471 DUSK 0.8645 stDUSK, rewards included");
+    expect(summary()).toContain(
+      "Your stake with Sozu couldn't be read just now. It may be out of date."
+    );
+
+    sozu.load.mockClear();
+    await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+    expect(sozu.load).toHaveBeenCalledWith({ force: true });
+
+    // Never read here: it couldn't be, which isn't nothing.
+    await act(() => sozu.store?.update((s) => ({ ...s, kept: null })));
+
+    expect(summary()).toContain("Your stake with Sozu couldn't be read.");
+
+    // Nor the native stake.
+    mockedWalletStore.setMockedStoreValue({
+      ...mockedWalletStore.getMockedStoreValue(),
+      stakeReadFailed: true,
+    });
+    await act(() => {});
+
+    expect(summary()).toContain(
+      "Your stake couldn't be read again. These amounts may be out of date."
+    );
+  });
+
   it("says with the native stake, not under Unstake from Sozu, that there's nothing to unstake or claim", async () => {
     withoutStake();
     await act(() =>

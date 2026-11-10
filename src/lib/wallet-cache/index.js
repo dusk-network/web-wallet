@@ -116,6 +116,9 @@ class WalletCache {
           })
       );
 
+    // What each account held with Sozu, as read last.
+    db.version(4).stores({ sozuPositions: "account" });
+
     this.#db = db;
   }
 
@@ -231,6 +234,20 @@ class WalletCache {
     });
   }
 
+  /**
+   * What `account` held with Sozu as read last here, and when: null for
+   * nothing read.
+   *
+   * @param {string} account
+   * @returns {Promise<WalletCacheSozuPosition | null>}
+   */
+  getSozuPosition(account) {
+    return this.#getEntriesFrom("sozuPositions", false, {
+      field: "account",
+      values: [account],
+    }).then(([entry]) => (entry ? entry.position : null));
+  }
+
   /** @returns {Promise<WalletCacheSyncInfo>} */
   getSyncInfo() {
     return this.#getEntriesFrom("syncInfo", false).then(([entry]) =>
@@ -283,6 +300,18 @@ class WalletCache {
     await this.#db
       .table("pendingNotesInfo")
       .bulkAdd(data)
+      .finally(() => this.#db.close({ disableAutoOpen: false }));
+  }
+
+  /**
+   * @param {string} account
+   * @param {WalletCacheSozuPosition} position
+   * @returns {Promise<void>}
+   */
+  async setSozuPosition(account, position) {
+    await this.#db
+      .table("sozuPositions")
+      .put({ account, position })
       .finally(() => this.#db.close({ disableAutoOpen: false }));
   }
 

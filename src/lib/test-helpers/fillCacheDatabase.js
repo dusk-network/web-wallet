@@ -3,6 +3,7 @@ import { getCacheDatabase } from ".";
 import {
   cacheBalances,
   cachePendingNotesInfo,
+  cacheSozuPositions,
   cacheSpentNotes,
   cacheStakeInfo,
   cacheSyncInfo,
@@ -71,6 +72,7 @@ async function fillCacheDatabase() {
       [
         "balancesInfo",
         "pendingNotesInfo",
+        "sozuPositions",
         "spentNotes",
         "stakeInfo",
         "syncInfo",
@@ -81,6 +83,7 @@ async function fillCacheDatabase() {
         await db
           .table("pendingNotesInfo")
           .bulkPut(fixPending(cachePendingNotesInfo));
+        await db.table("sozuPositions").bulkPut(cacheSozuPositions);
         await db.table("spentNotes").bulkPut(fixNotes(cacheSpentNotes));
         await db.table("stakeInfo").bulkPut(fixStakeInfo(cacheStakeInfo));
         await db.table("syncInfo").bulkPut(cacheSyncInfo);

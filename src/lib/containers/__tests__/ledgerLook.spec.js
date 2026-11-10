@@ -189,6 +189,7 @@ describe("The ledger look", () => {
         account: "",
         available: true,
         error: null,
+        kept: null,
         loading: false,
         status: null,
       },

@@ -76,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep "Sync completed!" on a restore until Next, through the syncs after it
 - Go straight to the unlock after the automatic lock, saying it locked after so many minutes away
 - Make See in History and Send back on a request, and Migrate it to Dusk on Home, 44 px tall on a phone
+- Say when a stake couldn't be read, with what was read last on this device, not that nothing is staked, and read it again on Try again
 
 ## [2.0.0] - 2026-11-06
 

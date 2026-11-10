@@ -5,7 +5,7 @@
     mdiEyeOutline,
     mdiLayersOutline,
   } from "@mdi/js";
-  import { Icon } from "$lib/dusk/components";
+  import { Button, Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { addBasePath } from "$lib/navigation";
@@ -40,8 +40,36 @@
 
   export let stakeEnabled = true;
 
+  /**
+   * Whether what's staked couldn't be read, natively or with Sozu: what shows
+   * of it is what was read before, if anything. Unknown isn't nothing.
+   */
+  export let stakeUnread = false;
+
+  /** Whether it's being read, with nothing read before to show meanwhile. */
+  export let stakeReading = false;
+
+  /**
+   * Reads what's staked again.
+   *
+   * @type {() => Promise<unknown> | void}
+   */
+  export let onRetry = () => {};
+
   /** @type {string} */
   export let locale;
+
+  /** Whether a Try again pressed is still reading. */
+  let isRetrying = false;
+
+  function retry() {
+    isRetrying = true;
+    Promise.resolve(onRetry())
+      .catch(() => {})
+      .finally(() => {
+        isRetrying = false;
+      });
+  }
 </script>
 
 <ul aria-label="Your balances" class="explainer-cards">
@@ -113,6 +141,14 @@
         <p class="explainer-card__text">
           Liquid staking through Sozu, a third party.
         </p>
+      {:else if stakeUnread}
+        <p class="explainer-card__value explainer-card__value--text">
+          Your stake couldn't be read
+        </p>
+      {:else if stakeReading}
+        <p class="explainer-card__value explainer-card__value--text">
+          Reading your stake…
+        </p>
       {:else}
         <p class="explainer-card__value explainer-card__value--text">
           Nothing staked right now
@@ -130,6 +166,21 @@
             >Past staking</a
           >
         {/if}
+      {/if}
+      {#if stakeUnread}
+        {#if staked || liquid > 0n}
+          <p class="explainer-card__text">
+            Your stake couldn't be read just now. This may be out of date.
+          </p>
+        {/if}
+        <Button
+          className="explainer-card__retry"
+          disabled={isRetrying}
+          on:click={retry}
+          size="small"
+          text={isRetrying ? "Trying again…" : "Try again"}
+          variant="secondary"
+        />
       {/if}
       <a
         class="explainer-card__link text-link"
@@ -196,6 +247,11 @@
     color: var(--calm-text);
     font-size: 0.8125rem;
     line-height: 1.45;
+  }
+
+  .explainer-card :global(.explainer-card__retry) {
+    align-self: flex-start;
+    margin-top: 0.75rem;
   }
 
   .explainer-card__link {

@@ -109,6 +109,11 @@ type WalletStoreContent = {
   pendingStakes: Array<{ account: string; hash: string; stale?: boolean }>;
   profiles: Array<Profile>;
   stakeInfo: StakeInfo;
+  /**
+   * Whether the stake couldn't be read the last time it was asked for:
+   * `stakeInfo` is then the one read before, or the cached one.
+   */
+  stakeReadFailed: boolean;
   syncStatus: {
     from: bigint;
     isInProgress: boolean;

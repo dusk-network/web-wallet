@@ -399,9 +399,11 @@
           ?.refresh()
           .catch(() => {});
       }}
+      onRetrySozu={() => sozuStore.load({ force: true })}
       {publicBalance}
       sozu={$sozuStore}
       {stakeInfo}
+      stakeReadFailed={$walletStore.stakeReadFailed}
     />
   {/if}
 {/if}

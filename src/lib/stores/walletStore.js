@@ -87,6 +87,7 @@ const initialState = {
     hardFaults: 0,
     reward: 0n,
   },
+  stakeReadFailed: false,
   syncStatus: {
     error: null,
     from: 0n,
@@ -611,6 +612,8 @@ async function updateStaticInfo() {
         ? { balance: balance.value, balanceRead: true }
         : {}),
       ...(stake.status === "fulfilled" ? { stakeInfo: stake.value } : {}),
+      // What shows of a stake that couldn't be read is what was read before.
+      stakeReadFailed: stake.status !== "fulfilled",
     }));
   }
 
@@ -972,7 +975,12 @@ async function setCurrentProfile(profile) {
   // What shows is the other profile's until this one's are read.
   return store.profiles.includes(profile)
     ? Promise.resolve(
-        set({ ...store, balanceRead: false, currentProfile: profile })
+        set({
+          ...store,
+          balanceRead: false,
+          currentProfile: profile,
+          stakeReadFailed: false,
+        })
       ).then(async () => {
         await updateStaticInfo();
       })
