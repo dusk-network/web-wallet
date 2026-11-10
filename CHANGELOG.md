@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Notify on a phone too when a transfer arrives, through the wallet's service worker, while its tab stays open, as its Sent screen says
 - Send back a payment that paid a request again, filled in on Send, from the request
 - Link the footer's version, now with the commit built and no date, to the build's manifest of every file's SHA-256
+- Open a payment request's page in Firefox or in the Dusk app on an Android phone, offered before Create or Restore
+- Offer a request for another network on that network's wallet, before an unlock and on Send
 
 ### Changed
 
@@ -77,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Go straight to the unlock after the automatic lock, saying it locked after so many minutes away
 - Make See in History and Send back on a request, and Migrate it to Dusk on Home, 44 px tall on a phone
 - Say when a stake couldn't be read, with what was read last on this device, not that nothing is staked, and read it again on Try again
+- Say a link's address isn't valid, as one cut short, before an unlock, and refuse it on Send as the link's
 
 ## [2.0.0] - 2026-11-06
 

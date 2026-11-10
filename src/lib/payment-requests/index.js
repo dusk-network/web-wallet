@@ -11,9 +11,16 @@ import {
   decimalSeparator,
 } from "@dusk-network/app-core/amounts";
 import {
+  chainLabel,
   makePaymentLink,
+  parsePaymentLink,
   readPaymentLink as readLink,
 } from "@dusk-network/app-core/payment-links";
+import { networkFor } from "@dusk-network/networks";
+import { isDuskName } from "@duskdomains/sdk/names";
+
+import { isValidEvmAddress } from "$lib/dusk/string";
+import getAddressInfo from "$lib/wallet/getAddressInfo";
 
 export { matchRequests } from "@dusk-network/app-core/requests";
 export {
@@ -41,13 +48,69 @@ export const REQUEST_FIELDS = Object.freeze([
  */
 export const ownWalletUrl = () => `${location.origin}${base}`;
 
+/** What's said of a link whose recipient is no address, as one cut short. */
+export const LINK_BAD_ADDRESS =
+  "This link's address isn't valid. Ask for a new one.";
+
+/**
+ * Whether a link's recipient is no Dusk address, as one cut short on its way:
+ * a `.dusk` name or an EVM address, which Send says more of, aside.
+ *
+ * @param {string} to
+ */
+export const isBrokenAddress = (to) =>
+  !isDuskName(to) &&
+  !isValidEvmAddress(to) &&
+  !getAddressInfo(to, "", "").isValid;
+
+/**
+ * The same request on the web wallet of the network it's for, for a link
+ * that's for another network than this wallet's: null where that network
+ * has none, or the link asks for nothing that can be paid.
+ *
+ * @param {string} text
+ * @returns {{ href: string, network: string } | null}
+ */
+export function elsewhereLink(text) {
+  const link = parsePaymentLink(text.trim(), { walletUrl: ownWalletUrl() });
+  const net = link?.chainId ? networkFor(link.chainId) : null;
+
+  if (!link || !net?.apps?.wallet) {
+    return null;
+  }
+
+  const { https } = makePaymentLink({
+    amountLux: link.lux,
+    label: link.label || null,
+    memo: link.memo || null,
+    network: net,
+    to: link.to,
+  });
+
+  return https ? { href: https, network: chainLabel(link.chainId) } : null;
+}
+
+/**
+ * The page a link opened, in Firefox, where a phone's browser that isn't
+ * hands it over: Android's intent for it, which opens Firefox's store page
+ * where it isn't installed.
+ *
+ * @param {string} href
+ */
+export function inFirefox(href) {
+  const { host, pathname, protocol, search } = new URL(href);
+
+  return `intent://${host}${pathname}${search}#Intent;scheme=${protocol.slice(0, -1)};package=org.mozilla.firefox;end`;
+}
+
 /**
  * What a link asks of Send, as it's pasted, scanned or opened.
  *
- * @typedef {{ amount: string, memo: string, problem: "", to: string }
- *   | { amount: "", memo: "", problem: string, to: "" }} LinkAsked
+ * @typedef {{ amount: string, elsewhere?: null, memo: string, problem: "", to: string }
+ *   | { amount: "", elsewhere?: { href: string, network: string } | null, memo: "", problem: string, to: "" }} LinkAsked
  *   `problem` says why it fills in nothing: it can't be read, it says two
- *   amounts, or it's for another network
+ *   amounts, its address isn't one, or it's for another network, whose web
+ *   wallet takes it (`elsewhere`)
  */
 
 /**
@@ -71,6 +134,12 @@ export function readPaymentLink(text, net, language) {
     return null;
   }
 
+  // Said as the link's: an address cut short is no one to pay, as one
+  // missing.
+  if (read.link && !read.problem && isBrokenAddress(read.link.to)) {
+    return { amount: "", memo: "", problem: LINK_BAD_ADDRESS, to: "" };
+  }
+
   return read.link && !read.problem
     ? {
         amount: amountForField(
@@ -81,7 +150,13 @@ export function readPaymentLink(text, net, language) {
         problem: "",
         to: read.link.to,
       }
-    : { amount: "", memo: "", problem: read.problem, to: "" };
+    : {
+        amount: "",
+        elsewhere: read.reason === "other-network" ? elsewhereLink(text) : null,
+        memo: "",
+        problem: read.problem,
+        to: "",
+      };
 }
 
 /**

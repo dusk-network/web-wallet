@@ -352,19 +352,31 @@ describe("Send", () => {
       }
     );
 
-    it("should say a mainnet wallet's link is for Mainnet, on testnet", async () => {
+    it("should say a mainnet wallet's link is for Mainnet, on testnet, and offer the same request on Mainnet's wallet", async () => {
       const { getByRole, getByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
 
+      // A mainnet account, as a request for Mainnet asks to be paid at.
+      const account = bep20BridgeAddress;
+
       await paste(
         fields,
-        `${networks.mainnet.apps.wallet}/dashboard/send?to=${otherAccount}&amount=0.15&network=mainnet`
+        `${networks.mainnet.apps.wallet}/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`
       );
 
       expect(
         getByText("This request is for Mainnet. You are on Testnet.")
       ).toBeInTheDocument();
       expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(getByRole("link", { name: "Switch to Mainnet" })).toHaveAttribute(
+        "href",
+        `https://apps.dusk.network/wallet/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`
+      );
+
+      // Nothing to switch for once something else is given.
+      await paste(fields, otherAccount);
+
+      expect(() => getByRole("link", { name: "Switch to Mainnet" })).toThrow();
     });
 
     it("should read the amount in the language of the amount field", async () => {
@@ -454,15 +466,27 @@ describe("Send", () => {
       expect(filled(fields)).toStrictEqual(["", "", ""]);
     });
 
-    it("should refuse a link's recipient as it refuses one typed", async () => {
-      const { getByRole, getByText } = render(Send, baseProps);
-      const fields = fieldsOf(getByRole);
+    it.each([
+      ["isn't one", () => `dusk:public-${invalidAddress}?amount=1`],
+      [
+        "was cut short on its way",
+        () => httpsLink.replace(otherAccount, otherAccount.slice(0, -6)),
+      ],
+    ])(
+      "should refuse a link whose address %s, as the link's, filling in nothing",
+      async (_, link) => {
+        const { getByRole, getByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
 
-      await paste(fields, `dusk:public-${invalidAddress}?amount=1`);
+        await paste(fields, link());
 
-      expect(getByText("Not a valid address.")).toBeInTheDocument();
-      expect(fields.review()).toBeDisabled();
-    });
+        expect(
+          getByText("This link's address isn't valid. Ask for a new one.")
+        ).toBeInTheDocument();
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(fields.review()).toBeDisabled();
+      }
+    );
 
     it("should read a link typed out as it's finished, not at each key on the way", async () => {
       const { getByRole } = render(Send, baseProps);

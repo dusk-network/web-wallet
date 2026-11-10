@@ -65,7 +65,7 @@
     randomUUID,
     shortenAddress,
   } from "$lib/dusk/string";
-  import { Button, Icon, Textbox } from "$lib/dusk/components";
+  import { AnchorButton, Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     AppAnchor,
@@ -150,6 +150,14 @@
   export let initialProblem = "";
 
   /**
+   * The web wallet of the network the link the page was opened with is for,
+   * where it's another network's, with the same request.
+   *
+   * @type {{ href: string, network: string } | null}
+   */
+  export let initialElsewhere = null;
+
+  /**
    * Whether the amount the page was opened with is the wallet's own, as a
    * payment that came in sent back: it's hidden with the balances, as Max's.
    */
@@ -209,6 +217,9 @@
 
   /** Why the last link given fills in nothing: another network's, or unreadable. */
   let linkProblem = initialProblem;
+
+  /** Where the last link given can be paid, as another network's. */
+  let linkElsewhere = initialElsewhere;
 
   /** Whether a link filled the form in, until what's in To changes. */
   let isFromLink = Boolean(
@@ -500,6 +511,7 @@
     await tick();
 
     linkProblem = asked?.problem ?? "";
+    linkElsewhere = asked?.elsewhere ?? null;
     sendToAddress = asked ? asked.to : text;
     linkRecipient = sendToAddress;
     isFromLink = Boolean(asked?.amount || asked?.memo);
@@ -1039,6 +1051,10 @@
     linkProblem = "";
   }
 
+  $: if (!linkProblem) {
+    linkElsewhere = null;
+  }
+
   $: if (sendToAddress !== linkRecipient) {
     isFromLink = false;
   }
@@ -1495,6 +1511,15 @@
 
         {#if linkProblem}
           <p class="send__error" role="alert"><strong>{linkProblem}</strong></p>
+          {#if linkElsewhere}
+            <AnchorButton
+              className="send__elsewhere"
+              href={linkElsewhere.href}
+              size="small"
+              text={`Switch to ${linkElsewhere.network}`}
+              variant="secondary"
+            />
+          {/if}
         {:else if isRecipientInvalid}
           <p class="send__error" id={invalidRecipientId} role="alert">
             {#if isValidEvmAddress(sendToAddress)}
@@ -2389,6 +2414,10 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+
+  .send__field :global(.send__elsewhere) {
+    align-self: flex-start;
   }
 
   .send__link {

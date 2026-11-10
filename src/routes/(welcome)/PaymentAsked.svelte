@@ -7,6 +7,7 @@
    * memo, as the link says them. Nothing for a page that isn't a request.
    */
   import {
+    makePaymentLink,
     parsePaymentLink,
     readPaymentLink,
     recipientKind,
@@ -15,12 +16,19 @@
   import { onMount } from "svelte";
 
   import { MemoText } from "$lib/components";
-  import { Button } from "$lib/dusk/components";
+  import { AnchorButton, Button } from "$lib/dusk/components";
   import { getPrimaryName } from "$lib/dusk-domains";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { peekPlace } from "$lib/navigation";
-  import { REQUEST_FIELDS, ownWalletUrl } from "$lib/payment-requests";
+  import {
+    LINK_BAD_ADDRESS,
+    REQUEST_FIELDS,
+    elsewhereLink,
+    inFirefox,
+    isBrokenAddress,
+    ownWalletUrl,
+  } from "$lib/payment-requests";
   import {
     findLinkTaker,
     openInExtension,
@@ -32,6 +40,18 @@
   /** What to do to pay it, as "Unlock to pay it." */
   /** @type {string} */
   export let next;
+
+  /**
+   * Whether it offers to pay it from a wallet elsewhere on this phone first:
+   * Firefox's, or the Dusk app.
+   */
+  export let offersElsewhere = false;
+
+  /** An Android phone, whose browser opens a link tapped in another app. */
+  const isAndroid =
+    typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+  const isFirefox =
+    typeof navigator !== "undefined" && /Firefox\//.test(navigator.userAgent);
 
   const place = peekPlace();
   const opened =
@@ -100,7 +120,26 @@
         walletUrl: ownWalletUrl(),
       })
     : null;
-  $: problem = read?.problem ?? "";
+  // An address cut short on its way says so before an unlock, not after.
+  $: problem =
+    read?.problem ||
+    (read?.link && isBrokenAddress(read.link.to) ? LINK_BAD_ADDRESS : "");
+  // Another network's request, on the web wallet of its network.
+  $: elsewhere =
+    read?.reason === "other-network" ? elsewhereLink(opened) : null;
+  // On Android, the wallet that pays it may be in Firefox, or the Dusk app:
+  // the same request, there, before a wallet is made or restored here.
+  $: offersElsewhere = Boolean(isAndroid && asked && !problem);
+  $: appHref =
+    offersElsewhere && asked
+      ? makePaymentLink({
+          amountLux: asked.lux,
+          label: asked.label || null,
+          memo: asked.memo || null,
+          network: $nodeNetwork ?? (asked.chainId || null),
+          to: asked.to,
+        }).dusk
+      : "";
 </script>
 
 <!-- One that can't be read, as one saying a field twice, says only why. -->
@@ -140,9 +179,34 @@
         {/if}
       </dl>
     {/if}
+    {#if offersElsewhere}
+      {#if !isFirefox}
+        <AnchorButton
+          className="payment-asked__open"
+          href={inFirefox(opened)}
+          text="Open in Firefox"
+        />
+      {/if}
+      {#if appHref}
+        <AnchorButton
+          className="payment-asked__open payment-asked__extension"
+          href={appHref}
+          text="Open in the Dusk app"
+          variant="secondary"
+        />
+      {/if}
+    {/if}
     <p class="payment-asked__next">{problem || next}</p>
+    {#if elsewhere}
+      <AnchorButton
+        className="payment-asked__open payment-asked__extension"
+        href={elsewhere.href}
+        text={`Switch to ${elsewhere.network}`}
+        variant="secondary"
+      />
+    {/if}
     <!-- Not for a link no Send takes; another network's is the extension's to say. -->
-    {#if extension && handed !== "refused" && read?.reason !== "unreadable" && read?.reason !== "two-amounts"}
+    {#if extension && handed !== "refused" && read?.reason !== "unreadable" && read?.reason !== "two-amounts" && problem !== LINK_BAD_ADDRESS}
       {#if handed === "opened"}
         <p class="payment-asked__next" role="status">
           Opened in the Dusk extension.
@@ -224,5 +288,9 @@
   /* A button on the card, which is its own colour. */
   .payment-asked :global(.payment-asked__extension) {
     background-color: var(--calm-field);
+  }
+
+  .payment-asked :global(.payment-asked__open) {
+    width: 100%;
   }
 </style>
