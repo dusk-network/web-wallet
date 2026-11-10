@@ -2,7 +2,7 @@
   import { afterNavigate } from "$app/navigation";
   import { alikeContacts, contactNamesOf, contactsStore } from "$lib/contacts";
   import withdrawalClaims from "$lib/bridge/withdrawalClaims";
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, tick } from "svelte";
   import { mdiTrayArrowDown } from "@mdi/js";
   import { Button, Icon, Select } from "$lib/dusk/components";
   import { BalanceValue, MemoText } from "$lib/components";
@@ -57,7 +57,51 @@
   /** What the search was asked, for its See all: only what it finds shows. */
   export let query = "";
 
+  /**
+   * Reads more of the history, older: resolves once it's shown.
+   *
+   * @type {() => Promise<unknown>}
+   */
+  export let onMore = () => Promise.resolve();
+
   const dispatch = createEventDispatcher();
+
+  /** The most pages Show more reads at a press, looking for more found. */
+  const MORE_PAGES = 20;
+
+  /** Whether Show more is reading. */
+  let isReadingMore = false;
+
+  /** Whether Show more went to the history's end without finding more. */
+  let isNoMoreFound = false;
+
+  /**
+   * More of the history. In a search, older pages until one has more of what
+   * it finds, or there are no more: a page of nothing found would add nothing.
+   */
+  async function showMore() {
+    const before = shown.length;
+
+    isReadingMore = true;
+    isNoMoreFound = false;
+
+    try {
+      for (let page = 0; page < MORE_PAGES; page += 1) {
+        await onMore();
+        await tick();
+
+        if (!found || shown.length > before || !state.hasMore) {
+          break;
+        }
+      }
+
+      isNoMoreFound = Boolean(found) && shown.length === before;
+    } catch {
+      // What was read shows; Show more is there to try again.
+    } finally {
+      isReadingMore = false;
+    }
+  }
 
   /** @type {{ id: import("$lib/activity/present").ActivityKindFilter, label: string }[]} */
   const KINDS = [
@@ -396,12 +440,21 @@
       </table>
     {/if}
 
+    {#if isNoMoreFound}
+      <p class="history__more history__more--none" role="status">
+        {state.hasMore ? "Nothing more found yet." : "Nothing more found."}
+      </p>
+    {/if}
     {#if state.loaded && state.hasMore}
       <div class="history__more">
         <Button
-          disabled={state.syncing}
-          on:click={() => dispatch("more")}
-          text={state.syncing ? "Loading…" : "Show more"}
+          disabled={state.syncing || isReadingMore}
+          on:click={showMore}
+          text={isReadingMore && found
+            ? "Looking further back…"
+            : state.syncing || isReadingMore
+              ? "Loading…"
+              : "Show more"}
           variant="secondary"
         />
       </div>
@@ -714,6 +767,11 @@
     display: flex;
     justify-content: center;
     margin-top: 1.5rem;
+
+    &--none {
+      color: var(--calm-muted);
+      font-size: 0.875rem;
+    }
   }
 
   .history__detail {

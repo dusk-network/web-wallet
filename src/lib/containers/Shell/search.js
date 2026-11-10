@@ -34,11 +34,13 @@ import {
  *   id: string,
  *   label: string,
  *   labelIsCode?: boolean,
+ *   memo?: string,
  *   sub?: string,
  *   value?: string,
  * }} SearchResult
  *   `block` a block's height, which the explorer is opened at; `sub` a
- *   second line, as when a transaction was made.
+ *   second line, as when a transaction was made; `memo` a transaction's, as
+ *   it's written, for what shows it to make it safe to read.
  *
  * @typedef {{
  *   alike?: Set<string>,
@@ -332,6 +334,8 @@ export function searchLocally(
         id: `tx:${row.hash}`,
         label: title,
         labelIsCode: titleIsAddress,
+        // What it was found by, often: as History shows it, under it.
+        memo: row.memo || undefined,
         sub:
           [
             when,

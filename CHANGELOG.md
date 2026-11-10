@@ -86,6 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say "Trying again…" on Try again in the network's panel until it's done, or the network is found silent again
 - Say on a send that waits on a network that isn't answering that nothing has left the wallet yet, or, once it may have, to wait for it
 - Say Sent as soon as a block takes a transaction, not a block later once that block is final
+- Show each transaction's memo in the search's results
+- Look further back on Show more in History's search until it finds more, and say when nothing more is found
 
 ## [2.0.0] - 2026-11-06
 

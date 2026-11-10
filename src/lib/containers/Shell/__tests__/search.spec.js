@@ -405,6 +405,20 @@ describe("searchLocally for a block, a memo or a label", () => {
     ]);
   });
 
+  it("gives each transaction found its memo, for the row to show under it, as History does", () => {
+    const [found] = searchLocally("ilustracion", withMore);
+
+    expect(found).toMatchObject({
+      group: "Transactions",
+      memo: "Factura 2026-071 Ilustración",
+    });
+    expect(
+      searchLocally("sozu", withMore).find(
+        ({ group }) => group === "Transactions"
+      )?.memo
+    ).toBeUndefined();
+  });
+
   it("finds a memo whatever its accents and case", () => {
     for (const query of ["ilustracion", "ILUSTRACIÓN", "Ilustración"]) {
       expect(

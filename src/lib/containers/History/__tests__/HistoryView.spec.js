@@ -253,6 +253,60 @@ describe("HistoryView", () => {
     expect(getByText("Rent \\u202eyluj")).toBeInTheDocument();
   });
 
+  it("should look further back on Show more in a search until it finds more, and say once there's no more to find", async () => {
+    const kopi = (/** @type {number} */ n) =>
+      row(`d${n}`.repeat(32), WINTER - n * 3_600_000, { memo: `Kopi ${n}` });
+    const other = (/** @type {number} */ n) =>
+      row(`e${n}`.repeat(32), WINTER - n * 3_600_000, { memo: "Rent" });
+    // The pages Show more reads, older each time: the second has another.
+    const pages = [[other(2)], [other(3), kopi(4)], [other(5)], [other(6)]];
+    /** @type {any} */
+    let shown = { ...state, hasMore: true, rows: [kopi(1)] };
+    const onMore = vi.fn(async () => {
+      const page = pages.shift() ?? [];
+
+      shown = {
+        ...shown,
+        hasMore: pages.length > 0,
+        rows: [...shown.rows, ...page],
+      };
+      await rendered.rerender({
+        locale: "en",
+        onMore,
+        query: "kopi",
+        state: shown,
+      });
+    });
+    const rendered = render(HistoryView, {
+      locale: "en",
+      onMore,
+      query: "kopi",
+      state: shown,
+    });
+    const memos = () =>
+      Array.from(
+        rendered.container.querySelectorAll(".history__memo"),
+        (memo) => memo.textContent?.trim()
+      );
+
+    expect(memos()).toStrictEqual(["Kopi 1"]);
+
+    // A page of none found adds nothing: it reads on, to the next with one.
+    await fireEvent.click(rendered.getByRole("button", { name: "Show more" }));
+    await vi.waitFor(() => expect(memos()).toStrictEqual(["Kopi 1", "Kopi 4"]));
+
+    expect(onMore).toHaveBeenCalledTimes(2);
+
+    // None further back: it says so, at the history's end.
+    await fireEvent.click(rendered.getByRole("button", { name: "Show more" }));
+    await vi.waitFor(() =>
+      expect(rendered.getByText("Nothing more found.")).toBeInTheDocument()
+    );
+
+    expect(onMore).toHaveBeenCalledTimes(4);
+    expect(rendered.queryByRole("button", { name: "Show more" })).toBeNull();
+  });
+
   it("should grey a withdrawal's amount until it arrives, as a failed one's", () => {
     const proved = row("b1".repeat(32), WINTER, {
       amount: "0",

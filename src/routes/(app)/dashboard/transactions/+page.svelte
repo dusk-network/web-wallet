@@ -121,15 +121,10 @@
     {kind}
     locale={language}
     network={networkName}
-    on:more={() => {
-      walletStore
-        .startHistory()
-        ?.showMore()
-        .catch(() => {});
-    }}
     on:filter={(event) => filter(event.detail)}
     on:select={(event) => select(event.detail)}
     {privacy}
+    onMore={() => walletStore.startHistory()?.showMore() ?? Promise.resolve()}
     {query}
     {range}
     selected={url.searchParams.get("tx")}
