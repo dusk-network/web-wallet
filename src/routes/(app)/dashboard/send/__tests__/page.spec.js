@@ -73,8 +73,13 @@ const OTHER =
 const available = (container) =>
   container.querySelector(".send__amount + .send__hint");
 
-// The profiles' addresses here are made up, so none is two keys.
+// The profiles' addresses here are made up, so none is two keys, and the
+// accounts none a key.
 vi.mock("$lib/wallet/isShieldedAddress", () => ({ default: () => true }));
+vi.mock("@dusk-network/networks/account", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  isAccount: () => true,
+}));
 
 describe("Send page", () => {
   afterEach(() => {

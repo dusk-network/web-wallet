@@ -15,6 +15,7 @@ describe("getCacheDatabase", () => {
         "stakeInfo",
         "syncInfo",
         "unspentNotes",
+        "sozuPositions",
       ]
     `);
 
