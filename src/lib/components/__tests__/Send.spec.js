@@ -1986,7 +1986,14 @@ describe("Send", () => {
         gasLimit
       );
       // The result from its top, where its state and the offer to be told
-      // when it arrives are, wherever the review was scrolled to.
+      // when it arrives are, wherever the review was scrolled to: also once
+      // the review's step leaves the history, where the browser puts the
+      // page back where the form was.
+      expect(scrolled).toHaveBeenLastCalledWith(0, 0);
+      scrolled.mockClear();
+      historyAt({});
+      await tick();
+
       expect(scrolled).toHaveBeenLastCalledWith(0, 0);
       scrolled.mockRestore();
 

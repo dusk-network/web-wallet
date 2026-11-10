@@ -1423,6 +1423,13 @@
   $: isAmountMasked = hideBalances && (isMaxAmount || isOwnAmount);
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
+
+  // Once the send goes out, the review's step leaves the history, and the
+  // browser puts the page back where the form was scrolled: the result shows
+  // from its top again.
+  $: if (step === "done" && !$page?.state?.sendReview) {
+    window.scrollTo(0, 0);
+  }
 </script>
 
 {#if step === "done" && sent}
