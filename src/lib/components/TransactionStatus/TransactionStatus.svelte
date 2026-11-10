@@ -10,7 +10,7 @@
 
   import { currentActivity } from "$lib/activity";
   import { timeLabel } from "$lib/activity/present";
-  import { transferEnded } from "$lib/bridge/arrivalNotice";
+  import { handOverSend, tellSendEnd } from "$lib/bridge/sendArrival";
   import { formatDuskExact, formatFee } from "$lib/dusk/currency";
   import {
     AnchorButton,
@@ -18,7 +18,6 @@
     ErrorDetails,
     Icon,
   } from "$lib/dusk/components";
-  import { goto } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
   import { followTransaction } from "$lib/transactions";
 
@@ -116,14 +115,10 @@
    */
   function tellEnd(ended) {
     if (tellArrival) {
-      const href = `/dashboard/transactions?tx=${hash}`;
-
-      transferEnded({
-        href,
-        id: `send:${hash}`,
-        onOpen: () => goto(href),
-        title:
-          ended === "completed" ? `Arrived: ${what}` : "It didn't go through",
+      tellSendEnd({
+        failed: ended === "failed",
+        hash: /** @type {string} */ (hash),
+        what,
       });
     }
   }
@@ -179,7 +174,14 @@
       follow();
     }
 
-    return () => controller?.abort();
+    return () => {
+      controller?.abort();
+
+      // Left before a block took it: the wallet tells, wherever it is.
+      if (tellArrival && hash && !outcome) {
+        handOverSend({ hash, what });
+      }
+    };
   });
 
   // Without an answer, it may not have gone out: until the chain has it.

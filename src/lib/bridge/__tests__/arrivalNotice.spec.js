@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import {
@@ -16,6 +17,7 @@ import {
 } from "../arrivalNotice";
 import { networks } from "@dusk-network/networks";
 
+import TransactionStatus from "$lib/components/TransactionStatus/TransactionStatus.svelte";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { followArrivals } from "../arrivalFollowing";
@@ -71,6 +73,17 @@ vi.mock("../routeFollowing", () => ({
 }));
 
 vi.mock("$lib/navigation", () => ({ goto: mocks.goto }));
+
+// A send followed until a block takes it: not before a test says so.
+const sends = vi.hoisted(() => ({
+  /** @type {import("vitest").Mock<(hash: string, options: any) => Promise<any>>} */
+  followTransaction: vi.fn(() => new Promise(() => {})),
+}));
+
+vi.mock("$lib/transactions", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  followTransaction: sends.followTransaction,
+}));
 
 /** A browser that can notify, as `answer` says, with what it showed. */
 function browser({ answer = "granted", permission = "default" } = {}) {
@@ -514,6 +527,40 @@ describe("Being told when a transfer arrives", () => {
 
       expect(mocks.resumeRecentDeposits).toHaveBeenCalledTimes(2);
       expect(Stand.permission).toBe("granted");
+    });
+
+    it("tells of a send whose Sent screen was left before a block took it, from wherever the wallet is, once they asked, and of none once it's locked", async () => {
+      const { shown } = browser();
+      const hash = "8d".repeat(32);
+      const sent = { hash, tellArrival: true, what: "0.02 DUSK to Lucas" };
+
+      await chooseArrivalNotice();
+
+      // Left for Home before a block took it.
+      render(TransactionStatus, sent).unmount();
+      sends.followTransaction.mock.lastCall?.[1].onBlock({
+        blockHeight: 4_820_416n,
+        error: null,
+        fee: 1_854_795n,
+        timestamp: 1,
+      });
+
+      await vi.waitFor(() =>
+        expect(shown).toMatchObject([
+          {
+            options: { tag: `send:${hash}` },
+            title: "Arrived: 0.02 DUSK to Lucas",
+          },
+        ])
+      );
+
+      // Locked: a screen left is followed no further.
+      stop();
+      sends.followTransaction.mockClear();
+      render(TransactionStatus, sent).unmount();
+
+      expect(sends.followTransaction).toHaveBeenCalledOnce();
+      stop = followArrivals();
     });
 
     it("follows what's under way from wherever the wallet is only once they asked, and says nothing of it once locked", async () => {

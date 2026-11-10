@@ -1,8 +1,8 @@
 /**
  * Watches every transfer the wallet knows of for the moment it ends, for as
  * long as the wallet is open, on whichever page, to say so to whoever isn't
- * looking. What a transfer was as it was first seen says nothing: only a change
- * does. With the notice chosen, or where the title is the one way to be told,
+ * looking, a send whose Sent screen was left before a block took it too. What
+ * a transfer was as it was first seen says nothing: only a change does. With the notice chosen, or where the title is the one way to be told,
  * the transfers under way are read with the page hidden too, and those on
  * DuskEVM taken up again as the wallet opens: only a bridge screen does otherwise.
  */
@@ -27,6 +27,7 @@ import {
   transferEnded,
 } from "./arrivalNotice";
 import { followRouteTransfers } from "./routeFollowing";
+import { followSends } from "./sendArrival";
 import { routeTransfers } from "./routeHistory";
 import { getWithdrawalFinalizationConfig } from "./withdrawals";
 import {
@@ -137,6 +138,9 @@ function watcher(idOf, hashOf, endOf) {
 
 /** @returns {() => void} Stops */
 export function followArrivals() {
+  // Sends whose Sent screen was left before a block took them.
+  let stopSends = followSends();
+
   const stops = [
     routeTransfers.subscribe(
       watcher(
@@ -193,6 +197,9 @@ export function followArrivals() {
   const stopWallet = walletStore.subscribe(({ walletKey }) => {
     if (walletKey !== openKey) {
       openKey = walletKey;
+      // Another wallet's: what the one before sent is said no more.
+      stopSends();
+      stopSends = followSends();
 
       if (stopFollowing) {
         takeUpDuskEvm();
@@ -207,6 +214,7 @@ export function followArrivals() {
     stops.forEach((stop) => stop());
     stopState();
     stopWallet();
+    stopSends();
     stopFollowing?.();
     window.removeEventListener("focus", arrivalSeen);
     document.removeEventListener("visibilitychange", arrivalSeen);
