@@ -15,6 +15,7 @@ import {
   within,
 } from "@testing-library/svelte";
 import { get } from "svelte/store";
+import { PRICE_CURRENCIES } from "@dusk-network/app-core/amounts";
 import { HIGHEST_DEFAULT_GAS_LIMIT } from "$lib/contracts/gasDefaults";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import * as navigation from "$lib/navigation";
@@ -115,6 +116,19 @@ describe("Settings", () => {
       "href",
       "https://github.com/dusk-network/web-wallet/issues"
     );
+  });
+
+  it("should offer the currencies DUSK has a price in, the Swiss franc's by its code and the Georgian lari too, and no old bolívar", () => {
+    const { container } = render(Settings, {});
+    const offered = Array.from(
+      container.querySelectorAll("select option"),
+      (option) => /** @type {HTMLOptionElement} */ (option).value
+    ).filter((value) => /^[A-Z]{3}$/.test(value));
+
+    expect(offered).toStrictEqual([...PRICE_CURRENCIES]);
+    expect(offered).toEqual(expect.arrayContaining(["CHF", "GEL", "SGD"]));
+    expect(offered).not.toEqual(expect.arrayContaining(["CFH"]));
+    expect(offered).not.toEqual(expect.arrayContaining(["VEF"]));
   });
 
   it("should link the Terms of use and the Privacy policy under Support, as setup does", () => {

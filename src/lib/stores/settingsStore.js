@@ -1,4 +1,7 @@
-import { defaultCurrency } from "@dusk-network/app-core/amounts";
+import {
+  PRICE_CURRENCIES,
+  defaultCurrency,
+} from "@dusk-network/app-core/amounts";
 import { writable } from "svelte/store";
 import { browser } from "$app/environment";
 
@@ -104,13 +107,23 @@ const migrateGasPrice = (settings) =>
       };
 
 /**
- * The Swiss franc was kept as "CFH", which no price source knows: it's "CHF".
+ * A currency DUSK has a price in: the Swiss franc kept as "CFH", which no
+ * price source knows, as "CHF", and one with no price, as the old "VEF",
+ * as the browser's region's.
  *
  * @param {any} settings The stored settings, possibly from an older version.
  * @returns {any}
  */
-const migrateCurrency = (settings) =>
-  settings.currency === "CFH" ? { ...settings, currency: "CHF" } : settings;
+function migrateCurrency(settings) {
+  const currency = settings.currency === "CFH" ? "CHF" : settings.currency;
+
+  return {
+    ...settings,
+    currency: PRICE_CURRENCIES.includes(currency)
+      ? currency
+      : initialState.currency,
+  };
+}
 
 /**
  * @param {any} settings The stored settings, possibly from an older version.

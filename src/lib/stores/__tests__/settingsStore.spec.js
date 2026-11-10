@@ -123,16 +123,21 @@ describe("Settings store", () => {
       languageSpy.mockReturnValue("it-IT");
     });
 
-    it("should keep the Swiss franc as CHF, as the price sources know it, where it was kept as CFH", async () => {
-      localStorage.setItem(
-        `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`,
-        serializeProperty({ ...settingsStoreContent, currency: "CFH" })
-      );
-      vi.resetModules();
+    it("should keep the Swiss franc as CHF, as the price sources know it, where it was kept as CFH, and one DUSK has no price in as the region's", async () => {
+      const kept = async (/** @type {string} */ currency) => {
+        localStorage.setItem(
+          `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`,
+          serializeProperty({ ...settingsStoreContent, currency })
+        );
+        vi.resetModules();
 
-      expect(get((await import("../settingsStore")).default).currency).toBe(
-        "CHF"
-      );
+        return get((await import("../settingsStore")).default).currency;
+      };
+
+      expect(await kept("CFH")).toBe("CHF");
+      // Venezuela's old bolívar: CoinGecko lists it, with no price.
+      expect(await kept("VEF")).toBe("EUR");
+      expect(await kept("INR")).toBe("INR");
     });
 
     it("should persist its values in local storage", async () => {
