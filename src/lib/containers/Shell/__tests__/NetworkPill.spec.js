@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
+import networkReach from "$lib/stores/networkReach";
 
 import NetworkPill from "../NetworkPill.svelte";
 
@@ -116,6 +117,7 @@ describe("NetworkPill", () => {
       getByRole("button", { name: "Network: Testnet, offline" })
     ).toBeInTheDocument();
     expect(container.querySelector(".network-pill__dot--offline")).toBeTruthy();
+    expect(get(networkReach)).toBe("offline");
     // In a word on the pill, not by its dot alone.
     expect(container.querySelector(".network-pill__button")).toHaveTextContent(
       "Testnet Offline"
@@ -162,6 +164,8 @@ describe("NetworkPill", () => {
       expect(
         container.querySelector(".network-pill__button")
       ).toHaveTextContent("Testnet Offline");
+      // And where a send waits on it.
+      expect(get(networkReach)).toBe("silent");
 
       await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
@@ -182,6 +186,7 @@ describe("NetworkPill", () => {
       expect(
         getByRole("button", { name: "Network: Testnet, in sync" })
       ).toBeInTheDocument();
+      expect(get(networkReach)).toBe("answering");
     } finally {
       vi.useRealTimers();
     }

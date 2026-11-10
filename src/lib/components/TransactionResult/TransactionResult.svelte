@@ -1,10 +1,14 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { get } from "svelte/store";
+
   import { isHistoryEnabled } from "$lib/activity";
-  import { Button, Suspense } from "$lib/dusk/components";
+  import { Button, Suspense, Throbber } from "$lib/dusk/components";
+  import networkReach from "$lib/stores/networkReach";
   import {
     CHECK_BALANCE_FIRST,
+    broadcastsAsked,
     describeFailure,
     unconfirmedHash,
   } from "$lib/transactions";
@@ -102,6 +106,9 @@
     );
 
   $: shown = outcomeOf(operation);
+  // Asked to broadcast since it began: it may have gone out then.
+  $: askedBefore = (void operation, get(broadcastsAsked));
+  $: isHandedOver = $broadcastsAsked > askedBefore;
 </script>
 
 <!-- A send that failed before it went out says why in plain words, with
@@ -114,6 +121,21 @@
   pendingMessage="Processing transaction"
   waitFor={shown}
 >
+  <svelte:fragment slot="pending-content">
+    <Throbber className="dusk-suspense__throbber" />
+    <span class="dusk-suspense__pending-message">Processing transaction</span>
+    <!-- Said where it waits, not only on the pill: what it means for it. -->
+    {#if $networkReach !== "answering"}
+      <p class="transaction-result__waiting" role="status">
+        {$networkReach === "offline"
+          ? "You're offline."
+          : "The network isn't answering."}
+        {isHandedOver
+          ? "Your transaction may have reached it: wait for it here before you send it again."
+          : "Nothing has left your wallet yet."}
+      </p>
+    {/if}
+  </svelte:fragment>
   <svelte:fragment slot="success-content" let:result={{ hash, unconfirmed }}>
     <TransactionStatus
       {extra}
@@ -182,6 +204,11 @@
 
       .transaction-result__button {
         width: 100%;
+      }
+
+      .transaction-result__waiting {
+        margin: 0;
+        text-align: center;
       }
     }
   }

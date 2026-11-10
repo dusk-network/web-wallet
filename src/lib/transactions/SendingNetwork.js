@@ -1,6 +1,16 @@
 import { Network } from "@dusk/w3sper";
+import { writable } from "svelte/store";
 
 import { outcomeUnknown } from "./outcomeUnknown";
+
+/** How many transactions this tab asked a node to broadcast. */
+const asked = writable(0);
+
+/**
+ * How many transactions this tab asked a node to broadcast: once one was, it
+ * may have gone out, whatever the node answers.
+ */
+export const broadcastsAsked = { subscribe: asked.subscribe };
 
 /** How long a socket given up on gets to close, in milliseconds. */
 const ABANDON_TIMEOUT = 3000;
@@ -42,6 +52,7 @@ export default class SendingNetwork extends Network {
 
     transactions.propagate = (/** @type {any} */ tx) => {
       broadcasts.add(tx);
+      asked.update((count) => count + 1);
 
       return propagate(tx);
     };

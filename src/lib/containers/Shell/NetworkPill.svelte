@@ -7,6 +7,7 @@
   import { SyncBar } from "$lib/components";
   import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
   import { networkStore, walletStore } from "$lib/stores";
+  import { setNetworkReach } from "$lib/stores/networkReach";
 
   import { networkLabel } from "./navigation";
 
@@ -143,6 +144,7 @@
   onDestroy(() => {
     clearTimeout(stallTimer);
     watchNode(false);
+    setNetworkReach("answering");
   });
 
   /**
@@ -175,6 +177,14 @@
         : syncStatus.isInProgress
           ? "syncing"
           : "synced";
+  // Said where something waits on the network too, as a send does.
+  $: setNetworkReach(
+    state === "offline"
+      ? "offline"
+      : state === "unreachable"
+        ? "silent"
+        : "answering"
+  );
   $: stateText =
     state === "offline"
       ? "Offline"

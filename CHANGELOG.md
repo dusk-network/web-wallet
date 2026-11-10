@@ -84,6 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show values in Swiss francs where Swiss Franc is chosen
 - Close the network's panel on Escape wherever its focus is, as after Try again, so the next press goes where it's meant
 - Say "Trying again…" on Try again in the network's panel until it's done, or the network is found silent again
+- Say on a send that waits on a network that isn't answering that nothing has left the wallet yet, or, once it may have, to wait for it
 
 ## [2.0.0] - 2026-11-06
 

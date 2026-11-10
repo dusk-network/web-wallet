@@ -7,6 +7,7 @@ export {
   unconfirmedHash,
 } from "./describeFailure";
 export { outcomeUnknown } from "./outcomeUnknown";
+export { broadcastsAsked } from "./SendingNetwork";
 export {
   FOLLOW_INTERVAL,
   FOLLOW_TIMEOUT,

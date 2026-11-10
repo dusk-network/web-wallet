@@ -7,7 +7,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { act, cleanup, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { Gas, Network, ProfileGenerator, ShieldTransfer } from "@dusk/w3sper";
 import { mdiCloseThick, mdiTimerSand } from "@mdi/js";
@@ -188,6 +188,72 @@ describe("A send that fails", () => {
       ],
       ["Home", "/some-base-path/dashboard"],
     ]);
+  });
+
+  it("says where it waits that the network isn't answering: that nothing left the wallet before the node was asked to broadcast it, and after, to wait for it", async () => {
+    const { setNetworkReach } = await import("../networkReach");
+
+    /**
+     * w3sper's execute, waiting on the node from the step given on.
+     *
+     * @param {"build" | "propagate"} step
+     */
+    const waitFrom = (step) =>
+      executeSpy.mockImplementationOnce(
+        /** @this {any} */
+        async function (/** @type {any} */ tx) {
+          const transaction = await tx.build(this);
+
+          if (step === "propagate") {
+            await this.transactions.preverify(transaction.buffer);
+            void this.transactions.propagate(transaction.buffer);
+          }
+
+          return new Promise(() => {});
+        }
+      );
+    const waiting = () =>
+      render(TransactionResult, {
+        maxFee: 1n,
+        operation: walletStore
+          .shield(1n, new Gas({ limit: 1n, price: 1n }))
+          .then(({ hash }) => hash),
+      });
+
+    try {
+      waitFrom("build");
+
+      const before = waiting();
+
+      expect(before.getByText("Processing transaction")).toBeInTheDocument();
+      expect(before.container).not.toHaveTextContent("isn't answering");
+
+      await act(() => setNetworkReach("silent"));
+
+      expect(before.getByRole("status")).toHaveTextContent(
+        "The network isn't answering. Nothing has left your wallet yet."
+      );
+
+      await act(() => setNetworkReach("offline"));
+
+      expect(before.getByRole("status")).toHaveTextContent(
+        "You're offline. Nothing has left your wallet yet."
+      );
+      cleanup();
+
+      waitFrom("propagate");
+      await act(() => setNetworkReach("silent"));
+
+      const after = waiting();
+
+      await vi.waitFor(() =>
+        expect(after.getByRole("status")).toHaveTextContent(
+          "The network isn't answering. Your transaction may have reached it: wait for it here before you send it again."
+        )
+      );
+    } finally {
+      setNetworkReach("answering");
+    }
   });
 
   it("turns into Sent once the chain has the transaction whose answer got lost, or Failed", async () => {
