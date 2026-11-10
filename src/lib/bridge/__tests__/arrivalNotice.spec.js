@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/svelte";
-import { get } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 import {
   NOTICE_WORDS,
@@ -18,6 +18,7 @@ import {
 import { networks } from "@dusk-network/networks";
 
 import TransactionStatus from "$lib/components/TransactionStatus/TransactionStatus.svelte";
+import { walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { followArrivals } from "../arrivalFollowing";
@@ -561,6 +562,54 @@ describe("Being told when a transfer arrives", () => {
 
       expect(sends.followTransaction).toHaveBeenCalledOnce();
       stop = followArrivals();
+    });
+
+    it("says nothing of a send under another wallet: its Sent screen left as that one opens", async () => {
+      const opened = writable({ ...get(walletStore), walletKey: "wallet-a" });
+      let session = 1;
+
+      browser();
+      await chooseArrivalNotice();
+      // A session per wallet opened, as the store keeps them.
+      vi.spyOn(walletStore, "subscribe").mockImplementation(opened.subscribe);
+      vi.spyOn(walletStore, "whileOpen").mockImplementation(() => {
+        const at = session;
+
+        return /** @type {any} */ (
+          (/** @type {unknown} */ value) => {
+            if (at !== session) {
+              throw new Error("Another wallet opened");
+            }
+
+            return value;
+          }
+        );
+      });
+      stop();
+      stop = followArrivals();
+
+      const screen = render(TransactionStatus, {
+        hash: "8e".repeat(32),
+        tellArrival: true,
+        what: "0.02 DUSK to Lucas",
+      });
+
+      // Another wallet opens: its session first, then what the store says,
+      // and the screen goes after.
+      session += 1;
+      opened.update((store) => ({ ...store, walletKey: "wallet-b" }));
+      sends.followTransaction.mockClear();
+      screen.unmount();
+      // Were it followed on, a block taking it would say it now.
+      sends.followTransaction.mock.lastCall?.[1].onBlock({
+        blockHeight: 4_820_416n,
+        error: null,
+        fee: 1_854_795n,
+        timestamp: 1,
+      });
+
+      expect(sends.followTransaction).not.toHaveBeenCalled();
+      expect(get(arrivalTitle)).toBe("");
     });
 
     it("follows what's under way from wherever the wallet is only once they asked, and says nothing of it once locked", async () => {

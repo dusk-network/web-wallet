@@ -94,6 +94,9 @@
   /** @type {AbortController | undefined} */
   let controller;
 
+  // The wallet it was sent from: nothing's said of it once another opens.
+  const stillOpen = walletStore.whileOpen();
+
   /**
    * Sending while it isn't in a final block, then when it was sent, or
    * that it failed.
@@ -118,6 +121,7 @@
       tellSendEnd({
         failed: ended === "failed",
         hash: /** @type {string} */ (hash),
+        stillOpen,
         what,
       });
     }
@@ -179,7 +183,7 @@
 
       // Left before a block took it: the wallet tells, wherever it is.
       if (tellArrival && hash && !outcome) {
-        handOverSend({ hash, what });
+        handOverSend({ hash, stillOpen, what });
       }
     };
   });

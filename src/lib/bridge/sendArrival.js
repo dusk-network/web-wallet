@@ -2,7 +2,8 @@
  * A send to someone, said to whoever isn't looking once a block takes it, as
  * a transfer on the Bridge is: by its Sent screen while that's shown, and,
  * once it's left before then, from wherever the wallet is while it's open,
- * where they asked to be told, or the tab's title is the one way.
+ * where they asked to be told, or the tab's title is the one way. Nothing is
+ * said of it once another wallet opens, or none.
  */
 
 import { goto } from "$lib/navigation";
@@ -11,9 +12,26 @@ import { followTransaction } from "$lib/transactions";
 import { followsWhileAway, transferEnded } from "./arrivalNotice";
 
 /**
- * @typedef {{ hash: string, what: string }} Send
- *   `what` what was sent and to whom, as "0.5 DUSK to Alice"
+ * @typedef {{ hash: string, stillOpen: (value?: unknown) => unknown, what: string }} Send
+ *   `what` what was sent and to whom, as "0.5 DUSK to Alice"; `stillOpen`
+ *   the check of the wallet it was sent from, `walletStore.whileOpen()`'s,
+ *   which throws once another opened
  */
+
+/**
+ * Whether the wallet a send came from is the one open still.
+ *
+ * @param {Send} send
+ */
+function isOpenStill({ stillOpen }) {
+  try {
+    stillOpen();
+
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * What follows a send handed over, while the wallet's open: none otherwise.
@@ -23,12 +41,17 @@ import { followsWhileAway, transferEnded } from "./arrivalNotice";
 let takeOver = null;
 
 /**
- * Says a send ended, to whoever isn't looking.
+ * Says a send ended, to whoever isn't looking, while its wallet's open.
  *
  * @param {Send & { failed: boolean }} send
  */
-export function tellSendEnd({ failed, hash, what }) {
+export function tellSendEnd(send) {
+  const { failed, hash, what } = send;
   const href = `/dashboard/transactions?tx=${hash}`;
+
+  if (!isOpenStill(send)) {
+    return;
+  }
 
   transferEnded({
     href,
@@ -45,7 +68,7 @@ export function tellSendEnd({ failed, hash, what }) {
  * @param {Send} send
  */
 export function handOverSend(send) {
-  if (followsWhileAway()) {
+  if (followsWhileAway() && isOpenStill(send)) {
     takeOver?.(send);
   }
 }
@@ -60,18 +83,18 @@ export function followSends() {
   const { signal } = stopping;
 
   /** @param {Send} send */
-  const follow = ({ hash, what }) => {
+  const follow = (send) => {
     let isTold = false;
 
     /** @param {{ error: string | null }} outcome */
     const tell = ({ error }) => {
       if (!isTold && !signal.aborted) {
         isTold = true;
-        tellSendEnd({ failed: Boolean(error), hash, what });
+        tellSendEnd({ ...send, failed: Boolean(error) });
       }
     };
 
-    followTransaction(hash, { onBlock: tell, signal }).then(
+    followTransaction(send.hash, { onBlock: tell, signal }).then(
       (final) => final && tell(final),
       () => {}
     );
