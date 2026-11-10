@@ -12,6 +12,7 @@ import { get } from "svelte/store";
 import { goto } from "$app/navigation";
 
 import { claimDay } from "$lib/bridge/claimDate";
+import { formatTime } from "@dusk-network/networks/format";
 import { BALANCE_MASK } from "$lib/constants";
 import { shortenAddress } from "$lib/dusk/string";
 
@@ -75,6 +76,24 @@ vi.mock("$lib/stores", async (importOriginal) => {
     },
   };
 });
+
+/**
+ * When a payment of a request paid more than once came in, as its list says
+ * it: to the second.
+ *
+ * @param {number} ms
+ */
+const paidAt = (ms) => formatTime(ms, { locale: "en", seconds: true });
+
+/**
+ * A time from `paidAt` as a sentence says it.
+ *
+ * @param {string} label
+ */
+const inSentence = (label) =>
+  /^(Today|Yesterday),/.test(label)
+    ? `${label.charAt(0).toLowerCase()}${label.slice(1)}`
+    : `on ${label}`;
 
 describe("Receive", () => {
   const currentProfile = /** @type {Profile} */ (
@@ -691,7 +710,23 @@ describe("Receive", () => {
           expect.stringMatching(/^\/some-base-path\/dashboard\/send\?/),
         ],
       ]);
-      expect(payments).toHaveTextContent(claimDay(at + 2500, "en"));
+      expect(payments).toHaveTextContent(paidAt(at + 2500));
+
+      // Each to the second: two made in the same minute read apart.
+      const times = Array.from(
+        payments.querySelectorAll(".requests__payment > span:first-child"),
+        (line) => line.textContent?.split(",").slice(0, 2).join(",")
+      );
+
+      expect(times).toStrictEqual([paidAt(at + 500), paidAt(at + 2500)]);
+      expect(times[0]).not.toBe(times[1]);
+
+      // Send back on the line of the payment it sends back.
+      expect(
+        screen
+          .getByRole("link", { name: /^Send back the payment of/ })
+          .closest(".requests__payment")
+      ).toHaveTextContent(paidAt(at + 2500));
 
       const back = new URL(
         String(
@@ -810,9 +845,7 @@ describe("Receive", () => {
         screen.getByRole("list", { name: "Payments for this request" });
 
       // What each brought.
-      expect(payments()).toHaveTextContent(
-        `${claimDay(at + 2500, "en")}, 0.012 DUSK`
-      );
+      expect(payments()).toHaveTextContent(`${paidAt(at + 2500)}, 0.012 DUSK`);
 
       vi.mocked(goto).mockClear();
       await fireEvent.click(
@@ -847,8 +880,17 @@ describe("Receive", () => {
       });
       await vi.advanceTimersByTimeAsync(0);
 
+      // What went back, when, and where to see it.
       expect(payments()).toHaveTextContent(
-        `Sent back on ${claimDay(at + 2000, "en")}`
+        `Sent back 0.012 DUSK ${inSentence(paidAt(at + 2000))} · See in History`
+      );
+      expect(
+        screen.getByRole("link", {
+          name: /^See in History: what was sent back for the payment of/,
+        })
+      ).toHaveAttribute(
+        "href",
+        `/some-base-path/dashboard/transactions?tx=${"f0".repeat(32)}`
       );
       expect(
         screen.queryByRole("link", { name: /^Send back the payment of/ })
@@ -960,7 +1002,7 @@ describe("Receive", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(payments()).toHaveTextContent(
-        `Sent back on ${claimDay(at + 4000, "en")}`
+        `Sent back 0.012 DUSK ${inSentence(paidAt(at + 4000))}`
       );
       history.state?.set({ hasMore: false, rows: [] });
     });

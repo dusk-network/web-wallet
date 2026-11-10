@@ -9,6 +9,7 @@
   import { onDestroy } from "svelte";
   import { refundOf, sentAlready } from "@dusk-network/app-core/requests";
   import { displayText } from "@dusk-network/app-core/text";
+  import { formatTime } from "@dusk-network/networks/format";
 
   import { activityState, currentActivity } from "$lib/activity";
   import { claimDay } from "$lib/bridge/claimDate";
@@ -291,6 +292,25 @@
   }
 
   /**
+   * When a payment of a request paid more than once was made, to the second:
+   * two in the same minute, as a payment made twice often is, read apart.
+   *
+   * @param {number} ms
+   */
+  const paidAt = (ms) =>
+    formatTime(ms, { locale: language || undefined, seconds: true });
+
+  /**
+   * A time as a sentence says it: "today, 16:42:05 SGT", or "on 5 Nov, …".
+   *
+   * @param {string} label As `paidAt` gives it
+   */
+  const inSentence = (label) =>
+    /^(Today|Yesterday),/.test(label)
+      ? `${label.charAt(0).toLowerCase()}${label.slice(1)}`
+      : `on ${label}`;
+
+  /**
    * What a request asked, in words for a screen reader: nothing of it with the
    * balances hidden.
    *
@@ -396,7 +416,7 @@
             >
               {#each [match, ...again] as payment, i (payment.hash)}
                 {@const day = payment.at
-                  ? claimDay(payment.at, language)
+                  ? paidAt(payment.at)
                   : "time not known"}
                 {@const refund = i ? refunds.get(String(payment.hash)) : null}
                 <li class="requests__payment">
@@ -407,26 +427,40 @@
                         value={formatDuskExact(payment.lux, language)}
                       /> DUSK{/if}</span
                   >
-                  <a
-                    aria-label={`See in History: the payment of ${day}`}
-                    class="text-link tap-link"
-                    href={addBasePath(
-                      `/dashboard/transactions?tx=${payment.hash}`
-                    )}>See in History</a
-                  >
-                  {#if refund?.sent}
-                    <span
-                      >Sent back{refund.sent.time
-                        ? ` on ${claimDay(refund.sent.time, language)}`
-                        : ""}</span
-                    >
-                  {:else if refund?.back}
-                    {@const back = refund.back}
+                  <!-- Together, on the payment's line: never one alone. -->
+                  <span class="requests__payment-links">
                     <a
-                      aria-label={`Send back the payment of ${day}`}
+                      aria-label={`See in History: the payment of ${day}`}
                       class="text-link tap-link"
-                      href={addBasePath(back)}
-                      on:click={(event) => sendBack(event, back)}>Send back</a
+                      href={addBasePath(
+                        `/dashboard/transactions?tx=${payment.hash}`
+                      )}>See in History</a
+                    >
+                    {#if refund?.back && !refund.sent}
+                      {@const back = refund.back}
+                      <a
+                        aria-label={`Send back the payment of ${day}`}
+                        class="text-link tap-link"
+                        href={addBasePath(back)}
+                        on:click={(event) => sendBack(event, back)}>Send back</a
+                      >
+                    {/if}
+                  </span>
+                  {#if refund?.sent}
+                    {@const sent = refund.sent}
+                    <span class="requests__sent-back"
+                      >Sent back <BalanceValue
+                        value={formatDuskExact(sent.value, language)}
+                      /> DUSK{sent.time
+                        ? ` ${inSentence(paidAt(sent.time))}`
+                        : ""} ·
+                      <a
+                        aria-label={`See in History: what was sent back for the payment of ${day}`}
+                        class="text-link tap-link"
+                        href={addBasePath(
+                          `/dashboard/transactions?tx=${sent.hash}`
+                        )}>See in History</a
+                      ></span
                     >
                   {/if}
                 </li>
@@ -553,6 +587,16 @@
       color: var(--calm-muted);
       font-variant-numeric: tabular-nums;
     }
+  }
+
+  .requests__payment-links {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+  }
+
+  .requests__sent-back {
+    flex-basis: 100%;
   }
 
   .requests__actions {

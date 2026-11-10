@@ -89,6 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show each transaction's memo in the search's results
 - Look further back on Show more in History's search until it finds more, and say when nothing more is found
 - Keep the spaces of a name typed in To, as "Estudio M", taking them out only of an address, a .dusk name or a link
+- Give the time of each payment of a request paid more than once to the second, so two in the same minute read apart
+- Say what was sent back for a request's payment, with its amount and a link to it, and keep Send back on its payment's line
 
 ## [2.0.0] - 2026-11-06
 
