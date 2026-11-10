@@ -82,6 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say when a stake couldn't be read, with what was read last on this device, not that nothing is staked, and read it again on Try again
 - Say a link's address isn't valid, as one cut short, before an unlock, and refuse it on Send as the link's
 - Show values in Swiss francs where Swiss Franc is chosen
+- Close the network's panel on Escape wherever its focus is, as after Try again, so the next press goes where it's meant
+- Say "Trying again…" on Try again in the network's panel until it's done, or the network is found silent again
 
 ## [2.0.0] - 2026-11-06
 

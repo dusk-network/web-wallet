@@ -423,6 +423,89 @@ describe("NetworkPill", () => {
     back.mockRestore();
   });
 
+  it("closes its panel on Escape wherever the focus is in it, as on Try again, so the next press outside does what it's for", async () => {
+    vi.useFakeTimers();
+
+    const back = vi
+      .spyOn(history, "back")
+      .mockImplementation(() =>
+        pageStore.page?.update((page) => ({ ...page, state: {} }))
+      );
+    const outside = document.createElement("button");
+    const pressed = vi.fn();
+
+    outside.addEventListener("click", pressed);
+    document.body.append(outside);
+
+    try {
+      const { getByRole, queryByRole } = render(NetworkPill);
+
+      // The node silent: the sync stalls, and the pill says so.
+      await setSync({ isInProgress: true, progress: 0 });
+      await act(() => vi.advanceTimersByTimeAsync(30_000));
+      await fireEvent.click(getByRole("button", { name: /testnet/i }));
+
+      const tryAgain = getByRole("button", { name: "Try again" });
+
+      await fireEvent.click(tryAgain);
+      tryAgain.focus();
+      await fireEvent.keyDown(document.activeElement ?? tryAgain, {
+        key: "Escape",
+      });
+
+      expect(queryByRole("dialog")).toBeNull();
+      expect(document.activeElement).toBe(
+        getByRole("button", { name: /testnet/i })
+      );
+
+      // Send, say: pressed once, it does what it's for.
+      await fireEvent.click(outside);
+
+      expect(pressed).toHaveBeenCalledOnce();
+    } finally {
+      outside.remove();
+      back.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("says Try again is at it until what it began ends, and offers it again once the network is found silent again", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const { getByRole } = render(NetworkPill);
+      /** @type {PromiseWithResolvers<void>} */
+      const tried = Promise.withResolvers();
+
+      await setSync({ isInProgress: true, progress: 0 });
+      await act(() => vi.advanceTimersByTimeAsync(30_000));
+      await fireEvent.click(getByRole("button", { name: /testnet/i }));
+
+      refreshBalance.mockReturnValueOnce(tried.promise);
+      await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+      expect(getByRole("button", { name: "Trying again…" })).toBeDisabled();
+
+      // Its sync gets nothing back either: Try again again.
+      await setSync({ isInProgress: true, progress: 0 });
+      await act(() => vi.advanceTimersByTimeAsync(30_000));
+
+      expect(getByRole("button", { name: "Try again" })).toBeEnabled();
+
+      // And once what it began ends.
+      refreshBalance.mockReturnValueOnce(tried.promise);
+      await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+      expect(getByRole("button", { name: "Trying again…" })).toBeDisabled();
+
+      await act(() => tried.resolve());
+
+      expect(getByRole("button", { name: "Try again" })).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows the sync's progress while it runs", async () => {
     const { container, getByRole, getByText } = render(NetworkPill);
 
