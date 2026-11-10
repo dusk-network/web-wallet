@@ -38,6 +38,15 @@ describe("What a DUSK was worth in euros", () => {
     );
   });
 
+  it("gives it in the currency asked for, as CoinGecko names it", async () => {
+    const asked = pricesAre([[NOW - DAY, 21.5]]);
+
+    await expect(
+      duskPrices({ currency: "INR", now: NOW })({ at: NOW - DAY })
+    ).resolves.toBe(21.5);
+    expect(asked.mock.lastCall?.[0]).toContain("?vs_currency=inr&");
+  });
+
   it("knows none too far from the payment, none past the year the public API has, asking nothing for those", async () => {
     const asked = pricesAre([[NOW - 30 * DAY, 0.1]]);
     const price = duskPrices({ now: NOW });

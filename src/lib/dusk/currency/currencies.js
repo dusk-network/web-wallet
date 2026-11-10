@@ -7,7 +7,7 @@ const currencies = [
   { code: "BMD", currency: "Bermudian Dollar" },
   { code: "BRL", currency: "Brazilian Real" },
   { code: "CAD", currency: "Canadian Dollar" },
-  { code: "CFH", currency: "Swiss Franc" },
+  { code: "CHF", currency: "Swiss Franc" },
   { code: "CLP", currency: "Chilean Peso" },
   { code: "CNY", currency: "Renminbi" },
   { code: "CZK", currency: "Czech Koruna" },

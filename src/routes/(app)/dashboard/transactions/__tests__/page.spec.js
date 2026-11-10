@@ -10,10 +10,13 @@ import {
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
+import { networks } from "@dusk-network/networks";
+
 import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 import { shortAddress } from "$lib/activity/present";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
 import { settingsStore } from "$lib/stores";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { openTestContacts } from "$lib/test-helpers";
 
 import History from "../+page.svelte";
@@ -46,6 +49,16 @@ vi.mock("$app/stores", async () => {
 
   return { page: stores.page };
 });
+
+// What each migration did on its own chain, as its chain says it.
+const migrationEvm = vi.hoisted(() => ({
+  /** @type {import("vitest").Mock<(...args: any[]) => Promise<Map<string, any>>>} */
+  read: vi.fn(async () => new Map()),
+}));
+
+vi.mock("$lib/bridge/migrationEvm", () => ({
+  readMigrationsEvm: migrationEvm.read,
+}));
 
 vi.mock("$lib/navigation/goto", () => ({
   default: mocks.goto.mockImplementation(
@@ -557,6 +570,112 @@ describe("History", () => {
       expect(await blobs[1].text()).toContain("Alice Rent");
     });
 
+    it("says which EVM addresses it has migrations' network fees from, and takes one added for the file", async () => {
+      const ADDED = "0x90fe2f14bbdd4bbb68ad0ce1a7b6c1b4d6bf4b39";
+      const MIGRATION = `0x${"a7".repeat(32)}`;
+      const BSC = /** @type {any} */ (
+        networks.mainnet.routes.migrations?.find(
+          ({ id }) => id === "bsc-to-dusk"
+        )
+      );
+
+      setNodeNetwork(networks.mainnet);
+      mocks.whole.mockResolvedValue({
+        rows: rowsOf(
+          [
+            {
+              amount: "5000000000",
+              blockHeight: 4_700_000,
+              counterparty: BSC.payoutAccount,
+              direction: "in",
+              hash: "bd".repeat(32),
+              memo: MIGRATION,
+              status: "executed",
+              timestamp: NOW - 60_000,
+            },
+          ],
+          { network: networks.mainnet }
+        ),
+        shieldedWaiting: false,
+      });
+      migrationEvm.read.mockImplementation(
+        async () =>
+          new Map([
+            [
+              MIGRATION,
+              {
+                approval: null,
+                approvalState: "none",
+                at: NOW - 120_000,
+                block: 10,
+                coin: "BNB",
+                from: ADDED,
+                gasWei: 47_005_000_752_080n,
+                hash: MIGRATION,
+                lux: 5_000_000_000n,
+                route: "bsc-to-dusk",
+                state: "mined",
+                totalWei: 47_005_000_752_080n,
+              },
+            ],
+          ])
+      );
+
+      try {
+        const { getByRole, getByText } = await openExport();
+        const fees = async () =>
+          (await fileSaved()).lines.filter((line) => line.includes(",cost,"));
+
+        expect(
+          getByText(
+            "The file has no network fees of migrations: no EVM address of yours is known here."
+          )
+        ).toBeInTheDocument();
+
+        await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+
+        expect(await fees()).toStrictEqual([]);
+
+        // Added for the file: what it isn't is said, what it is is listed.
+        await fireEvent.click(getByRole("button", { name: "Export" }));
+        await fireEvent.click(
+          getByRole("button", { name: "Add an EVM address" })
+        );
+
+        const field = getByRole("textbox", {
+          name: "EVM address you migrated from",
+        });
+
+        await fireEvent.input(field, { target: { value: "0x90fe" } });
+        await fireEvent.click(getByRole("button", { name: "Add" }));
+
+        expect(getByRole("alert")).toHaveTextContent(
+          "That isn't an EVM address."
+        );
+
+        await fireEvent.input(field, { target: { value: ADDED } });
+        await fireEvent.click(getByRole("button", { name: "Add" }));
+
+        expect(
+          getByText(
+            /^The file has the network fees your migrations paid from 0x90fE…4b39\.$/i
+          )
+        ).toBeInTheDocument();
+
+        await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+        await vi.waitFor(() => expect(names).toHaveLength(2));
+
+        expect(await fees()).toEqual([
+          expect.stringContaining(
+            "Network fee on BNB Smart Chain: migration of 5 BEP20 DUSK to Dusk"
+          ),
+        ]);
+      } finally {
+        setNodeNetwork(null);
+        migrationEvm.read.mockReset();
+      }
+    });
+
     it("holds a quarter or the dates chosen, and says so, saving nothing, with nothing in them", async () => {
       const { findByRole, getByLabelText, getByRole } = await openExport();
 
@@ -660,14 +779,28 @@ describe("History", () => {
     it.each([
       ["US dollars as the wallet's amounts", "USD", "de-DE", "US dollars"],
       [
-        "the browser's region's, India's US dollars",
+        "the wallet's own currency, as Indian rupees in India",
         "INR",
         "en-IN",
-        "US dollars",
+        "Indian rupees",
       ],
-      ["the browser's region's, Germany's euros", "INR", "de-DE", "euros"],
+      [
+        "the wallet's own currency, not the browser's region's",
+        "SGD",
+        "de-DE",
+        "Singapore dollars",
+      ],
+      [
+        "the browser's region's, for a currency of no price",
+        "XYZ",
+        "de-DE",
+        "euros",
+      ],
     ])("gives the values in %s", async (_, currency, language, words) => {
-      const code = words === "euros" ? "EUR" : "USD";
+      const code =
+        { euros: "EUR", "Indian rupees": "INR", "Singapore dollars": "SGD" }[
+          words
+        ] ?? "USD";
       const prices = vi.fn((/** @type {string} */ url) =>
         Promise.resolve(
           new Response(

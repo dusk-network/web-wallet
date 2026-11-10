@@ -114,6 +114,18 @@ describe("Settings store", () => {
       languageSpy.mockReturnValue("it-IT");
     });
 
+    it("should keep the Swiss franc as CHF, as the price sources know it, where it was kept as CFH", async () => {
+      localStorage.setItem(
+        `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`,
+        serializeProperty({ ...settingsStoreContent, currency: "CFH" })
+      );
+      vi.resetModules();
+
+      expect(get((await import("../settingsStore")).default).currency).toBe(
+        "CHF"
+      );
+    });
+
     it("should persist its values in local storage", async () => {
       settingsStore.update((store) => ({
         ...store,

@@ -1,5 +1,5 @@
 /**
- * What a DUSK was worth in euros or US dollars at the time of a payment, for
+ * What a DUSK was worth in a currency, as euros, at the time of a payment, for
  * an export that asks for it: CoinGecko's hourly prices, a window of them at a time, read once.
  * Only the times go out, as a range, never an account. Its public API has the
  * past year; older is asked for nothing, and that or a request that fails is no
@@ -25,14 +25,14 @@ const CLOCK_MARGIN_MS = HOUR_MS;
 const TIMEOUT_MS = 15_000;
 
 /**
- * A lookup of what one DUSK was worth at a time, in `currency`: null where it
- * isn't known, its windows read once for this lookup.
+ * A lookup of what one DUSK was worth at a time, in `currency`, as its code
+ * says it: null where it isn't known, its windows read once for this lookup.
  *
- * @param {{ currency?: "EUR" | "USD", now?: number }} [options]
+ * @param {{ currency?: string, now?: number }} [options]
  * @returns {(asked: { at: number }) => Promise<number | null>}
  */
 export function duskPrices({ currency = "EUR", now = Date.now() } = {}) {
-  const vs = currency === "USD" ? "usd" : "eur";
+  const vs = encodeURIComponent(currency.toLowerCase());
   /** @type {Map<number, Promise<[number, number][]>>} */
   const windows = new Map();
   const earliest = now - PAST_YEAR_MS + CLOCK_MARGIN_MS;

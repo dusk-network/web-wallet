@@ -16,30 +16,85 @@ import { get } from "svelte/store";
 
 import { keptMigrations } from "$lib/bridge/migrationActivity";
 import { readMigrationsEvm } from "$lib/bridge/migrationEvm";
+import { currencies } from "$lib/dusk/currency";
 
 import { duskPrices } from "./duskPrice";
 
 /**
- * The currency an export's values are in, euros or US dollars as the
- * extension's: the one chosen for the wallet's amounts where it's either,
- * else the one the browser's region starts on (app-core's `defaultCurrency`).
+ * The currency an export's values are in: the one chosen for the wallet's
+ * amounts, which CoinGecko prices DUSK in, else the one the browser's region
+ * starts on (app-core's `defaultCurrency`).
  *
  * @param {string} [chosen] Settings' currency
  * @param {string} [language] The browser's
- * @returns {"EUR" | "USD"}
+ * @returns {string}
  */
 export const exportCurrency = (chosen, language) =>
-  chosen === "EUR" || chosen === "USD" ? chosen : defaultCurrency(language);
+  currencies.some(({ code }) => code === chosen)
+    ? /** @type {string} */ (chosen)
+    : defaultCurrency(language);
 
 /**
- * What a currency's values are called in the export's words.
+ * What a currency's values are called in the export's words, as English
+ * names them: "Indian rupees", one "Indian rupee".
  *
- * @param {"EUR" | "USD"} currency
+ * @param {string} currency
  */
-export const currencyWords = (currency) =>
-  currency === "USD"
-    ? { many: "US dollars", one: "dollar" }
-    : { many: "euros", one: "euro" };
+export function currencyWords(currency) {
+  /**
+   * @param {number} amount
+   * @param {Intl.NumberFormatOptions} [options]
+   */
+  const named = (amount, options) =>
+    new Intl.NumberFormat("en", {
+      currency,
+      currencyDisplay: "name",
+      style: "currency",
+      ...options,
+    })
+      .formatToParts(amount)
+      .find(({ type }) => type === "currency")?.value ?? currency;
+
+  return {
+    many: named(2),
+    one: named(1, { maximumFractionDigits: 0, minimumFractionDigits: 0 }),
+  };
+}
+
+/**
+ * The EVM addresses a file writes a migration's gas for, as the person's,
+ * each once: connected here now, added for the file, or one this browser
+ * sent a migration from.
+ *
+ * @param {Iterable<string>} [connected]
+ * @param {Iterable<string>} [added]
+ * @returns {{ address: string, why: "added" | "connected" | "migrated" }[]}
+ */
+export function evmAddressesOf(connected = [], added = []) {
+  /** @type {Map<string, { address: string, why: "added" | "connected" | "migrated" }>} */
+  const known = new Map();
+
+  /**
+   * @param {Iterable<string>} addresses
+   * @param {"added" | "connected" | "migrated"} why
+   */
+  const take = (addresses, why) => {
+    for (const address of addresses) {
+      if (address && !known.has(address.toLowerCase())) {
+        known.set(address.toLowerCase(), { address, why });
+      }
+    }
+  };
+
+  take(connected, "connected");
+  take(
+    get(keptMigrations).map(({ sender }) => sender),
+    "migrated"
+  );
+  take(added, "added");
+
+  return [...known.values()];
+}
 
 /**
  * What's asked of a file.
@@ -122,7 +177,7 @@ export function periodChoices(now = new Date()) {
  * @param {{
  *   choices: ExportChoices,
  *   contactName: (address: string) => string | null | undefined,
- *   currency?: "EUR" | "USD",
+ *   currency?: string,
  *   evmConnected?: Iterable<string>,
  *   net?: import("@dusk-network/networks").Network | null,
  *   network: string,
@@ -130,7 +185,7 @@ export function periodChoices(now = new Date()) {
  *   profiles: import("@dusk-network/app-core/export").ExportProfile[],
  *   session: Pick<import("./activitySession").ActivitySession, "sozuFacts" | "whole">,
  * }} asked
- * @returns {Promise<import("@dusk-network/app-core/export").ExportResult & { currency: "EUR" | "USD", shieldedWaiting: boolean }>}
+ * @returns {Promise<import("@dusk-network/app-core/export").ExportResult & { currency: string, shieldedWaiting: boolean }>}
  */
 export async function makeExport({
   choices,

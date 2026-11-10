@@ -104,11 +104,20 @@ const migrateGasPrice = (settings) =>
       };
 
 /**
+ * The Swiss franc was kept as "CFH", which no price source knows: it's "CHF".
+ *
+ * @param {any} settings The stored settings, possibly from an older version.
+ * @returns {any}
+ */
+const migrateCurrency = (settings) =>
+  settings.currency === "CFH" ? { ...settings, currency: "CHF" } : settings;
+
+/**
  * @param {any} settings The stored settings, possibly from an older version.
  * @returns {SettingsStoreContent}
  */
 const migrate = (settings) => {
-  const migrated = migrateGasPrice(migrateGasLimit(settings));
+  const migrated = migrateCurrency(migrateGasPrice(migrateGasLimit(settings)));
 
   return AUTO_LOCK_MINUTES.includes(migrated.autoLockMinutes) ||
     migrated.autoLockMinutes === 0

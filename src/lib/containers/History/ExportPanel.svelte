@@ -7,8 +7,11 @@
    */
   import { mdiCheck } from "@mdi/js";
 
+  import { routes } from "@dusk-network/networks";
+
   import {
     currencyWords,
+    evmAddressesOf,
     exportCurrency,
     makeExport,
     otherProfiles,
@@ -19,7 +22,11 @@
   import { contactNamesOf, contactsStore } from "$lib/contacts";
   import { Button, Select, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
-  import { randomUUID } from "$lib/dusk/string";
+  import {
+    isValidEvmAddress,
+    randomUUID,
+    shortenAddress,
+  } from "$lib/dusk/string";
   import { WalletChangedError } from "$lib/errors";
   import { settingsStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
@@ -51,6 +58,30 @@
   let excel = false;
   let isBusy = false;
   let problem = "";
+
+  /** EVM addresses of the person's, added for this file. */
+  /** @type {string[]} */
+  let added = [];
+
+  /** Whether one is being added, and what's typed for it. */
+  let isAdding = false;
+  let typedAddress = "";
+  let addProblem = "";
+
+  function addAddress() {
+    const address = typedAddress.trim();
+
+    if (!isValidEvmAddress(address)) {
+      addProblem = "That isn't an EVM address.";
+
+      return;
+    }
+
+    added = [...added, address];
+    typedAddress = "";
+    addProblem = "";
+    isAdding = false;
+  }
 
   /**
    * Saves text as a file, as a download.
@@ -98,7 +129,7 @@
         choices: { excel, fiat, from, period, to, withContacts },
         contactName: (address) => contacts.get(address),
         currency,
-        evmConnected: $evmAccount.addresses ?? [],
+        evmConnected: [...($evmAccount.addresses ?? []), ...added],
         net: $nodeNetwork,
         network,
         profile: {
@@ -132,9 +163,18 @@
     }
   }
 
-  // Euros or US dollars, as the wallet's amounts, else as the browser's
-  // region starts on.
+  // As the wallet's amounts are, in Settings' currency.
   $: currency = exportCurrency($settingsStore.currency, navigator.language);
+  // Where DUSK could come over from another chain, the gas it took there
+  // is the person's from their EVM addresses: which, said.
+  $: hasMigrations = Boolean(
+    $nodeNetwork &&
+    routes($nodeNetwork).some(({ kind }) => kind === "migration")
+  );
+  $: evm = evmAddressesOf($evmAccount.addresses ?? [], added);
+  $: evmList = new Intl.ListFormat("en", { type: "conjunction" }).format(
+    evm.map(({ address }) => shortenAddress(address))
+  );
 </script>
 
 <section aria-label="Export CSV" class="export-panel" id="{id}-panel">
@@ -172,6 +212,55 @@
     <input bind:checked={excel} class="dusk-checkbox" type="checkbox" />
     For Excel: keep accents as it opens
   </label>
+  {#if hasMigrations}
+    <div class="export-panel__evm">
+      <p class="export-panel__note">
+        {evm.length
+          ? `The file has the network fees your migrations paid from ${evmList}.`
+          : "The file has no network fees of migrations: no EVM address of yours is known here."}
+      </p>
+      {#if isAdding}
+        <label class="export-panel__field">
+          <span>EVM address you migrated from</span>
+          <Textbox
+            autocapitalize="off"
+            autocomplete="off"
+            bind:value={typedAddress}
+            disabled={isBusy}
+            on:keydown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addAddress();
+              }
+            }}
+            placeholder="0x…"
+            spellcheck="false"
+            type="text"
+          />
+        </label>
+        {#if addProblem}
+          <p class="export-panel__error" role="alert">{addProblem}</p>
+        {/if}
+        <Button
+          disabled={isBusy}
+          on:click={addAddress}
+          size="small"
+          text="Add"
+          variant="secondary"
+        />
+      {:else}
+        <Button
+          disabled={isBusy}
+          on:click={() => {
+            isAdding = true;
+          }}
+          size="small"
+          text="Add an EVM address"
+          variant="secondary"
+        />
+      {/if}
+    </div>
+  {/if}
   <p class="export-panel__note">
     One profile's file for tax tools such as Koinly: exact amounts, times in
     UTC, transfers between your profiles marked.
@@ -230,6 +319,17 @@
     color: var(--calm-muted);
     font-size: 0.8125rem;
     line-height: 1.45;
+  }
+
+  .export-panel__evm {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+
+    & .export-panel__field {
+      align-self: stretch;
+    }
   }
 
   .export-panel__error {
