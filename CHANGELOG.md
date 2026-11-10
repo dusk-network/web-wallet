@@ -99,6 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Draw an X between two digits in an address as an X, not as the font's ×
 - Keep what was typed in a form that moves money through Back, as through the automatic lock, for the next time it opens
 - Show a request's memo with hidden characters, or digits that can misread, under its field as a payer's wallet will
+- Show the offer to be told when a transfer arrives without a scroll on a phone on its side
 
 ## [2.0.0] - 2026-11-06
 

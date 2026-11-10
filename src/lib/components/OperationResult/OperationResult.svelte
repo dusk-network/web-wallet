@@ -84,5 +84,12 @@
         width: 100%;
       }
     }
+
+    /* A phone on its side: what follows the result above the fold. */
+    @media (max-height: 30rem) {
+      .operation-result {
+        padding: 0.5em 0;
+      }
+    }
   }
 </style>

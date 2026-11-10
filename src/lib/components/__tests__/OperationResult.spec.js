@@ -3,6 +3,8 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { rejectAfter, resolveAfter } from "$lib/dusk/promise";
 
+import styleRules from "$lib/dusk/test-helpers/styleRules";
+
 import { OperationResult } from "..";
 
 vi.useFakeTimers();
@@ -76,5 +78,31 @@ describe("OperationResult", () => {
 
     expect(failed.getByText("Transaction failed")).toBeInTheDocument();
     expect(failed.queryByText("Transaction created")).toBeNull();
+  });
+
+  it("sits a result's parts close on a phone on its side, so what follows them, as the offer to be told when a transfer arrives, shows without a scroll", () => {
+    const sideways = (/** @type {string} */ file) =>
+      styleRules(file, import.meta.url).filter(({ media }) =>
+        /max-height:\s*30rem/.test(media)
+      );
+    const [gap] = sideways("../../../style/dusk-components/suspense.css");
+
+    expect(gap).toMatchObject({
+      declarations: { gap: "var(--small-gap)" },
+      selector: ".dusk-suspense.dusk-suspense--large-gap",
+    });
+
+    for (const file of [
+      "../OperationResult/OperationResult.svelte",
+      "../TransactionResult/TransactionResult.svelte",
+      "../DepositResult/DepositResult.svelte",
+    ]) {
+      const padding = sideways(file).map(
+        ({ declarations }) =>
+          declarations.padding ?? declarations["padding-block"] ?? ""
+      );
+
+      expect(padding, file).toEqual([expect.stringMatching(/^0\.5em/)]);
+    }
   });
 });

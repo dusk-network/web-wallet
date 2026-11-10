@@ -215,5 +215,12 @@
         text-align: center;
       }
     }
+
+    /* A phone on its side: what follows the result above the fold. */
+    @media (max-height: 30rem) {
+      .transaction-result {
+        padding-block: 0.5em;
+      }
+    }
   }
 </style>
