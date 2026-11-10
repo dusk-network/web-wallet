@@ -23,10 +23,7 @@
   import { goto } from "$lib/navigation";
   import { readSozuGrowth, sozuStore } from "$lib/sozu";
   import { followTransaction } from "$lib/transactions";
-  import {
-    readNativeRewardRate,
-    readProvisioners,
-  } from "$lib/staking/rewardRate";
+  import { readNativeRewards, readProvisioners } from "$lib/staking/rewardRate";
   import { nodeBaseUrl } from "$lib/url";
   import {
     gasPriceStore,
@@ -130,9 +127,13 @@
   /** @type {bigint | undefined} */
   let blockHeight;
 
-  /** About what native staking pays a year, read once a day. */
-  /** @type {number | null | undefined} */
-  let nativeRate;
+  /**
+   * What native staking pays a year: measured over its last days, or else
+   * estimated, read once a day.
+   *
+   * @type {Awaited<ReturnType<typeof readNativeRewards>> | undefined}
+   */
+  let native;
 
   onMount(() => {
     networkStore
@@ -141,12 +142,12 @@
         blockHeight = height;
       })
       .catch(() => {});
-    void readNativeRewardRate({
+    void readNativeRewards({
       network: String(get(networkStore).networkName ?? ""),
       nodeUrl: nodeBaseUrl(),
       tipHeight: () => networkStore.getCurrentBlockHeight(),
-    }).then((rate) => {
-      nativeRate = rate;
+    }).then((read) => {
+      native = read;
     });
   });
 
@@ -341,7 +342,8 @@
         onRetry={() => sozuStore.load({ force: true })}
         rates={{
           growth: sozuGrowth,
-          native: nativeRate,
+          native: native?.rate,
+          nativeRewards: native?.native ?? null,
           provisioners,
           tipHeight: blockHeight,
         }}
@@ -384,7 +386,8 @@
       activity={isHistoryEnabled() ? $activityState : null}
       {blockHeight}
       {hasPastStaking}
-      {nativeRate}
+      nativeDays={native?.days ?? null}
+      nativeRate={native?.rate}
       {sozuGrowth}
       locale={language}
       leastFee={unstakeGas.limits.gasLimitLower *
@@ -399,9 +402,11 @@
           ?.refresh()
           .catch(() => {});
       }}
+      onRetrySozu={() => sozuStore.load({ force: true })}
       {publicBalance}
       sozu={$sozuStore}
       {stakeInfo}
+      stakeReadFailed={$walletStore.stakeReadFailed}
     />
   {/if}
 {/if}

@@ -13,6 +13,9 @@
 
   // SvelteKit's version is the commit built (svelte.config.js).
   const commit = version.slice(0, 8);
+
+  /** Whether the request offers a wallet elsewhere on the phone first. */
+  let offersElsewhere = false;
 </script>
 
 <section class="setup-content">
@@ -21,6 +24,7 @@
 
     <!-- A link asking for a payment: what it asks, kept through the setup. -->
     <PaymentAsked
+      bind:offersElsewhere
       next={userId
         ? "Unlock to pay it."
         : "Create or restore a wallet to pay it."}
@@ -38,7 +42,7 @@
         {/if}
         <AppAnchorButton
           href="/setup/create"
-          variant={userId ? "tertiary" : "primary"}
+          variant={userId || offersElsewhere ? "tertiary" : "primary"}
           text="Create new wallet"
           icon={{ path: mdiWalletOutline }}
         />

@@ -63,17 +63,22 @@ describe("MemoText", () => {
     [
       "N'Ko's digits, which read right to left",
       "Invoice \u07C0\u07C0\u07C0\u07C1",
-      "Its digits read right to left, so a number may not be what it looks like.",
+      "A number here uses digits that read right to left. Check it digit by digit.",
     ],
     [
       "an Arabic-Indic zero in 105, which looks like a point",
       "Pay 1\u06605 DUSK",
-      "It mixes kinds of digits, so a number may not be what it looks like.",
+      "A number here mixes digits of different scripts. Check it digit by digit.",
     ],
     [
       "both",
       "Invoice \u07C0\u07C0\u07C0\u07C1 paid 1\u06605",
-      "It mixes kinds of digits, some reading right to left, so a number may not be what it looks like.",
+      "A number here mixes digits of different scripts, and some read right to left. Check it digit by digit.",
+    ],
+    [
+      "Bengali's 4, which looks like an 8",
+      "Pay \u09EA DUSK",
+      "A number here uses digits that look like other digits. Check it digit by digit.",
     ],
   ])(
     "says a number may not be what it looks like for %s, with the text as it is",
@@ -91,6 +96,6 @@ describe("MemoText", () => {
   it("says nothing of Arabic-Indic digits alone, which read as they look", () => {
     const { queryByText } = render(MemoText, { text: "Factura \u0661\u0660" });
 
-    expect(queryByText(/may not be what it looks like/)).toBeNull();
+    expect(queryByText(/Check it digit by digit/)).toBeNull();
   });
 });

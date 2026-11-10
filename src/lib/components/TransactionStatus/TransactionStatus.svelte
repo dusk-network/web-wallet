@@ -10,6 +10,7 @@
 
   import { currentActivity } from "$lib/activity";
   import { timeLabel } from "$lib/activity/present";
+  import { handOverSend, tellSendEnd } from "$lib/bridge/sendArrival";
   import { formatDuskExact, formatFee } from "$lib/dusk/currency";
   import {
     AnchorButton,
@@ -21,6 +22,7 @@
   import { followTransaction } from "$lib/transactions";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
+  import ArrivalNotice from "../Bridge/ArrivalNotice.svelte";
   import WithdrawalHash from "../EvmTransactions/WithdrawalHash.svelte";
   import MemoText from "../MemoText/MemoText.svelte";
 
@@ -68,6 +70,12 @@
   export let extra = [];
 
   /**
+   * Whether it offers to say when it arrives, as a transfer to someone:
+   * once a block takes it, whoever isn't looking is told.
+   */
+  export let tellArrival = false;
+
+  /**
    * Pending until the block with the transaction is final, or late
    * once the wallet stops following it.
    *
@@ -86,6 +94,9 @@
   /** @type {AbortController | undefined} */
   let controller;
 
+  // The wallet it was sent from: nothing's said of it once another opens.
+  const stillOpen = walletStore.whileOpen();
+
   /**
    * Sending while it isn't in a final block, then when it was sent, or
    * that it failed.
@@ -99,6 +110,23 @@
     pending: { icon: mdiTimerSand, title: "Sending…" },
   };
 
+  /**
+   * Says it arrived, or didn't, to whoever isn't looking, as a transfer on
+   * the Bridge does.
+   *
+   * @param {"completed" | "failed"} ended
+   */
+  function tellEnd(ended) {
+    if (tellArrival) {
+      tellSendEnd({
+        failed: ended === "failed",
+        hash: /** @type {string} */ (hash),
+        stillOpen,
+        what,
+      });
+    }
+  }
+
   function follow() {
     controller?.abort();
     controller = new AbortController();
@@ -106,20 +134,39 @@
     const { signal } = controller;
 
     status = "pending";
-    followTransaction(/** @type {string} */ (hash), { signal })
+    followTransaction(/** @type {string} */ (hash), {
+      // Sent, or failed, as soon as a block took it: its block is final a
+      // block or so later.
+      onBlock: (inBlock) => {
+        if (!signal.aborted && status === "pending") {
+          outcome = inBlock;
+          outcomeAt = Date.now();
+          status = inBlock.error ? "failed" : "completed";
+          tellEnd(status);
+        }
+      },
+      signal,
+    })
       .catch(() => null)
       .then((result) => {
-        if (!signal.aborted) {
+        if (signal.aborted) {
+          return;
+        }
+
+        // It's final, so History and the balances can say so as this does.
+        if (result) {
+          if (status === "pending") {
+            tellEnd(result.error ? "failed" : "completed");
+          }
+
           outcome = result;
           outcomeAt = Date.now();
-          status = result ? (result.error ? "failed" : "completed") : "late";
-
-          // It's final, so History and the balances can say so as this does.
-          if (result) {
-            void currentActivity()?.refresh();
-            void walletStore.refreshBalance();
-            onFinal(result, /** @type {string} */ (hash));
-          }
+          status = result.error ? "failed" : "completed";
+          void currentActivity()?.refresh();
+          void walletStore.refreshBalance();
+          onFinal(result, /** @type {string} */ (hash));
+        } else if (status === "pending") {
+          status = "late";
         }
       });
   }
@@ -131,7 +178,14 @@
       follow();
     }
 
-    return () => controller?.abort();
+    return () => {
+      controller?.abort();
+
+      // Left before a block took it: the wallet tells, wherever it is.
+      if (tellArrival && hash && !outcome) {
+        handOverSend({ hash, stillOpen, what });
+      }
+    };
   });
 
   // Without an answer, it may not have gone out: until the chain has it.
@@ -176,6 +230,9 @@
       <p>It didn't go through. The network fee was charged.</p>
     {/if}
   </div>
+  {#if tellArrival && hash && status === "pending"}
+    <ArrivalNotice />
+  {/if}
   {#if hash}
     <dl class="transaction-status__details">
       {#if memo}

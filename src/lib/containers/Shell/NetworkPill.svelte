@@ -7,6 +7,7 @@
   import { SyncBar } from "$lib/components";
   import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
   import { networkStore, walletStore } from "$lib/stores";
+  import { setNetworkReach } from "$lib/stores/networkReach";
 
   import { networkLabel } from "./navigation";
 
@@ -42,6 +43,7 @@
     if (isInProgress) {
       stallTimer = setTimeout(() => {
         isStalled = true;
+        isRetrying = false;
       }, STALL_MS);
     }
   }
@@ -79,6 +81,7 @@
     isSilent = false;
     silenceTimer = setTimeout(() => {
       isSilent = true;
+      isRetrying = false;
     }, STALL_MS);
   }
 
@@ -141,6 +144,7 @@
   onDestroy(() => {
     clearTimeout(stallTimer);
     watchNode(false);
+    setNetworkReach("answering");
   });
 
   /**
@@ -173,6 +177,14 @@
         : syncStatus.isInProgress
           ? "syncing"
           : "synced";
+  // Said where something waits on the network too, as a send does.
+  $: setNetworkReach(
+    state === "offline"
+      ? "offline"
+      : state === "unreachable"
+        ? "silent"
+        : "answering"
+  );
   $: stateText =
     state === "offline"
       ? "Offline"
@@ -191,6 +203,12 @@
         ? "Sync failed"
         : "";
 
+  /**
+   * Whether Try again is at it: until what it started ends, or the network
+   * is found silent again, which it says as before.
+   */
+  let isRetrying = false;
+
   function retry() {
     // A sync that stalled, or runs while the node is silent, would be joined
     // by another asked for: it stops, and a new one takes its place.
@@ -198,8 +216,12 @@
       walletStore.abortSync();
     }
 
+    isRetrying = true;
+
     // The balances and the stake shown are read again once it's done.
-    void walletStore.refreshBalance();
+    walletStore.refreshBalance().finally(() => {
+      isRetrying = false;
+    });
 
     // A node that answers again is said to at once.
     ask();
@@ -215,6 +237,22 @@
     // After Forward the history is at the panel's step already.
     if (!$page?.state?.networkPanel) {
       pushState("", { ...$page?.state, networkPanel: true });
+    }
+  }
+
+  /** The pill's button, which a close by key gives the focus back to. */
+  /** @type {HTMLButtonElement} */
+  let pillButton;
+
+  /**
+   * Escape closes the panel, wherever in it the focus is, as on Try again.
+   *
+   * @param {KeyboardEvent} event
+   */
+  function closeByKey(event) {
+    if (open && event.key === "Escape") {
+      closePanel();
+      pillButton?.focus();
     }
   }
 
@@ -265,6 +303,7 @@
 </script>
 
 <svelte:window
+  on:keydown={closeByKey}
   on:offline={() => {
     isOffline = true;
   }}
@@ -291,6 +330,7 @@
     aria-expanded={open}
     aria-haspopup="dialog"
     aria-label={`Network: ${label}, ${stateText.toLowerCase()}`}
+    bind:this={pillButton}
     class="network-pill__button"
     class:network-pill__button--problem={problem}
     on:click={() => {
@@ -298,11 +338,6 @@
         closePanel();
       } else {
         openPanel();
-      }
-    }}
-    on:keydown={(event) => {
-      if (event.key === "Escape") {
-        closePanel();
       }
     }}
     type="button"
@@ -343,11 +378,21 @@
         </p>
       {:else if state === "unreachable"}
         <p class="network-pill__error">Your balance may be out of date.</p>
-        <Button on:click={retry} size="small" text="Try again" />
+        <Button
+          disabled={isRetrying}
+          on:click={retry}
+          size="small"
+          text={isRetrying ? "Trying again…" : "Try again"}
+        />
       {:else if state === "error"}
         <p class="network-pill__error">{syncStatus.error?.message}</p>
         <p class="network-pill__error">Your balance may be out of date.</p>
-        <Button on:click={retry} size="small" text="Try again" />
+        <Button
+          disabled={isRetrying}
+          on:click={retry}
+          size="small"
+          text={isRetrying ? "Trying again…" : "Try again"}
+        />
       {/if}
     </div>
   {/if}

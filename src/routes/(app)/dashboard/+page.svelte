@@ -72,7 +72,8 @@
     },
   ].filter(({ id }) => isEnabled(id));
 
-  $: ({ balance, currentProfile, minimumStake, stakeInfo } = $walletStore);
+  $: ({ balance, currentProfile, minimumStake, stakeInfo, stakeReadFailed } =
+    $walletStore);
   // Test DUSK has no value: no money value off mainnet.
   $: ({ net, networkName } = $networkStore);
   // Offered only where a migration runs: the Bridge opens on BNB Smart
@@ -85,15 +86,38 @@
   $: hasPastStaking = rows.some((row) => row.category === "staking");
 
   // What is staked with Sozu, read only for an account that called a pool
-  // of its: read, a pool its hub named is known from then on.
-  $: if (rows.some(isSozuFunction) && networkName && currentProfile) {
+  // of its: read, a pool its hub named is known from then on. Where the
+  // history couldn't be read, whether it did isn't known: it's read then too.
+  $: ({ error: historyError } = $activityState);
+  $: if (
+    (rows.some(isSozuFunction) || (historyError && !rows.length)) &&
+    networkName &&
+    currentProfile
+  ) {
     void sozuStore.load();
   }
-  $: ({ account: sozuAccount, status: sozuStatus } = $sozuStore);
-  $: liquid =
-    sozuStatus && sozuAccount === String(currentProfile?.account ?? "")
-      ? sozuStatus.position.balance
-      : 0n;
+  $: ({
+    account: sozuAccount,
+    error: sozuError,
+    kept: sozuKept,
+    loading: sozuLoading,
+    status: sozuStatus,
+  } = $sozuStore);
+  $: isSozuShown = sozuAccount === String(currentProfile?.account ?? "");
+  // As read now, or else as read last here: what couldn't be read isn't
+  // nothing.
+  $: liquid = isSozuShown
+    ? (sozuStatus?.position.balance ?? sozuKept?.balance ?? 0n)
+    : 0n;
+  $: stakeUnread = stakeReadFailed || (isSozuShown && sozuError !== null);
+  $: stakeReading = isSozuShown && sozuLoading && !sozuStatus && !sozuKept;
+
+  /** Reads what's staked again, with Sozu too where it couldn't be read. */
+  const readStakeAgain = () =>
+    Promise.all([
+      isSozuShown && sozuError ? sozuStore.load({ force: true }) : null,
+      walletStore.refreshBalance(),
+    ]);
 </script>
 
 <div class="home">
@@ -131,10 +155,13 @@
       {liquid}
       locale={language}
       {minimumStake}
+      onRetry={readStakeAgain}
       reward={stakeInfo.reward}
       shielded={balance.shielded.value}
       sozuAvailable={sozuContractsFor(net) !== null}
       stakeEnabled={isEnabled("stake")}
+      {stakeReading}
+      {stakeUnread}
       {staked}
       unshielded={balance.unshielded.value}
     />

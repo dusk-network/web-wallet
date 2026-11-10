@@ -382,6 +382,27 @@ describe("Keeping what's typed in a form that moves money", () => {
       expectBlank(after);
     });
 
+    it("keeps it as Back leaves the page, as a lock does, for the next time it opens, from a link too", async () => {
+      await typedForm();
+
+      // A phone's Back, from the form to Home.
+      nav.navigating?.set({ type: "popstate" });
+      leave();
+      nav.navigating?.set(null);
+
+      // Send, opened again from Home.
+      nav.navigating?.set({ type: "link" });
+
+      const again = render(Send, sendProps);
+
+      nav.navigating?.set(null);
+      expectTyped(again);
+
+      // Left by a link there: it goes, as before.
+      leave();
+      expectBlank(render(Send, sendProps));
+    });
+
     it("brings nothing back with Back once it went out", async () => {
       const typed = await typedForm();
 

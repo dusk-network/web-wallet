@@ -93,7 +93,7 @@ describe("Settings store", () => {
       expect(settingsStoreContent.darkMode).toBe(true);
     });
 
-    it("should start in euros where the browser's region uses the euro, and keep a currency chosen", async () => {
+    it("should start in the currency of the browser's region, where DUSK has a price in it, and keep a currency chosen", async () => {
       expect(settingsStoreContent.currency).toBe("EUR");
 
       settingsStore.update((store) => ({ ...store, currency: "USD" }));
@@ -103,15 +103,41 @@ describe("Settings store", () => {
         "USD"
       );
 
-      // Singapore's English, of another region, starts in dollars.
+      // Singapore's English starts in Singapore dollars, as DUSK has a
+      // price in them; a region whose currency it has none in, in dollars.
       localStorage.clear();
       languageSpy.mockReturnValue("en-SG");
+      vi.resetModules();
+
+      expect(get((await import("../settingsStore")).default).currency).toBe(
+        "SGD"
+      );
+
+      localStorage.clear();
+      languageSpy.mockReturnValue("ro-RO");
       vi.resetModules();
 
       expect(get((await import("../settingsStore")).default).currency).toBe(
         "USD"
       );
       languageSpy.mockReturnValue("it-IT");
+    });
+
+    it("should keep the Swiss franc as CHF, as the price sources know it, where it was kept as CFH, and one DUSK has no price in as the region's", async () => {
+      const kept = async (/** @type {string} */ currency) => {
+        localStorage.setItem(
+          `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`,
+          serializeProperty({ ...settingsStoreContent, currency })
+        );
+        vi.resetModules();
+
+        return get((await import("../settingsStore")).default).currency;
+      };
+
+      expect(await kept("CFH")).toBe("CHF");
+      // Venezuela's old bolívar: CoinGecko lists it, with no price.
+      expect(await kept("VEF")).toBe("EUR");
+      expect(await kept("INR")).toBe("INR");
     });
 
     it("should persist its values in local storage", async () => {

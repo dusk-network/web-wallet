@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { get } from "svelte/store";
+import { render } from "@testing-library/svelte";
+import { get, writable } from "svelte/store";
 
 import {
   NOTICE_WORDS,
@@ -16,6 +17,8 @@ import {
 } from "../arrivalNotice";
 import { networks } from "@dusk-network/networks";
 
+import TransactionStatus from "$lib/components/TransactionStatus/TransactionStatus.svelte";
+import { walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { followArrivals } from "../arrivalFollowing";
@@ -71,6 +74,17 @@ vi.mock("../routeFollowing", () => ({
 }));
 
 vi.mock("$lib/navigation", () => ({ goto: mocks.goto }));
+
+// A send followed until a block takes it: not before a test says so.
+const sends = vi.hoisted(() => ({
+  /** @type {import("vitest").Mock<(hash: string, options: any) => Promise<any>>} */
+  followTransaction: vi.fn(() => new Promise(() => {})),
+}));
+
+vi.mock("$lib/transactions", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  followTransaction: sends.followTransaction,
+}));
 
 /** A browser that can notify, as `answer` says, with what it showed. */
 function browser({ answer = "granted", permission = "default" } = {}) {
@@ -514,6 +528,88 @@ describe("Being told when a transfer arrives", () => {
 
       expect(mocks.resumeRecentDeposits).toHaveBeenCalledTimes(2);
       expect(Stand.permission).toBe("granted");
+    });
+
+    it("tells of a send whose Sent screen was left before a block took it, from wherever the wallet is, once they asked, and of none once it's locked", async () => {
+      const { shown } = browser();
+      const hash = "8d".repeat(32);
+      const sent = { hash, tellArrival: true, what: "0.02 DUSK to Lucas" };
+
+      await chooseArrivalNotice();
+
+      // Left for Home before a block took it.
+      render(TransactionStatus, sent).unmount();
+      sends.followTransaction.mock.lastCall?.[1].onBlock({
+        blockHeight: 4_820_416n,
+        error: null,
+        fee: 1_854_795n,
+        timestamp: 1,
+      });
+
+      await vi.waitFor(() =>
+        expect(shown).toMatchObject([
+          {
+            options: { tag: `send:${hash}` },
+            title: "Arrived: 0.02 DUSK to Lucas",
+          },
+        ])
+      );
+
+      // Locked: a screen left is followed no further.
+      stop();
+      sends.followTransaction.mockClear();
+      render(TransactionStatus, sent).unmount();
+
+      expect(sends.followTransaction).toHaveBeenCalledOnce();
+      stop = followArrivals();
+    });
+
+    it("says nothing of a send under another wallet: its Sent screen left as that one opens", async () => {
+      const opened = writable({ ...get(walletStore), walletKey: "wallet-a" });
+      let session = 1;
+
+      browser();
+      await chooseArrivalNotice();
+      // A session per wallet opened, as the store keeps them.
+      vi.spyOn(walletStore, "subscribe").mockImplementation(opened.subscribe);
+      vi.spyOn(walletStore, "whileOpen").mockImplementation(() => {
+        const at = session;
+
+        return /** @type {any} */ (
+          (/** @type {unknown} */ value) => {
+            if (at !== session) {
+              throw new Error("Another wallet opened");
+            }
+
+            return value;
+          }
+        );
+      });
+      stop();
+      stop = followArrivals();
+
+      const screen = render(TransactionStatus, {
+        hash: "8e".repeat(32),
+        tellArrival: true,
+        what: "0.02 DUSK to Lucas",
+      });
+
+      // Another wallet opens: its session first, then what the store says,
+      // and the screen goes after.
+      session += 1;
+      opened.update((store) => ({ ...store, walletKey: "wallet-b" }));
+      sends.followTransaction.mockClear();
+      screen.unmount();
+      // Were it followed on, a block taking it would say it now.
+      sends.followTransaction.mock.lastCall?.[1].onBlock({
+        blockHeight: 4_820_416n,
+        error: null,
+        fee: 1_854_795n,
+        timestamp: 1,
+      });
+
+      expect(sends.followTransaction).not.toHaveBeenCalled();
+      expect(get(arrivalTitle)).toBe("");
     });
 
     it("follows what's under way from wherever the wallet is only once they asked, and says nothing of it once locked", async () => {

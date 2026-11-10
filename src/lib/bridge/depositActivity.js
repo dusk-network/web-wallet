@@ -132,7 +132,7 @@ async function finalizedDuskTransaction(transactionHash) {
 
   if (transactionResult.tx.err) {
     throw new DuskDepositExecutionError(
-      `The DuskDS deposit failed: ${transactionResult.tx.err}`
+      `The Dusk deposit failed: ${transactionResult.tx.err}`
     );
   }
 

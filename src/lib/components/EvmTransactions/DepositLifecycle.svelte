@@ -12,10 +12,14 @@
     isDepositDelayed,
     isDepositStalled,
   } from "$lib/bridge/depositLifecycle";
+  import { activityState } from "$lib/activity";
   import { duskExplorerTx } from "$lib/url";
   import { duskEvm } from "$lib/web3/walletConnection";
   import { Badge } from "$lib/dusk/components";
+  import { formatDuskExact } from "$lib/dusk/currency";
+  import { settingsStore } from "$lib/stores";
 
+  import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import Banner from "../Banner/Banner.svelte";
   import BridgeTimeline from "./BridgeTimeline.svelte";
   import WithdrawalHash from "./WithdrawalHash.svelte";
@@ -37,6 +41,15 @@
   $: stageMessage = depositStageMessage(deposit, {
     time: routeTime(DEPOSIT, $bridgeTimes),
   });
+  // What its Dusk transaction paid, as the history has it once it's read.
+  $: fee =
+    $activityState.rows.find(
+      ({ hash }) =>
+        hash ===
+        String(deposit?.transactionHash ?? "")
+          .replace(/^0x/i, "")
+          .toLowerCase()
+    )?.fee ?? null;
 
   onMount(() => {
     void bridgeTimes.load();
@@ -83,18 +96,25 @@
     <dl class="deposit-status__details">
       <dt>Submitted</dt>
       <dd>{formatTimestamp(new Date(deposit.createdAt).toISOString())}</dd>
-      <dt>DuskDS transaction</dt>
+      <dt>Dusk transaction</dt>
       <dd>
         <WithdrawalHash
           href={duskExplorerTx(deposit.transactionHash)}
-          name="DuskDS transaction hash"
+          name="Dusk transaction hash"
           explorerName="Dusk explorer"
           value={deposit.transactionHash}
         />
       </dd>
       {#if deposit.l1BlockHeight}
-        <dt>DuskDS block</dt>
+        <dt>Dusk block</dt>
         <dd>{deposit.l1BlockHeight}</dd>
+      {/if}
+      {#if fee !== null}
+        <dt>Network fee</dt>
+        <dd>
+          <BalanceValue value={formatDuskExact(fee, $settingsStore.language)} />
+          DUSK
+        </dd>
       {/if}
       {#if deposit.l2TransactionHash}
         <dt>DuskEVM transaction</dt>

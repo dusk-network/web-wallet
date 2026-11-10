@@ -65,7 +65,7 @@
     randomUUID,
     shortenAddress,
   } from "$lib/dusk/string";
-  import { Button, Icon, Textbox } from "$lib/dusk/components";
+  import { AnchorButton, Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     AppAnchor,
@@ -150,10 +150,21 @@
   export let initialProblem = "";
 
   /**
+   * The web wallet of the network the link the page was opened with is for,
+   * where it's another network's, with the same request.
+   *
+   * @type {{ href: string, network: string } | null}
+   */
+  export let initialElsewhere = null;
+
+  /**
    * Whether the amount the page was opened with is the wallet's own, as a
    * payment that came in sent back: it's hidden with the balances, as Max's.
    */
   export let initialAmountHidden = false;
+
+  /** Whether the page was opened to send a payment back, filled in from it. */
+  export let isSendBack = false;
 
   /**
    * `.dusk` names of past counterparties, for "Did you mean …?" along with
@@ -209,6 +220,9 @@
 
   /** Why the last link given fills in nothing: another network's, or unreadable. */
   let linkProblem = initialProblem;
+
+  /** Where the last link given can be paid, as another network's. */
+  let linkElsewhere = initialElsewhere;
 
   /** Whether a link filled the form in, until what's in To changes. */
   let isFromLink = Boolean(
@@ -500,6 +514,7 @@
     await tick();
 
     linkProblem = asked?.problem ?? "";
+    linkElsewhere = asked?.elsewhere ?? null;
     sendToAddress = asked ? asked.to : text;
     linkRecipient = sendToAddress;
     isFromLink = Boolean(asked?.amount || asked?.memo);
@@ -827,6 +842,8 @@
       what: `${hideBalances ? BALANCE_MASK : amountText} DUSK to ${recipientLabel}`,
     };
     step = "done";
+    // From its top, as the review shows: a phone on its side shows little.
+    window.scrollTo(0, 0);
     reviewHistory.settle(operation, () => {
       canTryAgain = true;
       draft.keep(typed);
@@ -1024,10 +1041,29 @@
     isMemoValidForBridge &&
     !isMemoTooLong;
 
+  /**
+   * What's in To, as it's meant without its spaces and line breaks: an
+   * address, a `.dusk` name or a link, which have none. A name typed, as a
+   * contact's or a profile's, keeps them.
+   *
+   * @param {string} text
+   */
+  function withoutSpaces(text) {
+    const joined = text.replace(/\s+/g, "");
+
+    return /[\n\r\t]/.test(text) ||
+      /^(dusk:|https?:\/\/)/i.test(joined) ||
+      isDuskName(joined) ||
+      isValidEvmAddress(joined) ||
+      getAddressInfo(joined, shieldedAddress, publicAddress).isValid
+      ? joined
+      : text;
+  }
+
   // A pasted recipient often brings spaces or line breaks, which no address
   // or name has.
   $: if (/\s/.test(sendToAddress)) {
-    sendToAddress = sendToAddress.replace(/\s+/g, "");
+    sendToAddress = withoutSpaces(sendToAddress);
   }
 
   $: if (!sendToAddress) {
@@ -1037,6 +1073,10 @@
   // Another recipient, as a contact picked, is no more the link's doing.
   $: if (sendToAddress) {
     linkProblem = "";
+  }
+
+  $: if (!linkProblem) {
+    linkElsewhere = null;
   }
 
   $: if (sendToAddress !== linkRecipient) {
@@ -1082,19 +1122,21 @@
   );
 
   /**
-   * Whether what's typed can mean a name: by its start, or the start of a
-   * word in it. The field takes out spaces, so they aren't compared.
+   * Whether what's typed can mean a name: by its start, with its spaces or
+   * without them, or the start of a word in it.
    *
    * @param {string} name
    * @param {string} typed
    */
   function canMean(name, typed) {
-    const q = typed.toLowerCase();
+    const q = typed.toLowerCase().trim();
     const named = name.toLowerCase();
 
     return (
-      named.replace(/\s/g, "").startsWith(q) ||
-      named.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(q))
+      Boolean(q) &&
+      (named.startsWith(q) ||
+        named.replace(/\s/g, "").startsWith(q.replace(/\s/g, "")) ||
+        named.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(q)))
     );
   }
 
@@ -1184,11 +1226,14 @@
   $: fromLabel =
     ownAccounts.find((account) => account.address === from)?.label ??
     (isShielded ? "Your shielded balance" : "Your public account");
-  // Who the transfer goes to, as the Done screen says it.
+  // Who the transfer goes to, as the Done screen says it: a contact whose
+  // name looks like another's with its address.
   $: recipientLabel = contact
     ? recipientName
       ? `${contactNameText(contact.name)} (${shownName})`
-      : contactNameText(contact.name)
+      : isAlike
+        ? `${contactNameText(contact.name)} (${shortenAddress(recipientAddress)})`
+        : contactNameText(contact.name)
     : own && !recipientName
       ? ownLabel.replace(/^Your/, "your")
       : recipientName
@@ -1226,6 +1271,10 @@
     contacts.find(
       (saved) => recipientAddress && saved.address === recipientAddress
     ) ?? nameContact;
+
+  // Whether its name looks like another's: said wherever it's named, to the
+  // review, as where it's picked.
+  $: isAlike = Boolean(contact && alike.has(contact));
 
   // The address the contact's name points to now, of the kind the contact
   // keeps: null until the lookup has said.
@@ -1374,6 +1423,13 @@
   $: isAmountMasked = hideBalances && (isMaxAmount || isOwnAmount);
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
+
+  // Once the send goes out, the review's step leaves the history, and the
+  // browser puts the page back where the form was scrolled: the result shows
+  // from its top again.
+  $: if (step === "done" && !$page?.state?.sendReview) {
+    window.scrollTo(0, 0);
+  }
 </script>
 
 {#if step === "done" && sent}
@@ -1382,6 +1438,7 @@
     memo={sent.memo}
     onRetry={tryAgain}
     operation={sent.operation}
+    tellArrival
     what={sent.what}
   />
 {:else}
@@ -1495,6 +1552,15 @@
 
         {#if linkProblem}
           <p class="send__error" role="alert"><strong>{linkProblem}</strong></p>
+          {#if linkElsewhere}
+            <AnchorButton
+              className="send__elsewhere"
+              href={linkElsewhere.href}
+              size="small"
+              text={`Switch to ${linkElsewhere.network}`}
+              variant="secondary"
+            />
+          {/if}
         {:else if isRecipientInvalid}
           <p class="send__error" id={invalidRecipientId} role="alert">
             {#if isValidEvmAddress(sendToAddress)}
@@ -1543,7 +1609,9 @@
 
         {#if isFromLink}
           <p class="send__hint" role="status">
-            Filled in from the link. Check it before you send.
+            {isSendBack
+              ? "Filled in to send the payment back. Check it before you send."
+              : "Filled in from the link. Check it before you send."}
           </p>
         {/if}
 
@@ -1633,7 +1701,7 @@
               {#if contact}
                 {contactNameText(contact.name)}{recipientName
                   ? ` · ${shownName}`
-                  : ""}
+                  : ""}{isAlike ? " · name looks like another" : ""}
               {:else if own && !recipientName}
                 {ownLabel}
               {:else if recipientName}
@@ -1955,6 +2023,11 @@
                         ? shownName
                         : walletAccount}</span
                 >
+                {#if isAlike}
+                  <span class="send__summary-alike"
+                    >Name looks like another</span
+                  >
+                {/if}
               {/if}
               <!-- The review is the last it shows of it before it goes. -->
               {#if step === "review"}
@@ -2391,6 +2464,10 @@
     gap: 0.5rem;
   }
 
+  .send__field :global(.send__elsewhere) {
+    align-self: flex-start;
+  }
+
   .send__link {
     all: unset;
     color: var(--calm-text);
@@ -2449,6 +2526,12 @@
 
   .send__summary-name {
     overflow-wrap: anywhere;
+  }
+
+  /* As the picker and History mark it. */
+  .send__summary-alike {
+    color: var(--calm-pending);
+    font-size: 0.8125rem;
   }
 
   .send__summary-code {

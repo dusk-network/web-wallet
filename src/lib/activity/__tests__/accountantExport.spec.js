@@ -10,7 +10,10 @@ const chain = vi.hoisted(() => ({
   read: vi.fn(async () => new Map()),
 }));
 
-vi.mock("$lib/bridge/migrationEvm", () => ({ readMigrationsEvm: chain.read }));
+vi.mock("$lib/bridge/migrationEvm", () => ({
+  readMigrationApprovals: async () => [],
+  readMigrationsEvm: chain.read,
+}));
 
 // The migrations this browser sent: the approval each sent is kept with it.
 vi.mock("$lib/bridge/migrationActivity", async () => {

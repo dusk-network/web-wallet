@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { act, cleanup, render } from "@testing-library/svelte";
 import { networks } from "@dusk-network/networks";
 
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
@@ -13,6 +13,23 @@ vi.mock("$lib/web3/walletConnection", () => ({
     },
   },
 }));
+
+// The history, with the deposit's Dusk transaction once it's read.
+const history = vi.hoisted(() => ({
+  /** @type {import("svelte/store").Writable<any> | null} */
+  state: null,
+}));
+
+vi.mock("$lib/activity", async (importOriginal) => {
+  const { writable } = await import("svelte/store");
+
+  history.state = writable({ rows: [] });
+
+  return {
+    .../** @type {object} */ (await importOriginal()),
+    activityState: history.state,
+  };
+});
 
 vi.mock("$lib/bridge/bridgeTimes", () => ({
   default: {
@@ -61,7 +78,7 @@ describe("DepositLifecycle", () => {
       deposit: { ...deposit(), l2TransactionHash: `0x${"e2".repeat(32)}` },
     });
     const dusk = getByRole("link", {
-      name: "View duskds transaction hash in Dusk explorer",
+      name: "View dusk transaction hash in Dusk explorer",
     });
 
     expect(dusk).toHaveAttribute(
@@ -76,6 +93,27 @@ describe("DepositLifecycle", () => {
       `https://explorer.example.test/tx/0x${"e2".repeat(32)}`
     );
     setNodeNetwork(null);
+  });
+
+  it("should call its chain Dusk, as the Bridge does, and say the network fee its Dusk transaction paid once the history has it", async () => {
+    const { container, getByText, queryByText } = render(DepositLifecycle, {
+      deposit: { ...deposit(), stage: "completed" },
+    });
+
+    expect(container).not.toHaveTextContent("DuskDS");
+    expect(getByText("Finalized on Dusk")).toBeInTheDocument();
+    expect(getByText("Dusk transaction")).toBeInTheDocument();
+    expect(queryByText("Network fee")).toBeNull();
+
+    await act(() =>
+      history.state?.set({
+        rows: [{ fee: 1_987_516n, hash: "ab".repeat(32) }],
+      })
+    );
+
+    expect(getByText("Network fee").nextElementSibling).toHaveTextContent(
+      "0.001987516 DUSK"
+    );
   });
 
   it("should leave the amount and the state to the row in a list that says them", () => {

@@ -8,7 +8,7 @@
    * reads in the order it's written: "Pay א 10 א 1000" never as
    * "Pay 1000 א 10 א". For display only: what's sent is the text as it is.
    */
-  import { displayText } from "@dusk-network/app-core/text";
+  import { displayText, numbersNote } from "@dusk-network/app-core/text";
 
   /** @type {string} */
   export let text;
@@ -22,13 +22,9 @@
   $: shown = displayText(text, { isolate: true, lineBreaks: !inline });
 
   // Digits shown as they are, which can read as another number: N'Ko's 0001
-  // as 1000, or 1٠5, whose Arabic-Indic zero looks like a point, as 1.5.
-  $: rtl = shown.flags.includes("rtl_digits");
-  $: digits = shown.flags.includes("mixed_digits")
-    ? `It mixes kinds of digits${rtl ? ", some reading right to left" : ""}, so a number may not be what it looks like.`
-    : rtl
-      ? "Its digits read right to left, so a number may not be what it looks like."
-      : "";
+  // as 1000, 1٠5, whose Arabic-Indic zero looks like a point, as 1.5, or
+  // Bengali's ৪, a 4 that looks like an 8: said as the extension says it.
+  $: digits = numbersNote(shown.flags);
 </script>
 
 <!-- Nothing between the two: quoted, nothing comes after the text. -->

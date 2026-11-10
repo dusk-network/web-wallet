@@ -14,22 +14,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Notify on a phone too when a transfer arrives, through the wallet's service worker, while its tab stays open, as its Sent screen says
 - Send back a payment that paid a request again, filled in on Send, from the request
 - Link the footer's version, now with the commit built and no date, to the build's manifest of every file's SHA-256
+- Open a payment request's page in Firefox or in the Dusk app on an Android phone, offered before Create or Restore
+- Offer to tell when a send arrives on its Sent screen, as the Bridge's do, and tell it from wherever the wallet is
+- Offer a request for another network on that network's wallet, before an unlock and on Send
+- Say which EVM addresses the export has the network fees of migrations from, and add one for the file
+- Show staking rewards by calendar year beside History's export, native and Sozu's, in DUSK and in the wallet's currency where asked
 
 ### Changed
 
-- Show amounts in euros to start with where the browser's region uses the euro, else in dollars
+- Show amounts to start with in the currency of the browser's region, as Singapore dollars in Singapore, where DUSK has a price in it, else in US dollars
 
 ### Removed
 
 ### Fixed
 
 - Count the approval a migration spent in its gas under Bridge › Activity, as its chain says, and write both in the accounting export
+- List approvals and revokes no migration spent under Bridge › Activity, with their gas, and write it in the accounting export
 - Give Sozu's yearly rate from how its stDUSK grew over the last 30 days, read on the chain, the same on its form and on Stake
 - Refuse a contact named as one of your profiles, or like one in other letters, and say which contact a name looks like, with its address
-- Mark contacts whose names look alike on Send, with their addresses
+- Refuse a profile name that is, or looks like, another profile's or a contact's, saying whose
+- Mark contacts whose names look alike on Send, with their addresses, also once picked, on Review and the Sent screen, and in Contacts
+- Find a contact whose name looks like what's typed, in letters of another script, in the search and in Contacts
 - Say where a memo's number may not be what it looks like: digits that read right to left, or of more than one kind
 - Refuse a payment link that says a field twice or two amounts, or has a name before its host, and say so before an unlock too
-- Say Paid for a request of any amount paid with its memo, and Paid twice for its memo again
+- Say what came in, in no colour, on a request of any amount paid with its memo, not a plain Paid, and Paid twice for its memo again
 - Show a profile's and a wallet's name whole in the profile menu, a tap from the pill that shortens it
 - Say on a restore that syncing finds the balance and past payments, and which blocks the sync bar goes through
 - Give the fee in DUSK first under Edit, with what "at most" means and the gas written in groups
@@ -60,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say Sent back on a request's payment once it's sent back, with no Send back for it
 - Hide the amount Send back fills in while balances are hidden
 - Keep a request asked again after it's paid as the one there was, not a new Waiting one
-- Give the export's values in the wallet's currency where it's euros or US dollars, else in the browser's region's, as the extension does, not always in euros
+- Give the export's values in the wallet's currency, as Indian rupees, not always in euros
 - Keep the EVM wallet connected when Stay is chosen as the browser asks whether to leave
 - Write a migration's EVM gas in the export only where it was sent from an EVM address connected here, or one this browser migrated from
 - Say one wallet step, migrate, on the Bridge's form where an open approval covers the amount
@@ -69,13 +77,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mark a contact whose name looks like another's with its address in History and the search, as on Send
 - Offer a profile here on Send by its name before a .dusk name of it, and say when a .dusk name entered is a profile's name but someone else's
 - Send again from a profile while its last send waits for a block, with the next nonce, not the same one
-- Say native staking's yearly rate is estimated, not what it paid lately
+- Measure native staking's yearly rate from what stakers were paid over the last 30 days, and say on Stake over how many days each rate is, or that it's estimated
 - Say "Can't reach the network" once a sync gets nothing back for 30 seconds, and for the browser's "Failed to fetch", not Syncing forever
 - Say Offline, or Sync failed, in a word beside the network's dot, on a phone too
 - Say "Can't reach the network" within 30 seconds of the node going silent, between syncs too, on the network's pill where there's room
 - Keep "Sync completed!" on a restore until Next, through the syncs after it
 - Go straight to the unlock after the automatic lock, saying it locked after so many minutes away
 - Make See in History and Send back on a request, and Migrate it to Dusk on Home, 44 px tall on a phone
+- Say when a stake couldn't be read, with what was read last on this device, not that nothing is staked, and read it again on Try again
+- Say a link's address isn't valid, as one cut short, before an unlock, and refuse it on Send as the link's
+- Show values in Swiss francs where Swiss Franc is chosen
+- Offer the Georgian lari, and no longer Venezuela's old bolívar, which has no price, among the currencies
+- Close the network's panel on Escape wherever its focus is, as after Try again, so the next press goes where it's meant
+- Say "Trying again…" on Try again in the network's panel until it's done, or the network is found silent again
+- Say on a send that waits on a network that isn't answering that nothing has left the wallet yet, or, once it may have, to wait for it
+- Say Sent as soon as a block takes a transaction, not a block later once that block is final
+- Show each transaction's memo in the search's results
+- Look further back on Show more in History's search until it finds more, and say when nothing more is found
+- Keep the spaces of a name typed in To, as "Estudio M", taking them out only of an address, a .dusk name or a link
+- Give the time of each payment of a request paid more than once to the second, so two in the same minute read apart
+- Say what was sent back for a request's payment, with its amount and a link to it, and keep Send back on its payment's line
+- Call the chain Dusk on a deposit to DuskEVM, as the Bridge does, and say the network fee it paid once History has it
+- Say Send back fills in the payment to send back, not that a link did
+- Start a section's head at the content's edge on a phone, as what's under it does
+- Draw an X between two digits in an address as an X, not as the font's ×
+- Write every value in the export to the same 8 decimals
+- Put a contact's own name before its .dusk name in the export
+- Say a link's network can't be read where it's written as dusk:02, not that it names two networks
+- Refuse a dusk: link that says the recipient twice, and read one with a plain address
+- Show a variation selector on no emoji, in a memo or a name, as its code
+- Say where a memo's number uses digits that look like other digits, as Bengali's ৪, in the extension's words
+- Keep what was typed in a form that moves money through Back, as through the automatic lock, for the next time it opens
+- Show a request's memo with hidden characters, or digits that can misread, under its field as a payer's wallet will
+- Show the offer to be told when a transfer arrives without a scroll on a phone on its side
 
 ## [2.0.0] - 2026-11-06
 

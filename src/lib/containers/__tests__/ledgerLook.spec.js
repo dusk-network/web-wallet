@@ -4,6 +4,7 @@ import { get } from "svelte/store";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { contactsStore, removeContact, saveContact } from "$lib/contacts";
+import styleRules from "$lib/dusk/test-helpers/styleRules";
 import { openTestContacts } from "$lib/test-helpers";
 import { ContactsView } from "$lib/containers/Contacts";
 import { HistoryView } from "$lib/containers/History";
@@ -84,6 +85,31 @@ describe("The ledger look", () => {
     for (const contact of get(contactsStore)) {
       removeContact(contact.id);
     }
+  });
+
+  it("draws every character as it is, in an address or an amount, in a field too: no contextual alternate, as the font's × for an x between digits", () => {
+    const rules = styleRules("../../../style/main.css", import.meta.url);
+    const off = rules.filter(
+      ({ declarations, media }) =>
+        media === "" &&
+        declarations["font-variant-ligatures"] === "no-contextual"
+    );
+
+    for (const element of ["html", "input", "textarea"]) {
+      expect(
+        off.some(({ selector }) => selector.split(/,\s*/).includes(element)),
+        element
+      ).toBe(true);
+    }
+
+    // Nothing turns them on again.
+    expect(
+      rules.filter(({ declarations }) =>
+        /contextual|calt/.test(
+          `${declarations["font-variant-ligatures"] ?? ""} ${declarations["font-feature-settings"] ?? ""}`
+        )
+      )
+    ).toStrictEqual(off);
   });
 
   it("gives Home a bracketed head, ledger labels and blue only on its links", () => {
@@ -189,6 +215,7 @@ describe("The ledger look", () => {
         account: "",
         available: true,
         error: null,
+        kept: null,
         loading: false,
         status: null,
       },

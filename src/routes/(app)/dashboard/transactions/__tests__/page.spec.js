@@ -10,10 +10,13 @@ import {
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
+import { networks } from "@dusk-network/networks";
+
 import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 import { shortAddress } from "$lib/activity/present";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
 import { settingsStore } from "$lib/stores";
+import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { openTestContacts } from "$lib/test-helpers";
 
 import History from "../+page.svelte";
@@ -46,6 +49,20 @@ vi.mock("$app/stores", async () => {
 
   return { page: stores.page };
 });
+
+// What each migration did on its own chain, and the approvals sent there,
+// as its chain says them.
+const migrationEvm = vi.hoisted(() => ({
+  /** @type {import("vitest").Mock<(...args: any[]) => Promise<any[]>>} */
+  approvals: vi.fn(async () => []),
+  /** @type {import("vitest").Mock<(...args: any[]) => Promise<Map<string, any>>>} */
+  read: vi.fn(async () => new Map()),
+}));
+
+vi.mock("$lib/bridge/migrationEvm", () => ({
+  readMigrationApprovals: migrationEvm.approvals,
+  readMigrationsEvm: migrationEvm.read,
+}));
 
 vi.mock("$lib/navigation/goto", () => ({
   default: mocks.goto.mockImplementation(
@@ -557,6 +574,137 @@ describe("History", () => {
       expect(await blobs[1].text()).toContain("Alice Rent");
     });
 
+    it("says which EVM addresses it has migrations' network fees from, and takes one added for the file, with its approvals no migration spent", async () => {
+      const ADDED = "0x90fe2f14bbdd4bbb68ad0ce1a7b6c1b4d6bf4b39";
+      const MIGRATION = `0x${"a7".repeat(32)}`;
+      const BSC = /** @type {any} */ (
+        networks.mainnet.routes.migrations?.find(
+          ({ id }) => id === "bsc-to-dusk"
+        )
+      );
+
+      setNodeNetwork(networks.mainnet);
+      mocks.whole.mockResolvedValue({
+        rows: rowsOf(
+          [
+            {
+              amount: "5000000000",
+              blockHeight: 4_700_000,
+              counterparty: BSC.payoutAccount,
+              direction: "in",
+              hash: "bd".repeat(32),
+              memo: MIGRATION,
+              status: "executed",
+              timestamp: NOW - 60_000,
+            },
+          ],
+          { network: networks.mainnet }
+        ),
+        shieldedWaiting: false,
+      });
+      migrationEvm.read.mockImplementation(
+        async () =>
+          new Map([
+            [
+              MIGRATION,
+              {
+                approval: null,
+                approvalState: "none",
+                at: NOW - 120_000,
+                block: 10,
+                coin: "BNB",
+                from: ADDED,
+                gasWei: 47_005_000_752_080n,
+                hash: MIGRATION,
+                lux: 5_000_000_000n,
+                route: "bsc-to-dusk",
+                state: "mined",
+                totalWei: 47_005_000_752_080n,
+              },
+            ],
+          ])
+      );
+      migrationEvm.approvals.mockImplementation(async () => [
+        {
+          allowance: 9_000_000_000n,
+          at: NOW - 3_600_000,
+          block: 9,
+          chain: "BNB Smart Chain",
+          coin: "BNB",
+          contract: BSC.contract ?? `0x${"cc".repeat(20)}`,
+          decimals: 18,
+          gasWei: 46_194_000_739_104n,
+          hash: `0x${"a8".repeat(32)}`,
+          owner: ADDED,
+          route: "bsc-to-dusk",
+          state: "unused",
+        },
+      ]);
+
+      try {
+        const { getByRole, getByText } = await openExport();
+        const fees = async () =>
+          (await fileSaved()).lines.filter((line) => line.includes(",cost,"));
+
+        expect(
+          getByText(
+            "The file has no network fees of migrations: no EVM address of yours is known here."
+          )
+        ).toBeInTheDocument();
+
+        await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+
+        expect(await fees()).toStrictEqual([]);
+        expect(migrationEvm.approvals).not.toHaveBeenCalled();
+
+        // Added for the file: what it isn't is said, what it is is listed.
+        await fireEvent.click(getByRole("button", { name: "Export" }));
+        await fireEvent.click(
+          getByRole("button", { name: "Add an EVM address" })
+        );
+
+        const field = getByRole("textbox", {
+          name: "EVM address you migrated from",
+        });
+
+        await fireEvent.input(field, { target: { value: "0x90fe" } });
+        await fireEvent.click(getByRole("button", { name: "Add" }));
+
+        expect(getByRole("alert")).toHaveTextContent(
+          "That isn't an EVM address."
+        );
+
+        await fireEvent.input(field, { target: { value: ADDED } });
+        await fireEvent.click(getByRole("button", { name: "Add" }));
+
+        expect(
+          getByText(
+            /^The file has the network fees your migrations paid from 0x90fE…4b39\.$/i
+          )
+        ).toBeInTheDocument();
+
+        await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+        await vi.waitFor(() => expect(names).toHaveLength(2));
+
+        expect(await fees()).toEqual([
+          expect.stringContaining(
+            "Network fee on BNB Smart Chain: approval for a migration to Dusk, never used"
+          ),
+          expect.stringContaining(
+            "Network fee on BNB Smart Chain: migration of 5 BEP20 DUSK to Dusk"
+          ),
+        ]);
+        expect(migrationEvm.approvals).toHaveBeenCalledWith(networks.mainnet, [
+          ADDED,
+        ]);
+      } finally {
+        setNodeNetwork(null);
+        migrationEvm.approvals.mockReset();
+        migrationEvm.approvals.mockResolvedValue([]);
+        migrationEvm.read.mockReset();
+      }
+    });
+
     it("holds a quarter or the dates chosen, and says so, saving nothing, with nothing in them", async () => {
       const { findByRole, getByLabelText, getByRole } = await openExport();
 
@@ -657,17 +805,162 @@ describe("History", () => {
       vi.unstubAllGlobals();
     });
 
+    it("shows staking rewards by year beside the file, in DUSK, and in the wallet's currency where asked, saving nothing", async () => {
+      // Mid-year, whatever the device's time zone: one a year and a half
+      // ago, past CoinGecko's year, and the rest this year.
+      const year = new Date(NOW).getUTCFullYear();
+      const old = Date.UTC(year - 1, 5, 15);
+      const june = Date.UTC(year, 5, 15);
+      const read = rowsOf(
+        [
+          [old, "1000000000", "e1"],
+          [june, "2000000000", "e2"],
+          [june - 90 * 86_400_000, "10000000000", "e3"],
+          [june + 3_600_000, "10500000000", "e4"],
+        ].map(([timestamp, amount, hash], i) => ({
+          amount,
+          blockHeight: 4_000_000 + i,
+          direction: i === 2 ? "out" : "in",
+          hash: String(hash).repeat(32),
+          kind: i < 2 ? "withdraw_reward" : "transfer",
+          status: "executed",
+          timestamp,
+        }))
+      );
+      /** @param {string} hash */
+      const rowOf = (hash) =>
+        /** @type {(typeof read)[number]} */ (
+          read.find((row) => row.hash === hash.repeat(32))
+        );
+      const [stake, unstake] = [rowOf("e3"), rowOf("e4")];
+      const prices = vi.fn(() =>
+        Promise.resolve(new Response(JSON.stringify({ prices: [[june, 0.5]] })))
+      );
+
+      // 10 DUSK into Sozu, 0.025 of it its fee, for 5 stDUSK, all of which
+      // gave back 10.5 DUSK: 0.525 DUSK earned, taken out.
+      mocks.whole.mockResolvedValue({
+        rows: [
+          rowOf("e1"),
+          rowOf("e2"),
+          { ...stake, sozu: "stake" },
+          { ...unstake, sozu: "unstake" },
+        ],
+        shieldedWaiting: false,
+      });
+      mocks.sozuFacts.mockImplementation(() =>
+        Promise.resolve(
+          new Map([
+            [stake.hash, { fee: 25_000_000n, stDusk: 5_000_000_000n }],
+            [unstake.hash, { stDusk: 5_000_000_000n }],
+          ])
+        )
+      );
+      vi.stubGlobal("fetch", prices);
+      settingsStore.update((store) => ({ ...store, currency: "EUR" }));
+
+      try {
+        const { container, getByRole } = await openExport();
+        const years = () =>
+          Array.from(
+            container.querySelectorAll(".export-panel__years tbody tr"),
+            (row) =>
+              Array.from(
+                /** @type {HTMLTableRowElement} */ (row).cells,
+                (cell) => cell.textContent?.trim()
+              )
+          );
+
+        await fireEvent.click(
+          getByRole("button", { name: "Show staking rewards by year" })
+        );
+        await vi.waitFor(() =>
+          expect(years()).toStrictEqual([
+            [`${year - 1}`, "1 DUSK", "0 DUSK"],
+            [`${year}`, "2 DUSK", "0.525 DUSK"],
+          ])
+        );
+        expect(prices).not.toHaveBeenCalled();
+
+        await fireEvent.click(getByRole("checkbox", { name: /in euros/ }));
+        await fireEvent.click(
+          getByRole("button", { name: "Show staking rewards by year" })
+        );
+        await vi.waitFor(() =>
+          expect(years()).toStrictEqual([
+            [`${year - 1}`, "1 DUSK · no euro value", "0 DUSK · €0.00"],
+            [`${year}`, "2 DUSK · €1.00", "0.525 DUSK · €0.26"],
+          ])
+        );
+        // The panel stays, with no file.
+        expect(names).toStrictEqual([]);
+        expect(getByRole("button", { name: "Save CSV" })).toBeEnabled();
+
+        // Hidden with the balances, in DUSK and in euros alike.
+        settingsStore.update((store) => ({ ...store, hideBalances: true }));
+        await vi.waitFor(() =>
+          expect(years()).toStrictEqual([
+            [
+              `${year - 1}`,
+              "•••• hidden DUSK · no euro value",
+              "•••• hidden DUSK · •••• hidden",
+            ],
+            [
+              `${year}`,
+              "•••• hidden DUSK · •••• hidden",
+              "•••• hidden DUSK · •••• hidden",
+            ],
+          ])
+        );
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+
+        // In a currency without cents, what's worth less than its least
+        // shows as under that.
+        settingsStore.update((store) => ({ ...store, currency: "JPY" }));
+        await vi.waitFor(() =>
+          getByRole("checkbox", { name: /in Japanese yen/ })
+        );
+        await fireEvent.click(
+          getByRole("button", { name: "Show staking rewards by year" })
+        );
+        await vi.waitFor(() =>
+          expect(years()).toStrictEqual([
+            [`${year - 1}`, "1 DUSK · no Japanese yen value", "0 DUSK · ¥0"],
+            [`${year}`, "2 DUSK · ¥1", "0.525 DUSK · under ¥1"],
+          ])
+        );
+      } finally {
+        mocks.sozuFacts.mockImplementation(() => Promise.resolve(new Map()));
+        settingsStore.reset();
+        vi.unstubAllGlobals();
+      }
+    });
+
     it.each([
       ["US dollars as the wallet's amounts", "USD", "de-DE", "US dollars"],
       [
-        "the browser's region's, India's US dollars",
+        "the wallet's own currency, as Indian rupees in India",
         "INR",
         "en-IN",
-        "US dollars",
+        "Indian rupees",
       ],
-      ["the browser's region's, Germany's euros", "INR", "de-DE", "euros"],
+      [
+        "the wallet's own currency, not the browser's region's",
+        "SGD",
+        "de-DE",
+        "Singapore dollars",
+      ],
+      [
+        "the browser's region's, for a currency of no price",
+        "XYZ",
+        "de-DE",
+        "euros",
+      ],
     ])("gives the values in %s", async (_, currency, language, words) => {
-      const code = words === "euros" ? "EUR" : "USD";
+      const code =
+        { euros: "EUR", "Indian rupees": "INR", "Singapore dollars": "SGD" }[
+          words
+        ] ?? "USD";
       const prices = vi.fn((/** @type {string} */ url) =>
         Promise.resolve(
           new Response(

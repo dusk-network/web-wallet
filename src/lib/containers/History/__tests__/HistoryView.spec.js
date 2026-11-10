@@ -70,6 +70,25 @@ const state = {
   syncing: false,
 };
 
+/** The profile's whole history, as Export reads it. */
+const history = vi.hoisted(() => ({ whole: vi.fn() }));
+
+vi.mock("$lib/stores", async (importOriginal) => {
+  /** @type {typeof import("$lib/stores")} */
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    walletStore: {
+      ...original.walletStore,
+      startHistory: () => ({
+        sozuFacts: async () => new Map(),
+        whole: history.whole,
+      }),
+    },
+  };
+});
+
 /** What runs as a navigation ends. */
 const navigation = vi.hoisted(() => ({
   /** @type {Array<() => void>} */
@@ -141,6 +160,57 @@ describe("HistoryView", () => {
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
+  });
+
+  it("should show staking rewards by year for the profile shown only: none of the one before once another is, nor any read for it that comes after", async () => {
+    const other = { address: "other-account", label: "Profile 2" };
+    const own = { address: ACCOUNT, label: "Profile 1" };
+    const whole = {
+      rows: [
+        row("c1".repeat(32), WINTER, {
+          amount: "2000000000",
+          direction: "in",
+          kind: "withdraw_reward",
+        }),
+      ],
+      shieldedWaiting: false,
+    };
+    const { container, getByRole, rerender } = render(HistoryView, {
+      account: own,
+      locale: "en",
+      state,
+    });
+    const years = () => container.querySelector(".export-panel__years");
+
+    history.whole.mockResolvedValue(whole);
+    await fireEvent.click(getByRole("button", { name: "Export" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show staking rewards by year" })
+    );
+    await vi.waitFor(() => expect(years()).toHaveTextContent("2 DUSK"));
+
+    await rerender({ account: other });
+
+    expect(years()).toBeNull();
+
+    // Asked for Profile 2, then Profile 1 is shown before it's read.
+    /** @type {PromiseWithResolvers<typeof whole>} */
+    const late = Promise.withResolvers();
+
+    history.whole.mockReturnValueOnce(late.promise);
+    await fireEvent.click(
+      getByRole("button", { name: "Show staking rewards by year" })
+    );
+    await rerender({ account: own });
+    late.resolve(whole);
+    await vi.waitFor(() =>
+      expect(
+        getByRole("button", { name: "Show staking rewards by year" })
+      ).toBeEnabled()
+    );
+
+    expect(years()).toBeNull();
+    history.whole.mockReset();
   });
 
   it("should close the details on Escape, and give the focus back to their row", async () => {
@@ -251,6 +321,60 @@ describe("HistoryView", () => {
     });
 
     expect(getByText("Rent \\u202eyluj")).toBeInTheDocument();
+  });
+
+  it("should look further back on Show more in a search until it finds more, and say once there's no more to find", async () => {
+    const kopi = (/** @type {number} */ n) =>
+      row(`d${n}`.repeat(32), WINTER - n * 3_600_000, { memo: `Kopi ${n}` });
+    const other = (/** @type {number} */ n) =>
+      row(`e${n}`.repeat(32), WINTER - n * 3_600_000, { memo: "Rent" });
+    // The pages Show more reads, older each time: the second has another.
+    const pages = [[other(2)], [other(3), kopi(4)], [other(5)], [other(6)]];
+    /** @type {any} */
+    let shown = { ...state, hasMore: true, rows: [kopi(1)] };
+    const onMore = vi.fn(async () => {
+      const page = pages.shift() ?? [];
+
+      shown = {
+        ...shown,
+        hasMore: pages.length > 0,
+        rows: [...shown.rows, ...page],
+      };
+      await rendered.rerender({
+        locale: "en",
+        onMore,
+        query: "kopi",
+        state: shown,
+      });
+    });
+    const rendered = render(HistoryView, {
+      locale: "en",
+      onMore,
+      query: "kopi",
+      state: shown,
+    });
+    const memos = () =>
+      Array.from(
+        rendered.container.querySelectorAll(".history__memo"),
+        (memo) => memo.textContent?.trim()
+      );
+
+    expect(memos()).toStrictEqual(["Kopi 1"]);
+
+    // A page of none found adds nothing: it reads on, to the next with one.
+    await fireEvent.click(rendered.getByRole("button", { name: "Show more" }));
+    await vi.waitFor(() => expect(memos()).toStrictEqual(["Kopi 1", "Kopi 4"]));
+
+    expect(onMore).toHaveBeenCalledTimes(2);
+
+    // None further back: it says so, at the history's end.
+    await fireEvent.click(rendered.getByRole("button", { name: "Show more" }));
+    await vi.waitFor(() =>
+      expect(rendered.getByText("Nothing more found.")).toBeInTheDocument()
+    );
+
+    expect(onMore).toHaveBeenCalledTimes(4);
+    expect(rendered.queryByRole("button", { name: "Show more" })).toBeNull();
   });
 
   it("should grey a withdrawal's amount until it arrives, as a failed one's", () => {

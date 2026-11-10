@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { timeLabel } from "$lib/activity/present";
 
-import { settingsStore } from "$lib/stores";
+import { settingsStore, walletStore } from "$lib/stores";
 
 import { TransactionStatus } from "..";
 
@@ -46,9 +46,10 @@ describe("TransactionStatus", () => {
 
     const { getByRole, getByText } = render(TransactionStatus, baseProps);
 
-    expect(followTransaction).toHaveBeenCalledExactlyOnceWith(hash, {
-      signal: expect.any(AbortSignal),
-    });
+    expect(followTransaction).toHaveBeenCalledExactlyOnceWith(
+      hash,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
     // Not sent, nor pending, twice over: sending, until a block has it.
     expect(getByRole("status")).toHaveTextContent(
       "Sending… This usually takes under a minute."
@@ -89,6 +90,104 @@ describe("TransactionStatus", () => {
     expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
     expect(queryByText("Network fee (at most)")).not.toBeInTheDocument();
     expect(queryByText("Details")).not.toBeInTheDocument();
+  });
+
+  it("should say it was sent as soon as a block took it, not once that block is final, and read History and the balances again then", async () => {
+    const following = followNext();
+    const refreshBalance = vi
+      .spyOn(walletStore, "refreshBalance")
+      .mockResolvedValue(undefined);
+    const onFinal = vi.fn();
+    const { getByRole } = render(TransactionStatus, { ...baseProps, onFinal });
+    const blockTime = Date.UTC(2026, 10, 10, 6, 56, 39);
+    const inBlock = {
+      blockHeight: 4_820_416n,
+      error: null,
+      fee: 1_854_795n,
+      timestamp: blockTime,
+    };
+
+    // The block that took it, attested, its next not there yet.
+    followTransaction.mock.lastCall?.[1].onBlock(inBlock);
+
+    await vi.waitFor(() =>
+      expect(getByRole("status")).toHaveTextContent(
+        `Sent at ${timeLabel(blockTime, "en")} In block 4,820,416.`
+      )
+    );
+    expect(refreshBalance).not.toHaveBeenCalled();
+    expect(onFinal).not.toHaveBeenCalled();
+
+    // Final a block on: what waits for that is told.
+    following.resolve(inBlock);
+
+    await vi.waitFor(() => expect(onFinal).toHaveBeenCalledOnce());
+    expect(refreshBalance).toHaveBeenCalledOnce();
+    expect(getByRole("status")).toHaveTextContent(
+      `Sent at ${timeLabel(blockTime, "en")} In block 4,820,416.`
+    );
+    refreshBalance.mockRestore();
+  });
+
+  it("should stay sent where its block took it but the wallet stopped following it before that block was final", async () => {
+    const following = followNext();
+    const { getByRole } = render(TransactionStatus, baseProps);
+
+    followTransaction.mock.lastCall?.[1].onBlock({
+      blockHeight: 4_820_416n,
+      error: null,
+      fee: 1_854_795n,
+      timestamp: 1,
+    });
+    following.resolve(null);
+
+    await vi.waitFor(() =>
+      expect(getByRole("status")).toHaveTextContent(/^Sent at /)
+    );
+    expect(getByRole("status")).not.toHaveTextContent("Still pending");
+  });
+
+  it("should offer to say when a transfer arrives while it's being sent, and tell whoever isn't looking once a block takes it", async () => {
+    const { arrivalTitle, forgetArrivalTitle } =
+      await import("$lib/bridge/arrivalNotice");
+    const { get } = await import("svelte/store");
+
+    followNext();
+
+    const { container } = render(TransactionStatus, {
+      ...baseProps,
+      tellArrival: true,
+      what: "0.02 DUSK to Lucas",
+    });
+
+    expect(container.querySelector(".arrival-notice")).toHaveTextContent(
+      "when it arrives"
+    );
+
+    // Away from the page as a block takes it: its title says so.
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+
+    followTransaction.mock.lastCall?.[1].onBlock({
+      blockHeight: 4_820_416n,
+      error: null,
+      fee: 1_854_795n,
+      timestamp: 1,
+    });
+
+    await vi.waitFor(() =>
+      expect(get(arrivalTitle)).toBe("Arrived: 0.02 DUSK to Lucas")
+    );
+    expect(container.querySelector(".arrival-notice")).toBeNull();
+    hasFocus.mockRestore();
+    forgetArrivalTitle();
+    cleanup();
+
+    // Not offered where it's no transfer to someone, as a stake.
+    followNext();
+
+    const stake = render(TransactionStatus, baseProps);
+
+    expect(stake.container.querySelector(".arrival-notice")).toBeNull();
   });
 
   it("should hide the fee with the balances, before the block and after", async () => {

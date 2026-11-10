@@ -90,10 +90,10 @@ describe("route times", () => {
         time: routeTime(DEPOSIT, { net: networks.testnet }),
       })
     ).toBe(
-      "Finalized on DuskDS. Arrives on DuskEVM in ~1 min. Don't send it again."
+      "Finalized on Dusk. Arrives on DuskEVM in ~1 min. Don't send it again."
     );
     expect(depositStageMessage(deposit)).toBe(
-      "Finalized on DuskDS, on its way to DuskEVM. Don't send it again."
+      "Finalized on Dusk, on its way to DuskEVM. Don't send it again."
     );
   });
 });

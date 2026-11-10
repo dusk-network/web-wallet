@@ -22,6 +22,7 @@ import {
   NAME_HIDES,
   lookAlikes,
   nameClash,
+  profileNameClash,
   nameHides,
 } from "@dusk-network/app-core/names";
 import { displayText, searchKey } from "@dusk-network/app-core/text";
@@ -642,6 +643,41 @@ export function contactNameProblem(name, profiles, exceptId) {
         }, at ${shortenAddress(clash.entry.address)}. Only the address will tell them apart.`,
       }
     : null;
+}
+
+/**
+ * What's wrong with a name for a profile: one with what can't be seen in it,
+ * or one that is, or looks like, another profile's here or a contact's
+ * (app-core's `profileNameClash`), as History and a review would read the
+ * profile as that one. Null for neither.
+ *
+ * @param {string} name
+ * @param {{ account: string, address?: string, name: string }[]} profiles
+ *   Every profile here, by the name it goes by
+ * @param {string} self The public account of the profile named
+ * @returns {string | null}
+ */
+export function profileNameProblem(name, profiles, self) {
+  if (nameHides(name)) {
+    return NAME_HIDES;
+  }
+
+  const clash = profileNameClash(name, {
+    contacts: listContacts(),
+    profiles,
+    self,
+  });
+  const other = clash ? contactNameText(String(clash.entry.name)) : "";
+
+  return !clash
+    ? null
+    : clash.kind === "profile"
+      ? clash.same
+        ? `Your other profile is called ${other}. Choose another name.`
+        : `That looks like ${other}, one of your other profiles. Choose another name.`
+      : clash.same
+        ? `You have a contact called ${other}. Choose another name.`
+        : `That looks like your contact ${other}. Choose another name.`;
 }
 
 /**

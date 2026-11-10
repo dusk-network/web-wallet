@@ -1,11 +1,15 @@
 /**
- * About what native staking pays a year across the network, as
+ * About what native staking pays a year: measured from the chain over the
+ * last 30 days, as app-core's `nativeRewards` reads it, kept an hour; else as
  * `@dusk-network/networks/rates` estimates it from the node's provisioners
- * and what a block mints, not measured: read at most once a day per network,
- * and kept in this browser.
+ * and what a block mints, read at most once a day per network, and kept in
+ * this browser.
  */
 
+import { nativeRewards } from "@dusk-network/app-core/sozu";
 import { nativeRateEstimate } from "@dusk-network/networks/rates";
+
+import { archiveAt } from "$lib/activity/activityHistory";
 
 /** How long an estimate is kept: a day. */
 const DAY_MS = 86_400_000;
@@ -108,6 +112,76 @@ export function readNativeRewardRate({
   }
 
   return read.catch(() => null);
+}
+
+/** How long what's measured is kept: an hour. */
+const HOUR_MS = 3_600_000;
+
+/**
+ * @typedef {{ days: number | null, native: import("@dusk-network/app-core/sozu").NativeRewards | null, rate: number | null }} NativeRead
+ */
+
+/**
+ * What's been read of native staking's rewards per network, and when.
+ *
+ * @type {Map<string, { at: number, read: Promise<NativeRead> }>}
+ */
+const nativeReads = new Map();
+
+/**
+ * Native staking's rewards measured from the chain, else estimated.
+ *
+ * @param {Parameters<typeof readNativeRewardRate>[0]} options
+ * @returns {Promise<NativeRead>}
+ */
+async function measureNativeRewards(options) {
+  const { fetch: fetchFn, nodeUrl, now, tipHeight } = options;
+  const [provisioners, height] = await Promise.all([
+    readProvisioners({ fetch: fetchFn, nodeUrl }),
+    tipHeight().catch(() => null),
+  ]);
+  const native = provisioners
+    ? await nativeRewards({
+        archive: archiveAt(nodeUrl),
+        now,
+        provisioners,
+        tipHeight: height,
+      }).catch(() => null)
+    : null;
+
+  return native
+    ? { days: native.days, native, rate: native.rate }
+    : { days: null, native: null, rate: await readNativeRewardRate(options) };
+}
+
+/**
+ * What native staking pays a year, as a fraction, and over what: measured from
+ * the chain over the last `days` (app-core's `nativeRewards`, with what it's
+ * made of in `native`), or else the estimate (`readNativeRewardRate`), of no
+ * period, where that can't be read. A rate of null is none at all. Two reads
+ * at once make one, and what's read is kept an hour, unless it's nothing.
+ *
+ * @param {Parameters<typeof readNativeRewardRate>[0]} options
+ * @returns {Promise<NativeRead>}
+ */
+export function readNativeRewards(options) {
+  const { network, now = Date.now() } = options;
+  const known = nativeReads.get(network);
+
+  if (known && now - known.at >= 0 && now - known.at < HOUR_MS) {
+    return known.read;
+  }
+
+  const entry = { at: now, read: measureNativeRewards({ ...options, now }) };
+
+  nativeReads.set(network, entry);
+  void entry.read.then(({ rate }) => {
+    if (rate === null && nativeReads.get(network) === entry) {
+      nativeReads.delete(network);
+    }
+  });
+
+  return entry.read;
 }
 
 /**

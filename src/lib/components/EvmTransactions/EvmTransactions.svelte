@@ -49,8 +49,13 @@
   import { walletDataScope } from "$lib/wallets/dataNames";
 
   import nodeNetwork from "$lib/stores/nodeNetwork";
+  import { evmAddressesOf } from "$lib/activity/accountantExport";
+  import { cardRoutes } from "$lib/bridge/cardRoutes";
   import { keptMigrations } from "$lib/bridge/migrationActivity";
-  import { readMigrationsEvm } from "$lib/bridge/migrationEvm";
+  import {
+    readMigrationApprovals,
+    readMigrationsEvm,
+  } from "$lib/bridge/migrationEvm";
   import { routeTransfers } from "$lib/bridge/routeHistory";
   import { followRouteTransfers } from "$lib/bridge/routeFollowing";
 
@@ -64,6 +69,7 @@
   import TransferLedger from "./TransferLedger.svelte";
   import WithdrawalLifecycle from "./WithdrawalLifecycle.svelte";
   import {
+    approvalRow,
     depositRow,
     groupBridgeActivity,
     ledgerOf,
@@ -270,6 +276,45 @@
         }
       }
     );
+  }
+
+  /**
+   * The approvals and revokes the person's EVM addresses sent for this
+   * network's migrations, with their gas, and whose they are.
+   *
+   * @type {{ approvals: import("@dusk-network/app-core/bridge").MigrationApproval[], of: string }}
+   */
+  let approvalsRead = { approvals: [], of: "" };
+
+  /**
+   * Reads them for the addresses known as the person's: those connected, and
+   * those this browser sent a migration from.
+   *
+   * @param {string} of The addresses, and the network's name
+   */
+  function readApprovals(of) {
+    const net = $nodeNetwork;
+    const owners = evmAddressesOf($account.addresses ?? []).map(
+      ({ address }) => address
+    );
+
+    if (approvalsRead.of === of) {
+      return;
+    }
+
+    // Others' now, or no one's: what was read, or is still being read, for
+    // the ones before goes.
+    approvalsRead = { approvals: [], of };
+
+    if (!net || !owners.length) {
+      return;
+    }
+
+    void readMigrationApprovals(net, owners).then((approvals) => {
+      if (approvalsRead.of === of) {
+        approvalsRead = { approvals, of };
+      }
+    });
   }
 
   // The row shown open, for the list to follow.
@@ -819,7 +864,27 @@
   $: hasDuskEvm =
     Boolean($nodeNetwork?.routes.duskEvm.length) ||
     finalizationConfig.configured;
+  $: readApprovals(
+    [
+      $nodeNetwork?.name ?? "",
+      ...($account.addresses ?? []),
+      ...$keptMigrations.map(({ sender }) => sender),
+    ].join()
+  );
+  // Each that no migration on the list spent, as a row of its own.
+  $: approvalRows = approvalsRead.approvals.flatMap((approval) => {
+    const route = cardRoutes($nodeNetwork).find(
+      ({ id }) => id === approval.route
+    );
+    const row =
+      route && !transfers.some(({ approval: spent }) => spent === approval.hash)
+        ? approvalRow(approval, { locale: language, route })
+        : null;
+
+    return row ? [row] : [];
+  });
   $: groups = groupBridgeActivity([
+    ...approvalRows,
     ...transfers.map((transfer) =>
       routeTransferRow(transfer, {
         locale: language,

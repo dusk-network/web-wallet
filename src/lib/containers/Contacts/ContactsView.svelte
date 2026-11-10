@@ -13,8 +13,9 @@
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import { BalanceValue, SectionHead } from "$lib/components";
   import { sidePanel } from "$lib/dusk/motion";
-  import { contactNameText, removeContact } from "$lib/contacts";
+  import { alikeContacts, contactNameText, removeContact } from "$lib/contacts";
   import { shortAddress } from "$lib/activity/present";
+  import { contactHas } from "$lib/containers/Shell/search";
   import { addBasePath, pageTitle } from "$lib/navigation";
 
   import ContactDetail from "./ContactDetail.svelte";
@@ -99,15 +100,14 @@
   const sendHref = (contact) =>
     addBasePath(`/dashboard/send?to=${encodeURIComponent(contact.address)}`);
 
-  // Whatever their accents and case, as the search finds them.
+  // Whatever their accents and case, as the search finds them, and those
+  // whose names look like it.
   $: q = searchKey(query);
   $: shown = q
-    ? contacts.filter((contact) =>
-        [contact.name, contact.duskName ?? "", contact.address].some((value) =>
-          searchKey(value).includes(q)
-        )
-      )
+    ? contacts.filter((contact) => contactHas(contact, query))
     : contacts;
+  // Whose names look like another's: each said so, with its address.
+  $: alike = alikeContacts(contacts, profiles);
   $: payments = lastPayments(rows, { locale });
   $: paid = contacts.length
     ? []
@@ -241,6 +241,11 @@
                     {#if nameHides(contact.name)}
                       <span class="contacts__hidden"
                         >Its name has hidden characters</span
+                      >
+                    {/if}
+                    {#if alike.has(contact.address)}
+                      <span class="contacts__alike"
+                        >{shortAddress(contact.address)} · name looks like another</span
                       >
                     {/if}
                     <span class="contacts__sub">
@@ -510,6 +515,12 @@
 
   .contacts__hidden {
     color: var(--calm-danger);
+    font-size: 0.8125rem;
+  }
+
+  /* As History marks it. */
+  .contacts__alike {
+    color: var(--calm-pending);
     font-size: 0.8125rem;
   }
 

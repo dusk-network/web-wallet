@@ -100,6 +100,38 @@ describe("followTransaction", () => {
     );
   });
 
+  it("should say once what the block that took it says, as soon as it's seen there, before that block is final", async () => {
+    const onBlock = vi.fn();
+
+    query
+      .mockResolvedValueOnce(spentTx())
+      .mockResolvedValueOnce(blockWith("Attested"))
+      .mockResolvedValueOnce(spentTx())
+      .mockResolvedValueOnce(blockWith("Attested"))
+      .mockResolvedValueOnce(spentTx())
+      .mockResolvedValueOnce(blockWith("Final"));
+
+    const result = followTransaction(hash, { onBlock });
+
+    // The node says a block took it: checked at once, and said.
+    await vi.advanceTimersByTimeAsync(1);
+    executed.resolve({});
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(onBlock).toHaveBeenCalledExactlyOnceWith({
+      blockHeight: 4_687_200n,
+      error: null,
+      fee: 1_854_795n,
+      timestamp: 1_793_166_840_000,
+    });
+    await expect(settled(result)).resolves.toBe("pending");
+
+    await vi.advanceTimersByTimeAsync(FOLLOW_INTERVAL * 2);
+
+    await expect(result).resolves.toMatchObject({ fee: 1_854_795n });
+    expect(onBlock).toHaveBeenCalledOnce();
+  });
+
   it("should give the error of a transaction that failed, with the fee it was charged", async () => {
     query
       .mockResolvedValueOnce(

@@ -82,7 +82,7 @@
   describeError={describe}
   errorMessage="Deposit submission failed"
   gap="large"
-  pendingMessage="Submitting on DuskDS"
+  pendingMessage="Submitting on Dusk"
   waitFor={shown}
 >
   <svelte:fragment
@@ -143,6 +143,13 @@
 
       .deposit-result__button {
         width: 100%;
+      }
+    }
+
+    /* A phone on its side: what follows the result above the fold. */
+    @media (max-height: 30rem) {
+      .deposit-result {
+        padding-block: 0.5em;
       }
     }
   }

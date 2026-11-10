@@ -339,6 +339,11 @@ describe("Send", () => {
         httpsLink.replace("network=testnet", "network=mainnet"),
         "This link names two networks, Testnet and Mainnet. Ask for a new one.",
       ],
+      [
+        "its network written dusk:02",
+        httpsLink.replace("network=testnet", "network=dusk:02"),
+        "This link's network can't be read. Ask for a new one.",
+      ],
     ])(
       "should refuse a link with %s, saying why and filling in nothing",
       async (_, link, words) => {
@@ -352,19 +357,31 @@ describe("Send", () => {
       }
     );
 
-    it("should say a mainnet wallet's link is for Mainnet, on testnet", async () => {
+    it("should say a mainnet wallet's link is for Mainnet, on testnet, and offer the same request on Mainnet's wallet", async () => {
       const { getByRole, getByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
 
+      // A mainnet account, as a request for Mainnet asks to be paid at.
+      const account = bep20BridgeAddress;
+
       await paste(
         fields,
-        `${networks.mainnet.apps.wallet}/dashboard/send?to=${otherAccount}&amount=0.15&network=mainnet`
+        `${networks.mainnet.apps.wallet}/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`
       );
 
       expect(
         getByText("This request is for Mainnet. You are on Testnet.")
       ).toBeInTheDocument();
       expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(getByRole("link", { name: "Switch to Mainnet" })).toHaveAttribute(
+        "href",
+        `https://apps.dusk.network/wallet/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`
+      );
+
+      // Nothing to switch for once something else is given.
+      await paste(fields, otherAccount);
+
+      expect(() => getByRole("link", { name: "Switch to Mainnet" })).toThrow();
     });
 
     it("should read the amount in the language of the amount field", async () => {
@@ -454,15 +471,27 @@ describe("Send", () => {
       expect(filled(fields)).toStrictEqual(["", "", ""]);
     });
 
-    it("should refuse a link's recipient as it refuses one typed", async () => {
-      const { getByRole, getByText } = render(Send, baseProps);
-      const fields = fieldsOf(getByRole);
+    it.each([
+      ["isn't one", () => `dusk:public-${invalidAddress}?amount=1`],
+      [
+        "was cut short on its way",
+        () => httpsLink.replace(otherAccount, otherAccount.slice(0, -6)),
+      ],
+    ])(
+      "should refuse a link whose address %s, as the link's, filling in nothing",
+      async (_, link) => {
+        const { getByRole, getByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
 
-      await paste(fields, `dusk:public-${invalidAddress}?amount=1`);
+        await paste(fields, link());
 
-      expect(getByText("Not a valid address.")).toBeInTheDocument();
-      expect(fields.review()).toBeDisabled();
-    });
+        expect(
+          getByText("This link's address isn't valid. Ask for a new one.")
+        ).toBeInTheDocument();
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(fields.review()).toBeDisabled();
+      }
+    );
 
     it("should read a link typed out as it's finished, not at each key on the way", async () => {
       const { getByRole } = render(Send, baseProps);
@@ -590,6 +619,21 @@ describe("Send", () => {
       ]);
       expect(opened.getByText(/^Filled in from the link/)).toBeInTheDocument();
       opened.unmount();
+
+      // Opened to send a payment back: filled in from it, from no link.
+      const back = render(Send, {
+        ...baseProps,
+        initialAmount: "0.15",
+        initialMemo: "Refund: Factura 33",
+        initialRecipient: otherAccount,
+        isSendBack: true,
+      });
+
+      expect(back.getByRole("status")).toHaveTextContent(
+        "Filled in to send the payment back. Check it before you send."
+      );
+      expect(back.queryByText(/from the link/)).toBeNull();
+      back.unmount();
 
       const refused = render(Send, {
         ...baseProps,
@@ -883,6 +927,39 @@ describe("Send", () => {
           queryByRole("combobox", { name: "Send to a contact" })
         ).toBeNull();
         expect(to).not.toHaveClass("send__to-input--invalid");
+      } finally {
+        removeContact(contact.id);
+      }
+    });
+
+    it("keeps the spaces of a name as it's typed, and offers whom it means", async () => {
+      const contact = saveContact({
+        address: otherAccount,
+        name: "Estudio Marta",
+      });
+
+      try {
+        const { getByRole } = render(Send, baseProps);
+        const to = fieldsOf(getByRole).to();
+
+        for (const typed of ["Estudio", "Estudio ", "Estudio M"]) {
+          await fireEvent.input(to, { target: { value: typed } });
+
+          expect(to).toHaveValue(typed);
+          expect(
+            getByRole("button", { name: /^Your contact Estudio Marta/ })
+          ).toBeInTheDocument();
+        }
+
+        // An address pasted with a space in it is still one.
+        await fireEvent.paste(to);
+        await fireEvent.input(to, {
+          target: {
+            value: `${otherAccount.slice(0, 60)} ${otherAccount.slice(60)}`,
+          },
+        });
+
+        expect(to).toHaveValue(otherAccount);
       } finally {
         removeContact(contact.id);
       }
@@ -1492,7 +1569,18 @@ describe("Send", () => {
 
       expect(
         getByText(
-          "It mixes kinds of digits, so a number may not be what it looks like."
+          "A number here mixes digits of different scripts. Check it digit by digit."
+        )
+      ).toBeTruthy();
+
+      // Nor one of digits that look like others, as the extension says.
+      await fireEvent.input(fields.memo(), {
+        target: { value: "Pay \u09EA DUSK" },
+      });
+
+      expect(
+        getByText(
+          "A number here uses digits that look like other digits. Check it digit by digit."
         )
       ).toBeTruthy();
     });
@@ -1882,6 +1970,11 @@ describe("Send", () => {
       expect(getByRole("heading", { name: /Review/ })).toHaveFocus();
 
       await afterConfirmDelay();
+
+      const scrolled = vi
+        .spyOn(window, "scrollTo")
+        .mockImplementation(() => {});
+
       await fireEvent.click(fields.send());
       await vi.advanceTimersToNextTimerAsync();
 
@@ -1892,6 +1985,17 @@ describe("Send", () => {
         gasPrice,
         gasLimit
       );
+      // The result from its top, where its state and the offer to be told
+      // when it arrives are, wherever the review was scrolled to: also once
+      // the review's step leaves the history, where the browser puts the
+      // page back where the form was.
+      expect(scrolled).toHaveBeenLastCalledWith(0, 0);
+      scrolled.mockClear();
+      historyAt({});
+      await tick();
+
+      expect(scrolled).toHaveBeenLastCalledWith(0, 0);
+      scrolled.mockRestore();
 
       const explorerLink = getByRole("link", { name: /explorer/i });
 
@@ -1910,6 +2014,8 @@ describe("Send", () => {
       );
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
+      // And to be told when it arrives, as a transfer on the Bridge offers.
+      expect(getByText(/when it arrives/)).toBeInTheDocument();
     });
 
     it("should review a transfer before it sends it, and go back to the form", async () => {
@@ -3272,7 +3378,7 @@ describe("Send", () => {
       ).not.toBeInTheDocument();
       expect(queryByText("Not a valid address.")).not.toBeInTheDocument();
 
-      // The field takes out spaces, and a word further in counts too.
+      // A name keeps its spaces, and a word further in counts too.
       await fireEvent.input(fields.to(), { target: { value: "Jan (flour)" } });
       expect(
         getByRole("button", { name: offer("Jan (flour)") })
@@ -3332,6 +3438,53 @@ describe("Send", () => {
           getByRole("button", { name: `Your contact ${offered}` })
         ).toBeInTheDocument();
       }
+    });
+
+    it("should mark a contact whose name looks like another's where it's named once picked, to the review and the Sent screen", async () => {
+      // Send takes a click half a second after it shows: on this clock.
+      vi.useFakeTimers({ toFake: ["performance"] });
+      saveContact({ address: otherAccount, name: "Alice" });
+
+      // A Cyrillic А.
+      const lookAlike = saveContact({
+        address: nameAccount,
+        name: "\u0410lice",
+      });
+      const { container, getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.change(
+        getByRole("combobox", { name: "Send to a contact" }),
+        { target: { value: lookAlike.id } }
+      );
+
+      expect(
+        getAsHTMLElement(container, ".send__card-title")
+      ).toHaveTextContent("\u0410lice · name looks like another");
+      expect(getSummary(container)[1]).toStrictEqual([
+        "To",
+        `\u0410lice Name looks like another ${shortenAddress(nameAccount)}`,
+      ]);
+
+      await fireEvent.input(fields.amount(), { target: { value: "0.001" } });
+      await fireEvent.click(fields.review());
+
+      expect(
+        getAsHTMLElement(container, ".send__summary-alike")
+      ).toHaveTextContent("Name looks like another");
+
+      await afterConfirmDelay();
+      await fireEvent.click(getByRole("button", { name: /^Send/ }));
+
+      // What went to whom: by its address too.
+      await vi.waitFor(() =>
+        expect(
+          container.querySelector(".transaction-status__what")
+        ).toHaveTextContent(
+          `0.001 DUSK to \u0410lice (${shortenAddress(nameAccount)})`
+        )
+      );
+      vi.useRealTimers();
     });
 
     it("should show a contact's name saved with what can't be seen in it by its codes, and refuse one now", async () => {

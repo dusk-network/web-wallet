@@ -1,7 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { nativeRateEstimate } from "@dusk-network/networks/rates";
 
-import { ratePercent, readNativeRewardRate } from "../rewardRate";
+import {
+  ratePercent,
+  readNativeRewardRate,
+  readNativeRewards,
+} from "../rewardRate";
+
+/** What app-core measures of native staking's rewards from the chain. */
+const chain = vi.hoisted(() => ({ nativeRewards: vi.fn() }));
+
+vi.mock("@dusk-network/app-core/sozu", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  nativeRewards: chain.nativeRewards,
+}));
 
 /** Two provisioners, as /on/node/provisioners gives them: 3M DUSK eligible. */
 const PROVISIONERS = [
@@ -103,6 +115,90 @@ describe("readNativeRewardRate", () => {
         tipHeight: async () => TIP,
       })
     ).resolves.toBeNull();
+  });
+});
+
+describe("readNativeRewards", () => {
+  /** 15.6 DUSK a block to stakers over the last 30 days. */
+  const MEASURED = {
+    blocks: 6,
+    days: 30,
+    from: { at: NOW - 30 * DAY, height: 4_440_800 },
+    perBlock: 15_600_000_000n,
+    rate: 0.88,
+    staked: 3_000_000_000_000_000n,
+    to: { at: NOW, height: 4_700_000 },
+  };
+
+  /** @param {ReturnType<typeof nodeAnswering>} fetch @param {string} network */
+  const optionsFor = (fetch, network) => ({
+    fetch: /** @type {typeof globalThis.fetch} */ (
+      /** @type {unknown} */ (fetch)
+    ),
+    network,
+    nodeUrl: "https://node.example",
+    tipHeight: async () => TIP,
+  });
+
+  afterEach(() => {
+    chain.nativeRewards.mockReset();
+    localStorage.clear();
+  });
+
+  it("measures what native staking paid from the chain, says over how many days, and keeps it an hour", async () => {
+    const fetch = nodeAnswering(PROVISIONERS);
+    const options = optionsFor(fetch, "testnet");
+
+    chain.nativeRewards.mockResolvedValue(MEASURED);
+
+    await expect(readNativeRewards({ ...options, now: NOW })).resolves.toEqual({
+      days: 30,
+      native: MEASURED,
+      rate: 0.88,
+    });
+    // What's staked now, at the node's tip.
+    expect(chain.nativeRewards).toHaveBeenCalledWith(
+      expect.objectContaining({ provisioners: PROVISIONERS, tipHeight: TIP })
+    );
+
+    // Within the hour: no read.
+    await readNativeRewards({ ...options, now: NOW + 3_599_999 });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(chain.nativeRewards).toHaveBeenCalledTimes(1);
+
+    // An hour later: read again.
+    await readNativeRewards({ ...options, now: NOW + 3_600_000 });
+    expect(chain.nativeRewards).toHaveBeenCalledTimes(2);
+  });
+
+  it("estimates it, of no period, where the chain can't say; and reads again next time where nothing could be read", async () => {
+    chain.nativeRewards.mockResolvedValue(null);
+
+    await expect(
+      readNativeRewards({
+        ...optionsFor(nodeAnswering(PROVISIONERS), "mainnet"),
+        now: NOW,
+      })
+    ).resolves.toEqual({
+      days: null,
+      native: null,
+      rate: nativeRateEstimate({ provisioners: PROVISIONERS, tipHeight: TIP }),
+    });
+
+    const failing = nodeAnswering({}, false);
+
+    await expect(
+      readNativeRewards({ ...optionsFor(failing, "devnet"), now: NOW })
+    ).resolves.toEqual({ days: null, native: null, rate: null });
+
+    chain.nativeRewards.mockResolvedValue(MEASURED);
+
+    await expect(
+      readNativeRewards({
+        ...optionsFor(nodeAnswering(PROVISIONERS), "devnet"),
+        now: NOW + 1,
+      })
+    ).resolves.toEqual({ days: 30, native: MEASURED, rate: 0.88 });
   });
 });
 

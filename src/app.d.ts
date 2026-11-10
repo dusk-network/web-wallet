@@ -37,6 +37,8 @@ declare namespace App {
     sheets?: string[];
     /** At the review of a send, a step of its own in the history. */
     sendReview?: boolean;
+    /** Send opened to send a payment back, filled in from it, not from a link. */
+    sendBack?: boolean;
     routeReview?: boolean;
     /** At the review of a stake, a step of its own in the history. */
     stakeReview?: boolean;

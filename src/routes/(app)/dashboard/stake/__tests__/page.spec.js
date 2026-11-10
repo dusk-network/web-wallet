@@ -24,6 +24,8 @@ vi.mock("$app/stores", async () => {
   const { readable } = await import("svelte/store");
 
   return {
+    // No navigation under way: a form left is left by a link.
+    navigating: readable(null),
     page: {
       subscribe: (/** @type {(value: any) => void} */ run) =>
         readable({ url: page.url }).subscribe(run),
@@ -91,14 +93,28 @@ vi.mock("$lib/activity", async (importOriginal) => {
   };
 });
 
-/** About what native staking pays a year, as the node's provisioners say. */
+/**
+ * About what native staking pays a year: estimated from the node's
+ * provisioners, or measured from the chain over its last days.
+ */
 const rates = vi.hoisted(() => ({
+  measured:
+    /** @type {import("@dusk-network/app-core/sozu").NativeRewards | null} */ (
+      null
+    ),
   native: /** @type {number | null} */ (null),
 }));
 
 vi.mock("$lib/staking/rewardRate", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
-  readNativeRewardRate: async () => rates.native,
+  readNativeRewards: async () =>
+    rates.measured
+      ? {
+          days: rates.measured.days,
+          native: rates.measured,
+          rate: rates.measured.rate,
+        }
+      : { days: null, native: null, rate: rates.native },
 }));
 
 const POOL = "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
@@ -397,6 +413,58 @@ describe("Staking", () => {
     }
   });
 
+  it("says over what native staking's rate was measured from the chain, and gives Sozu's from it, the same on its form", async () => {
+    // 15.6 DUSK a block to stakers over the last 30 days, 55M DUSK staked.
+    rates.measured = {
+      blocks: 6,
+      days: 30,
+      from: { at: 0, height: 4_000_000 },
+      perBlock: 15_600_000_000n,
+      rate: 0.88,
+      staked: 55_000_000_000_000_000n,
+      to: { at: 30 * 86_400_000, height: 4_259_200 },
+    };
+
+    try {
+      const overview = render(Staking);
+      const rewards = () =>
+        Array.from(
+          /** @type {HTMLTableElement} */ (
+            overview.container.querySelector("table.compare")
+          ).tBodies[0].rows[2].cells,
+          textOf
+        );
+
+      await act(() =>
+        sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS }))
+      );
+      await vi.waitFor(() =>
+        expect(rewards()[1]).toBe(
+          "About 88% a year over the last 30 days. Not promised. Start in about 6 to 12 hours"
+        )
+      );
+      expect(rewards()[2]).toMatch(
+        /^About 79% a year over the last 30 days, after Sozu's 10%\. Not promised\./
+      );
+      overview.unmount();
+
+      open("?flow=liquid");
+
+      const { container } = render(Staking);
+
+      await vi.waitFor(() =>
+        expect(
+          textOf(container.querySelector(".liquid-stake__facts"))
+        ).toContain(
+          "About 79% a year. Not promised. 15.6 DUSK a block to stakers over the last 30 days, 55M DUSK staked now: about 88% a year. Less Sozu's 10%: about 79%"
+        )
+      );
+    } finally {
+      rates.measured = null;
+      open("");
+    }
+  });
+
   it("gives Sozu's rate from how its stDUSK grew lately once that's read, the same on the overview and on its form", async () => {
     rates.native = 0.235;
     // 3 DUSK a stDUSK to 3.1 in 30 days: about 40% a year.
@@ -420,7 +488,7 @@ describe("Staking", () => {
               .querySelector("table.compare")
               ?.querySelector("tbody tr:nth-child(3) td:nth-child(3)") ?? null
           )
-        ).toMatch(/^About 40% a year after Sozu's 10%\./)
+        ).toMatch(/^About 40% a year over the last 30 days, after Sozu's 10%\./)
       );
       overview.unmount();
 
@@ -526,6 +594,48 @@ describe("Staking", () => {
     expect(getByRole("link", { name: "Unstake from Sozu" })).toHaveAttribute(
       "href",
       "/some-base-path/dashboard/stake?flow=liquid&action=unstake"
+    );
+  });
+
+  it("shows what was held with Sozu as read last where it couldn't be read now, says so, and reads it again on Try again", async () => {
+    withoutStake();
+    await act(() =>
+      sozu.store?.update((s) => ({
+        ...s,
+        error: new Error("timed out"),
+        kept: { at: 1, balance: 2_747_100_000n, stDusk: 864_521_348n },
+      }))
+    );
+
+    const { container, getByRole } = render(Staking);
+    const summary = () => textOf(container.querySelector(".staking__summary"));
+
+    expect(
+      textOf(container.querySelectorAll(".staking__figures > div")[1])
+    ).toBe("With Sozu 2.7471 DUSK 0.8645 stDUSK, rewards included");
+    expect(summary()).toContain(
+      "Your stake with Sozu couldn't be read just now. It may be out of date."
+    );
+
+    sozu.load.mockClear();
+    await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+    expect(sozu.load).toHaveBeenCalledWith({ force: true });
+
+    // Never read here: it couldn't be, which isn't nothing.
+    await act(() => sozu.store?.update((s) => ({ ...s, kept: null })));
+
+    expect(summary()).toContain("Your stake with Sozu couldn't be read.");
+
+    // Nor the native stake.
+    mockedWalletStore.setMockedStoreValue({
+      ...mockedWalletStore.getMockedStoreValue(),
+      stakeReadFailed: true,
+    });
+    await act(() => {});
+
+    expect(summary()).toContain(
+      "Your stake couldn't be read again. These amounts may be out of date."
     );
   });
 

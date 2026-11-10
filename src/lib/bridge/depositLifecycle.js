@@ -19,7 +19,7 @@ const STALL_THRESHOLD_MS =
 
 export const DEPOSIT_TIMELINE_STEPS = Object.freeze([
   "Submitted",
-  "Finalized on DuskDS",
+  "Finalized on Dusk",
   "Bridging to DuskEVM",
   "Available on DuskEVM",
 ]);
@@ -30,7 +30,7 @@ const STAGES = new Map([
     {
       badge: "warning",
       label: "Confirming",
-      message: "Waiting for DuskDS to finalize the transaction.",
+      message: "Waiting for Dusk to finalize the transaction.",
       progress: 1,
     },
   ],
@@ -39,8 +39,7 @@ const STAGES = new Map([
     {
       badge: "warning",
       label: "Bridging",
-      message:
-        "Finalized on DuskDS, on its way to DuskEVM. Don't send it again.",
+      message: "Finalized on Dusk, on its way to DuskEVM. Don't send it again.",
       progress: 2,
     },
   ],
@@ -95,10 +94,10 @@ function stageMetadata(deposit, now = Date.now()) {
     return {
       badge: /** @type {BadgeVariant} */ ("error"),
       label:
-        deposit.failureLayer === "l1" ? "Failed on DuskDS" : "Delivery failed",
+        deposit.failureLayer === "l1" ? "Failed on Dusk" : "Delivery failed",
       message:
         deposit.failureLayer === "l1"
-          ? "The DuskDS transaction failed, so the deposit did not enter the bridge."
+          ? "The Dusk transaction failed, so the deposit did not enter the bridge."
           : "Delivery failed on DuskEVM. Don't send it again; give these transactions when you ask for bridge recovery.",
       progress: deposit.failureLayer === "l1" ? 1 : 2,
     };
@@ -158,7 +157,7 @@ export function depositStageMessage(deposit, { time = null } = {}) {
   }
 
   if (deposit?.stage === "l2_pending" && time) {
-    return `Finalized on DuskDS. Arrives on DuskEVM in ${routeTimeText(time)}. Don't send it again.`;
+    return `Finalized on Dusk. Arrives on DuskEVM in ${routeTimeText(time)}. Don't send it again.`;
   }
 
   return deposit?.statusMessage || metadata.message;

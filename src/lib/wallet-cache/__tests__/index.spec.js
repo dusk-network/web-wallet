@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   cacheBalances,
   cachePendingNotesInfo,
+  cacheSozuPositions,
   cacheSpentNotes,
   cacheStakeInfo,
   cacheSyncInfo,
@@ -194,6 +195,15 @@ describe("Wallet cache", () => {
         hardFaults: 0,
         reward: 0n,
       });
+    });
+
+    it("should give what an account held with Sozu as read last, and nothing for one never read", async () => {
+      await expect(
+        walletCache.getSozuPosition(cacheSozuPositions[0].account)
+      ).resolves.toStrictEqual(cacheSozuPositions[0].position);
+      await expect(
+        walletCache.getSozuPosition("fake-account")
+      ).resolves.toBeNull();
     });
 
     it("should expose a method to retrieve the sync info, which returns empty info if there is no info stored", async () => {
@@ -703,6 +713,60 @@ describe("Wallet cache", () => {
       await expect(
         walletCache.getStakeInfo(cacheStakeInfo[0].account)
       ).resolves.toStrictEqual(modifiedStakeInfo);
+    });
+
+    it("should keep what an account holds with Sozu, in place of what it held", async () => {
+      const position = { at: 1_762_000_600_000, balance: 9n, stDusk: 3n };
+
+      await walletCache.setSozuPosition("fake-account", position);
+      await walletCache.setSozuPosition(cacheSozuPositions[0].account, {
+        ...position,
+        balance: 12n,
+      });
+
+      await expect(
+        walletCache.getSozuPosition("fake-account")
+      ).resolves.toStrictEqual(position);
+      await expect(
+        walletCache.getSozuPosition(cacheSozuPositions[0].account)
+      ).resolves.toStrictEqual({ ...position, balance: 12n });
+    });
+
+    it("should open a cache kept before it held Sozu's positions with all it had", async () => {
+      const name = "@dusk-network/wallet-cache:before-sozu";
+      const { Dexie } = await import("dexie");
+      const before = new Dexie(name);
+
+      before.version(3).stores({
+        balancesInfo: "address",
+        pendingNotesInfo: "nullifier,txId",
+        spentNotes: "nullifier,address",
+        stakeInfo: "account",
+        syncInfo: "++",
+        unspentNotes: "nullifier,address",
+      });
+      await before.table("stakeInfo").put({
+        account: "kept-account",
+        stakeInfo: { amount: null, faults: 0, hardFaults: 0, reward: 5n },
+      });
+      before.close();
+
+      const { walletCacheFor } = await import("..");
+      const cache = walletCacheFor(":before-sozu");
+
+      await expect(cache.getStakeInfo("kept-account")).resolves.toMatchObject({
+        reward: 5n,
+      });
+      await expect(cache.getSozuPosition("kept-account")).resolves.toBeNull();
+      await cache.setSozuPosition("kept-account", {
+        at: 1,
+        balance: 2n,
+        stDusk: 1n,
+      });
+      await expect(
+        cache.getSozuPosition("kept-account")
+      ).resolves.toStrictEqual({ at: 1, balance: 2n, stDusk: 1n });
+      await cache.destroy();
     });
 
     it("should expose a method to replace the current stored sync info", async () => {

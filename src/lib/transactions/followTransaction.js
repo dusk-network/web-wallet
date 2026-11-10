@@ -19,14 +19,16 @@ export const FOLLOW_TIMEOUT = 180_000;
 
 /**
  * The transaction's outcome once the block it is in is final, or `null`
- * while it isn't in a final block yet.
+ * while it isn't in a final block yet. In a block that isn't final yet,
+ * what it says of it then goes to `onBlock`.
  *
  * @param {Network} network
  * @param {string} hash
  * @param {AbortSignal} signal Cancels the queries.
+ * @param {(outcome: FinalTransaction) => void} onBlock
  * @returns {Promise<FinalTransaction | null>}
  */
-async function getFinalTransaction(network, hash, signal) {
+async function getFinalTransaction(network, hash, signal, onBlock) {
   const { tx } = await network.query(
     `tx(hash: "${hash}") { blockHash blockHeight blockTimestamp err gasSpent tx { gasPrice } }`,
     { signal }
@@ -40,19 +42,24 @@ async function getFinalTransaction(network, hash, signal) {
     `block(hash: "${tx.blockHash}") { status }`,
     { signal }
   );
-
-  if (!Object.hasOwn(block?.status ?? {}, "Final")) {
-    return null;
-  }
-
   const seconds = Number(tx.blockTimestamp);
-
-  return {
+  /** @type {FinalTransaction} */
+  const outcome = {
     blockHeight: BigInt(tx.blockHeight),
     error: tx.err || null,
     fee: BigInt(tx.gasSpent) * BigInt(tx.tx.gasPrice),
     timestamp: Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null,
   };
+
+  if (!Object.hasOwn(block?.status ?? {}, "Final")) {
+    if (!signal.aborted) {
+      onBlock(outcome);
+    }
+
+    return null;
+  }
+
+  return outcome;
 }
 
 /**
@@ -62,10 +69,10 @@ async function getFinalTransaction(network, hash, signal) {
  *
  * @param {Network} network
  * @param {string} hash
- * @param {{ deadline: number, signal: AbortSignal }} options
+ * @param {{ deadline: number, onBlock: (outcome: FinalTransaction) => void, signal: AbortSignal }} options
  * @returns {Promise<FinalTransaction | null>}
  */
-function checkBefore(network, hash, { deadline, signal }) {
+function checkBefore(network, hash, { deadline, onBlock, signal }) {
   const check = new AbortController();
   const stop = () => check.abort();
   const timer = window.setTimeout(stop, deadline - Date.now());
@@ -77,8 +84,9 @@ function checkBefore(network, hash, { deadline, signal }) {
     check.signal.addEventListener("abort", () => resolve(null), {
       once: true,
     });
-    getFinalTransaction(network, hash, check.signal).then(resolve, () =>
-      resolve(null)
+    getFinalTransaction(network, hash, check.signal, onBlock).then(
+      resolve,
+      () => resolve(null)
     );
   });
 
@@ -151,6 +159,7 @@ function listenForExecution(network, hash, signal, onExecuted) {
  * @param {{
  *   deadline: number,
  *   interval: number,
+ *   onBlock: (outcome: FinalTransaction) => void,
  *   pauses: ReturnType<typeof createPauses>,
  *   signal: AbortSignal,
  * }} options
@@ -159,7 +168,7 @@ function listenForExecution(network, hash, signal, onExecuted) {
 async function checkUntilFinal(
   network,
   hash,
-  { deadline, interval, pauses, signal }
+  { deadline, interval, onBlock, pauses, signal }
 ) {
   while (!signal.aborted && Date.now() < deadline) {
     await pauses.pause(Math.min(interval, deadline - Date.now()));
@@ -169,7 +178,11 @@ async function checkUntilFinal(
       break;
     }
 
-    const final = await checkBefore(network, hash, { deadline, signal });
+    const final = await checkBefore(network, hash, {
+      deadline,
+      onBlock,
+      signal,
+    });
 
     if (final) {
       return final;
@@ -182,19 +195,26 @@ async function checkUntilFinal(
 /**
  * Follows a transaction the wallet sent until the block it is in is final.
  * The node's event for the transaction says when a block takes it, and
- * checks every few seconds catch an event that was missed.
+ * checks every few seconds catch an event that was missed. What the block
+ * that took it says goes to `onBlock` once, as soon as it's seen there,
+ * before that block is final: a block or so before.
  *
  * Resolves with the transaction's outcome and the fee it was charged, or
  * with `null` if its block isn't final before the timeout, or once the
  * signal aborts. A check that fails is made again at the next one.
  *
  * @param {string} hash
- * @param {{ interval?: number, signal?: AbortSignal, timeout?: number }} [options]
+ * @param {{ interval?: number, onBlock?: (outcome: FinalTransaction) => void, signal?: AbortSignal, timeout?: number }} [options]
  * @returns {Promise<FinalTransaction | null>}
  */
 export default async function followTransaction(
   hash,
-  { interval = FOLLOW_INTERVAL, signal, timeout = FOLLOW_TIMEOUT } = {}
+  {
+    interval = FOLLOW_INTERVAL,
+    onBlock = () => {},
+    signal,
+    timeout = FOLLOW_TIMEOUT,
+  } = {}
 ) {
   if (!/^[0-9a-f]{64}$/i.test(hash)) {
     throw new Error("Invalid transaction hash");
@@ -213,10 +233,18 @@ export default async function followTransaction(
   until.addEventListener("abort", pauses.wake, { once: true });
   listenForExecution(network, hash, until, pauses.wake);
 
+  let isSeen = false;
+
   try {
     return await checkUntilFinal(network, hash, {
       deadline,
       interval,
+      onBlock: (outcome) => {
+        if (!isSeen) {
+          isSeen = true;
+          onBlock(outcome);
+        }
+      },
       pauses,
       signal: until,
     });

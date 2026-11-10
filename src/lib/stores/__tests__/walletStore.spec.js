@@ -191,6 +191,7 @@ describe("Wallet store", async () => {
       hardFaults: 0,
       reward: 0n,
     },
+    stakeReadFailed: false,
     syncStatus: {
       error: null,
       from: 0n,
@@ -859,6 +860,32 @@ describe("Wallet store", async () => {
         stopReading();
         balanceSpy.mockImplementation(/** @type {any} */ (balanceOf));
       }
+    });
+
+    it("should say the stake couldn't be read, keeping what was read before, until a refresh reads it", async () => {
+      const before = get(walletStore).stakeInfo;
+      const freshStake = { ...stakeInfo, reward: 2n };
+
+      expect(get(walletStore).stakeReadFailed).toBe(false);
+
+      stakeInfoSpy.mockRejectedValueOnce(new Error("The node didn't answer"));
+
+      const failed = walletStore.refreshBalance();
+
+      await vi.waitUntil(() => get(walletStore).stakeReadFailed);
+      await failed;
+
+      expect(get(walletStore).stakeInfo).toBe(before);
+
+      // Tried again, as the network's Try again does.
+      stakeInfoSpy.mockResolvedValueOnce(freshStake);
+
+      const read = walletStore.refreshBalance();
+
+      await vi.waitUntil(() => !get(walletStore).stakeReadFailed);
+      await read;
+
+      expect(get(walletStore).stakeInfo).toBe(freshStake);
     });
 
     it("should say the balances were read for the profile shown, and not while another's show", async () => {

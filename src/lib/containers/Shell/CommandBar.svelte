@@ -6,6 +6,7 @@
     mdiContentCopy,
     mdiMagnify,
   } from "@mdi/js";
+  import { MemoText } from "$lib/components";
   import { Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { announce } from "$lib/dusk/announce";
@@ -449,6 +450,11 @@
           >
           {#if result.sub}
             <span class="command-bar__sub">{result.sub}</span>
+          {/if}
+          {#if result.memo}
+            <span class="command-bar__sub command-bar__memo"
+              ><MemoText inline text={result.memo} /></span
+            >
           {/if}
         </span>
         {#if result.detail}

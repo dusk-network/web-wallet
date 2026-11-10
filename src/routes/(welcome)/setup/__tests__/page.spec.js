@@ -102,6 +102,117 @@ describe("Setup", () => {
 
       expect(plain.queryByRole("region")).toBeNull();
     });
+
+    it("should say before there's a wallet that a link's address was cut short on its way", () => {
+      setNodeNetwork(networks.testnet);
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: `?to=${TO.slice(0, -6)}&amount=0.011&network=testnet`,
+      });
+
+      const asked = render(Setup, {}).getByRole("region", {
+        name: "Payment request",
+      });
+
+      expect(asked).toHaveTextContent(
+        "This link's address isn't valid. Ask for a new one."
+      );
+      expect(asked).not.toHaveTextContent("to pay it");
+    });
+
+    it("should offer another network's request on that network's wallet", () => {
+      setNodeNetwork(networks.testnet);
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: `?to=${TO}&amount=0.011&memo=Factura+044&network=mainnet`,
+      });
+
+      const { getByRole } = render(Setup, {});
+
+      expect(getByRole("link", { name: "Switch to Mainnet" })).toHaveAttribute(
+        "href",
+        `https://apps.dusk.network/wallet/dashboard/send?to=${TO}&amount=0.011&memo=Factura+044&network=mainnet`
+      );
+    });
+
+    describe("on an Android phone", () => {
+      const CHROME =
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
+      const FIREFOX =
+        "Mozilla/5.0 (Android 14; Mobile; rv:144.0) Gecko/144.0 Firefox/144.0";
+
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      /** @param {string} userAgent */
+      const openOn = (userAgent) => {
+        vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
+        setNodeNetwork(networks.testnet);
+        keepPlace({
+          pathname: "/some-base-path/dashboard/send/",
+          search: `?to=${TO}&amount=0.011&memo=Factura+044&network=testnet`,
+        });
+
+        return render(Setup, {});
+      };
+
+      it("should lead with the same request in Firefox and in the Dusk app, before a wallet is made here", () => {
+        const { getAllByRole, getByRole } = openOn(CHROME);
+        const links = getAllByRole("link").map(
+          (link) => link.textContent?.trim() ?? ""
+        );
+
+        expect(getByRole("link", { name: "Open in Firefox" })).toHaveAttribute(
+          "href",
+          `intent://${location.host}/some-base-path/dashboard/send/?to=${TO}&amount=0.011&memo=Factura+044&network=testnet#Intent;scheme=${location.protocol.slice(0, -1)};package=org.mozilla.firefox;end`
+        );
+        expect(
+          getByRole("link", { name: "Open in the Dusk app" })
+        ).toHaveAttribute(
+          "href",
+          `dusk:public-${TO}@dusk:2?amount=0.011&memo=Factura+044`
+        );
+        expect(links.indexOf("Open in Firefox")).toBeLessThan(
+          links.indexOf("Open in the Dusk app")
+        );
+        expect(links.indexOf("Open in the Dusk app")).toBeLessThan(
+          links.indexOf("Create new wallet")
+        );
+        // Making one here comes after them.
+        expect(getByRole("link", { name: "Create new wallet" })).toHaveClass(
+          "dusk-anchor-button--variant--tertiary"
+        );
+      });
+
+      it("should offer the Dusk app in Firefox, which has the page already", () => {
+        const { getByRole, queryByRole } = openOn(FIREFOX);
+
+        expect(queryByRole("link", { name: "Open in Firefox" })).toBeNull();
+        expect(
+          getByRole("link", { name: "Open in the Dusk app" })
+        ).toBeInTheDocument();
+      });
+
+      it("should offer neither for a link that can't be paid as it is", () => {
+        vi.spyOn(navigator, "userAgent", "get").mockReturnValue(CHROME);
+        setNodeNetwork(networks.testnet);
+        keepPlace({
+          pathname: "/some-base-path/dashboard/send/",
+          search: `?to=${TO.slice(0, -6)}&amount=0.011&network=testnet`,
+        });
+
+        const { getByRole, queryByRole } = render(Setup, {});
+
+        expect(queryByRole("link", { name: "Open in Firefox" })).toBeNull();
+        expect(
+          queryByRole("link", { name: "Open in the Dusk app" })
+        ).toBeNull();
+        expect(getByRole("link", { name: "Create new wallet" })).toHaveClass(
+          "dusk-anchor-button--variant--primary"
+        );
+      });
+    });
   });
 
   describe("opened by a request link, with the Dusk Wallet extension", () => {

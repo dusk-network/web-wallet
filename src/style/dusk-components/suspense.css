@@ -17,3 +17,14 @@
     gap: var(--small-gap);
   }
 }
+
+/*
+ * A phone on its side: little height, so a result's parts sit close, and
+ * what follows it, as the offer to be told when a transfer arrives, shows
+ * without a scroll.
+ */
+@media (max-height: 30rem) {
+  .dusk-suspense.dusk-suspense--large-gap {
+    gap: var(--small-gap);
+  }
+}

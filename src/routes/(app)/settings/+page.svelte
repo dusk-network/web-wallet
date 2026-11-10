@@ -130,7 +130,7 @@
     }
   }
 
-  /** @type {(currencies: { code: string, currency: string }[]) => SelectOption[]} */
+  /** @type {(currencies: ReadonlyArray<{ code: string, currency: string }>) => SelectOption[]} */
   const currenciesToOptions = (items) =>
     items.map(({ code, currency }) => ({ label: currency, value: code }));
   const { gasLimitLower, gasLimitUpper, gasPriceLower } = $gasStore;

@@ -12,6 +12,7 @@ function getCacheDatabase() {
     syncInfo: "++",
     unspentNotes: "nullifier,address",
   });
+  db.version(4).stores({ sozuPositions: "account" });
 
   return db;
 }

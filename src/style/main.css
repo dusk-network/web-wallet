@@ -52,6 +52,19 @@ html {
   letter-spacing: 0;
 }
 
+/*
+ * An address or an amount is read character by character: no contextual
+ * alternate stands in for one, as the font's × for an x between digits.
+ * Form fields set their own font, so they're told too.
+ */
+html,
+button,
+input,
+select,
+textarea {
+  font-variant-ligatures: no-contextual;
+}
+
 body {
   display: block;
   padding: 0;

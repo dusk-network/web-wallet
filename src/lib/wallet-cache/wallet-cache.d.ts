@@ -30,6 +30,14 @@ type WalletCacheDbNote = Omit<WalletCacheNote, "note" | "nullifier"> & {
   nullifier: ArrayBufferLike;
 };
 
+/** What an account held with Sozu, as read at `at` (ms). */
+type WalletCacheSozuPosition = { at: number; balance: bigint; stDusk: bigint };
+
+type WalletCacheDbSozuPosition = {
+  account: string;
+  position: WalletCacheSozuPosition;
+};
+
 type WalletCacheDbStakeInfo = {
   account: string;
   stakeInfo: Omit<StakeInfo, "amount"> & {
@@ -44,9 +52,11 @@ type WalletCacheGetDataType<T extends WalletCacheTableName> =
       ? WalletCacheDbPendingNoteInfo[]
       : T extends "stakeInfo"
         ? WalletCacheDbStakeInfo[]
-        : T extends "syncInfo"
-          ? WalletCacheSyncInfo[]
-          : WalletCacheDbNote[];
+        : T extends "sozuPositions"
+          ? WalletCacheDbSozuPosition[]
+          : T extends "syncInfo"
+            ? WalletCacheSyncInfo[]
+            : WalletCacheDbNote[];
 
 type WalletCacheGetEntriesReturnType<
   T extends WalletCacheTableName,
@@ -57,7 +67,7 @@ type WalletCacheGetEntriesReturnType<
     ? never
     : T extends "balancesInfo"
       ? never
-      : T extends "stakeInfo"
+      : T extends "stakeInfo" | "sozuPositions"
         ? never
         : ArrayBuffer[];
 
@@ -88,6 +98,7 @@ type WalletCacheTableName =
   | "balancesInfo"
   | "pendingNotesInfo"
   | "syncInfo"
+  | "sozuPositions"
   | "spentNotes"
   | "stakeInfo"
   | "unspentNotes";
