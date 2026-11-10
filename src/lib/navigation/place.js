@@ -179,10 +179,11 @@ const withoutPhrases = (values) =>
 
 /**
  * What a form that moves money keeps of what's typed in it, for a lock, a
- * reload or a send that failed with nothing sent to bring back, for the same
- * wallet, profile and network. For a component to take as it's made: leaving
- * the form in the wallet lets it go, as anything else it does, unless it was
- * kept for a failure (`keep`), or the browser's Back or Forward returns to it.
+ * reload, Back or a send that failed with nothing sent to bring back, for the
+ * same wallet, profile and network. For a component to take as it's made:
+ * leaving the form in the wallet by a link lets it go, as anything else it
+ * does, unless it was kept for a failure (`keep`), or the browser's Back or
+ * Forward returns to it; leaving it with Back keeps it for its next opening.
  * It goes (`clear`) once the transaction goes out, so that nothing a reload
  * brings back was sent already: the form shows it to be reviewed, never sent,
  * in any case.
@@ -245,9 +246,17 @@ export function formDraft(name) {
 
     if (!isKept && get(walletStore).initialized) {
       if (held) {
+        // Left with Back, as a phone's is pressed by the way: kept for the
+        // form's next opening, as a lock keeps it.
+        const isBack = get(navigating)?.type === "popstate";
+
         kept.write(
           key,
-          JSON.stringify({ left: true, owner, values: withoutPhrases(held) })
+          JSON.stringify({
+            ...(isBack ? {} : { left: true }),
+            owner,
+            values: withoutPhrases(held),
+          })
         );
       } else {
         clear();
