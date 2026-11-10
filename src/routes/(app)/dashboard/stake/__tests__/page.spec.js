@@ -24,6 +24,8 @@ vi.mock("$app/stores", async () => {
   const { readable } = await import("svelte/store");
 
   return {
+    // No navigation under way: a form left is left by a link.
+    navigating: readable(null),
     page: {
       subscribe: (/** @type {(value: any) => void} */ run) =>
         readable({ url: page.url }).subscribe(run),

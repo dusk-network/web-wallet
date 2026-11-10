@@ -20,11 +20,13 @@ const page = vi.hoisted(() => ({
 }));
 
 vi.mock("$app/stores", async () => {
-  const { writable } = await import("svelte/store");
+  const { readable, writable } = await import("svelte/store");
 
   page.store = writable({ url: page.url });
 
   return {
+    // No navigation under way: a form left is left by a link.
+    navigating: readable(null),
     page: {
       subscribe: (/** @type {(value: any) => void} */ run) =>
         /** @type {NonNullable<typeof page.store>} */ (page.store).subscribe(

@@ -62,9 +62,10 @@ vi.mock("$lib/bridge/bridgeTimes", async () => {
 
 // The page's history state, as the tests move it.
 vi.mock("$app/stores", async () => {
-  const { writable } = await import("svelte/store");
+  const { readable, writable } = await import("svelte/store");
 
-  return { page: writable({ state: {} }) };
+  // No navigation under way: a form left is left by a link.
+  return { navigating: readable(null), page: writable({ state: {} }) };
 });
 
 vi.mock("$app/navigation", async (importOriginal) => ({

@@ -3418,6 +3418,8 @@ describe("Send", () => {
     });
 
     it("should mark a contact whose name looks like another's where it's named once picked, to the review and the Sent screen", async () => {
+      // Send takes a click half a second after it shows: on this clock.
+      vi.useFakeTimers({ toFake: ["performance"] });
       saveContact({ address: otherAccount, name: "Alice" });
 
       // A Cyrillic А.
@@ -3459,6 +3461,7 @@ describe("Send", () => {
           `0.001 DUSK to \u0410lice (${shortenAddress(nameAccount)})`
         )
       );
+      vi.useRealTimers();
     });
 
     it("should show a contact's name saved with what can't be seen in it by its codes, and refuse one now", async () => {
