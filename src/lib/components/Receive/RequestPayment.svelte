@@ -8,7 +8,7 @@
    * which opens the web wallet's Send, filled in.
    */
   import { mdiChevronDown } from "@mdi/js";
-  import { displayText } from "@dusk-network/app-core/text";
+  import { displayText, numbersNote } from "@dusk-network/app-core/text";
 
   import { CopyButton, Icon, Textbox } from "$lib/dusk/components";
   import { formatDusk } from "$lib/dusk/currency";
@@ -68,10 +68,7 @@
   // can read as another.
   $: memoShown = displayText(memo);
   $: isMemoFlagged =
-    memoShown.neutralized ||
-    memoShown.flags.some(
-      (flag) => flag === "mixed_digits" || flag === "rtl_digits"
-    );
+    memoShown.neutralized || numbersNote(memoShown.flags) !== "";
 </script>
 
 <details bind:open={isOpen} class="request">

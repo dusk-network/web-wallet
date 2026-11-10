@@ -102,6 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say a link's network can't be read where it's written as dusk:02, not that it names two networks
 - Refuse a dusk: link that says the recipient twice, and read one with a plain address
 - Show a variation selector on no emoji, in a memo or a name, as its code
+- Say where a memo's number uses digits that look like other digits, as Bengali's ৪, in the extension's words
 - Keep what was typed in a form that moves money through Back, as through the automatic lock, for the next time it opens
 - Show a request's memo with hidden characters, or digits that can misread, under its field as a payer's wallet will
 - Show the offer to be told when a transfer arrives without a scroll on a phone on its side

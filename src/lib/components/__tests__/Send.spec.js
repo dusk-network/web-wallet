@@ -1569,7 +1569,18 @@ describe("Send", () => {
 
       expect(
         getByText(
-          "It mixes kinds of digits, so a number may not be what it looks like."
+          "A number here mixes digits of different scripts. Check it digit by digit."
+        )
+      ).toBeTruthy();
+
+      // Nor one of digits that look like others, as the extension says.
+      await fireEvent.input(fields.memo(), {
+        target: { value: "Pay \u09EA DUSK" },
+      });
+
+      expect(
+        getByText(
+          "A number here uses digits that look like other digits. Check it digit by digit."
         )
       ).toBeTruthy();
     });

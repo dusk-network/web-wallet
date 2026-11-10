@@ -8,7 +8,7 @@
    */
   import { onDestroy } from "svelte";
   import { refundOf, sentAlready } from "@dusk-network/app-core/requests";
-  import { displayText } from "@dusk-network/app-core/text";
+  import { displayText, numbersNote } from "@dusk-network/app-core/text";
   import { formatTime } from "@dusk-network/networks/format";
 
   import { activityState, currentActivity } from "$lib/activity";
@@ -185,10 +185,7 @@
    * @param {Part} part
    */
   const misreads = (part) =>
-    "memo" in part &&
-    displayText(part.memo).flags.some(
-      (flag) => flag === "mixed_digits" || flag === "rtl_digits"
-    );
+    "memo" in part && numbersNote(displayText(part.memo).flags) !== "";
 
   /**
    * Whether a refund was sent after the payment it would pay back came in:
