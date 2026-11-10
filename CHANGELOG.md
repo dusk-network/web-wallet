@@ -95,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Call the chain Dusk on a deposit to DuskEVM, as the Bridge does, and say the network fee it paid once History has it
 - Say Send back fills in the payment to send back, not that a link did
 - Start a section's head at the content's edge on a phone, as what's under it does
+- Draw an X between two digits in an address as an X, not as the font's ×
 
 ## [2.0.0] - 2026-11-06
 
