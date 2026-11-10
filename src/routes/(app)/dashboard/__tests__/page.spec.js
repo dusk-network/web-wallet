@@ -439,6 +439,17 @@ describe("Dashboard", () => {
     );
   });
 
+  it("reads Sozu where the history couldn't be read, as whether the account called a pool isn't known", async () => {
+    sozu.load.mockClear();
+    render(Dashboard, props);
+
+    expect(sozu.load).not.toHaveBeenCalled();
+
+    await setHistory({ error: "fetch failed", rows: [] });
+
+    expect(sozu.load).toHaveBeenCalled();
+  });
+
   it("reads Sozu for an account that called a pool its hub may have named", async () => {
     sozu.load.mockClear();
     render(Dashboard, props);

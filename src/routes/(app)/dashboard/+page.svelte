@@ -86,8 +86,14 @@
   $: hasPastStaking = rows.some((row) => row.category === "staking");
 
   // What is staked with Sozu, read only for an account that called a pool
-  // of its: read, a pool its hub named is known from then on.
-  $: if (rows.some(isSozuFunction) && networkName && currentProfile) {
+  // of its: read, a pool its hub named is known from then on. Where the
+  // history couldn't be read, whether it did isn't known: it's read then too.
+  $: ({ error: historyError } = $activityState);
+  $: if (
+    (rows.some(isSozuFunction) || (historyError && !rows.length)) &&
+    networkName &&
+    currentProfile
+  ) {
     void sozuStore.load();
   }
   $: ({
