@@ -854,7 +854,7 @@ describe("Receive", () => {
 
       expect(goto).toHaveBeenCalledWith(
         expect.stringMatching(/^\/some-base-path\/dashboard\/send\?/),
-        { state: { amountHidden: true } }
+        { state: { amountHidden: true, sendBack: true } }
       );
 
       // Sent back, on its way: at a time this device's clock says, behind

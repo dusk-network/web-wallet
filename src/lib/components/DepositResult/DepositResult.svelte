@@ -82,7 +82,7 @@
   describeError={describe}
   errorMessage="Deposit submission failed"
   gap="large"
-  pendingMessage="Submitting on DuskDS"
+  pendingMessage="Submitting on Dusk"
   waitFor={shown}
 >
   <svelte:fragment

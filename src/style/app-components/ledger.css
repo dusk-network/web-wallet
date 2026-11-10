@@ -34,20 +34,6 @@
 }
 
 /*
- * Phones: the opening bracket and its space hang left of the content's
- * edge, 12 px wide, so that the head's word lines up with what is under it
- * and the bracket keeps 4 px from the screen's edge.
- */
-@media (max-width: 47.99rem) {
-  .section-head__bracket--open {
-    display: inline-block;
-    width: 0.75rem;
-    margin-right: 0;
-    margin-left: -0.75rem;
-  }
-}
-
-/*
  * A text link, or a link to a chain object: in the chain's blue, which no
  * button, amount or row has, and underlined under the pointer.
  */

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup } from "@testing-library/svelte";
 
 import { renderWithSlots } from "$lib/dusk/test-helpers";
+import styleRules from "$lib/dusk/test-helpers/styleRules";
 
 import { SectionHead } from "..";
 
@@ -27,6 +28,19 @@ describe("SectionHead", () => {
 
     for (const bracket of brackets) {
       expect(bracket).toHaveAttribute("aria-hidden", "true");
+    }
+  });
+
+  it("starts at the content's edge on a phone too, as what's under it does: its bracket hangs out of it nowhere", () => {
+    const bracket = styleRules(
+      "../../../style/app-components/ledger.css",
+      import.meta.url
+    ).filter(({ selector }) => selector.includes("section-head__bracket"));
+
+    expect(bracket.length).toBeGreaterThan(0);
+
+    for (const { declarations } of bracket) {
+      expect(declarations["margin-left"] ?? "0").not.toMatch(/^-/);
     }
   });
 

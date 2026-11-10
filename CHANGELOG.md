@@ -91,6 +91,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep the spaces of a name typed in To, as "Estudio M", taking them out only of an address, a .dusk name or a link
 - Give the time of each payment of a request paid more than once to the second, so two in the same minute read apart
 - Say what was sent back for a request's payment, with its amount and a link to it, and keep Send back on its payment's line
+- Call the chain Dusk on a deposit to DuskEVM, as the Bridge does, and say the network fee it paid once History has it
+- Say Send back fills in the payment to send back, not that a link did
+- Start a section's head at the content's edge on a phone, as what's under it does
 
 ## [2.0.0] - 2026-11-06
 

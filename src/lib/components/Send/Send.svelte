@@ -163,6 +163,9 @@
    */
   export let initialAmountHidden = false;
 
+  /** Whether the page was opened to send a payment back, filled in from it. */
+  export let isSendBack = false;
+
   /**
    * `.dusk` names of past counterparties, for "Did you mean …?" along with
    * the contacts' names.
@@ -1589,7 +1592,9 @@
 
         {#if isFromLink}
           <p class="send__hint" role="status">
-            Filled in from the link. Check it before you send.
+            {isSendBack
+              ? "Filled in to send the payment back. Check it before you send."
+              : "Filled in from the link. Check it before you send."}
           </p>
         {/if}
 

@@ -615,6 +615,21 @@ describe("Send", () => {
       expect(opened.getByText(/^Filled in from the link/)).toBeInTheDocument();
       opened.unmount();
 
+      // Opened to send a payment back: filled in from it, from no link.
+      const back = render(Send, {
+        ...baseProps,
+        initialAmount: "0.15",
+        initialMemo: "Refund: Factura 33",
+        initialRecipient: otherAccount,
+        isSendBack: true,
+      });
+
+      expect(back.getByRole("status")).toHaveTextContent(
+        "Filled in to send the payment back. Check it before you send."
+      );
+      expect(back.queryByText(/from the link/)).toBeNull();
+      back.unmount();
+
       const refused = render(Send, {
         ...baseProps,
         initialProblem: "This request is for Mainnet. You are on Testnet.",

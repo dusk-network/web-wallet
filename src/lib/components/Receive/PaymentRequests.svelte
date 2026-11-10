@@ -287,7 +287,7 @@
       !event.altKey
     ) {
       event.preventDefault();
-      goto(path, { state: { amountHidden: true } });
+      goto(path, { state: { amountHidden: true, sendBack: true } });
     }
   }
 

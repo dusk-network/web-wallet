@@ -858,7 +858,7 @@ describe("EvmTransactions", () => {
     await fireEvent.click(depositButton);
 
     expect(depositButton).toHaveAttribute("aria-expanded", "true");
-    expect(getByText("DuskDS transaction")).toBeInTheDocument();
+    expect(getByText("Dusk transaction")).toBeInTheDocument();
     // Its row says the amount and the state: the steps don't again.
     expect(queryByRole("heading", { name: "0.25 DUSK" })).toBeNull();
 
@@ -869,7 +869,7 @@ describe("EvmTransactions", () => {
       expect(withdrawalButton).toHaveAttribute("aria-expanded", "true")
     );
     expect(depositButton).toHaveAttribute("aria-expanded", "false");
-    expect(queryByText("DuskDS transaction")).toBeNull();
+    expect(queryByText("Dusk transaction")).toBeNull();
 
     // And the other way around.
     await fireEvent.click(depositButton);
@@ -1053,7 +1053,7 @@ describe("EvmTransactions", () => {
         name: /^Dusk to DuskEVM Arrived on DuskEVM 0\.25 DUSK$/,
       })
     ).toHaveAttribute("aria-expanded", "true");
-    expect(getByText("DuskDS transaction")).toBeInTheDocument();
+    expect(getByText("Dusk transaction")).toBeInTheDocument();
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
     expect(mocks.rememberWithdrawalTransaction).not.toHaveBeenCalled();
   });
