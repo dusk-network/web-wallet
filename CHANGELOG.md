@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Count the approval a migration spent in its gas under Bridge › Activity, as its chain says, and write both in the accounting export
 - Give Sozu's yearly rate from how its stDUSK grew over the last 30 days, read on the chain, the same on its form and on Stake
 - Refuse a contact named as one of your profiles, or like one in other letters, and say which contact a name looks like, with its address
+- Refuse a profile name that is, or looks like, another profile's or a contact's, saying whose
 - Mark contacts whose names look alike on Send, with their addresses, also once picked, on Review and the Sent screen, and in Contacts
 - Find a contact whose name looks like what's typed, in letters of another script, in the search and in Contacts
 - Say where a memo's number may not be what it looks like: digits that read right to left, or of more than one kind

@@ -10,15 +10,16 @@
    * can't be seen in it, which can read as another name, is refused.
    */
   import { mdiAlertOutline, mdiCheck } from "@mdi/js";
-  import { NAME_HIDES, nameHides } from "@dusk-network/app-core/names";
 
   import { Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { shortenAddress } from "$lib/dusk/string";
   import { FieldLimit, SectionHead } from "$lib/components";
+  import { profileNameProblem } from "$lib/contacts";
   import { WalletChangedError } from "$lib/errors";
   import { networkStore, walletStore } from "$lib/stores";
   import profileLabel from "$lib/wallet/profileLabel";
+  import { profilesHere } from "$lib/wallets/accountNames";
   import {
     NAME_LIMIT,
     normalizeWalletName,
@@ -83,8 +84,13 @@
       return;
     }
 
-    if (nameHides(name)) {
-      refused[index] = NAME_HIDES;
+    // Empty, it goes by its number: no other's name.
+    const problem = name
+      ? profileNameProblem(name, everyProfile, String(profiles[index].account))
+      : null;
+
+    if (problem) {
+      refused[index] = problem;
       return;
     }
 
@@ -132,6 +138,17 @@
   }
 
   $: ({ profiles, walletKey } = $walletStore);
+  // Every profile here, of every wallet, by the name it goes by, and the
+  // open wallet's with its shielded address too: a contact saved with one of
+  // a profile's own addresses takes nothing from its name.
+  $: everyProfile = $profilesHere.map(({ address: account, name }) => ({
+    account,
+    address: String(
+      profiles.find((profile) => String(profile.account) === account)
+        ?.address ?? account
+    ),
+    name,
+  }));
   $: follow(walletKey, profiles.length, $openProfileNames);
 
   // Each profile as the wallet shows it, without its name here: its number,

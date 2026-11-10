@@ -293,6 +293,58 @@ describe("Settings › Profiles", () => {
     expect(field).not.toHaveAccessibleDescription();
   });
 
+  it("refuses a profile name that is, or looks like, the other profile's or a contact's, saying whose", async () => {
+    const { openTestContacts } = await import("$lib/test-helpers");
+    const { removeContact, saveContact } = await import("$lib/contacts");
+
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+    await openTestContacts();
+
+    const alice = saveContact({
+      address:
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi",
+      name: "Alice",
+    });
+
+    try {
+      const settings = render(Settings);
+      const field = settings.getByRole("textbox", { name: "Profile 2 name" });
+
+      for (const [name, words] of [
+        [
+          "Profile 1",
+          "Your other profile is called Profile 1. Choose another name.",
+        ],
+        [
+          "profile 1.",
+          "Your other profile is called Profile 1. Choose another name.",
+        ],
+        ["Alice", "You have a contact called Alice. Choose another name."],
+        // A Cyrillic А.
+        [
+          "\u0410lice",
+          "That looks like your contact Alice. Choose another name.",
+        ],
+      ]) {
+        await nameProfile(settings, 2, name, "enter");
+
+        expect(field).toHaveAccessibleDescription(words);
+      }
+
+      expect(toasts).toEqual([]);
+
+      // Its own number, and another name, are its to take.
+      await nameProfile(settings, 2, "Profile 2");
+      await nameProfile(settings, 2, "Savings");
+
+      expect(toasts).toEqual(["Name saved.", "Name saved."]);
+      expect(field).not.toHaveAccessibleDescription();
+    } finally {
+      removeContact(alice.id);
+    }
+  });
+
   it("keeps each wallet's names its own, and forgets a removed wallet's", async () => {
     await vault.setUp(A, PASSWORD);
     await unlockWallets(PASSWORD);
