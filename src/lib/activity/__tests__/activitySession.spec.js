@@ -490,6 +490,79 @@ describe("ActivitySession", () => {
     }
   });
 
+  it("looks for a payment another profile here sent to it every few seconds, until the archive has it, two minutes at most", async () => {
+    const node = fakeArchive({ finalized: 4_657_995 });
+    const session = sessionFor();
+    const { awaitArrival, forgetArrivals } = await import("../arrivals");
+    const arriving = entryOfA(4658000);
+
+    /** Its run under way ends: the store's work goes on with fake timers. */
+    const runEnds = async () => {
+      for (let i = 0; i < 200 && session.state.syncing; i += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+
+      // What follows the run: its names and its shielded side.
+      for (let i = 0; i < 20; i += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+    };
+
+    await session.start();
+
+    vi.useFakeTimers({
+      now: Date.now(),
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+    });
+
+    try {
+      const refresh = vi.spyOn(session, "refresh");
+
+      // Sent from another profile here to this one: the archive has it only
+      // once its block is final.
+      awaitArrival({ hash: arriving.origin, to: A });
+      session.lookForArrivals();
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+      await runEnds();
+
+      expect(refresh).toHaveBeenCalledOnce();
+      expect(session.state.rows.map((r) => r.hash)).not.toContain(
+        arriving.origin
+      );
+
+      // Final now: the next look finds it, and it's looked for no more.
+      node.finalized = FINALIZED;
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+      await runEnds();
+
+      expect(refresh).toHaveBeenCalledTimes(2);
+      expect(session.state.rows.map((r) => r.hash)).toContain(arriving.origin);
+
+      await vi.advanceTimersByTimeAsync(sessions.AFTER_TX_MS);
+
+      expect(refresh).toHaveBeenCalledTimes(2);
+
+      // One the archive never has is looked for two minutes, no more.
+      awaitArrival({ hash: "ef".repeat(32), to: A });
+      session.lookForArrivals();
+
+      for (let at = 0; at < 120_000; at += sessions.SOON_AFTER_TX_MS) {
+        await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+        await runEnds();
+      }
+
+      refresh.mockClear();
+      await vi.advanceTimersByTimeAsync(2 * sessions.AFTER_TX_MS);
+      await runEnds();
+
+      expect(refresh).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+      forgetArrivals();
+      session.stop();
+    }
+  });
+
   it("tells nobody anything once stopped", async () => {
     fakeArchive();
 

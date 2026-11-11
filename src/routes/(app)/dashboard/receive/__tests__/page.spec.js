@@ -649,6 +649,100 @@ describe("Receive", () => {
       history.state?.set({ hasMore: false, rows: [] });
     });
 
+    it("should say it's checking, not that nothing came in, while a payment to it from another profile here is looked for, two minutes at most", async () => {
+      const at = Date.now() - 1000;
+      const { awaitArrival, forgetArrivals } = await import("$lib/activity");
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "open",
+            lux: "30000000",
+            memo: "Chicken rice Fri",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+
+      try {
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(screen.getByRole("listitem")).toHaveTextContent(
+          "Nothing matching has come in."
+        );
+
+        // Sent from another profile here, and seen to go out: the history
+        // doesn't have it yet.
+        awaitArrival({ hash: "ab".repeat(32), to: ACCOUNT });
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(screen.getByRole("listitem")).toHaveTextContent(
+          "Checking for payments…"
+        );
+        expect(screen.getByRole("listitem")).not.toHaveTextContent(
+          "Nothing matching"
+        );
+
+        // In the history: what came in.
+        history.state?.set({
+          hasMore: false,
+          rows: [
+            {
+              category: "received",
+              hash: "ab".repeat(32),
+              memo: "Chicken rice Fri",
+              privacy: "public",
+              status: "executed",
+              time: at + 500,
+              value: 30_000_000n,
+            },
+          ],
+        });
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(screen.getByRole("listitem")).toHaveTextContent("Paid");
+        cleanup();
+
+        // One the history never has: checked for two minutes, no more.
+        history.state?.set({ hasMore: false, rows: [] });
+        localStorage.setItem(
+          REQUESTS,
+          JSON.stringify([
+            {
+              at,
+              id: "open",
+              lux: "30000000",
+              memo: "Chicken rice Fri",
+              network: "testnet",
+              to: ACCOUNT,
+            },
+          ])
+        );
+        hydrateRequests();
+        awaitArrival({ hash: "cd".repeat(32), to: ACCOUNT });
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(screen.getByRole("listitem")).toHaveTextContent(
+          "Checking for payments…"
+        );
+
+        await vi.advanceTimersByTimeAsync(120_000);
+
+        expect(screen.getByRole("listitem")).toHaveTextContent(
+          "Nothing matching has come in."
+        );
+      } finally {
+        forgetArrivals();
+        history.state?.set({ hasMore: false, rows: [] });
+      }
+    });
+
     it("should say a request paid twice in its badge, list each payment with a way to send the second back, and quote another payment's memo safely", async () => {
       const PAYER =
         "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";

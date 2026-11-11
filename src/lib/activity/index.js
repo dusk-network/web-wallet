@@ -4,8 +4,16 @@ import { sozuPools } from "$lib/sozu/config";
 import nodeNetwork from "$lib/stores/nodeNetwork";
 
 import { ACTIVITY_PAGE, ActivitySession } from "./activitySession";
+import { awaitedArrivals } from "./arrivals";
 
 export { clearActivityStore, forgetWalletActivity } from "./activityStore";
+export {
+  arrivalsNotIn,
+  awaitArrival,
+  awaitedArrivals,
+  forgetArrivals,
+  isToAnotherProfile,
+} from "./arrivals";
 export { getShieldedHistory } from "./shieldedHistory";
 export { onTheirWay } from "./sends";
 export { TX_KIND } from "./constants";
@@ -39,6 +47,10 @@ const tellAgain = () => current && state.set(current.state);
 // The node's network and Sozu's pools say what the rows' calls did.
 nodeNetwork.subscribe(tellAgain);
 sozuPools.subscribe(tellAgain);
+
+// A payment to the account shown, from another profile here, went out: the
+// history looks for it.
+awaitedArrivals.subscribe(() => current?.lookForArrivals());
 
 /**
  * The history session for an account, made and started on first use. The

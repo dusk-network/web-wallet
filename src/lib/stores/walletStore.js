@@ -11,11 +11,14 @@ import {
   TX_KIND,
   activityFor,
   activityState,
+  awaitArrival,
   clearActivityStore,
   currentActivity,
+  forgetArrivals,
   forgetWalletActivity,
   getShieldedHistory,
   isHistoryEnabled,
+  isToAnotherProfile,
   stopActivity,
 } from "$lib/activity";
 import { closeContacts, openContacts } from "$lib/contacts";
@@ -207,6 +210,29 @@ const recordInHistory = (profile, details) => {
  */
 const isOwn = (to, profile) =>
   to === String(profile.account) || to === String(profile.address);
+
+/**
+ * A payment `profile` sends to another profile here is looked for in that
+ * profile's history once it goes out, and its requests say they're checking
+ * until it shows ($lib/activity/arrivals). Taken as the send begins.
+ *
+ * @param {Profile} profile
+ * @param {SentDetails} details
+ * @returns {(txInfo: TransactionInfo) => void}
+ */
+const lookForArrival = (profile, { to }) => {
+  const isToAnother = isToAnotherProfile(
+    to,
+    profile,
+    get(walletStore).profiles
+  );
+
+  return (txInfo) => {
+    if (isToAnother) {
+      awaitArrival({ hash: txInfo.hash, to: String(to) });
+    }
+  };
+};
 
 /**
  * A sync that started after the `after`-th, ended: the one running if it
@@ -450,6 +476,7 @@ const sendAs = (
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
   const record = recordInHistory(profile, details);
+  const lookFor = lookForArrival(profile, details);
 
   /** @param {import("@dusk/w3sper").Network} network */
   const sending = (network) => ({
@@ -494,6 +521,7 @@ const sendAs = (
         if (hash) {
           followRemoval(/** @type {TransactionInfo} */ ({ hash }));
           record(/** @type {TransactionInfo} */ ({ hash }));
+          lookFor(/** @type {TransactionInfo} */ ({ hash }));
         }
 
         throw error;
@@ -504,6 +532,7 @@ const sendAs = (
       keepInCache(txInfo)
         .then(passThruWithEffects(followRemoval))
         .then(passThruWithEffects(record))
+        .then(passThruWithEffects(lookFor))
         .catch((error) => {
           throw outcomeUnknown(error, txInfo.hash);
         })
@@ -950,6 +979,7 @@ function resetSession() {
   cancelSendPassword(new WalletChangedError());
   abortSync();
   stopActivity();
+  forgetArrivals();
   closeContacts();
   treasury.reset();
 }

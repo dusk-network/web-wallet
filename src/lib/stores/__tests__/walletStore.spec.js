@@ -1545,6 +1545,35 @@ describe("Wallet store", async () => {
       vi.useFakeTimers();
     });
 
+    it("should look for no payment in a history but another profile's here, and none once the wallet locks", async () => {
+      vi.useRealTimers();
+
+      const { awaitArrival, awaitedArrivals, forgetArrivals } =
+        await import("$lib/activity");
+
+      try {
+        forgetArrivals();
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "ab".repeat(32),
+          nonce: 1n,
+        });
+        // To someone else: theirs isn't a history here.
+        await walletStore.transfer(toMoonlight, amount, memo, gas);
+
+        expect(get(awaitedArrivals)).toStrictEqual([]);
+
+        // Another wallet opens, or every one locks: none's looked for.
+        awaitArrival({ hash: "ef".repeat(32), to: "a-profile-here" });
+        walletStore.reset();
+
+        expect(get(awaitedArrivals)).toStrictEqual([]);
+      } finally {
+        forgetArrivals();
+        vi.useFakeTimers();
+      }
+    });
+
     it("should expose a method to claim the rewards", async () => {
       await walletStoreTransferCheck("claimRewards", [amount, gas]);
     });

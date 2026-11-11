@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Read a profile's history every few seconds once another profile here paid it, until the payment shows, and say a request is checking for payments meanwhile, not that nothing came in
 - Say how much each approval under Bridge › Activity let the migration contract take, and what a revoke took back of it, and give gas to the wei in its details
 - Show a transfer's newest transactions in History on its first read too, as after a restore, as the balances already have them
 - Give one time for one payment, to the second, as its block's: on Send's warning of a payment made already and its Review, on the Sent screen, in a transaction's details and on a request, which says today in a sentence and a refund's time first, as its payments'

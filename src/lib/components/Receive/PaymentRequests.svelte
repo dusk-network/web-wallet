@@ -11,7 +11,13 @@
   import { displayText, numbersNote } from "@dusk-network/app-core/text";
   import { formatTime } from "@dusk-network/networks/format";
 
-  import { activityState, currentActivity } from "$lib/activity";
+  import {
+    activityState,
+    arrivalsNotIn,
+    awaitedArrivals,
+    currentActivity,
+  } from "$lib/activity";
+  import { LOOK_FOR_MS } from "$lib/activity/arrivals";
   import { paidInSentence } from "$lib/activity/present";
   import { claimDay } from "$lib/bridge/claimDate";
   import { Button, CopyButton } from "$lib/dusk/components";
@@ -72,7 +78,38 @@
     }
   }
 
-  onDestroy(() => clearInterval(timer));
+  /** When what's checked for is looked for no more: it's said again then. */
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let checkTimer;
+
+  /** Bumped as a payment stops being looked for, to say so. */
+  let checkedAt = 0;
+
+  /**
+   * Says what's checked for again once the first payment of it stops being
+   * looked for.
+   *
+   * @param {import("$lib/activity/arrivals").AwaitedArrival[]} awaited
+   */
+  function checkUntil(awaited) {
+    clearTimeout(checkTimer);
+
+    if (awaited.length) {
+      const first = Math.min(...awaited.map(({ at }) => at));
+
+      checkTimer = setTimeout(
+        () => {
+          checkedAt = Date.now();
+        },
+        Math.max(0, first + LOOK_FOR_MS - Date.now())
+      );
+    }
+  }
+
+  onDestroy(() => {
+    clearInterval(timer);
+    clearTimeout(checkTimer);
+  });
 
   /**
    * What matched of a payment that matched only part of a request, in words:
@@ -122,9 +159,11 @@
    * @param {import("$lib/payment-requests/requests").PaymentRequest} request
    * @param {import("$lib/payment-requests/requests").RequestMatch} match
    * @param {string} language
+   * @param {boolean} isChecking Whether a payment to it from another profile
+   *   here went out, which the history doesn't have yet
    * @returns {Part[]}
    */
-  function matchedParts(request, match, language) {
+  function matchedParts(request, match, language, isChecking) {
     const { at, lux, matched, memo, more = [] } = match;
     const what =
       request.lux === null ? "Its memo matches" : "Amount and memo match";
@@ -167,7 +206,13 @@
         ];
       }
       default:
-        return [{ text: "Nothing matching has come in." }];
+        return [
+          {
+            text: isChecking
+              ? "Checking for payments…"
+              : "Nothing matching has come in.",
+          },
+        ];
     }
   }
 
@@ -346,6 +391,15 @@
   $: keepRequestMatches(matches);
   $: hasOpen = shown.some(({ id }) => matches.get(id)?.state !== "paid");
   $: lookWhile(hasOpen);
+  // A payment to this profile from another one here went out, and the
+  // history doesn't have it yet: it's looked for, and checked, not nothing.
+  $: awaited = arrivalsNotIn(
+    $awaitedArrivals,
+    addresses,
+    $activityState.rows,
+    Math.max(Date.now(), checkedAt)
+  );
+  $: checkUntil(awaited);
   // A payment may be further back than the history read so far.
   $: oldestRead = Math.min(
     ...$activityState.rows.map(({ time }) => time ?? Infinity)
@@ -364,7 +418,12 @@
       {#each shown as request (request.id)}
         {@const match = matches.get(request.id) ?? { state: "waiting" }}
         {@const again = paidAgain(match)}
-        {@const parts = matchedParts(request, match, language)}
+        {@const parts = matchedParts(
+          request,
+          match,
+          language,
+          awaited.some(({ to }) => to === request.to)
+        )}
         <li class="requests__item">
           <p class="requests__head">
             <strong>

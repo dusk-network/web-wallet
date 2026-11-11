@@ -32,6 +32,7 @@ import {
   noteActivityUnavailable,
   publicHistory,
 } from "./activityHistory";
+import { arrivalsNotIn, awaitedArrivals } from "./arrivals";
 import {
   StaleActivityError,
   activityOwnerKey,
@@ -351,16 +352,46 @@ export class ActivitySession {
     );
   }
 
-  /** Whether one of the wallet's own sends still waits for the archive. */
+  /**
+   * The payments to this account another profile here sent, looked for and
+   * not in the archive's answer yet ($lib/activity/arrivals).
+   *
+   * @param {number} [now]
+   */
+  #arrivalsAwaited(now = Date.now()) {
+    return arrivalsNotIn(
+      get(awaitedArrivals),
+      [this.options.account],
+      this.#entries,
+      now
+    );
+  }
+
+  /**
+   * Whether one of the wallet's own sends still waits for the archive, or a
+   * payment to this account that another profile here sent.
+   */
   #waitsForArchive() {
     const now = Date.now();
 
-    return this.#local.some(
-      (r) =>
-        r.status === "submitted" &&
-        !r.settled &&
-        now - r.submittedAt < PENDING_MS
+    return (
+      this.#local.some(
+        (r) =>
+          r.status === "submitted" &&
+          !r.settled &&
+          now - r.submittedAt < PENDING_MS
+      ) || this.#arrivalsAwaited(now).length > 0
     );
+  }
+
+  /**
+   * A payment to this account another profile here sent went out: the
+   * archive is asked for it every few seconds until it has it.
+   */
+  lookForArrivals() {
+    if (this.loaded && !this.#stopped && this.#arrivalsAwaited().length) {
+      this.refreshSoon(SOON_AFTER_TX_MS);
+    }
   }
 
   async #sync() {
@@ -448,7 +479,7 @@ export class ActivitySession {
             r.status === "submitted" &&
             !r.settled &&
             Date.now() - r.submittedAt < LOOKED_FOR_SOONER_MS
-        )
+        ) || this.#arrivalsAwaited().length
           ? SOON_AFTER_TX_MS
           : AFTER_TX_MS
       );
