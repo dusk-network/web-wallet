@@ -1099,6 +1099,19 @@ describe("the Bridge card's routes to and from other chains", () => {
         expect(revokeIn(view)).toBeDisabled();
       });
 
+      it("hides what's approved now with the balances, as the form before it does", async () => {
+        settingsStore.update((store) => ({ ...store, hideBalances: true }));
+        mocks.allowance.mockResolvedValue(HALF);
+
+        const view = await toRevoke();
+        const review = /** @type {HTMLElement} */ (
+          view.getByRole("heading", { name: "Review" }).parentElement
+        );
+
+        expect(review).toHaveTextContent("Approved now •••• BEP20 DUSK");
+        expect(view.container).not.toHaveTextContent("0.5 BEP20");
+      });
+
       it("says the approval stands when it's declined in the wallet", async () => {
         mocks.allowance.mockResolvedValue(HALF);
         mocks.approve.mockRejectedValue(

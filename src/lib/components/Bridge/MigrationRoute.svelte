@@ -1142,6 +1142,7 @@
       <p class="route-note" role="alert">{note}</p>
     {/if}
     <ReviewWallet />
+    <!-- Hidden with the balances, as the form before it hides it. -->
     <ReviewAmount
       label="Approved now"
       {unit}
@@ -1149,7 +1150,9 @@
         ? "…"
         : openApproval >= NO_LIMIT
           ? "Any amount of"
-          : approvalText(openApproval)}
+          : hideBalances
+            ? BALANCE_MASK
+            : approvalText(openApproval)}
     />
     <dl class="route-review__ends">
       <div>
