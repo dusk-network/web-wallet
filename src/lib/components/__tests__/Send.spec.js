@@ -471,6 +471,16 @@ describe("Send", () => {
         `https://apps.testnet.dusk.network/wallet/dashboard/send?amount=1`,
         "This link doesn't say who to pay. Ask for a new one.",
       ],
+      [
+        "a dusk:shielded- link to a public account",
+        `dusk:shielded-${otherAccount}?amount=0.001`,
+        "This link asks for a shielded payment to a public account. Ask for a new one.",
+      ],
+      [
+        "a dusk: link with a # after it, which can say more than it shows",
+        `dusk:${otherAccount}?amount=0.001#to=${bep20BridgeAddress}`,
+        "That link can't be read. Ask for a new one.",
+      ],
     ])("should say why %s can't be read", async (_, value, words) => {
       const { getByRole, getByText } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);

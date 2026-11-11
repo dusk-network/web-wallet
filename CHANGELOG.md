@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse a dusk:shielded- link to a public account, or a public one to a shielded address, and a dusk: link with a # in it, and say why
 - Offer each staking reward's value in the wallet's currency under the rewards by year, as the extension does, read again as it's ticked, and show no rounding remainder as a reward
 - Refuse a profile name that is, or looks like, another profile's .dusk name, saying which
 - Ask whether a contact or a profile is someone else where its name starts as a profile's or a contact's, as "Lucas (petit-fils)" beside "Lucas", and save it all the same
