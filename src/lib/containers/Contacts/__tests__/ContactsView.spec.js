@@ -613,6 +613,34 @@ describe("ContactsView", () => {
     expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
   });
 
+  it("asks about a name that starts as a profile's, word for word, saving it all the same", async () => {
+    const { getByRole, getByText, queryByText } = render(ContactForm, {
+      profiles: [{ address: ACCOUNT, name: "Lucas" }],
+      resolveName,
+    });
+    /** @param {string} value */
+    const name = (value) =>
+      fireEvent.input(getByRole("textbox", { name: "Name" }), {
+        target: { value },
+      });
+
+    await fireEvent.input(
+      getByRole("textbox", { name: "Address or .dusk name" }),
+      { target: { value: OTHER } }
+    );
+    await name("Lucas (petit-fils)");
+
+    expect(
+      getByText("One of your profiles is called Lucas. Is this someone else?")
+    ).toBeInTheDocument();
+    expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
+
+    // Not word for word: nothing asked.
+    await name("Lucasta");
+
+    expect(queryByText(/Is this someone else/)).toBeNull();
+  });
+
   it("refuses a name with what can't be seen in it, which reads as a profile's or a contact's", async () => {
     const alice = saveContact({ address: SHIELDED, name: "Alice" });
 

@@ -15,7 +15,7 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { shortenAddress } from "$lib/dusk/string";
   import { FieldLimit, SectionHead } from "$lib/components";
-  import { profileNameProblem } from "$lib/contacts";
+  import { profileNameProblem, profileNameQuestion } from "$lib/contacts";
   import { WalletChangedError } from "$lib/errors";
   import { networkStore, walletStore } from "$lib/stores";
   import profileLabel from "$lib/wallet/profileLabel";
@@ -42,6 +42,14 @@
    * @type {string[]}
    */
   let refused = [];
+
+  /**
+   * What a name saved asks, by profile: whether it's someone else, as a
+   * contact's name starts as it.
+   *
+   * @type {string[]}
+   */
+  let asked = [];
 
   /**
    * The names the fields last started from, and the wallet they're of: a
@@ -94,6 +102,11 @@
       return;
     }
 
+    // Asked, not refused: it's saved all the same.
+    asked[index] =
+      (name && profileNameQuestion(name, String(profiles[index].account))) ||
+      "";
+
     // The field shows the name as it's kept.
     drafts[index] = name;
 
@@ -141,14 +154,17 @@
   // Every profile here, of every wallet, by the name it goes by, and the
   // open wallet's with its shielded address too: a contact saved with one of
   // a profile's own addresses takes nothing from its name.
-  $: everyProfile = $profilesHere.map(({ address: account, name }) => ({
-    account,
-    address: String(
-      profiles.find((profile) => String(profile.account) === account)
-        ?.address ?? account
-    ),
-    name,
-  }));
+  $: everyProfile = $profilesHere.map(
+    ({ address: account, duskName, name }) => ({
+      account,
+      address: String(
+        profiles.find((profile) => String(profile.account) === account)
+          ?.address ?? account
+      ),
+      duskName,
+      name,
+    })
+  );
   $: follow(walletKey, profiles.length, $openProfileNames);
 
   // Each profile as the wallet shows it, without its name here: its number,
@@ -176,7 +192,11 @@
           >
         </span>
         <Textbox
-          aria-describedby={refused[i] ? `profile-name-error-${i}` : undefined}
+          aria-describedby={refused[i]
+            ? `profile-name-error-${i}`
+            : asked[i]
+              ? `profile-name-asked-${i}`
+              : undefined}
           aria-invalid={refused[i] ? "true" : undefined}
           aria-label={`Profile ${i + 1} name`}
           autocomplete="off"
@@ -186,6 +206,7 @@
           on:blur={() => save(i)}
           on:input={() => {
             refused[i] = "";
+            asked[i] = "";
           }}
           on:keydown={(event) => handleKeyDown(event, i)}
           placeholder="Name, only on this device"
@@ -198,6 +219,14 @@
             role="alert"
           >
             {refused[i]}
+          </p>
+        {:else if asked[i]}
+          <p
+            class="profile-names__asked"
+            id={`profile-name-asked-${i}`}
+            role="status"
+          >
+            {asked[i]}
           </p>
         {/if}
         <FieldLimit limit={NAME_LIMIT} value={drafts[i] ?? ""} />
@@ -251,6 +280,11 @@
 
   .profile-names__error {
     color: var(--calm-danger);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .profile-names__asked {
     font-size: 0.875rem;
     line-height: 1.4;
   }

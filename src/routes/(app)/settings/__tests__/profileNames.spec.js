@@ -345,6 +345,76 @@ describe("Settings › Profiles", () => {
     }
   });
 
+  it("refuses a profile name that is, or looks like, another profile's .dusk name, saying which", async () => {
+    const { keepVerifiedName } =
+      await import("$lib/dusk-domains/verifiedNames");
+    const { networkStore } = await import("$lib/stores");
+
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+    keepVerifiedName(
+      get(networkStore).networkName,
+      String(get(walletStore).profiles[0].account),
+      "sofiadesign.dusk"
+    );
+
+    const settings = render(Settings);
+    const field = settings.getByRole("textbox", { name: "Profile 2 name" });
+
+    for (const [name, words] of [
+      [
+        "sofiadesign.dusk",
+        "Your other profile is called sofiadesign.dusk. Choose another name.",
+      ],
+      // A Cyrillic о.
+      [
+        "s\u043Efiadesign.dusk",
+        "That looks like sofiadesign.dusk, one of your other profiles. Choose another name.",
+      ],
+    ]) {
+      await nameProfile(settings, 2, name, "enter");
+
+      expect(field).toHaveAccessibleDescription(words);
+    }
+
+    expect(toasts).toEqual([]);
+  });
+
+  it("asks about a profile name a contact's starts as, word for word, and saves it all the same", async () => {
+    const { openTestContacts } = await import("$lib/test-helpers");
+    const { removeContact, saveContact } = await import("$lib/contacts");
+
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+    await openTestContacts();
+
+    const lucas = saveContact({
+      address:
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi",
+      name: "Lucas (petit-fils)",
+    });
+
+    try {
+      const settings = render(Settings);
+      const field = settings.getByRole("textbox", { name: "Profile 1 name" });
+
+      await nameProfile(settings, 1, "Lucas");
+
+      expect(toasts).toEqual(["Name saved."]);
+      expect(field).toHaveAccessibleDescription(
+        "You have a contact called Lucas (petit-fils). Is this someone else?"
+      );
+      expect(fieldsOf(settings)[0]).toBe("Lucas");
+
+      // A word of it alone, or another name, asks nothing.
+      await nameProfile(settings, 1, "Luc");
+
+      expect(field).not.toHaveAccessibleDescription();
+    } finally {
+      removeContact(lucas.id);
+    }
+  });
+
   it("keeps each wallet's names its own, and forgets a removed wallet's", async () => {
     await vault.setUp(A, PASSWORD);
     await unlockWallets(PASSWORD);

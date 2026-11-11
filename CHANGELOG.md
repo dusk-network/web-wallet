@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse a profile name that is, or looks like, another profile's .dusk name, saying which
+- Ask whether a contact or a profile is someone else where its name starts as a profile's or a contact's, as "Lucas (petit-fils)" beside "Lucas", and save it all the same
 - Say on a send that waits on a silent network that it goes out once the network answers, with Cancel and a way Home
 - Read a profile's history every few seconds once another profile here paid it, until the payment shows, and say a request is checking for payments meanwhile, not that nothing came in
 - Say how much each approval under Bridge › Activity let the migration contract take, and what a revoke took back of it, and give gas to the wei in its details
