@@ -128,7 +128,8 @@
   // As read now, or else as read last here: what couldn't be read isn't
   // nothing.
   $: position = sozu.status?.position ?? sozu.kept ?? null;
-  $: isSozuUnread = sozu.error !== null && !sozu.loading;
+  // Until a read gets through: one under way is trying again.
+  $: isSozuUnread = sozu.error !== null;
   $: hasLiquid =
     position !== null && (position.balance > 0n || position.stDusk > 0n);
   $: rate = duskPerStDusk(sozu.status?.pool ?? null);
@@ -262,9 +263,10 @@
               : "Your stake with Sozu couldn't be read."}
           </p>
           <Button
+            disabled={sozu.loading}
             on:click={onRetrySozu}
             size="small"
-            text="Try again"
+            text={sozu.loading ? "Trying again…" : "Try again"}
             variant="secondary"
           />
         </div>
