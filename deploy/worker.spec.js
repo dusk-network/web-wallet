@@ -129,8 +129,8 @@ describe("The wallet's Worker", () => {
     }
   });
 
-  it("should give its own answers the headers static/_headers gives every file", () => {
-    const rules = readFileSync("static/_headers", "utf8")
+  it("should give its own answers the headers deploy/site/_headers gives every file", () => {
+    const rules = readFileSync("deploy/site/_headers", "utf8")
       .split("\n")
       .filter((line) => line.trim() && !line.startsWith("#"))
       .join("\n")

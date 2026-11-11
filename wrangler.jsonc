@@ -1,15 +1,15 @@
 {
-  // Each network is its own build, with its settings in deployments.json. Its
-  // files are served at /wallet/ as built, and deploy/worker.js answers what
-  // none of them does. The address mustn't change: browsers keep each wallet
-  // by its origin.
+  // Each network is its own build, with its settings in deployments.json.
+  // deploy/site/ is what's served: the build at wallet/, where
+  // deploy/stage.js places it, and the headers for it. deploy/worker.js
+  // answers what no file does. The address mustn't change: browsers keep
+  // each wallet by its origin.
   "name": "web-wallet",
   "main": "deploy/worker.js",
   "account_id": "73fe1e33bc30f9350533005be8c1d297",
   "compatibility_date": "2026-10-01",
   "assets": {
-    "directory": "./build",
-    "base_path": "/wallet",
+    "directory": "./deploy/site",
     "binding": "ASSETS",
   },
   // At its own address alone, never at a workers.dev one too.

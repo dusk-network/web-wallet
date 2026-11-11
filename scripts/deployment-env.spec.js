@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
+import { BASE_PATH } from "../deploy/stage.js";
 import { envLines } from "./deployment-env.js";
 
 const deployments = JSON.parse(readFileSync("deployments.json", "utf8"));
@@ -39,16 +40,17 @@ describe("Building a deployment", () => {
     }
   });
 
-  it("should deploy each network to a site deployments.json lists, at the base path its build has", () => {
+  it("should deploy each network to a site deployments.json lists, with the build at the folder its base path names", () => {
     const { config, error } = ts.parseConfigFileTextToJson(
       "wrangler.jsonc",
       readFileSync("wrangler.jsonc", "utf8")
     );
 
     expect(error).toBeUndefined();
-    expect(config.assets).toMatchObject({
-      base_path: "/wallet",
-      directory: "./build",
+    // Plain assets, as the explorer's: no option the account hasn't got.
+    expect(config.assets).toEqual({
+      binding: "ASSETS",
+      directory: "./deploy/site",
     });
     expect(config.workers_dev).toBe(false);
     expect(config.preview_urls).toBe(false);
@@ -59,7 +61,7 @@ describe("Building a deployment", () => {
           { custom_domain: true, pattern: expect.any(String) },
         ]);
 
-        return [network, `https://${routes[0].pattern}/wallet/`];
+        return [network, `https://${routes[0].pattern}${BASE_PATH}/`];
       })
     );
 
@@ -69,7 +71,7 @@ describe("Building a deployment", () => {
     });
 
     for (const site of Object.values(sites)) {
-      expect(deployments[site]?.VITE_BASE_PATH).toBe(config.assets.base_path);
+      expect(deployments[site]?.VITE_BASE_PATH).toBe(BASE_PATH);
     }
   });
 });

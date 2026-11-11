@@ -265,12 +265,11 @@ describe("Verifying a deployment", () => {
     ]);
   });
 
-  it("should take a site on Cloudflare, which sends a page's index.html on to the page and reads _headers without serving it", async () => {
+  it("should take a site on Cloudflare, which sends a page's index.html, and its address without the slash, on to the page", async () => {
     const digest = (/** @type {string} */ text) =>
       createHash("sha256").update(text).digest("hex");
     const bodies = {
       "_app/immutable/chunks/-dNcaVtT.js": 'import"./B6-Q-Emf.js";',
-      _headers: "/*\n  X-Frame-Options: DENY\n",
       "index.html": "<!doctype html>",
       "setup/index.html": "<!doctype html><title>Setup</title>",
     };
@@ -284,9 +283,6 @@ describe("Verifying a deployment", () => {
       "https://wallet.example/wallet": redirect("/wallet/"),
       "https://wallet.example/wallet/": () =>
         new Response(bodies["index.html"]),
-      // An address no file has opens the wallet's page.
-      "https://wallet.example/wallet/_headers": () =>
-        new Response(bodies["index.html"]),
       "https://wallet.example/wallet/_app/immutable/chunks/-dNcaVtT.js": () =>
         new Response(bodies["_app/immutable/chunks/-dNcaVtT.js"]),
       "https://wallet.example/wallet/index.html": redirect("/wallet/"),
@@ -296,27 +292,21 @@ describe("Verifying a deployment", () => {
       "https://wallet.example/wallet/setup/index.html":
         redirect("/wallet/setup/"),
     };
-    /** @type {string[]} */
-    const asked = [];
-    const get = async (/** @type {string} */ address) => {
-      asked.push(address);
+    const get = async (/** @type {string} */ address) =>
+      served[address]?.() ?? new Response(null, { status: 404 });
+    const compare = () =>
+      compareSite(SITE, files, files, (at, to) => fetchFrom(at, { get, to }));
 
-      return served[address]?.() ?? new Response(null, { status: 404 });
-    };
-    const compare = (/** @type {Map<string, string>} */ listed) =>
-      compareSite(SITE, files, listed, (at, to) => fetchFrom(at, { get, to }));
+    expect(await compare()).toEqual({ checked: 7, differences: [] });
 
-    expect(await compare(files)).toEqual({ checked: 7, differences: [] });
-    expect(asked).not.toContain("https://wallet.example/wallet/_headers");
+    // Sent anywhere but to its own page, it's not the page.
+    served["https://wallet.example/wallet/setup/index.html"] =
+      redirect("/wallet/");
 
-    // Its record of _headers is still held to the rebuild.
-    expect(
-      (await compare(new Map([...files, ["_headers", hash("9")]]))).differences
-    ).toMatchObject([
+    expect((await compare()).differences).toMatchObject([
       {
-        address: "https://wallet.example/wallet/_headers",
-        inManifest: hash("9"),
-        rebuild: files.get("_headers"),
+        address: "https://wallet.example/wallet/setup/index.html",
+        served: "a redirect",
       },
     ]);
   });

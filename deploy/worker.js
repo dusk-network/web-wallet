@@ -1,10 +1,10 @@
 /**
- * The wallet's Worker on Cloudflare (wrangler.jsonc). The build is served at
- * /wallet/ as it is, with the headers in static/_headers, and this runs only
- * for a request no file of it answers.
+ * The wallet's Worker on Cloudflare (wrangler.jsonc). Its files are served
+ * from deploy/site/, the build at wallet/, with the headers in
+ * deploy/site/_headers, and this runs only for a request no file answers.
  */
 
-/** The headers static/_headers gives the wallet's files, for its own answers. */
+/** The headers deploy/site/_headers gives every file, for its own answers. */
 export const HEADERS = Object.freeze({
   "Content-Security-Policy": "frame-ancestors 'none'",
   "Referrer-Policy": "strict-origin-when-cross-origin",

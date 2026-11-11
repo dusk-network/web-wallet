@@ -36,6 +36,7 @@ export default defineConfig([
     ".svelte-kit/",
     ".wrangler/",
     "build/",
+    "deploy/site/wallet/",
     "coverage/",
     "src/lib/vendor/",
   ]),
