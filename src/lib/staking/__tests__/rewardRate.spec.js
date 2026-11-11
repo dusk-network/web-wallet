@@ -145,7 +145,7 @@ describe("readNativeRewards", () => {
     localStorage.clear();
   });
 
-  it("measures what native staking paid from the chain, says over how many days, keeps it a minute, and app-core's measurement for its day of blocks", async () => {
+  it("measures what native staking paid from the chain, says over how many days, makes one read of two at once, and leaves keeping the measurement to app-core, for its day of blocks", async () => {
     const fetch = nodeAnswering(PROVISIONERS);
     const options = optionsFor(fetch, "testnet");
 
@@ -169,14 +169,15 @@ describe("readNativeRewards", () => {
       })
     );
 
-    // Within the minute: no read.
-    await readNativeRewards({ ...options, now: NOW + 59_999 });
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(chain.nativeRewards).toHaveBeenCalledTimes(1);
-
-    // A minute later: asked again, of the same day's measurement.
-    await readNativeRewards({ ...options, now: NOW + 60_000 });
+    // Two at once: one read.
+    await Promise.all([
+      readNativeRewards({ ...options, now: NOW + 1000 }),
+      readNativeRewards({ ...options, now: NOW + 1000 }),
+    ]);
+    expect(fetch).toHaveBeenCalledTimes(2);
     expect(chain.nativeRewards).toHaveBeenCalledTimes(2);
+    // Of the same measurement app-core keeps for its day of blocks: none
+    // kept here past the day's line, so no figure from another day's blocks.
     expect(chain.nativeRewards.mock.calls[1][0].cache).toBe(asked.cache);
   });
 
