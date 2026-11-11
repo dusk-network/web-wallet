@@ -11,6 +11,7 @@ Web Wallet website.
   - [Fingerprint or face unlock](#fingerprint-or-face-unlock)
   - [Environment variables](#environment-variables)
     - [NPM scripts](#npm-scripts)
+  - [Deploying](#deploying)
   - [Verify a deployment](#verify-a-deployment)
   - [Running a local Rusk node](#running-a-local-rusk-node)
 
@@ -193,6 +194,28 @@ To run a local node different steps are needed, so please read the [related sect
 - `npm run typecheck` runs the type checker
 - `npm run typecheck:watch` runs the type checker in watch mode
 
+## Deploying
+
+Testnet runs on Cloudflare (`wrangler.jsonc`), at
+`https://apps.testnet.dusk.network/wallet/`. Its address mustn't change:
+browsers keep each wallet by its origin. The build's files are served at
+`/wallet/` as built, with the headers in `static/_headers`, and
+`deploy/worker.js` answers what no file does: an address under `/wallet/` that
+no page has opens the wallet, which says what's there; a file under
+`/wallet/_app/` that isn't there is a 404; and `/explorer` goes on to the
+explorer's own domain.
+
+The Deploy workflow does it: a push to a `deploy/web-wallet-testnet*` branch
+goes to testnet, built with the site's settings in `deployments.json`. That
+branch is `main` with what only testnet takes, as a network's file. Its
+Cloudflare token is a secret of the `cloudflare` environment, which only those
+branches can use.
+
+Mainnet and devnet stay on DigitalOcean for now; mainnet moves with the
+wallet's v2. The workflow deploys a `web-wallet-v*` tag to mainnet only once
+the `DEPLOY_MAINNET` repository variable is `true` and the `cloudflare`
+environment takes those tags.
+
 ## Verify a deployment
 
 The same commit, built with the same settings, makes the same files. Each build
@@ -200,8 +223,9 @@ writes `build/build-manifest.json`, served beside the app: the version, the
 commit built, the mode and the `VITE_` settings it was built with, Node's and
 npm's versions, and every file's SHA-256. The footer's version on the setup
 page links to it. Vite builds every `VITE_` setting into the code, so none of
-them is a secret. `deployments.json` lists each deployment's settings: change
-them there with its DigitalOcean spec.
+them is a secret. `deployments.json` lists each deployment's settings.
+Testnet is built with its entry there; mainnet and devnet are still built with
+their DigitalOcean spec, so change theirs there with it.
 
 To rebuild what a site serves and compare, from a clone of this repository:
 
@@ -215,7 +239,8 @@ browsers open it by, against the rebuild and the manifest. It trusts nothing
 the site says: it builds only a commit on a branch or tag of your clone, with
 the settings `deployments.json` lists for the site, and refuses a manifest a
 build wouldn't write. A site built before builds were reproducible has no
-manifest, and can't be checked.
+manifest, and can't be checked. Cloudflare reads `_headers` and doesn't serve
+it, so that file is checked against the manifest alone.
 
 ## Running a local Rusk node
 

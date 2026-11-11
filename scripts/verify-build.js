@@ -136,14 +136,22 @@ export const settingsDiffer = (listed, named) =>
     .filter((key) => listed[key] !== named.get(key));
 
 /**
+ * The files at a build's root that its host reads, and needn't serve:
+ * Cloudflare's headers for the files.
+ */
+const HOST_FILES = new Set(["_headers"]);
+
+/**
  * Where the rebuild, the site's manifest and the site differ: at each file's
  * address, and each page's with and without its last slash, as browsers open
  * it. `get` gives the SHA-256 of what the site serves at an address, or null;
- * told when the address is a page's without its slash, which alone may
- * redirect, to the page's address with it.
+ * told, for a page's index.html and its address without the slash, which a
+ * host may send on, the one address they may go to: the page's. The files its
+ * host reads are held to the rebuild in the manifest alone.
  */
 export const compareSite = async (site, rebuilt, listed, get) => {
   const addresses = [];
+  const differences = [];
 
   for (const path of new Set([...rebuilt.keys(), ...listed.keys()])) {
     const file = new URL(
@@ -151,21 +159,33 @@ export const compareSite = async (site, rebuilt, listed, get) => {
       site
     ).href;
 
-    addresses.push([file, path, false]);
+    if (HOST_FILES.has(path)) {
+      const rebuild = rebuilt.get(path);
 
-    if (/(^|\/)index\.html$/.test(path)) {
+      if (!rebuild || listed.get(path) !== rebuild) {
+        differences.push({
+          address: file,
+          inManifest: listed.get(path),
+          rebuild,
+        });
+      }
+    } else if (/(^|\/)index\.html$/.test(path)) {
       const page = file.slice(0, -"index.html".length);
 
-      addresses.push([page, path, false], [page.slice(0, -1), path, true]);
+      addresses.push(
+        [file, path, page],
+        [page, path],
+        [page.slice(0, -1), path, page]
+      );
+    } else {
+      addresses.push([file, path]);
     }
   }
 
-  const differences = [];
-
   for (let next = 0; next < addresses.length; next += 8) {
     await Promise.all(
-      addresses.slice(next, next + 8).map(async ([address, path, slash]) => {
-        const served = await get(address, slash);
+      addresses.slice(next, next + 8).map(async ([address, path, to]) => {
+        const served = await get(address, to);
         const rebuild = rebuilt.get(path);
 
         if (!rebuild || served !== rebuild || listed.get(path) !== rebuild) {
@@ -190,26 +210,25 @@ const REDIRECTS = [301, 302, 303, 307, 308];
 /**
  * What a site serves at an address: the SHA-256 of it, or with `limit`, up to
  * a byte over that of it. Null where it serves nothing. Nothing may redirect
- * but, with `slash`, a page's address without its last slash, to the same
- * with it, as static hosts do: what a browser fetched from anywhere else, the
- * addresses it reads from there would be checked nowhere.
+ * but a page's address without its last slash, or its index.html, and only to
+ * `to`, the page's own, as static hosts do: what a browser fetched from
+ * anywhere else, the addresses it reads from there would be checked nowhere.
  */
-export const fetchFrom = async (
-  address,
-  { limit, slash, get = fetch } = {}
-) => {
-  const fetchAt = (at) =>
+export const fetchFrom = async (address, { limit, to, get = fetch } = {}) => {
+  const ask = (at) =>
     get(at, { redirect: "manual", signal: AbortSignal.timeout(60_000) });
+  // Once more where it failed to connect: a connection kept open from before
+  // the rebuild, which ran for long, can have been closed since.
+  const fetchAt = (at) => ask(at).catch(() => ask(at));
   let response = await fetchAt(address);
 
   if (
-    slash &&
+    to &&
     REDIRECTS.includes(response.status) &&
-    new URL(response.headers.get("location") ?? "", address).href ===
-      `${address}/`
+    new URL(response.headers.get("location") ?? "", address).href === to
   ) {
     await response.body?.cancel();
-    response = await fetchAt(`${address}/`);
+    response = await fetchAt(to);
   }
 
   if (response.status !== 200 || !response.body) {
@@ -386,7 +405,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       site,
       hashFiles(join(dir, "build")),
       manifest.files,
-      (at, slash) => fetchFrom(at, { slash }).catch(() => null)
+      (at, to) => fetchFrom(at, { to }).catch(() => null)
     );
 
     const short = (hash) =>
