@@ -69,7 +69,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
 
 const { balance, currentProfile } = mockedWalletStore.getMockedStoreValue();
 const OTHER =
-  "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
+  "25z9o6qCaVk1ReyHjmB4pyXcE3D1vRu4FVV1rR8ChYcosdTSktkANLDHq9GD6B4985Q1S2KrDZYBRrohWAjrNmACFUb3UMSRyYctJRzh3d28R1ZNC1ZyKm1HwXL4FF5Etftt";
 
 /** @param {HTMLElement} container */
 const available = (container) =>
@@ -345,14 +345,16 @@ describe("Send page", () => {
     );
 
     const { getByRole } = render(SendPage);
-    const self = String(currentProfile?.account);
+    // Another account, a key as any a link pays.
+    const another =
+      "oUgxBUWEPyFAekXW9T2UdJBcMF7xAuBfstrCX8ATXFk7MusqddFGoq2LN9euCbwVuXpSM5rGLKNUb6NVPFUVM5g4pA6CnXjNfNVBiy91NcH9eBVcdcG1eYUaKWQSYQ9t2um";
 
     await act(() =>
       openAt(
-        new URL(`http://localhost/some-base-path/dashboard/send?to=${self}`)
+        new URL(`http://localhost/some-base-path/dashboard/send?to=${another}`)
       )
     );
 
-    expect(getByRole("textbox", { name: "To" })).toHaveValue(self);
+    expect(getByRole("textbox", { name: "To" })).toHaveValue(another);
   });
 });
