@@ -832,8 +832,9 @@
       gate
     );
 
-    // Until it goes out, Home says it waits, wherever the wallet is.
-    keepWaiting({ gate, operation, what });
+    // Until it goes out, Home says it waits, wherever the wallet is, its
+    // amount as balances are shown there.
+    keepWaiting({ gate, lux: sendAmountInLux, operation, to: recipientLabel });
     sent = {
       gate,
       maxFee: maxGasFee,

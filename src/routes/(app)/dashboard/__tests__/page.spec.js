@@ -170,13 +170,15 @@ describe("Dashboard", () => {
 
     keepWaiting({
       gate: first,
+      lux: 10_000_000n,
       operation: new Promise(() => {}),
-      what: "0.01 DUSK to Profile 2",
+      to: "Profile 2",
     });
     keepWaiting({
       gate: second,
+      lux: 20_000_000n,
       operation: new Promise(() => {}),
-      what: "0.02 DUSK to Profile 2",
+      to: "Profile 2",
     });
 
     try {
@@ -213,6 +215,62 @@ describe("Dashboard", () => {
 
       expect(banners()).toStrictEqual([]);
     } finally {
+      setNetworkReach("answering");
+    }
+  });
+
+  it("hides a waiting send's amount once balances are hidden, though they weren't as it was sent, there and as it's called off", async () => {
+    const { keepWaiting, sendGate } = await import("$lib/transactions");
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+    const { toastList } = await import("$lib/dusk/components/Toast/store");
+    const { BALANCE_MASK } = await import("$lib/constants");
+    toastList.set([]);
+    render(Dashboard, props);
+
+    const gate = sendGate();
+
+    keepWaiting({
+      gate,
+      lux: 10_000_000n,
+      operation: new Promise(() => {}),
+      to: "Profile 2",
+    });
+
+    try {
+      await act(() => setNetworkReach("silent"));
+
+      const banner = () =>
+        document
+          .querySelector(".home__waiting")
+          ?.textContent?.replace(/\s+/g, " ")
+          .trim();
+
+      expect(banner()).toContain("Not sent yet: 0.01 DUSK to Profile 2.");
+
+      await act(() =>
+        settingsStore.update((store) => ({ ...store, hideBalances: true }))
+      );
+
+      expect(banner()).toContain(
+        `Not sent yet: ${BALANCE_MASK} DUSK to Profile 2.`
+      );
+      expect(banner()).not.toContain("0.01");
+
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (
+          document.querySelector(".home__waiting button")
+        )
+      );
+
+      expect(get(gate)).toBe("cancelled");
+      expect(get(toastList).map(({ message }) => message)).toContain(
+        `Not sent: ${BALANCE_MASK} DUSK to Profile 2.`
+      );
+      expect(
+        get(toastList).filter(({ message }) => message.includes("0.01 DUSK"))
+      ).toStrictEqual([]);
+    } finally {
+      gate.cancel();
       setNetworkReach("answering");
     }
   });

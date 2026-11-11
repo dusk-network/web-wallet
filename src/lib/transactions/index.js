@@ -14,4 +14,9 @@ export {
   default as followTransaction,
 } from "./followTransaction";
 export { SendCancelledError, sendGate } from "./sendGate";
-export { cancelWaitingSends, keepWaiting, waitingSends } from "./waitingSends";
+export {
+  cancelWaitingSends,
+  keepWaiting,
+  waitingSends,
+  waitingText,
+} from "./waitingSends";

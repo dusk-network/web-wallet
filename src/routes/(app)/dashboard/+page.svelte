@@ -23,7 +23,7 @@
   import { isSozuFunction, sozuContractsFor, sozuStore } from "$lib/sozu";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import networkReach from "$lib/stores/networkReach";
-  import { waitingSends } from "$lib/transactions";
+  import { waitingSends, waitingText } from "$lib/transactions";
 
   /** @type {import("./$types").PageData} */
   export let data;
@@ -125,14 +125,28 @@
     ]);
 
   /**
+   * What a waiting send sends, its amount as balances are shown now, not as
+   * they were when it was sent.
+   *
+   * @param {import("$lib/transactions/waitingSends").WaitingSend} send
+   * @param {boolean} hidden Whether balances are hidden
+   */
+  const waitingWhat = (send, hidden) =>
+    waitingText(send, { hidden, locale: language });
+
+  /**
    * Calls off a send that hasn't gone out, and says so: one that went out
    * meanwhile is no longer listed, as it's on its way.
    *
    * @param {import("$lib/transactions/waitingSends").WaitingSend} send
    */
-  function cancelSend({ cancel, what }) {
-    if (cancel(undefined)) {
-      toast("success", `Not sent: ${what}.`, mdiCheck);
+  function cancelSend(send) {
+    if (send.cancel(undefined)) {
+      toast(
+        "success",
+        `Not sent: ${waitingWhat(send, $settingsStore.hideBalances)}.`,
+        mdiCheck
+      );
     }
   }
 </script>
@@ -160,7 +174,7 @@
       <Banner
         className="home__waiting"
         role="status"
-        title={`Not sent yet: ${send.what}.`}
+        title={`Not sent yet: ${waitingWhat(send, $settingsStore.hideBalances)}.`}
         variant="info"
       >
         <p>

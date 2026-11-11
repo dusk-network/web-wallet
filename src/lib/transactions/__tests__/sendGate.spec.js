@@ -4,8 +4,14 @@ import { Network } from "@dusk/w3sper";
 
 import SendingNetwork, { broadcastsAsked } from "../SendingNetwork";
 import { SendCancelledError, sendGate } from "../sendGate";
-import { cancelWaitingSends, keepWaiting, waitingSends } from "../waitingSends";
+import {
+  cancelWaitingSends,
+  keepWaiting,
+  waitingSends,
+  waitingText,
+} from "../waitingSends";
 import describeFailure from "../describeFailure";
+import { BALANCE_MASK } from "$lib/constants";
 
 /** A transaction's builder, as w3sper's: what it builds, by its bytes. */
 const builder = () => ({
@@ -93,15 +99,21 @@ describe("A send that can be called off", () => {
 
 describe("The sends waiting to go out", () => {
   it("lists one until it goes out, is called off or ends, and calls off every one there is as the wallet locks", async () => {
-    /** @param {Promise<unknown>} operation */
-    const waiting = (operation, what = "0.01 DUSK to Profile 2") => {
+    /**
+     * @param {Promise<unknown>} operation
+     * @param {bigint} [lux]
+     */
+    const waiting = (operation, lux = 10_000_000n) => {
       const gate = sendGate();
 
-      keepWaiting({ gate, operation, what });
+      keepWaiting({ gate, lux, operation, to: "Profile 2" });
 
       return gate;
     };
-    const whats = () => get(waitingSends).map(({ what }) => what);
+    const whats = () =>
+      get(waitingSends).map((send) =>
+        waitingText(send, { hidden: false, locale: "en" })
+      );
 
     // Handed over: it's on its way, no longer waiting.
     const out = waiting(new Promise(() => {}));
@@ -113,7 +125,7 @@ describe("The sends waiting to go out", () => {
     expect(whats()).toStrictEqual([]);
 
     // Called off from the list.
-    waiting(new Promise(() => {}), "0.02 DUSK to Profile 2");
+    waiting(new Promise(() => {}), 20_000_000n);
     get(waitingSends)[0].cancel();
 
     expect(whats()).toStrictEqual([]);
@@ -121,7 +133,7 @@ describe("The sends waiting to go out", () => {
     // Ended, as it failed with nothing sent.
     const failing = Promise.withResolvers();
 
-    waiting(failing.promise, "0.03 DUSK to Profile 2");
+    waiting(failing.promise, 30_000_000n);
     failing.reject(new TypeError("Failed to fetch"));
     await failing.promise.catch(() => {});
     await Promise.resolve();
@@ -129,8 +141,8 @@ describe("The sends waiting to go out", () => {
     expect(whats()).toStrictEqual([]);
 
     // The wallet locks: each called off.
-    const one = waiting(new Promise(() => {}), "0.04 DUSK to Profile 2");
-    const two = waiting(new Promise(() => {}), "0.05 DUSK to Profile 2");
+    const one = waiting(new Promise(() => {}), 40_000_000n);
+    const two = waiting(new Promise(() => {}), 50_000_000n);
 
     cancelWaitingSends(new Error("The wallet changed meanwhile"));
 
@@ -139,5 +151,19 @@ describe("The sends waiting to go out", () => {
     // Called off for the lock, it says that, not that it was cancelled.
     await expect(one.cancelled).rejects.toThrow("The wallet changed meanwhile");
     expect(() => one.check()).toThrow("The wallet changed meanwhile");
+  });
+
+  it("says what one sends as balances are shown now, not as they were when it was sent: its amount hidden while they're hidden", () => {
+    const send = { lux: 10_000_000n, to: "your Profile 2" };
+
+    expect(waitingText(send, { hidden: false, locale: "en" })).toBe(
+      "0.01 DUSK to your Profile 2"
+    );
+    expect(waitingText(send, { hidden: true, locale: "en" })).toBe(
+      `${BALANCE_MASK} DUSK to your Profile 2`
+    );
+    expect(waitingText(send, { hidden: false, locale: "de" })).toBe(
+      "0,01 DUSK to your Profile 2"
+    );
   });
 });

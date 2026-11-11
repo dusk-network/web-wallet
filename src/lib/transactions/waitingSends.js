@@ -6,11 +6,16 @@
 
 import { writable } from "svelte/store";
 
+import { BALANCE_MASK } from "$lib/constants";
+import { formatDuskExact } from "$lib/dusk/currency";
+
 /**
- * A send waiting to go out: what it sends and to whom, as "0.01 DUSK to
- * Profile 2", and what calls it off, while it can be.
+ * A send waiting to go out: the DUSK it sends, in Lux, to whom, as "your
+ * Profile 2", and what calls it off, while it can be. Its amount is said as
+ * balances are shown when it's said (waitingText), not as they were when it
+ * was sent.
  *
- * @typedef {{ cancel: (reason?: Error) => boolean, id: string, what: string }} WaitingSend
+ * @typedef {{ cancel: (reason?: Error) => boolean, id: string, lux: bigint, to: string }} WaitingSend
  */
 
 /** @type {import("svelte/store").Writable<WaitingSend[]>} */
@@ -20,16 +25,27 @@ const sends = writable([]);
 export const waitingSends = { subscribe: sends.subscribe };
 
 /**
+ * What a waiting send sends, as "0.01 DUSK to your Profile 2": its amount
+ * hidden while balances are.
+ *
+ * @param {Pick<WaitingSend, "lux" | "to">} send
+ * @param {{ hidden: boolean, locale: string }} shown How balances are shown now
+ */
+export const waitingText = ({ lux, to }, { hidden, locale }) =>
+  `${hidden ? BALANCE_MASK : formatDuskExact(lux, locale)} DUSK to ${to}`;
+
+/**
  * Says a send waits to go out, until it does, is called off or ends.
  *
- * @param {{ gate: import("./sendGate").SendGate, operation: Promise<unknown>, what: string }} send
+ * @param {{ gate: import("./sendGate").SendGate, lux: bigint, operation: Promise<unknown>, to: string }} send
  */
-export function keepWaiting({ gate, operation, what }) {
+export function keepWaiting({ gate, lux, operation, to }) {
   /** @type {WaitingSend} */
   const entry = {
     cancel: (/** @type {Error | undefined} */ reason) => gate.cancel(reason),
     id: crypto.randomUUID(),
-    what,
+    lux,
+    to,
   };
   let isWaiting = true;
 
