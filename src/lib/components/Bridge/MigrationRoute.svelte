@@ -433,8 +433,13 @@
     reviewRevoke();
   }
 
+  /**
+   * Back to the form from the revoke's review, its step in the history gone
+   * with it. Once this screen is gone, as a revoke sent from it ends, it moves
+   * the history no more: the step there may be a newer screen's review.
+   */
   function leaveRevokeReview() {
-    if ($page.state?.routeRevoke) {
+    if ($page.state?.routeRevoke && !left) {
       history.back();
     }
 

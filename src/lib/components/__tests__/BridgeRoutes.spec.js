@@ -1112,6 +1112,55 @@ describe("the Bridge card's routes to and from other chains", () => {
         expect(view.container).not.toHaveTextContent("0.5 BEP20");
       });
 
+      it("leaves the history to a newer revoke's review as one sent from a screen since left goes through", async () => {
+        /** @type {(hash: string) => void} */
+        let signed = () => {};
+
+        mocks.allowance.mockResolvedValue(HALF);
+        mocks.approve.mockReturnValueOnce(
+          new Promise((resolve) => {
+            signed = resolve;
+          })
+        );
+
+        const { page } = await import("$app/stores");
+        const back = vi.spyOn(history, "back").mockImplementation(() => {});
+        const at = (/** @type {object} */ state) =>
+          /** @type {any} */ (page).set({ state });
+
+        try {
+          const first = await toRevoke();
+
+          at({ routeRevoke: true });
+          await fireEvent.click(revokeIn(first));
+          await vi.waitFor(() => expect(mocks.approve).toHaveBeenCalledOnce());
+
+          // Its screen left, and another revoke reviewed, before it's signed.
+          first.unmount();
+          at({});
+
+          const second = await toRevoke();
+
+          at({ routeRevoke: true });
+          signed(`0x${"dd".repeat(32)}`);
+          await vi.waitFor(() =>
+            expect(mocks.waitForTransactionReceipt).toHaveBeenCalledWith(
+              {},
+              { chainId: 56, hash: `0x${"dd".repeat(32)}` }
+            )
+          );
+          await new Promise((resolve) => setTimeout(resolve, 0));
+
+          expect(back).not.toHaveBeenCalled();
+          expect(
+            second.getByRole("heading", { name: "Review" })
+          ).toBeInTheDocument();
+        } finally {
+          at({});
+          back.mockRestore();
+        }
+      });
+
       it("says the approval stands when it's declined in the wallet", async () => {
         mocks.allowance.mockResolvedValue(HALF);
         mocks.approve.mockRejectedValue(
