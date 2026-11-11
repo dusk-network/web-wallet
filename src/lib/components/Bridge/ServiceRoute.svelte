@@ -676,6 +676,18 @@
     }
   }
 
+  /*
+   * A thumb's, on a phone held either way, as the buttons around it: its
+   * marker stays.
+   */
+  @media (max-width: 30rem), (pointer: coarse) {
+    .route-review__check summary {
+      box-sizing: border-box;
+      min-height: 44px;
+      padding-block: calc((44px - 1lh) / 2);
+    }
+  }
+
   .route-review__public {
     margin: 0.5em 0 0;
   }

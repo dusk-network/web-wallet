@@ -161,9 +161,13 @@ describe("NetworkPill", () => {
           name: "Network: Testnet, can't reach the network",
         })
       ).toBeInTheDocument();
+      // Not Offline, as a phone with bars isn't.
       expect(
         container.querySelector(".network-pill__button")
-      ).toHaveTextContent("Testnet Offline");
+      ).toHaveTextContent("Testnet Can't reach");
+      expect(
+        container.querySelector(".network-pill__button")
+      ).not.toHaveTextContent("Offline");
       // And where a send waits on it.
       expect(get(networkReach)).toBe("silent");
 
@@ -224,9 +228,9 @@ describe("NetworkPill", () => {
           name: "Network: Testnet, can't reach the network",
         })
       ).toBeInTheDocument();
-      // Offline in a word on a phone; why where there's room.
+      // In a word on a phone, whole where there's room.
       expect(pill()).toHaveTextContent(
-        "Testnet Offline Can't reach the network"
+        "Testnet Can't reach Can't reach the network"
       );
 
       // It answers again, and the sync gets through: in sync by its next ask.

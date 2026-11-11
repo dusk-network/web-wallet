@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Make Addresses to check on the Bridge's Review 44 px tall on a phone
+- Say "Can't reach" beside the network's dot on a phone, not Offline, when the browser is online but the network doesn't answer
 - Make Unlock the way in where a wallet is kept here, with Create new wallet and Restore wallet small under it, as on the page a payment link opens
 - Keep saying a stake with Sozu couldn't be read while Try again reads it, and that it's trying, until a read gets through, on Home and on Staking
 - Keep what was typed in Send, a stake or the Bridge as it's left by a link, as "← Home", as Back keeps it
