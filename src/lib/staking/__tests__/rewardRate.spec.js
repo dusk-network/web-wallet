@@ -145,7 +145,7 @@ describe("readNativeRewards", () => {
     localStorage.clear();
   });
 
-  it("measures what native staking paid from the chain, says over how many days, and keeps it an hour", async () => {
+  it("measures what native staking paid from the chain, says over how many days, keeps it a minute, and app-core's measurement for its day of blocks", async () => {
     const fetch = nodeAnswering(PROVISIONERS);
     const options = optionsFor(fetch, "testnet");
 
@@ -156,19 +156,28 @@ describe("readNativeRewards", () => {
       native: MEASURED,
       rate: 0.88,
     });
-    // What's staked now, at the node's tip.
-    expect(chain.nativeRewards).toHaveBeenCalledWith(
-      expect.objectContaining({ provisioners: PROVISIONERS, tipHeight: TIP })
+
+    // What's staked now, at the node's tip, kept by app-core for the day of
+    // blocks it measures, as any app reading that day keeps it.
+    const [[asked]] = chain.nativeRewards.mock.calls;
+
+    expect(asked).toEqual(
+      expect.objectContaining({
+        cache: expect.any(Map),
+        provisioners: PROVISIONERS,
+        tipHeight: TIP,
+      })
     );
 
-    // Within the hour: no read.
-    await readNativeRewards({ ...options, now: NOW + 3_599_999 });
+    // Within the minute: no read.
+    await readNativeRewards({ ...options, now: NOW + 59_999 });
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(chain.nativeRewards).toHaveBeenCalledTimes(1);
 
-    // An hour later: read again.
-    await readNativeRewards({ ...options, now: NOW + 3_600_000 });
+    // A minute later: asked again, of the same day's measurement.
+    await readNativeRewards({ ...options, now: NOW + 60_000 });
     expect(chain.nativeRewards).toHaveBeenCalledTimes(2);
+    expect(chain.nativeRewards.mock.calls[1][0].cache).toBe(asked.cache);
   });
 
   it("estimates it, of no period, where the chain can't say; and reads again next time where nothing could be read", async () => {

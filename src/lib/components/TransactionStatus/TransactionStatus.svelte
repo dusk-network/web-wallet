@@ -70,6 +70,14 @@
   export let extra = [];
 
   /**
+   * What `extra` will say, by its terms, once it's read: said to be reading
+   * from when a block took the transaction until it is, as a stake's stDUSK.
+   *
+   * @type {string[]}
+   */
+  export let extraToCome = [];
+
+  /**
    * Whether it offers to say when it arrives, as a transfer to someone:
    * once a block takes it, whoever isn't looking is told.
    */
@@ -264,6 +272,12 @@
           {line.unit}
         </dd>
       {/each}
+      {#if !extra.length && status === "completed"}
+        {#each extraToCome as term (term)}
+          <dt>{term}</dt>
+          <dd class="transaction-status__reading">Reading…</dd>
+        {/each}
+      {/if}
     </dl>
     {#if outcome?.error}
       <ErrorDetails

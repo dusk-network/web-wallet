@@ -114,8 +114,15 @@ export function readNativeRewardRate({
   return read.catch(() => null);
 }
 
-/** How long what's measured is kept: an hour. */
-const HOUR_MS = 3_600_000;
+/**
+ * How long what's read is kept here: a minute, as two views read it at once.
+ * What's measured from the chain is kept by app-core for the day of blocks
+ * it measures (`nativeFacts`), the same in every app that reads that day.
+ */
+const READ_KEPT_MS = 60_000;
+
+/** What app-core keeps of what it measured, by the day of blocks it's of. */
+const nativeFacts = new Map();
 
 /**
  * @typedef {{ days: number | null, native: import("@dusk-network/app-core/sozu").NativeRewards | null, rate: number | null }} NativeRead
@@ -143,6 +150,7 @@ async function measureNativeRewards(options) {
   const native = provisioners
     ? await nativeRewards({
         archive: archiveAt(nodeUrl),
+        cache: nativeFacts,
         now,
         provisioners,
         tipHeight: height,
@@ -159,7 +167,9 @@ async function measureNativeRewards(options) {
  * the chain over the last `days` (app-core's `nativeRewards`, with what it's
  * made of in `native`), or else the estimate (`readNativeRewardRate`), of no
  * period, where that can't be read. A rate of null is none at all. Two reads
- * at once make one, and what's read is kept an hour, unless it's nothing.
+ * at once make one, and what's read is kept a minute, unless it's nothing:
+ * the measurement itself, for its day of blocks, so the extension, reading
+ * the same day, says the same.
  *
  * @param {Parameters<typeof readNativeRewardRate>[0]} options
  * @returns {Promise<NativeRead>}
@@ -168,7 +178,7 @@ export function readNativeRewards(options) {
   const { network, now = Date.now() } = options;
   const known = nativeReads.get(network);
 
-  if (known && now - known.at >= 0 && now - known.at < HOUR_MS) {
+  if (known && now - known.at >= 0 && now - known.at < READ_KEPT_MS) {
     return known.read;
   }
 

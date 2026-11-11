@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Give native staking's yearly rate from the same blocks as the extension within a day, kept for that day, not from blocks the moment picks
+- Say Reading… for the stDUSK and rate on a Sozu stake's or unstake's Sent screen from when a block takes it until they're read
 - Refuse a dusk:shielded- link to a public account, or a public one to a shielded address, and a dusk: link with a # in it, and say why
 - Offer each staking reward's value in the wallet's currency under the rewards by year, as the extension does, read again as it's ticked, and show no rounding remainder as a reward
 - Refuse a profile name that is, or looks like, another profile's .dusk name, saying which

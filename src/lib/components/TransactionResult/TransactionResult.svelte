@@ -76,6 +76,13 @@
   export let extra = [];
 
   /**
+   * What `extra` will say, by its terms, said to be reading until it does.
+   *
+   * @type {string[]}
+   */
+  export let extraToCome = [];
+
+  /**
    * What calls it off until it goes out: while the network doesn't answer,
    * it says so with Cancel, and Home to leave it waiting, as Home shows it.
    *
@@ -174,6 +181,7 @@
   <svelte:fragment slot="success-content" let:result={{ hash, unconfirmed }}>
     <TransactionStatus
       {extra}
+      {extraToCome}
       {hash}
       {maxFee}
       {memo}
