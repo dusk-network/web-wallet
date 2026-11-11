@@ -145,7 +145,7 @@ describe("readNativeRewards", () => {
     localStorage.clear();
   });
 
-  it("measures what native staking paid from the chain, says over how many days, and keeps it an hour", async () => {
+  it("measures what native staking paid from the chain, says over how many days, makes one read of two at once, and leaves keeping the measurement to app-core, for its day of blocks", async () => {
     const fetch = nodeAnswering(PROVISIONERS);
     const options = optionsFor(fetch, "testnet");
 
@@ -156,19 +156,29 @@ describe("readNativeRewards", () => {
       native: MEASURED,
       rate: 0.88,
     });
-    // What's staked now, at the node's tip.
-    expect(chain.nativeRewards).toHaveBeenCalledWith(
-      expect.objectContaining({ provisioners: PROVISIONERS, tipHeight: TIP })
+
+    // What's staked now, at the node's tip, kept by app-core for the day of
+    // blocks it measures, as any app reading that day keeps it.
+    const [[asked]] = chain.nativeRewards.mock.calls;
+
+    expect(asked).toEqual(
+      expect.objectContaining({
+        cache: expect.any(Map),
+        provisioners: PROVISIONERS,
+        tipHeight: TIP,
+      })
     );
 
-    // Within the hour: no read.
-    await readNativeRewards({ ...options, now: NOW + 3_599_999 });
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(chain.nativeRewards).toHaveBeenCalledTimes(1);
-
-    // An hour later: read again.
-    await readNativeRewards({ ...options, now: NOW + 3_600_000 });
+    // Two at once: one read.
+    await Promise.all([
+      readNativeRewards({ ...options, now: NOW + 1000 }),
+      readNativeRewards({ ...options, now: NOW + 1000 }),
+    ]);
+    expect(fetch).toHaveBeenCalledTimes(2);
     expect(chain.nativeRewards).toHaveBeenCalledTimes(2);
+    // Of the same measurement app-core keeps for its day of blocks: none
+    // kept here past the day's line, so no figure from another day's blocks.
+    expect(chain.nativeRewards.mock.calls[1][0].cache).toBe(asked.cache);
   });
 
   it("estimates it, of no period, where the chain can't say; and reads again next time where nothing could be read", async () => {

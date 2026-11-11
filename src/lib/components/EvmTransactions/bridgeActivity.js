@@ -11,6 +11,7 @@ import { transferLedger } from "@dusk-network/app-core/bridge";
 import { claimText } from "@dusk-network/networks/duskevm";
 
 import { claimDay } from "$lib/bridge/claimDate";
+import { BALANCE_MASK } from "$lib/constants";
 import {
   isDepositDelayed,
   isDepositStalled,
@@ -542,30 +543,98 @@ export function routeTransferRow(transfer, options) {
   };
 }
 
-/** What an approval no migration spent did, as its row says it. */
-const APPROVAL_TITLES = Object.freeze({
-  open: "Approval, not used yet",
-  revoke: "Approval revoked",
-  uncertain: "Approval for a migration",
-  unused: "Approval, never used",
+/**
+ * What an approval no migration spent did, after what it approved.
+ *
+ * @type {Readonly<Record<string, string>>}
+ */
+const APPROVAL_STATES = Object.freeze({
+  open: ", not used yet",
+  uncertain: " for a migration",
+  unused: ", never used",
 });
+
+/** Past what any token has: an approval with no limit, as wallets give one. */
+const NO_LIMIT = 2n ** 255n;
+
+/**
+ * What an approval let the migration contract take, in words: "0.004 BEP20
+ * DUSK", "any amount of BEP20 DUSK"; while balances are hidden (`masked`),
+ * "•••• BEP20 DUSK", as the form hides it, though not that it had no limit.
+ *
+ * @param {bigint} allowance In the token's wei
+ * @param {string} unit
+ * @param {string} locale
+ * @param {boolean} masked
+ */
+const approvedText = (allowance, unit, locale, masked) =>
+  allowance >= NO_LIMIT
+    ? `any amount of ${unit}`
+    : masked
+      ? `${BALANCE_MASK} ${unit}`
+      : allowance < WEI_PER_LUX
+        ? `less than ${formatDuskExact(1n, locale)} ${unit}`
+        : `${formatDuskExact(allowance / WEI_PER_LUX, locale)} ${unit}`;
+
+/**
+ * What an approval row is called: what it approved and what came of it, or
+ * for a revoke what it took back of the owner's approval before it on the
+ * same route. All of that one where no migration drew on it; else what was
+ * left of it, as how much a migration drew isn't known here.
+ *
+ * @param {import("@dusk-network/app-core/bridge").MigrationApproval} approval
+ * @param {import("@dusk-network/app-core/bridge").MigrationApproval | undefined} before
+ * @param {string} unit
+ * @param {string} locale
+ * @param {boolean} masked Whether balances are hidden
+ */
+function approvalTitle(approval, before, unit, locale, masked) {
+  if (approval.state !== "revoke") {
+    const state = APPROVAL_STATES[approval.state] ?? "";
+
+    return `Approved ${approvedText(approval.allowance, unit, locale, masked)}${state}`;
+  }
+
+  if (!before || before.state === "revoke") {
+    return "Approval revoked";
+  }
+
+  const approved = approvedText(before.allowance, unit, locale, masked);
+
+  return before.state === "unused"
+    ? `Revoked the ${approved} approved, never used`
+    : `Revoked what was left of ${approved} approved`;
+}
 
 /**
  * An approval or a revoke of a migration's contract on its own chain, as a
  * row of its own, with the gas it paid there: none for one a migration spent,
- * whose row has its gas.
+ * whose row has its gas. Each says what it approved, or what it took back of
+ * the approval before it (`approvals`: all the owners' read, oldest first),
+ * hidden while balances are (`masked`).
  *
  * @param {import("@dusk-network/app-core/bridge").MigrationApproval} approval
- * @param {{ locale: string, route: import("$lib/bridge/cardRoutes").CardRoute }} options
+ * @param {{ approvals?: import("@dusk-network/app-core/bridge").MigrationApproval[], locale: string, masked?: boolean, route: import("$lib/bridge/cardRoutes").CardRoute }} options
  * @returns {BridgeActivityRow | null}
  */
-export function approvalRow(approval, { locale, route }) {
+export function approvalRow(
+  approval,
+  { approvals = [], locale, masked = false, route }
+) {
   if (approval.state === "spent") {
     return null;
   }
 
   const ledger = transferLedger({ gasWei: approval.gasWei, locale, route });
   const on = `gas on ${route.chain.name}`;
+  // The owner's approval or revoke before it on the same route, if read.
+  const at = approvals.indexOf(approval);
+  const before = approvals
+    .slice(0, at < 0 ? 0 : at)
+    .findLast(
+      ({ owner, route: routeId }) =>
+        owner === approval.owner && routeId === approval.route
+    );
 
   return {
     action: null,
@@ -589,7 +658,13 @@ export function approvalRow(approval, { locale, route }) {
     kind: "approval",
     line: approval.at ? `Sent ${claimDay(approval.at, locale)} · ${on}` : on,
     state: "",
-    title: APPROVAL_TITLES[approval.state],
+    title: approvalTitle(
+      approval,
+      before,
+      route.chain.tokenLabel ?? "DUSK",
+      locale,
+      masked
+    ),
     to: route.destination,
     when: approval.at ?? 0,
   };

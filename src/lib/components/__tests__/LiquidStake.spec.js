@@ -511,16 +511,60 @@ describe("LiquidStake", () => {
 
     expect(await findByText(/^Sent at/)).toBeInTheDocument();
 
-    await vi.advanceTimersByTimeAsync(5_000);
-
     const details = /** @type {HTMLElement} */ (
       document.querySelector(".transaction-status__details")
     );
 
+    // Sent, and the archive doesn't list it yet: said to be coming.
+    expect(textOf(details)).toContain("You got Reading…");
+    expect(textOf(details)).toContain("Rate Reading…");
+
+    await vi.advanceTimersByTimeAsync(5_000);
+
     expect(textOf(details)).toContain("You got 33.25 stDUSK");
     expect(textOf(details)).toContain("Rate 1 stDUSK = 3 DUSK");
+    expect(textOf(details)).not.toContain("Reading…");
     activity.sozuFacts.mockReset();
     activity.sozuFacts.mockResolvedValue(new Map());
+  });
+
+  it("says no more that the stDUSK is coming once the archive doesn't list it in time: History has it later", async () => {
+    followTransaction.mockResolvedValueOnce(
+      /** @type {any} */ ({
+        blockHeight: 4_700_123n,
+        error: null,
+        fee: 4_419_010n,
+        timestamp: null,
+      })
+    );
+    activity.sozuFacts.mockResolvedValue(new Map());
+    vi.useFakeTimers({ toFake: ["performance", "setTimeout"] });
+
+    const { findByText, getByLabelText, getByRole } = render(
+      LiquidStake,
+      baseProps
+    );
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "100" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await afterConfirmDelay();
+    await fireEvent.click(
+      getByRole("button", { name: "Stake 100 DUSK with Sozu" })
+    );
+
+    expect(await findByText(/^Sent at/)).toBeInTheDocument();
+
+    const details = () =>
+      textOf(document.querySelector(".transaction-status__details"));
+
+    expect(details()).toContain("You got Reading…");
+
+    await vi.advanceTimersByTimeAsync(20_000);
+
+    expect(details()).not.toContain("Reading…");
+    expect(details()).not.toContain("You got");
   });
 
   it("says the stDUSK a stake got on its Sent screen also when the send's answer got lost, by the hash it went out with", async () => {

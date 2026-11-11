@@ -14,7 +14,7 @@
   import { BalanceValue, SectionHead } from "$lib/components";
   import { sidePanel } from "$lib/dusk/motion";
   import { alikeContacts, contactNameText, removeContact } from "$lib/contacts";
-  import { shortAddress } from "$lib/activity/present";
+  import { historyDuskNames, shortAddress } from "$lib/activity/present";
   import { contactHas } from "$lib/containers/Shell/search";
   import { addBasePath, pageTitle } from "$lib/navigation";
 
@@ -100,11 +100,14 @@
   const sendHref = (contact) =>
     addBasePath(`/dashboard/send?to=${encodeURIComponent(contact.address)}`);
 
+  // The .dusk names History names addresses by: a contact saved without
+  // one is known by it too.
+  $: duskNames = historyDuskNames(rows);
   // Whatever their accents and case, as the search finds them, and those
   // whose names look like it.
   $: q = searchKey(query);
   $: shown = q
-    ? contacts.filter((contact) => contactHas(contact, query))
+    ? contacts.filter((contact) => contactHas(contact, query, duskNames))
     : contacts;
   // Whose names look like another's: each said so, with its address.
   $: alike = alikeContacts(contacts, profiles);
@@ -256,7 +259,9 @@
                           value={last.amount.text}
                         /> DUSK · {last.day}
                       {:else}
-                        {contact.duskName ?? shortAddress(contact.address)}
+                        {contact.duskName ??
+                          duskNames.get(contact.address) ??
+                          shortAddress(contact.address)}
                       {/if}
                     </span>
                   </span>
@@ -279,6 +284,11 @@
                         ><Icon path={mdiCheckCircleOutline} /></span
                       >
                     {/if}</span
+                  >
+                {:else if duskNames.has(contact.address)}
+                  <!-- Its address's, as History names it. -->
+                  <span class="contacts__dusk"
+                    >{duskNames.get(contact.address)}</span
                   >
                 {:else}
                   <span aria-label="None">—</span>

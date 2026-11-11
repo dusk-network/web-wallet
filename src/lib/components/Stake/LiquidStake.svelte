@@ -164,6 +164,9 @@
   /** @type {ReturnType<typeof stDuskLines>} */
   let sentStDusk = [];
 
+  /** Whether it's looked for no more: it wasn't found in time. */
+  let isStDuskGivenUp = false;
+
   /** How long after the block is final it's looked for in the history again. */
   const FACT_RETRIES_MS = [0, 5_000, 15_000];
 
@@ -213,6 +216,11 @@
 
         return;
       }
+    }
+
+    // Its details in History say it, once the archive does.
+    if (sent === shown) {
+      isStDuskGivenUp = true;
     }
   }
 
@@ -464,6 +472,7 @@
       );
 
       sentStDusk = [];
+      isStDuskGivenUp = false;
       sent = {
         action: order.action,
         lux: order.lux,
@@ -670,6 +679,9 @@
   <div class="liquid-stake__done">
     <TransactionResult
       extra={sentStDusk}
+      extraToCome={isStDuskGivenUp
+        ? []
+        : [sent.action === "stake" ? "You got" : "You gave back", "Rate"]}
       leaveHref="/dashboard/stake"
       leaveText="Back to staking"
       maxFee={sent.maxFee}

@@ -622,6 +622,17 @@ describe("Staking", () => {
 
     expect(sozu.load).toHaveBeenCalledWith({ force: true });
 
+    // While it's read again, it still couldn't be read: said, and that it's
+    // trying, until a read gets through.
+    await act(() => sozu.store?.update((s) => ({ ...s, loading: true })));
+
+    expect(summary()).toContain(
+      "Your stake with Sozu couldn't be read just now. It may be out of date."
+    );
+    expect(getByRole("button", { name: "Trying again…" })).toBeDisabled();
+
+    await act(() => sozu.store?.update((s) => ({ ...s, loading: false })));
+
     // Never read here: it couldn't be, which isn't nothing.
     await act(() => sozu.store?.update((s) => ({ ...s, kept: null })));
 

@@ -11,11 +11,14 @@ import {
   TX_KIND,
   activityFor,
   activityState,
+  awaitArrival,
   clearActivityStore,
   currentActivity,
+  forgetArrivals,
   forgetWalletActivity,
   getShieldedHistory,
   isHistoryEnabled,
+  isToAnotherProfile,
   stopActivity,
 } from "$lib/activity";
 import { closeContacts, openContacts } from "$lib/contacts";
@@ -29,6 +32,7 @@ import {
 } from "$lib/security/sendPassword";
 import { unconfirmedHash } from "$lib/transactions/describeFailure";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
+import { cancelWaitingSends } from "$lib/transactions/waitingSends";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
 import { useWalletDataSuffix } from "$lib/wallets/dataNames";
@@ -207,6 +211,29 @@ const recordInHistory = (profile, details) => {
  */
 const isOwn = (to, profile) =>
   to === String(profile.account) || to === String(profile.address);
+
+/**
+ * A payment `profile` sends to another profile here is looked for in that
+ * profile's history once it goes out, and its requests say they're checking
+ * until it shows ($lib/activity/arrivals). Taken as the send begins.
+ *
+ * @param {Profile} profile
+ * @param {SentDetails} details
+ * @returns {(txInfo: TransactionInfo) => void}
+ */
+const lookForArrival = (profile, { to }) => {
+  const isToAnother = isToAnotherProfile(
+    to,
+    profile,
+    get(walletStore).profiles
+  );
+
+  return (txInfo) => {
+    if (isToAnother) {
+      awaitArrival({ hash: txInfo.hash, to: String(to) });
+    }
+  };
+};
 
 /**
  * A sync that started after the `after`-th, ended: the one running if it
@@ -432,29 +459,35 @@ const builtWhileOpen = (builder, stillOpen) =>
  * and the most its gas costs ask for the password first, above the amount
  * chosen in Settings. One handed over whose answer got lost may have gone
  * out: History shows it on its way at once, and it's followed as one that
- * went out, as the chain will say.
+ * went out, as the chain will say. With a `gate`, it can be called off until
+ * the node is asked to broadcast it: it then stops at once, whatever it
+ * waits on, and never reaches the node (sendGate).
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
  * @param {(network: Pick<import("@dusk/w3sper").Network, "execute">) => Promise<TransactionInfo>} execute
- * @param {{ gas: Gas, moves?: bigint, staking?: boolean }} options
+ * @param {{ gas: Gas, gate?: import("$lib/transactions/sendGate").SendGate, moves?: bigint, staking?: boolean }} options
  * @returns {Promise<TransactionInfo>}
  */
 const sendAs = (
   profile,
   details,
   execute,
-  { gas, moves = 0n, staking = false }
+  { gas, gate, moves = 0n, staking = false }
 ) => {
   const session = walletSession;
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
   const record = recordInHistory(profile, details);
+  const lookFor = lookForArrival(profile, details);
 
   /** @param {import("@dusk/w3sper").Network} network */
   const sending = (network) => ({
     /** @param {any} tx */
-    execute: (tx) => network.execute(builtWhileOpen(tx, stillOpen)),
+    execute: (tx) =>
+      /** @type {import("$lib/transactions/SendingNetwork").default} */ (
+        network
+      ).execute(builtWhileOpen(tx, stillOpen), { gate }),
   });
 
   /** @param {TransactionInfo} txInfo */
@@ -482,11 +515,15 @@ const sendAs = (
     get(walletStore).walletKey
   );
 
-  return (password ? password.then(() => sync()) : sync())
+  const sent = (password ? password.then(() => sync()) : sync())
     .catch((error) => {
       throw stillOpen(error);
     })
-    .then(networkStore.connect)
+    .then(() => {
+      gate?.check();
+
+      return networkStore.connect();
+    })
     .then((network) =>
       execute(sending(stillOpen(network))).catch((error) => {
         const hash = unconfirmedHash(error);
@@ -494,6 +531,7 @@ const sendAs = (
         if (hash) {
           followRemoval(/** @type {TransactionInfo} */ ({ hash }));
           record(/** @type {TransactionInfo} */ ({ hash }));
+          lookFor(/** @type {TransactionInfo} */ ({ hash }));
         }
 
         throw error;
@@ -504,10 +542,15 @@ const sendAs = (
       keepInCache(txInfo)
         .then(passThruWithEffects(followRemoval))
         .then(passThruWithEffects(record))
+        .then(passThruWithEffects(lookFor))
         .catch((error) => {
           throw outcomeUnknown(error, txInfo.hash);
         })
     );
+
+  // Called off, it stops at once: what it waits on goes on, and stops at
+  // the gate before the node is asked to broadcast it.
+  return gate ? Promise.race([sent, gate.cancelled]) : sent;
 };
 
 /**
@@ -948,8 +991,10 @@ const refreshBalance = () =>
 function resetSession() {
   walletSession++;
   cancelSendPassword(new WalletChangedError());
+  cancelWaitingSends(new WalletChangedError());
   abortSync();
   stopActivity();
+  forgetArrivals();
   closeContacts();
   treasury.reset();
 }
@@ -1327,7 +1372,7 @@ async function resync(fromBlock) {
 }
 
 /** @type {WalletStoreServices["transfer"]} */
-const transfer = async (to, amount, memo, gas, { toName } = {}) => {
+const transfer = async (to, amount, memo, gas, { gate, toName } = {}) => {
   const profile = unsafeGetCurrentProfile();
   const isShielded = ProfileGenerator.typeOf(to) === "address";
 
@@ -1357,7 +1402,7 @@ const transfer = async (to, amount, memo, gas, { toName } = {}) => {
 
       return await network.execute(tx);
     },
-    { gas, moves: amount }
+    { gas, gate, moves: amount }
   );
 };
 

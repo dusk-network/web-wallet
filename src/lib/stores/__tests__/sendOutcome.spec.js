@@ -256,6 +256,64 @@ describe("A send that fails", () => {
     }
   });
 
+  it("calls off a send that waits, at once, says nothing was sent, offers Cancel and Home while the network doesn't answer, and never sends it, though the network answers after", async () => {
+    const { SendCancelledError, sendGate } = await import("$lib/transactions");
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+    const synced = Promise.withResolvers();
+    const update = vi
+      .spyOn(WalletTreasury.prototype, "update")
+      .mockImplementationOnce(() => synced.promise);
+    const gate = sendGate();
+    const sending = walletStore.transfer(
+      "someone",
+      1n,
+      "",
+      new Gas({ limit: 1n, price: 1n }),
+      { gate }
+    );
+    const rendered = render(TransactionResult, {
+      gate,
+      maxFee: 1n,
+      onRetry: () => {},
+      operation: sending.then(({ hash }) => hash),
+    });
+
+    sending.catch(() => {});
+    await vi.waitFor(() => expect(update).toHaveBeenCalled());
+
+    try {
+      await act(() => setNetworkReach("silent"));
+
+      expect(rendered.getByRole("status")).toHaveTextContent(
+        "The network isn't answering. Nothing has left your wallet yet. It goes out once the network answers."
+      );
+      expect(rendered.getByRole("link", { name: "Home" })).toBeInTheDocument();
+
+      // Cancel: it stops at once, with nothing sent.
+      await act(() => rendered.getByRole("button", { name: "Cancel" }).click());
+
+      await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
+      await vi.waitFor(() =>
+        expect(shown(rendered.container)).toMatchObject({
+          heading: "Not sent",
+          sentence: "You cancelled it, so nothing was sent.",
+        })
+      );
+      expect(
+        rendered.getByRole("button", { name: "Try again" })
+      ).toBeInTheDocument();
+
+      // The network answers after all: nothing goes to it.
+      synced.resolve(undefined);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(executeSpy).not.toHaveBeenCalled();
+    } finally {
+      setNetworkReach("answering");
+    }
+  });
+
   it("turns into Sent once the chain has the transaction whose answer got lost, or Failed", async () => {
     const found = Promise.withResolvers();
 
@@ -269,7 +327,7 @@ describe("A send that fails", () => {
 
     await vi.waitFor(() =>
       expect(shown(rendered.container)).toMatchObject({
-        heading: `Sent at ${timeLabel(at, "en")}`,
+        heading: `Sent at ${timeLabel(at, "en", { seconds: true })}`,
         sentence: "In block 4,321.",
       })
     );

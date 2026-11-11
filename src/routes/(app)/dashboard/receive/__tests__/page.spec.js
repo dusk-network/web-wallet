@@ -633,7 +633,7 @@ describe("Receive", () => {
 
       expect(screen.getByRole("listitem")).toHaveTextContent("Paid");
       expect(screen.getByRole("listitem")).toHaveTextContent(
-        `Amount and memo match a payment of 0.15 DUSK on ${claimDay(at + 500, "en")}.`
+        `Amount and memo match a payment of 0.15 DUSK ${inSentence(paidAt(at + 500))}.`
       );
       // It stays paid with its payment out of what's read, and what it paid.
       expect(get(requestsStore)[0].paid).toStrictEqual({
@@ -647,6 +647,100 @@ describe("Receive", () => {
 
       expect(history.refresh).not.toHaveBeenCalled();
       history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    it("should say it's checking, not that nothing came in, while a payment to it from another profile here is looked for, two minutes at most", async () => {
+      const at = Date.now() - 1000;
+      const { awaitArrival, forgetArrivals } = await import("$lib/activity");
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "open",
+            lux: "30000000",
+            memo: "Chicken rice Fri",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+
+      try {
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(screen.getByRole("listitem")).toHaveTextContent(
+          "Nothing matching has come in."
+        );
+
+        // Sent from another profile here, and seen to go out: the history
+        // doesn't have it yet.
+        awaitArrival({ hash: "ab".repeat(32), to: ACCOUNT });
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(screen.getByRole("listitem")).toHaveTextContent(
+          "Checking for payments…"
+        );
+        expect(screen.getByRole("listitem")).not.toHaveTextContent(
+          "Nothing matching"
+        );
+
+        // In the history: what came in.
+        history.state?.set({
+          hasMore: false,
+          rows: [
+            {
+              category: "received",
+              hash: "ab".repeat(32),
+              memo: "Chicken rice Fri",
+              privacy: "public",
+              status: "executed",
+              time: at + 500,
+              value: 30_000_000n,
+            },
+          ],
+        });
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(screen.getByRole("listitem")).toHaveTextContent("Paid");
+        cleanup();
+
+        // One the history never has: checked for two minutes, no more.
+        history.state?.set({ hasMore: false, rows: [] });
+        localStorage.setItem(
+          REQUESTS,
+          JSON.stringify([
+            {
+              at,
+              id: "open",
+              lux: "30000000",
+              memo: "Chicken rice Fri",
+              network: "testnet",
+              to: ACCOUNT,
+            },
+          ])
+        );
+        hydrateRequests();
+        awaitArrival({ hash: "cd".repeat(32), to: ACCOUNT });
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(screen.getByRole("listitem")).toHaveTextContent(
+          "Checking for payments…"
+        );
+
+        await vi.advanceTimersByTimeAsync(120_000);
+
+        expect(screen.getByRole("listitem")).toHaveTextContent(
+          "Nothing matching has come in."
+        );
+      } finally {
+        forgetArrivals();
+        history.state?.set({ hasMore: false, rows: [] });
+      }
     });
 
     it("should say a request paid twice in its badge, list each payment with a way to send the second back, and quote another payment's memo safely", async () => {
@@ -701,7 +795,7 @@ describe("Receive", () => {
         /^Paid twice$/
       );
       expect(item).toHaveTextContent(
-        `Amount and memo match 2 payments. Also the same amount on ${claimDay(at + 3500, "en")}, with another memo: "Fra \\u202e34 aruc".`
+        `Amount and memo match 2 payments. Also the same amount ${inSentence(paidAt(at + 3500))}, with another memo: "Fra \\u202e34 aruc".`
       );
       expect(item).not.toHaveTextContent("\u202E");
       expect(item).toHaveTextContent(
@@ -902,9 +996,10 @@ describe("Receive", () => {
       });
       await vi.advanceTimersByTimeAsync(0);
 
-      // What went back, when, and where to see it.
+      // What went back, and where to see it: on its way, with no time a
+      // block's would change.
       expect(payments()).toHaveTextContent(
-        `Sent back 0.012 DUSK ${inSentence(paidAt(at + 2000))} · See in History`
+        "Sent back 0.012 DUSK, on its way · See in History"
       );
       expect(
         screen.getByRole("link", {
@@ -1023,8 +1118,9 @@ describe("Receive", () => {
       }));
       await vi.advanceTimersByTimeAsync(0);
 
+      // Its time first, as the payments' above it, once a block has it.
       expect(payments()).toHaveTextContent(
-        `Sent back 0.012 DUSK ${inSentence(paidAt(at + 4000))}`
+        `${paidAt(at + 4000)}, sent back 0.012 DUSK · See in History`
       );
       history.state?.set({ hasMore: false, rows: [] });
     });
@@ -1066,7 +1162,12 @@ describe("Receive", () => {
       expect(
         screen.getAllByRole("list", { name: "Payments for this request" })
       ).toHaveLength(2);
-      expect(screen.getAllByText(/^Sent back/)).toHaveLength(1);
+      expect(
+        screen
+          .getAllByRole("list", { name: "Payments for this request" })
+          .flatMap((list) => Array.from(list.children))
+          .filter((payment) => /sent back/i.test(payment.textContent ?? ""))
+      ).toHaveLength(1);
       expect(
         screen.getAllByRole("link", { name: /^Send back the payment of/ })
       ).toHaveLength(1);
@@ -1114,7 +1215,7 @@ describe("Receive", () => {
       expect(badge()).toHaveTextContent(/^0\.000000001 DUSK$/);
       expect(badge()).not.toHaveClass("requests__state--paid");
       expect(screen.getByRole("listitem")).toHaveTextContent(
-        `Its memo matches a payment of 0.000000001 DUSK on ${claimDay(at + 500, "en")}.`
+        `Its memo matches a payment of 0.000000001 DUSK ${inSentence(paidAt(at + 500))}.`
       );
       await vi.waitFor(() => expect(get(requestsStore)[0].paid?.lux).toBe("1"));
 
@@ -1285,7 +1386,9 @@ describe("Receive", () => {
 
       expect(items).toHaveLength(2);
       expect(items[0]).toHaveTextContent("Paid");
-      expect(items[0]).toHaveTextContent("Amount and memo match a payment on");
+      expect(items[0]).toHaveTextContent(
+        `Asked ${inSentence(claimDay(at, "en"))}. Amount and memo match a payment ${inSentence(paidAt(at + 500))}.`
+      );
       expect(items[1]).toHaveTextContent("Waiting");
       expect(items[1]).toHaveTextContent("Nothing matching has come in.");
       expect(

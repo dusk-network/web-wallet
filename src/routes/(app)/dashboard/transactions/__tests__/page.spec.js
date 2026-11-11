@@ -13,6 +13,7 @@ import { get } from "svelte/store";
 import { networks } from "@dusk-network/networks";
 
 import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
+import { hydrateExportAddresses } from "$lib/activity/exportAddresses";
 import { shortAddress } from "$lib/activity/present";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
 import { settingsStore } from "$lib/stores";
@@ -40,6 +41,9 @@ const stores = vi.hoisted(() => ({
 
   /** @type {import("svelte/store").Writable<any> | null} */
   page: null,
+
+  /** The profile shown: its public account and shielded address. */
+  profile: { account: "account-shown", address: "address-shown" },
 }));
 
 vi.mock("$app/stores", async () => {
@@ -97,6 +101,14 @@ vi.mock("$lib/stores", async (importOriginal) => {
         sozuFacts: mocks.sozuFacts,
         whole: mocks.whole,
       }),
+      // A profile shown, as the history and its export are of one.
+      subscribe: (/** @type {(value: any) => void} */ run) =>
+        original.walletStore.subscribe((value) =>
+          run({
+            ...value,
+            currentProfile: stores.profile,
+          })
+        ),
     },
   };
 });
@@ -587,7 +599,7 @@ describe("History", () => {
       expect(await blobs[1].text()).toContain("Alice Rent");
     });
 
-    it("says which EVM addresses it has migrations' network fees from, and takes one added for the file, with its approvals no migration spent", async () => {
+    it("says which EVM addresses it has migrations' network fees from, and takes one added for the profile's files, kept after a lock, with its approvals no migration spent", async () => {
       const ADDED = "0x90fe2f14bbdd4bbb68ad0ce1a7b6c1b4d6bf4b39";
       const MIGRATION = `0x${"a7".repeat(32)}`;
       const BSC = /** @type {any} */ (
@@ -710,7 +722,57 @@ describe("History", () => {
         expect(migrationEvm.approvals).toHaveBeenCalledWith(networks.mainnet, [
           ADDED,
         ]);
+
+        // Kept for this profile, through a lock and an unlock, as it opens
+        // the wallet's records again: the same period, the same file.
+        cleanup();
+        hydrateExportAddresses();
+
+        const unlocked = render(History);
+
+        await fireEvent.click(unlocked.getByRole("button", { name: "Export" }));
+
+        expect(
+          unlocked.getByText(
+            /^The file has the network fees your migrations paid from 0x90fE…4b39\.$/i
+          )
+        ).toBeInTheDocument();
+
+        // Another profile's file has none of it.
+        cleanup();
+        stores.profile = { account: "another", address: "another-shielded" };
+
+        const another = render(History);
+
+        await fireEvent.click(another.getByRole("button", { name: "Export" }));
+
+        expect(
+          another.getByText(
+            "The file has no network fees of migrations: no EVM address of yours is known here."
+          )
+        ).toBeInTheDocument();
+
+        // And Remove takes it off this one's.
+        cleanup();
+        stores.profile = { account: "account-shown", address: "address-shown" };
+
+        const again = render(History);
+
+        await fireEvent.click(again.getByRole("button", { name: "Export" }));
+        await fireEvent.click(
+          again.getByRole("button", { name: `Remove ${ADDED}` })
+        );
+
+        expect(
+          again.getByText(
+            "The file has no network fees of migrations: no EVM address of yours is known here."
+          )
+        ).toBeInTheDocument();
+        expect(hydrateExportAddresses()).toStrictEqual({});
       } finally {
+        stores.profile = { account: "account-shown", address: "address-shown" };
+        localStorage.removeItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-export-evm`);
+        hydrateExportAddresses();
         setNodeNetwork(null);
         migrationEvm.approvals.mockReset();
         migrationEvm.approvals.mockResolvedValue([]);
@@ -818,7 +880,7 @@ describe("History", () => {
       vi.unstubAllGlobals();
     });
 
-    it("shows staking rewards by year beside the file, in DUSK, and in the wallet's currency where asked, saving nothing", async () => {
+    it("shows staking rewards by year beside the file, in DUSK, and in the wallet's currency as asked under them, saving nothing", async () => {
       // Mid-year, whatever the device's time zone: one a year and a half
       // ago, past CoinGecko's year, and the rest this year.
       const year = new Date(NOW).getUTCFullYear();
@@ -930,9 +992,18 @@ describe("History", () => {
         ]);
         expect(prices).not.toHaveBeenCalled();
 
-        await fireEvent.click(getByRole("checkbox", { name: /in euros/ }));
+        // The file's values ask nothing of them.
         await fireEvent.click(
-          getByRole("button", { name: "Show staking rewards by year" })
+          getByRole("checkbox", { name: /^Add each payment's value in euros/ })
+        );
+
+        expect(prices).not.toHaveBeenCalled();
+
+        // Their own, under them: read again with each one's value.
+        await fireEvent.click(
+          getByRole("checkbox", {
+            name: "Add each reward's value in euros, from CoinGecko's prices",
+          })
         );
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
@@ -978,7 +1049,7 @@ describe("History", () => {
         // shows as under that.
         settingsStore.update((store) => ({ ...store, currency: "JPY" }));
         await vi.waitFor(() =>
-          getByRole("checkbox", { name: /in Japanese yen/ })
+          getByRole("checkbox", { name: /reward's value in Japanese yen/ })
         );
         await fireEvent.click(
           getByRole("button", { name: "Show staking rewards by year" })

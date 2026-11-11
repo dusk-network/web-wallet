@@ -15,7 +15,7 @@ import { recordAnimations } from "$lib/dusk/test-helpers";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
-import { walletStore } from "$lib/stores";
+import { settingsStore, walletStore } from "$lib/stores";
 
 const mocks = vi.hoisted(() => {
   const configuredFinalizationConfig = () =>
@@ -648,7 +648,8 @@ describe("EvmTransactions", () => {
     });
     /** @param {string} hash @param {string} state @param {number} at */
     const approval = (hash, state, at) => ({
-      allowance: state === "revoke" ? 0n : 2_500_000_000n,
+      // 2.5 BEP20 DUSK, in the token's wei.
+      allowance: state === "revoke" ? 0n : 2_500_000_000_000_000_000n,
       at,
       block: 8,
       chain: "BNB Smart Chain",
@@ -699,7 +700,7 @@ describe("EvmTransactions", () => {
     // Its gas, with the approval sent for it, as its chain says.
     expect(
       (await findByText("Gas, approval and migration")).parentElement
-    ).toHaveTextContent("Gas, approval and migration 0.000093 BNB");
+    ).toHaveTextContent("Gas, approval and migration 0.000093199001491184 BNB");
     expect(evmReads.readMigrationsEvm).toHaveBeenCalledWith(networks.mainnet, [
       {
         approval: APPROVAL,
@@ -709,15 +710,21 @@ describe("EvmTransactions", () => {
     ]);
 
     // The approvals its sender sent there that no migration spent: each a
-    // row of its own, with its gas.
-    for (const title of ["Approval, never used", "Approval revoked"]) {
+    // row of its own, with what it approved, or what a revoke took back of
+    // the approval before it, and its gas.
+    for (const title of [
+      "Approved 2.5 BEP20 DUSK, never used",
+      "Revoked the 2.5 BEP20 DUSK approved, never used",
+    ]) {
       expect(
         await findByRole("button", {
           name: `${title} Sent ${claimDay(day, "en")} · gas on BNB Smart Chain 0.000046 BNB`,
         })
       ).toBeInTheDocument();
     }
-    expect(getAllByRole("button", { name: /^Approval/ })).toHaveLength(2);
+    expect(
+      getAllByRole("button", { name: /^(Approved|Revoked|Approval)/ })
+    ).toHaveLength(2);
     expect(evmReads.readMigrationApprovals).toHaveBeenCalledWith(
       networks.mainnet,
       [accountAddress]
@@ -733,7 +740,7 @@ describe("EvmTransactions", () => {
   it("drops the approvals of an EVM wallet that disconnects, those read and those still being read, where it was the one known", async () => {
     const owner = `0x${"44".repeat(20)}`;
     const unused = {
-      allowance: 2_500_000_000n,
+      allowance: 2_500_000_000_000_000_000n,
       at: Date.UTC(2026, 9, 1, 12),
       block: 8,
       chain: "BNB Smart Chain",
@@ -749,7 +756,7 @@ describe("EvmTransactions", () => {
     const rows = () =>
       Array.from(document.querySelectorAll(".bridge-row__title"), (title) =>
         title.textContent?.trim()
-      ).filter((title) => title?.startsWith("Approval"));
+      ).filter((title) => /^(Approved|Revoked|Approval)/.test(title ?? ""));
 
     setNodeNetwork(networks.mainnet);
     evmReads.readMigrationApprovals.mockResolvedValueOnce([unused]);
@@ -758,7 +765,7 @@ describe("EvmTransactions", () => {
     render(EvmTransactions, { target: document.body });
 
     await vi.waitFor(() =>
-      expect(rows()).toStrictEqual(["Approval, never used"])
+      expect(rows()).toStrictEqual(["Approved 2.5 BEP20 DUSK, never used"])
     );
 
     mocks.setAccount({ address: undefined, isConnected: false });
@@ -784,6 +791,55 @@ describe("EvmTransactions", () => {
     evmReads.readMigrationApprovals.mockResolvedValue([]);
     mocks.setAccount({ address: undefined, isConnected: false });
     setNodeNetwork(null);
+  });
+
+  it("hides what an approval approved while balances are hidden, and shows it again as they're shown", async () => {
+    const owner = `0x${"44".repeat(20)}`;
+    const rows = () =>
+      Array.from(document.querySelectorAll(".bridge-row__title"), (title) =>
+        title.textContent?.trim()
+      ).filter((title) => /^(Approved|Revoked|Approval)/.test(title ?? ""));
+
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+    setNodeNetwork(networks.mainnet);
+    evmReads.readMigrationApprovals.mockResolvedValueOnce([
+      {
+        allowance: 2_500_000_000_000_000_000n,
+        at: Date.UTC(2026, 9, 1, 12),
+        block: 8,
+        chain: "BNB Smart Chain",
+        coin: "BNB",
+        contract: `0x${"cc".repeat(20)}`,
+        decimals: 18,
+        gasWei: 46_194_000_739_104n,
+        hash: `0x${"a4".repeat(32)}`,
+        owner,
+        route: "bsc-to-dusk",
+        state: "unused",
+      },
+    ]);
+    mocks.setAccount({ address: owner, addresses: [owner], isConnected: true });
+
+    try {
+      render(EvmTransactions, { target: document.body });
+
+      await vi.waitFor(() =>
+        expect(rows()).toStrictEqual(["Approved •••• BEP20 DUSK, never used"])
+      );
+      expect(document.body).not.toHaveTextContent("2.5 BEP20");
+
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+
+      await vi.waitFor(() =>
+        expect(rows()).toStrictEqual(["Approved 2.5 BEP20 DUSK, never used"])
+      );
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+      evmReads.readMigrationApprovals.mockReset();
+      evmReads.readMigrationApprovals.mockResolvedValue([]);
+      mocks.setAccount({ address: undefined, isConnected: false });
+      setNodeNetwork(null);
+    }
   });
 
   it("reads nothing of DuskEVM, nor says it can't, on a network without it as an EVM wallet connects", async () => {

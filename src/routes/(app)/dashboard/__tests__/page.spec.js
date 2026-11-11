@@ -159,6 +159,122 @@ describe("Dashboard", () => {
     vi.doUnmock("$lib/sozu");
   });
 
+  it("says a send waits to go out while the network doesn't answer, with Cancel, wherever it was sent from, until it goes out", async () => {
+    const { keepWaiting, sendGate } = await import("$lib/transactions");
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+    const { toastList } = await import("$lib/dusk/components/Toast/store");
+    render(Dashboard, props);
+
+    const first = sendGate();
+    const second = sendGate();
+
+    keepWaiting({
+      gate: first,
+      lux: 10_000_000n,
+      operation: new Promise(() => {}),
+      to: "Profile 2",
+    });
+    keepWaiting({
+      gate: second,
+      lux: 20_000_000n,
+      operation: new Promise(() => {}),
+      to: "Profile 2",
+    });
+
+    try {
+      await act(() => setNetworkReach("silent"));
+
+      const banners = () =>
+        Array.from(document.querySelectorAll(".home__waiting"), (banner) =>
+          banner.textContent?.replace(/\s+/g, " ").trim()
+        );
+
+      expect(banners()).toStrictEqual([
+        "Not sent yet: 0.01 DUSK to Profile 2. It goes out once the network answers. Cancel",
+        "Not sent yet: 0.02 DUSK to Profile 2. It goes out once the network answers. Cancel",
+      ]);
+
+      // Called off from here: nothing goes out, and it's said.
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (
+          document.querySelector(".home__waiting button")
+        )
+      );
+
+      expect(get(first)).toBe("cancelled");
+      expect(banners()).toStrictEqual([
+        "Not sent yet: 0.02 DUSK to Profile 2. It goes out once the network answers. Cancel",
+      ]);
+      expect(get(toastList).map(({ message }) => message)).toContain(
+        "Not sent: 0.01 DUSK to Profile 2."
+      );
+
+      // The other goes out once the network answers: no longer waiting.
+      await act(() => setNetworkReach("answering"));
+      await act(() => second.handOver());
+
+      expect(banners()).toStrictEqual([]);
+    } finally {
+      setNetworkReach("answering");
+    }
+  });
+
+  it("hides a waiting send's amount once balances are hidden, though they weren't as it was sent, there and as it's called off", async () => {
+    const { keepWaiting, sendGate } = await import("$lib/transactions");
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+    const { toastList } = await import("$lib/dusk/components/Toast/store");
+    const { BALANCE_MASK } = await import("$lib/constants");
+    toastList.set([]);
+    render(Dashboard, props);
+
+    const gate = sendGate();
+
+    keepWaiting({
+      gate,
+      lux: 10_000_000n,
+      operation: new Promise(() => {}),
+      to: "Profile 2",
+    });
+
+    try {
+      await act(() => setNetworkReach("silent"));
+
+      const banner = () =>
+        document
+          .querySelector(".home__waiting")
+          ?.textContent?.replace(/\s+/g, " ")
+          .trim();
+
+      expect(banner()).toContain("Not sent yet: 0.01 DUSK to Profile 2.");
+
+      await act(() =>
+        settingsStore.update((store) => ({ ...store, hideBalances: true }))
+      );
+
+      expect(banner()).toContain(
+        `Not sent yet: ${BALANCE_MASK} DUSK to Profile 2.`
+      );
+      expect(banner()).not.toContain("0.01");
+
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (
+          document.querySelector(".home__waiting button")
+        )
+      );
+
+      expect(get(gate)).toBe("cancelled");
+      expect(get(toastList).map(({ message }) => message)).toContain(
+        `Not sent: ${BALANCE_MASK} DUSK to Profile 2.`
+      );
+      expect(
+        get(toastList).filter(({ message }) => message.includes("0.01 DUSK"))
+      ).toStrictEqual([]);
+    } finally {
+      gate.cancel();
+      setNetworkReach("answering");
+    }
+  });
+
   it("shows the total balance, everything held, its parts, and every action", async () => {
     const { container, getByRole } = render(Dashboard, props);
 

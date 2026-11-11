@@ -31,7 +31,7 @@
     />
 
     <div class="setup-content__options">
-      <!-- Coming back, unlocking comes first; a new wallet comes second. -->
+      <!-- Coming back, unlocking is the way in; a new wallet a small second. -->
       <div class="setup-content__options-group">
         {#if userId}
           <AppAnchorButton
@@ -40,18 +40,25 @@
             icon={{ path: mdiKeyOutline }}
           />
         {/if}
-        <AppAnchorButton
-          href="/setup/create"
-          variant={userId || offersElsewhere ? "tertiary" : "primary"}
-          text="Create new wallet"
-          icon={{ path: mdiWalletOutline }}
-        />
-        <AppAnchorButton
-          href="/setup/restore/"
-          variant="tertiary"
-          text="Restore wallet"
-          icon={{ path: mdiRestore }}
-        />
+        <div
+          class="setup-content__others"
+          class:setup-content__others--small={userId}
+        >
+          <AppAnchorButton
+            href="/setup/create"
+            variant={userId || offersElsewhere ? "tertiary" : "primary"}
+            size={userId ? "small" : "default"}
+            text="Create new wallet"
+            icon={{ path: mdiWalletOutline }}
+          />
+          <AppAnchorButton
+            href="/setup/restore/"
+            variant="tertiary"
+            size={userId ? "small" : "default"}
+            text="Restore wallet"
+            icon={{ path: mdiRestore }}
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -90,6 +97,18 @@
         display: flex;
         flex-direction: column;
         gap: var(--default-gap);
+      }
+    }
+
+    &__others {
+      display: flex;
+      flex-direction: column;
+      gap: var(--default-gap);
+
+      /* Beside each other, under Unlock: a second way, not a third button. */
+      &--small {
+        flex-flow: row wrap;
+        justify-content: center;
       }
     }
   }

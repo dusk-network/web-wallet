@@ -258,13 +258,19 @@ type WalletStoreServices = {
    */
   sync: (fromBlock?: bigint, options?: { clear?: boolean }) => Promise<void>;
 
-  /** `toName` is the `.dusk` name typed for `to`, kept in the history. */
+  /**
+   * `toName` is the `.dusk` name typed for `to`, kept in the history; `gate`
+   * lets it be called off until the node is asked to broadcast it.
+   */
   transfer: (
     to: string,
     amount: bigint,
     memo: string,
     gas: Gas,
-    options?: { toName?: string }
+    options?: {
+      gate?: import("$lib/transactions/sendGate").SendGate;
+      toName?: string;
+    }
   ) => Promise<TransactionInfo>;
 
   unshield: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;

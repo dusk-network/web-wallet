@@ -238,7 +238,8 @@ walletStore.readWithBalances?.(readAlong);
 /**
  * Reads what the current profile's account has with Sozu, unless a read for
  * it is under way or done; `force` reads again, as after a transaction. The
- * last status stays shown while the account's next read runs.
+ * last status stays shown while the account's next read runs, and so does
+ * the last read's failure: it couldn't be read until a read gets through.
  *
  * @param {{ force?: boolean }} [options]
  * @returns {Promise<void>}
@@ -265,7 +266,7 @@ function load({ force = false } = {}) {
   store.update((state) => ({
     account,
     available: true,
-    error: null,
+    error: isNew ? null : state.error,
     kept: isNew ? null : state.kept,
     loading: true,
     status: isNew ? null : state.status,

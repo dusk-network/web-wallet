@@ -1,13 +1,18 @@
 /**
  * What this device keeps of each wallet besides its phrase: its cache of
  * notes and balances, its bridge transfers and migrations, its contacts,
- * its history, its names and the payments it asked for. Each wallet's is its own, by the ending of
+ * its history, its names, the payments it asked for and the EVM addresses
+ * its exports were given. Each wallet's is its own, by the ending of
  * its names ($lib/wallets/dataNames) or by its accounts, so that one
  * wallet's never shows in another, and a wallet removed takes its own
  * alone.
  */
 
 import { forgetWalletActivity } from "$lib/activity/activityStore";
+import {
+  forgetWalletExportAddresses,
+  hydrateExportAddresses,
+} from "$lib/activity/exportAddresses";
 import { forgetWalletBridgeRecords } from "$lib/bridge/bridgeRecordKeys";
 import { hydrateDepositActivity } from "$lib/bridge/depositActivityStorage";
 import {
@@ -55,6 +60,7 @@ export function useWalletData(key) {
   hydrateDepositActivity();
   hydrateWithdrawalActivity();
   hydrateRequests();
+  hydrateExportAddresses();
 }
 
 /**
@@ -80,6 +86,7 @@ export async function forgetWalletData(key, { accounts, addresses }) {
       forgetWalletBridgeRecords(suffix);
       forgetWalletRouteTransfers(suffix);
       forgetWalletRequests(suffix);
+      forgetWalletExportAddresses(suffix);
       forgetVerifiedNamesOf(accounts);
     }),
     accounts[0] ? forgetContactsOf(accounts[0]) : Promise.resolve(),
@@ -111,6 +118,7 @@ export async function forgetOtherWalletsData() {
     forgetWalletBridgeRecords(suffix);
     forgetWalletRouteTransfers(suffix);
     forgetWalletRequests(suffix);
+    forgetWalletExportAddresses(suffix);
   }
 
   await forgetOtherWalletCaches(suffixes);
@@ -128,4 +136,5 @@ export async function forgetEveryWalletData() {
   forgetWalletBridgeRecords("");
   forgetWalletRouteTransfers("");
   forgetWalletRequests("");
+  forgetWalletExportAddresses("");
 }

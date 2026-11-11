@@ -46,17 +46,19 @@ function walletsHere({ profiles, walletKey, wallets }, directory) {
 
 /**
  * The profiles here, of every wallet, by the name each goes by, with its
- * public account: names no contact takes, as a review would read one as the
+ * public account and the `.dusk` name last verified for it on this network:
+ * names no contact or other profile takes, as a review would read one as the
  * profile.
  *
- * @type {import("svelte/store").Readable<{ address: string, name: string }[]>}
+ * @type {import("svelte/store").Readable<{ address: string, duskName?: string, name: string }[]>}
  */
 export const profilesHere = derived(
-  [walletStore, walletDirectory],
-  ([state, directory]) =>
+  [walletStore, walletDirectory, networkStore],
+  ([state, directory, { networkName }]) =>
     walletsHere(state, directory).flatMap(({ accounts, profileNames }) =>
       accounts.map((address, i) => ({
         address,
+        duskName: getVerifiedName(networkName, address) || undefined,
         name: profileNameAt(profileNames, i),
       }))
     )

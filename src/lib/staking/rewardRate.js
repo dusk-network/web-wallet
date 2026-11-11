@@ -114,17 +114,20 @@ export function readNativeRewardRate({
   return read.catch(() => null);
 }
 
-/** How long what's measured is kept: an hour. */
-const HOUR_MS = 3_600_000;
+/**
+ * What app-core keeps of what it measured, by the day of blocks it's of, as
+ * any app reading that day keeps it: the same blocks, the same rate.
+ */
+const nativeFacts = new Map();
 
 /**
  * @typedef {{ days: number | null, native: import("@dusk-network/app-core/sozu").NativeRewards | null, rate: number | null }} NativeRead
  */
 
 /**
- * What's been read of native staking's rewards per network, and when.
+ * The reads of native staking's rewards under way, per network.
  *
- * @type {Map<string, { at: number, read: Promise<NativeRead> }>}
+ * @type {Map<string, Promise<NativeRead>>}
  */
 const nativeReads = new Map();
 
@@ -143,6 +146,7 @@ async function measureNativeRewards(options) {
   const native = provisioners
     ? await nativeRewards({
         archive: archiveAt(nodeUrl),
+        cache: nativeFacts,
         now,
         provisioners,
         tipHeight: height,
@@ -159,7 +163,9 @@ async function measureNativeRewards(options) {
  * the chain over the last `days` (app-core's `nativeRewards`, with what it's
  * made of in `native`), or else the estimate (`readNativeRewardRate`), of no
  * period, where that can't be read. A rate of null is none at all. Two reads
- * at once make one, and what's read is kept an hour, unless it's nothing.
+ * at once make one. The measurement is kept by app-core for its day of
+ * blocks (`nativeFacts`), so each read takes what's staked and the tip from
+ * the node, and the extension, reading in the same day, says the same.
  *
  * @param {Parameters<typeof readNativeRewardRate>[0]} options
  * @returns {Promise<NativeRead>}
@@ -168,20 +174,21 @@ export function readNativeRewards(options) {
   const { network, now = Date.now() } = options;
   const known = nativeReads.get(network);
 
-  if (known && now - known.at >= 0 && now - known.at < HOUR_MS) {
-    return known.read;
+  if (known) {
+    return known;
   }
 
-  const entry = { at: now, read: measureNativeRewards({ ...options, now }) };
-
-  nativeReads.set(network, entry);
-  void entry.read.then(({ rate }) => {
-    if (rate === null && nativeReads.get(network) === entry) {
+  const read = measureNativeRewards({ ...options, now });
+  const done = () => {
+    if (nativeReads.get(network) === read) {
       nativeReads.delete(network);
     }
-  });
+  };
 
-  return entry.read;
+  nativeReads.set(network, read);
+  read.then(done, done);
+
+  return read;
 }
 
 /**

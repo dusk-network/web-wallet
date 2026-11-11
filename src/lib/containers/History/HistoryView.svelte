@@ -358,7 +358,9 @@
                       $settingsStore.hideBalances
                         ? "amount hidden"
                         : `${p.amount.sign}${p.amount.text} DUSK`,
-                      time === null ? "" : fullDateTime(time, locale),
+                      time === null
+                        ? ""
+                        : fullDateTime(time, locale, { seconds: true }),
                       p.privacy,
                       row.memo ? `memo ${displayText(row.memo).text}` : "",
                     ]
@@ -414,7 +416,9 @@
                 <td class="history__col-type">{p.privacy}</td>
                 <td
                   class="history__col-time"
-                  title={time === null ? undefined : fullDateTime(time, locale)}
+                  title={time === null
+                    ? undefined
+                    : fullDateTime(time, locale, { seconds: true })}
                   >{time === null ? "" : timeLabel(time, locale)}</td
                 >
                 <td class="history__col-amount">

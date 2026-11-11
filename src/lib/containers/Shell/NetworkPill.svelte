@@ -195,13 +195,16 @@
           : state === "syncing"
             ? `Syncing${syncStatus.progress ? ` ${Math.round(syncStatus.progress * 100)}%` : ""}`
             : "In sync";
-  // Said on the pill too, not by its dot alone.
+  // Said on the pill too, not by its dot alone: Offline only as the browser
+  // says it is, as a phone with bars isn't.
   $: problem =
-    state === "offline" || state === "unreachable"
+    state === "offline"
       ? "Offline"
-      : state === "error"
-        ? "Sync failed"
-        : "";
+      : state === "unreachable"
+        ? "Can't reach"
+        : state === "error"
+          ? "Sync failed"
+          : "";
 
   /**
    * Whether Try again is at it: until what it started ends, or the network

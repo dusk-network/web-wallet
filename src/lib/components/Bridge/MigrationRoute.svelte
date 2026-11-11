@@ -41,7 +41,11 @@
     sendMigration,
   } from "$lib/bridge/routeFlows";
   import { askToSwitch, isAskingToSwitch } from "$lib/bridge/chainSwitch";
-  import { getMigrationFee, getNativeBalance } from "$lib/web3/migration";
+  import {
+    getMigrationFee,
+    getNativeBalance,
+    getRevokeFee,
+  } from "$lib/web3/migration";
   import { describeFailure, isDeclinedInWallet } from "$lib/transactions";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
@@ -182,8 +186,20 @@
   /** @type {"" | "in-block" | "signing"} */
   let revoking = "";
 
-  /** @type {"form" | "result" | "review"} */
+  /** @type {"form" | "result" | "review" | "revoke"} */
   let step = "form";
+
+  /**
+   * About what the revoke reviewed costs in network fees, once estimated,
+   * and what the wallet holds to pay them: undefined until it's read, null
+   * where it couldn't be.
+   *
+   * @type {{ balance: bigint | null | undefined, fee: bigint | null }}
+   */
+  let revokeFees = { balance: undefined, fee: null };
+
+  /** How many times they were read: only the last answer counts. */
+  let revokeFeeReads = 0;
 
   /** Where a migration that was sent is. */
   /** @type {"" | "approving" | "confirming" | "migrating"} */
@@ -321,7 +337,11 @@
     }
   }
 
-  /** Asks the wallet to take back what the contract may take: a transaction. */
+  /**
+   * Asks the wallet to take back what the contract may take, as reviewed: a
+   * transaction. Done, or for another account, back to the form; refused or
+   * failed, the review stays, saying so.
+   */
   async function revoke() {
     const owner = /** @type {`0x${string}`} */ (address);
 
@@ -339,19 +359,112 @@
       });
 
       note = "The approval is revoked.";
+      leaveRevokeReview();
     } catch (error) {
-      note =
-        /** @type {{ code?: string }} */ (error)?.code === EVM_ACCOUNT_CHANGED
-          ? ACCOUNT_CHANGED_NOTE
-          : isDeclinedInWallet(error)
-            ? "You cancelled the revoke in your wallet. The approval stands."
-            : "The approval wasn't revoked. Check your EVM wallet's activity before you try again.";
+      const isOtherAccount =
+        /** @type {{ code?: string }} */ (error)?.code === EVM_ACCOUNT_CHANGED;
+
+      note = isOtherAccount
+        ? ACCOUNT_CHANGED_NOTE
+        : isDeclinedInWallet(error)
+          ? "You cancelled the revoke in your wallet. The approval stands."
+          : "The approval wasn't revoked. Check your EVM wallet's activity before you try again.";
+
+      if (isOtherAccount) {
+        leaveRevokeReview();
+      }
     } finally {
       revoking = "";
 
       if (!left) {
-        readOpenApproval(step === "form" ? address : undefined);
+        readOpenApproval(
+          step === "form" || step === "revoke" ? address : undefined
+        );
       }
+    }
+  }
+
+  /** What the revoke reviewed costs, and what the wallet holds to pay it. */
+  function readRevokeFees() {
+    const read = ++revokeFeeReads;
+    const owner = /** @type {`0x${string}`} */ (address);
+
+    revokeFees = { balance: undefined, fee: null };
+    getNativeBalance(owner, route.chain.chainId).then(
+      (wei) => {
+        if (read === revokeFeeReads) {
+          revokeFees = { ...revokeFees, balance: wei };
+        }
+      },
+      () => {
+        if (read === revokeFeeReads) {
+          revokeFees = { ...revokeFees, balance: null };
+        }
+      }
+    );
+    getRevokeFee({
+      chainId: route.chain.chainId,
+      migrationContract: route.contract,
+      owner,
+      stableCoinAddress: /** @type {`0x${string}`} */ (route.chain.token),
+    }).then(
+      (wei) => {
+        if (read === revokeFeeReads) {
+          revokeFees = { ...revokeFees, fee: wei };
+        }
+      },
+      () => {}
+    );
+  }
+
+  function reviewRevoke() {
+    note = "";
+    reviewedFor = address;
+    step = "revoke";
+    readRevokeFees();
+  }
+
+  /** The revoke's review: a step of its own in the history, as a migration's. */
+  function goToRevokeReview() {
+    if (!$page.state?.routeRevoke) {
+      pushState("", { routeRevoke: true });
+    }
+
+    reviewRevoke();
+  }
+
+  /**
+   * Back to the form from the revoke's review, its step in the history gone
+   * with it. Once this screen is gone, as a revoke sent from it ends, it moves
+   * the history no more: the step there may be a newer screen's review.
+   */
+  function leaveRevokeReview() {
+    if ($page.state?.routeRevoke && !left) {
+      history.back();
+    }
+
+    if (step === "revoke") {
+      step = "form";
+    }
+  }
+
+  /**
+   * The step a phone's Back or Forward takes a revoke's review to: a review
+   * only of an approval still open, with its wallet.
+   *
+   * @param {boolean} isAtRevoke
+   */
+  function followRevokeHistory(isAtRevoke) {
+    if (step === "revoke" && !isAtRevoke) {
+      step = "form";
+    } else if (
+      step === "form" &&
+      isAtRevoke &&
+      hasOpenApproval &&
+      isConnected &&
+      !revoking
+    ) {
+      reviewRevoke();
     }
   }
 
@@ -584,8 +697,11 @@
   $: ({ address, chainId, isConnected } = $account);
   $: follow(isConnected ? address : undefined, chainId);
   $: followHistory(Boolean($page.state?.routeReview));
+  $: followRevokeHistory(Boolean($page.state?.routeRevoke));
   $: readOpenApproval(
-    step === "form" && isConnected && chainId === route.chain.chainId
+    (step === "form" || step === "revoke") &&
+      isConnected &&
+      chainId === route.chain.chainId
       ? address
       : undefined
   );
@@ -655,6 +771,19 @@
     note = ACCOUNT_CHANGED_NOTE;
     leaveReview();
   }
+  // The same for a revoke's, unless it's on its way: what it ran into says.
+  $: if (step === "revoke" && !revoking && !isConnected) {
+    leaveRevokeReview();
+  }
+  $: if (
+    step === "revoke" &&
+    !revoking &&
+    isConnected &&
+    address !== reviewedFor
+  ) {
+    note = ACCOUNT_CHANGED_NOTE;
+    leaveRevokeReview();
+  }
 </script>
 
 {#if step === "form"}
@@ -691,8 +820,7 @@
             />
           {/if}
           <Button
-            confirm
-            on:click={revoke}
+            on:click={goToRevokeReview}
             size="small"
             text="Revoke"
             variant="tertiary"
@@ -1012,6 +1140,119 @@
       {/if}
     </div>
   </div>
+{:else if step === "revoke"}
+  <div class="route-review">
+    <h2 class="route-review__title" tabindex="-1" use:takeFocus>Review</h2>
+    {#if note}
+      <p class="route-note" role="alert">{note}</p>
+    {/if}
+    <ReviewWallet />
+    <!-- Hidden with the balances, as the form before it hides it. -->
+    <ReviewAmount
+      label="Approved now"
+      {unit}
+      value={openApproval === undefined
+        ? "…"
+        : openApproval >= NO_LIMIT
+          ? "Any amount of"
+          : hideBalances
+            ? BALANCE_MASK
+            : approvalText(openApproval)}
+    />
+    <dl class="route-review__ends">
+      <div>
+        <dt>From</dt>
+        <dd>
+          <span>{chainName}</span>
+          <FullAddress address={address ?? ""} />
+        </dd>
+      </div>
+      <div>
+        <dt>Steps</dt>
+        <dd>Revoke, in your wallet: nothing moves</dd>
+      </div>
+      <div>
+        <dt>After it</dt>
+        <dd>The migration contract can take no {unit} from this wallet.</dd>
+      </div>
+      <div>
+        <dt>Network fees</dt>
+        <dd>
+          {typeof revokeFees.balance === "bigint"
+            ? revokeFees.fee
+              ? `About ${feeText(revokeFees.fee)} ${feeUnit}, from your ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit}`
+              : `You have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit} for them`
+            : `On ${chainName}, as your wallet shows`}
+        </dd>
+      </div>
+    </dl>
+    <details class="route-review__check">
+      <summary>Addresses to check</summary>
+      <dl class="route-review__ends">
+        <div>
+          <dt>Network</dt>
+          <dd>{chainName}, chain ID {route.chain.chainId}</dd>
+        </div>
+        <div>
+          <dt>Migration contract</dt>
+          <dd><FullAddress address={route.contract} /></dd>
+        </div>
+        <div>
+          <dt>Token</dt>
+          <dd>
+            <span>{unit}</span>
+            <FullAddress address={route.chain.token ?? ""} />
+          </dd>
+        </div>
+      </dl>
+      <p class="route-review__public">
+        <b>Public on {chainName}:</b> your {chainName} address, and that it revokes
+        its approval.
+      </p>
+    </details>
+    {#if revoking}
+      <p role="status">
+        {revoking === "signing"
+          ? "Revoke in your wallet"
+          : `Waiting for ${chainName}…`}
+      </p>
+    {/if}
+    <div class="route-review__actions">
+      <Button
+        icon={{ path: mdiArrowLeft }}
+        on:click={() => {
+          note = "";
+          leaveRevokeReview();
+        }}
+        text="Back"
+        variant="secondary"
+      />
+      {#if revokeFees.balance === 0n}
+        <Button
+          disabled
+          text={`No ${feeUnit} for the network fee`}
+          variant="primary"
+        />
+      {:else if chainId === route.chain.chainId}
+        <Button
+          confirm
+          disabled={Boolean(revoking) || !isConnected}
+          on:click={revoke}
+          text="Revoke in your wallet"
+          variant="primary"
+        />
+      {:else}
+        <Button
+          disabled={$isAskingToSwitch}
+          on:click={() => askToSwitch(route.chain.chainId)}
+          text={$isAskingToSwitch
+            ? `Switching to ${chainName}…`
+            : `Switch to ${chainName}`}
+          variant="primary"
+        />
+      {/if}
+    </div>
+  </div>
 {:else}
   <div class="route-result" role="status" tabindex="-1" use:takeFocus>
     <OperationResult
@@ -1070,6 +1311,18 @@
     summary {
       cursor: pointer;
       padding-block: 0.25em;
+    }
+  }
+
+  /*
+   * A thumb's, on a phone held either way, as the buttons around it: its
+   * marker stays.
+   */
+  @media (max-width: 30rem), (pointer: coarse) {
+    .route-review__check summary {
+      box-sizing: border-box;
+      min-height: 44px;
+      padding-block: calc((44px - 1lh) / 2);
     }
   }
 

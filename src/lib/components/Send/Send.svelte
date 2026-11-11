@@ -35,8 +35,9 @@
     reviewStep,
   } from "$lib/navigation";
   import { sentAlready } from "@dusk-network/app-core/requests";
+  import { keepWaiting, sendGate } from "$lib/transactions";
   import { onTheirWay } from "$lib/activity/sends";
-  import { dayLabel, timeLabel } from "$lib/activity/present";
+  import { paidInSentence } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
   import { readPaymentLink } from "$lib/payment-requests";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
@@ -80,7 +81,7 @@
     TransactionResult,
   } from "$lib/components";
 
-  /** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint, toName?: string) => Promise<string>} */
+  /** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint, toName?: string, gate?: import("$lib/transactions/sendGate").SendGate) => Promise<string>} */
   export let execute;
 
   /** @type {(name: string) => Promise<DuskNameResolution>} */
@@ -249,9 +250,10 @@
   let step = "form";
 
   /**
-   * The transfer once sent, and the most it can cost.
+   * The transfer once sent, the most it can cost, and what calls it off
+   * until it goes out.
    *
-   * @type {{ maxFee: bigint, memo: string, operation: Promise<string>, what: string } | null}
+   * @type {{ gate: import("$lib/transactions/sendGate").SendGate, maxFee: bigint, memo: string, operation: Promise<string>, what: string } | null}
    */
   let sent = null;
 
@@ -814,32 +816,31 @@
    */
   function send() {
     const toName = recipientName ? nameLookup?.name : undefined;
+    const gate = sendGate();
+    const what = `${hideBalances ? BALANCE_MASK : amountText} DUSK to ${recipientLabel}`;
 
     // It goes out now, as far as a reload can tell: nothing brings it back.
     draft.clear();
 
-    const operation = toName
-      ? execute(
-          recipientAddress,
-          sendAmountInLux,
-          transactionMemo,
-          gasPrice,
-          gasLimit,
-          toName
-        )
-      : execute(
-          recipientAddress,
-          sendAmountInLux,
-          transactionMemo,
-          gasPrice,
-          gasLimit
-        );
+    const operation = execute(
+      recipientAddress,
+      sendAmountInLux,
+      transactionMemo,
+      gasPrice,
+      gasLimit,
+      toName,
+      gate
+    );
 
+    // Until it goes out, Home says it waits, wherever the wallet is, its
+    // amount as balances are shown there.
+    keepWaiting({ gate, lux: sendAmountInLux, operation, to: recipientLabel });
     sent = {
+      gate,
       maxFee: maxGasFee,
       memo: transactionMemo,
       operation,
-      what: `${hideBalances ? BALANCE_MASK : amountText} DUSK to ${recipientLabel}`,
+      what,
     };
     step = "done";
     // From its top, as the review shows: a phone on its side shows little.
@@ -1368,22 +1369,19 @@
   }
 
   /**
-   * When something went, from now: "at 21:16", "yesterday at 21:16" or "on
-   * Thu 5 Nov at 21:16".
+   * The same payment, made already, in a sentence: when a block took it, to
+   * the second, as the request it paid and its Sent screen say it, or that
+   * it's on its way: its time is a block's, once one has it.
    *
-   * @param {number} time
-   * @param {string} locale
+   * @param {ActivityRow} row
+   * @param {Parameters<typeof paymentOf>[1]} known
    */
-  function whenSent(time, locale) {
-    const day = dayLabel(time, { locale });
-    const at = `at ${timeLabel(time, locale)}`;
-
-    return day === "Today"
-      ? at
-      : day === "Yesterday"
-        ? `yesterday ${at}`
-        : `on ${day} ${at}`;
-  }
+  const sentBefore = (row, known) =>
+    `You sent ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}${
+      row.status === "executed" && row.time !== null
+        ? ` ${paidInSentence(row.time, known.locale)}.`
+        : ". It's on its way."
+    }`;
 
   /**
    * A payment sent, in a line: "0.01 DUSK to Profile 2", nothing of the
@@ -1434,6 +1432,7 @@
 
 {#if step === "done" && sent}
   <TransactionResult
+    gate={sent.gate}
     maxFee={sent.maxFee}
     memo={sent.memo}
     onRetry={tryAgain}
@@ -2103,7 +2102,7 @@
         <Banner
           className="send__again"
           role="alert"
-          title={`You sent ${paymentOf(madeAgain, known)}${madeAgain.memo?.trim() ? " with this memo" : ""} ${whenSent(madeAgain.time, language)}.`}
+          title={sentBefore(madeAgain, known)}
           variant="warning"
         />
       {/if}

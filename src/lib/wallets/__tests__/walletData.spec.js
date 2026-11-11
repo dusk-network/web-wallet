@@ -9,6 +9,10 @@ import {
   putLocalTransaction,
   putShieldedHistoryRecord,
 } from "$lib/activity/activityStore";
+import {
+  addExportAddress,
+  exportAddresses,
+} from "$lib/activity/exportAddresses";
 import { rememberDepositTransaction } from "$lib/bridge/depositActivityStorage";
 import {
   keptMigrations,
@@ -79,6 +83,10 @@ async function keepDataOf(wallet) {
   });
   rememberDepositTransaction("aa".repeat(32), { account: null });
   rememberMigration(migration);
+  addExportAddress(
+    wallet.account,
+    `0x${wallet.key === "one" ? "11" : "22"}${"ab".repeat(19)}`
+  );
   keepVerifiedName("testnet", wallet.account, `${wallet.key}.dusk`);
   await openContacts({ account: wallet.account, seed: wallet.seed });
   saveContact({ address: "somewhere", name: `Friend of ${wallet.key}` });
@@ -117,6 +125,7 @@ async function dataOf(wallet) {
         "[]"
     ).length,
     entries: (await listActivityEntries(`testnet::${wallet.account}`)).length,
+    exportAddresses: get(exportAddresses)[wallet.account]?.length ?? 0,
     local: (await listLocalTransactions(`testnet::${wallet.account}`)).length,
     migrations: get(keptMigrations).length,
     name: getVerifiedName("testnet", wallet.account),
@@ -131,6 +140,7 @@ const allOf = (/** @type {typeof ONE} */ wallet) => ({
   contacts: [`Friend of ${wallet.key}`],
   deposits: 1,
   entries: 1,
+  exportAddresses: 1,
   local: 1,
   migrations: 1,
   name: `${wallet.key}.dusk`,
@@ -142,6 +152,7 @@ const NONE = {
   contacts: [],
   deposits: 0,
   entries: 0,
+  exportAddresses: 0,
   local: 0,
   migrations: 0,
   name: "",
@@ -225,12 +236,15 @@ describe("Each wallet's data", () => {
     await forgetOtherWalletsData();
 
     expect(localStorage.getItem(`${APP}-migrations:two`)).toBeNull();
+    expect(localStorage.getItem(`${APP}-export-evm:two`)).toBeNull();
     expect(await databases()).not.toContain(`${CACHE}:two`);
     expect(localStorage.getItem(`${APP}-migrations`)).not.toBeNull();
+    expect(localStorage.getItem(`${APP}-export-evm`)).not.toBeNull();
 
     await forgetEveryWalletData();
 
     expect(localStorage.getItem(`${APP}-migrations`)).toBeNull();
+    expect(localStorage.getItem(`${APP}-export-evm`)).toBeNull();
     expect((await walletCacheFor("").getSyncInfo()).block.hash).toBe("");
   });
 

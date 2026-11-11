@@ -22,6 +22,7 @@ import {
   NAME_HIDES,
   lookAlikes,
   nameClash,
+  nameStarts,
   profileNameClash,
   nameHides,
 } from "@dusk-network/app-core/names";
@@ -600,14 +601,17 @@ export const contactNameText = (name) =>
 /**
  * What's wrong with a name for a contact: one with what can't be seen in it
  * (app-core's `nameHides`) is refused, as it can read as another name. By
- * app-core's look-alikes, one that is, or looks like, a profile's here is
- * refused, as a review would read the contact as that profile; one of
- * another contact's, whatever its capitals, spaces and punctuation, or in
- * other letters, is said with that contact's address, and can be saved.
- * Null for neither.
+ * app-core's look-alikes, one that is, or looks like, a profile's here, by
+ * its name or its `.dusk` name, is refused, as a review would read the
+ * contact as that profile; one of another contact's, whatever its capitals,
+ * spaces and punctuation, or in other letters, is said with that contact's
+ * address, and can be saved. One that starts as a profile's name, or that a
+ * profile's starts as, word for word, is asked about, and can be saved.
+ * Null for none of it.
  *
  * @param {string} name
- * @param {{ address: string, name: string }[]} profiles The profiles here
+ * @param {{ address: string, duskName?: string, name: string }[]} profiles
+ *   The profiles here
  * @param {string} [exceptId] The contact changed
  * @returns {{ refused: boolean, words: string } | null}
  */
@@ -627,20 +631,29 @@ export function contactNameProblem(name, profiles, exceptId) {
       refused: true,
       words: `${
         clash.same
-          ? `One of your profiles is called ${contactNameText(clash.entry.name)}`
-          : `That looks like ${contactNameText(clash.entry.name)}, one of your profiles`
+          ? `One of your profiles is called ${contactNameText(clash.name)}`
+          : `That looks like ${contactNameText(clash.name)}, one of your profiles`
       }. Choose another name.`,
     };
   }
 
-  return clash
+  if (clash) {
+    return {
+      refused: false,
+      words: `${
+        clash.same
+          ? `You already have a contact called ${contactNameText(clash.name)}`
+          : `That looks like your contact ${contactNameText(clash.name)}`
+      }, at ${shortenAddress(clash.entry.address)}. Only the address will tell them apart.`,
+    };
+  }
+
+  const start = nameStarts(name, { profiles });
+
+  return start
     ? {
         refused: false,
-        words: `${
-          clash.same
-            ? `You already have a contact called ${contactNameText(clash.entry.name)}`
-            : `That looks like your contact ${contactNameText(clash.entry.name)}`
-        }, at ${shortenAddress(clash.entry.address)}. Only the address will tell them apart.`,
+        words: `One of your profiles is called ${contactNameText(start.name)}. Is this someone else?`,
       }
     : null;
 }
@@ -667,7 +680,8 @@ export function profileNameProblem(name, profiles, self) {
     profiles,
     self,
   });
-  const other = clash ? contactNameText(String(clash.entry.name)) : "";
+  // The name it's like: another profile's own, or its `.dusk` name.
+  const other = clash ? contactNameText(String(clash.name)) : "";
 
   return !clash
     ? null
@@ -678,6 +692,23 @@ export function profileNameProblem(name, profiles, self) {
       : clash.same
         ? `You have a contact called ${other}. Choose another name.`
         : `That looks like your contact ${other}. Choose another name.`;
+}
+
+/**
+ * What to ask of a name for a profile that a contact's name starts as, or
+ * starts as a contact's, word for word, as app-core's `nameStarts` reads it:
+ * whether it's someone else. It can be saved. Null for none.
+ *
+ * @param {string} name
+ * @param {string} self The public account of the profile named
+ * @returns {string | null}
+ */
+export function profileNameQuestion(name, self) {
+  const start = nameStarts(name, { contacts: listContacts(), self });
+
+  return start
+    ? `You have a contact called ${contactNameText(start.name)}. Is this someone else?`
+    : null;
 }
 
 /**

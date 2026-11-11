@@ -17,7 +17,7 @@ import {
   formatDuskExact,
   formatDuskPlain,
 } from "$lib/dusk/currency";
-import { timeLabel } from "$lib/activity/present";
+import { paidInSentence, timeLabel } from "$lib/activity/present";
 import { BALANCE_MASK } from "$lib/constants";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { shortenAddress } from "$lib/dusk/string";
@@ -151,6 +151,12 @@ vi.mock("$lib/wallet/isShieldedAddress", async (importOriginal) => {
   };
 });
 
+/** A send that can be called off until it goes out, as Send gives each. */
+const aGate = expect.objectContaining({
+  cancel: expect.any(Function),
+  handOver: expect.any(Function),
+});
+
 describe("Send", () => {
   const lastTxId =
     "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
@@ -159,7 +165,7 @@ describe("Send", () => {
   const shieldedAddress =
     "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnMM";
   const otherAccount =
-    "aTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE5FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
+    "25z9o6qCaVk1ReyHjmB4pyXcE3D1vRu4FVV1rR8ChYcosdTSktkANLDHq9GD6B4985Q1S2KrDZYBRrohWAjrNmACFUb3UMSRyYctJRzh3d28R1ZNC1ZyKm1HwXL4FF5Etftt";
   const otherShielded =
     "4ozNeBzeQq5XZGoMYTBKfSG9pmPBa4UWxbfHV3BSDtgeMMz2Xw8oZgVAhN16yC94CUQkg7iAe8fpQT4CsF41iKy6";
 
@@ -284,7 +290,9 @@ describe("Send", () => {
           150_000_000n,
           "Factura 33",
           gasPrice,
-          gasLimit
+          gasLimit,
+          undefined,
+          aGate
         );
       }
     );
@@ -401,7 +409,9 @@ describe("Send", () => {
         150_000_000n,
         "Factura 33",
         gasPrice,
-        gasLimit
+        gasLimit,
+        undefined,
+        aGate
       );
     });
 
@@ -460,6 +470,16 @@ describe("Send", () => {
         "a link to the web wallet's Send without a recipient",
         `https://apps.testnet.dusk.network/wallet/dashboard/send?amount=1`,
         "This link doesn't say who to pay. Ask for a new one.",
+      ],
+      [
+        "a dusk:shielded- link to a public account",
+        `dusk:shielded-${otherAccount}?amount=0.001`,
+        "This link asks for a shielded payment to a public account. Ask for a new one.",
+      ],
+      [
+        "a dusk: link with a # after it, which can say more than it shows",
+        `dusk:${otherAccount}?amount=0.001#to=${bep20BridgeAddress}`,
+        "That link can't be read. Ask for a new one.",
       ],
     ])("should say why %s can't be read", async (_, value, words) => {
       const { getByRole, getByText } = render(Send, baseProps);
@@ -1168,7 +1188,9 @@ describe("Send", () => {
           max,
           expect.anything(),
           expect.anything(),
-          expect.anything()
+          expect.anything(),
+          undefined,
+          aGate
         );
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -1204,7 +1226,9 @@ describe("Send", () => {
           12_000_000n,
           "Refund: Factura 43",
           expect.anything(),
-          expect.anything()
+          expect.anything(),
+          undefined,
+          aGate
         );
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -1745,7 +1769,7 @@ describe("Send", () => {
       }
     });
 
-    it("should warn of the same payment made moments ago, or with the same memo before, and let it go all the same, the button saying Send again", async () => {
+    it("should warn of the same payment made moments ago, or with the same memo before, when to the second, and let it go all the same, the button saying Send again", async () => {
       const sent = Date.now() - 20_000;
       const { getByRole } = render(Send, {
         ...baseProps,
@@ -1754,8 +1778,13 @@ describe("Send", () => {
         initialRecipient: otherAccount,
       });
 
+      // When a block took it, to the second, as its request and its Sent
+      // screen say it.
       expect(getByRole("alert")).toHaveTextContent(
-        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} at ${timeLabel(sent, "en")}.`
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} ${paidInSentence(sent, "en")}.`
+      );
+      expect(getByRole("alert")).toHaveTextContent(
+        /DUSK to \S+ today, \d{1,2}:\d{2}:\d{2}/
       );
 
       // It can be meant: it goes, as the button says.
@@ -1838,7 +1867,24 @@ describe("Send", () => {
       });
 
       expect(request.getByRole("alert")).toHaveTextContent(
-        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo on Thu 29 Oct at ${timeLabel(paid, "en")}.`
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo ${paidInSentence(paid, "en")}.`
+      );
+      expect(request.getByRole("alert")).toHaveTextContent(
+        /with this memo on 29 Oct, \d{1,2}:30:00/
+      );
+      cleanup();
+
+      // Still on its way, in no block: no time a block's would change.
+      const onItsWay = render(Send, {
+        ...baseProps,
+        historyRows: [sentRow({ memo: "Factura 044", status: "pending" })],
+        initialAmount: "0.0019",
+        initialMemo: "Factura 044",
+        initialRecipient: otherAccount,
+      });
+
+      expect(onItsWay.getByRole("alert")).toHaveTextContent(
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It's on its way.`
       );
     });
   });
@@ -1983,7 +2029,9 @@ describe("Send", () => {
         duskToLux(amount),
         "",
         gasPrice,
-        gasLimit
+        gasLimit,
+        undefined,
+        aGate
       );
       // The result from its top, where its state and the offer to be told
       // when it arrives are, wherever the review was scrolled to: also once
@@ -2141,7 +2189,7 @@ describe("Send", () => {
 
       // Sent, at its block's time.
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(blockTime, "en")} 567 DUSK to ${shortenAddress(shieldedAddress)} In block 4,687,200.`
+        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} 567 DUSK to ${shortenAddress(shieldedAddress)} In block 4,687,200.`
       );
       // The fee charged, to the last digit.
       expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
@@ -2162,7 +2210,9 @@ describe("Send", () => {
         duskToLux(1),
         "",
         gasPrice,
-        30_000_000n
+        30_000_000n,
+        undefined,
+        aGate
       );
     });
 
@@ -2187,7 +2237,9 @@ describe("Send", () => {
         duskToLux(amount),
         memo,
         gasPrice,
-        gasLimit
+        gasLimit,
+        undefined,
+        aGate
       );
       expect(getByText("Sending…")).toBeInTheDocument();
     });
@@ -2217,7 +2269,9 @@ describe("Send", () => {
         duskToLux(amount),
         evmAddress,
         gasPrice,
-        gasLimit
+        gasLimit,
+        undefined,
+        aGate
       );
     });
 
@@ -2293,7 +2347,9 @@ describe("Send", () => {
           duskToLux(2),
           "Invoice 118",
           gasPrice,
-          gasLimit
+          gasLimit,
+          undefined,
+          aGate
         );
         expect(getByRole("status")).toHaveTextContent(/^Sending… 2 DUSK/);
       });
@@ -2593,7 +2649,8 @@ describe("Send", () => {
         "",
         gasPrice,
         gasLimit,
-        "alice.dusk"
+        "alice.dusk",
+        aGate
       );
     });
 
@@ -2630,7 +2687,8 @@ describe("Send", () => {
         "",
         gasPrice,
         gasLimit,
-        "alice.dusk"
+        "alice.dusk",
+        aGate
       );
     });
 
@@ -2723,7 +2781,8 @@ describe("Send", () => {
         "",
         gasPrice,
         gasLimit,
-        "alice.dusk"
+        "alice.dusk",
+        aGate
       );
     });
 

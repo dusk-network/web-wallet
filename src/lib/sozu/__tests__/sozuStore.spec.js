@@ -203,6 +203,51 @@ describe("sozuStore", () => {
     sozuStore.reset();
   });
 
+  it("should say it couldn't be read while it's read again, until a read gets through", async () => {
+    const { default: sozuStore } = await import("../sozuStore");
+    const { get } = await import("svelte/store");
+    const held = /** @type {SozuStatus} */ (
+      /** @type {unknown} */ ({
+        contracts: { pool: "a" },
+        position: { balance: 2_747_200_000n, stDusk: 864_521_348n },
+      })
+    );
+
+    sozuStore.reset();
+    readSozuStatus.mockRejectedValueOnce(new Error("timed out"));
+    await sozuStore.load();
+
+    expect(get(sozuStore).error).toBeInstanceOf(Error);
+
+    // Try again, as the node is still silent: it couldn't be read, and it's
+    // being read again, until that read fails too.
+    const silent = Promise.withResolvers();
+
+    readSozuStatus.mockImplementationOnce(() => silent.promise);
+
+    const again = sozuStore.load({ force: true });
+
+    expect(get(sozuStore)).toMatchObject({
+      error: expect.any(Error),
+      loading: true,
+    });
+
+    silent.reject(new Error("timed out"));
+    await again;
+
+    expect(get(sozuStore)).toMatchObject({
+      error: expect.any(Error),
+      loading: false,
+    });
+
+    // Read at last.
+    readSozuStatus.mockResolvedValueOnce(held);
+    await sozuStore.load({ force: true });
+
+    expect(get(sozuStore)).toMatchObject({ error: null, status: held });
+    sozuStore.reset();
+  });
+
   describe("with a read along the balances and one of its own at once", () => {
     /** @param {bigint} balance */
     const held = (balance) =>

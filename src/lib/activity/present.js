@@ -236,6 +236,38 @@ function titleOf(row, icon, context) {
 }
 
 /**
+ * The `.dusk` name a row names its other side by, as History says it after a
+ * contact's name: the one verified for it, or else the one typed for it as
+ * it was sent to; null for none.
+ *
+ * @param {ActivityRow} row
+ * @returns {string | null}
+ */
+const duskNameOf = (row) => row.counterpartyName ?? row.toName ?? null;
+
+/**
+ * The `.dusk` names the history names its counterparties by, as History does,
+ * by their addresses: the newest row's.
+ *
+ * @param {ActivityRow[]} rows The history, newest first
+ * @returns {Map<string, string>}
+ */
+export function historyDuskNames(rows) {
+  /** @type {Map<string, string>} */
+  const names = new Map();
+
+  for (const row of rows) {
+    const name = duskNameOf(row);
+
+    if (row.counterparty && name && !names.has(row.counterparty)) {
+      names.set(row.counterparty, name);
+    }
+  }
+
+  return names;
+}
+
+/**
  * What a row's other side is called: the contact's name, with its `.dusk`
  * name after it, the verified `.dusk` name, what the wallets here call a
  * profile of theirs, or its route's label; "" for none.
@@ -245,7 +277,7 @@ function titleOf(row, icon, context) {
  */
 function nameOf(row, { contactNames, net, walletNames }) {
   const { counterparty } = row;
-  const name = row.counterpartyName ?? row.toName;
+  const name = duskNameOf(row);
   const contact = counterparty ? contactNames?.get(counterparty) : undefined;
 
   if (contact && name) {
@@ -599,12 +631,13 @@ export function groupByDay(items, timeOf, options) {
 
 /**
  * The time of day, on the locale's clock, with English words: "14:32", or
- * "2:32 PM".
+ * "2:32 PM"; to the second with `seconds`, "14:32:05".
  *
  * @param {number} time
  * @param {string} locale
+ * @param {{ seconds?: boolean }} [options]
  */
-export function timeLabel(time, locale) {
+export function timeLabel(time, locale, { seconds = false } = {}) {
   const { english, hourCycle, numberingSystem } = clockOf(locale);
   const h24 = hourCycle === "h23" || hourCycle === "h24";
 
@@ -613,15 +646,36 @@ export function timeLabel(time, locale) {
     hourCycle,
     minute: "2-digit",
     numberingSystem,
+    ...(seconds ? { second: "2-digit" } : {}),
   }).format(time);
 }
 
 /**
  * A full date and time with its time zone, in English on the locale's
- * clock: "Mon 26 Oct 2026, 14:32 CET".
+ * clock: "Mon 26 Oct 2026, 14:32 CET"; to the second with `seconds`.
+ *
+ * @param {number} time
+ * @param {string} locale
+ * @param {{ seconds?: boolean }} [options]
+ */
+export const fullDateTime = (time, locale, { seconds = false } = {}) =>
+  formatTime(time, { date: "full", locale: locale || undefined, seconds });
+
+/**
+ * When a payment was made, to the second, as a sentence says it after what
+ * was paid: "today, 16:42:05 SGT", "yesterday, …" or "on 5 Nov, …". Two in
+ * the same minute read apart, as a request's payments do.
  *
  * @param {number} time
  * @param {string} locale
  */
-export const fullDateTime = (time, locale) =>
-  formatTime(time, { date: "full", locale: locale || undefined });
+export function paidInSentence(time, locale) {
+  const label = formatTime(time, {
+    locale: locale || undefined,
+    seconds: true,
+  });
+
+  return /^(Today|Yesterday),/.test(label)
+    ? `${label.charAt(0).toLowerCase()}${label.slice(1)}`
+    : `on ${label}`;
+}
