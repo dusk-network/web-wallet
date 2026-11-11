@@ -23,7 +23,7 @@
   import { peekPlace } from "$lib/navigation";
   import {
     LINK_BAD_ADDRESS,
-    REQUEST_FIELDS,
+    asksPayment,
     elsewhereLink,
     inFirefox,
     isBrokenAddress,
@@ -63,9 +63,7 @@
     : null;
   const asked = link?.form === "https" && link.to ? link : null;
   // A request, by its fields, whether or not it can be read.
-  const isRequest =
-    Boolean(opened) &&
-    REQUEST_FIELDS.some((field) => new URL(opened).searchParams.has(field));
+  const isRequest = asksPayment(place);
 
   // The name the account it pays goes by, as the chain says: none for a
   // shielded address, or where the lookup fails.

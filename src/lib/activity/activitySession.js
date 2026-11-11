@@ -548,6 +548,11 @@ export class ActivitySession {
     };
   }
 
+  /** The archive the history is read from: for what else the chain says of it. */
+  get archive() {
+    return archiveAt(this.options.nodeUrl);
+  }
+
   /**
    * What each stake and unstake with Sozu in `rows` did, from the pool's event
    * in its transaction, read once.

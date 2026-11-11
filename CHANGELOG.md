@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offer to tell when a send arrives on its Sent screen, as the Bridge's do, and tell it from wherever the wallet is
 - Offer a request for another network on that network's wallet, before an unlock and on Send
 - Say which EVM addresses the export has the network fees of migrations from, and add one for the file
-- Show staking rewards by calendar year beside History's export, native and Sozu's, in DUSK and in the wallet's currency where asked
+- Show staking rewards by calendar year beside History's export: native claimed, and Sozu's grown while held and taken out by unstaking, in DUSK and in the wallet's currency where asked
 
 ### Changed
 
@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Title the page a payment request opens on before a wallet is "Payment request", also while it connects, not "Dusk Wallet" as the wallet's own tabs
+- Ask "Is that 1 or 1000?" of an amount that could be either, never with "1.000" for one, which reads as a thousand in German
 - Count the approval a migration spent in its gas under Bridge › Activity, as its chain says, and write both in the accounting export
 - List approvals and revokes no migration spent under Bridge › Activity, with their gas, and write it in the accounting export
 - Give Sozu's yearly rate from how its stDUSK grew over the last 30 days, read on the chain, the same on its form and on Stake

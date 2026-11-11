@@ -32,15 +32,7 @@ export {
   requestsStore,
 } from "./requests";
 
-/** What an address of Send has for it to be a request. */
-export const REQUEST_FIELDS = Object.freeze([
-  "amount",
-  "amountLux",
-  "label",
-  "memo",
-  "network",
-  "to",
-]);
+export { REQUEST_FIELDS, asksPayment } from "./asked";
 
 /**
  * This web wallet's own address: its Send is read on any network, and links

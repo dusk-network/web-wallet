@@ -5,9 +5,9 @@
     arrivalTitle,
     followNotificationClicks,
   } from "$lib/bridge/arrivalNotice";
-  import { pageName } from "$lib/containers/Shell/navigation";
+  import { tabTitle } from "$lib/containers/Shell/navigation";
   import { settingsStore } from "$lib/stores";
-  import { goto, logout } from "$lib/navigation";
+  import { goto, logout, peekPlace } from "$lib/navigation";
   import { Toast, Tooltip } from "$lib/dusk/components";
 
   import "../style/main.css";
@@ -22,8 +22,8 @@
   // the wallet locked since, the unlock goes on to it.
   onMount(() => followNotificationClicks((href) => goto(href)));
 
-  // Each page's own name, for its title.
-  $: name = pageName($page.url.pathname);
+  // Each page's own title: a payment request's page is the request's.
+  $: title = tabTitle($page.url.pathname, peekPlace());
 
   /** @param {StorageEvent} event */
   function handleStorageChange({ key, oldValue, newValue, storageArea }) {
@@ -56,11 +56,7 @@
 <svelte:window on:storage={handleStorageChange} />
 
 <svelte:head>
-  <title
-    >{$arrivalTitle ? `${$arrivalTitle} · ` : ""}{name
-      ? `${name} · Dusk Wallet`
-      : "Dusk Wallet"}</title
-  >
+  <title>{$arrivalTitle ? `${$arrivalTitle} · ` : ""}{title}</title>
 </svelte:head>
 
 <!-- The same element around every page: one that changed with the route would

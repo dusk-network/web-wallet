@@ -29,6 +29,8 @@ const mocks = vi.hoisted(() => ({
   loadDetail: vi.fn(() => Promise.resolve()),
   showMore: vi.fn(() => Promise.resolve()),
   sozuFacts: vi.fn(() => Promise.resolve(new Map())),
+  /** @type {import("vitest").Mock<() => Promise<any>>} */
+  sozuStatus: vi.fn(async () => null),
   whole: vi.fn(),
 }));
 
@@ -96,6 +98,17 @@ vi.mock("$lib/stores", async (importOriginal) => {
         whole: mocks.whole,
       }),
     },
+  };
+});
+
+// What Sozu says the account holds now, as read for the rewards by year.
+vi.mock("$lib/sozu", async (importOriginal) => {
+  /** @type {typeof import("$lib/sozu")} */
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    sozuStore: { ...original.sozuStore, check: mocks.sozuStatus },
   };
 });
 
@@ -816,7 +829,7 @@ describe("History", () => {
           [old, "1000000000", "e1"],
           [june, "2000000000", "e2"],
           [june - 90 * 86_400_000, "10000000000", "e3"],
-          [june + 3_600_000, "10500000000", "e4"],
+          [june + 3_600_000, "5250000000", "e4"],
         ].map(([timestamp, amount, hash], i) => ({
           amount,
           blockHeight: 4_000_000 + i,
@@ -833,12 +846,21 @@ describe("History", () => {
           read.find((row) => row.hash === hash.repeat(32))
         );
       const [stake, unstake] = [rowOf("e3"), rowOf("e4")];
+      // Half a euro a DUSK at each time asked: the claim's, the unstake's, now.
       const prices = vi.fn(() =>
-        Promise.resolve(new Response(JSON.stringify({ prices: [[june, 0.5]] })))
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              prices: [june, june + 3_600_000, NOW].map((at) => [at, 0.5]),
+            })
+          )
+        )
       );
 
-      // 10 DUSK into Sozu, 0.025 of it its fee, for 5 stDUSK, all of which
-      // gave back 10.5 DUSK: 0.525 DUSK earned, taken out.
+      // Lena's: 10 DUSK into Sozu, 0.025 of it its fee, for 5 stDUSK at
+      // 1.995 DUSK each; half of them gave back 5.25 DUSK at 2.1, and the
+      // rest is worth 5.5 DUSK now, at 2.2. Grown while held: 0.775 DUSK,
+      // all Sozu says the stake earned; taken out by unstaking: 0.2625.
       mocks.whole.mockResolvedValue({
         rows: [
           rowOf("e1"),
@@ -851,11 +873,26 @@ describe("History", () => {
       mocks.sozuFacts.mockImplementation(() =>
         Promise.resolve(
           new Map([
-            [stake.hash, { fee: 25_000_000n, stDusk: 5_000_000_000n }],
-            [unstake.hash, { stDusk: 5_000_000_000n }],
+            [
+              stake.hash,
+              {
+                fee: 25_000_000n,
+                pool: { stake: 1_995n, supply: 1_000n },
+                stDusk: 5_000_000_000n,
+              },
+            ],
+            [
+              unstake.hash,
+              { pool: { stake: 21n, supply: 10n }, stDusk: 2_500_000_000n },
+            ],
           ])
         )
       );
+      mocks.sozuStatus.mockResolvedValue({
+        contracts: { pool: "ab".repeat(32) },
+        pool: { stake: 22n, supply: 10n },
+        position: { balance: 5_500_000_000n, stDusk: 2_500_000_000n },
+      });
       vi.stubGlobal("fetch", prices);
       settingsStore.update((store) => ({ ...store, currency: "EUR" }));
 
@@ -876,10 +913,21 @@ describe("History", () => {
         );
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
-            [`${year - 1}`, "1 DUSK", "0 DUSK"],
-            [`${year}`, "2 DUSK", "0.525 DUSK"],
+            [`${year - 1}`, "1 DUSK", "0 DUSK", "0 DUSK"],
+            [`${year}`, "2 DUSK", "0.775 DUSK", "0.2625 DUSK"],
           ])
         );
+        expect(
+          Array.from(
+            container.querySelectorAll(".export-panel__years thead th"),
+            (cell) => cell.textContent?.trim()
+          )
+        ).toStrictEqual([
+          "Year",
+          "Native staking, claimed",
+          "Sozu, grown while held",
+          "Sozu, taken out by unstaking",
+        ]);
         expect(prices).not.toHaveBeenCalled();
 
         await fireEvent.click(getByRole("checkbox", { name: /in euros/ }));
@@ -888,8 +936,18 @@ describe("History", () => {
         );
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
-            [`${year - 1}`, "1 DUSK · no euro value", "0 DUSK · €0.00"],
-            [`${year}`, "2 DUSK · €1.00", "0.525 DUSK · €0.26"],
+            [
+              `${year - 1}`,
+              "1 DUSK · no euro value",
+              "0 DUSK · €0.00",
+              "0 DUSK · €0.00",
+            ],
+            [
+              `${year}`,
+              "2 DUSK · €1.00",
+              "0.775 DUSK · €0.39",
+              "0.2625 DUSK · €0.13",
+            ],
           ])
         );
         // The panel stays, with no file.
@@ -904,9 +962,11 @@ describe("History", () => {
               `${year - 1}`,
               "•••• hidden DUSK · no euro value",
               "•••• hidden DUSK · •••• hidden",
+              "•••• hidden DUSK · •••• hidden",
             ],
             [
               `${year}`,
+              "•••• hidden DUSK · •••• hidden",
               "•••• hidden DUSK · •••• hidden",
               "•••• hidden DUSK · •••• hidden",
             ],
@@ -925,12 +985,23 @@ describe("History", () => {
         );
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
-            [`${year - 1}`, "1 DUSK · no Japanese yen value", "0 DUSK · ¥0"],
-            [`${year}`, "2 DUSK · ¥1", "0.525 DUSK · under ¥1"],
+            [
+              `${year - 1}`,
+              "1 DUSK · no Japanese yen value",
+              "0 DUSK · ¥0",
+              "0 DUSK · ¥0",
+            ],
+            [
+              `${year}`,
+              "2 DUSK · ¥1",
+              "0.775 DUSK · under ¥1",
+              "0.2625 DUSK · under ¥1",
+            ],
           ])
         );
       } finally {
         mocks.sozuFacts.mockImplementation(() => Promise.resolve(new Map()));
+        mocks.sozuStatus.mockResolvedValue(null);
         settingsStore.reset();
         vi.unstubAllGlobals();
       }

@@ -262,28 +262,48 @@ export async function makeExport({
 }
 
 /**
+ * What one stDUSK was worth at each new year, as read from the chain: kept
+ * while the page is, as it doesn't change.
+ */
+const newYearRates = new Map();
+
+/**
  * Staking rewards by calendar year, from the account's whole history, as the
- * file has them: native staking's claimed, and what Sozu's unstakes took out
- * beyond what their stDUSK cost, in DUSK, and in `currency` where `fiat` asks,
- * from CoinGecko's prices. Throws what to say when it can't be read.
+ * file has them: native staking's claimed; what Sozu's stDUSK grew while
+ * held, by its rate at each new year, read from the chain, and what it's
+ * worth now (`sozuStatus`); and what Sozu's unstakes took out beyond what
+ * their stDUSK cost. In DUSK, and in `currency` where `fiat` asks, from
+ * CoinGecko's prices. Throws what to say when it can't be read.
  *
  * @param {{
  *   currency: string,
  *   fiat: boolean,
- *   session: Pick<import("./activitySession").ActivitySession, "sozuFacts" | "whole">,
- * }} asked
+ *   session: Pick<import("./activitySession").ActivitySession, "sozuFacts" | "whole"> & { archive?: import("@dusk-network/app-core/history").Archive },
+ *   sozuStatus: () => Promise<SozuStatus | null>,
+ * }} asked `sozuStatus`: Sozu's, read now for the account
  */
-export async function readRewardsByYear({ currency, fiat, session }) {
+export async function readRewardsByYear({
+  currency,
+  fiat,
+  session,
+  sozuStatus,
+}) {
   const whole = await session.whole().catch(() => {
     throw new Error(
       "Couldn't read your whole history from this node. Try again."
     );
   });
-  const facts = await session.sozuFacts(whole.rows).catch(() => undefined);
+  const [facts, status] = await Promise.all([
+    session.sozuFacts(whole.rows).catch(() => undefined),
+    sozuStatus().catch(() => null),
+  ]);
   const years = await rewardsByYear({
+    archive: session.archive,
+    cache: newYearRates,
     facts,
     price: fiat ? duskPrices({ currency }) : undefined,
     rows: whole.rows,
+    status,
   });
 
   return {

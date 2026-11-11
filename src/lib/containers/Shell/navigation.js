@@ -1,4 +1,5 @@
 import { base } from "$app/paths";
+import { asksPayment } from "$lib/payment-requests/asked";
 import {
   mdiContactsOutline,
   mdiHistory,
@@ -85,6 +86,27 @@ const PAGE_NAMES = new Map([
  * @param {string} pathname
  */
 export const pageName = (pathname) => PAGE_NAMES.get(appPath(pathname)) ?? "";
+
+/** The pages that show a payment request a link asked for before a wallet opens. */
+const ASKING_PAGES = new Set(["/setup", "/unlock"]);
+
+/**
+ * A tab's title: "Payment request" on a page that shows one before a wallet
+ * opens, also while it connects, so it's told apart from the wallet's own
+ * tabs; else the page's name with the wallet's, or the wallet's alone.
+ *
+ * @param {string} pathname
+ * @param {string | null} place The page kept for the unlock (`peekPlace`)
+ */
+export function tabTitle(pathname, place) {
+  if (ASKING_PAGES.has(appPath(pathname)) && asksPayment(place)) {
+    return "Payment request";
+  }
+
+  const name = pageName(pathname);
+
+  return name ? `${name} · Dusk Wallet` : "Dusk Wallet";
+}
 
 /**
  * The tab a path is on, or null for a flow, as Send or Settings.
