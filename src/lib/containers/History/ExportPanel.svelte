@@ -31,6 +31,7 @@
     shortenAddress,
   } from "$lib/dusk/string";
   import { WalletChangedError } from "$lib/errors";
+  import { sozuStore } from "$lib/sozu";
   import { settingsStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import walletAccountNames from "$lib/wallets/accountNames";
@@ -198,6 +199,7 @@
           /** @type {NonNullable<ReturnType<typeof walletStore.startHistory>>} */ (
             walletStore.startHistory()
           ),
+        sozuStatus: () => sozuStore.check(),
       });
 
       stillOpen();
@@ -390,33 +392,28 @@
             <tr>
               <th scope="col">Year</th>
               <th scope="col">Native staking, claimed</th>
-              <th scope="col">Sozu, taken out</th>
+              <th scope="col">Sozu, grown while held</th>
+              <th scope="col">Sozu, taken out by unstaking</th>
             </tr>
           </thead>
           <tbody>
-            {#each rewards.years as { claimed, sozu, year } (year)}
-              {@const native = rewardParts(claimed, rewards.currency)}
-              {@const fromSozu = sozu && rewardParts(sozu, rewards.currency)}
+            {#each rewards.years as { claimed, sozu, sozuGrown, year } (year)}
               <tr>
                 <th scope="row">{year}</th>
-                <td>
-                  <BalanceValue value={native.dusk} /> DUSK{native.value
-                    ? " · "
-                    : ""}{#if native.value}<BalanceValue
-                      value={native.value}
-                    />{/if}{native.note}
-                </td>
-                <td>
-                  {#if fromSozu}
-                    <BalanceValue value={fromSozu.dusk} /> DUSK{fromSozu.value
-                      ? " · "
-                      : ""}{#if fromSozu.value}<BalanceValue
-                        value={fromSozu.value}
-                      />{/if}{fromSozu.note}
-                  {:else}
-                    Couldn't be read
-                  {/if}
-                </td>
+                {#each [claimed, sozuGrown, sozu] as sum, column (column)}
+                  {@const parts = sum && rewardParts(sum, rewards.currency)}
+                  <td>
+                    {#if parts}
+                      <BalanceValue value={parts.dusk} /> DUSK{parts.value
+                        ? " · "
+                        : ""}{#if parts.value}<BalanceValue
+                          value={parts.value}
+                        />{/if}{parts.note}
+                    {:else}
+                      Couldn't be read
+                    {/if}
+                  </td>
+                {/each}
               </tr>
             {/each}
           </tbody>
