@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Title the page a payment request opens on before a wallet is "Payment request", also while it connects, not "Dusk Wallet" as the wallet's own tabs
 - Count the approval a migration spent in its gas under Bridge › Activity, as its chain says, and write both in the accounting export
 - List approvals and revokes no migration spent under Bridge › Activity, with their gas, and write it in the accounting export
 - Give Sozu's yearly rate from how its stDUSK grew over the last 30 days, read on the chain, the same on its form and on Stake
