@@ -195,6 +195,27 @@ describe("ActivitySession", () => {
     });
   });
 
+  it("shows the newest transactions on a history's first sync too, as the balances read from the chain have them", async () => {
+    // A's newest, at 4658012, is in a block final for a few blocks only, as
+    // after a transfer just before a restore.
+    const node = fakeArchive({ finalized: 4_658_015 });
+    const session = sessionFor();
+
+    await session.start();
+
+    expect(session.state.rows.map((r) => r.blockHeight)).toEqual([
+      4658012, 4658000, 4657992, 4655845,
+    ]);
+    // Read in two syncs: under the blocks a first one reads to, ten under
+    // the last final block, then above them.
+    expect(
+      node
+        .historyQueries()
+        .filter((l) => l.query.includes("fromBlock: 4658006,"))
+    ).not.toHaveLength(0);
+    expect(session.state).toMatchObject({ error: null, syncing: false });
+  });
+
   it("asks for a shielded history it couldn't have yet again once the notes are synced, or a minute later", async () => {
     fakeArchive();
 

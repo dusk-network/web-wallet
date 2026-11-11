@@ -371,14 +371,21 @@ export class ActivitySession {
     }
 
     const history = await this.#publicHistory();
+    const onStep = () => {
+      this.#reload()
+        .then(() => this.#emit())
+        .catch(() => {});
+    };
+    // A history's first sync reads to some blocks under the chain's head,
+    // and the next one above them: that one follows at once, for the newest
+    // transactions, which the balances read from the chain have already.
+    const isFirst = !this.#meta?.covered?.length;
 
-    await history.sync({
-      onStep: () => {
-        this.#reload()
-          .then(() => this.#emit())
-          .catch(() => {});
-      },
-    });
+    await history.sync({ onStep });
+
+    if (isFirst) {
+      await history.sync({ onStep });
+    }
   }
 
   /**
@@ -415,6 +422,7 @@ export class ActivitySession {
     this.#emit();
     await this.#syncAndNote();
     this.syncing = false;
+
     await this.#afterRun();
   }
 
