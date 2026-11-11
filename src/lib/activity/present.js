@@ -236,6 +236,38 @@ function titleOf(row, icon, context) {
 }
 
 /**
+ * The `.dusk` name a row names its other side by, as History says it after a
+ * contact's name: the one verified for it, or else the one typed for it as
+ * it was sent to; null for none.
+ *
+ * @param {ActivityRow} row
+ * @returns {string | null}
+ */
+const duskNameOf = (row) => row.counterpartyName ?? row.toName ?? null;
+
+/**
+ * The `.dusk` names the history names its counterparties by, as History does,
+ * by their addresses: the newest row's.
+ *
+ * @param {ActivityRow[]} rows The history, newest first
+ * @returns {Map<string, string>}
+ */
+export function historyDuskNames(rows) {
+  /** @type {Map<string, string>} */
+  const names = new Map();
+
+  for (const row of rows) {
+    const name = duskNameOf(row);
+
+    if (row.counterparty && name && !names.has(row.counterparty)) {
+      names.set(row.counterparty, name);
+    }
+  }
+
+  return names;
+}
+
+/**
  * What a row's other side is called: the contact's name, with its `.dusk`
  * name after it, the verified `.dusk` name, what the wallets here call a
  * profile of theirs, or its route's label; "" for none.
@@ -245,7 +277,7 @@ function titleOf(row, icon, context) {
  */
 function nameOf(row, { contactNames, net, walletNames }) {
   const { counterparty } = row;
-  const name = row.counterpartyName ?? row.toName;
+  const name = duskNameOf(row);
   const contact = counterparty ? contactNames?.get(counterparty) : undefined;
 
   if (contact && name) {

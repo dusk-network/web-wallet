@@ -19,6 +19,7 @@ import { contactNameText } from "$lib/contacts";
 import {
   dayLabel,
   describeRow,
+  historyDuskNames,
   shortAddress,
   timeLabel,
 } from "$lib/activity/present";
@@ -92,14 +93,19 @@ export const nameHas = (name, query) =>
 
 /**
  * Whether a contact is what's typed: by its name, as it looks too, its
- * `.dusk` name or its address.
+ * `.dusk` name, the one History names its address by, or its address.
  *
  * @param {Contact} contact
  * @param {string} query As it's typed
+ * @param {Map<string, string>} [duskNames] The history's, by address
+ *   (`historyDuskNames`)
  */
-export const contactHas = (contact, query) =>
+export const contactHas = (contact, query, duskNames) =>
   nameHas(contact.name, query) ||
-  has(`${contact.duskName ?? ""} ${contact.address}`, searchKey(query));
+  has(
+    `${contact.duskName ?? ""} ${duskNames?.get(contact.address) ?? ""} ${contact.address}`,
+    searchKey(query)
+  );
 
 /**
  * What a row is known by besides its hash: its memo, and the labels of its
@@ -200,8 +206,11 @@ export function transactionsFound(
   }
 
   const amounts = amountsMeant(query, locale);
+  const duskNames = historyDuskNames(history);
   const foundPeople = new Set(
-    contacts.filter((c) => contactHas(c, query)).map(({ address }) => address)
+    contacts
+      .filter((c) => contactHas(c, query, duskNames))
+      .map(({ address }) => address)
   );
 
   /** @param {ActivityRow} row */
@@ -298,12 +307,18 @@ export function searchLocally(
       }))
   );
 
-  const foundContacts = contacts.filter((c) => contactHas(c, query));
+  // As History names them: a contact saved without its .dusk name is
+  // found, and shown, by the one History knows for its address.
+  const duskNames = historyDuskNames(history);
+  const foundContacts = contacts.filter((c) => contactHas(c, query, duskNames));
 
   add(
     foundContacts.map((contact) => ({
-      detail: contact.duskName ?? shortAddress(contact.address),
-      detailIsCode: !contact.duskName,
+      detail:
+        contact.duskName ??
+        duskNames.get(contact.address) ??
+        shortAddress(contact.address),
+      detailIsCode: !(contact.duskName ?? duskNames.get(contact.address)),
       group: "Contacts",
       href: `/dashboard/contacts?contact=${encodeURIComponent(contact.id)}`,
       id: `contact:${contact.id}`,

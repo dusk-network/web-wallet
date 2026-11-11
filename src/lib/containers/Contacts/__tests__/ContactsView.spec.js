@@ -255,6 +255,48 @@ describe("ContactsView", () => {
     expect(names()).toEqual(["Alice's shop"]);
   });
 
+  it("gives a contact saved from an address the .dusk name History names it by, and finds it by that name", async () => {
+    // Saved from alice.dusk's address, not its name: History knows the name
+    // from a payment that came in from it.
+    saveContact({ address: OTHER, name: "Estudio Mаrta" });
+
+    const { container, getByRole } = show({
+      contacts: get(contactsStore),
+      rows: [
+        ...rows,
+        rowOf({
+          amount: "12000000000",
+          blockHeight: 4_687_500,
+          counterpartyName: "alice.dusk",
+          direction: "in",
+          from: OTHER,
+          hash: "b2".repeat(32),
+          status: "executed",
+          timestamp: NOW - 120_000,
+        }),
+      ],
+    });
+    const row = () =>
+      Array.from(container.querySelectorAll(".contacts__row")).find((each) =>
+        each.textContent?.includes("Estudio")
+      );
+
+    expect(row()?.querySelector(".contacts__col-dusk")).toHaveTextContent(
+      /^alice\.dusk$/
+    );
+
+    await fireEvent.input(getByRole("searchbox", { name: "Search contacts" }), {
+      target: { value: "alice.dusk" },
+    });
+
+    expect(
+      Array.from(
+        container.querySelectorAll(".contacts__name"),
+        (name) => name.textContent
+      )
+    ).toEqual(["Estudio Mаrta"]);
+  });
+
   it("marks a contact whose name looks like another's with its address, and finds both by the name", async () => {
     // A Cyrillic а, at another address.
     saveContact({ address: OTHER, name: "Alice's sh\u043Ep" });

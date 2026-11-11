@@ -469,6 +469,33 @@ describe("searchLocally with contacts", () => {
       expect.objectContaining({ group: "Transactions" }),
     ]);
   });
+
+  it("finds a contact saved from an address by the .dusk name History names it by, and shows that name", () => {
+    // Saved from alice.dusk's address, as a look-alike of another's name.
+    const withAddressOnly = {
+      ...index,
+      contacts: [
+        /** @type {Contact} */ ({
+          address: ALICE,
+          createdAt: 1,
+          id: "twin",
+          name: "Estudio Mаrta",
+          type: "account",
+          updatedAt: 1,
+        }),
+      ],
+    };
+
+    expect(searchLocally("alice", withAddressOnly)).toEqual([
+      expect.objectContaining({
+        detail: "alice.dusk",
+        detailIsCode: false,
+        group: "Contacts",
+        label: "Estudio Mаrta",
+      }),
+      expect.objectContaining({ detail: "+0.5 DUSK", group: "Transactions" }),
+    ]);
+  });
 });
 
 describe("searchLocally with contacts whose names look alike", () => {
