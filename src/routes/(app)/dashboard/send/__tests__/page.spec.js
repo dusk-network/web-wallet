@@ -25,7 +25,7 @@ vi.mock("$app/stores", async () => {
   page.store = writable({ url: page.url });
 
   return {
-    // No navigation under way: a form left is left by a link.
+    // No navigation under way.
     navigating: readable(null),
     page: {
       subscribe: (/** @type {(value: any) => void} */ run) =>
@@ -164,7 +164,7 @@ describe("Send page", () => {
       }
     );
 
-    it("should start the form over for another link while it shows, and open as ever without one", async () => {
+    it("should start the form over for another link while it shows, and keep what it filled in for Send without one, as Back does", async () => {
       setNodeNetwork(networks.testnet);
       openLink(`to=${OTHER}&amount=0.15`);
 
@@ -184,7 +184,7 @@ describe("Send page", () => {
         openAt(new URL("http://localhost/some-base-path/dashboard/send"))
       );
 
-      expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
+      expect(fieldsAre(getByRole)).toStrictEqual([OTHER, "0.5", ""]);
     });
   });
 

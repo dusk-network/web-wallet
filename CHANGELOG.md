@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep what was typed in Send, a stake or the Bridge as it's left by a link, as "← Home", as Back keeps it
 - Title the page a payment request opens on before a wallet is "Payment request", also while it connects, not "Dusk Wallet" as the wallet's own tabs
 - Ask "Is that 1 or 1000?" of an amount that could be either, never with "1.000" for one, which reads as a thousand in German
 - Count the approval a migration spent in its gas under Bridge › Activity, as its chain says, and write both in the accounting export

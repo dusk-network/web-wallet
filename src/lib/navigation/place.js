@@ -8,7 +8,6 @@
  */
 
 import { base } from "$app/paths";
-import { navigating } from "$app/stores";
 import { onDestroy } from "svelte";
 import { get } from "svelte/store";
 
@@ -178,21 +177,34 @@ const withoutPhrases = (values) =>
   );
 
 /**
+ * The form that keeps each draft, by its name: the one made last, as a page
+ * draws a form in place of another, as for another link. The one it replaced
+ * keeps nothing from then on, as it goes after.
+ *
+ * @type {Map<string, object>}
+ */
+const keepers = new Map();
+
+/**
  * What a form that moves money keeps of what's typed in it, for a lock, a
- * reload, Back or a send that failed with nothing sent to bring back, for the
- * same wallet, profile and network. For a component to take as it's made:
- * leaving the form in the wallet by a link lets it go, as anything else it
- * does, unless it was kept for a failure (`keep`), or the browser's Back or
- * Forward returns to it; leaving it with Back keeps it for its next opening.
- * It goes (`clear`) once the transaction goes out, so that nothing a reload
- * brings back was sent already: the form shows it to be reviewed, never sent,
- * in any case.
+ * reload, leaving it or a send that failed with nothing sent to bring back,
+ * for the same wallet, profile and network. For a component to take as it's
+ * made: leaving the form in the wallet keeps it for its next opening, by Back
+ * or by a link, as Home's. It goes (`clear`) once the transaction goes out, so
+ * that nothing a reload brings back was sent already: the form shows it to be
+ * reviewed, never sent, in any case.
  *
  * @param {string} name
  */
 export function formDraft(name) {
   const key = `${DRAFT}${name}`;
+  const self = {};
   let isKept = false;
+
+  keepers.set(key, self);
+
+  /** Whether this form keeps the draft still: no other took its place. */
+  const isKeeper = () => keepers.get(key) === self;
 
   /** @type {string | null} */
   let owner = null;
@@ -206,14 +218,17 @@ export function formDraft(name) {
 
   const clear = () => {
     held = null;
-    kept.remove(key);
+
+    if (isKeeper()) {
+      kept.remove(key);
+    }
   };
 
   /** @param {Record<string, unknown>} values */
   const write = (values) => {
     if (isEmpty(values)) {
       clear();
-    } else if (owner) {
+    } else if (owner && isKeeper()) {
       held = values;
       kept.write(
         key,
@@ -244,22 +259,23 @@ export function formDraft(name) {
   onDestroy(() => {
     stopFollowing();
 
+    // One that took its place keeps the draft, from what it shows.
+    if (!isKeeper()) {
+      return;
+    }
+
+    keepers.delete(key);
+
     if (!isKept && get(walletStore).initialized) {
       if (held) {
-        // Left with Back, as a phone's is pressed by the way: kept for the
-        // form's next opening, as a lock keeps it.
-        const isBack = get(navigating)?.type === "popstate";
-
+        // Left, by Back as a phone's is pressed by the way, or by a link as
+        // Home's: kept for the form's next opening, as a lock keeps it.
         kept.write(
           key,
-          JSON.stringify({
-            ...(isBack ? {} : { left: true }),
-            owner,
-            values: withoutPhrases(held),
-          })
+          JSON.stringify({ owner, values: withoutPhrases(held) })
         );
       } else {
-        clear();
+        kept.remove(key);
       }
     }
   });
@@ -284,11 +300,7 @@ export function formDraft(name) {
       try {
         const draft = JSON.parse(kept.read(key) ?? "null");
 
-        if (
-          draft &&
-          draft.owner === owner &&
-          (!draft.left || get(navigating)?.type === "popstate")
-        ) {
+        if (draft && draft.owner === owner) {
           return draft.values;
         }
       } catch {

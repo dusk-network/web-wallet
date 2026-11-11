@@ -303,7 +303,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       expect(isKept(RECIPIENT)).toBe(false);
     });
 
-    it("lets it go once the form brought back is left", async () => {
+    it("keeps it as the form brought back after a failed send is left again", async () => {
       sendProps.execute.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
       const failed = await typedForm();
@@ -314,7 +314,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       render(Send, sendProps);
       leave();
 
-      expectBlank(render(Send, sendProps));
+      expectTyped(render(Send, sendProps));
     });
 
     it("keeps none of it after a send that may have gone out", async () => {
@@ -352,7 +352,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       expect(isKept(RECIPIENT)).toBe(false);
     });
 
-    it("brings it back with the browser's Back after leaving the page in the wallet, but not with a link there", async () => {
+    it("brings it back after leaving the page in the wallet, with the browser's Back or a link there, each time", async () => {
       await typedForm();
       leave();
 
@@ -363,23 +363,23 @@ describe("Keeping what's typed in a form that moves money", () => {
       nav.navigating?.set(null);
       expectTyped(back);
 
-      // Left again, and back by a link: a new form.
+      // Left again, and back by a link.
       leave();
       nav.navigating?.set({ type: "link" });
 
-      const fresh = render(Send, sendProps);
+      const again = render(Send, sendProps);
 
       nav.navigating?.set(null);
-      expectBlank(fresh);
+      expectTyped(again);
 
-      // And Back can't find it after that.
+      // And with Back after that.
       leave();
       nav.navigating?.set({ type: "popstate" });
 
       const after = render(Send, sendProps);
 
       nav.navigating?.set(null);
-      expectBlank(after);
+      expectTyped(after);
     });
 
     it("keeps it as Back leaves the page, as a lock does, for the next time it opens, from a link too", async () => {
@@ -398,9 +398,11 @@ describe("Keeping what's typed in a form that moves money", () => {
       nav.navigating?.set(null);
       expectTyped(again);
 
-      // Left by a link there: it goes, as before.
+      // Left by a link there, as Home's: kept as by Back.
+      nav.navigating?.set({ type: "link" });
       leave();
-      expectBlank(render(Send, sendProps));
+      nav.navigating?.set(null);
+      expectTyped(render(Send, sendProps));
     });
 
     it("brings nothing back with Back once it went out", async () => {
@@ -419,11 +421,13 @@ describe("Keeping what's typed in a form that moves money", () => {
       expectBlank(back);
     });
 
-    it("lets it go as the page is left in the wallet, as it was", async () => {
+    it("keeps it as the page is left by a link in the wallet, as Home's, as Back keeps it", async () => {
       await typedForm();
+      nav.navigating?.set({ type: "link" });
       leave();
+      nav.navigating?.set(null);
 
-      expectBlank(render(Send, sendProps));
+      expectTyped(render(Send, sendProps));
     });
 
     it("keeps it only for the wallet, profile and network it was typed on", async () => {
@@ -674,6 +678,21 @@ describe("Keeping what's typed in a form that moves money", () => {
         target: { value: "7" },
       });
       await switchProfileAndUnlock();
+
+      expect(
+        render(liquidView, liquidProps).getByLabelText("Stake amount")
+      ).toHaveValue("7");
+    });
+
+    it("keeps what's typed as the form is left by the Staking link above it, for its next opening", async () => {
+      const typed = render(liquidView, liquidProps);
+
+      await fireEvent.input(typed.getByLabelText("Stake amount"), {
+        target: { value: "7" },
+      });
+      nav.navigating?.set({ type: "link" });
+      leave();
+      nav.navigating?.set(null);
 
       expect(
         render(liquidView, liquidProps).getByLabelText("Stake amount")
