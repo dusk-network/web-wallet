@@ -6,9 +6,12 @@
     mdiSwapHorizontal,
     mdiTrayArrowDown,
   } from "@mdi/js";
+  import { mdiCheck } from "@mdi/js";
   import { activityState, isHistoryEnabled } from "$lib/activity";
   import { contractDescriptors } from "$lib/contracts";
-  import { SectionHead } from "$lib/components";
+  import { Banner, SectionHead } from "$lib/components";
+  import { Button } from "$lib/dusk/components";
+  import { toast } from "$lib/dusk/components/Toast/store";
   import {
     ActivityPanel,
     ExplainerCards,
@@ -19,6 +22,8 @@
   import { addBasePath } from "$lib/navigation";
   import { isSozuFunction, sozuContractsFor, sozuStore } from "$lib/sozu";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
+  import networkReach from "$lib/stores/networkReach";
+  import { waitingSends } from "$lib/transactions";
 
   /** @type {import("./$types").PageData} */
   export let data;
@@ -118,6 +123,18 @@
       isSozuShown && sozuError ? sozuStore.load({ force: true }) : null,
       walletStore.refreshBalance(),
     ]);
+
+  /**
+   * Calls off a send that hasn't gone out, and says so: one that went out
+   * meanwhile is no longer listed, as it's on its way.
+   *
+   * @param {import("$lib/transactions/waitingSends").WaitingSend} send
+   */
+  function cancelSend({ cancel, what }) {
+    if (cancel(undefined)) {
+      toast("success", `Not sent: ${what}.`, mdiCheck);
+    }
+  }
 </script>
 
 <div class="home">
@@ -136,6 +153,30 @@
     {:else}
       <p class="home__note">Nothing can be sent from this wallet right now.</p>
     {/if}
+
+    <!-- Sends that haven't gone out, as the network doesn't answer: called
+      off from here, or they go out once it answers. -->
+    {#each $waitingSends as send (send.id)}
+      <Banner
+        className="home__waiting"
+        role="status"
+        title={`Not sent yet: ${send.what}.`}
+        variant="info"
+      >
+        <p>
+          {$networkReach === "answering"
+            ? "It's being sent."
+            : "It goes out once the network answers."}
+        </p>
+        <Button
+          className="home__waiting-cancel"
+          on:click={() => cancelSend(send)}
+          size="small"
+          text="Cancel"
+          variant="secondary"
+        />
+      </Banner>
+    {/each}
 
     {#if isEnabled("bridge") && migration}
       <p class="home__note">
@@ -231,6 +272,10 @@
 
   .home__note--side {
     margin-top: 0.75rem;
+  }
+
+  .home__main :global(.home__waiting-cancel) {
+    margin-top: 0.5rem;
   }
 
   .home__note {

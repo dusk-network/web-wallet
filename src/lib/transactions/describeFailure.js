@@ -231,6 +231,15 @@ export default function describeFailure(
     };
   }
 
+  // Called off before the node was asked to broadcast it (sendGate).
+  if (error?.name === "SendCancelledError") {
+    return {
+      canRetry: true,
+      heading: "Not sent",
+      sentence: "You cancelled it, so nothing was sent.",
+    };
+  }
+
   const cameFirst = CAME_FIRST.find(([pattern]) => pattern.test(text));
 
   if (cameFirst) {

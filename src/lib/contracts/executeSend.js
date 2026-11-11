@@ -5,12 +5,12 @@ import { walletStore } from "$lib/stores";
 
 /**
  * Sends a transfer, with the `.dusk` name it goes to, if any, for the
- * history.
+ * history; with a `gate`, one that can be called off until it goes out.
  *
- * @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint, toName?: string) => Promise<string>}
+ * @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint, toName?: string, gate?: import("$lib/transactions/sendGate").SendGate) => Promise<string>}
  */
 const executeSend = (...args) => {
-  const [to, amount, memo, gasPrice, gasLimit, toName] = args;
+  const [to, amount, memo, gasPrice, gasLimit, toName, gate] = args;
   const blocked = getBlocklistedRecipient(to);
 
   if (blocked) {
@@ -26,7 +26,7 @@ const executeSend = (...args) => {
         limit: gasLimit,
         price: gasPrice,
       }),
-      { toName }
+      { gate, toName }
     )
     .then(({ hash }) => hash);
 };

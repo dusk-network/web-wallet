@@ -33,6 +33,14 @@ export default class SendingNetwork extends Network {
   #broadcasts = new WeakSet();
 
   /**
+   * What lets each transaction go on to the node, by its bytes: none goes
+   * that was called off before (sendGate).
+   *
+   * @type {WeakMap<object, import("./sendGate").SendGate>}
+   */
+  #gates = new WeakMap();
+
+  /**
    * The socket of the last attempt to connect: w3sper keeps its own to itself.
    *
    * @type {WebSocket | null}
@@ -47,10 +55,13 @@ export default class SendingNetwork extends Network {
     super(url, options);
 
     const broadcasts = this.#broadcasts;
+    const gates = this.#gates;
     const { transactions } = this;
     const propagate = transactions.propagate.bind(transactions);
 
     transactions.propagate = (/** @type {any} */ tx) => {
+      // Called off before this, it never reaches the node.
+      gates.get(tx)?.handOver();
       broadcasts.add(tx);
       asked.update((count) => count + 1);
 
@@ -102,15 +113,19 @@ export default class SendingNetwork extends Network {
   }
 
   /**
-   * Builds, checks and broadcasts a transaction, as w3sper does.
+   * Builds, checks and broadcasts a transaction, as w3sper does: with a
+   * `gate`, only while it isn't called off, which it checks once it's built,
+   * and as the node is asked to broadcast it.
    *
    * @template {import("@dusk/w3sper").BasicTransfer} T
    * @param {T} tx A transaction's builder
+   * @param {{ gate?: import("./sendGate").SendGate }} [options]
    * @returns {ReturnType<T["build"]>}
    */
-  execute(tx) {
+  execute(tx, { gate } = {}) {
     /** @type {any} */
     let built = tx;
+    const gates = this.#gates;
 
     // The transaction its builder makes, to know it by its bytes.
     const watched = new Proxy(tx, {
@@ -118,8 +133,16 @@ export default class SendingNetwork extends Network {
         const value = Reflect.get(target, property);
 
         if (property === "build" && typeof value === "function") {
-          return async (/** @type {unknown} */ network) =>
-            (built = await value.call(target, network));
+          return async (/** @type {unknown} */ network) => {
+            built = await value.call(target, network);
+
+            if (gate) {
+              gate.check();
+              gates.set(built.buffer, gate);
+            }
+
+            return built;
+          };
         }
 
         return typeof value === "function" ? value.bind(target) : value;

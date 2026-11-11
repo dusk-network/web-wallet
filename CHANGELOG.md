@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Cancel a send that waits on a network that doesn't answer, on its screen or from Home, which lists it until it goes out
 - Review a revoke of an open approval on the Bridge before the EVM wallet signs it: what's approved now, from where, that nothing moves, and its network fee
 - Open a payment request in the Dusk Wallet extension from the page its link opens, where the extension takes it
 - Add DUSK to the connected EVM wallet, where it takes the request: once a transfer to its chain arrived, and on the way back's form while it holds none
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say on a send that waits on a silent network that it goes out once the network answers, with Cancel and a way Home
 - Read a profile's history every few seconds once another profile here paid it, until the payment shows, and say a request is checking for payments meanwhile, not that nothing came in
 - Say how much each approval under Bridge › Activity let the migration contract take, and what a revoke took back of it, and give gas to the wei in its details
 - Show a transfer's newest transactions in History on its first read too, as after a restore, as the balances already have them

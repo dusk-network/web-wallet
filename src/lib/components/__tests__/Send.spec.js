@@ -151,6 +151,12 @@ vi.mock("$lib/wallet/isShieldedAddress", async (importOriginal) => {
   };
 });
 
+/** A send that can be called off until it goes out, as Send gives each. */
+const aGate = expect.objectContaining({
+  cancel: expect.any(Function),
+  handOver: expect.any(Function),
+});
+
 describe("Send", () => {
   const lastTxId =
     "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
@@ -284,7 +290,9 @@ describe("Send", () => {
           150_000_000n,
           "Factura 33",
           gasPrice,
-          gasLimit
+          gasLimit,
+          undefined,
+          aGate
         );
       }
     );
@@ -401,7 +409,9 @@ describe("Send", () => {
         150_000_000n,
         "Factura 33",
         gasPrice,
-        gasLimit
+        gasLimit,
+        undefined,
+        aGate
       );
     });
 
@@ -1168,7 +1178,9 @@ describe("Send", () => {
           max,
           expect.anything(),
           expect.anything(),
-          expect.anything()
+          expect.anything(),
+          undefined,
+          aGate
         );
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -1204,7 +1216,9 @@ describe("Send", () => {
           12_000_000n,
           "Refund: Factura 43",
           expect.anything(),
-          expect.anything()
+          expect.anything(),
+          undefined,
+          aGate
         );
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -2005,7 +2019,9 @@ describe("Send", () => {
         duskToLux(amount),
         "",
         gasPrice,
-        gasLimit
+        gasLimit,
+        undefined,
+        aGate
       );
       // The result from its top, where its state and the offer to be told
       // when it arrives are, wherever the review was scrolled to: also once
@@ -2184,7 +2200,9 @@ describe("Send", () => {
         duskToLux(1),
         "",
         gasPrice,
-        30_000_000n
+        30_000_000n,
+        undefined,
+        aGate
       );
     });
 
@@ -2209,7 +2227,9 @@ describe("Send", () => {
         duskToLux(amount),
         memo,
         gasPrice,
-        gasLimit
+        gasLimit,
+        undefined,
+        aGate
       );
       expect(getByText("Sending…")).toBeInTheDocument();
     });
@@ -2239,7 +2259,9 @@ describe("Send", () => {
         duskToLux(amount),
         evmAddress,
         gasPrice,
-        gasLimit
+        gasLimit,
+        undefined,
+        aGate
       );
     });
 
@@ -2315,7 +2337,9 @@ describe("Send", () => {
           duskToLux(2),
           "Invoice 118",
           gasPrice,
-          gasLimit
+          gasLimit,
+          undefined,
+          aGate
         );
         expect(getByRole("status")).toHaveTextContent(/^Sending… 2 DUSK/);
       });
@@ -2615,7 +2639,8 @@ describe("Send", () => {
         "",
         gasPrice,
         gasLimit,
-        "alice.dusk"
+        "alice.dusk",
+        aGate
       );
     });
 
@@ -2652,7 +2677,8 @@ describe("Send", () => {
         "",
         gasPrice,
         gasLimit,
-        "alice.dusk"
+        "alice.dusk",
+        aGate
       );
     });
 
@@ -2745,7 +2771,8 @@ describe("Send", () => {
         "",
         gasPrice,
         gasLimit,
-        "alice.dusk"
+        "alice.dusk",
+        aGate
       );
     });
 

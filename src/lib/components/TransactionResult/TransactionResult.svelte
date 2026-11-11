@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { get } from "svelte/store";
+  import { get, readable } from "svelte/store";
 
   import { isHistoryEnabled } from "$lib/activity";
   import { Button, Suspense, Throbber } from "$lib/dusk/components";
@@ -75,6 +75,14 @@
    */
   export let extra = [];
 
+  /**
+   * What calls it off until it goes out: while the network doesn't answer,
+   * it says so with Cancel, and Home to leave it waiting, as Home shows it.
+   *
+   * @type {import("$lib/transactions/sendGate").SendGate | undefined}
+   */
+  export let gate = undefined;
+
   function handleGoHomeClick() {
     onBeforeLeave?.();
   }
@@ -109,9 +117,14 @@
     );
 
   $: shown = outcomeOf(operation);
-  // Asked to broadcast since it began: it may have gone out then.
+  // Asked to broadcast since it began: it may have gone out then. Its own
+  // gate says it, where it has one.
   $: askedBefore = (void operation, get(broadcastsAsked));
-  $: isHandedOver = $broadcastsAsked > askedBefore;
+  // Where its gate is: open, as any, without one.
+  $: gateState = gate ?? readable("open");
+  $: isHandedOver = gate
+    ? $gateState !== "open"
+    : $broadcastsAsked > askedBefore;
 </script>
 
 <!-- A send that failed before it went out says why in plain words, with
@@ -135,8 +148,27 @@
           : "The network isn't answering."}
         {isHandedOver
           ? "Your transaction may have reached it: wait for it here before you send it again."
-          : "Nothing has left your wallet yet."}
+          : gate
+            ? "Nothing has left your wallet yet. It goes out once the network answers."
+            : "Nothing has left your wallet yet."}
       </p>
+      <!-- A way back while it waits: called off, or left waiting, as Home
+        shows it. -->
+      {#if gate && $gateState === "open"}
+        <Button
+          className="transaction-result__button"
+          on:click={() => gate?.cancel()}
+          text="Cancel"
+          variant="secondary"
+        />
+        <AppAnchorButton
+          className="transaction-result__button"
+          href={leaveHref}
+          on:click={handleGoHomeClick}
+          text={leaveText}
+          variant="tertiary"
+        />
+      {/if}
     {/if}
   </svelte:fragment>
   <svelte:fragment slot="success-content" let:result={{ hash, unconfirmed }}>

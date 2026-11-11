@@ -13,3 +13,5 @@ export {
   FOLLOW_TIMEOUT,
   default as followTransaction,
 } from "./followTransaction";
+export { SendCancelledError, sendGate } from "./sendGate";
+export { cancelWaitingSends, keepWaiting, waitingSends } from "./waitingSends";
