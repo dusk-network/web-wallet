@@ -1123,7 +1123,7 @@ describe("Send", () => {
       await fireEvent.input(fields.amount(), { target: { value: "1,000" } });
 
       expect(getByRole("alert")).toHaveTextContent(
-        "Is that 1000 or 1.000? Write the one you mean."
+        "Is that 1 or 1000? Write the one you mean."
       );
       expect(fields.review()).toBeDisabled();
 
@@ -1230,7 +1230,7 @@ describe("Send", () => {
         });
 
         expect(
-          getByText("Is that 1001 or 1,001? Write the one you mean.")
+          getByText("Is that about 1 or 1001? Write the one you mean.")
         ).toBeTruthy();
 
         await fireEvent.input(fieldsOf(getByRole).amount(), {

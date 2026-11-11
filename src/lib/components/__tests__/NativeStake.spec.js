@@ -109,8 +109,13 @@ describe("amountProblem", () => {
   it("says why an amount can't be read, in the language's own writing", () => {
     expect(amountProblem("", "de")).toBe("");
     expect(amountProblem("10,5", "de")).toBe("");
+    // Lena's: neither number in the question reads as the other, as
+    // "1.000" for one reads as a thousand in German.
     expect(amountProblem("1.000", "de")).toBe(
-      "Is that 1000 or 1,000? Write the one you mean."
+      "Is that 1 or 1000? Write the one you mean."
+    );
+    expect(amountProblem("1,000", "en")).toBe(
+      "Is that 1 or 1000? Write the one you mean."
     );
     expect(amountProblem("0,1234567891", "de")).toBe(
       "DUSK has 9 decimals at most."
