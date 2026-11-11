@@ -75,6 +75,11 @@ jobs:
       - name: Building the app
         run: npm run build
 
+      # Cloudflare serves deploy/site/: the build at wallet/, beside the
+      # headers for it.
+      - name: Placing the build at /wallet/
+        run: node deploy/stage.js
+
       - name: Deploying to Cloudflare
         run: deploy/node_modules/.bin/wrangler deploy --env "$NETWORK"
         env:

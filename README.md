@@ -198,12 +198,15 @@ To run a local node different steps are needed, so please read the [related sect
 
 Testnet runs on Cloudflare (`wrangler.jsonc`), at
 `https://apps.testnet.dusk.network/wallet/`. Its address mustn't change:
-browsers keep each wallet by its origin. The build's files are served at
-`/wallet/` as built, with the headers in `static/_headers`, and
+browsers keep each wallet by its origin. Cloudflare serves `deploy/site/`:
+the build at `wallet/`, where `node deploy/stage.js` places it after
+`npm run build`, and the headers for it in `deploy/site/_headers`.
 `deploy/worker.js` answers what no file does: an address under `/wallet/` that
 no page has opens the wallet, which says what's there; a file under
 `/wallet/_app/` that isn't there is a 404; and `/explorer` goes on to the
-explorer's own domain.
+explorer's own domain. To serve a build the same way locally, place it, then
+run `deploy/node_modules/.bin/wrangler dev --env testnet`, with Wrangler from
+`npm ci --ignore-scripts --prefix deploy`.
 
 The Deploy workflow does it: a push to a `deploy/web-wallet-testnet*` branch
 goes to testnet, built with the site's settings in `deployments.json`. That
@@ -239,8 +242,7 @@ browsers open it by, against the rebuild and the manifest. It trusts nothing
 the site says: it builds only a commit on a branch or tag of your clone, with
 the settings `deployments.json` lists for the site, and refuses a manifest a
 build wouldn't write. A site built before builds were reproducible has no
-manifest, and can't be checked. Cloudflare reads `_headers` and doesn't serve
-it, so that file is checked against the manifest alone.
+manifest, and can't be checked.
 
 ## Running a local Rusk node
 

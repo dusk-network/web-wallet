@@ -136,18 +136,11 @@ export const settingsDiffer = (listed, named) =>
     .filter((key) => listed[key] !== named.get(key));
 
 /**
- * The files at a build's root that its host reads, and needn't serve:
- * Cloudflare's headers for the files.
- */
-const HOST_FILES = new Set(["_headers"]);
-
-/**
  * Where the rebuild, the site's manifest and the site differ: at each file's
  * address, and each page's with and without its last slash, as browsers open
  * it. `get` gives the SHA-256 of what the site serves at an address, or null;
  * told, for a page's index.html and its address without the slash, which a
- * host may send on, the one address they may go to: the page's. The files its
- * host reads are held to the rebuild in the manifest alone.
+ * host may send on, the one address they may go to: the page's.
  */
 export const compareSite = async (site, rebuilt, listed, get) => {
   const addresses = [];
@@ -159,17 +152,7 @@ export const compareSite = async (site, rebuilt, listed, get) => {
       site
     ).href;
 
-    if (HOST_FILES.has(path)) {
-      const rebuild = rebuilt.get(path);
-
-      if (!rebuild || listed.get(path) !== rebuild) {
-        differences.push({
-          address: file,
-          inManifest: listed.get(path),
-          rebuild,
-        });
-      }
-    } else if (/(^|\/)index\.html$/.test(path)) {
+    if (/(^|\/)index\.html$/.test(path)) {
       const page = file.slice(0, -"index.html".length);
 
       addresses.push(

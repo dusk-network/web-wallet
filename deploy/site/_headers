@@ -1,6 +1,7 @@
-# Cloudflare's, for every file of the wallet it serves (wrangler.jsonc), at
-# its address under /wallet/. It reads this file and doesn't serve it. What no
-# file answers, deploy/worker.js does, with the same.
+# Cloudflare's, for every file it serves of this folder (wrangler.jsonc):
+# the wallet's build, which deploy/stage.js places at wallet/. Cloudflare
+# reads this file and doesn't serve it. What no file answers,
+# deploy/worker.js does, with the same.
 #
 # No fuller Content-Security-Policy yet. One would need at least script-src
 # 'self' 'wasm-unsafe-eval' with the hashes of SvelteKit's inline start
