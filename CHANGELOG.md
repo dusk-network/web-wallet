@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Review a revoke of an open approval on the Bridge before the EVM wallet signs it: what's approved now, from where, that nothing moves, and its network fee
 - Open a payment request in the Dusk Wallet extension from the page its link opens, where the extension takes it
 - Add DUSK to the connected EVM wallet, where it takes the request: once a transfer to its chain arrived, and on the way back's form while it holds none
 - Notify on a phone too when a transfer arrives, through the wallet's service worker, while its tab stays open, as its Sent screen says
@@ -28,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say how much each approval under Bridge › Activity let the migration contract take, and what a revoke took back of it, and give gas to the wei in its details
 - Show a transfer's newest transactions in History on its first read too, as after a restore, as the balances already have them
 - Give one time for one payment, to the second, as its block's: on Send's warning of a payment made already and its Review, on the Sent screen, in a transaction's details and on a request, which says today in a sentence and a refund's time first, as its payments'
 - Give a contact saved from an address the .dusk name History names it by, in Contacts' column and the search's, and find it by that name

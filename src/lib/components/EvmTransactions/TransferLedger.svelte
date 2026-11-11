@@ -3,8 +3,8 @@
 <script>
   /**
    * One transfer in amounts, the same in all the Dusk apps: what was sent, the
-   * fees and what arrived, to the last digit, and the gas paid on the other
-   * chain, short as other wallets write it, in full on hover, as far as each is
+   * fees and what arrived, and the gas paid on the other chain, each to the
+   * last digit, the gas to the wei as the export writes it, as far as each is
    * known.
    */
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
@@ -38,17 +38,10 @@
 {#if ledger.lines.length}
   <dl class="transfer-ledger">
     {#each ledger.lines as line (line.key)}
-      {@const { coin, exact, key, text } = line}
+      {@const { coin, exact } = line}
       <div>
         <dt>{nameOf(line)}</dt>
-        <dd>
-          {#if key === "gas"}
-            <BalanceValue {exact} value={text} />
-          {:else}
-            <BalanceValue value={exact} />
-          {/if}
-          {coin}
-        </dd>
+        <dd><BalanceValue value={exact} /> {coin}</dd>
       </div>
     {/each}
   </dl>

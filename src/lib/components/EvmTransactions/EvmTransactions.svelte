@@ -878,7 +878,11 @@
     );
     const row =
       route && !transfers.some(({ approval: spent }) => spent === approval.hash)
-        ? approvalRow(approval, { locale: language, route })
+        ? approvalRow(approval, {
+            approvals: approvalsRead.approvals,
+            locale: language,
+            route,
+          })
         : null;
 
     return row ? [row] : [];

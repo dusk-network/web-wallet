@@ -190,7 +190,7 @@ describe("A transfer's amounts, as its details say them", () => {
     },
   });
 
-  it("writes the gas paid short, as other wallets do, with all its decimals on hover", () => {
+  it("writes the gas paid to the wei, as the export does, on screen", () => {
     const ledger = ledgerOf(
       /** @type {any} */ ({ item: migration(PAID_AT), kind: "migration" }),
       { evm: onItsChain(), locale: "en", rows: [], steps: new Map() }
@@ -205,11 +205,7 @@ describe("A transfer's amounts, as its details say them", () => {
     );
 
     expect(gas.textContent?.replace(/\s+/g, " ").trim()).toBe(
-      "Gas, migration 0.000042 BNB"
-    );
-    expect(gas.querySelector("[title]")).toHaveAttribute(
-      "title",
-      "0.00004220500067528"
+      "Gas, migration 0.00004220500067528 BNB"
     );
   });
 
@@ -241,7 +237,7 @@ describe("A transfer's amounts, as its details say them", () => {
     ).toStrictEqual([
       "Sent 4 BEP20 DUSK",
       "Received 4 DUSK",
-      "Gas, approval and migration 0.000093 BNB",
+      "Gas, approval and migration 0.000093199001491184 BNB",
     ]);
     // Not read on its chain yet: no gas said.
     expect(linesOf(paid)).toStrictEqual([

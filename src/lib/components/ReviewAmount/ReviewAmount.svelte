@@ -5,16 +5,19 @@
   export let label;
 
   /**
-   * The formatted amount in DUSK.
+   * The formatted amount, in `unit`.
    *
    * @type {string}
    */
   export let value;
+
+  /** What it's counted in: DUSK, or a token of another chain's. */
+  export let unit = "DUSK";
 </script>
 
 <dl class="review-amount">
   <dt>{label}</dt>
-  <dd class="review-amount__value">{value} DUSK</dd>
+  <dd class="review-amount__value">{value} {unit}</dd>
 </dl>
 
 <style lang="postcss">

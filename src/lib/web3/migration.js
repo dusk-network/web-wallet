@@ -181,6 +181,41 @@ export async function getMigrationFee({
 }
 
 /**
+ * About what a revoke costs in network fees, at the chain's price now: an
+ * approval of nothing for the migration contract.
+ *
+ * @param {{
+ *   chainId: number,
+ *   migrationContract: `0x${string}`,
+ *   owner: `0x${string}`,
+ *   stableCoinAddress: `0x${string}`,
+ * }} revoke
+ * @returns {Promise<bigint>}
+ */
+export async function getRevokeFee({
+  chainId,
+  migrationContract,
+  owner,
+  stableCoinAddress,
+}) {
+  const client = /** @type {import("viem").PublicClient} */ (
+    getPublicClient(wagmiConfig, { chainId })
+  );
+  const [price, gas] = await Promise.all([
+    client.getGasPrice(),
+    client.estimateContractGas({
+      abi: ERC20Abi,
+      account: owner,
+      address: stableCoinAddress,
+      args: [migrationContract, 0n],
+      functionName: "approve",
+    }),
+  ]);
+
+  return price * gas;
+}
+
+/**
  *  Migrates the approved amount to the given account
  *
  * @param {bigint} amount - the amount to be migrated

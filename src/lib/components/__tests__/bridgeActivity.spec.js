@@ -7,6 +7,7 @@ import { claimDay } from "$lib/bridge/claimDate";
 
 import {
   BRIDGE_ACTIVITY_GROUPS,
+  approvalRow,
   depositRow,
   groupBridgeActivity,
   routeTransferRow,
@@ -507,5 +508,83 @@ describe("a withdrawal's proof and claim on Dusk", () => {
         }),
       ]).get(proved)
     ).toStrictEqual({ claim: "c3".repeat(32) });
+  });
+});
+
+describe("an approval no migration spent", () => {
+  const route = /** @type {import("$lib/bridge/cardRoutes").CardRoute} */ (
+    cardRoutes(networks.mainnet).find(({ id }) => id === "bsc-to-dusk")
+  );
+  const OWNER = `0x${"44".repeat(20)}`;
+  /** 1 BEP20 DUSK, in the token's wei. */
+  const ONE = 1_000_000_000_000_000_000n;
+
+  /**
+   * @param {string} hash
+   * @param {"open" | "revoke" | "spent" | "uncertain" | "unused"} state
+   * @param {bigint} allowance
+   * @param {Record<string, unknown>} [fields]
+   * @returns {import("@dusk-network/app-core/bridge").MigrationApproval}
+   */
+  const approval = (hash, state, allowance, fields = {}) => ({
+    allowance,
+    at: SENT,
+    block: 8,
+    chain: "BNB Smart Chain",
+    coin: "BNB",
+    contract: `0x${"cc".repeat(20)}`,
+    decimals: 18,
+    gasWei: 46_194_000_739_104n,
+    hash,
+    owner: OWNER,
+    route: "bsc-to-dusk",
+    state,
+    ...fields,
+  });
+
+  /**
+   * The titles of a list of approvals, read together, in order.
+   *
+   * @param {import("@dusk-network/app-core/bridge").MigrationApproval[]} approvals
+   */
+  const titles = (approvals) =>
+    approvals.map(
+      (each) => approvalRow(each, { approvals, locale: "en", route })?.title
+    );
+
+  it("should say what it let the migration contract take, and what came of it", () => {
+    expect(
+      titles([
+        approval("0x1", "unused", (ONE * 4n) / 1000n),
+        approval("0x2", "uncertain", ONE),
+        approval("0x3", "open", 2n ** 256n - 1n),
+      ])
+    ).toStrictEqual([
+      "Approved 0.004 BEP20 DUSK, never used",
+      "Approved 1 BEP20 DUSK for a migration",
+      "Approved any amount of BEP20 DUSK, not used yet",
+    ]);
+  });
+
+  it("should say what a revoke took back of the approval before it: all of it where none of it was drawn, else what was left", () => {
+    expect(
+      titles([
+        approval("0x1", "unused", (ONE * 4n) / 1000n),
+        approval("0x2", "revoke", 0n),
+        // Drawn on by a migration, whose row has its gas: what was left of it.
+        approval("0x3", "spent", (ONE * 4n) / 1000n),
+        approval("0x4", "revoke", 0n),
+        // Another owner's approval before it is no part of it.
+        approval("0x5", "unused", ONE, { owner: `0x${"55".repeat(20)}` }),
+        approval("0x6", "revoke", 0n, { owner: `0x${"66".repeat(20)}` }),
+      ])
+    ).toStrictEqual([
+      "Approved 0.004 BEP20 DUSK, never used",
+      "Revoked the 0.004 BEP20 DUSK approved, never used",
+      undefined,
+      "Revoked what was left of 0.004 BEP20 DUSK approved",
+      "Approved 1 BEP20 DUSK, never used",
+      "Approval revoked",
+    ]);
   });
 });
