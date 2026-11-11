@@ -20,6 +20,11 @@
     readRewardsByYear,
     savedWords,
   } from "$lib/activity/accountantExport";
+  import {
+    addExportAddress,
+    exportAddresses,
+    removeExportAddress,
+  } from "$lib/activity/exportAddresses";
   import { BalanceValue } from "$lib/components";
   import { contactNamesOf, contactsStore } from "$lib/contacts";
   import { Button, Select, Textbox } from "$lib/dusk/components";
@@ -74,15 +79,12 @@
    */
   let rewards = null;
 
-  /** EVM addresses of the person's, added for this file. */
-  /** @type {string[]} */
-  let added = [];
-
   /** Whether one is being added, and what's typed for it. */
   let isAdding = false;
   let typedAddress = "";
   let addProblem = "";
 
+  /** Keeps an EVM address of the person's for this profile's files. */
   function addAddress() {
     const address = typedAddress.trim();
 
@@ -92,7 +94,7 @@
       return;
     }
 
-    added = [...added, address];
+    addExportAddress(account?.address ?? "", address);
     typedAddress = "";
     addProblem = "";
     isAdding = false;
@@ -271,6 +273,8 @@
     $nodeNetwork &&
     routes($nodeNetwork).some(({ kind }) => kind === "migration")
   );
+  // The EVM addresses added for this profile's files, kept for it.
+  $: added = (account && $exportAddresses[account.address]) || [];
   $: evm = evmAddressesOf($evmAccount.addresses ?? [], added);
   $: evmList = new Intl.ListFormat("en", { type: "conjunction" }).format(
     evm.map(({ address }) => shortenAddress(address))
@@ -319,6 +323,24 @@
           ? `The file has the network fees your migrations paid from ${evmList}.`
           : "The file has no network fees of migrations: no EVM address of yours is known here."}
       </p>
+      {#if evm.some(({ why }) => why === "added")}
+        <ul aria-label="EVM addresses added" class="export-panel__added">
+          {#each evm.filter(({ why }) => why === "added") as { address } (address)}
+            <li>
+              <code title={address}>{shortenAddress(address)}</code>
+              <Button
+                aria-label={`Remove ${address}`}
+                disabled={isBusy}
+                on:click={() =>
+                  removeExportAddress(account?.address ?? "", address)}
+                size="small"
+                text="Remove"
+                variant="tertiary"
+              />
+            </li>
+          {/each}
+        </ul>
+      {/if}
       {#if isAdding}
         <label class="export-panel__field">
           <span>EVM address you migrated from</span>
@@ -484,6 +506,20 @@
 
     & .export-panel__field {
       align-self: stretch;
+    }
+  }
+
+  .export-panel__added {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    list-style: none;
+
+    & li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
     }
   }
 

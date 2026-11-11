@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Remember the EVM addresses added to the export for each profile, after a lock too, so a period's file is the same each time, with Remove for each
 - Make Addresses to check on the Bridge's Review 44 px tall on a phone
 - Say "Can't reach" beside the network's dot on a phone, not Offline, when the browser is online but the network doesn't answer
 - Make Unlock the way in where a wallet is kept here, with Create new wallet and Restore wallet small under it, as on the page a payment link opens
