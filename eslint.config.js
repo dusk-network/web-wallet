@@ -32,5 +32,11 @@ export default defineConfig([
       "svelte/no-navigation-without-resolve": ["error", { ignoreLinks: true }],
     },
   },
-  globalIgnores([".svelte-kit/", "build/", "coverage/", "src/lib/vendor/"]),
+  globalIgnores([
+    ".svelte-kit/",
+    ".wrangler/",
+    "build/",
+    "coverage/",
+    "src/lib/vendor/",
+  ]),
 ]);

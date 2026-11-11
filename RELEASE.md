@@ -124,26 +124,27 @@ git push origin web-wallet-v1.1.0
 Deploy the new version progressively through each environment:
 
 1. **Devnet**
-   - Deploy to development network
+   - Deploy to development network, on DigitalOcean
    - Verify functionality
    - Address any issues before proceeding
 
 2. **Testnet**
-   - Deploy to test network after devnet validation
+   - Deploy to test network after devnet validation: push a `deploy/web-wallet-testnet*` branch, the release with what only testnet takes, and the Deploy workflow builds it and deploys it to Cloudflare
    - Run comprehensive tests
    - Verify integrations with other systems
 
 3. **Mainnet**
-   - Deploy to production after successful testnet validation
+   - Deploy to production after successful testnet validation, on DigitalOcean until v2; from then, the tag deploys it through the Deploy workflow (README, Deploying)
    - Monitor deployment closely
 
 ### 9. Troubleshooting Deployment
 
 If errors occur during deployment:
 
-- Try rebuilding with the "clear cache" option enabled
+- On Cloudflare, check the Deploy workflow's log; if it failed before deploying, run it again: nothing has changed on the site
+- On DigitalOcean, try rebuilding with the "clear cache" option enabled
 - Check build logs for specific errors
-- Verify environment variables are correctly set
+- Verify the settings are correct: testnet's in `deployments.json`, the others' in their DigitalOcean spec too
 - Confirm that all dependencies are properly resolved
 
 ### 10. Final Validation
@@ -167,7 +168,7 @@ If errors occur during deployment:
 If critical issues are discovered after deployment:
 
 1. Identify the last stable tag/version
-2. Deploy the previous stable version to affected environments
+2. Deploy the previous stable version to affected environments: on Cloudflare, roll the Worker back to its version before, or run the Deploy workflow on the deploy branch that was there
 3. Create a hotfix branch from the stable tag
 4. Fix the issue and follow an expedited version of the release process
 5. Communicate transparently about the issue and resolution

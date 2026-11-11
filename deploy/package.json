@@ -1,0 +1,8 @@
+{
+  "name": "web-wallet-deploy",
+  "private": true,
+  "description": "Cloudflare's CLI for the deploy workflow, on a lockfile of its own and out of the app's dependencies.",
+  "dependencies": {
+    "wrangler": "4.151.3"
+  }
+}

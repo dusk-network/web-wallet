@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { modeOf } from "./build.js";
 import {
@@ -145,7 +145,7 @@ describe("Verifying a deployment", () => {
     expect(() => modeOf(["--mode"])).toThrow("a mode is");
   });
 
-  it("should take one redirect alone, from a page's address without its last slash to the same with it", async () => {
+  it("should take one redirect alone, from a page's address without its last slash, or its index.html, to the page's", async () => {
     const page = "<!doctype html>";
     const redirect = (/** @type {string} */ location, status = 301) =>
       new Response(null, { headers: { location }, status });
@@ -162,32 +162,66 @@ describe("Verifying a deployment", () => {
       "https://wallet.example/wallet/cached/": () => new Response(page),
       "https://wallet.example/wallet/elsewhere/x.js": () => new Response("x"),
       "https://wallet.example/wallet/other": () => redirect("/wallet/setup/"),
+      "https://wallet.example/wallet/other/index.html": () =>
+        redirect("/wallet/setup/", 307),
       "https://wallet.example/wallet/setup": () => redirect("/wallet/setup/"),
       "https://wallet.example/wallet/setup/": () => new Response(page),
+      "https://wallet.example/wallet/setup/index.html": () =>
+        redirect("/wallet/setup/", 307),
       "https://wallet.example/wallet/twice": () => redirect("twice/", 308),
       "https://wallet.example/wallet/twice/": () => redirect("/wallet/setup/"),
     };
     const get = async (/** @type {string} */ address) =>
       served[address]?.() ?? new Response(null, { status: 404 });
-    const at = (/** @type {string} */ path, slash = false) =>
-      fetchFrom(`https://wallet.example/wallet/${path}`, { get, slash });
+    const at = (/** @type {string} */ path, /** @type {string} */ to = "") =>
+      fetchFrom(`https://wallet.example/wallet/${path}`, {
+        get,
+        to: to && `https://wallet.example/wallet/${to}`,
+      });
 
-    expect(await at("setup", true)).toBe(
+    expect(await at("setup", "setup/")).toBe(
+      createHash("sha256").update(page).digest("hex")
+    );
+    expect(await at("setup/index.html", "setup/")).toBe(
       createHash("sha256").update(page).digest("hex")
     );
     expect(await at("setup")).toBe("a redirect");
+    expect(await at("setup/index.html")).toBe("a redirect");
     expect(await at("_app/x.js")).toBe("a redirect");
-    expect(await at("other", true)).toBe("a redirect");
-    expect(await at("away", true)).toBe("a redirect");
-    expect(await at("twice", true)).toBe("a redirect");
-    expect(await at("cached", true)).toBeNull();
-    expect(await at("gone", true)).toBeNull();
+    expect(await at("other", "other/")).toBe("a redirect");
+    expect(await at("other/index.html", "other/")).toBe("a redirect");
+    expect(await at("away", "away/")).toBe("a redirect");
+    expect(await at("twice", "twice/")).toBe("a redirect");
+    expect(await at("cached", "cached/")).toBeNull();
+    expect(await at("gone", "gone/")).toBeNull();
     await expect(
       fetchFrom("https://wallet.example/wallet/build-manifest.json", {
         get,
         limit: 2 ** 21,
       })
     ).rejects.toThrow("redirects /wallet/build-manifest.json");
+  });
+
+  it("should ask once more where the connection failed, as one kept open while the rebuild ran can have been closed", async () => {
+    const page = "<!doctype html>";
+    let failures = 1;
+    const get = vi.fn(async () => {
+      if (failures-- > 0) throw new TypeError("fetch failed");
+
+      return new Response(page);
+    });
+
+    expect(await fetchFrom("https://wallet.example/wallet/", { get })).toBe(
+      createHash("sha256").update(page).digest("hex")
+    );
+    expect(get).toHaveBeenCalledTimes(2);
+
+    failures = 2;
+    get.mockClear();
+    await expect(
+      fetchFrom("https://wallet.example/wallet/", { get })
+    ).rejects.toThrow("fetch failed");
+    expect(get).toHaveBeenCalledTimes(2);
   });
 
   it("should catch a script that redirects, whose own imports a browser would fetch from where it lands", async () => {
@@ -218,8 +252,8 @@ describe("Verifying a deployment", () => {
     };
     const get = async (/** @type {string} */ address) =>
       served[address]?.() ?? new Response(null, { status: 404 });
-    const { differences } = await compareSite(SITE, files, files, (at, slash) =>
-      fetchFrom(at, { get, slash })
+    const { differences } = await compareSite(SITE, files, files, (at, to) =>
+      fetchFrom(at, { get, to })
     );
 
     expect(differences).toMatchObject([
@@ -227,6 +261,62 @@ describe("Verifying a deployment", () => {
         address:
           "https://wallet.example/wallet/_app/immutable/chunks/-dNcaVtT.js",
         served: "a redirect",
+      },
+    ]);
+  });
+
+  it("should take a site on Cloudflare, which sends a page's index.html on to the page and reads _headers without serving it", async () => {
+    const digest = (/** @type {string} */ text) =>
+      createHash("sha256").update(text).digest("hex");
+    const bodies = {
+      "_app/immutable/chunks/-dNcaVtT.js": 'import"./B6-Q-Emf.js";',
+      _headers: "/*\n  X-Frame-Options: DENY\n",
+      "index.html": "<!doctype html>",
+      "setup/index.html": "<!doctype html><title>Setup</title>",
+    };
+    const files = new Map(
+      Object.entries(bodies).map(([path, body]) => [path, digest(body)])
+    );
+    const redirect = (/** @type {string} */ location) => () =>
+      new Response(null, { headers: { location }, status: 307 });
+    /** @type {Record<string, () => Response>} */
+    const served = {
+      "https://wallet.example/wallet": redirect("/wallet/"),
+      "https://wallet.example/wallet/": () =>
+        new Response(bodies["index.html"]),
+      // An address no file has opens the wallet's page.
+      "https://wallet.example/wallet/_headers": () =>
+        new Response(bodies["index.html"]),
+      "https://wallet.example/wallet/_app/immutable/chunks/-dNcaVtT.js": () =>
+        new Response(bodies["_app/immutable/chunks/-dNcaVtT.js"]),
+      "https://wallet.example/wallet/index.html": redirect("/wallet/"),
+      "https://wallet.example/wallet/setup": redirect("/wallet/setup/"),
+      "https://wallet.example/wallet/setup/": () =>
+        new Response(bodies["setup/index.html"]),
+      "https://wallet.example/wallet/setup/index.html":
+        redirect("/wallet/setup/"),
+    };
+    /** @type {string[]} */
+    const asked = [];
+    const get = async (/** @type {string} */ address) => {
+      asked.push(address);
+
+      return served[address]?.() ?? new Response(null, { status: 404 });
+    };
+    const compare = (/** @type {Map<string, string>} */ listed) =>
+      compareSite(SITE, files, listed, (at, to) => fetchFrom(at, { get, to }));
+
+    expect(await compare(files)).toEqual({ checked: 7, differences: [] });
+    expect(asked).not.toContain("https://wallet.example/wallet/_headers");
+
+    // Its record of _headers is still held to the rebuild.
+    expect(
+      (await compare(new Map([...files, ["_headers", hash("9")]]))).differences
+    ).toMatchObject([
+      {
+        address: "https://wallet.example/wallet/_headers",
+        inManifest: hash("9"),
+        rebuild: files.get("_headers"),
       },
     ]);
   });
