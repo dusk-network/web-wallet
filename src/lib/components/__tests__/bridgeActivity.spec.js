@@ -566,6 +566,28 @@ describe("an approval no migration spent", () => {
     ]);
   });
 
+  it("should hide what it approved, or what a revoke took back, while balances are hidden: not that it had no limit", () => {
+    const approvals = [
+      approval("0x1", "unused", (ONE * 4n) / 1000n),
+      approval("0x2", "revoke", 0n),
+      approval("0x3", "open", 2n ** 256n - 1n),
+      approval("0x4", "unused", 1n),
+    ];
+
+    expect(
+      approvals.map(
+        (each) =>
+          approvalRow(each, { approvals, locale: "en", masked: true, route })
+            ?.title
+      )
+    ).toStrictEqual([
+      "Approved •••• BEP20 DUSK, never used",
+      "Revoked the •••• BEP20 DUSK approved, never used",
+      "Approved any amount of BEP20 DUSK, not used yet",
+      "Approved •••• BEP20 DUSK, never used",
+    ]);
+  });
+
   it("should say what a revoke took back of the approval before it: all of it where none of it was drawn, else what was left", () => {
     expect(
       titles([

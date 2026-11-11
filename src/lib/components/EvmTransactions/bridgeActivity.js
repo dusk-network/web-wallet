@@ -11,6 +11,7 @@ import { transferLedger } from "@dusk-network/app-core/bridge";
 import { claimText } from "@dusk-network/networks/duskevm";
 
 import { claimDay } from "$lib/bridge/claimDate";
+import { BALANCE_MASK } from "$lib/constants";
 import {
   isDepositDelayed,
   isDepositStalled,
@@ -558,18 +559,22 @@ const NO_LIMIT = 2n ** 255n;
 
 /**
  * What an approval let the migration contract take, in words: "0.004 BEP20
- * DUSK", "any amount of BEP20 DUSK".
+ * DUSK", "any amount of BEP20 DUSK"; while balances are hidden (`masked`),
+ * "•••• BEP20 DUSK", as the form hides it, though not that it had no limit.
  *
  * @param {bigint} allowance In the token's wei
  * @param {string} unit
  * @param {string} locale
+ * @param {boolean} masked
  */
-const approvedText = (allowance, unit, locale) =>
+const approvedText = (allowance, unit, locale, masked) =>
   allowance >= NO_LIMIT
     ? `any amount of ${unit}`
-    : allowance < WEI_PER_LUX
-      ? `less than ${formatDuskExact(1n, locale)} ${unit}`
-      : `${formatDuskExact(allowance / WEI_PER_LUX, locale)} ${unit}`;
+    : masked
+      ? `${BALANCE_MASK} ${unit}`
+      : allowance < WEI_PER_LUX
+        ? `less than ${formatDuskExact(1n, locale)} ${unit}`
+        : `${formatDuskExact(allowance / WEI_PER_LUX, locale)} ${unit}`;
 
 /**
  * What an approval row is called: what it approved and what came of it, or
@@ -581,19 +586,20 @@ const approvedText = (allowance, unit, locale) =>
  * @param {import("@dusk-network/app-core/bridge").MigrationApproval | undefined} before
  * @param {string} unit
  * @param {string} locale
+ * @param {boolean} masked Whether balances are hidden
  */
-function approvalTitle(approval, before, unit, locale) {
+function approvalTitle(approval, before, unit, locale, masked) {
   if (approval.state !== "revoke") {
     const state = APPROVAL_STATES[approval.state] ?? "";
 
-    return `Approved ${approvedText(approval.allowance, unit, locale)}${state}`;
+    return `Approved ${approvedText(approval.allowance, unit, locale, masked)}${state}`;
   }
 
   if (!before || before.state === "revoke") {
     return "Approval revoked";
   }
 
-  const approved = approvedText(before.allowance, unit, locale);
+  const approved = approvedText(before.allowance, unit, locale, masked);
 
   return before.state === "unused"
     ? `Revoked the ${approved} approved, never used`
@@ -604,13 +610,17 @@ function approvalTitle(approval, before, unit, locale) {
  * An approval or a revoke of a migration's contract on its own chain, as a
  * row of its own, with the gas it paid there: none for one a migration spent,
  * whose row has its gas. Each says what it approved, or what it took back of
- * the approval before it (`approvals`: all the owners' read, oldest first).
+ * the approval before it (`approvals`: all the owners' read, oldest first),
+ * hidden while balances are (`masked`).
  *
  * @param {import("@dusk-network/app-core/bridge").MigrationApproval} approval
- * @param {{ approvals?: import("@dusk-network/app-core/bridge").MigrationApproval[], locale: string, route: import("$lib/bridge/cardRoutes").CardRoute }} options
+ * @param {{ approvals?: import("@dusk-network/app-core/bridge").MigrationApproval[], locale: string, masked?: boolean, route: import("$lib/bridge/cardRoutes").CardRoute }} options
  * @returns {BridgeActivityRow | null}
  */
-export function approvalRow(approval, { approvals = [], locale, route }) {
+export function approvalRow(
+  approval,
+  { approvals = [], locale, masked = false, route }
+) {
   if (approval.state === "spent") {
     return null;
   }
@@ -652,7 +662,8 @@ export function approvalRow(approval, { approvals = [], locale, route }) {
       approval,
       before,
       route.chain.tokenLabel ?? "DUSK",
-      locale
+      locale,
+      masked
     ),
     to: route.destination,
     when: approval.at ?? 0,

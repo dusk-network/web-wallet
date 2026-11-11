@@ -834,7 +834,7 @@
     lastCheckedAt = latestCheck > 0 ? new Date(latestCheck) : null;
   }
   $: canCheck = finalizationConfig.configured && !isChecking && !isSubmitting;
-  $: ({ language } = $settingsStore);
+  $: ({ hideBalances, language } = $settingsStore);
   // The public account the wallet shows: the migrations listed pay it.
   $: duskAccount = $walletStore.currentProfile?.account.toString() ?? "";
   $: transfers = $routeTransfers;
@@ -881,6 +881,7 @@
         ? approvalRow(approval, {
             approvals: approvalsRead.approvals,
             locale: language,
+            masked: hideBalances,
             route,
           })
         : null;
