@@ -45,11 +45,12 @@
     "cookie": "0.7.2",
     "viem": {
       "ws": "8.21.0"
-    }
+    },
+    "@dusk-network/networks": "0.3.3"
   },
   "dependencies": {
     "@dusk-network/app-core": "0.14.0",
-    "@dusk-network/networks": "0.3.2",
+    "@dusk-network/networks": "0.3.3",
     "@dusk/evm-sdk": "npm:@jsr/dusk__evm-sdk@0.1.0-beta.3",
     "@dusk/w3sper": "npm:@jsr/dusk__w3sper@1.6.0",
     "@duskdomains/sdk": "npm:@jsr/duskdomains__sdk@0.6.1",
