@@ -195,7 +195,7 @@
   $: title = !hash
     ? "Sent"
     : status === "completed" && outcome
-      ? `Sent at ${timeLabel(outcome.timestamp ?? outcomeAt, language)}`
+      ? `Sent at ${timeLabel(outcome.timestamp ?? outcomeAt, language, { seconds: true })}`
       : isUnconfirmed
         ? "Not confirmed"
         : headings[status].title;

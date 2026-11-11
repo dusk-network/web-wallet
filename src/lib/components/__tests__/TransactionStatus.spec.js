@@ -71,7 +71,7 @@ describe("TransactionStatus", () => {
       TransactionStatus,
       baseProps
     );
-    const blockTime = Date.UTC(2026, 9, 28, 0, 34);
+    const blockTime = Date.UTC(2026, 9, 28, 0, 34, 7);
 
     following.resolve({
       blockHeight: 4_687_200n,
@@ -79,12 +79,13 @@ describe("TransactionStatus", () => {
       fee: 1_854_795n,
       timestamp: blockTime,
     });
-    // At its block's time.
+    // At its block's time, to the second, as the request it paid says it.
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(blockTime, "en")} In block 4,687,200.`
+        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,687,200.`
       )
     );
+    expect(getByRole("status")).toHaveTextContent(/Sent at \d{1,2}:34:07/);
 
     expect(getByText("Network fee")).toBeInTheDocument();
     expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
@@ -112,7 +113,7 @@ describe("TransactionStatus", () => {
 
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(blockTime, "en")} In block 4,820,416.`
+        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,820,416.`
       )
     );
     expect(refreshBalance).not.toHaveBeenCalled();
@@ -124,7 +125,7 @@ describe("TransactionStatus", () => {
     await vi.waitFor(() => expect(onFinal).toHaveBeenCalledOnce());
     expect(refreshBalance).toHaveBeenCalledOnce();
     expect(getByRole("status")).toHaveTextContent(
-      `Sent at ${timeLabel(blockTime, "en")} In block 4,820,416.`
+      `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,820,416.`
     );
     refreshBalance.mockRestore();
   });
@@ -268,7 +269,7 @@ describe("TransactionStatus", () => {
     again.resolve({ blockHeight: 1n, error: null, fee: 1n, timestamp: null });
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(Date.UTC(2026, 9, 28, 1, 2), "en")} In block 1.`
+        `Sent at ${timeLabel(Date.UTC(2026, 9, 28, 1, 2), "en", { seconds: true })} In block 1.`
       )
     );
     vi.restoreAllMocks();

@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Give one time for one payment, to the second, as its block's: on Send's warning of a payment made already and its Review, on the Sent screen, in a transaction's details and on a request, which says today in a sentence and a refund's time first, as its payments'
 - Give a contact saved from an address the .dusk name History names it by, in Contacts' column and the search's, and find it by that name
 - Remember the EVM addresses added to the export for each profile, after a lock too, so a period's file is the same each time, with Remove for each
 - Make Addresses to check on the Bridge's Review 44 px tall on a phone

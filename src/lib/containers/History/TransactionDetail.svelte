@@ -356,7 +356,11 @@
     <dl class="tx-detail__list">
       <div>
         <dt>Date</dt>
-        <dd>{time === null ? "Not known yet" : fullDateTime(time, locale)}</dd>
+        <dd>
+          {time === null
+            ? "Not known yet"
+            : fullDateTime(time, locale, { seconds: true })}
+        </dd>
       </div>
       {#each stDuskShown as line (line.term)}
         <div>

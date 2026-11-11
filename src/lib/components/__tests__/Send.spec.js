@@ -17,7 +17,7 @@ import {
   formatDuskExact,
   formatDuskPlain,
 } from "$lib/dusk/currency";
-import { timeLabel } from "$lib/activity/present";
+import { paidInSentence, timeLabel } from "$lib/activity/present";
 import { BALANCE_MASK } from "$lib/constants";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { shortenAddress } from "$lib/dusk/string";
@@ -1745,7 +1745,7 @@ describe("Send", () => {
       }
     });
 
-    it("should warn of the same payment made moments ago, or with the same memo before, and let it go all the same, the button saying Send again", async () => {
+    it("should warn of the same payment made moments ago, or with the same memo before, when to the second, and let it go all the same, the button saying Send again", async () => {
       const sent = Date.now() - 20_000;
       const { getByRole } = render(Send, {
         ...baseProps,
@@ -1754,8 +1754,13 @@ describe("Send", () => {
         initialRecipient: otherAccount,
       });
 
+      // When a block took it, to the second, as its request and its Sent
+      // screen say it.
       expect(getByRole("alert")).toHaveTextContent(
-        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} at ${timeLabel(sent, "en")}.`
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} ${paidInSentence(sent, "en")}.`
+      );
+      expect(getByRole("alert")).toHaveTextContent(
+        /DUSK to \S+ today, \d{1,2}:\d{2}:\d{2}/
       );
 
       // It can be meant: it goes, as the button says.
@@ -1838,7 +1843,24 @@ describe("Send", () => {
       });
 
       expect(request.getByRole("alert")).toHaveTextContent(
-        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo on Thu 29 Oct at ${timeLabel(paid, "en")}.`
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo ${paidInSentence(paid, "en")}.`
+      );
+      expect(request.getByRole("alert")).toHaveTextContent(
+        /with this memo on 29 Oct, \d{1,2}:30:00/
+      );
+      cleanup();
+
+      // Still on its way, in no block: no time a block's would change.
+      const onItsWay = render(Send, {
+        ...baseProps,
+        historyRows: [sentRow({ memo: "Factura 044", status: "pending" })],
+        initialAmount: "0.0019",
+        initialMemo: "Factura 044",
+        initialRecipient: otherAccount,
+      });
+
+      expect(onItsWay.getByRole("alert")).toHaveTextContent(
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It's on its way.`
       );
     });
   });
@@ -2141,7 +2163,7 @@ describe("Send", () => {
 
       // Sent, at its block's time.
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(blockTime, "en")} 567 DUSK to ${shortenAddress(shieldedAddress)} In block 4,687,200.`
+        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} 567 DUSK to ${shortenAddress(shieldedAddress)} In block 4,687,200.`
       );
       // The fee charged, to the last digit.
       expect(getByText("0.001854795 DUSK")).toBeInTheDocument();

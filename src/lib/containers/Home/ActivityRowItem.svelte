@@ -61,7 +61,9 @@
     >
     <span
       class="activity-row__line"
-      title={time === null ? undefined : fullDateTime(time, locale)}
+      title={time === null
+        ? undefined
+        : fullDateTime(time, locale, { seconds: true })}
       >{#if failed}<span class="activity-row__failed">{p.line}</span
         >{SEPARATOR}{/if}{details.filter(Boolean).join(SEPARATOR)}</span
     >

@@ -269,7 +269,7 @@ describe("A send that fails", () => {
 
     await vi.waitFor(() =>
       expect(shown(rendered.container)).toMatchObject({
-        heading: `Sent at ${timeLabel(at, "en")}`,
+        heading: `Sent at ${timeLabel(at, "en", { seconds: true })}`,
         sentence: "In block 4,321.",
       })
     );

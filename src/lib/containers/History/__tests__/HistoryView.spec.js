@@ -106,7 +106,7 @@ describe("HistoryView", () => {
     vi.useRealTimers();
   });
 
-  it("should say times are local, each with its own offset on hover, and keep them on phones", () => {
+  it("should say times are local, each with its own offset on hover, to the second, and keep them on phones", () => {
     const { container, getByText } = render(HistoryView, {
       locale: "en",
       state,
@@ -122,10 +122,12 @@ describe("HistoryView", () => {
     expect(container.querySelector("th.history__col-time")).toHaveTextContent(
       /^Time$/
     );
+    // To the second on hover: two in the same minute read apart.
     expect(cells.map((cell) => cell.getAttribute("title"))).toStrictEqual([
-      fullDateTime(WINTER, "en"),
-      fullDateTime(SUMMER, "en"),
+      fullDateTime(WINTER, "en", { seconds: true }),
+      fullDateTime(SUMMER, "en", { seconds: true }),
     ]);
+    expect(cells[0].getAttribute("title")).toMatch(/ \d{1,2}:\d{2}:\d{2} /);
     expect(
       Array.from(container.querySelectorAll(".history__phone-meta"), (meta) =>
         meta.textContent?.replace(/\s+/g, " ").trim()
@@ -258,12 +260,12 @@ describe("HistoryView", () => {
     );
   });
 
-  it("should name each row's button with its amount and date", () => {
+  it("should name each row's button with its amount and date, to the second", () => {
     const { getAllByRole } = render(HistoryView, { locale: "en", state });
     const [first] = getAllByRole("button", { name: /DUSK/ });
 
     expect(first).toHaveAccessibleName(
-      `${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)}, Sent, −0.1 DUSK, ${fullDateTime(WINTER, "en")}, Public`
+      `${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)}, Sent, −0.1 DUSK, ${fullDateTime(WINTER, "en", { seconds: true })}, Public`
     );
   });
 

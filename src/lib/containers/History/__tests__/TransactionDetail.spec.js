@@ -124,6 +124,16 @@ describe("TransactionDetail", () => {
     setNodeNetwork(null);
   });
 
+  it("should give its date to the second, as two in the same minute read apart", () => {
+    const at = Date.UTC(2026, 10, 11, 4, 33, 12);
+    const { container } = show(row({ timestamp: at }));
+
+    expect(mainList(container).replace(/\s+/g, " ")).toContain(
+      `Date ${fullDateTime(at, "en", { seconds: true })} `
+    );
+    expect(mainList(container)).toMatch(/Date.*\d{1,2}:33:12/);
+  });
+
   it("should show with a chevron that Technical details opens", () => {
     const { container } = show(row({}));
 

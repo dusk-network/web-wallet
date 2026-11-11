@@ -12,6 +12,7 @@
   import { formatTime } from "@dusk-network/networks/format";
 
   import { activityState, currentActivity } from "$lib/activity";
+  import { paidInSentence } from "$lib/activity/present";
   import { claimDay } from "$lib/bridge/claimDate";
   import { Button, CopyButton } from "$lib/dusk/components";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
@@ -75,28 +76,28 @@
 
   /**
    * What matched of a payment that matched only part of a request, in words:
-   * "same amount on 5 Nov, 21:16, with no memo".
+   * "same amount on 5 Nov, 21:16:05 CET, with no memo".
    *
    * @param {{ at?: number, lux?: bigint, matched?: string, memo?: string }} payment
    * @param {string} language
    * @returns {Part[]}
    */
   function partOf({ at, lux, matched, memo }, language) {
-    const day = at ? claimDay(at, language) : "";
+    const day = at ? paidInSentence(at, language) : "";
 
     return matched === "amount"
       ? memo
         ? [
-            { text: `same amount on ${day}, with another memo: "` },
+            { text: `same amount ${day}, with another memo: "` },
             { memo },
             { text: '"' },
           ]
-        : [{ text: `same amount on ${day}, with no memo` }]
+        : [{ text: `same amount ${day}, with no memo` }]
       : [
           {
             text: hideBalances
-              ? `same memo on ${day}`
-              : `same memo on ${day}, for ${formatDuskExact(lux ?? 0n, language)} DUSK`,
+              ? `same memo ${day}`
+              : `same memo ${day}, for ${formatDuskExact(lux ?? 0n, language)} DUSK`,
           },
         ];
   }
@@ -127,7 +128,7 @@
     const { at, lux, matched, memo, more = [] } = match;
     const what =
       request.lux === null ? "Its memo matches" : "Amount and memo match";
-    const day = at ? claimDay(at, language) : "";
+    const day = at ? paidInSentence(at, language) : "";
     const again = paidAgain(match);
     const also = more
       .filter((payment) => payment.matched !== "amount-memo")
@@ -143,11 +144,11 @@
           ...(again.length
             ? [{ text: `${what} ${again.length + 1} payments.` }]
             : lux === undefined
-              ? [{ text: `${what} a payment${day ? ` on ${day}` : ""}.` }]
+              ? [{ text: `${what} a payment${day ? ` ${day}` : ""}.` }]
               : [
                   { text: `${what} a payment of ` },
                   { lux },
-                  { text: ` DUSK${day ? ` on ${day}` : ""}.` },
+                  { text: ` DUSK${day ? ` ${day}` : ""}.` },
                 ]),
           ...also,
         ];
@@ -298,14 +299,18 @@
     formatTime(ms, { locale: language || undefined, seconds: true });
 
   /**
-   * A time as a sentence says it: "today, 16:42:05 SGT", or "on 5 Nov, …".
+   * When a request was asked, as a sentence says it: "today, 16:42 SGT", or
+   * "on 5 Nov, …".
    *
-   * @param {string} label As `paidAt` gives it
+   * @param {number} ms
    */
-  const inSentence = (label) =>
-    /^(Today|Yesterday),/.test(label)
+  function askedAt(ms) {
+    const label = claimDay(ms, language);
+
+    return /^(Today|Yesterday),/.test(label)
       ? `${label.charAt(0).toLowerCase()}${label.slice(1)}`
       : `on ${label}`;
+  }
 
   /**
    * What a request asked, in words for a screen reader: nothing of it with the
@@ -396,7 +401,7 @@
             <p class="requests__memo"><MemoText text={request.memo} /></p>
           {/if}
           <p class="requests__line">
-            Asked {claimDay(request.at, language)}. {#each parts as part, i (i)}{#if "memo" in part}<MemoText
+            Asked {askedAt(request.at)}. {#each parts as part, i (i)}{#if "memo" in part}<MemoText
                   inline
                   text={part.memo}
                 />{:else if "lux" in part}<BalanceValue
@@ -453,12 +458,20 @@
                   </span>
                   {#if refund?.sent}
                     {@const sent = refund.sent}
+                    {@const sentAt =
+                      sent.status === "executed" && sent.time
+                        ? paidAt(sent.time)
+                        : ""}
+                    <!-- As the payments above it: its time first, once a
+                      block has it, which is the one time it then has. -->
                     <span class="requests__sent-back"
-                      >Sent back <BalanceValue
+                      >{#if sentAt}{sentAt
+                          .charAt(0)
+                          .toUpperCase()}{sentAt.slice(1)}, sent back{:else}Sent
+                        back{/if}
+                      <BalanceValue
                         value={formatDuskExact(sent.value, language)}
-                      /> DUSK{sent.time
-                        ? ` ${inSentence(paidAt(sent.time))}`
-                        : ""} ·
+                      /> DUSK{sentAt ? "" : ", on its way"} ·
                       <a
                         aria-label={`See in History: what was sent back for the payment of ${day}`}
                         class="text-link tap-link"
