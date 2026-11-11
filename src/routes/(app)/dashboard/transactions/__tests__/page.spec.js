@@ -880,7 +880,7 @@ describe("History", () => {
       vi.unstubAllGlobals();
     });
 
-    it("shows staking rewards by year beside the file, in DUSK, and in the wallet's currency where asked, saving nothing", async () => {
+    it("shows staking rewards by year beside the file, in DUSK, and in the wallet's currency as asked under them, saving nothing", async () => {
       // Mid-year, whatever the device's time zone: one a year and a half
       // ago, past CoinGecko's year, and the rest this year.
       const year = new Date(NOW).getUTCFullYear();
@@ -992,9 +992,18 @@ describe("History", () => {
         ]);
         expect(prices).not.toHaveBeenCalled();
 
-        await fireEvent.click(getByRole("checkbox", { name: /in euros/ }));
+        // The file's values ask nothing of them.
         await fireEvent.click(
-          getByRole("button", { name: "Show staking rewards by year" })
+          getByRole("checkbox", { name: /^Add each payment's value in euros/ })
+        );
+
+        expect(prices).not.toHaveBeenCalled();
+
+        // Their own, under them: read again with each one's value.
+        await fireEvent.click(
+          getByRole("checkbox", {
+            name: "Add each reward's value in euros, from CoinGecko's prices",
+          })
         );
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
@@ -1040,7 +1049,7 @@ describe("History", () => {
         // shows as under that.
         settingsStore.update((store) => ({ ...store, currency: "JPY" }));
         await vi.waitFor(() =>
-          getByRole("checkbox", { name: /in Japanese yen/ })
+          getByRole("checkbox", { name: /reward's value in Japanese yen/ })
         );
         await fireEvent.click(
           getByRole("button", { name: "Show staking rewards by year" })

@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Offer each staking reward's value in the wallet's currency under the rewards by year, as the extension does, read again as it's ticked, and show no rounding remainder as a reward
 - Refuse a profile name that is, or looks like, another profile's .dusk name, saying which
 - Ask whether a contact or a profile is someone else where its name starts as a profile's or a contact's, as "Lucas (petit-fils)" beside "Lucas", and save it all the same
 - Say on a send that waits on a silent network that it goes out once the network answers, with Cancel and a way Home

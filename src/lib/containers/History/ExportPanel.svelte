@@ -79,6 +79,12 @@
    */
   let rewards = null;
 
+  /**
+   * Whether the rewards are given their value in the currency too, as asked
+   * under them, as the extension asks under its years: CoinGecko's prices.
+   */
+  let rewardsValued = false;
+
   /** Whether one is being added, and what's typed for it. */
   let isAdding = false;
   let typedAddress = "";
@@ -196,7 +202,7 @@
     try {
       const read = await readRewardsByYear({
         currency,
-        fiat,
+        fiat: rewardsValued,
         session:
           /** @type {NonNullable<ReturnType<typeof walletStore.startHistory>>} */ (
             walletStore.startHistory()
@@ -442,6 +448,19 @@
         </table>
       {:else}
         <p class="export-panel__note">No staking rewards yet.</p>
+      {/if}
+      {#if rewards.years.length}
+        <label class="export-panel__option">
+          <input
+            bind:checked={rewardsValued}
+            class="dusk-checkbox"
+            disabled={isBusy}
+            on:change={showRewards}
+            type="checkbox"
+          />
+          Add each reward's value in {currencyWords(currency).many}, from
+          CoinGecko's prices
+        </label>
       {/if}
       {#if rewards.shieldedWaiting}
         <p class="export-panel__note">
