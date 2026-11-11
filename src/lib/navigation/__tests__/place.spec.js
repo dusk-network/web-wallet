@@ -303,6 +303,23 @@ describe("Keeping what's typed in a form that moves money", () => {
       expect(isKept(RECIPIENT)).toBe(false);
     });
 
+    it("brings it back after a send that failed with nothing sent once its page was left", async () => {
+      /** @type {PromiseWithResolvers<string>} */
+      const sending = Promise.withResolvers();
+
+      sendProps.execute.mockReturnValueOnce(sending.promise);
+      await press(await typedForm());
+
+      expect(isKept(RECIPIENT)).toBe(false);
+
+      // Home, while it waits; then it fails with nothing sent.
+      leave();
+      sending.reject(new TypeError("Failed to fetch"));
+      await vi.waitFor(() => expect(isKept(RECIPIENT)).toBe(true));
+
+      expectTyped(render(Send, sendProps));
+    });
+
     it("keeps it as the form brought back after a failed send is left again", async () => {
       sendProps.execute.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 

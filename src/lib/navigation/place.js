@@ -179,7 +179,8 @@ const withoutPhrases = (values) =>
 /**
  * The form that keeps each draft, by its name: the one made last, as a page
  * draws a form in place of another, as for another link. The one it replaced
- * keeps nothing from then on, as it goes after.
+ * keeps nothing from then on, as it goes after; one left with none in its
+ * place still does, as for a send that fails once its page was left.
  *
  * @type {Map<string, object>}
  */
@@ -204,7 +205,7 @@ export function formDraft(name) {
   keepers.set(key, self);
 
   /** Whether this form keeps the draft still: no other took its place. */
-  const isKeeper = () => keepers.get(key) === self;
+  const isKeeper = () => (keepers.get(key) ?? self) === self;
 
   /** @type {string | null} */
   let owner = null;
