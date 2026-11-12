@@ -168,8 +168,9 @@
       <p class="home__note">Nothing can be sent from this wallet right now.</p>
     {/if}
 
-    <!-- Sends that haven't gone out, as the network doesn't answer: called
-      off from here, or they go out once it answers. -->
+    <!-- Sends that haven't gone out, as the network doesn't answer, or
+      couldn't be reached: called off from here, or they go out once it
+      answers. -->
     {#each $waitingSends as send (send.id)}
       <Banner
         className="home__waiting"
@@ -178,7 +179,7 @@
         variant="info"
       >
         <p>
-          {$networkReach === "answering"
+          {$networkReach === "answering" && !send.waitsForNetwork
             ? "It's being sent."
             : "It goes out once the network answers."}
         </p>

@@ -97,6 +97,107 @@ describe("A send that can be called off", () => {
   });
 });
 
+describe("A send that couldn't reach the network before it went out", () => {
+  /** The browser says it's back online. */
+  const backOnline = () => window.dispatchEvent(new Event("online"));
+
+  /** What the network is asked, answered as each call says. */
+  const asking = () =>
+    vi.fn((/** @type {AbortSignal} */ signal) => {
+      void signal;
+
+      return Promise.resolve(1n);
+    });
+
+  it("waits for the network while it can be called off, is made again once the network answers, and goes out once", async () => {
+    const gate = sendGate();
+    const answers = asking().mockRejectedValueOnce(
+      new TypeError("Failed to fetch")
+    );
+    /** Whether it said it waits for the network as it was made again. */
+    let waitedAsMade = true;
+    const attempt = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockImplementationOnce(async () => {
+        waitedAsMade = get(gate.waitsForNetwork);
+        gate.handOver();
+
+        return "sent";
+      });
+    const sent = gate.untilHandedOver(attempt, answers);
+
+    await vi.waitFor(() => expect(get(gate.waitsForNetwork)).toBe(true));
+    expect(get(gate)).toBe("open");
+
+    // Back online, the network doesn't answer yet: it waits on.
+    backOnline();
+    await vi.waitFor(() => expect(answers).toHaveBeenCalledTimes(1));
+    expect(attempt).toHaveBeenCalledTimes(1);
+    expect(get(gate.waitsForNetwork)).toBe(true);
+
+    // It answers: made again, it goes out.
+    backOnline();
+
+    await expect(sent).resolves.toBe("sent");
+    expect(attempt).toHaveBeenCalledTimes(2);
+    // Made again once the network answered: no longer said to wait for it.
+    expect(waitedAsMade).toBe(false);
+    expect(get(gate)).toBe("handed-over");
+    expect(get(gate.waitsForNetwork)).toBe(false);
+  });
+
+  it("fails at once for anything but the network, and once it was handed over, never made again", async () => {
+    const answers = asking();
+    const refused = sendGate();
+
+    await expect(
+      refused.untilHandedOver(
+        () =>
+          Promise.reject(
+            new Error("Tx ab not accepted: gas price lower than minimum 1")
+          ),
+        answers
+      )
+    ).rejects.toThrow("gas price lower than minimum");
+
+    const out = sendGate();
+    const attempt = vi.fn(async () => {
+      out.handOver();
+
+      throw new TypeError("Failed to fetch");
+    });
+
+    await expect(out.untilHandedOver(attempt, answers)).rejects.toThrow(
+      "Failed to fetch"
+    );
+    expect(attempt).toHaveBeenCalledOnce();
+    expect(answers).not.toHaveBeenCalled();
+    expect(get(refused.waitsForNetwork)).toBe(false);
+  });
+
+  it("stops at once as it's called off while it waits, and asks nothing more", async () => {
+    const gate = sendGate();
+    const answers = asking();
+    const attempt = vi.fn(() =>
+      Promise.reject(new TypeError("Failed to fetch"))
+    );
+    const sent = gate.untilHandedOver(attempt, answers);
+
+    await vi.waitFor(() => expect(get(gate.waitsForNetwork)).toBe(true));
+    gate.cancel();
+
+    await expect(sent).rejects.toBeInstanceOf(SendCancelledError);
+    expect(get(gate.waitsForNetwork)).toBe(false);
+
+    backOnline();
+    await Promise.resolve();
+
+    expect(answers).not.toHaveBeenCalled();
+    expect(attempt).toHaveBeenCalledOnce();
+  });
+});
+
 describe("The sends waiting to go out", () => {
   it("lists one until it goes out, is called off or ends, and calls off every one there is as the wallet locks", async () => {
     /**

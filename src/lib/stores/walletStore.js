@@ -448,6 +448,37 @@ const builtWhileOpen = (builder, stillOpen) =>
   });
 
 /**
+ * The sends of the wallet open, one at a time: each is built, checked by the
+ * node, handed over to it and its nonce or notes kept before the next is
+ * built, as two built at once take the same nonce, or the same notes, as two
+ * that waited for the network would as it answers.
+ */
+let sendsInTurn = Promise.resolve();
+
+/**
+ * Does `work` in its turn, once the sends before it are over. Its turn is
+ * over once it is, or as it's called off with `gate`, as then it never
+ * reaches the node.
+ *
+ * @template T
+ * @param {() => Promise<T>} work
+ * @param {import("$lib/transactions/sendGate").SendGate} [gate]
+ * @returns {Promise<T>}
+ */
+function inTurn(work, gate) {
+  const turn = sendsInTurn.then(() =>
+    gate ? Promise.race([work(), gate.cancelled]) : work()
+  );
+
+  sendsInTurn = turn.then(
+    () => {},
+    () => {}
+  );
+
+  return turn;
+}
+
+/**
  * Sends a transaction as `profile`, taken once as the send begins: it is
  * built, kept in the cache and recorded in the history as that profile,
  * whichever one is chosen while the wallet syncs before it goes out. It
@@ -461,7 +492,8 @@ const builtWhileOpen = (builder, stillOpen) =>
  * out: History shows it on its way at once, and it's followed as one that
  * went out, as the chain will say. With a `gate`, it can be called off until
  * the node is asked to broadcast it: it then stops at once, whatever it
- * waits on, and never reaches the node (sendGate).
+ * waits on, and never reaches the node (sendGate). Until then, what couldn't
+ * reach the network waits for it, and is made again once it answers.
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
@@ -515,31 +547,61 @@ const sendAs = (
     get(walletStore).walletKey
   );
 
-  const sent = (password ? password.then(() => sync()) : sync())
+  /**
+   * Synced, connected, built and checked by the node, then handed over to
+   * it, which may answer, and what it changed kept, in its turn.
+   *
+   * @returns {Promise<TransactionInfo>}
+   */
+  const attempt = () =>
+    sync()
+      .catch((error) => {
+        throw stillOpen(error);
+      })
+      .then(() => {
+        gate?.check();
+
+        return networkStore.connect();
+      })
+      .then((network) =>
+        inTurn(() => {
+          gate?.check();
+
+          return execute(sending(stillOpen(network))).then((txInfo) =>
+            // It went out: what goes wrong from here doesn't say it didn't.
+            keepInCache(txInfo).catch((error) => {
+              throw outcomeUnknown(error, txInfo.hash);
+            })
+          );
+        }, gate)
+      );
+
+  const sent = (password ?? Promise.resolve())
     .catch((error) => {
       throw stillOpen(error);
     })
-    .then(() => {
-      gate?.check();
-
-      return networkStore.connect();
-    })
-    .then((network) =>
-      execute(sending(stillOpen(network))).catch((error) => {
-        const hash = unconfirmedHash(error);
-
-        if (hash) {
-          followRemoval(/** @type {TransactionInfo} */ ({ hash }));
-          record(/** @type {TransactionInfo} */ ({ hash }));
-          lookFor(/** @type {TransactionInfo} */ ({ hash }));
-        }
-
-        throw error;
-      })
+    .then(() =>
+      // Asked for the latest block's height, the network says it answers.
+      gate
+        ? gate.untilHandedOver(attempt, (signal) =>
+            networkStore.getCurrentBlockHeight(signal)
+          )
+        : attempt()
     )
+    .catch((error) => {
+      const hash = unconfirmedHash(error);
+
+      if (hash) {
+        followRemoval(/** @type {TransactionInfo} */ ({ hash }));
+        record(/** @type {TransactionInfo} */ ({ hash }));
+        lookFor(/** @type {TransactionInfo} */ ({ hash }));
+      }
+
+      throw error;
+    })
     .then((txInfo) =>
       // It went out: what goes wrong from here doesn't say it didn't.
-      keepInCache(txInfo)
+      Promise.resolve(txInfo)
         .then(passThruWithEffects(followRemoval))
         .then(passThruWithEffects(record))
         .then(passThruWithEffects(lookFor))
@@ -990,6 +1052,8 @@ const refreshBalance = () =>
  */
 function resetSession() {
   walletSession++;
+  // The next wallet's sends wait for none of this one's.
+  sendsInTurn = Promise.resolve();
   cancelSendPassword(new WalletChangedError());
   cancelWaitingSends(new WalletChangedError());
   abortSync();

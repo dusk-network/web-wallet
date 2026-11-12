@@ -219,6 +219,51 @@ describe("Dashboard", () => {
     }
   });
 
+  it("says a send that couldn't reach the network goes out once it answers, while the pill still finds it answering", async () => {
+    const { keepWaiting, sendGate } = await import("$lib/transactions");
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+
+    render(Dashboard, props);
+
+    const gate = sendGate();
+    const banner = () =>
+      document
+        .querySelector(".home__waiting")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+
+    keepWaiting({
+      gate,
+      lux: 10_000_000n,
+      operation: new Promise(() => {}),
+      to: "Profile 2",
+    });
+
+    try {
+      await act(() => setNetworkReach("answering"));
+
+      expect(banner()).toBe(
+        "Not sent yet: 0.01 DUSK to Profile 2. It's being sent. Cancel"
+      );
+
+      // The node can't be reached as it's sent: it waits for the network.
+      gate
+        .untilHandedOver(
+          () => Promise.reject(new TypeError("Failed to fetch")),
+          () => new Promise(() => {})
+        )
+        .catch(() => {});
+      await vi.waitFor(() =>
+        expect(banner()).toBe(
+          "Not sent yet: 0.01 DUSK to Profile 2. It goes out once the network answers. Cancel"
+        )
+      );
+    } finally {
+      gate.cancel();
+      setNetworkReach("answering");
+    }
+  });
+
   it("hides a waiting send's amount once balances are hidden, though they weren't as it was sent, there and as it's called off", async () => {
     const { keepWaiting, sendGate } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");

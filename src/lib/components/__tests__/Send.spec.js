@@ -2365,7 +2365,7 @@ describe("Send", () => {
 
         await sendWith(getByRole, filled);
 
-        expect(getByText("Transaction failed")).toBeInTheDocument();
+        expect(getByText("Not sent")).toBeInTheDocument();
 
         await pressBack();
 

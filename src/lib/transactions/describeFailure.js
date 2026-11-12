@@ -211,10 +211,11 @@ export const isDeclinedInWallet = (error) =>
  * @param {Error} error What the send rejected with
  * @param {{ checkFirst?: string }} [options] What to check before sending
  *   it again, once it may have gone out: History, unless said otherwise
- * @returns {{ canRetry?: boolean, heading?: string, icon?: string, mayHaveGoneOut?: boolean, outcomeUnknown?: boolean, sentence: string }}
+ * @returns {{ canRetry?: boolean, heading?: string, icon?: string, mayHaveGoneOut?: boolean, outcomeUnknown?: boolean, sentence: string, unreachable?: boolean }}
  *   `canRetry` holds only where nothing went out: never invite a send again
  *   without it; `mayHaveGoneOut` where it was handed over and no answer
- *   says what became of it
+ *   says what became of it; `unreachable` where nothing went out as the
+ *   network couldn't be reached, and nothing else stopped it
  */
 export default function describeFailure(
   error,
@@ -270,11 +271,19 @@ export default function describeFailure(
     };
   }
 
+  if (UNREACHABLE.test(text)) {
+    return {
+      canRetry: true,
+      heading: "Not sent",
+      sentence:
+        "Couldn't reach the network. Nothing was sent and no fee was charged.",
+      unreachable: true,
+    };
+  }
+
   return {
     canRetry: true,
-    sentence: UNREACHABLE.test(text)
-      ? "Couldn't reach the network. Check your connection and try again."
-      : "Something went wrong before it was sent. Try again.",
+    sentence: "Something went wrong before it was sent. Try again.",
   };
 }
 
@@ -286,6 +295,15 @@ export default function describeFailure(
  */
 export const nothingWentOut = (error) =>
   Boolean(describeFailure(getErrorFrom(error)).canRetry);
+
+/**
+ * Whether what a send rejected with before it was handed over is the network
+ * out of reach, and nothing else: it can go out once the network answers.
+ *
+ * @param {unknown} error
+ */
+export const isUnreachable = (error) =>
+  Boolean(describeFailure(getErrorFrom(error)).unreachable);
 
 /**
  * The hash of the transaction a send may have sent all the same, as it ran

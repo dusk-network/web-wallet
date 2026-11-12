@@ -607,7 +607,7 @@ describe("NativeStake", () => {
       await fireEvent.click(
         view.getByRole("button", { name: "Stake 1,000 DUSK" })
       );
-      await view.findByText(/^(Transaction failed|Not confirmed)$/);
+      await view.findByText(/^(Transaction failed|Not sent|Not confirmed)$/);
 
       return { ...view, execute };
     };

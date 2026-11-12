@@ -2151,6 +2151,32 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(queryByRole("button", { name: "Migrate" })).toBeNull();
     });
 
+    it("never says no fee was charged once the approval it sent went through, though the network can't be reached as it migrates", async () => {
+      // Approved in a block, its gas paid; then the chain's node can't be
+      // reached as the migration is checked, before the wallet is asked.
+      mocks.allowance.mockImplementation(async () => {
+        if (mocks.approve.mock.calls.length) {
+          throw new Error("HTTP request failed.");
+        }
+
+        return 0n;
+      });
+      mocks.approve.mockResolvedValue(`0x${"aa".repeat(32)}`);
+      mocks.migrate.mockRejectedValueOnce(new Error("HTTP request failed."));
+
+      const { container, findByText, getByRole } = await toReview();
+
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+      expect(
+        await findByText(
+          "Couldn't reach the network. The approval went through, so next time it only asks to migrate. Nothing moved."
+        )
+      ).toBeInTheDocument();
+      expect(mocks.approve).toHaveBeenCalledOnce();
+      expect(container).not.toHaveTextContent("no fee was charged");
+    });
+
     it("offers to try again when it failed before it went out", async () => {
       mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
       mocks.migrate.mockRejectedValueOnce(

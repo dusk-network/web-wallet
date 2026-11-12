@@ -352,7 +352,7 @@ describe("LiquidStake", () => {
       await fireEvent.click(
         view.getByRole("button", { name: "Stake 100 DUSK with Sozu" })
       );
-      await view.findByText(/^(Transaction failed|Not confirmed)$/);
+      await view.findByText(/^(Transaction failed|Not sent|Not confirmed)$/);
 
       return { ...view, execute };
     };

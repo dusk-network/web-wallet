@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Send a payment that couldn't reach the network, as when the Wi-Fi drops right after Send, once the network answers, as on a silent network, with Cancel and Home until then
+- Send every payment that waited for the network once it answers, one after another, not only the first
+- Say "Not sent" where a send couldn't reach the network, and that nothing was sent and no fee was charged, or for a migration whose approval went through, that it did, with Try again
 - Give native staking's yearly rate from the same blocks as the extension within a day, kept for that day, not from blocks the moment picks
 - Say Reading… for the stDUSK and rate on a Sozu stake's or unstake's Sent screen from when a block takes it until they're read
 - Refuse a dusk:shielded- link to a public account, or a public one to a shielded address, and a dusk: link with a # in it, and say why

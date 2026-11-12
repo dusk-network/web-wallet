@@ -11,11 +11,11 @@ import { formatDuskExact } from "$lib/dusk/currency";
 
 /**
  * A send waiting to go out: the DUSK it sends, in Lux, to whom, as "your
- * Profile 2", and what calls it off, while it can be. Its amount is said as
- * balances are shown when it's said (waitingText), not as they were when it
- * was sent.
+ * Profile 2", what calls it off, while it can be, and whether it waits for
+ * the network, which it couldn't reach. Its amount is said as balances are
+ * shown when it's said (waitingText), not as they were when it was sent.
  *
- * @typedef {{ cancel: (reason?: Error) => boolean, id: string, lux: bigint, to: string }} WaitingSend
+ * @typedef {{ cancel: (reason?: Error) => boolean, id: string, lux: bigint, to: string, waitsForNetwork: boolean }} WaitingSend
  */
 
 /** @type {import("svelte/store").Writable<WaitingSend[]>} */
@@ -40,32 +40,48 @@ export const waitingText = ({ lux, to }, { hidden, locale }) =>
  * @param {{ gate: import("./sendGate").SendGate, lux: bigint, operation: Promise<unknown>, to: string }} send
  */
 export function keepWaiting({ gate, lux, operation, to }) {
-  /** @type {WaitingSend} */
-  const entry = {
-    cancel: (/** @type {Error | undefined} */ reason) => gate.cancel(reason),
-    id: crypto.randomUUID(),
-    lux,
-    to,
-  };
+  const id = crypto.randomUUID();
   let isWaiting = true;
 
-  /** @type {() => void} */
-  let stopFollowing = () => {};
+  /** @type {Array<() => void>} */
+  let stops = [];
+
+  const stopFollowing = () => stops.forEach((stop) => stop());
 
   const done = () => {
     if (isWaiting) {
       isWaiting = false;
-      sends.update((list) => list.filter((each) => each !== entry));
+      sends.update((list) => list.filter((each) => each.id !== id));
       stopFollowing();
     }
   };
 
-  sends.update((list) => [...list, entry]);
-  stopFollowing = gate.subscribe((state) => {
-    if (state !== "open") {
-      done();
-    }
-  });
+  sends.update((list) => [
+    ...list,
+    {
+      cancel: (/** @type {Error | undefined} */ reason) => gate.cancel(reason),
+      id,
+      lux,
+      to,
+      waitsForNetwork: false,
+    },
+  ]);
+  stops = [
+    gate.subscribe((state) => {
+      if (state !== "open") {
+        done();
+      }
+    }),
+    gate.waitsForNetwork.subscribe((waits) => {
+      if (isWaiting) {
+        sends.update((list) =>
+          list.map((each) =>
+            each.id === id ? { ...each, waitsForNetwork: waits } : each
+          )
+        );
+      }
+    }),
+  ];
 
   // Gone out or called off already as it was followed.
   if (!isWaiting) {
