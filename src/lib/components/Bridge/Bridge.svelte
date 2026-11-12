@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { amountForField } from "@dusk-network/app-core/amounts";
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
   import {
@@ -277,8 +278,8 @@
    * @param {bigint} lux
    */
   const toAmountText = (lux) =>
-    formatUnits(lux > 0n ? lux : 0n, 9).replace(
-      ".",
+    amountForField(
+      formatUnits(lux > 0n ? lux : 0n, 9),
       getDecimalSeparator(language)
     );
 

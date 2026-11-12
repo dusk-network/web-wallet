@@ -8,7 +8,7 @@
     mdiTimerSand,
   } from "@mdi/js";
 
-  import { currentActivity } from "$lib/activity";
+  import { currentActivity, noteSentOutcome } from "$lib/activity";
   import { timeLabel } from "$lib/activity/present";
   import { handOverSend, tellSendEnd } from "$lib/bridge/sendArrival";
   import { formatDuskExact, formatFee } from "$lib/dusk/currency";
@@ -19,6 +19,7 @@
     Icon,
   } from "$lib/dusk/components";
   import { settingsStore, walletStore } from "$lib/stores";
+  import networkReach from "$lib/stores/networkReach";
   import { followTransaction } from "$lib/transactions";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
@@ -135,6 +136,14 @@
     }
   }
 
+  /**
+   * What this says of it, History and Home say too.
+   *
+   * @param {import("$lib/transactions/followTransaction").FinalTransaction} said
+   */
+  const sayEverywhere = (said) =>
+    noteSentOutcome(/** @type {string} */ (hash), said).catch(() => {});
+
   function follow() {
     controller?.abort();
     controller = new AbortController();
@@ -151,6 +160,7 @@
           outcomeAt = Date.now();
           status = inBlock.error ? "failed" : "completed";
           tellEnd(status);
+          void sayEverywhere(inBlock);
         }
       },
       signal,
@@ -170,7 +180,7 @@
           outcome = result;
           outcomeAt = Date.now();
           status = result.error ? "failed" : "completed";
-          void currentActivity()?.refresh();
+          void sayEverywhere(result).then(() => currentActivity()?.refresh());
           void walletStore.refreshBalance();
           onFinal(result, /** @type {string} */ (hash));
         } else if (status === "pending") {
@@ -227,6 +237,16 @@
       <p>
         It isn't in a block yet. See its status in the explorer before you send
         it again.
+      </p>
+    {:else if status === "pending" && $networkReach === "offline"}
+      <p>
+        You're offline. It has left your wallet. This updates once you're back
+        online.
+      </p>
+    {:else if status === "pending" && $networkReach === "silent"}
+      <p>
+        The network isn't answering. It has left your wallet. This updates once
+        it answers.
       </p>
     {:else if status === "pending"}
       <p>This usually takes under a minute.</p>

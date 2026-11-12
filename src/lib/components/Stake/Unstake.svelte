@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { amountForField } from "@dusk-network/app-core/amounts";
   import { createEventDispatcher, onMount } from "svelte";
 
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
@@ -89,7 +90,7 @@
    * @param {bigint} lux
    */
   const asTyped = (lux) =>
-    formatDuskPlain(lux).replace(".", getDecimalSeparator(language));
+    amountForField(formatDuskPlain(lux), getDecimalSeparator(language));
 
   // The amount as typed, as in the other amount fields: it starts at all
   // that can be withdrawn.

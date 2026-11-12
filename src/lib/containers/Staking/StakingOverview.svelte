@@ -4,7 +4,12 @@
   import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { Button, Icon } from "$lib/dusk/components";
-  import { AppAnchorButton, BalanceValue, SectionHead } from "$lib/components";
+  import {
+    AppAnchorButton,
+    BalanceValue,
+    RewardsByYear,
+    SectionHead,
+  } from "$lib/components";
   import { goto, pageTitle } from "$lib/navigation";
   import { SOZU_URL } from "$lib/sozu/config";
   import { sozuRate as sozuRateOf } from "@dusk-network/app-core/sozu";
@@ -103,6 +108,20 @@
    * @type {import("@dusk-network/app-core/sozu").SozuGrowth | null}
    */
   export let sozuGrowth = null;
+
+  /**
+   * Staking rewards by year, as Export gives them: none while they aren't
+   * read, or where the history has no staking.
+   *
+   * @type {{ currency: string | null, shieldedWaiting: boolean, years: import("@dusk-network/app-core/export").YearRewards[] } | null}
+   */
+  export let rewards = null;
+
+  /** The currency their value is asked in. */
+  export let rewardsCurrency = "USD";
+
+  /** Whether they're read with their value. */
+  export let rewardsValued = false;
 
   /** @param {bigint} lux */
   const amountOf = (lux) => ({
@@ -442,6 +461,16 @@
         </tr>
       </tbody>
     </table>
+    {#if rewards}
+      <div class="staking__years">
+        <RewardsByYear
+          bind:valued={rewardsValued}
+          currency={rewardsCurrency}
+          {locale}
+          {rewards}
+        />
+      </div>
+    {/if}
   </section>
 
   <aside class="staking__side">
@@ -583,6 +612,13 @@
       align-items: flex-start;
       gap: 0.5rem;
     }
+  }
+
+  .staking__years {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 2.5rem;
   }
 
   .staking__main :global(.staking__choose) {

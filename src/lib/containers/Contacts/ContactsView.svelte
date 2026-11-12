@@ -28,6 +28,14 @@
   /** @type {ActivityRow[]} */
   export let rows;
 
+  /**
+   * The verified .dusk names of contacts' accounts, looked up for them, by
+   * account: what History names them by too.
+   *
+   * @type {Map<string, string | null>}
+   */
+  export let names = new Map();
+
   /** @type {string} */
   export let locale;
 
@@ -100,9 +108,14 @@
   const sendHref = (contact) =>
     addBasePath(`/dashboard/send?to=${encodeURIComponent(contact.address)}`);
 
-  // The .dusk names History names addresses by: a contact saved without
-  // one is known by it too.
-  $: duskNames = historyDuskNames(rows);
+  // The .dusk names History names addresses by, and those looked up for
+  // the contacts: a contact saved without one is known by it too.
+  $: duskNames = new Map([
+    .../** @type {[string, string][]} */ (
+      [...names].filter(([, name]) => name)
+    ),
+    ...historyDuskNames(rows),
+  ]);
   // Whatever their accents and case, as the search finds them, and those
   // whose names look like it.
   $: q = searchKey(query);

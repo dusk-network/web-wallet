@@ -9,11 +9,13 @@ import {
 } from "vitest";
 import { get } from "svelte/store";
 import {
+  AccountSyncer,
   Bookkeeper,
   Bookmark,
   Gas,
   Network,
   ProfileGenerator,
+  Transfer,
 } from "@dusk/w3sper";
 
 import { stakeInfo } from "$lib/mock-data";
@@ -39,6 +41,7 @@ const VITE_SYNC_INTERVAL = import.meta.env.VITE_SYNC_INTERVAL;
 
 const history = vi.hoisted(() => ({
   session: {
+    forgetSent: vi.fn(async () => {}),
     notesSynced: vi.fn(),
     recordSent: vi.fn(async () => {}),
 
@@ -180,6 +183,7 @@ describe("Wallet store", async () => {
       },
     },
     balanceRead: false,
+    balanceReadFailed: false,
     currentProfile: null,
     initialized: false,
     minimumStake: 0n,
@@ -862,6 +866,79 @@ describe("Wallet store", async () => {
       }
     });
 
+    it("should say the balances couldn't be read, keeping what was read before, until a refresh reads them", async () => {
+      vi.useRealTimers();
+
+      const before = get(walletStore).balance;
+
+      expect(get(walletStore).balanceReadFailed).toBe(false);
+
+      // Before the wallet's first sync gets through, as with a silent node.
+      balanceSpy.mockRejectedValueOnce(
+        new Error("No balance found for the account with the given identifier")
+      );
+
+      const failed = walletStore.refreshBalance();
+
+      await vi.waitUntil(() => get(walletStore).balanceReadFailed);
+      await failed;
+
+      expect(get(walletStore).balance).toBe(before);
+
+      // Tried again: read, it's said no more.
+      const read = walletStore.refreshBalance();
+
+      await vi.waitUntil(() => !get(walletStore).balanceReadFailed);
+      await read;
+
+      expect(get(walletStore).balance).toStrictEqual({ shielded, unshielded });
+    });
+
+    it("should say the balances may be out of date once a sync fails after one got through, with what it read then", async () => {
+      vi.useRealTimers();
+
+      // The treasury the wallet reads its public balance from, as it does.
+      const treasury = /** @type {any} */ (setProfilesSpy.mock.contexts.at(-1));
+      const balanceOf = balanceSpy.getMockImplementation();
+
+      balanceSpy.mockImplementation(async (identifier) =>
+        ProfileGenerator.typeOf(identifier.toString()) === "address"
+          ? shielded
+          : treasury.account(identifier)
+      );
+
+      try {
+        // The sync as the wallet opened read the balances on the network.
+        const read = await treasury.account(defaultProfile.account);
+
+        expect(get(walletStore).syncStatus.error).toBeNull();
+        expect(get(walletStore).balanceReadFailed).toBe(false);
+
+        // Offline now: the sync can't reach the node for the balances.
+        const offline = vi
+          .spyOn(AccountSyncer.prototype, "balances")
+          .mockRejectedValue(new TypeError("Failed to fetch"));
+
+        try {
+          await walletStore.refreshBalance();
+
+          // What shows is what was read before, said to be so.
+          expect(get(walletStore).syncStatus.error).toBeInstanceOf(TypeError);
+          expect(get(walletStore).balance.unshielded).toStrictEqual(read);
+          expect(get(walletStore).balanceReadFailed).toBe(true);
+        } finally {
+          offline.mockRestore();
+        }
+
+        // Back: read again, it's said no more.
+        await walletStore.refreshBalance();
+
+        expect(get(walletStore).balanceReadFailed).toBe(false);
+      } finally {
+        balanceSpy.mockImplementation(/** @type {any} */ (balanceOf));
+      }
+    });
+
     it("should say the stake couldn't be read, keeping what was read before, until a refresh reads it", async () => {
       const before = get(walletStore).stakeInfo;
       const freshStake = { ...stakeInfo, reward: 2n };
@@ -1190,6 +1267,70 @@ describe("Wallet store", async () => {
       updateCachedPendingNotesSpy.mockRestore();
     });
 
+    it("should show a send in the history as soon as the node is asked to broadcast it, while its answer doesn't come", async () => {
+      vi.useRealTimers();
+
+      // Its transaction, as w3sper builds it.
+      const toBuild = vi.spyOn(Transfer.prototype, "to").mockImplementation(
+        () =>
+          /** @type {any} */ ({
+            build: async () => ({
+              buffer: new Uint8Array([9]),
+              hash: "ef".repeat(32),
+              nonce: 4n,
+            }),
+            gas() {
+              return this;
+            },
+            memo() {
+              return this;
+            },
+          })
+      );
+
+      history.session.recordSent.mockClear();
+
+      try {
+        // The node takes it, and its answer never comes back.
+        executeSpy.mockImplementationOnce(
+          /** @this {any} */
+          async function (/** @type {any} */ tx) {
+            const transaction = await tx.build(this);
+
+            await this.transactions.preverify(transaction.buffer);
+            void this.transactions.propagate(transaction.buffer);
+
+            return new Promise(() => {});
+          }
+        );
+
+        let isSettled = false;
+
+        walletStore
+          .transfer(toMoonlight, amount, memo, gas)
+          .finally(() => {
+            isSettled = true;
+          })
+          .catch(() => {});
+
+        await vi.waitUntil(
+          () => history.session.recordSent.mock.calls.length === 1
+        );
+        expect(history.session.recordSent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            amount: String(amount),
+            direction: "out",
+            hash: "ef".repeat(32),
+            to: toMoonlight,
+          })
+        );
+        expect(isSettled).toBe(false);
+      } finally {
+        toBuild.mockRestore();
+        vi.useFakeTimers();
+      }
+    });
+
     it("should record a send in the history of the profile that sent it, though another one shows when it goes through", async () => {
       vi.useRealTimers();
 
@@ -1482,7 +1623,7 @@ describe("Wallet store", async () => {
         })
       );
 
-      history.session.recordSent.mockClear();
+      history.session.forgetSent.mockClear();
       handedOver(
         new Error("Tx cdcd not accepted: this transaction is invalid")
       );
@@ -1490,7 +1631,14 @@ describe("Wallet store", async () => {
       await expect(
         walletStore.transfer(toMoonlight, amount, memo, gas)
       ).rejects.toThrow("not accepted");
-      expect(history.session.recordSent).not.toHaveBeenCalled();
+
+      // Shown as the node was asked to broadcast it, it's taken out again.
+      await vi.waitUntil(
+        () => history.session.forgetSent.mock.calls.length === 1
+      );
+      expect(history.session.forgetSent).toHaveBeenCalledExactlyOnceWith(
+        built.hash
+      );
 
       vi.useFakeTimers();
     });

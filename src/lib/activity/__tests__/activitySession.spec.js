@@ -326,6 +326,34 @@ describe("ActivitySession", () => {
     ).toEqual([]);
   });
 
+  it("takes a send the node refused as it was asked to broadcast it out of the rows and the store", async () => {
+    fakeArchive({ finalized: 4_658_000 });
+    const hash = "f1".repeat(32);
+    const session = sessionFor();
+
+    await session.start();
+    await session.recordSent({
+      amount: "100000000",
+      direction: "out",
+      hash,
+      kind: "transfer",
+      privacy: "public",
+      to: B,
+    });
+
+    expect(session.state.rows.find((row) => row.hash === hash)).toMatchObject({
+      status: "pending",
+      value: 100_000_000n,
+    });
+
+    await session.forgetSent(hash);
+
+    expect(session.state.rows.find((row) => row.hash === hash)).toBeUndefined();
+    expect(
+      await store.listLocalTransactions(store.activityOwnerKey("testnet", A))
+    ).toEqual([]);
+  });
+
   it("puts a call to the bridge set for a local deployment under Bridge, on a network whose file has no DuskEVM", async () => {
     const local = "cd".repeat(32);
     const hash = "c2".repeat(32);
@@ -484,6 +512,73 @@ describe("ActivitySession", () => {
       await vi.advanceTimersByTimeAsync(sessions.AFTER_TX_MS);
 
       expect(refresh).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+      session.stop();
+    }
+  });
+
+  it("looks for a send its screen said went through every few seconds, until the archive has it", async () => {
+    const node = fakeArchive({ finalized: 4_658_000 });
+    const hash = entryOfA(4658012).origin;
+    const ownerKey = store.activityOwnerKey("testnet", A);
+    const session = sessionFor();
+
+    /** Its run under way ends: the store's work goes on with fake timers. */
+    const runEnds = async () => {
+      for (let i = 0; i < 200 && session.state.syncing; i += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+
+      // What follows the run: its names and its shielded side.
+      for (let i = 0; i < 20; i += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+    };
+
+    await session.start();
+
+    vi.useFakeTimers({
+      now: Date.now(),
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+    });
+
+    try {
+      const refresh = vi.spyOn(session, "refresh");
+
+      await session.recordSent({
+        amount: "100000000000",
+        hash,
+        kind: "contract_call",
+        privacy: "public",
+      });
+      // The screen following it says the block took it, as it keeps it, and
+      // is left before the archive has it.
+      await store.changeLocalTransactions(hash, {
+        blockHeight: 4658012,
+        feePaid: "1000000",
+        status: "executed",
+      });
+      await session.keptChanged();
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+      await runEnds();
+
+      expect(refresh).toHaveBeenCalledOnce();
+
+      // Final now: the next look finds it, and its record goes.
+      node.finalized = FINALIZED;
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+      await runEnds();
+
+      expect(refresh).toHaveBeenCalledTimes(2);
+      expect(session.state.rows[0]).toMatchObject({
+        hash,
+        source: "public",
+        status: "executed",
+      });
+      expect(
+        (await store.listLocalTransactions(ownerKey)).filter((r) => !r.settled)
+      ).toEqual([]);
     } finally {
       vi.useRealTimers();
       session.stop();

@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { get } from "svelte/store";
   import { page } from "$app/stores";
   import { Gas } from "@dusk/w3sper";
@@ -16,6 +16,10 @@
     currentActivity,
     isHistoryEnabled,
   } from "$lib/activity";
+  import {
+    exportCurrency,
+    followRewardsByYear,
+  } from "$lib/activity/accountantExport";
   import { LiquidStake, NativeStake, Unstake } from "$lib/components";
   import { StakingOverview } from "$lib/containers";
   import { IconHeadingCard } from "$lib/containers/Cards";
@@ -152,6 +156,75 @@
   });
 
   /**
+   * Staking rewards by year, as Export gives them, for the overview, as the
+   * extension's Stake shows them: the profile's, read again while a new
+   * stake's or unstake's facts aren't, and with their value once asked.
+   *
+   * @type {(Awaited<ReturnType<typeof import("$lib/activity/accountantExport").readRewardsByYear>> & { of: string }) | null}
+   */
+  let rewards = null;
+
+  /** Whether they're read with their value. */
+  let rewardsValued = false;
+
+  /** What they were read for last: "" for nothing. */
+  let rewardsFor = "";
+
+  /** @type {() => void} */
+  let stopRewards = () => {};
+
+  onDestroy(() => stopRewards());
+
+  /**
+   * Reads them for the overview shown, the profile, the network and whether
+   * they're valued, each once; for nothing, it stops.
+   *
+   * @param {string} key
+   */
+  function readRewards(key) {
+    if (key === rewardsFor) {
+      return;
+    }
+
+    rewardsFor = key;
+    stopRewards();
+    stopRewards = () => {};
+
+    /** @type {ReturnType<typeof walletStore.startHistory>} */
+    let session = null;
+
+    try {
+      session = key ? walletStore.startHistory() : null;
+    } catch {
+      // No profile's history to read.
+    }
+
+    if (!session) {
+      return;
+    }
+
+    const of = String(currentProfile?.account ?? "");
+
+    stopRewards = followRewardsByYear(
+      {
+        currency: rewardsCurrency,
+        fiat: rewardsValued,
+        session,
+        sozuStatus: () => sozuStore.check(),
+      },
+      {
+        // Nothing to show of what couldn't be read: History's Export says why.
+        onError: () => {},
+        onRead: (read) => {
+          if (rewardsFor === key) {
+            rewards = { ...read, of };
+          }
+        },
+      }
+    );
+  }
+
+  /**
    * How Sozu's stDUSK grew lately, for its status read: one figure for the
    * form and the overview alike, null where it can't be read.
    *
@@ -283,6 +356,26 @@
   $: hasPastStaking = $activityState.rows.some(
     (row) => row.category === "staking"
   );
+  // In the wallet's currency, as Export values them.
+  $: rewardsCurrency = exportCurrency(
+    $settingsStore.currency,
+    navigator.language
+  );
+  // Another profile's aren't this one's.
+  $: if (rewards && rewards.of !== String(currentProfile?.account ?? "")) {
+    rewards = null;
+  }
+  $: readRewards(
+    flow === null &&
+      isHistoryEnabled() &&
+      hasPastStaking &&
+      currentProfile &&
+      networkName
+      ? [currentProfile.account, networkName, rewardsCurrency, rewardsValued]
+          .map(String)
+          .join("|")
+      : ""
+  );
   // What the profile sent to Sozu that isn't in a block yet.
   $: sozuUnderWay = $activityState.rows.filter(
     (row) => row.sozu && row.source === "sent" && row.status === "pending"
@@ -404,6 +497,9 @@
       }}
       onRetrySozu={() => sozuStore.load({ force: true })}
       {publicBalance}
+      {rewards}
+      {rewardsCurrency}
+      bind:rewardsValued
       sozu={$sozuStore}
       {stakeInfo}
       stakeReadFailed={$walletStore.stakeReadFailed}

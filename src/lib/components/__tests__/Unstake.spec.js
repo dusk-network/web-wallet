@@ -84,7 +84,8 @@ describe("Unstake", () => {
     });
 
     expect(navigator.language).not.toMatch(/^de/);
-    expect(getByRole("textbox", { name: /Amount/ })).toHaveValue("1,123");
+    // A fourth decimal, so that it reads back as 1.123, never as 1123.
+    expect(getByRole("textbox", { name: /Amount/ })).toHaveValue("1,1230");
     expect(getByRole("button", { name: "Next" })).toBeEnabled();
   });
 

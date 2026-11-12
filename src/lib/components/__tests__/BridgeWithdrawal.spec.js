@@ -261,8 +261,8 @@ describe("Bridge withdrawal", () => {
     const unreached = await sendWithdrawal();
 
     expect(await failureOf(unreached)).toStrictEqual([
-      "Bridging failed",
-      "Couldn't reach the network. Check your connection and try again.",
+      "Not sent",
+      "Couldn't reach the network. Nothing was sent and no fee was charged.",
     ]);
     expect(mocks.sendTransaction).not.toHaveBeenCalled();
 

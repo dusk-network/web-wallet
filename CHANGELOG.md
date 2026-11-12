@@ -30,6 +30,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Send a payment that couldn't reach the network, as when the Wi-Fi drops right after Send, once the network answers, as on a silent network, with Cancel and Home until then
+- Send every payment that waited for the network once it answers, one after another, not only the first
+- Say "Not sent" where a send couldn't reach the network, and that nothing was sent and no fee was charged, or for a migration whose approval went through, that it did, with Try again
+- Show a send on Home and in History as pending, with its amount, from the moment the node is asked to broadcast it, also where its answer never comes
+- Keep Home on a send's screen from the moment it may have gone out, whether or not the network answers
+- Say a send went through on Home and in History as soon as its screen says it was sent, or the wallet tells it arrived, not Pending until the network's history has it
+- Say on Home's total and public balance that they may be out of date where they couldn't be read, also after a sync that failed, and on the total where the stake it counts couldn't be read
+- Lead with Open in the Dusk extension on the page a payment link opens where no wallet is kept here, with Create new wallet and Restore wallet small under it
+- Say on a send's Sending… screen when it waits for the network, and that it has left the wallet
+- Name the export's file and its Account Name as the extension does: by the profile's .dusk name, else its name here, with when the file was made
+- Give each contact saved from a public account the .dusk name its account has in Contacts, and find it by that name, also where the history shown never paid it
+- Ask "Is that 1 or 1000?" of an amount such as 1.000 in every language, as of 1,000, and fill Max and the other amounts the wallet writes with a fourth decimal where three could read as a thousand
+- Write each migration's network fees, approvals and revokes in the export of the profile the migration paid, once, from the EVM addresses it bridged to as well, as the extension does
+- Write a bridge-out in the export as what reached the other side, with the bridge fee in the fee column
+- Name in Export only the EVM addresses of the profile shown, and say once saved whose network fees the file has, which it couldn't read, and which another profile's file may have
+- Ask about a profile name that is a contact's .dusk name, naming that contact, or that starts as another profile's or a contact's .dusk name, as "sofiadesign.dusk cliente"
+- Refuse a profile name that reads as a contact's or another profile's with letters in pairs, as VVendy for Wendy or Davicl for David
+- Refuse a link whose amount isn't a plain number, whose field names hide a character or a space or only look like a field's, or whose memo has a line break, and show nothing of what a refused link asks on its page, only why
+- Show staking rewards by year on Staking too, with the wallet's usual decimals, and say under them, as the extension does, that what unstaking took out is part of what grew while held, and how it's counted
+- Keep a year's rewards as they were while a new stake's or unstake's facts are read, and read them again until they are, not "Couldn't be read"
 - Give native staking's yearly rate from the same blocks as the extension within a day, kept for that day, not from blocks the moment picks
 - Say Reading… for the stDUSK and rate on a Sozu stake's or unstake's Sent screen from when a block takes it until they're read
 - Refuse a dusk:shielded- link to a public account, or a public one to a shielded address, and a dusk: link with a # in it, and say why

@@ -84,7 +84,8 @@
 
   /**
    * What calls it off until it goes out: while the network doesn't answer,
-   * it says so with Cancel, and Home to leave it waiting, as Home shows it.
+   * or couldn't be reached, it says so with Cancel, and Home to leave it
+   * waiting, as Home shows it.
    *
    * @type {import("$lib/transactions/sendGate").SendGate | undefined}
    */
@@ -129,9 +130,12 @@
   $: askedBefore = (void operation, get(broadcastsAsked));
   // Where its gate is: open, as any, without one.
   $: gateState = gate ?? readable("open");
+  // Whether it waits for the network, which it couldn't reach, to go out.
+  $: gateWaits = gate?.waitsForNetwork ?? readable(false);
   $: isHandedOver = gate
     ? $gateState !== "open"
     : $broadcastsAsked > askedBefore;
+  $: isWaiting = $networkReach !== "answering" || (!isHandedOver && $gateWaits);
 </script>
 
 <!-- A send that failed before it went out says why in plain words, with
@@ -148,11 +152,13 @@
     <Throbber className="dusk-suspense__throbber" />
     <span class="dusk-suspense__pending-message">Processing transaction</span>
     <!-- Said where it waits, not only on the pill: what it means for it. -->
-    {#if $networkReach !== "answering"}
+    {#if isWaiting}
       <p class="transaction-result__waiting" role="status">
         {$networkReach === "offline"
           ? "You're offline."
-          : "The network isn't answering."}
+          : $networkReach === "silent"
+            ? "The network isn't answering."
+            : ""}
         {isHandedOver
           ? "Your transaction may have reached it: wait for it here before you send it again."
           : gate
@@ -168,14 +174,18 @@
           text="Cancel"
           variant="secondary"
         />
-        <AppAnchorButton
-          className="transaction-result__button"
-          href={leaveHref}
-          on:click={handleGoHomeClick}
-          text={leaveText}
-          variant="tertiary"
-        />
       {/if}
+    {/if}
+    <!-- And once it may have gone out, as Home shows it on its way, whether
+      or not its answer comes. -->
+    {#if (isWaiting && gate) || isHandedOver}
+      <AppAnchorButton
+        className="transaction-result__button"
+        href={leaveHref}
+        on:click={handleGoHomeClick}
+        text={leaveText}
+        variant="tertiary"
+      />
     {/if}
   </svelte:fragment>
   <svelte:fragment slot="success-content" let:result={{ hash, unconfirmed }}>

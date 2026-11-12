@@ -120,6 +120,61 @@ describe("Setup", () => {
       expect(asked).not.toHaveTextContent("to pay it");
     });
 
+    it("should show nothing of what a refused link asks, only why, and an amount as the link writes it", () => {
+      const OTHER =
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+
+      setNodeNetwork(networks.testnet);
+
+      for (const [search, words] of [
+        // Two addresses, which read as one made of both.
+        [
+          `?to=${TO},${OTHER}&amount=0.001&network=testnet`,
+          "This link's address isn't valid. Ask for a new one.",
+        ],
+        // A hidden character in its amount.
+        [
+          `?to=${TO}&amount=0.0%E2%80%8B1&network=testnet`,
+          "This link's amount can't be read. Ask for a new one.",
+        ],
+        // A field's name with a hidden character, beside the field.
+        [
+          `?to=${TO}&am%E2%80%8Fount=0.15&amount=0.001&network=testnet`,
+          "That link can't be read. Ask for a new one.",
+        ],
+        // A field's name in ASCII that only looks like one: a capital I.
+        [
+          `?to=${TO}&amountIux=150000000&amount=0.001&network=testnet`,
+          "That link can't be read. Ask for a new one.",
+        ],
+        // A memo on two lines.
+        [
+          `?to=${TO}&amount=0.001&memo=line%20one%0Aline%20two&network=testnet`,
+          "This link's memo has a line break. Ask for a new one.",
+        ],
+      ]) {
+        keepPlace({ pathname: "/some-base-path/dashboard/send/", search });
+
+        const asked = render(Setup, {}).getByRole("region", {
+          name: "Payment request",
+        });
+
+        expect(asked).toHaveTextContent(words);
+        expect(asked).not.toHaveTextContent(/Amount|To|Memo|Any amount/);
+        cleanup();
+      }
+
+      // An amount with a comma, as written: Send asks which is meant.
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: `?to=${TO}&amount=0,011&network=testnet`,
+      });
+
+      expect(
+        render(Setup, {}).getByRole("region", { name: "Payment request" })
+      ).toHaveTextContent("Amount 0,011 DUSK");
+    });
+
     it("should offer another network's request on that network's wallet", () => {
       setNodeNetwork(networks.testnet);
       keepPlace({
@@ -293,6 +348,58 @@ describe("Setup", () => {
       ).toBeInTheDocument();
     });
 
+    it("leads with the extension where no wallet is kept here, with Create and Restore small under it, and with Unlock where one is", async () => {
+      setNodeNetwork(networks.testnet);
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: SEARCH,
+      });
+      extension(["dusk_getCapabilities", "dusk_openPaymentLink"]);
+
+      const { findByRole, getByRole } = render(Setup, {});
+      const open = await findByRole("button", {
+        name: "Open in the Dusk extension",
+      });
+
+      expect(open).toHaveClass("dusk-button--variant--primary");
+      expect(
+        getByRole("region", { name: "Payment request" })
+      ).toHaveTextContent("Pay it with the Dusk extension.");
+      expect(
+        getByRole("region", { name: "Payment request" })
+      ).not.toHaveTextContent("Create or restore");
+
+      for (const name of ["Create new wallet", "Restore wallet"]) {
+        expect(getByRole("link", { name })).toHaveClass(
+          "dusk-anchor-button--variant--tertiary",
+          "dusk-anchor-button--size--small"
+        );
+      }
+
+      cleanup();
+
+      // A wallet kept here: unlocking it is the way in, the extension second.
+      settingsStore.update((settings) => ({ ...settings, userId: "someone" }));
+
+      try {
+        const kept = render(Setup, {});
+
+        expect(
+          await kept.findByRole("button", {
+            name: "Open in the Dusk extension",
+          })
+        ).toHaveClass("dusk-button--variant--secondary");
+        expect(
+          kept.getByRole("region", { name: "Payment request" })
+        ).toHaveTextContent("Unlock to pay it.");
+        expect(kept.getByRole("link", { name: "Unlock" })).toHaveClass(
+          "dusk-anchor-button--variant--primary"
+        );
+      } finally {
+        settingsStore.reset();
+      }
+    });
+
     it("says so where the extension has no wallet to pay with, and offers nothing where it won't take the link", async () => {
       setNodeNetwork(networks.testnet);
       keepPlace({
@@ -310,6 +417,13 @@ describe("Setup", () => {
       expect(
         await empty.findByText("The Dusk extension has no wallet to pay with.")
       ).toBeInTheDocument();
+      // Making one here is the way, then.
+      expect(
+        empty.getByRole("region", { name: "Payment request" })
+      ).toHaveTextContent("Create or restore a wallet to pay it.");
+      expect(
+        empty.getByRole("link", { name: "Create new wallet" })
+      ).toHaveClass("dusk-anchor-button--variant--primary");
       cleanup();
       cleanups.splice(0).forEach((stop) => stop());
 

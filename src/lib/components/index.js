@@ -30,6 +30,7 @@ export { default as ReviewAmount } from "./ReviewAmount/ReviewAmount.svelte";
 export { default as ReviewWallet } from "./ReviewWallet/ReviewWallet.svelte";
 export { default as Send } from "./Send/Send.svelte";
 export { default as ScanQR } from "./ScanQR/ScanQR.svelte";
+export { default as RewardsByYear } from "./RewardsByYear/RewardsByYear.svelte";
 export { default as SectionHead } from "./SectionHead/SectionHead.svelte";
 export { default as SyncBar } from "./SyncBar/SyncBar.svelte";
 export { default as TransactionResult } from "./TransactionResult/TransactionResult.svelte";

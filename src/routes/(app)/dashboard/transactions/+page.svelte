@@ -5,7 +5,7 @@
   import { appPath } from "$lib/containers/Shell";
   import { sheetStep } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
-  import { profileLabel } from "$lib/wallet";
+  import { profileLabel, profileOutsideName } from "$lib/wallet";
   import { openProfileNames } from "$lib/wallets";
 
   /** History's filters, as its address can give them; "all" is each default. */
@@ -101,6 +101,13 @@
     ? {
         address: String(currentProfile.account),
         label: profileLabel(
+          profiles,
+          currentProfile,
+          networkName,
+          $openProfileNames
+        ),
+        // The file's, as the extension names it.
+        outsideName: profileOutsideName(
           profiles,
           currentProfile,
           networkName,

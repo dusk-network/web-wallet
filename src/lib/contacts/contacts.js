@@ -23,7 +23,6 @@ import {
   lookAlikes,
   nameClash,
   nameStarts,
-  profileNameClash,
   nameHides,
 } from "@dusk-network/app-core/names";
 import { displayText, searchKey } from "@dusk-network/app-core/text";
@@ -655,59 +654,6 @@ export function contactNameProblem(name, profiles, exceptId) {
         refused: false,
         words: `One of your profiles is called ${contactNameText(start.name)}. Is this someone else?`,
       }
-    : null;
-}
-
-/**
- * What's wrong with a name for a profile: one with what can't be seen in it,
- * or one that is, or looks like, another profile's here or a contact's
- * (app-core's `profileNameClash`), as History and a review would read the
- * profile as that one. Null for neither.
- *
- * @param {string} name
- * @param {{ account: string, address?: string, name: string }[]} profiles
- *   Every profile here, by the name it goes by
- * @param {string} self The public account of the profile named
- * @returns {string | null}
- */
-export function profileNameProblem(name, profiles, self) {
-  if (nameHides(name)) {
-    return NAME_HIDES;
-  }
-
-  const clash = profileNameClash(name, {
-    contacts: listContacts(),
-    profiles,
-    self,
-  });
-  // The name it's like: another profile's own, or its `.dusk` name.
-  const other = clash ? contactNameText(String(clash.name)) : "";
-
-  return !clash
-    ? null
-    : clash.kind === "profile"
-      ? clash.same
-        ? `Your other profile is called ${other}. Choose another name.`
-        : `That looks like ${other}, one of your other profiles. Choose another name.`
-      : clash.same
-        ? `You have a contact called ${other}. Choose another name.`
-        : `That looks like your contact ${other}. Choose another name.`;
-}
-
-/**
- * What to ask of a name for a profile that a contact's name starts as, or
- * starts as a contact's, word for word, as app-core's `nameStarts` reads it:
- * whether it's someone else. It can be saved. Null for none.
- *
- * @param {string} name
- * @param {string} self The public account of the profile named
- * @returns {string | null}
- */
-export function profileNameQuestion(name, self) {
-  const start = nameStarts(name, { contacts: listContacts(), self });
-
-  return start
-    ? `You have a contact called ${contactNameText(start.name)}. Is this someone else?`
     : null;
 }
 

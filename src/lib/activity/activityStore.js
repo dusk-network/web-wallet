@@ -412,6 +412,35 @@ export async function putLocalTransaction(ownerKey, record, epoch) {
 }
 
 /**
+ * Change the wallet's own records of a transaction, by its hash, whichever
+ * account's they are: none is made where there's none.
+ *
+ * @param {string} hash
+ * @param {Partial<ActivityLocalRecord>} change
+ * @returns {Promise<string[]>} The owners whose record changed
+ */
+export async function changeLocalTransactions(hash, change) {
+  const lower = String(hash).toLowerCase();
+
+  /** @type {string[]} */
+  const owners = [];
+
+  await db.transaction("rw", "local", async () => {
+    const kept = await db
+      .table("local")
+      .filter((record) => record.hash === lower)
+      .toArray();
+
+    for (const record of kept) {
+      await db.table("local").put({ ...record, ...change, hash: lower });
+      owners.push(record.ownerKey);
+    }
+  });
+
+  return owners;
+}
+
+/**
  * Forget the wallet's own records of transactions the archive now has.
  *
  * @param {string} ownerKey

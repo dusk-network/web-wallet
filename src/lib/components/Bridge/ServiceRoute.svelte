@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { amountForField } from "@dusk-network/app-core/amounts";
   /**
    * The Bridge card on a transfer out to another chain, as BNB Smart Chain:
    * a public transfer to the route's account, which pays the amount less its
@@ -369,9 +370,12 @@
           on:click={() => {
             const all = unshieldedBalance - fee;
 
-            amount = formatDuskPlain(
-              all > keepForLater.lux ? all - keepForLater.lux : all
-            ).replace(".", getDecimalSeparator(language));
+            amount = amountForField(
+              formatDuskPlain(
+                all > keepForLater.lux ? all - keepForLater.lux : all
+              ),
+              getDecimalSeparator(language)
+            );
             isMaxAmount = true;
           }}
           type="button">Max</button

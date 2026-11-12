@@ -75,18 +75,16 @@ describe("readDuskInput", () => {
     expect(readDuskInput("1,000.5", "en")).toBe(1_000_500_000_000n);
     expect(readDuskInput("1,000,000", "en")).toBe(1_000_000n * DUSK);
 
-    // A lone comma before three digits is a decimal comma where the language
-    // writes decimals with one. Elsewhere it could mean either, so it's refused.
-    expect(readDuskInput("1,000", "de")).toBe(DUSK);
+    // A lone comma or point before three digits, after a whole part that
+    // isn't 0, could mean a thousand as well as one, in any language: it's
+    // refused, to be asked about.
+    expect(readDuskInput("1,000", "de")).toBeNull();
     expect(readDuskInput("0,100", "en")).toBe(100_000_000n);
-
-    // A point before three digits, where the language groups with one, could
-    // mean a thousand as well as one: refused too.
     expect(readDuskInput("1.000", "de")).toBeNull();
     expect(readDuskInput("12.500", "de")).toBeNull();
     expect(readDuskInput("1.5", "de")).toBe(1_500_000_000n);
     expect(readDuskInput("0.100", "de")).toBe(100_000_000n);
-    expect(readDuskInput("1.000", "en")).toBe(DUSK);
+    expect(readDuskInput("1.000", "en")).toBeNull();
 
     for (const text of ["1,00,0", "1e3", "1.2.3", "abc", "1,5,"]) {
       expect(readDuskInput(text, "en")).toBeNull();
@@ -607,7 +605,7 @@ describe("NativeStake", () => {
       await fireEvent.click(
         view.getByRole("button", { name: "Stake 1,000 DUSK" })
       );
-      await view.findByText(/^(Transaction failed|Not confirmed)$/);
+      await view.findByText(/^(Transaction failed|Not sent|Not confirmed)$/);
 
       return { ...view, execute };
     };

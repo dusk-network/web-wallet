@@ -77,8 +77,14 @@
     },
   ].filter(({ id }) => isEnabled(id));
 
-  $: ({ balance, currentProfile, minimumStake, stakeInfo, stakeReadFailed } =
-    $walletStore);
+  $: ({
+    balance,
+    balanceReadFailed,
+    currentProfile,
+    minimumStake,
+    stakeInfo,
+    stakeReadFailed,
+  } = $walletStore);
   // Test DUSK has no value: no money value off mainnet.
   $: ({ net, networkName } = $networkStore);
   // Offered only where a migration runs: the Bridge opens on BNB Smart
@@ -159,6 +165,8 @@
       locale={language}
       shielded={balance.shielded.value}
       staked={(staked ?? 0n) + liquid}
+      {stakeUnread}
+      unread={balanceReadFailed}
       unshielded={balance.unshielded.value}
     />
 
@@ -168,8 +176,9 @@
       <p class="home__note">Nothing can be sent from this wallet right now.</p>
     {/if}
 
-    <!-- Sends that haven't gone out, as the network doesn't answer: called
-      off from here, or they go out once it answers. -->
+    <!-- Sends that haven't gone out, as the network doesn't answer, or
+      couldn't be reached: called off from here, or they go out once it
+      answers. -->
     {#each $waitingSends as send (send.id)}
       <Banner
         className="home__waiting"
@@ -178,7 +187,7 @@
         variant="info"
       >
         <p>
-          {$networkReach === "answering"
+          {$networkReach === "answering" && !send.waitsForNetwork
             ? "It's being sent."
             : "It goes out once the network answers."}
         </p>
@@ -206,6 +215,7 @@
 
   <div class="home__cards">
     <ExplainerCards
+      balanceUnread={balanceReadFailed}
       {hasPastStaking}
       {liquid}
       locale={language}

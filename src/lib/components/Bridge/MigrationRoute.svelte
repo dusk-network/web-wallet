@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { amountForField } from "@dusk-network/app-core/amounts";
   /**
    * The Bridge card on a migration into Dusk, from BNB Smart Chain or
    * Ethereum: the connected EVM wallet, on the route's chain, pays the
@@ -324,8 +325,8 @@
 
   /** On to the review of the amount the approval open still lets go. */
   async function finish() {
-    amount = formatDuskPlain(finishLux).replace(
-      ".",
+    amount = amountForField(
+      formatDuskPlain(finishLux),
       getDecimalSeparator(language)
     );
     isMaxAmount = true;
@@ -612,6 +613,11 @@
     const failedOnChain = error.message.includes("didn't go through");
 
     if (sending !== "confirming") {
+      const said = describeFailure(error, {
+        checkFirst:
+          "Check your EVM wallet and Activity before you send it again.",
+      });
+
       return failedOnChain
         ? { sentence: `${chainName} refused the approval, so nothing moved.` }
         : isApprovalShort
@@ -619,10 +625,14 @@
               sentence:
                 "Your approval no longer covers this amount, so nothing was sent. Approve again to migrate it.",
             }
-          : describeFailure(error, {
-              checkFirst:
-                "Check your EVM wallet and Activity before you send it again.",
-            });
+          : // The approval it sent went through, and paid its fee there.
+            said.unreachable && sending === "migrating" && !approved
+            ? {
+                ...said,
+                sentence:
+                  "Couldn't reach the network. The approval went through, so next time it only asks to migrate. Nothing moved.",
+              }
+            : said;
     }
 
     return failedOnChain
@@ -878,8 +888,8 @@
           class="swap-mini"
           disabled={!canType}
           on:click={() => {
-            amount = formatDuskPlain(balanceLux ?? 0n).replace(
-              ".",
+            amount = amountForField(
+              formatDuskPlain(balanceLux ?? 0n),
               getDecimalSeparator(language)
             );
             isMaxAmount = true;

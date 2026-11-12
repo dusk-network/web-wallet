@@ -22,6 +22,7 @@ const unshielded = { nonce: 1234n, value: shielded.value / 2n };
 const content = {
   balance: { shielded, unshielded },
   balanceRead: true,
+  balanceReadFailed: false,
   currentProfile,
   initialized: true,
   minimumStake: 1_000_000_000_000n,

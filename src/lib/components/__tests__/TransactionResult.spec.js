@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 import { WalletChangedError } from "$lib/errors";
 import { walletStore } from "$lib/stores";
-import { outcomeUnknown } from "$lib/transactions";
+import { outcomeUnknown, sendGate } from "$lib/transactions";
+import { setNetworkReach } from "$lib/stores/networkReach";
 
 import { TransactionResult } from "..";
 
@@ -57,6 +58,77 @@ describe("TransactionResult", () => {
 
     expect(getByText("Processing transaction")).toBeInTheDocument();
     expect(followTransaction).not.toHaveBeenCalled();
+  });
+
+  it("should say a send waits for the network it couldn't reach, with Cancel and Home, though the network's pill finds it answering", async () => {
+    const gate = sendGate();
+    const { getByRole } = render(TransactionResult, {
+      ...baseProps,
+      gate,
+      operation: new Promise(() => {}),
+    });
+
+    gate
+      .untilHandedOver(
+        () => Promise.reject(new TypeError("Failed to fetch")),
+        () => new Promise(() => {})
+      )
+      .catch(() => {});
+
+    try {
+      await vi.waitFor(() =>
+        expect(getByRole("status")).toHaveTextContent(
+          /^Nothing has left your wallet yet\. It goes out once the network answers\.$/
+        )
+      );
+      expect(getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+      expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
+    } finally {
+      gate.cancel();
+    }
+  });
+
+  it("should keep a way Home, and no Cancel, once a send was handed over and the network doesn't answer", async () => {
+    const gate = sendGate();
+    const { getByRole, queryByRole } = render(TransactionResult, {
+      ...baseProps,
+      gate,
+      operation: new Promise(() => {}),
+    });
+
+    gate.handOver();
+
+    try {
+      await act(() => setNetworkReach("silent"));
+
+      expect(getByRole("status")).toHaveTextContent(
+        "The network isn't answering. Your transaction may have reached it: wait for it here before you send it again."
+      );
+      expect(queryByRole("button", { name: "Cancel" })).toBeNull();
+
+      await clickLink(getByRole("link", { name: "Home" }));
+
+      expect(onBeforeLeave).toHaveBeenCalledOnce();
+    } finally {
+      setNetworkReach("answering");
+    }
+  });
+
+  it("should keep a way Home as soon as a send was handed over, before the network is found not to answer", async () => {
+    const gate = sendGate();
+    const { getByText, queryByRole } = render(TransactionResult, {
+      ...baseProps,
+      gate,
+      operation: new Promise(() => {}),
+    });
+
+    // Handed over, its answer doesn't come, and the network's pill says
+    // nothing yet: it finds it silent after 30 seconds.
+    await act(() => gate.handOver());
+
+    expect(getByText("Processing transaction")).toBeInTheDocument();
+    expect(queryByRole("button", { name: "Cancel" })).toBeNull();
+    expect(queryByRole("link", { name: "Home" })).toBeInTheDocument();
   });
 
   it("should follow the transaction once sent, with a way home", async () => {
@@ -142,16 +214,33 @@ describe("TransactionResult", () => {
   const named = (name, message) => Object.assign(new Error(message), { name });
 
   it.each([
-    [
-      "the node out of reach",
-      new TypeError("Failed to fetch"),
-      "Couldn't reach the network. Check your connection and try again.",
-    ],
+    ["the node out of reach", new TypeError("Failed to fetch")],
     [
       "the node too slow",
       new Error("Timed out while connecting to the network"),
-      "Couldn't reach the network. Check your connection and try again.",
     ],
+  ])(
+    "should say a send that couldn't reach the network wasn't sent, and cost nothing: %s, with its own message under Details",
+    async (_, error) => {
+      const { container, findByText, getByText, queryByText } = render(
+        TransactionResult,
+        { ...baseProps, operation: Promise.reject(error) }
+      );
+
+      expect(
+        await findByText(
+          "Couldn't reach the network. Nothing was sent and no fee was charged."
+        )
+      ).toBeInTheDocument();
+      expect(getByText("Not sent")).toBeInTheDocument();
+      expect(queryByText("Transaction failed")).toBeNull();
+      expect(container.querySelector("details")).toHaveTextContent(
+        error.message
+      );
+    }
+  );
+
+  it.each([
     [
       "a refusal for the balance",
       refusal(
@@ -229,7 +318,7 @@ describe("TransactionResult", () => {
         operation: Promise.reject(error),
       });
 
-      await view.findByText(/^(Transaction failed|Not confirmed)$/);
+      await view.findByText(/^(Transaction failed|Not sent|Not confirmed)$/);
 
       return view;
     };
@@ -359,7 +448,7 @@ describe("TransactionResult", () => {
         operation: Promise.reject(new TypeError("Failed to fetch")),
       });
 
-      await findByText("Transaction failed");
+      await findByText("Not sent");
 
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });

@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import { get } from "svelte/store";
 
+import { activityFor, activityState, stopActivity } from "$lib/activity";
+import fixture from "$lib/activity/__tests__/fixtures/activity-testnet.json";
+import { fakeArchive } from "$lib/activity/__tests__/fixtures/fakeArchive";
 import { timeLabel } from "$lib/activity/present";
 
 import { settingsStore, walletStore } from "$lib/stores";
+import { setNetworkReach } from "$lib/stores/networkReach";
 
 import { TransactionStatus } from "..";
 
@@ -63,6 +68,34 @@ describe("TransactionStatus", () => {
     expect(
       getByRole("link", { name: "View in Dusk explorer" })
     ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${hash}`);
+  });
+
+  it("should say while it's being sent that it waits for the network, offline or where the network doesn't answer, and that it has left the wallet", async () => {
+    followNext();
+
+    const { getByRole } = render(TransactionStatus, baseProps);
+
+    try {
+      await act(() => setNetworkReach("offline"));
+
+      expect(getByRole("status")).toHaveTextContent(
+        "Sending… You're offline. It has left your wallet. This updates once you're back online."
+      );
+
+      await act(() => setNetworkReach("silent"));
+
+      expect(getByRole("status")).toHaveTextContent(
+        "Sending… The network isn't answering. It has left your wallet. This updates once it answers."
+      );
+
+      await act(() => setNetworkReach("answering"));
+
+      expect(getByRole("status")).toHaveTextContent(
+        "Sending… This usually takes under a minute."
+      );
+    } finally {
+      setNetworkReach("answering");
+    }
   });
 
   it("should say when the transaction was sent once its block is final, with the fee it was charged", async () => {
@@ -128,6 +161,71 @@ describe("TransactionStatus", () => {
       `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,820,416.`
     );
     refreshBalance.mockRestore();
+  });
+
+  it("should have History and Home say it's sent as soon as it says so, from the block that took it", async () => {
+    const [account, to] = Object.keys(fixture.accounts);
+    const following = followNext();
+
+    fakeArchive({ finalized: 4_658_000 });
+
+    const session = activityFor({
+      account,
+      namesNetwork: "testnet",
+      nodeUrl: fixture.nodeUrl,
+      profileIndex: 0,
+    });
+    const rowOf = () =>
+      get(activityState).rows.find((row) => row.hash === hash);
+
+    try {
+      await session.start();
+      await session.recordSent({
+        amount: "10000000",
+        direction: "out",
+        hash,
+        kind: "transfer",
+        privacy: "public",
+        to,
+      });
+
+      expect(rowOf()).toMatchObject({ status: "pending" });
+
+      const { getByRole } = render(TransactionStatus, baseProps);
+      const blockTime = Date.UTC(2026, 10, 12, 1, 41, 9);
+      const inBlock = {
+        blockHeight: 4_833_654n,
+        error: null,
+        fee: 1_856_861n,
+        timestamp: blockTime,
+      };
+
+      followTransaction.mock.lastCall?.[1].onBlock(inBlock);
+
+      await vi.waitFor(() =>
+        expect(getByRole("status")).toHaveTextContent(/^Sent at /)
+      );
+      await vi.waitFor(() =>
+        expect(rowOf()).toMatchObject({
+          blockHeight: 4_833_654,
+          fee: 1_856_861n,
+          status: "executed",
+          time: blockTime,
+          value: 10_000_000n,
+        })
+      );
+
+      // Final, it says the same, the archive not there yet.
+      following.resolve(inBlock);
+
+      await vi.waitFor(() =>
+        expect(followTransaction.mock.results[0]?.value).resolves.toBe(inBlock)
+      );
+      expect(rowOf()).toMatchObject({ status: "executed" });
+    } finally {
+      stopActivity();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("should stay sent where its block took it but the wallet stopped following it before that block was final", async () => {

@@ -219,6 +219,51 @@ describe("Dashboard", () => {
     }
   });
 
+  it("says a send that couldn't reach the network goes out once it answers, while the pill still finds it answering", async () => {
+    const { keepWaiting, sendGate } = await import("$lib/transactions");
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+
+    render(Dashboard, props);
+
+    const gate = sendGate();
+    const banner = () =>
+      document
+        .querySelector(".home__waiting")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+
+    keepWaiting({
+      gate,
+      lux: 10_000_000n,
+      operation: new Promise(() => {}),
+      to: "Profile 2",
+    });
+
+    try {
+      await act(() => setNetworkReach("answering"));
+
+      expect(banner()).toBe(
+        "Not sent yet: 0.01 DUSK to Profile 2. It's being sent. Cancel"
+      );
+
+      // The node can't be reached as it's sent: it waits for the network.
+      gate
+        .untilHandedOver(
+          () => Promise.reject(new TypeError("Failed to fetch")),
+          () => new Promise(() => {})
+        )
+        .catch(() => {});
+      await vi.waitFor(() =>
+        expect(banner()).toBe(
+          "Not sent yet: 0.01 DUSK to Profile 2. It goes out once the network answers. Cancel"
+        )
+      );
+    } finally {
+      gate.cancel();
+      setNetworkReach("answering");
+    }
+  });
+
   it("hides a waiting send's amount once balances are hidden, though they weren't as it was sent, there and as it's called off", async () => {
     const { keepWaiting, sendGate } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
@@ -457,6 +502,77 @@ describe("Dashboard", () => {
 
     expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
       "Nothing staked right now"
+    );
+  });
+
+  it("says the total and the public balance may be out of date where the balances couldn't be read, as the stake does", async () => {
+    const { container } = render(Dashboard, props);
+    const total = () =>
+      container
+        .querySelector(".home-balance")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+    const publicCard = () =>
+      container
+        .querySelectorAll(".explainer-card")[0]
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+
+    expect(total()).not.toContain("may be out of date");
+    expect(publicCard()).not.toContain("may be out of date");
+
+    await act(() =>
+      mockedWalletStore.setMockedStoreValue({
+        ...initialStore,
+        balanceReadFailed: true,
+        stakeReadFailed: true,
+      })
+    );
+
+    expect(total()).toContain(
+      "Your balance couldn't be read just now. This may be out of date."
+    );
+    expect(publicCard()).toBe(
+      "Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date."
+    );
+    expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
+      "Your stake couldn't be read just now. This may be out of date."
+    );
+
+    // Read again: said no more.
+    await act(() => mockedWalletStore.setMockedStoreValue(initialStore));
+
+    expect(total()).not.toContain("may be out of date");
+    expect(publicCard()).not.toContain("may be out of date");
+  });
+
+  it("says the total may be out of date while the stake it counts couldn't be read", async () => {
+    const { currentProfile } = initialStore;
+    const { container } = render(Dashboard, props);
+    const total = () =>
+      container
+        .querySelector(".home-balance")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+
+    // Sozu's read fails: what it held as read last shows, counted in the
+    // total.
+    await act(() =>
+      sozu.store?.set({
+        account: String(currentProfile.account),
+        available: true,
+        error: new Error("timed out"),
+        kept: { at: 1, balance: 2_747_100_000n, stDusk: 864_521_348n },
+        loading: false,
+        status: null,
+      })
+    );
+
+    expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
+      "4,520.2471"
+    );
+    expect(total()).toContain(
+      "Your stake couldn't be read just now. This total may be out of date."
     );
   });
 

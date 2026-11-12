@@ -1,6 +1,8 @@
 <script>
   import { page } from "$app/stores";
+  import { ProfileGenerator } from "@dusk/w3sper";
   import { activityState } from "$lib/activity";
+  import { verifiedNamesOf } from "$lib/activity/counterpartyNames";
   import { contactsStore } from "$lib/contacts";
   import { ContactsView } from "$lib/containers/Contacts";
   import { appPath } from "$lib/containers/Shell";
@@ -56,9 +58,49 @@
     );
   }
 
+  /**
+   * The verified .dusk names of the contacts' public accounts, as History
+   * names its counterparties: one saved without a name is known by it too,
+   * whether or not the history shown has paid it.
+   *
+   * @type {Map<string, string | null>}
+   */
+  let names = new Map();
+
+  /** The accounts asked about last. */
+  let asked = "";
+
+  /** @param {Contact[]} contacts */
+  function lookUpNames(contacts) {
+    const accounts = contacts
+      .filter(
+        ({ address, duskName }) =>
+          !duskName && ProfileGenerator.typeOf(address) === "account"
+      )
+      .map(({ address }) => address);
+    const key = accounts.join("\n");
+
+    if (key === asked) {
+      return;
+    }
+
+    asked = key;
+    verifiedNamesOf(accounts, {
+      network: String(networkName),
+      nodeUrl: nodeBaseUrl(),
+    })
+      .then((found) => {
+        if (asked === key) {
+          names = found;
+        }
+      })
+      .catch(() => {});
+  }
+
   $: ({ url } = $page);
   $: ({ language } = $settingsStore);
   $: ({ rows } = $activityState);
+  $: lookUpNames($contactsStore);
   $: own = $walletStore.profiles.flatMap((profile) => [
     String(profile.account),
     String(profile.address),
@@ -69,6 +111,7 @@
   contacts={$contactsStore}
   editing={url.searchParams.get("edit") === "1"}
   locale={language}
+  {names}
   on:select={select}
   {own}
   profiles={$profilesHere}

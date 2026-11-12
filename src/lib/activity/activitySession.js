@@ -368,19 +368,16 @@ export class ActivitySession {
   }
 
   /**
-   * Whether one of the wallet's own sends still waits for the archive, or a
-   * payment to this account that another profile here sent.
+   * Whether one of the wallet's own sends still waits for the archive,
+   * whatever the screen that followed it said of it meanwhile, or a payment
+   * to this account that another profile here sent.
    */
   #waitsForArchive() {
     const now = Date.now();
 
     return (
-      this.#local.some(
-        (r) =>
-          r.status === "submitted" &&
-          !r.settled &&
-          now - r.submittedAt < PENDING_MS
-      ) || this.#arrivalsAwaited(now).length > 0
+      this.#local.some((r) => !r.settled && now - r.submittedAt < PENDING_MS) ||
+      this.#arrivalsAwaited(now).length > 0
     );
   }
 
@@ -475,10 +472,7 @@ export class ActivitySession {
     } else if (this.#waitsForArchive()) {
       this.refreshSoon(
         this.#local.some(
-          (r) =>
-            r.status === "submitted" &&
-            !r.settled &&
-            Date.now() - r.submittedAt < LOOKED_FOR_SOONER_MS
+          (r) => !r.settled && Date.now() - r.submittedAt < LOOKED_FOR_SOONER_MS
         ) || this.#arrivalsAwaited().length
           ? SOON_AFTER_TX_MS
           : AFTER_TX_MS
@@ -657,6 +651,24 @@ export class ActivitySession {
     await this.#reload();
     this.#emit();
     this.refreshSoon(SOON_AFTER_TX_MS);
+  }
+
+  /** What's kept of the wallet's own transactions changed: the rows say it. */
+  async keptChanged() {
+    await this.#reload();
+    this.#emit();
+  }
+
+  /**
+   * Forgets one of the wallet's own transactions it kept, which the node
+   * refused as it was asked to broadcast it: it went nowhere.
+   *
+   * @param {string} hash
+   */
+  async forgetSent(hash) {
+    await deleteLocalTransactions(this.ownerKey, [hash]);
+    await this.#reload();
+    this.#emit();
   }
 
   /**

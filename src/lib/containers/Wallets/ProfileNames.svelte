@@ -10,12 +10,13 @@
    * can't be seen in it, which can read as another name, is refused.
    */
   import { mdiAlertOutline, mdiCheck } from "@mdi/js";
+  import { profileNameCheck } from "@dusk-network/app-core/names";
 
   import { Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { shortenAddress } from "$lib/dusk/string";
   import { FieldLimit, SectionHead } from "$lib/components";
-  import { profileNameProblem, profileNameQuestion } from "$lib/contacts";
+  import { listContacts } from "$lib/contacts";
   import { WalletChangedError } from "$lib/errors";
   import { networkStore, walletStore } from "$lib/stores";
   import profileLabel from "$lib/wallet/profileLabel";
@@ -92,20 +93,24 @@
       return;
     }
 
-    // Empty, it goes by its number: no other's name.
-    const problem = name
-      ? profileNameProblem(name, everyProfile, String(profiles[index].account))
+    // Empty, it goes by its number: no other's name, and nothing to ask.
+    // Another profile's or a contact's name, or one like it, is refused; one
+    // that is a contact's .dusk name, or starts as a .dusk name or a
+    // contact's name, is asked about, and saved all the same.
+    const said = name
+      ? profileNameCheck(name, {
+          contacts: listContacts(),
+          profiles: everyProfile,
+          self: String(profiles[index].account),
+        })
       : null;
 
-    if (problem) {
-      refused[index] = problem;
+    if (said?.refused) {
+      refused[index] = said.words;
       return;
     }
 
-    // Asked, not refused: it's saved all the same.
-    asked[index] =
-      (name && profileNameQuestion(name, String(profiles[index].account))) ||
-      "";
+    asked[index] = said?.words ?? "";
 
     // The field shows the name as it's kept.
     drafts[index] = name;

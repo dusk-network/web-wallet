@@ -6,6 +6,7 @@
  * said of it once another wallet opens, or none.
  */
 
+import { noteSentOutcome } from "$lib/activity";
 import { goto } from "$lib/navigation";
 import { followTransaction } from "$lib/transactions";
 
@@ -74,7 +75,8 @@ export function handOverSend(send) {
 }
 
 /**
- * Follows each send handed over until a block takes it, or this stops.
+ * Follows each send handed over until a block takes it, or this stops:
+ * History and Home say what it's told of it.
  *
  * @returns {() => void} Stops
  */
@@ -86,11 +88,17 @@ export function followSends() {
   const follow = (send) => {
     let isTold = false;
 
-    /** @param {{ error: string | null }} outcome */
-    const tell = ({ error }) => {
-      if (!isTold && !signal.aborted) {
+    /** @param {import("$lib/transactions/followTransaction").FinalTransaction} outcome */
+    const tell = (outcome) => {
+      if (signal.aborted) {
+        return;
+      }
+
+      noteSentOutcome(send.hash, outcome).catch(() => {});
+
+      if (!isTold) {
         isTold = true;
-        tellSendEnd({ ...send, failed: Boolean(error) });
+        tellSendEnd({ ...send, failed: Boolean(outcome.error) });
       }
     };
 

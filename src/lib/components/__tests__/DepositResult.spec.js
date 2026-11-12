@@ -70,10 +70,10 @@ describe("DepositResult", () => {
 
     expect(
       await findByText(
-        "Couldn't reach the network. Check your connection and try again."
+        "Couldn't reach the network. Nothing was sent and no fee was charged."
       )
     ).toBeInTheDocument();
-    expect(container).toHaveTextContent("Deposit submission failed");
+    expect(container).toHaveTextContent("Not sent");
     expect(container.querySelector("details summary")).toHaveTextContent(
       /^Details$/
     );

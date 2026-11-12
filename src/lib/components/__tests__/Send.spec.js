@@ -1254,7 +1254,7 @@ describe("Send", () => {
         });
 
         expect(
-          getByText("Is that about 1 or 1001? Write the one you mean.")
+          getByText("Is that 1,0010 or 1001? Write the one you mean.")
         ).toBeTruthy();
 
         await fireEvent.input(fieldsOf(getByRole).amount(), {
@@ -1348,6 +1348,30 @@ describe("Send", () => {
         formatDuskPlain(baseProps.availableBalance - fee)
       );
       expect(fields.review()).toBeEnabled();
+    });
+
+    it("should fill Max so that it reads back as it is, never as a thousands group, and ask which is meant of 1.000 typed in English", async () => {
+      // 1.234 DUSK can be sent: written as is, it could mean 1234.
+      const { getByRole, queryByRole } = render(Send, {
+        ...baseProps,
+        availableBalance: 1_234_000_000n + fee,
+        initialRecipient: shieldedAddress,
+      });
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(fields.amount()).toHaveValue("1.2340");
+      expect(queryByRole("alert")).toBeNull();
+      expect(fields.review()).toBeEnabled();
+
+      // Typed, a lone point before three digits asks, as a comma does.
+      await fireEvent.input(fields.amount(), { target: { value: "1.000" } });
+
+      expect(getByRole("alert")).toHaveTextContent(
+        "Is that 1 or 1000? Write the one you mean."
+      );
+      expect(fields.review()).toBeDisabled();
     });
 
     it("should never show a Total at Max that reads more than the balance", async () => {
@@ -2365,7 +2389,7 @@ describe("Send", () => {
 
         await sendWith(getByRole, filled);
 
-        expect(getByText("Transaction failed")).toBeInTheDocument();
+        expect(getByText("Not sent")).toBeInTheDocument();
 
         await pressBack();
 

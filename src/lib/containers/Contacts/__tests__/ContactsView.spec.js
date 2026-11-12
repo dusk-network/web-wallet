@@ -297,6 +297,37 @@ describe("ContactsView", () => {
     ).toEqual(["Estudio Mаrta"]);
   });
 
+  it("gives a contact saved from an address the .dusk name its account has, though the history shown never paid it, and finds it by that name", async () => {
+    // Saved from alice.dusk's address; its payments are in another profile's
+    // history, or older than what's shown: its name was looked up for it.
+    saveContact({ address: OTHER, name: "Estudio Mаrta" });
+
+    const { container, getByRole } = show({
+      contacts: get(contactsStore),
+      names: new Map([[OTHER, "alice.dusk"]]),
+      rows: [],
+    });
+    const row = () =>
+      Array.from(container.querySelectorAll(".contacts__row")).find((each) =>
+        each.textContent?.includes("Estudio")
+      );
+
+    expect(row()?.querySelector(".contacts__col-dusk")).toHaveTextContent(
+      /^alice\.dusk$/
+    );
+
+    await fireEvent.input(getByRole("searchbox", { name: "Search contacts" }), {
+      target: { value: "alice.dusk" },
+    });
+
+    expect(
+      Array.from(
+        container.querySelectorAll(".contacts__name"),
+        (name) => name.textContent
+      )
+    ).toEqual(["Estudio Mаrta"]);
+  });
+
   it("marks a contact whose name looks like another's with its address, and finds both by the name", async () => {
     // A Cyrillic а, at another address.
     saveContact({ address: OTHER, name: "Alice's sh\u043Ep" });

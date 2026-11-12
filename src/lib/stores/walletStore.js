@@ -80,6 +80,7 @@ const initialState = {
     },
   },
   balanceRead: false,
+  balanceReadFailed: false,
   currentProfile: null,
   initialized: false,
   minimumStake: 0n,
@@ -184,22 +185,46 @@ function historyOf(profile) {
 
 /**
  * Shows a transaction the wallet sent in the history until the archive has
- * it: in the history of the profile that sends it, taken as the send
- * begins, which keeps nothing after a reset since (activityStore's epoch).
+ * it, once (`record`): in the history of the profile that sends it, taken as
+ * the send begins, which keeps nothing after a reset since (activityStore's
+ * epoch). One the node refused as it was asked to broadcast it went nowhere,
+ * and goes from it again (`forget`), once it's in it.
  *
  * @param {Profile} profile
  * @param {SentDetails} details
- * @returns {(txInfo: TransactionInfo) => void}
+ * @returns {{ forget: (txInfo: TransactionInfo) => void, record: (txInfo: TransactionInfo) => void }}
  */
 const recordInHistory = (profile, details) => {
   const history = historyOf(profile);
 
-  return (txInfo) => {
-    history
-      ?.recordSent({ ...details, hash: txInfo.hash })
+  /** The transactions recorded, and how far their records got, by hash. */
+  const recorded = new Map();
+
+  /** @param {() => Promise<void> | undefined} change */
+  const tellTabs = (change) =>
+    Promise.resolve()
+      .then(change)
       // The other tabs' history shows it too.
       .then(() => tellOtherTabs({ type: "sent" }))
       .catch(() => {});
+
+  return {
+    forget({ hash }) {
+      const record = recorded.get(hash);
+
+      if (record) {
+        recorded.delete(hash);
+        void record.then(() => tellTabs(() => history?.forgetSent(hash)));
+      }
+    },
+    record({ hash }) {
+      if (!recorded.has(hash)) {
+        recorded.set(
+          hash,
+          tellTabs(() => history?.recordSent({ ...details, hash }))
+        );
+      }
+    },
   };
 };
 
@@ -448,6 +473,37 @@ const builtWhileOpen = (builder, stillOpen) =>
   });
 
 /**
+ * The sends of the wallet open, one at a time: each is built, checked by the
+ * node, handed over to it and its nonce or notes kept before the next is
+ * built, as two built at once take the same nonce, or the same notes, as two
+ * that waited for the network would as it answers.
+ */
+let sendsInTurn = Promise.resolve();
+
+/**
+ * Does `work` in its turn, once the sends before it are over. Its turn is
+ * over once it is, or as it's called off with `gate`, as then it never
+ * reaches the node.
+ *
+ * @template T
+ * @param {() => Promise<T>} work
+ * @param {import("$lib/transactions/sendGate").SendGate} [gate]
+ * @returns {Promise<T>}
+ */
+function inTurn(work, gate) {
+  const turn = sendsInTurn.then(() =>
+    gate ? Promise.race([work(), gate.cancelled]) : work()
+  );
+
+  sendsInTurn = turn.then(
+    () => {},
+    () => {}
+  );
+
+  return turn;
+}
+
+/**
  * Sends a transaction as `profile`, taken once as the send begins: it is
  * built, kept in the cache and recorded in the history as that profile,
  * whichever one is chosen while the wallet syncs before it goes out. It
@@ -461,7 +517,8 @@ const builtWhileOpen = (builder, stillOpen) =>
  * out: History shows it on its way at once, and it's followed as one that
  * went out, as the chain will say. With a `gate`, it can be called off until
  * the node is asked to broadcast it: it then stops at once, whatever it
- * waits on, and never reaches the node (sendGate).
+ * waits on, and never reaches the node (sendGate). Until then, what couldn't
+ * reach the network waits for it, and is made again once it answers.
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
@@ -478,8 +535,11 @@ const sendAs = (
   const session = walletSession;
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
-  const record = recordInHistory(profile, details);
+  const { forget, record } = recordInHistory(profile, details);
   const lookFor = lookForArrival(profile, details);
+
+  /** The hash of the transaction the node was asked to broadcast, if any. */
+  let handedOver = "";
 
   /** @param {import("@dusk/w3sper").Network} network */
   const sending = (network) => ({
@@ -487,7 +547,15 @@ const sendAs = (
     execute: (tx) =>
       /** @type {import("$lib/transactions/SendingNetwork").default} */ (
         network
-      ).execute(builtWhileOpen(tx, stillOpen), { gate }),
+      ).execute(builtWhileOpen(tx, stillOpen), {
+        gate,
+        // It may go out from now on: History shows it on its way at once,
+        // also where the node's answer never comes.
+        onHandOver: (hash) => {
+          handedOver = hash;
+          record(/** @type {TransactionInfo} */ ({ hash }));
+        },
+      }),
   });
 
   /** @param {TransactionInfo} txInfo */
@@ -515,31 +583,64 @@ const sendAs = (
     get(walletStore).walletKey
   );
 
-  const sent = (password ? password.then(() => sync()) : sync())
+  /**
+   * Synced, connected, built and checked by the node, then handed over to
+   * it, which may answer, and what it changed kept, in its turn.
+   *
+   * @returns {Promise<TransactionInfo>}
+   */
+  const attempt = () =>
+    sync()
+      .catch((error) => {
+        throw stillOpen(error);
+      })
+      .then(() => {
+        gate?.check();
+
+        return networkStore.connect();
+      })
+      .then((network) =>
+        inTurn(() => {
+          gate?.check();
+
+          return execute(sending(stillOpen(network))).then((txInfo) =>
+            // It went out: what goes wrong from here doesn't say it didn't.
+            keepInCache(txInfo).catch((error) => {
+              throw outcomeUnknown(error, txInfo.hash);
+            })
+          );
+        }, gate)
+      );
+
+  const sent = (password ?? Promise.resolve())
     .catch((error) => {
       throw stillOpen(error);
     })
-    .then(() => {
-      gate?.check();
-
-      return networkStore.connect();
-    })
-    .then((network) =>
-      execute(sending(stillOpen(network))).catch((error) => {
-        const hash = unconfirmedHash(error);
-
-        if (hash) {
-          followRemoval(/** @type {TransactionInfo} */ ({ hash }));
-          record(/** @type {TransactionInfo} */ ({ hash }));
-          lookFor(/** @type {TransactionInfo} */ ({ hash }));
-        }
-
-        throw error;
-      })
+    .then(() =>
+      // Asked for the latest block's height, the network says it answers.
+      gate
+        ? gate.untilHandedOver(attempt, (signal) =>
+            networkStore.getCurrentBlockHeight(signal)
+          )
+        : attempt()
     )
+    .catch((error) => {
+      const hash = unconfirmedHash(error);
+
+      if (hash) {
+        followRemoval(/** @type {TransactionInfo} */ ({ hash }));
+        record(/** @type {TransactionInfo} */ ({ hash }));
+        lookFor(/** @type {TransactionInfo} */ ({ hash }));
+      } else if (handedOver) {
+        // Refused as it was handed over: it went nowhere.
+        forget(/** @type {TransactionInfo} */ ({ hash: handedOver }));
+      }
+
+      throw error;
+    })
     .then((txInfo) =>
       // It went out: what goes wrong from here doesn't say it didn't.
-      keepInCache(txInfo)
+      Promise.resolve(txInfo)
         .then(passThruWithEffects(followRemoval))
         .then(passThruWithEffects(record))
         .then(passThruWithEffects(lookFor))
@@ -654,6 +755,12 @@ async function updateStaticInfo() {
       ...(balance.status === "fulfilled"
         ? { balance: balance.value, balanceRead: true }
         : {}),
+      // What shows of balances that couldn't be read is what was read
+      // before, as for the stake: also what the sync read before one that
+      // failed, as the network couldn't be reached.
+      balanceReadFailed:
+        balance.status !== "fulfilled" ||
+        currentStore.syncStatus.error !== null,
       ...(stake.status === "fulfilled" ? { stakeInfo: stake.value } : {}),
       // What shows of a stake that couldn't be read is what was read before.
       stakeReadFailed: stake.status !== "fulfilled",
@@ -990,6 +1097,8 @@ const refreshBalance = () =>
  */
 function resetSession() {
   walletSession++;
+  // The next wallet's sends wait for none of this one's.
+  sendsInTurn = Promise.resolve();
   cancelSendPassword(new WalletChangedError());
   cancelWaitingSends(new WalletChangedError());
   abortSync();
@@ -1023,6 +1132,7 @@ async function setCurrentProfile(profile) {
         set({
           ...store,
           balanceRead: false,
+          balanceReadFailed: false,
           currentProfile: profile,
           stakeReadFailed: false,
         })

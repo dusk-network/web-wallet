@@ -32,6 +32,15 @@
   /** @type {number | undefined} */
   export let fiatPrice = undefined;
 
+  /**
+   * Whether the balances couldn't be read the last time they were asked for:
+   * what shows is what was read before, said to be so.
+   */
+  export let unread = false;
+
+  /** Whether the stake the total counts couldn't be read: it's said too. */
+  export let stakeUnread = false;
+
   // Everything held: what's staked too.
   $: total = shielded + unshielded + staked;
 
@@ -92,6 +101,15 @@
   </p>
   {#if fiat}
     <p class="home-balance__fiat">≈ <BalanceValue value={fiat} /></p>
+  {/if}
+  {#if unread}
+    <p class="home-balance__unread">
+      Your balance couldn't be read just now. This may be out of date.
+    </p>
+  {:else if stakeUnread}
+    <p class="home-balance__unread">
+      Your stake couldn't be read just now. This total may be out of date.
+    </p>
   {/if}
   <div
     aria-hidden="true"
@@ -212,6 +230,11 @@
     color: var(--calm-muted);
     font-size: 0.875rem;
     font-variant-numeric: tabular-nums;
+  }
+
+  .home-balance__unread {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
   }
 
   .home-balance__bar {
