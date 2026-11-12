@@ -97,6 +97,11 @@ type WalletStoreContent = {
    * other profile's, and nothing is said against it.
    */
   balanceRead: boolean;
+  /**
+   * Whether the balances couldn't be read the last time they were asked for:
+   * `balance` is then the one read before, or the cached one.
+   */
+  balanceReadFailed: boolean;
   currentProfile: Profile | null;
   initialized: boolean;
   minimumStake: bigint;

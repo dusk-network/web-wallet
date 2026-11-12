@@ -77,8 +77,14 @@
     },
   ].filter(({ id }) => isEnabled(id));
 
-  $: ({ balance, currentProfile, minimumStake, stakeInfo, stakeReadFailed } =
-    $walletStore);
+  $: ({
+    balance,
+    balanceReadFailed,
+    currentProfile,
+    minimumStake,
+    stakeInfo,
+    stakeReadFailed,
+  } = $walletStore);
   // Test DUSK has no value: no money value off mainnet.
   $: ({ net, networkName } = $networkStore);
   // Offered only where a migration runs: the Bridge opens on BNB Smart
@@ -159,6 +165,8 @@
       locale={language}
       shielded={balance.shielded.value}
       staked={(staked ?? 0n) + liquid}
+      {stakeUnread}
+      unread={balanceReadFailed}
       unshielded={balance.unshielded.value}
     />
 
@@ -207,6 +215,7 @@
 
   <div class="home__cards">
     <ExplainerCards
+      balanceUnread={balanceReadFailed}
       {hasPastStaking}
       {liquid}
       locale={language}

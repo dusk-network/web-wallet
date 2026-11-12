@@ -9,6 +9,7 @@ import {
 } from "vitest";
 import { get } from "svelte/store";
 import {
+  AccountSyncer,
   Bookkeeper,
   Bookmark,
   Gas,
@@ -182,6 +183,7 @@ describe("Wallet store", async () => {
       },
     },
     balanceRead: false,
+    balanceReadFailed: false,
     currentProfile: null,
     initialized: false,
     minimumStake: 0n,
@@ -860,6 +862,79 @@ describe("Wallet store", async () => {
         expect(position[0]).toBe("newer");
       } finally {
         stopReading();
+        balanceSpy.mockImplementation(/** @type {any} */ (balanceOf));
+      }
+    });
+
+    it("should say the balances couldn't be read, keeping what was read before, until a refresh reads them", async () => {
+      vi.useRealTimers();
+
+      const before = get(walletStore).balance;
+
+      expect(get(walletStore).balanceReadFailed).toBe(false);
+
+      // Before the wallet's first sync gets through, as with a silent node.
+      balanceSpy.mockRejectedValueOnce(
+        new Error("No balance found for the account with the given identifier")
+      );
+
+      const failed = walletStore.refreshBalance();
+
+      await vi.waitUntil(() => get(walletStore).balanceReadFailed);
+      await failed;
+
+      expect(get(walletStore).balance).toBe(before);
+
+      // Tried again: read, it's said no more.
+      const read = walletStore.refreshBalance();
+
+      await vi.waitUntil(() => !get(walletStore).balanceReadFailed);
+      await read;
+
+      expect(get(walletStore).balance).toStrictEqual({ shielded, unshielded });
+    });
+
+    it("should say the balances may be out of date once a sync fails after one got through, with what it read then", async () => {
+      vi.useRealTimers();
+
+      // The treasury the wallet reads its public balance from, as it does.
+      const treasury = /** @type {any} */ (setProfilesSpy.mock.contexts.at(-1));
+      const balanceOf = balanceSpy.getMockImplementation();
+
+      balanceSpy.mockImplementation(async (identifier) =>
+        ProfileGenerator.typeOf(identifier.toString()) === "address"
+          ? shielded
+          : treasury.account(identifier)
+      );
+
+      try {
+        // The sync as the wallet opened read the balances on the network.
+        const read = await treasury.account(defaultProfile.account);
+
+        expect(get(walletStore).syncStatus.error).toBeNull();
+        expect(get(walletStore).balanceReadFailed).toBe(false);
+
+        // Offline now: the sync can't reach the node for the balances.
+        const offline = vi
+          .spyOn(AccountSyncer.prototype, "balances")
+          .mockRejectedValue(new TypeError("Failed to fetch"));
+
+        try {
+          await walletStore.refreshBalance();
+
+          // What shows is what was read before, said to be so.
+          expect(get(walletStore).syncStatus.error).toBeInstanceOf(TypeError);
+          expect(get(walletStore).balance.unshielded).toStrictEqual(read);
+          expect(get(walletStore).balanceReadFailed).toBe(true);
+        } finally {
+          offline.mockRestore();
+        }
+
+        // Back: read again, it's said no more.
+        await walletStore.refreshBalance();
+
+        expect(get(walletStore).balanceReadFailed).toBe(false);
+      } finally {
         balanceSpy.mockImplementation(/** @type {any} */ (balanceOf));
       }
     });

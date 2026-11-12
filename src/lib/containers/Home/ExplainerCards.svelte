@@ -46,6 +46,12 @@
    */
   export let stakeUnread = false;
 
+  /**
+   * Whether the balances couldn't be read: the public one shown is what was
+   * read before.
+   */
+  export let balanceUnread = false;
+
   /** Whether it's being read, with nothing read before to show meanwhile. */
   export let stakeReading = false;
 
@@ -87,6 +93,11 @@
     <p class="explainer-card__text">
       Visible on chain. Staking and the bridge use this balance.
     </p>
+    {#if balanceUnread}
+      <p class="explainer-card__text">
+        It couldn't be read just now. This may be out of date.
+      </p>
+    {/if}
   </li>
   <li class="explainer-card">
     <p class="explainer-card__key ledger-label">

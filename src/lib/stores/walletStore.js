@@ -80,6 +80,7 @@ const initialState = {
     },
   },
   balanceRead: false,
+  balanceReadFailed: false,
   currentProfile: null,
   initialized: false,
   minimumStake: 0n,
@@ -754,6 +755,12 @@ async function updateStaticInfo() {
       ...(balance.status === "fulfilled"
         ? { balance: balance.value, balanceRead: true }
         : {}),
+      // What shows of balances that couldn't be read is what was read
+      // before, as for the stake: also what the sync read before one that
+      // failed, as the network couldn't be reached.
+      balanceReadFailed:
+        balance.status !== "fulfilled" ||
+        currentStore.syncStatus.error !== null,
       ...(stake.status === "fulfilled" ? { stakeInfo: stake.value } : {}),
       // What shows of a stake that couldn't be read is what was read before.
       stakeReadFailed: stake.status !== "fulfilled",
@@ -1125,6 +1132,7 @@ async function setCurrentProfile(profile) {
         set({
           ...store,
           balanceRead: false,
+          balanceReadFailed: false,
           currentProfile: profile,
           stakeReadFailed: false,
         })

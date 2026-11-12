@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show a send on Home and in History as pending, with its amount, from the moment the node is asked to broadcast it, also where its answer never comes
 - Keep Home on a send's screen from the moment it may have gone out, whether or not the network answers
 - Say a send went through on Home and in History as soon as its screen says it was sent, or the wallet tells it arrived, not Pending until the network's history has it
+- Say on Home's total and public balance that they may be out of date where they couldn't be read, also after a sync that failed, and on the total where the stake it counts couldn't be read
 - Give native staking's yearly rate from the same blocks as the extension within a day, kept for that day, not from blocks the moment picks
 - Say Reading… for the stDUSK and rate on a Sozu stake's or unstake's Sent screen from when a block takes it until they're read
 - Refuse a dusk:shielded- link to a public account, or a public one to a shielded address, and a dusk: link with a # in it, and say why
