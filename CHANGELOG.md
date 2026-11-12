@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say on Home's total and public balance that they may be out of date where they couldn't be read, also after a sync that failed, and on the total where the stake it counts couldn't be read
 - Lead with Open in the Dusk extension on the page a payment link opens where no wallet is kept here, with Create new wallet and Restore wallet small under it
 - Say on a send's Sending… screen when it waits for the network, and that it has left the wallet
+- Name the export's file and its Account Name as the extension does: by the profile's .dusk name, else its name here, with when the file was made
+- Give each contact saved from a public account the .dusk name its account has in Contacts, and find it by that name, also where the history shown never paid it
 - Give native staking's yearly rate from the same blocks as the extension within a day, kept for that day, not from blocks the moment picks
 - Say Reading… for the stDUSK and rate on a Sozu stake's or unstake's Sent screen from when a block takes it until they're read
 - Refuse a dusk:shielded- link to a public account, or a public one to a shielded address, and a dusk: link with a # in it, and say why

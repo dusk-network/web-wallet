@@ -243,3 +243,66 @@ describe("lookupCounterpartyNames", () => {
     expect(mocks.createLensReader).not.toHaveBeenCalled();
   });
 });
+
+describe("verifiedNamesOf", () => {
+  it("takes a name checked in the last ten minutes as kept, looks up the others, and keeps them", async () => {
+    const store = await import("../activityStore");
+    const reader = useReader(async (key) =>
+      isKeyOf(key, NAMED) ? primary("shpongle.dusk") : null
+    );
+
+    // UNNAMED was checked a minute ago: it isn't asked again.
+    await store.putCounterpartyNames("testnet", new Map([[UNNAMED, null]]), {
+      at: Date.now() - 60_000,
+      epoch: await store.getActivityEpoch(),
+    });
+
+    await expect(
+      names.verifiedNamesOf([NAMED, UNNAMED, NAMED], {
+        network: "testnet",
+        nodeUrl: NODE,
+      })
+    ).resolves.toEqual(
+      new Map([
+        [UNNAMED, null],
+        [NAMED, "shpongle.dusk"],
+      ])
+    );
+    expect(reader.verifyPrimary).toHaveBeenCalledOnce();
+
+    // Kept: asked again, it's what was looked up.
+    await expect(
+      names.verifiedNamesOf([NAMED], { network: "testnet", nodeUrl: NODE })
+    ).resolves.toEqual(new Map([[NAMED, "shpongle.dusk"]]));
+    expect(reader.verifyPrimary).toHaveBeenCalledOnce();
+  });
+
+  it("keeps nothing it looked up once the wallet was reset meanwhile", async () => {
+    const store = await import("../activityStore");
+    /** @type {(found: unknown) => void} */
+    let answer = () => {};
+    const reader = useReader(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+
+    await store.clearActivityStore();
+
+    const looking = names.verifiedNamesOf([NAMED], {
+      network: "testnet",
+      nodeUrl: NODE,
+    });
+
+    await vi.waitFor(() => expect(reader.verifyPrimary).toHaveBeenCalledOnce());
+    // Reset as the lookup is under way: what it finds is no longer kept.
+    await store.clearActivityStore();
+    answer(primary("shpongle.dusk"));
+    await looking;
+
+    expect(await store.getCounterpartyNames("testnet", [NAMED])).toEqual(
+      new Map()
+    );
+  });
+});

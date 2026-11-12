@@ -16,6 +16,10 @@ import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 import { hydrateExportAddresses } from "$lib/activity/exportAddresses";
 import { shortAddress } from "$lib/activity/present";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
+import {
+  forgetVerifiedNames,
+  keepVerifiedName,
+} from "$lib/dusk-domains/verifiedNames";
 import { settingsStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { openTestContacts } from "$lib/test-helpers";
@@ -107,6 +111,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
           run({
             ...value,
             currentProfile: stores.profile,
+            profiles: [stores.profile],
           })
         ),
     },
@@ -546,12 +551,43 @@ describe("History", () => {
       expect(head).toContain("Internal Transfer");
       expect(lines.join("\n")).toContain("Order 1042");
       expect(lines[0]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},/);
-      expect(names).toStrictEqual(["dusk-profile-testnet-all.csv"]);
+      expect(names).toStrictEqual([
+        expect.stringMatching(
+          /^dusk-profile-1-testnet-all-\d{4}-\d{2}-\d{2}-\d{4}\.csv$/
+        ),
+      ]);
       expect(mocks.whole).toHaveBeenCalledOnce();
 
       await vi.waitFor(() =>
         expect(queryByRole("button", { name: "Save CSV" })).toBeNull()
       );
+    });
+
+    it("names the file and its Account Name as the extension does: by the profile's .dusk name, else its name here, with when it was made", async () => {
+      vi.useFakeTimers({
+        now: new Date(2026, 10, 11, 23, 43, 20),
+        toFake: ["Date"],
+      });
+      keepVerifiedName("testnet", "account-shown", "sofiadesign.dusk");
+
+      try {
+        const { getByRole } = await openExport();
+
+        await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+
+        const { head, lines } = await fileSaved();
+        const accountName = head.indexOf("Account Name");
+
+        expect(names).toStrictEqual([
+          "dusk-sofiadesign-dusk-testnet-all-2026-11-11-2343.csv",
+        ]);
+        expect(
+          new Set(lines.map((line) => line.split(",")[accountName]))
+        ).toStrictEqual(new Set(["sofiadesign.dusk"]));
+      } finally {
+        forgetVerifiedNames();
+        vi.useRealTimers();
+      }
     });
 
     it("starts with a BOM only for Excel, and adds contact names only as asked", async () => {
@@ -818,7 +854,9 @@ describe("History", () => {
       const { lines } = await fileSaved();
 
       expect(lines.join("\n")).toContain("Order 1042");
-      expect(names[0]).toMatch(/-\d{4}-q[1-4](-testnet)?\.csv$/);
+      expect(names[0]).toMatch(
+        /-\d{4}-q[1-4](-testnet)?-\d{4}-\d{2}-\d{2}-\d{4}\.csv$/
+      );
     });
 
     it("says it can't read the whole history, and saves nothing half read", async () => {

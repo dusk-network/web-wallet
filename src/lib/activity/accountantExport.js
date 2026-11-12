@@ -100,6 +100,32 @@ export function evmAddressesOf(connected = [], added = []) {
   return [...known.values()];
 }
 
+/** A number as two digits. */
+const twoDigits = (/** @type {number} */ n) => String(n).padStart(2, "0");
+
+/**
+ * A file's name with when it was made before its extension, to the minute in
+ * the device's time, as the extension names its files, so no two share one:
+ * "dusk-profile-1-testnet-all-2026-11-10-0412.csv".
+ *
+ * @param {string} name
+ * @param {number} [at]
+ */
+export function stampedName(name, at = Date.now()) {
+  const made = new Date(at);
+  const stamp = [
+    made.getFullYear(),
+    twoDigits(made.getMonth() + 1),
+    twoDigits(made.getDate()),
+    `${twoDigits(made.getHours())}${twoDigits(made.getMinutes())}`,
+  ].join("-");
+
+  return name.replace(
+    /(\.[a-z0-9]+)?$/i,
+    (extension) => `-${stamp}${extension}`
+  );
+}
+
 /**
  * What's asked of a file.
  *

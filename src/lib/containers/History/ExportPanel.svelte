@@ -19,6 +19,7 @@
     periodOf,
     readRewardsByYear,
     savedWords,
+    stampedName,
   } from "$lib/activity/accountantExport";
   import {
     addExportAddress,
@@ -42,8 +43,12 @@
   import walletAccountNames from "$lib/wallets/accountNames";
   import { account as evmAccount } from "$lib/web3/walletConnection";
 
-  /** The account the file is of, and how the wallet names it. */
-  /** @type {{ address: string, label: string } | null} */
+  /**
+   * The account the file is of, how the wallet names it, and how the file
+   * names it (`outsideName`), as the extension's does.
+   *
+   * @type {{ address: string, label: string, outsideName?: string } | null}
+   */
   export let account;
 
   /** That profile's shielded address. */
@@ -158,7 +163,7 @@
         profile: {
           account: account?.address,
           address: shieldedAddress,
-          name: account?.label,
+          name: account?.outsideName || account?.label,
         },
         profiles: otherProfiles($walletAccountNames, own),
         session:
@@ -170,7 +175,7 @@
       stillOpen();
 
       if (made.count) {
-        saveFile(made.csv, made.fileName);
+        saveFile(made.csv, stampedName(made.fileName));
         toast("success", savedWords(made), mdiCheck, 6000);
         onSaved();
       } else {

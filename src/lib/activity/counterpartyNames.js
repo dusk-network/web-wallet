@@ -11,6 +11,12 @@ import { nameToShow } from "@duskdomains/sdk/names";
 import { PINNED_RELEASES } from "@duskdomains/sdk/releases";
 import { createMulticallFetch } from "@hdauven/dusk-multicall";
 
+import {
+  getActivityEpoch,
+  getCounterpartyNames,
+  putCounterpartyNames,
+} from "./activityStore";
+
 /** How long a kept name check is used without checking again: ten minutes. */
 export const NAME_CHECK_TTL_MS = 10 * 60_000;
 
@@ -170,4 +176,42 @@ export async function lookupCounterpartyNames(accounts, { network, nodeUrl }) {
   }
 
   return out;
+}
+
+/**
+ * The verified primary `.dusk` names of public accounts, as the history checks
+ * its counterparties': those kept from a check of the last ten minutes, the
+ * others looked up and kept. An account whose lookup failed is left out, and
+ * looked up again next time.
+ *
+ * @param {string[]} accounts
+ * @param {{ network: string, nodeUrl: string }} where
+ * @returns {Promise<Map<string, string | null>>}
+ */
+export async function verifiedNamesOf(accounts, { network, nodeUrl }) {
+  const list = [...new Set(accounts)];
+  const now = Date.now();
+  // The store's epoch as the lookups begin: none is kept after a reset since.
+  const epoch = await getActivityEpoch().catch(() => undefined);
+
+  /** @type {Map<string, string | null>} */
+  const found = new Map();
+  const kept = await getCounterpartyNames(network, list).catch(() => new Map());
+
+  for (const [account, { at, name }] of kept) {
+    if (now - at >= 0 && now - at < NAME_CHECK_TTL_MS) {
+      found.set(account, name);
+    }
+  }
+
+  const looked = await lookupCounterpartyNames(
+    list.filter((account) => !found.has(account)),
+    { network, nodeUrl }
+  );
+
+  if (looked.size && epoch !== undefined) {
+    await putCounterpartyNames(network, looked, { epoch }).catch(() => {});
+  }
+
+  return new Map([...found, ...looked]);
 }

@@ -35,8 +35,12 @@
   /** The network's name, for the export's file name and known contracts. */
   export let network = "";
 
-  /** The account the history is of, and how the wallet names it. */
-  /** @type {{ address: string, label: string } | null} */
+  /**
+   * The account the history is of, how the wallet names it, and how what
+   * leaves the wallet names it (`outsideName`), as an export.
+   *
+   * @type {{ address: string, label: string, outsideName?: string } | null}
+   */
   export let account = null;
 
   /** That profile's shielded address, for the export. */
