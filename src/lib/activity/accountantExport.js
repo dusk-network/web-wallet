@@ -5,7 +5,7 @@
  */
 
 import { defaultCurrency } from "@dusk-network/app-core/amounts";
-import { migrationsOf } from "@dusk-network/app-core/bridge";
+import { bridgedTo } from "@dusk-network/app-core/bridge";
 import {
   accountingCsv,
   datesPeriod,
@@ -16,11 +16,8 @@ import {
 import { get } from "svelte/store";
 
 import { keptMigrations } from "$lib/bridge/migrationActivity";
-import {
-  readMigrationApprovals,
-  readMigrationsEvm,
-} from "$lib/bridge/migrationEvm";
 import { currencies } from "$lib/dusk/currency";
+import { shortenAddress } from "$lib/dusk/string";
 
 import { duskPrices } from "./duskPrice";
 
@@ -66,21 +63,47 @@ export function currencyWords(currency) {
 }
 
 /**
- * The EVM addresses a file writes a migration's gas for, as the person's,
- * each once: connected here now, added for the file, or one this browser
- * sent a migration from.
+ * The EVM addresses known here as the person's, whichever profile's they
+ * are, each once: connected here now, or added, and those this browser sent a
+ * migration from.
  *
  * @param {Iterable<string>} [connected]
- * @param {Iterable<string>} [added]
- * @returns {{ address: string, why: "added" | "connected" | "migrated" }[]}
+ * @returns {string[]}
  */
-export function evmAddressesOf(connected = [], added = []) {
-  /** @type {Map<string, { address: string, why: "added" | "connected" | "migrated" }>} */
+export function knownEvmAddresses(connected = []) {
+  /** @type {Map<string, string>} */
+  const known = new Map();
+
+  for (const address of [
+    ...connected,
+    ...get(keptMigrations).map(({ sender }) => sender),
+  ]) {
+    if (address && !known.has(address.toLowerCase())) {
+      known.set(address.toLowerCase(), address);
+    }
+  }
+
+  return [...known.values()];
+}
+
+/**
+ * The EVM addresses a profile's file has the gas of, as far as is known
+ * before it's made, each once: one this browser sent a migration into the
+ * profile from, one the profile's rows bridged DUSK to, or one added for its
+ * files. The address connected here is the person's too, and its gas is in
+ * the file where its migrations paid the profile: said once the file is made
+ * (`savedWords`).
+ *
+ * @param {{ account: string, added?: Iterable<string>, rows?: ActivityRow[] }} profile
+ * @returns {{ address: string, why: "added" | "bridged" | "migrated" }[]}
+ */
+export function evmAddressesOf({ account, added = [], rows = [] }) {
+  /** @type {Map<string, { address: string, why: "added" | "bridged" | "migrated" }>} */
   const known = new Map();
 
   /**
    * @param {Iterable<string>} addresses
-   * @param {"added" | "connected" | "migrated"} why
+   * @param {"added" | "bridged" | "migrated"} why
    */
   const take = (addresses, why) => {
     for (const address of addresses) {
@@ -90,15 +113,24 @@ export function evmAddressesOf(connected = [], added = []) {
     }
   };
 
-  take(connected, "connected");
   take(
-    get(keptMigrations).map(({ sender }) => sender),
+    get(keptMigrations)
+      .filter(({ recipient }) => recipient === account)
+      .map(({ sender }) => sender),
     "migrated"
   );
+  take(bridgedTo(rows), "bridged");
   take(added, "added");
 
   return [...known.values()];
 }
+
+/**
+ * What each migration's side on its own chain and the person's approvals and
+ * revokes there are, as read for files: what's final is read once while the
+ * page is open.
+ */
+const exportChainCache = new Map();
 
 /** A number as two digits. */
 const twoDigits = (/** @type {number} */ n) => String(n).padStart(2, "0");
@@ -200,10 +232,12 @@ export function periodChoices(now = new Date()) {
  * The file asked for, from the account's whole history. Throws what to say when
  * it can't be read: nothing half read goes out as if it were all of it. A
  * migration's gas on its own chain is the person's cost only where it was
- * sent from an EVM address of theirs: one connected now (`evmConnected`), or
- * one this browser sent a migration from. Anyone can migrate to an account,
- * as a customer to a shop's. So are those addresses' approvals and revokes
- * there that no migration spent.
+ * sent from an EVM address of theirs: one the profile's rows bridged DUSK to,
+ * one connected now or added for the file (`evmConnected`), or one this
+ * browser sent a migration from. Anyone can migrate to an account, as a
+ * customer to a shop's. So are those addresses' approvals and revokes there,
+ * each in the file of the profile its migration paid, as app-core reads and
+ * books them, as the extension does.
  *
  * @param {{
  *   choices: ExportChoices,
@@ -214,9 +248,9 @@ export function periodChoices(now = new Date()) {
  *   network: string,
  *   profile: import("@dusk-network/app-core/export").ExportProfile,
  *   profiles: import("@dusk-network/app-core/export").ExportProfile[],
- *   session: Pick<import("./activitySession").ActivitySession, "sozuFacts" | "whole">,
+ *   session: Pick<import("./activitySession").ActivitySession, "sozuFacts" | "whole"> & { archive?: import("@dusk-network/app-core/history").Archive },
  * }} asked
- * @returns {Promise<import("@dusk-network/app-core/export").ExportResult & { currency: string, shieldedWaiting: boolean }>}
+ * @returns {Promise<import("@dusk-network/app-core/export").ExportResult & { currency: string, hasOtherProfiles: boolean, shieldedWaiting: boolean }>}
  */
 export async function makeExport({
   choices,
@@ -237,44 +271,32 @@ export async function makeExport({
   });
   // A stake whose stDUSK can't be read yet says so in its line.
   const facts = await session.sozuFacts(whole.rows).catch(() => undefined);
-  // What each migration paid on its own chain, its approval with it: by the
-  // approval this browser sent for it where it kept one, whose receipt is
-  // read at any age, where the chain's logs no longer say.
+  // The approval this browser sent for each migration it sent, by the
+  // migration's hash, whose receipt is read at any age, where the chain's
+  // logs no longer say.
   const kept = get(keptMigrations);
   const approvals = new Map(
     kept.flatMap(({ approval, hash }) =>
       approval ? [[hash.toLowerCase(), approval]] : []
     )
   );
-  // Each payout from the period's start on, after its end too: a fee is
-  // written in the period of its own time, never later than its payout, and
-  // an approval can come long before its migration.
-  const migrations = migrationsOf(
-    period
-      ? whole.rows.filter(({ time }) => time !== null && time >= period.from)
-      : whole.rows
-  ).map((migration) => ({
-    ...migration,
-    approval: approvals.get(migration.hash) ?? null,
-  }));
-  const evm =
-    net && migrations.length
-      ? await readMigrationsEvm(net, migrations)
-      : undefined;
-  const evmAddresses = [...evmConnected, ...kept.map(({ sender }) => sender)];
-  // And what the person's approvals and revokes there paid, that no
-  // migration's lines have.
-  const sentThere =
-    net && evmAddresses.length
-      ? await readMigrationApprovals(net, evmAddresses)
-      : undefined;
   const made = await accountingCsv({
-    approvals: sentThere,
     bom: choices.excel,
+    // The archive says which profile bridged to an address that never
+    // migrated, whose approvals are that profile's.
+    bridge: net
+      ? {
+          approvalOf: (hash) => approvals.get(hash.toLowerCase()) ?? null,
+          archive: session.archive,
+          cache: exportChainCache,
+          network: net,
+        }
+      : undefined,
     contactName: choices.withContacts ? contactName : undefined,
     currency,
-    evm,
-    evmAddresses,
+    // The person's beside those the rows bridged to: whose gas is in this
+    // profile's file only where their migrations paid it.
+    evmAddresses: knownEvmAddresses(evmConnected),
     facts,
     network,
     period,
@@ -284,7 +306,16 @@ export async function makeExport({
     rows: whole.rows,
   });
 
-  return { ...made, currency, shieldedWaiting: whole.shieldedWaiting };
+  return {
+    ...made,
+    currency,
+    // Whose file an approval is can't always be told: another of the
+    // person's profiles may have it.
+    hasOtherProfiles: profiles.some(
+      ({ account }) => Boolean(account) && account !== profile.account
+    ),
+    shieldedWaiting: whole.shieldedWaiting,
+  };
 }
 
 /**
@@ -340,13 +371,18 @@ export async function readRewardsByYear({
 }
 
 /**
- * What the file holds, and what it doesn't, once it's saved.
+ * What the file holds, and what it doesn't, once it's saved: whose network
+ * fees of migrations it has, and those it couldn't read, or, with other
+ * profiles, those another profile's file may have, as the extension says
+ * them.
  *
  * @param {Awaited<ReturnType<typeof makeExport>>} made
  */
 export function savedWords({
   count,
   currency,
+  evm,
+  hasOtherProfiles,
   left,
   shieldedWaiting,
   unpriced,
@@ -355,6 +391,20 @@ export function savedWords({
     left.pending ? `${left.pending} on its way` : "",
     left.notRead ? `${left.notRead} not read yet` : "",
   ].filter(Boolean);
+  const chains = [...new Set(evm.unread.map(({ chain }) => chain))];
+  const unread = evm.unread.length;
+  // Approvals and revokes there it couldn't all read: for now, or before a
+  // block. With other profiles, one whose file it can't tell may be in theirs.
+  const failed = evm.approvalsUnread.filter(({ state }) => state === "error");
+  const failedOn = [
+    ...new Set(failed.map(({ chain }) => chain).filter(Boolean)),
+  ];
+  const failedWhere = failedOn.length === 1 ? ` on ${failedOn[0]}` : "";
+  const before = new Map(
+    evm.approvalsUnread
+      .filter(({ from, state }) => state !== "error" && from !== null)
+      .map(({ chain, from }) => [`${chain}\n${from}`, { chain, from }])
+  );
 
   return [
     `CSV saved: ${count === 1 ? "1 line" : `${count} lines`}.`,
@@ -362,6 +412,21 @@ export function savedWords({
     unpriced
       ? `${unpriced === 1 ? "1 line has" : `${unpriced} lines have`} no ${currencyWords(currency).one} value.`
       : "",
+    evm.booked.length
+      ? `The file has the network fees paid from ${new Intl.ListFormat("en", { type: "conjunction" }).format(evm.booked.map((address) => shortenAddress(address)))}.`
+      : "",
+    unread
+      ? `${unread === 1 ? "1 migration's fee" : `${unread} migrations' fees`} on ${chains.length === 1 ? chains[0] : "their chains"} couldn't be read: export again to add ${unread === 1 ? "it" : "them"}.`
+      : "",
+    failed.length
+      ? hasOtherProfiles
+        ? `Some network fees${failedWhere} may be in another profile's file, or couldn't be read: export again to add them.`
+        : `Some network fees${failedWhere} couldn't be read: export again to add them.`
+      : "",
+    ...[...before.values()].map(
+      ({ chain, from }) =>
+        `Network fees on ${chain || "its chain"} from before block ${Number(from).toLocaleString("en")} aren't in the file.`
+    ),
     shieldedWaiting
       ? "Your shielded activity is still syncing: export again once it's done."
       : "",

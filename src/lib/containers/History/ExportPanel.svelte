@@ -26,6 +26,7 @@
     exportAddresses,
     removeExportAddress,
   } from "$lib/activity/exportAddresses";
+  import { activityState } from "$lib/activity";
   import { BalanceValue } from "$lib/components";
   import { contactNamesOf, contactsStore } from "$lib/contacts";
   import { Button, Select, Textbox } from "$lib/dusk/components";
@@ -286,7 +287,12 @@
   );
   // The EVM addresses added for this profile's files, kept for it.
   $: added = (account && $exportAddresses[account.address]) || [];
-  $: evm = evmAddressesOf($evmAccount.addresses ?? [], added);
+  // This profile's: what it migrated from here, bridged to, or was added.
+  $: evm = evmAddressesOf({
+    account: account?.address ?? "",
+    added,
+    rows: $activityState.rows,
+  });
   $: evmList = new Intl.ListFormat("en", { type: "conjunction" }).format(
     evm.map(({ address }) => shortenAddress(address))
   );

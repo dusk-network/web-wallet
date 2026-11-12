@@ -42,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Name the export's file and its Account Name as the extension does: by the profile's .dusk name, else its name here, with when the file was made
 - Give each contact saved from a public account the .dusk name its account has in Contacts, and find it by that name, also where the history shown never paid it
 - Ask "Is that 1 or 1000?" of an amount such as 1.000 in every language, as of 1,000, and fill Max and the other amounts the wallet writes with a fourth decimal where three could read as a thousand
+- Write each migration's network fees, approvals and revokes in the export of the profile the migration paid, once, from the EVM addresses it bridged to as well, as the extension does
+- Write a bridge-out in the export as what reached the other side, with the bridge fee in the fee column
+- Name in Export only the EVM addresses of the profile shown, and say once saved whose network fees the file has, which it couldn't read, and which another profile's file may have
 - Give native staking's yearly rate from the same blocks as the extension within a day, kept for that day, not from blocks the moment picks
 - Say Reading… for the stDUSK and rate on a Sozu stake's or unstake's Sent screen from when a block takes it until they're read
 - Refuse a dusk:shielded- link to a public account, or a public one to a shielded address, and a dusk: link with a # in it, and say why

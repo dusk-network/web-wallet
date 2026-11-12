@@ -60,20 +60,6 @@ vi.mock("$app/stores", async () => {
   return { page: stores.page };
 });
 
-// What each migration did on its own chain, and the approvals sent there,
-// as its chain says them.
-const migrationEvm = vi.hoisted(() => ({
-  /** @type {import("vitest").Mock<(...args: any[]) => Promise<any[]>>} */
-  approvals: vi.fn(async () => []),
-  /** @type {import("vitest").Mock<(...args: any[]) => Promise<Map<string, any>>>} */
-  read: vi.fn(async () => new Map()),
-}));
-
-vi.mock("$lib/bridge/migrationEvm", () => ({
-  readMigrationApprovals: migrationEvm.approvals,
-  readMigrationsEvm: migrationEvm.read,
-}));
-
 vi.mock("$lib/navigation/goto", () => ({
   default: mocks.goto.mockImplementation(
     (/** @type {string} */ path, /** @type {any} */ { state } = {}) => {
@@ -635,16 +621,29 @@ describe("History", () => {
       expect(await blobs[1].text()).toContain("Alice Rent");
     });
 
-    it("says which EVM addresses it has migrations' network fees from, and takes one added for the profile's files, kept after a lock, with its approvals no migration spent", async () => {
+    it("names only this profile's EVM addresses for its migrations' network fees, takes one added for its files, kept after a lock, and says once saved which it couldn't read", async () => {
       const ADDED = "0x90fe2f14bbdd4bbb68ad0ce1a7b6c1b4d6bf4b39";
+      const ANOTHERS = "0x7cdb2f14bbdd4bbb68ad0ce1a7b6c1b4d6bf8e73";
       const MIGRATION = `0x${"a7".repeat(32)}`;
       const BSC = /** @type {any} */ (
         networks.mainnet.routes.migrations?.find(
           ({ id }) => id === "bsc-to-dusk"
         )
       );
+      const { toastList } = await import("$lib/dusk/components/Toast/store");
+      const { forgetRouteTransfers, rememberMigration } =
+        await import("$lib/bridge/migrationActivity");
 
       setNodeNetwork(networks.mainnet);
+      // A migration this browser sent another profile, from its own address.
+      rememberMigration({
+        amountLux: "5000000000",
+        createdAt: NOW - 3_600_000,
+        hash: `0x${"a9".repeat(32)}`,
+        recipient: "another",
+        routeId: "bsc-to-dusk",
+        sender: ANOTHERS,
+      });
       mocks.whole.mockResolvedValue({
         rows: rowsOf(
           [
@@ -663,63 +662,18 @@ describe("History", () => {
         ),
         shieldedWaiting: false,
       });
-      migrationEvm.read.mockImplementation(
-        async () =>
-          new Map([
-            [
-              MIGRATION,
-              {
-                approval: null,
-                approvalState: "none",
-                at: NOW - 120_000,
-                block: 10,
-                coin: "BNB",
-                from: ADDED,
-                gasWei: 47_005_000_752_080n,
-                hash: MIGRATION,
-                lux: 5_000_000_000n,
-                route: "bsc-to-dusk",
-                state: "mined",
-                totalWei: 47_005_000_752_080n,
-              },
-            ],
-          ])
-      );
-      migrationEvm.approvals.mockImplementation(async () => [
-        {
-          allowance: 9_000_000_000n,
-          at: NOW - 3_600_000,
-          block: 9,
-          chain: "BNB Smart Chain",
-          coin: "BNB",
-          contract: BSC.contract ?? `0x${"cc".repeat(20)}`,
-          decimals: 18,
-          gasWei: 46_194_000_739_104n,
-          hash: `0x${"a8".repeat(32)}`,
-          owner: ADDED,
-          route: "bsc-to-dusk",
-          state: "unused",
-        },
-      ]);
 
       try {
         const { getByRole, getByText } = await openExport();
-        const fees = async () =>
-          (await fileSaved()).lines.filter((line) => line.includes(",cost,"));
 
+        // Another profile's address isn't this one's.
         expect(
           getByText(
             "The file has no network fees of migrations: no EVM address of yours is known here."
           )
         ).toBeInTheDocument();
 
-        await fireEvent.click(getByRole("button", { name: "Save CSV" }));
-
-        expect(await fees()).toStrictEqual([]);
-        expect(migrationEvm.approvals).not.toHaveBeenCalled();
-
         // Added for the file: what it isn't is said, what it is is listed.
-        await fireEvent.click(getByRole("button", { name: "Export" }));
         await fireEvent.click(
           getByRole("button", { name: "Add an EVM address" })
         );
@@ -744,20 +698,17 @@ describe("History", () => {
           )
         ).toBeInTheDocument();
 
+        // Its chain doesn't answer: saved, it says what the file couldn't read.
+        toastList.set([]);
         await fireEvent.click(getByRole("button", { name: "Save CSV" }));
-        await vi.waitFor(() => expect(names).toHaveLength(2));
-
-        expect(await fees()).toEqual([
-          expect.stringContaining(
-            "Network fee on BNB Smart Chain: approval for a migration to Dusk, never used"
-          ),
-          expect.stringContaining(
-            "Network fee on BNB Smart Chain: migration of 5 BEP20 DUSK to Dusk"
-          ),
-        ]);
-        expect(migrationEvm.approvals).toHaveBeenCalledWith(networks.mainnet, [
-          ADDED,
-        ]);
+        await vi.waitFor(() => expect(names).toHaveLength(1));
+        await vi.waitFor(() =>
+          expect(get(toastList).map(({ message }) => message)).toEqual([
+            expect.stringContaining(
+              "1 migration's fee on BNB Smart Chain couldn't be read: export again to add it. Some network fees couldn't be read: export again to add them."
+            ),
+          ])
+        );
 
         // Kept for this profile, through a lock and an unlock, as it opens
         // the wallet's records again: the same period, the same file.
@@ -774,7 +725,7 @@ describe("History", () => {
           )
         ).toBeInTheDocument();
 
-        // Another profile's file has none of it.
+        // The profile the migration from here paid: its address is named.
         cleanup();
         stores.profile = { account: "another", address: "another-shielded" };
 
@@ -784,7 +735,7 @@ describe("History", () => {
 
         expect(
           another.getByText(
-            "The file has no network fees of migrations: no EVM address of yours is known here."
+            /^The file has the network fees your migrations paid from 0x7cdb…8e73\.$/i
           )
         ).toBeInTheDocument();
 
@@ -809,10 +760,8 @@ describe("History", () => {
         stores.profile = { account: "account-shown", address: "address-shown" };
         localStorage.removeItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-export-evm`);
         hydrateExportAddresses();
+        forgetRouteTransfers();
         setNodeNetwork(null);
-        migrationEvm.approvals.mockReset();
-        migrationEvm.approvals.mockResolvedValue([]);
-        migrationEvm.read.mockReset();
       }
     });
 

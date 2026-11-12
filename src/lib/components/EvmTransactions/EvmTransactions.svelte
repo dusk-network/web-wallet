@@ -49,7 +49,7 @@
   import { walletDataScope } from "$lib/wallets/dataNames";
 
   import nodeNetwork from "$lib/stores/nodeNetwork";
-  import { evmAddressesOf } from "$lib/activity/accountantExport";
+  import { knownEvmAddresses } from "$lib/activity/accountantExport";
   import { cardRoutes } from "$lib/bridge/cardRoutes";
   import { keptMigrations } from "$lib/bridge/migrationActivity";
   import {
@@ -294,9 +294,7 @@
    */
   function readApprovals(of) {
     const net = $nodeNetwork;
-    const owners = evmAddressesOf($account.addresses ?? []).map(
-      ({ address }) => address
-    );
+    const owners = knownEvmAddresses($account.addresses ?? []);
 
     if (approvalsRead.of === of) {
       return;

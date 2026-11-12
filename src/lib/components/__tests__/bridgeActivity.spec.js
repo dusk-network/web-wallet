@@ -536,6 +536,7 @@ describe("an approval no migration spent", () => {
     decimals: 18,
     gasWei: 46_194_000_739_104n,
     hash,
+    migration: null,
     owner: OWNER,
     route: "bsc-to-dusk",
     state,
