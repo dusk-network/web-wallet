@@ -274,6 +274,66 @@ describe("Staking", () => {
     ).toContain("Unstaked");
   });
 
+  it("shows staking rewards by year as the extension's Stake does, in both wallets' words, with the wallet's usual decimals, and how what unstaking took out is counted", async () => {
+    const claimed = rowOf({
+      amount: "1234567891",
+      blockHeight: 4_000_000,
+      direction: "in",
+      hash: "d5".repeat(32),
+      kind: "withdraw_reward",
+      status: "executed",
+      timestamp: Date.now() - 86_400_000,
+    });
+    const whole = vi.fn(async () => ({
+      rows: [claimed],
+      shieldedWaiting: false,
+    }));
+    const startHistory = vi
+      .spyOn(walletStore, "startHistory")
+      .mockReturnValue(
+        /** @type {any} */ ({ sozuFacts: async () => new Map(), whole })
+      );
+
+    try {
+      const { container } = render(Staking);
+
+      // Read once the history shows staking.
+      expect(whole).not.toHaveBeenCalled();
+
+      await act(() =>
+        history.state?.update((s) => ({ ...s, rows: [claimed] }))
+      );
+      await vi.waitFor(() =>
+        expect(container.querySelector(".rewards-by-year")).toBeTruthy()
+      );
+
+      const table = /** @type {HTMLTableElement} */ (
+        container.querySelector(".rewards-by-year")
+      );
+
+      expect(
+        Array.from(table.tHead?.rows[0].cells ?? [], textOf)
+      ).toStrictEqual([
+        "Year",
+        "Native staking, claimed",
+        "Sozu, grown while held",
+        "Sozu, taken out by unstaking",
+      ]);
+      expect(Array.from(table.tBodies[0].rows[0].cells, textOf)).toStrictEqual([
+        String(new Date(Number(claimed.time)).getFullYear()),
+        "1.2345 DUSK",
+        "0 DUSK",
+        "0 DUSK",
+      ]);
+      expect(container).toHaveTextContent(
+        "Taken out by unstaking is part of grown while held: what came back, less what that stDUSK cost at its average price, deposit fees not counted."
+      );
+      expect(whole).toHaveBeenCalledOnce();
+    } finally {
+      startHistory.mockRestore();
+    }
+  });
+
   it("compares native and liquid staking side by side, picking neither", async () => {
     const { container, getByRole } = render(Staking);
     const table = /** @type {HTMLTableElement} */ (

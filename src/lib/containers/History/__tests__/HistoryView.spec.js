@@ -182,7 +182,7 @@ describe("HistoryView", () => {
       locale: "en",
       state,
     });
-    const years = () => container.querySelector(".export-panel__years");
+    const years = () => container.querySelector(".rewards-by-year");
 
     history.whole.mockResolvedValue(whole);
     await fireEvent.click(getByRole("button", { name: "Export" }));

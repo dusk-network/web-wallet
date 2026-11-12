@@ -6,6 +6,7 @@
    * whole as it's asked for, and says what it leaves out.
    */
   import { mdiCheck } from "@mdi/js";
+  import { onDestroy } from "svelte";
 
   import { routes } from "@dusk-network/networks";
 
@@ -13,11 +14,11 @@
     currencyWords,
     evmAddressesOf,
     exportCurrency,
+    followRewardsByYear,
     makeExport,
     otherProfiles,
     periodChoices,
     periodOf,
-    readRewardsByYear,
     savedWords,
     stampedName,
   } from "$lib/activity/accountantExport";
@@ -27,10 +28,9 @@
     removeExportAddress,
   } from "$lib/activity/exportAddresses";
   import { activityState } from "$lib/activity";
-  import { BalanceValue } from "$lib/components";
+  import { RewardsByYear } from "$lib/components";
   import { contactNamesOf, contactsStore } from "$lib/contacts";
   import { Button, Select, Textbox } from "$lib/dusk/components";
-  import { formatDuskExact } from "$lib/dusk/currency";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     isValidEvmAddress,
@@ -81,7 +81,7 @@
    * Staking rewards by calendar year, once asked for, and the account they're
    * of.
    *
-   * @type {(Awaited<ReturnType<typeof readRewardsByYear>> & { of: string }) | null}
+   * @type {(Awaited<ReturnType<typeof import("$lib/activity/accountantExport").readRewardsByYear>> & { of: string }) | null}
    */
   let rewards = null;
 
@@ -192,21 +192,29 @@
     }
   }
 
-  async function showRewards() {
+  /** @type {() => void} */
+  let stopRewards = () => {};
+
+  onDestroy(() => stopRewards());
+
+  function showRewards() {
     if (isBusy) {
       return;
     }
 
     problem = "";
     busyWith = "rewards";
+    stopRewards();
 
     const of = account?.address ?? "";
     const stillOpen = walletStore.whileOpen();
     // Another profile shown since: what's read isn't its.
     const isShown = () => of === (account?.address ?? "");
 
-    try {
-      const read = await readRewardsByYear({
+    // Read again while a new stake's or unstake's facts aren't, what was
+    // read standing meanwhile.
+    stopRewards = followRewardsByYear(
+      {
         currency,
         fiat: rewardsValued,
         session:
@@ -214,62 +222,32 @@
             walletStore.startHistory()
           ),
         sozuStatus: () => sozuStore.check(),
-      });
+      },
+      {
+        onError: (error) => {
+          busyWith = "";
 
-      stillOpen();
+          if (isShown()) {
+            problem = /** @type {Error} */ (error).message;
+          }
+        },
+        onRead: (read) => {
+          busyWith = "";
 
-      if (isShown()) {
-        rewards = { ...read, of };
+          try {
+            stillOpen();
+          } catch {
+            problem = "The wallet changed while this was read. Try again.";
+
+            return;
+          }
+
+          if (isShown()) {
+            rewards = { ...read, of };
+          }
+        },
       }
-    } catch (error) {
-      if (isShown()) {
-        problem =
-          error instanceof WalletChangedError
-            ? "The wallet changed while this was read. Try again."
-            : /** @type {Error} */ (error).message;
-      }
-    } finally {
-      busyWith = "";
-    }
-  }
-
-  /**
-   * A year's rewards in DUSK, what they were worth where that's asked, and
-   * how many of them have no value.
-   *
-   * @param {import("@dusk-network/app-core/export").RewardsSum} sum
-   * @param {string | null} valued The currency they're valued in
-   * @returns {{ dusk: string, note: string, value: string | null }}
-   */
-  function rewardParts({ lux, unpriced, worth }, valued) {
-    const dusk = formatDuskExact(lux, $settingsStore.language);
-
-    if (!valued || worth === null) {
-      return { dusk, note: "", value: null };
-    }
-
-    const { one } = currencyWords(valued);
-
-    if (unpriced && !Number(worth)) {
-      return { dusk, note: ` · no ${one} value`, value: null };
-    }
-
-    const money = new Intl.NumberFormat($settingsStore.language || undefined, {
-      currency: valued,
-      style: "currency",
-    });
-    // The least it shows, a cent or a yen: less than that, as under it.
-    const least = 10 ** -(money.resolvedOptions().maximumFractionDigits ?? 2);
-    const amount = Number(worth);
-
-    return {
-      dusk,
-      note: unpriced ? `, ${unpriced} with no ${one} value` : "",
-      value:
-        amount > 0 && amount < least
-          ? `under ${money.format(least)}`
-          : money.format(amount),
-    };
+    );
   }
 
   $: isBusy = busyWith !== "";
@@ -424,61 +402,15 @@
       variant="secondary"
     />
     {#if rewards}
-      {#if rewards.years.length}
-        <table class="export-panel__years">
-          <caption>Staking rewards by year</caption>
-          <thead>
-            <tr>
-              <th scope="col">Year</th>
-              <th scope="col">Native staking, claimed</th>
-              <th scope="col">Sozu, grown while held</th>
-              <th scope="col">Sozu, taken out by unstaking</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each rewards.years as { claimed, sozu, sozuGrown, year } (year)}
-              <tr>
-                <th scope="row">{year}</th>
-                {#each [claimed, sozuGrown, sozu] as sum, column (column)}
-                  {@const parts = sum && rewardParts(sum, rewards.currency)}
-                  <td>
-                    {#if parts}
-                      <BalanceValue value={parts.dusk} /> DUSK{parts.value
-                        ? " · "
-                        : ""}{#if parts.value}<BalanceValue
-                          value={parts.value}
-                        />{/if}{parts.note}
-                    {:else}
-                      Couldn't be read
-                    {/if}
-                  </td>
-                {/each}
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      {:else}
-        <p class="export-panel__note">No staking rewards yet.</p>
-      {/if}
-      {#if rewards.years.length}
-        <label class="export-panel__option">
-          <input
-            bind:checked={rewardsValued}
-            class="dusk-checkbox"
-            disabled={isBusy}
-            on:change={showRewards}
-            type="checkbox"
-          />
-          Add each reward's value in {currencyWords(currency).many}, from
-          CoinGecko's prices
-        </label>
-      {/if}
-      {#if rewards.shieldedWaiting}
-        <p class="export-panel__note">
-          Your shielded activity is still syncing: show them again once it's
-          done.
-        </p>
-      {/if}
+      <RewardsByYear
+        bind:valued={rewardsValued}
+        {currency}
+        disabled={isBusy}
+        exact
+        locale={$settingsStore.language}
+        on:valued={showRewards}
+        {rewards}
+      />
     {/if}
   </div>
 </section>
@@ -563,31 +495,5 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
-  }
-
-  .export-panel__years {
-    align-self: stretch;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-    line-height: 1.4;
-    text-align: left;
-
-    & caption {
-      margin-bottom: 0.375rem;
-      font-weight: 500;
-      text-align: left;
-    }
-
-    & th,
-    & td {
-      padding: 0.375rem 0.75rem 0.375rem 0;
-      border-top: 1px solid var(--calm-line);
-      vertical-align: top;
-    }
-
-    & thead th {
-      color: var(--calm-muted);
-      font-weight: 400;
-    }
   }
 </style>

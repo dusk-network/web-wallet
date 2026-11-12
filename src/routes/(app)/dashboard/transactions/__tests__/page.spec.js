@@ -949,7 +949,7 @@ describe("History", () => {
         const { container, getByRole } = await openExport();
         const years = () =>
           Array.from(
-            container.querySelectorAll(".export-panel__years tbody tr"),
+            container.querySelectorAll(".rewards-by-year tbody tr"),
             (row) =>
               Array.from(
                 /** @type {HTMLTableRowElement} */ (row).cells,
@@ -968,7 +968,7 @@ describe("History", () => {
         );
         expect(
           Array.from(
-            container.querySelectorAll(".export-panel__years thead th"),
+            container.querySelectorAll(".rewards-by-year thead th"),
             (cell) => cell.textContent?.trim()
           )
         ).toStrictEqual([
@@ -977,6 +977,10 @@ describe("History", () => {
           "Sozu, grown while held",
           "Sozu, taken out by unstaking",
         ]);
+        // How what unstaking took out is counted, under them.
+        expect(container).toHaveTextContent(
+          "Taken out by unstaking is part of grown while held: what came back, less what that stDUSK cost at its average price, deposit fees not counted."
+        );
         expect(prices).not.toHaveBeenCalled();
 
         // The file's values ask nothing of them.

@@ -371,6 +371,57 @@ export async function readRewardsByYear({
 }
 
 /**
+ * How long rewards by year wait before they're read again while a year
+ * leaves out a new stake's or unstake's facts, not read yet (`reading`), in
+ * milliseconds.
+ */
+export const REWARDS_AGAIN_MS = 20_000;
+
+/**
+ * Rewards by year, read now, and again after REWARDS_AGAIN_MS for as long as
+ * a year leaves out a stake's or unstake's facts not read yet, which the
+ * archive lists a little after its block: each read is told, as what was
+ * read before stands meanwhile, until it's stopped.
+ *
+ * @param {Parameters<typeof readRewardsByYear>[0]} asked
+ * @param {{ onError: (error: Error) => void, onRead: (read: Awaited<ReturnType<typeof readRewardsByYear>>) => void }} told
+ * @returns {() => void} Stops
+ */
+export function followRewardsByYear(asked, { onError, onRead }) {
+  let isStopped = false;
+
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
+
+  const read = () =>
+    readRewardsByYear(asked).then(
+      (result) => {
+        if (isStopped) {
+          return;
+        }
+
+        onRead(result);
+
+        if (result.years.some(({ reading }) => reading > 0)) {
+          timer = setTimeout(read, REWARDS_AGAIN_MS);
+        }
+      },
+      (error) => {
+        if (!isStopped) {
+          onError(error);
+        }
+      }
+    );
+
+  void read();
+
+  return () => {
+    isStopped = true;
+    clearTimeout(timer);
+  };
+}
+
+/**
  * What the file holds, and what it doesn't, once it's saved: whose network
  * fees of migrations it has, and those it couldn't read, or, with other
  * profiles, those another profile's file may have, as the extension says

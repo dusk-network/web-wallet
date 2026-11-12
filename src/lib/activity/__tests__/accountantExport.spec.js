@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { networks } from "@dusk-network/networks";
 
-import { makeExport, savedWords } from "../accountantExport";
+import {
+  REWARDS_AGAIN_MS,
+  followRewardsByYear,
+  makeExport,
+  savedWords,
+} from "../accountantExport";
 import { rowOf } from "./fixtures/rows";
 
 // Nandini's two profiles, and an EVM address each migrated from on the BSC
@@ -463,5 +468,100 @@ describe("History's Export", () => {
         (record) => record.TxHash
       )
     ).toStrictEqual([OTHER_APPROVAL, OTHER_MIGRATION, OTHER_REVOKE]);
+  });
+});
+
+describe("Staking rewards by year", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("reads them again while a new Sozu stake's facts aren't read yet, keeping what was read meanwhile, and stops once they are", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    const now = Date.now();
+    const [claim, staked] = [
+      rowOf({
+        amount: "1000000000",
+        blockHeight: 4_000_000,
+        direction: "in",
+        hash: "f1".repeat(32),
+        kind: "withdraw_reward",
+        status: "executed",
+        timestamp: now - 3_600_000,
+      }),
+      {
+        ...rowOf({
+          amount: "10000000000",
+          blockHeight: 4_000_100,
+          direction: "out",
+          hash: "f2".repeat(32),
+          kind: "transfer",
+          status: "executed",
+          timestamp: now - 60_000,
+        }),
+        sozu: /** @type {const} */ ("stake"),
+      },
+    ];
+    const facts = vi
+      .fn()
+      // The archive doesn't list its event yet.
+      .mockResolvedValueOnce(new Map())
+      .mockResolvedValue(
+        new Map([
+          [
+            staked.hash,
+            {
+              fee: 25_000_000n,
+              pool: { stake: 1_995n, supply: 1_000n },
+              stDusk: 5_000_000_000n,
+            },
+          ],
+        ])
+      );
+    /** @type {any[]} */
+    const read = [];
+    const stop = followRewardsByYear(
+      {
+        currency: "EUR",
+        fiat: false,
+        session: {
+          sozuFacts: facts,
+          whole: async () => ({
+            rows: [claim, staked],
+            shieldedWaiting: false,
+          }),
+        },
+        sozuStatus: async () => null,
+      },
+      { onError: (error) => read.push(error), onRead: (got) => read.push(got) }
+    );
+
+    await vi.waitFor(() => expect(read).toHaveLength(1));
+
+    const [first] = read;
+    const year = new Date(now).getFullYear();
+
+    // The year as it was before it: never "couldn't be read".
+    expect(first.years).toEqual([
+      expect.objectContaining({
+        claimed: expect.objectContaining({ lux: 1_000_000_000n }),
+        reading: 1,
+        year,
+      }),
+    ]);
+    expect(first.years[0].sozuGrown).not.toBeNull();
+
+    await vi.advanceTimersByTimeAsync(REWARDS_AGAIN_MS);
+    await vi.waitFor(() => expect(read).toHaveLength(2));
+
+    expect(read[1].years).toEqual([expect.objectContaining({ reading: 0 })]);
+
+    // Read: it isn't read again.
+    await vi.advanceTimersByTimeAsync(REWARDS_AGAIN_MS * 3);
+
+    expect(read).toHaveLength(2);
+    expect(facts).toHaveBeenCalledTimes(2);
+    stop();
   });
 });
