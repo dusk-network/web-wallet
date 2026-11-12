@@ -251,7 +251,7 @@
       {$page.state.lockedAfter === 1 ? "minute" : "minutes"} away.
     </p>
   {/if}
-  <PaymentAsked next="Unlock to pay it." />
+  <PaymentAsked hasWallet next="Unlock to pay it." />
   <div class="login">
     {#if hasPasskey}
       <Button

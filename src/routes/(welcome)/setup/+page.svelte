@@ -25,13 +25,15 @@
     <!-- A link asking for a payment: what it asks, kept through the setup. -->
     <PaymentAsked
       bind:offersElsewhere
+      hasWallet={Boolean(userId)}
       next={userId
         ? "Unlock to pay it."
         : "Create or restore a wallet to pay it."}
     />
 
     <div class="setup-content__options">
-      <!-- Coming back, unlocking is the way in; a new wallet a small second. -->
+      <!-- Coming back, unlocking is the way in, as a wallet elsewhere is for
+        a request it pays; a new wallet a small second. -->
       <div class="setup-content__options-group">
         {#if userId}
           <AppAnchorButton
@@ -42,19 +44,19 @@
         {/if}
         <div
           class="setup-content__others"
-          class:setup-content__others--small={userId}
+          class:setup-content__others--small={userId || offersElsewhere}
         >
           <AppAnchorButton
             href="/setup/create"
             variant={userId || offersElsewhere ? "tertiary" : "primary"}
-            size={userId ? "small" : "default"}
+            size={userId || offersElsewhere ? "small" : "default"}
             text="Create new wallet"
             icon={{ path: mdiWalletOutline }}
           />
           <AppAnchorButton
             href="/setup/restore/"
             variant="tertiary"
-            size={userId ? "small" : "default"}
+            size={userId || offersElsewhere ? "small" : "default"}
             text="Restore wallet"
             icon={{ path: mdiRestore }}
           />

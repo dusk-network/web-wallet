@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { activityFor, activityState, stopActivity } from "$lib/activity";
@@ -8,6 +8,7 @@ import { fakeArchive } from "$lib/activity/__tests__/fixtures/fakeArchive";
 import { timeLabel } from "$lib/activity/present";
 
 import { settingsStore, walletStore } from "$lib/stores";
+import { setNetworkReach } from "$lib/stores/networkReach";
 
 import { TransactionStatus } from "..";
 
@@ -67,6 +68,34 @@ describe("TransactionStatus", () => {
     expect(
       getByRole("link", { name: "View in Dusk explorer" })
     ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${hash}`);
+  });
+
+  it("should say while it's being sent that it waits for the network, offline or where the network doesn't answer, and that it has left the wallet", async () => {
+    followNext();
+
+    const { getByRole } = render(TransactionStatus, baseProps);
+
+    try {
+      await act(() => setNetworkReach("offline"));
+
+      expect(getByRole("status")).toHaveTextContent(
+        "Sending… You're offline. It has left your wallet. This updates once you're back online."
+      );
+
+      await act(() => setNetworkReach("silent"));
+
+      expect(getByRole("status")).toHaveTextContent(
+        "Sending… The network isn't answering. It has left your wallet. This updates once it answers."
+      );
+
+      await act(() => setNetworkReach("answering"));
+
+      expect(getByRole("status")).toHaveTextContent(
+        "Sending… This usually takes under a minute."
+      );
+    } finally {
+      setNetworkReach("answering");
+    }
   });
 
   it("should say when the transaction was sent once its block is final, with the fee it was charged", async () => {

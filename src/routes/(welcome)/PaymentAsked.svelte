@@ -42,8 +42,15 @@
   export let next;
 
   /**
-   * Whether it offers to pay it from a wallet elsewhere on this phone first:
-   * Firefox's, or the Dusk app.
+   * Whether a wallet is kept here, which unlocks to pay it: the way in, before
+   * any elsewhere.
+   */
+  export let hasWallet = false;
+
+  /**
+   * Whether it offers to pay it from a wallet elsewhere first: Firefox's or
+   * the Dusk app on this phone, or the Dusk extension, where no wallet is kept
+   * here.
    */
   export let offersElsewhere = false;
 
@@ -127,9 +134,20 @@
     read?.reason === "other-network" ? elsewhereLink(opened) : null;
   // On Android, the wallet that pays it may be in Firefox, or the Dusk app:
   // the same request, there, before a wallet is made or restored here.
-  $: offersElsewhere = Boolean(isAndroid && asked && !problem);
+  $: offersPhone = Boolean(isAndroid && asked && !problem);
+  // The extension that takes it, for a link Send would take: the wallet the
+  // person has, where none is kept here, until it says it has none.
+  $: offersExtension = Boolean(
+    extension &&
+    handed !== "refused" &&
+    read?.reason !== "unreadable" &&
+    read?.reason !== "two-amounts" &&
+    problem !== LINK_BAD_ADDRESS
+  );
+  $: extensionFirst = offersExtension && !hasWallet && handed !== "no-wallet";
+  $: offersElsewhere = offersPhone || extensionFirst;
   $: appHref =
-    offersElsewhere && asked
+    offersPhone && asked
       ? makePaymentLink({
           amountLux: asked.lux,
           label: asked.label || null,
@@ -177,7 +195,7 @@
         {/if}
       </dl>
     {/if}
-    {#if offersElsewhere}
+    {#if offersPhone}
       {#if !isFirefox}
         <AnchorButton
           className="payment-asked__open"
@@ -194,7 +212,9 @@
         />
       {/if}
     {/if}
-    <p class="payment-asked__next">{problem || next}</p>
+    <p class="payment-asked__next">
+      {problem || (extensionFirst ? "Pay it with the Dusk extension." : next)}
+    </p>
     {#if elsewhere}
       <AnchorButton
         className="payment-asked__open payment-asked__extension"
@@ -204,7 +224,7 @@
       />
     {/if}
     <!-- Not for a link no Send takes; another network's is the extension's to say. -->
-    {#if extension && handed !== "refused" && read?.reason !== "unreadable" && read?.reason !== "two-amounts" && problem !== LINK_BAD_ADDRESS}
+    {#if offersExtension}
       {#if handed === "opened"}
         <p class="payment-asked__next" role="status">
           Opened in the Dusk extension.
@@ -215,10 +235,12 @@
         </p>
       {:else}
         <Button
-          className="payment-asked__extension"
+          className={extensionFirst
+            ? "payment-asked__open"
+            : "payment-asked__extension"}
           on:click={hand}
           text="Open in the Dusk extension"
-          variant="secondary"
+          variant={extensionFirst ? "primary" : "secondary"}
         />
       {/if}
     {/if}

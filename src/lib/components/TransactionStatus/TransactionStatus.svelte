@@ -19,6 +19,7 @@
     Icon,
   } from "$lib/dusk/components";
   import { settingsStore, walletStore } from "$lib/stores";
+  import networkReach from "$lib/stores/networkReach";
   import { followTransaction } from "$lib/transactions";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
@@ -236,6 +237,16 @@
       <p>
         It isn't in a block yet. See its status in the explorer before you send
         it again.
+      </p>
+    {:else if status === "pending" && $networkReach === "offline"}
+      <p>
+        You're offline. It has left your wallet. This updates once you're back
+        online.
+      </p>
+    {:else if status === "pending" && $networkReach === "silent"}
+      <p>
+        The network isn't answering. It has left your wallet. This updates once
+        it answers.
       </p>
     {:else if status === "pending"}
       <p>This usually takes under a minute.</p>
