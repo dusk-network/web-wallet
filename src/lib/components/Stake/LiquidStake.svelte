@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { amountForField } from "@dusk-network/app-core/amounts";
   import { onDestroy, onMount, tick } from "svelte";
   import { get } from "svelte/store";
   import { page } from "$app/stores";
@@ -312,8 +313,8 @@
   /** @param {bigint} lux */
   function fill(lux) {
     forgetTerms();
-    amountText = formatDuskPlain(lux).replace(
-      ".",
+    amountText = amountForField(
+      formatDuskPlain(lux),
       getDecimalSeparator(language)
     );
     isMaxAmount = true;

@@ -1,4 +1,5 @@
 <script>
+  import { amountForField } from "@dusk-network/app-core/amounts";
   /**
    * Settings: the password on any send above an amount chosen. It's off until
    * it's turned on, and every change takes the password, as turning it off in
@@ -51,7 +52,7 @@
     amountText =
       limit === null
         ? ""
-        : formatDuskPlain(limit).replace(".", getDecimalSeparator(language));
+        : amountForField(formatDuskPlain(limit), getDecimalSeparator(language));
     amountError = "";
     password = "";
     passwordError = "";

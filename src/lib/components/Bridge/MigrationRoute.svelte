@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { amountForField } from "@dusk-network/app-core/amounts";
   /**
    * The Bridge card on a migration into Dusk, from BNB Smart Chain or
    * Ethereum: the connected EVM wallet, on the route's chain, pays the
@@ -324,8 +325,8 @@
 
   /** On to the review of the amount the approval open still lets go. */
   async function finish() {
-    amount = formatDuskPlain(finishLux).replace(
-      ".",
+    amount = amountForField(
+      formatDuskPlain(finishLux),
       getDecimalSeparator(language)
     );
     isMaxAmount = true;
@@ -887,8 +888,8 @@
           class="swap-mini"
           disabled={!canType}
           on:click={() => {
-            amount = formatDuskPlain(balanceLux ?? 0n).replace(
-              ".",
+            amount = amountForField(
+              formatDuskPlain(balanceLux ?? 0n),
               getDecimalSeparator(language)
             );
             isMaxAmount = true;

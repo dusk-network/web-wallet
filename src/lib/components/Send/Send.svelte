@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { amountForField } from "@dusk-network/app-core/amounts";
   import { createEventDispatcher, onMount, tick } from "svelte";
   import {
     mdiAlertOutline,
@@ -477,8 +478,8 @@
       return;
     }
 
-    sendAmount = formatDuskPlain(maxKeeping).replace(
-      ".",
+    sendAmount = amountForField(
+      formatDuskPlain(maxKeeping),
       getDecimalSeparator(language)
     );
     isMaxAmount = true;

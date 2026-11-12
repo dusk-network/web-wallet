@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { amountForField } from "@dusk-network/app-core/amounts";
   import { onMount } from "svelte";
   import {
     mdiArrowUpBoldBoxOutline,
@@ -74,7 +75,7 @@
    * @param {bigint} lux
    */
   const fieldText = (lux) =>
-    formatDuskPlain(lux).replace(".", getDecimalSeparator(language));
+    amountForField(formatDuskPlain(lux), getDecimalSeparator(language));
 
   /**
    * Takes the amount typed in one field, with a decimal point or comma, and
