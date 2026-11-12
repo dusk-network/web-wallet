@@ -4,7 +4,8 @@
   /**
    * What a payment link asks, before a wallet opens to pay it: the amount, the
    * account it pays, by its verified .dusk name where it has one, and the
-   * memo, as the link says them. Nothing for a page that isn't a request.
+   * memo, as Send reads them. Nothing for a page that isn't a request, and
+   * of one Send refuses, only why.
    */
   import {
     makePaymentLink,
@@ -68,20 +69,11 @@
   const link = opened
     ? parsePaymentLink(opened, { walletUrl: ownWalletUrl() })
     : null;
-  const asked = link?.form === "https" && link.to ? link : null;
+  // A link to Send that names whom it pays, read or refused: what an
+  // extension may take.
+  const isLink = link?.form === "https" && Boolean(link.to);
   // A request, by its fields, whether or not it can be read.
   const isRequest = asksPayment(place);
-
-  // The name the account it pays goes by, as the chain says: none for a
-  // shielded address, or where the lookup fails.
-  const name =
-    asked && recipientKind(asked.to) === "public"
-      ? getPrimaryName(
-          asked.to,
-          String($networkStore.networkName),
-          nodeBaseUrl()
-        ).catch(() => "")
-      : Promise.resolve("");
 
   /**
    * The Dusk Wallet extension, where one takes the request: it pays it from
@@ -97,7 +89,7 @@
   onMount(() => {
     let isHere = true;
 
-    if (asked) {
+    if (isLink) {
       findLinkTaker().then((found) => {
         if (isHere) {
           extension = found;
@@ -129,12 +121,25 @@
   $: problem =
     read?.problem ||
     (read?.link && isBrokenAddress(read.link.to) ? LINK_BAD_ADDRESS : "");
+  // What it asks, as Send reads it: nothing of one it refuses, whose To or
+  // amount could read as what it isn't.
+  $: asked = !problem && read?.link?.to ? read.link : null;
+  // The name the account it pays goes by, as the chain says: none for a
+  // shielded address, or where the lookup fails.
+  $: name =
+    asked && recipientKind(asked.to) === "public"
+      ? getPrimaryName(
+          asked.to,
+          String($networkStore.networkName),
+          nodeBaseUrl()
+        ).catch(() => "")
+      : Promise.resolve("");
   // Another network's request, on the web wallet of its network.
   $: elsewhere =
     read?.reason === "other-network" ? elsewhereLink(opened) : null;
   // On Android, the wallet that pays it may be in Firefox, or the Dusk app:
   // the same request, there, before a wallet is made or restored here.
-  $: offersPhone = Boolean(isAndroid && asked && !problem);
+  $: offersPhone = Boolean(isAndroid && asked);
   // The extension that takes it, for a link Send would take: the wallet the
   // person has, where none is kept here, until it says it has none.
   $: offersExtension = Boolean(
@@ -164,16 +169,16 @@
     <h2 class="payment-asked__title" id="payment-asked">Payment request</h2>
     {#if asked}
       <dl class="payment-asked__facts">
-        {#if read?.reason !== "two-amounts"}
-          <div>
-            <dt>Amount</dt>
-            <dd>
-              {asked.lux === null
-                ? "Any amount"
-                : `${formatDuskExact(asked.lux, language)} DUSK`}
-            </dd>
-          </div>
-        {/if}
+        <div>
+          <dt>Amount</dt>
+          <dd>
+            {asked.lux !== null
+              ? `${formatDuskExact(asked.lux, language)} DUSK`
+              : asked.amountDusk
+                ? `${asked.amountDusk} DUSK`
+                : "Any amount"}
+          </dd>
+        </div>
         <div>
           <dt>To</dt>
           <dd>
