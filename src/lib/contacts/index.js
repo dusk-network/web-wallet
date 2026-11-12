@@ -17,8 +17,6 @@ export {
   markContactNameMoved,
   openContacts,
   passesForDuskName,
-  profileNameProblem,
-  profileNameQuestion,
   removeContact,
   saveContact,
 } from "./contacts";

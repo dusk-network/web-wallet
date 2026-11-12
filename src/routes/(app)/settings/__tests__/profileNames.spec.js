@@ -415,6 +415,105 @@ describe("Settings › Profiles", () => {
     }
   });
 
+  it("asks about a profile name that is a contact's .dusk name, naming that contact, or starts as the other profile's .dusk name, and saves it all the same", async () => {
+    const { openTestContacts } = await import("$lib/test-helpers");
+    const { removeContact, saveContact } = await import("$lib/contacts");
+    const { keepVerifiedName } =
+      await import("$lib/dusk-domains/verifiedNames");
+    const { networkStore } = await import("$lib/stores");
+
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+    await openTestContacts();
+    keepVerifiedName(
+      get(networkStore).networkName,
+      String(get(walletStore).profiles[0].account),
+      "sofiadesign.dusk"
+    );
+
+    // Wendy, saved from alice.dusk; and someone called Alice.
+    const wendy = saveContact({
+      address:
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi",
+      duskName: "alice.dusk",
+      name: "Wendy",
+    });
+    const alice = saveContact({
+      address:
+        "oUgxBUWEPyFAekXW9T2UdJBcMF7xAuBfstrCX8ATXFk7MusqddFGoq2LN9euCbwVuXpSM5rGLKNUb6NVPFUVM5g4pA6CnXjNfNVBiy91NcH9eBVcdcG1eYUaKWQSYQ9t2um",
+      name: "Alice",
+    });
+
+    try {
+      const settings = render(Settings);
+      const field = settings.getByRole("textbox", { name: "Profile 2 name" });
+
+      for (const [name, words] of [
+        [
+          "alice.dusk",
+          "You have a contact called Wendy, at alice.dusk. Is this someone else?",
+        ],
+        [
+          "sofiadesign.dusk cliente",
+          "Your other profile is called sofiadesign.dusk. Is this someone else?",
+        ],
+        [
+          "sofiadesign",
+          "Your other profile is called sofiadesign.dusk. Is this someone else?",
+        ],
+      ]) {
+        await nameProfile(settings, 2, name, "enter");
+
+        expect(field).toHaveAccessibleDescription(words);
+        expect(fieldsOf(settings)[1]).toBe(name);
+      }
+
+      expect(toasts).toEqual(["Name saved.", "Name saved.", "Name saved."]);
+    } finally {
+      removeContact(wendy.id);
+      removeContact(alice.id);
+    }
+  });
+
+  it("refuses a profile name that reads as a contact's with letters in pairs, as VVendy for Wendy and Davicl for David", async () => {
+    const { openTestContacts } = await import("$lib/test-helpers");
+    const { removeContact, saveContact } = await import("$lib/contacts");
+
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+    await openTestContacts();
+
+    const wendy = saveContact({
+      address:
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi",
+      name: "Wendy",
+    });
+    const david = saveContact({
+      address:
+        "oUgxBUWEPyFAekXW9T2UdJBcMF7xAuBfstrCX8ATXFk7MusqddFGoq2LN9euCbwVuXpSM5rGLKNUb6NVPFUVM5g4pA6CnXjNfNVBiy91NcH9eBVcdcG1eYUaKWQSYQ9t2um",
+      name: "David",
+    });
+
+    try {
+      const settings = render(Settings);
+      const field = settings.getByRole("textbox", { name: "Profile 2 name" });
+
+      for (const [name, words] of [
+        ["VVendy", "That looks like your contact Wendy. Choose another name."],
+        ["Davicl", "That looks like your contact David. Choose another name."],
+      ]) {
+        await nameProfile(settings, 2, name, "enter");
+
+        expect(field).toHaveAccessibleDescription(words);
+      }
+
+      expect(toasts).toEqual([]);
+    } finally {
+      removeContact(wendy.id);
+      removeContact(david.id);
+    }
+  });
+
   it("keeps each wallet's names its own, and forgets a removed wallet's", async () => {
     await vault.setUp(A, PASSWORD);
     await unlockWallets(PASSWORD);

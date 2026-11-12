@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Write each migration's network fees, approvals and revokes in the export of the profile the migration paid, once, from the EVM addresses it bridged to as well, as the extension does
 - Write a bridge-out in the export as what reached the other side, with the bridge fee in the fee column
 - Name in Export only the EVM addresses of the profile shown, and say once saved whose network fees the file has, which it couldn't read, and which another profile's file may have
+- Ask about a profile name that is a contact's .dusk name, naming that contact, or that starts as another profile's or a contact's .dusk name, as "sofiadesign.dusk cliente"
+- Refuse a profile name that reads as a contact's or another profile's with letters in pairs, as VVendy for Wendy or Davicl for David
 - Give native staking's yearly rate from the same blocks as the extension within a day, kept for that day, not from blocks the moment picks
 - Say Reading… for the stDUSK and rate on a Sozu stake's or unstake's Sent screen from when a block takes it until they're read
 - Refuse a dusk:shielded- link to a public account, or a public one to a shielded address, and a dusk: link with a # in it, and say why
