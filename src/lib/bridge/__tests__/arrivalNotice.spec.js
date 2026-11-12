@@ -17,6 +17,9 @@ import {
 } from "../arrivalNotice";
 import { networks } from "@dusk-network/networks";
 
+import { activityFor, activityState, stopActivity } from "$lib/activity";
+import fixture from "$lib/activity/__tests__/fixtures/activity-testnet.json";
+import { fakeArchive } from "$lib/activity/__tests__/fixtures/fakeArchive";
 import TransactionStatus from "$lib/components/TransactionStatus/TransactionStatus.svelte";
 import { walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
@@ -534,7 +537,27 @@ describe("Being told when a transfer arrives", () => {
       const { shown } = browser();
       const hash = "8d".repeat(32);
       const sent = { hash, tellArrival: true, what: "0.02 DUSK to Lucas" };
+      const [account, to] = Object.keys(fixture.accounts);
 
+      // History shows it on its way.
+      fakeArchive({ finalized: 4_658_000 });
+
+      const history = activityFor({
+        account,
+        namesNetwork: "testnet",
+        nodeUrl: fixture.nodeUrl,
+        profileIndex: 0,
+      });
+
+      await history.start();
+      await history.recordSent({
+        amount: "20000000",
+        direction: "out",
+        hash,
+        kind: "transfer",
+        privacy: "public",
+        to,
+      });
       await chooseArrivalNotice();
 
       // Left for Home before a block took it.
@@ -554,6 +577,13 @@ describe("Being told when a transfer arrives", () => {
           },
         ])
       );
+      // History says so too.
+      await vi.waitFor(() =>
+        expect(
+          get(activityState).rows.find((row) => row.hash === hash)
+        ).toMatchObject({ blockHeight: 4_820_416, status: "executed" })
+      );
+      stopActivity();
 
       // Locked: a screen left is followed no further.
       stop();

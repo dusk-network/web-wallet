@@ -2,8 +2,10 @@ import { writable } from "svelte/store";
 
 import { sozuPools } from "$lib/sozu/config";
 import nodeNetwork from "$lib/stores/nodeNetwork";
+import { tellOtherTabs } from "$lib/wallets/tabs";
 
 import { ACTIVITY_PAGE, ActivitySession } from "./activitySession";
+import { changeLocalTransactions } from "./activityStore";
 import { awaitedArrivals } from "./arrivals";
 
 export { clearActivityStore, forgetWalletActivity } from "./activityStore";
@@ -84,6 +86,35 @@ export const isHistoryEnabled = () =>
 
 /** The running history session, if any. */
 export const currentActivity = () => current;
+
+/**
+ * What the chain says of a transaction the wallet sent, as the screen that
+ * follows it says it, from the block that took it: History and Home say it
+ * too from then on, for whichever profile sent it, until the archive has it.
+ *
+ * @param {string} hash
+ * @param {import("$lib/transactions/followTransaction").FinalTransaction} outcome
+ */
+export async function noteSentOutcome(
+  hash,
+  { blockHeight, error, fee, timestamp }
+) {
+  const owners = await changeLocalTransactions(hash, {
+    blockHeight: Number(blockHeight),
+    feePaid: String(fee),
+    status: error ? "failed" : "executed",
+    ...(error ? { error } : {}),
+    ...(timestamp ? { timestamp } : {}),
+  });
+
+  if (owners.length) {
+    if (current && owners.includes(current.ownerKey)) {
+      await current.keptChanged();
+    }
+
+    tellOtherTabs({ type: "sent" });
+  }
+}
 
 /** Stops the history session, for a lock, a reset or another profile. */
 export function stopActivity() {

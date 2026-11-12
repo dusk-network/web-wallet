@@ -7,7 +7,13 @@ import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import fixture from "./fixtures/activity-testnet.json";
 import { fakeArchive } from "./fixtures/fakeArchive";
-import { activityFor, activityState, currentActivity, stopActivity } from "..";
+import {
+  activityFor,
+  activityState,
+  currentActivity,
+  noteSentOutcome,
+  stopActivity,
+} from "..";
 
 const [A, B] = Object.keys(fixture.accounts);
 const NODE = fixture.nodeUrl;
@@ -79,6 +85,45 @@ describe("activityFor", () => {
     noteSozuPool(pool);
 
     expect(sozu()).toBe("stake");
+  });
+
+  it("has what the chain said of a send, as the screen that followed it said it, shown for the profile that sent it, also once another profile shows", async () => {
+    fakeArchive();
+
+    const hash = "5e".repeat(32);
+    const rowOf = () =>
+      get(activityState).rows.find((row) => row.hash === hash);
+    const sender = activityFor(optionsFor(B));
+
+    await sender.start();
+    await sender.recordSent({
+      amount: "20000000",
+      direction: "out",
+      hash,
+      kind: "transfer",
+      privacy: "public",
+      to: A,
+    });
+
+    // Another profile shows as the block takes it.
+    await activityFor(optionsFor(A)).start();
+    await noteSentOutcome(hash, {
+      blockHeight: 4_833_700n,
+      error: "Panic: out of gas",
+      fee: 2_000_000n,
+      timestamp: null,
+    });
+
+    expect(rowOf()).toBeUndefined();
+
+    await activityFor(optionsFor(B)).start();
+
+    expect(rowOf()).toMatchObject({
+      blockHeight: 4_833_700,
+      error: "Panic: out of gas",
+      fee: 2_000_000n,
+      status: "failed",
+    });
   });
 
   it("forgets the session and its rows when stopped, as for a lock", async () => {

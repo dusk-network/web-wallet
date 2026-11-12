@@ -44,6 +44,9 @@ type ActivityMeta = import("@dusk-network/app-core/history").HistoryState & {
 type ActivityLocalRecord = {
   amount?: string;
 
+  /** The block that took it, as the wallet saw it, and that block's time. */
+  blockHeight?: number;
+
   /** What a call to the bridge does, as the wallet sent it. */
   bridge?: import("@dusk-network/app-core/history").BridgeFacts;
   contractId?: string;
@@ -67,6 +70,7 @@ type ActivityLocalRecord = {
   settled?: boolean;
   status: ActivityStatus;
   submittedAt: number;
+  timestamp?: number;
   to?: string;
   toName?: string;
 };
