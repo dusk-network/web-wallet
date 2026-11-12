@@ -184,22 +184,46 @@ function historyOf(profile) {
 
 /**
  * Shows a transaction the wallet sent in the history until the archive has
- * it: in the history of the profile that sends it, taken as the send
- * begins, which keeps nothing after a reset since (activityStore's epoch).
+ * it, once (`record`): in the history of the profile that sends it, taken as
+ * the send begins, which keeps nothing after a reset since (activityStore's
+ * epoch). One the node refused as it was asked to broadcast it went nowhere,
+ * and goes from it again (`forget`), once it's in it.
  *
  * @param {Profile} profile
  * @param {SentDetails} details
- * @returns {(txInfo: TransactionInfo) => void}
+ * @returns {{ forget: (txInfo: TransactionInfo) => void, record: (txInfo: TransactionInfo) => void }}
  */
 const recordInHistory = (profile, details) => {
   const history = historyOf(profile);
 
-  return (txInfo) => {
-    history
-      ?.recordSent({ ...details, hash: txInfo.hash })
+  /** The transactions recorded, and how far their records got, by hash. */
+  const recorded = new Map();
+
+  /** @param {() => Promise<void> | undefined} change */
+  const tellTabs = (change) =>
+    Promise.resolve()
+      .then(change)
       // The other tabs' history shows it too.
       .then(() => tellOtherTabs({ type: "sent" }))
       .catch(() => {});
+
+  return {
+    forget({ hash }) {
+      const record = recorded.get(hash);
+
+      if (record) {
+        recorded.delete(hash);
+        void record.then(() => tellTabs(() => history?.forgetSent(hash)));
+      }
+    },
+    record({ hash }) {
+      if (!recorded.has(hash)) {
+        recorded.set(
+          hash,
+          tellTabs(() => history?.recordSent({ ...details, hash }))
+        );
+      }
+    },
   };
 };
 
@@ -510,8 +534,11 @@ const sendAs = (
   const session = walletSession;
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
-  const record = recordInHistory(profile, details);
+  const { forget, record } = recordInHistory(profile, details);
   const lookFor = lookForArrival(profile, details);
+
+  /** The hash of the transaction the node was asked to broadcast, if any. */
+  let handedOver = "";
 
   /** @param {import("@dusk/w3sper").Network} network */
   const sending = (network) => ({
@@ -519,7 +546,15 @@ const sendAs = (
     execute: (tx) =>
       /** @type {import("$lib/transactions/SendingNetwork").default} */ (
         network
-      ).execute(builtWhileOpen(tx, stillOpen), { gate }),
+      ).execute(builtWhileOpen(tx, stillOpen), {
+        gate,
+        // It may go out from now on: History shows it on its way at once,
+        // also where the node's answer never comes.
+        onHandOver: (hash) => {
+          handedOver = hash;
+          record(/** @type {TransactionInfo} */ ({ hash }));
+        },
+      }),
   });
 
   /** @param {TransactionInfo} txInfo */
@@ -595,6 +630,9 @@ const sendAs = (
         followRemoval(/** @type {TransactionInfo} */ ({ hash }));
         record(/** @type {TransactionInfo} */ ({ hash }));
         lookFor(/** @type {TransactionInfo} */ ({ hash }));
+      } else if (handedOver) {
+        // Refused as it was handed over: it went nowhere.
+        forget(/** @type {TransactionInfo} */ ({ hash: handedOver }));
       }
 
       throw error;

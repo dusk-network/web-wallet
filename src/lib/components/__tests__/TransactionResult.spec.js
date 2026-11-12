@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 import { WalletChangedError } from "$lib/errors";
 import { walletStore } from "$lib/stores";
 import { outcomeUnknown, sendGate } from "$lib/transactions";
+import { setNetworkReach } from "$lib/stores/networkReach";
 
 import { TransactionResult } from "..";
 
@@ -85,6 +86,49 @@ describe("TransactionResult", () => {
     } finally {
       gate.cancel();
     }
+  });
+
+  it("should keep a way Home, and no Cancel, once a send was handed over and the network doesn't answer", async () => {
+    const gate = sendGate();
+    const { getByRole, queryByRole } = render(TransactionResult, {
+      ...baseProps,
+      gate,
+      operation: new Promise(() => {}),
+    });
+
+    gate.handOver();
+
+    try {
+      await act(() => setNetworkReach("silent"));
+
+      expect(getByRole("status")).toHaveTextContent(
+        "The network isn't answering. Your transaction may have reached it: wait for it here before you send it again."
+      );
+      expect(queryByRole("button", { name: "Cancel" })).toBeNull();
+
+      await clickLink(getByRole("link", { name: "Home" }));
+
+      expect(onBeforeLeave).toHaveBeenCalledOnce();
+    } finally {
+      setNetworkReach("answering");
+    }
+  });
+
+  it("should keep a way Home as soon as a send was handed over, before the network is found not to answer", async () => {
+    const gate = sendGate();
+    const { getByText, queryByRole } = render(TransactionResult, {
+      ...baseProps,
+      gate,
+      operation: new Promise(() => {}),
+    });
+
+    // Handed over, its answer doesn't come, and the network's pill says
+    // nothing yet: it finds it silent after 30 seconds.
+    await act(() => gate.handOver());
+
+    expect(getByText("Processing transaction")).toBeInTheDocument();
+    expect(queryByRole("button", { name: "Cancel" })).toBeNull();
+    expect(queryByRole("link", { name: "Home" })).toBeInTheDocument();
   });
 
   it("should follow the transaction once sent, with a way home", async () => {

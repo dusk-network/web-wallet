@@ -174,14 +174,18 @@
           text="Cancel"
           variant="secondary"
         />
-        <AppAnchorButton
-          className="transaction-result__button"
-          href={leaveHref}
-          on:click={handleGoHomeClick}
-          text={leaveText}
-          variant="tertiary"
-        />
       {/if}
+    {/if}
+    <!-- And once it may have gone out, as Home shows it on its way, whether
+      or not its answer comes. -->
+    {#if (isWaiting && gate) || isHandedOver}
+      <AppAnchorButton
+        className="transaction-result__button"
+        href={leaveHref}
+        on:click={handleGoHomeClick}
+        text={leaveText}
+        variant="tertiary"
+      />
     {/if}
   </svelte:fragment>
   <svelte:fragment slot="success-content" let:result={{ hash, unconfirmed }}>

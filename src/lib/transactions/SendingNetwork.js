@@ -33,12 +33,13 @@ export default class SendingNetwork extends Network {
   #broadcasts = new WeakSet();
 
   /**
-   * What lets each transaction go on to the node, by its bytes: none goes
-   * that was called off before (sendGate).
+   * What each transaction does as the node is asked to broadcast it, by its
+   * bytes: its gate lets it go on, and none goes that was called off before
+   * (sendGate), and whoever asked is told it may go out from then on.
    *
-   * @type {WeakMap<object, import("./sendGate").SendGate>}
+   * @type {WeakMap<object, () => void>}
    */
-  #gates = new WeakMap();
+  #handOvers = new WeakMap();
 
   /**
    * The socket of the last attempt to connect: w3sper keeps its own to itself.
@@ -55,13 +56,13 @@ export default class SendingNetwork extends Network {
     super(url, options);
 
     const broadcasts = this.#broadcasts;
-    const gates = this.#gates;
+    const handOvers = this.#handOvers;
     const { transactions } = this;
     const propagate = transactions.propagate.bind(transactions);
 
     transactions.propagate = (/** @type {any} */ tx) => {
       // Called off before this, it never reaches the node.
-      gates.get(tx)?.handOver();
+      handOvers.get(tx)?.();
       broadcasts.add(tx);
       asked.update((count) => count + 1);
 
@@ -115,17 +116,18 @@ export default class SendingNetwork extends Network {
   /**
    * Builds, checks and broadcasts a transaction, as w3sper does: with a
    * `gate`, only while it isn't called off, which it checks once it's built,
-   * and as the node is asked to broadcast it.
+   * and as the node is asked to broadcast it. As it is, `onHandOver` is told
+   * its hash, whatever the node answers, or if no answer comes.
    *
    * @template {import("@dusk/w3sper").BasicTransfer} T
    * @param {T} tx A transaction's builder
-   * @param {{ gate?: import("./sendGate").SendGate }} [options]
+   * @param {{ gate?: import("./sendGate").SendGate, onHandOver?: (hash: string) => void }} [options]
    * @returns {ReturnType<T["build"]>}
    */
-  execute(tx, { gate } = {}) {
+  execute(tx, { gate, onHandOver } = {}) {
     /** @type {any} */
     let built = tx;
-    const gates = this.#gates;
+    const handOvers = this.#handOvers;
 
     // The transaction its builder makes, to know it by its bytes.
     const watched = new Proxy(tx, {
@@ -134,14 +136,22 @@ export default class SendingNetwork extends Network {
 
         if (property === "build" && typeof value === "function") {
           return async (/** @type {unknown} */ network) => {
-            built = await value.call(target, network);
+            const made = await value.call(target, network);
 
-            if (gate) {
-              gate.check();
-              gates.set(built.buffer, gate);
-            }
+            built = made;
+            gate?.check();
+            handOvers.set(made.buffer, () => {
+              gate?.handOver();
 
-            return built;
+              // Whoever's told can't stop it going out.
+              try {
+                onHandOver?.(String(made.hash ?? ""));
+              } catch {
+                // Nothing to do: it goes out all the same.
+              }
+            });
+
+            return made;
           };
         }
 

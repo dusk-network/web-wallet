@@ -326,6 +326,34 @@ describe("ActivitySession", () => {
     ).toEqual([]);
   });
 
+  it("takes a send the node refused as it was asked to broadcast it out of the rows and the store", async () => {
+    fakeArchive({ finalized: 4_658_000 });
+    const hash = "f1".repeat(32);
+    const session = sessionFor();
+
+    await session.start();
+    await session.recordSent({
+      amount: "100000000",
+      direction: "out",
+      hash,
+      kind: "transfer",
+      privacy: "public",
+      to: B,
+    });
+
+    expect(session.state.rows.find((row) => row.hash === hash)).toMatchObject({
+      status: "pending",
+      value: 100_000_000n,
+    });
+
+    await session.forgetSent(hash);
+
+    expect(session.state.rows.find((row) => row.hash === hash)).toBeUndefined();
+    expect(
+      await store.listLocalTransactions(store.activityOwnerKey("testnet", A))
+    ).toEqual([]);
+  });
+
   it("puts a call to the bridge set for a local deployment under Bridge, on a network whose file has no DuskEVM", async () => {
     const local = "cd".repeat(32);
     const hash = "c2".repeat(32);

@@ -14,6 +14,7 @@ import {
   Gas,
   Network,
   ProfileGenerator,
+  Transfer,
 } from "@dusk/w3sper";
 
 import { stakeInfo } from "$lib/mock-data";
@@ -39,6 +40,7 @@ const VITE_SYNC_INTERVAL = import.meta.env.VITE_SYNC_INTERVAL;
 
 const history = vi.hoisted(() => ({
   session: {
+    forgetSent: vi.fn(async () => {}),
     notesSynced: vi.fn(),
     recordSent: vi.fn(async () => {}),
 
@@ -1190,6 +1192,70 @@ describe("Wallet store", async () => {
       updateCachedPendingNotesSpy.mockRestore();
     });
 
+    it("should show a send in the history as soon as the node is asked to broadcast it, while its answer doesn't come", async () => {
+      vi.useRealTimers();
+
+      // Its transaction, as w3sper builds it.
+      const toBuild = vi.spyOn(Transfer.prototype, "to").mockImplementation(
+        () =>
+          /** @type {any} */ ({
+            build: async () => ({
+              buffer: new Uint8Array([9]),
+              hash: "ef".repeat(32),
+              nonce: 4n,
+            }),
+            gas() {
+              return this;
+            },
+            memo() {
+              return this;
+            },
+          })
+      );
+
+      history.session.recordSent.mockClear();
+
+      try {
+        // The node takes it, and its answer never comes back.
+        executeSpy.mockImplementationOnce(
+          /** @this {any} */
+          async function (/** @type {any} */ tx) {
+            const transaction = await tx.build(this);
+
+            await this.transactions.preverify(transaction.buffer);
+            void this.transactions.propagate(transaction.buffer);
+
+            return new Promise(() => {});
+          }
+        );
+
+        let isSettled = false;
+
+        walletStore
+          .transfer(toMoonlight, amount, memo, gas)
+          .finally(() => {
+            isSettled = true;
+          })
+          .catch(() => {});
+
+        await vi.waitUntil(
+          () => history.session.recordSent.mock.calls.length === 1
+        );
+        expect(history.session.recordSent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            amount: String(amount),
+            direction: "out",
+            hash: "ef".repeat(32),
+            to: toMoonlight,
+          })
+        );
+        expect(isSettled).toBe(false);
+      } finally {
+        toBuild.mockRestore();
+        vi.useFakeTimers();
+      }
+    });
+
     it("should record a send in the history of the profile that sent it, though another one shows when it goes through", async () => {
       vi.useRealTimers();
 
@@ -1482,7 +1548,7 @@ describe("Wallet store", async () => {
         })
       );
 
-      history.session.recordSent.mockClear();
+      history.session.forgetSent.mockClear();
       handedOver(
         new Error("Tx cdcd not accepted: this transaction is invalid")
       );
@@ -1490,7 +1556,14 @@ describe("Wallet store", async () => {
       await expect(
         walletStore.transfer(toMoonlight, amount, memo, gas)
       ).rejects.toThrow("not accepted");
-      expect(history.session.recordSent).not.toHaveBeenCalled();
+
+      // Shown as the node was asked to broadcast it, it's taken out again.
+      await vi.waitUntil(
+        () => history.session.forgetSent.mock.calls.length === 1
+      );
+      expect(history.session.forgetSent).toHaveBeenCalledExactlyOnceWith(
+        built.hash
+      );
 
       vi.useFakeTimers();
     });

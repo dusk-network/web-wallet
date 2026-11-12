@@ -660,6 +660,18 @@ export class ActivitySession {
   }
 
   /**
+   * Forgets one of the wallet's own transactions it kept, which the node
+   * refused as it was asked to broadcast it: it went nowhere.
+   *
+   * @param {string} hash
+   */
+  async forgetSent(hash) {
+    await deleteLocalTransactions(this.ownerKey, [hash]);
+    await this.#reload();
+    this.#emit();
+  }
+
+  /**
    * A sync run now, for what is new on chain.
    *
    * @returns {Promise<void>}
