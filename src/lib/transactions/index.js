@@ -15,6 +15,14 @@ export {
 } from "./followTransaction";
 export { SendCancelledError, sendGate } from "./sendGate";
 export {
+  dropUnsent,
+  forgetSameUnsent,
+  sendUnsentAgain,
+  takeUnsentRefill,
+  unsentRefill,
+  unsentSends,
+} from "./unsentSends";
+export {
   cancelWaitingSends,
   keepWaiting,
   waitingSends,

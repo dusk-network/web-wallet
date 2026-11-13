@@ -6,6 +6,8 @@ import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { getGasSettings } from "$lib/contracts";
 import { formatDusk, formatDuskPlain } from "$lib/dusk/currency";
 import { gasPriceStore, settingsStore } from "$lib/stores";
+import { keepWaiting, sendGate } from "$lib/transactions";
+import { feeToKeep } from "$lib/wallet-reserve";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { networks } from "@dusk-network/networks";
 
@@ -209,6 +211,64 @@ describe("Send page", () => {
     });
 
     expect(available(container)).toHaveTextContent(/from your public balance$/);
+  });
+
+  it("should count out of Available and Max what the sends waiting to go out from that balance take, and say so", async () => {
+    const public_ = currentProfile.account.toString();
+    const shielded = currentProfile.address.toString();
+    const waiting = (/** @type {string} */ from) => {
+      const gate = sendGate();
+
+      keepWaiting({
+        address: OTHER,
+        from,
+        gate,
+        lux: 10_000_000n,
+        maxFee: 2_500_000n,
+        operation: new Promise(() => {}),
+        to: "Lena",
+      });
+
+      return gate;
+    };
+    const fromPublic = waiting(public_);
+    const fromShielded = waiting(shielded);
+
+    try {
+      const { container, getByRole } = render(SendPage);
+      const { gasLimit, gasPrice } = getGasSettings(
+        "public-transfer",
+        get(settingsStore),
+        get(gasPriceStore)
+      );
+      const left = balance.unshielded.value - 12_500_000n;
+
+      expect(available(container)).toHaveTextContent(
+        `Available ${formatDusk(left, "en")} DUSK from your public balance, after what's waiting to go out`
+      );
+
+      await fireEvent.input(getByRole("textbox", { name: "To" }), {
+        target: { value: OTHER },
+      });
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      // All that's left, less the fee, and what's kept for later as ever.
+      expect(getByRole("textbox", { name: "Amount" })).toHaveValue(
+        formatDuskPlain(left - gasLimit * gasPrice - get(feeToKeep).lux)
+      );
+
+      // Gone out, or called off: all of it again.
+      await act(() => fromPublic.handOver());
+      await act(() => fromShielded.cancel());
+
+      expect(available(container)).toHaveTextContent(
+        `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`
+      );
+      expect(available(container)).not.toHaveTextContent("waiting");
+    } finally {
+      fromPublic.cancel();
+      fromShielded.cancel();
+    }
   });
 
   it("should pay from the public balance again when the recipient entered after a shielded one doesn't resolve, or is cleared", async () => {

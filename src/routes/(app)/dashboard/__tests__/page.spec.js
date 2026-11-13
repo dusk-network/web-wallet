@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
+import { timeLabel } from "$lib/activity/present";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore } from "$lib/stores";
 
@@ -159,8 +160,9 @@ describe("Dashboard", () => {
     vi.doUnmock("$lib/sozu");
   });
 
-  it("says a send waits to go out while the network doesn't answer, with Cancel, wherever it was sent from, until it goes out", async () => {
-    const { keepWaiting, sendGate } = await import("$lib/transactions");
+  it("says a send waits to go out while the network doesn't answer, with Cancel, wherever it was sent from, until it goes out, each with its memo and time to tell them apart", async () => {
+    const { keepWaiting, sendGate, waitingSends } =
+      await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
     const { toastList } = await import("$lib/dusk/components/Toast/store");
     render(Dashboard, props);
@@ -171,15 +173,20 @@ describe("Dashboard", () => {
     keepWaiting({
       gate: first,
       lux: 10_000_000n,
+      memo: "ward round 1",
       operation: new Promise(() => {}),
       to: "Profile 2",
     });
     keepWaiting({
       gate: second,
-      lux: 20_000_000n,
+      lux: 10_000_000n,
+      memo: "ward round 2",
       operation: new Promise(() => {}),
       to: "Profile 2",
     });
+
+    // When each was sent, as Home says it.
+    const [one, two] = get(waitingSends).map(({ at }) => timeLabel(at, "en"));
 
     try {
       await act(() => setNetworkReach("silent"));
@@ -190,8 +197,8 @@ describe("Dashboard", () => {
         );
 
       expect(banners()).toStrictEqual([
-        "Not sent yet: 0.01 DUSK to Profile 2. It goes out once the network answers. Cancel",
-        "Not sent yet: 0.02 DUSK to Profile 2. It goes out once the network answers. Cancel",
+        `Not sent yet: 0.01 DUSK to Profile 2. ward round 1 · ${one} It goes out once the network answers. Cancel`,
+        `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
       ]);
 
       // Called off from here: nothing goes out, and it's said.
@@ -203,7 +210,7 @@ describe("Dashboard", () => {
 
       expect(get(first)).toBe("cancelled");
       expect(banners()).toStrictEqual([
-        "Not sent yet: 0.02 DUSK to Profile 2. It goes out once the network answers. Cancel",
+        `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
       ]);
       expect(get(toastList).map(({ message }) => message)).toContain(
         "Not sent: 0.01 DUSK to Profile 2."
@@ -215,12 +222,15 @@ describe("Dashboard", () => {
 
       expect(banners()).toStrictEqual([]);
     } finally {
+      first.cancel();
+      second.cancel();
       setNetworkReach("answering");
     }
   });
 
   it("says a send that couldn't reach the network goes out once it answers, while the pill still finds it answering", async () => {
-    const { keepWaiting, sendGate } = await import("$lib/transactions");
+    const { keepWaiting, sendGate, waitingSends } =
+      await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
 
     render(Dashboard, props);
@@ -239,11 +249,13 @@ describe("Dashboard", () => {
       to: "Profile 2",
     });
 
+    const at = timeLabel(get(waitingSends)[0].at, "en");
+
     try {
       await act(() => setNetworkReach("answering"));
 
       expect(banner()).toBe(
-        "Not sent yet: 0.01 DUSK to Profile 2. It's being sent. Cancel"
+        `Not sent yet: 0.01 DUSK to Profile 2. ${at} It's being sent. Cancel`
       );
 
       // The node can't be reached as it's sent: it waits for the network.
@@ -255,7 +267,7 @@ describe("Dashboard", () => {
         .catch(() => {});
       await vi.waitFor(() =>
         expect(banner()).toBe(
-          "Not sent yet: 0.01 DUSK to Profile 2. It goes out once the network answers. Cancel"
+          `Not sent yet: 0.01 DUSK to Profile 2. ${at} It goes out once the network answers. Cancel`
         )
       );
     } finally {

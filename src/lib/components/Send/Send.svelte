@@ -2,7 +2,7 @@
 
 <script>
   import { amountForField } from "@dusk-network/app-core/amounts";
-  import { createEventDispatcher, onMount, tick } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import {
     mdiAlertOutline,
     mdiArrowLeft,
@@ -36,13 +36,21 @@
     reviewStep,
   } from "$lib/navigation";
   import { sentAlready } from "@dusk-network/app-core/requests";
-  import { keepWaiting, sendGate } from "$lib/transactions";
+  import {
+    forgetSameUnsent,
+    keepWaiting,
+    sendGate,
+    takeUnsentRefill,
+    unsentRefill,
+    waitingSends,
+    waitingText,
+  } from "$lib/transactions";
   import { onTheirWay } from "$lib/activity/sends";
   import { paidInSentence } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
   import { readPaymentLink } from "$lib/payment-requests";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
-  import { settingsStore } from "$lib/stores";
+  import { networkStore, settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import {
     openWalletName,
@@ -80,6 +88,7 @@
     ScanQR,
     SectionHead,
     TransactionResult,
+    UnsentSends,
   } from "$lib/components";
 
   /** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint, toName?: string, gate?: import("$lib/transactions/sendGate").SendGate) => Promise<string>} */
@@ -100,11 +109,18 @@
   export let gasSettings;
 
   /**
-   * The spendable balance the transfer is paid from.
+   * The spendable balance the transfer is paid from, less what the sends
+   * waiting to go out from it take (`waiting`).
    *
    * @type {bigint}
    */
   export let availableBalance;
+
+  /**
+   * What the sends waiting to go out from the balance that pays take of it,
+   * at most: Available and Max count it out.
+   */
+  export let waiting = 0n;
 
   /**
    * Whether the balances were read from the network since the wallet or the
@@ -192,18 +208,59 @@
     : "";
 
   /**
+   * What a send that never went out held in the form, as the form takes it
+   * again: what it showed, where the form's own wasn't kept.
+   *
+   * @param {import("$lib/transactions/unsentSends").UnsentSend} send
+   */
+  const typedOf = ({ lux, memo, to, typed }) => ({
+    amount:
+      typeof typed.amount === "string"
+        ? typed.amount
+        : amountForField(
+            formatDuskPlain(BigInt(lux)),
+            getDecimalSeparator($settingsStore.language)
+          ),
+    gas: /** @type {{ limit: string, price: string } | undefined} */ (
+      typed.gas
+    ),
+    isMax: typed.isMax === true,
+    isOwn: typed.isOwn === true,
+    memo: typeof typed.memo === "string" ? typed.memo : memo,
+    picks: /** @type {Record<string, "account" | "address">} */ (
+      typed.picks && typeof typed.picks === "object" ? typed.picks : {}
+    ),
+    to: typeof typed.to === "string" ? typed.to : to,
+  });
+
+  /** Whether a lock, a reload or a failed send kept what was typed. */
+  const draftBefore = draft.read();
+
+  /**
+   * A send that never went out, to fill the form in with again where that's
+   * asked, for the profile it's sent from: in place of what was typed.
+   */
+  const refilled = takeUnsentRefill({
+    account: publicAddress,
+    network: $networkStore.networkName,
+  });
+
+  /**
    * What was typed before a lock, a reload or a failed send, unless a link to
    * someone else, or for something else, opens the page now. A link refused is
-   * one too: what it opens on is no transfer of anyone's asking.
+   * one too: what it opens on is no transfer of anyone's asking. A send that
+   * never went out, asked to be sent again, comes first.
    *
    * @type {any}
    */
-  const typedBefore = ((before) =>
-    before &&
-    !initialProblem &&
-    (!initialRecipient || before.link === openedFor)
-      ? before
-      : null)(draft.read());
+  const typedBefore = refilled
+    ? typedOf(refilled)
+    : ((before) =>
+        before &&
+        !initialProblem &&
+        (!initialRecipient || before.link === openedFor)
+          ? before
+          : null)(draftBefore);
 
   /** The amount as typed, in DUSK: nothing until it is. */
   let sendAmount = typedBefore?.amount ?? initialAmount;
@@ -231,8 +288,17 @@
     !typedBefore && initialRecipient && (initialAmount || initialMemo)
   );
 
-  /** The recipient that link gave. */
-  let linkRecipient = initialRecipient;
+  /** The recipient that link gave, or the send that never went out. */
+  let linkRecipient = refilled ? typedBefore.to : initialRecipient;
+
+  /**
+   * Whether the form was filled in with a send that never went out, until
+   * what's in To changes.
+   */
+  let isRefilled = Boolean(refilled);
+
+  /** Whether the page shows still: its screen says how a send ended. */
+  let isShown = true;
 
   /** @type {import("qr-scanner").default} */
   let scanner;
@@ -462,6 +528,40 @@
   onMount(() => {
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   });
+
+  onDestroy(() => {
+    isShown = false;
+  });
+
+  /**
+   * Fills the form in with a send that never went out, as asked while the
+   * form shows, in place of what's typed: to be reviewed as if typed.
+   *
+   * @param {import("$lib/transactions/unsentSends").UnsentSend | null} send
+   */
+  function fillIn(send) {
+    if (!send) {
+      return;
+    }
+
+    const typed = typedOf(send);
+
+    linkProblem = "";
+    linkElsewhere = null;
+    isFromLink = false;
+    isRefilled = true;
+    sendToAddress = typed.to;
+    linkRecipient = typed.to;
+    isRecipientChecked = Boolean(typed.to);
+    typedLength = typed.to.length;
+    sendAmount = typed.amount;
+    isMaxAmount = typed.isMax;
+    isOwnAmount = typed.isOwn;
+    memo = typed.memo;
+    namePicks = typed.picks;
+    ({ gasLimit, gasPrice } = keptGas(typed.gas, gasSettings));
+    isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
+  }
 
   function setMaxAmount() {
     if (!isGasValid) {
@@ -834,8 +934,41 @@
     );
 
     // Until it goes out, Home says it waits, wherever the wallet is, its
-    // amount as balances are shown there.
-    keepWaiting({ gate, lux: sendAmountInLux, operation, to: recipientLabel });
+    // amount as balances are shown there. It's kept on this device
+    // meanwhile: where its page closes, reloads or locks before it goes
+    // out, it's said once the wallet opens again.
+    keepWaiting({
+      address: recipientAddress,
+      from,
+      gate,
+      kept: {
+        account: publicAddress,
+        isSaid: () => isShown && sent?.operation === operation,
+        network: $networkStore.networkName,
+        typed: {
+          amount: typed.amount,
+          gas: typed.gas,
+          isMax: typed.isMax,
+          isOwn: typed.isOwn,
+          memo: typed.memo,
+          picks: typed.picks,
+          to: typed.to,
+        },
+      },
+      lux: sendAmountInLux,
+      maxFee: maxGasFee,
+      memo: transactionMemo,
+      operation,
+      to: recipientLabel,
+    });
+    // The same made again: one of it that never went out is said no more.
+    forgetSameUnsent({
+      account: publicAddress,
+      lux: String(sendAmountInLux),
+      memo: transactionMemo,
+      network: $networkStore.networkName,
+      to: recipientAddress,
+    });
     sent = {
       gate,
       maxFee: maxGasFee,
@@ -1083,6 +1216,18 @@
 
   $: if (sendToAddress !== linkRecipient) {
     isFromLink = false;
+    isRefilled = false;
+  }
+
+  // Asked to be sent again while the form shows: it takes what's typed's
+  // place.
+  $: if ($unsentRefill && step !== "done") {
+    fillIn(
+      takeUnsentRefill({
+        account: publicAddress,
+        network: $networkStore.networkName,
+      })
+    );
   }
 
   $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";
@@ -1417,8 +1562,20 @@
         to: recipientAddress,
       })
     : null;
+  // The same send waiting to go out already, from the same balance.
+  $: waitingAgain =
+    addressInfo.isValid && sendAmountInLux > 0n
+      ? ($waitingSends.find(
+          (send) =>
+            send.from === from &&
+            send.address === recipientAddress &&
+            send.lux === sendAmountInLux &&
+            send.memo === transactionMemo
+        ) ?? null)
+      : null;
   // Said on the button too, which then sends it again.
-  $: isRepeat = Boolean(madeAgain && madeAgain.time !== null);
+  $: isRepeat =
+    Boolean(madeAgain && madeAgain.time !== null) || Boolean(waitingAgain);
   $: isAmountMasked = hideBalances && (isMaxAmount || isOwnAmount);
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
@@ -1469,6 +1626,8 @@
           >
         </Banner>
       {/each}
+
+      <UnsentSends />
 
       <div class="send__field">
         <label class="send__label" for="{id}-to">To</label>
@@ -1607,7 +1766,12 @@
           >
         {/if}
 
-        {#if isFromLink}
+        {#if isRefilled}
+          <p class="send__hint" role="status">
+            Filled in from the send that didn't go out. Check it before you
+            send.
+          </p>
+        {:else if isFromLink}
           <p class="send__hint" role="status">
             {isSendBack
               ? "Filled in to send the payment back. Check it before you send."
@@ -1919,7 +2083,10 @@
           Available <BalanceValue
             exact={formatDuskExact(availableBalance, language)}
             value={formatDusk(availableBalance, language)}
-          /> DUSK from your {isShielded ? "shielded" : "public"} balance
+          /> DUSK from your {isShielded ? "shielded" : "public"} balance{waiting >
+          0n
+            ? ", after what's waiting to go out"
+            : ""}
         </p>
         {#if leavesTooLittle}
           <p class="send__hint send__keep" role="status">
@@ -2098,7 +2265,15 @@
           </dd>
         </div>
       </dl>
-      {#if madeAgain && madeAgain.time !== null}
+      {#if waitingAgain}
+        <!-- Said, not stopped, as for one sent: the same twice can be meant. -->
+        <Banner
+          className="send__again"
+          role="alert"
+          title={`The same send is waiting to go out already: ${waitingText(waitingAgain, { hidden: hideBalances, locale: language })}${waitingAgain.memo.trim() ? ", with this memo" : ""}.`}
+          variant="warning"
+        />
+      {:else if madeAgain && madeAgain.time !== null}
         <!-- Said, not stopped: the same payment twice can be meant. -->
         <Banner
           className="send__again"

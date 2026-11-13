@@ -8,8 +8,9 @@
   } from "@mdi/js";
   import { mdiCheck } from "@mdi/js";
   import { activityState, isHistoryEnabled } from "$lib/activity";
+  import { timeLabel } from "$lib/activity/present";
   import { contractDescriptors } from "$lib/contracts";
-  import { Banner, SectionHead } from "$lib/components";
+  import { Banner, MemoText, SectionHead, UnsentSends } from "$lib/components";
   import { Button } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
@@ -178,7 +179,7 @@
 
     <!-- Sends that haven't gone out, as the network doesn't answer, or
       couldn't be reached: called off from here, or they go out once it
-      answers. -->
+      answers. Each with its memo and when it was sent, to tell them apart. -->
     {#each $waitingSends as send (send.id)}
       <Banner
         className="home__waiting"
@@ -186,6 +187,10 @@
         title={`Not sent yet: ${waitingWhat(send, $settingsStore.hideBalances)}.`}
         variant="info"
       >
+        <p class="home__waiting-when">
+          {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
+          {timeLabel(send.at, language)}
+        </p>
         <p>
           {$networkReach === "answering" && !send.waitsForNetwork
             ? "It's being sent."
@@ -200,6 +205,10 @@
         />
       </Banner>
     {/each}
+
+    <!-- And those that never went out, as their page closed, reloaded or
+      locked first: to send now, through Review, or not. -->
+    <UnsentSends />
 
     {#if isEnabled("bridge") && migration}
       <p class="home__note">
@@ -300,6 +309,11 @@
 
   .home__main :global(.home__waiting-cancel) {
     margin-top: 0.5rem;
+  }
+
+  .home__waiting-when {
+    color: var(--calm-muted);
+    overflow-wrap: anywhere;
   }
 
   .home__note {

@@ -36,5 +36,6 @@ export { default as SyncBar } from "./SyncBar/SyncBar.svelte";
 export { default as TransactionResult } from "./TransactionResult/TransactionResult.svelte";
 export { default as TransactionStatus } from "./TransactionStatus/TransactionStatus.svelte";
 export { default as UnlockPasswordField } from "./UnlockPasswordField/UnlockPasswordField.svelte";
+export { default as UnsentSends } from "./UnsentSends/UnsentSends.svelte";
 export { default as Unstake } from "./Stake/Unstake.svelte";
 export { default as WalletConnectionGate } from "./WalletConnectionGate/WalletConnectionGate.svelte";

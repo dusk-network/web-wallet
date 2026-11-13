@@ -14,6 +14,7 @@
   } from "$lib/transactions";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
+  import MemoText from "../MemoText/MemoText.svelte";
   import TransactionStatus from "../TransactionStatus/TransactionStatus.svelte";
 
   /** @type {string} */
@@ -151,8 +152,15 @@
   <svelte:fragment slot="pending-content">
     <Throbber className="dusk-suspense__throbber" />
     <span class="dusk-suspense__pending-message">Processing transaction</span>
-    <!-- Said where it waits, not only on the pill: what it means for it. -->
+    <!-- Said where it waits, not only on the pill: what it means for it,
+      and which send it is. -->
     {#if isWaiting}
+      {#if what && gate && !isHandedOver}
+        <p class="transaction-result__what">
+          {what}{#if memo}
+            · <MemoText inline text={memo} />{/if}
+        </p>
+      {/if}
       <p class="transaction-result__waiting" role="status">
         {$networkReach === "offline"
           ? "You're offline."
@@ -262,6 +270,12 @@
 
       .transaction-result__waiting {
         margin: 0;
+        text-align: center;
+      }
+
+      .transaction-result__what {
+        margin: 0;
+        overflow-wrap: anywhere;
         text-align: center;
       }
     }
