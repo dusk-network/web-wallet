@@ -49,9 +49,8 @@
   export let hasWallet = false;
 
   /**
-   * Whether it offers to pay it from a wallet elsewhere first: Firefox's or
-   * the Dusk app on this phone, or the Dusk extension, where no wallet is kept
-   * here.
+   * Whether it offers to pay it from a wallet elsewhere first: the Dusk
+   * extension, where it takes the request and no wallet is kept here.
    */
   export let offersElsewhere = false;
 
@@ -137,8 +136,9 @@
   // Another network's request, on the web wallet of its network.
   $: elsewhere =
     read?.reason === "other-network" ? elsewhereLink(opened) : null;
-  // On Android, the wallet that pays it may be in Firefox, or the Dusk app:
-  // the same request, there, before a wallet is made or restored here.
+  // On Android, the wallet that pays it may be in Firefox, or the Dusk app,
+  // which opens the request link itself where it's installed: the same
+  // request there, after the way that works in this browser.
   $: offersPhone = Boolean(isAndroid && asked);
   // The extension that takes it, for a link Send would take: the wallet the
   // person has, where none is kept here, until it says it has none.
@@ -150,7 +150,7 @@
     problem !== LINK_BAD_ADDRESS
   );
   $: extensionFirst = offersExtension && !hasWallet && handed !== "no-wallet";
-  $: offersElsewhere = offersPhone || extensionFirst;
+  $: offersElsewhere = extensionFirst;
   $: appHref =
     offersPhone && asked
       ? makePaymentLink({
@@ -200,23 +200,6 @@
         {/if}
       </dl>
     {/if}
-    {#if offersPhone}
-      {#if !isFirefox}
-        <AnchorButton
-          className="payment-asked__open"
-          href={inFirefox(opened)}
-          text="Open in Firefox"
-        />
-      {/if}
-      {#if appHref}
-        <AnchorButton
-          className="payment-asked__open payment-asked__extension"
-          href={appHref}
-          text="Open in the Dusk app"
-          variant="secondary"
-        />
-      {/if}
-    {/if}
     <p class="payment-asked__next">
       {problem || (extensionFirst ? "Pay it with the Dusk extension." : next)}
     </p>
@@ -246,6 +229,26 @@
           on:click={hand}
           text="Open in the Dusk extension"
           variant={extensionFirst ? "primary" : "secondary"}
+        />
+      {/if}
+    {/if}
+    <!-- The app, where it's installed, opens the link before this page does:
+      here, it's another way, after the one that works in this browser. -->
+    {#if offersPhone}
+      {#if appHref}
+        <AnchorButton
+          className="payment-asked__open payment-asked__extension"
+          href={appHref}
+          text="Open in the Dusk app"
+          variant="secondary"
+        />
+      {/if}
+      {#if !isFirefox}
+        <AnchorButton
+          className="payment-asked__open payment-asked__extension"
+          href={inFirefox(opened)}
+          text="Open in Firefox"
+          variant="secondary"
         />
       {/if}
     {/if}

@@ -1,7 +1,9 @@
 /**
  * The wallet's Worker on Cloudflare (wrangler.jsonc). Its files are served
  * from deploy/site/, the build at wallet/, with the headers in
- * deploy/site/_headers, and this runs only for a request no file answers.
+ * deploy/site/_headers, and this runs only for a request no file answers:
+ * the wallet's page at an address of its own, the explorer's old addresses,
+ * and the Android app's links' statement at the domain's root.
  */
 
 /** The headers deploy/site/_headers gives every file, for its own answers. */
@@ -12,6 +14,29 @@ export const HEADERS = Object.freeze({
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
 });
+
+/**
+ * The Dusk Wallet app on Android, which can open the wallet's links. Not
+ * exported: a Worker's module exports only what Cloudflare runs.
+ */
+const ANDROID_APP = "network.dusk.wallet";
+
+/**
+ * Who may open this domain's links, as Android verifies its App Links: the
+ * Dusk Wallet app, signed with one of `certs` (SHA-256 fingerprints).
+ *
+ * @param {string[]} certs
+ */
+const assetLinks = (certs) => [
+  {
+    relation: ["delegate_permission/common.handle_all_urls"],
+    target: {
+      namespace: "android_app",
+      package_name: ANDROID_APP,
+      sha256_cert_fingerprints: certs,
+    },
+  },
+];
 
 /**
  * An answer with no body, never cached.
@@ -42,7 +67,7 @@ const pathOf = (url) => {
 export default {
   /**
    * @param {Request} request
-   * @param {{ ASSETS: { fetch: typeof fetch }, EXPLORER: string }} env
+   * @param {{ ANDROID_CERTS?: string, ASSETS: { fetch: typeof fetch }, EXPLORER: string }} env
    */
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -50,6 +75,31 @@ export default {
 
     if (!["GET", "HEAD"].includes(request.method)) {
       return answer(405, { Allow: "GET, HEAD" });
+    }
+
+    // The Dusk Wallet app may open the wallet's links, as Android checks at
+    // the domain's root, where its signing certificates are named
+    // (wrangler.jsonc): without one, no app does.
+    if (path === "/.well-known/assetlinks.json") {
+      const certs = (env.ANDROID_CERTS ?? "")
+        .split(",")
+        .map((cert) => cert.trim())
+        .filter(Boolean);
+
+      return certs.length
+        ? new Response(
+            request.method === "HEAD"
+              ? null
+              : JSON.stringify(assetLinks(certs)),
+            {
+              headers: {
+                ...HEADERS,
+                "Cache-Control": "public, max-age=3600",
+                "Content-Type": "application/json",
+              },
+            }
+          )
+        : answer(404);
     }
 
     // Where the explorer was, sent to its own domain as DigitalOcean did:

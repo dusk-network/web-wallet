@@ -203,8 +203,12 @@ the build at `wallet/`, where `node deploy/stage.js` places it after
 `npm run build`, and the headers for it in `deploy/site/_headers`.
 `deploy/worker.js` answers what no file does: an address under `/wallet/` that
 no page has opens the wallet, which says what's there; a file under
-`/wallet/_app/` that isn't there is a 404; and `/explorer` goes on to the
-explorer's own domain. To serve a build the same way locally, place it, then
+`/wallet/_app/` that isn't there is a 404; `/explorer` goes on to the
+explorer's own domain; and `/.well-known/assetlinks.json` names the Dusk
+Wallet app on Android, signed with the certificates `ANDROID_CERTS` names in
+`wrangler.jsonc`, as the app that opens the wallet's request links (Android
+App Links). Testnet's is the test build's signing key; mainnet's is left for
+the release key, and until it's there the file is a 404. To serve a build the same way locally, place it, then
 run `deploy/node_modules/.bin/wrangler dev --env testnet`, with Wrangler from
 `npm ci --ignore-scripts --prefix deploy`.
 

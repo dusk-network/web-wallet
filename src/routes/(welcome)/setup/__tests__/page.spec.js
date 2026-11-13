@@ -212,32 +212,52 @@ describe("Setup", () => {
         return render(Setup, {});
       };
 
-      it("should lead with the same request in Firefox and in the Dusk app, before a wallet is made here", () => {
-        const { getAllByRole, getByRole } = openOn(CHROME);
-        const links = getAllByRole("link").map(
-          (link) => link.textContent?.trim() ?? ""
-        );
+      it("should lead with the way that works in this browser, the app having left the link to it, and offer the same request in the Dusk app and in Firefox after it", () => {
+        const { getByRole } = openOn(CHROME);
+        const asked = getByRole("region", { name: "Payment request" });
+        const app = getByRole("link", { name: "Open in the Dusk app" });
+        const firefox = getByRole("link", { name: "Open in Firefox" });
 
-        expect(getByRole("link", { name: "Open in Firefox" })).toHaveAttribute(
-          "href",
-          `intent://${location.host}/some-base-path/dashboard/send/?to=${TO}&amount=0.011&memo=Factura+044&network=testnet#Intent;scheme=${location.protocol.slice(0, -1)};package=org.mozilla.firefox;end`
-        );
-        expect(
-          getByRole("link", { name: "Open in the Dusk app" })
-        ).toHaveAttribute(
+        expect(app).toHaveAttribute(
           "href",
           `dusk:public-${TO}@dusk:2?amount=0.011&memo=Factura+044`
         );
-        expect(links.indexOf("Open in Firefox")).toBeLessThan(
-          links.indexOf("Open in the Dusk app")
+        expect(firefox).toHaveAttribute(
+          "href",
+          `intent://${location.host}/some-base-path/dashboard/send/?to=${TO}&amount=0.011&memo=Factura+044&network=testnet#Intent;scheme=${location.protocol.slice(0, -1)};package=org.mozilla.firefox;end`
         );
-        expect(links.indexOf("Open in the Dusk app")).toBeLessThan(
-          links.indexOf("Create new wallet")
-        );
-        // Making one here comes after them.
+
+        // A wallet made here leads: it works on any phone.
         expect(getByRole("link", { name: "Create new wallet" })).toHaveClass(
-          "dusk-anchor-button--variant--tertiary"
+          "dusk-anchor-button--variant--primary"
         );
+        expect(asked).toHaveTextContent(
+          /Create or restore a wallet to pay it\.\s*Open in the Dusk app\s*Open in Firefox$/
+        );
+
+        for (const other of [app, firefox]) {
+          expect(other).toHaveClass("dusk-anchor-button--variant--secondary");
+        }
+      });
+
+      it("should lead with Unlock where a wallet is kept here, the app and Firefox after it", () => {
+        settingsStore.update((store) => ({ ...store, userId: "a-wallet" }));
+
+        try {
+          const { getByRole } = openOn(CHROME);
+
+          expect(getByRole("link", { name: "Unlock" })).toHaveClass(
+            "dusk-anchor-button--variant--primary"
+          );
+          expect(
+            getByRole("link", { name: "Open in the Dusk app" })
+          ).toHaveClass("dusk-anchor-button--variant--secondary");
+          expect(getByRole("link", { name: "Open in Firefox" })).toHaveClass(
+            "dusk-anchor-button--variant--secondary"
+          );
+        } finally {
+          settingsStore.reset();
+        }
       });
 
       it("should offer the Dusk app in Firefox, which has the page already", () => {
