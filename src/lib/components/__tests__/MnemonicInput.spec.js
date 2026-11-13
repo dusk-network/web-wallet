@@ -133,6 +133,65 @@ describe("MnemonicInput", () => {
     ).toBeNull();
   });
 
+  it("clears the clipboard of what was pasted, in the paste's own gesture, and says once where the browser won't let it", async () => {
+    const LEFT =
+      "Your recovery phrase is still on the clipboard: copy something else over it.";
+    const writeText = vi.fn(() => Promise.resolve());
+
+    Object.assign(navigator, {
+      clipboard: { readText: vi.fn(() => Promise.resolve(TWELVE)), writeText },
+    });
+
+    try {
+      const { getAllByText, getByLabelText, getByRole, queryByText } =
+        render(MnemonicInput);
+
+      // Pasted into a box: gone from the clipboard as it's pasted.
+      await pasteInto(getByLabelText("Word 1"), TWELVE);
+
+      expect(writeText).toHaveBeenCalledExactlyOnceWith("");
+      await vi.waitFor(() => expect(queryByText(LEFT)).toBeNull());
+
+      // With Paste too.
+      await fireEvent.click(
+        getByRole("button", { name: "Paste recovery phrase" })
+      );
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+
+      expect(queryByText(LEFT)).toBeNull();
+
+      // The browser won't let a page write it: said, once however often.
+      writeText.mockImplementation(() =>
+        Promise.reject(new DOMException("Denied", "NotAllowedError"))
+      );
+      await pasteInto(getByLabelText("Word 3"), TWELVE);
+      await pasteInto(getByLabelText("Word 5"), TWELVE);
+
+      await vi.waitFor(() => expect(getAllByText(LEFT)).toHaveLength(1));
+      expect(getAllByText(LEFT)[0]).toHaveAttribute("role", "status");
+
+      // Nothing pasted, as a word typed: nothing to clear.
+      writeText.mockClear();
+      await fireEvent.input(getByLabelText("Word 2"), {
+        target: { value: "winner" },
+      });
+
+      expect(writeText).not.toHaveBeenCalled();
+      cleanup();
+
+      // Where a page can't write the clipboard at all.
+      Object.assign(navigator, { clipboard: undefined });
+
+      const without = render(MnemonicInput);
+
+      await pasteInto(without.getByLabelText("Word 1"), TWELVE);
+
+      expect(without.getByText(LEFT)).toBeInTheDocument();
+    } finally {
+      Object.assign(navigator, { clipboard: undefined });
+    }
+  });
+
   it("tells of each change, and shows a refusal from outside where its own problems show", async () => {
     const changed = vi.fn();
     const { getByLabelText, getByRole, rerender } = render(MnemonicInput, {
