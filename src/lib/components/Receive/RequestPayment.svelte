@@ -18,6 +18,7 @@
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
 
+  import AmountInCurrency from "../AmountInCurrency/AmountInCurrency.svelte";
   import MemoText from "../MemoText/MemoText.svelte";
 
   /** The account or shielded address that's paid. */
@@ -105,6 +106,9 @@
         <p class="request__error" id="{id}-amount-error" role="alert">
           {made.problems.amount}
         </p>
+      {:else}
+        <!-- What it comes to in the person's money: the link asks DUSK. -->
+        <AmountInCurrency className="request__in-currency" lux={made.lux} />
       {/if}
     </div>
     <div class="request__field">
@@ -238,6 +242,11 @@
 
   .request__error {
     color: var(--calm-danger);
+    font-size: 0.875rem;
+  }
+
+  .request :global(.request__in-currency) {
+    color: var(--calm-muted);
     font-size: 0.875rem;
   }
 </style>

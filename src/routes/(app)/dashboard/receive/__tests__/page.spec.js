@@ -272,6 +272,66 @@ describe("Receive", () => {
       ]);
     });
 
+    it("should say what a request comes to in the person's currency on mainnet, with the price's time, its link asking DUSK, and nothing on testnet", async () => {
+      const prices = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            market_data: {
+              current_price: { eur: 0.5 },
+              last_updated: "2026-11-13T12:03:00.000Z",
+            },
+          }),
+      }));
+
+      vi.stubGlobal("fetch", prices);
+      settingsStore.update((store) => ({ ...store, currency: "EUR" }));
+
+      try {
+        // Test DUSK has no value: nothing asked, nothing said.
+        render(Receive);
+        await vi.runAllTimersAsync();
+        await openRequest();
+        await type("Amount (optional)", "2");
+        await vi.runAllTimersAsync();
+
+        expect(screen.queryByText(/^≈ /)).toBeNull();
+        expect(prices).not.toHaveBeenCalled();
+        cleanup();
+
+        setNodeNetwork(networks.mainnet);
+        render(Receive);
+        // Not all: the price, read again every five minutes while the amount
+        // kept from before shows, always has another to run.
+        await vi.runOnlyPendingTimersAsync();
+        await openRequest();
+        await type("Amount (optional)", "2");
+
+        await vi.waitFor(() =>
+          expect(
+            screen.getByText(/^≈ €1\.00 · price at \d{1,2}:\d{2}/)
+          ).toBeInTheDocument()
+        );
+
+        // The link asks what it asked: DUSK.
+        await fireEvent.click(
+          screen.getByRole("button", { name: "Copy request link" })
+        );
+        await vi.advanceTimersByTimeAsync(0);
+
+        const [copied] = vi
+          .mocked(navigator.clipboard.writeText)
+          .mock.calls.at(-1) ?? [""];
+
+        expect(parsePaymentLink(copied)).toMatchObject({ amountDusk: "2" });
+        expect(copied).not.toMatch(/eur|€/i);
+      } finally {
+        vi.unstubAllGlobals();
+        settingsStore.reset();
+      }
+    });
+
     it("should say what's wrong with an amount, offer no link for it, and offer none with nothing asked", async () => {
       render(Receive);
       await vi.runAllTimersAsync();

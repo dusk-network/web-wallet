@@ -2133,6 +2133,78 @@ describe("Send", () => {
     });
   });
 
+  describe("In the payer's currency", () => {
+    const prices = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          market_data: {
+            current_price: { usd: 0.5 },
+            last_updated: "2026-11-13T12:03:00.000Z",
+          },
+        }),
+    }));
+
+    beforeEach(() => {
+      vi.stubGlobal("fetch", prices);
+      settingsStore.update((store) => ({ ...store, currency: "USD" }));
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      settingsStore.reset();
+      setNodeNetwork(null);
+      prices.mockClear();
+    });
+
+    it("should say what the amount comes to in the payer's money on mainnet, under it once it reads and on the review, with the price's time", async () => {
+      setNodeNetwork(networks.mainnet);
+
+      const { container, getByRole } = render(Send, {
+        ...baseProps,
+        initialAmount: "2",
+        initialRecipient: otherAccount,
+      });
+      const fields = fieldsOf(getByRole);
+      const VALUE = /^≈ \$1\.00 · price at \d{1,2}:\d{2}/;
+      const underAmount = () =>
+        container.querySelector(".send__in-currency")?.textContent?.trim();
+
+      await vi.waitFor(() => expect(underAmount()).toMatch(VALUE));
+
+      // As the amount is typed: none for one that doesn't read.
+      await fireEvent.input(fields.amount(), { target: { value: "2..1" } });
+
+      expect(underAmount()).toBeUndefined();
+
+      await fireEvent.input(fields.amount(), { target: { value: "4" } });
+
+      expect(underAmount()).toMatch(/^≈ \$2\.00 · price at /);
+
+      await fireEvent.click(fields.review());
+
+      expect(
+        container.querySelector(".send__summary-currency")?.textContent?.trim()
+      ).toMatch(/^≈ \$2\.00 · price at /);
+    });
+
+    it("should say nothing of it on testnet, where DUSK has no value, nor ask for a price", async () => {
+      setNodeNetwork(networks.testnet);
+
+      const { container } = render(Send, {
+        ...baseProps,
+        initialAmount: "2",
+        initialRecipient: otherAccount,
+      });
+
+      await tick();
+
+      expect(container.querySelector(".send__in-currency")).toBeNull();
+      expect(prices).not.toHaveBeenCalled();
+    });
+  });
+
   describe("Summary", () => {
     it("should sum the transfer up, the amount exactly and the fee and total as the most they cost", async () => {
       const amount = 2345.5;

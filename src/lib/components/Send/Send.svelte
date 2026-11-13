@@ -82,6 +82,7 @@
   import { AnchorButton, Button, Icon, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
+    AmountInCurrency,
     AppAnchor,
     BalanceValue,
     Banner,
@@ -2128,6 +2129,12 @@
             variant="secondary"
           />
         </div>
+        <!-- What it comes to in the person's money, once it reads. -->
+        <AmountInCurrency
+          className="send__hint send__in-currency"
+          hidden={isAmountMasked}
+          lux={parsedAmount}
+        />
         <p class="send__hint">
           Available <BalanceValue
             exact={formatDuskExact(availableBalance, language)}
@@ -2260,6 +2267,11 @@
           <dt>Amount</dt>
           <dd>
             <BalanceValue hidden={isAmountMasked} value={amountText} /> DUSK
+            <AmountInCurrency
+              className="send__summary-currency"
+              hidden={isAmountMasked}
+              lux={parsedAmount}
+            />
           </dd>
         </div>
         {#if transactionMemo}
@@ -2537,6 +2549,12 @@
 
   .send__privacy {
     color: var(--calm-text);
+  }
+
+  .send__summary :global(.send__summary-currency) {
+    display: block;
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
   }
 
   .send__save :global(.send__save-yes) {
