@@ -415,6 +415,39 @@ describe("History", () => {
     expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
   });
 
+  it("asks at Save about a counterparty's name another contact's starts as, saving it only once answered", async () => {
+    // Lucas's old phone, saved as a contact before.
+    const OLD_PHONE =
+      "25z9o6qCaVk1ReyHjmB4pyXcE3D1vRu4FVV1rR8ChYcosdTSktkANLDHq9GD6B4985Q1S2KrDZYBRrohWAjrNmACFUb3UMSRyYctJRzh3d28R1ZNC1ZyKm1HwXL4FF5Etftt";
+
+    saveContact({ address: OLD_PHONE, name: "Shop (old phone)" });
+
+    const { getByRole, queryByRole } = render(History);
+
+    await fireEvent.click(getByRole("button", { name: /^alice-shop\.dusk/ }));
+    await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
+    await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+      target: { value: "Shop" },
+    });
+
+    expect(getByRole("alert")).toHaveTextContent(
+      `You have a contact called Shop (old phone), at ${shortAddress(OLD_PHONE)}. Is this someone else?`
+    );
+
+    await fireEvent.click(getByRole("button", { name: "Save" }));
+
+    expect(listContacts()).toHaveLength(1);
+    expect(getByRole("button", { name: "Yes, save it" })).toHaveFocus();
+
+    await fireEvent.click(getByRole("button", { name: "Yes, save it" }));
+
+    expect(listContacts()).toStrictEqual([
+      expect.objectContaining({ address: ALICE, name: "Shop" }),
+      expect.objectContaining({ address: OLD_PHONE }),
+    ]);
+    expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
+  });
+
   it("marks a contact whose name looks like another's with its address, as Send does, and shows one's hidden characters as codes", async () => {
     saveContact({ address: ALICE, name: "Estudio Marta" });
     // A Cyrillic а, saved after the warning, for another address.

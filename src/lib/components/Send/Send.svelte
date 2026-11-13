@@ -10,7 +10,11 @@
     mdiQrcodeScan,
   } from "@mdi/js";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { lookAlikes, sameName } from "@dusk-network/app-core/names";
+  import {
+    NAME_SAVE_YES,
+    lookAlikes,
+    sameName,
+  } from "@dusk-network/app-core/names";
   import {
     contactNameProblem,
     contactNameText,
@@ -895,20 +899,44 @@
     );
   }
 
-  function saveRecipient() {
+  /**
+   * The contact's name a question about it was asked of at Save: it's saved
+   * only as the person says so, and asked again once it's typed again.
+   */
+  let contactAskedOf = "";
+
+  /**
+   * Saves the recipient to the contacts: never one of the wallet's own
+   * accounts, nor with a profile's name; with a name that asks a question,
+   * only once it's answered (`answered`).
+   *
+   * @param {boolean} [answered]
+   */
+  async function saveRecipient(answered = false) {
     const name = contactName.trim();
 
-    // Never one of the wallet's own accounts, nor a profile's name.
-    if (name && !own && !isFalseContactName && !contactNameIssue?.refused) {
-      saveContact({
-        address: recipientAddress,
-        checkedAt: recipientName ? Date.now() : null,
-        duskName: recipientName || null,
-        name,
-      });
-      isSavingContact = false;
-      contactName = "";
+    if (!name || own || isFalseContactName || contactNameIssue?.refused) {
+      return;
     }
+
+    if (contactNameIssue && !answered) {
+      contactAskedOf = contactName;
+      await tick();
+      /** @type {HTMLElement | null} */ (
+        document.querySelector("button.send__save-yes")
+      )?.focus();
+
+      return;
+    }
+
+    saveContact({
+      address: recipientAddress,
+      checkedAt: recipientName ? Date.now() : null,
+      duskName: recipientName || null,
+      name,
+    });
+    isSavingContact = false;
+    contactName = "";
   }
 
   /**
@@ -1465,7 +1493,15 @@
   }
 
   $: isFalseContactName = passesForDuskName(contactName, recipientName);
-  $: contactNameIssue = contactNameProblem(contactName, $profilesHere);
+  $: contactNameIssue = contactNameProblem(
+    contactName,
+    $profilesHere,
+    undefined,
+    recipientAddress
+  );
+  $: if (contactAskedOf && contactAskedOf !== contactName) {
+    contactAskedOf = "";
+  }
 
   $: suggestion =
     nameLookup?.error === "not-registered"
@@ -1982,7 +2018,10 @@
             </div>
 
             {#if isSavingContact}
-              <form class="send__save" on:submit|preventDefault={saveRecipient}>
+              <form
+                class="send__save"
+                on:submit|preventDefault={() => saveRecipient()}
+              >
                 <label class="send__label" for="{id}-contact-name"
                   >Contact name</label
                 >
@@ -2018,6 +2057,16 @@
                   <p class="send__hint" role="alert">
                     {contactNameIssue.words}
                   </p>
+                  <!-- Asked at Save: saved only as the answer says so. -->
+                  {#if !contactNameIssue.refused && contactAskedOf === contactName}
+                    <Button
+                      className="send__save-yes"
+                      on:click={() => saveRecipient(true)}
+                      size="small"
+                      text={NAME_SAVE_YES}
+                      variant="secondary"
+                    />
+                  {/if}
                 {/if}
                 <p class="send__hint">
                   Saved only in this wallet, on this device.
@@ -2488,6 +2537,10 @@
 
   .send__privacy {
     color: var(--calm-text);
+  }
+
+  .send__save :global(.send__save-yes) {
+    align-self: flex-start;
   }
 
   .send__save {

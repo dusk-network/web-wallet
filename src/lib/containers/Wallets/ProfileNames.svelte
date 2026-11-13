@@ -7,12 +7,17 @@
    * first. A name is saved as its field is left, or with Enter: at most 40
    * characters, on one line, said once the field holds that many, and never
    * cut short; empty, the profile goes by its number again. One with what
-   * can't be seen in it, which can read as another name, is refused.
+   * can't be seen in it, which can read as another name, is refused. One
+   * that asks a question, as any `.dusk` name in it, is saved only once the
+   * person answers it.
    */
   import { mdiAlertOutline, mdiCheck } from "@mdi/js";
-  import { profileNameCheck } from "@dusk-network/app-core/names";
+  import {
+    NAME_SAVE_YES,
+    profileNameCheck,
+  } from "@dusk-network/app-core/names";
 
-  import { Textbox } from "$lib/dusk/components";
+  import { Button, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { shortenAddress } from "$lib/dusk/string";
   import { FieldLimit, SectionHead } from "$lib/components";
@@ -45,12 +50,20 @@
   let refused = [];
 
   /**
-   * What a name saved asks, by profile: whether it's someone else, as a
-   * contact's name starts as it.
+   * What a name asks before it's saved, by profile: whether it's someone
+   * else's, as a contact's name starts as it, or whether a `.dusk` name in
+   * it is the profile's own.
    *
    * @type {string[]}
    */
   let asked = [];
+
+  /**
+   * The name each question was asked of, by profile: what Yes saves.
+   *
+   * @type {string[]}
+   */
+  let askedOf = [];
 
   /**
    * The names the fields last started from, and the wallet they're of: a
@@ -83,8 +96,15 @@
     shownFor = key;
   }
 
-  /** @param {number} index */
-  async function save(index) {
+  /**
+   * Saves a profile's name as its field holds it, unless it asks a question
+   * not answered yet (`answered`): then the question waits for its answer,
+   * which saves it.
+   *
+   * @param {number} index
+   * @param {boolean} [answered]
+   */
+  async function save(index, answered = false) {
     const key = walletKey;
     const name = typedWalletName(drafts[index]);
 
@@ -93,36 +113,44 @@
       return;
     }
 
+    // Nothing to save, or ask, when it's the name the profile has, or will
+    // have once a save under way is done.
+    if (
+      name === (saving[index] ?? normalizeWalletName($openProfileNames[index]))
+    ) {
+      drafts[index] = name;
+      asked[index] = "";
+      return;
+    }
+
     // Empty, it goes by its number: no other's name, and nothing to ask.
     // Another profile's or a contact's name, or one like it, is refused; one
-    // that is a contact's .dusk name, or starts as a .dusk name or a
-    // contact's name, is asked about, and saved all the same.
-    const said = name
-      ? profileNameCheck(name, {
-          contacts: listContacts(),
-          profiles: everyProfile,
-          self: String(profiles[index].account),
-        })
-      : null;
+    // with a .dusk name in it, or that starts as a contact's name, is asked
+    // about, and saved only once the answer says so.
+    const said =
+      name && !(answered && askedOf[index] === name)
+        ? profileNameCheck(name, {
+            contacts: listContacts(),
+            profiles: everyProfile,
+            self: String(profiles[index].account),
+          })
+        : null;
 
     if (said?.refused) {
       refused[index] = said.words;
       return;
     }
 
-    asked[index] = said?.words ?? "";
-
-    // The field shows the name as it's kept.
-    drafts[index] = name;
-
-    // Nothing to save when it's the name the profile has, or will have once
-    // a save under way is done.
-    if (
-      name === (saving[index] ?? normalizeWalletName($openProfileNames[index]))
-    ) {
+    if (said) {
+      asked[index] = said.words;
+      askedOf[index] = name;
       return;
     }
 
+    asked[index] = "";
+
+    // The field shows the name as it's kept.
+    drafts[index] = name;
     saving[index] = name;
 
     try {
@@ -212,6 +240,7 @@
           on:input={() => {
             refused[i] = "";
             asked[i] = "";
+            askedOf[i] = "";
           }}
           on:keydown={(event) => handleKeyDown(event, i)}
           placeholder="Name, only on this device"
@@ -233,6 +262,14 @@
           >
             {asked[i]}
           </p>
+          <!-- Saved only as the answer says so. -->
+          <Button
+            className="profile-names__yes"
+            on:click={() => save(i, true)}
+            size="small"
+            text={NAME_SAVE_YES}
+            variant="secondary"
+          />
         {/if}
         <FieldLimit limit={NAME_LIMIT} value={drafts[i] ?? ""} />
       </li>
@@ -292,6 +329,10 @@
   .profile-names__asked {
     font-size: 0.875rem;
     line-height: 1.4;
+  }
+
+  .profile-names__profile :global(.profile-names__yes) {
+    align-self: flex-start;
   }
 
   .profile-names__account {

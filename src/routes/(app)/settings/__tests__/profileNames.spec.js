@@ -11,6 +11,7 @@ import { stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import {
   addWallet,
+  openProfileNames,
   removeWallet,
   switchToWallet,
   unlockWallets,
@@ -380,7 +381,7 @@ describe("Settings › Profiles", () => {
     expect(toasts).toEqual([]);
   });
 
-  it("asks about a profile name a contact's starts as, word for word, and saves it all the same", async () => {
+  it("asks about a profile name a contact's starts as, word for word, and saves it only once answered", async () => {
     const { openTestContacts } = await import("$lib/test-helpers");
     const { removeContact, saveContact } = await import("$lib/contacts");
 
@@ -400,22 +401,38 @@ describe("Settings › Profiles", () => {
 
       await nameProfile(settings, 1, "Lucas");
 
-      expect(toasts).toEqual(["Name saved."]);
+      // Asked: nothing saved yet.
+      expect(toasts).toEqual([]);
       expect(field).toHaveAccessibleDescription(
         "You have a contact called Lucas (petit-fils). Is this someone else?"
       );
-      expect(fieldsOf(settings)[0]).toBe("Lucas");
+      expect(get(openProfileNames)[0] ?? "").toBe("");
+
+      // Answered: saved as it was typed, and asked no more as it's left.
+      await fireEvent.click(
+        settings.getByRole("button", { name: "Yes, save it" })
+      );
+      await vi.waitFor(() => expect(toasts).toEqual(["Name saved."]));
+
+      expect(get(openProfileNames)[0]).toBe("Lucas");
+
+      await fireEvent.blur(field);
+      await settle();
+
+      expect(field).not.toHaveAccessibleDescription();
+      expect(toasts).toEqual(["Name saved."]);
 
       // A word of it alone, or another name, asks nothing.
       await nameProfile(settings, 1, "Luc");
 
       expect(field).not.toHaveAccessibleDescription();
+      expect(toasts).toEqual(["Name saved.", "Name saved."]);
     } finally {
       removeContact(lucas.id);
     }
   });
 
-  it("asks about a profile name that is a contact's .dusk name, naming that contact, or starts as the other profile's .dusk name, and saves it all the same", async () => {
+  it("asks about a profile name with any .dusk name in it, a contact's, the other profile's or a stranger's, naming whose where it can, and saves it only once answered", async () => {
     const { openTestContacts } = await import("$lib/test-helpers");
     const { removeContact, saveContact } = await import("$lib/contacts");
     const { keepVerifiedName } =
@@ -461,6 +478,11 @@ describe("Settings › Profiles", () => {
           "sofiadesign",
           "Your other profile is called sofiadesign.dusk. Is this someone else?",
         ],
+        // Someone paid, not a contact: Marek's "sofiadesign.dusk" in another's place.
+        [
+          "Mi cliente (marek.dusk)",
+          "marek.dusk is a .dusk name. Is it this profile's?",
+        ],
       ]) {
         await nameProfile(settings, 2, name, "enter");
 
@@ -468,7 +490,17 @@ describe("Settings › Profiles", () => {
         expect(fieldsOf(settings)[1]).toBe(name);
       }
 
-      expect(toasts).toEqual(["Name saved.", "Name saved.", "Name saved."]);
+      // Nothing saved while asked.
+      expect(toasts).toEqual([]);
+      expect(get(openProfileNames)[1] ?? "").toBe("");
+
+      // Yes saves the name asked about.
+      await fireEvent.click(
+        settings.getByRole("button", { name: "Yes, save it" })
+      );
+      await vi.waitFor(() => expect(toasts).toEqual(["Name saved."]));
+
+      expect(get(openProfileNames)[1]).toBe("Mi cliente (marek.dusk)");
     } finally {
       removeContact(wendy.id);
       removeContact(alice.id);

@@ -36,6 +36,7 @@ import WalletChangedError from "$lib/errors/wallet-changed-error";
 import { networks } from "@dusk-network/networks";
 import {
   contactsWritten,
+  findContact,
   getContact,
   listContacts,
   removeContact,
@@ -4144,6 +4145,46 @@ describe("Send", () => {
     /** @param {HTMLElement} container */
     const cardTitle = (container) =>
       container.querySelector(".send__card-title")?.textContent?.trim();
+
+    it("should ask at Save about a contact's name another contact's starts as, and save it only once answered", async () => {
+      // Lucas, as saved before, at another address.
+      const lucas = saveContact({
+        address: bep20BridgeAddress,
+        name: "Lucas (petit-fils)",
+      });
+
+      try {
+        const { getByRole, getByText, queryByRole } = render(Send, baseProps);
+
+        await fireEvent.input(fieldsOf(getByRole).to(), {
+          target: { value: otherAccount },
+        });
+        await fireEvent.click(
+          getByRole("button", { name: "Save to contacts" })
+        );
+        await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+          target: { value: "Lucas" },
+        });
+
+        expect(
+          getByText(
+            `You have a contact called Lucas (petit-fils), at ${shortenAddress(bep20BridgeAddress)}. Is this someone else?`
+          )
+        ).toBeInTheDocument();
+
+        await fireEvent.click(getByRole("button", { name: "Save" }));
+
+        expect(findContact(otherAccount)).toBeNull();
+        expect(getByRole("button", { name: "Yes, save it" })).toHaveFocus();
+
+        await fireEvent.click(getByRole("button", { name: "Yes, save it" }));
+
+        expect(findContact(otherAccount)).toMatchObject({ name: "Lucas" });
+        expect(queryByRole("textbox", { name: "Contact name" })).toBeNull();
+      } finally {
+        removeContact(lucas.id);
+      }
+    });
 
     it("should refuse to save a contact by the name of a profile here", async () => {
       await holdOtherWallet();

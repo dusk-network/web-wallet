@@ -26,11 +26,15 @@ const { OWN } = vi.hoisted(() => ({
 }));
 const walletNames = new Map([[OWN, "Wallet 2 · Profile 1"]]);
 
-vi.mock("$lib/wallets/accountNames", async () => ({
-  default: (await import("svelte/store")).readable(
-    new Map([[OWN, "Wallet 2 · Profile 1"]])
-  ),
-}));
+vi.mock("$lib/wallets/accountNames", async () => {
+  const { readable } = await import("svelte/store");
+
+  return {
+    default: readable(new Map([[OWN, "Wallet 2 · Profile 1"]])),
+    // The profiles here, by name: no contact takes one's.
+    profilesHere: readable([{ address: OWN, name: "Profile 1" }]),
+  };
+});
 
 const BRIDGE = "ab".repeat(32);
 const EVM = "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A";

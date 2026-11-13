@@ -1,6 +1,7 @@
 <script>
+  import { NAME_SAVE_YES } from "@dusk-network/app-core/names";
   import { displayText } from "@dusk-network/app-core/text";
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onMount, tick } from "svelte";
   import {
     mdiAlertCircleOutline,
     mdiCheck,
@@ -38,6 +39,7 @@
   import { addBasePath } from "$lib/navigation";
   import {
     addressType,
+    contactNameProblem,
     contactNameText,
     contactsStore,
     passesForDuskName,
@@ -47,7 +49,7 @@
   import { stDuskLines } from "$lib/sozu";
   import { nodeBaseUrl } from "$lib/url";
   import { duskEvmExplorerTx } from "$lib/web3/duskEvm";
-  import walletAccountNames from "$lib/wallets/accountNames";
+  import walletAccountNames, { profilesHere } from "$lib/wallets/accountNames";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
 
@@ -95,18 +97,47 @@
   let isSavingContact = false;
   let contactName = "";
 
-  function saveCounterparty() {
+  /**
+   * The contact's name a question about it was asked of at Save: it's saved
+   * only as the person says so, and asked again once it's typed again.
+   */
+  let contactAskedOf = "";
+
+  /**
+   * Saves the counterparty to the contacts: never with a profile's name;
+   * with a name that asks a question, only once it's answered (`answered`).
+   *
+   * @param {boolean} [answered]
+   */
+  async function saveCounterparty(answered = false) {
     const name = contactName.trim();
 
-    if (name && p.counterparty && !isFalseContactName) {
-      saveContact({
-        address: p.counterparty,
-        duskName: savedFromName,
-        name,
-      });
-      isSavingContact = false;
-      contactName = "";
+    if (
+      !name ||
+      !p.counterparty ||
+      isFalseContactName ||
+      contactNameIssue?.refused
+    ) {
+      return;
     }
+
+    if (contactNameIssue && !answered) {
+      contactAskedOf = contactName;
+      await tick();
+      /** @type {HTMLElement | null} */ (
+        document.querySelector("button.tx-detail__save-yes")
+      )?.focus();
+
+      return;
+    }
+
+    saveContact({
+      address: p.counterparty,
+      duskName: savedFromName,
+      name,
+    });
+    isSavingContact = false;
+    contactName = "";
   }
 
   /**
@@ -247,6 +278,16 @@
   $: duskName = row.counterpartyName ?? row.toName;
   $: savedFromName = duskName?.endsWith(".dusk") ? duskName : null;
   $: isFalseContactName = passesForDuskName(contactName, savedFromName);
+  // Said as at every Save of a contact: refused, or asked.
+  $: contactNameIssue = contactNameProblem(
+    contactName,
+    $profilesHere,
+    undefined,
+    String(p?.counterparty ?? "")
+  );
+  $: if (contactAskedOf && contactAskedOf !== contactName) {
+    contactAskedOf = "";
+  }
   $: contact =
     $contactsStore.find((saved) => saved.address === p.counterparty) ?? null;
   // Never one of the profiles of the wallets here.
@@ -419,7 +460,7 @@
             {:else if isSavingContact}
               <form
                 class="tx-detail__save-form"
-                on:submit|preventDefault={saveCounterparty}
+                on:submit|preventDefault={() => saveCounterparty()}
               >
                 <label for="tx-detail-contact-name">Contact name</label>
                 <div class="tx-detail__save-row">
@@ -438,7 +479,9 @@
                     variant="secondary"
                   />
                   <Button
-                    disabled={!contactName.trim() || isFalseContactName}
+                    disabled={!contactName.trim() ||
+                      isFalseContactName ||
+                      contactNameIssue?.refused}
                     size="small"
                     text="Save"
                     type="submit"
@@ -450,6 +493,20 @@
                   <p class="tx-detail__note" role="alert">
                     That looks like a .dusk name. Choose another name.
                   </p>
+                {:else if contactNameIssue}
+                  <p class="tx-detail__note" role="alert">
+                    {contactNameIssue.words}
+                  </p>
+                  <!-- Asked at Save: saved only as the answer says so. -->
+                  {#if !contactNameIssue.refused && contactAskedOf === contactName}
+                    <Button
+                      className="tx-detail__save-yes"
+                      on:click={() => saveCounterparty(true)}
+                      size="small"
+                      text={NAME_SAVE_YES}
+                      variant="secondary"
+                    />
+                  {/if}
                 {/if}
                 <p class="tx-detail__note">
                   Saved only in this wallet, on this device.

@@ -19,18 +19,14 @@
  */
 
 import {
-  NAME_HIDES,
+  contactNameCheck,
   lookAlikes,
-  nameClash,
-  nameStarts,
   nameHides,
 } from "@dusk-network/app-core/names";
 import { displayText, searchKey } from "@dusk-network/app-core/text";
 import { isAccount } from "@dusk-network/networks/account";
 import { ProfileGenerator } from "@dusk/w3sper";
 import { writable } from "svelte/store";
-
-import { shortenAddress } from "$lib/dusk/string";
 
 import {
   contactsNamespace,
@@ -598,64 +594,33 @@ export const contactNameText = (name) =>
   nameHides(name) ? displayText(name).text : name;
 
 /**
- * What's wrong with a name for a contact: one with what can't be seen in it
- * (app-core's `nameHides`) is refused, as it can read as another name. By
- * app-core's look-alikes, one that is, or looks like, a profile's here, by
- * its name or its `.dusk` name, is refused, as a review would read the
- * contact as that profile; one of another contact's, whatever its capitals,
- * spaces and punctuation, or in other letters, is said with that contact's
- * address, and can be saved. One that starts as a profile's name, or that a
- * profile's starts as, word for word, is asked about, and can be saved.
- * Null for none of it.
+ * What a contact's name says at Save, the same in both wallets
+ * (`@dusk-network/app-core/names`' contactNameCheck): refused, where it hides
+ * what can't be seen, or is or looks like a profile's name here, as a review
+ * would read the contact as that profile; asked, where it is, looks like,
+ * starts as or is the start of another contact's name, or starts as a
+ * profile's, and saved only once the person says so (`NAME_SAVE_YES`). Null
+ * for none of it. A name that looks like a `.dusk` name it isn't saved from
+ * is `passesForDuskName`'s to say, before this.
  *
  * @param {string} name
  * @param {{ address: string, duskName?: string, name: string }[]} profiles
- *   The profiles here
+ *   The profiles here, by their public accounts
  * @param {string} [exceptId] The contact changed
+ * @param {string} [address] The address it's saved with
  * @returns {{ refused: boolean, words: string } | null}
  */
-export function contactNameProblem(name, profiles, exceptId) {
-  if (nameHides(name)) {
-    return { refused: true, words: NAME_HIDES };
-  }
-
-  const clash = nameClash(name, {
+export const contactNameProblem = (name, profiles, exceptId, address) =>
+  contactNameCheck(name, {
+    address,
     contacts: listContacts(),
     except: exceptId,
-    profiles,
+    profiles: profiles.map((profile) => ({
+      account: profile.address,
+      duskName: profile.duskName,
+      name: profile.name,
+    })),
   });
-
-  if (clash?.kind === "profile") {
-    return {
-      refused: true,
-      words: `${
-        clash.same
-          ? `One of your profiles is called ${contactNameText(clash.name)}`
-          : `That looks like ${contactNameText(clash.name)}, one of your profiles`
-      }. Choose another name.`,
-    };
-  }
-
-  if (clash) {
-    return {
-      refused: false,
-      words: `${
-        clash.same
-          ? `You already have a contact called ${contactNameText(clash.name)}`
-          : `That looks like your contact ${contactNameText(clash.name)}`
-      }, at ${shortenAddress(clash.entry.address)}. Only the address will tell them apart.`,
-    };
-  }
-
-  const start = nameStarts(name, { profiles });
-
-  return start
-    ? {
-        refused: false,
-        words: `One of your profiles is called ${contactNameText(start.name)}. Is this someone else?`,
-      }
-    : null;
-}
 
 /**
  * The contact a recipient is: one saved with that address, or with that
