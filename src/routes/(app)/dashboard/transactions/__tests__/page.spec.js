@@ -914,7 +914,8 @@ describe("History", () => {
       // Lena's: 10 DUSK into Sozu, 0.025 of it its fee, for 5 stDUSK at
       // 1.995 DUSK each; half of them gave back 5.25 DUSK at 2.1, and the
       // rest is worth 5.5 DUSK now, at 2.2. Grown while held: 0.775 DUSK,
-      // all Sozu says the stake earned; taken out by unstaking: 0.2625.
+      // all Sozu says the stake earned; taken out by unstaking: 0.25, what
+      // came back less what that half cost with its fee, 5 DUSK.
       mocks.whole.mockResolvedValue({
         rows: [
           rowOf("e1"),
@@ -968,7 +969,7 @@ describe("History", () => {
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
             [`${year - 1}`, "1 DUSK", "0 DUSK", "0 DUSK"],
-            [`${year}`, "2 DUSK", "0.775 DUSK", "0.2625 DUSK"],
+            [`${year}`, "2 DUSK", "0.775 DUSK", "0.25 DUSK"],
           ])
         );
         expect(
@@ -984,7 +985,7 @@ describe("History", () => {
         ]);
         // How what unstaking took out is counted, under them.
         expect(container).toHaveTextContent(
-          "Taken out by unstaking is part of grown while held: what came back, less what that stDUSK cost at its average price, deposit fees not counted."
+          "Taken out by unstaking is part of grown while held: what came back, less that stDUSK's average cost, deposit fees included."
         );
         expect(prices).not.toHaveBeenCalled();
 
@@ -1013,7 +1014,7 @@ describe("History", () => {
               `${year}`,
               "2 DUSK · €1.00",
               "0.775 DUSK · €0.39",
-              "0.2625 DUSK · €0.13",
+              "0.25 DUSK · €0.13",
             ],
           ])
         );
@@ -1062,7 +1063,7 @@ describe("History", () => {
               `${year}`,
               "2 DUSK · ¥1",
               "0.775 DUSK · under ¥1",
-              "0.2625 DUSK · under ¥1",
+              "0.25 DUSK · under ¥1",
             ],
           ])
         );

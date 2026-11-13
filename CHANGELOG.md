@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Show amounts to start with in the currency of the browser's region, as Singapore dollars in Singapore, where DUSK has a price in it, else in US dollars
 - Let the Dusk app on Android open the wallet's payment request links where it's installed, and lead a request's page there with the way that works in the browser, with the Dusk app and Firefox after it
+- Count what unstaking took out of Sozu at average cost with the deposit fees included in staking rewards by year, as the line under them says, and show a loss as one
 
 ### Removed
 

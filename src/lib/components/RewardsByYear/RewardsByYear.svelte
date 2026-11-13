@@ -9,7 +9,11 @@
    * where asked, with what has no value said.
    */
   import { createEventDispatcher } from "svelte";
-  import { REWARDS_COUNTED, REWARD_WORDS } from "@dusk-network/app-core/export";
+  import {
+    REWARDS_COUNTED,
+    REWARD_WORDS,
+    rewardWorth,
+  } from "@dusk-network/app-core/export";
 
   import { currencyWords } from "$lib/activity/accountantExport";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
@@ -61,22 +65,13 @@
       return { dusk, exactDusk, note: ` · no ${one} value`, value: null };
     }
 
-    const money = new Intl.NumberFormat(locale || undefined, {
-      currency: valuedIn,
-      style: "currency",
-    });
-    // The least it shows, a cent or a yen: less than that, as under it.
-    const least = 10 ** -(money.resolvedOptions().maximumFractionDigits ?? 2);
-    const amount = Number(worth);
-
+    // As both wallets say it: under the least it shows, a loss as one.
     return {
       dusk,
       exactDusk,
       note: unpriced ? `, ${unpriced} with no ${one} value` : "",
       value:
-        amount > 0 && amount < least
-          ? `under ${money.format(least)}`
-          : money.format(amount),
+        rewardWorth(worth, { currency: valuedIn, language: locale }) || null,
     };
   }
 </script>
