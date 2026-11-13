@@ -30,13 +30,29 @@
   let stallTimer;
 
   /**
-   * Starts the wait again whenever the sync moves, and ends it with the sync.
+   * What the sync showed as the wait last started: null for nothing yet, and
+   * once Try again starts a sync, which waits afresh.
+   *
+   * @type {unknown[] | null}
+   */
+  let watched = null;
+
+  /**
+   * Starts the wait again whenever the sync moves, and ends it with the sync:
+   * not as the rest of the wallet changes, as its balances are said to be
+   * out of date while it doesn't answer.
    *
    * @param {boolean} isInProgress
    * @param {...unknown} moved What changes as it gets something back
    */
   function watchStall(isInProgress, ...moved) {
-    void moved;
+    const shown = [isInProgress, ...moved];
+
+    if (watched?.every((value, at) => Object.is(value, shown[at]))) {
+      return;
+    }
+
+    watched = shown;
     clearTimeout(stallTimer);
     isStalled = false;
 
@@ -220,6 +236,8 @@
     }
 
     isRetrying = true;
+    // The sync it starts waits afresh, though it shows what the last did.
+    watched = null;
 
     // The balances and the stake shown are read again once it's done.
     walletStore.refreshBalance().finally(() => {

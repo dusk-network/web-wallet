@@ -40,6 +40,7 @@ import { tellOtherTabs } from "$lib/wallets/tabs";
 import { profilesOf } from "$lib/wallets/profiles";
 import { useWalletData } from "$lib/wallets/walletData";
 
+import networkReach from "./networkReach";
 import networkStore from "./networkStore";
 import settingsStore from "./settingsStore";
 
@@ -1126,15 +1127,16 @@ function reset() {
 async function setCurrentProfile(profile) {
   const store = get(walletStore);
 
-  // What shows is the other profile's until this one's are read.
+  // What shows is the other profile's until this one's are read: what was
+  // read before, while the network doesn't answer.
   return store.profiles.includes(profile)
     ? Promise.resolve(
         set({
           ...store,
           balanceRead: false,
-          balanceReadFailed: false,
+          balanceReadFailed: !isAnswering,
           currentProfile: profile,
-          stakeReadFailed: false,
+          stakeReadFailed: !isAnswering,
         })
       ).then(async () => {
         await updateStaticInfo();
@@ -1658,6 +1660,32 @@ const sendDuskEvmWithdrawalCall = async (
     { gas }
   );
 };
+
+/** Whether the network answered, as its pill last found it. */
+let isAnswering = true;
+
+// While the network doesn't answer, offline or silent, the balances and the
+// stake that show are what was read before, and say so until a read gets
+// through; once it answers again, they're read at once.
+networkReach.subscribe((reach) => {
+  const wasAnswering = isAnswering;
+
+  isAnswering = reach === "answering";
+
+  if (!get(walletStore).initialized) {
+    return;
+  }
+
+  if (!isAnswering) {
+    update((store) => ({
+      ...store,
+      balanceReadFailed: true,
+      stakeReadFailed: true,
+    }));
+  } else if (!wasAnswering) {
+    void refreshBalance();
+  }
+});
 
 /** @type {WalletStore} */
 export default {

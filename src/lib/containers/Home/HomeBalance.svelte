@@ -108,7 +108,14 @@
   {#if fiat}
     <p class="home-balance__fiat">≈ <BalanceValue value={fiat} /></p>
   {/if}
-  {#if unread}
+  <!-- What couldn't be read, by name: what shows of it is what was read
+    before. -->
+  {#if unread && stakeUnread}
+    <p class="home-balance__unread">
+      Your balance and stake couldn't be read just now. This total may be out of
+      date.
+    </p>
+  {:else if unread}
     <p class="home-balance__unread">
       Your balance couldn't be read just now. This may be out of date.
     </p>

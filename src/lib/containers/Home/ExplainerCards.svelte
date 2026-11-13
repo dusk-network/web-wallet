@@ -47,8 +47,8 @@
   export let stakeUnread = false;
 
   /**
-   * Whether the balances couldn't be read: the public one shown is what was
-   * read before.
+   * Whether the balances couldn't be read: the public and shielded ones
+   * shown are what was read before.
    */
   export let balanceUnread = false;
 
@@ -113,6 +113,11 @@
     <p class="explainer-card__text">
       Amounts and accounts stay hidden on chain.
     </p>
+    {#if balanceUnread}
+      <p class="explainer-card__text">
+        It couldn't be read just now. This may be out of date.
+      </p>
+    {/if}
   </li>
   {#if stakeEnabled}
     <li class="explainer-card">

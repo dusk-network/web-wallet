@@ -519,22 +519,18 @@ describe("Dashboard", () => {
     );
   });
 
-  it("says the total and the public balance may be out of date where the balances couldn't be read, as the stake does", async () => {
+  it("says every figure may be out of date where it couldn't be read, the total naming what couldn't be", async () => {
     const { container } = render(Dashboard, props);
-    const total = () =>
-      container
-        .querySelector(".home-balance")
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
-    const publicCard = () =>
-      container
-        .querySelectorAll(".explainer-card")[0]
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
+    const textOf = (/** @type {Element | null | undefined} */ element) =>
+      element?.textContent?.replace(/\s+/g, " ").trim();
+    const total = () => textOf(container.querySelector(".home-balance"));
+    const card = (/** @type {number} */ n) =>
+      textOf(container.querySelectorAll(".explainer-card")[n]);
 
-    expect(total()).not.toContain("may be out of date");
-    expect(publicCard()).not.toContain("may be out of date");
+    expect(total()).not.toContain("out of date");
+    expect([card(0), card(1), card(2)].join(" ")).not.toContain("out of date");
 
+    // Neither the balances nor the stake, as offline or with a silent node.
     await act(() =>
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
@@ -544,20 +540,49 @@ describe("Dashboard", () => {
     );
 
     expect(total()).toContain(
-      "Your balance couldn't be read just now. This may be out of date."
+      "Your balance and stake couldn't be read just now. This total may be out of date."
     );
-    expect(publicCard()).toBe(
+    expect(card(0)).toBe(
       "Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date."
     );
-    expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
+    expect(card(1)).toBe(
+      "Shielded 2,345 DUSK Amounts and accounts stay hidden on chain. It couldn't be read just now. This may be out of date."
+    );
+    expect(card(2)).toContain(
       "Your stake couldn't be read just now. This may be out of date."
     );
+
+    // The balances alone.
+    await act(() =>
+      mockedWalletStore.setMockedStoreValue({
+        ...initialStore,
+        balanceReadFailed: true,
+      })
+    );
+
+    expect(total()).toContain(
+      "Your balance couldn't be read just now. This may be out of date."
+    );
+    expect(card(2)).not.toContain("out of date");
+
+    // The stake alone.
+    await act(() =>
+      mockedWalletStore.setMockedStoreValue({
+        ...initialStore,
+        stakeReadFailed: true,
+      })
+    );
+
+    expect(total()).toContain(
+      "Your stake couldn't be read just now. This total may be out of date."
+    );
+    expect([card(0), card(1)].join(" ")).not.toContain("out of date");
 
     // Read again: said no more.
     await act(() => mockedWalletStore.setMockedStoreValue(initialStore));
 
-    expect(total()).not.toContain("may be out of date");
-    expect(publicCard()).not.toContain("may be out of date");
+    expect(total()).not.toContain("out of date");
+    expect([card(0), card(1), card(2)].join(" ")).not.toContain("out of date");
   });
 
   it("says the total may be out of date while the stake it counts couldn't be read", async () => {

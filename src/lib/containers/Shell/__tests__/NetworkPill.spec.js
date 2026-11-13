@@ -196,6 +196,52 @@ describe("NetworkPill", () => {
     }
   });
 
+  it("keeps saying it can't reach the network, with Try again, while a stalled sync gets nothing back as the node still answers how far its chain got, whatever else the wallet says meanwhile", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const { getByRole } = render(NetworkPill);
+
+      await setSync({ isInProgress: true, progress: 0.25 });
+      await act(() => vi.advanceTimersByTimeAsync(30_000));
+
+      expect(get(networkReach)).toBe("silent");
+
+      // As the wallet does once it's said: its balances may be out of date,
+      // its sync as it was.
+      await act(() =>
+        mockedWalletStore.setMockedStoreValue({
+          ...mockedWalletStore.getMockedStoreValue(),
+          balanceReadFailed: true,
+          stakeReadFailed: true,
+        })
+      );
+      await act(() => vi.advanceTimersByTimeAsync(20_000));
+
+      expect(askNode).toHaveBeenCalled();
+      expect(
+        getByRole("button", {
+          name: "Network: Testnet, can't reach the network",
+        })
+      ).toBeInTheDocument();
+      expect(get(networkReach)).toBe("silent");
+
+      await fireEvent.click(getByRole("button", { name: /testnet/i }));
+
+      expect(getByRole("button", { name: "Try again" })).toBeEnabled();
+
+      // Something back, and it waits again.
+      await setSync({ isInProgress: true, progress: 0.5 });
+
+      expect(
+        getByRole("button", { name: "Network: Testnet, syncing 50%" })
+      ).toBeInTheDocument();
+      expect(get(networkReach)).toBe("answering");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("says it can't reach the network once the node answered nothing for 30 seconds, between syncs too, and why on the pill, without a tap", async () => {
     vi.useFakeTimers();
 
