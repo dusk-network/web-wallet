@@ -1,14 +1,18 @@
 /**
  * The wallet's Worker on Cloudflare (wrangler.jsonc). Its files are served
- * from deploy/site/, the build at wallet/, with the headers in
- * deploy/site/_headers, and this runs only for a request no file answers:
+ * from deploy/site/, the build at wallet/, with the headers deploy/stage.js
+ * writes in deploy/site/_headers, and this runs only for a request no file
+ * answers:
  * the wallet's page at an address of its own, the explorer's old addresses,
  * and the Android app's links' statement at the domain's root.
  */
 
-/** The headers deploy/site/_headers gives every file, for its own answers. */
+/**
+ * The headers deploy/headers gives every file, for its own answers: but the
+ * policy, as none of them is a page, so none needs a source of any kind.
+ */
 export const HEADERS = Object.freeze({
-  "Content-Security-Policy": "frame-ancestors 'none'",
+  "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Strict-Transport-Security": "max-age=31536000",
   "X-Content-Type-Options": "nosniff",

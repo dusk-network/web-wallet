@@ -9,17 +9,22 @@
  * once origin is fetched. A site deployments.json lists must name the settings
  * listed there, and is rebuilt with those. The commit is built in a new
  * worktree with `npm ci` and `npm run build`; --keep keeps it, to look at.
+ * --attested checks first, with GitHub's CLI (`gh attestation verify`), that
+ * the repository's Deploy workflow attested the manifest as the site serves
+ * it, built from the commit it names on GitHub's own runners: GitHub vouches
+ * for it, not the site.
  *
- *   node scripts/verify-build.js https://apps.dusk.network/wallet/ [--keep]
+ *   node scripts/verify-build.js https://apps.dusk.network/wallet/ [--attested] [--keep]
  */
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import pkg from "../package.json" with { type: "json" };
 import { hashFiles, MANIFEST } from "./build.js";
 
 const MAX_MANIFEST = 2 ** 21;
@@ -239,6 +244,31 @@ export const fetchFrom = async (address, { limit, to, get = fetch } = {}) => {
   return size > MAX_FILE ? "over 64 MiB" : hash.digest("hex");
 };
 
+/** The repository whose Deploy workflow attests each build's manifest. */
+export const REPOSITORY = new URL(pkg.homepage).pathname.slice(1);
+
+/**
+ * GitHub's CLI's arguments that check the repository's Deploy workflow
+ * attested a manifest, as the site served it (`file`), built from the commit
+ * it names, on GitHub's own runners.
+ *
+ * @param {string} file
+ * @param {string} commit
+ * @param {string} [repository]
+ */
+export const attestationArgs = (file, commit, repository = REPOSITORY) => [
+  "attestation",
+  "verify",
+  file,
+  "--repo",
+  repository,
+  "--signer-workflow",
+  `${repository}/.github/workflows/deploy.yml`,
+  "--source-digest",
+  commit,
+  "--deny-self-hosted-runners",
+];
+
 /** npm's own script beside this Node, where it's there. */
 const npmBeside = () =>
   ["node_modules/npm/bin/npm-cli.js", "../lib/node_modules/npm/bin/npm-cli.js"]
@@ -263,23 +293,56 @@ export const npmCommand = (version, args, cli = npmBeside()) => {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const keep = args.includes("--keep");
-  const [address, ...rest] = args.filter((arg) => arg !== "--keep");
+  const attested = args.includes("--attested");
+  const [address, ...rest] = args.filter(
+    (arg) => arg !== "--keep" && arg !== "--attested"
+  );
   const site = URL.parse(address?.endsWith("/") ? address : `${address}/`);
 
   if (!["http:", "https:"].includes(site?.protocol) || rest.length) {
-    console.error("Usage: node scripts/verify-build.js <site> [--keep]");
+    console.error(
+      "Usage: node scripts/verify-build.js <site> [--attested] [--keep]"
+    );
     process.exit(2);
   }
 
   let manifest;
+  let served;
 
   try {
-    manifest = readManifest(
-      await fetchFrom(new URL(MANIFEST, site).href, { limit: MAX_MANIFEST })
-    );
+    served = await fetchFrom(new URL(MANIFEST, site).href, {
+      limit: MAX_MANIFEST,
+    });
+    manifest = readManifest(served);
   } catch (error) {
     console.error(`${site.href} ${error.message}.`);
     process.exit(2);
+  }
+
+  // The manifest as it was served, which GitHub attests by its SHA-256.
+  if (attested) {
+    const file = join(
+      mkdtempSync(join(tmpdir(), "web-wallet-attested-")),
+      MANIFEST
+    );
+
+    writeFileSync(file, served);
+
+    try {
+      execFileSync("gh", attestationArgs(file, manifest.commit), {
+        stdio: ["ignore", "ignore", "pipe"],
+      });
+    } catch (error) {
+      process.stderr.write(error.stderr ?? `${error.message}\n`);
+      console.error(
+        `${site.href}${MANIFEST} has no attestation of ${REPOSITORY}'s Deploy workflow for ${manifest.commit}.`
+      );
+      process.exit(1);
+    }
+
+    console.log(
+      `GitHub attests ${REPOSITORY}'s Deploy workflow built ${site.href}${MANIFEST} from ${manifest.commit}.`
+    );
   }
 
   // The settings the site should be built with, where they're kept here.

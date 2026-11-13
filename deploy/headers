@@ -1,0 +1,20 @@
+# Cloudflare's, for every file it serves of deploy/site/ (wrangler.jsonc):
+# the wallet's build, which deploy/stage.js places at wallet/, writing this
+# beside it as deploy/site/_headers. Cloudflare reads that and doesn't serve
+# it. What no file answers, deploy/worker.js does, with the same but its own
+# policy, as its answers are no pages.
+#
+# The Content-Security-Policy is the one the build's pages carry (kit.csp,
+# svelte.config.js, from scripts/csp.js), which stage.js puts in place of
+# PAGE_POLICY: the wallet's own scripts alone, SvelteKit's inline ones by
+# their hashes, WebAssembly, what the wallet reads from, and frame-ancestors,
+# which a page's own policy can't say.
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: PAGE_POLICY
+  X-Frame-Options: DENY
+
+/wallet/_app/immutable/*
+  Cache-Control: public, max-age=31536000, immutable

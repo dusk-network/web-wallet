@@ -15,6 +15,11 @@ export default defineConfig(({ mode }) => {
   const { name: APP_NAME, version: APP_VERSION } = JSON.parse(
     readFileSync(resolve("package.json"), "utf8")
   );
+
+  // SvelteKit loads svelte.config.js here, whose policy names what the
+  // pages read from: from the settings they're given, this mode's.
+  process.env.WEB_WALLET_MODE = mode;
+
   const commonPlugins = [sveltekit()];
 
   // needed to use %sveltekit.env.PUBLIC_APP_VERSION% in app.html

@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { modeOf } from "./build.js";
 import {
+  REPOSITORY,
+  attestationArgs,
   compareSite,
   fetchFrom,
   npmCommand,
@@ -341,5 +343,39 @@ describe("Verifying a deployment", () => {
     ]);
 
     expect(checkedOut.equals(committed)).toBe(true);
+  });
+
+  it("should check with GitHub that its Deploy workflow attested a site's manifest, as served, built from the commit it names on GitHub's own runners", () => {
+    expect(REPOSITORY).toBe("dusk-network/web-wallet");
+    expect(attestationArgs("/tmp/build-manifest.json", COMMIT)).toStrictEqual([
+      "attestation",
+      "verify",
+      "/tmp/build-manifest.json",
+      "--repo",
+      "dusk-network/web-wallet",
+      "--signer-workflow",
+      "dusk-network/web-wallet/.github/workflows/deploy.yml",
+      "--source-digest",
+      COMMIT,
+      "--deny-self-hosted-runners",
+    ]);
+  });
+
+  it("should have the Deploy workflow attest the manifest it builds, with GitHub's identity for it, before anything is deployed", () => {
+    const workflow = readFileSync(".github/workflows/deploy.yml", "utf8");
+    const at = (/** @type {string} */ text) => workflow.indexOf(text);
+
+    expect(workflow).toMatch(
+      /uses: actions\/attest-build-provenance@[0-9a-f]{40} # v\d/
+    );
+    expect(workflow).toMatch(/subject-path: build\/build-manifest\.json\n/);
+    expect(workflow).toMatch(/\n {6}attestations: write\n/);
+    expect(workflow).toMatch(/\n {6}id-token: write\n/);
+    expect(at("run: npm run build")).toBeLessThan(
+      at("actions/attest-build-provenance")
+    );
+    expect(at("actions/attest-build-provenance")).toBeLessThan(
+      at("wrangler deploy")
+    );
   });
 });

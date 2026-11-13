@@ -195,17 +195,26 @@ describe("The wallet's Worker", () => {
     }
   });
 
-  it("should give its own answers the headers deploy/site/_headers gives every file", () => {
-    const rules = readFileSync("deploy/site/_headers", "utf8")
+  it("should give its own answers the headers deploy/headers gives every file, with a policy that lets nothing in, as they're no pages", () => {
+    const rules = readFileSync("deploy/headers", "utf8")
       .split("\n")
       .filter((line) => line.trim() && !line.startsWith("#"))
       .join("\n")
       .split(/^(?=\/)/m)
       .map((rule) => rule.trim().split("\n"));
-    const every = rules.find(([path]) => path === "/*")?.slice(1) ?? [];
+    const every = Object.fromEntries(
+      (rules.find(([path]) => path === "/*")?.slice(1) ?? []).map((line) =>
+        line.trim().split(/: (.*)/s, 2)
+      )
+    );
 
-    expect(
-      Object.fromEntries(every.map((line) => line.trim().split(/: (.*)/s, 2)))
-    ).toEqual(HEADERS);
+    expect(every["Content-Security-Policy"]).toBe("PAGE_POLICY");
+    expect({
+      ...every,
+      "Content-Security-Policy": HEADERS["Content-Security-Policy"],
+    }).toEqual(HEADERS);
+    expect(HEADERS["Content-Security-Policy"]).toBe(
+      "default-src 'none'; frame-ancestors 'none'"
+    );
   });
 });

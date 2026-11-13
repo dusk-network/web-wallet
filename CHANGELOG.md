@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say which EVM addresses the export has the network fees of migrations from, and add one for the file
 - Show staking rewards by calendar year beside History's export: native claimed, and Sozu's grown while held and taken out by unstaking, in DUSK and in the wallet's currency where asked
 - Say on mainnet what a payment request comes to in your currency, with the price's time, and what a payment comes to in the payer's on Send and its review, the link still asking DUSK
+- Run only the wallet's own scripts, under a Content-Security-Policy every page carries and Cloudflare sends as a header, and have GitHub attest each deployed build's manifest, which scripts/verify-build.js --attested checks
 
 ### Changed
 
