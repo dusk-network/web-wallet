@@ -621,7 +621,7 @@ describe("History", () => {
       expect(await blobs[1].text()).toContain("Alice Rent");
     });
 
-    it("names only this profile's EVM addresses for its migrations' network fees, takes one added for its files, kept after a lock, and says once saved which it couldn't read", async () => {
+    it("says the network fees of migrations the file has, and those it couldn't read, as the file made for its period has them, once saved too, and takes an EVM address added for its files, kept after a lock", async () => {
       const ADDED = "0x90fe2f14bbdd4bbb68ad0ce1a7b6c1b4d6bf4b39";
       const ANOTHERS = "0x7cdb2f14bbdd4bbb68ad0ce1a7b6c1b4d6bf8e73";
       const MIGRATION = `0x${"a7".repeat(32)}`;
@@ -634,6 +634,23 @@ describe("History", () => {
       const { forgetRouteTransfers, rememberMigration } =
         await import("$lib/bridge/migrationActivity");
 
+      /** What the panel says of the file's network fees, once it's read. */
+      const feesSaid = async (/** @type {HTMLElement} */ container) => {
+        /** @type {string} */
+        let said = "";
+
+        await vi.waitFor(() => {
+          said =
+            container
+              .querySelector(".export-panel__evm .export-panel__note")
+              ?.textContent?.trim() ?? "";
+
+          expect(said).toMatch(/^(?!Reading)./);
+        });
+
+        return said;
+      };
+
       setNodeNetwork(networks.mainnet);
       // A migration this browser sent another profile, from its own address.
       rememberMigration({
@@ -644,6 +661,7 @@ describe("History", () => {
         routeId: "bsc-to-dusk",
         sender: ANOTHERS,
       });
+      // One that came to this profile, whose chain doesn't answer.
       mocks.whole.mockResolvedValue({
         rows: rowsOf(
           [
@@ -664,14 +682,16 @@ describe("History", () => {
       });
 
       try {
-        const { getByRole, getByText } = await openExport();
+        const { container, getByRole } = await openExport();
 
-        // Another profile's address isn't this one's.
-        expect(
-          getByText(
-            "The file has no network fees of migrations: no EVM address of yours is known here."
-          )
-        ).toBeInTheDocument();
+        // Made for its period as the panel opens: what it holds, not a guess
+        // from the addresses known here.
+        const said = await feesSaid(container);
+
+        expect(said).toBe(
+          "1 migration's fee on BNB Smart Chain couldn't be read. Some network fees couldn't be read."
+        );
+        expect(said).not.toMatch(/0x7cdb/i);
 
         // Added for the file: what it isn't is said, what it is is listed.
         await fireEvent.click(
@@ -693,25 +713,34 @@ describe("History", () => {
         await fireEvent.click(getByRole("button", { name: "Add" }));
 
         expect(
-          getByText(
-            /^The file has the network fees your migrations paid from 0x90fE…4b39\.$/i
-          )
-        ).toBeInTheDocument();
+          getByRole("list", { name: "EVM addresses added" })
+        ).toHaveTextContent(/0x90fE…4b39/i);
 
-        // Its chain doesn't answer: saved, it says what the file couldn't read.
+        const withAdded = await feesSaid(container);
+
+        // Saved, it says the same of the file, and that another export adds
+        // what couldn't be read.
         toastList.set([]);
         await fireEvent.click(getByRole("button", { name: "Save CSV" }));
         await vi.waitFor(() => expect(names).toHaveLength(1));
         await vi.waitFor(() =>
           expect(get(toastList).map(({ message }) => message)).toEqual([
             expect.stringContaining(
-              "1 migration's fee on BNB Smart Chain couldn't be read: export again to add it. Some network fees couldn't be read: export again to add them."
+              withAdded
+                .replace(
+                  "couldn't be read.",
+                  "couldn't be read: export again to add it."
+                )
+                .replace(
+                  /couldn't be read\.$/,
+                  "couldn't be read: export again to add them."
+                )
             ),
           ])
         );
 
         // Kept for this profile, through a lock and an unlock, as it opens
-        // the wallet's records again: the same period, the same file.
+        // the wallet's records again.
         cleanup();
         hydrateExportAddresses();
 
@@ -720,41 +749,17 @@ describe("History", () => {
         await fireEvent.click(unlocked.getByRole("button", { name: "Export" }));
 
         expect(
-          unlocked.getByText(
-            /^The file has the network fees your migrations paid from 0x90fE…4b39\.$/i
-          )
-        ).toBeInTheDocument();
-
-        // The profile the migration from here paid: its address is named.
-        cleanup();
-        stores.profile = { account: "another", address: "another-shielded" };
-
-        const another = render(History);
-
-        await fireEvent.click(another.getByRole("button", { name: "Export" }));
-
-        expect(
-          another.getByText(
-            /^The file has the network fees your migrations paid from 0x7cdb…8e73\.$/i
-          )
-        ).toBeInTheDocument();
+          unlocked.getByRole("list", { name: "EVM addresses added" })
+        ).toHaveTextContent(/0x90fE…4b39/i);
 
         // And Remove takes it off this one's.
-        cleanup();
-        stores.profile = { account: "account-shown", address: "address-shown" };
-
-        const again = render(History);
-
-        await fireEvent.click(again.getByRole("button", { name: "Export" }));
         await fireEvent.click(
-          again.getByRole("button", { name: `Remove ${ADDED}` })
+          unlocked.getByRole("button", { name: `Remove ${ADDED}` })
         );
 
         expect(
-          again.getByText(
-            "The file has no network fees of migrations: no EVM address of yours is known here."
-          )
-        ).toBeInTheDocument();
+          unlocked.queryByRole("list", { name: "EVM addresses added" })
+        ).toBeNull();
         expect(hydrateExportAddresses()).toStrictEqual({});
       } finally {
         stores.profile = { account: "account-shown", address: "address-shown" };
