@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import * as module from "./worker.js";
 import worker, { HEADERS } from "./worker.js";
 
 const EXPLORER = "https://explorer.testnet.dusk.network";
@@ -12,8 +13,9 @@ const PAGE = "<!doctype html><title>Dusk Web Wallet</title>";
  *
  * @param {string} path
  * @param {RequestInit} [init]
+ * @param {{ ANDROID_CERTS?: string }} [vars] The environment's, but EXPLORER
  */
-const ask = async (path, init) => {
+const ask = async (path, init, vars = {}) => {
   /** @type {{ headers: Headers, method?: string, url: string }[]} */
   const asked = [];
   const ASSETS = {
@@ -33,7 +35,7 @@ const ask = async (path, init) => {
   const response = await worker.fetch(
     new Request(`https://apps.testnet.dusk.network${path}`, init),
     // @ts-ignore: the binding's fetch, as far as the Worker uses it
-    { ASSETS, EXPLORER }
+    { ASSETS, EXPLORER, ...vars }
   );
 
   return { asked, response };
@@ -49,6 +51,15 @@ const expectOwnAnswer = (response) => {
 };
 
 describe("The wallet's Worker", () => {
+  it("should export only what Cloudflare runs a Worker by: handlers and objects, no other value", () => {
+    for (const [name, value] of Object.entries(module)) {
+      expect([name, typeof value]).toEqual([
+        name,
+        expect.stringMatching(/^(function|object)$/),
+      ]);
+    }
+  });
+
   it("should open the wallet's page at an address of its own that no file has, as asked", async () => {
     for (const path of [
       "/wallet/does/not/exist",
@@ -110,6 +121,61 @@ describe("The wallet's Worker", () => {
     expect((await ask("/explorers")).response.status).toBe(404);
   });
 
+  it("should name the Dusk Wallet app signed with the environment's certificates at the domain's root, for Android to open the wallet's links in it, and no app where it names none", async () => {
+    const TEST_KEY =
+      "2B:F9:B8:C1:BD:0D:D3:AE:19:70:5F:E0:CF:C5:54:21:CF:49:68:D3:AA:AF:3B:6D:35:2B:49:D7:65:CA:3D:A6";
+    const RELEASE_KEY =
+      "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99";
+    const { asked, response } = await ask(
+      "/.well-known/assetlinks.json",
+      undefined,
+      { ANDROID_CERTS: `${TEST_KEY}, ${RELEASE_KEY}` }
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("application/json");
+    expect(await response.json()).toStrictEqual([
+      {
+        relation: ["delegate_permission/common.handle_all_urls"],
+        target: {
+          namespace: "android_app",
+          package_name: "network.dusk.wallet",
+          sha256_cert_fingerprints: [TEST_KEY, RELEASE_KEY],
+        },
+      },
+    ]);
+    expect(asked).toEqual([]);
+
+    // Asked as Android's checker may ask.
+    const head = await ask(
+      "/.well-known/assetlinks.json",
+      { method: "HEAD" },
+      {
+        ANDROID_CERTS: TEST_KEY,
+      }
+    );
+
+    expect(head.response.status).toBe(200);
+    expect(await head.response.text()).toBe("");
+
+    // Mainnet's, before the release key: none, so no app opens its links.
+    for (const vars of [{}, { ANDROID_CERTS: "" }, { ANDROID_CERTS: " , " }]) {
+      const none = await ask("/.well-known/assetlinks.json", undefined, vars);
+
+      expect(none.response.status).toBe(404);
+      expectOwnAnswer(none.response);
+    }
+
+    // Only at the root.
+    expect(
+      (
+        await ask("/wallet/.well-known/assetlinks.json", undefined, {
+          ANDROID_CERTS: TEST_KEY,
+        })
+      ).asked
+    ).toHaveLength(1);
+  });
+
   it("should answer anything else with a 404, and nothing but GET and HEAD", async () => {
     for (const path of ["/", "/foo", "/WALLET/", "/walletx/"]) {
       const { asked, response } = await ask(path);
@@ -129,17 +195,26 @@ describe("The wallet's Worker", () => {
     }
   });
 
-  it("should give its own answers the headers deploy/site/_headers gives every file", () => {
-    const rules = readFileSync("deploy/site/_headers", "utf8")
+  it("should give its own answers the headers deploy/headers gives every file, with a policy that lets nothing in, as they're no pages", () => {
+    const rules = readFileSync("deploy/headers", "utf8")
       .split("\n")
       .filter((line) => line.trim() && !line.startsWith("#"))
       .join("\n")
       .split(/^(?=\/)/m)
       .map((rule) => rule.trim().split("\n"));
-    const every = rules.find(([path]) => path === "/*")?.slice(1) ?? [];
+    const every = Object.fromEntries(
+      (rules.find(([path]) => path === "/*")?.slice(1) ?? []).map((line) =>
+        line.trim().split(/: (.*)/s, 2)
+      )
+    );
 
-    expect(
-      Object.fromEntries(every.map((line) => line.trim().split(/: (.*)/s, 2)))
-    ).toEqual(HEADERS);
+    expect(every["Content-Security-Policy"]).toBe("PAGE_POLICY");
+    expect({
+      ...every,
+      "Content-Security-Policy": HEADERS["Content-Security-Policy"],
+    }).toEqual(HEADERS);
+    expect(HEADERS["Content-Security-Policy"]).toBe(
+      "default-src 'none'; frame-ancestors 'none'"
+    );
   });
 });

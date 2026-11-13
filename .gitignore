@@ -2,6 +2,7 @@
 node_modules
 /build
 /deploy/site/wallet
+/deploy/site/_headers
 /coverage
 /.svelte-kit
 /package

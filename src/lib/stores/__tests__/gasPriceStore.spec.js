@@ -35,6 +35,55 @@ describe("gasPriceStore", () => {
     expect(get(gasPriceStore)).toBe(3n);
   });
 
+  it("should take the median up to five times the lowest, by app-core's rule for both wallets, and say the network is busy over it", async () => {
+    const { GAS_PRICE_CEILING_TIMES, defaultGasPrice } =
+      await import("@dusk-network/app-core/gas");
+
+    nodeGives({ average: 2n, max: 9n, median: 2n, min: 1n });
+    await gasPriceStore.refresh();
+
+    expect(get(gasPriceStore)).toBe(2n);
+    expect(get(gasPriceStore.rule)).toMatchObject({ busy: false, median: 2n });
+
+    // A spammed mempool: the default stops at the ceiling, and says so.
+    nodeGives({ average: 600n, max: 1000n, median: 900n, min: 1n });
+    await gasPriceStore.refresh();
+
+    expect(get(gasPriceStore)).toBe(GAS_PRICE_CEILING_TIMES);
+    expect(get(gasPriceStore.rule)).toStrictEqual(
+      defaultGasPrice({ median: 900n, minimum: 1n })
+    );
+    expect(get(gasPriceStore.rule)).toMatchObject({
+      busy: true,
+      median: 900n,
+      price: 5n,
+    });
+  });
+
+  it("should ask again as a form opens, where the price was read longer ago than half a minute", async () => {
+    vi.useFakeTimers({ now: Date.UTC(2026, 10, 13, 12) });
+    nodeGives({ average: 2n, max: 2n, median: 2n, min: 2n });
+
+    // Never read: asked.
+    await gasPriceStore.readAgain();
+
+    expect(connect).toHaveBeenCalledOnce();
+
+    // Read moments ago: kept.
+    vi.setSystemTime(Date.UTC(2026, 10, 13, 12, 0, 29));
+    await gasPriceStore.readAgain();
+
+    expect(connect).toHaveBeenCalledOnce();
+
+    // Older: asked again.
+    nodeGives({ average: 3n, max: 3n, median: 3n, min: 3n });
+    vi.setSystemTime(Date.UTC(2026, 10, 13, 12, 0, 31));
+    await gasPriceStore.readAgain();
+
+    expect(connect).toHaveBeenCalledTimes(2);
+    expect(get(gasPriceStore)).toBe(3n);
+  });
+
   it("should never go under the lowest price", async () => {
     nodeGives({ average: 0n, max: 0n, median: 0n, min: 0n });
 

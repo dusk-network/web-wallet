@@ -546,22 +546,34 @@ describe("ContactsView", () => {
     expect(getContact(savings.id)).toBeNull();
   });
 
-  it("warns of a name in use and of the wallet's own address, and saves all the same", async () => {
+  it("asks at Save about a name in use, or one another contact's starts as, saving it only once answered, and warns of the wallet's own address", async () => {
     const OWN =
       "4ozNeBzeQq5XZGoMYTBKfSG9pmPBa4UWxbfHV3BSDtgeMMz2Xw8oZgVAhN16yC94CUQkg7iAe8fpQT4CsF41iKy6";
+    // Addresses no contact here has.
+    const NEW =
+      "25z9o6qCaVk1ReyHjmB4pyXcE3D1vRu4FVV1rR8ChYcosdTSktkANLDHq9GD6B4985Q1S2KrDZYBRrohWAjrNmACFUb3UMSRyYctJRzh3d28R1ZNC1ZyKm1HwXL4FF5Etftt";
+    const HIS =
+      "47jNTgAhzn9KCKF3msCfvKg3k1P1QpPCLZ3HG3AoNp87sQ5WNS3QyjckYHWeuXqW7uvLmbKgejpP8Xkcip89vnMM";
     const twin = saveContact({ address: OTHER, name: "Estudio Marta" });
+    const grandson = saveContact({ address: HIS, name: "Lucas (petit-fils)" });
 
     try {
-      const { getByRole, getByText, queryByText } = render(ContactForm, {
-        own: [OWN],
-        resolveName,
-      });
+      const saved = vi.fn();
+      const { getByRole, getByText, queryByRole, queryByText } = render(
+        ContactForm,
+        { events: { saved }, props: { own: [OWN], resolveName } }
+      );
       const save = () => getByRole("button", { name: "Save contact" });
       /** @param {string} value */
       const name = (value) =>
         fireEvent.input(getByRole("textbox", { name: "Name" }), {
           target: { value },
         });
+
+      await fireEvent.input(
+        getByRole("textbox", { name: "Address or .dusk name" }),
+        { target: { value: NEW } }
+      );
 
       // Whatever its capitals, spaces and punctuation.
       for (const variant of [
@@ -574,7 +586,7 @@ describe("ContactsView", () => {
 
         expect(
           getByText(
-            `You already have a contact called Estudio Marta, at ${shortenAddress(OTHER)}. Only the address will tell them apart.`
+            `You have a contact called Estudio Marta, at ${shortenAddress(OTHER)}. Is this someone else?`
           )
         ).toBeInTheDocument();
       }
@@ -584,23 +596,67 @@ describe("ContactsView", () => {
 
       expect(
         getByText(
-          `That looks like your contact Estudio Marta, at ${shortenAddress(OTHER)}. Only the address will tell them apart.`
+          `That looks like your contact Estudio Marta, at ${shortenAddress(OTHER)}. Is this someone else?`
         )
       ).toBeInTheDocument();
 
-      await name("Estudio Lena");
+      // Amélie's new phone: "Lucas" beside "Lucas (petit-fils)". Asked at
+      // Save, and saved only once answered.
+      await name("Lucas");
 
-      expect(queryByText(/^You already have a contact/)).toBeNull();
+      expect(
+        getByText(
+          `You have a contact called Lucas (petit-fils), at ${shortenAddress(HIS)}. Is this someone else?`
+        )
+      ).toBeInTheDocument();
+      expect(queryByRole("button", { name: "Yes, save it" })).toBeNull();
+
+      await fireEvent.click(save());
+
+      expect(saved).not.toHaveBeenCalled();
+      expect(getByRole("button", { name: "Yes, save it" })).toHaveFocus();
+
+      // Typed again: asked again at Save.
+      await name("Lucas ");
+
+      expect(queryByRole("button", { name: "Yes, save it" })).toBeNull();
+
+      await fireEvent.click(save());
+      await fireEvent.click(getByRole("button", { name: "Yes, save it" }));
+
+      expect(saved).toHaveBeenCalledOnce();
+      expect(
+        listContacts().filter(({ name: n }) => /^Lucas/.test(n))
+      ).toHaveLength(2);
+
+      cleanup();
+
+      // Nothing asked: saved at once.
+      const other = render(ContactForm, { own: [OWN], resolveName });
+
+      await fireEvent.input(other.getByRole("textbox", { name: "Name" }), {
+        target: { value: "Estudio Lena" },
+      });
+
+      expect(other.queryByText(/Is this someone else/)).toBeNull();
 
       await fireEvent.input(
-        getByRole("textbox", { name: "Address or .dusk name" }),
+        other.getByRole("textbox", { name: "Address or .dusk name" }),
         { target: { value: OWN } }
       );
 
-      expect(getByText("This is your own address.")).toBeInTheDocument();
-      expect(save()).toBeEnabled();
+      expect(other.getByText("This is your own address.")).toBeInTheDocument();
+      expect(other.getByRole("button", { name: "Save contact" })).toBeEnabled();
+      expect(queryByText(/^You have a contact/)).toBeNull();
     } finally {
-      removeContact(twin.id);
+      for (const contact of listContacts()) {
+        if (/^(Estudio|Lucas)/.test(contact.name)) {
+          removeContact(contact.id);
+        }
+      }
+
+      void twin;
+      void grandson;
     }
   });
 
@@ -644,10 +700,11 @@ describe("ContactsView", () => {
     expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
   });
 
-  it("asks about a name that starts as a profile's, word for word, saving it all the same", async () => {
+  it("asks at Save about a name that starts as a profile's, word for word, saving it only once answered", async () => {
+    const saved = vi.fn();
     const { getByRole, getByText, queryByText } = render(ContactForm, {
-      profiles: [{ address: ACCOUNT, name: "Lucas" }],
-      resolveName,
+      events: { saved },
+      props: { profiles: [{ address: ACCOUNT, name: "Lucas" }], resolveName },
     });
     /** @param {string} value */
     const name = (value) =>
@@ -664,7 +721,20 @@ describe("ContactsView", () => {
     expect(
       getByText("One of your profiles is called Lucas. Is this someone else?")
     ).toBeInTheDocument();
-    expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
+
+    await fireEvent.click(getByRole("button", { name: "Save contact" }));
+
+    expect(saved).not.toHaveBeenCalled();
+
+    await fireEvent.click(getByRole("button", { name: "Yes, save it" }));
+
+    expect(saved).toHaveBeenCalledOnce();
+
+    for (const contact of listContacts()) {
+      if (contact.name === "Lucas (petit-fils)") {
+        removeContact(contact.id);
+      }
+    }
 
     // Not word for word: nothing asked.
     await name("Lucasta");

@@ -41,6 +41,12 @@
   /** Whether the stake the total counts couldn't be read: it's said too. */
   export let stakeUnread = false;
 
+  /**
+   * Whether the stake the total counts is being read, with nothing read
+   * before to count meanwhile: it's said too.
+   */
+  export let stakeReading = false;
+
   // Everything held: what's staked too.
   $: total = shielded + unshielded + staked;
 
@@ -102,7 +108,14 @@
   {#if fiat}
     <p class="home-balance__fiat">≈ <BalanceValue value={fiat} /></p>
   {/if}
-  {#if unread}
+  <!-- What couldn't be read, by name: what shows of it is what was read
+    before. -->
+  {#if unread && stakeUnread}
+    <p class="home-balance__unread">
+      Your balance and stake couldn't be read just now. This total may be out of
+      date.
+    </p>
+  {:else if unread}
     <p class="home-balance__unread">
       Your balance couldn't be read just now. This may be out of date.
     </p>
@@ -110,6 +123,8 @@
     <p class="home-balance__unread">
       Your stake couldn't be read just now. This total may be out of date.
     </p>
+  {:else if stakeReading}
+    <p class="home-balance__unread">Reading your stake…</p>
   {/if}
   <div
     aria-hidden="true"

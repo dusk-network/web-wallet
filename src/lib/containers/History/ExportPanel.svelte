@@ -16,6 +16,7 @@
     exportCurrency,
     followRewardsByYear,
     makeExport,
+    migrationFeeWords,
     otherProfiles,
     periodChoices,
     periodOf,
@@ -130,6 +131,89 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  /**
+   * The profile's file, as it's made now with `choices`, of the history read
+   * whole.
+   *
+   * @param {import("$lib/activity/accountantExport").ExportChoices} choices
+   */
+  function makeFile(choices) {
+    const own = [account?.address ?? "", shieldedAddress];
+    const contacts = contactNamesOf($contactsStore);
+
+    return makeExport({
+      choices,
+      contactName: (address) => contacts.get(address),
+      currency,
+      evmConnected: [...($evmAccount.addresses ?? []), ...added],
+      net: $nodeNetwork,
+      network,
+      profile: {
+        account: account?.address,
+        address: shieldedAddress,
+        name: account?.outsideName || account?.label,
+      },
+      profiles: otherProfiles($walletAccountNames, own),
+      session:
+        /** @type {NonNullable<ReturnType<typeof walletStore.startHistory>>} */ (
+          walletStore.startHistory()
+        ),
+    });
+  }
+
+  /**
+   * What the file holds of migrations' network fees, as made for the period
+   * chosen and the addresses known: what's said of them above Add an EVM
+   * address, from the file itself. `made` null where it couldn't be made.
+   *
+   * @type {{ key: string, made: Awaited<ReturnType<typeof makeExport>> | null }}
+   */
+  let fees = { key: "", made: null };
+
+  /** What the file is being made for, to say its fees. */
+  let feesAsked = "";
+
+  /**
+   * The readings of its fees, counted as each begins, and once Save says the
+   * file's: one that ends after another began, or after Save, is too late.
+   */
+  let feesRead = 0;
+
+  /**
+   * Makes the file for its fees, as Save would make it for the period and
+   * the addresses `key` says: what comes back too late, or once the wallet
+   * changed, is said of nothing.
+   *
+   * @param {string} key
+   */
+  function readFees(key) {
+    const stillOpen = walletStore.whileOpen();
+    const reading = ++feesRead;
+
+    feesAsked = key;
+    makeFile({
+      excel: false,
+      fiat: false,
+      from,
+      period,
+      to,
+      withContacts: false,
+    }).then(
+      (made) => {
+        stillOpen();
+
+        if (reading === feesRead) {
+          fees = { key, made };
+        }
+      },
+      () => {
+        if (reading === feesRead) {
+          fees = { key, made: null };
+        }
+      }
+    );
+  }
+
   async function save() {
     if (isBusy) {
       return;
@@ -150,30 +234,27 @@
     // The file is of what's open as it begins: with anything else open once
     // it's read, there's none.
     const stillOpen = walletStore.whileOpen();
-    const own = [account?.address ?? "", shieldedAddress];
-    const contacts = contactNamesOf($contactsStore);
+    const key = feesKey;
 
     try {
-      const made = await makeExport({
-        choices: { excel, fiat, from, period, to, withContacts },
-        contactName: (address) => contacts.get(address),
-        currency,
-        evmConnected: [...($evmAccount.addresses ?? []), ...added],
-        net: $nodeNetwork,
-        network,
-        profile: {
-          account: account?.address,
-          address: shieldedAddress,
-          name: account?.outsideName || account?.label,
-        },
-        profiles: otherProfiles($walletAccountNames, own),
-        session:
-          /** @type {NonNullable<ReturnType<typeof walletStore.startHistory>>} */ (
-            walletStore.startHistory()
-          ),
+      const made = await makeFile({
+        excel,
+        fiat,
+        from,
+        period,
+        to,
+        withContacts,
       });
 
       stillOpen();
+
+      // What it holds of migrations' fees, said as the file has them: a
+      // reading begun before is too late.
+      if (key && key === feesKey) {
+        feesRead += 1;
+        feesAsked = key;
+        fees = { key, made };
+      }
 
       if (made.count) {
         saveFile(made.csv, stampedName(made.fileName));
@@ -271,9 +352,48 @@
     added,
     rows: $activityState.rows,
   });
-  $: evmList = new Intl.ListFormat("en", { type: "conjunction" }).format(
-    evm.map(({ address }) => shortenAddress(address))
-  );
+  // What the file is made for, to say its migrations' fees: none while the
+  // period isn't one.
+  $: feesKey =
+    hasMigrations && account && isPeriod(period, from, to)
+      ? JSON.stringify([
+          account.address,
+          period,
+          from,
+          to,
+          added,
+          $evmAccount.addresses ?? [],
+        ])
+      : "";
+  $: if (feesKey && feesKey !== feesAsked) {
+    readFees(feesKey);
+  }
+  // Said as the file has them, once it's made.
+  $: feesSaid = !feesKey
+    ? ""
+    : fees.key !== feesKey
+      ? "Reading which network fees of migrations the file has…"
+      : fees.made
+        ? migrationFeeWords(fees.made, { saved: false }).join(" ") ||
+          "The file has no network fees of migrations."
+        : "Couldn't read which network fees of migrations the file has.";
+
+  /**
+   * Whether a period is one: both days, for dates.
+   *
+   * @param {string} chosen
+   * @param {string} start
+   * @param {string} end
+   */
+  function isPeriod(chosen, start, end) {
+    try {
+      periodOf({ from: start, period: chosen, to: end });
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
 </script>
 
 <section aria-label="Export CSV" class="export-panel" id="{id}-panel">
@@ -313,11 +433,9 @@
   </label>
   {#if hasMigrations}
     <div class="export-panel__evm">
-      <p class="export-panel__note">
-        {evm.length
-          ? `The file has the network fees your migrations paid from ${evmList}.`
-          : "The file has no network fees of migrations: no EVM address of yours is known here."}
-      </p>
+      {#if feesSaid}
+        <p class="export-panel__note" role="status">{feesSaid}</p>
+      {/if}
       {#if evm.some(({ why }) => why === "added")}
         <ul aria-label="EVM addresses added" class="export-panel__added">
           {#each evm.filter(({ why }) => why === "added") as { address } (address)}

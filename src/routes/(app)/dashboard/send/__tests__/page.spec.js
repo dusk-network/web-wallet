@@ -5,7 +5,9 @@ import { get } from "svelte/store";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { getGasSettings } from "$lib/contracts";
 import { formatDusk, formatDuskPlain } from "$lib/dusk/currency";
-import { gasPriceStore, settingsStore } from "$lib/stores";
+import { gasPriceStore, networkStore, settingsStore } from "$lib/stores";
+import { keepWaiting, sendGate } from "$lib/transactions";
+import { feeToKeep } from "$lib/wallet-reserve";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { networks } from "@dusk-network/networks";
 
@@ -211,6 +213,64 @@ describe("Send page", () => {
     expect(available(container)).toHaveTextContent(/from your public balance$/);
   });
 
+  it("should count out of Available and Max what the sends waiting to go out from that balance take, and say so", async () => {
+    const public_ = currentProfile.account.toString();
+    const shielded = currentProfile.address.toString();
+    const waiting = (/** @type {string} */ from) => {
+      const gate = sendGate();
+
+      keepWaiting({
+        address: OTHER,
+        from,
+        gate,
+        lux: 10_000_000n,
+        maxFee: 2_500_000n,
+        operation: new Promise(() => {}),
+        to: "Lena",
+      });
+
+      return gate;
+    };
+    const fromPublic = waiting(public_);
+    const fromShielded = waiting(shielded);
+
+    try {
+      const { container, getByRole } = render(SendPage);
+      const { gasLimit, gasPrice } = getGasSettings(
+        "public-transfer",
+        get(settingsStore),
+        get(gasPriceStore)
+      );
+      const left = balance.unshielded.value - 12_500_000n;
+
+      expect(available(container)).toHaveTextContent(
+        `Available ${formatDusk(left, "en")} DUSK from your public balance, after what's waiting to go out`
+      );
+
+      await fireEvent.input(getByRole("textbox", { name: "To" }), {
+        target: { value: OTHER },
+      });
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      // All that's left, less the fee, and what's kept for later as ever.
+      expect(getByRole("textbox", { name: "Amount" })).toHaveValue(
+        formatDuskPlain(left - gasLimit * gasPrice - get(feeToKeep).lux)
+      );
+
+      // Gone out, or called off: all of it again.
+      await act(() => fromPublic.handOver());
+      await act(() => fromShielded.cancel());
+
+      expect(available(container)).toHaveTextContent(
+        `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`
+      );
+      expect(available(container)).not.toHaveTextContent("waiting");
+    } finally {
+      fromPublic.cancel();
+      fromShielded.cancel();
+    }
+  });
+
   it("should pay from the public balance again when the recipient entered after a shielded one doesn't resolve, or is cleared", async () => {
     resolveDuskName.mockImplementation((name) =>
       Promise.resolve(
@@ -289,6 +349,62 @@ describe("Send page", () => {
     expect(container.querySelector(".send__summary")).toHaveTextContent(
       /Amount 1 DUSK/
     );
+  });
+
+  it("should start from the gas price both wallets pick, the network's median up to five times the lowest, and say the network is busy over it", async () => {
+    const BUSY =
+      "The network is busy. You can raise the gas price for it to go out sooner.";
+    const connect = vi.spyOn(networkStore, "connect");
+
+    /** @param {bigint} median */
+    const nodeAsks = async (median) => {
+      connect.mockResolvedValue(
+        /** @type {any} */ ({
+          blocks: { gasPrice: Promise.resolve({ median }) },
+        })
+      );
+      await gasPriceStore.refresh();
+    };
+
+    try {
+      for (const [median, price, isBusy] of /** @type {const} */ ([
+        [900n, 5n, true],
+        [2n, 2n, false],
+      ])) {
+        await nodeAsks(median);
+
+        const { container, getByRole, queryByText } = render(SendPage);
+        const { gasLimit } = getGasSettings(
+          "public-transfer",
+          get(settingsStore),
+          get(gasPriceStore)
+        );
+
+        await fireEvent.input(getByRole("textbox", { name: "To" }), {
+          target: { value: OTHER },
+        });
+        await fireEvent.input(getByRole("textbox", { name: "Amount" }), {
+          target: { value: "1" },
+        });
+        await fireEvent.click(getByRole("button", { name: "Review" }));
+
+        expect(
+          container.querySelector(".gas-fee__amount-value")
+        ).toHaveTextContent(formatDuskPlain(gasLimit * price));
+
+        if (isBusy) {
+          expect(queryByText(BUSY)).toBeInTheDocument();
+        } else {
+          expect(queryByText(BUSY)).toBeNull();
+        }
+
+        cleanup();
+      }
+    } finally {
+      // The lowest again, as the other tests start from.
+      await nodeAsks(1n);
+      connect.mockRestore();
+    }
   });
 
   it("should start a transfer from the default gas limit of its recipient", async () => {

@@ -13,6 +13,9 @@
    *   something's typed. `error`, from outside, shows there too.
    * - Paste, where the browser lets a page read what's copied, puts it in
    *   the boxes as a paste into the first box does.
+   * - What was pasted goes from the clipboard, where the browser lets a page
+   *   write it, in the paste's own gesture; where it doesn't, that it's
+   *   still there is said once.
    */
   import { createEventDispatcher, tick } from "svelte";
   import { mdiAlertOutline, mdiContentPaste } from "@mdi/js";
@@ -66,6 +69,39 @@
 
   /** What's wrong, as said after a paste or as the focus left the boxes. */
   let problem = "";
+
+  /** Whether what was pasted is still on the clipboard, as it couldn't go. */
+  let isLeftCopied = false;
+
+  /**
+   * Clears the clipboard of words pasted from it, in the paste's own
+   * gesture: where the browser won't let a page write it, it's said.
+   */
+  function clearCopied() {
+    /** @type {Promise<void> | undefined} */
+    let cleared;
+
+    try {
+      cleared = navigator.clipboard?.writeText?.("");
+    } catch {
+      cleared = undefined;
+    }
+
+    if (!cleared) {
+      isLeftCopied = true;
+
+      return;
+    }
+
+    cleared.then(
+      () => {
+        isLeftCopied = false;
+      },
+      () => {
+        isLeftCopied = true;
+      }
+    );
+  }
 
   /** @type {HTMLInputElement[]} */
   const inputs = [];
@@ -160,6 +196,7 @@
     event.preventDefault();
 
     if (words.length) {
+      clearCopied();
       takeWords(i, words);
     }
   }
@@ -244,6 +281,7 @@
       const words = wordsOf(await navigator.clipboard.readText());
 
       if (words.length) {
+        clearCopied();
         takeWords(0, words);
       }
     } catch (refusal) {
@@ -342,6 +380,12 @@
   {#if said}
     <p class="mnemonic-input__problem" id="{id}-problem" role="alert">
       {said}
+    </p>
+  {/if}
+  {#if isLeftCopied}
+    <p class="mnemonic-input__hint" role="status">
+      Your recovery phrase is still on the clipboard: copy something else over
+      it.
     </p>
   {/if}
 </div>

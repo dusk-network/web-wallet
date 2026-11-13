@@ -8,6 +8,7 @@
    * of one Send refuses, only why.
    */
   import {
+    linkAmount,
     makePaymentLink,
     parsePaymentLink,
     readPaymentLink,
@@ -49,9 +50,8 @@
   export let hasWallet = false;
 
   /**
-   * Whether it offers to pay it from a wallet elsewhere first: Firefox's or
-   * the Dusk app on this phone, or the Dusk extension, where no wallet is kept
-   * here.
+   * Whether it offers to pay it from a wallet elsewhere first: the Dusk
+   * extension, where it takes the request and no wallet is kept here.
    */
   export let offersElsewhere = false;
 
@@ -124,6 +124,10 @@
   // What it asks, as Send reads it: nothing of one it refuses, whose To or
   // amount could read as what it isn't.
   $: asked = !problem && read?.link?.to ? read.link : null;
+  // Its amount as Send's field holds it, filled in from the link, and reads
+  // it: the amount, or the question Send asks of one that could be either of
+  // two, as 1.000. Never settled here.
+  $: amount = asked ? linkAmount(asked, language) : null;
   // The name the account it pays goes by, as the chain says: none for a
   // shielded address, or where the lookup fails.
   $: name =
@@ -137,8 +141,9 @@
   // Another network's request, on the web wallet of its network.
   $: elsewhere =
     read?.reason === "other-network" ? elsewhereLink(opened) : null;
-  // On Android, the wallet that pays it may be in Firefox, or the Dusk app:
-  // the same request, there, before a wallet is made or restored here.
+  // On Android, the wallet that pays it may be in Firefox, or the Dusk app,
+  // which opens the request link itself where it's installed: the same
+  // request there, after the way that works in this browser.
   $: offersPhone = Boolean(isAndroid && asked);
   // The extension that takes it, for a link Send would take: the wallet the
   // person has, where none is kept here, until it says it has none.
@@ -150,9 +155,11 @@
     problem !== LINK_BAD_ADDRESS
   );
   $: extensionFirst = offersExtension && !hasWallet && handed !== "no-wallet";
-  $: offersElsewhere = offersPhone || extensionFirst;
+  $: offersElsewhere = extensionFirst;
+  // Made again from the amount read: not for one Send asks about, which it
+  // would hand on settled.
   $: appHref =
-    offersPhone && asked
+    offersPhone && asked && !amount?.problem
       ? makePaymentLink({
           amountLux: asked.lux,
           label: asked.label || null,
@@ -172,11 +179,14 @@
         <div>
           <dt>Amount</dt>
           <dd>
-            {asked.lux !== null
-              ? `${formatDuskExact(asked.lux, language)} DUSK`
-              : asked.amountDusk
-                ? `${asked.amountDusk} DUSK`
+            {#if amount?.problem}
+              <span>{amount.field} DUSK</span>
+              <span class="payment-asked__question">{amount.problem}</span>
+            {:else}
+              {amount?.lux
+                ? `${formatDuskExact(amount.lux, language)} DUSK`
                 : "Any amount"}
+            {/if}
           </dd>
         </div>
         <div>
@@ -199,23 +209,6 @@
           </div>
         {/if}
       </dl>
-    {/if}
-    {#if offersPhone}
-      {#if !isFirefox}
-        <AnchorButton
-          className="payment-asked__open"
-          href={inFirefox(opened)}
-          text="Open in Firefox"
-        />
-      {/if}
-      {#if appHref}
-        <AnchorButton
-          className="payment-asked__open payment-asked__extension"
-          href={appHref}
-          text="Open in the Dusk app"
-          variant="secondary"
-        />
-      {/if}
     {/if}
     <p class="payment-asked__next">
       {problem || (extensionFirst ? "Pay it with the Dusk extension." : next)}
@@ -246,6 +239,26 @@
           on:click={hand}
           text="Open in the Dusk extension"
           variant={extensionFirst ? "primary" : "secondary"}
+        />
+      {/if}
+    {/if}
+    <!-- The app, where it's installed, opens the link before this page does:
+      here, it's another way, after the one that works in this browser. -->
+    {#if offersPhone}
+      {#if appHref}
+        <AnchorButton
+          className="payment-asked__open payment-asked__extension"
+          href={appHref}
+          text="Open in the Dusk app"
+          variant="secondary"
+        />
+      {/if}
+      {#if !isFirefox}
+        <AnchorButton
+          className="payment-asked__open payment-asked__extension"
+          href={inFirefox(opened)}
+          text="Open in Firefox"
+          variant="secondary"
         />
       {/if}
     {/if}
@@ -298,6 +311,11 @@
 
   .payment-asked__name {
     font-weight: 500;
+  }
+
+  .payment-asked__question {
+    color: var(--calm-danger);
+    font-size: 0.8125rem;
   }
 
   .payment-asked__code {

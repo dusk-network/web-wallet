@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { onMount } from "svelte";
   import { feeToKeep } from "$lib/wallet-reserve";
   import { page } from "$app/stores";
   import { activityState } from "$lib/activity";
@@ -20,6 +21,7 @@
     walletStore,
   } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
+  import { waitingSends } from "$lib/transactions";
   import { nodeBaseUrl } from "$lib/url";
   import { profileLabel } from "$lib/wallet";
   import { openProfileNames } from "$lib/wallets";
@@ -59,6 +61,11 @@
   ];
 
   const BEP20_BRIDGE_ADDRESS = import.meta.env.VITE_BEP20_BRIDGE_ADDRESS;
+
+  // The gas price as the network asks it now, for what's sent from here.
+  onMount(() => {
+    gasPriceStore.readAgain();
+  });
 
   // What this page sends, it sends from the wallet it was drawn for.
   const send = walletStore.forThisWallet()(executeSend);
@@ -118,6 +125,15 @@
       : balance.unshielded.value;
   $: shieldedAddress = currentProfile ? currentProfile.address.toString() : "";
   $: publicAddress = currentProfile ? currentProfile.account.toString() : "";
+  // What the sends waiting to go out from that balance take of it, at most:
+  // not there to send again.
+  $: waiting = $waitingSends
+    .filter(
+      ({ from }) =>
+        from ===
+        (spendableSource === "shielded" ? shieldedAddress : publicAddress)
+    )
+    .reduce((sum, { lux, maxFee }) => sum + lux + maxFee, 0n);
   $: knownNames = pastNames($activityState.rows);
   $: ownAccounts = $walletStore.profiles.flatMap((profile) => {
     const label = profileLabel(
@@ -136,7 +152,7 @@
 
 {#key askedKey}
   <Send
-    availableBalance={spendable}
+    availableBalance={spendable > waiting ? spendable - waiting : 0n}
     balanceKnown={balanceRead !== false}
     bep20BridgeAddress={BEP20_BRIDGE_ADDRESS}
     execute={send}
@@ -158,5 +174,6 @@
     {resolveName}
     shieldedBalance={balance.shielded.spendable}
     {shieldedAddress}
+    {waiting}
   />
 {/key}

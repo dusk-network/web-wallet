@@ -3,13 +3,24 @@ import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { execSync } from "child_process";
 import { loadEnv } from "vite";
 
-const env = loadEnv("", process.cwd());
+import { cspDirectives } from "./scripts/csp.js";
+
+// The settings Vite gives the pages: the .env files of the mode it builds
+// in, which vite.config.js names, under the VITE_ variables it runs with, as
+// deployments.json's in the Deploy workflow and scripts/verify-build.js.
+const env = loadEnv(process.env.WEB_WALLET_MODE ?? "production", process.cwd());
 const fallBackBase = env.VITE_BASE_PATH ? `${env.VITE_BASE_PATH}/` : "";
 
 /** @type {import("@sveltejs/kit").Config} */
 const config = {
   kit: {
     adapter: adapter({ fallback: `${fallBackBase}index.html` }),
+
+    // Only the wallet's own scripts, its inline ones by their hashes, which
+    // every page carries in its policy, and what it reads from
+    // (scripts/csp.js): Cloudflare sends it as a header too
+    // (deploy/stage.js).
+    csp: { directives: cspDirectives(env), mode: "hash" },
 
     paths: {
       base: /** @type {"" | `/${string}` | undefined} */ (env.VITE_BASE_PATH),

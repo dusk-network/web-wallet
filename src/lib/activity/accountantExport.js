@@ -422,26 +422,20 @@ export function followRewardsByYear(asked, { onError, onRead }) {
 }
 
 /**
- * What the file holds, and what it doesn't, once it's saved: whose network
- * fees of migrations it has, and those it couldn't read, or, with other
+ * What a file holds of migrations' network fees, as it was made, in
+ * sentences: whose it has, and those it couldn't read, or, with other
  * profiles, those another profile's file may have, as the extension says
- * them.
+ * them; and those before a block it reads back to. Once it's `saved`, it says
+ * another export adds what couldn't be read.
  *
- * @param {Awaited<ReturnType<typeof makeExport>>} made
+ * @param {Pick<Awaited<ReturnType<typeof makeExport>>, "evm" | "hasOtherProfiles">} made
+ * @param {{ saved?: boolean }} [options]
+ * @returns {string[]}
  */
-export function savedWords({
-  count,
-  currency,
-  evm,
-  hasOtherProfiles,
-  left,
-  shieldedWaiting,
-  unpriced,
-}) {
-  const out = [
-    left.pending ? `${left.pending} on its way` : "",
-    left.notRead ? `${left.notRead} not read yet` : "",
-  ].filter(Boolean);
+export function migrationFeeWords(
+  { evm, hasOtherProfiles },
+  { saved = true } = {}
+) {
   const chains = [...new Set(evm.unread.map(({ chain }) => chain))];
   const unread = evm.unread.length;
   // Approvals and revokes there it couldn't all read: for now, or before a
@@ -458,26 +452,47 @@ export function savedWords({
   );
 
   return [
-    `CSV saved: ${count === 1 ? "1 line" : `${count} lines`}.`,
-    out.length ? `Left out: ${out.join(", ")}.` : "",
-    unpriced
-      ? `${unpriced === 1 ? "1 line has" : `${unpriced} lines have`} no ${currencyWords(currency).one} value.`
-      : "",
     evm.booked.length
       ? `The file has the network fees paid from ${new Intl.ListFormat("en", { type: "conjunction" }).format(evm.booked.map((address) => shortenAddress(address)))}.`
       : "",
     unread
-      ? `${unread === 1 ? "1 migration's fee" : `${unread} migrations' fees`} on ${chains.length === 1 ? chains[0] : "their chains"} couldn't be read: export again to add ${unread === 1 ? "it" : "them"}.`
+      ? `${unread === 1 ? "1 migration's fee" : `${unread} migrations' fees`} on ${chains.length === 1 ? chains[0] : "their chains"} couldn't be read${saved ? `: export again to add ${unread === 1 ? "it" : "them"}` : ""}.`
       : "",
     failed.length
-      ? hasOtherProfiles
-        ? `Some network fees${failedWhere} may be in another profile's file, or couldn't be read: export again to add them.`
-        : `Some network fees${failedWhere} couldn't be read: export again to add them.`
+      ? `${
+          hasOtherProfiles
+            ? `Some network fees${failedWhere} may be in another profile's file, or couldn't be read`
+            : `Some network fees${failedWhere} couldn't be read`
+        }${saved ? ": export again to add them" : ""}.`
       : "",
     ...[...before.values()].map(
       ({ chain, from }) =>
         `Network fees on ${chain || "its chain"} from before block ${Number(from).toLocaleString("en")} aren't in the file.`
     ),
+  ].filter(Boolean);
+}
+
+/**
+ * What the file holds, and what it doesn't, once it's saved: its lines, what
+ * it left out, and what it holds of migrations' network fees
+ * (`migrationFeeWords`).
+ *
+ * @param {Awaited<ReturnType<typeof makeExport>>} made
+ */
+export function savedWords(made) {
+  const { count, currency, left, shieldedWaiting, unpriced } = made;
+  const out = [
+    left.pending ? `${left.pending} on its way` : "",
+    left.notRead ? `${left.notRead} not read yet` : "",
+  ].filter(Boolean);
+
+  return [
+    `CSV saved: ${count === 1 ? "1 line" : `${count} lines`}.`,
+    out.length ? `Left out: ${out.join(", ")}.` : "",
+    unpriced
+      ? `${unpriced === 1 ? "1 line has" : `${unpriced} lines have`} no ${currencyWords(currency).one} value.`
+      : "",
+    ...migrationFeeWords(made),
     shieldedWaiting
       ? "Your shielded activity is still syncing: export again once it's done."
       : "",

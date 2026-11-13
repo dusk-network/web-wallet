@@ -7,11 +7,8 @@
 
 import { base } from "$app/paths";
 import {
-  amountForField,
-  decimalSeparator,
-} from "@dusk-network/app-core/amounts";
-import {
   chainLabel,
+  linkAmount,
   makePaymentLink,
   parsePaymentLink,
   readPaymentLink as readLink,
@@ -79,7 +76,19 @@ export function elsewhereLink(text) {
     to: link.to,
   });
 
-  return https ? { href: https, network: chainLabel(link.chainId) } : null;
+  if (!https) {
+    return null;
+  }
+
+  // An amount that could be either of two, as 1.000, as the link writes it:
+  // that wallet's Send asks which, as this one does, never settled here.
+  const href = new URL(https);
+
+  if (linkAmount(link).problem) {
+    href.searchParams.set("amount", link.amountDusk);
+  }
+
+  return { href: href.href, network: chainLabel(link.chainId) };
 }
 
 /**
@@ -134,10 +143,7 @@ export function readPaymentLink(text, net, language) {
 
   return read.link && !read.problem
     ? {
-        amount: amountForField(
-          read.link.amountDusk,
-          decimalSeparator(language)
-        ),
+        amount: linkAmount(read.link, language).field,
         memo: read.link.memo,
         problem: "",
         to: read.link.to,

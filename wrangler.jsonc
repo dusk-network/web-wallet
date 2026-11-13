@@ -21,13 +21,25 @@
       "routes": [
         { "pattern": "apps.testnet.dusk.network", "custom_domain": true },
       ],
-      "vars": { "EXPLORER": "https://explorer.testnet.dusk.network" },
+      "vars": {
+        // The test build's signing certificate, the debug keystore's the
+        // test APKs are built with: Android opens the wallet's links in the
+        // Dusk Wallet app signed with it (/.well-known/assetlinks.json).
+        "ANDROID_CERTS": "2B:F9:B8:C1:BD:0D:D3:AE:19:70:5F:E0:CF:C5:54:21:CF:49:68:D3:AA:AF:3B:6D:35:2B:49:D7:65:CA:3D:A6",
+        "EXPLORER": "https://explorer.testnet.dusk.network",
+      },
     },
     // Not deployed yet: mainnet moves with the wallet's v2 (.github/workflows/deploy.yml).
     "mainnet": {
       "name": "web-wallet-mainnet",
       "routes": [{ "pattern": "apps.dusk.network", "custom_domain": true }],
-      "vars": { "EXPLORER": "https://explorer.dusk.network" },
+      "vars": {
+        // RELEASE KEY: the SHA-256 fingerprint of the release key the Dusk
+        // Wallet app is signed with, once there is one (AA:BB:…, several
+        // comma-separated). Until then, no app opens mainnet's links.
+        "ANDROID_CERTS": "",
+        "EXPLORER": "https://explorer.dusk.network",
+      },
     },
   },
 }

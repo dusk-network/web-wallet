@@ -21,10 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offer a request for another network on that network's wallet, before an unlock and on Send
 - Say which EVM addresses the export has the network fees of migrations from, and add one for the file
 - Show staking rewards by calendar year beside History's export: native claimed, and Sozu's grown while held and taken out by unstaking, in DUSK and in the wallet's currency where asked
+- Say on mainnet what a payment request comes to in your currency, with the price's time, and what a payment comes to in the payer's on Send and its review, the link still asking DUSK
+- Run only the wallet's own scripts, under a Content-Security-Policy every page carries and Cloudflare sends as a header, and have GitHub attest each deployed build's manifest, which scripts/verify-build.js --attested checks
 
 ### Changed
 
 - Show amounts to start with in the currency of the browser's region, as Singapore dollars in Singapore, where DUSK has a price in it, else in US dollars
+- Let the Dusk app on Android open the wallet's payment request links where it's installed, and lead a request's page there with the way that works in the browser, with the Dusk app and Firefox after it
+- Count what unstaking took out of Sozu at average cost with the deposit fees included in staking rewards by year, as the line under them says, and show a loss as one
+- Start the gas price from the network's median up to five times the lowest, by the same rule as the extension, saying under the fee when the network is busy and the price can be raised, and read it again as Send or Staking opens
 
 ### Removed
 
@@ -58,6 +63,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ask whether a contact or a profile is someone else where its name starts as a profile's or a contact's, as "Lucas (petit-fils)" beside "Lucas", and save it all the same
 - Say on a send that waits on a silent network that it goes out once the network answers, with Cancel and a way Home
 - Read a profile's history every few seconds once another profile here paid it, until the payment shows, and say a request is checking for payments meanwhile, not that nothing came in
+- Say after the unlock that a send whose page closed, reloaded or locked before it went out wasn't sent, with its amount, recipient, memo and time, to send now through Review or not, never sending it by itself
+- Show each send waiting to go out with its memo and when it was made on Home, and what it sends on its own screen
+- Warn on Review of the same send waiting to go out already, as of one on its way, and count what waits out of Available and Max
+- Read the stake with Sozu on Home as the wallet opens and for each profile chosen, counted in the total and shown under staking, saying it's being read until it is, not "Nothing staked right now"
+- Say on Home's total, balances and stake that they may be out of date while offline or the network doesn't answer, until they're read again as it answers, the total naming what couldn't be read
+- Say in Export which network fees of migrations the file has, and which it couldn't read, as the file made for the period chosen has them, not the EVM addresses known here
+- Clear the clipboard of a recovery phrase pasted into the word boxes, and say once where the browser won't let it
+- Ask on a payment request's page what Send asks of an amount that could be either of two, as 1.000, never showing it as 1 DUSK, and hand it on only as written
+- Ask about a profile's name with any .dusk name in it, and a contact's name another contact's is or starts as, as "Lucas" beside "Lucas (petit-fils)", saving either only once answered with Yes, save it, wherever a contact is saved
 - Say how much each approval under Bridge › Activity let the migration contract take, and what a revoke took back of it, and give gas to the wei in its details
 - Show a transfer's newest transactions in History on its first read too, as after a restore, as the balances already have them
 - Give one time for one payment, to the second, as its block's: on Send's warning of a payment made already and its Review, on the Sent screen, in a transaction's details and on a request, which says today in a sentence and a refund's time first, as its payments'

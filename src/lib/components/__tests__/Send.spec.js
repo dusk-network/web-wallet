@@ -24,16 +24,25 @@ import { shortenAddress } from "$lib/dusk/string";
 import { afterConfirmDelay, getAsHTMLElement } from "$lib/dusk/test-helpers";
 import { page } from "$app/stores";
 import { addBasePath } from "$lib/navigation";
-import { outcomeUnknown } from "$lib/transactions";
+import {
+  cancelWaitingSends,
+  keepWaiting,
+  outcomeUnknown,
+  sendGate,
+  sendUnsentAgain,
+  unsentSends,
+} from "$lib/transactions";
+import WalletChangedError from "$lib/errors/wallet-changed-error";
 import { networks } from "@dusk-network/networks";
 import {
   contactsWritten,
+  findContact,
   getContact,
   listContacts,
   removeContact,
   saveContact,
 } from "$lib/contacts";
-import { walletStore } from "$lib/stores";
+import { networkStore, walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { openTestContacts, stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
@@ -1910,6 +1919,289 @@ describe("Send", () => {
       expect(onItsWay.getByRole("alert")).toHaveTextContent(
         `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It's on its way.`
       );
+    });
+
+    /**
+     * A send of 0.0019 DUSK to the other account that waits to go out, from
+     * `from`, with `memo`, as Send keeps it.
+     *
+     * @param {{ from?: string, memo?: string }} [options]
+     */
+    const waitingSend = ({
+      from = publicAddress,
+      memo = "Factura 044",
+    } = {}) => {
+      const gate = sendGate();
+
+      keepWaiting({
+        address: otherAccount,
+        from,
+        gate,
+        lux: 1_900_000n,
+        maxFee: fee,
+        memo,
+        operation: new Promise(() => {}),
+        to: "Lena",
+      });
+
+      return gate;
+    };
+
+    it("should warn of the same send waiting to go out already, from the same balance, and let it go all the same, the button saying Send again", async () => {
+      const waiting = waitingSend();
+
+      try {
+        const { getByRole } = render(Send, {
+          ...baseProps,
+          initialAmount: "0.0019",
+          initialMemo: "Factura 044",
+          initialRecipient: otherAccount,
+        });
+
+        expect(getByRole("alert")).toHaveTextContent(
+          "The same send is waiting to go out already: 0.0019 DUSK to Lena, with this memo."
+        );
+
+        await fireEvent.click(fieldsOf(getByRole).review());
+
+        expect(fieldsOf(getByRole).send()).toHaveTextContent(
+          /^Send 0\.0019 DUSK again$/
+        );
+
+        await afterConfirmDelay();
+        await fireEvent.click(fieldsOf(getByRole).send());
+
+        expect(baseProps.execute).toHaveBeenCalledOnce();
+        cleanup();
+
+        // Another memo, or the same from the shielded balance, is another.
+        const other = render(Send, {
+          ...baseProps,
+          initialAmount: "0.0019",
+          initialMemo: "Factura 045",
+          initialRecipient: otherAccount,
+        });
+
+        expect(other.queryByRole("alert")).toBeNull();
+        cleanup();
+
+        waiting.cancel();
+        waitingSend({ from: shieldedAddress }).cancel();
+
+        const gone = render(Send, {
+          ...baseProps,
+          initialAmount: "0.0019",
+          initialMemo: "Factura 044",
+          initialRecipient: otherAccount,
+        });
+
+        expect(gone.queryByRole("alert")).toBeNull();
+      } finally {
+        waiting.cancel();
+      }
+    });
+
+    it("should fill the form in with a send that never went out, asked from where it's said, and send it only from the review", async () => {
+      const { networkName } = get(networkStore);
+      const unsent = {
+        account: publicAddress,
+        at: Date.now() - 60_000,
+        id: "unsent-1",
+        label: "Lena",
+        lux: "1900000",
+        memo: "tab dropped 1",
+        network: networkName,
+        to: otherAccount,
+        typed: {
+          amount: "0.0019",
+          isMax: false,
+          isOwn: false,
+          memo: "tab dropped 1",
+          picks: {},
+          to: otherAccount,
+        },
+      };
+
+      // Asked before Send opens.
+      sendUnsentAgain(unsent);
+
+      const { getByRole, getByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const filled = () =>
+        [fields.to(), fields.amount(), fields.memo()].map(
+          (field) => /** @type {HTMLInputElement} */ (field).value
+        );
+
+      expect(filled()).toStrictEqual([otherAccount, "0.0019", "tab dropped 1"]);
+      expect(
+        getByText(
+          "Filled in from the send that didn't go out. Check it before you send."
+        )
+      ).toBeInTheDocument();
+      expect(baseProps.execute).not.toHaveBeenCalled();
+
+      await fireEvent.click(fields.review());
+      await afterConfirmDelay();
+      await fireEvent.click(fields.send());
+
+      expect(baseProps.execute).toHaveBeenCalledWith(
+        otherAccount,
+        1_900_000n,
+        "tab dropped 1",
+        gasPrice,
+        gasLimit,
+        undefined,
+        aGate
+      );
+      cleanup();
+
+      // Asked while the form shows, over what's typed there.
+      const open = render(Send, baseProps);
+      const typed = fieldsOf(open.getByRole);
+
+      await fireEvent.input(typed.memo(), { target: { value: "half typed" } });
+      sendUnsentAgain({
+        ...unsent,
+        id: "unsent-2",
+        memo: "",
+        typed: { ...unsent.typed, memo: "" },
+      });
+      await tick();
+
+      expect(
+        [typed.to(), typed.amount(), typed.memo()].map(
+          (field) => /** @type {HTMLInputElement} */ (field).value
+        )
+      ).toStrictEqual([otherAccount, "0.0019", ""]);
+
+      // Another profile's isn't this form's to fill in.
+      sendUnsentAgain({ ...unsent, account: otherAccount, id: "unsent-3" });
+      cleanup();
+
+      const another = render(Send, baseProps);
+
+      expect(
+        /** @type {HTMLInputElement} */ (fieldsOf(another.getByRole).to()).value
+      ).toBe("");
+    });
+
+    it("should keep a send until it goes out, and say no more of one that never went out once the same is sent again", async () => {
+      const { networkName } = get(networkStore);
+      const { getByRole } = render(Send, {
+        ...baseProps,
+        execute: vi.fn(() => new Promise(() => {})),
+        initialAmount: "0.0019",
+        initialMemo: "ward round 1",
+        initialRecipient: otherAccount,
+      });
+      const fields = fieldsOf(getByRole);
+
+      await fireEvent.click(fields.review());
+      await afterConfirmDelay();
+      await fireEvent.click(fields.send());
+
+      // It waits, and the wallet locks: it never went out.
+      cancelWaitingSends(new WalletChangedError());
+
+      await vi.waitFor(() =>
+        expect(get(unsentSends)).toStrictEqual([
+          expect.objectContaining({
+            account: publicAddress,
+            label: shortenAddress(otherAccount),
+            lux: "1900000",
+            memo: "ward round 1",
+            network: networkName,
+            to: otherAccount,
+          }),
+        ])
+      );
+      cleanup();
+
+      // Typed again and sent: the one that never went out is said no more.
+      const again = render(Send, {
+        ...baseProps,
+        initialAmount: "0.0019",
+        initialMemo: "ward round 1",
+        initialRecipient: otherAccount,
+      });
+
+      await fireEvent.click(fieldsOf(again.getByRole).review());
+      await afterConfirmDelay();
+      await fireEvent.click(fieldsOf(again.getByRole).send());
+
+      expect(get(unsentSends)).toStrictEqual([]);
+    });
+  });
+
+  describe("In the payer's currency", () => {
+    const prices = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          market_data: {
+            current_price: { usd: 0.5 },
+            last_updated: "2026-11-13T12:03:00.000Z",
+          },
+        }),
+    }));
+
+    beforeEach(() => {
+      vi.stubGlobal("fetch", prices);
+      settingsStore.update((store) => ({ ...store, currency: "USD" }));
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      settingsStore.reset();
+      setNodeNetwork(null);
+      prices.mockClear();
+    });
+
+    it("should say what the amount comes to in the payer's money on mainnet, under it once it reads and on the review, with the price's time", async () => {
+      setNodeNetwork(networks.mainnet);
+
+      const { container, getByRole } = render(Send, {
+        ...baseProps,
+        initialAmount: "2",
+        initialRecipient: otherAccount,
+      });
+      const fields = fieldsOf(getByRole);
+      const VALUE = /^≈ \$1\.00 · price at \d{1,2}:\d{2}/;
+      const underAmount = () =>
+        container.querySelector(".send__in-currency")?.textContent?.trim();
+
+      await vi.waitFor(() => expect(underAmount()).toMatch(VALUE));
+
+      // As the amount is typed: none for one that doesn't read.
+      await fireEvent.input(fields.amount(), { target: { value: "2..1" } });
+
+      expect(underAmount()).toBeUndefined();
+
+      await fireEvent.input(fields.amount(), { target: { value: "4" } });
+
+      expect(underAmount()).toMatch(/^≈ \$2\.00 · price at /);
+
+      await fireEvent.click(fields.review());
+
+      expect(
+        container.querySelector(".send__summary-currency")?.textContent?.trim()
+      ).toMatch(/^≈ \$2\.00 · price at /);
+    });
+
+    it("should say nothing of it on testnet, where DUSK has no value, nor ask for a price", async () => {
+      setNodeNetwork(networks.testnet);
+
+      const { container } = render(Send, {
+        ...baseProps,
+        initialAmount: "2",
+        initialRecipient: otherAccount,
+      });
+
+      await tick();
+
+      expect(container.querySelector(".send__in-currency")).toBeNull();
+      expect(prices).not.toHaveBeenCalled();
     });
   });
 
@@ -3925,6 +4217,46 @@ describe("Send", () => {
     /** @param {HTMLElement} container */
     const cardTitle = (container) =>
       container.querySelector(".send__card-title")?.textContent?.trim();
+
+    it("should ask at Save about a contact's name another contact's starts as, and save it only once answered", async () => {
+      // Lucas, as saved before, at another address.
+      const lucas = saveContact({
+        address: bep20BridgeAddress,
+        name: "Lucas (petit-fils)",
+      });
+
+      try {
+        const { getByRole, getByText, queryByRole } = render(Send, baseProps);
+
+        await fireEvent.input(fieldsOf(getByRole).to(), {
+          target: { value: otherAccount },
+        });
+        await fireEvent.click(
+          getByRole("button", { name: "Save to contacts" })
+        );
+        await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+          target: { value: "Lucas" },
+        });
+
+        expect(
+          getByText(
+            `You have a contact called Lucas (petit-fils), at ${shortenAddress(bep20BridgeAddress)}. Is this someone else?`
+          )
+        ).toBeInTheDocument();
+
+        await fireEvent.click(getByRole("button", { name: "Save" }));
+
+        expect(findContact(otherAccount)).toBeNull();
+        expect(getByRole("button", { name: "Yes, save it" })).toHaveFocus();
+
+        await fireEvent.click(getByRole("button", { name: "Yes, save it" }));
+
+        expect(findContact(otherAccount)).toMatchObject({ name: "Lucas" });
+        expect(queryByRole("textbox", { name: "Contact name" })).toBeNull();
+      } finally {
+        removeContact(lucas.id);
+      }
+    });
 
     it("should refuse to save a contact by the name of a profile here", async () => {
       await holdOtherWallet();

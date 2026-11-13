@@ -8,8 +8,9 @@
   } from "@mdi/js";
   import { mdiCheck } from "@mdi/js";
   import { activityState, isHistoryEnabled } from "$lib/activity";
+  import { timeLabel } from "$lib/activity/present";
   import { contractDescriptors } from "$lib/contracts";
-  import { Banner, SectionHead } from "$lib/components";
+  import { Banner, MemoText, SectionHead, UnsentSends } from "$lib/components";
   import { Button } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
@@ -20,7 +21,7 @@
   } from "$lib/containers/Home";
   import { cardRoutes, migrationRoutes } from "$lib/bridge/cardRoutes";
   import { addBasePath } from "$lib/navigation";
-  import { isSozuFunction, sozuContractsFor, sozuStore } from "$lib/sozu";
+  import { sozuContractsFor, sozuStore } from "$lib/sozu";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import networkReach from "$lib/stores/networkReach";
   import { waitingSends, waitingText } from "$lib/transactions";
@@ -96,15 +97,11 @@
   $: ({ rows } = $activityState);
   $: hasPastStaking = rows.some((row) => row.category === "staking");
 
-  // What is staked with Sozu, read only for an account that called a pool
-  // of its: read, a pool its hub named is known from then on. Where the
-  // history couldn't be read, whether it did isn't known: it's read then too.
-  $: ({ error: historyError } = $activityState);
-  $: if (
-    (rows.some(isSozuFunction) || (historyError && !rows.length)) &&
-    networkName &&
-    currentProfile
-  ) {
+  // What is staked with Sozu, read for the profile shown as the wallet
+  // opens and as another is chosen, where the network has Sozu: the history
+  // shows its latest rows only, and a stake made long before is there all
+  // the same.
+  $: if (sozuContractsFor(net) && currentProfile) {
     void sozuStore.load();
   }
   $: ({
@@ -165,6 +162,7 @@
       locale={language}
       shielded={balance.shielded.value}
       staked={(staked ?? 0n) + liquid}
+      {stakeReading}
       {stakeUnread}
       unread={balanceReadFailed}
       unshielded={balance.unshielded.value}
@@ -178,7 +176,7 @@
 
     <!-- Sends that haven't gone out, as the network doesn't answer, or
       couldn't be reached: called off from here, or they go out once it
-      answers. -->
+      answers. Each with its memo and when it was sent, to tell them apart. -->
     {#each $waitingSends as send (send.id)}
       <Banner
         className="home__waiting"
@@ -186,6 +184,10 @@
         title={`Not sent yet: ${waitingWhat(send, $settingsStore.hideBalances)}.`}
         variant="info"
       >
+        <p class="home__waiting-when">
+          {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
+          {timeLabel(send.at, language)}
+        </p>
         <p>
           {$networkReach === "answering" && !send.waitsForNetwork
             ? "It's being sent."
@@ -200,6 +202,10 @@
         />
       </Banner>
     {/each}
+
+    <!-- And those that never went out, as their page closed, reloaded or
+      locked first: to send now, through Review, or not. -->
+    <UnsentSends />
 
     {#if isEnabled("bridge") && migration}
       <p class="home__note">
@@ -300,6 +306,11 @@
 
   .home__main :global(.home__waiting-cancel) {
     margin-top: 0.5rem;
+  }
+
+  .home__waiting-when {
+    color: var(--calm-muted);
+    overflow-wrap: anywhere;
   }
 
   .home__note {

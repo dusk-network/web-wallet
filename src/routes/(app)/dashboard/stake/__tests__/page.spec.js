@@ -326,7 +326,7 @@ describe("Staking", () => {
         "0 DUSK",
       ]);
       expect(container).toHaveTextContent(
-        "Taken out by unstaking is part of grown while held: what came back, less what that stDUSK cost at its average price, deposit fees not counted."
+        "Taken out by unstaking is part of grown while held: what came back, less that stDUSK's average cost, deposit fees included."
       );
       expect(whole).toHaveBeenCalledOnce();
     } finally {

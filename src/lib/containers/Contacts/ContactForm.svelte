@@ -1,5 +1,6 @@
 <script>
-  import { createEventDispatcher, onMount } from "svelte";
+  import { NAME_SAVE_YES } from "@dusk-network/app-core/names";
+  import { createEventDispatcher, onMount, tick } from "svelte";
   import { mdiClose, mdiInformationOutline } from "@mdi/js";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { FieldLimit, FullAddress, SectionHead } from "$lib/components";
@@ -56,6 +57,12 @@
   /** Whether "Delete" was asked once, to ask again before it deletes. */
   let isDeleting = false;
 
+  /**
+   * The name a question about it was asked of at Save: it's saved only as
+   * the person says so, and no longer asked once it's typed again.
+   */
+  let askedOf = "";
+
   /** @type {HTMLElement} */
   let form;
 
@@ -78,6 +85,28 @@
         lookup = { name: value, result };
       }
     });
+  }
+
+  /**
+   * Saves it, unless its name asks a question not answered yet: then the
+   * question waits for its answer, which saves it.
+   */
+  async function trySave() {
+    if (!isValid || isTaken) {
+      return;
+    }
+
+    if (nameProblem && !nameProblem.refused) {
+      askedOf = name;
+      await tick();
+      /** @type {HTMLElement | null | undefined} */ (
+        form?.querySelector("button.contact-form__yes")
+      )?.focus();
+
+      return;
+    }
+
+    save();
   }
 
   function save() {
@@ -116,7 +145,10 @@
   $: isTaken = other !== null && other.id !== contact?.id;
 
   // Only the address would tell them apart, in a payment that can't be undone.
-  $: nameProblem = contactNameProblem(name, profiles, contact?.id);
+  $: nameProblem = contactNameProblem(name, profiles, contact?.id, address);
+  $: if (askedOf && askedOf !== name) {
+    askedOf = "";
+  }
   $: isOwn = Boolean(address) && own.includes(address);
 
   // Saving a contact again with its `.dusk` name takes the address the name
@@ -149,14 +181,7 @@
     </button>
   </header>
 
-  <form
-    class="contact-form__fields"
-    on:submit|preventDefault={() => {
-      if (isValid && !isTaken) {
-        save();
-      }
-    }}
-  >
+  <form class="contact-form__fields" on:submit|preventDefault={trySave}>
     <label class="contact-form__label">
       Name
       <Textbox bind:value={name} maxlength={40} required type="text" />
@@ -172,6 +197,16 @@
       >
         {nameProblem.words}
       </p>
+      <!-- Asked at Save: saved only as the answer says so. -->
+      {#if !nameProblem.refused && askedOf === name && isValid && !isTaken}
+        <Button
+          className="contact-form__yes"
+          on:click={save}
+          size="small"
+          text={NAME_SAVE_YES}
+          variant="secondary"
+        />
+      {/if}
     {/if}
 
     {#if isFalseName}
@@ -380,6 +415,10 @@
   .contact-form__error {
     color: var(--calm-danger);
     font-size: 0.875rem;
+  }
+
+  .contact-form__fields :global(.contact-form__yes) {
+    align-self: flex-start;
   }
 
   .contact-form__warning {

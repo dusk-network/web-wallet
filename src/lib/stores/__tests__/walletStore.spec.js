@@ -36,6 +36,7 @@ import { generateMnemonic, getSeedFromMnemonic } from "$lib/wallet";
 import { WalletChangedError } from "$lib/errors";
 
 import { networkStore, settingsStore, walletStore } from "..";
+import { setNetworkReach } from "../networkReach";
 
 const VITE_SYNC_INTERVAL = import.meta.env.VITE_SYNC_INTERVAL;
 
@@ -963,6 +964,67 @@ describe("Wallet store", async () => {
       await read;
 
       expect(get(walletStore).stakeInfo).toBe(freshStake);
+    });
+
+    it("should say the balances and the stake may be out of date while the network doesn't answer, offline or silent, and read them as soon as it answers again", async () => {
+      vi.useRealTimers();
+
+      const { profiles } = get(walletStore);
+      const balanceOf = balanceSpy.getMockImplementation();
+      const stakeOf = stakeInfoSpy.getMockImplementation();
+
+      try {
+        for (const reach of /** @type {const} */ (["offline", "silent"])) {
+          expect(get(walletStore).balanceReadFailed).toBe(false);
+          expect(get(walletStore).stakeReadFailed).toBe(false);
+
+          // Nothing is read meanwhile, failed or not: what shows is from
+          // before, said to be so.
+          const before = get(walletStore).balance;
+
+          balanceSpy.mockClear();
+          setNetworkReach(reach);
+
+          expect(get(walletStore).balanceReadFailed).toBe(true);
+          expect(get(walletStore).stakeReadFailed).toBe(true);
+          expect(get(walletStore).balance).toBe(before);
+          expect(balanceSpy).not.toHaveBeenCalled();
+
+          // Another profile shows the same way, as nothing gets through.
+          balanceSpy.mockRejectedValue(new TypeError("Failed to fetch"));
+          stakeInfoSpy.mockRejectedValue(new TypeError("Failed to fetch"));
+
+          const switched = walletStore.setCurrentProfile(profiles[1]);
+
+          expect(get(walletStore).balanceReadFailed).toBe(true);
+          expect(get(walletStore).stakeReadFailed).toBe(true);
+
+          await switched;
+
+          expect(get(walletStore).balanceReadFailed).toBe(true);
+          expect(get(walletStore).stakeReadFailed).toBe(true);
+
+          // Back: read at once, and said no more once read.
+          balanceSpy.mockImplementation(/** @type {any} */ (balanceOf));
+          stakeInfoSpy.mockImplementation(/** @type {any} */ (stakeOf));
+          balanceSpy.mockClear();
+          setNetworkReach("answering");
+
+          await vi.waitUntil(
+            () =>
+              !get(walletStore).balanceReadFailed &&
+              !get(walletStore).stakeReadFailed
+          );
+
+          expect(balanceSpy).toHaveBeenCalled();
+
+          await walletStore.setCurrentProfile(profiles[0]);
+        }
+      } finally {
+        balanceSpy.mockImplementation(/** @type {any} */ (balanceOf));
+        stakeInfoSpy.mockImplementation(/** @type {any} */ (stakeOf));
+        setNetworkReach("answering");
+      }
     });
 
     it("should say the balances were read for the profile shown, and not while another's show", async () => {

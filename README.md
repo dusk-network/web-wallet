@@ -200,11 +200,24 @@ Testnet runs on Cloudflare (`wrangler.jsonc`), at
 `https://apps.testnet.dusk.network/wallet/`. Its address mustn't change:
 browsers keep each wallet by its origin. Cloudflare serves `deploy/site/`:
 the build at `wallet/`, where `node deploy/stage.js` places it after
-`npm run build`, and the headers for it in `deploy/site/_headers`.
+`npm run build`, and the headers for it in `deploy/site/_headers`, which
+stage.js writes from `deploy/headers` with the build's Content-Security-Policy.
+
+Every page carries that policy itself (SvelteKit's `kit.csp`, from
+`scripts/csp.js`), wherever it's hosted, and Cloudflare sends it as a header
+too: only the wallet's own scripts run, SvelteKit's inline ones by their
+hashes, with WebAssembly; and the wallet reads only from its network's node,
+archive, prover and Dusk Domains, DuskEVM, the chains its routes reach,
+CoinGecko, and WalletConnect, as the build's settings and its network's file
+in `@dusk-network/networks` name them.
 `deploy/worker.js` answers what no file does: an address under `/wallet/` that
 no page has opens the wallet, which says what's there; a file under
-`/wallet/_app/` that isn't there is a 404; and `/explorer` goes on to the
-explorer's own domain. To serve a build the same way locally, place it, then
+`/wallet/_app/` that isn't there is a 404; `/explorer` goes on to the
+explorer's own domain; and `/.well-known/assetlinks.json` names the Dusk
+Wallet app on Android, signed with the certificates `ANDROID_CERTS` names in
+`wrangler.jsonc`, as the app that opens the wallet's request links (Android
+App Links). Testnet's is the test build's signing key; mainnet's is left for
+the release key, and until it's there the file is a 404. To serve a build the same way locally, place it, then
 run `deploy/node_modules/.bin/wrangler dev --env testnet`, with Wrangler from
 `npm ci --ignore-scripts --prefix deploy`.
 
@@ -233,8 +246,15 @@ their DigitalOcean spec, so change theirs there with it.
 To rebuild what a site serves and compare, from a clone of this repository:
 
 ```bash
-node scripts/verify-build.js https://apps.dusk.network/wallet/
+node scripts/verify-build.js https://apps.dusk.network/wallet/ [--attested]
 ```
+
+The Deploy workflow has GitHub attest each build's manifest
+(`actions/attest-build-provenance`), signed for that workflow and commit,
+with no key to keep. `--attested` checks it first with GitHub's CLI
+(`gh attestation verify`): that this repository's Deploy workflow built the
+manifest the site serves from the commit it names, on GitHub's own runners.
+GitHub vouches for it, not the site.
 
 The script builds the manifest's commit in a new worktree, with `npm ci` and
 `npm run build`, and checks every file, and every page at the addresses

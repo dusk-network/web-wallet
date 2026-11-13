@@ -1,8 +1,8 @@
 /**
  * What this device keeps of each wallet besides its phrase: its cache of
  * notes and balances, its bridge transfers and migrations, its contacts,
- * its history, its names, the payments it asked for and the EVM addresses
- * its exports were given. Each wallet's is its own, by the ending of
+ * its history, its names, the payments it asked for, the EVM addresses
+ * its exports were given and its sends that never went out. Each wallet's is its own, by the ending of
  * its names ($lib/wallets/dataNames) or by its accounts, so that one
  * wallet's never shows in another, and a wallet removed takes its own
  * alone.
@@ -20,6 +20,10 @@ import {
   hydrateMigrations,
 } from "$lib/bridge/migrationActivity";
 import { hydrateWithdrawalActivity } from "$lib/bridge/withdrawalActivityStorage";
+import {
+  forgetWalletUnsentSends,
+  hydrateUnsentSends,
+} from "$lib/transactions/unsentSends";
 import { forgetContactsOf } from "$lib/contacts";
 import { forgetVerifiedNamesOf } from "$lib/dusk-domains/verifiedNames";
 import {
@@ -61,6 +65,7 @@ export function useWalletData(key) {
   hydrateWithdrawalActivity();
   hydrateRequests();
   hydrateExportAddresses();
+  hydrateUnsentSends();
 }
 
 /**
@@ -87,6 +92,7 @@ export async function forgetWalletData(key, { accounts, addresses }) {
       forgetWalletRouteTransfers(suffix);
       forgetWalletRequests(suffix);
       forgetWalletExportAddresses(suffix);
+      forgetWalletUnsentSends(suffix);
       forgetVerifiedNamesOf(accounts);
     }),
     accounts[0] ? forgetContactsOf(accounts[0]) : Promise.resolve(),
@@ -119,6 +125,7 @@ export async function forgetOtherWalletsData() {
     forgetWalletRouteTransfers(suffix);
     forgetWalletRequests(suffix);
     forgetWalletExportAddresses(suffix);
+    forgetWalletUnsentSends(suffix);
   }
 
   await forgetOtherWalletCaches(suffixes);
@@ -137,4 +144,5 @@ export async function forgetEveryWalletData() {
   forgetWalletRouteTransfers("");
   forgetWalletRequests("");
   forgetWalletExportAddresses("");
+  forgetWalletUnsentSends("");
 }

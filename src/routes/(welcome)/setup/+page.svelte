@@ -14,7 +14,7 @@
   // SvelteKit's version is the commit built (svelte.config.js).
   const commit = version.slice(0, 8);
 
-  /** Whether the request offers a wallet elsewhere on the phone first. */
+  /** Whether the request offers the Dusk extension first, which takes it. */
   let offersElsewhere = false;
 </script>
 

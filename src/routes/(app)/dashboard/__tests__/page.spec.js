@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
+import { timeLabel } from "$lib/activity/present";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore } from "$lib/stores";
 
@@ -149,6 +150,13 @@ describe("Dashboard", () => {
     cleanup();
     settingsStore.reset();
     mockedWalletStore.setMockedStoreValue(initialStore);
+    sozu.store?.set({
+      account: "",
+      available: true,
+      error: null,
+      loading: false,
+      status: null,
+    });
     await setHistory({ error: null, loaded: true, rows: [], syncing: false });
     vi.unstubAllEnvs();
   });
@@ -159,8 +167,9 @@ describe("Dashboard", () => {
     vi.doUnmock("$lib/sozu");
   });
 
-  it("says a send waits to go out while the network doesn't answer, with Cancel, wherever it was sent from, until it goes out", async () => {
-    const { keepWaiting, sendGate } = await import("$lib/transactions");
+  it("says a send waits to go out while the network doesn't answer, with Cancel, wherever it was sent from, until it goes out, each with its memo and time to tell them apart", async () => {
+    const { keepWaiting, sendGate, waitingSends } =
+      await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
     const { toastList } = await import("$lib/dusk/components/Toast/store");
     render(Dashboard, props);
@@ -171,15 +180,20 @@ describe("Dashboard", () => {
     keepWaiting({
       gate: first,
       lux: 10_000_000n,
+      memo: "ward round 1",
       operation: new Promise(() => {}),
       to: "Profile 2",
     });
     keepWaiting({
       gate: second,
-      lux: 20_000_000n,
+      lux: 10_000_000n,
+      memo: "ward round 2",
       operation: new Promise(() => {}),
       to: "Profile 2",
     });
+
+    // When each was sent, as Home says it.
+    const [one, two] = get(waitingSends).map(({ at }) => timeLabel(at, "en"));
 
     try {
       await act(() => setNetworkReach("silent"));
@@ -190,8 +204,8 @@ describe("Dashboard", () => {
         );
 
       expect(banners()).toStrictEqual([
-        "Not sent yet: 0.01 DUSK to Profile 2. It goes out once the network answers. Cancel",
-        "Not sent yet: 0.02 DUSK to Profile 2. It goes out once the network answers. Cancel",
+        `Not sent yet: 0.01 DUSK to Profile 2. ward round 1 · ${one} It goes out once the network answers. Cancel`,
+        `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
       ]);
 
       // Called off from here: nothing goes out, and it's said.
@@ -203,7 +217,7 @@ describe("Dashboard", () => {
 
       expect(get(first)).toBe("cancelled");
       expect(banners()).toStrictEqual([
-        "Not sent yet: 0.02 DUSK to Profile 2. It goes out once the network answers. Cancel",
+        `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
       ]);
       expect(get(toastList).map(({ message }) => message)).toContain(
         "Not sent: 0.01 DUSK to Profile 2."
@@ -215,12 +229,15 @@ describe("Dashboard", () => {
 
       expect(banners()).toStrictEqual([]);
     } finally {
+      first.cancel();
+      second.cancel();
       setNetworkReach("answering");
     }
   });
 
   it("says a send that couldn't reach the network goes out once it answers, while the pill still finds it answering", async () => {
-    const { keepWaiting, sendGate } = await import("$lib/transactions");
+    const { keepWaiting, sendGate, waitingSends } =
+      await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
 
     render(Dashboard, props);
@@ -239,11 +256,13 @@ describe("Dashboard", () => {
       to: "Profile 2",
     });
 
+    const at = timeLabel(get(waitingSends)[0].at, "en");
+
     try {
       await act(() => setNetworkReach("answering"));
 
       expect(banner()).toBe(
-        "Not sent yet: 0.01 DUSK to Profile 2. It's being sent. Cancel"
+        `Not sent yet: 0.01 DUSK to Profile 2. ${at} It's being sent. Cancel`
       );
 
       // The node can't be reached as it's sent: it waits for the network.
@@ -255,7 +274,7 @@ describe("Dashboard", () => {
         .catch(() => {});
       await vi.waitFor(() =>
         expect(banner()).toBe(
-          "Not sent yet: 0.01 DUSK to Profile 2. It goes out once the network answers. Cancel"
+          `Not sent yet: 0.01 DUSK to Profile 2. ${at} It goes out once the network answers. Cancel`
         )
       );
     } finally {
@@ -447,11 +466,7 @@ describe("Dashboard", () => {
       ...initialStore,
       stakeInfo: { ...initialStore.stakeInfo, amount: null },
     });
-    sozu.load.mockClear();
-
     const { container, queryByRole } = render(Dashboard, props);
-
-    expect(sozu.load).not.toHaveBeenCalled();
 
     await setHistory({
       rows: [
@@ -473,9 +488,8 @@ describe("Dashboard", () => {
       ],
     });
 
-    // Staked before, with Sozu: a way to it, and Sozu read for what is there.
+    // Staked before, with Sozu: a way to it.
     expect(queryByRole("link", { name: "Past staking" })).toBeInTheDocument();
-    expect(sozu.load).toHaveBeenCalled();
 
     await act(() =>
       sozu.store?.set({
@@ -505,22 +519,18 @@ describe("Dashboard", () => {
     );
   });
 
-  it("says the total and the public balance may be out of date where the balances couldn't be read, as the stake does", async () => {
+  it("says every figure may be out of date where it couldn't be read, the total naming what couldn't be", async () => {
     const { container } = render(Dashboard, props);
-    const total = () =>
-      container
-        .querySelector(".home-balance")
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
-    const publicCard = () =>
-      container
-        .querySelectorAll(".explainer-card")[0]
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
+    const textOf = (/** @type {Element | null | undefined} */ element) =>
+      element?.textContent?.replace(/\s+/g, " ").trim();
+    const total = () => textOf(container.querySelector(".home-balance"));
+    const card = (/** @type {number} */ n) =>
+      textOf(container.querySelectorAll(".explainer-card")[n]);
 
-    expect(total()).not.toContain("may be out of date");
-    expect(publicCard()).not.toContain("may be out of date");
+    expect(total()).not.toContain("out of date");
+    expect([card(0), card(1), card(2)].join(" ")).not.toContain("out of date");
 
+    // Neither the balances nor the stake, as offline or with a silent node.
     await act(() =>
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
@@ -530,20 +540,49 @@ describe("Dashboard", () => {
     );
 
     expect(total()).toContain(
-      "Your balance couldn't be read just now. This may be out of date."
+      "Your balance and stake couldn't be read just now. This total may be out of date."
     );
-    expect(publicCard()).toBe(
+    expect(card(0)).toBe(
       "Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date."
     );
-    expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
+    expect(card(1)).toBe(
+      "Shielded 2,345 DUSK Amounts and accounts stay hidden on chain. It couldn't be read just now. This may be out of date."
+    );
+    expect(card(2)).toContain(
       "Your stake couldn't be read just now. This may be out of date."
     );
+
+    // The balances alone.
+    await act(() =>
+      mockedWalletStore.setMockedStoreValue({
+        ...initialStore,
+        balanceReadFailed: true,
+      })
+    );
+
+    expect(total()).toContain(
+      "Your balance couldn't be read just now. This may be out of date."
+    );
+    expect(card(2)).not.toContain("out of date");
+
+    // The stake alone.
+    await act(() =>
+      mockedWalletStore.setMockedStoreValue({
+        ...initialStore,
+        stakeReadFailed: true,
+      })
+    );
+
+    expect(total()).toContain(
+      "Your stake couldn't be read just now. This total may be out of date."
+    );
+    expect([card(0), card(1)].join(" ")).not.toContain("out of date");
 
     // Read again: said no more.
     await act(() => mockedWalletStore.setMockedStoreValue(initialStore));
 
-    expect(total()).not.toContain("may be out of date");
-    expect(publicCard()).not.toContain("may be out of date");
+    expect(total()).not.toContain("out of date");
+    expect([card(0), card(1), card(2)].join(" ")).not.toContain("out of date");
   });
 
   it("says the total may be out of date while the stake it counts couldn't be read", async () => {
@@ -671,37 +710,104 @@ describe("Dashboard", () => {
     );
   });
 
-  it("reads Sozu where the history couldn't be read, as whether the account called a pool isn't known", async () => {
+  it("reads what's staked with Sozu as the wallet opens, whatever the history shows, and again for another profile, where the network has Sozu", async () => {
+    const { profiles } = initialStore;
+
     sozu.load.mockClear();
     render(Dashboard, props);
 
-    expect(sozu.load).not.toHaveBeenCalled();
+    // Its history's latest rows show no call of Sozu's: read all the same.
+    expect(sozu.load).toHaveBeenCalledOnce();
 
-    await setHistory({ error: "fetch failed", rows: [] });
+    await act(() =>
+      mockedWalletStore.setMockedStoreValue({
+        ...initialStore,
+        currentProfile: profiles[1],
+      })
+    );
 
-    expect(sozu.load).toHaveBeenCalled();
+    expect(sozu.load).toHaveBeenCalledTimes(2);
+
+    cleanup();
+    sozu.load.mockClear();
+
+    // Devnet has no Sozu: nothing to read.
+    await act(() =>
+      network.store?.set({
+        connected: true,
+        net: networks.devnet,
+        networkName: "devnet",
+      })
+    );
+
+    try {
+      render(Dashboard, props);
+
+      expect(sozu.load).not.toHaveBeenCalled();
+    } finally {
+      network.store?.set({
+        connected: true,
+        net: networks.mainnet,
+        networkName: "mainnet",
+      });
+    }
   });
 
-  it("reads Sozu for an account that called a pool its hub may have named", async () => {
-    sozu.load.mockClear();
-    render(Dashboard, props);
+  it("says the stake is being read, on the total and the card, never that nothing is staked, until Sozu answers", async () => {
+    const { currentProfile } = initialStore;
+    const { container } = render(Dashboard, props);
+    const textOf = (/** @type {Element | null | undefined} */ element) =>
+      element?.textContent?.replace(/\s+/g, " ").trim();
 
-    await setHistory({
-      rows: [
-        rowOf({
-          amount: "1000000000",
-          blockHeight: 4_687_000,
-          contractId: "ef".repeat(32),
-          fnName: "sozu_stake",
-          hash: "e6".repeat(32),
-          kind: "contract_call",
-          status: "executed",
-          timestamp: NOW,
-        }),
-      ],
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      stakeInfo: { ...initialStore.stakeInfo, amount: null },
     });
 
-    expect(sozu.load).toHaveBeenCalled();
+    // As the wallet opens, with nothing read before here.
+    await act(() =>
+      sozu.store?.set({
+        account: String(currentProfile.account),
+        available: true,
+        error: null,
+        kept: null,
+        loading: true,
+        status: null,
+      })
+    );
+
+    expect(textOf(container.querySelector(".home-balance"))).toContain(
+      "Reading your stake…"
+    );
+    expect(textOf(container.querySelectorAll(".explainer-card")[2])).toBe(
+      "Staking Reading your stake… Open staking"
+    );
+
+    // It answers: counted in the total, and shown under staking.
+    await act(() =>
+      sozu.store?.set({
+        account: String(currentProfile.account),
+        available: true,
+        error: null,
+        kept: null,
+        loading: false,
+        status: {
+          contracts: {},
+          pool: { stake: 3n, supply: 1n },
+          position: { balance: 247_700_000n, stDusk: 77_400_000n },
+        },
+      })
+    );
+
+    expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
+      "3,517.7477"
+    );
+    expect(textOf(container.querySelector(".home-balance"))).not.toContain(
+      "Reading"
+    );
+    expect(textOf(container.querySelectorAll(".explainer-card")[2])).toBe(
+      "Staking 0.2477 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking"
+    );
   });
 
   it("counts what is staked in the total, natively and with Sozu, and says how much beside the rest, nothing while none is", async () => {
