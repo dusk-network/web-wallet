@@ -21,7 +21,7 @@
   } from "$lib/containers/Home";
   import { cardRoutes, migrationRoutes } from "$lib/bridge/cardRoutes";
   import { addBasePath } from "$lib/navigation";
-  import { isSozuFunction, sozuContractsFor, sozuStore } from "$lib/sozu";
+  import { sozuContractsFor, sozuStore } from "$lib/sozu";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import networkReach from "$lib/stores/networkReach";
   import { waitingSends, waitingText } from "$lib/transactions";
@@ -97,15 +97,11 @@
   $: ({ rows } = $activityState);
   $: hasPastStaking = rows.some((row) => row.category === "staking");
 
-  // What is staked with Sozu, read only for an account that called a pool
-  // of its: read, a pool its hub named is known from then on. Where the
-  // history couldn't be read, whether it did isn't known: it's read then too.
-  $: ({ error: historyError } = $activityState);
-  $: if (
-    (rows.some(isSozuFunction) || (historyError && !rows.length)) &&
-    networkName &&
-    currentProfile
-  ) {
+  // What is staked with Sozu, read for the profile shown as the wallet
+  // opens and as another is chosen, where the network has Sozu: the history
+  // shows its latest rows only, and a stake made long before is there all
+  // the same.
+  $: if (sozuContractsFor(net) && currentProfile) {
     void sozuStore.load();
   }
   $: ({
@@ -166,6 +162,7 @@
       locale={language}
       shielded={balance.shielded.value}
       staked={(staked ?? 0n) + liquid}
+      {stakeReading}
       {stakeUnread}
       unread={balanceReadFailed}
       unshielded={balance.unshielded.value}

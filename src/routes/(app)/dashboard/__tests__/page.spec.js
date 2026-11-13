@@ -150,6 +150,13 @@ describe("Dashboard", () => {
     cleanup();
     settingsStore.reset();
     mockedWalletStore.setMockedStoreValue(initialStore);
+    sozu.store?.set({
+      account: "",
+      available: true,
+      error: null,
+      loading: false,
+      status: null,
+    });
     await setHistory({ error: null, loaded: true, rows: [], syncing: false });
     vi.unstubAllEnvs();
   });
@@ -459,11 +466,7 @@ describe("Dashboard", () => {
       ...initialStore,
       stakeInfo: { ...initialStore.stakeInfo, amount: null },
     });
-    sozu.load.mockClear();
-
     const { container, queryByRole } = render(Dashboard, props);
-
-    expect(sozu.load).not.toHaveBeenCalled();
 
     await setHistory({
       rows: [
@@ -485,9 +488,8 @@ describe("Dashboard", () => {
       ],
     });
 
-    // Staked before, with Sozu: a way to it, and Sozu read for what is there.
+    // Staked before, with Sozu: a way to it.
     expect(queryByRole("link", { name: "Past staking" })).toBeInTheDocument();
-    expect(sozu.load).toHaveBeenCalled();
 
     await act(() =>
       sozu.store?.set({
@@ -683,37 +685,104 @@ describe("Dashboard", () => {
     );
   });
 
-  it("reads Sozu where the history couldn't be read, as whether the account called a pool isn't known", async () => {
+  it("reads what's staked with Sozu as the wallet opens, whatever the history shows, and again for another profile, where the network has Sozu", async () => {
+    const { profiles } = initialStore;
+
     sozu.load.mockClear();
     render(Dashboard, props);
 
-    expect(sozu.load).not.toHaveBeenCalled();
+    // Its history's latest rows show no call of Sozu's: read all the same.
+    expect(sozu.load).toHaveBeenCalledOnce();
 
-    await setHistory({ error: "fetch failed", rows: [] });
+    await act(() =>
+      mockedWalletStore.setMockedStoreValue({
+        ...initialStore,
+        currentProfile: profiles[1],
+      })
+    );
 
-    expect(sozu.load).toHaveBeenCalled();
+    expect(sozu.load).toHaveBeenCalledTimes(2);
+
+    cleanup();
+    sozu.load.mockClear();
+
+    // Devnet has no Sozu: nothing to read.
+    await act(() =>
+      network.store?.set({
+        connected: true,
+        net: networks.devnet,
+        networkName: "devnet",
+      })
+    );
+
+    try {
+      render(Dashboard, props);
+
+      expect(sozu.load).not.toHaveBeenCalled();
+    } finally {
+      network.store?.set({
+        connected: true,
+        net: networks.mainnet,
+        networkName: "mainnet",
+      });
+    }
   });
 
-  it("reads Sozu for an account that called a pool its hub may have named", async () => {
-    sozu.load.mockClear();
-    render(Dashboard, props);
+  it("says the stake is being read, on the total and the card, never that nothing is staked, until Sozu answers", async () => {
+    const { currentProfile } = initialStore;
+    const { container } = render(Dashboard, props);
+    const textOf = (/** @type {Element | null | undefined} */ element) =>
+      element?.textContent?.replace(/\s+/g, " ").trim();
 
-    await setHistory({
-      rows: [
-        rowOf({
-          amount: "1000000000",
-          blockHeight: 4_687_000,
-          contractId: "ef".repeat(32),
-          fnName: "sozu_stake",
-          hash: "e6".repeat(32),
-          kind: "contract_call",
-          status: "executed",
-          timestamp: NOW,
-        }),
-      ],
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      stakeInfo: { ...initialStore.stakeInfo, amount: null },
     });
 
-    expect(sozu.load).toHaveBeenCalled();
+    // As the wallet opens, with nothing read before here.
+    await act(() =>
+      sozu.store?.set({
+        account: String(currentProfile.account),
+        available: true,
+        error: null,
+        kept: null,
+        loading: true,
+        status: null,
+      })
+    );
+
+    expect(textOf(container.querySelector(".home-balance"))).toContain(
+      "Reading your stake…"
+    );
+    expect(textOf(container.querySelectorAll(".explainer-card")[2])).toBe(
+      "Staking Reading your stake… Open staking"
+    );
+
+    // It answers: counted in the total, and shown under staking.
+    await act(() =>
+      sozu.store?.set({
+        account: String(currentProfile.account),
+        available: true,
+        error: null,
+        kept: null,
+        loading: false,
+        status: {
+          contracts: {},
+          pool: { stake: 3n, supply: 1n },
+          position: { balance: 247_700_000n, stDusk: 77_400_000n },
+        },
+      })
+    );
+
+    expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
+      "3,517.7477"
+    );
+    expect(textOf(container.querySelector(".home-balance"))).not.toContain(
+      "Reading"
+    );
+    expect(textOf(container.querySelectorAll(".explainer-card")[2])).toBe(
+      "Staking 0.2477 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking"
+    );
   });
 
   it("counts what is staked in the total, natively and with Sozu, and says how much beside the rest, nothing while none is", async () => {
