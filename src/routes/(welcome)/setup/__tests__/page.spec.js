@@ -164,7 +164,7 @@ describe("Setup", () => {
         cleanup();
       }
 
-      // An amount with a comma, as written: Send asks which is meant.
+      // An amount with a decimal comma: as Send reads it.
       keepPlace({
         pathname: "/some-base-path/dashboard/send/",
         search: `?to=${TO}&amount=0,011&network=testnet`,
@@ -172,7 +172,45 @@ describe("Setup", () => {
 
       expect(
         render(Setup, {}).getByRole("region", { name: "Payment request" })
-      ).toHaveTextContent("Amount 0,011 DUSK");
+      ).toHaveTextContent("Amount 0.011 DUSK");
+    });
+
+    it("should ask what Send asks of an amount that could be either of two, as 1.000, never settling it, and hand it on to another network's wallet as written", () => {
+      setNodeNetwork(networks.testnet);
+
+      for (const [amount, question] of [
+        ["1.000", "Is that 1 or 1000? Write the one you mean."],
+        ["10.000", "Is that 10 or 10000? Write the one you mean."],
+      ]) {
+        keepPlace({
+          pathname: "/some-base-path/dashboard/send/",
+          search: `?to=${TO}&amount=${amount}&memo=invoice+17&network=testnet`,
+        });
+
+        const asked = render(Setup, {}).getByRole("region", {
+          name: "Payment request",
+        });
+
+        expect(asked).toHaveTextContent(`Amount ${amount} DUSK ${question}`);
+        expect(asked).not.toHaveTextContent(/Amount 10? DUSK/);
+        cleanup();
+      }
+
+      // For Mainnet's wallet: its Send asks the same.
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: `?to=${TO}&amount=1.000&memo=invoice+17&network=mainnet`,
+      });
+
+      const { getByRole } = render(Setup, {});
+      const switched = new URL(
+        getByRole("link", { name: "Switch to Mainnet" }).getAttribute("href") ??
+          ""
+      );
+
+      expect(switched.origin).toBe("https://apps.dusk.network");
+      expect(switched.searchParams.get("amount")).toBe("1.000");
+      expect(switched.searchParams.get("to")).toBe(TO);
     });
 
     it("should offer another network's request on that network's wallet", () => {
@@ -258,6 +296,25 @@ describe("Setup", () => {
         } finally {
           settingsStore.reset();
         }
+      });
+
+      it("should offer the Dusk app no amount it would take as settled, as 1.000, which Firefox gets as written", () => {
+        vi.spyOn(navigator, "userAgent", "get").mockReturnValue(CHROME);
+        setNodeNetwork(networks.testnet);
+        keepPlace({
+          pathname: "/some-base-path/dashboard/send/",
+          search: `?to=${TO}&amount=1.000&network=testnet`,
+        });
+
+        const { getByRole, queryByRole } = render(Setup, {});
+
+        expect(
+          queryByRole("link", { name: "Open in the Dusk app" })
+        ).toBeNull();
+        expect(getByRole("link", { name: "Open in Firefox" })).toHaveAttribute(
+          "href",
+          expect.stringContaining("amount=1.000")
+        );
       });
 
       it("should offer the Dusk app in Firefox, which has the page already", () => {

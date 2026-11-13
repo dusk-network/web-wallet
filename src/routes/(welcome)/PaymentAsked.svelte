@@ -8,6 +8,7 @@
    * of one Send refuses, only why.
    */
   import {
+    linkAmount,
     makePaymentLink,
     parsePaymentLink,
     readPaymentLink,
@@ -123,6 +124,10 @@
   // What it asks, as Send reads it: nothing of one it refuses, whose To or
   // amount could read as what it isn't.
   $: asked = !problem && read?.link?.to ? read.link : null;
+  // Its amount as Send's field holds it, filled in from the link, and reads
+  // it: the amount, or the question Send asks of one that could be either of
+  // two, as 1.000. Never settled here.
+  $: amount = asked ? linkAmount(asked, language) : null;
   // The name the account it pays goes by, as the chain says: none for a
   // shielded address, or where the lookup fails.
   $: name =
@@ -151,8 +156,10 @@
   );
   $: extensionFirst = offersExtension && !hasWallet && handed !== "no-wallet";
   $: offersElsewhere = extensionFirst;
+  // Made again from the amount read: not for one Send asks about, which it
+  // would hand on settled.
   $: appHref =
-    offersPhone && asked
+    offersPhone && asked && !amount?.problem
       ? makePaymentLink({
           amountLux: asked.lux,
           label: asked.label || null,
@@ -172,11 +179,14 @@
         <div>
           <dt>Amount</dt>
           <dd>
-            {asked.lux !== null
-              ? `${formatDuskExact(asked.lux, language)} DUSK`
-              : asked.amountDusk
-                ? `${asked.amountDusk} DUSK`
+            {#if amount?.problem}
+              <span>{amount.field} DUSK</span>
+              <span class="payment-asked__question">{amount.problem}</span>
+            {:else}
+              {amount?.lux
+                ? `${formatDuskExact(amount.lux, language)} DUSK`
                 : "Any amount"}
+            {/if}
           </dd>
         </div>
         <div>
@@ -301,6 +311,11 @@
 
   .payment-asked__name {
     font-weight: 500;
+  }
+
+  .payment-asked__question {
+    color: var(--calm-danger);
+    font-size: 0.8125rem;
   }
 
   .payment-asked__code {

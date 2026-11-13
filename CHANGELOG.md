@@ -67,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say on Home's total, balances and stake that they may be out of date while offline or the network doesn't answer, until they're read again as it answers, the total naming what couldn't be read
 - Say in Export which network fees of migrations the file has, and which it couldn't read, as the file made for the period chosen has them, not the EVM addresses known here
 - Clear the clipboard of a recovery phrase pasted into the word boxes, and say once where the browser won't let it
+- Ask on a payment request's page what Send asks of an amount that could be either of two, as 1.000, never showing it as 1 DUSK, and hand it on only as written
 - Say how much each approval under Bridge › Activity let the migration contract take, and what a revoke took back of it, and give gas to the wei in its details
 - Show a transfer's newest transactions in History on its first read too, as after a restore, as the balances already have them
 - Give one time for one payment, to the second, as its block's: on Send's warning of a payment made already and its Review, on the Sent screen, in a transaction's details and on a request, which says today in a sentence and a refund's time first, as its payments'
