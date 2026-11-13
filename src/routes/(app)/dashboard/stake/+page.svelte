@@ -139,6 +139,11 @@
    */
   let native;
 
+  // The gas price as the network asks it now, for what's sent from here.
+  onMount(() => {
+    gasPriceStore.readAgain();
+  });
+
   onMount(() => {
     networkStore
       .getCurrentBlockHeight()

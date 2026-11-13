@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { GasSettings } from "..";
 import { get } from "svelte/store";
-import { settingsStore } from "$lib/stores";
+import { gasPriceStore, networkStore, settingsStore } from "$lib/stores";
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 
 vi.mock("$lib/dusk/string", async (importOriginal) => {
@@ -72,6 +72,55 @@ describe("GasSettings", () => {
     expect(
       line.compareDocumentPosition(getByRole("textbox", { name: "Gas limit" }))
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("says the network is busy while it asks more than the price, the default stopped at its ceiling, until it's raised to what it asks", async () => {
+    const BUSY =
+      "The network is busy. You can raise the gas price for it to go out sooner.";
+    const connect = vi.spyOn(networkStore, "connect");
+
+    /** @param {bigint} median */
+    const nodeAsks = async (median) => {
+      connect.mockResolvedValue(
+        /** @type {any} */ ({
+          blocks: { gasPrice: Promise.resolve({ median }) },
+        })
+      );
+      await gasPriceStore.refresh();
+    };
+
+    try {
+      await nodeAsks(900n);
+
+      // The default, five times the lowest: under what it asks.
+      const busy = render(GasSettings, {
+        ...baseOptions,
+        props: { ...baseProps, price: get(gasPriceStore) },
+      });
+
+      expect(get(gasPriceStore)).toBe(5n);
+      expect(busy.getByRole("status")).toHaveTextContent(BUSY);
+
+      // Raised to what it asks: said no more.
+      await busy.rerender({ ...baseProps, price: 900n });
+
+      expect(busy.queryByText(BUSY)).toBeNull();
+      cleanup();
+
+      // Not busy: nothing said.
+      await nodeAsks(2n);
+
+      const calm = render(GasSettings, {
+        ...baseOptions,
+        props: { ...baseProps, price: get(gasPriceStore) },
+      });
+
+      expect(calm.queryByText(BUSY)).toBeNull();
+    } finally {
+      // The lowest again, as the other tests start from.
+      await nodeAsks(1n);
+      connect.mockRestore();
+    }
   });
 
   it("opens when the limit is below its lower bound", () => {

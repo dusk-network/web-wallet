@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { onMount } from "svelte";
   import { feeToKeep } from "$lib/wallet-reserve";
   import { page } from "$app/stores";
   import { activityState } from "$lib/activity";
@@ -60,6 +61,11 @@
   ];
 
   const BEP20_BRIDGE_ADDRESS = import.meta.env.VITE_BEP20_BRIDGE_ADDRESS;
+
+  // The gas price as the network asks it now, for what's sent from here.
+  onMount(() => {
+    gasPriceStore.readAgain();
+  });
 
   // What this page sends, it sends from the wallet it was drawn for.
   const send = walletStore.forThisWallet()(executeSend);

@@ -1,11 +1,12 @@
 <script>
+  import { GAS_PRICE_BUSY } from "@dusk-network/app-core/gas";
   import { Button } from "$lib/dusk/components";
   import { GasControls, GasFee } from "$lib/components";
   import { areValidGasSettings } from "$lib/contracts";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { section } from "$lib/dusk/motion";
   import { createNumberFormatter } from "$lib/dusk/number";
-  import { settingsStore } from "$lib/stores";
+  import { gasPriceStore, settingsStore } from "$lib/stores";
   import { onMount } from "svelte";
 
   /** @type {bigint} */
@@ -31,6 +32,12 @@
 
   $: ({ language } = $settingsStore);
   $: formatGas = createNumberFormatter(language);
+  // The network asks more than the default goes to: one under what it asks
+  // may wait, as said, until the price is raised.
+  $: ({ busy, median } = $gasPriceRule);
+  $: isWaitingLonger = busy && median !== null && price < median;
+
+  const gasPriceRule = gasPriceStore.rule;
 
   onMount(() => {
     const bounds = {
@@ -59,6 +66,9 @@
       />
     </dd>
   </dl>
+  {#if isWaitingLonger}
+    <p class="gas-settings__busy" role="status">{GAS_PRICE_BUSY}</p>
+  {/if}
   <!-- It opens and closes the same way. -->
   {#if isExpanded}
     <div class="gas-settings" transition:section={{ open: isExpanded }}>
@@ -102,6 +112,13 @@
   .gas-settings__exact {
     margin: 0;
     color: var(--muted-color);
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+
+  .gas-settings__busy {
+    margin: 0;
+    color: var(--banner-warning-color);
     font-size: 0.875rem;
     line-height: 1.45;
   }
