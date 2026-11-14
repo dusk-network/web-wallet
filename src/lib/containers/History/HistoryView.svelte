@@ -6,7 +6,6 @@
   import { mdiTrayArrowDown } from "@mdi/js";
   import { Button, Icon, Select } from "$lib/dusk/components";
   import { BalanceValue, MemoText } from "$lib/components";
-  import { sendersMemo } from "@dusk-network/app-core/activity";
   import { displayText } from "@dusk-network/app-core/text";
   import { transactionsFound } from "$lib/containers/Shell/search";
   import { sidePanel } from "$lib/dusk/motion";
@@ -17,6 +16,7 @@
     groupByDay,
     matchesFilters,
     shortAddress,
+    strangersMemo,
     timeLabel,
   } from "$lib/activity/present";
   import { settingsStore } from "$lib/stores";
@@ -413,14 +413,19 @@
                         <span class="history__claim">{p.note}</span>
                       {/if}
                       {#if row.memo}
-                        {@const theirs = sendersMemo(row, memoAmong)}
-                        <!-- A stranger's memo is theirs: in quotes, muted,
-                          with whom it came from. -->
+                        {@const theirs = strangersMemo(row, memoAmong)}
+                        <!-- A stranger's memo is theirs: who it came from
+                          first, then their words, in quotes, muted, in the
+                          same size. -->
                         <span
                           class="history__memo"
                           class:history__memo--theirs={theirs}
-                          >{#if theirs}“<MemoText inline text={theirs.memo} />”
-                            · {theirs.from}{:else}<MemoText
+                          >{#if theirs}<span class="history__memo-from"
+                              >{theirs.from}</span
+                            >“<MemoText
+                              inline
+                              text={theirs.memo}
+                            />”{:else}<MemoText
                               inline
                               text={row.memo}
                             />{/if}</span
@@ -738,6 +743,12 @@
   .history__memo--theirs {
     color: var(--calm-muted);
     font-weight: 400;
+  }
+
+  /* Who a stranger's memo is from, on a line of its own, before it: a long
+     memo never cuts it off. */
+  .history__memo-from {
+    display: block;
   }
 
   .history__search {

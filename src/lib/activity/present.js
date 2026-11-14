@@ -11,6 +11,7 @@ import {
   formatFee,
 } from "$lib/dusk/currency/formatDusk";
 
+import { sendersMemo } from "@dusk-network/app-core/activity";
 import { displayText } from "@dusk-network/app-core/text";
 import { labelFor, routeForAccount } from "@dusk-network/networks";
 import { claimText } from "@dusk-network/networks/duskevm";
@@ -96,6 +97,34 @@ export function routeLabel(net, account) {
  * @param {string} address
  */
 export const shortAddress = (address) => shortenAddress(address);
+
+/**
+ * A memo on a payment from an address that isn't one of the profiles here or
+ * a contact, said as theirs (`@dusk-network/app-core/activity`'s
+ * sendersMemo), with who it's from: "From " their .dusk name, else their
+ * address, and " · not in your contacts", which a .dusk name doesn't change,
+ * as anyone can register one. Null for any other memo.
+ *
+ * @param {ActivityRow} row
+ * @param {Parameters<typeof sendersMemo>[1]} among Who isn't a stranger
+ * @returns {{ from: string, memo: string } | null}
+ */
+export function strangersMemo(row, among) {
+  const theirs = sendersMemo(row, among);
+
+  if (!theirs) {
+    return null;
+  }
+
+  const who =
+    row.counterpartyName ||
+    (row.counterparty ? shortAddress(row.counterparty) : "");
+
+  return {
+    from: who ? `From ${who} · not in your contacts` : theirs.from,
+    memo: theirs.memo,
+  };
+}
 
 /**
  * A row's icon, by what it did: a transfer on a route to or from another

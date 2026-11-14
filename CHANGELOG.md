@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Run only the wallet's own scripts, under a Content-Security-Policy every page carries and Cloudflare sends as a header, and have GitHub attest each deployed build's manifest, which scripts/verify-build.js --attested checks
 - Give a request's Share and Copy a line above its link, as the extension does: "sofiadesign.dusk asks you to pay 0.03 DUSK · Factura 71", then "Pay here:" and the link
 - Check your recovery words: three of them, chosen at random, typed as written down, right after a wallet's words are shown, with Skip for now, and in Settings behind the password; a wrong answer shows no word, saying only that they don't match, with Try again and Show my recovery words
-- Show a memo that came in from an address that isn't one of your profiles or contacts as the sender's words in History, muted and in quotes, with "From an address not in your contacts" or the sender's .dusk name
+- Show a memo that came in from an address that isn't one of your profiles or contacts as the sender's words in History and its details, small, muted and in quotes, after "From" their .dusk name or address "· not in your contacts", in the memo's size
 
 ### Changed
 
