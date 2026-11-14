@@ -140,10 +140,9 @@
    */
   let native;
 
-  // The gas price as the network asks it now, for what's sent from here.
-  onMount(() => {
-    gasPriceStore.readAgain();
-  });
+  // The gas price as the network asks it now, for what's sent from here:
+  // read again while the form shows, so its Review opens with it.
+  onMount(() => gasPriceStore.keepFresh());
 
   onMount(() => {
     networkStore

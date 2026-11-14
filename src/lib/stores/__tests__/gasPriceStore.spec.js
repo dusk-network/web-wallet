@@ -114,6 +114,76 @@ describe("gasPriceStore", () => {
     expect(get(gasPriceStore)).toBe(3n);
   });
 
+  it("should keep the price read within half a minute while a form that moves money shows, so its Review opens with what the network asks then, as the extension's", async () => {
+    vi.useFakeTimers({ now: Date.UTC(2026, 10, 13, 12) });
+    nodeHolds([{ gasLimit: 6_000_000, gasPrice: 2 }]);
+
+    const stop = gasPriceStore.keepFresh();
+
+    // Read as the form opens: Sozu's activation waiting alone, the lowest.
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(connect).toHaveBeenCalledOnce();
+    expect(get(gasPriceStore)).toBe(1n);
+
+    // A block's worth waits now: read again within half a minute.
+    nodeHolds(blockFull(3));
+    await vi.advanceTimersByTimeAsync(29_999);
+
+    expect(get(gasPriceStore)).toBe(1n);
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(connect).toHaveBeenCalledTimes(2);
+    expect(get(gasPriceStore)).toBe(3n);
+
+    // Gone with the form: not read again.
+    stop();
+    nodeHolds(blockFull(900));
+    await vi.advanceTimersByTimeAsync(120_000);
+
+    expect(connect).toHaveBeenCalledTimes(2);
+    expect(get(gasPriceStore)).toBe(3n);
+  });
+
+  it("should read one at a time, giving a node that holds the read open 10 seconds, and keep the price read last", async () => {
+    vi.useFakeTimers({ now: Date.UTC(2026, 10, 13, 12) });
+    nodeHolds(blockFull(3));
+    await gasPriceStore.refresh();
+
+    /** @type {AbortSignal[]} */
+    const signals = [];
+    const held = vi.fn(
+      (/** @type {string} */ gql, /** @type {{ signal: AbortSignal }} */ o) => {
+        signals.push(o.signal);
+
+        return new Promise(() => {});
+      }
+    );
+
+    connect.mockResolvedValue({ query: held });
+
+    const first = gasPriceStore.refresh();
+    const second = gasPriceStore.refresh();
+
+    await vi.advanceTimersByTimeAsync(9_999);
+
+    expect(held).toHaveBeenCalledOnce();
+    expect(signals[0].aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await Promise.all([first, second]);
+
+    expect(signals[0].aborted).toBe(true);
+    expect(get(gasPriceStore)).toBe(3n);
+
+    // Given up: the next read asks again.
+    nodeHolds(blockFull(900));
+    await gasPriceStore.refresh();
+
+    expect(get(gasPriceStore)).toBe(5n);
+  });
+
   it("should never go under the lowest price", async () => {
     nodeHolds(blockFull(0));
 
