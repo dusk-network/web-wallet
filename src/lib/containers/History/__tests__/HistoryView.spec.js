@@ -269,6 +269,34 @@ describe("HistoryView", () => {
     );
   });
 
+  // Amélie's: a search found payments only once Show more had shown them.
+  it("should find what a search's See all found in all the history this device keeps, not only the rows shown", () => {
+    const shown = row("a1".repeat(32), WINTER, { memo: "Les tulipes du 14" });
+    const older = [
+      row("a2".repeat(32), WINTER - 9 * 86_400_000, {
+        memo: "Les fleurs du marché",
+      }),
+      row("a3".repeat(32), WINTER - 10 * 86_400_000, {
+        memo: "Pour le marché, merci",
+      }),
+    ];
+    const { container, getByRole } = render(HistoryView, {
+      locale: "en",
+      query: "marché",
+      searched: [shown, ...older],
+      state: { ...state, rows: [shown] },
+    });
+
+    expect(getByRole("status")).toHaveTextContent(
+      "2 transactions found for “marché”"
+    );
+    expect(
+      Array.from(container.querySelectorAll(".history__memo"), (memo) =>
+        memo.textContent?.trim()
+      )
+    ).toStrictEqual(["Les fleurs du marché", "Pour le marché, merci"]);
+  });
+
   it("should show what a search's See all found, each row's memo, and all of it again from Clear search", async () => {
     const filter = vi.fn();
     const invoices = [1, 2, 3, 4, 5, 6, 7].map((n) =>

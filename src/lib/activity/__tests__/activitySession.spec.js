@@ -753,6 +753,41 @@ describe("ActivitySession", () => {
     // busy CI runner.
   }, 30_000);
 
+  // Amélie's: a search said "Nothing on this device" of payments History had,
+  // found only once Show more had shown them.
+  it("gives all of the history this device keeps for a search, past the rows shown, asking the network nothing more", async () => {
+    const sample = accounts[A].receiver[0];
+    const top = FINALIZED - 100;
+    // 80 transfers, each in its own block, oldest first as the archive lists
+    // them: more than a page.
+    const receiver = Array.from({ length: 80 }, (_, i) => ({
+      ...sample,
+      ["block_height"]: top - 79 + i,
+      origin: (i + 1).toString(16).padStart(64, "0"),
+    }));
+    const node = fakeArchive({ accounts: { [A]: { receiver, sender: [] } } });
+
+    let session = sessionFor();
+
+    await session.start();
+    for (let i = 0; i < 5 && !session.state.complete; i += 1) {
+      session.stop();
+      session = sessionFor();
+      await session.start();
+    }
+
+    expect(session.state.complete).toBe(true);
+    expect(session.state.rows).toHaveLength(50);
+
+    const asked = node.log.length;
+    const kept = await session.keptRows();
+
+    expect(kept).toHaveLength(80);
+    // The oldest too, which History shows only after Show more.
+    expect(kept.map(({ hash }) => hash)).toContain(receiver[0].origin);
+    expect(node.log).toHaveLength(asked);
+  }, 30_000);
+
   it("keeps the archive's error for the state and still shows what it kept", async () => {
     const node = fakeArchive({ finalized: 4_656_000 });
 

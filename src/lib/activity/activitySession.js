@@ -520,6 +520,27 @@ export class ActivitySession {
   }
 
   /**
+   * All of the account's rows this device keeps, newest first: not only the
+   * page shown, and nothing more read from the network.
+   *
+   * @returns {Promise<ActivityRow[]>}
+   */
+  async keptRows() {
+    const history = await this.#publicHistory();
+    const [read, local] = await Promise.all([
+      history.read(ALL_KEPT),
+      listLocalTransactions(this.ownerKey),
+    ]);
+
+    return this.#rowsOf({
+      entries: read.entries,
+      local,
+      meta: read.state,
+      shielded: this.#shielded,
+    });
+  }
+
+  /**
    * All of the account's rows, read to its first block, with each one's time,
    * outcome and fee: for what can't be said from part of it. A run that another
    * overtook goes on from where that one got to. Without `publicOnly`, its
