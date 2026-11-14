@@ -280,7 +280,8 @@ describe("Receive", () => {
           JSON.stringify({
             market_data: {
               current_price: { eur: 0.5 },
-              last_updated: "2026-11-13T12:03:00.000Z",
+              // Today's: a day's time says its day too.
+              last_updated: new Date().toISOString(),
             },
           }),
       }));
