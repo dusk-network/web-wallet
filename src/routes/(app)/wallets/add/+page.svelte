@@ -243,6 +243,7 @@
       on:checked={() => {
         areWordsChecked = true;
       }}
+      on:show={back}
       words={mnemonicPhrase}
     />
   {:else if step === "words"}

@@ -44,6 +44,10 @@
   /** Whether the words checked match what was written down. */
   let areWordsChecked = false;
 
+  /** The check's step, which Show my recovery words goes back from. */
+  /** @type {WizardStep} */
+  let checkStep;
+
   /** @type {string[]} */
   let mnemonicPhrase = [];
 
@@ -93,8 +97,10 @@
       <MnemonicPhrase bind:mnemonicPhrase />
     </WizardStep>
     <!-- Three of the words, as written down: checked, or for later, as
-      Settings checks them too. -->
+      Settings checks them too. Show my recovery words, after one that
+      doesn't match, goes back to the words. -->
     <WizardStep
+      bind:this={checkStep}
       step={2}
       {key}
       showStepper={true}
@@ -108,6 +114,7 @@
         on:checked={() => {
           areWordsChecked = true;
         }}
+        on:show={(event) => checkStep.back(event.detail)}
         words={mnemonicPhrase}
       />
     </WizardStep>

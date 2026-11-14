@@ -5,12 +5,15 @@
    * Checks the recovery words as they were written down: three of them,
    * chosen at random as it opens, each typed in its own box, as Import's
    * boxes take words, with nothing a password manager or a keyboard keeps.
-   * They're compared here alone, and kept nowhere. A mismatch shows the
-   * words again, to put the paper right. `checked` says once they match.
+   * They're compared here alone, and kept nowhere. A check says whether they
+   * match and nothing more: a mismatch shows no word, nor which one is wrong,
+   * with Try again, which asks the same three again, and apart from it Show
+   * my recovery words (`show`), which the page shows them for as it shows
+   * them. `checked` says once they match.
    */
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, tick } from "svelte";
 
-  import { Button, Textbox, Words } from "$lib/dusk/components";
+  import { Button, Textbox } from "$lib/dusk/components";
   import { randomUUID } from "$lib/dusk/string";
 
   /**
@@ -51,12 +54,15 @@
   let typed = asked.map(() => "");
 
   /**
-   * The places typed wrong at the last Check: none before one, or once they
-   * match.
+   * What the last Check said: null before one, and once what's typed
+   * changes.
    *
-   * @type {number[] | null}
+   * @type {"match" | "mismatch" | null}
    */
-  let wrong = null;
+  let result = null;
+
+  /** @type {Textbox[]} */
+  const boxes = [];
 
   /** @param {number[]} places */
   const numbersOf = (places) =>
@@ -68,59 +74,79 @@
           .join(", ")} and ${places[places.length - 1] + 1}`;
 
   function check() {
-    wrong = asked.filter(
-      (place, i) => typed[i].trim().toLowerCase() !== words[place]
+    const isMatch = asked.every(
+      (place, i) => typed[i].trim().toLowerCase() === words[place]
     );
 
-    if (!wrong.length) {
+    result = isMatch ? "match" : "mismatch";
+
+    if (isMatch) {
       dispatch("checked");
+    } else {
+      // Gone with the boxes: Try again asks for all three again.
+      typed = asked.map(() => "");
     }
+  }
+
+  /** The same three again, empty, the first to type in. */
+  async function tryAgain() {
+    result = null;
+    await tick();
+    boxes[0]?.focus();
   }
 </script>
 
-<form
-  autocomplete="off"
-  class="recovery-check"
-  novalidate
-  on:submit|preventDefault={check}
->
-  <p class="recovery-check__lead">
-    Type words {numbersOf(asked)} as you wrote them down.
-  </p>
-  <div class="recovery-check__words">
-    {#each asked as place, i (place)}
-      <label class="recovery-check__word" for="{id}-{place}">
-        <span>Word {place + 1}</span>
-        <Textbox
-          autocapitalize="none"
-          autocomplete="off"
-          autocorrect="off"
-          bind:value={typed[i]}
-          id="{id}-{place}"
-          inputmode="text"
-          on:input={() => {
-            wrong = null;
-          }}
-          spellcheck="false"
-          type="text"
-        />
-      </label>
-    {/each}
-  </div>
-  <Button text="Check" type="submit" variant="secondary" />
-  {#if wrong && !wrong.length}
-    <p class="recovery-check__match" role="status">They match.</p>
-  {:else if wrong}
-    <div class="recovery-check__mismatch" role="alert">
-      <p>
-        {wrong.length === 1
-          ? `Word ${numbersOf(wrong)} doesn't match.`
-          : `Words ${numbersOf(wrong)} don't match.`} Your words:
-      </p>
-      <Words {words} />
+{#if result === "mismatch"}
+  <div class="recovery-check">
+    <p class="recovery-check__mismatch" role="alert">
+      That doesn't match your recovery words. Check the words you wrote down.
+    </p>
+    <div class="recovery-check__actions">
+      <Button on:click={tryAgain} text="Try again" variant="primary" />
+      <Button
+        on:click={(event) => dispatch("show", event)}
+        text="Show my recovery words"
+        variant="secondary"
+      />
     </div>
-  {/if}
-</form>
+  </div>
+{:else}
+  <form
+    autocomplete="off"
+    class="recovery-check"
+    novalidate
+    on:submit|preventDefault={check}
+  >
+    <p class="recovery-check__lead">
+      Type words {numbersOf(asked)} as you wrote them down.
+    </p>
+    <div class="recovery-check__words">
+      {#each asked as place, i (place)}
+        <label class="recovery-check__word" for="{id}-{place}">
+          <span>Word {place + 1}</span>
+          <Textbox
+            autocapitalize="none"
+            autocomplete="off"
+            autocorrect="off"
+            bind:this={boxes[i]}
+            bind:value={typed[i]}
+            id="{id}-{place}"
+            inputmode="text"
+            on:input={() => {
+              result = null;
+            }}
+            spellcheck="false"
+            type="text"
+          />
+        </label>
+      {/each}
+    </div>
+    <Button text="Check" type="submit" variant="secondary" />
+    {#if result === "match"}
+      <p class="recovery-check__match" role="status">They match.</p>
+    {/if}
+  </form>
+{/if}
 
 <style lang="postcss">
   .recovery-check {
@@ -154,13 +180,13 @@
   }
 
   .recovery-check__mismatch {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    margin: 0;
     color: var(--calm-danger);
+  }
 
-    & p {
-      margin: 0;
-    }
+  .recovery-check__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 </style>

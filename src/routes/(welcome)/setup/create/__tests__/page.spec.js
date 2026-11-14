@@ -301,11 +301,11 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
   });
 
-  it("asks for three of the words as written down, with Check, and Skip for now until they match, showing the words again where one doesn't", async () => {
-    const { container, getAllByRole, getByRole, getByText } = render(
-      Create,
-      baseOptions
-    );
+  // Then Nandini's and Amélie's: one word wrong, or three made up, put all
+  // twelve on screen. A check is not a reveal.
+  it("asks for three of the words as written down, with Check, and Skip for now until they match, saying no more than that one doesn't, and going back to the words only on its own ask", async () => {
+    const { container, getAllByRole, getByRole, getByText, queryByRole } =
+      render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(getAllByRole("checkbox")[0]);
@@ -313,9 +313,12 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const boxes = /** @type {HTMLInputElement[]} */ (
-      Array.from(container.querySelectorAll(".recovery-check__word input"))
-    );
+    /** The boxes the check asks in. */
+    const boxesShown = () =>
+      /** @type {HTMLInputElement[]} */ (
+        Array.from(container.querySelectorAll(".recovery-check__word input"))
+      );
+    const boxes = boxesShown();
     const asked = Array.from(
       container.querySelectorAll(".recovery-check__word"),
       (label) => Number(label.textContent?.replace(/\D/g, ""))
@@ -335,37 +338,107 @@ describe("Create", async () => {
 
     expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
 
-    // One wrong: said, with the words again.
     const words = mnemonic.split(" ");
 
-    await fireInput(boxes[0], words[asked[0] - 1]);
-    await fireInput(boxes[1], "wrong");
-    await fireInput(boxes[2], words[asked[2] - 1]);
-    await fireEvent.click(getByRole("button", { name: "Check" }));
+    /** Which of the phrase's words are on the page, by their whole word. */
+    const wordsShown = () =>
+      words.filter((word) =>
+        new RegExp(`\\b${word}\\b`).test(container.textContent ?? "")
+      );
 
-    expect(getByRole("alert")).toHaveTextContent(
-      `Word ${asked[1]} doesn't match. Your words:`
-    );
-    expect(
-      Array.from(
-        container.querySelectorAll(".recovery-check__mismatch li"),
-        (word) => word.textContent
-      )
-    ).toStrictEqual(words);
-    expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
+    // One wrong, then three made up: said, and nothing else.
+    for (const typed of [
+      asked.map((n, i) => (i === 1 ? "wrong" : words[n - 1])),
+      ["maison", "velo", "gateau"],
+    ]) {
+      for (const [i, box] of boxesShown().entries()) {
+        await fireInput(box, typed[i]);
+      }
+
+      await fireEvent.click(getByRole("button", { name: "Check" }));
+
+      expect(getByRole("alert")).toHaveTextContent(
+        /^That doesn't match your recovery words\. Check the words you wrote down\.$/
+      );
+      expect(wordsShown()).toStrictEqual([]);
+      expect(container.querySelector(".dusk-words")).toBeNull();
+      expect(boxesShown()).toStrictEqual([]);
+      expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
+
+      // Try again: the same three, empty, the first to type in.
+      await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+      expect(
+        Array.from(container.querySelectorAll(".recovery-check__word"), (l) =>
+          Number(l.textContent?.replace(/\D/g, ""))
+        )
+      ).toStrictEqual(asked);
+      expect(boxesShown().map((box) => box.value)).toStrictEqual(["", "", ""]);
+      await vi.waitFor(() =>
+        expect(document.activeElement).toBe(boxesShown()[0])
+      );
+      expect(queryByRole("alert")).toBeNull();
+    }
 
     // Right: they match, and Next goes on.
-    await fireInput(boxes[1], ` ${words[asked[1] - 1].toUpperCase()} `);
+    for (const [i, box] of boxesShown().entries()) {
+      await fireInput(
+        box,
+        i === 1 ? ` ${words[asked[1] - 1].toUpperCase()} ` : words[asked[i] - 1]
+      );
+    }
+
     await fireEvent.click(getByRole("button", { name: "Check" }));
 
     expect(getByText("They match.")).toBeInTheDocument();
-    expect(container.querySelector(".recovery-check__mismatch")).toBeNull();
+    expect(queryByRole("alert")).toBeNull();
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
       "Set a password"
     );
+  });
+
+  it("goes back to the words with Show my recovery words, after a check that doesn't match", async () => {
+    const { container, getAllByRole, getByRole } = render(Create, baseOptions);
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await fireEvent.click(getAllByRole("checkbox")[0]);
+    await fireEvent.click(getAllByRole("checkbox")[1]);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    for (const box of container.querySelectorAll(
+      ".recovery-check__word input"
+    )) {
+      await fireInput(/** @type {HTMLElement} */ (box), "zoo");
+    }
+
+    await fireEvent.click(getByRole("button", { name: "Check" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery words" })
+    );
+
+    expect(getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Back up your recovery phrase"
+    );
+    expect(
+      Array.from(
+        container.querySelectorAll(".dusk-words__word"),
+        (word) => word.textContent
+      )
+    ).toStrictEqual(mnemonic.split(" "));
+
+    // And on to a new check of them.
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Check your recovery words"
+    );
+    expect(
+      container.querySelectorAll(".recovery-check__word input")
+    ).toHaveLength(3);
   });
 
   it("goes on past the check with Skip for now, the words never checked", async () => {

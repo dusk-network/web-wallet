@@ -195,8 +195,36 @@ describe("Add wallet", () => {
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    // Three of them, as written down: Skip for now until they match.
+    // Three of them, as written down: Skip for now until they match. One
+    // that doesn't says no more than that (Nandini's and Amélie's), and Show
+    // my recovery words goes back to them, to be checked again.
     expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
+
+    for (const box of container.querySelectorAll(
+      ".recovery-check__word input"
+    )) {
+      await fireEvent.input(box, { target: { value: "zoo" } });
+    }
+
+    await fireEvent.click(getByRole("button", { name: "Check" }));
+
+    expect(getByRole("alert")).toHaveTextContent(
+      "That doesn't match your recovery words. Check the words you wrote down."
+    );
+    expect(container.querySelector(".dusk-words")).toBeNull();
+
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery words" })
+    );
+
+    expect(
+      Array.from(
+        container.querySelectorAll(".dusk-words__word"),
+        (word) => word.textContent?.trim() ?? ""
+      )
+    ).toStrictEqual(words);
+
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     for (const label of container.querySelectorAll(".recovery-check__word")) {
       const n = Number(label.textContent?.replace(/\D/g, ""));
