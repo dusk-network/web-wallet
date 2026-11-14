@@ -16,7 +16,7 @@
 import { get, writable } from "svelte/store";
 
 import { noteNeverSent, noteSentOutcome } from "$lib/activity";
-import { networkStore } from "$lib/stores";
+import { networkStore, walletStore } from "$lib/stores";
 import { walletDataScope } from "$lib/wallets/dataNames";
 
 import { FOLLOW_INTERVAL, FOLLOW_TIMEOUT } from "./followTransaction";
@@ -44,6 +44,9 @@ const BLOCK_SECONDS = 10;
  * read from, for the one that took its nonce: an hour's.
  */
 const BLOCKS_BEFORE = 360;
+
+/** How long a send found on the chain is said so in its notice's place, in milliseconds. */
+export const FOUND_SAID_FOR = 8_000;
 
 /**
  * What the chain says of it: the block its transaction is in, as
@@ -164,6 +167,33 @@ function setState(hash, state) {
 }
 
 /**
+ * The sends found on the chain a moment ago, with what the chain says of
+ * them: each said so in its notice's place for FOUND_SAID_FOR, once the
+ * balances were read again and History says it too.
+ *
+ * @type {import("svelte/store").Writable<Array<{ send: import("./unsentSends").UnsentSend, wentOut: WentOut }>>}
+ */
+const found = writable([]);
+
+/** The sends found on the chain a moment ago, to say so in their notice's place. */
+export const foundSends = { subscribe: found.subscribe };
+
+/**
+ * Says a send was found on the chain, for FOUND_SAID_FOR.
+ *
+ * @param {import("./unsentSends").UnsentSend} send
+ * @param {WentOut} wentOut
+ */
+function sayFound(send, wentOut) {
+  const said = { send, wentOut };
+
+  found.update((list) => [...list, said]);
+  setTimeout(() => {
+    found.update((list) => list.filter((each) => each !== said));
+  }, FOUND_SAID_FOR);
+}
+
+/**
  * The transactions followed, by the wallet's opening and their hash: each
  * by one follow at a time, and by another once that one stops without an
  * answer, where its send is kept as it again.
@@ -172,9 +202,50 @@ function setState(hash, state) {
  */
 const followed = new Set();
 
-/** @param {number} milliseconds */
+/** What ends the follows' waits at once: see `lookAgainNow`. */
+let woken = Promise.withResolvers();
+
+/**
+ * Looks every send followed up again now, not at its next turn: as the
+ * balances change, as a block with one of them may have changed them.
+ */
+export function lookAgainNow() {
+  woken.resolve(undefined);
+  woken = Promise.withResolvers();
+}
+
+/**
+ * Waits, or less, where the follows are woken meanwhile.
+ *
+ * @param {number} milliseconds
+ */
 const pause = (milliseconds) =>
-  new Promise((resolve) => setTimeout(resolve, milliseconds));
+  new Promise((resolve) => {
+    const timer = setTimeout(resolve, milliseconds);
+
+    woken.promise.then(() => {
+      clearTimeout(timer);
+      resolve(undefined);
+    });
+  });
+
+/**
+ * Waits for `promise`, for `milliseconds` at most.
+ *
+ * @param {Promise<unknown>} promise
+ * @param {number} milliseconds
+ */
+const within = (promise, milliseconds) => {
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
+
+  return Promise.race([
+    promise,
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, milliseconds);
+    }),
+  ]).finally(() => clearTimeout(timer));
+};
 
 /**
  * Whether a send is kept still as the transaction `hash`, and no tab sends
@@ -193,17 +264,19 @@ const isKeptAs = (id, hash) =>
  * Looks the transaction a send was handed over as up on the chain, now and
  * again while the wallet it's kept for is open and it's kept as it: often
  * at first, as a block may take it any moment, then once a minute, never
- * given up on. Once it's found, History says so of it as of its block, its
- * send is no longer kept, and `onWentOut` says so. Its nonce is looked up
- * once a minute, from the first look on: once another transaction of its
- * account took it, in a final block, History no longer shows it, and its
- * send is kept as one that never went out. Its send is changed only while
- * it's kept as it.
+ * given up on, and at once as the balances change (`lookAgainNow`). Once
+ * it's found, the balances are read again, for as long as the network gets
+ * to answer, then History says so of it as of its block, its send is no
+ * longer kept, and it's said found in its notice's place (`foundSends`):
+ * the total, History and the notice say it together, unless the wallet's
+ * sync takes longer. Its nonce is looked up once a minute, from the first
+ * look on: once another transaction of its account took it, in a final
+ * block, History no longer shows it, and its send is kept as one that never
+ * went out. Its send is changed only while it's kept as it.
  *
  * @param {import("./unsentSends").UnsentSend} send
- * @param {(wentOut: WentOut) => void} onWentOut
  */
-export function followHandedOver(send, onWentOut) {
+export function followHandedOver(send) {
   const scope = walletDataScope();
 
   if (!send.handedOver) {
@@ -246,10 +319,22 @@ export function followHandedOver(send, onWentOut) {
       }
 
       if (wentOut) {
+        // The balances first, so the total changes with History and the
+        // notice: as long as the network gets to answer, as a sync that
+        // hangs holds the read up.
+        await within(
+          walletStore.refreshBalance().catch(() => {}),
+          ANSWER_WITHIN
+        );
+
+        if (!scope.isOpen()) {
+          break;
+        }
+
         isAnswered = true;
+        await noteSentOutcome(hash, wentOut).catch(() => {});
         setState(hash, null);
-        noteSentOutcome(hash, wentOut).catch(() => {});
-        onWentOut(wentOut);
+        sayFound(send, wentOut);
         await dropHandedOver(send.id, hash).catch(() => {});
 
         break;

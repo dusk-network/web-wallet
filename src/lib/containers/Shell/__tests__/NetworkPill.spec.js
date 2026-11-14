@@ -242,7 +242,9 @@ describe("NetworkPill", () => {
     }
   });
 
-  it("says it can't reach the network as soon as the node leaves an ask unanswered for the 10 seconds it gets, between syncs too, and why on the pill, without a tap", async () => {
+  // Chen's and Marek's: on a silent network the total was marked out of
+  // date after 18 to 22 seconds, not about 10.
+  it("says it can't reach the network within 10 seconds of the node going silent, as an ask goes unanswered for the 6 seconds it gets, between syncs too, and why on the pill, without a tap", async () => {
     vi.useFakeTimers();
 
     try {
@@ -256,10 +258,10 @@ describe("NetworkPill", () => {
         getByRole("button", { name: "Network: Testnet, in sync" })
       ).toBeInTheDocument();
 
-      // From here it answers nothing: its next ask, 15 seconds on, gets no
-      // answer in 10 seconds.
+      // From here it answers nothing: its next ask, 4 seconds on, gets no
+      // answer in 6 seconds.
       askNode.mockImplementation(() => new Promise(() => {}));
-      await act(() => vi.advanceTimersByTimeAsync(24_000));
+      await act(() => vi.advanceTimersByTimeAsync(9_000));
 
       expect(
         getByRole("button", { name: "Network: Testnet, in sync" })
@@ -281,7 +283,7 @@ describe("NetworkPill", () => {
 
       // It answers again: in sync by its next ask.
       askNode.mockImplementation(() => Promise.resolve(1n));
-      await act(() => vi.advanceTimersByTimeAsync(15_000));
+      await act(() => vi.advanceTimersByTimeAsync(4_000));
 
       expect(
         getByRole("button", { name: "Network: Testnet, in sync" })
@@ -293,7 +295,7 @@ describe("NetworkPill", () => {
     }
   });
 
-  it("asks the node one thing at a time, for 10 seconds at most, and nothing once the page hides", async () => {
+  it("asks the node one thing at a time, for 6 seconds at most, and nothing once the page hides", async () => {
     vi.useFakeTimers();
 
     // A node that holds every request open, without an answer.
@@ -318,8 +320,9 @@ describe("NetworkPill", () => {
       render(NetworkPill);
       await act(() => vi.advanceTimersByTimeAsync(55_000));
 
-      // Asked again every 15 seconds, each ask stopped after 10.
-      expect(node).toStrictEqual({ asked: 4, mostOpen: 1, open: 0 });
+      // Asked again every 4 seconds, each ask stopped after 6, and none
+      // while one is open: at 0, 8, 16, …, 48.
+      expect(node).toStrictEqual({ asked: 7, mostOpen: 1, open: 0 });
 
       await act(() => vi.advanceTimersByTimeAsync(5_000));
 
@@ -333,7 +336,7 @@ describe("NetworkPill", () => {
       await act(() => document.dispatchEvent(new Event("visibilitychange")));
       await act(() => vi.advanceTimersByTimeAsync(60_000));
 
-      expect(node).toStrictEqual({ asked: 5, mostOpen: 1, open: 0 });
+      expect(node).toStrictEqual({ asked: 8, mostOpen: 1, open: 0 });
     } finally {
       // @ts-ignore The document's own, from its prototype again.
       delete document.visibilityState;

@@ -2,11 +2,9 @@
 
 <script>
   import { formatTime } from "@dusk-network/networks/format";
-  import { mdiAlertOutline, mdiCheck } from "@mdi/js";
 
   import { isHistoryEnabled } from "$lib/activity";
   import { Button } from "$lib/dusk/components";
-  import { toast } from "$lib/dusk/components/Toast/store";
   import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import {
@@ -18,7 +16,9 @@
   } from "$lib/transactions";
   import {
     followHandedOver,
+    foundSends,
     handedOverStates,
+    lookAgainNow,
   } from "$lib/transactions/handedOverSends";
   import { walletAccountNames } from "$lib/wallets";
 
@@ -74,29 +74,24 @@
   }
 
   /**
-   * Says a send handed over before its page went is on the chain, as it's
-   * found there.
-   *
-   * @param {import("$lib/transactions/unsentSends").UnsentSend} send
-   * @param {import("$lib/transactions/handedOverSends").WentOut} wentOut
+   * What the balances are as last read: once they change, the sends handed
+   * over are looked up at once, as a block with one may have changed them.
    */
-  function sayWentOut(send, { blockHeight, error }) {
-    const what = whatOf(send, $settingsStore.hideBalances);
-    const block = ` In block ${blockHeight.toLocaleString(language || undefined)}.`;
+  let balancesRead = "";
 
-    if (error) {
-      toast(
-        "error",
-        `Failed: ${what}. The network fee was charged.`,
-        mdiAlertOutline,
-        8000
-      );
-    } else {
-      toast("success", `Sent: ${what}.${block}`, mdiCheck, 8000);
+  /** @param {WalletStoreContent["balance"]} balance */
+  function lookAgainOn(balance) {
+    const read = `${balance.unshielded.value} ${balance.shielded.value}`;
+
+    if (balancesRead && read !== balancesRead) {
+      lookAgainNow();
     }
+
+    balancesRead = read;
   }
 
-  $: ({ currentProfile, profiles } = $walletStore);
+  $: ({ balance, currentProfile, profiles } = $walletStore);
+  $: lookAgainOn(balance);
   $: ({ networkName } = $networkStore);
   $: ({ hideBalances, language } = $settingsStore);
   // This network's, from a profile the wallet open has.
@@ -106,12 +101,18 @@
       profiles.some((each) => String(each.account) === send.account)
   );
   // One handed over is looked up on the chain, and said once it isn't found
-  // there: it's never said as not sent.
+  // there.
   $: for (const send of kept) {
     if (send.handedOver) {
-      followHandedOver(send, (wentOut) => sayWentOut(send, wentOut));
+      followHandedOver(send);
     }
   }
+  // Found on the chain a moment ago, said so in its notice's place.
+  $: found = $foundSends.filter(
+    ({ send }) =>
+      send.network === networkName &&
+      profiles.some((each) => String(each.account) === send.account)
+  );
   // By its transaction: one sent again is another.
   $: shown = kept.filter(
     (send) =>
@@ -122,8 +123,26 @@
 
 <!-- Sends whose page closed, reloaded, locked or died before they ended:
   one that never went out is said until it's sent through Review, or
-  dropped; one handed over until the chain has it, or the person is done
-  with it. -->
+  dropped; one handed over until the chain has it, and then that it went
+  out, in its block, for a moment, or until the person is done with it. -->
+{#each found as { send, wentOut } (send.handedOver?.hash ?? send.id)}
+  <Banner
+    className="unsent-send unsent-send--found"
+    role="status"
+    title={wentOut.error
+      ? `Failed: ${whatOf(send, hideBalances)}. The network fee was charged.`
+      : `Sent: ${whatOf(send, hideBalances)}.`}
+    variant={wentOut.error ? "error" : "info"}
+  >
+    <p class="unsent-send__when">
+      {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
+      {formatTime(send.at, { locale: language || undefined })}
+    </p>
+    <p>
+      In block {wentOut.blockHeight.toLocaleString(language || undefined)}.
+    </p>
+  </Banner>
+{/each}
 {#each shown as send (send.id)}
   {#if send.handedOver}
     <Banner

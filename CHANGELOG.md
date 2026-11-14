@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Mark what may be out of date within about 10 seconds of the network going silent
+- Say "Sent" and its block in a "Not confirmed" notice's place once its send is found, as the total and History change with it
+- Say which send it is on its Processing screen whatever its answer's wait, with a space before its memo
 - Search all of the history kept on this device, not only the rows History shows, in the search and in its See all, with a stranger's memo marked as History marks it
 - Say "This request was paid already." as a request paid already is copied, shared or downloaded again, its own link going as before
 - Say Paid twice on Receive's list of requests left open as a second payment comes in

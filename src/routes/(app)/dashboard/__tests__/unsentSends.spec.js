@@ -19,9 +19,13 @@ import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { keptSendsDatabase } from "$lib/transactions/unsentSends";
 import { startIncarnation } from "$lib/wallets/dataNames";
 
-/** What sends, and where the wallet goes: nothing sends here by itself. */
+/**
+ * What sends, where the wallet goes, and the balances read again: nothing
+ * sends here by itself.
+ */
 const app = vi.hoisted(() => ({
   goto: vi.fn(() => Promise.resolve()),
+  refreshBalance: vi.fn(() => Promise.resolve()),
   transfer: vi.fn(),
 }));
 
@@ -50,7 +54,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
     },
     walletStore: {
       ...wallet,
-      refreshBalance: () => Promise.resolve(),
+      refreshBalance: app.refreshBalance,
       setCurrentProfile: () => Promise.resolve(),
       startHistory: () => ({ refresh: () => Promise.resolve() }),
       transfer: app.transfer,
@@ -302,6 +306,8 @@ describe("A send that never went out", () => {
     cleanups.forEach((cleanup) => cleanup());
     cleanups = [];
     app.goto.mockClear();
+    app.refreshBalance.mockReset();
+    app.refreshBalance.mockImplementation(() => Promise.resolve());
     app.transfer.mockClear();
   });
 
@@ -952,7 +958,9 @@ describe("A send that never went out", () => {
     expect(app.transfer).not.toHaveBeenCalled();
   });
 
-  it("is said as sent where its page died once the node was asked to broadcast it, before it answered, and the chain has it, in History too: never as not sent", async () => {
+  // Then Chen's: the notice went with no word that it went out, and the
+  // total and History's row disagreed for 5 to 13 seconds.
+  it("is said as sent in its notice's place where its page died once the node was asked to broadcast it, before it answered, and the chain has it, once the balances are read again, in History too: never as not sent", async () => {
     const dies = Promise.withResolvers();
     // History's record of it, as kept as it was handed over.
     const owner = `testnet::${from}`;
@@ -970,34 +978,106 @@ describe("A send that never went out", () => {
     });
     dies.resolve(undefined);
 
+    // The balances take their time to be read again.
+    const read = Promise.withResolvers();
+
+    app.refreshBalance.mockImplementation(() => read.promise);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
     const { container, page, query } = await reopenWith({
       blockHeight: 4_850_155,
       err: null,
     });
 
     try {
+      await vi.waitFor(() => expect(app.refreshBalance).toHaveBeenCalled());
+
+      // Found: nothing said of it yet, nor in History, until the balances
+      // are read.
+      expect(container).not.toHaveTextContent("Sent:");
+      expect(await listLocalTransactions(owner)).toStrictEqual([
+        expect.objectContaining({ hash: sentTx.hash, status: "submitted" }),
+      ]);
+
+      read.resolve(undefined);
+
       await vi.waitFor(() =>
-        expect(toastsOf(page)).toStrictEqual([
-          "Sent: 0.01 DUSK to your Profile 2. In block 4,850,155.",
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Sent: 0\.01 DUSK to your Profile 2\. broadcast, no answer · .+ In block 4,850,155\.$/
+          ),
         ])
       );
+      expect(await listLocalTransactions(owner)).toStrictEqual([
+        expect.objectContaining({
+          blockHeight: 4_850_155,
+          hash: sentTx.hash,
+          status: "executed",
+        }),
+      ]);
+      expect(toastsOf(page)).toStrictEqual([]);
+      await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
+
+      // Said for a moment, then not.
+      await vi.advanceTimersByTimeAsync(8_000);
 
       expect(noticesOf(container)).toStrictEqual([]);
-      await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
-      await vi.waitFor(async () =>
-        expect(await listLocalTransactions(owner)).toStrictEqual([
-          expect.objectContaining({
-            blockHeight: 4_850_155,
-            hash: sentTx.hash,
-            status: "executed",
-          }),
-        ])
-      );
     } finally {
       query.mockRestore();
+      vi.useRealTimers();
     }
 
     expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  it("is said as sent where the chain has it though the balances' read hangs, with the wallet's sync: once it waited as long as the network gets to answer, in History too", async () => {
+    const dies = Promise.withResolvers();
+    const owner = `testnet::${from}`;
+
+    await sendThrough(
+      await openPage(),
+      "sync hangs",
+      dies.promise,
+      "broadcast"
+    );
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "submitted",
+      submittedAt: Date.now(),
+    });
+    dies.resolve(undefined);
+
+    // The balances' read never ends.
+    app.refreshBalance.mockImplementation(() => new Promise(() => {}));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    const { container, query } = await reopenWith({
+      blockHeight: 4_850_158,
+      err: null,
+    });
+
+    try {
+      await vi.waitFor(() => expect(app.refreshBalance).toHaveBeenCalled());
+
+      expect(container).not.toHaveTextContent("Sent:");
+
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Sent: 0\.01 DUSK to your Profile 2\. sync hangs · .+ In block 4,850,158\.$/
+          ),
+        ])
+      );
+      expect(await listLocalTransactions(owner)).toStrictEqual([
+        expect.objectContaining({ hash: sentTx.hash, status: "executed" }),
+      ]);
+      await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
+    } finally {
+      query.mockRestore();
+      vi.useRealTimers();
+    }
   });
 
   it("is said as not confirmed where its page died once the node was asked to broadcast it, and the chain doesn't have it yet, and as sent once it does", async () => {
@@ -1027,13 +1107,66 @@ describe("A send that never went out", () => {
       await vi.advanceTimersByTimeAsync(4_000);
 
       await vi.waitFor(() =>
-        expect(toastsOf(page)).toStrictEqual([
-          "Sent: 0.01 DUSK to your Profile 2. In block 4,850,156.",
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Sent: 0\.01 DUSK to your Profile 2\. broadcast, not in a block yet · .+ In block 4,850,156\.$/
+          ),
         ])
       );
-      expect(noticesOf(container)).toStrictEqual([]);
+      expect(toastsOf(page)).toStrictEqual([]);
     } finally {
       query.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  // Chen's, the other way round: the total had moved while History still
+  // said Pending, as the send was looked up only at its next turn.
+  it("is looked up at once, not at its next turn, as the balances change", async () => {
+    const dies = Promise.withResolvers();
+
+    await sendThrough(
+      await openPage(),
+      "balances moved",
+      dies.promise,
+      "broadcast"
+    );
+    dies.resolve(undefined);
+
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    const before = mockedWalletStore.getMockedStoreValue();
+    const { container, findByText, query } = await reopenWith(null);
+
+    try {
+      await findByText("Not confirmed: 0.01 DUSK to your Profile 2.");
+
+      // Past its first minutes: looked up once a minute from then on.
+      await vi.advanceTimersByTimeAsync(200_000);
+
+      const asked = query.mock.calls.length;
+
+      // A block takes it, and the balances read change with it.
+      query.mockImplementation(async () => ({
+        tx: { blockHeight: 4_850_157, err: null },
+      }));
+      mockedWalletStore.setMockedStoreValue({
+        ...before,
+        balance: {
+          shielded: { spendable: 0n, value: 0n },
+          unshielded: { nonce: 108n, value: 1n },
+        },
+      });
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(/^Sent: .+ In block 4,850,157\.$/),
+        ])
+      );
+      expect(query.mock.calls.length).toBeGreaterThan(asked);
+    } finally {
+      query.mockRestore();
+      mockedWalletStore.setMockedStoreValue(before);
       vi.useRealTimers();
     }
   });
