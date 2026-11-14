@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Say on Sozu's card that its rewards so far are before deposit fees, and in Rewards by year that what grew while held is after them
 - Give each request its own Share beside its Copy, on Request payment and in Your requests, the Share by the address sharing the address alone, and bring Request payment into view at its Amount as a tap opens it
 - Show amounts to start with in the currency of the browser's region, as Singapore dollars in Singapore, where DUSK has a price in it, else in US dollars
 - Let the Dusk app on Android open the wallet's payment request links where it's installed, and lead a request's page there with the way that works in the browser, with the Dusk app and Firefox after it

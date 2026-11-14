@@ -1048,7 +1048,7 @@ describe("LiquidStake", () => {
         "Taken out 5 DUSK",
         "Worth now 100 DUSK",
         "Deposit fees 0.25 DUSK",
-        "Rewards so far 15.25 DUSK",
+        "Rewards so far, before deposit fees 15.25 DUSK",
         "stDUSK 32 stDUSK",
       ]);
     });
@@ -1077,7 +1077,7 @@ describe("LiquidStake", () => {
         "Put in 0.5 DUSK",
         "Worth now 0.4987 DUSK",
         "Deposit fees 0.00125 DUSK",
-        "Rewards so far 0 DUSK",
+        "Rewards so far, before deposit fees 0 DUSK",
         "stDUSK 0.498 stDUSK",
       ]);
     });
@@ -1171,7 +1171,7 @@ describe("LiquidStake", () => {
         )
       ).toStrictEqual([
         "Worth now 100 DUSK",
-        "Rewards so far Reading your history…",
+        "Rewards so far, before deposit fees Reading your history…",
         "stDUSK 32 stDUSK",
       ]);
       reading.unmount();

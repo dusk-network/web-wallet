@@ -319,7 +319,7 @@ describe("Staking", () => {
       ).toStrictEqual([
         "Year",
         "Native staking, claimed",
-        "Sozu, grown while held",
+        "Sozu, grown while held, after deposit fees",
         "Sozu, taken out by unstaking",
       ]);
       expect(Array.from(table.tBodies[0].rows[0].cells, textOf)).toStrictEqual([

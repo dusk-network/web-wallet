@@ -1083,7 +1083,7 @@ describe("History", () => {
         ).toStrictEqual([
           "Year",
           "Native staking, claimed",
-          "Sozu, grown while held",
+          "Sozu, grown while held, after deposit fees",
           "Sozu, taken out by unstaking",
         ]);
         // How what unstaking took out is counted, under them.
