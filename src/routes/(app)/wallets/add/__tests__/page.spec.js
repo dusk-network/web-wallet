@@ -173,7 +173,7 @@ describe("Add wallet", () => {
     expect(switchSpy).toHaveBeenCalledWith(added.id, 0, { syncFromBlock: 0n });
   });
 
-  it("creates one: its phrase written down and tapped back, then sealed, made at the block it's made at", async () => {
+  it("creates one: its phrase written down and three of its words checked, then sealed, made at the block it's made at", async () => {
     const { container, getAllByRole, getByLabelText, getByRole } =
       render(AddWallet);
 
@@ -195,13 +195,21 @@ describe("Add wallet", () => {
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    for (const word of words) {
-      const [button] = getAllByRole("button", { name: word }).filter(
-        (b) => !(/** @type {HTMLButtonElement} */ (b).disabled)
-      );
+    // Three of them, as written down: Skip for now until they match.
+    expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
 
-      await fireEvent.click(button);
+    for (const label of container.querySelectorAll(".recovery-check__word")) {
+      const n = Number(label.textContent?.replace(/\D/g, ""));
+
+      await fireEvent.input(
+        /** @type {HTMLInputElement} */ (label.querySelector("input")),
+        { target: { value: words[n - 1] } }
+      );
     }
+
+    await fireEvent.click(getByRole("button", { name: "Check" }));
+
+    expect(container).toHaveTextContent("They match.");
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.input(getByLabelText("Password you unlock with"), {

@@ -28,6 +28,7 @@ export { default as OperationResult } from "./OperationResult/OperationResult.sv
 export { default as PaymentRequests } from "./Receive/PaymentRequests.svelte";
 export { default as Receive } from "./Receive/Receive.svelte";
 export { default as RequestPayment } from "./Receive/RequestPayment.svelte";
+export { default as RecoveryWordsCheck } from "./RecoveryWordsCheck/RecoveryWordsCheck.svelte";
 export { default as ReviewAmount } from "./ReviewAmount/ReviewAmount.svelte";
 export { default as ReviewWallet } from "./ReviewWallet/ReviewWallet.svelte";
 export { default as Send } from "./Send/Send.svelte";

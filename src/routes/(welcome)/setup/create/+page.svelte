@@ -3,7 +3,7 @@
 <script>
   import { ErrorAlert, Wizard, WizardStep } from "$lib/dusk/components";
 
-  import { ExistingWalletNotice } from "$lib/components";
+  import { ExistingWalletNotice, RecoveryWordsCheck } from "$lib/components";
   import { goto, takePlace } from "$lib/navigation";
   import { settingsStore } from "$lib/stores";
   import vault from "$lib/vault";
@@ -18,7 +18,6 @@
 
   import MnemonicPhrase from "./MnemonicPhrase.svelte";
   import MnemonicPreSetup from "./MnemonicPreSetup.svelte";
-  import MnemonicValidate from "./MnemonicValidate.svelte";
   import NetworkSync from "./NetworkSync.svelte";
 
   /** @type {import("./$types").PageData} */
@@ -42,14 +41,11 @@
   /** @type {boolean} */
   let agreementAccepted = false;
 
-  /** @type {boolean} */
-  let isValidMnemonic = false;
+  /** Whether the words checked match what was written down. */
+  let areWordsChecked = false;
 
   /** @type {string[]} */
   let mnemonicPhrase = [];
-
-  /** @type {string[]} */
-  let enteredMnemonicPhrase = [];
 
   /**
    * Whether the wallet made here is open: All set goes on to it only then,
@@ -96,24 +92,23 @@
       <h2 class="h1" slot="heading">Back up your recovery phrase</h2>
       <MnemonicPhrase bind:mnemonicPhrase />
     </WizardStep>
+    <!-- Three of the words, as written down: checked, or for later, as
+      Settings checks them too. -->
     <WizardStep
       step={2}
       {key}
       showStepper={true}
-      backButton={{
-        action: () => {
-          enteredMnemonicPhrase = [];
-        },
-      }}
       nextButton={{
-        disabled: !isValidMnemonic,
+        disabled: false,
+        label: areWordsChecked ? "Next" : "Skip for now",
       }}
     >
-      <h2 class="h1" slot="heading">Back up your recovery phrase</h2>
-      <MnemonicValidate
-        bind:isValid={isValidMnemonic}
-        bind:enteredMnemonicPhrase
-        bind:mnemonicPhrase
+      <h2 class="h1" slot="heading">Check your recovery words</h2>
+      <RecoveryWordsCheck
+        on:checked={() => {
+          areWordsChecked = true;
+        }}
+        words={mnemonicPhrase}
       />
     </WizardStep>
     <WizardStep

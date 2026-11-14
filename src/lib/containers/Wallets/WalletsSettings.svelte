@@ -2,8 +2,8 @@
   /**
    * Settings › Wallets: the wallets here, each by its name only this device
    * knows, as the switcher shows them, with Rename and, while there's
-   * another, Remove; then Add wallet and Change password, which take the
-   * password the wallets share. Rename opens a field with the wallet's
+   * another, Remove; then Add wallet, Change password and Check your
+   * recovery words, which take the password the wallets share. Rename opens a field with the wallet's
    * name in it, "Wallet 2" for one without, with Save and Cancel (Enter and
    * Escape): saved empty, or as its number's, it has no name.
    */
@@ -223,6 +223,11 @@
       <AppAnchorButton
         href="/settings/password"
         text="Change password"
+        variant="tertiary"
+      />
+      <AppAnchorButton
+        href="/settings/check-words"
+        text="Check your recovery words"
         variant="tertiary"
       />
     </div>

@@ -11,7 +11,11 @@
 
   import { Button, Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
-  import { MnemonicInput, UnlockPasswordField } from "$lib/components";
+  import {
+    MnemonicInput,
+    RecoveryWordsCheck,
+    UnlockPasswordField,
+  } from "$lib/components";
   import { InvalidPasswordError } from "$lib/errors";
   import { goto, pageTitle } from "$lib/navigation";
   import { networkStore, walletStore } from "$lib/stores";
@@ -21,13 +25,12 @@
 
   import MnemonicPhrase from "../../../(welcome)/setup/create/MnemonicPhrase.svelte";
   import MnemonicPreSetup from "../../../(welcome)/setup/create/MnemonicPreSetup.svelte";
-  import MnemonicValidate from "../../../(welcome)/setup/create/MnemonicValidate.svelte";
   import NetworkSyncSettings from "../../../(welcome)/setup/restore/NetworkSyncSettings.svelte";
 
   /**
    * Where the flow is: choosing, then, to create one, the agreement, the
-   * phrase and its check; to import one, its words and where it syncs
-   * from; and for both, the password.
+   * phrase and a check of three of its words, which can wait; to import
+   * one, its words and where it syncs from; and for both, the password.
    *
    * @type {"agree" | "choose" | "password" | "phrase" | "sync" | "verify" | "words"}
    */
@@ -36,16 +39,14 @@
   /** @type {"create" | "import"} */
   let mode = "create";
 
-  // Create: the new phrase, the agreement, and the words tapped back.
+  // Create: the new phrase, the agreement, and whether three of its words
+  // were checked.
   /** @type {string[]} */
   let mnemonicPhrase = [];
 
   let agreed = false;
 
-  /** @type {string[]} */
-  let enteredMnemonicPhrase = [];
-
-  let isPhraseRepeated = false;
+  let areWordsChecked = false;
 
   // Import: the words typed or pasted, and the block to sync from.
   let importedPhrase = "";
@@ -170,7 +171,7 @@
     } else if (step === "phrase") {
       step = "agree";
     } else if (step === "verify") {
-      enteredMnemonicPhrase = [];
+      areWordsChecked = false;
       step = "phrase";
     } else if (step === "sync") {
       step = "words";
@@ -182,7 +183,6 @@
   // Nothing of the phrase or the password is kept once the page goes.
   onDestroy(() => {
     mnemonicPhrase = [];
-    enteredMnemonicPhrase = [];
     importedPhrase = "";
     password = "";
   });
@@ -239,10 +239,11 @@
   {:else if step === "phrase"}
     <MnemonicPhrase bind:mnemonicPhrase />
   {:else if step === "verify"}
-    <MnemonicValidate
-      bind:enteredMnemonicPhrase
-      bind:isValid={isPhraseRepeated}
-      {mnemonicPhrase}
+    <RecoveryWordsCheck
+      on:checked={() => {
+        areWordsChecked = true;
+      }}
+      words={mnemonicPhrase}
     />
   {:else if step === "words"}
     <MnemonicInput
@@ -305,11 +306,10 @@
       />
     {:else if step === "verify"}
       <Button
-        disabled={!isPhraseRepeated}
         on:click={() => {
           step = "password";
         }}
-        text="Next"
+        text={areWordsChecked ? "Next" : "Skip for now"}
         variant="primary"
       />
     {:else if step === "words"}
