@@ -12,6 +12,7 @@
 
 import { get, writable } from "svelte/store";
 
+import { noteSentOutcome } from "$lib/activity";
 import { networkStore } from "$lib/stores";
 import { walletDataScope } from "$lib/wallets/dataNames";
 
@@ -28,10 +29,10 @@ const ANSWER_WITHIN = 10_000;
 const LOOK_AGAIN_EVERY = 60_000;
 
 /**
- * What the chain says of it: in which block its transaction is, and what
- * went wrong there, if anything.
+ * What the chain says of it: the block its transaction is in, as
+ * followTransaction gives it.
  *
- * @typedef {{ blockHeight: bigint, error: string | null }} WentOut
+ * @typedef {import("./followTransaction").FinalTransaction} WentOut
  */
 
 /**
@@ -65,12 +66,22 @@ export async function lookUpHandedOver(send, signal) {
   const network = await unlessAborted(networkStore.connect(), signal);
   const { tx } =
     (await unlessAborted(
-      network.query(`tx(hash: "${hash}") { blockHeight err }`, { signal }),
+      network.query(
+        `tx(hash: "${hash}") { blockHeight blockTimestamp err gasSpent tx { gasPrice } }`,
+        { signal }
+      ),
       signal
     )) ?? {};
+  const seconds = Number(tx?.blockTimestamp);
 
   return tx
-    ? { blockHeight: BigInt(tx.blockHeight), error: tx.err || null }
+    ? {
+        blockHeight: BigInt(tx.blockHeight),
+        error: tx.err || null,
+        fee: BigInt(tx.gasSpent ?? 0) * BigInt(tx.tx?.gasPrice ?? 0),
+        timestamp:
+          Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null,
+      }
     : null;
 }
 
@@ -130,8 +141,8 @@ const isKept = (id) => get(unsentSends).some((send) => send.id === id);
  * Looks a send that was handed over up on the chain, now and again while
  * the wallet it's kept for is open and it's kept: often at first, as a
  * block may take it any moment, then once a minute, never given up on.
- * Once its transaction is found, it's no longer kept, and `onWentOut` says
- * so.
+ * Once its transaction is found, it's no longer kept, History says so of it
+ * as of its block, and `onWentOut` says so.
  *
  * @param {import("./unsentSends").UnsentSend} send
  * @param {(wentOut: WentOut) => void} onWentOut
@@ -147,6 +158,7 @@ export function followHandedOver(send, onWentOut) {
   followed.add(key);
   setState(send.id, "checking");
 
+  const { hash } = send.handedOver;
   const often = Date.now() + FOLLOW_TIMEOUT;
 
   void (async () => {
@@ -163,6 +175,7 @@ export function followHandedOver(send, onWentOut) {
       if (wentOut) {
         setState(send.id, null);
         dropUnsent(send.id);
+        noteSentOutcome(hash, wentOut).catch(() => {});
         onWentOut(wentOut);
 
         return;

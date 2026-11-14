@@ -11,6 +11,10 @@ import {
 import { get } from "svelte/store";
 import { formatTime } from "@dusk-network/networks/format";
 
+import {
+  listLocalTransactions,
+  putLocalTransaction,
+} from "$lib/activity/activityStore";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { keptSendsDatabase } from "$lib/transactions/unsentSends";
 import { startIncarnation } from "$lib/wallets/dataNames";
@@ -641,8 +645,10 @@ describe("A send that never went out", () => {
     expect(app.transfer).not.toHaveBeenCalled();
   });
 
-  it("is said as sent where its page died once the node was asked to broadcast it, before it answered, and the chain has it: never as not sent", async () => {
+  it("is said as sent where its page died once the node was asked to broadcast it, before it answered, and the chain has it, in History too: never as not sent", async () => {
     const dies = Promise.withResolvers();
+    // History's record of it, as kept as it was handed over.
+    const owner = `testnet::${from}`;
 
     await sendThrough(
       await openPage(),
@@ -650,6 +656,11 @@ describe("A send that never went out", () => {
       dies.promise,
       "broadcast"
     );
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "submitted",
+      submittedAt: Date.now(),
+    });
     dies.resolve(undefined);
 
     const { container, page, query } = await reopenWith({
@@ -666,6 +677,15 @@ describe("A send that never went out", () => {
 
       expect(noticesOf(container)).toStrictEqual([]);
       await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
+      await vi.waitFor(async () =>
+        expect(await listLocalTransactions(owner)).toStrictEqual([
+          expect.objectContaining({
+            blockHeight: 4_850_155,
+            hash: sentTx.hash,
+            status: "executed",
+          }),
+        ])
+      );
     } finally {
       query.mockRestore();
     }
